@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.escrow;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.payment.escrow.event.EscrowCapturedEvent;
 import com.mannschaft.app.payment.service.MemberPaymentService;
 import com.mannschaft.app.payment.service.MembershipSubscriptionService;
@@ -55,6 +57,8 @@ public class MembershipPaymentCaptureListener {
      *
      * @param event CAPTURED イベント（escrowTransactionId / sourceKind）
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとエスクロー確定済みの会費が実決済に反映されず、DB 上は確定・決済は未実行という乖離が残る")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onEscrowCaptured(EscrowCapturedEvent event) {
         if (event.sourceKind() != EscrowSourceKind.MEMBERSHIP) {

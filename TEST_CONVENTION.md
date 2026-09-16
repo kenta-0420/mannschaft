@@ -148,6 +148,22 @@ afterAll(() => {
 
 ---
 
+### 2.5 ログ出力を検証するテスト（`ListAppender`）はロガーの実効レベルを自ら設定・復元すること **【必須】**
+
+`ch.qos.logback.core.read.ListAppender` を対象クラスの `Logger` に付けてログ出力内容を検証する
+プレーンな単体テスト（Spring コンテキストを起動しないもの）は、`@BeforeEach` で**対象ロガーの
+実効レベルを明示的に設定**し、`@AfterEach` で**元のレベルへ確実に復元**すること（取得した
+`getLevel()` の戻り値をそのまま戻す。null なら null に戻し、継承状態へ戻す）。
+
+**理由**: `backend/build.gradle.kts` の `setForkEvery` により、同一 gradle テストフォーク内で複数
+のテストクラスが JVM を共有する。先に `@ActiveProfiles("test")` の `@SpringBootTest`（`test`
+プロファイルは `logback-spring.xml` で root レベルを WARN に設定）が走ると、その状態が同一フォーク
+内の後続のプレーン単体テストへ持ち越され、`log.info` 等が実効レベル未達で握りつぶされて
+`ListAppender` に何も届かない。**ローカルで対象クラス単体だけを実行すると Spring コンテキストが
+起動しないため再現せず、CI 特有の実行順依存ですり抜ける。**
+
+---
+
 ## 3. 結合テスト設計方針
 
 ### 3.1 アノテーションの使い分け
@@ -797,6 +813,35 @@ public void dispatch() { ... }
 メタテスト `ScheduledBatchGuardConditionTest` がこのケースを fixture で実証している。
 番人の判定ロジックを触るときは、必ずメタテストの負例で「違反が返ること」を確認すること
 （**違反 0 件は番人が動いていることの証明にはならない**）。
+
+---
+
+## 9.7 `@Transactional` なテストで通知の配送結果を検証しない — 番人あり
+
+**`@Transactional` が効いたテストは業務トランザクションをコミットしない。**
+よって `@TransactionalEventListener(AFTER_COMMIT)` で配送される通知は 1 件も作られない。
+その状態で通知の配送結果を検証すると、テストは**何を壊しても必ず通る**（偽の緑）。
+
+- 「1 件以上であること」を検証していれば移設した瞬間に赤くなるので気づける。
+- **「0 件であること」を検証していると永遠に緑のままで、CI では検出できない。**
+- クラスに注釈が無くても、**基底クラスからの継承**や `@DataJpaTest` で実効的にトランザクショナルになる。
+
+実例（#3140）: L8（PR #3135）で `ScheduleKeepConvertContractIT` が実際にこの形だった。
+`@Transactional` なクラスの中で、外側 TX から見えない通知行を素の `DataSource` から新接続で数え、
+`assertThat(countConvertedNotifications(supporterId)).isZero()` と検証していた。
+隣のテストが赤くなったから気づけただけで、単独なら永遠に緑だった。
+
+**正しい形は 2 つある。テストが守りたい契約で選ぶ。**
+
+| 形 | 使う場面 | 金型 |
+|---|---|---|
+| `@Transactional` を外し `TransactionTemplate` で明示コミット | 配送まで含めて検証したい（本戦役の正規形） | `ScheduleCommentNotificationPartialFailureIT` / `ScheduleNotificationTransactionBoundaryIT` |
+| `@RecordApplicationEvents` で配送イベントの publish を検証 | 業務 TX 内で観測できる契約までで割り切る（配送内容はリスナー側の単体テストが持つ） | `ScheduleKeepConvertContractIT` AC-15b（PR #3135） |
+
+番人 `TransactionalTestNotificationObservationGuardTest` が CI で機械的に拒否する。
+適法な例外は同クラスの `ALLOWED` に理由付きで列挙し、
+検体テスト側で「その例外が実際に判定へ引っかかること（＝効いていない例外を残さないこと）」まで検証する。
+通知を `AFTER_COMMIT` へ移設する手順は `backend/.claudecode.md` §6.1 を参照。
 
 ---
 

@@ -63,7 +63,7 @@
     "qrcode": "^1.5.4",
     "tailwindcss-primeui": "^0.6.1",
     "vee-validate": "^4.15.1",
-    "vue": "latest",
+    "vue": "^3.5.41",
     "vue-virtual-scroller": "^2.0.0-beta.8",
     "vuedraggable": "^4.1.0",
     "zod": "^3.25.76"
@@ -101,12 +101,17 @@
     "crossws": "^0.4.5",
     "postcss": "^8.5.23",
     "simple-git": "^3.36.0",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.4",
     "@redocly/openapi-core": {
-      "js-yaml": "^4.3.1"
+      "js-yaml": "^4.3.2"
     },
-    "fast-uri": "^3.1.5",
+    "fast-uri": "^3.1.7",
     "tar": "^7.5.21",
-    "js-yaml": "^4.3.1"
+    "js-yaml": "^4.3.2",
+    "postcss-selector-parser": "^7.1.5"
+  },
+  "engines": {
+    "node": "22.23.2",
+    "npm": "10.9.8"
   }
 }

@@ -261,7 +261,7 @@ public class SystemAdminBillingService {
         EntitlementScopeKind scopeKind = BillingApiSupport.parseScopeKind(req.scopeKind());
         ContractKind contractKind = BillingApiSupport.parseContractKind(req.contractKind());
         Long organizationId = resolveOrganizationId(scopeKind, req.scopeId());
-        ContractResult result = billingContractService.createContract(
+        ContractResult result = billingContractService.createContractBySystemAdmin(
                 scopeKind, req.scopeId(), organizationId, contractKind,
                 req.planKey(), req.featureKey(), sysAdminUserId);
         return toContractResponse(result);

@@ -144,6 +144,13 @@ export function useConfirmableNotificationApi() {
     )
   }
 
+  /** 個人・プラットフォームスコープの自分宛て確認通知を確認済みにする */
+  async function confirmPersonalNotification(notificationId: number) {
+    return api(`/api/v1/me/confirmable-notifications/${notificationId}/confirm`, {
+      method: 'POST',
+    })
+  }
+
   // === Templates ===
 
   /** テンプレート一覧を取得する */
@@ -198,6 +205,7 @@ export function useConfirmableNotificationApi() {
     getRecipients,
     confirmNotification,
     getPendingNotifications,
+    confirmPersonalNotification,
     listTemplates,
     createTemplate,
     updateTemplate,

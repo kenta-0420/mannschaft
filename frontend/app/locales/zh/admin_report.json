@@ -2,14 +2,6 @@
   "admin_report": {
     "title": "举报管理",
     "empty": "暂无举报",
-    "status_options": {
-      "all": "全部",
-      "pending": "未处理",
-      "reviewing": "处理中",
-      "escalated": "已升级",
-      "resolved": "已解决",
-      "dismissed": "已驳回"
-    },
     "messages": {
       "load_failed": "获取举报失败",
       "note_added": "已添加备注",
@@ -42,8 +34,7 @@
       "target_type": "对象类型",
       "reason": "理由",
       "reported_at": "举报日期",
-      "actions": "操作",
-      "status_placeholder": "状态"
+      "actions": "操作"
     },
     "actions": {
       "review": "审核",

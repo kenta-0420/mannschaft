@@ -192,7 +192,7 @@ public class JobApplicationController {
      * <p><b>認可の所在</b>: {@code JobApplicationService#withdraw}
      * （{@code jobmatching/service/JobApplicationService.java:130}）が、対象応募を実体として
      * ロードしたうえで {@code applicantUserId} と認証主体の一致を検証し、不一致は
-     * {@code JOB_PERMISSION_DENIED}（403）で拒否する。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
+     * {@code JOB_PERMISSION_DENIED}（404。越境の存在秘匿）で拒否する。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
      */
     @AuthorizedInService
     @PostMapping("/api/v1/applications/{id}/withdraw")

@@ -12,6 +12,13 @@
  * （PATCH /api/v1/schedules/{id}/responses への重複実装だったため削除）。
  */
 import type { ScheduleInvitationResponse } from '~/types/schedule'
+import type { components } from '~/types/generated'
+
+type CalendarLayerResponse = components['schemas']['CalendarLayerResponse']
+type CalendarLayerUpdateRequest = components['schemas']['CalendarLayerUpdateRequest']
+
+/** レイヤー設定 API のパススコープ種別（F03.19 §4.4）。PERSONAL の scopeId は常に 0。 */
+export type CalendarLayerScopeType = 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
 
 export function useScheduleCrud() {
   const api = useApi()
@@ -41,10 +48,10 @@ export function useScheduleCrud() {
     if (params?.categoryId) query.set('categoryId', String(params.categoryId))
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 50))
-    return api<{
-      data: unknown[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
-    }>(`${buildBase(scopeType, scopeId)}/schedules?${query}`)
+    // BE（Org/TeamScheduleController#listSchedules）は ApiResponse<List<ScheduleResponse>> を返し、
+    // meta を一切送らない。かつてここに meta を宣言していたが実体が無く、
+    // 読めば常に undefined になる幽霊フィールドだった（CMP-260912-1823）。
+    return api<{ data: unknown[] }>(`${buildBase(scopeType, scopeId)}/schedules?${query}`)
   }
 
   async function getSchedule(
@@ -158,6 +165,44 @@ export function useScheduleCrud() {
     return api<{ data: unknown }>(`/api/v1/my/calendar?${query}`)
   }
 
+  /**
+   * 統合カレンダーのレイヤー一覧（所属スコープ＋解決済み色＋表示可否）。
+   * 予定の有無に依存せず全所属を返す（F03.19 §4.3・AC-01/AC-02）。月移動での再取得は不要（AC-03）。
+   */
+  async function getMyCalendarLayers() {
+    return api<{ data: CalendarLayerResponse[] }>('/api/v1/me/calendar-layers')
+  }
+
+  /**
+   * レイヤー設定の部分更新（F03.19 §4.4）。
+   *
+   * **部分更新セマンティクス**: 送らなかった項目は現在値のまま。
+   * `color` だけ送れば `hidden` は保たれる（AC-08b）。`color: null` は「変更しない」であって
+   * 「自動色へ戻す」ではない — 自動色へ戻すのは {@link deleteMyCalendarLayer}（§4.5）。
+   * そのため本関数は `color`/`hidden` に `null` を積まず、**指定されたキーだけを送る**。
+   */
+  async function updateMyCalendarLayer(
+    scopeType: CalendarLayerScopeType,
+    scopeId: number,
+    patch: CalendarLayerUpdateRequest,
+  ) {
+    const body: CalendarLayerUpdateRequest = {}
+    if (patch.color !== undefined) body.color = patch.color
+    if (patch.hidden !== undefined) body.hidden = patch.hidden
+    return api<{ data: CalendarLayerResponse }>(
+      `/api/v1/me/calendar-layers/${scopeType}/${scopeId}`,
+      { method: 'PATCH', body },
+    )
+  }
+
+  /**
+   * レイヤー設定の削除＝自動色へ戻す（F03.19 §4.5）。
+   * 設定行が無くても 204（冪等）。応答本文は無い。
+   */
+  async function deleteMyCalendarLayer(scopeType: CalendarLayerScopeType, scopeId: number) {
+    return api(`/api/v1/me/calendar-layers/${scopeType}/${scopeId}`, { method: 'DELETE' })
+  }
+
   // === Event Categories ===
   async function getCategories(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: unknown[] }>(`${buildBase(scopeType, scopeId)}/event-categories`)
@@ -223,6 +268,9 @@ export function useScheduleCrud() {
     duplicateSchedule,
     getCalendarMonth,
     getCalendarRange,
+    getMyCalendarLayers,
+    updateMyCalendarLayer,
+    deleteMyCalendarLayer,
     getCategories,
     createCategory,
     remindSchedule,

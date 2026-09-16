@@ -5,6 +5,7 @@
       "schedule": "Termine",
       "member": "Mitglieder",
       "ops": "Betrieb",
+      "market": "Markt",
       "facility": "Einrichtungen",
       "resident": "Bewohner",
       "data": "Daten & Analyse",
@@ -26,6 +27,7 @@
     "invite": "Einladen",
     "permissionGroups": "Berechtigungsgruppen",
     "onboarding": "Einführung",
+    "market": "Markt",
     "todos": "Aufgaben",
     "workflows": "Workflows",
     "forms": "Formulare",
@@ -59,6 +61,8 @@
     "faqSettings": "FAQ-Einstellungen",
     "billing": "Abrechnung & Planverwaltung",
     "leagueTransfers": "Liga-Transfers",
-    "adminConsole": "Administrationskonsole"
+    "adminConsole": "Administrationskonsole",
+    "receipts": "Belege",
+    "receiptSettings": "Aussteller-Einstellungen für Belege"
   }
 }

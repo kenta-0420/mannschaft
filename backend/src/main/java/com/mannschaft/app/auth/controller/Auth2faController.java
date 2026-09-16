@@ -1,6 +1,7 @@
 package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.service.Auth2faService;
+import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.dto.BackupCodesResponse;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
@@ -14,7 +15,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,7 +38,11 @@ import com.mannschaft.app.common.SecurityUtils;
 public class Auth2faController {
 
     private final Auth2faService auth2faService;
+    private final AuthTokenService authTokenService;
     private final com.mannschaft.app.auth.guardianship.AuthenticationCriticalOperationGuard authenticationCriticalOperationGuard;
+
+    @Value("${mannschaft.cookie.secure:false}")
+    private boolean cookieSecure;
 
     /**
      * TOTP設定開始。秘密鍵とQRコードURLを返す。
@@ -112,9 +120,33 @@ public class Auth2faController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "TOTP検証成功")
     public ResponseEntity<ApiResponse<TokenResponse>> validateTotp(
             @Valid @RequestBody ValidateTotpLoginRequest req) {
+        ApiResponse<TokenResponse> response = auth2faService.validateTotp(
+                req.getMfaSessionToken(), req.getTotpCode());
+        TokenResponse tokens = response.getData();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, buildAccessTokenCookie(tokens.getAccessToken()).toString())
+                .header(HttpHeaders.SET_COOKIE, buildRefreshTokenCookie(tokens.getRefreshToken()).toString())
+                .body(response);
+    }
 
-        return ResponseEntity.ok(auth2faService.validateTotp(
-                req.getMfaSessionToken(), req.getTotpCode()));
+    private ResponseCookie buildAccessTokenCookie(String token) {
+        return ResponseCookie.from("access_token", token)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Strict")
+                .maxAge(15 * 60)
+                .build();
+    }
+
+    private ResponseCookie buildRefreshTokenCookie(String token) {
+        return ResponseCookie.from("refresh_token", token)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Strict")
+                .maxAge(authTokenService.getRefreshTokenExpirationSeconds())
+                .build();
     }
 
     /**

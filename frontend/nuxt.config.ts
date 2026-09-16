@@ -1,4 +1,5 @@
 import Aura from '@primeuix/themes/aura'
+import { buildGateRouteRules } from './app/constants/featureGates'
 
 // ──────────────────────────────────────────────────────────────────────────
 // セキュリティヘッダー / CSP（nuxt-security）
@@ -89,7 +90,13 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match'],
+    dirs: [
+      'composables',
+      'composables/jobs',
+      'composables/wallet-group-show',
+      'composables/match',
+      'composables/returnStayPlan',
+    ],
   },
 
   devServer: {
@@ -186,7 +193,11 @@ export default defineNuxtConfig({
         // F08.9 P5: Stripe.js の PaymentElement iframe（js.stripe.com）と
         //   3DS 認証チャレンジ iframe（hooks.stripe.com）を許可。
         // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2
-        'frame-src': ['https://www.google.com', 'https://js.stripe.com', 'https://hooks.stripe.com'],
+        'frame-src': [
+          'https://www.google.com',
+          'https://js.stripe.com',
+          'https://hooks.stripe.com',
+        ],
         // worker-src: @vite-pwa/nuxt の service worker。
         'worker-src': ["'self'", 'blob:'],
         'manifest-src': ["'self'"],
@@ -424,9 +435,21 @@ export default defineNuxtConfig({
 
   // E2E テスト時（NUXT_API_PROXY=true 環境変数）は API を Nuxt サーバー経由でプロキシする。
   // これにより CORS プリフライト問題を回避し、Playwright のルートインターセプトが確実に機能する。
-  routeRules: process.env.NUXT_API_PROXY === 'true' ? {
-    '/api/v1/**': { proxy: `${apiBase}/api/v1/**` },
-  } : {},
+  routeRules: {
+    // 未公開機能（Gate 基盤工事②）のガード対象パスは SSR 対象外にする。
+    // SSR 実行時は公開フラグを取得できない（localStorage のトークンに依存）ため、
+    // フラグ未確定のまま未公開ページの HTML がサーバーから出力されるのを防ぐ
+    // （route ガード middleware feature-gate.global.ts の ssr-defer と対になっている）。
+    // 対応表は app/constants/featureGates.ts が単一の正（YAML パーサ依存・コード生成は無し）。
+    ...buildGateRouteRules(),
+    // 認証フォームは SEO を必要としない。SSR で操作不能なフォームを先に配信すると、
+    // クライアントのハイドレーションが遅延・失敗した際にログイン不能になるため、
+    // 最初からクライアントで操作可能な状態として描画する。
+    '/login': { ssr: false },
+    ...(process.env.NUXT_API_PROXY === 'true'
+      ? { '/api/v1/**': { proxy: `${apiBase}/api/v1/**` } }
+      : {}),
+  },
 
   // ──────────────────────────────────────────────────────────────────────
   // dev 限定: CSP 違反レポート (report-uri) を BE(:8080) へフォワードする。
@@ -514,18 +537,21 @@ export default defineNuxtConfig({
           'ja/market.json',
           'ja/inbox.json',
           'ja/schedule.json',
+          'ja/return_stay_plan.json',
           'ja/payment.json',
           'ja/match.json',
           'ja/tournament.json',
           'ja/file_sharing.json',
           'ja/admin_report.json',
           'ja/system_admin_incident_banner.json',
+          'ja/provisioning.json',
           'ja/admin_console.json',
           'ja/feedback.json',
           'ja/circulation.json',
           'ja/parental-consent.json',
           'ja/billing.json',
           'ja/global_nav.json',
+          'ja/receipt.json',
         ],
       },
       {
@@ -587,18 +613,21 @@ export default defineNuxtConfig({
           'en/market.json',
           'en/inbox.json',
           'en/schedule.json',
+          'en/return_stay_plan.json',
           'en/payment.json',
           'en/match.json',
           'en/tournament.json',
           'en/file_sharing.json',
           'en/admin_report.json',
           'en/system_admin_incident_banner.json',
+          'en/provisioning.json',
           'en/admin_console.json',
           'en/feedback.json',
           'en/circulation.json',
           'en/parental-consent.json',
           'en/billing.json',
           'en/global_nav.json',
+          'en/receipt.json',
         ],
       },
       {
@@ -660,18 +689,21 @@ export default defineNuxtConfig({
           'zh/market.json',
           'zh/inbox.json',
           'zh/schedule.json',
+          'zh/return_stay_plan.json',
           'zh/payment.json',
           'zh/match.json',
           'zh/tournament.json',
           'zh/file_sharing.json',
           'zh/admin_report.json',
           'zh/system_admin_incident_banner.json',
+          'zh/provisioning.json',
           'zh/admin_console.json',
           'zh/feedback.json',
           'zh/circulation.json',
           'zh/parental-consent.json',
           'zh/billing.json',
           'zh/global_nav.json',
+          'zh/receipt.json',
         ],
       },
       {
@@ -733,18 +765,21 @@ export default defineNuxtConfig({
           'ko/market.json',
           'ko/inbox.json',
           'ko/schedule.json',
+          'ko/return_stay_plan.json',
           'ko/payment.json',
           'ko/match.json',
           'ko/tournament.json',
           'ko/file_sharing.json',
           'ko/admin_report.json',
           'ko/system_admin_incident_banner.json',
+          'ko/provisioning.json',
           'ko/admin_console.json',
           'ko/feedback.json',
           'ko/circulation.json',
           'ko/parental-consent.json',
           'ko/billing.json',
           'ko/global_nav.json',
+          'ko/receipt.json',
         ],
       },
       {
@@ -806,18 +841,21 @@ export default defineNuxtConfig({
           'es/market.json',
           'es/inbox.json',
           'es/schedule.json',
+          'es/return_stay_plan.json',
           'es/payment.json',
           'es/match.json',
           'es/tournament.json',
           'es/file_sharing.json',
           'es/admin_report.json',
           'es/system_admin_incident_banner.json',
+          'es/provisioning.json',
           'es/admin_console.json',
           'es/feedback.json',
           'es/circulation.json',
           'es/parental-consent.json',
           'es/billing.json',
           'es/global_nav.json',
+          'es/receipt.json',
         ],
       },
       {
@@ -879,18 +917,21 @@ export default defineNuxtConfig({
           'de/market.json',
           'de/inbox.json',
           'de/schedule.json',
+          'de/return_stay_plan.json',
           'de/payment.json',
           'de/match.json',
           'de/tournament.json',
           'de/file_sharing.json',
           'de/admin_report.json',
           'de/system_admin_incident_banner.json',
+          'de/provisioning.json',
           'de/admin_console.json',
           'de/feedback.json',
           'de/circulation.json',
           'de/parental-consent.json',
           'de/billing.json',
           'de/global_nav.json',
+          'de/receipt.json',
         ],
       },
     ],
@@ -965,5 +1006,25 @@ export default defineNuxtConfig({
       // URL 確定前の一覧へ戻るため、dev server 起動時に事前最適化しておく。
       include: ['date-holidays', 'dexie', 'chart.js', 'dompurify', 'vuedraggable'],
     },
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 本番ビルド（nuxt build）のメモリ枯渇対策（CMP-260821-2130）
+  // ──────────────────────────────────────────────────────────────────────────
+  // 実測（6回のビルド）で本番ビルドが OOM で完走しないことを確認済み。
+  // 主因はサーバー側ソースマップ: Nuxt 3 の既定は本番で { server: true, client: false } だが、
+  // Nuxt 3.21.11 はこれを Vite の SSR ビルドへ渡すだけでなく、SSR のマップを Nitro へ
+  // 再投入するプラグインまで動かすため、同じコストを2回払っていた
+  // （実測: 無効化前は 4096MB/8192MB いずれの上限でも死亡、無効化後は 8192MB で完走・9,482MB / swap 0）。
+  // 本番の起動コマンドは `node .output/server/index.mjs` で `--enable-source-maps` が付いておらず、
+  // Node はこのフラグ無しではソースマップを使わないため、生成されていたサーバー側ソースマップは
+  // 本番で一度も使われていなかった（エラー監視基盤も未導入で、クライアント側ソースマップの使い先も無い）。
+  //
+  // 【重要】必ず $production 限定にすること。素で `sourcemap: {...}` を書くと、設定ローダー c12 が
+  // 環境別上書きとして扱う対象から外れて `npm run dev` にも常時適用されてしまい、開発時のデバッグで
+  // ソースマップが失われる（nuxt.options.sourcemap.{server,client} は多数のビルドプラグインが
+  // 開発・本番を区別せず参照するため、影響範囲が広い）。
+  $production: {
+    sourcemap: { server: false, client: false },
   },
 })

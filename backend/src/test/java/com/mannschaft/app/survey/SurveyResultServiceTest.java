@@ -86,6 +86,20 @@ class SurveyResultServiceTest {
     private SurveyResultService surveyResultService;
 
     /**
+     * 母集団解決（{@link com.mannschaft.app.survey.service.SurveyUniverseResolver}）は
+     * <b>本物</b>を注入する。ここをモックにすると「どの母集団を数えるか」という本質が
+     * テストから消えるため、実クラスへ既存のリポジトリモックを渡し、
+     * 従来どおり最下層のスタブ（{@code userRoleRepository} 等）で振る舞いを決める。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void 母集団リゾルバを実クラスで注入する() {
+        org.springframework.test.util.ReflectionTestUtils.setField(surveyResultService, "universeResolver",
+                new com.mannschaft.app.survey.service.SurveyUniverseResolver(
+                        organizationMembershipService, userRoleRepository, targetRepository));
+    }
+
+
+    /**
      * 結果閲覧可否の判定点は<b>実物</b>を差し込む（Issue #2779）。
      *
      * <p>モックに置き換えると「403 を投げる経路」と「詳細応答の viewerCanViewResults」が

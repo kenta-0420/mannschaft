@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -701,6 +702,18 @@ public class ScheduleService {
     }
 
     /**
+     * URL 組織の管理権限を通過した利用者に対してだけ、組織スコープ整合を確定する。
+     * 呼び出し側は必ず URL 組織の認可を先行させ、非管理者への存在オラクルを防ぐ。
+     */
+    public void checkOrganizationScheduleScope(Long organizationId, Long scheduleId) {
+        ScheduleEntity schedule = findScheduleOrThrow(scheduleId);
+        if (!schedule.isOrganizationScope()
+                || !Objects.equals(schedule.getOrganizationId(), organizationId)) {
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND);
+        }
+    }
+
+    /**
      * {@link #checkScopeAdminAccess(Long, Long)} の entity 版（既に fetch 済みの場合に使う）。
      */
     void checkScopeAdminAccess(ScheduleEntity schedule, Long userId) {
@@ -804,7 +817,7 @@ public class ScheduleService {
             // 未指定: 配信軸に整合する既定を導出する（応援者に配るなら SUPPORTER_PLUS）。
             return supportersIncluded ? MinViewRole.SUPPORTER_PLUS : MinViewRole.MEMBER_PLUS;
         }
-        MinViewRole requested = MinViewRole.valueOf(requestedMinViewRole);
+        MinViewRole requested = EnumInputParser.parse(MinViewRole.class, requestedMinViewRole, "minViewRole");
         assertSupporterAxesConsistent(requested, includeSupporters);
         return requested;
     }
@@ -851,12 +864,14 @@ public class ScheduleService {
                 .startAt(startAtJst)
                 .endAt(endAtJst)
                 .allDay(req.getAllDay())
-                .eventType(EventType.valueOf(req.getEventType()))
+                .eventType(EnumInputParser.parse(EventType.class, req.getEventType(), "eventType"))
                 .visibility(req.getVisibility() != null
-                        ? ScheduleVisibility.valueOf(req.getVisibility()) : ScheduleVisibility.MEMBERS_ONLY)
+                        ? EnumInputParser.parse(ScheduleVisibility.class, req.getVisibility(), "visibility")
+                        : ScheduleVisibility.MEMBERS_ONLY)
                 .minViewRole(resolveMinViewRole(req.getMinViewRole(), req.getIncludeSupporters()))
                 .minResponseRole(req.getMinResponseRole() != null
-                        ? MinResponseRole.valueOf(req.getMinResponseRole()) : MinResponseRole.MEMBER_PLUS)
+                        ? EnumInputParser.parse(MinResponseRole.class, req.getMinResponseRole(), "minResponseRole")
+                        : MinResponseRole.MEMBER_PLUS)
                 .status(ScheduleStatus.SCHEDULED)
                 .attendanceStatus(AttendanceGenerationStatus.READY)
                 .attendanceRequired(req.getAttendanceRequired())
@@ -866,7 +881,8 @@ public class ScheduleService {
                         ? req.getTeamBreakdownEnabled() : false)
                 .attendanceDeadline(deadlineJst)
                 .commentOption(req.getCommentOption() != null
-                        ? CommentOption.valueOf(req.getCommentOption()) : CommentOption.OPTIONAL)
+                        ? EnumInputParser.parse(CommentOption.class, req.getCommentOption(), "commentOption")
+                        : CommentOption.OPTIONAL)
                 .eventCategoryId(req.getEventCategoryId())
                 .academicYear(req.getAcademicYear() != null ? req.getAcademicYear().shortValue() : null)
                 .recurrenceRule(recurrenceRuleJson)
@@ -904,19 +920,28 @@ public class ScheduleService {
         if (req.getStartAt() != null) builder.startAt(toJst(req.getStartAt()));
         if (req.getEndAt() != null) builder.endAt(toJst(req.getEndAt()));
         if (req.getAllDay() != null) builder.allDay(req.getAllDay());
-        if (req.getEventType() != null) builder.eventType(EventType.valueOf(req.getEventType()));
-        if (req.getVisibility() != null) builder.visibility(ScheduleVisibility.valueOf(req.getVisibility()));
+        if (req.getEventType() != null) {
+            builder.eventType(EnumInputParser.parse(EventType.class, req.getEventType(), "eventType"));
+        }
+        if (req.getVisibility() != null) {
+            builder.visibility(EnumInputParser.parse(ScheduleVisibility.class, req.getVisibility(), "visibility"));
+        }
         if (req.getMinViewRole() != null) {
-            MinViewRole requested = MinViewRole.valueOf(req.getMinViewRole());
+            MinViewRole requested = EnumInputParser.parse(MinViewRole.class, req.getMinViewRole(), "minViewRole");
             // 二軸の不変条件（CMP-017b T-2）: UpdateScheduleRequest は includeSupporters を持たないため、
             // 更新経路で不変条件を破りうるのは «既存 include_supporters=TRUE の行の閾値を引き上げる» 側のみ。
             assertSupporterAxesConsistent(requested, schedule.getIncludeSupporters());
             builder.minViewRole(requested);
         }
-        if (req.getMinResponseRole() != null) builder.minResponseRole(MinResponseRole.valueOf(req.getMinResponseRole()));
+        if (req.getMinResponseRole() != null) {
+            builder.minResponseRole(EnumInputParser.parse(
+                    MinResponseRole.class, req.getMinResponseRole(), "minResponseRole"));
+        }
         if (req.getAttendanceRequired() != null) builder.attendanceRequired(req.getAttendanceRequired());
         if (req.getAttendanceDeadline() != null) builder.attendanceDeadline(toJst(req.getAttendanceDeadline()));
-        if (req.getCommentOption() != null) builder.commentOption(CommentOption.valueOf(req.getCommentOption()));
+        if (req.getCommentOption() != null) {
+            builder.commentOption(EnumInputParser.parse(CommentOption.class, req.getCommentOption(), "commentOption"));
+        }
 
         // F03.10 行事カテゴリ・年度の更新
         // eventCategoryId が指定されている（値あり）場合のみ更新する。null は「未指定」として扱い更新しない。

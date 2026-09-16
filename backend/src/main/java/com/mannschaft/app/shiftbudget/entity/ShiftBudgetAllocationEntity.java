@@ -5,13 +5,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.GeneratedColumn;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -35,15 +33,21 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "shift_budget_allocations",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uq_sba_scope_category_period",
-                        columnNames = {
-                                "organization_id", "team_id_uq", "project_id_uq",
-                                "budget_category_id", "period_start", "period_end", "deleted_at_uq"
-                        }
-                )
-        },
+        // NOTE: 一意制約 uq_sba_scope_category_period は Flyway (V11.030) 側で
+        //       「関数インデックス」として定義しており、Entity では宣言しない。
+        //       MySQL 8.0 は FK のベースカラム (team_id / project_id) に対する STORED 生成カラムを
+        //       許さない (Error 3192) ため、V11.030 は生成カラムを捨てて
+        //         CREATE UNIQUE INDEX uq_sba_scope_category_period ON shift_budget_allocations (
+        //             organization_id, (COALESCE(team_id,0)), (COALESCE(project_id,0)),
+        //             budget_category_id, period_start, period_end,
+        //             (COALESCE(deleted_at,'9999-12-31 00:00:00')))
+        //       という関数インデックスで NULL-safe な一意性を実現している。
+        //       JPA の @UniqueConstraint は式を表現できないため、ここで擬似的に宣言すると
+        //       「実 DB に存在しない列」を Entity が持つことになり、Flyway で構築した環境
+        //       （本番・staging）で Hibernate が Unknown column を投げて API が全滅する
+        //       （2026-09-09 実機で確認: deleted_at_uq で allocations 系 API が全て 500）。
+        //       アプリ層の重複防止は ShiftBudgetAllocationService.findLiveByScope の
+        //       SELECT ... FOR UPDATE が担い、DB 側は上記関数インデックスが最終防衛線となる。
         indexes = {
                 @Index(name = "idx_sba_org_period", columnList = "organization_id, period_start, period_end"),
                 @Index(name = "idx_sba_team_period", columnList = "team_id, period_start, period_end"),
@@ -122,26 +126,12 @@ public class ShiftBudgetAllocationEntity extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    /**
-     * UNIQUE 用 STORED 生成カラム。
-     * <p>MySQL の UNIQUE は NULL を「異なる値」と扱うため、{@code team_id} / {@code project_id} /
-     * {@code deleted_at} が NULL の場合に重複検知できない問題を回避するため、COALESCE で
-     * 番兵値に変換した STORED 生成カラムを {@code @UniqueConstraint} に組み込む。</p>
-     * <p>Hibernate の {@code ddl-auto} 経由でテスト DB に DDL 生成される際にも有効化されるよう、
-     * Entity 側に {@code columnDefinition} で生成カラム定義を明示する。
-     * 既存 V3.120 ({@code recruitment_participants.active_subject_key}) と同パターン。</p>
-     */
-    @GeneratedColumn("COALESCE(team_id, 0)")
-    @Column(name = "team_id_uq", nullable = false, insertable = false, updatable = false)
-    private Long teamIdUq;
-
-    @GeneratedColumn("COALESCE(project_id, 0)")
-    @Column(name = "project_id_uq", nullable = false, insertable = false, updatable = false)
-    private Long projectIdUq;
-
-    @GeneratedColumn("COALESCE(deleted_at, '9999-12-31 00:00:00')")
-    @Column(name = "deleted_at_uq", nullable = false, insertable = false, updatable = false)
-    private LocalDateTime deletedAtUq;
+    // NOTE: かつてここに UNIQUE 用 STORED 生成カラム team_id_uq / project_id_uq / deleted_at_uq を
+    //       宣言していたが、V11.030 は MySQL 8.0 の制約（FK ベースカラムに STORED 生成カラム不可、
+    //       Error 3192）により生成カラムを作らず関数インデックスで代替している。
+    //       実 DB に存在しない列を Entity が宣言していたため、Flyway 構築環境では
+    //       SELECT に deleted_at_uq 等が載って Unknown column となり API が全滅していた。
+    //       詳細は上の @Table のコメントおよび docs/features/F08.7_shift_budget_integration.md を参照。
 
     /**
      * 割当額・備考を更新する。

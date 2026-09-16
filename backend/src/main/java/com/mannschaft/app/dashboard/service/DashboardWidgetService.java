@@ -70,6 +70,7 @@ public class DashboardWidgetService {
             Map.entry("PERSONAL_MY_TEAMS", "参加チーム"),
             Map.entry("PERSONAL_MY_ORGANIZATIONS", "参加組織"),
             Map.entry("PERSONAL_FAVORITES", "お気に入り"),
+            Map.entry("RETURN_STAY_PLAN", "帰省・滞在予定"),
             Map.entry("TEAM_NOTICES", "チームお知らせ"),
             Map.entry("TEAM_UPCOMING_EVENTS", "直近イベント"),
             Map.entry("TEAM_TODO", "チームTODO"),

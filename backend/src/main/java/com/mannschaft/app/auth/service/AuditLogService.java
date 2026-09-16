@@ -51,6 +51,29 @@ public class AuditLogService {
                        Long teamId, Long organizationId,
                        String ipAddress, String userAgent, String sessionHash,
                        String metadata) {
+        // 自己呼び出しのためプロキシを経由しない＝非同期スレッド上でそのまま実行される。
+        recordSync(eventType, userId, targetUserId, teamId, organizationId,
+                ipAddress, userAgent, sessionHash, metadata);
+    }
+
+    /**
+     * 監査ログを<b>呼び出しスレッドで同期に</b>記録する。失敗してもメイン処理を止めない。
+     *
+     * <p>{@link #record} は {@code @Async} であり「操作は成功したのに監査行がまだ無い」時間窓が開く。
+     * 閲覧・参照系の監査のように、応答を返した時点で監査が残っていることを要件とする呼び出し元
+     * （F20.1 課金履歴の {@code BILLING_INVOICE_VIEWED} 等）は本メソッドを使う。</p>
+     *
+     * <p>他ドメインから監査を書く経路は本 Service に限る。{@code AuditLogRepository} /
+     * {@code AuditLogEntity} を直接触るとドメイン越境となり
+     * {@code CrossDomainRepositoryDependencyArchTest}（D-5）・
+     * {@code CrossDomainEntityImportArchTest}（D-1）が拒否する。</p>
+     *
+     * <p>引数の意味は {@link #record} と同一。</p>
+     */
+    public void recordSync(String eventType, Long userId, Long targetUserId,
+                           Long teamId, Long organizationId,
+                           String ipAddress, String userAgent, String sessionHash,
+                           String metadata) {
         try {
             AuditLogEntity entity = AuditLogEntity.builder()
                     .eventType(eventType)

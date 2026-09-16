@@ -3,6 +3,12 @@ package com.mannschaft.app.files.service;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.R2StorageService.PresignedPartUrl;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.MultipartContentTarget;
+import com.mannschaft.app.common.storage.acl.MultipartContentTargetRegistry;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
 import com.mannschaft.app.files.dto.CompleteMultipartResponse;
 import com.mannschaft.app.files.dto.PartUrlRequest;
@@ -21,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 
 import java.time.Duration;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -73,6 +80,11 @@ public class MultipartUploadService {
 
     private final R2StorageService r2StorageService;
     private final MultipartUploadSessionRepository sessionRepository;
+    private final StorageAclService storageAclService;
+    private final MultipartUploadCleanupService cleanupService;
+    private final MultipartContentTargetRegistry targetRegistry;
+    @org.springframework.beans.factory.annotation.Qualifier("utcClock")
+    private final Clock clock;
 
     /**
      * Multipart Upload を開始する。
@@ -85,10 +97,9 @@ public class MultipartUploadService {
      */
     @Transactional
     public StartMultipartUploadResponse startUpload(Long uploaderId, StartMultipartUploadRequest req) {
-        // ターゲットプレフィックスの検証
-        // "schedules/{id}/" のようにサブパスを含む場合は、許可されたプレフィックスで始まるかをチェックする
+        // 公開APIでは機能ルートのみ許可する。テナント・親ID入りのキーは保存台帳経由でのみ発行する。
         String prefix = req.getTargetPrefix() != null ? req.getTargetPrefix() : DEFAULT_PREFIX;
-        boolean prefixAllowed = ALLOWED_PREFIXES.stream().anyMatch(prefix::startsWith);
+        boolean prefixAllowed = ALLOWED_PREFIXES.contains(prefix);
         if (!prefixAllowed) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -120,25 +131,86 @@ public class MultipartUploadService {
         String uuid = UUID.randomUUID().toString();
         String r2Key = prefix + uuid + (ext.isEmpty() ? "" : "." + ext);
 
+        return startPrepared(uploaderId, req, r2Key, null);
+    }
+
+    /** 保存済みドメインメディア専用の開始入口。クライアント申告scopeやprefixは使用しない。 */
+    @Transactional
+    public StartMultipartUploadResponse startContentUpload(Long uploaderId, StartMultipartUploadRequest req,
+                                                           String fileKey) {
+        MultipartContentTarget target = targetRegistry.resolve(fileKey, uploaderId);
+        if (!FileTypeValidator.isAllowed(req.getContentType(), ALLOWED_CONTENT_TYPES)
+                || FileTypeValidator.isBlocked(req.getContentType())
+                || req.getFileSize() <= 0 || req.getFileSize() > MAX_FILE_SIZE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不正なmultipartファイルです");
+        }
+        return startPrepared(uploaderId, req, fileKey, target);
+    }
+
+    private StartMultipartUploadResponse startPrepared(Long uploaderId, StartMultipartUploadRequest req,
+                                                       String r2Key, MultipartContentTarget contentTarget) {
+        String feature = r2Key.substring(0, r2Key.indexOf('/'));
+
         // R2 で Multipart Upload を開始
         String r2UploadId = r2StorageService.createMultipartUpload(r2Key, req.getContentType());
+        MultipartContentTarget target = contentTarget != null ? contentTarget : genericTarget(r2UploadId, uploaderId);
+        var compensated = new java.util.concurrent.atomic.AtomicBoolean();
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCompletion(int status) {
+                            if (status != STATUS_COMMITTED && compensated.compareAndSet(false, true)) {
+                                compensateStart(r2UploadId, r2Key, feature, target, uploaderId, req.getContentType(),
+                                        new IllegalStateException("multipart開始トランザクションがrollbackしました"));
+                            }
+                        }
+                    });
+        }
 
         // DB にセッションを保存
         MultipartUploadSessionEntity session = MultipartUploadSessionEntity.builder()
                 .uploadId(r2UploadId)
                 .r2Key(r2Key)
-                .feature(resolveFeature(prefix))
-                .scopeType("PERSONAL")
-                .scopeId(uploaderId)
+                .feature(feature)
+                .scopeType(target.scope().type().name())
+                .scopeId(Long.valueOf(target.scope().scopeKey()))
                 .uploaderId(uploaderId)
                 .contentType(req.getContentType())
                 .status("IN_PROGRESS")
-                .expiresAt(LocalDateTime.now().plus(SESSION_TTL))
+                .expiresAt(LocalDateTime.now(clock).plus(SESSION_TTL))
                 .build();
-        sessionRepository.save(session);
+        try {
+            sessionRepository.save(session);
+            storageAclService.registerPending(
+                    r2Key, uploaderId, target.scope(), req.getContentType(), SESSION_TTL, target.parent());
+        } catch (RuntimeException registrationFailure) {
+            if (compensated.compareAndSet(false, true)) {
+                compensateStart(r2UploadId, r2Key, feature, target, uploaderId, req.getContentType(), registrationFailure);
+            }
+            throw registrationFailure;
+        }
 
         log.info("Multipart Upload 開始: uploaderId={}, r2Key={}, uploadId={}", uploaderId, r2Key, r2UploadId);
         return new StartMultipartUploadResponse(r2UploadId, r2Key, req.getPartCount(), req.getPartSize());
+    }
+
+    /** 外側ドメインTxの失敗とcommit失敗も含め、未確定のR2セッションを一度だけ補償する。 */
+    private void compensateStart(String uploadId, String fileKey, String feature, MultipartContentTarget target,
+                                 Long uploaderId, String contentType, RuntimeException failure) {
+        try {
+            r2StorageService.abortMultipartUpload(fileKey, uploadId);
+        } catch (RuntimeException abortFailure) {
+            failure.addSuppressed(abortFailure);
+            log.warn("Multipart補償abort失敗: uploadId={}, fileKey={}", uploadId, fileKey, abortFailure);
+            try {
+                cleanupService.markAbortPending(uploadId, fileKey, feature, target.scope().type().name(),
+                        Long.valueOf(target.scope().scopeKey()), uploaderId, contentType);
+            } catch (RuntimeException markerFailure) {
+                failure.addSuppressed(markerFailure);
+                log.error("Multipart補償台帳登録失敗: uploadId={}, fileKey={}", uploadId, fileKey, failure);
+            }
+        }
     }
 
     /**
@@ -155,15 +227,19 @@ public class MultipartUploadService {
         MultipartUploadSessionEntity session = findSessionOrThrow(uploadId);
         validateInProgress(session);
         validateSessionOwner(session, requesterId);
+        validateFileKeyMatchesSession(session, req.getFileKey());
+        validateNotExpired(session);
+        resolveTarget(session);
 
         List<PresignedPartUrl> presignedUrls = r2StorageService.createPresignedPartUrls(
-                req.getFileKey(), uploadId, req.getPartNumbers(), PART_URL_TTL);
+                session.getR2Key(), uploadId, req.getPartNumbers(), PART_URL_TTL);
 
         List<PresignedPartUrlDto> dtos = presignedUrls.stream()
                 .map(p -> new PresignedPartUrlDto(p.partNumber(), p.uploadUrl()))
                 .collect(Collectors.toList());
 
-        log.info("Multipart パート URL 発行: uploadId={}, parts={}", uploadId, req.getPartNumbers().size());
+        log.info("Multipart パート URL 発行: uploadId={}, fileKey={}, parts={}",
+                uploadId, session.getR2Key(), req.getPartNumbers().size());
         return new PartUrlResponse(dtos, PART_URL_TTL_SECONDS);
     }
 
@@ -180,9 +256,37 @@ public class MultipartUploadService {
     public CompleteMultipartResponse completeUpload(
             String uploadId, Long requesterId, CompleteMultipartRequest req) {
 
-        MultipartUploadSessionEntity session = findSessionOrThrow(uploadId);
+        MultipartUploadSessionEntity session = findSessionForUpdateOrThrow(uploadId);
         validateInProgress(session);
         validateSessionOwner(session, requesterId);
+        validateFileKeyMatchesSession(session, req.getFileKey());
+        validateNotExpired(session);
+        MultipartContentTarget target = resolveTarget(session);
+
+        var externalObjectCompleted = new java.util.concurrent.atomic.AtomicBoolean();
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCompletion(int status) {
+                            if (status != STATUS_COMMITTED && externalObjectCompleted.get()) {
+                                try {
+                                    cleanupService.compensateCompletedRollback(
+                                            session.getUploadId(), session.getR2Key(), session.getFeature(),
+                                            session.getScopeType(), session.getScopeId(), session.getUploaderId(),
+                                            session.getContentType());
+                                } catch (RuntimeException cleanupFailure) {
+                                    log.error("Multipart完了rollback後の補償登録に失敗しました: uploadId={}, fileKey={}",
+                                            session.getUploadId(), session.getR2Key(), cleanupFailure);
+                                }
+                            }
+                        }
+                    });
+        }
+
+        // scope/親/添付束縛の不一致は不可逆なR2完了より先に拒否する。
+        // R2失敗・DBコミット失敗時はこのclaimも同じTxでrollbackされ、完成済み実体は読取不可のままになる。
+        storageAclService.claimPending(session.getR2Key(), requesterId, target.scope(), target.parent(), target.binding());
 
         // AWS SDK の CompletedPart に変換
         List<CompletedPart> completedParts = req.getParts().stream()
@@ -193,10 +297,24 @@ public class MultipartUploadService {
                 .collect(Collectors.toList());
 
         // R2 で Multipart Upload を完了
-        r2StorageService.completeMultipartUpload(req.getFileKey(), uploadId, completedParts);
+        // 前回R2完了後にDB保存/commitが失敗した場合、消費済みuploadIdを再completeせずHEADから復旧する。
+        // キーはサーバー採番しセッションに固定済み。存在確認の通信障害は握りつぶさない。
+        if (!r2StorageService.objectExists(session.getR2Key())) {
+            try {
+                r2StorageService.completeMultipartUpload(session.getR2Key(), uploadId, completedParts);
+            } catch (RuntimeException completionFailure) {
+                try {
+                    externalObjectCompleted.set(r2StorageService.objectExists(session.getR2Key()));
+                } catch (RuntimeException headFailure) {
+                    completionFailure.addSuppressed(headFailure);
+                }
+                throw completionFailure;
+            }
+        }
+        externalObjectCompleted.set(true);
 
         // R2 HeadObject で最終ファイルサイズを取得
-        long fileSize = r2StorageService.getObjectSize(req.getFileKey());
+        long fileSize = r2StorageService.getObjectSize(session.getR2Key());
 
         // セッションステータスを COMPLETED に更新
         MultipartUploadSessionEntity updated = session.toBuilder()
@@ -204,8 +322,8 @@ public class MultipartUploadService {
                 .build();
         sessionRepository.save(updated);
 
-        log.info("Multipart Upload 完了: uploadId={}, fileKey={}, fileSize={}", uploadId, req.getFileKey(), fileSize);
-        return new CompleteMultipartResponse(req.getFileKey(), fileSize);
+        log.info("Multipart Upload 完了: uploadId={}, fileKey={}, fileSize={}", uploadId, session.getR2Key(), fileSize);
+        return new CompleteMultipartResponse(session.getR2Key(), fileSize);
     }
 
     /**
@@ -217,7 +335,7 @@ public class MultipartUploadService {
      */
     @Transactional
     public void abortUpload(String uploadId, Long requesterId) {
-        MultipartUploadSessionEntity session = findSessionOrThrow(uploadId);
+        MultipartUploadSessionEntity session = findSessionForUpdateOrThrow(uploadId);
         validateInProgress(session);
         validateSessionOwner(session, requesterId);
 
@@ -249,6 +367,21 @@ public class MultipartUploadService {
     }
 
     /**
+     * セッション作成時に採番した R2 キーとリクエストの fileKey が一致することを検証する。
+     *
+     * @param session Multipart Upload セッション
+     * @param fileKey リクエストのファイルキー
+     * @throws ResponseStatusException 不一致の場合（400 Bad Request）
+     */
+    private void validateFileKeyMatchesSession(MultipartUploadSessionEntity session, String fileKey) {
+        if (!session.getR2Key().equals(fileKey)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Multipart Upload セッションの fileKey とリクエストが一致しません");
+        }
+    }
+
+    /**
      * Upload ID でセッションを取得する。存在しない場合は 404 を返す。
      *
      * @param uploadId R2 Multipart Upload ID
@@ -256,6 +389,13 @@ public class MultipartUploadService {
      */
     private MultipartUploadSessionEntity findSessionOrThrow(String uploadId) {
         return sessionRepository.findByUploadId(uploadId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Multipart Upload セッションが見つかりません: " + uploadId));
+    }
+
+    private MultipartUploadSessionEntity findSessionForUpdateOrThrow(String uploadId) {
+        return sessionRepository.findByUploadIdForUpdate(uploadId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Multipart Upload セッションが見つかりません: " + uploadId));
@@ -273,6 +413,31 @@ public class MultipartUploadService {
                     HttpStatus.CONFLICT,
                     "このセッションは操作不可の状態です: status=" + session.getStatus());
         }
+    }
+
+    private void validateNotExpired(MultipartUploadSessionEntity session) {
+        if (session.getExpiresAt() == null || !session.getExpiresAt().isAfter(LocalDateTime.now(clock))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Multipart Upload セッションは期限切れです");
+        }
+    }
+
+    private MultipartContentTarget resolveTarget(MultipartUploadSessionEntity session) {
+        if (session.getR2Key().split("/", -1).length == 2) {
+            throw new ResponseStatusException(HttpStatus.GONE,
+                    "汎用 Multipart Upload セッションは廃止されました");
+        }
+        MultipartContentTarget target = targetRegistry.resolve(session.getR2Key(), session.getUploaderId());
+        if (!target.scope().type().name().equals(session.getScopeType())
+                || !target.scope().scopeKey().equals(String.valueOf(session.getScopeId()))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Multipart Upload の保存スコープが一致しません");
+        }
+        return target;
+    }
+
+    private MultipartContentTarget genericTarget(String uploadId, Long uploaderId) {
+        return new MultipartContentTarget(StorageAclScope.personal(uploaderId),
+                new StorageAclContentReference("MULTIPART_UPLOAD", uploadId),
+                new StorageAclAttachmentBinding("MULTIPART_UPLOAD", uploadId));
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.reservation.RecurringWeekSkipReason;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity;
@@ -20,6 +21,7 @@ import org.mockito.quality.Strictness;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,6 +69,8 @@ class ReservationRecurringSlotResolverTest {
     private ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
     @Mock
     private ReservationRepository reservationRepository;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     private ReservationRecurringSlotResolver resolver;
 
@@ -74,9 +78,9 @@ class ReservationRecurringSlotResolverTest {
     void setUp() {
         resolver = new ReservationRecurringSlotResolver(
                 slotRepository, blockedTimeRepository, recurringBlockedTimeRepository,
-                new ReservationUnavailabilityChecker(), reservationRepository);
-        given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                anyLong(), any(), any())).willReturn(List.of());
+                new ReservationUnavailabilityChecker(), reservationRepository, teamTimezoneResolver);
+        given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("UTC"));
+        given(blockedTimeRepository.findEffectiveBetween(anyLong(), any(), any(), any())).willReturn(List.of());
         given(recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(anyLong())).willReturn(List.of());
         given(reservationRepository.findSlotIdsAlreadyReservedByUser(anyLong(), any(), any()))
                 .willReturn(List.of());
@@ -293,8 +297,9 @@ class ReservationRecurringSlotResolverTest {
         assertThat(result).as("2〜12週目の11件が解決される").hasSize(11);
         verify(slotRepository, times(1))
                 .findRecurringCandidateSlots(any(), any(), any(), any(), any());
-        verify(blockedTimeRepository, times(1))
-                .findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(anyLong(), any(), any());
+            verify(blockedTimeRepository, times(1))
+                .findEffectiveBetween(TEAM_ID, BASE_DATE.plusWeeks(1), BASE_DATE.plusWeeks(11),
+                        BASE_DATE.plusWeeks(1).minusDays(1));
         verify(recurringBlockedTimeRepository, times(1)).findByTeamIdAndIsActiveTrue(anyLong());
         verify(reservationRepository, times(1))
                 .findSlotIdsAlreadyReservedByUser(anyLong(), any(), any());

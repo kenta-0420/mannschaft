@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "支払い管理",
+      "contentGate": {"title":"コンテンツゲート管理","loading":"読み込み中…","loadError":"コンテンツゲートの読み込みに失敗しました","contentType":"対象種別","contentId":"コンテンツID","post":"記事","announcement":"お知らせ","save":"保存","saveSuccess":"コンテンツゲートを保存しました","saveError":"コンテンツゲートの保存に失敗しました","titleHidden":"タイトルを隠す","noItems":"利用可能な徴収項目がありません","clearHint":"全ての項目を外して保存するとゲートを解除できます"},
       "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "支払い項目",
       "selectItem": "支払い項目を選択してください",

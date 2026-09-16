@@ -204,6 +204,17 @@ regexes = [
 ]
 
 [[allowlists]]
+description = "PR4 Billing Center の return state 署名鍵（application-test.yml 固定値。テスト決定性のためのダミー値で、値そのものが test- 接頭辞と -xxxx 接尾辞を持つプレースホルダ命名。本番鍵は環境変数 MANNSCHAFT_BILLING_RETURN_SIGNING_SECRET から注入され、この値は本番では使用されない。src/main と src/test の両方に同一値を置く必要がある（src/test が優先されるため同期必須）ため paths に2件を挙げ、値とANDで限定する）"
+condition = "AND"
+paths = [
+  '''backend/src/main/resources/application-test\.yml''',
+  '''backend/src/test/resources/application-test\.yml''',
+]
+regexes = [
+  '''test-billing-return-signing-key-32bytes-xxxx''',
+]
+
+[[allowlists]]
 description = "テスト用暗号化鍵/HMAC鍵（application-test.yml固定値。テスト決定性のためのダミー値）"
 condition = "AND"
 paths = [

@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.dto.ContentPaymentGateRequest;
 import com.mannschaft.app.payment.repository.ContentPaymentGateRepository;
@@ -26,6 +27,7 @@ class ContentPaymentGateServiceTest {
 
     @Mock private ContentPaymentGateRepository contentPaymentGateRepository;
     @Mock private PaymentItemService paymentItemService;
+    @Mock private AuditLogService auditLogService;
 
     @InjectMocks
     private ContentPaymentGateService service;

@@ -2,6 +2,7 @@ package com.mannschaft.app.billing;
 
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,11 +35,13 @@ import java.util.UUID;
  *
  * <p><b>スコープ所有権</b>: 契約の解約/変更は {@code contractId} → 所属スコープを解決し、パスのスコープと
  * 一致検証する（不一致は {@code CONTRACT_NOT_FOUND} 404 秘匿・IDOR・03 §2）。作成時の scopeId 所有権
- * （ADMIN か）は public 入口の {@code @PreAuthorize} が一次防御（別部隊）。本サービスは受領した scope を信頼せず、
- * 子リソース系は必ず一致検証で二重防御する。</p>
+ * （ADMIN又は明示委譲DEPUTYか）は public 入口の {@code @PreAuthorize} を一次防御とし、本サービスの書込
+ * トランザクション内でも操作者行ロック後に再確認する。本サービスは受領した scope を信頼せず、子リソース系は
+ * 必ず一致検証で二重防御する。</p>
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BillingContractService {
 
     private final BillingContractRepository billingContractRepository;
@@ -60,6 +63,17 @@ public class BillingContractService {
      * 元 private {@code issueEntitlements} の INSERT ロジックを本サービスへ抽出した（挙動不変）。
      */
     private final EntitlementIssuanceService entitlementIssuanceService;
+    /** 課金権限解除と契約変更予約を操作者行ロックで直列化する。 */
+    private final BillingOperationAuthorizer billingOperationAuthorizer;
+
+    /**
+     * Billing Center PR6a: 契約操作 Saga（{@code billing_contract_operations}）。
+     *
+     * <p>旧経路（{@link #cancelContract} / {@link #changePlan}）は pointer を尊重して 409 を返し
+     * （AC-20/21）、SYSTEM 経路（purge / {@code customer.subscription.deleted}）は検疫を貫通しつつ
+     * 非終端 operation を同一トランザクションで終端化してから pointer を解放する（D3・AC-16/17）。</p>
+     */
+    private final BillingContractOperationSagaService billingContractOperationSagaService;
 
     /**
      * 契約変更操作の結果（API 層 DTO 組み立て用・付与/取消 feature_key 集合を含む）。
@@ -85,6 +99,27 @@ public class BillingContractService {
             List<String> revokedFeatureKeys) {
     }
 
+    /**
+     * 柱③-B: payer 起点で検出した引継対象契約（§1.2 の検出漏れを塞ぐクエリの返り値）。
+     *
+     * <p>D-1（API 境界）によりサービス API はエンティティを露出できないため、
+     * PR-3 の退会ハンドラ（{@code cancelAllForPayerOnWithdrawal}）が期末解約を発行するのに必要な
+     * 項目だけを持つ値オブジェクトとして返す。{@code pspSubscriptionRef} は §5.1 の絞り込みにより
+     * 非 null が保証される。</p>
+     *
+     * <p><b>{@code currentPeriodEnd} を含めない理由</b>: 期末解約は Stripe 側で
+     * {@code cancel_at_period_end=true} を立てる操作であり、期末の日時値そのものを呼び出し側が
+     * 持つ必要がない（Stripe が保持する実物の期末が権威である）。ローカルの
+     * {@code current_period_end} は §5.1 の絞り込み条件としてのみ用いる。</p>
+     */
+    public record HandoverTargetContract(
+            UUID contractId,
+            EntitlementScopeKind scopeKind,
+            Long scopeId,
+            ContractStatus status,
+            String pspSubscriptionRef) {
+    }
+
     // ============================================================
     // 作成（PLAN / ADDON）
     // ============================================================
@@ -106,6 +141,23 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
             ContractKind contractKind, String planKey, String featureKey, Long operatorUserId) {
 
+        billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
+        return createContractInternal(scopeKind, scopeId, organizationId,
+                contractKind, planKey, featureKey, operatorUserId);
+    }
+
+    /** SYSTEM_ADMIN専用入口。Controller側のSYSTEM_ADMIN認可を経た手動付与だけが利用する。 */
+    @Transactional
+    public ContractResult createContractBySystemAdmin(
+            EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
+            ContractKind contractKind, String planKey, String featureKey, Long operatorUserId) {
+        return createContractInternal(scopeKind, scopeId, organizationId,
+                contractKind, planKey, featureKey, operatorUserId);
+    }
+
+    private ContractResult createContractInternal(
+            EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
+            ContractKind contractKind, String planKey, String featureKey, Long operatorUserId) {
         LocalDateTime now = LocalDateTime.now(clock);
         List<String> grantedKeys;
         String slotAddonKey;
@@ -146,6 +198,7 @@ public class BillingContractService {
                 .priceJpySnapshot(null)           // ベータ中は無償（NULL）。
                 .contractedAt(now)
                 .createdBy(operatorUserId)
+                .payerUserId(operatorUserId)
                 .build();
         BillingContractEntity saved = billingContractRepository.save(contract);
 
@@ -188,8 +241,12 @@ public class BillingContractService {
     public ContractResult cancelContract(
             EntitlementScopeKind scopeKind, Long scopeId, UUID contractId, Long operatorUserId) {
 
+        billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         BillingContractEntity contract = loadContractInScope(scopeKind, scopeId, contractId);
+        // ★PR6a AC-20: 旧経路も operation pointer を尊重する。進行中（検疫を含む）の Saga の
+        //   脇から契約を書き換えられると排他が成立しないため 409（ENTITLEMENT_021）で拒否する。
+        billingContractOperationSagaService.requireNoActiveOperation(contractId);
         if (contract.getStatus() != ContractStatus.ACTIVE) {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_NOT_CANCELLABLE);
         }
@@ -242,8 +299,16 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, UUID contractId,
             String newPlanKey, Long operatorUserId) {
 
+        billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         BillingContractEntity oldContract = loadContractInScope(scopeKind, scopeId, contractId);
+        // ★PR6a AC-20: 旧 PUT 経路も operation pointer を尊重する（進行中の Saga と競合させない）。
+        billingContractOperationSagaService.requireNoActiveOperation(contractId);
+        // ★PR6a AC-21: 解約予約中（cancelled_at 非 NULL）の契約は、撤回するまでプラン変更できない。
+        //   既存実装は cancelled_at を見ておらず、期末解約予約を抱えたまま新契約へ付け替わっていた。
+        if (oldContract.getCancelledAt() != null) {
+            throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
+        }
         if (oldContract.getStatus() != ContractStatus.ACTIVE) {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_NOT_CANCELLABLE);
         }
@@ -297,6 +362,7 @@ public class BillingContractService {
                 .priceJpySnapshot(null)
                 .contractedAt(now)
                 .createdBy(operatorUserId)
+                .payerUserId(operatorUserId)
                 .build();
         BillingContractEntity savedNew = billingContractRepository.save(newContract);
 
@@ -340,6 +406,7 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
             ContractKind contractKind, String planKey, String featureKey, int priceJpy, Long operatorUserId) {
 
+        billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         String slotAddonKey;
         if (contractKind == ContractKind.PLAN) {
@@ -376,6 +443,7 @@ public class BillingContractService {
                 .priceJpySnapshot(priceJpy)
                 .contractedAt(now)
                 .createdBy(operatorUserId)
+                .payerUserId(operatorUserId)
                 .build();
         BillingContractEntity saved = billingContractRepository.save(contract);
 
@@ -463,6 +531,14 @@ public class BillingContractService {
     /**
      * 継続課金の失効（{@code customer.subscription.deleted}）: EXPIRED＋pointer 物理 DELETE＋残 entitlements revoke。
      * <b>冪等</b>: 既に EXPIRED/CANCELLED なら no-op。
+     *
+     * <p><b>柱③-B 請求担当引継（CMP-260901-1538・設計書 §3.1・Codex検分1巡目P1-2対応）</b>: {@code PENDING_HANDOVER}
+     * の契約はこの経路で {@code EXPIRED} 化しない。設計書上 {@code PENDING_HANDOVER} の出口は切替TX成功時の
+     * {@code ACTIVE} と引継失敗時の {@code CANCELLED} のみであり、通常の {@code customer.subscription.deleted}
+     * による失効遷移の対象ではない（引継の新契約に紐づく Stripe subscription の trial 取消・失敗による
+     * webhook がこの経路に入り得るため、無条件 EXPIRED 化のガードから明示的に除外する）。ここで検知した場合は
+     * 警告ログのみを残し状態は変更しない。将来的な自動救済（設計書 §3.6.2 の {@code MANUAL_INTERVENTION} 経由の
+     * 検知・アラート）は後続 PR（PR-4）のスコープとする。</p>
      */
     @Transactional
     public void expireSubscriptionContract(String pspSubscriptionRef, LocalDateTime currentPeriodEnd) {
@@ -473,6 +549,20 @@ public class BillingContractService {
                 || contract.getStatus() == ContractStatus.CANCELLED) {
             return;
         }
+        if (contract.getStatus() == ContractStatus.PENDING_HANDOVER) {
+            // 柱③-B: PENDING_HANDOVER は customer.subscription.deleted による EXPIRED 遷移の対象外
+            // （設計書§3.1。出口は切替TX成功時のACTIVE／引継失敗時のCANCELLEDのみ）。
+            log.warn("柱③-B: PENDING_HANDOVER 契約への customer.subscription.deleted webhook を検出し、"
+                    + "EXPIRED遷移をスキップしました（contractId={}, pspSubscriptionRef={}）。"
+                    + "引継の新規trialサブスク取消/失敗の可能性があり、手動確認またはPR-4のMANUAL_INTERVENTION"
+                    + "検知バッチでの救済が必要な場合があります。",
+                    contract.getId(), pspSubscriptionRef);
+            return;
+        }
+        // ★PR6a AC-17（D3）: 検疫（RECONCILIATION_REQUIRED）でも customer.subscription.deleted は通す。
+        //   その際、残っている非終端 operation を同一トランザクションで CANCELLED へ終端化してから
+        //   pointer を削除する（貫通して pointer だけ消すと非終端 operation が孤児化する）。
+        billingContractOperationSagaService.terminateNonTerminalAndRelease(contract.getId());
         LocalDateTime now = LocalDateTime.now(clock);
         contract.setStatus(ContractStatus.EXPIRED);
         if (currentPeriodEnd != null) {
@@ -480,8 +570,14 @@ public class BillingContractService {
         }
         billingContractRepository.save(contract);
         String slotAddonKey = contract.getContractKind() == ContractKind.ADDON ? contract.getFeatureKey() : "";
-        activeContractPointerRepository.hardDeleteBySlot(
-                contract.getScopeKind(), contract.getScopeId(), contract.getContractKind(), slotAddonKey);
+        // ★柱③-B AC-14（設計書 §3.7・P0-3 根治）: 削除条件に contract_id 一致を課す。
+        //   スロット単位（scope + kind + slot）のままだと、引継の切替TXで【既に新契約へ付け替わった】
+        //   pointer まで同一スロット条件でヒットし、遅れて届いた旧サブスクの webhook が
+        //   新契約の entitlement を巻き添えで剥がす。自分（旧契約）が今も pointer の持ち主である
+        //   場合のみ削除し、付け替わっていれば 0 件更新（副作用なし）で終わる。
+        activeContractPointerRepository.hardDeleteBySlotAndContractId(
+                contract.getScopeKind(), contract.getScopeId(), contract.getContractKind(),
+                slotAddonKey, contract.getId());
         List<String> revokedKeys = revokeEntitlementsOfContract(contract, null, now);
         evictAfterCommit(contract.getScopeKind(), contract.getScopeId(), revokedKeys);
     }
@@ -542,25 +638,121 @@ public class BillingContractService {
                 .findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
                         EntitlementScopeKind.USER, userId,
                         List.of(ContractStatus.PENDING, ContractStatus.ACTIVE, ContractStatus.PAST_DUE));
+        if (contracts.isEmpty()) {
+            return List.of();
+        }
+
+        // ★PR6a AC-72b: 発行する SQL は<b>契約数 M に比例しない</b>本数に畳む。契約ごとに
+        //   save / entitlement 検索 を出していた旧実装は M に比例して増えていた。
+        //   ただし「解約が実際に行われること」（AC-45・GDPR 要件）を落としてはならない。両立させるため、
+        //   DB への書き込みは一括 UPDATE で行い、読み出し済みエンティティは<b>切り離してから</b>
+        //   同じ値へ揃える（切り離し済みなので dirty checking による追加 UPDATE は発生しない）。
         List<String> paidSubscriptionRefs = new ArrayList<>();
-        Set<String> revokedKeys = new LinkedHashSet<>();
+        List<UUID> contractIds = new ArrayList<>();
+        Set<EntitlementSourceKind> sourceKinds = new LinkedHashSet<>();
         for (BillingContractEntity contract : contracts) {
             if (contract.getPspSubscriptionRef() != null) {
                 paidSubscriptionRefs.add(contract.getPspSubscriptionRef());
             }
+            contractIds.add(contract.getId());
+            sourceKinds.add(toSourceKind(contract.getContractKind()));
+        }
+
+        // ★PR6a AC-16（D3）: 検疫中でも退会 purge は通す（止めると退会者に課金と権利が残り
+        //   GDPR 要件を破るため、検疫より purge を優先する）。孤児を作らないよう、非終端 operation を
+        //   同一トランザクションで CANCELLED へ終端化してから pointer を削除する。
+        billingContractOperationSagaService.terminateNonTerminalAndReleaseAll(contractIds);
+
+        // 由来 entitlements の revoke は「1本の検索＋1本の一括 UPDATE」に畳む（AC-72 / AC-72b）。
+        Set<String> revokedKeys = new LinkedHashSet<>();
+        List<EntitlementEntity> revokedRows = entitlementRepository
+                .findBySourceKindInAndSourceRefIdInAndRevokedAtIsNull(sourceKinds, contractIds);
+        if (!revokedRows.isEmpty()) {
+            List<UUID> entitlementIds = new ArrayList<>(revokedRows.size());
+            for (EntitlementEntity e : revokedRows) {
+                revokedKeys.add(e.getFeatureKey());
+                entitlementIds.add(e.getId());
+            }
+            entitlementRepository.bulkRevokeByIds(entitlementIds, now, null);
+        }
+
+        // 契約の CANCELLED 化。エンティティを1件ずつ書き換えて flush させると M 本の UPDATE が出るため、
+        // 一括 UPDATE 1本で書く。この呼び出しは永続化コンテキストを切り離す（clearAutomatically）。
+        billingContractRepository.bulkCancelForPurge(contractIds, ContractStatus.CANCELLED, now);
+
+        // ★AC-45: 一括 UPDATE は読み出し済みエンティティへ反映されない。切り離し済みの
+        //   オブジェクトを DB と同じ状態へ揃える（ここでの setter は detached なので SQL を生まない）。
+        //   これを省くと「SQL は減ったが呼び出し元から見ると解約されていない」という、
+        //   退会者に課金と権利が残る最悪の形になる。
+        for (BillingContractEntity contract : contracts) {
             contract.setStatus(ContractStatus.CANCELLED);
             contract.setCancelledAt(now);
-            billingContractRepository.save(contract);
+        }
+        for (EntitlementEntity e : revokedRows) {
+            e.setRevokedAt(now);
+            e.setRevokedBy(null);
+        }
+
+        // アクティブ契約スロットの解放は<b>スロット単位のまま</b>据え置く（AC-70）。
+        // active_contract_pointers は契約ごとに高々1行であり、1契約1スロットの対応を崩すと
+        // 「自分のスロットだけを消す」という他経路（単一契約の解約・引継の付け替え）と
+        // 意味がずれる。purge の対象契約数ぶん DELETE が出るが、この表は AC-72b が
+        // 計測する4表（billing_contracts / entitlements / 契約操作 lease / operations）に含まれない。
+        for (BillingContractEntity contract : contracts) {
             String slotAddonKey = contract.getContractKind() == ContractKind.ADDON
                     ? contract.getFeatureKey() : "";
             activeContractPointerRepository.hardDeleteBySlot(
                     EntitlementScopeKind.USER, userId, contract.getContractKind(), slotAddonKey);
-            revokedKeys.addAll(revokeEntitlementsOfContract(contract, null, now));
         }
-        if (!contracts.isEmpty()) {
-            evictAfterCommit(EntitlementScopeKind.USER, userId, revokedKeys);
-        }
+
+        evictAfterCommit(EntitlementScopeKind.USER, userId, revokedKeys);
         return paidSubscriptionRefs;
+    }
+
+    /**
+     * 柱③-B: 退会予定ユーザーが<b>実質決済者（payer）</b>である TEAM/ORG 契約を検出する
+     * （設計書 {@code billing_payer_handover_design.md} §1.2・§5.1・AC-3）。
+     *
+     * <p><b>根本原因（§1.2）</b>: {@link #cancelAllUserContractsForPurge} は
+     * {@code scope_kind=USER} 固定で検索するため、ある個人が TEAM/ORG 契約の実質 payer であっても
+     * この条件には一切引っかからない。結果、<b>退会30日後の物理匿名化を経てもなお、TEAM/ORG 契約は
+     * 退会者個人の Stripe Customer への課金を止めずに継続する</b>。本メソッドはその検出漏れを
+     * {@code payer_user_id} 起点のクエリで塞ぐ。</p>
+     *
+     * <p><b>絞り込み（§5.1・R2-P1-6）</b>: {@code psp_subscription_ref} と {@code current_period_end} が
+     * ともに非 NULL の契約のみを返す。引継フロー（{@code trial_end} 方式）は「Stripe 側に実在する
+     * サブスクの期末」を前提とするため、無償契約や PSP 未作成の {@code PENDING} 契約には適用できない
+     * （それらは Stripe 操作を伴わない「payer 概念のみの更新」という別経路で扱う）。</p>
+     *
+     * <p><b>なぜ本メソッドが解約まで行わないか（PR 分割の境界）</b>: 検出した TEAM/ORG 契約を
+     * その場で解約してはならない。§5.4 の原則により、引継要求が非終端
+     * （{@code REQUESTED}/{@code ACCEPTED}/{@code REQUIRES_PAYMENT_METHOD}/{@code SWITCHING}/
+     * {@code PARTIALLY_COMPLETED}/{@code MANUAL_INTERVENTION}）の間は purge 側の期末解約フォールバックを
+     * <b>発火させてはならない</b>からである（引継が進行中の契約を purge が横から解約すると、
+     * 承諾済みの新 payer ごと契約を失う）。またフォールバックは USER 契約のような即時解約ではなく
+     * <b>期末解約</b>（{@code cancelAtPeriodEnd}）である（§5.3）。この分岐を担う退会ハンドラの実装は
+     * PR-3（{@code WithdrawalStripeHandler} / {@code cancelAllForPayerOnWithdrawal}）のスコープであり、
+     * 本メソッドはその<b>検出面のみ</b>を PR-2 として先行提供する。</p>
+     *
+     * @param payerUserId 退会予定ユーザー（{@code payer_user_id} 一致）
+     * @return 引継の適用対象となる TEAM/ORG 契約（該当なしなら空）。
+     *         D-1（API 境界）によりエンティティではなく {@link HandoverTargetContract} で返す
+     */
+    @Transactional(readOnly = true)
+    public List<HandoverTargetContract> findHandoverTargetContractsForPayer(Long payerUserId) {
+        return billingContractRepository
+                .findByPayerUserIdAndScopeKindInAndStatusInAndPspSubscriptionRefIsNotNullAndCurrentPeriodEndIsNotNullAndDeletedAtIsNull(
+                        payerUserId,
+                        List.of(EntitlementScopeKind.TEAM, EntitlementScopeKind.ORG),
+                        List.of(ContractStatus.PENDING, ContractStatus.ACTIVE, ContractStatus.PAST_DUE))
+                .stream()
+                .map(contract -> new HandoverTargetContract(
+                        contract.getId(),
+                        contract.getScopeKind(),
+                        contract.getScopeId(),
+                        contract.getStatus(),
+                        contract.getPspSubscriptionRef()))
+                .toList();
     }
 
     /**
@@ -599,6 +791,20 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, BillingContractEntity contract,
             Long operatorUserId, LocalDateTime now) {
 
+        // ★PR6a（AC-15 陽性対照・第6隊）: 旧経路の有償期末解約も operation Saga に載せる。
+        //   「Stripe を伴う契約変更は必ず billing_contract_operations に痕跡が残る」という不変条件を
+        //   旧経路だけ免除すると、pointer 排他（AC-3/AC-14）も停止窓の回収（D8）も旧経路からは
+        //   素通りされてしまう。version CAS は旧 API が version を受け取らないため行わない（null）。
+        //   Stripe 呼び出しは既存呼び出し元の挙動を変えない 1 引数版のまま（AC-39）。
+        //   なお本メソッドは cancelContract の @Transactional 内にあるため tx1/tx2 は呼び出し元の
+        //   トランザクションへ参加する（D1 の分割が実際に効くのは PR6a の新エンドポイント経路である）。
+        BillingContractOperationSagaService.OperationReservation reservation =
+                billingContractOperationSagaService.reserve(
+                        new BillingContractOperationSagaService.ReserveCommand(
+                                contract.getId(), BillingOperationKind.CANCEL, null,
+                                BillingOperationActorKind.USER, operatorUserId, null));
+        billingContractOperationSagaService.markCallingStripe(reservation.operationId());
+
         // 【設計注記（検分5番・判断済み）】gateway 呼び出しは cancelContract の @Transactional 内で行う。
         // 「Stripe 呼び出し→tx 更新」への再構成は、無償/有償が共有する cancelContract 経路（IDOR 検証→
         // ガード→分岐）の分解を要し P1 経路の回帰リスクが高いため現状維持とする。整合性は以下で担保される:
@@ -631,11 +837,16 @@ public class BillingContractService {
         }
         evictAfterCommit(scopeKind, scopeId, stillActiveKeys);
 
-        return new ContractResult(contract.getId(), scopeKind, scopeId, contract.getContractKind(),
+        ContractResult result = new ContractResult(contract.getId(), scopeKind, scopeId, contract.getContractKind(),
                 contract.getPlanKey(), contract.getFeatureKey(), ContractStatus.ACTIVE,
                 contract.getMemberCountSnapshot(), contract.getBandNoSnapshot(), contract.getPriceJpySnapshot(),
                 contract.getContractedAt(), periodEndLdt, null,
                 new ArrayList<>(stillActiveKeys), List.of());
+        // APPLIED へ確定させ、同一トランザクションで pointer を解放する（AC-7）。
+        // 第2引数の供給子は DB を書き換えない（組み立て済みの結果を返すだけ）ため、
+        // 収束時もそのまま返してよい（再検分 P1 の「反映の再適用」には当たらない）。
+        return billingContractOperationSagaService.applyAndFinalize(
+                reservation.operationId(), () -> result, () -> result);
     }
 
     /** 契約が既に ACTIVE のときの結果組み立て（冪等 no-op 用）。 */

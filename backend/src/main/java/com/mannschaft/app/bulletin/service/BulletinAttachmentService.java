@@ -18,9 +18,17 @@ import com.mannschaft.app.bulletin.repository.BulletinAttachmentRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
@@ -35,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -108,7 +117,10 @@ public class BulletinAttachmentService {
     private final TournamentContactAccessService tournamentContactAccessService;
     private final StorageQuotaService storageQuotaService;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
     private final AuditLogService auditLogService;
+    private final DomainEventPublisher domainEventPublisher;
 
     // ─────────────────────────────────────────────
     // 1. presign（アップロード URL 発行）
@@ -124,6 +136,7 @@ public class BulletinAttachmentService {
      * @param userId 操作ユーザー ID
      * @return uploadUrl / fileKey / 有効期限
      */
+    @Transactional
     public AttachmentPresignResponse generateUploadUrl(AttachmentPresignRequest req, Long userId) {
         BulletinThreadEntity thread = resolveThread(req.targetType(), req.targetId());
 
@@ -148,6 +161,8 @@ public class BulletinAttachmentService {
 
         PresignedUploadResult result =
                 storageService.generateUploadUrl(fileKey, req.contentType(), PRESIGN_TTL);
+        storageAclService.registerPending(fileKey, userId, aclScope(thread, userId), req.contentType(), PRESIGN_TTL,
+                new StorageAclContentReference("BULLETIN_THREAD", thread.getId().toString()));
 
         log.info("掲示板添付 presign 発行: targetType={}, targetId={}, scope={}/{}, fileKey={}",
                 req.targetType(), req.targetId(), thread.getScopeType(), thread.getScopeId(), fileKey);
@@ -189,6 +204,9 @@ public class BulletinAttachmentService {
                 .build();
 
         BulletinAttachmentEntity saved = attachmentRepository.save(attachment);
+        storageAclService.claimPending(req.fileKey(), userId, aclScope(thread, userId),
+                new StorageAclContentReference("BULLETIN_THREAD", thread.getId().toString()),
+                new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", saved.getId().toString()));
 
         // F13 使用量加算
         QuotaScope qs = resolveQuotaScope(thread, userId);
@@ -216,8 +234,9 @@ public class BulletinAttachmentService {
     public List<AttachmentResponse> listThreadAttachments(Long threadId, Long userId) {
         BulletinThreadEntity thread = findThreadOrThrow(threadId);
         checkViewAuthorization(thread, userId);
-        return bulletinMapper.toAttachmentResponseList(
-                attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.THREAD, threadId));
+        return filterDownloadableAttachments(
+                attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.THREAD, threadId),
+                thread, userId);
     }
 
     /**
@@ -230,8 +249,9 @@ public class BulletinAttachmentService {
     public List<AttachmentResponse> listReplyAttachments(Long replyId, Long userId) {
         BulletinThreadEntity thread = resolveThread(TargetType.REPLY, replyId);
         checkViewAuthorization(thread, userId);
-        return bulletinMapper.toAttachmentResponseList(
-                attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.REPLY, replyId));
+        return filterDownloadableAttachments(
+                attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.REPLY, replyId),
+                thread, userId);
     }
 
     // ─────────────────────────────────────────────
@@ -252,10 +272,29 @@ public class BulletinAttachmentService {
         BulletinThreadEntity thread = resolveThread(attachment.getTargetType(), attachment.getTargetId());
         checkViewAuthorization(thread, userId);
 
-        String downloadUrl = storageService.generateDownloadUrl(attachment.getFileKey(), DOWNLOAD_TTL);
+        String downloadUrl = storageAccessService.generateDownloadUrl(
+                attachment.getFileKey(), aclScope(thread, attachment.getCreatedBy()),
+                new StorageAclContentReference("BULLETIN_THREAD", thread.getId().toString()),
+                new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString()),
+                DOWNLOAD_TTL);
 
         log.info("掲示板添付 download-url 発行: attachmentId={}, userId={}", attachmentId, userId);
         return new AttachmentDownloadUrlResponse(downloadUrl, DOWNLOAD_TTL.toSeconds());
+    }
+
+    private List<AttachmentResponse> filterDownloadableAttachments(
+            List<BulletinAttachmentEntity> attachments, BulletinThreadEntity thread, Long userId) {
+        List<StorageAclDownloadRequest> requests = attachments.stream()
+                .map(attachment -> new StorageAclDownloadRequest(
+                        attachment.getFileKey(), aclScope(thread, attachment.getCreatedBy()),
+                        new StorageAclContentReference("BULLETIN_THREAD", thread.getId().toString()),
+                        new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString())))
+                .toList();
+        Map<String, String> readableKeys = storageAccessService.generateDownloadUrlsForList(requests, DOWNLOAD_TTL);
+        return attachments.stream()
+                .filter(attachment -> readableKeys.containsKey(attachment.getFileKey()))
+                .map(bulletinMapper::toAttachmentResponse)
+                .toList();
     }
 
     // ─────────────────────────────────────────────
@@ -269,6 +308,22 @@ public class BulletinAttachmentService {
      * @param attachmentId 添付ファイル ID
      * @param userId       操作ユーザー ID
      */
+    void releaseAttachments(TargetType targetType, Long targetId) {
+        List<BulletinAttachmentEntity> attachments = attachmentRepository
+                .findByTargetTypeAndTargetIdOrderByCreatedAtAsc(targetType, targetId);
+        for (BulletinAttachmentEntity attachment : attachments) {
+            storageAclService.releaseClaimed(attachment.getFileKey(),
+                    new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString()));
+        }
+        List<String> fileKeys = attachments.stream()
+                .map(BulletinAttachmentEntity::getFileKey)
+                .filter(fileKey -> fileKey != null && !fileKey.isBlank())
+                .toList();
+        if (!fileKeys.isEmpty()) {
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(fileKeys));
+        }
+    }
+
     @Transactional
     public void deleteAttachment(Long attachmentId, Long userId) {
         BulletinAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
@@ -284,13 +339,11 @@ public class BulletinAttachmentService {
 
         attachmentRepository.delete(attachment);
 
-        // R2 ベストエフォート削除
-        if (fileKey != null) {
-            try {
-                storageService.delete(fileKey);
-            } catch (Exception e) {
-                log.warn("R2 オブジェクト削除失敗（ベストエフォート）: fileKey={}, error={}", fileKey, e.getMessage());
-            }
+        // R2 削除はコミット後イベントで行い、ロールバック時の実体だけの削除を防ぐ。
+        storageAclService.releaseClaimed(fileKey,
+                new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString()));
+        if (fileKey != null && !fileKey.isBlank()) {
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(fileKey));
         }
 
         // F13 使用量減算（作成者の所属スコープで計上：upload 時と対称）
@@ -479,6 +532,17 @@ public class BulletinAttachmentService {
             // StorageScopeType が無いため、操作者の PERSONAL クォータに計上する
             // （ChatAttachmentService の村ロビー添付と同方針）。
             case VILLAGE, TOURNAMENT, TOURNAMENT_DIVISION -> new QuotaScope(StorageScopeType.PERSONAL, userId);
+        };
+    }
+
+    private StorageAclScope aclScope(BulletinThreadEntity thread, Long ownerId) {
+        return switch (thread.getScopeType()) {
+            case TEAM -> StorageAclScope.team(thread.getScopeId());
+            case ORGANIZATION -> StorageAclScope.organization(thread.getScopeId());
+            case PERSONAL -> StorageAclScope.personal(ownerId);
+            case VILLAGE -> StorageAclScope.village(thread.getScopeVillageId());
+            case TOURNAMENT -> StorageAclScope.tournament(thread.getScopeId());
+            case TOURNAMENT_DIVISION -> StorageAclScope.tournamentDivision(thread.getScopeId());
         };
     }
 

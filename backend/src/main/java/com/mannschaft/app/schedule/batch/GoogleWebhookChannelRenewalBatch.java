@@ -1,5 +1,7 @@
 package com.mannschaft.app.schedule.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.schedule.entity.GoogleCalendarWebhookChannelEntity;
 import com.mannschaft.app.schedule.repository.GoogleCalendarWebhookChannelRepository;
@@ -33,6 +35,8 @@ public class GoogleWebhookChannelRenewalBatch {
      * 毎日 02:00 JST に実行される日次バッチ。
      * {@code expires_at <= NOW() + 3日} のチャンネルを全件再登録する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると Google カレンダーの webhook チャネルが失効し、失効後は再開しても自動復旧せず同期が恒久的に切れる")
     @Scheduled(cron = "0 0 2 * * ?", zone = "Asia/Tokyo")
     // 起動間隔は日次 02:00。1 チャンネルにつき Google API を 2 回（旧 stop・新 watch）
     // 呼ぶため、最悪ケースを 1 件 2 秒 × 数千ユーザーと見積もり 2 時間を上限とする。

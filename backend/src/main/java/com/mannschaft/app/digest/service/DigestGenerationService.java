@@ -11,6 +11,7 @@ import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.digest.DigestErrorCode;
 import com.mannschaft.app.digest.DigestMapper;
@@ -18,6 +19,7 @@ import com.mannschaft.app.digest.DigestProperties;
 import com.mannschaft.app.digest.DigestScopeType;
 import com.mannschaft.app.digest.DigestStatus;
 import com.mannschaft.app.digest.DigestStyle;
+import com.mannschaft.app.digest.event.DigestAiGenerationRequestedEvent;
 import com.mannschaft.app.digest.dto.AiQuotaResponse;
 import com.mannschaft.app.digest.dto.DigestDetailResponse;
 import com.mannschaft.app.digest.dto.DigestEditRequest;
@@ -39,6 +41,7 @@ import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,7 +66,7 @@ public class DigestGenerationService {
 
     private final TimelineDigestRepository digestRepository;
     private final TimelineDigestConfigRepository configRepository;
-    private final DigestAsyncExecutor digestAsyncExecutor;
+    private final ApplicationEventPublisher eventPublisher;
     private final TemplateDigestGenerator templateGenerator;
     private final DigestMapper digestMapper;
     private final DigestProperties digestProperties;
@@ -85,9 +88,9 @@ public class DigestGenerationService {
      */
     @Transactional
     public DigestGenerateResponse generate(DigestGenerateRequest request, Long userId) {
-        DigestScopeType scopeType = DigestScopeType.valueOf(request.getScopeType());
+        DigestScopeType scopeType = EnumInputParser.parse(DigestScopeType.class, request.getScopeType(), "scopeType");
         DigestStyle style = request.getDigestStyle() != null
-                ? DigestStyle.valueOf(request.getDigestStyle())
+                ? EnumInputParser.parse(DigestStyle.class, request.getDigestStyle(), "digestStyle")
                 : DigestStyle.SUMMARY;
 
         // 認可根治戦役 Wave2-2C: 生成トリガー（変更系）はリクエスト先スコープの ADMIN/DEPUTY_ADMIN のみ
@@ -140,9 +143,10 @@ public class DigestGenerationService {
             // TEMPLATE: 同期処理
             generateTemplateDigest(saved, config.orElse(null));
         } else {
-            // AI スタイル: 非同期処理（別 Bean 経由で @Async プロキシを有効化）
+            // AI スタイル: 業務TX内ではイベント発行のみ。実際の非同期生成の起動は
+            // DigestAiGenerationDispatchListener が AFTER_COMMIT 後に行う（Issue #2990 L3）。
             TimelineDigestConfigEntity cfg = config.orElse(null);
-            digestAsyncExecutor.generateAiDigestAsync(
+            eventPublisher.publishEvent(new DigestAiGenerationRequestedEvent(
                     saved.getId(),
                     scopeType.name(),
                     request.getScopeId(),
@@ -152,7 +156,7 @@ public class DigestGenerationService {
                     cfg != null ? cfg.getIncludePolls() : true,
                     cfg != null ? cfg.getIncludeDiffFromPrevious() : false,
                     cfg != null ? cfg.getLanguage() : "ja"
-            );
+            ));
         }
 
         AiQuotaResponse aiQuota = buildAiQuota(scopeType, request.getScopeId());
@@ -315,7 +319,7 @@ public class DigestGenerationService {
         }
 
         DigestStyle newStyle = request.getDigestStyle() != null
-                ? DigestStyle.valueOf(request.getDigestStyle())
+                ? EnumInputParser.parse(DigestStyle.class, request.getDigestStyle(), "digestStyle")
                 : original.getDigestStyle();
 
         // AI スタイルの月次上限チェック
@@ -350,9 +354,9 @@ public class DigestGenerationService {
         if (newStyle == DigestStyle.TEMPLATE) {
             generateTemplateDigest(saved, config.orElse(null));
         } else {
-            // 別 Bean 経由で @Async プロキシを有効化
+            // 業務TX内ではイベント発行のみ（AFTER_COMMIT 後に起動・Issue #2990 L3）
             TimelineDigestConfigEntity cfg = config.orElse(null);
-            digestAsyncExecutor.generateAiDigestAsync(
+            eventPublisher.publishEvent(new DigestAiGenerationRequestedEvent(
                     saved.getId(),
                     original.getScopeType().name(),
                     original.getScopeId(),
@@ -362,7 +366,7 @@ public class DigestGenerationService {
                     cfg != null ? cfg.getIncludePolls() : true,
                     cfg != null ? cfg.getIncludeDiffFromPrevious() : false,
                     cfg != null ? cfg.getLanguage() : "ja"
-            );
+            ));
         }
 
         AiQuotaResponse aiQuota = buildAiQuota(original.getScopeType(), original.getScopeId());

@@ -418,6 +418,8 @@ private String scannedDocumentS3Key;
 **再発防止テスト**: `ddl-auto=create` のみのテスト（通常の `AbstractMySqlIntegrationTest` 派生クラス）では検出不能。
 S3Key 系フィールドを持つ Entity には、専用の Flyway 実スキーマテストクラスを作成すること。
 
+**機械的な番人（2026-08-20 / Issue #2856 で追加）**: `backend/src/test/java/com/mannschaft/app/common/architecture/EntityDigitBoundaryColumnNameGuardTest.java` が全 `@Entity` を反射で走査し、フィールド名に「数字→大文字」の並びを含むのに `@Column(name=...)` が未指定なものを機械的に落とす（Docker 不要・第一防衛線）。実 Flyway スキーマに対する経験的な再現は`backend/src/test/java/com/mannschaft/app/common/schema/EntityDigitBoundaryColumnFlywaySchemaIT.java`が担う（Issue #2856 では `data_exports.s3_key` ほか 7 Entity の不一致をこの 2 本で赤→緑にした）。
+
 実装パターン（`@SpringBootTest` プロパティ上書き + ネイティブ SQL 列名直接確認）:
 
 ```java

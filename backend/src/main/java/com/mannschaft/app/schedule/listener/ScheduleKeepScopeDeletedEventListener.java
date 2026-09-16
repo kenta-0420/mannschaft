@@ -1,5 +1,7 @@
 package com.mannschaft.app.schedule.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
 import com.mannschaft.app.schedule.entity.ScheduleKeepEntity;
 import com.mannschaft.app.schedule.repository.ScheduleKeepRepository;
@@ -44,6 +46,8 @@ public class ScheduleKeepScopeDeletedEventListener {
      *
      * @param event チーム削除イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。チーム・組織の削除に伴う予定キープの後始末。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTeamDeleted(TeamDeletedEvent event) {
@@ -61,6 +65,8 @@ public class ScheduleKeepScopeDeletedEventListener {
      *
      * @param event 組織削除イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。チーム・組織の削除に伴う予定キープの後始末。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOrganizationDeleted(OrganizationDeletedEvent event) {

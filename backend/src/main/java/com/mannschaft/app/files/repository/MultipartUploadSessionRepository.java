@@ -2,6 +2,11 @@ package com.mannschaft.app.files.repository;
 
 import com.mannschaft.app.files.entity.MultipartUploadSessionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,6 +25,11 @@ public interface MultipartUploadSessionRepository extends JpaRepository<Multipar
      * @return 該当セッション（存在しない場合は空）
      */
     Optional<MultipartUploadSessionEntity> findByUploadId(String uploadId);
+
+    /** 完了と中断の競合を直列化するため、対象セッションを行ロック付きで取得する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM MultipartUploadSessionEntity s WHERE s.uploadId = :uploadId")
+    Optional<MultipartUploadSessionEntity> findByUploadIdForUpdate(@Param("uploadId") String uploadId);
 
     /**
      * 指定ステータスかつ有効期限が指定日時以前のセッション一覧を取得する。

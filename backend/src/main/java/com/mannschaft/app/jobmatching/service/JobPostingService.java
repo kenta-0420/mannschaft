@@ -87,7 +87,7 @@ public class JobPostingService {
         Objects.requireNonNull(userId, "userId は必須");
 
         if (!jobPolicy.canCreatePosting(userId, cmd.teamId())) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_CREATE_PERMISSION_DENIED);
         }
 
         validateVisibilityScope(cmd.visibilityScope());

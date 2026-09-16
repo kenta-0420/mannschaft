@@ -2,6 +2,7 @@ package com.mannschaft.app.event.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.event.EventErrorCode;
@@ -131,7 +132,7 @@ public class EventService {
                 .venueLongitude(request.getVenueLongitude())
                 .venueAccessInfo(request.getVenueAccessInfo())
                 .visibility(request.getVisibility() != null
-                        ? EventVisibility.valueOf(request.getVisibility())
+                        ? EnumInputParser.parse(EventVisibility.class, request.getVisibility(), "visibility")
                         : EventVisibility.MEMBERS_ONLY)
                 .registrationStartsAt(request.getRegistrationStartsAt())
                 .registrationEndsAt(request.getRegistrationEndsAt())
@@ -177,7 +178,7 @@ public class EventService {
         // visibility 文字列は enum へ解決してから渡す（null なら現値維持）。
         // 新ラダー値名（MEMBERS_AND_ABOVE 等）は EventVisibility に追加済みのため valueOf で受理される。
         EventVisibility newVisibility = request.getVisibility() != null
-                ? EventVisibility.valueOf(request.getVisibility())
+                ? EnumInputParser.parse(EventVisibility.class, request.getVisibility(), "visibility")
                 : null;
 
         // 根治: toBuilder().build() で作り直すと継承フィールド id が欠落し INSERT になる

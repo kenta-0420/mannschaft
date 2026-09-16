@@ -48,7 +48,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -63,6 +66,21 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserService {
 
+    /**
+     * 個人札の owner 表示に必要な最小内部値。
+     *
+     * <p>他ドメインへ {@link UserEntity} や連絡先を渡さず、公開 DTO の組み立てに必要な値だけを
+     * Service 境界で返す。{@code userId} はバッチ結果の突合専用で、公開レスポンスへ出してはならない。</p>
+     */
+    public record MarketOwnerIdentity(
+            Long userId,
+            String displayName,
+            String fullName,
+            String avatarUrl,
+            boolean minor,
+            boolean publicProfileEnabled) {
+    }
+
     private final UserRepository userRepository;
     private final EmailChangeTokenRepository emailChangeTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -76,6 +94,8 @@ public class UserService {
     private final UserRoleRepository userRoleRepository;
     private final ParentalConsentService parentalConsentService;
     private final AccessControlService accessControlService;
+    private final com.mannschaft.app.role.service.RoleSuccessionService roleSuccessionService;
+    private final com.mannschaft.app.gdpr.service.PurgeStartGuard purgeStartGuard;
     private final CountryResolver countryResolver;
     private final PostalCodePolicyRegistry postalCodePolicyRegistry;
     private final MediaUrlResolver mediaUrlResolver;
@@ -86,6 +106,102 @@ public class UserService {
      * ISO 3166-1 alpha-2 国コード: アルファベット大文字2文字
      */
     private static final Pattern COUNTRY_CODE_PATTERN = Pattern.compile("^[A-Z]{2}$");
+
+    /**
+     * 表示名を取得する（Issue #2834 / CMP-056: 他ドメインの通知配送リスナーからの
+     * 越境アクセス用）。
+     *
+     * <p>D-5（クロスドメイン Repository 依存禁止）に従い、他ドメインは {@code UserRepository}
+     * を直接 DI せず本メソッド（Service 経由）を使うこと。ユーザーが存在しない場合は空文字列。</p>
+     *
+     * @param userId ユーザーID
+     * @return 表示名（存在しない場合は空文字列）
+     */
+    public String getDisplayName(Long userId) {
+        return userRepository.findById(userId)
+                .map(UserEntity::getDisplayName)
+                .orElse("");
+    }
+
+    /**
+     * 姓名（{@code lastName + " " + firstName}）を取得する（Issue #2834 / CMP-056: 他ドメインの
+     * 通知配送リスナーからの越境アクセス用）。
+     *
+     * <p>D-5 に従い、他ドメインは {@code UserRepository} を直接 DI せず本メソッド（Service 経由）
+     * を使うこと。</p>
+     *
+     * @param userId ユーザーID
+     * @return 姓名。ユーザーが存在しない場合は {@link java.util.Optional#empty()}
+     */
+    public java.util.Optional<String> getFullName(Long userId) {
+        return userRepository.findById(userId)
+                .map(u -> u.getLastName() + " " + u.getFirstName());
+    }
+
+    /**
+     * メールアドレスと検証済み（{@code status=ACTIVE}）かどうかを返す（柱②-2 販促プロビジョニング
+     * 招待承諾の AC4: 招待先メールと承諾者の検証済みメールの一致検証用）。
+     *
+     * <p>D-5（クロスドメイン Repository 依存禁止）に従い、他ドメインは {@code UserRepository}
+     * を直接 DI せず本メソッド（Service 経由）を使うこと。</p>
+     *
+     * @param userId ユーザーID
+     * @return メールアドレスと検証済みフラグ。ユーザーが存在しない場合は
+     *         {@link java.util.Optional#empty()}
+     */
+    public java.util.Optional<VerifiedEmail> findVerifiedEmail(Long userId) {
+        return userRepository.findById(userId)
+                .map(u -> new VerifiedEmail(u.getEmail(), u.getStatus() == UserEntity.UserStatus.ACTIVE));
+    }
+
+    /**
+     * {@link #findVerifiedEmail} の戻り値。他ドメインへ {@link UserEntity} を漏らさないための
+     * 最小内部値（D-1）。
+     */
+    public record VerifiedEmail(String email, boolean verified) {
+    }
+
+    /**
+     * 個人札の owner 表示用情報を一括取得する（N+1 防止）。
+     *
+     * <p>ACTIVE 以外（凍結・退会・アーカイブ等）は返さず、呼び出し側を fail-closed にする。</p>
+     *
+     * @param userIds owner ユーザー ID 集合
+     * @return userId をキーとする最小内部表示情報
+     */
+    public Map<Long, MarketOwnerIdentity> getActiveMarketOwnerIdentities(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, MarketOwnerIdentity> result = new LinkedHashMap<>();
+        for (UserEntity user : userRepository.findAllById(userIds)) {
+            if (user.getStatus() != UserEntity.UserStatus.ACTIVE || user.getDeletedAt() != null) {
+                continue;
+            }
+            String fullName = (user.getLastName() == null || user.getFirstName() == null)
+                    ? null : user.getLastName() + " " + user.getFirstName();
+            result.put(user.getId(), new MarketOwnerIdentity(
+                    user.getId(),
+                    user.getDisplayName(),
+                    fullName,
+                    mediaUrlResolver.resolve(user.getAvatarUrl()),
+                    com.mannschaft.app.family.CareCategory.MINOR == user.getCareCategory(),
+                    user.isPublicProfileEnabled()));
+        }
+        return result;
+    }
+
+    /** 他ドメインのモデレーション処理から、Repository を跨がず利用者を凍結する。 */
+    @Transactional
+    public boolean freezeUserIfPresent(Long userId) {
+        return userRepository.findById(userId)
+                .map(user -> {
+                    user.freeze();
+                    userRepository.save(user);
+                    return true;
+                })
+                .orElse(false);
+    }
 
     /**
      * ユーザープロフィールを取得する。
@@ -508,6 +624,10 @@ public class UserService {
         // F01.9: 唯一の保護者退会ブロック
         parentalConsentService.checkWithdrawalBlock(userId);
 
+        // 柱①ADMINゼロ根治 AC1/§14: 他メンバー1人以上のスコープで唯一のADMINなら409（GDPR_011）。
+        // 他メンバー0人のスコープはブロックしない（purge時にarchiveへ委ねる、AC3）。
+        roleSuccessionService.checkNoLastAdminScopes(userId);
+
         // 1. レートリミット
         authTokenService.checkRateLimit(
                 "mannschaft:auth:withdrawal_attempt:" + userId,
@@ -549,7 +669,17 @@ public class UserService {
      */
     @Transactional
     public ApiResponse<MessageResponse> cancelWithdrawal(Long userId) {
-        UserEntity user = findUserOrThrow(userId);
+        // 柱①ADMINゼロ根治 §12.5/AC11: purge開始マーク済みならcancelを拒否する。
+        purgeStartGuard.checkCancelAllowed(userId);
+
+        // 【重要】ここで findById（= findUserOrThrow）を使ってはならない。
+        // UserEntity には @SQLRestriction("deleted_at IS NULL") が付いており、退会申請中のユーザーは
+        // JPQL/findById では 1 件も返らない。以前はここが findUserOrThrow だったため、
+        // 退会取消は必ず AUTH_015 で終了し、直後の AUTH_032 分岐は到達不能な死んだコードだった
+        // （＝退会取消そのものが一度も成立せず、WithdrawalCancelledEvent も発行されていなかった）。
+        // SQLRestriction を迂回しつつ行ロックも取る既存の窓口を使う（Codex 検分3巡目 P1-1）。
+        UserEntity user = userRepository.findByIdForUpdateIncludingDeleted(userId)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
 
         // deleted_at が NULL の場合、退会リクエストが存在しない
         if (user.getDeletedAt() == null) {

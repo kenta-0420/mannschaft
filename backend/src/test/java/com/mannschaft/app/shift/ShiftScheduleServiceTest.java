@@ -9,12 +9,11 @@ import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
-import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
-import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
+import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -28,8 +27,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,11 +58,16 @@ class ShiftScheduleServiceTest {
     @Mock
     private ShiftScheduleRepository scheduleRepository;
 
+    /**
+     * CMP-260909-1445 で {@code ShiftScheduleService} に追加された依存。
+     * ARCHIVED 遷移時に OPEN 変更依頼を自動 WITHDRAWN 化する（バッチ経路と副作用を揃える）ため、
+     * mock を張らないと当該遷移テストが NPE で落ちる。
+     */
     @Mock
-    private ShiftSlotRepository slotRepository;
+    private ShiftChangeRequestRepository changeRequestRepository;
 
     @Mock
-    private ShiftAssignmentRepository assignmentRepository;
+    private ShiftSlotRepository slotRepository;
 
     @Mock
     private ShiftRequestRepository requestRepository;
@@ -80,6 +87,18 @@ class ShiftScheduleServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    /**
+     * CMP-260909-1445 で {@code ShiftScheduleService} に追加された依存（{@code ClockConfig#wallClock}）。
+     *
+     * <p>ARCHIVED 遷移が {@code LocalDateTime.now(wallClock)} を評価するため、素の {@code @Mock}
+     * だと {@code Clock#instant()} が null を返して NPE になる。固定 {@code Clock} を
+     * {@code @Spy} で与えて実挙動を持たせる（{@code ClockConfig} の javadoc が
+     * 「テストでは必ず固定 Clock を使用すること」と定めている）。</p>
+     */
+    @Spy
+    private Clock wallClock = Clock.fixed(
+            Instant.parse("2026-03-01T00:00:00Z"), java.time.ZoneOffset.UTC);
+
     @InjectMocks
     private ShiftScheduleService shiftScheduleService;
 
@@ -91,6 +110,15 @@ class ShiftScheduleServiceTest {
     private static final Long SCHEDULE_ID = 100L;
     private static final Long USER_ID = 10L;
 
+    /**
+     * テスト用のシフト表エンティティ。
+     *
+     * <p>CMP-260826-2127（AC-13）: かつて {@code DRAFT} だったが、未公開シフト表の遮断により
+     * 非管理者から見た DRAFT は「存在ごと秘匿（404）」になる。本クラスの正常系が固定したいのは
+     * 「当該チームのメンバーが自チームのシフト表を読める」という日常の振る舞いであるため、
+     * 期待値でなくフィクスチャ側を公開済みに直してある
+     *（DRAFT に対する 404 は {@code ShiftUnpublishedScheduleVisibilityContractIT} が固定する）。</p>
+     */
     private ShiftScheduleEntity createScheduleEntity() {
         return ShiftScheduleEntity.builder()
                 .teamId(TEAM_ID)
@@ -98,7 +126,8 @@ class ShiftScheduleServiceTest {
                 .periodType(ShiftPeriodType.WEEKLY)
                 .startDate(LocalDate.of(2026, 3, 1))
                 .endDate(LocalDate.of(2026, 3, 7))
-                .status(ShiftScheduleStatus.DRAFT)
+                .status(ShiftScheduleStatus.PUBLISHED)
+                .publishedAt(LocalDateTime.of(2026, 2, 20, 10, 0))
                 .createdBy(USER_ID)
                 .build();
     }
@@ -805,7 +834,11 @@ class ShiftScheduleServiceTest {
             ShiftSlotEntity s1 = ShiftSlotEntity.builder()
                     .scheduleId(SCHEDULE_ID).slotDate(LocalDate.of(2026, 3, 1))
                     .startTime(java.time.LocalTime.of(9, 0)).endTime(java.time.LocalTime.of(17, 0))
-                    .positionId(1L).requiredCount(3).build();
+                    .positionId(1L).requiredCount(3)
+                    // CMP-260908-2117 AC-3: 充足数は割当の正本（assigned_user_ids）から数える。
+                    // 手動割当はこの列にしか書かれないため、旧実装（shift_assignments の
+                    // CONFIRMED 件数）では手動で埋めた枠が「未充足」に見えていた。
+                    .assignedUserIds("[50]").build();
             ReflectionTestUtils.setField(s1, "id", 1001L);
             ShiftSlotEntity s2 = ShiftSlotEntity.builder()
                     .scheduleId(SCHEDULE_ID).slotDate(LocalDate.of(2026, 3, 1))
@@ -814,18 +847,6 @@ class ShiftScheduleServiceTest {
             ReflectionTestUtils.setField(s2, "id", 1002L);
             given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
                     .willReturn(List.of(s1, s2));
-
-            // 確定アサイン
-            ShiftAssignmentEntity a1 = ShiftAssignmentEntity.builder()
-                    .slotId(1001L).userId(50L).assignedBy(USER_ID)
-                    .status(ShiftAssignmentStatus.CONFIRMED).build();
-            ShiftAssignmentEntity a2 = ShiftAssignmentEntity.builder()
-                    .slotId(1001L).userId(51L).assignedBy(USER_ID)
-                    .status(ShiftAssignmentStatus.PROPOSED).build(); // 確定ではない
-            // Phase 11 事後検分 fixup（2026-05-19）: N+1 解消で findAllByScheduleId に一本化したため
-            // slot ごとの Mock ではなくスケジュール単位の Mock に変更。Java 側で slotId グルーピングする。
-            given(assignmentRepository.findAllByScheduleId(SCHEDULE_ID))
-                    .willReturn(List.of(a1, a2));
 
             // 希望（slot_date 単位の延べ件数 3 件）
             ShiftRequestEntity r1 = ShiftRequestEntity.builder()

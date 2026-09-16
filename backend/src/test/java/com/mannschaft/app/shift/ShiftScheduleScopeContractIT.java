@@ -1,11 +1,13 @@
 package com.mannschaft.app.shift;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -70,6 +73,12 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ShiftScheduleRepository scheduleRepository;
 
+    @Autowired
+    private FeatureFlagRepository featureFlagRepository;
+
+    @Autowired
+    private CacheManager cacheManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -82,10 +91,11 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long supporterTeamAId;  // TEAM A の SUPPORTER（参照系の下限境界）
     private Long outsiderId;        // どのチームにも属さない認証済みユーザー
 
-    private Long scheduleAId;    // TEAM A のシフトスケジュール（DRAFT）
+    private Long scheduleAId;    // TEAM A のシフトスケジュール（PUBLISHED）
 
     @BeforeEach
     void setUp() {
+        FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager, "FEATURE_SHIFT_ENABLED");
         teamAId = insertTeam("WAVE3B6 チームA");
         teamBId = insertTeam("WAVE3B6 チームB");
 
@@ -111,7 +121,13 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
                 .periodType(ShiftPeriodType.WEEKLY)
                 .startDate(LocalDate.of(2026, 3, 1))
                 .endDate(LocalDate.of(2026, 3, 7))
-                .status(ShiftScheduleStatus.DRAFT)
+                // CMP-260826-2127（AC-13）: 本 IT が固定するのは<b>認可契約</b>（誰が触れるか）であり
+                // 可視性ではない。未公開シフト表の遮断が入ると DRAFT では一般メンバーの正常系が 404 になり、
+                // 「自チームの公開シフトを読める」という日常正常系の番人が消えてしまう。
+                // よって期待値でなくフィクスチャを公開済みへ直す（DRAFT に対する 404 は
+                // ShiftUnpublishedScheduleVisibilityContractIT が別途固定している）。
+                .status(ShiftScheduleStatus.PUBLISHED)
+                .publishedAt(java.time.LocalDateTime.of(2026, 2, 20, 10, 0))
                 .createdBy(adminTeamAId)
                 .build());
         scheduleAId = scheduleA.getId();

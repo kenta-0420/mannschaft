@@ -28,6 +28,6 @@ public class TimezoneValidator implements ConstraintValidator<ValidTimezone, Str
             // 未指定＝更新しない。必須にしたい場合は @NotNull と併用する。
             return true;
         }
-        return AVAILABLE_ZONE_IDS.contains(value.trim());
+        return !value.isBlank() && AVAILABLE_ZONE_IDS.contains(value.trim());
     }
 }

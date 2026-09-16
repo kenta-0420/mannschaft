@@ -67,6 +67,9 @@ public interface ChatMapper {
                 .id(entity.getId())
                 .channelId(entity.getChannelId())
                 .senderId(entity.getSenderId())
+                // F04.12: メッセージ種別を全メッセージにトップレベル付与（既定 TEXT）。
+                // inviteData は role ドメインの解決が必要なため Service 層（ChatMessageService）で付与する。
+                .messageType(entity.getMessageType() != null ? entity.getMessageType() : "TEXT")
                 .thread(new MessageResponse.MessageThreadDto(
                         entity.getParentId(), entity.getRootId(),
                         depth, depth >= BOARD_MIGRATION_SUGGEST_DEPTH))

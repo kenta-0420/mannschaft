@@ -110,10 +110,20 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
      *   <li>schedules.end_at が now より前（終了時刻を過ぎている）</li>
      *   <li>organizer_reminder_sent_count が maxReminderCount 未満（リマインド上限未到達）</li>
      *   <li>schedules.end_at が cutoff より前（endAt から minElapsedMinutes 分以上経過）</li>
+     *   <li><b>schedules.end_at が staleBefore 以降（＝古すぎるイベントは対象外）</b></li>
      * </ul>
+     *
+     * <p><b>下限（staleBefore）を持つ理由。</b> 初版は上限（{@code endAt < cutoff}）しか無く、
+     * 「未解散かつリマインド 3 回未満」の過去イベントを<b>何ヶ月前のものでも拾い続けた</b>。
+     * そのためバッチが長期間走らなかった後の再開時に、とうに終わったイベントの主催者へ
+     * 段階リマインドが 3 回飛び、最後には管理者への緊急通知まで発火する
+     * （Codex 検分の指摘。機能フラグとは無関係に、障害で一日止まっただけでも起きる）。
+     * 解散リマインドの段階は終了から 90 分以内で完結する設計であり、
+     * それを大きく過ぎたイベントを今さらエスカレーションする意味は無い。</p>
      *
      * @param now              現在日時
      * @param cutoff           カットオフ日時（endAt がこれより前であれば経過済み）
+     * @param staleBefore      鮮度の下限（endAt がこれより前のイベントは古すぎるため対象外）
      * @param maxReminderCount リマインド上限回数（この値以上は対象外）
      * @return 条件を満たすイベントエンティティリスト
      */
@@ -124,11 +134,13 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
             WHERE e.dismissalNotificationSentAt IS NULL
               AND s.endAt IS NOT NULL
               AND s.endAt < :cutoff
+              AND s.endAt >= :staleBefore
               AND e.organizerReminderSentCount < :maxReminderCount
             """)
     List<EventEntity> findDismissalReminderTargets(
             @Param("now") LocalDateTime now,
             @Param("cutoff") LocalDateTime cutoff,
+            @Param("staleBefore") LocalDateTime staleBefore,
             @Param("maxReminderCount") int maxReminderCount);
 
     /**

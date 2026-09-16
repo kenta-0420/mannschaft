@@ -4,7 +4,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
-import com.mannschaft.app.shift.ShiftAssignmentStatus;
+import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.shift.ShiftAssignedUserIds;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPeriodType;
@@ -13,27 +14,32 @@ import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
-import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import com.mannschaft.app.shift.event.ShiftArchivedEvent;
 import com.mannschaft.app.shift.event.ShiftPublishedEvent;
-import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
+import com.mannschaft.app.shift.event.ShiftScheduleCloseReason;
+import com.mannschaft.app.shift.event.ShiftScheduleClosedEvent;
+import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -64,8 +70,8 @@ import java.util.stream.Collectors;
 public class ShiftScheduleService {
 
     private final ShiftScheduleRepository scheduleRepository;
+    private final ShiftChangeRequestRepository changeRequestRepository;
     private final ShiftSlotRepository slotRepository;
-    private final ShiftAssignmentRepository assignmentRepository;
     private final ShiftRequestRepository requestRepository;
     private final ShiftPositionRepository positionRepository;
     private final ShiftMapper shiftMapper;
@@ -77,6 +83,24 @@ public class ShiftScheduleService {
     private final ShiftAutoAssignService autoAssignService;
 
     /**
+     * 業務ローカル時刻の壁時計（{@code ClockConfig#wallClock}）。
+     *
+     * <p>ARCHIVED 遷移時に OPEN 変更依頼を一括 WITHDRAWN 化する JPQL UPDATE へ渡す時刻に使う。
+     * 対象列 {@code shift_change_requests.updated_at} は JVM 既定ゾーン基準の壁時計として
+     * 書かれた {@code LocalDateTime} 列なので、UTC 固定の既定 {@code Clock}
+     * （{@code ClockConfig#utcClock}、{@code @Primary}）ではオフセット分（JST なら 9 時間）ずれる。
+     * そのため {@code @Qualifier("wallClock")} で明示的に壁時計を選ぶ
+     * （金型: {@code BatchJobLogService} / {@code AdReportService}）。</p>
+     *
+     * <p>引数なしの {@code LocalDateTime.now()} を使わないのは、番人
+     * {@code DateTimeAndZoneGuardTest}（CMP-023）が禁じているため。凍結台帳は<b>返済対象の
+     * 技術負債</b>であって件数を積み増す先ではない。隣の {@code ShiftAutoArchiveBatchService}
+     * が引数なし {@code now()} を使っているのは台帳登録済みの既存負債であり、模範ではない。</p>
+     */
+    @Qualifier("wallClock")
+    private final Clock wallClock;
+
+    /**
      * チームのシフトスケジュール一覧を取得する。
      *
      * @param teamId チームID
@@ -85,7 +109,8 @@ public class ShiftScheduleService {
      */
     public List<ShiftScheduleResponse> listSchedules(Long teamId, Long userId) {
         checkTeamReadAccess(teamId, userId);
-        List<ShiftScheduleEntity> entities = scheduleRepository.findByTeamIdOrderByStartDateDesc(teamId);
+        List<ShiftScheduleEntity> entities = filterVisible(
+                scheduleRepository.findByTeamIdOrderByStartDateDesc(teamId), teamId, userId);
         return shiftMapper.toScheduleResponseList(entities);
     }
 
@@ -100,8 +125,9 @@ public class ShiftScheduleService {
      */
     public List<ShiftScheduleResponse> listSchedulesByPeriod(Long teamId, LocalDate from, LocalDate to, Long userId) {
         checkTeamReadAccess(teamId, userId);
-        List<ShiftScheduleEntity> entities = scheduleRepository
-                .findByTeamIdAndStartDateBetweenOrderByStartDateDesc(teamId, from, to);
+        List<ShiftScheduleEntity> entities = filterVisible(
+                scheduleRepository.findByTeamIdAndStartDateBetweenOrderByStartDateDesc(teamId, from, to),
+                teamId, userId);
         return shiftMapper.toScheduleResponseList(entities);
     }
 
@@ -117,6 +143,9 @@ public class ShiftScheduleService {
      */
     public ShiftScheduleResponse getSchedule(Long id, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        // 未公開は認可結果より先に 404 へ正規化する。認可を先にすると、非メンバーが
+        // 実在 ID の 403 と非存在 ID の 404 を比較でき、未公開シフト表の存在オラクルになる。
+        checkScheduleVisible(entity, userId);
         checkTeamReadAccess(entity.getTeamId(), userId);
         return shiftMapper.toScheduleResponse(entity);
     }
@@ -138,7 +167,7 @@ public class ShiftScheduleService {
                 .teamId(teamId)
                 .title(req.getTitle())
                 .periodType(req.getPeriodType() != null
-                        ? ShiftPeriodType.valueOf(req.getPeriodType()) : ShiftPeriodType.WEEKLY)
+                        ? EnumInputParser.parse(ShiftPeriodType.class, req.getPeriodType(), "periodType") : ShiftPeriodType.WEEKLY)
                 .startDate(req.getStartDate())
                 .endDate(req.getEndDate())
                 .requestDeadline(req.getRequestDeadline())
@@ -175,7 +204,7 @@ public class ShiftScheduleService {
         // UPDATE でなく INSERT が走る行重複バグになる。
         entity.applyUpdate(
                 req.getTitle(),
-                req.getPeriodType() != null ? ShiftPeriodType.valueOf(req.getPeriodType()) : null,
+                req.getPeriodType() != null ? EnumInputParser.parse(ShiftPeriodType.class, req.getPeriodType(), "periodType") : null,
                 req.getStartDate(),
                 req.getEndDate(),
                 req.getRequestDeadline(),
@@ -197,8 +226,20 @@ public class ShiftScheduleService {
     public void deleteSchedule(Long id, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
         checkScheduleAdminAccess(entity, userId);
+        boolean wasLive = entity.getDeletedAt() == null;
         entity.softDelete();
         scheduleRepository.save(entity);
+
+        // CMP-260909-1445: 論理削除でもシフト予算の PLANNED 消化を取り消す。
+        // 取消理由 enum に SHIFT_DELETED が用意されているとおり、削除で取り消すのが元々の設計意図。
+        // 消化を残すと当該 allocation が SHIFT_BUDGET_012 で恒久的に削除不能になる。
+        // 既に削除済みの行に対する再削除ではイベントを出さない（冪等。実処理側の
+        // cancelAllForShift も PLANNED のみを対象とするため二重減算はしないが、
+        // 意味の無いイベントを流さないことを発行側でも担保する）。
+        if (wasLive) {
+            eventPublisher.publish(new ShiftScheduleClosedEvent(
+                    entity.getId(), entity.getTeamId(), userId, ShiftScheduleCloseReason.DELETED));
+        }
         log.info("シフトスケジュール削除: id={}", id);
     }
 
@@ -215,6 +256,7 @@ public class ShiftScheduleService {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
         checkScheduleAdminAccess(entity, userId);
         ShiftScheduleStatus targetStatus = ShiftScheduleStatus.valueOf(status);
+        ShiftScheduleStatus previousStatus = entity.getStatus();
 
         switch (targetStatus) {
             case COLLECTING -> entity.startCollecting();
@@ -224,7 +266,16 @@ public class ShiftScheduleService {
                 autoAssignService.assertNoUnreviewedRuns(id);
                 entity.publish(userId);
             }
-            case ARCHIVED -> entity.archive();
+            case ARCHIVED -> {
+                entity.archive();
+                // CMP-260909-1445: ARCHIVED 遷移の副作用はバッチ経路（ShiftAutoArchiveBatchService）と
+                // 揃える。OPEN の変更依頼はアーカイブ済みシフトに対して審査しようがないため取り下げる。
+                int withdrawn = changeRequestRepository.withdrawOpenRequestsByScheduleId(
+                        entity.getId(), LocalDateTime.now(wallClock));
+                if (withdrawn > 0) {
+                    log.info("OPEN 変更依頼を自動 WITHDRAWN: scheduleId={}, 件数={}", entity.getId(), withdrawn);
+                }
+            }
             default -> throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
         }
 
@@ -234,6 +285,26 @@ public class ShiftScheduleService {
         if (targetStatus == ShiftScheduleStatus.PUBLISHED) {
             eventPublisher.publish(new ShiftPublishedEvent(
                     entity.getId(), entity.getTeamId(), userId, entity.getPublishedAt()));
+        }
+
+        // CMP-260909-1445: 手動アーカイブでも ShiftArchivedEvent を発行する。
+        // 是正前は発行元がバッチ 1 箇所しか無く、UI/API 経由でアーカイブすると
+        // 予算消化の取消（ShiftBudgetConsumptionCancelListener）も Todo の自動 CANCELLED 化
+        // （ShiftArchivedToTodoCancelListener）も一切走らなかった。
+        // archivedByUserId は手動経路では操作者を載せる（バッチは null）。
+        if (targetStatus == ShiftScheduleStatus.ARCHIVED) {
+            eventPublisher.publish(new ShiftArchivedEvent(
+                    entity.getId(), entity.getTeamId(), userId));
+        }
+
+        // CMP-260909-1445: PUBLISHED からの後戻り遷移（公開取消）も同型の穴だった。
+        // ShiftScheduleEntity の遷移メソッドはガードを持たず status を無条件に上書きするため
+        // この後戻りは実際に成立する。公開時に積んだ PLANNED 消化を置き去りにしない。
+        if (previousStatus == ShiftScheduleStatus.PUBLISHED
+                && (targetStatus == ShiftScheduleStatus.COLLECTING
+                        || targetStatus == ShiftScheduleStatus.ADJUSTING)) {
+            eventPublisher.publish(new ShiftScheduleClosedEvent(
+                    entity.getId(), entity.getTeamId(), userId, ShiftScheduleCloseReason.UNPUBLISHED));
         }
 
         log.info("シフトスケジュールステータス遷移: id={}, status={}", id, targetStatus);
@@ -295,16 +366,17 @@ public class ShiftScheduleService {
         List<ShiftSlotEntity> slots = slotRepository
                 .findByScheduleIdOrderBySlotDateAscStartTimeAsc(schedule.getId());
 
-        // 2) 全スロットの確定アサイン件数を集計（slotId → CONFIRMED 件数）。
-        //    Phase 11 事後検分 fixup（2026-05-17）: 旧実装は slot 数 N に対して N 回
-        //    findAllBySlotId() を発行する N+1 クエリだった。スケジュール ID で 1 回 JOIN 取得し、
-        //    Java 側で slotId でグルーピングする形に改修。
-        Map<Long, Long> confirmedCountBySlot = assignmentRepository
-                .findAllByScheduleId(schedule.getId()).stream()
-                .filter(a -> a.getStatus() == ShiftAssignmentStatus.CONFIRMED)
-                .collect(Collectors.groupingBy(
-                        ShiftAssignmentEntity::getSlotId,
-                        Collectors.counting()));
+        // 2) 全スロットの割当人数を集計（slotId → 割当人数）。
+        //    CMP-260908-2117: 旧実装は shift_assignments の CONFIRMED 件数を数えていたため、
+        //    手動割当（JSON 列にしか書かれない）が充足数に一切反映されず、
+        //    実際には埋まっている枠が管理者のサマリーで「未充足」に見えていた。
+        //    割当の正本である slots.assigned_user_ids から数える。
+        //    副次効果として shift_assignments への 1 クエリが不要になる（N+1 回避は維持）。
+        Map<Long, Long> confirmedCountBySlot = slots.stream()
+                .collect(Collectors.toMap(
+                        ShiftSlotEntity::getId,
+                        s -> (long) ShiftAssignedUserIds.parse(s.getAssignedUserIds()).size(),
+                        (a, b) -> a));
 
         // 3) スケジュール全希望を取得（後で日付ごとに分配）
         List<ShiftRequestEntity> allRequests = requestRepository
@@ -329,12 +401,24 @@ public class ShiftScheduleService {
         for (LocalDate date : dates) {
             List<ShiftSlotEntity> daySlots = slotsByDate.get(date);
 
-            // positionId（NULL含む）でグループ化
-            Map<Long, List<ShiftSlotEntity>> byPosition = daySlots.stream()
-                    .collect(Collectors.groupingBy(
-                            s -> s.getPositionId(),
-                            HashMap::new,
-                            Collectors.toList()));
+            // positionId（NULL含む）でグループ化。
+            //
+            // CMP-260908-2117: ここはかつて Collectors.groupingBy(s -> s.getPositionId(), HashMap::new, ...)
+            // だったが、**positionId が NULL の枠が 1 つでもあるとサマリー API が 500 になる**バグがあった。
+            // groupingBy は分類関数の戻り値を必ず Objects.requireNonNull で検査するため、
+            // マップ実装に HashMap::new を渡しても NULL キーは通らない（「NULL含む」という
+            // 元コードの意図は成立していなかった）。ポジション未設定の枠は実運用で普通に作れる
+            //（createSlot の positionId は任意）。
+            //
+            // 既存の単体テストが緑だったのは、フィクスチャが常に positionId を設定していたためで、
+            // 本 CMP の統合テスト（ポジション未設定の枠）が初めてこれを暴いた。
+            //
+            // NULL キーを実際に受けられるよう手動でグループ化する。LinkedHashMap にするのは
+            // 出力順を枠の並び（日付・開始時刻昇順）で決定的にするため（HashMap ではハッシュ順に依存していた）。
+            Map<Long, List<ShiftSlotEntity>> byPosition = new LinkedHashMap<>();
+            for (ShiftSlotEntity daySlot : daySlots) {
+                byPosition.computeIfAbsent(daySlot.getPositionId(), k -> new ArrayList<>()).add(daySlot);
+            }
 
             List<ShiftScheduleSummaryResponse.PositionSummary> positionSummaries = byPosition.entrySet().stream()
                     .map(e -> {
@@ -384,6 +468,65 @@ public class ShiftScheduleService {
                 .scheduleId(schedule.getId())
                 .summaryByDate(dateSummaries)
                 .build();
+    }
+
+    /**
+     * 一覧から、閲覧者に対して存在ごと秘匿すべきシフト表を除外する（AC-1 / AC-7）。
+     *
+     * <p>判定は {@link ShiftScheduleVisibilityPolicy} に閉じる（設計 G-1）。
+     * 管理者判定はチーム単位で 1 度だけ行う。</p>
+     *
+     * @param entities 取得済みのシフト表
+     * @param teamId   対象チーム ID
+     * @param userId   閲覧者ユーザー ID
+     * @return 閲覧者に見せてよいシフト表
+     */
+    private List<ShiftScheduleEntity> filterVisible(List<ShiftScheduleEntity> entities, Long teamId, Long userId) {
+        if (isPrivilegedViewer(teamId, userId)) {
+            return entities;
+        }
+        return entities.stream()
+                .filter(e -> !ShiftScheduleVisibilityPolicy
+                        .classify(e.getStatus(), e.getPublishedAt()).isHidden())
+                .toList();
+    }
+
+    /**
+     * 閲覧者が「未公開シフト表も全量見てよい側」かを判定する。
+     *
+     * <p>SYSTEM_ADMIN 短絡を必ず最初に評価する。親組織 ADMIN・配下ツリー救済は含めない
+     *（シフト表は TEAM スコープ専用であり、同ドメインの書込系認可も配下概念を持たないため）。
+     * 例外を投げる {@code checkAdminOrAbove} でなく真偽を返す {@code isAdminOrAbove} を使うのは、
+     * フィルタ判定で例外を握り潰す実装を誘発しないため。</p>
+     *
+     * @param teamId 対象チーム ID
+     * @param userId 閲覧者ユーザー ID
+     * @return 管理者側なら true
+     */
+    private boolean isPrivilegedViewer(Long teamId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return true;
+        }
+        return teamId != null && accessControlService.isAdminOrAbove(userId, teamId, "TEAM");
+    }
+
+    /**
+     * 未公開シフト表への単体アクセスを 404 に落とす（AC-2 / AC-7）。
+     *
+     * <p>403 にすると「存在するが未公開」を「存在しない ID」と区別でき、scheduleId の総当りで
+     * 未公開シフト表の本数が観測できるため 404（{@code SHIFT_001}）とする。</p>
+     *
+     * @param entity 対象シフト表
+     * @param userId 閲覧者ユーザー ID
+     * @throws BusinessException 閲覧者に対して秘匿すべき場合（SHIFT_SCHEDULE_NOT_FOUND / 404）
+     */
+    void checkScheduleVisible(ShiftScheduleEntity entity, Long userId) {
+        if (isPrivilegedViewer(entity.getTeamId(), userId)) {
+            return;
+        }
+        if (ShiftScheduleVisibilityPolicy.classify(entity.getStatus(), entity.getPublishedAt()).isHidden()) {
+            throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+        }
     }
 
     /**

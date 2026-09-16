@@ -1,5 +1,7 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -29,6 +31,8 @@ public class WithdrawalReminderService {
     private final UserRepository userRepository;
     private final EmailOutboxService emailOutboxService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会猶予期間の満了予告が届かないまま強匿名化が実行され、利用者が取消機会を失ったまま個人データが不可逆に消える")
     @BatchEndpoint(name = "gdpr-withdrawal-reminder-daily", description = "退会猶予期間中のユーザーへ毎日 09:00 にリマインドメールを送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "withdrawalReminderBatch", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")

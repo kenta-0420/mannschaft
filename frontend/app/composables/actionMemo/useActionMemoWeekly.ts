@@ -32,7 +32,7 @@ export function useActionMemoWeekly() {
     meta: {
       page: number
       size: number
-      totalElements: number
+      total: number
       totalPages: number
     }
   }

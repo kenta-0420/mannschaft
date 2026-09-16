@@ -1,6 +1,8 @@
 package com.mannschaft.app.dashboard.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.dashboard.repository.ActivityFeedRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +50,8 @@ public class ActivityFeedCleanupBatchService {
      */
     @BatchEndpoint(name = "activity-feed-cleanup-daily",
             description = "activity_feed の30日超レコードを毎日 AM 3:00 に物理削除する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。古いアクティビティフィードの削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "activityFeedCleanupBatch", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")
     @Transactional

@@ -31,6 +31,22 @@ public interface TeamRepository
     Optional<TeamEntity> findBySlugAndDeletedAtIsNull(String slug);
 
     /**
+     * カスタムスラッグでチームを取得する（URL識別子。ACTIVE 限定）。
+     *
+     * <p>柱②-3 検分 P1-2 根治: {@code findBySlugAndDeletedAtIsNull} は PROVISIONED
+     * （承諾前の事前作成状態）も返してしまい、{@code resolveTeamId} 経由で公開判定前に
+     * PROVISIONED スコープへ到達できてしまう恐れがあった。全ての slug 解決の入口は
+     * このメソッドへ差し替え、{@code lifecycleStatus = ACTIVE} を必須条件とする。
+     * SYSTEM_ADMIN の管理系・プロビジョニング自身は ID 直参照（{@code findById}）で
+     * PROVISIONED 行に到達するため、本メソッドの対象外で影響しない。</p>
+     *
+     * @param slug URL に使用するカスタムスラッグ
+     * @return ACTIVE かつ未削除のチームエンティティ
+     */
+    Optional<TeamEntity> findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+            String slug, TeamEntity.LifecycleStatus lifecycleStatus);
+
+    /**
      * 指定スラッグが既に使用中かどうか確認する（一意性チェック用）。
      *
      * @param slug チェック対象のスラッグ
@@ -39,6 +55,47 @@ public interface TeamRepository
     boolean existsBySlugAndDeletedAtIsNull(String slug);
 
     List<TeamEntity> findByVisibility(TeamEntity.Visibility visibility);
+
+    /**
+     * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
+     *
+     * <p>検分第5巡是正: クエリ側の {@code TRIM()} を撤去した（理由は
+     * {@code OrganizationRepository#findActiveByNormalizedName} と同じ。Java の
+     * {@link String#trim()} と MySQL {@code TRIM()} の正規化基準の食い違いを断つため、
+     * 呼び出し元は {@code DuplicateNameNormalizer#trimSpaces} で正規化済みの値を渡す契約）。
+     * 生成列 {@code name_trimmed}（{@code GENERATED ALWAYS AS (TRIM(name)) STORED}・
+     * V202 マイグレーション参照）との単純な等価比較のみ行う。
+     * 金型: {@code OrganizationRepository#findActiveByNormalizedName}。
+     * ACTIVE（{@code lifecycleStatus=ACTIVE}）かつ未削除（{@code @SQLRestriction} により
+     * 自動除外）のみを対象とする。作成 TX 内で呼ばれることを想定し、常に最新状態を反映する。</p>
+     *
+     * @param nameTrimmed {@code DuplicateNameNormalizer#trimSpaces} で正規化済みの名称
+     * @return 同名の ACTIVE チーム一覧
+     */
+    @Query(value = "SELECT * FROM teams "
+            + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
+            + "AND name_trimmed = :nameTrimmed",
+            nativeQuery = true)
+    List<TeamEntity> findActiveByNormalizedName(@Param("nameTrimmed") String nameTrimmed);
+
+    /**
+     * CMP-260901-1538 柱③-A 検分P1-2/第4〜5巡是正: {@link #findActiveByNormalizedName} の
+     * ロッキングリード版。
+     *
+     * <p>{@code FOR UPDATE} により InnoDB の REPEATABLE READ スナップショットを無視して
+     * <b>最新のコミット済みデータ</b>を読む。{@code name_trimmed} の索引を使うことで
+     * 索引レンジロックに収まり、全表ロックを避ける。クエリ側の {@code TRIM()} を撤去した
+     * 理由は {@link #findActiveByNormalizedName} と同じ（検分第5巡是正）。
+     * 金型: {@code OrganizationRepository#findActiveByNormalizedNameForUpdate}。</p>
+     *
+     * @param nameTrimmed {@code DuplicateNameNormalizer#trimSpaces} で正規化済みの名称
+     * @return 同名の ACTIVE チーム一覧（最新コミット済み状態）
+     */
+    @Query(value = "SELECT * FROM teams "
+            + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
+            + "AND name_trimmed = :nameTrimmed FOR UPDATE",
+            nativeQuery = true)
+    List<TeamEntity> findActiveByNormalizedNameForUpdate(@Param("nameTrimmed") String nameTrimmed);
 
     /**
      * チームをキーワード検索する（公開検索）。
@@ -55,6 +112,7 @@ public interface TeamRepository
     @Query("""
             SELECT t FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.archivedAt IS NULL
               AND (t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%)
             """)
@@ -228,6 +286,7 @@ public interface TeamRepository
     @Query("SELECT t FROM TeamEntity t " +
            "WHERE t.id = :id " +
            "AND t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC " +
+           "AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE " +
            "AND t.archivedAt IS NULL")
     Optional<TeamEntity> findPublicTeamById(@Param("id") Long id);
 
@@ -240,6 +299,7 @@ public interface TeamRepository
      */
     @Query("SELECT t FROM TeamEntity t " +
            "WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC " +
+           "AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE " +
            "AND t.archivedAt IS NULL " +
            "ORDER BY t.id ASC")
     List<TeamEntity> findAllPublicTeams();
@@ -330,6 +390,7 @@ public interface TeamRepository
     @Query("""
             SELECT t FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.archivedAt IS NULL
               AND (:keyword IS NULL OR t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%)
               AND (
@@ -358,6 +419,7 @@ public interface TeamRepository
     @Query("""
             SELECT COUNT(t) FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.deletedAt IS NULL
               AND t.supporterNameDisclosure
                   = com.mannschaft.app.publicview.enums.NameDisclosureMode.REAL_NAME
@@ -374,6 +436,7 @@ public interface TeamRepository
     @Query("""
             SELECT COUNT(t) FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.deletedAt IS NULL
             """)
     long countPublicTeams();

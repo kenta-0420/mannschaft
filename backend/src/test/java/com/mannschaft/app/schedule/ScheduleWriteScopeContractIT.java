@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
@@ -23,9 +24,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -98,10 +101,11 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        teamASlug = "wb6-team-a-" + System.nanoTime();
-        teamBSlug = "wb6-team-b-" + System.nanoTime();
-        orgASlug = "wb6-org-a-" + System.nanoTime();
-        orgBSlug = "wb6-org-b-" + System.nanoTime();
+        String suffix = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
+        teamASlug = "wb6-team-a-" + suffix;
+        teamBSlug = "wb6-team-b-" + suffix;
+        orgASlug = "wb6-org-a-" + suffix;
+        orgBSlug = "wb6-org-b-" + suffix;
 
         teamAId = insertTeam("WAVE3B6 チームA", teamASlug);
         teamBId = insertTeam("WAVE3B6 チームB", teamBSlug);
@@ -245,6 +249,42 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isCreated());
         }
 
+        @Test
+        @DisplayName("CMP-108: 未定義 commentOption は400で、予定を保存しない")
+        void 未定義commentOptionは400で予定を保存しない() throws Exception {
+            setAuth(adminTeamAId);
+            long rowsBefore = scheduleRepository.count();
+            Map<String, Object> body = new HashMap<>(createTeamBody());
+            body.put("commentOption", "DISABLED");
+
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules", teamASlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value(CommonErrorCode.COMMON_001.getCode()))
+                    .andExpect(jsonPath("$.error.fieldErrors[0].field").value("commentOption"));
+
+            assertThat(scheduleRepository.count()).isEqualTo(rowsBefore);
+        }
+
+        @Test
+        @DisplayName("CMP-108: 別の文字列enum eventType の未定義値も400で、予定を保存しない")
+        void 未定義eventTypeも400で予定を保存しない() throws Exception {
+            setAuth(adminTeamAId);
+            long rowsBefore = scheduleRepository.count();
+            Map<String, Object> body = new HashMap<>(createTeamBody());
+            body.put("eventType", "DISABLED");
+
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules", teamASlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value(CommonErrorCode.COMMON_001.getCode()))
+                    .andExpect(jsonPath("$.error.fieldErrors[0].field").value("eventType"));
+
+            assertThat(scheduleRepository.count()).isEqualTo(rowsBefore);
+        }
+
         private Map<String, Object> createTeamBody() {
             return Map.of(
                     "title", "新規チーム予定",
@@ -300,6 +340,25 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("title", "更新後"))))
                     .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("CMP-108: 更新の未定義 commentOption は400で、既存予定を変更しない")
+        void 更新の未定義commentOptionは400で既存予定を変更しない() throws Exception {
+            setAuth(adminTeamAId);
+            CommentOption before = scheduleRepository.findById(teamScheduleAId)
+                    .orElseThrow().getCommentOption();
+
+            mockMvc.perform(patch("/api/v1/teams/{teamPublicId}/schedules/{id}", teamASlug, teamScheduleAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("commentOption", "DISABLED"))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value(CommonErrorCode.COMMON_001.getCode()))
+                    .andExpect(jsonPath("$.error.fieldErrors[0].field").value("commentOption"));
+
+            em.clear();
+            assertThat(scheduleRepository.findById(teamScheduleAId).orElseThrow().getCommentOption())
+                    .isEqualTo(before);
         }
 
         /**

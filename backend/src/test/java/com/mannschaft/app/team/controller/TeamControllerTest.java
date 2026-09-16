@@ -292,25 +292,6 @@ class TeamControllerTest {
     }
 
     @Test
-    @DisplayName("transferOwnership: 200 OK（入口で checkAdminOrAbove を必ず呼ぶ）")
-    void transferOwnership_200() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
-        assertThat(controller.transferOwnership(TEAM_SLUG, 500L).getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
-        verify(roleService).transferOwnership(TEAM_ID, "TEAM", USER_ID, 500L);
-    }
-
-    @Test
-    @DisplayName("transferOwnership: ADMIN/DEPUTY でなければ 403 を送出し譲渡本体を呼ばない")
-    void transferOwnership_403_whenNotAdmin() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
-        denyAdminOrAbove();
-        assertThatThrownBy(() -> controller.transferOwnership(TEAM_SLUG, 500L))
-                .isInstanceOf(BusinessException.class);
-        verify(roleService, Mockito.never()).transferOwnership(TEAM_ID, "TEAM", USER_ID, 500L);
-    }
-
-    @Test
     @DisplayName("getOrganizations: 200 OK（チーム本体と同じ可視性ラダーで判定する）")
     void getOrganizations_200() {
         given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);

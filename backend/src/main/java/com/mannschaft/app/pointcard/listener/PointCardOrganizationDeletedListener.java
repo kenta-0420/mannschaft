@@ -1,5 +1,7 @@
 package com.mannschaft.app.pointcard.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
 import com.mannschaft.app.pointcard.entity.PointCardProviderEntity;
 import com.mannschaft.app.pointcard.event.ProviderCacheRefreshEvent;
@@ -38,6 +40,8 @@ public class PointCardOrganizationDeletedListener {
     private final PointCardProviderRepository providerRepository;
     private final ApplicationEventPublisher eventPublisher;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると削除済み組織を指すポイントカード提携プロバイダ行が孤児として残り、組織削除の整合性が壊れる。イベントは再生されないため取りこぼすと恒久的に残留する")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

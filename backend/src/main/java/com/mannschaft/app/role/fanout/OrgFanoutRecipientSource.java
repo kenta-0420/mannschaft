@@ -1,5 +1,8 @@
 package com.mannschaft.app.role.fanout;
 
+import com.mannschaft.app.notification.fanout.FanoutPageRequest;
+import com.mannschaft.app.notification.fanout.FanoutRecipient;
+import com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSource;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -52,46 +55,31 @@ public class OrgFanoutRecipientSource implements FanoutRecipientSource {
     }
 
     /**
-     * 3 引数版は応援者トグル既定 true（全員配信）で 4 引数版へ委譲する。
-     * 通常ワーカーは 4 引数版を呼ぶため、本メソッドは後方互換のフォールバック。
-     */
-    @Override
-    public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
-        return nextPage(scopeRef, cursorSubjectId, limit, true);
-    }
-
-    @Override
-    public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit, boolean includeSupporters) {
-        // scope_ref には組織 ID を文字列で格納しているため long へ復元する（多型スコープ参照）。
-        long organizationId = Long.parseLong(scopeRef);
-        // 直属 ∪ 配下 ACTIVE チームの現役メンバーを user_id 昇順・キーセットで 1 チャンク供給する。
-        // 母集団条件（ACTIVE・未削除・応援者トグル・配下チーム展開）は repo クエリに閉じ込める。
-        // chunk は UNION 各枝の打ち切り件数。外側のページサイズと同じ値を渡す
-        // （各枝から chunk 件ずつ取れば和集合の先頭 chunk 件は必ずその中に含まれる）。
-        return userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                organizationId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH, cursorSubjectId,
-                limit, PageRequest.of(0, limit));
-    }
-
-    /**
-     * シャード対応 6 引数版（CMP-001⑤ ワーカー並列化）。
+     * 受信者ページを 1 チャンク供給する（Issue #2871・単一メソッド化）。
      *
-     * <p>{@code shardCount <= 1} は分割せず 4 引数版へ委譲し従来経路と完全一致させる。{@code shardCount > 1} のみ
-     * keyset クエリに {@code MOD(user_id, shardCount) = shardIndex} 述語を足したシャード版クエリを引き、
-     * 自シャード担当（{@code user_id % shardCount == shardIndex}）の受信者だけを昇順・キーセットで供給する。
-     * 母集団条件・SUPPORTER 除外・keyset は非シャード版と共有（差分は MOD 述語 1 行のみ）。</p>
+     * <p>{@code shardCount <= 1} は従来の非シャード版クエリをそのまま使い（{@code MOD} 述語を挟まない）、
+     * {@code shardCount > 1} のみ {@code MOD(user_id, shardCount) = shardIndex} 述語を足したシャード版を引く。
+     * 母集団条件・SUPPORTER 除外・keyset・枝内 {@code LIMIT} は両者で共有（差分は MOD 述語 1 行のみ）。</p>
+     *
+     * <p>{@code chunk}（枝内の打ち切り件数）には外側のページサイズと同じ値を渡す。各枝から chunk 件ずつ
+     * 取れば和集合の先頭 chunk 件は必ずその中に含まれる（詳細はリポジトリ側 javadoc）。</p>
      */
     @Override
-    public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit, boolean includeSupporters,
-                               int shardIndex, int shardCount) {
-        if (shardCount <= 1) {
-            // 単一シャード（従来経路）は非シャード版と完全一致（MOD 述語を挟まない）。
-            return nextPage(scopeRef, cursorSubjectId, limit, includeSupporters);
+    public List<FanoutRecipient> nextPage(FanoutPageRequest request) {
+        // scope_ref には組織 ID を文字列で格納しているため long へ復元する（多型スコープ参照）。
+        long organizationId = Long.parseLong(request.scopeRef());
+        int limit = request.limit();
+        if (request.isSingleShard()) {
+            return FanoutRecipientRowMapper.toRecipients(
+                    userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                            organizationId, request.includeSupporters(), MAX_ORG_DESCENDANT_DEPTH,
+                            request.cursorSubjectId(), limit, PageRequest.of(0, limit)));
         }
-        long organizationId = Long.parseLong(scopeRef);
-        return userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
-                organizationId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH, cursorSubjectId,
-                limit, shardIndex, shardCount, PageRequest.of(0, limit));
+        return FanoutRecipientRowMapper.toRecipients(
+                userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
+                        organizationId, request.includeSupporters(), MAX_ORG_DESCENDANT_DEPTH,
+                        request.cursorSubjectId(), limit,
+                        request.shardIndex(), request.shardCount(), PageRequest.of(0, limit)));
     }
 
     /**

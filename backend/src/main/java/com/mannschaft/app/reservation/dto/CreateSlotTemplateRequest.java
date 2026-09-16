@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import jakarta.validation.constraints.DecimalMin;
@@ -8,7 +9,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
@@ -20,8 +20,33 @@ import java.time.LocalTime;
  * 既定値（capacity=1）は Service 層で null→1 正規化する。</p>
  */
 @Getter
-@RequiredArgsConstructor
 public class CreateSlotTemplateRequest {
+
+    public CreateSlotTemplateRequest(String name, Long lineId, ReservationDayOfWeek dayOfWeek,
+                                     LocalTime startTime, LocalTime endTime, Integer capacity,
+                                     Long staffUserId, String title, BigDecimal price,
+                                     ApprovalMode approvalMode) {
+        this(name, lineId, dayOfWeek, startTime, endTime, capacity, staffUserId, title, price,
+                approvalMode, false);
+    }
+
+    @JsonCreator
+    public CreateSlotTemplateRequest(String name, Long lineId, ReservationDayOfWeek dayOfWeek,
+                                     LocalTime startTime, LocalTime endTime, Integer capacity,
+                                     Long staffUserId, String title, BigDecimal price,
+                                     ApprovalMode approvalMode, Boolean endsNextDay) {
+        this.name = name;
+        this.lineId = lineId;
+        this.dayOfWeek = dayOfWeek;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.capacity = capacity;
+        this.staffUserId = staffUserId;
+        this.title = title;
+        this.price = price;
+        this.approvalMode = approvalMode;
+        this.endsNextDay = endsNextDay;
+    }
 
     /** テンプレ名（管理用メモ・任意）。 */
     @Size(max = 100)
@@ -63,4 +88,7 @@ public class CreateSlotTemplateRequest {
 
     /** 生成枠の枠単位承認モード上書き。NULL = チーム既定継承。 */
     private final ApprovalMode approvalMode;
+
+    /** 終了時刻を翌日として扱うか。省略時は false。 */
+    private final Boolean endsNextDay;
 }

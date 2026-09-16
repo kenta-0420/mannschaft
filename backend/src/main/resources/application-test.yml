@@ -57,6 +57,13 @@ mannschaft:
     health-polling:
       enabled: false
   # F13.1 Phase 13.1.2: QR 署名 — テスト決定性のために固定 secret を使用
+  # PR4 Billing Center: return state 署名 — テスト決定性のために固定 secret を使用
+  billing:
+    return-state:
+      signing-keys:
+        - kid: v1
+          secret: test-billing-return-signing-key-32bytes-xxxx
+          active: true
   jobs:
     qr:
       ttl-seconds: 60

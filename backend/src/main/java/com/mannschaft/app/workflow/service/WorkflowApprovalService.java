@@ -2,6 +2,7 @@ package com.mannschaft.app.workflow.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.workflow.ApprovalType;
 import com.mannschaft.app.workflow.ApproverDecision;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
@@ -88,7 +89,7 @@ public class WorkflowApprovalService {
 
         WorkflowTemplateEntity template = templateService.getTemplateEntity(requestEntity.getTemplateId());
 
-        ApproverDecision decision = ApproverDecision.valueOf(request.getDecision());
+        ApproverDecision decision = EnumInputParser.parse(ApproverDecision.class, request.getDecision(), "decision");
 
         if (decision == ApproverDecision.APPROVED) {
             if (template.getIsSealRequired() && request.getSealId() == null) {

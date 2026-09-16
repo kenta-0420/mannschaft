@@ -137,6 +137,7 @@ function handleLogoClick() {
               <!-- 目安箱ボタン -->
               <Button
                 v-tooltip.bottom="t('feedback.nav_tooltip')"
+                data-testid="feedback-open-button"
                 icon="pi pi-box"
                 text
                 rounded

@@ -67,7 +67,7 @@ public class EquipmentItemEntity extends BaseEntity {
     @Column(precision = 10, scale = 2)
     private BigDecimal purchasePrice;
 
-    @Column(length = 500)
+    @Column(name = "s3_key", length = 500)
     private String s3Key;
 
     @Column(nullable = false, length = 100)

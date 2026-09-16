@@ -30,6 +30,7 @@ public final class RecruitmentVisibilityMapper {
             case SCOPE_ONLY -> StandardVisibility.SCOPE_AFFILIATED;
             case SUPPORTERS_ONLY -> StandardVisibility.SUPPORTERS_AND_ABOVE;
             case CUSTOM_TEMPLATE -> StandardVisibility.CUSTOM_TEMPLATE;
+            case SELECTED_SCOPES -> StandardVisibility.CUSTOM;
             // F22.1 市: フレンドチーム限定の非公開札。可視範囲は scope ロールでは決まらず、
             // recruitment_friend_targets を F01.5 サービスで都度解決する「機能独自セマンティクス」のため
             // CUSTOM に正規化し、Resolver 側の個別ハンドリング（evaluateCustom）に委ねる。

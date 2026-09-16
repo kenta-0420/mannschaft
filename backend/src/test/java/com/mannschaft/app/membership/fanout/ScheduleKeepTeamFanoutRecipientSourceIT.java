@@ -5,6 +5,7 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSource;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSourceRegistry;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
@@ -103,7 +104,7 @@ class ScheduleKeepTeamFanoutRecipientSourceIT extends AbstractMySqlIntegrationTe
         seedMember(teamId, m4, RoleKind.MEMBER);
         seedMember(teamId, m5, RoleKind.MEMBER);
 
-        worker.processOne(jobRepository.save(newKeepJob(scopeRef(teamId, actor, creator), type)));
+        worker.processOne(saveWithMessages(newKeepJob(scopeRef(teamId, actor, creator), type)));
 
         long delivered = countNotifications(type);
         log.info("[AC-1] delivered={}（期待=3: m3,m4,m5）", delivered);
@@ -130,7 +131,7 @@ class ScheduleKeepTeamFanoutRecipientSourceIT extends AbstractMySqlIntegrationTe
         seedMember(teamId, supporter, RoleKind.SUPPORTER);
         insertUser(guest, "ACTIVE", null); // membership なし
 
-        worker.processOne(jobRepository.save(newKeepJob(scopeRef(teamId, actor, 0L), type)));
+        worker.processOne(saveWithMessages(newKeepJob(scopeRef(teamId, actor, 0L), type)));
 
         log.info("[AC-2] delivered={} supporterGot={} guestGot={}",
                 countNotifications(type), deliveredTo(type, supporter), deliveredTo(type, guest));
@@ -153,7 +154,7 @@ class ScheduleKeepTeamFanoutRecipientSourceIT extends AbstractMySqlIntegrationTe
         seedMember(teamId, actor, RoleKind.MEMBER);
         seedMember(teamId, member, RoleKind.MEMBER);
 
-        worker.processOne(jobRepository.save(newKeepJob(scopeRef(teamId, actor, 0L), type)));
+        worker.processOne(saveWithMessages(newKeepJob(scopeRef(teamId, actor, 0L), type)));
 
         assertThat(deliveredTo(type, actor)).as("AC-3: 操作者本人には届かない").isFalse();
         assertThat(deliveredTo(type, member)).as("他 MEMBER には届く").isTrue();
@@ -177,7 +178,7 @@ class ScheduleKeepTeamFanoutRecipientSourceIT extends AbstractMySqlIntegrationTe
         seedMember(teamB, bMember, RoleKind.MEMBER);
         seedMemberScoped(ScopeType.ORGANIZATION, teamA, orgMember, RoleKind.MEMBER);
 
-        worker.processOne(jobRepository.save(newKeepJob(scopeRef(teamA, actor, 0L), type)));
+        worker.processOne(saveWithMessages(newKeepJob(scopeRef(teamA, actor, 0L), type)));
 
         assertThat(deliveredTo(type, aMember)).as("teamA の MEMBER には届く").isTrue();
         assertThat(deliveredTo(type, bMember)).as("AC-6: 別 TEAM の MEMBER には届かない").isFalse();
@@ -196,7 +197,7 @@ class ScheduleKeepTeamFanoutRecipientSourceIT extends AbstractMySqlIntegrationTe
         long actor = base(teamId) + 1;
         seedMember(teamId, actor, RoleKind.MEMBER); // 操作者のみ
 
-        NotificationFanoutJob job = jobRepository.save(newKeepJob(scopeRef(teamId, actor, 0L), type));
+        NotificationFanoutJob job = saveWithMessages(newKeepJob(scopeRef(teamId, actor, 0L), type));
         worker.processOne(job);
 
         NotificationFanoutJob reloaded = jobRepository.findById(job.getId()).orElseThrow();
@@ -219,7 +220,8 @@ class ScheduleKeepTeamFanoutRecipientSourceIT extends AbstractMySqlIntegrationTe
         UUID sourceEvent = UUID.randomUUID();
 
         jobService.enqueue(ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE, scopeRef(teamId, actor, 0L), type,
-                sourceEvent, null, "日程が決まりました", "本文", NotificationPriority.NORMAL, "SCHEDULE", 1L, "/x", actor);
+                sourceEvent, null,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"日程が決まりました"}, NotificationPriority.NORMAL, "SCHEDULE", 1L, "/x", actor);
 
         Long rows = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type=? AND scope_ref=? AND notification_type=?",
@@ -233,7 +235,8 @@ class ScheduleKeepTeamFanoutRecipientSourceIT extends AbstractMySqlIntegrationTe
 
         // 二重 enqueue は uk_fanout_idempotency で 1 件のまま（冪等）。
         jobService.enqueue(ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE, scopeRef(teamId, actor, 0L), type,
-                sourceEvent, null, "日程が決まりました", "本文", NotificationPriority.NORMAL, "SCHEDULE", 1L, "/x", actor);
+                sourceEvent, null,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"日程が決まりました"}, NotificationPriority.NORMAL, "SCHEDULE", 1L, "/x", actor);
         Long rows2 = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type=? AND scope_ref=? AND notification_type=?",
                 Long.class, ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE, scopeRef(teamId, actor, 0L), type);
@@ -259,7 +262,7 @@ class ScheduleKeepTeamFanoutRecipientSourceIT extends AbstractMySqlIntegrationTe
             seedMember(teamId, base(teamId) + 100 + i, RoleKind.MEMBER);
         }
 
-        NotificationFanoutJob job = jobRepository.save(newKeepJob(scopeRef(teamId, actor, 0L), type));
+        NotificationFanoutJob job = saveWithMessages(newKeepJob(scopeRef(teamId, actor, 0L), type));
         worker.processOne(job);
 
         long total = countNotifications(type);
@@ -320,8 +323,6 @@ class ScheduleKeepTeamFanoutRecipientSourceIT extends AbstractMySqlIntegrationTe
                 .scopeType(ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE)
                 .scopeRef(scopeRef)
                 .notificationType(type)
-                .title("「合宿」の日程が決まりました")
-                .body("合宿 が予定になりました。")
                 .priority(NotificationPriority.NORMAL)
                 .sourceType("SCHEDULE")
                 .sourceId(1L)
@@ -354,4 +355,33 @@ class ScheduleKeepTeamFanoutRecipientSourceIT extends AbstractMySqlIntegrationTe
                 Long.class, type, userId);
         return c != null && c > 0;
     }
+
+    /**
+     * Issue #2871: ワーカーはジョブのロケール別文面（子表）を読んでから配信する。
+     *
+     * <p>本番では enqueue が「親ジョブ 1 行＋文面 6 行」を同一トランザクションで確定するため、
+     * 文面の無いジョブは存在しない。IT だけがジョブ行を直接組み立てているので、
+     * ここで同じ前提（6 配信ロケールぶんの文面）を用意する。</p>
+     */
+    private com.mannschaft.app.notification.fanout.NotificationFanoutJob saveWithMessages(
+            com.mannschaft.app.notification.fanout.NotificationFanoutJob job) {
+        com.mannschaft.app.notification.fanout.NotificationFanoutJob saved = jobRepository.save(job);
+        jobRepository.flush();
+        java.util.List<com.mannschaft.app.notification.fanout.NotificationFanoutJobMessage> rows =
+                new java.util.ArrayList<>();
+        for (String tag : com.mannschaft.app.common.i18n.DeliveryLocales.TAGS) {
+            rows.add(com.mannschaft.app.notification.fanout.NotificationFanoutJobMessage.builder()
+                    .jobId(saved.getId())
+                    .locale(tag)
+                    .title("IT-title-" + tag)
+                    .body("IT-body-" + tag)
+                    .build());
+        }
+        fanoutJobMessageRepositoryForIt.saveAll(rows);
+        return saved;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.mannschaft.app.notification.fanout.NotificationFanoutJobMessageRepository
+            fanoutJobMessageRepositoryForIt;
 }

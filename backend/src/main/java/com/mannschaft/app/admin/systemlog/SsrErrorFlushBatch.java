@@ -1,5 +1,7 @@
 package com.mannschaft.app.admin.systemlog;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.batch.PodLocalScheduled;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,8 @@ public class SsrErrorFlushBatch {
      * すなわち Pod ごとに走ることが設計そのものである。
      * この意図は {@link PodLocalScheduled} で番人に対して明示している。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "SSR エラーバッファは上限のない ConcurrentLinkedQueue であり、止めると Pod のメモリを際限なく食い潰し、蓄積分は R2 に落ちないまま消失する")
     @PodLocalScheduled("Pod ローカルのメモリバッファを flush する処理であり、"
         + "ロックを掛けると敗者 Pod のバッファが永久に flush されず SSR エラーログが欠落するため")
     @BatchEndpoint(name = "systemlog-ssr-error-flush", description = "SSR エラーバッファを 5 分毎に R2 にフラッシュする")

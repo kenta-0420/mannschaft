@@ -77,12 +77,12 @@ public class NotificationCreditPurchaseEntity extends BaseEntity {
     private LocalDateTime expiresAt;
 
     /** 有効期限30日前アラート送信済みフラグ */
-    @Column(nullable = false)
+    @Column(name = "alert_sent_30d", nullable = false)
     @Builder.Default
     private Boolean alertSent30d = false;
 
     /** 有効期限7日前アラート送信済みフラグ */
-    @Column(nullable = false)
+    @Column(name = "alert_sent_7d", nullable = false)
     @Builder.Default
     private Boolean alertSent7d = false;
 

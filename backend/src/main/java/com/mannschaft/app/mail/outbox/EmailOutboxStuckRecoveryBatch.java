@@ -1,5 +1,7 @@
 package com.mannschaft.app.mail.outbox;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,8 @@ public class EmailOutboxStuckRecoveryBatch {
     /**
      * 毎時 0 分に SENDING 残骸を PENDING に戻す。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると SENDING のまま残った行が永久に再送されず、送信されないメールが復旧不能なまま取り残される")
     @Scheduled(cron = "0 0 * * * *")
     @SchedulerLock(
             name = "emailOutboxStuckRecovery",

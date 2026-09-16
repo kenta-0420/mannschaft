@@ -25,7 +25,7 @@ import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
-import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
+import com.mannschaft.app.shift.service.ShiftMyService;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -112,7 +112,8 @@ class DashboardScheduleBatchN1Test {
     @Mock private TeamRepository teamRepository;
     @Mock private OrganizationRepository organizationRepository;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
-    @Mock private ShiftAssignmentRepository shiftAssignmentRepository;
+    // CMP-260908-2117: 今後の予定のシフトは割当の正本（shift_slots.assigned_user_ids）から引く。
+    @Mock private ShiftMyService shiftMyService;
     @Mock private ReservationRepository reservationRepository;
     @Mock private OrganizationService organizationService;
     @Mock private TeamService teamService;
@@ -163,7 +164,7 @@ class DashboardScheduleBatchN1Test {
                 teamRepository,
                 organizationRepository,
                 contentVisibilityChecker,
-                shiftAssignmentRepository,
+                shiftMyService,
                 reservationRepository,
                 scopeActionRequiredFacade,
                 organizationService,

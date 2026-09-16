@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
@@ -29,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -76,6 +78,9 @@ class PaymentB1bScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private PaymentItemRepository paymentItemRepository;
 
+    @MockitoBean
+    private BlogPostRepository blogPostRepository;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -93,6 +98,9 @@ class PaymentB1bScopeContractIT extends AbstractMySqlIntegrationTest {
     void setUp() {
         orgAId = insertOrganization("PAYB1B 組織A");
         orgBId = insertOrganization("PAYB1B 組織B");
+
+        // P0-A の実在コンテンツ検証を通すため、契約テストで使う固定 ID を orgA に所属させる。
+        when(blogPostRepository.existsByIdAndOrganizationId(12345L, orgAId)).thenReturn(true);
 
         adminOrgAId = insertUser("payb1b-admin-org-a@example.com");
         adminOrgBId = insertUser("payb1b-admin-org-b@example.com");

@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -29,6 +31,8 @@ public class ReservationWaitlistCleanupBatchService {
      */
     @BatchEndpoint(name = "reservation-waitlist-cleanup",
             description = "枠開始時刻を過ぎたキャンセル待ち(WAITING)を日次で物理削除する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。期限切れキャンセル待ちの整理であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 45 0 * * *")
     @SchedulerLock(name = "reservationWaitlistCleanupBatch", lockAtLeastFor = "30s", lockAtMostFor = "10m")
     public void cleanupExpiredWaiting() {

@@ -2,6 +2,8 @@ package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.service.AuthOAuthService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.IntentionallyPublic;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,6 +52,8 @@ public class AuthOAuthController {
      * Google OAuth 認証 URL を取得する。
      * 認証不要エンドポイント。フロントエンドはこの URL に遷移してOAuth認証フローを開始する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "OAuthログイン開始経路をGate状態にかかわらず維持するため")
     @GetMapping("/google/auth-url")
     @Operation(summary = "Google OAuth 認証URL取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Google OAuth 認証URL")
@@ -61,6 +65,8 @@ public class AuthOAuthController {
     /**
      * OAuthプロバイダを使用してログインする。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "利用者の認証経路をGate状態にかかわらず維持するため")
     @PostMapping("/{provider}")
     @Operation(summary = "OAuthログイン")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ログイン成功またはアカウント競合")
@@ -78,6 +84,8 @@ public class AuthOAuthController {
     /**
      * OAuth連携を確認する。連携トークンを検証し、アカウントを連携してトークンを発行する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "開始済みOAuth連携確認をGate状態にかかわらず完了するため")
     @PostMapping("/link/confirm")
     @Operation(summary = "OAuth連携確認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "連携完了")

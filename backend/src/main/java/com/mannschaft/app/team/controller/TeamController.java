@@ -14,6 +14,7 @@ import com.mannschaft.app.social.service.FollowService;
 import com.mannschaft.app.role.service.BlockService;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.role.service.PermissionGroupService;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.role.dto.BlockRequest;
 import com.mannschaft.app.role.dto.BlockResponse;
@@ -92,6 +93,13 @@ public class TeamController {
     @PostMapping
     @Operation(summary = "チーム作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+            description = "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または"
+                    + " fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = com.mannschaft.app.common.duplicatename
+                                    .DuplicateNameConfirmationErrorResponse.class)))
     public ResponseEntity<ApiResponse<TeamResponse>> createTeam(
             @Valid @RequestBody CreateTeamRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -452,6 +460,7 @@ public class TeamController {
     }
 
     @PatchMapping("/{slug}/permission-groups/{groupId}")
+    @AuthorizedInService
     @Operation(summary = "権限グループ更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> updatePermissionGroup(
@@ -462,6 +471,7 @@ public class TeamController {
     }
 
     @DeleteMapping("/{slug}/permission-groups/{groupId}")
+    @AuthorizedInService
     @Operation(summary = "権限グループ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePermissionGroup(
@@ -530,23 +540,6 @@ public class TeamController {
         List<String> permissions = roleService.resolveEffectivePermissions(userId, id, SCOPE_TYPE);
         String roleName = accessControlService.getRoleName(userId, id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(new EffectivePermissionsResponse(roleName, permissions)));
-    }
-
-    @PostMapping("/{slug}/transfer-ownership")
-    @Operation(summary = "オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定）")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "譲渡成功")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
-            description = "当該チームの ADMIN/DEPUTY でない")
-    public ResponseEntity<Void> transferOwnership(
-            @PathVariable String slug, @RequestParam Long targetUserId) {
-        Long id = teamService.resolveTeamId(slug);
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        // 入口二重防御（changeRole / removeMember と同じ流儀）。
-        // RoleService#transferOwnership は最終判定として「操作者が当該スコープの ADMIN」を要求するため、
-        // 本ガードは判定を緩めない（ADMIN/DEPUTY で入口を絞り、ADMIN 以外は Service 側で弾かれる）。
-        accessControlService.checkAdminOrAbove(currentUserId, id, SCOPE_TYPE);
-        roleService.transferOwnership(id, SCOPE_TYPE, currentUserId, targetUserId);
-        return ResponseEntity.ok().build();
     }
 
     /**

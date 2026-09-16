@@ -51,6 +51,9 @@ class BillingContractServiceTest {
     @Mock private EntitlementCacheEvictor cacheEvictor;
     @Mock private BillingPaymentGateway billingPaymentGateway;
     @Mock private BillingPriceResolver billingPriceResolver;
+    @Mock private BillingOperationAuthorizer billingOperationAuthorizer;
+    /** PR6a: 旧経路の pointer ガード（AC-20/21）・D3 の検疫貫通で新たに必要になった協調相手。 */
+    @Mock private BillingContractOperationSagaService billingContractOperationSagaService;
 
     private BillingContractService service;
 
@@ -64,7 +67,8 @@ class BillingContractServiceTest {
                 billingContractRepository, activeContractPointerRepository, entitlementRepository,
                 planRepository, planFeatureRepository, featureCatalogRepository, planPriceBandRepository,
                 scopeMemberCountService, cacheEvictor, FIXED_CLOCK, billingPaymentGateway,
-                billingPriceResolver, issuanceService);
+                billingPriceResolver, issuanceService, billingOperationAuthorizer,
+                billingContractOperationSagaService);
     }
 
     private PlanEntity plan(String key, boolean enabled) {
@@ -144,6 +148,24 @@ class BillingContractServiceTest {
 
         verify(cacheEvictor).evictScopeFeatures(eq(EntitlementScopeKind.TEAM), eq(10L),
                 argThatContains(FeatureKeys.ADS_HIDE, FeatureKeys.TEMPLATE_PREMIUM_MODULES));
+    }
+
+    @Test
+    @DisplayName("AC-2: 新規 TEAM/ORG 契約作成時、payer_user_id は created_by（operatorUserId）と同値で初期化される")
+    void createContract_initializesPayerUserIdFromCreatedBy() {
+        stubSaveAssignsId();
+        given(planRepository.findById("FULL")).willReturn(Optional.of(plan("FULL", true)));
+        given(planFeatureRepository.findByPlanKey("FULL")).willReturn(List.of(pf("FULL", FeatureKeys.ADS_HIDE)));
+        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.TEAM, 10L)).willReturn(34);
+        given(planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("FULL", PlanPriceBandScopeKind.TEAM))
+                .willReturn(List.of());
+
+        service.createContract(EntitlementScopeKind.TEAM, 10L, 99L, ContractKind.PLAN, "FULL", null, 7L);
+
+        ArgumentCaptor<BillingContractEntity> captor = ArgumentCaptor.forClass(BillingContractEntity.class);
+        verify(billingContractRepository).save(captor.capture());
+        assertThat(captor.getValue().getCreatedBy()).isEqualTo(7L);
+        assertThat(captor.getValue().getPayerUserId()).isEqualTo(7L);
     }
 
     @Test

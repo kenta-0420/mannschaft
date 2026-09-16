@@ -11,6 +11,7 @@ import com.mannschaft.app.admin.dto.BatchTriggerResponse;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.service.BatchJobLogService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicyEvaluator;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -74,17 +75,28 @@ public class SystemAdminBatchController {
     private final ShedLockProbe shedLockProbe;
     private final Executor jobPoolExecutor;
 
+    /**
+     * Gate 基盤工事④-A: 手動実行に対する {@code @BackgroundFeaturePolicy} の評価器。
+     *
+     * <p>フラグ無効のバッチを手動起動した際、202 Accepted を返して「動いたように見せる」ことは
+     * 許されない（AC-11）。{@link #trigger(String, boolean)} が起動前に評価し、
+     * 拒否理由が返れば 409 Conflict で明示的に拒否する。</p>
+     */
+    private final BackgroundFeaturePolicyEvaluator backgroundFeaturePolicyEvaluator;
+
     public SystemAdminBatchController(
             BatchEndpointRegistry registry,
             BatchJobLogService batchJobLogService,
             AdminMapper adminMapper,
             ShedLockProbe shedLockProbe,
-            @Qualifier("job-pool") Executor jobPoolExecutor) {
+            @Qualifier("job-pool") Executor jobPoolExecutor,
+            BackgroundFeaturePolicyEvaluator backgroundFeaturePolicyEvaluator) {
         this.registry = registry;
         this.batchJobLogService = batchJobLogService;
         this.adminMapper = adminMapper;
         this.shedLockProbe = shedLockProbe;
         this.jobPoolExecutor = jobPoolExecutor;
+        this.backgroundFeaturePolicyEvaluator = backgroundFeaturePolicyEvaluator;
     }
 
     /**
@@ -125,6 +137,13 @@ public class SystemAdminBatchController {
      *
      * <p>ShedLock 取得中の同名バッチが存在する場合は 409 Conflict を返す
      * （早期判定であり、競合状態は ShedLock 本体が最終的に防ぐ）。</p>
+     *
+     * <p>{@code @BackgroundFeaturePolicy} が要求するフィーチャーフラグが無効な場合も
+     * 409 Conflict（{@code status="FEATURE_DISABLED"}）で拒否する（Gate 基盤工事④-A / AC-11）。
+     * なお {@code @ApiResponse(409)} の description は意図的に据え置いてある。本プロジェクトは
+     * therapi-runtime-javadoc を使っておらず Javadoc は OpenAPI に反映されない一方、
+     * アノテーションの文言を変えると {@code docs/openapi.json} が drift し、
+     * 累積ドリフトを巻き込む再生成を本 PR に束ねる羽目になるためである。</p>
      */
     @PostMapping("/{name}/trigger")
     @Operation(summary = "バッチ起動")
@@ -141,6 +160,18 @@ public class SystemAdminBatchController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
         BatchEndpointDescriptor descriptor = descriptorOpt.get();
+
+        // 早期 409: @BackgroundFeaturePolicy がフラグ無効と判定したら起動しない（Gate 基盤工事④-A / AC-11）。
+        // スケジュール実行は「黙ってスキップ」が正だが、人間が押した以上は黙って 202 を返してはならない。
+        Optional<String> rejection =
+                backgroundFeaturePolicyEvaluator.manualExecutionRejection(descriptor.method());
+        if (rejection.isPresent()) {
+            log.info("バッチ手動起動をフィーチャーフラグ無効により拒否: name={}, reason={}",
+                    name, rejection.get());
+            BatchTriggerResponse body = new BatchTriggerResponse(
+                    name, "FEATURE_DISABLED", null, rejection.get());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.of(body));
+        }
 
         // 早期 409: ShedLock 取得中なら即返却
         String lockName = descriptor.schedulerLockName();

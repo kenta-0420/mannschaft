@@ -2,6 +2,7 @@ package com.mannschaft.app.member.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.member.MemberErrorCode;
 import com.mannschaft.app.member.MemberMapper;
 import com.mannschaft.app.member.PageStatus;
@@ -93,7 +94,7 @@ public class TeamPageService {
      */
     @Transactional
     public TeamPageResponse createPage(Long userId, CreateTeamPageRequest request) {
-        PageType pageType = PageType.valueOf(request.getPageType());
+        PageType pageType = EnumInputParser.parse(PageType.class, request.getPageType(), "pageType");
         Long teamId = request.getTeamId();
         Long organizationId = request.getOrganizationId();
 
@@ -133,7 +134,7 @@ public class TeamPageService {
         }
 
         PageVisibility visibility = request.getVisibility() != null
-                ? PageVisibility.valueOf(request.getVisibility()) : PageVisibility.MEMBERS_ONLY;
+                ? EnumInputParser.parse(PageVisibility.class, request.getVisibility(), "visibility") : PageVisibility.MEMBERS_ONLY;
 
         TeamPageEntity entity = TeamPageEntity.builder()
                 .teamId(teamId)
@@ -162,7 +163,7 @@ public class TeamPageService {
         checkPageAdminOrNotFound(actorUserId, entity);
 
         PageVisibility visibility = request.getVisibility() != null
-                ? PageVisibility.valueOf(request.getVisibility()) : entity.getVisibility();
+                ? EnumInputParser.parse(PageVisibility.class, request.getVisibility(), "visibility") : entity.getVisibility();
         Boolean allowSelfEdit = request.getAllowSelfEdit() != null
                 ? request.getAllowSelfEdit() : entity.getAllowSelfEdit();
         Integer sortOrder = request.getSortOrder() != null
@@ -195,7 +196,7 @@ public class TeamPageService {
     public TeamPageResponse changeStatus(Long actorUserId, Long pageId, PublishRequest request) {
         TeamPageEntity entity = findPageOrThrow(pageId);
         checkPageAdminOrNotFound(actorUserId, entity);
-        PageStatus status = PageStatus.valueOf(request.getStatus());
+        PageStatus status = EnumInputParser.parse(PageStatus.class, request.getStatus(), "status");
         entity.changeStatus(status);
         TeamPageEntity saved = pageRepository.save(entity);
         log.info("ページステータス変更: id={}, status={}", pageId, status);

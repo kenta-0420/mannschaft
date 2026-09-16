@@ -2,6 +2,7 @@ package com.mannschaft.app.template.service;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.template.TemplateErrorCode;
 import com.mannschaft.app.template.dto.CreateTemplateRequest;
 import com.mannschaft.app.template.dto.ModuleSummaryResponse;
@@ -155,7 +156,7 @@ public class SystemAdminTemplateService {
         moduleDefinitionRepository.findById(moduleId)
                 .orElseThrow(() -> new BusinessException(TemplateErrorCode.TMPL_002));
 
-        ModuleLevelAvailabilityEntity.Level level = ModuleLevelAvailabilityEntity.Level.valueOf(request.getLevel());
+        ModuleLevelAvailabilityEntity.Level level = EnumInputParser.parse(ModuleLevelAvailabilityEntity.Level.class, request.getLevel(), "level");
         ModuleLevelAvailabilityEntity availability = moduleLevelAvailabilityRepository
                 .findByModuleIdAndLevel(moduleId, level)
                 .orElseThrow(() -> new BusinessException(TemplateErrorCode.TMPL_002));

@@ -13,8 +13,7 @@ import com.mannschaft.app.notification.credit.repository.NotificationCreditPurch
 import com.mannschaft.app.notification.credit.repository.NotificationMonthlyUsageRepository;
 import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
 import com.mannschaft.app.notification.credit.service.NotificationCreditService;
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.notification.credit.event.NotificationCreditFreeQuotaAlertEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
@@ -61,10 +61,7 @@ class NotificationCreditServiceTest {
     private NotificationMonthlyUsageRepository monthlyUsageRepository;
 
     @Mock
-    private NotificationHelper notificationHelper;
-
-    @Mock
-    private UserRoleRepository userRoleRepository;
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private NotificationCreditService service;
@@ -131,15 +128,14 @@ class NotificationCreditServiceTest {
             given(monthlyUsageRepository.findByOrganizationIdAndMonthAndSourceType(any(), any(), any()))
                     .willReturn(Optional.empty());
             given(monthlyUsageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(userRoleRepository.findAdminUserIdsByOrganizationId(anyLong()))
-                    .willReturn(java.util.List.of());
-
             // when
             service.consume(1L, 200, NotificationSourceType.NOTIFY_ALL);
 
             // then: 9100通 >= 9000 → アラートフラグが立つ
             assertThat(balance.getFreeUsedThisMonth()).isEqualTo(9100L);
             assertThat(balance.getAlertSentThisMonth()).isTrue();
+            // Issue #2990 L2: 業務TX内では通知を発火せず、イベントを publish するだけである。
+            verify(eventPublisher).publishEvent(new NotificationCreditFreeQuotaAlertEvent(1L));
         }
 
         /**
@@ -337,47 +333,6 @@ class NotificationCreditServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(NotificationCreditErrorCode.PURCHASE_NOT_FOUND));
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────
-    // Issue #2715 CMP-055 ロットC-1: sendFreeQuotaAlertAsync の i18n
-    // ─────────────────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("sendFreeQuotaAlertAsync（Issue #2715 ロットC-1）")
-    class SendFreeQuotaAlertAsyncTests {
-
-        @Test
-        @DisplayName("受信者 locale が en なら件名・本文が英語になりプレースホルダが残らない")
-        void en_localizesTitleAndBody() {
-            var realMessageSource = new org.springframework.context.support.ResourceBundleMessageSource();
-            realMessageSource.setBasename("messages");
-            realMessageSource.setDefaultEncoding("UTF-8");
-            org.springframework.test.util.ReflectionTestUtils.setField(service, "messageSource", realMessageSource);
-            // @Lazy/@Autowired フィールドは @InjectMocks のコンストラクタ注入対象に含まれないため明示的に注入する。
-            org.springframework.test.util.ReflectionTestUtils.setField(service, "notificationHelper", notificationHelper);
-
-            given(userRoleRepository.findAdminUserIdsByOrganizationId(1L)).willReturn(java.util.List.of(5L));
-
-            org.springframework.test.util.ReflectionTestUtils.invokeMethod(service, "sendFreeQuotaAlertAsync", 1L);
-
-            org.mockito.ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> builderCaptor =
-                    org.mockito.ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
-            verify(notificationHelper).notifyAllLocalized(
-                    org.mockito.ArgumentMatchers.eq(java.util.List.of(5L)),
-                    org.mockito.ArgumentMatchers.eq("NOTIFICATION_CREDIT_ALERT"),
-                    org.mockito.ArgumentMatchers.eq("NOTIFICATION_CREDIT"),
-                    org.mockito.ArgumentMatchers.eq(1L),
-                    org.mockito.ArgumentMatchers.any(),
-                    org.mockito.ArgumentMatchers.eq(1L),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.isNull(),
-                    builderCaptor.capture());
-
-            NotificationHelper.LocalizedMessage message = builderCaptor.getValue().build(5L, java.util.Locale.ENGLISH);
-            assertThat(message.title()).isEqualTo("Your free notification quota is running low");
-            assertThat(message.body()).doesNotContain("{0}").contains("90%");
         }
     }
 }

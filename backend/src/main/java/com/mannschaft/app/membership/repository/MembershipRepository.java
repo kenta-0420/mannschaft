@@ -3,8 +3,10 @@ package com.mannschaft.app.membership.repository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,6 +25,15 @@ import java.util.Optional;
  */
 public interface MembershipRepository extends JpaRepository<MembershipEntity, Long> {
 
+    /** 退会処理が user 行を先にロックするために、Entity を管理状態にせず userId だけを取得する。 */
+    @Query("SELECT m.userId FROM MembershipEntity m WHERE m.id = :membershipId")
+    Optional<Long> findUserIdById(@Param("membershipId") Long membershipId);
+
+    /** user 行ロック後に最新状態を current read し、同一 membership の二重退会を直列化する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MembershipEntity m WHERE m.id = :membershipId")
+    Optional<MembershipEntity> findByIdForUpdate(@Param("membershipId") Long membershipId);
+
     /**
      * 指定ユーザーが指定スコープに対してアクティブなメンバーシップを 1 件取得する。
      */
@@ -30,6 +41,16 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             "WHERE m.userId = :userId AND m.scopeType = :scopeType AND m.scopeId = :scopeId " +
             "AND m.leftAt IS NULL")
     Optional<MembershipEntity> findActiveByUserAndScope(
+            @Param("userId") Long userId,
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId);
+
+    /** 外側transactionのRR snapshotに依存せず、現在の在籍行を悲観ロック読取する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MembershipEntity m " +
+            "WHERE m.userId = :userId AND m.scopeType = :scopeType AND m.scopeId = :scopeId " +
+            "AND m.leftAt IS NULL")
+    Optional<MembershipEntity> findActiveByUserAndScopeForUpdate(
             @Param("userId") Long userId,
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId);
@@ -233,6 +254,21 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId);
 
+    /** 複数スコープの現役メンバー数を 1 SQL で返す（所属一覧の N+1 回避用）。 */
+    @Query("SELECT m.scopeId AS scopeId, COUNT(DISTINCT m.userId) AS memberCount " +
+            "FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId IN :scopeIds AND m.leftAt IS NULL " +
+            "GROUP BY m.scopeId")
+    List<ScopeMemberCountProjection> countActiveDistinctUsersByScopes(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeIds") Collection<Long> scopeIds);
+
+    interface ScopeMemberCountProjection {
+        Long getScopeId();
+
+        long getMemberCount();
+    }
+
     /**
      * F10.1.1 / P3b Wave2: 指定スコープのアクティブ会員の user_id 集合（DISTINCT）を返す。
      *
@@ -345,9 +381,11 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
      * @param scopeId   対象スコープ ID（対象チーム ID 等）
      * @param cursor    直前チャンク末尾の user_id（初回は最小値未満＝{@code 0L} 等を渡す）
      * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
-     * @return {@code user_id > cursor} の現役かつ ACTIVE・未削除ユーザーの user_id を昇順に最大 chunk 件
+     * @return {@code user_id > cursor} の現役かつ ACTIVE・未削除ユーザーの {@code [user_id, locale]} を昇順に最大 chunk 件
+     *         （Issue #2871: 受信者ごとに文面のロケールを変えるため locale も同時に取る。users は既に PK で
+     *         JOIN 済みであり、射影を 1 列広げるだけなので実行計画は変わらない）
      */
-    @Query(value = "SELECT CAST(m.user_id AS SIGNED) FROM memberships m "
+    @Query(value = "SELECT CAST(m.user_id AS SIGNED), u.locale FROM memberships m "
             + "JOIN users u ON u.id = m.user_id "
             + "WHERE m.scope_type = :#{#scopeType.name()} AND m.scope_id = :scopeId "
             + "AND m.left_at IS NULL "
@@ -355,7 +393,7 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             + "AND m.user_id > :cursor "
             + "ORDER BY m.user_id ASC",
             nativeQuery = true)
-    List<Long> findActiveUserIdsByScopeKeyset(
+    List<Object[]> findActiveUserIdsByScopeKeyset(
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId,
             @Param("cursor") Long cursor,
@@ -387,9 +425,10 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
      * @param excludedB 母集団から除く user_id その2（キープ作成者。作成者匿名化時は番人値 {@code 0}）
      * @param cursor    直前チャンク末尾の user_id（初回は {@code 0L}）
      * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}）
-     * @return {@code user_id > cursor} の MEMBER 以上・現役・ACTIVE・未削除・除外対象外の user_id を昇順に最大 chunk 件
+     * @return {@code user_id > cursor} の MEMBER 以上・現役・ACTIVE・未削除・除外対象外の {@code [user_id, locale]} を昇順に最大 chunk 件
+     *         （Issue #2871: locale を同時取得。users は既に PK JOIN 済みのため実行計画は不変）
      */
-    @Query(value = "SELECT CAST(m.user_id AS SIGNED) FROM memberships m "
+    @Query(value = "SELECT CAST(m.user_id AS SIGNED), u.locale FROM memberships m "
             + "JOIN users u ON u.id = m.user_id "
             + "WHERE m.scope_type = 'TEAM' AND m.scope_id = :teamId "
             + "AND m.role_kind = 'MEMBER' "
@@ -399,7 +438,7 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             + "AND m.user_id > :cursor "
             + "ORDER BY m.user_id ASC",
             nativeQuery = true)
-    List<Long> findMemberAndAboveTeamUserIdsByKeysetExcluding(
+    List<Object[]> findMemberAndAboveTeamUserIdsByKeysetExcluding(
             @Param("teamId") Long teamId,
             @Param("excludedA") Long excludedA,
             @Param("excludedB") Long excludedB,

@@ -63,6 +63,8 @@ class AccountPurgeServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
+    private com.mannschaft.app.gdpr.service.PurgeStartGuard purgeStartGuard;
+    @Mock
     private DataExportRepository dataExportRepository;
     @Mock
     private StorageService storageService;

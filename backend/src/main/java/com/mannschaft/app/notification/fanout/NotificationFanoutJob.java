@@ -68,11 +68,10 @@ public class NotificationFanoutJob extends UuidV7Entity {
     @Column(name = "organization_id")
     private Long organizationId;
 
-    @Column(name = "title", nullable = false, length = 200)
-    private String title;
-
-    @Column(name = "body", length = 1000)
-    private String body;
+    // Issue #2871: 描画済みの title / body 列は撤去した。文面の正本はロケール別の子表
+    // notification_fanout_job_messages（{@link NotificationFanoutJobMessage}）1 箇所に統一する。
+    // 親に残したままにすると「子表があるのに親の日本語が配られている」経路が静かに生き残るため、
+    // 二経路を作らない（本番に未処理データが無いことを確認済みで後方互換は不要・マスター裁可）。
 
     @Enumerated(EnumType.STRING)
     @Column(name = "priority", nullable = false, length = 10)

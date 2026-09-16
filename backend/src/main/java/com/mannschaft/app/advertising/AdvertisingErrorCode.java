@@ -124,7 +124,15 @@ public enum AdvertisingErrorCode implements ErrorCode {
      * <b>マージ時は origin/main の {@code AdvertisingErrorCode} 最大値（本実装時点 AD_034）を再確認し、
      * 衝突があれば繰り上げること。</b></p>
      */
-    AD_035("AD_035", "対象の広告が見つかりません", Severity.WARN);
+    AD_035("AD_035", "対象の広告が見つかりません", Severity.WARN),
+
+    /**
+     * 後払い（請求書方式）は廃止済み・新規選択不可（HTTP 400）。F08.12 §5.0。
+     *
+     * <p>与信審査・延滞制裁・取消のいずれも実装されていない後払いを、本番データが無いうちに畳んだ。
+     * 既存の {@code BillingMethod.INVOICE} 行・enum 値自体は残すが、新規登録では拒否する。</p>
+     */
+    AD_036("AD_036", "後払い（請求書方式）は廃止されました。クレジットカード決済のみご利用いただけます", Severity.WARN);
 
     private final String code;
     private final String message;

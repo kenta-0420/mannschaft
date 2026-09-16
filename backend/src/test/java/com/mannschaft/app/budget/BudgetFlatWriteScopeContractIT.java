@@ -13,6 +13,11 @@ import com.mannschaft.app.budget.repository.BudgetTransactionAttachmentRepositor
 import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclEntity;
+import com.mannschaft.app.common.storage.acl.StorageAclMode;
+import com.mannschaft.app.common.storage.acl.StorageAclRepository;
+import com.mannschaft.app.common.storage.acl.StorageAclScopeType;
+import com.mannschaft.app.common.storage.acl.StorageAclStatus;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -35,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -99,6 +105,9 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private BudgetReportRepository reportRepository;
+
+    @Autowired
+    private StorageAclRepository storageAclRepository;
 
     /**
      * 認可根治戦役 Wave3-B9: budget の StorageService インターフェース注入先である
@@ -181,6 +190,20 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
         attachmentA = attachmentRepository.save(BudgetTransactionAttachmentEntity.builder()
                 .transactionId(transactionA.getId()).fileKey("budget/attachments/existing.pdf")
                 .originalFilename("existing.pdf").fileSize(100L).mimeType("application/pdf").build());
+        storageAclRepository.save(StorageAclEntity.builder()
+                .fileKey(attachmentA.getFileKey())
+                .ownerId(adminAId)
+                .scopeType(StorageAclScopeType.TEAM)
+                .scopeKey(teamAId.toString())
+                .aclMode(StorageAclMode.CONTENT_BOUND)
+                .contentType("application/pdf")
+                .parentContentReferenceType("BUDGET_TRANSACTION")
+                .parentContentReferenceKey(transactionA.getId().toString())
+                .attachmentBindingType("BUDGET_TRANSACTION_ATTACHMENT")
+                .attachmentBindingKey(attachmentA.getId().toString())
+                .status(StorageAclStatus.CLAIMED)
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build());
 
         reportA = reportRepository.save(BudgetReportEntity.builder()
                 .fiscalYearId(fyA.getId()).scopeType("TEAM").scopeId(teamAId)
@@ -188,6 +211,20 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                 .periodStart(LocalDate.of(2026, 4, 1)).periodEnd(LocalDate.of(2026, 4, 30))
                 .status(BudgetReportStatus.COMPLETED).fileKey("budget/reports/existing.csv")
                 .generatedBy(adminAId).build());
+        storageAclRepository.save(StorageAclEntity.builder()
+                .fileKey(reportA.getFileKey())
+                .ownerId(adminAId)
+                .scopeType(StorageAclScopeType.TEAM)
+                .scopeKey(teamAId.toString())
+                .aclMode(StorageAclMode.CONTENT_BOUND)
+                .contentType("BUDGET_REPORT_CSV")
+                .parentContentReferenceType("BUDGET_REPORT")
+                .parentContentReferenceKey(reportA.getId().toString())
+                .attachmentBindingType("BUDGET_REPORT_FILE")
+                .attachmentBindingKey(reportA.getId().toString())
+                .status(StorageAclStatus.CLAIMED)
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build());
 
         given(storageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
                 .willReturn(new PresignedUploadResult("https://mock-upload.example/put", "budget/attachments/mock.pdf", 900));
@@ -348,9 +385,11 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("正当ADMINの添付登録は201")
         void 正当ADMINの添付登録は201() throws Exception {
             setAuth(adminAId);
+            String fileKey = presignAttachmentFileKey(transactionA.getId());
             mockMvc.perform(post("/api/v1/budget/transactions/{id}/attachments", transactionA.getId())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(registerAttachmentBody(transactionA.getId()))))
+                            .content(objectMapper.writeValueAsString(
+                                    registerAttachmentBody(transactionA.getId(), fileKey))))
                     .andExpect(status().isCreated());
         }
 
@@ -618,13 +657,28 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Map<String, Object> registerAttachmentBody(Long transactionId) {
+        return registerAttachmentBody(transactionId, "budget/attachments/mock.pdf");
+    }
+
+    private Map<String, Object> registerAttachmentBody(Long transactionId, String fileKey) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("transactionId", transactionId);
         body.put("fileName", "receipt.pdf");
         body.put("fileType", "application/pdf");
         body.put("fileSize", 1024);
-        body.put("s3Key", "budget/attachments/mock.pdf");
+        body.put("s3Key", fileKey);
         return body;
+    }
+
+    private String presignAttachmentFileKey(Long transactionId) throws Exception {
+        String response = mockMvc.perform(post("/api/v1/budget/transactions/{id}/upload-url", transactionId)
+                        .param("fileName", "receipt.pdf")
+                        .param("contentType", "application/pdf"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).path("data").path("s3Key").asText();
     }
 
     private Map<String, Object> createCategoryBody(Long fiscalYearId) {

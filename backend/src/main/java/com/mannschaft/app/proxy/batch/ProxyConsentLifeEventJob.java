@@ -1,5 +1,7 @@
 package com.mannschaft.app.proxy.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
 import com.mannschaft.app.auth.event.UserStatusChangedEvent;
 import com.mannschaft.app.proxy.service.ProxyConsentLifecycleService;
@@ -27,6 +29,8 @@ public class ProxyConsentLifeEventJob {
 
     private final ProxyConsentLifecycleService lifecycleService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "死亡・転居というライフイベントに応じた代理入力同意の失効処理であり、止めると本人が既に存在しないのに同意書が有効なまま残る。イベントは再生されないため取りこぼすと恒久的に是正されない")
     @EventListener
     @Async("event-pool")
     public void onUserStatusChanged(UserStatusChangedEvent event) {

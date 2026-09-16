@@ -1,6 +1,8 @@
 package com.mannschaft.app.notification.confirmable.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,8 @@ public class ConfirmableNotificationExpiryBatchService {
      *
      * <p>ACTIVE かつ deadline_at が現在日時より前の通知を一括で EXPIRED に変更する。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。期限超過の確認通知を EXPIRED へ更新する処理であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "notification-confirmable-expiry-daily", description = "期限超過の確認通知を毎日 03:00 に EXPIRED へ更新する")
     @Scheduled(cron = "0 0 3 * * *") // 毎日 AM 3:00
     @SchedulerLock(

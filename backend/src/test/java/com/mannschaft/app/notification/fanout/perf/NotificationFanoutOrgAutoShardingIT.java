@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.fanout.perf;
 
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
@@ -73,7 +74,8 @@ class NotificationFanoutOrgAutoShardingIT extends AbstractMySqlIntegrationTest {
         String type = "FANOUT_SHARD_AC12";
         UUID sourceEvent = UUID.randomUUID();
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seed.organizationId()),
-                type, sourceEvent, seed.organizationId(), "AC-1/2 自動シャード化", "本文",
+                type, sourceEvent, seed.organizationId(),FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-1/2 自動シャード化"},
                 NotificationPriority.NORMAL, "FANOUT_SHARD_IT", null, "/x", null, true);
 
         // enqueue は O(1)（AC-7）: 母集団に依らず親ジョブ 1 行・shard_count=0（未評価）だけを作る。
@@ -132,7 +134,8 @@ class NotificationFanoutOrgAutoShardingIT extends AbstractMySqlIntegrationTest {
         String type = "FANOUT_SHARD_AC3";
         UUID sourceEvent = UUID.randomUUID();
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seed.organizationId()),
-                type, sourceEvent, seed.organizationId(), "AC-3 母集団ゼロ", "本文",
+                type, sourceEvent, seed.organizationId(),FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-3 母集団ゼロ"},
                 NotificationPriority.NORMAL, "FANOUT_SHARD_IT", null, "/x", null, true);
 
         List<NotificationFanoutJob> jobs = jobRepository
@@ -169,7 +172,8 @@ class NotificationFanoutOrgAutoShardingIT extends AbstractMySqlIntegrationTest {
         String type = "FANOUT_SHARD_AC8";
         UUID sourceEvent = UUID.randomUUID();
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seed.organizationId()),
-                type, sourceEvent, seed.organizationId(), "AC-8 小母集団回帰", "本文",
+                type, sourceEvent, seed.organizationId(),FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-8 小母集団回帰"},
                 NotificationPriority.NORMAL, "FANOUT_SHARD_IT", null, "/x", null, true);
 
         List<NotificationFanoutJob> jobs = jobRepository
@@ -206,7 +210,8 @@ class NotificationFanoutOrgAutoShardingIT extends AbstractMySqlIntegrationTest {
         String type = "FANOUT_SHARD_AC9";
         UUID sourceEvent = UUID.randomUUID();
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seed.organizationId()),
-                type, sourceEvent, seed.organizationId(), "AC-9 重複0", "本文",
+                type, sourceEvent, seed.organizationId(),FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-9 重複0"},
                 NotificationPriority.NORMAL, "FANOUT_SHARD_IT", null, "/x", null, true);
 
         // enqueue 直後は親 1 行（shard_count=0）。processReady 完走ループで分割→全シャード配信。

@@ -20,7 +20,7 @@
 | **大名 (Agent) 起動完了直後** | その agent の commit を本リポに統合 (cherry-pick / merge) → 直ちに対応する worktree を `git worktree remove --force` で削除 |
 | **セッション開始時** | `git worktree list` を確認し、自分が作ったものでない `agent-*` worktree が残っていれば原因を確認のうえ削除を提案する |
 | **セッション終了時** | 自分が起動した agent の worktree がすべて消えていることを確認 |
-| **週次** | 全 `worktree-agent-*` ブランチと残骸ディレクトリを一括削除 |
+| **週次** | `/陣払い` の dry-run で stale と残骸理由を確認し、必要時だけ明示適用 |
 
 ### コマンド集
 
@@ -28,26 +28,17 @@
 # 残存worktreeの確認
 git worktree list
 
-# 個別削除（コミットを取り込み済みであることを確認してから）
-git worktree remove --force .claude/worktrees/agent-xxxxx
-git branch -D worktree-agent-xxxxx
+# 既定は dry-run（7日超）。対象・保持理由を確認する
+node scripts/worktree-cleanup.mjs --days 7
 
-# 全 agent worktree を一括削除（変更が残っていても強制削除する）
-for wt in $(git worktree list --porcelain | grep "^worktree" | grep "agent-" | awk '{print $2}'); do
-  git worktree remove --force "$wt"
-done
+# clean な agent-* / worktree-agent-* のworktree登録だけを明示適用で撤去する（branchは削除しない）
+node scripts/worktree-cleanup.mjs --days 7 --apply
 
-# 孤立した worktree-agent-* ブランチを一括削除
-git branch -D $(git branch | grep "worktree-agent-" | tr -d ' ')
-
-# stale entries（既にディレクトリが消えた worktree のメタ情報）を削除
-git worktree prune
-
-# .claude/worktrees/ 配下に空ディレクトリが残っていれば削除
-rmdir .claude/worktrees/agent-* 2>/dev/null || true
+# 凱旋後の必須ゲート（1日超staleと総数60超は非0）
+node scripts/worktree-cleanup.mjs --days 1 --check --limit 60
 ```
 
-> 一括掃除はスキル `/陣払い` でも実行できる（既定で 7 日以上前の足軽 worktree を撤去）。
+> `/陣払い` は上記スクリプトへ委譲する。dirty/locked/index.lock/Git検査失敗、prunable登録、未登録ディレクトリ、junction は自動で消さず、理由を出して保持する。`frontend/node_modules` を含むjunctionはリンクだけを先に外し、リンク先は削除しない。
 
 ### 注意事項
 
@@ -79,3 +70,20 @@ rmdir .claude/worktrees/agent-* 2>/dev/null || true
 - worktree 内で commit が完了したら、メインリポジトリに `git merge` でマージする
 
 詳細経緯: memory `feedback_branch_isolation` / `feedback_merge_gh_only_no_honjin_git`。
+
+## 並列ビルドの交通整理
+
+- **実証事実**: 同一マシン上で Gradle の heavy build（compileJava/test/build 等）を複数 worktree から同時に走らせると遅くなる。原因はファイルロック待ちではなく **CPU/IO リソース競合**（3並列 --info ログでロック待ちゼロ件、単独310秒 → 3並列489〜513秒、約1.6倍悪化）。build cache（`org.gradle.caching=true`）は正常に機能しており、無効化する必要はない。
+- **旧処方の撤回**: 「遅ければ `--no-build-cache` を付ける」という対処は誤り。build cache は原因ではないため無効化しても改善しない。付けないこと。
+- **対策**: `backend/scripts/gradle-turnstile.sh` で heavy build を1本に直列化する。
+  ```bash
+  cd backend
+  ./scripts/gradle-turnstile.sh ./gradlew build
+  ./scripts/gradle-turnstile.sh ./gradlew test
+  ```
+  - ロック置き場はマシン全体で固定の1箇所（`${LOCALAPPDATA:-$HOME}/gradle-turnstile`）。worktree ごとの `GRADLE_USER_HOME` には依存しない（直列化の単位はマシンなのでロックも1つでよい）
+  - 取得は「一意な一時ディレクトリに info(PID/TIME/TOKEN) を書いてから `mv -T` でロック名へ改名」方式でアトミックに行う（mkdir直後の空ディレクトリが見える隙間を作らない）
+  - 先客がいる場合は15秒間隔でポーリングして待機（1分毎に状況を出力）
+  - stale 奪取の条件は**ロック保持プロセスの PID が死んでいること**のみ（生存中は経過時間に関わらず奪取しない）。生存中の先客を待つ時間には上限180分を設け、超過時はエラー終了して人間の確認に委ねる
+  - **heavy**（このスクリプト経由が必須）: `test` / `build` / `bootJar` / `check` / `compileJava` / `compileTestJava` を含む実行
+  - **軽量**（対象外）: `help` / `tasks` / `properties` / `--status` / `--stop` 等

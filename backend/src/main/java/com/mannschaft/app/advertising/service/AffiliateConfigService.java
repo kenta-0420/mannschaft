@@ -11,6 +11,7 @@ import com.mannschaft.app.advertising.dto.UpdateAffiliateConfigRequest;
 import com.mannschaft.app.advertising.entity.AffiliateConfigEntity;
 import com.mannschaft.app.advertising.repository.AffiliateConfigRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -64,9 +65,9 @@ public class AffiliateConfigService {
 
         AffiliateConfigEntity entity = findById(id);
         entity.update(
-                AffiliateProvider.valueOf(request.getProvider()),
+                EnumInputParser.parse(AffiliateProvider.class, request.getProvider(), "provider"),
                 request.getTagId(),
-                AdPlacement.valueOf(request.getPlacement()),
+                EnumInputParser.parse(AdPlacement.class, request.getPlacement(), "placement"),
                 request.getDescription(),
                 request.getBannerImageUrl(),
                 request.getBannerWidth(),

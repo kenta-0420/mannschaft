@@ -3,6 +3,9 @@ package com.mannschaft.app.social.announcement;
 import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -14,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.LongStream;
 
@@ -26,6 +30,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -88,6 +93,9 @@ class AnnouncementMarkAllAsReadBatchTest {
     @Mock
     private RoleResolver roleResolver;
 
+    @Mock
+    private PaymentGateService paymentGateService;
+
     @InjectMocks
     private AnnouncementReadService readService;
 
@@ -98,6 +106,13 @@ class AnnouncementMarkAllAsReadBatchTest {
 
     private void givenMemberViewer() {
         given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+        lenient().when(paymentGateService.checkAccessBatch(any(), any(), any(), any()))
+                .thenAnswer(invocation -> {
+                    Collection<Long> ids = invocation.getArgument(1);
+                    if (ids == null) return Map.of();
+                    return ids.stream().collect(java.util.stream.Collectors.toMap(
+                            id -> id, id -> new GateCheckResponse(true, false, List.of())));
+                });
     }
 
     /** 初回チャンク（カーソル無し）の取得をスタブする。 */
@@ -116,6 +131,28 @@ class AnnouncementMarkAllAsReadBatchTest {
     @Nested
     @DisplayName("チャンク分割（1リクエストで完結・上限を超えない）")
     class Chunking {
+
+        @Test
+        @DisplayName("一括既読はHIDDENを除外し、FULLとLOCKEDだけを既読化する")
+        void hiddenRowsAreNotMarkedRead() {
+            givenMemberViewer();
+            givenFirstChunk().willReturn(List.of(30L, 31L, 32L));
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                    .willReturn(java.util.Map.of(
+                            30L, new GateCheckResponse(false, true, List.of()),
+                            31L, new GateCheckResponse(false, false, List.of()),
+                            32L, new GateCheckResponse(true, false, List.of())));
+
+            AnnouncementReadService.MarkAllReadOutcome outcome =
+                    readService.markAllAsRead(AnnouncementScopeType.TEAM, TEAM_ID, USER_ID);
+
+            assertThat(outcome.markedCount()).isEqualTo(2);
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<Collection<Long>> captor = ArgumentCaptor.forClass(Collection.class);
+            verify(readStatusRepository).insertReadStatusesIgnoringExisting(eq(USER_ID), captor.capture());
+            assertThat(captor.getValue()).containsExactly(31L, 32L);
+            verify(paymentGateService).checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class));
+        }
 
         @Test
         @DisplayName("未読がチャンク未満なら クエリ1回・UPSERT 1回で完結する")

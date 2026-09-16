@@ -3,6 +3,7 @@ package com.mannschaft.app.role;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
@@ -235,6 +236,10 @@ class DeadPermissionCatalogFlywayIT {
      * 一般メンバーと非メンバーはこの経路では同じ「権限ロール無し」に落ちる。</p>
      */
     private void prepareRoles() {
+        MembershipTestHelper.insertActiveUser(em, ADMIN_USER_ID);
+        MembershipTestHelper.insertActiveUser(em, DEPUTY_USER_ID);
+        MembershipTestHelper.insertActiveUser(em, MEMBER_USER_ID);
+        MembershipTestHelper.insertActiveUser(em, OUTSIDER_USER_ID);
         em.createNativeQuery("SET FOREIGN_KEY_CHECKS = 0").executeUpdate();
 
         assignRole(ADMIN_USER_ID, "ADMIN", SCOPE_TYPE_TEAM, TEAM_ID);

@@ -1,14 +1,12 @@
 package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.common.AccessControlService;
-import com.mannschaft.app.notification.entity.NotificationEntity;
-import com.mannschaft.app.notification.service.NotificationDispatchService;
-import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.event.AttendanceSolicitationOpenedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.ScheduleTargetRepository;
@@ -29,7 +27,6 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -37,7 +34,15 @@ import static org.mockito.Mockito.verify;
 
 /**
  * {@link ScheduleAttendanceService#openAttendanceSolicitation} の単体テスト（機能55 第二陣・RSVP 根治）。
- * メンバー解決・冪等・通知発火を検証する。
+ * メンバー解決・冪等・通知イベントの発行を検証する。
+ *
+ * <p><b>Issue #2990 L8</b>: 是正前は本メソッドの業務トランザクション内で
+ * {@code createNotificationPreAuthorized} + {@code dispatch} を直接呼んでおり、本テストも
+ * その呼び出し回数を検証していた。是正後、業務TX内では
+ * {@link AttendanceSolicitationOpenedEvent} を publish するだけになったため、検証対象も
+ * 「イベントが発行されたか／されなかったか」へ移した。実配送の検証は
+ * {@code ScheduleAttendanceSolicitationNotificationListenerTest}（配送内容）と
+ * {@code ScheduleNotificationTransactionBoundaryIT}（実DBでの巻き戻らなさ）が担う。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ScheduleAttendanceService.openAttendanceSolicitation 単体テスト")
@@ -64,10 +69,6 @@ class ScheduleAttendanceSolicitationServiceTest {
     @Mock
     private AccessControlService accessControlService;
     @Mock
-    private NotificationService notificationService;
-    @Mock
-    private NotificationDispatchService notificationDispatchService;
-    @Mock
     private ScheduleTargetRepository scheduleTargetRepository;
     @Mock
     private OrganizationMembershipService organizationMembershipService;
@@ -84,7 +85,6 @@ class ScheduleAttendanceSolicitationServiceTest {
                 attendanceRepository, scheduleRepository, scheduleService, eventSurveyService,
                 userRoleRepository, eventPublisher, proxyInputContext, proxyInputRecordRepository,
                 scheduleDelegationService,
-                notificationService, notificationDispatchService,
                 scheduleTargetRepository,
                 organizationMembershipService,
                 accessControlService);
@@ -114,10 +114,6 @@ class ScheduleAttendanceSolicitationServiceTest {
         given(attendanceRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
         given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
                 .willReturn(List.of(201L, 202L));
-        NotificationEntity dummy = org.mockito.Mockito.mock(NotificationEntity.class);
-        given(notificationService.createNotificationPreAuthorized(
-                anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any()))
-                .willReturn(dummy);
 
         // when
         service.openAttendanceSolicitation(SCHEDULE_ID);
@@ -125,11 +121,8 @@ class ScheduleAttendanceSolicitationServiceTest {
         // then: 出欠レコード生成は generateAttendanceRecords 内で saveAll（バッチ）1回で行われる
         verify(attendanceRepository, times(1)).saveAll(any());
         verify(attendanceRepository, never()).save(any());
-        // 募集通知は2名分作成・配信される
-        verify(notificationService, times(2)).createNotificationPreAuthorized(
-                anyLong(), eq("SCHEDULE_ATTENDANCE_REQUEST"), any(), any(), any(),
-                eq("SCHEDULE"), eq(SCHEDULE_ID), any(), eq(TEAM_ID), any(), eq(999L));
-        verify(notificationDispatchService, times(2)).dispatch(dummy);
+        // 募集通知は業務TX内では送らず、AFTER_COMMIT 配送用のイベントを1件だけ発行する。
+        verify(eventPublisher).publishEvent(new AttendanceSolicitationOpenedEvent(SCHEDULE_ID));
     }
 
     private ScheduleEntity orgSchedule(boolean includeSupporters) {
@@ -158,10 +151,6 @@ class ScheduleAttendanceSolicitationServiceTest {
         given(attendanceRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
         given(organizationMembershipService.resolveOrgDistributionUserIds(ORG_ID, false))
                 .willReturn(List.of(301L, 302L, 303L));
-        NotificationEntity dummy = org.mockito.Mockito.mock(NotificationEntity.class);
-        given(notificationService.createNotificationPreAuthorized(
-                anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any()))
-                .willReturn(dummy);
 
         // when
         service.openAttendanceSolicitation(SCHEDULE_ID);
@@ -169,11 +158,8 @@ class ScheduleAttendanceSolicitationServiceTest {
         // then: 出欠レコードは saveAll（バッチ）で 1 回だけ呼ばれる（per-user save ではない）
         verify(attendanceRepository, times(1)).saveAll(any());
         verify(attendanceRepository, never()).save(any());
-        // 募集通知は3名分作成・配信される（scope=ORGANIZATION・scopeId=ORG_ID）
-        verify(notificationService, times(3)).createNotificationPreAuthorized(
-                anyLong(), eq("SCHEDULE_ATTENDANCE_REQUEST"), any(), any(), any(),
-                eq("SCHEDULE"), eq(SCHEDULE_ID), any(), eq(ORG_ID), any(), eq(999L));
-        verify(notificationDispatchService, times(3)).dispatch(dummy);
+        // 募集通知は業務TX内では送らず、AFTER_COMMIT 配送用のイベントを1件だけ発行する。
+        verify(eventPublisher).publishEvent(new AttendanceSolicitationOpenedEvent(SCHEDULE_ID));
         // TEAM 系の解決は一切使われないこと
         verify(userRoleRepository, never()).findUserIdsByScope(any(), anyLong());
     }
@@ -186,18 +172,14 @@ class ScheduleAttendanceSolicitationServiceTest {
         given(attendanceRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
         given(organizationMembershipService.resolveOrgDistributionUserIds(ORG_ID, true))
                 .willReturn(List.of(301L, 302L));
-        NotificationEntity dummy = org.mockito.Mockito.mock(NotificationEntity.class);
-        given(notificationService.createNotificationPreAuthorized(
-                anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any()))
-                .willReturn(dummy);
 
         // when
         service.openAttendanceSolicitation(SCHEDULE_ID);
 
-        // then: includeSupporters=true で窓口が呼ばれ、2名分の通知が飛ぶ
+        // then: includeSupporters=true で窓口が呼ばれ、募集イベントが発行される
         verify(organizationMembershipService).resolveOrgDistributionUserIds(ORG_ID, true);
         verify(attendanceRepository, times(1)).saveAll(any());
-        verify(notificationDispatchService, times(2)).dispatch(dummy);
+        verify(eventPublisher).publishEvent(new AttendanceSolicitationOpenedEvent(SCHEDULE_ID));
     }
 
     @Test
@@ -215,8 +197,7 @@ class ScheduleAttendanceSolicitationServiceTest {
         // then
         verify(attendanceRepository, never()).saveAll(any());
         verify(attendanceRepository, never()).save(any());
-        verify(notificationService, never()).createNotificationPreAuthorized(
-                anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any(AttendanceSolicitationOpenedEvent.class));
     }
 
     @Test
@@ -232,8 +213,7 @@ class ScheduleAttendanceSolicitationServiceTest {
         // then: 生成も通知もされない
         verify(attendanceRepository, never()).save(any());
         verify(userRoleRepository, never()).findUserIdsByScope(any(), anyLong());
-        verify(notificationService, never()).createNotificationPreAuthorized(
-                anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any(AttendanceSolicitationOpenedEvent.class));
     }
 
     @Test
@@ -259,8 +239,7 @@ class ScheduleAttendanceSolicitationServiceTest {
 
         // then
         verify(attendanceRepository, never()).save(any());
-        verify(notificationService, never()).createNotificationPreAuthorized(
-                anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any(AttendanceSolicitationOpenedEvent.class));
     }
 
     @Test
@@ -276,7 +255,6 @@ class ScheduleAttendanceSolicitationServiceTest {
 
         // then
         verify(attendanceRepository, never()).save(any());
-        verify(notificationService, never()).createNotificationPreAuthorized(
-                anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any(AttendanceSolicitationOpenedEvent.class));
     }
 }

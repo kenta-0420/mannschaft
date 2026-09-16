@@ -1,6 +1,8 @@
 package com.mannschaft.app.cms.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +59,8 @@ public class BlogScheduledPublishBatchService {
      */
     @BatchEndpoint(name = "blog-scheduled-publish",
             description = "公開時刻に達した予約公開ブログ記事(DRAFT＋未来published_at)を1分毎にPUBLISHEDへ遷移させる")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。ブログの予約公開。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(fixedDelay = 60_000)
     // lockAtMostFor は fixedDelay（1分）と同値にしない。同値だと 1 回の実行が 1 分を超えた瞬間に
     // ロックが失効し、次回起動と二重処理になる。1 回あたりの処理量は

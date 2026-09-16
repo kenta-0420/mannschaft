@@ -70,7 +70,7 @@ async function fetchOrganizations() {
       size: pageSize,
     })
     organizations.value = result.data
-    totalRecords.value = result.meta.totalElements
+    totalRecords.value = result.meta.total
   } catch (error) {
     handleApiError(error, t('orgHub.searchPageTitle'))
   } finally {

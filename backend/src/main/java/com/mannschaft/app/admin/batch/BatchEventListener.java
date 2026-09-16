@@ -2,6 +2,9 @@ package com.mannschaft.app.admin.batch;
 
 import com.mannschaft.app.admin.batch.event.BatchCompletedEvent;
 import com.mannschaft.app.admin.batch.event.BatchFailedEvent;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -10,11 +13,14 @@ import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * F10.X 第一陣 — バッチ実行イベントの受信側。SYSTEM_ADMIN 通知と F12.5 起票を行う。
@@ -39,18 +45,29 @@ public class BatchEventListener {
     private final NotificationService notificationService;
     private final UserRoleRepository userRoleRepository;
     private final ErrorReportAsyncExecutor errorReportAsyncExecutor;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。バッチ完了・失敗の運用通知であり、閉栓対象の機能ではなく運用基盤に属する。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @EventListener
     public void onCompleted(BatchCompletedEvent event) {
         try {
             List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
-            String title = String.format("バッチ完了: %s", event.name());
-            String body = String.format("処理件数: %d 件",
-                    event.log() != null && event.log().getProcessedCount() != null
-                            ? event.log().getProcessedCount() : 0);
+            int processedCount = event.log() != null && event.log().getProcessedCount() != null
+                    ? event.log().getProcessedCount() : 0;
             Long sourceId = event.log() != null ? event.log().getId() : null;
+            // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+            Map<Long, String> locales = userLocaleCache.getLocales(adminIds);
             for (Long adminUserId : adminIds) {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja"));
+                String title = messageSource.getMessage(
+                        "notification.admin.batchCompleted.title",
+                        new Object[]{event.name()}, "バッチ完了: " + event.name(), locale);
+                String body = messageSource.getMessage(
+                        "notification.admin.batchCompleted.body",
+                        new Object[]{processedCount}, "処理件数: " + processedCount + " 件", locale);
                 notificationService.createNotification(
                         adminUserId,
                         NOTIFICATION_TYPE_BATCH_COMPLETED,
@@ -69,6 +86,8 @@ public class BatchEventListener {
         }
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。バッチ完了・失敗の運用通知であり、閉栓対象の機能ではなく運用基盤に属する。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @EventListener
     public void onFailed(BatchFailedEvent event) {
@@ -88,13 +107,23 @@ public class BatchEventListener {
         // SYSTEM_ADMIN への通知配信
         try {
             List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
-            String title = String.format("バッチ失敗: %s", event.name());
+            // causeMessage は例外メッセージそのもの（動的な技術的文字列）であり、固定日本語リテラルではないため
+            // i18n 対象外（AC-1 は notify/createNotification へ直接渡る「日本語リテラル」を対象とする）。
             String causeMessage = event.cause() != null && event.cause().getMessage() != null
                     ? event.cause().getMessage()
                     : event.cause() != null ? event.cause().getClass().getSimpleName() : "(no cause)";
-            String body = truncate(causeMessage, 200);
+            String truncatedCause = truncate(causeMessage, 200);
             Long sourceId = event.log() != null ? event.log().getId() : null;
+            // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+            Map<Long, String> locales = userLocaleCache.getLocales(adminIds);
             for (Long adminUserId : adminIds) {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja"));
+                String title = messageSource.getMessage(
+                        "notification.admin.batchFailed.title",
+                        new Object[]{event.name()}, "バッチ失敗: " + event.name(), locale);
+                String body = messageSource.getMessage(
+                        "notification.admin.batchFailed.body",
+                        new Object[]{truncatedCause}, truncatedCause, locale);
                 notificationService.createNotification(
                         adminUserId,
                         NOTIFICATION_TYPE_BATCH_FAILED,

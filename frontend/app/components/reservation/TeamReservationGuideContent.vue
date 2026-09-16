@@ -19,6 +19,8 @@ const props = defineProps<{
   isAdmin: boolean
   isAdminOrDeputy: boolean
   activeTab: number
+  /** 予約対象管理カードから開いた場合は該当カードのガイドだけを表示する。 */
+  managementSection?: string | null
   /**
    * 呼称の動的差し込み（F03.4.5 §5.2）。呼び出し元（TeamReservationGuideModal）が
    * useResourceName で解決した値をそのまま渡す（本コンポーネント自身は API を叩かない）。
@@ -97,6 +99,21 @@ const emergencyClosureCards: GuideCard[] = [
 ]
 
 const cards = computed<GuideCard[]>(() => {
+  if (props.activeTab === 2 && props.managementSection) {
+    const guideKeyByManagementSection: Record<string, string> = {
+      business_hours: 'setup0',
+      lines: 'setup1',
+      menus: 'setup2',
+      weekly_schedule: 'setup3',
+      exception_day: 'exception',
+      advanced: 'daily',
+    }
+    const guideKey = guideKeyByManagementSection[props.managementSection]
+    if (!guideKey) {
+      return []
+    }
+    return lineManageCards.filter(card => card.key === guideKey)
+  }
   switch (props.activeTab) {
     case 1:
       return props.isAdminOrDeputy ? listAdminCards : listMemberCards

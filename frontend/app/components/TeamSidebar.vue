@@ -39,6 +39,14 @@ const categories: SidebarCategory[] = [
     ],
   },
   {
+    key: 'market',
+    labelKey: 'teamSidebar.category.market',
+    icon: 'pi pi-shop',
+    items: [
+      { labelKey: 'teamSidebar.item.market', icon: 'pi pi-shop', path: 'market', moduleSlug: null, requiredRole: 'MEMBER' },
+    ],
+  },
+  {
     key: 'member',
     labelKey: 'teamSidebar.category.member',
     icon: 'pi pi-users',
@@ -66,6 +74,10 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-wallet',
     items: [
       { labelKey: 'teamSidebar.item.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: 'budget', requiredRole: 'DEPUTY_ADMIN' },
+      // CMP-260907-0851: 領収書はチームスコープでも発行できる（BE ReceiptScopeType に TEAM がある）ため、
+      // 組織サイドバーと同じ条件（payment モジュール有効・DEPUTY_ADMIN 以上）でチームにも導線を置く。
+      { labelKey: 'teamSidebar.item.receipts', icon: 'pi pi-receipt', path: '', absolutePath: '/admin/receipts', moduleSlug: 'payment', requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'teamSidebar.item.receiptSettings', icon: 'pi pi-id-card', path: '', absolutePath: '/admin/receipt-settings', moduleSlug: 'payment', requiredRole: 'DEPUTY_ADMIN' },
       // F09.17 Phase 11-d-4: チーム広告主機能（チーム ADMIN のみ表示。
       // moduleSlug は組織版と同じ 'ad_display' を流用し、有効化判定を統一する）。
       { labelKey: 'teamSidebar.item.advertiser', icon: 'pi pi-megaphone', path: 'advertiser', moduleSlug: 'ad_display', requiredRole: 'ADMIN' },
@@ -100,6 +112,9 @@ const categories: SidebarCategory[] = [
       // F10.1.1 P2a: 管理コンソール（L2 ハブ）への入口。DEPUTY_ADMIN 以上に表示。
       { labelKey: 'teamSidebar.item.adminConsole', icon: 'pi pi-shield', path: 'admin', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
       { labelKey: 'teamSidebar.item.settings', icon: 'pi pi-sliders-h', path: 'settings/shift', moduleSlug: null, requiredRole: 'ADMIN' },
+      // CMP-260910-1555: 時給を登録する入口が画面に無く、シフトを公開しても予算の消化額が
+      // 0 円のままになっていたため新設。金銭情報なので ADMIN 限定。
+      { labelKey: 'teamSidebar.item.hourlyRate', icon: 'pi pi-yen', path: 'settings/hourly-rate', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'teamSidebar.item.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
       // F20.1: 課金・プラン管理（閲覧はメンバー可・操作はADMIN限定。ナビはメンバー以上に表示）
       { labelKey: 'teamSidebar.item.billing', icon: 'pi pi-credit-card', path: 'settings/billing', moduleSlug: null, requiredRole: 'MEMBER' },

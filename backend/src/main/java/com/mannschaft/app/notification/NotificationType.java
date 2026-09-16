@@ -55,6 +55,13 @@ public enum NotificationType {
     /** 日次ダイジェスト。opt-in 方式のため既定 OFF。 */
     DAILY_DIGEST(NotificationPriority.LOW, "SYSTEM", false),
     TODO_HANDED_OFF(NotificationPriority.NORMAL, "TODO"),
+    /**
+     * F01.2: オーナー委譲（承諾型）の打診が指名相手に届いたことの到達通知（HIGH）。
+     * 宛先が承諾/辞退画面（{@code /teams|organizations/{slug}/members?offerId=...}）へ到達するための導線。
+     */
+    OWNERSHIP_TRANSFER_OFFERED(NotificationPriority.HIGH, "USER"),
+    /** F01.2: オーナー委譲の打診が指名相手に辞退されたことの発行者向け通知（NORMAL・設計書 step 辞退）。 */
+    OWNERSHIP_TRANSFER_DECLINED(NotificationPriority.NORMAL, "USER"),
 
     /** F20.3 ベータ特典: 付与（本人・02 §3 / §6.5）。 */
     BETA_PERK_GRANTED(NotificationPriority.NORMAL, "BETA_PERK"),
@@ -63,7 +70,21 @@ public enum NotificationType {
     /** F20.3 ベータ特典: 期間延長（本人・02 §4.3 / §6.5）。 */
     BETA_PERK_EXTENDED(NotificationPriority.NORMAL, "BETA_PERK"),
     /** F20.3 ベータ特典: 審査フラグ設定（運営向け・02 §5 / §6.5・notifyAll）。 */
-    BETA_PERK_REVIEW_FLAGGED(NotificationPriority.NORMAL, "BETA_PERK");
+    BETA_PERK_REVIEW_FLAGGED(NotificationPriority.NORMAL, "BETA_PERK"),
+
+    /**
+     * 柱①ADMINゼロ根治: 退会purge経路（承諾スキップの強制委譲）で管理者に自動指名されたことの通知。
+     * 正本: docs/architecture/account_purge_last_admin_succession.md §11。
+     */
+    ADMIN_SUCCESSION_FORCED(NotificationPriority.HIGH, "USER"),
+
+    /** 柱③-A: MEMBER 参加申請を受理した旨の ADMIN/DEPUTY_ADMIN 向け通知（CMP-260901-1538）。 */
+    JOIN_REQUEST_RECEIVED(NotificationPriority.NORMAL, "USER"),
+    /** 柱③-A: 参加申請が承認された旨の申請者向け通知（CMP-260901-1538）。 */
+    JOIN_REQUEST_APPROVED(NotificationPriority.NORMAL, "USER"),
+    /** 柱③-A: 参加申請が却下された旨の申請者向け通知（CMP-260901-1538）。 */
+    JOIN_REQUEST_REJECTED(NotificationPriority.NORMAL, "USER"),
+    NEW_DEVICE_LOGIN(NotificationPriority.HIGH, "USER");
 
     private final NotificationPriority priority;
     private final String sourceType;

@@ -11,6 +11,7 @@ import com.mannschaft.app.reservation.entity.ReservationSlotTemplateEntity;
 import com.mannschaft.app.reservation.repository.ReservationBusinessHourRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotTemplateRepository;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -19,8 +20,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.ByteBuffer;
 import java.time.Clock;
+import java.time.Duration;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -83,12 +87,15 @@ public class ReservationSlotGenerationService {
     private final ReservationBusinessHourRepository businessHourRepository;
     private final TransactionTemplate chunkTransactionTemplate;
     private final Clock clock;
+    private final TeamTimezoneResolver teamTimezoneResolver;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ReservationSlotGenerationService(ReservationSlotTemplateRepository templateRepository,
                                             ReservationSlotRepository slotRepository,
                                             ReservationBusinessHourRepository businessHourRepository,
                                             PlatformTransactionManager transactionManager,
-                                            Clock clock) {
+                                            Clock clock,
+                                            TeamTimezoneResolver teamTimezoneResolver) {
         this.templateRepository = templateRepository;
         this.slotRepository = slotRepository;
         this.businessHourRepository = businessHourRepository;
@@ -96,6 +103,15 @@ public class ReservationSlotGenerationService {
         this.chunkTransactionTemplate = new TransactionTemplate(transactionManager);
         this.chunkTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
+        this.teamTimezoneResolver = teamTimezoneResolver;
+    }
+
+    public ReservationSlotGenerationService(ReservationSlotTemplateRepository templateRepository,
+                                            ReservationSlotRepository slotRepository,
+                                            ReservationBusinessHourRepository businessHourRepository,
+                                            PlatformTransactionManager transactionManager,
+                                            Clock clock) {
+        this(templateRepository, slotRepository, businessHourRepository, transactionManager, clock, null);
     }
 
     /**
@@ -110,7 +126,8 @@ public class ReservationSlotGenerationService {
      */
     public GenerateSlotsResponse generateForTeam(Long teamId, Integer weeks, Long createdBy) {
         int effectiveWeeks = weeks != null ? weeks : DEFAULT_WEEKS;
-        LocalDate tomorrow = LocalDate.now(clock).plusDays(1); // 当日は生成しない（当日枠は手動作成の領分）
+        ZoneId teamZone = resolveTeamZone(teamId);
+        LocalDate tomorrow = teamLocalDate(teamId, teamZone).plusDays(1); // チーム現地日の翌日から生成
         LocalDate horizonTo = tomorrow.plusDays(effectiveWeeks * 7L - 1);
 
         List<ReservationSlotTemplateEntity> templates = templateRepository.findByTeamIdAndIsActiveTrue(teamId);
@@ -126,7 +143,7 @@ public class ReservationSlotGenerationService {
             fromByTemplate.put(template.getId(), tomorrow);
         }
         GenerateSlotsResponse response =
-                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy, false);
+                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy, false, teamZone);
         log.info("週間テンプレート手動生成: teamId={}, weeks={}, generated={}, skippedExisting={}, "
                         + "skippedClosedDay={}, skippedOutsideHours={}",
                 teamId, effectiveWeeks, response.getGeneratedCount(), response.getSkippedExistingCount(),
@@ -169,7 +186,8 @@ public class ReservationSlotGenerationService {
     public GenerateSlotsResponse generateForTemplates(Long teamId,
                                                       List<ReservationSlotTemplateEntity> templates,
                                                       Long createdBy) {
-        LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
+        ZoneId teamZone = resolveTeamZone(teamId);
+        LocalDate tomorrow = teamLocalDate(teamId, teamZone).plusDays(1);
         LocalDate horizonTo = tomorrow.plusDays(TEMPLATE_HORIZON_DAYS);
         if (templates.isEmpty()) {
             return emptyResponse(tomorrow, horizonTo);
@@ -179,7 +197,7 @@ public class ReservationSlotGenerationService {
             fromByTemplate.put(template.getId(), tomorrow);
         }
         GenerateSlotsResponse response =
-                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy, false);
+                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy, false, teamZone);
         log.info("週間テンプレート同期自動生成: teamId={}, templateCount={}, generated={}, skippedExisting={}, "
                         + "skippedClosedDay={}, skippedOutsideHours={}",
                 teamId, templates.size(), response.getGeneratedCount(), response.getSkippedExistingCount(),
@@ -207,7 +225,7 @@ public class ReservationSlotGenerationService {
      */
     public GenerateSlotsResponse generateSingleDay(Long teamId, LocalDate date,
                                                    ReservationDayOfWeek sourceDayOfWeek, Long createdBy) {
-        LocalDate today = LocalDate.now(clock);
+        LocalDate today = teamLocalDate(teamId);
         LocalDate tomorrow = today.plusDays(1);
         if (date == null || date.isBefore(tomorrow)) {
             // 当日・過去は「当日枠は手動作成の領分」原則と統一して 400=023 再利用（§3.3.2）。
@@ -240,7 +258,7 @@ public class ReservationSlotGenerationService {
         // 単日 = 1 チャンク tx（REQUIRES_NEW）。営業時間チェックはスキップ（skipBusinessHours=true）。
         chunkTransactionTemplate.executeWithoutResult(status ->
                 generateForDate(teamId, targetDate, sourceDow, dayTemplates, null, existingCells, createdBy,
-                        counts, true));
+                        counts, true, teamTimezoneResolver == null ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE) : teamTimezoneResolver.resolveZone(teamId)));
         log.info("臨時営業（単日テンプレ適用）: teamId={}, date={}, sourceDow={}, generated={}, skippedExisting={}",
                 teamId, date, sourceDow, counts.generated, counts.skippedExisting);
         return GenerateSlotsResponse.builder()
@@ -266,7 +284,13 @@ public class ReservationSlotGenerationService {
      * @return 生成結果カウント（active テンプレ 0 件は全カウント 0 で正常 return・バッチはエラーにしない）
      */
     public GenerateSlotsResponse generateDiffForTeam(Long teamId) {
-        LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
+        ZoneId teamZone = teamTimezoneResolver == null ? null : teamTimezoneResolver.resolveZone(teamId);
+        return generateDiffForTeam(teamId, teamZone);
+    }
+
+    /** バッチが一括解決した TZ を渡す差分生成。チームごとの再照会を発生させない。 */
+    public GenerateSlotsResponse generateDiffForTeam(Long teamId, ZoneId teamZone) {
+        LocalDate tomorrow = teamLocalDate(teamId, teamZone).plusDays(1);
         LocalDate horizonTo = tomorrow.plusDays(BATCH_HORIZON_DAYS);
 
         List<ReservationSlotTemplateEntity> templates = templateRepository.findByTeamIdAndIsActiveTrue(teamId);
@@ -288,7 +312,7 @@ public class ReservationSlotGenerationService {
             fromByTemplate.put(template.getId(), from);
         }
         GenerateSlotsResponse response =
-                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, null, false);
+                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, null, false, teamZone);
         log.info("週間テンプレート差分生成（バッチ）: teamId={}, generated={}, skippedExisting={}, "
                         + "skippedClosedDay={}, skippedOutsideHours={}",
                 teamId, response.getGeneratedCount(), response.getSkippedExistingCount(),
@@ -307,8 +331,10 @@ public class ReservationSlotGenerationService {
                                                    LocalDate horizonFrom,
                                                    LocalDate horizonTo,
                                                    Long createdBy,
-                                                   boolean skipBusinessHours) {
+                                                   boolean skipBusinessHours,
+                                                   ZoneId suppliedTeamZone) {
         // 曜日 → 営業時間（行の無い曜日はキー欠損 = 営業時間未定義としてスキップ・F-7b）
+        ZoneId teamZone = suppliedTeamZone == null ? resolveTeamZone(teamId) : suppliedTeamZone;
         Map<String, ReservationBusinessHourEntity> businessHours = new HashMap<>();
         for (ReservationBusinessHourEntity hour : businessHourRepository.findByTeamIdOrderByIdAsc(teamId)) {
             businessHours.putIfAbsent(hour.getDayOfWeek(), hour);
@@ -316,8 +342,9 @@ public class ReservationSlotGenerationService {
 
         // 冪等の一括先読み（§5.3・N+1 回避）: チーム単位で horizon 全域を 1 クエリ → Set 化してメモリ突合
         Set<String> existingCells = new HashSet<>();
+        // horizon 末日の夜間テンプレートは翌日側にもセルを持つため、先読みも翌日まで含める。
         for (Object[] key : slotRepository.findGeneratedCellKeysByTeamIdAndSlotDateBetween(
-                teamId, horizonFrom, horizonTo)) {
+                teamId, horizonFrom, horizonTo.plusDays(1))) {
             existingCells.add(cellKey((UUID) key[0], (LocalDate) key[1], (LocalTime) key[2]));
         }
 
@@ -343,7 +370,7 @@ public class ReservationSlotGenerationService {
                 chunkTransactionTemplate.executeWithoutResult(status ->
                         generateForDate(teamId, currentDate, dow, dayTemplates,
                                 businessHours.get(dow.name()), existingCells, createdBy, chunkCounts,
-                                skipBusinessHours));
+                                skipBusinessHours, teamZone));
             } catch (RuntimeException chunkFailure) {
                 // 先行チャンクは既にコミット済み。その実件数を例外に載せて上位（保存フローのコントローラ）が
                 // トーストに正直な件数を出せるようにする（0 件で握り潰さない＝症状の黙殺を避ける・根治原則）。
@@ -381,7 +408,8 @@ public class ReservationSlotGenerationService {
                                  Set<String> existingCells,
                                  Long createdBy,
                                  Counts counts,
-                                 boolean skipBusinessHours) {
+                                 boolean skipBusinessHours,
+                                 ZoneId teamZone) {
         for (ReservationSlotTemplateEntity template : dayTemplates) {
             // ★営業時間の防御分岐（NPE 根絶・確定仕様・F-7b）:
             //   (1) 当該曜日の行が存在しない（新規チームは 0 行があり得る — 実測）
@@ -395,22 +423,41 @@ public class ReservationSlotGenerationService {
                 counts.skippedClosedDay += template.cellCount();
                 continue;
             }
-            for (LocalTime cellStart = template.getStartTime();
-                 cellStart.isBefore(template.getEndTime());
-                 cellStart = cellStart.plusMinutes(CELL_MINUTES)) {
+            boolean overnight = Boolean.TRUE.equals(template.getEndsNextDay());
+            long cellCount = SlotTimeValidator.durationMinutes(
+                    template.getStartTime(), template.getEndTime(), overnight) / CELL_MINUTES;
+            for (long cellIndex = 0; cellIndex < cellCount; cellIndex++) {
+                long cellStartOffsetMinutes = cellIndex * CELL_MINUTES;
+                long templateStartMinutes = template.getStartTime().toSecondOfDay() / 60L;
+                long cellStartTotalMinutes = templateStartMinutes + cellStartOffsetMinutes;
+                long cellEndTotalMinutes = cellStartTotalMinutes + CELL_MINUTES;
+                long minutesPerDay = Duration.ofDays(1).toMinutes();
+                LocalDate cellStartDate = date.plusDays(cellStartTotalMinutes / minutesPerDay);
+                LocalDate cellEndDate = date.plusDays(cellEndTotalMinutes / minutesPerDay);
+                LocalTime cellStart = template.getStartTime().plusMinutes(cellStartOffsetMinutes);
                 LocalTime cellEnd = cellStart.plusMinutes(CELL_MINUTES);
                 // 境界: close_time ちょうどで終わるセルは生成される（セル全体が営業時間内 — F-7）
                 if (!skipBusinessHours
-                        && (cellStart.isBefore(businessHour.getOpenTime())
-                        || cellEnd.isAfter(businessHour.getCloseTime()))) {
+                        && !isWithinBusinessHours(cellStartOffsetMinutes, businessHour, cellStart, cellEnd)) {
                     counts.skippedOutsideHours++;
                     continue;
                 }
-                if (existingCells.contains(cellKey(template.getId(), date, cellStart))) {
+                if (existingCells.contains(cellKey(template.getId(), cellStartDate, cellStart))) {
                     counts.skippedExisting++;
                     continue;
                 }
-                int inserted = insertCell(teamId, template, date, cellStart, cellEnd, createdBy);
+                // DST gap の存在しない壁時計セルは保存しない。overlap は resolver の earlier offset 方針に従う。
+                if (teamTimezoneResolver != null) {
+                    try {
+                        teamTimezoneResolver.toInstant(cellStartDate, cellStart, teamZone);
+                        teamTimezoneResolver.toInstant(cellEndDate, cellEnd, teamZone);
+                    } catch (DateTimeException ex) {
+                        counts.skippedOutsideHours++;
+                        continue;
+                    }
+                }
+                int inserted = insertCell(
+                        teamId, template, cellStartDate, cellEndDate, cellStart, cellEnd, createdBy);
                 if (inserted == 1) {
                     counts.generated++;
                 } else {
@@ -429,13 +476,15 @@ public class ReservationSlotGenerationService {
      * （素の JDBC 直挿入は JVM≠DB タイムゾーン環境で時刻が非対称にずれる実測バグがあった）。</p>
      */
     private int insertCell(Long teamId, ReservationSlotTemplateEntity template,
-                           LocalDate date, LocalTime cellStart, LocalTime cellEnd, Long createdBy) {
+                           LocalDate slotDate, LocalDate endDate, LocalTime cellStart,
+                           LocalTime cellEnd, Long createdBy) {
         return slotRepository.insertGeneratedCellIgnoreDuplicate(
                 teamId,
                 template.getLineId(),
                 template.getStaffUserId(),
                 uuidToBytes(template.getId()),
-                date,
+                slotDate,
+                endDate,
                 cellStart,
                 cellEnd,
                 template.getCapacity() != null ? template.getCapacity() : 1,
@@ -443,6 +492,34 @@ public class ReservationSlotGenerationService {
                 template.getPrice(),
                 template.getApprovalMode() != null ? template.getApprovalMode().name() : null,
                 createdBy);
+    }
+
+    private LocalDate teamLocalDate(Long teamId) {
+        return teamLocalDate(teamId, resolveTeamZone(teamId));
+    }
+
+    private ZoneId resolveTeamZone(Long teamId) {
+        return teamTimezoneResolver == null ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)
+                : teamTimezoneResolver.resolveZone(teamId);
+    }
+
+    private LocalDate teamLocalDate(Long teamId, ZoneId resolvedZone) {
+        ZoneId zone = resolvedZone == null
+                ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE) : resolvedZone;
+        return LocalDate.now(clock.withZone(zone));
+    }
+
+    private static boolean isWithinBusinessHours(long cellOffsetMinutes,
+                                                  ReservationBusinessHourEntity businessHour,
+                                                  LocalTime cellStart, LocalTime cellEnd) {
+        boolean overnight = Boolean.TRUE.equals(businessHour.getEndsNextDay());
+        long businessLength = SlotTimeValidator.durationMinutes(
+                businessHour.getOpenTime(), businessHour.getCloseTime(), overnight);
+        long startOffset = Duration.between(businessHour.getOpenTime(), cellStart).toMinutes();
+        if (overnight && cellStart.isBefore(businessHour.getOpenTime())) {
+            startOffset += Duration.ofDays(1).toMinutes();
+        }
+        return startOffset >= 0 && startOffset + CELL_MINUTES <= businessLength;
     }
 
     private static GenerateSlotsResponse emptyResponse(LocalDate from, LocalDate to) {

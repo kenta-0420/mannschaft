@@ -12,6 +12,7 @@ import com.mannschaft.app.shift.dto.ShiftRequestResponse;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +47,9 @@ class ShiftRequestProxyInputTest {
 
     @Mock
     private ShiftRequestRepository requestRepository;
+
+    @Mock
+    private ShiftSlotRepository slotRepository;
 
     @Mock
     private ShiftScheduleService scheduleService;
@@ -153,18 +157,19 @@ class ShiftRequestProxyInputTest {
                     LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now());
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(requestRepository.findByScheduleIdAndUserIdAndSlotDate(
+            given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.empty());
-            given(requestRepository.save(any(ShiftRequestEntity.class))).willReturn(savedEntity);
+            given(requestRepository.saveAndFlush(any(ShiftRequestEntity.class))).willReturn(savedEntity);
             given(proxyInputContext.isProxy()).willReturn(false);
             given(shiftMapper.toRequestResponse(savedEntity)).willReturn(response);
 
             // When
             shiftRequestService.submitRequest(req, USER_ID);
 
-            // Then: 最初の1回のみ save が呼ばれ、proxyInputRecordRepository は呼ばれない
-            verify(requestRepository, times(1)).save(any(ShiftRequestEntity.class));
+            // Then: 初回保存（saveAndFlush）のみで、追加の save も proxyInputRecordRepository も呼ばれない
+            verify(requestRepository, times(1)).saveAndFlush(any(ShiftRequestEntity.class));
+            verify(requestRepository, never()).save(any(ShiftRequestEntity.class));
             verify(proxyInputRecordRepository, never()).save(any(ProxyInputRecordEntity.class));
         }
 
@@ -180,12 +185,12 @@ class ShiftRequestProxyInputTest {
                     LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now());
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(requestRepository.findByScheduleIdAndUserIdAndSlotDate(
+            given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.empty());
 
             ArgumentCaptor<ShiftRequestEntity> captor = ArgumentCaptor.forClass(ShiftRequestEntity.class);
-            given(requestRepository.save(captor.capture())).willReturn(savedEntity);
+            given(requestRepository.saveAndFlush(captor.capture())).willReturn(savedEntity);
             given(proxyInputContext.isProxy()).willReturn(false);
             given(shiftMapper.toRequestResponse(savedEntity)).willReturn(response);
 
@@ -255,12 +260,13 @@ class ShiftRequestProxyInputTest {
                     LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now());
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(requestRepository.findByScheduleIdAndUserIdAndSlotDate(
+            given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.empty());
-            given(requestRepository.save(any(ShiftRequestEntity.class)))
-                    .willReturn(firstSavedEntity)   // 1回目: 初回保存
-                    .willReturn(proxyFlaggedEntity); // 2回目: 代理フラグ付き更新
+            // 初回保存は saveAndFlush（DB の UNIQUE 違反をその場で捕まえるため）、
+            // 代理フラグ付き更新は従来どおり save。
+            given(requestRepository.saveAndFlush(any(ShiftRequestEntity.class))).willReturn(firstSavedEntity);
+            given(requestRepository.save(any(ShiftRequestEntity.class))).willReturn(proxyFlaggedEntity);
             given(proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
                     CONSENT_ID, "SHIFT_REQUEST", REQUEST_ID))
                     .willReturn(Optional.empty());
@@ -270,14 +276,15 @@ class ShiftRequestProxyInputTest {
             // When
             shiftRequestService.submitRequest(req, USER_ID);
 
-            // Then: save が2回呼ばれる（初回保存 + 代理フラグ付き更新）
-            verify(requestRepository, times(2)).save(any(ShiftRequestEntity.class));
+            // Then: 初回保存（saveAndFlush）＋ 代理フラグ付き更新（save）で計 2 回保存される
+            verify(requestRepository, times(1)).saveAndFlush(any(ShiftRequestEntity.class));
+            verify(requestRepository, times(1)).save(any(ShiftRequestEntity.class));
             // Then: proxyInputRecordRepository.save が1回呼ばれる
             verify(proxyInputRecordRepository, times(1)).save(any(ProxyInputRecordEntity.class));
-            // Then: 2回目の save で isProxyInput=true, proxyInputRecordId=PROXY_RECORD_ID
+            // Then: 2回目の保存（save）で isProxyInput=true, proxyInputRecordId=PROXY_RECORD_ID
             ArgumentCaptor<ShiftRequestEntity> captor = ArgumentCaptor.forClass(ShiftRequestEntity.class);
-            verify(requestRepository, times(2)).save(captor.capture());
-            ShiftRequestEntity secondSaved = captor.getAllValues().get(1);
+            verify(requestRepository, times(1)).save(captor.capture());
+            ShiftRequestEntity secondSaved = captor.getValue();
             assertThat(secondSaved.getIsProxyInput()).isTrue();
             assertThat(secondSaved.getProxyInputRecordId()).isEqualTo(PROXY_RECORD_ID);
         }
@@ -317,12 +324,11 @@ class ShiftRequestProxyInputTest {
                     LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now());
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(requestRepository.findByScheduleIdAndUserIdAndSlotDate(
+            given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.empty());
-            given(requestRepository.save(any(ShiftRequestEntity.class)))
-                    .willReturn(firstSavedEntity)
-                    .willReturn(proxyFlaggedEntity);
+            given(requestRepository.saveAndFlush(any(ShiftRequestEntity.class))).willReturn(firstSavedEntity);
+            given(requestRepository.save(any(ShiftRequestEntity.class))).willReturn(proxyFlaggedEntity);
             // 冪等性チェック: 既存レコードが見つかる
             given(proxyInputRecordRepository.findByProxyInputConsentIdAndTargetEntityTypeAndTargetEntityId(
                     CONSENT_ID, "SHIFT_REQUEST", REQUEST_ID))

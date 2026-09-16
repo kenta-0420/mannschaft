@@ -35,9 +35,10 @@ export interface UnreadCountResponse {
 export interface NotificationListResponse {
   data: NotificationResponse[]
   meta: {
-    nextCursor: number | null
-    limit: number
-    hasNext: boolean
+    total: number
+    page: number
+    size: number
+    totalPages: number
   }
 }
 

@@ -28,6 +28,8 @@ public interface CmsMapper {
     @Mapping(target = "stats", expression = "java(new com.mannschaft.app.cms.dto.BlogPostResponse.BlogPostStatisticsDto(entity.getViewCount(), entity.getReadingTimeMinutes(), false, 0))")
     @Mapping(target = "audit", expression = "java(new com.mannschaft.app.cms.dto.BlogPostResponse.BlogPostAuditDto(entity.getPublishedAt(), entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt()))")
     @Mapping(target = "tags", expression = "java(java.util.Collections.emptyList())")
+    // accessState は可視性・課金の合成後に各サービスが設定するため、通常マッピングでは設定しない。
+    @Mapping(target = "accessState", ignore = true)
     BlogPostResponse toBlogPostResponse(BlogPostEntity entity);
 
     List<BlogPostResponse> toBlogPostResponseList(List<BlogPostEntity> entities);

@@ -71,13 +71,20 @@ public class MarketFinalizeService {
             return;
         }
 
-        ScopeType scopeType = listing.getScopeType() == RecruitmentScopeType.TEAM
-                ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+        ScopeType scopeType = switch (listing.getScopeType()) {
+            // 個人札には membership の組織スコープが無いため、明示受信者付き PLATFORM を使う。
+            case PERSONAL -> ScopeType.PLATFORM;
+            case TEAM -> ScopeType.TEAM;
+            case ORGANIZATION -> ScopeType.ORGANIZATION;
+        };
 
         // 札主 scope の ADMIN を受信者にする。ADMIN 不在なら作成者本人にフォールバック。
-        List<Long> recipientUserIds = scopeType == ScopeType.TEAM
-                ? userRoleRepository.findUserIdsByTeamIdAndRoleName(listing.getScopeId(), "ADMIN")
-                : userRoleRepository.findUserIdsByScope("ORGANIZATION", listing.getScopeId());
+        List<Long> recipientUserIds = switch (scopeType) {
+            case PLATFORM -> List.of(listing.getCreatedBy());
+            case TEAM -> userRoleRepository.findUserIdsByTeamIdAndRoleName(listing.getScopeId(), "ADMIN");
+            case ORGANIZATION -> userRoleRepository.findUserIdsByScope("ORGANIZATION", listing.getScopeId());
+            default -> List.of();
+        };
         if (recipientUserIds == null || recipientUserIds.isEmpty()) {
             recipientUserIds = List.of(listing.getCreatedBy());
         }

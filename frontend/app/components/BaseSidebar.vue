@@ -97,9 +97,22 @@ function toggleCategory(key: string) {
 // アクティブ状態
 const route = useRoute()
 
+/**
+ * 項目のリンク先を解決する。`absolutePath` を持つ項目（スコープ配下に存在しない
+ * 横断ルート・例: /admin/receipts）はスコープ基点を前置しない。
+ */
+function itemLinkTo(item: SidebarItem): string {
+  return item.absolutePath ?? `${basePath.value}/${item.path}`
+}
+
+/** リンクとして描画する項目か（false ならタブ遷移ボタンとして描画する）。 */
+function isLinkItem(item: SidebarItem): boolean {
+  return item.absolutePath !== undefined || item.path !== ''
+}
+
 function isItemActive(item: SidebarItem): boolean {
-  if (item.path === '') return false
-  return route.path.startsWith(`${basePath.value}/${item.path}`)
+  if (!isLinkItem(item)) return false
+  return route.path.startsWith(itemLinkTo(item))
 }
 </script>
 
@@ -119,10 +132,10 @@ function isItemActive(item: SidebarItem): boolean {
 
         <!-- カテゴリ内アイテム -->
         <div v-show="openCategories.includes(category.key)" class="ml-2 flex flex-col gap-0.5">
-          <template v-for="item in category.items" :key="item.path + item.labelKey">
+          <template v-for="item in category.items" :key="item.labelKey">
             <NuxtLink
-              v-if="isItemVisible(item) && item.path !== ''"
-              :to="`${basePath}/${item.path}`"
+              v-if="isItemVisible(item) && isLinkItem(item)"
+              :to="itemLinkTo(item)"
               class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-surface-100 dark:hover:bg-surface-700"
               :class="isItemActive(item) ? 'bg-primary/10 text-primary font-medium' : 'text-surface-600 dark:text-surface-300'"
             >
@@ -131,7 +144,7 @@ function isItemActive(item: SidebarItem): boolean {
             </NuxtLink>
             <!-- タブ遷移アイテム（path === ''） -->
             <button
-              v-else-if="isItemVisible(item) && item.path === ''"
+              v-else-if="isItemVisible(item) && !isLinkItem(item)"
               class="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-surface-600 dark:text-surface-300 transition-colors hover:bg-surface-100 dark:hover:bg-surface-700 text-left"
               @click="emit('tabNavigate', item)"
             >

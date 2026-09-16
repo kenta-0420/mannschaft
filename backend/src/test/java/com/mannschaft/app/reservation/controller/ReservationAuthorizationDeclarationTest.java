@@ -215,7 +215,7 @@ class ReservationAuthorizationDeclarationTest {
             assertGated(ReservationBusinessHourController.class, "getBlockedTimeImpact",
                     Long.class, LocalDate.class,
                     com.mannschaft.app.reservation.ReservationBlockedResourceType.class,
-                    Long.class, LocalTime.class, LocalTime.class);
+                    Long.class, LocalTime.class, LocalTime.class, boolean.class);
         }
 
         @Test

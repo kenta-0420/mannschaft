@@ -10,6 +10,7 @@ import com.mannschaft.app.event.entity.EventCheckinEntity;
 import com.mannschaft.app.event.entity.EventDelegationEntity;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.event.EventDelegationAcceptedEvent;
+import com.mannschaft.app.event.event.EventDelegationNotificationEvent;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventDelegationRepository;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,7 +46,6 @@ class EventDelegationServiceTest {
     @Mock private EventCheckinRepository checkinRepository;
     @Mock private EventService eventService;
     @Mock private EventDelegationValidator validator;
-    @Mock private EventDelegationNotifier notifier;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -95,7 +96,7 @@ class EventDelegationServiceTest {
                     service.createDelegation(EVENT_ID, DELEGATOR_ID, DELEGATE_ID, "急病", null);
 
             assertThat(result.getStatus()).isEqualTo(EventDelegationStatus.ACCEPTED);
-            verify(notifier).notifyAutoAccepted(any());
+            verifyNotificationPublished(EventDelegationNotificationEvent.Kind.AUTO_ACCEPTED);
             verify(eventPublisher).publishEvent(any(EventDelegationAcceptedEvent.class));
             // 代理人 RSVP 作成・委任者 RSVP 更新（save 2 回以上）
             verify(rsvpResponseRepository, org.mockito.Mockito.atLeastOnce()).save(any());
@@ -105,15 +106,17 @@ class EventDelegationServiceTest {
         @DisplayName("auto-accept=FALSE: PENDING で作成し依頼通知・ACCEPTED イベント未発火")
         void 承認待ち() {
             given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event(false, EventAttendanceMode.RSVP));
-            given(delegationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            // 本番は @GeneratedValue が採番するため、UT でも採番を模倣する
+            // （通知イベントに読み直しキーが載ることを検証できるようにするため）
+            given(delegationRepository.save(any())).willAnswer(EventDelegationServiceTest.this::saveWithId);
             given(rsvpResponseRepository.findByEventIdAndUserId(any(), any())).willReturn(Optional.empty());
 
             EventDelegationEntity result =
                     service.createDelegation(EVENT_ID, DELEGATOR_ID, DELEGATE_ID, null, null);
 
             assertThat(result.getStatus()).isEqualTo(EventDelegationStatus.PENDING);
-            verify(notifier).notifyRequestPending(any());
-            verify(eventPublisher, never()).publishEvent(any());
+            verifyNotificationPublished(EventDelegationNotificationEvent.Kind.REQUEST_PENDING);
+            verify(eventPublisher, never()).publishEvent(any(EventDelegationAcceptedEvent.class));
         }
 
         @Test
@@ -224,7 +227,53 @@ class EventDelegationServiceTest {
 
             assertThat(result.getStatus()).isEqualTo(EventDelegationStatus.ACCEPTED);
             verify(eventPublisher).publishEvent(any(EventDelegationAcceptedEvent.class));
-            verify(notifier).notifyAccepted(any());
+            verifyNotificationPublished(EventDelegationNotificationEvent.Kind.ACCEPTED);
+        }
+    }
+
+    @Nested
+    @DisplayName("withdraw / cancelOnMemberLeft")
+    class CancelPaths {
+
+        @Test
+        @DisplayName("withdraw: cancelInternal 経由で CANCELLED 通知を publish する")
+        void 委任者取消でCANCELLED通知() {
+            EventDelegationEntity active = delegation(EventDelegationStatus.ACCEPTED, null);
+            active.setId(DELEGATION_ID);
+            given(delegationRepository.findFirstByEventIdAndDelegatorIdAndStatusIn(
+                    ArgumentMatchers.eq(EVENT_ID), ArgumentMatchers.eq(DELEGATOR_ID), any()))
+                    .willReturn(Optional.of(active));
+            given(delegationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            service.withdraw(EVENT_ID, DELEGATOR_ID);
+
+            assertThat(active.getStatus()).isEqualTo(EventDelegationStatus.CANCELLED);
+            verifyNotificationPublished(DELEGATION_ID, EventDelegationNotificationEvent.Kind.CANCELLED);
+        }
+
+        @Test
+        @DisplayName("cancelOnMemberLeft: 委任者が退会した場合は DELEGATOR_LEFT 通知を publish する")
+        void 委任者退会でDELEGATOR_LEFT通知() {
+            EventDelegationEntity active = delegation(EventDelegationStatus.ACCEPTED, null);
+            active.setId(DELEGATION_ID);
+            given(delegationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            service.cancelOnMemberLeft(active, DELEGATOR_ID);
+
+            assertThat(active.getStatus()).isEqualTo(EventDelegationStatus.CANCELLED);
+            verifyNotificationPublished(DELEGATION_ID, EventDelegationNotificationEvent.Kind.DELEGATOR_LEFT);
+        }
+
+        @Test
+        @DisplayName("cancelOnMemberLeft: 代理人が退会した場合は DELEGATE_LEFT 通知を publish する")
+        void 代理人退会でDELEGATE_LEFT通知() {
+            EventDelegationEntity active = delegation(EventDelegationStatus.ACCEPTED, null);
+            active.setId(DELEGATION_ID);
+            given(delegationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            service.cancelOnMemberLeft(active, DELEGATE_ID);
+
+            verifyNotificationPublished(DELEGATION_ID, EventDelegationNotificationEvent.Kind.DELEGATE_LEFT);
         }
     }
 
@@ -262,5 +311,33 @@ class EventDelegationServiceTest {
             entity.setId(UUID.randomUUID());
         }
         return entity;
+    }
+
+    /**
+     * 代理出席の通知が「業務TX内では publish されるだけ」であることを検証する（Issue #2990 L5）。
+     *
+     * <p>是正前は {@code EventDelegationNotifier} を直接呼んでおり、その Notifier をモックしていた
+     * ため、通知が業務トランザクションに参加している事実（= 通知失敗で業務が巻き戻る）を本 UT は
+     * 一切捕まえられなかった。是正後は publish の検証に置き換え、実際の巻き戻り有無は
+     * {@code EventDelegationNotificationTransactionIT}（実 DB）で測る。</p>
+     */
+    private void verifyNotificationPublished(EventDelegationNotificationEvent.Kind expectedKind) {
+        verify(eventPublisher).publishEvent(ArgumentMatchers.<Object>argThat(
+                published -> published instanceof EventDelegationNotificationEvent notification
+                        && notification.kind() == expectedKind
+                        // 読み直しキーが載っていなければ配送側は受信者を解決できない
+                        && notification.delegationId() != null));
+    }
+
+    /**
+     * 通知イベントの中身（読み直しキーと種別）を突き合わせる版。
+     * 委任 ID が既知の経路（取消・退会連動）ではこちらを使う。
+     */
+    private void verifyNotificationPublished(UUID expectedDelegationId,
+                                             EventDelegationNotificationEvent.Kind expectedKind) {
+        verify(eventPublisher).publishEvent(ArgumentMatchers.<Object>argThat(
+                published -> published instanceof EventDelegationNotificationEvent notification
+                        && expectedDelegationId.equals(notification.delegationId())
+                        && notification.kind() == expectedKind));
     }
 }

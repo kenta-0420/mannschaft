@@ -17,6 +17,18 @@ import java.util.List;
  */
 public interface SharedFileRepository extends JpaRepository<SharedFileEntity, Long> {
 
+    @Query("SELECT CASE WHEN COUNT(f) > 0 THEN true ELSE false END "
+            + "FROM SharedFileEntity f, SharedFolderEntity folder "
+            + "WHERE f.folderId = folder.id AND f.id = :fileId AND folder.teamId = :teamId")
+    boolean existsInTeamScope(@Param("fileId") Long fileId, @Param("teamId") Long teamId);
+
+    @Query("SELECT CASE WHEN COUNT(f) > 0 THEN true ELSE false END "
+            + "FROM SharedFileEntity f, SharedFolderEntity folder "
+            + "WHERE f.folderId = folder.id AND f.id = :fileId "
+            + "AND folder.organizationId = :organizationId")
+    boolean existsInOrganizationScope(
+            @Param("fileId") Long fileId, @Param("organizationId") Long organizationId);
+
     /**
      * フォルダ内のファイル一覧を取得する。
      */

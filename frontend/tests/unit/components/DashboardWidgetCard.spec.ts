@@ -21,6 +21,18 @@ import DashboardWidgetCard from '~/components/DashboardWidgetCard.vue'
 const slotContent = () => h('p', { 'data-testid': 'content' }, '本文')
 
 describe('DashboardWidgetCard.vue', () => {
+  it('actions スロットをヘッダーに描画する', async () => {
+    const wrapper = await mountSuspended(DashboardWidgetCard, {
+      props: { title: 'テストタイトル' },
+      slots: {
+        default: slotContent,
+        actions: () => h('button', { 'data-testid': 'header-action' }, '追加'),
+      },
+    })
+
+    expect(wrapper.find('[data-testid="header-action"]').exists()).toBe(true)
+  })
+
   it('to 未指定なら title は <h3> のみでリンクではない', async () => {
     const wrapper = await mountSuspended(DashboardWidgetCard, {
       props: { title: 'テストタイトル', icon: 'pi pi-user' },

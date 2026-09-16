@@ -159,7 +159,7 @@ async function executeSearch() {
     }
     const res = await teamApi.searchOrganizationTeams(organizationId.value, query)
     items.value = res.data
-    totalElements.value = res.meta.totalElements
+    totalElements.value = res.meta.total
   } catch (error) {
     items.value = []
     totalElements.value = 0

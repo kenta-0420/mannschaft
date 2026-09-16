@@ -19,10 +19,18 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface ReceiptMapper {
 
+    /**
+     * 署名付きロゴ URL 付きで変換する（F08.4 D-8）。
+     *
+     * @param entity  発行者設定エンティティ
+     * @param logoUrl 署名付きロゴ URL（未設定なら null）
+     * @return 発行者設定レスポンス
+     */
     @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
     @Mapping(target = "defaultSealVariant",
             expression = "java(entity.getDefaultSealVariant() != null ? entity.getDefaultSealVariant().name() : null)")
-    IssuerSettingsResponse toIssuerSettingsResponse(ReceiptIssuerSettingsEntity entity);
+    @Mapping(target = "logoUrl", source = "logoUrl")
+    IssuerSettingsResponse toIssuerSettingsResponse(ReceiptIssuerSettingsEntity entity, String logoUrl);
 
     @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
     PresetResponse toPresetResponse(ReceiptPresetEntity entity);

@@ -3,10 +3,8 @@ package com.mannschaft.app.social.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.FollowerType;
+import com.mannschaft.app.social.event.TeamFriendNotificationEvent;
 import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.social.dto.FollowTeamResponse;
 import com.mannschaft.app.social.dto.PastForwardHandling;
@@ -26,7 +24,7 @@ import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
@@ -37,7 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -76,9 +73,6 @@ public class TeamFriendsService {
     /** NOWAIT 競合発生時にクライアントに案内する再試行秒数 */
     private static final int NOWAIT_RETRY_AFTER_SECONDS = 5;
 
-    /** ADMIN ロール名 */
-    private static final String ROLE_ADMIN = "ADMIN";
-
     /** フレンド関係解除時のアーカイブ scope（Phase 1 前倒しで enum 本体未拡張のため暫定文字列） */
     private static final String FRIEND_ARCHIVE_SCOPE_LITERAL = "FRIEND_ARCHIVE";
 
@@ -89,12 +83,16 @@ public class TeamFriendsService {
     private final TeamRepository teamRepository;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
-    private final NotificationHelper notificationHelper;
-    private final UserRoleRepository userRoleRepository;
     private final TeamFriendQueryService teamFriendQueryService;
     private final TeamFriendVisibilityService teamFriendVisibilityService;
-    /** Issue #2715 ロットC-3: 受信者 locale で通知本文を組み立てるために用いる。 */
-    private final MessageSource messageSource;
+
+    /**
+     * Issue #2834 / CMP-056 第1群ロットB: フレンド成立／解除の通知は業務コミット後に配送リスナーへ
+     * 委譲する（{@code TeamFriendNotificationListener}）。本サービスは通知を直接組み立てない。
+     * これにより PR #2861 の Codex 検分 P1 が自認していた「通知の DB 例外が rollback-only を立てて
+     * フレンド成立／解除ごと巻き戻す」構造欠陥が根治される。
+     */
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     // ═════════════════════════════════════════════════════════════
     // 1. チーム間フォロー + 相互フォロー検知
@@ -207,8 +205,11 @@ public class TeamFriendsService {
         log.info("相互フォロー確定・フレンド関係成立: teamFriendId={}, teamAId={}, teamBId={}",
                 teamFriend.getId(), teamFriend.getTeamAId(), teamFriend.getTeamBId());
 
-        // 9. 両チームの ADMIN に FRIEND_ESTABLISHED 通知を送信
-        sendFriendEstablishedNotification(teamId, targetTeamId, teamFriend.getId(), userId);
+        // 9. 両チームの ADMIN への FRIEND_ESTABLISHED 通知は業務コミット後に配送する
+        //    （Issue #2834 / CMP-056 第1群ロットB。TeamFriendNotificationListener が AFTER_COMMIT で受ける）。
+        applicationEventPublisher.publishEvent(new TeamFriendNotificationEvent(
+                TeamFriendNotificationEvent.Kind.ESTABLISHED,
+                teamId, targetTeamId, teamFriend.getId(), userId));
 
         return FollowTeamResponse.builder()
                 .followId(follow.getId())
@@ -341,8 +342,11 @@ public class TeamFriendsService {
         recordUnfollowAudit(userId, teamId, targetTeamId, effectiveMode);
         friendOpt.ifPresent(friend -> {
             recordFriendDissolvedAudit(userId, friend, effectiveMode);
-            // 両チームの ADMIN に FRIEND_DISSOLVED 通知を送信
-            sendFriendDissolvedNotification(teamId, targetTeamId, friend.getId(), userId);
+            // 両チームの ADMIN への FRIEND_DISSOLVED 通知は業務コミット後に配送する
+            //（Issue #2834 / CMP-056 第1群ロットB）。
+            applicationEventPublisher.publishEvent(new TeamFriendNotificationEvent(
+                    TeamFriendNotificationEvent.Kind.DISSOLVED,
+                    teamId, targetTeamId, friend.getId(), userId));
         });
     }
 
@@ -573,174 +577,4 @@ public class TeamFriendsService {
                         friend.getTeamAId(), friend.getTeamBId(), mode.name()));
     }
 
-    // ═════════════════════════════════════════════════════════════
-    // 通知発火ヘルパー（Phase 2）
-    // ═════════════════════════════════════════════════════════════
-
-    /*
-     * Codex検分（PR #2861 P1）: このセクションは Issue #2834 / CMP-056（通知の隔離tryが
-     * DB 層例外に対して無力な構造欠陥）の該当箇所である。
-     *
-     * sendFriendEstablishedNotification / sendFriendDissolvedNotification は
-     * follow/unfollow のドメイン更新と同一トランザクション（REQUIRED）の中で呼ばれる。
-     * NotificationHelper#notifyAllLocalized は受信者 locale の一括解決
-     * （UserLocaleCache#getLocales、DB 参照）を個別 try の外側で行っており、
-     * ここが DataAccessException 等を投げた場合、JPA は rollback-only を立てる。
-     * その時点でどこで catch してもフレンド成立/解除（team_friends への INSERT/DELETE）
-     * 自体が巻き戻る。
-     *
-     * ここで隔離 try を足さない理由: 例外を catch すること自体は可能だが、
-     * rollback-only が既に立った後の catch は「例外を見なかったことにする」だけで、
-     * 本処理の巻き戻りは救えない。「隔離した」と書けるようにするための表面的な try 追加は、
-     * ロットB・C-2 で二度訂正させた「達成していないことを達成したように書く」誤記と同じ性質になる
-     * ため行わない。根治には呼び出し側との伝播設計そのものの変更（例:
-     * 通知発火を別トランザクション/AFTER_COMMIT に切り出す）が必要であり、それは #2834 の範囲。
-     *
-     * 現時点で判明している CMP-056 の対象は本クラス（TeamFriendsService）のほか、
-     * PersonalTimetableLinkSyncListener・EventRsvpService の計 3 箇所。
-     *
-     * なお、この露出自体は本 PR（ロットC-3）が新たに作ったものではない。変更前の
-     * notifyAll も可視性フィルタ（filterAccessibleRecipients、DB 参照）を
-     * 個別 try の外側で呼んでおり、同型の露出は元々存在した。本 PR は DB 呼び出しを
-     * （locale 一括解決という形で）1 本増やしただけで、構造そのものは変えていない。
-     */
-
-    /**
-     * フレンド関係成立時に両チームの ADMIN へ FRIEND_ESTABLISHED 通知を送信する。
-     *
-     * <p>
-     * teamId チームの ADMIN と targetTeamId チームの ADMIN の両方へ通知を送る。
-     * 送信失敗は {@link NotificationHelper#notifyAllLocalized} が個別に握り込み継続する
-     * （ただし上記コメント参照: locale 一括解決自体の失敗はこの限りではない）。
-     * </p>
-     *
-     * @param teamId       自チーム ID
-     * @param targetTeamId 相手チーム ID
-     * @param teamFriendId フレンド関係 ID
-     * @param actorId      操作実行者ユーザー ID
-     */
-    private void sendFriendEstablishedNotification(Long teamId, Long targetTeamId,
-                                                   Long teamFriendId, Long actorId) {
-        // 自チームの ADMIN へ通知
-        String selfTeamName = teamRepository.findById(teamId)
-                .map(TeamEntity::getName).orElse("チーム");
-        String targetTeamName = teamRepository.findById(targetTeamId)
-                .map(TeamEntity::getName).orElse("チーム");
-
-        List<Long> selfAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, ROLE_ADMIN);
-        if (!selfAdminIds.isEmpty()) {
-            notificationHelper.notifyAllLocalized(
-                    selfAdminIds,
-                    "FRIEND_ESTABLISHED",
-                    "TEAM_FRIEND",
-                    teamFriendId,
-                    NotificationScopeType.FRIEND_TEAM,
-                    teamId,
-                    "/teams/" + teamId + "/friends",
-                    actorId,
-                    (userId, locale) -> buildEstablishedMessage(targetTeamName, locale)
-            );
-        }
-
-        // 相手チームの ADMIN へ通知
-        List<Long> targetAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(targetTeamId, ROLE_ADMIN);
-        if (!targetAdminIds.isEmpty()) {
-            notificationHelper.notifyAllLocalized(
-                    targetAdminIds,
-                    "FRIEND_ESTABLISHED",
-                    "TEAM_FRIEND",
-                    teamFriendId,
-                    NotificationScopeType.FRIEND_TEAM,
-                    targetTeamId,
-                    "/teams/" + targetTeamId + "/friends",
-                    actorId,
-                    (userId, locale) -> buildEstablishedMessage(selfTeamName, locale)
-            );
-        }
-    }
-
-    /**
-     * フレンドチーム成立通知の件名・本文を受信者 locale で組み立てる。
-     *
-     * <p>注意: {@code partnerTeamName} はチーム名の自由入力値であり、{@code '} を含みうる
-     * （例: {@code O'Brien's Team}）。{@link MessageSource#getMessage} は {@code {0}} への
-     * 引数代入自体では単一引用符のエスケープを要求しないため、ここでの追加処理は不要
-     * （エスケープが必要なのはメッセージ<b>パターン文字列</b>側にリテラルの {@code '} を書く場合のみ・
-     * ロケールファイルの値に {@code '} を含めていないことを確認済み）。</p>
-     */
-    private NotificationHelper.LocalizedMessage buildEstablishedMessage(String partnerTeamName, Locale locale) {
-        String title = messageSource.getMessage(
-                "notification.social.teamFriend.established.title",
-                new Object[]{partnerTeamName}, partnerTeamName + "とフレンドチームになりました", locale);
-        String body = messageSource.getMessage(
-                "notification.social.teamFriend.established.body",
-                new Object[]{partnerTeamName}, partnerTeamName + "との相互フォローが成立し、フレンドチームになりました", locale);
-        return new NotificationHelper.LocalizedMessage(title, body);
-    }
-
-    /**
-     * フレンド関係解除時に両チームの ADMIN へ FRIEND_DISSOLVED 通知を送信する。
-     *
-     * <p>
-     * teamId チームの ADMIN と targetTeamId チームの ADMIN の両方へ通知を送る。
-     * 送信失敗は {@link NotificationHelper#notifyAll} が個別に握り込み継続する。
-     * </p>
-     *
-     * @param teamId       自チーム ID（解除操作を行っている側）
-     * @param targetTeamId 相手チーム ID
-     * @param teamFriendId フレンド関係 ID
-     * @param actorId      操作実行者ユーザー ID
-     */
-    private void sendFriendDissolvedNotification(Long teamId, Long targetTeamId,
-                                                 Long teamFriendId, Long actorId) {
-        String selfTeamName = teamRepository.findById(teamId)
-                .map(TeamEntity::getName).orElse("チーム");
-        String targetTeamName = teamRepository.findById(targetTeamId)
-                .map(TeamEntity::getName).orElse("チーム");
-
-        // 自チームの ADMIN へ通知
-        List<Long> selfAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, ROLE_ADMIN);
-        if (!selfAdminIds.isEmpty()) {
-            notificationHelper.notifyAllLocalized(
-                    selfAdminIds,
-                    "FRIEND_DISSOLVED",
-                    "TEAM_FRIEND",
-                    teamFriendId,
-                    NotificationScopeType.FRIEND_TEAM,
-                    teamId,
-                    "/teams/" + teamId + "/friends",
-                    actorId,
-                    (userId, locale) -> buildDissolvedMessage(targetTeamName, locale)
-            );
-        }
-
-        // 相手チームの ADMIN へ通知
-        List<Long> targetAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(targetTeamId, ROLE_ADMIN);
-        if (!targetAdminIds.isEmpty()) {
-            notificationHelper.notifyAllLocalized(
-                    targetAdminIds,
-                    "FRIEND_DISSOLVED",
-                    "TEAM_FRIEND",
-                    teamFriendId,
-                    NotificationScopeType.FRIEND_TEAM,
-                    targetTeamId,
-                    "/teams/" + targetTeamId + "/friends",
-                    actorId,
-                    (userId, locale) -> buildDissolvedMessage(selfTeamName, locale)
-            );
-        }
-    }
-
-    /**
-     * フレンドチーム解除通知の件名・本文を受信者 locale で組み立てる（件名・本文とも同一文言）。
-     */
-    private NotificationHelper.LocalizedMessage buildDissolvedMessage(String partnerTeamName, Locale locale) {
-        String title = messageSource.getMessage(
-                "notification.social.teamFriend.dissolved.title",
-                new Object[]{partnerTeamName}, partnerTeamName + "とのフレンドチーム関係が解除されました", locale);
-        String body = messageSource.getMessage(
-                "notification.social.teamFriend.dissolved.body",
-                new Object[]{partnerTeamName}, partnerTeamName + "とのフレンドチーム関係が解除されました", locale);
-        return new NotificationHelper.LocalizedMessage(title, body);
-    }
 }

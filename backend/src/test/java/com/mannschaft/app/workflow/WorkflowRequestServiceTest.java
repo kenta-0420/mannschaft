@@ -2,6 +2,7 @@ package com.mannschaft.app.workflow;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.workflow.dto.CreateWorkflowRequestRequest;
 import com.mannschaft.app.workflow.dto.UpdateWorkflowRequestRequest;
 import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
@@ -11,6 +12,7 @@ import com.mannschaft.app.workflow.entity.WorkflowRequestStepEntity;
 import com.mannschaft.app.workflow.entity.WorkflowTemplateEntity;
 import com.mannschaft.app.workflow.entity.WorkflowTemplateStepEntity;
 import com.mannschaft.app.workflow.repository.WorkflowRequestApproverRepository;
+import com.mannschaft.app.workflow.repository.WorkflowRequestAttachmentRepository;
 import com.mannschaft.app.workflow.repository.WorkflowRequestRepository;
 import com.mannschaft.app.workflow.repository.WorkflowRequestStepRepository;
 import com.mannschaft.app.workflow.repository.WorkflowTemplateStepRepository;
@@ -53,6 +55,12 @@ class WorkflowRequestServiceTest {
 
     @Mock
     private WorkflowRequestApproverRepository approverRepository;
+
+    @Mock
+    private WorkflowRequestAttachmentRepository attachmentRepository;
+
+    @Mock
+    private StorageAclService storageAclService;
 
     @Mock
     private WorkflowTemplateStepRepository templateStepRepository;

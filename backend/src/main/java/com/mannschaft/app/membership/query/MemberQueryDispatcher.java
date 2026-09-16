@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * F00.5 OQ-10 / OQ-2 確定実装: メンバー一覧クエリのディスパッチャ。
@@ -86,6 +87,168 @@ public class MemberQueryDispatcher {
                     queryByMembershipRoleKind(scopeId, scopeType, RoleKind.valueOf(roleName));
             default -> throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_INVALID_ROLE_KIND);
         };
+    }
+
+    /**
+     * メンバー一覧の「誰がどのロールか」だけを、表示名・アバターを解決せずに取得する（CMP-260910-1555）。
+     *
+     * <h2>なぜ要るのか</h2>
+     * <p>{@link #queryMembers} は常にスコープ全員を返し、しかもユーザー 1 人ごとに
+     * {@code findMemberSummaryById} を引く（N+1）。呼び出し側が
+     * {@code TeamService#getMembers} のようにメモリ上で切り出してページングを
+     * エミュレートしていると、<b>1 ページ取得するたびに全員ぶんの重い処理が走る</b>。
+     * 一覧を最後までめくると総処理量が人数 N に対して概ね N^2/ページサイズになり、
+     * 大規模スコープでは DB 負荷とタイムアウトで一覧そのものが使えなくなる。</p>
+     *
+     * <h2>使い方</h2>
+     * <p>本メソッドで軽い行（userId・ロール・joinedAt のみ。表示名とアバターは {@code null}）を
+     * 全件そろえ、呼び出し側がページ位置で切り出したうえで {@link #hydrate} に渡す。
+     * 重い処理（表示名・アバターの解決）はページ内の人数ぶんで頭打ちになり、
+     * 全ページを通じた総量は N に比例する。並び順・集約結果・総件数は
+     * {@link #queryMembers} と同一であり、ページングの意味論は変えていない。</p>
+     *
+     * @param scopeId   スコープ ID
+     * @param scopeType スコープ種別
+     * @param roleName  絞り込みロール名（NULL なら全件）
+     * @return 絞り込み後の全メンバー（表示名・アバターは未解決の {@code null}）
+     */
+    public List<MemberDto> queryMemberIdentities(Long scopeId, ScopeType scopeType, String roleName) {
+        if (roleName == null || roleName.isBlank()) {
+            return aggregateIdentities(scopeId, scopeType);
+        }
+        return switch (roleName) {
+            case "ADMIN", "DEPUTY_ADMIN", "GUEST", "SYSTEM_ADMIN" -> {
+                Optional<RoleEntity> roleOpt = roleRepository.findByName(roleName);
+                if (roleOpt.isEmpty()) {
+                    yield List.of();
+                }
+                Long roleId = roleOpt.get().getId();
+                List<UserRoleEntity> entities;
+                if (scopeType == ScopeType.TEAM) {
+                    entities = userRoleRepository.findByTeamIdAndRoleId(scopeId, roleId);
+                } else {
+                    entities = userRoleRepository.findByOrganizationId(scopeId, Pageable.unpaged())
+                            .getContent()
+                            .stream()
+                            .filter(ur -> roleId.equals(ur.getRoleId()))
+                            .toList();
+                }
+                yield entities.stream()
+                        .map(ur -> identity(ur.getUserId(), roleName, ur.getCreatedAt()))
+                        .toList();
+            }
+            case "MEMBER", "SUPPORTER" -> {
+                RoleKind roleKind = RoleKind.valueOf(roleName);
+                yield membershipRepository
+                        .findByScopeAndActive(scopeType, scopeId, Pageable.unpaged())
+                        .getContent()
+                        .stream()
+                        .filter(m -> m.getRoleKind() == roleKind)
+                        .filter(m -> m.getUserId() != null)
+                        .map(m -> identity(m.getUserId(), roleKind.name(), m.getJoinedAt()))
+                        .toList();
+            }
+            default -> throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_INVALID_ROLE_KIND);
+        };
+    }
+
+    /** 表示名・アバターを未解決（{@code null}）にした軽量行。 */
+    private MemberDto identity(Long userId, String roleName, java.time.LocalDateTime joinedAt) {
+        return new MemberDto(userId, null, null, roleName, joinedAt);
+    }
+
+    /**
+     * {@link #queryMemberIdentities} が返した行のうち、渡されたぶんだけを 1 クエリで実体化する。
+     *
+     * <p>論理削除等で users 側に行が無いユーザーは、{@code findMemberSummaryById} を
+     * 使っていた頃と同じく displayName / avatarUrl が {@code null} の行として残す
+     * （一覧から消すと総件数と表示件数が食い違うため）。</p>
+     *
+     * @param identities {@link #queryMemberIdentities} の結果（通常は 1 ページぶんに切り出したもの）
+     * @return 表示名・アバターを解決した {@link MemberDto}（並び順は入力どおり）
+     */
+    public List<MemberDto> hydrate(List<MemberDto> identities) {
+        if (identities.isEmpty()) {
+            return List.of();
+        }
+        List<Long> userIds = identities.stream().map(MemberDto::userId).toList();
+        Map<Long, UserRepository.MemberSummary> summaries = userRepository
+                .findMemberSummariesByIds(userIds).stream()
+                .collect(Collectors.toMap(UserRepository.MemberSummary::getId, summary -> summary,
+                        (left, right) -> left));
+
+        List<MemberDto> result = new ArrayList<>(identities.size());
+        for (MemberDto identity : identities) {
+            UserRepository.MemberSummary user = summaries.get(identity.userId());
+            result.add(new MemberDto(
+                    identity.userId(),
+                    user != null ? user.getDisplayName() : null,
+                    // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                    user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null,
+                    identity.roleName(),
+                    identity.joinedAt()));
+        }
+        return result;
+    }
+
+    /**
+     * 全件（roleName 未指定）の集約 — {@link #queryAll} と同じ優先度規則・同じ並び順。
+     */
+    private List<MemberDto> aggregateIdentities(Long scopeId, ScopeType scopeType) {
+        List<UserRoleEntity> userRoles = scopeType == ScopeType.TEAM
+                ? userRoleRepository.findByTeamId(scopeId, Pageable.unpaged()).getContent()
+                : userRoleRepository.findByOrganizationId(scopeId, Pageable.unpaged()).getContent();
+        List<MembershipEntity> memberships = membershipRepository
+                .findByScopeAndActive(scopeType, scopeId, Pageable.unpaged()).getContent();
+
+        // ロール名は roleId ごとに 1 回だけ引く。1 行ごとに roleRepository.findById を呼ぶと
+        // user_roles の件数ぶんクエリが出る（N+1）。ロールの種類数はたかだか数件なので
+        // 重複を除いた ID でまとめて引けば 1 クエリで済む。
+        Map<Long, String> roleNamesById = roleNamesFor(userRoles);
+
+        Map<Long, MemberDto> aggregated = new LinkedHashMap<>();
+        for (UserRoleEntity ur : userRoles) {
+            String urRoleName = roleNamesById.get(ur.getRoleId());
+            if (urRoleName == null) {
+                continue;
+            }
+            mergeAggregated(aggregated, ur.getUserId(), null, null, urRoleName, ur.getCreatedAt());
+        }
+        for (MembershipEntity m : memberships) {
+            if (m.getUserId() == null) {
+                continue; // GDPR マスキング済はスキップ
+            }
+            mergeAggregated(aggregated, m.getUserId(), null, null,
+                    m.getRoleKind().name(), m.getJoinedAt());
+        }
+        return new ArrayList<>(aggregated.values());
+    }
+
+    /**
+     * user_roles 行が参照する roleId を重複なく集め、ロール名を 1 クエリで引く（CMP-260910-1555）。
+     *
+     * <p>{@link #roleNameFor} を 1 行ずつ呼ぶと user_roles の件数ぶんクエリが出る。
+     * 実在するロールはたかだか数種類なので、重複を除いた ID でまとめて引く。</p>
+     *
+     * @param userRoles 対象の user_roles 行
+     * @return roleId → ロール名（存在しない roleId は含まれない）
+     */
+    private Map<Long, String> roleNamesFor(List<UserRoleEntity> userRoles) {
+        List<Long> roleIds = userRoles.stream()
+                .map(UserRoleEntity::getRoleId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (roleIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> names = new LinkedHashMap<>();
+        for (RoleEntity role : roleRepository.findAllById(roleIds)) {
+            if (role.getName() != null) {
+                names.put(role.getId(), role.getName());
+            }
+        }
+        return names;
     }
 
     /**

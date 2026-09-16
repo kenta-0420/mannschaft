@@ -18,7 +18,6 @@ import com.mannschaft.app.village.event.VillageEventOccurredEvent;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageFestivalRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -84,7 +83,6 @@ public class VillageFestivalService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final VillageFestivalRepository festivalRepository;
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final AuditLogService auditLogService;
     /** バナー画像の生 R2 キーを表示用の署名付き URL へ解決する共通部品（#2355 r2PublicUrl 根絶）。 */
@@ -93,6 +91,7 @@ public class VillageFestivalService {
     private final VillageBulletinAccessService bulletinAccessService;
     /** F17.2 Wave2 ①: 行事→村フィード自動還流イベントの発行（AFTER_COMMIT リスナーが購読・§3.3.1）。 */
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final VillageAccessGate accessGate;
 
     // ====================================================================
     // 作成
@@ -111,7 +110,7 @@ public class VillageFestivalService {
      */
     @Transactional
     public FestivalResponse createFestival(UUID villageId, FestivalCreateRequest request, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireHeadmanOrElder(villageId, actorUserId);
 
         validatePeriod(request.startsAt(), request.endsAt());
@@ -177,7 +176,7 @@ public class VillageFestivalService {
                                            UUID festivalId,
                                            FestivalUpdateRequest request,
                                            Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireHeadmanOrElder(villageId, actorUserId);
 
         VillageFestivalEntity entity = loadFestival(villageId, festivalId);
@@ -241,7 +240,7 @@ public class VillageFestivalService {
      */
     @Transactional
     public FestivalResponse cancelFestival(UUID villageId, UUID festivalId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireHeadmanOrElder(villageId, actorUserId);
 
         VillageFestivalEntity entity = loadFestival(villageId, festivalId);
@@ -337,16 +336,16 @@ public class VillageFestivalService {
     // 共通ヘルパ
     // ====================================================================
 
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     private VillageFestivalEntity loadFestival(UUID villageId, UUID festivalId) {

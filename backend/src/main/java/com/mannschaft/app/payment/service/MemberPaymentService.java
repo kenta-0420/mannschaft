@@ -3,9 +3,6 @@ package com.mannschaft.app.payment.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.PayerRelationship;
 import com.mannschaft.app.payment.PaymentErrorCode;
@@ -32,13 +29,14 @@ import com.mannschaft.app.payment.entity.StripeCustomerEntity;
 import com.mannschaft.app.payment.escrow.ConnectChargeService;
 import com.mannschaft.app.payment.escrow.MembershipChargeCommand;
 import com.mannschaft.app.payment.escrow.MembershipChargeResult;
+import com.mannschaft.app.payment.event.PaymentRemindNotificationEvent;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -47,7 +45,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -68,11 +65,10 @@ public class MemberPaymentService {
     private final StripePaymentProvider stripePaymentProvider;
     private final PaymentMapper paymentMapper;
     private final NameResolverService nameResolverService;
-    private final NotificationHelper notificationHelper;
-    // Issue #2715 ロットA: 通知本文の i18n 化。auth の UserRepository を直接呼ばず、
-    // common.i18n 配下の共有サービス経由で受信者 locale を解決する（ArchUnit D-5 対応）。
-    private final UserLocaleCache userLocaleCache;
-    private final MessageSource messageSource;
+    // Issue #2990 L7: 未払いリマインドの通知は業務TXの外（AFTER_COMMIT）へ移したため、
+    // 本サービスは通知コラボレータ（NotificationHelper / UserLocaleCache / MessageSource）を持たない。
+    // 受信者 locale の解決と文面の組み立ては PaymentRemindNotificationListener が行う。
+    private final ApplicationEventPublisher eventPublisher;
 
     // === F08.9 P1 Wave4: 払い手分離・Connect 即時 charge 連携 ===
     private final PaymentAuthorizationService paymentAuthorizationService;
@@ -684,7 +680,6 @@ public class MemberPaymentService {
     /**
      * 未払いリマインドを送信する。
      */
-    // TODO: paymentドメインとnotificationドメインをまたいでいる。将来はPaymentReminderRequestedEventで分離予定
     @Transactional
     public RemindResponse sendRemind(Long paymentItemId) {
         PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(paymentItemId);
@@ -693,26 +688,13 @@ public class MemberPaymentService {
             throw new BusinessException(PaymentErrorCode.DONATION_REMIND_NOT_ALLOWED);
         }
 
-        // 未払いメンバーの取得と通知送信
+        // 未払いメンバーの取得。通知は業務TXに参加させず、commit 後に
+        // PaymentRemindNotificationListener が受信者ごと独立トランザクションで配送する（#2990 L7）。
         List<Long> unpaidUserIds = memberPaymentRepository.findUnpaidUserIdsByPaymentItemId(paymentItemId);
-        NotificationScopeType scopeType = paymentItem.getTeamId() != null
-                ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
         Long scopeId = paymentItem.getTeamId() != null
                 ? paymentItem.getTeamId() : paymentItem.getOrganizationId();
-        for (Long userId : unpaidUserIds) {
-            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(userId));
-            String title = messageSource.getMessage(
-                    "notification.payment.remind.title", null, "支払いリマインド", locale);
-            String body = messageSource.getMessage(
-                    "notification.payment.remind.body", new Object[]{paymentItem.getName()},
-                    paymentItem.getName() + "の支払いが未完了です", locale);
-            notificationHelper.notify(
-                    userId, "PAYMENT_REMIND",
-                    title, body,
-                    "PAYMENT", paymentItemId,
-                    scopeType, scopeId,
-                    "/payments/" + paymentItemId, null);
-        }
+        eventPublisher.publishEvent(new PaymentRemindNotificationEvent(
+                paymentItemId, paymentItem.getTeamId(), scopeId, unpaidUserIds));
         log.info("リマインド送信: paymentItemId={}, notifiedCount={}", paymentItemId, unpaidUserIds.size());
         return new RemindResponse(unpaidUserIds.size(), paymentItem.getName());
     }

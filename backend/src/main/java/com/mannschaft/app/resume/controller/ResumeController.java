@@ -2,6 +2,7 @@ package com.mannschaft.app.resume.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.resume.dto.ResumeDetailResponse;
@@ -88,6 +89,7 @@ public class ResumeController {
             + "（ResumeService#listResumes・エンドポイントは引数を取らない）")
     @GetMapping
     @Operation(summary = "履歴書バージョン一覧取得")
+    @RequireFeature("FEATURE_SKILL_RESUME_ENABLED")
     public ResponseEntity<ApiResponse<List<ResumeSummaryResponse>>> listResumes() {
         Long userId = SecurityUtils.getCurrentUserId();
         List<ResumeSummaryResponse> result = resumeService.listResumes(userId);

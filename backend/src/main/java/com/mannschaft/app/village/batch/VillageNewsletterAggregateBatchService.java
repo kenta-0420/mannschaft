@@ -1,6 +1,8 @@
 package com.mannschaft.app.village.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.entity.VillageNewsletterEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterIssueEntity;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
@@ -59,6 +61,8 @@ public class VillageNewsletterAggregateBatchService {
      */
     @BatchEndpoint(name = "village-newsletter-aggregate-daily",
             description = "当日が集計日の村ニュースレターを集計・凍結する（毎日 03:00 UTC）")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。村の便りの日次集計。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 0 3 * * *", zone = "UTC")
     @SchedulerLock(
             name = "villageNewsletterAggregateBatch",

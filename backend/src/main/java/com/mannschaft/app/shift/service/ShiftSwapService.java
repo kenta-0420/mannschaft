@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
@@ -31,7 +32,9 @@ import java.util.List;
  *
  * <p>粒度は同ドメインの既存実装（{@code ShiftSlotService} / {@code ShiftScheduleService}）に合わせる:</p>
  * <ul>
- *   <li><b>管理操作</b>（一覧・承認/却下）: ADMIN/DEPUTY_ADMIN 以上（SYSTEM_ADMIN 短絡）。</li>
+ *   <li><b>管理操作</b>（承認/却下）: ADMIN/DEPUTY_ADMIN 以上（SYSTEM_ADMIN 短絡）。</li>
+ *   <li><b>一覧</b>: 当該チームのメンバー（SUPPORTER 不可）。ただし ADMIN 未満は
+ *       <b>自分に関係する依頼のみ</b>に BE 側で絞り込む（CMP-260908-2116）。</li>
  *   <li><b>メンバー操作</b>（申請・承諾・手挙げ）: 当該チームのメンバー、ただし SUPPORTER は不可。</li>
  *   <li><b>本人操作</b>（取消）: 申請者本人、または当該チームの ADMIN 以上。</li>
  *   <li><b>候補者選定</b>: 従来どおり<b>申請者本人のみ</b>（本改修で緩和していない）。
@@ -59,25 +62,42 @@ public class ShiftSwapService {
     private final ObjectMapper objectMapper;
 
     /**
-     * 指定チームの交代リクエスト一覧を取得する（管理者用）。
+     * 指定チームの交代リクエスト一覧を取得する。
      *
-     * <p>取得範囲は必ず単一チームに閉じる。チームは呼び出し元の指定した {@code teamId} だが、
-     * 当該チームの ADMIN 以上でなければ 403 となるため、他テナントのデータには到達できない。</p>
+     * <p>取得範囲は必ず単一チームに閉じる（他テナントのデータには到達できない）。
+     * そのうえで<b>閲覧者の立場によって可視範囲を BE 側で絞り込む</b>:</p>
+     * <ul>
+     *   <li><b>SYSTEM_ADMIN / 当該チームの ADMIN・DEPUTY_ADMIN</b>: 当該チームの全件。</li>
+     *   <li><b>当該チームの一般メンバー（SUPPORTER 不可）</b>: <b>自分に関係する依頼のみ</b>。
+     *       すなわち (1) 自分が指名されている（SPECIFIC かつ targetUserIds に自分が含まれる）、
+     *       (2) 指名なし（OPEN_CALL。BE の承諾認可上、同一チームの誰でも承諾できる）、
+     *       (3) 自分が申請した、(4) 自分が承諾済み、のいずれか。</li>
+     *   <li>上記以外（部外者・SUPPORTER）: 403。</li>
+     * </ul>
+     *
+     * <p><b>絞り込みを BE で行う理由:</b> 交代理由（{@code reason}）には体調・家庭の事情など
+     * 私的な内容が書かれうる。FE で表示を隠すだけではレスポンス本文に他人の理由が乗り、
+     * 開発者ツールから読めてしまう。したがって関係のない依頼は<b>返さない</b>。</p>
      *
      * @param teamId 対象チームID
      * @param status ステータスフィルタ（省略時は当該チームの全件）
      * @param userId 操作者ユーザーID
-     * @return 交代リクエスト一覧
-     * @throws BusinessException 当該チームの ADMIN 以上でない場合（COMMON_002 / 403）
+     * @return 交代リクエスト一覧（一般メンバーは自分に関係するもののみ）
+     * @throws BusinessException 当該チームのメンバーでない、または SUPPORTER の場合（COMMON_002 / 403）
      */
     public List<SwapRequestResponse> listSwapRequests(Long teamId, String status, Long userId) {
-        checkTeamAdminAccess(teamId, userId);
+        boolean privileged = checkListAccessAndIsPrivileged(teamId, userId);
         List<ShiftSwapRequestEntity> entities;
         if (status != null) {
             entities = swapRepository.findByTeamIdAndStatusOrderByCreatedAtAsc(
                     teamId, SwapRequestStatus.valueOf(status));
         } else {
             entities = swapRepository.findByTeamIdOrderByCreatedAtAsc(teamId);
+        }
+        if (!privileged) {
+            entities = entities.stream()
+                    .filter(entity -> isRelatedToUser(entity, userId))
+                    .toList();
         }
         return shiftMapper.toSwapResponseList(entities);
     }
@@ -208,103 +228,6 @@ public class ShiftSwapService {
         log.info("交代リクエストキャンセル: id={}", swapId);
     }
 
-    /**
-     * オープンコール交代リクエストを作成する（is_open_call=true で作成）。
-     *
-     * <p>recipientMode を OPEN_CALL に設定する。
-     *
-     * @param slotId   対象シフト枠ID
-     * @param reason   理由
-     * @param userId   依頼者ユーザーID
-     * @return 作成されたオープンコール交代リクエスト
-     */
-    @Transactional
-    public SwapRequestResponse createOpenCall(Long slotId, String reason, Long userId) {
-        ShiftSwapRequestEntity entity = ShiftSwapRequestEntity.builder()
-                .slotId(slotId)
-                .requesterId(userId)
-                .reason(reason)
-                .isOpenCall(true)
-                .recipientMode("OPEN_CALL")
-                .status(SwapRequestStatus.OPEN_CALL)
-                .build();
-
-        entity = swapRepository.save(entity);
-        log.info("オープンコール作成: id={}, slotId={}, requesterId={}", entity.getId(), slotId, userId);
-        return shiftMapper.toSwapResponse(entity);
-    }
-
-    /**
-     * オープンコールに手を挙げる（先着1名、楽観ロック）。
-     *
-     * @param swapRequestId オープンコールの交代リクエストID
-     * @param userId        手挙げユーザーID
-     * @return 更新された交代リクエスト
-     */
-    @Transactional
-    public SwapRequestResponse claimOpenCall(Long swapRequestId, Long userId) {
-        ShiftSwapRequestEntity entity = findSwapOrThrow(swapRequestId);
-        // オープンコールは「全体公開」だが、公開範囲は当該チーム内に閉じる（SUPPORTER 不可）
-        checkTeamMemberAccess(resolveTeamIdBySwap(entity), userId);
-
-        if (!Boolean.TRUE.equals(entity.getIsOpenCall())) {
-            throw new BusinessException(ShiftErrorCode.NOT_OPEN_CALL);
-        }
-
-        if (entity.getStatus() != SwapRequestStatus.OPEN_CALL) {
-            throw new BusinessException(ShiftErrorCode.OPEN_CALL_ALREADY_CLAIMED);
-        }
-
-        if (entity.getRequesterId().equals(userId)) {
-            throw new BusinessException(ShiftErrorCode.SWAP_SELF_REQUEST);
-        }
-
-        entity.claim(userId);
-        entity = swapRepository.save(entity);
-
-        log.info("オープンコール手挙げ: id={}, claimedBy={}", swapRequestId, userId);
-        return shiftMapper.toSwapResponse(entity);
-    }
-
-    /**
-     * オープンコールの候補者を選定して承諾済みにする（申請者本人のみ）。
-     *
-     * <p>認可根治 Wave6: 実装の判定は従来どおり「申請者本人のみ」で、緩和していない。
-     * 加えて当該チームのメンバーであることを前置きで検証し、他チーム・部外者が
-     * swapId 直指定で到達することを封じる。</p>
-     *
-     * @param swapRequestId オープンコールの交代リクエストID
-     * @param claimedBy     選定する手挙げユーザーID
-     * @param actorId       操作者ユーザーID
-     * @return 更新された交代リクエスト
-     */
-    @Transactional
-    public SwapRequestResponse selectClaimer(Long swapRequestId, Long claimedBy, Long actorId) {
-        ShiftSwapRequestEntity entity = findSwapOrThrow(swapRequestId);
-        // 既存の「申請者本人のみ」判定は緩めない。テナント境界の検証のみを前置きで追加する
-        //（部外者・他チームの利用者が swapId 直指定で到達することを封じる）
-        checkTeamMemberAccess(resolveTeamIdBySwap(entity), actorId);
-
-        if (!Boolean.TRUE.equals(entity.getIsOpenCall())) {
-            throw new BusinessException(ShiftErrorCode.NOT_OPEN_CALL);
-        }
-
-        if (entity.getStatus() != SwapRequestStatus.CLAIMED) {
-            throw new BusinessException(ShiftErrorCode.INVALID_SWAP_STATUS);
-        }
-
-        // 候補者選定は申請者本人のみ（従来どおり。本PRで緩和していない）
-        if (!entity.getRequesterId().equals(actorId)) {
-            throw new BusinessException(ShiftErrorCode.CLAIMER_SELECT_DENIED);
-        }
-
-        entity.selectClaimer(claimedBy);
-        entity = swapRepository.save(entity);
-
-        log.info("オープンコール候補者選定: id={}, claimedBy={}, actorId={}", swapRequestId, claimedBy, actorId);
-        return shiftMapper.toSwapResponse(entity);
-    }
-
     // ═════════════════════════════════════════════════════════════════════
     // 認可ヘルパー（認可根治 Wave6）
     // ═════════════════════════════════════════════════════════════════════
@@ -335,6 +258,85 @@ public class ShiftSwapService {
         return scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
                 .getTeamId();
+    }
+
+    /**
+     * 一覧 API の per-scope 認可を行い、「全件を見てよい立場か」を返す。
+     *
+     * <p>AccessControlService をこのメソッドから直接呼ぶ（番人 AuthzControllerGuardArchTest の
+     * 委譲探索は深さ2までのため、認可クラスへの到達を1ホップ内に収める）。</p>
+     *
+     * @param teamId 対象チーム ID
+     * @param userId 操作者ユーザー ID
+     * @return SYSTEM_ADMIN または当該チームの ADMIN/DEPUTY_ADMIN なら true（全件可視）
+     * @throws BusinessException 当該チームのメンバーでない、または SUPPORTER の場合（COMMON_002 / 403）
+     */
+    private boolean checkListAccessAndIsPrivileged(Long teamId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return true;
+        }
+        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
+            return true;
+        }
+        // 一般メンバー（SUPPORTER は不可）。承諾できる立場と同じ条件に揃える
+        //（checkTeamMemberAccess と同一方針）。
+        if (!accessControlService.isMember(userId, teamId, "TEAM")
+                || accessControlService.isSupporter(userId, teamId, "TEAM")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        return false;
+    }
+
+    /**
+     * 当該ユーザーに関係する交代依頼か判定する（一般メンバーの一覧可視範囲）。
+     *
+     * @param entity 交代リクエスト
+     * @param userId 閲覧者ユーザー ID
+     * @return 関係する依頼なら true
+     */
+    private boolean isRelatedToUser(ShiftSwapRequestEntity entity, Long userId) {
+        if (userId.equals(entity.getRequesterId()) || userId.equals(entity.getAccepterId())) {
+            return true;
+        }
+        if (isOpenCall(entity)) {
+            return true;
+        }
+        return parseTargetUserIds(entity.getTargetUserIds()).contains(userId);
+    }
+
+    /**
+     * 指名なし（OPEN_CALL）の依頼か判定する。
+     *
+     * <p>{@code recipientMode} は後発カラムのため、移行前の行は {@code isOpenCall} だけが
+     * 立っている可能性がある。両方を見る。</p>
+     *
+     * @param entity 交代リクエスト
+     * @return 指名なしなら true
+     */
+    private boolean isOpenCall(ShiftSwapRequestEntity entity) {
+        return "OPEN_CALL".equals(entity.getRecipientMode())
+                || Boolean.TRUE.equals(entity.getIsOpenCall());
+    }
+
+    /**
+     * targetUserIds（JSON 配列文字列）を ID リストへ変換する。
+     *
+     * <p>壊れた値は「指名なし」ではなく「誰も指名されていない」と解釈する（空リスト）。
+     * 可視範囲を広げる方向に倒さないための保守的な扱い。</p>
+     *
+     * @param json JSON 配列文字列（null 可）
+     * @return ユーザー ID リスト（変換できない場合は空リスト）
+     */
+    private List<Long> parseTargetUserIds(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<Long>>() { });
+        } catch (JsonProcessingException e) {
+            log.warn("targetUserIds の JSON 解析に失敗しました: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     /**

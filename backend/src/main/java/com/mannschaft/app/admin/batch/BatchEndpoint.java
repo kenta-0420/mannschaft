@@ -25,8 +25,18 @@ import java.lang.annotation.Target;
  * {@link IllegalStateException} を投げて FAIL FAST する。運用事故を起動時に検知するため意図的に
  * 厳格にしてある。</p>
  *
- * <p>第一陣時点では既存 75 バッチに本アノテーションは付与しない。第二陣以降で段階的に付与する。
- * 既存バッチには本 Aspect が一切影響しないため挙動は完全不変。</p>
+ * <p><b>付与状況（陳腐化していた記述の是正）</b>: 初版 Javadoc には
+ * 「第一陣時点では既存 75 バッチに本アノテーションは付与しない」「既存 75 バッチには影響しない」と
+ * 書かれていたが、これは第一陣当時の記述であり<b>すでに事実と異なる</b>。
+ * 第二陣以降の段階的付与は完了しており、本アノテーションの付与箇所は現在 153 件ある
+ * （2026-08-25 時点の本番ソース実測）。
+ * 「既存バッチには Aspect が影響しない」という前提で判断すると誤るため、
+ * {@link BatchExecutionAspect} の前後処理は<b>付与済みの全バッチに掛かっている</b>ものとして扱うこと。</p>
+ *
+ * <p>なお、本アノテーションは「名前で起動できる実機検証可能なバッチ」を宣言するものであり、
+ * 「フラグ無効時に止めてよいか」は宣言しない。後者は
+ * {@link com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy} の責務であり、
+ * 両者は独立に付与する。</p>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule;
 
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -84,8 +85,7 @@ class ScheduleKeepConvertFanoutFailureIT extends AbstractMySqlIntegrationTest {
     void ac9_enqueueFailureKeepsConvertTransactionCommitted() throws Exception {
         // enqueue（12 引数版）を常に失敗させる。DB 一時障害などの enqueue 失敗を模す。
         doThrow(new RuntimeException("fan-out enqueue 失敗（DB 一時障害を模す）"))
-                .when(fanoutJobService).enqueue(anyString(), anyString(), anyString(), any(UUID.class), isNull(),
-                        anyString(), anyString(), any(), anyString(), anyLong(), anyString(), anyLong());
+                .when(fanoutJobService).enqueue(anyString(), anyString(), anyString(), any(UUID.class), isNull(),any(FanoutMessageKind.class), any(String[].class), any(), anyString(), anyLong(), anyString(), anyLong());
 
         long suffix = System.nanoTime() % 1_000_000L;
         String teamSlug = "kcf-" + suffix;

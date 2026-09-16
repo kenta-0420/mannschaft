@@ -2,13 +2,9 @@
 /**
  * F22.1 / F03.11: 札主の応募者管理（成立＝CONFIRM）パネル。
  *
- * 札主（募集主）が応募者一覧を見て成立（APPLIED → CONFIRMED）させる。謝礼あり札
- * （paymentEnabled）では、成立の前に謝礼のお支払い（カード与信）を確認するステップを挟む
- * （MarketEscrowConfirmDialog）。確認が完了したら confirmApplication を呼ぶ。
- *
- * 注: 返金は受取側（payee）の ADMIN 操作であり、本パネルは札主（payer）の画面のため
- * 返金導線は配線しない。返金 UI は受取側ページ pages/me/recruitment-payments.vue に
- * 一本化する。
+ * 札主（募集主）が応募者一覧を見て成立（APPLIED → CONFIRMED）させる。
+ * 謝礼の支払者は応募者本人であり、clientSecret も応募者本人にだけ返るため、
+ * カード与信の確認導線は RecruitmentApplicationButton 側に置く。
  *
  * BE 配線（recon 済み・実在 EP）:
  *   - GET   /api/v1/recruitment-listings/{listingId}/participants
@@ -20,8 +16,6 @@ import type { RecruitmentParticipantResponse } from '~/types/recruitment'
 
 interface Props {
   listingId: number
-  /** 謝礼あり札か（成立前の決済確認を挟むかの判定）。 */
-  paymentEnabled: boolean
 }
 
 const props = defineProps<Props>()
@@ -33,10 +27,6 @@ const { success, error } = useNotification()
 const participants = ref<RecruitmentParticipantResponse[]>([])
 const loading = ref(false)
 const confirmingId = ref<number | null>(null)
-
-// 決済確認ダイアログ。
-const escrowDialogVisible = ref(false)
-const escrowParticipantId = ref<number | null>(null)
 
 async function load() {
   loading.value = true
@@ -54,24 +44,8 @@ function statusLabel(s: string): string {
   return t(`recruitment.participantStatus.${s.toLowerCase()}`)
 }
 
-/** 成立ボタン押下。謝礼あり札なら決済確認ダイアログを先に出す。 */
 function onConfirmClick(p: RecruitmentParticipantResponse) {
-  if (props.paymentEnabled) {
-    escrowParticipantId.value = p.id
-    escrowDialogVisible.value = true
-    return
-  }
   void doConfirm(p.id)
-}
-
-/** 決済確認（与信 or DEFERRED/AUTHORIZED）完了 → 成立を実行する。 */
-function onEscrowConfirmed() {
-  const pid = escrowParticipantId.value
-  escrowDialogVisible.value = false
-  escrowParticipantId.value = null
-  if (pid != null) {
-    void doConfirm(pid)
-  }
 }
 
 async function doConfirm(participantId: number) {
@@ -126,7 +100,7 @@ onMounted(load)
         </div>
         <div class="flex gap-2">
           <Button
-            v-if="p.status === 'APPLIED' || p.status === 'WAITLISTED'"
+            v-if="p.status === 'APPLIED'"
             :label="t('recruitment.action.confirmApplication')"
             icon="pi pi-check"
             size="small"
@@ -136,14 +110,5 @@ onMounted(load)
         </div>
       </div>
     </div>
-
-    <!-- 札主の決済確認（成立前のカード与信） -->
-    <MarketEscrowConfirmDialog
-      v-if="escrowParticipantId != null"
-      v-model:visible="escrowDialogVisible"
-      :listing-id="listingId"
-      :participant-id="escrowParticipantId"
-      @confirmed="onEscrowConfirmed"
-    />
   </section>
 </template>

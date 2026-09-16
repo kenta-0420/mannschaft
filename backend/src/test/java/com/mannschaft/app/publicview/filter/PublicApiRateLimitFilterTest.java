@@ -412,6 +412,45 @@ class PublicApiRateLimitFilterTest {
     // ────────────────────────────────────────────────────────────
 
     private static final String DETAIL_PATH = "/api/v1/public/teams/42";
+    private static final String PUBLIC_BILLING_PLANS_PATH = "/api/v1/public/billing/plans";
+
+    @Test
+    @DisplayName("BC-11: 未認証の公開価格は同一IPで60回まで通過し、61回目を429にする")
+    void bc11_publicBillingPlans_anonymous_60PerMinute_then429() throws Exception {
+        SecurityContextHolder.clearContext();
+        FilterChain chain = mock(FilterChain.class);
+
+        for (int i = 0; i < 60; i++) {
+            MockHttpServletRequest request = buildRequest(PUBLIC_BILLING_PLANS_PATH, "GET");
+            request.setRemoteAddr("198.51.100.201");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, chain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+
+        MockHttpServletRequest overLimit = buildRequest(PUBLIC_BILLING_PLANS_PATH, "GET");
+        overLimit.setRemoteAddr("198.51.100.201");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(overLimit, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(429);
+        verify(rateLimiter, atLeastOnce()).tryConsume(
+                eq("public-api:PUBLIC_BILLING"), eq("ip:198.51.100.201"), eq(60), eq(Duration.ofMinutes(1)));
+    }
+
+    @Test
+    @DisplayName("BC-11: 認証済みでも公開価格はuser単位へ緩和せずIP単位60回/分にする")
+    void bc11_publicBillingPlans_authenticated_stillUsesIpBucket() throws Exception {
+        setAuthenticated("991");
+        FilterChain chain = mock(FilterChain.class);
+        MockHttpServletRequest request = buildRequest(PUBLIC_BILLING_PLANS_PATH, "GET");
+        request.setRemoteAddr("198.51.100.202");
+
+        filter.doFilter(request, new MockHttpServletResponse(), chain);
+
+        verify(rateLimiter).tryConsume(
+                eq("public-api:PUBLIC_BILLING"), eq("ip:198.51.100.202"), eq(60), eq(Duration.ofMinutes(1)));
+    }
 
     @Test
     @DisplayName("(詳細) 未ログイン: GET /public/teams/{id} は 60 回まで成功、61 回目で 429")
@@ -1137,6 +1176,22 @@ class PublicApiRateLimitFilterTest {
     // ────────────────────────────────────────────────────────────
     // 是正テスト用ヘルパー
     // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("市の検索一覧は未認証で MARKET_SEARCH の 30 req/分バケットを使う")
+    void marketListingSearch_anonymous_usesSearchBucket() throws Exception {
+        SecurityContextHolder.clearContext();
+        String path = "/api/v1/public/market/listings";
+        MockHttpServletRequest request = buildRequest(path, "GET");
+        request.setRemoteAddr("198.51.100.250");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, mock(FilterChain.class));
+
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        verify(rateLimiter).tryConsume(eq("public-api:MARKET_SEARCH"),
+                eq("ip:198.51.100.250"), eq(30), eq(Duration.ofMinutes(1)));
+    }
 
     /** PUBLIC_API zone（60/min/IP）で 1 回叩いて Valkey 消費が行われたことだけを確認する。 */
     private void assertPublicApiRateLimited(String path, String ip) throws Exception {

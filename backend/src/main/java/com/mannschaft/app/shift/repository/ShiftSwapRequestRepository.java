@@ -41,11 +41,6 @@ public interface ShiftSwapRequestRepository extends JpaRepository<ShiftSwapReque
     List<ShiftSwapRequestEntity> findByStatusOrderByCreatedAtAsc(SwapRequestStatus status);
 
     /**
-     * オープンコール中の交代リクエスト一覧を取得する。
-     */
-    List<ShiftSwapRequestEntity> findByIsOpenCallTrueAndStatus(SwapRequestStatus status);
-
-    /**
      * 48h 経過した PENDING 交代申請をバッチ取得する（自動期限切れキャンセル用）。
      */
     @Query("""

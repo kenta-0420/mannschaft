@@ -3,7 +3,8 @@
  * F22.1 市（Market）— 市一覧・検索ページ
  *
  * - 未ログイン公開（middleware:'auth' なし・permitAll）
- * - フィルタ: 都道府県 → 市区町村（連動）/ ジャンル / キーワード（500ms debounce）
+ * - フィルタ: 都道府県 → 市区町村（連動）/ ジャンル / 札主 / キーワード / 並び順
+ * - 条件編集では一覧を更新せず、検索ボタンでまとめて適用
  * - フィルタ状態を URL クエリに同期（共有・ブックマーク可能）
  * - 空状態: ログイン済み権限あり / 権限なし / 未ログイン の3パターン
  * - レスポンシブ: モバイルはフィルタ折りたたみ
@@ -11,7 +12,12 @@
  * 設計書: docs/features/F22.1_market/03_ui_i18n.md §2
  * API:    GET /api/v1/public/market/listings
  */
-import type { MarketListingRegion, MarketListingResponse } from '~/types/market'
+import type {
+  MarketListingRegion,
+  MarketListingResponse,
+  MarketListingSort,
+  MarketOwnerType,
+} from '~/types/market'
 import type { RecruitmentCategoryResponse } from '~/types/recruitment'
 
 definePageMeta({
@@ -41,15 +47,47 @@ const {
 // =====================================================================
 
 const listings = ref<MarketListingResponse[]>([])
-const loading = ref(false)
+const initialLoading = ref(true)
+const searching = ref(false)
 const totalRecords = ref(0)
 const currentPage = ref(0)
 const pageSize = 20
+let listingRequestSequence = 0
 
 const categories = ref<RecruitmentCategoryResponse[]>([])
 const selectedCategoryId = ref<number | null>(null)
+const selectedOwnerType = ref<MarketOwnerType | null>(null)
 const searchKeyword = ref<string>('')
-const includeRegionNone = ref(true)
+const selectedSort = ref<MarketListingSort>('START_AT_ASC')
+
+interface MarketFilterConditions {
+  prefecture: string | null
+  city: string | null
+  categoryId: number | null
+  ownerType: MarketOwnerType | null
+  keyword: string
+  sort: MarketListingSort
+}
+
+const appliedFilters = ref<MarketFilterConditions>({
+  prefecture: null,
+  city: null,
+  categoryId: null,
+  ownerType: null,
+  keyword: '',
+  sort: 'START_AT_ASC',
+})
+
+const categoryOptions = computed(() => categories.value.map(category => ({
+  id: category.id,
+  label: t(category.nameI18nKey),
+})))
+
+const sortOptions = computed(() => [
+  { value: 'START_AT_ASC' as const, label: t('market.sort.startAtAsc') },
+  { value: 'DEADLINE_ASC' as const, label: t('market.sort.deadlineAsc') },
+  { value: 'DEADLINE_DESC' as const, label: t('market.sort.deadlineDesc') },
+])
 
 /** モバイルフィルタ折りたたみ */
 const filterExpanded = ref(false)
@@ -58,70 +96,106 @@ const filterExpanded = ref(false)
 // URL クエリ同期
 // =====================================================================
 
-// 初回マウント時に URL クエリからフィルタ状態を復元する
-function syncFromQuery() {
+function isMarketListingSort(value: unknown): value is MarketListingSort {
+  return value === 'START_AT_ASC' || value === 'DEADLINE_ASC' || value === 'DEADLINE_DESC'
+}
+
+function draftFilters(): MarketFilterConditions {
+  return {
+    prefecture: selectedPrefecture.value,
+    city: selectedCity.value,
+    categoryId: selectedCategoryId.value,
+    ownerType: selectedOwnerType.value,
+    keyword: searchKeyword.value.trim(),
+    sort: selectedSort.value,
+  }
+}
+
+// 初回マウント時に URL クエリから下書き条件と適用済み条件を復元する
+async function syncFromQuery() {
   const q = route.query
   if (typeof q.prefecture === 'string' && q.prefecture) {
-    selectedPrefecture.value = q.prefecture
-    void selectPrefecture(q.prefecture).then(() => {
-      if (typeof q.city === 'string' && q.city) {
-        selectedCity.value = q.city
-      }
-    })
-  }
-  if (typeof q.city === 'string' && q.city) {
-    selectedCity.value = q.city
+    await selectPrefecture(q.prefecture)
+    if (typeof q.city === 'string' && q.city) {
+      selectedCity.value = q.city
+    }
   }
   if (typeof q.category === 'string' && q.category) {
     selectedCategoryId.value = Number(q.category) || null
   }
+  if (q.owner === 'PERSONAL' || q.owner === 'TEAM' || q.owner === 'ORGANIZATION') {
+    selectedOwnerType.value = q.owner
+  }
   if (typeof q.keyword === 'string') {
     searchKeyword.value = q.keyword
   }
-  if (typeof q.page === 'string') {
-    currentPage.value = Number(q.page) || 0
+  if (isMarketListingSort(q.sort)) {
+    selectedSort.value = q.sort
   }
+  if (typeof q.page === 'string') {
+    const page = Number(q.page)
+    currentPage.value = Number.isInteger(page) && page > 0 ? page : 0
+  }
+  appliedFilters.value = draftFilters()
 }
 
-function buildQuery(): Record<string, string> {
+function buildQuery(filters: MarketFilterConditions, page: number): Record<string, string> {
   const q: Record<string, string> = {}
-  if (selectedPrefecture.value) q.prefecture = selectedPrefecture.value
-  if (selectedCity.value) q.city = selectedCity.value
-  if (selectedCategoryId.value != null) q.category = String(selectedCategoryId.value)
-  if (searchKeyword.value.trim()) q.keyword = searchKeyword.value.trim()
-  if (currentPage.value > 0) q.page = String(currentPage.value)
+  if (filters.prefecture) q.prefecture = filters.prefecture
+  if (filters.city) q.city = filters.city
+  if (filters.categoryId != null) q.category = String(filters.categoryId)
+  if (filters.ownerType) q.owner = filters.ownerType
+  if (filters.keyword) q.keyword = filters.keyword
+  if (filters.sort !== 'START_AT_ASC') q.sort = filters.sort
+  if (page > 0) q.page = String(page)
   return q
 }
 
-function pushQuery() {
-  void navigateTo({ query: buildQuery() }, { replace: true })
+async function replaceQuery() {
+  await navigateTo(
+    { query: buildQuery(appliedFilters.value, currentPage.value) },
+    { replace: true },
+  )
 }
 
 // =====================================================================
 // Fetch
 // =====================================================================
 
-async function fetchListings() {
-  loading.value = true
+async function fetchListings(isInitial = false) {
+  const sequence = ++listingRequestSequence
+  const filters = { ...appliedFilters.value }
+  const requestedPage = currentPage.value
+  const requestedLocale = locale.value
+  if (isInitial) initialLoading.value = true
+  else searching.value = true
+
   try {
     const res = await marketApi.listMarketListings({
-      prefecture: selectedPrefecture.value ?? undefined,
-      city: selectedCity.value ?? undefined,
-      categoryId: selectedCategoryId.value ?? undefined,
-      keyword: searchKeyword.value.trim() || undefined,
-      includeRegionNone: includeRegionNone.value,
-      page: currentPage.value,
+      prefecture: filters.prefecture ?? undefined,
+      city: filters.city ?? undefined,
+      categoryId: filters.categoryId ?? undefined,
+      ownerType: filters.ownerType ?? undefined,
+      keyword: filters.keyword || undefined,
+      includeRegionNone: filters.prefecture == null && filters.city == null,
+      sort: filters.sort,
+      page: requestedPage,
       size: pageSize,
-      lang: locale.value,
+      lang: requestedLocale,
     })
+    if (sequence !== listingRequestSequence) return
     listings.value = res.data
     totalRecords.value = res.meta.total
   }
   catch (error) {
+    if (sequence !== listingRequestSequence) return
     handleApiError(error, t('market.error.loadFailed'))
   }
   finally {
-    loading.value = false
+    if (sequence === listingRequestSequence) {
+      initialLoading.value = false
+      searching.value = false
+    }
   }
 }
 
@@ -143,38 +217,19 @@ async function fetchCategories() {
 
 async function onPrefectureChange(code: string | null) {
   await selectPrefecture(code)
+}
+
+async function applyFilters() {
   currentPage.value = 0
-  pushQuery()
+  appliedFilters.value = draftFilters()
+  await replaceQuery()
   await fetchListings()
 }
 
-async function onCityChange(_code: string | null) {
-  currentPage.value = 0
-  pushQuery()
-  await fetchListings()
+async function applyPrefectureFilter(code: string | null) {
+  await selectPrefecture(code)
+  await applyFilters()
 }
-
-async function onCategoryChange() {
-  currentPage.value = 0
-  pushQuery()
-  await fetchListings()
-}
-
-// キーワード 500ms debounce
-let keywordTimer: ReturnType<typeof setTimeout> | null = null
-watch(searchKeyword, () => {
-  if (keywordTimer) clearTimeout(keywordTimer)
-  keywordTimer = setTimeout(async () => {
-    currentPage.value = 0
-    pushQuery()
-    await fetchListings()
-  }, 500)
-})
-
-watch(includeRegionNone, async () => {
-  currentPage.value = 0
-  await fetchListings()
-})
 
 // ロケール切替時に、札の地域名表示を現在ロケールへ追従させる（都道府県/市区町村フィルタは
 // useMarketRegions 側の watch が再取得する）。
@@ -188,7 +243,7 @@ watch(locale, async () => {
 
 async function onPageChange(event: { page: number }) {
   currentPage.value = event.page
-  pushQuery()
+  await replaceQuery()
   await fetchListings()
 }
 
@@ -236,9 +291,9 @@ function regionLabel(region: MarketListingRegion): string {
 // =====================================================================
 
 onMounted(async () => {
-  syncFromQuery()
   await Promise.all([loadPrefectures(), fetchCategories()])
-  await fetchListings()
+  await syncFromQuery()
+  await fetchListings(true)
 })
 </script>
 
@@ -247,14 +302,14 @@ onMounted(async () => {
     <!-- ヘッダー -->
     <PageHeader :title="$t('market.title')" help @help="showGuide = true">
       <template #actions>
-        <!-- 市から直接札を立てない（導線のみ）-->
+        <!-- 個人名義の作成フォームへ直接つなぐ。チーム・組織は各管理市から主体を保持する。 -->
         <Button
           :label="$t('market.action.post')"
           icon="pi pi-tag"
           severity="secondary"
           outlined
           data-testid="market-post-link"
-          @click="navigateTo('/dashboard')"
+          @click="navigateTo({ path: '/me/market', query: { create: 'true' } })"
         />
       </template>
     </PageHeader>
@@ -263,25 +318,25 @@ onMounted(async () => {
     <nav class="mb-4 flex items-center gap-1 text-sm text-surface-500" aria-label="breadcrumb">
       <button
         class="hover:text-primary cursor-pointer"
-        :class="{ 'text-primary font-semibold': !selectedPrefecture }"
-        @click="onPrefectureChange(null)"
+        :class="{ 'text-primary font-semibold': !appliedFilters.prefecture }"
+        @click="applyPrefectureFilter(null)"
       >
         {{ $t('market.breadcrumb.national') }}
       </button>
-      <template v-if="selectedPrefecture">
+      <template v-if="appliedFilters.prefecture">
         <i class="pi pi-chevron-right text-xs" />
         <button
           class="hover:text-primary cursor-pointer"
-          :class="{ 'text-primary font-semibold': !selectedCity }"
-          @click="() => onPrefectureChange(selectedPrefecture)"
+          :class="{ 'text-primary font-semibold': !appliedFilters.city }"
+          @click="applyPrefectureFilter(appliedFilters.prefecture)"
         >
-          {{ prefectures.find(p => p.code === selectedPrefecture)?.name ?? selectedPrefecture }}
+          {{ prefectures.find(p => p.code === appliedFilters.prefecture)?.name ?? appliedFilters.prefecture }}
         </button>
       </template>
-      <template v-if="selectedCity">
+      <template v-if="appliedFilters.city">
         <i class="pi pi-chevron-right text-xs" />
         <span class="font-semibold text-surface-700">
-          {{ cities.find(c => c.code === selectedCity)?.name ?? selectedCity }}
+          {{ cities.find(c => c.code === appliedFilters.city)?.name ?? appliedFilters.city }}
         </span>
       </template>
       <span
@@ -306,10 +361,11 @@ onMounted(async () => {
         />
       </div>
 
-      <div
+      <form
         class="flex-wrap items-start gap-3"
         :class="filterExpanded ? 'flex' : 'hidden sm:flex'"
         data-testid="market-filter-bar"
+        @submit.prevent="applyFilters"
       >
         <!-- 都道府県 -->
         <Select
@@ -338,21 +394,36 @@ onMounted(async () => {
           class="w-48 field-bordered"
           :aria-label="$t('market.filter.city')"
           data-testid="market-city-select"
-          @change="(e: { value: string | null }) => onCityChange(e.value)"
         />
 
         <!-- ジャンル -->
         <Select
           v-model="selectedCategoryId"
-          :options="categories"
-          option-label="nameI18nKey"
+          :options="categoryOptions"
+          option-label="label"
           option-value="id"
           :placeholder="$t('market.filter.allCategories')"
           show-clear
           class="w-44 field-bordered"
           :aria-label="$t('market.filter.category')"
           data-testid="market-category-select"
-          @change="onCategoryChange"
+        />
+
+        <!-- 札主区分 -->
+        <Select
+          v-model="selectedOwnerType"
+          :options="[
+            { value: 'PERSONAL', label: $t('market.ownerType.personal') },
+            { value: 'TEAM', label: $t('market.ownerType.team') },
+            { value: 'ORGANIZATION', label: $t('market.ownerType.organization') },
+          ]"
+          option-label="label"
+          option-value="value"
+          :placeholder="$t('market.filter.allOwnerTypes')"
+          show-clear
+          class="w-44 field-bordered"
+          :aria-label="$t('market.filter.ownerType')"
+          data-testid="market-owner-type-select"
         />
 
         <!-- キーワード -->
@@ -367,18 +438,38 @@ onMounted(async () => {
           />
         </IconField>
 
+        <!-- 並び順 -->
+        <Select
+          v-model="selectedSort"
+          :options="sortOptions"
+          option-label="label"
+          option-value="value"
+          :placeholder="$t('market.sort.label')"
+          class="w-44 field-bordered"
+          :aria-label="$t('market.sort.label')"
+          data-testid="market-sort-select"
+        />
+
+        <Button
+          type="submit"
+          :label="$t('market.filter.search')"
+          icon="pi pi-search"
+          :loading="searching"
+          data-testid="market-search-button"
+        />
+
         <!-- 件数表示 -->
         <div
-          v-if="!loading && totalRecords > 0"
+          v-if="!initialLoading && totalRecords > 0"
           class="flex items-center text-sm text-surface-500"
         >
           {{ $t('market.listing.count', { count: totalRecords }) }}
         </div>
-      </div>
+      </form>
     </div>
 
     <!-- ローディング -->
-    <PageLoading v-if="loading" />
+    <PageLoading v-if="initialLoading" />
 
     <!-- 空状態（立場別3パターン） -->
     <template v-else-if="listings.length === 0">
@@ -399,10 +490,10 @@ onMounted(async () => {
         <!-- ログイン済み -->
         <template v-else>
           <Button
-            :label="$t('market.action.goToDashboard')"
-            icon="pi pi-home"
+            :label="$t('market.action.post')"
+            icon="pi pi-plus"
             severity="secondary"
-            @click="navigateTo('/dashboard')"
+            @click="navigateTo({ path: '/me/market', query: { create: 'true' } })"
           />
         </template>
       </div>

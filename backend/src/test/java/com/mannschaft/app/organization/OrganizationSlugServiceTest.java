@@ -8,6 +8,7 @@ import static org.mockito.Mockito.lenient;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
@@ -23,6 +24,7 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -47,19 +49,31 @@ class OrganizationSlugServiceTest {
     @Mock private OrganizationSlugHistoryRepository organizationSlugHistoryRepository;
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private RoleRepository roleRepository;
+    @Mock private AdminRoleMutationLockService adminRoleMutationLockService;
     @Mock private InviteTokenRepository inviteTokenRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private OrganizationMembershipService organizationMembershipService;
     @Mock private OrganizationHierarchyService organizationHierarchyService;
     @Mock private MembershipService membershipService;
     @Mock private MediaUrlResolver mediaUrlResolver;
+    @Mock private DuplicateNameGuardService duplicateNameGuardService;
     @InjectMocks private OrganizationService organizationService;
 
     private void givenCreateScaffold(String name) {
-        lenient().when(organizationRepository.existsByName(name)).thenReturn(false);
+        // 検分 P1-2 是正: checkForCreateAndRun は「候補判定→createAction 実行」を一体で行う
+        // 契約になったため、候補ゼロ相当として createAction をそのまま実行し結果を返すよう
+        // スタブする（同名確認フローそのものはこのファイルの検証対象外）。
+        lenient().when(duplicateNameGuardService.checkForCreateAndRun(
+                        any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.function.Supplier<?> createAction = inv.getArgument(6);
+                    return createAction.get();
+                });
         RoleEntity adminRole = RoleEntity.builder()
                 .id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者").priority(2).isSystem(true).build();
         lenient().when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(adminRole));
+        lenient().when(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
+                .thenReturn(Optional.of(ADMIN_ROLE_ID));
         lenient().when(organizationRepository.save(any(OrganizationEntity.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(userRoleRepository.save(any(UserRoleEntity.class))).thenAnswer(inv -> inv.getArgument(0));

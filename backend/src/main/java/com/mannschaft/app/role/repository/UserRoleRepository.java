@@ -4,9 +4,11 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -57,9 +59,31 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     Optional<UserRoleEntity> findByUserIdAndOrganizationId(Long userId, Long organizationId);
 
+    /** 外側transactionのRR snapshotに依存せず、対象TEAMロール行を最新状態で取得する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.userId = :userId AND ur.teamId = :teamId")
+    Optional<UserRoleEntity> findByUserIdAndTeamIdForUpdate(
+            @Param("userId") Long userId, @Param("teamId") Long teamId);
+
+    /** 外側transactionのRR snapshotに依存せず、対象ORGANIZATIONロール行を最新状態で取得する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.userId = :userId AND ur.organizationId = :organizationId")
+    Optional<UserRoleEntity> findByUserIdAndOrganizationIdForUpdate(
+            @Param("userId") Long userId, @Param("organizationId") Long organizationId);
+
     List<UserRoleEntity> findByTeamIdAndRoleId(Long teamId, Long roleId);
 
     long countByTeamIdAndRoleId(Long teamId, Long roleId);
+
+    /** 同一TEAMのADMIN行をID順にロックし、最後のADMIN判定と変更を直列化する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.teamId = :teamId AND ur.roleId = :roleId ORDER BY ur.id")
+    List<UserRoleEntity> lockAdminsByTeamId(@Param("teamId") Long teamId, @Param("roleId") Long roleId);
+
+    /** 他ドメインへEntityを漏らさず、ロック済みADMINのuserIdだけを返す。 */
+    default List<Long> lockAdminUserIdsByTeamId(Long teamId, Long roleId) {
+        return lockAdminsByTeamId(teamId, roleId).stream().map(UserRoleEntity::getUserId).toList();
+    }
 
     boolean existsByUserIdAndScopeKey(Long userId, String scopeKey);
 
@@ -68,6 +92,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     long countByTeamId(Long teamId);
 
     long countByOrganizationIdAndRoleId(Long organizationId, Long roleId);
+
+    /** 同一ORGANIZATIONのADMIN行をID順にロックし、最後のADMIN判定と変更を直列化する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.organizationId = :organizationId AND ur.roleId = :roleId ORDER BY ur.id")
+    List<UserRoleEntity> lockAdminsByOrganizationId(@Param("organizationId") Long organizationId,
+                                                     @Param("roleId") Long roleId);
+
+    /** 他ドメインへEntityを漏らさず、ロック済みADMINのuserIdだけを返す。 */
+    default List<Long> lockAdminUserIdsByOrganizationId(Long organizationId, Long roleId) {
+        return lockAdminsByOrganizationId(organizationId, roleId).stream()
+                .map(UserRoleEntity::getUserId).toList();
+    }
 
     Page<UserRoleEntity> findByOrganizationId(Long organizationId, Pageable pageable);
 
@@ -508,6 +544,42 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<Long> findUserIdsByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
 
     /**
+     * {@link #findUserIdsByScope(String, Long)} の<b>COUNT 版</b>（件数だけが必要な経路用）。
+     *
+     * <p><b>母集団条件はリスト版と完全に同一</b>である。派生表 {@code x} の中身
+     * （{@code user_roles} ∪ {@code memberships} の和集合・{@code left_at IS NULL}・
+     * {@code scope_type IN ('TEAM','ORGANIZATION')} の明示限定・{@code users.deleted_at IS NULL}
+     * かつ {@code status = 'ACTIVE'}）を 1 文字も変えず、外側の射影を
+     * {@code SELECT DISTINCT uid} から {@code SELECT COUNT(DISTINCT uid)} へ替えただけである。
+     * 片方だけ条件が古くなると数が静かに食い違うため、
+     * <b>リスト版を変更するときは必ず本メソッドも同じだけ変更すること</b>
+     * （不一致は {@code SurveyPublishTargetCountSnapshotIT} の AC-13 が検出する）。</p>
+     *
+     * <p>アンケート公開時の {@code target_count} スナップショットのように「人数しか要らない」経路が
+     * 全ユーザー ID を Java ヒープへ展開しないためのもの。ID の一覧が実際に必要な経路
+     * （通知 fan-out 等）は従来どおりリスト版を使うこと。</p>
+     *
+     * <p>戻り値は {@code long}。native の {@code COUNT(...)} は BIGINT であり、
+     * {@code int} / {@code boolean} で受けると環境により型変換で落ちる。</p>
+     */
+    @Query(value =
+            "SELECT COUNT(DISTINCT uid) FROM ( " +
+            "  SELECT ur.user_id AS uid FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
+            "    WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "               WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  UNION " +
+            "  SELECT m.user_id AS uid FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
+            "    WHERE m.scope_type = :scopeType AND m.scope_id = :scopeId AND m.left_at IS NULL " +
+            "      AND m.scope_type IN ('TEAM', 'ORGANIZATION') " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            ") x",
+            nativeQuery = true)
+    long countUserIdsByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
+
+    /**
      * 指定チームの指定ロール名を持つユーザーIDリストを取得する (通知発火用)。
      */
     @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
@@ -555,12 +627,38 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      AND ms.left_at IS NULL " +
             ") cand " +
             "JOIN users u ON u.id = cand.user_id " +
+            "JOIN roles cand_role ON cand_role.id = cand.role_id " +
             "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND NOT EXISTS ( " +
+            "    SELECT 1 FROM user_roles stronger_ur " +
+            "    JOIN roles stronger_role ON stronger_role.id = stronger_ur.role_id " +
+            "    WHERE stronger_ur.user_id = cand.user_id " +
+            "      AND stronger_ur.organization_id = :organizationId " +
+            "      AND stronger_role.priority < cand_role.priority " +
+            "  ) " +
+            "  AND EXISTS ( " +
+            "    SELECT 1 FROM memberships active_ms " +
+            "    WHERE active_ms.user_id = cand.user_id " +
+            "      AND active_ms.scope_type = 'ORGANIZATION' " +
+            "      AND active_ms.scope_id = :organizationId " +
+            "      AND active_ms.left_at IS NULL " +
+            "  ) " +
             "  AND ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM role_permissions rp " +
+            "      JOIN roles candidate_permission_role ON candidate_permission_role.id = rp.role_id " +
             "      JOIN permissions p ON p.id = rp.permission_id " +
-            "      WHERE rp.role_id = cand.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
+            "      WHERE rp.role_id = cand.role_id " +
+            "        AND candidate_permission_role.name IN ('ADMIN', 'MEMBER') " +
+            "        AND (candidate_permission_role.name = 'ADMIN' OR NOT EXISTS ( " +
+            "          SELECT 1 FROM user_permission_groups member_override " +
+            "          JOIN permission_groups member_override_group ON member_override_group.id = member_override.group_id " +
+            "          WHERE member_override.user_id = cand.user_id " +
+            "            AND member_override_group.organization_id = :organizationId " +
+            "            AND member_override_group.target_role = 'MEMBER' " +
+            "            AND member_override_group.deleted_at IS NULL " +
+            "        )) " +
+            "        AND p.name = :permissionName AND rp.is_default = 1 " +
             "    ) OR EXISTS ( " +
             "      SELECT 1 FROM user_permission_groups upg " +
             "      JOIN permission_groups pg ON pg.id = upg.group_id " +
@@ -569,6 +667,32 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE upg.user_id = cand.user_id " +
             "        AND pg.organization_id = :organizationId " +
             "        AND pg.deleted_at IS NULL " +
+            "        AND pg.target_role = ( " +
+            "          CASE " +
+            "            WHEN EXISTS ( " +
+            "              SELECT 1 FROM user_roles effective_admin " +
+            "              JOIN roles effective_admin_role ON effective_admin_role.id = effective_admin.role_id " +
+            "              WHERE effective_admin.user_id = cand.user_id " +
+            "                AND effective_admin.organization_id = :organizationId " +
+            "                AND effective_admin_role.name = 'ADMIN' " +
+            "            ) THEN 'ADMIN' " +
+            "            WHEN EXISTS ( " +
+            "              SELECT 1 FROM user_roles effective_deputy " +
+            "              JOIN roles effective_deputy_role ON effective_deputy_role.id = effective_deputy.role_id " +
+            "              WHERE effective_deputy.user_id = cand.user_id " +
+            "                AND effective_deputy.organization_id = :organizationId " +
+            "                AND effective_deputy_role.name = 'DEPUTY_ADMIN' " +
+            "            ) THEN 'DEPUTY_ADMIN' " +
+            "            WHEN EXISTS ( " +
+            "              SELECT 1 FROM memberships effective_member " +
+            "              WHERE effective_member.user_id = cand.user_id " +
+            "                AND effective_member.scope_type = 'ORGANIZATION' " +
+            "                AND effective_member.scope_id = :organizationId " +
+            "                AND effective_member.role_kind = 'MEMBER' " +
+            "                AND effective_member.left_at IS NULL " +
+            "            ) THEN 'MEMBER' " +
+            "          END " +
+            "        ) " +
             "        AND p2.name = :permissionName " +
             "    ) " +
             "  )",
@@ -621,9 +745,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     @Query(value =
             "SELECT COUNT(*) FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
             "WHERE ur.user_id = :userId " +
             "  AND ur.organization_id = :organizationId " +
             "  AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND EXISTS ( " +
+            "    SELECT 1 FROM memberships active_ms " +
+            "    WHERE active_ms.user_id = ur.user_id " +
+            "      AND active_ms.scope_type = 'ORGANIZATION' " +
+            "      AND active_ms.scope_id = ur.organization_id " +
+            "      AND active_ms.left_at IS NULL " +
+            "  ) " +
             "  AND ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM role_permissions rp " +
@@ -637,6 +770,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE upg.user_id = ur.user_id " +
             "        AND pg.organization_id = ur.organization_id " +
             "        AND pg.deleted_at IS NULL " +
+            "        AND pg.target_role = 'DEPUTY_ADMIN' " +
             "        AND p2.name = :permissionName " +
             "    ) " +
             "  )",
@@ -791,7 +925,29 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("permissionName") String permissionName);
 
     /**
+     * 指定組織で指定ロール名<b>のみ</b>を持つユーザーIDリストを取得する。
+     *
+     * <p>{@link #findAdminUserIdsByOrganizationId} は名前に反して ADMIN と DEPUTY_ADMIN の
+     * <b>両方</b>を返す（通知先を広く取るための意図的な仕様）。「ADMIN ロールを持つ者だけ」を
+     * 厳密に必要とする用途（柱③-B 請求担当引継の承諾者判定・設計書 §5.6 は
+     * 「当該スコープの ADMIN ロールを持つユーザーのみ許可」と定める）ではそれを使えないため、
+     * TEAM 側の {@link #findUserIdsByTeamIdAndRoleName} と対称なロール名指定版を用意する。</p>
+     */
+    @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.organization_id = :organizationId " +
+            "AND r.name = :roleName " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findUserIdsByOrganizationIdAndRoleName(@Param("organizationId") Long organizationId,
+            @Param("roleName") String roleName);
+
+    /**
      * 指定組織の ADMIN/DEPUTY_ADMIN ユーザーIDリストを取得する（F08.7 Phase 9-δ 通知用）。
+     *
+     * <p><b>注意</b>: メソッド名は {@code Admin} だが DEPUTY_ADMIN も含む。ADMIN のみが必要な場合は
+     * {@link #findUserIdsByOrganizationIdAndRoleName} を使うこと。</p>
      */
     @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
@@ -1096,7 +1252,16 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * @param maxDepth          再帰展開の最大深さ（サイクル防止上限・通常 32）
      * @param cursor            直前チャンク末尾の user_id（初回は {@code 0L} 等の最小値未満を渡す）
      * @param pageable          チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
-     * @return {@code user_id > cursor} の配信対象ユーザー ID を昇順に最大 chunk 件（重複なし）
+     * @return {@code user_id > cursor} の配信対象の {@code [user_id, locale]} を昇順に最大 chunk 件（重複なし）
+     *
+     * <h2>Issue #2871: locale の同時取得（母集団・実行計画とも不変）</h2>
+     * <p>両枝とも元から {@code JOIN users} 済みであり、追加したのは射影の 1 列（{@code u.locale} /
+     * {@code u2.locale}）だけである。{@code SELECT DISTINCT} に locale が加わっても、locale は
+     * users の<b>主キー等値結合</b>で決まる＝user_id に関数従属するため、重複排除の結果行数は変わらず、
+     * 枝内 {@code LIMIT :chunk} が数える行数も変わらない（枝ごとの打ち切り件数の意味を壊さない）。
+     * 20 万行での EXPLAIN ANALYZE 実測でも、両枝の {@code LIMIT}・covering index range scan・
+     * users の {@code eq_ref} 単行ルックアップはすべて維持され、新しい filesort / temporary は
+     * 発生しなかった（詳細は PR 本文）。</p>
      */
     @Query(value =
             "WITH RECURSIVE org_tree (id, depth) AS ( " +
@@ -1107,11 +1272,11 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
+            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid, cand.locale AS locale FROM ( " +
             // 各枝が「カーソル以降の自枝の先頭 chunk 件」だけを返す。母集団条件（生存ユーザー・
             // 純 SUPPORTER 除外）も枝内へ入れる。外側に残すと枝の LIMIT が「絞られる前の行」を
             // 数えてしまい、全滅したページで空が返って呼び出し側のループが早期終了する（配信漏れ）。
-            "  ( SELECT DISTINCT ur.user_id AS user_id FROM user_roles ur " +
+            "  ( SELECT DISTINCT ur.user_id AS user_id, u.locale AS locale FROM user_roles ur " +
             "      JOIN users u ON u.id = ur.user_id " +
             "      WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "        AND ur.user_id > :cursor " +
@@ -1136,7 +1301,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "        ) ) " +
             "      ORDER BY user_id ASC LIMIT :chunk ) " +
             "  UNION " +
-            "  ( SELECT DISTINCT ms0.user_id AS user_id FROM memberships ms0 " +
+            "  ( SELECT DISTINCT ms0.user_id AS user_id, u2.locale AS locale FROM memberships ms0 " +
             "      JOIN users u2 ON u2.id = ms0.user_id " +
             "      WHERE u2.deleted_at IS NULL AND u2.status = 'ACTIVE' " +
             "        AND ms0.left_at IS NULL AND ms0.user_id > :cursor " +
@@ -1163,7 +1328,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             ") cand " +
             "ORDER BY uid ASC",
             nativeQuery = true)
-    List<Long> findDistributionUserIdsForOrganizationRecursiveKeyset(
+    List<Object[]> findDistributionUserIdsForOrganizationRecursiveKeyset(
             @Param("organizationId") Long organizationId,
             @Param("includeSupporters") boolean includeSupporters,
             @Param("maxDepth") int maxDepth,
@@ -1214,10 +1379,10 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
+            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid, cand.locale AS locale FROM ( " +
             // 非シャード版と同型。カーソル・シャード述語・母集団条件をすべて枝内に置いた上で
             // 各枝が「自枝の先頭 chunk 件」だけを返す（外側に残すと枝の LIMIT が絞られる前の行を数える）。
-            "  ( SELECT DISTINCT ur.user_id AS user_id FROM user_roles ur " +
+            "  ( SELECT DISTINCT ur.user_id AS user_id, u.locale AS locale FROM user_roles ur " +
             "      JOIN users u ON u.id = ur.user_id " +
             "      WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "        AND ur.user_id > :cursor " +
@@ -1243,7 +1408,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "        ) ) " +
             "      ORDER BY user_id ASC LIMIT :chunk ) " +
             "  UNION " +
-            "  ( SELECT DISTINCT ms0.user_id AS user_id FROM memberships ms0 " +
+            "  ( SELECT DISTINCT ms0.user_id AS user_id, u2.locale AS locale FROM memberships ms0 " +
             "      JOIN users u2 ON u2.id = ms0.user_id " +
             "      WHERE u2.deleted_at IS NULL AND u2.status = 'ACTIVE' " +
             "        AND ms0.left_at IS NULL AND ms0.user_id > :cursor " +
@@ -1271,7 +1436,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             ") cand " +
             "ORDER BY uid ASC",
             nativeQuery = true)
-    List<Long> findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
+    List<Object[]> findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
             @Param("organizationId") Long organizationId,
             @Param("includeSupporters") boolean includeSupporters,
             @Param("maxDepth") int maxDepth,
@@ -2069,6 +2234,61 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     }
 
     /**
+     * viewer と TEAM または ORGANIZATION の active 在籍を共有する owner ID を一括取得する。
+     *
+     * <p>両者とも {@code user_roles ∪ memberships(left_at IS NULL)} を正典とし、親組織や
+     * 兄弟チームは共有所属へ含めない。個人札一覧の閲覧者別氏名開示で N+1 を避けるための
+     * バッチ境界である。</p>
+     */
+    @Query(value = """
+            SELECT DISTINCT owners.user_id
+            FROM (
+              SELECT ur.user_id, 'TEAM' AS scope_type, ur.team_id AS scope_id
+              FROM user_roles ur
+              JOIN users u ON u.id = ur.user_id
+              WHERE ur.user_id IN (:ownerIds) AND ur.team_id IS NOT NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+              UNION
+              SELECT ur.user_id, 'ORGANIZATION', ur.organization_id
+              FROM user_roles ur
+              JOIN users u ON u.id = ur.user_id
+              WHERE ur.user_id IN (:ownerIds) AND ur.organization_id IS NOT NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+              UNION
+              SELECT m.user_id, m.scope_type, m.scope_id
+              FROM memberships m
+              JOIN users u ON u.id = m.user_id
+              WHERE m.user_id IN (:ownerIds)
+                AND m.scope_type IN ('TEAM', 'ORGANIZATION') AND m.left_at IS NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+            ) owners
+            JOIN (
+              SELECT ur.user_id, 'TEAM' AS scope_type, ur.team_id AS scope_id
+              FROM user_roles ur
+              JOIN users u ON u.id = ur.user_id
+              WHERE ur.user_id = :viewerId AND ur.team_id IS NOT NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+              UNION
+              SELECT ur.user_id, 'ORGANIZATION', ur.organization_id
+              FROM user_roles ur
+              JOIN users u ON u.id = ur.user_id
+              WHERE ur.user_id = :viewerId AND ur.organization_id IS NOT NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+              UNION
+              SELECT m.user_id, m.scope_type, m.scope_id
+              FROM memberships m
+              JOIN users u ON u.id = m.user_id
+              WHERE m.user_id = :viewerId
+                AND m.scope_type IN ('TEAM', 'ORGANIZATION') AND m.left_at IS NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+            ) viewer
+              ON viewer.scope_type = owners.scope_type AND viewer.scope_id = owners.scope_id
+            """, nativeQuery = true)
+    List<Long> findOwnerIdsSharingAffiliation(
+            @Param("viewerId") Long viewerId,
+            @Param("ownerIds") Collection<Long> ownerIds);
+
+    /**
      * スコープ内で指定日時以降にログインしたアクティブメンバー数を取得する。
      *
      * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: 詳細は
@@ -2272,11 +2492,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "WHERE ur.team_id = :teamId " +
             "AND r.name = 'DEPUTY_ADMIN' " +
             "AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "AND EXISTS ( " +
+            "  SELECT 1 FROM memberships active_ms " +
+            "  WHERE active_ms.user_id = ur.user_id " +
+            "    AND active_ms.scope_type = 'TEAM' " +
+            "    AND active_ms.scope_id = ur.team_id " +
+            "    AND active_ms.left_at IS NULL " +
+            ") " +
             "AND ( " +
             "  EXISTS ( " +
             "    SELECT 1 FROM role_permissions rp " +
             "    JOIN permissions p ON p.id = rp.permission_id " +
-            "    WHERE rp.role_id = ur.role_id AND p.name = :permissionName " +
+            "    WHERE rp.role_id = ur.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
             "  ) OR EXISTS ( " +
             "    SELECT 1 FROM user_permission_groups upg " +
             "    JOIN permission_groups pg ON pg.id = upg.group_id " +
@@ -2285,6 +2512,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "    WHERE upg.user_id = ur.user_id " +
             "      AND pg.team_id = ur.team_id " +
             "      AND pg.deleted_at IS NULL " +
+            "      AND pg.target_role = 'DEPUTY_ADMIN' " +
             "      AND p.name = :permissionName " +
             "  ) " +
             ")",
@@ -2394,4 +2622,141 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
         Long getUserId();
         String getRoleKind();
     }
+
+    /**
+     * 柱①「ADMINゼロ根治」§14 — {@code userId} が唯一のADMIN（ADMIN数=1）であるスコープを列挙する。
+     *
+     * <p>承継候補の有無判定はここでは行わない（サービス層 {@code RoleSuccessionService} の責務）。
+     * 正本: docs/architecture/account_purge_last_admin_succession.md §5.4 / §14。</p>
+     */
+    default List<com.mannschaft.app.role.dto.LastAdminScope> findLastAdminScopes(Long userId) {
+        return findLastAdminScopeRows(userId).stream()
+                .map(row -> com.mannschaft.app.role.dto.LastAdminScope.builder()
+                        .scopeType(row.getScopeType())
+                        .scopeId(row.getScopeId())
+                        .scopeName(row.getScopeName())
+                        .otherMembersCount(row.getOtherMembersCount())
+                        .build())
+                .toList();
+    }
+
+    /** {@link #findLastAdminScopes(Long)} の native 実装（射影）。 */
+    @Query(value =
+            "SELECT 'TEAM' AS scopeType, t.id AS scopeId, t.name AS scopeName, " +
+            "  (SELECT COUNT(*) FROM memberships m2 WHERE m2.scope_type = 'TEAM' " +
+            "     AND m2.scope_id = t.id AND m2.left_at IS NULL AND m2.user_id <> :userId) AS otherMembersCount " +
+            "FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN teams t ON t.id = ur.team_id " +
+            "WHERE ur.user_id = :userId AND r.name = 'ADMIN' AND ur.team_id IS NOT NULL " +
+            "  AND (SELECT COUNT(*) FROM user_roles ur2 JOIN roles r2 ON r2.id = ur2.role_id " +
+            "       WHERE r2.name = 'ADMIN' AND ur2.team_id = t.id) = 1 " +
+            "UNION ALL " +
+            "SELECT 'ORGANIZATION' AS scopeType, o.id AS scopeId, o.name AS scopeName, " +
+            "  (SELECT COUNT(*) FROM memberships m3 WHERE m3.scope_type = 'ORGANIZATION' " +
+            "     AND m3.scope_id = o.id AND m3.left_at IS NULL AND m3.user_id <> :userId) AS otherMembersCount " +
+            "FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN organizations o ON o.id = ur.organization_id " +
+            "WHERE ur.user_id = :userId AND r.name = 'ADMIN' AND ur.organization_id IS NOT NULL " +
+            "  AND (SELECT COUNT(*) FROM user_roles ur3 JOIN roles r3 ON r3.id = ur3.role_id " +
+            "       WHERE r3.name = 'ADMIN' AND ur3.organization_id = o.id) = 1",
+            nativeQuery = true)
+    List<LastAdminScopeRow> findLastAdminScopeRows(@Param("userId") Long userId);
+
+    /** {@link #findLastAdminScopeRows(Long)} の射影行。 */
+    interface LastAdminScopeRow {
+        String getScopeType();
+        Long getScopeId();
+        String getScopeName();
+        Long getOtherMembersCount();
+    }
+
+    /**
+     * 柱①「ADMINゼロ根治」§11.2 — TEAM スコープの DEPUTY_ADMIN 承継候補（候補資格を満たす者のみ）を
+     * {@code created_at} 昇順・{@code id} 昇順（タイブレーク）で返す。
+     *
+     * <p>候補資格: 現役在籍（{@code memberships} が active）／退会予定でない
+     * （{@code users.deleted_at IS NULL}）／利用停止・匿名化でない（{@code users.status = 'ACTIVE'}）。</p>
+     */
+    @Query(value =
+            "SELECT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.team_id = :teamId AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = ur.user_id " +
+            "    AND m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL) " +
+            "ORDER BY ur.created_at ASC, ur.id ASC",
+            nativeQuery = true)
+    List<Long> findDeputyAdminCandidateIdsByTeam(@Param("teamId") Long teamId);
+
+    /** {@link #findDeputyAdminCandidateIdsByTeam(Long)} の ORGANIZATION 版。 */
+    @Query(value =
+            "SELECT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.organization_id = :organizationId AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = ur.user_id " +
+            "    AND m.scope_type = 'ORGANIZATION' AND m.scope_id = :organizationId AND m.left_at IS NULL) " +
+            "ORDER BY ur.created_at ASC, ur.id ASC",
+            nativeQuery = true)
+    List<Long> findDeputyAdminCandidateIdsByOrganization(@Param("organizationId") Long organizationId);
+
+    /**
+     * 柱①「ADMINゼロ根治」§11.2 — TEAM スコープの MEMBER 承継候補（候補資格を満たす者のみ）を
+     * {@code joined_at} 昇順・{@code id} 昇順（タイブレーク）で返す。
+     */
+    @Query(value =
+            "SELECT m.user_id FROM memberships m " +
+            "JOIN users u ON u.id = m.user_id " +
+            "WHERE m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL " +
+            "  AND m.role_kind = 'MEMBER' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "ORDER BY m.joined_at ASC, m.id ASC",
+            nativeQuery = true)
+    List<Long> findMemberCandidateIdsByTeam(@Param("teamId") Long teamId);
+
+    /** {@link #findMemberCandidateIdsByTeam(Long)} の ORGANIZATION 版。 */
+    @Query(value =
+            "SELECT m.user_id FROM memberships m " +
+            "JOIN users u ON u.id = m.user_id " +
+            "WHERE m.scope_type = 'ORGANIZATION' AND m.scope_id = :organizationId AND m.left_at IS NULL " +
+            "  AND m.role_kind = 'MEMBER' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "ORDER BY m.joined_at ASC, m.id ASC",
+            nativeQuery = true)
+    List<Long> findMemberCandidateIdsByOrganization(@Param("organizationId") Long organizationId);
+
+    /**
+     * 柱①「ADMINゼロ根治」§13 — 未アーカイブの TEAM のうち ADMIN が 0 人のスコープ ID を
+     * {@code id} keyset ページングで返す（{@code AdminlessScopeSuccessionBatchService} の
+     * 既存データ検出用）。
+     *
+     * <p>検分反映（P2-2）: 全件を Java ヒープへ {@code List} で読み込んでから
+     * {@code subList} で分割していた実装を、DB 側の {@code WHERE id > :afterId ... LIMIT}
+     * によるページングへ変更した（大規模化時の全件読み込みを回避）。</p>
+     *
+     * @param afterId  前チャンクの最後の ID（初回は 0）
+     * @param pageSize チャンクサイズ
+     */
+    @Query(value =
+            "SELECT t.id FROM teams t " +
+            "WHERE t.archived_at IS NULL AND t.id > :afterId " +
+            "  AND NOT EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id " +
+            "                  WHERE r.name = 'ADMIN' AND ur.team_id = t.id) " +
+            "ORDER BY t.id ASC LIMIT :pageSize",
+            nativeQuery = true)
+    List<Long> findTeamIdsWithoutActiveAdminPage(@Param("afterId") long afterId, @Param("pageSize") int pageSize);
+
+    /** {@link #findTeamIdsWithoutActiveAdminPage(long, int)} の ORGANIZATION 版。 */
+    @Query(value =
+            "SELECT o.id FROM organizations o " +
+            "WHERE o.archived_at IS NULL AND o.id > :afterId " +
+            "  AND NOT EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id " +
+            "                  WHERE r.name = 'ADMIN' AND ur.organization_id = o.id) " +
+            "ORDER BY o.id ASC LIMIT :pageSize",
+            nativeQuery = true)
+    List<Long> findOrganizationIdsWithoutActiveAdminPage(@Param("afterId") long afterId, @Param("pageSize") int pageSize);
 }

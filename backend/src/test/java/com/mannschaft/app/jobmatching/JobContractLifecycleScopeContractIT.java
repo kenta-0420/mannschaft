@@ -47,8 +47,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <ul>
  *   <li><b>実体由来の当事者判定</b>: 契約 ID を受け取る EP は対象契約を実体としてロードし、
  *       契約行の {@code requester_user_id} / {@code worker_user_id} と認証主体を照合する。
- *       当事者以外は 403（{@code JOB_PERMISSION_DENIED} /
- *       {@code JOB_QR_TOKEN_WRONG_WORKER}）で拒否される。</li>
+ *       当事者以外は拒否される。{@code JOB_PERMISSION_DENIED} は <b>404</b>
+ *       （契約・応募の不在と同一ステータスに畳んで ID の実在を秘匿する。
+ *       PARKING_020 起点の「越境は存在秘匿で404」の流儀）、QR スキャン時の作業者不一致
+ *       {@code JOB_QR_TOKEN_WRONG_WORKER} は 403。</li>
  *   <li><b>自己スコープ</b>: 一覧系 EP の検索条件は認証主体の userId のみに束縛され、
  *       他人の契約・応募は結果に混入しない。</li>
  * </ul>
@@ -156,19 +158,19 @@ class JobContractLifecycleScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 1. 契約 ID を受け取る EP — 当事者以外は 403
+    // 1. 契約 ID を受け取る EP — 当事者以外は 404
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("1. JobContractController — 当事者（Requester / Worker）以外は 403")
+    @DisplayName("1. JobContractController — 当事者（Requester / Worker）以外は 404")
     class ContractParticipantOnly {
 
         @Test
-        @DisplayName("GET /api/v1/contracts/{id}: 第三者は403（JobContractController#getContract）")
-        void 第三者の契約詳細取得は403() throws Exception {
+        @DisplayName("GET /api/v1/contracts/{id}: 第三者は404（JobContractController#getContract）")
+        void 第三者の契約詳細取得は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/contracts/{id}", contractId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
 
         @Test
@@ -180,55 +182,55 @@ class JobContractLifecycleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("POST .../report-completion: Worker 以外は403（JobContractController#reportCompletion）")
-        void 第三者の完了報告は403() throws Exception {
+        @DisplayName("POST .../report-completion: Worker 以外は404（JobContractController#reportCompletion）")
+        void 第三者の完了報告は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/contracts/{id}/report-completion", contractId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"message\":\"侵入試行\"}"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
             assertContractStatusUnchanged();
         }
 
         @Test
-        @DisplayName("POST .../report-completion: Requester（Worker ではない当事者）も403")
-        void 依頼者の完了報告は403() throws Exception {
+        @DisplayName("POST .../report-completion: Requester（Worker ではない当事者）も404")
+        void 依頼者の完了報告は404() throws Exception {
             setAuth(requesterId);
             mockMvc.perform(post("/api/v1/contracts/{id}/report-completion", contractId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"message\":\"依頼者による報告\"}"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
             assertContractStatusUnchanged();
         }
 
         @Test
-        @DisplayName("POST .../approve-completion: Requester 以外は403（JobContractController#approveCompletion）")
-        void 第三者の完了承認は403() throws Exception {
+        @DisplayName("POST .../approve-completion: Requester 以外は404（JobContractController#approveCompletion）")
+        void 第三者の完了承認は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/contracts/{id}/approve-completion", contractId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
             assertContractStatusUnchanged();
         }
 
         @Test
-        @DisplayName("POST .../reject-completion: Requester 以外は403（JobContractController#rejectCompletion）")
-        void 第三者の完了差し戻しは403() throws Exception {
+        @DisplayName("POST .../reject-completion: Requester 以外は404（JobContractController#rejectCompletion）")
+        void 第三者の完了差し戻しは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/contracts/{id}/reject-completion", contractId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"reason\":\"侵入試行\"}"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
             assertContractStatusUnchanged();
         }
 
         @Test
-        @DisplayName("POST .../cancel: 当事者以外は403（JobContractController#cancelContract）")
-        void 第三者のキャンセルは403() throws Exception {
+        @DisplayName("POST .../cancel: 当事者以外は404（JobContractController#cancelContract）")
+        void 第三者のキャンセルは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/contracts/{id}/cancel", contractId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"reason\":\"侵入試行\"}"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
             assertContractStatusUnchanged();
         }
 
@@ -244,19 +246,19 @@ class JobContractLifecycleScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 2. 応募取り下げ — 応募者本人以外は 403
+    // 2. 応募取り下げ — 応募者本人以外は 404
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("2. JobApplicationController#withdrawApplication — 応募者本人以外は 403")
+    @DisplayName("2. JobApplicationController#withdrawApplication — 応募者本人以外は 404")
     class WithdrawApplication {
 
         @Test
-        @DisplayName("POST /api/v1/applications/{id}/withdraw: 第三者は403")
-        void 第三者の取り下げは403() throws Exception {
+        @DisplayName("POST /api/v1/applications/{id}/withdraw: 第三者は404")
+        void 第三者の取り下げは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/applications/{id}/withdraw", applicationId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
@@ -267,49 +269,49 @@ class JobContractLifecycleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("POST /api/v1/applications/{id}/withdraw: 求人側の採否権限者（Requester）も403")
-        void 採否権限者の取り下げは403() throws Exception {
+        @DisplayName("POST /api/v1/applications/{id}/withdraw: 求人側の採否権限者（Requester）も404")
+        void 採否権限者の取り下げは404() throws Exception {
             setAuth(requesterId);
             mockMvc.perform(post("/api/v1/applications/{id}/withdraw", applicationId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 3. QR トークン — Requester 本人以外は 403
+    // 3. QR トークン — Requester 本人以外は 404
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("3. JobQrTokenController — Requester 本人以外は 403")
+    @DisplayName("3. JobQrTokenController — Requester 本人以外は 404")
     class QrToken {
 
         @Test
-        @DisplayName("POST /api/v1/contracts/{id}/qr-tokens: 第三者は403（JobQrTokenController#issue）")
-        void 第三者の発行は403() throws Exception {
+        @DisplayName("POST /api/v1/contracts/{id}/qr-tokens: 第三者は404（JobQrTokenController#issue）")
+        void 第三者の発行は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/contracts/{contractId}/qr-tokens", contractId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"type\":\"IN\",\"ttlSeconds\":60}"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
 
         @Test
-        @DisplayName("POST /api/v1/contracts/{id}/qr-tokens: Worker（Requester ではない当事者）も403")
-        void 作業者の発行は403() throws Exception {
+        @DisplayName("POST /api/v1/contracts/{id}/qr-tokens: Worker（Requester ではない当事者）も404")
+        void 作業者の発行は404() throws Exception {
             setAuth(workerId);
             mockMvc.perform(post("/api/v1/contracts/{contractId}/qr-tokens", contractId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"type\":\"IN\",\"ttlSeconds\":60}"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
 
         @Test
-        @DisplayName("GET /api/v1/contracts/{id}/qr-tokens/current: 第三者は403（JobQrTokenController#getCurrent）")
-        void 第三者の現在トークン取得は403() throws Exception {
+        @DisplayName("GET /api/v1/contracts/{id}/qr-tokens/current: 第三者は404（JobQrTokenController#getCurrent）")
+        void 第三者の現在トークン取得は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/contracts/{contractId}/qr-tokens/current", contractId)
                             .param("type", "IN"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
 
         @Test

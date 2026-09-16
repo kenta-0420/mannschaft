@@ -1023,7 +1023,7 @@ LOCAL_DATE_TIME_FIELD|com.mannschaft.app.shiftbudget.dto.AllocationResponse|2
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.shiftbudget.dto.FailedEventResponse|3
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.shiftbudget.dto.TodoBudgetLinkResponse|2
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.shiftbudget.entity.BudgetThresholdAlertEntity|2
-LOCAL_DATE_TIME_FIELD|com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity|2
+LOCAL_DATE_TIME_FIELD|com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity|1
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.shiftbudget.entity.ShiftBudgetConsumptionEntity|5
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.shiftbudget.entity.ShiftBudgetFailedEventEntity|1
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.signage.entity.SignageAccessTokenEntity|2

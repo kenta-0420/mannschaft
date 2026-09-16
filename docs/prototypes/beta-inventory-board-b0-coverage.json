@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "journeys": {
+    "B0-J1": {"specPaths":["frontend/tests/e2e/real/b0-j1-dashboard-scope.spec.ts","frontend/tests/e2e/dashboard/dashboard.spec.ts","frontend/tests/e2e/teams/team-hub.spec.ts","frontend/tests/e2e/organizations/org-hub.spec.ts","frontend/tests/e2e/villages/village-flow.spec.ts"],"coverageStatus":"partial"},
+    "B0-J2": {"specPaths":["frontend/tests/e2e/teams/team-list.spec.ts","frontend/tests/e2e/teams/invite-qr-pdf.spec.ts","frontend/tests/e2e/scenarios/onboarding-flow.spec.ts"],"coverageStatus":"partial"},
+    "B0-J3": {"specPaths":["frontend/tests/e2e/real/village-events-activation.spec.ts","frontend/tests/e2e/real/village-events-wave2.spec.ts","frontend/tests/e2e/teams/events.spec.ts"],"coverageStatus":"partial"},
+    "B0-J4": {"specPaths":["frontend/tests/e2e/teams/surveys.spec.ts","frontend/tests/e2e/surveys/survey-crud.spec.ts","frontend/tests/e2e/surveys/survey-results-visibility.spec.ts"],"coverageStatus":"partial"},
+    "B0-J5": {"specPaths":["frontend/tests/e2e/f0411-inbox.spec.ts","frontend/tests/e2e/global/notifications.spec.ts","frontend/tests/e2e/surveys/survey-remind.spec.ts"],"coverageStatus":"partial"},
+    "B0-J6": {"specPaths":["frontend/tests/e2e/security/access-control.spec.ts","frontend/tests/e2e/organizations/org-hierarchy.spec.ts","frontend/tests/e2e/confirmable/unconfirmed-visibility.spec.ts"],"coverageStatus":"partial"},
+    "B0-J7": {"specPaths":["frontend/tests/e2e/global/timeline.spec.ts","frontend/tests/e2e/organizations/org-timeline.spec.ts","frontend/tests/e2e/real/timeline-delivery-scope-and-mute.spec.ts","frontend/tests/e2e/action-memo/phase3-team-timeline.spec.ts"],"coverageStatus":"partial"},
+    "B0-J8": {"specPaths":["frontend/tests/e2e/teams/todos.spec.ts","frontend/tests/e2e/teams/todos-deep.spec.ts","frontend/tests/e2e/todos/handoff.spec.ts"],"coverageStatus":"partial"},
+    "B0-J9": {"specPaths":["frontend/tests/e2e/quick-memos/quick-memo.spec.ts","frontend/tests/e2e/action-memo.spec.ts"],"coverageStatus":"partial"},
+    "B0-J10": {"specPaths":["frontend/tests/e2e/calendar/calendar.spec.ts","frontend/tests/e2e/real/f0810-entry-dashboard-calendar.spec.ts","frontend/tests/e2e/organizations/org-schedule.spec.ts","frontend/tests/e2e/real/schedule-activity-feed-visibility.spec.ts"],"coverageStatus":"partial"}
+  }
+}

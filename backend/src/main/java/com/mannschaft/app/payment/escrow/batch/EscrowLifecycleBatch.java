@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.escrow.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.payment.escrow.EscrowLifecycleService;
 import com.mannschaft.app.payment.escrow.EscrowStatus;
@@ -62,6 +64,8 @@ public class EscrowLifecycleBatch {
     /**
      * escrow ライフサイクルバッチ。毎時（fixedDelay=1h）実行する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとエスクローの期限到来・確定・返金の遷移が進まず、DB 上は確定なのに決済は未実行という乖離が残る")
     @BatchEndpoint(name = "escrow-lifecycle-hourly",
             description = "謝礼 escrow の未確認放置を自動取消（PENDING_CONFIRMATION 期限超過 / HELD・AUTHORIZED hold 失効）")
     @Scheduled(fixedDelay = 3_600_000)

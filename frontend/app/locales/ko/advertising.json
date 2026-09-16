@@ -637,9 +637,21 @@
         "billing_method_label": "결제 방법",
         "billing_stripe": "신용카드（Stripe）",
         "billing_invoice": "청구서 납부",
+        "billing_fixed_notice": "신용카드 결제만 가능합니다",
         "success_message": "광고주 등록을 신청했습니다. 심사 후 이용하실 수 있습니다.",
         "error_message": "등록에 실패했습니다"
       }
+    },
+    "register": {
+      "title": "광고주 등록",
+      "submit": "등록 신청",
+      "company_name_label": "회사명 / 광고주명",
+      "company_name_placeholder": "예시 주식회사",
+      "contact_email_label": "연락처 이메일 주소",
+      "billing_method_label": "결제 방법",
+      "billing_fixed_notice": "신용카드 결제만 가능합니다",
+      "success_message": "광고주 등록을 신청했습니다. 심사 후 이용하실 수 있습니다.",
+      "error_message": "등록에 실패했습니다"
     },
     "settings_ad_preferences_guide": {
       "page_title": "広告の受信設定 — 使い方ガイド",

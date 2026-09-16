@@ -5,6 +5,7 @@
       "schedule": "日程",
       "member": "成员",
       "ops": "业务运营",
+      "market": "集市",
       "facility": "设施设备",
       "resident": "居民用户",
       "data": "数据分析",
@@ -26,6 +27,7 @@
     "invite": "邀请",
     "permissionGroups": "权限组",
     "onboarding": "入门引导",
+    "market": "集市",
     "todos": "待办事项",
     "workflows": "工作流",
     "forms": "表单",
@@ -59,6 +61,8 @@
     "faqSettings": "FAQ设置",
     "billing": "账单与套餐管理",
     "leagueTransfers": "联赛升降级",
-    "adminConsole": "管理控制台"
+    "adminConsole": "管理控制台",
+    "receipts": "收据",
+    "receiptSettings": "收据开票方设置"
   }
 }

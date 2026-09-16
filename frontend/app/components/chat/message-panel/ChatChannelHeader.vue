@@ -7,7 +7,10 @@ defineProps<{
 
 const emit = defineEmits<{
   invite: []
+  membershipInvite: []
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -31,6 +34,18 @@ const emit = defineEmits<{
       </p>
     </div>
     <div class="ml-auto flex items-center gap-2">
+      <Button
+        v-if="channel.identity.channelType === 'DM'"
+        v-tooltip.bottom="t('chat.invite.button')"
+        icon="pi pi-users"
+        text
+        rounded
+        size="small"
+        severity="secondary"
+        :aria-label="t('chat.invite.button')"
+        data-testid="chat-membership-invite-btn"
+        @click="emit('membershipInvite')"
+      />
       <Button
         v-if="channel.identity.channelType === 'DM'"
         v-tooltip.bottom="'Zimmerに招待'"

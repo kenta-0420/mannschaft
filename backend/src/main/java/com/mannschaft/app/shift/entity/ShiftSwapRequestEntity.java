@@ -128,28 +128,6 @@ public class ShiftSwapRequestEntity extends BaseEntity {
     }
 
     /**
-     * 手挙げする（先着1名）。楽観ロックで競合を防ぐ。
-     *
-     * @param userId 手挙げユーザーID
-     */
-    public void claim(Long userId) {
-        this.claimedBy = userId;
-        this.claimedAt = LocalDateTime.now();
-        this.status = SwapRequestStatus.CLAIMED;
-    }
-
-    /**
-     * 候補者を選定して承諾済みにする。
-     *
-     * @param claimedBy 選定された手挙げユーザーID
-     */
-    public void selectClaimer(Long claimedBy) {
-        this.claimedBy = claimedBy;
-        this.accepterId = claimedBy;
-        this.status = SwapRequestStatus.ACCEPTED;
-    }
-
-    /**
      * 受信者モードを設定する。
      *
      * @param recipientMode "SPECIFIC" または "OPEN_CALL"

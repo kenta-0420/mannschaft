@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.annotation.AnnotatedElementUtils;
@@ -38,12 +39,31 @@ public class BatchEndpointRegistry implements SmartInitializingSingleton {
     private final ApplicationContext applicationContext;
     private final Map<String, BatchEndpointDescriptor> endpoints = new LinkedHashMap<>();
 
-    public BatchEndpointRegistry(ApplicationContext applicationContext) {
+    /**
+     * 全 Bean 走査を行うか。
+     *
+     * <p>この走査は {@code applicationContext.getBean(beanName)} を全 Bean 定義に対して呼ぶため、
+     * {@code spring.main.lazy-initialization=true} を指定していても**コンテキスト全体を強制的に生成する**。
+     * 通常起動では必要な処理だが、バッチを一度も実行しない用途（{@code openapi-gen} プロファイルでの
+     * {@code generateOpenApiDocs}）では、この走査だけで起動が数十分伸びて意味がない
+     * （CMP-260912-1526 の実測では起動 30 分のうち約 22 分がこの走査だった）。
+     * そのため、走査を明示的に無効化できるようにしてある。既定は有効。</p>
+     */
+    private final boolean scanEnabled;
+
+    public BatchEndpointRegistry(
+            ApplicationContext applicationContext,
+            @Value("${mannschaft.batch.registry.scan-enabled:true}") boolean scanEnabled) {
         this.applicationContext = applicationContext;
+        this.scanEnabled = scanEnabled;
     }
 
     @Override
     public void afterSingletonsInstantiated() {
+        if (!scanEnabled) {
+            log.info("バッチエンドポイント走査は無効化されています（mannschaft.batch.registry.scan-enabled=false）");
+            return;
+        }
         String[] beanNames = applicationContext.getBeanDefinitionNames();
         for (String beanName : beanNames) {
             Object bean;

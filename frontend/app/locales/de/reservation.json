@@ -174,7 +174,16 @@
       "team_page": "Reservierung"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "Verwendung von {label}",
+      "cards": {
+        "business_hours": { "title": "Öffnungszeiten", "description": "Buchungszeiten festlegen" },
+        "lines": { "title": "Buchungsziele", "description": "{n} Ziele verwalten" },
+        "menus": { "title": "Menüs", "description": "{n} Menüs verwalten" },
+        "weekly_schedule": { "title": "Wochenplan", "description": "{n} Zeit- und Wiederholungseinstellungen" },
+        "exception_day": { "title": "Ausnahmetage", "description": "Bestimmte Tage anpassen" },
+        "advanced": { "title": "Erweiterte Einstellungen", "description": "Sichtbarkeit und Benachrichtigungen" }
+      }
     },
     "column": {
       "datetime": "Datum & Uhrzeit",
@@ -583,6 +592,8 @@
       "capacity": "Kapazität",
       "is_active": "Aktiv",
       "cell_count": "{n} Slots/Tag (je 30 Min.)",
+      "ends_next_day": "Ende am nächsten Tag",
+      "next_day_time": "Nächster Tag {time}",
       "price": "Preis (optional)",
       "slot_title": "Titel (optional)",
       "generate": "Slots jetzt erzeugen",
@@ -647,6 +658,7 @@
     "business_hours": {
       "title": "Geschäftszeiten",
       "day_open": "Geöffnet",
+      "ends_next_day": "Ende am nächsten Tag",
       "save_success": "Gespeichert. {generated} Slots wurden aktualisiert",
       "generating": "Slots werden aktualisiert…",
       "generation_failed": "Die Geschäftszeiten wurden gespeichert, aber die automatische Slot-Aktualisierung ist fehlgeschlagen. Sie wird morgen früh automatisch nachgeholt",
@@ -679,6 +691,7 @@
       "state": {
         "available": "Frei",
         "booked": "Voll",
+        "reserved": "Von Ihnen gebucht",
         "closed": "Geschlossen",
         "unavailable": "Nicht verfügbar"
       },
@@ -699,6 +712,9 @@
       "no_menu_single": "Nur 30 Minuten ohne Menü buchen",
       "preview_title": "Diese Buchung bestätigen",
       "extend_30": "+30 Min.",
+      "open_all": "Alle anzeigen",
+      "close_all": "Alle schließen",
+      "open_day_hint": "Wählen Sie ein Datum, um Reservierungszeiten anzuzeigen",
       "date_line_header": "Datum / {resourceName}",
       "help_toggle": "Anleitung anzeigen",
       "help_body": "Tippen Sie auf ein freies (grünes) Zeitfenster und wählen Sie ein Menü — die benötigte Anzahl an Zeitfenstern wird automatisch ausgewählt. Mit „+30 Min.“ können Sie weitere hinzufügen. Bei einem gemeinsamen Zeitfenster wählen Sie das gewünschte Element ({resourceName}) aus.",

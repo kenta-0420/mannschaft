@@ -15,7 +15,6 @@ import type { SpotlightItem } from '~/composables/useSpotlightApi'
 const authStore = useAuthStore()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
-const dashboardStore = useDashboardStore()
 const greeting = useGreeting()
 const timedMessage = useTimedMessage()
 
@@ -39,22 +38,8 @@ function onOrgCreated() {
   orgStore.fetchMyOrganizations()
 }
 
-const loading = ref(true)
-
-onMounted(async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      teamStore.fetchMyTeams(),
-      orgStore.fetchMyOrganizations(),
-      dashboardStore.fetchPersonalDashboard(),
-    ])
-  } finally {
-    loading.value = false
-  }
-  // 広告掲載面は非必須のため loading ゲートとは独立に取得する（失敗してもページを止めない）。
-  void loadSpotlight()
-})
+// 広告掲載面は任意機能の初期取得と独立させ、背景で取得する。
+onMounted(() => { void loadSpotlight() })
 
 // 個人ダッシュボードウィジェット（DB 永続化・対象3-B）
 const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder } = useDashboardWidgets(
@@ -135,6 +120,7 @@ const PERSONAL_DATA_WIDGET_KEYS = new Set([
   'my-recruitments',             // Phase2 F03.11 参加予定（WidgetMyRecruitments・自前カード）
   'my-corkboard',                // F09.8.1 マイコルクボード（WidgetMyCorkboard・内容のみ→外枠必要）
   'village-lobby-digest',        // F17.1 井戸端ダイジェスト（WidgetVillageLobbyDigest・内容のみ→外枠必要）
+  'return-stay-plan',
 ])
 
 function isDataWidget(key: string): boolean {
@@ -206,8 +192,6 @@ function onDragEnd() {
 
 <template>
   <div>
-    <PageLoading v-if="loading" />
-    <div v-else>
       <!-- 挨拶ヘッダー -->
       <div class="mb-6 flex items-start justify-between gap-4">
         <div>
@@ -264,8 +248,8 @@ function onDragEnd() {
 
         <div
           v-for="(w, index) in visibleWidgets"
-          :key="w.key"
           v-show="w.key !== 'event-dismissal-reminder' || dismissalHasContent"
+          :key="w.key"
           class="group relative flex h-full flex-col cursor-default transition-all"
           :class="[
             (w.key === 'notices' || w.key === 'my-calendar') ? 'col-span-1 md:col-span-2' : 'col-span-1',
@@ -306,6 +290,7 @@ function onDragEnd() {
             <WidgetNotices v-else-if="w.key === 'notices'" />
             <!-- 今後の予定 -->
             <WidgetUpcomingEvents v-else-if="w.key === 'upcoming-events'" />
+            <WidgetReturnStayPlan v-else-if="w.key === 'return-stay-plan'" />
             <!-- 個人TODO -->
             <WidgetPersonalTodo v-else-if="w.key === 'personal-todo'" />
             <!-- F02.10: 天気 -->
@@ -523,6 +508,5 @@ function onDragEnd() {
         @toggle="toggleWidget"
         @reorder="reorder"
       />
-    </div>
   </div>
 </template>

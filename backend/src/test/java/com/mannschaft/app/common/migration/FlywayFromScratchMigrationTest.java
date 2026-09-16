@@ -120,27 +120,26 @@ class FlywayFromScratchMigrationTest {
      *
      * <p>乖離の内訳（左が Hibernate が発行する列名、括弧内が Flyway 実列名）:</p>
      * <ul>
-     *   <li><b>{@code s3Key} / {@code positionX} / {@code r2ObjectKey} 系（8 件）</b> —
-     *       Spring Boot の {@code CamelCaseToUnderscoresNamingStrategy} は
-     *       「小文字の直後の大文字」でのみ {@code _} を挿入するため、
-     *       数字の直後の大文字（{@code s3Key} → {@code s3key}）や末尾の大文字
-     *       （{@code positionX} → {@code positionx}）では区切られない。
-     *       Flyway 側は {@code s3_key} / {@code position_x} / {@code r2_object_key} で作られている。
-     *       {@code ProxyInputConsentEntity} は同じ罠を踏んで
-     *       {@code @Column(name = "scanned_document_s3_key")} で是正済み（同じ対処が正解）。</li>
-     *   <li><b>{@code notification_credit_purchases}（2 件）</b> —
-     *       Flyway 実列は {@code alert_sent_30d} / {@code alert_sent_7d} だが、
-     *       Entity フィールド {@code alertSent30d} は {@code alert_sent30d} にマップされる。</li>
+     *   <li><b>命名戦略の数字 / 末尾大文字の罠（旧 11 件・2026-08-20 に Issue #2856 で全額返済）</b> —
+     *       {@code s3Key} → {@code s3key} / {@code positionX} → {@code positionx} /
+     *       {@code r2ObjectKey} → {@code r2object_key} / {@code alertSent30d} → {@code alert_sent30d}。
+     *       いずれも Entity 側に {@code @Column(name=...)} を明示して是正済みのため台帳から削除した。
+     *       再発は {@code common.architecture.EntityDigitBoundaryColumnNameGuardTest}（静的走査）と
+     *       {@code common.schema.EntityDigitBoundaryColumnFlywaySchemaIT}（実 Flyway スキーマ）が防ぐ。</li>
      *   <li><b>{@code circulation_recipients}（3 件）</b> —
      *       V9.175 のコメントは「V9.171 で追加済み」と書いているが、
      *       V9.171 は {@code create_name_disclosure_change_logs} で無関係。実際にはどこにも存在しない。</li>
      *   <li><b>{@code content_reports.content_hidden}・{@code tournament_entry_members.member_number}・
      *       {@code tournament_entry_template_members.created_at/updated_at}（4 件）</b> —
      *       {@code queue_tickets.guest_phone} と同型（Entity にだけ足して migration を忘れた）。</li>
-     *   <li><b>{@code shift_budget_allocations} の {@code *_uq}（3 件）</b> —
-     *       Entity は {@code @GeneratedColumn} で生成カラムを宣言しているが、
-     *       Flyway（V11.030）は生成カラムではなく関数インデックスで同じ一意制約を実装しており、
-     *       列そのものが存在しない。</li>
+     *   <li><b>{@code shift_budget_allocations} の {@code *_uq}（旧 3 件・2026-09-09 に返済）</b> —
+     *       Entity が {@code @GeneratedColumn} で生成カラムを宣言していたが、Flyway（V11.030）は
+     *       MySQL 8.0 の制約（FK ベースカラムに STORED 生成カラム不可、Error 3192）により
+     *       関数インデックスで同じ一意制約を実装しており、列そのものが存在しなかった。
+     *       Entity 側の宣言を撤去して是正済み（実機で {@code Unknown column 'deleted_at_uq'} により
+     *       F08.7 シフト予算 API が全て 500 になっていた）。
+     *       DB 側の一意性が残っていることは
+     *       {@link #shift_budget_allocationsの一意性が関数インデックスで担保されている()} が守る。</li>
      *   <li><b>{@code BaseEntity} の {@code created_at} / {@code updated_at}（17 件）</b> —
      *       {@link com.mannschaft.app.common.BaseEntity} は全継承 Entity に
      *       {@code createdAt} / {@code updatedAt} を持たせ、{@code @PrePersist} /
@@ -149,18 +148,6 @@ class FlywayFromScratchMigrationTest {
      * </ul>
      */
     private static final Set<String> KNOWN_UNPAID_DRIFT = Set.of(
-        // --- 命名戦略の数字/末尾大文字の罠（Entity 側に @Column(name=...) を足すのが正解）---
-        "chart_photos.s3key",                                 // 実列: s3_key
-        "data_exports.s3key",                                 // 実列: s3_key
-        "direct_mail_image_uploads.s3key",                    // 実列: s3_key
-        "equipment_items.s3key",                              // 実列: s3_key
-        "kb_image_uploads.s3key",                             // 実列: s3_key
-        "resident_documents.s3key",                           // 実列: s3_key
-        "corkboard_groups.positionx",                         // 実列: position_x
-        "corkboard_groups.positiony",                         // 実列: position_y
-        "timetable_slot_user_note_attachments.r2object_key",  // 実列: r2_object_key
-        "notification_credit_purchases.alert_sent30d",        // 実列: alert_sent_30d
-        "notification_credit_purchases.alert_sent7d",         // 実列: alert_sent_7d
         // --- migration そのものが存在しない（Flyway 側に列を足すのが正解）---
         "circulation_recipients.skip_reason",
         "circulation_recipients.skipped_by",
@@ -169,10 +156,6 @@ class FlywayFromScratchMigrationTest {
         "tournament_entry_members.member_number",
         "tournament_entry_template_members.created_at",
         "tournament_entry_template_members.updated_at",
-        // --- 生成カラム vs 関数インデックスの設計不一致（要設計判断）---
-        "shift_budget_allocations.team_id_uq",
-        "shift_budget_allocations.project_id_uq",
-        "shift_budget_allocations.deleted_at_uq",
         // --- BaseEntity の created_at / updated_at を CREATE TABLE が作っていない ---
         "ad_conversions.updated_at",
         "analytics_alert_history.updated_at",
@@ -343,6 +326,53 @@ class FlywayFromScratchMigrationTest {
         } finally {
             StandardServiceRegistryBuilder.destroy(registry);
         }
+    }
+
+    /**
+     * <b>{@code shift_budget_allocations} の一意性が実 DB 上に残っていることを検証する。</b>
+     *
+     * <p>Entity から {@code @UniqueConstraint}（生成カラム参照）を撤去した是正（2026-09-09）により、
+     * この表の一意性は <b>Flyway の関数インデックス {@code uq_sba_scope_category_period} だけ</b>が
+     * DB 側の担保となった。Entity には表現手段が無いため、誰かが移行から
+     * この索引を落としても Java 側では何も壊れず、
+     * 「同一スコープの割当が二重に作られる」事故が静かに発生しうる。
+     * そこで実スキーマ上に UNIQUE 索引が存在し、NULL-safe 化の COALESCE 式を
+     * 7 要素すべてについて持つことを直接検査する。</p>
+     *
+     * <p>アプリ層の重複防止（{@code ShiftBudgetAllocationService.findLiveByScope} の
+     * {@code SELECT ... FOR UPDATE}）は併存する二重化であり、本索引の代替ではない。</p>
+     */
+    @Test
+    @Order(3)
+    @DisplayName("shift_budget_allocations の一意性が関数インデックスで担保されている")
+    void shift_budget_allocationsの一意性が関数インデックスで担保されている() throws Exception {
+        // given: Flyway 実スキーマ（単独実行にも耐えるよう冪等に再適用）
+        migrateFromScratch();
+
+        String createTable;
+        try (Connection conn = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+             java.sql.Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SHOW CREATE TABLE shift_budget_allocations")) {
+            assertThat(rs.next()).as("shift_budget_allocations が存在すること").isTrue();
+            createTable = rs.getString(2);
+        }
+
+        // 式インデックスは SHOW CREATE TABLE 上で改行・空白が入りうるため、空白を潰して比較する
+        String normalized = createTable.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+
+        assertThat(normalized)
+                .as("UNIQUE 索引 uq_sba_scope_category_period が存在すること（DDL: %s）", createTable)
+                .contains("uniquekey`uq_sba_scope_category_period`");
+        assertThat(normalized)
+                .as("team_id の NULL-safe 化（COALESCE 番兵値）が索引に含まれること（DDL: %s）", createTable)
+                .contains("coalesce(`team_id`,0)");
+        assertThat(normalized)
+                .as("project_id の NULL-safe 化が索引に含まれること（DDL: %s）", createTable)
+                .contains("coalesce(`project_id`,0)");
+        assertThat(normalized)
+                .as("deleted_at の NULL-safe 化が索引に含まれること（DDL: %s）", createTable)
+                .contains("coalesce(`deleted_at`,");
     }
 
     /** 本番の fresh 構築と同条件（out-of-order 無効）で全マイグレーションを適用する。冪等。 */

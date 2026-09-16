@@ -29,6 +29,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 
 /**
  * チーム支払い記録コントローラー。チーム単位の支払い記録管理 API を提供する。
@@ -151,6 +153,8 @@ public class TeamPaymentController {
     /**
      * 支払い記録を取り消す。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存の誤決済記録をGate状態にかかわらず取消可能にするため")
     @DeleteMapping("/payments/{paymentId}")
     @Operation(summary = "支払い記録取り消し")
     public ResponseEntity<Void> cancelPayment(
@@ -184,6 +188,8 @@ public class TeamPaymentController {
     /**
      * 全額返金を実行する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存決済の実返金義務をGate状態にかかわらず履行するため")
     @PostMapping("/payments/{paymentId}/refund")
     @Operation(summary = "全額返金実行")
     public ResponseEntity<ApiResponse<MemberPaymentResponse>> refundPayment(

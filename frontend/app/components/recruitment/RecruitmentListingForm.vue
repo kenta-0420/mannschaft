@@ -9,6 +9,7 @@ import type {
   RecruitmentVisibility,
 } from '~/types/recruitment'
 import type { MemberResponse } from '~/types/member'
+import { getRecruitmentListingValidationKey } from '~/utils/recruitmentListingValidation'
 
 interface Props {
   initial?: Partial<CreateRecruitmentListingRequest>
@@ -21,6 +22,11 @@ interface Props {
    * デフォルト false（従来挙動を維持）。
    */
   hideVisibility?: boolean
+  /**
+   * true のとき決済入力を非表示にし、送信値を paymentEnabled=false に固定する。
+   * PERSONAL 札は主体別管理市 Phase 5 まで決済禁止のため使用する。
+   */
+  hidePayment?: boolean
   /**
    * F22.1 市 謝礼決済: スコープ種別（TEAM / ORGANIZATION）。
    * payeeKind=USER 選択時に所属メンバー一覧を取得するために使用。
@@ -38,6 +44,7 @@ const props = withDefaults(defineProps<Props>(), {
   submitLabel: undefined,
   loading: false,
   hideVisibility: false,
+  hidePayment: false,
   scopeType: undefined,
   scopeId: undefined,
 })
@@ -51,7 +58,9 @@ const { t } = useI18n()
 const categoryId = ref<number | null>(props.initial.categoryId ?? null)
 const title = ref(props.initial.title ?? '')
 const description = ref(props.initial.description ?? '')
-const participationType = ref<RecruitmentParticipationType>(props.initial.participationType ?? 'INDIVIDUAL')
+const participationType = ref<RecruitmentParticipationType>(
+  props.initial.participationType ?? 'INDIVIDUAL',
+)
 const startAt = ref(props.initial.startAt ?? '')
 const endAt = ref(props.initial.endAt ?? '')
 const applicationDeadline = ref(props.initial.applicationDeadline ?? '')
@@ -76,6 +85,7 @@ const membersLoading = ref(false)
 // クライアントサイドバリデーションエラー
 const payeeKindError = ref<string | null>(null)
 const payeeUserError = ref<string | null>(null)
+const scheduleError = ref<string | null>(null)
 
 const submitButtonLabel = computed(() => props.submitLabel ?? t('recruitment.action.create'))
 
@@ -96,6 +106,9 @@ const payeeKindOptions = computed(() => {
   }
   if (props.scopeType === 'ORGANIZATION') {
     return all.filter((o) => o.value === 'USER' || o.value === 'ORG')
+  }
+  if (props.scopeType === 'PERSONAL') {
+    return []
   }
   return all
 })
@@ -120,17 +133,14 @@ async function loadMembers() {
       // size=100 で十分な件数を取得（受領者は 1 名選択のため）
       const result = await teamMembers.getMembers(props.scopeId, { size: 100 })
       scopeMembers.value = result.data
-    }
-    else if (props.scopeType === 'ORGANIZATION') {
+    } else if (props.scopeType === 'ORGANIZATION') {
       const orgApi = useOrganizationApi()
       const result = await orgApi.getMembers(props.scopeId, { size: 100 })
       scopeMembers.value = result.data
     }
-  }
-  catch {
+  } catch {
     // メンバー一覧取得失敗は警告のみ（手動入力にフォールバック不要・選択UIは空表示）
-  }
-  finally {
+  } finally {
     membersLoading.value = false
   }
 }
@@ -139,8 +149,7 @@ async function loadMembers() {
 watch(payeeKind, (newKind) => {
   if (newKind === 'USER') {
     loadMembers()
-  }
-  else {
+  } else {
     // USER 以外に切り替えたら受領者選択をリセット
     payeeUserId.value = null
     payeeUserError.value = null
@@ -185,13 +194,37 @@ function validatePayee(): boolean {
 }
 
 function onSubmit() {
-  if (!categoryId.value || !title.value || !startAt.value || !endAt.value
-      || !applicationDeadline.value || !autoCancelAt.value
-      || capacity.value == null || minCapacity.value == null) {
+  scheduleError.value = null
+  if (
+    !categoryId.value ||
+    !title.value ||
+    !startAt.value ||
+    !endAt.value ||
+    !applicationDeadline.value ||
+    !autoCancelAt.value ||
+    capacity.value == null ||
+    minCapacity.value == null
+  ) {
     return
   }
 
-  if (!validatePayee()) return
+  const validationKey = getRecruitmentListingValidationKey({
+    startAt: startAt.value,
+    endAt: endAt.value,
+    applicationDeadline: applicationDeadline.value,
+    autoCancelAt: autoCancelAt.value,
+    capacity: capacity.value,
+    minCapacity: minCapacity.value,
+    location: location.value,
+  })
+  if (validationKey) {
+    scheduleError.value = t(validationKey)
+    return
+  }
+
+  if (!props.hidePayment && !validatePayee()) return
+
+  const submittedPaymentEnabled = props.hidePayment ? false : paymentEnabled.value
 
   emit('submit', {
     categoryId: categoryId.value,
@@ -204,26 +237,34 @@ function onSubmit() {
     autoCancelAt: autoCancelAt.value,
     capacity: capacity.value,
     minCapacity: minCapacity.value,
-    paymentEnabled: paymentEnabled.value,
-    price: paymentEnabled.value ? price.value : null,
+    paymentEnabled: submittedPaymentEnabled,
+    price: submittedPaymentEnabled ? price.value : null,
     visibility: visibility.value,
-    location: location.value || null,
+    location: location.value.trim(),
     // F22.1 市 謝礼決済
-    payeeKind: paymentEnabled.value ? payeeKind.value : null,
-    payeeUserId: paymentEnabled.value && payeeKind.value === 'USER' ? payeeUserId.value : null,
+    payeeKind: submittedPaymentEnabled ? payeeKind.value : null,
+    payeeUserId: submittedPaymentEnabled && payeeKind.value === 'USER' ? payeeUserId.value : null,
   })
 }
 </script>
 
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
+    <Message
+      v-if="scheduleError"
+      severity="error"
+      :closable="false"
+      data-testid="recruitment-form-validation-error"
+    >
+      {{ scheduleError }}
+    </Message>
     <div class="flex flex-col gap-2">
-      <label for="title">{{ t('recruitment.field.title') }}</label>
+      <label for="title">{{ t('recruitment.field.title') }}<span class="ml-1 text-red-500">＊</span></label>
       <InputText id="title" v-model="title" required />
     </div>
 
     <div class="flex flex-col gap-2">
-      <label for="category">{{ t('recruitment.field.category') }}</label>
+      <label for="category">{{ t('recruitment.field.category') }}<span class="ml-1 text-red-500">＊</span></label>
       <Select
         id="category"
         v-model="categoryId"
@@ -236,13 +277,15 @@ function onSubmit() {
           <span>{{ t(option.nameI18nKey) }}</span>
         </template>
         <template #value="{ value }">
-          <span v-if="value">{{ t(categories.find((c) => c.id === value)?.nameI18nKey ?? '') }}</span>
+          <span v-if="value">{{
+            t(categories.find((c) => c.id === value)?.nameI18nKey ?? '')
+          }}</span>
         </template>
       </Select>
     </div>
 
     <div class="flex flex-col gap-2">
-      <label>{{ t('recruitment.field.participationType') }}</label>
+      <label>{{ t('recruitment.field.participationType') }}<span class="ml-1 text-red-500">＊</span></label>
       <SelectButton
         v-model="participationType"
         :options="[
@@ -259,46 +302,51 @@ function onSubmit() {
       <Textarea id="description" v-model="description" rows="3" />
     </div>
 
-    <div class="grid grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       <div class="flex flex-col gap-2">
-        <label for="startAt">{{ t('recruitment.field.startAt') }}</label>
+        <label for="startAt">{{ t('recruitment.field.startAt') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputText id="startAt" v-model="startAt" type="datetime-local" required />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="endAt">{{ t('recruitment.field.endAt') }}</label>
+        <label for="endAt">{{ t('recruitment.field.endAt') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputText id="endAt" v-model="endAt" type="datetime-local" required />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="applicationDeadline">{{ t('recruitment.field.applicationDeadline') }}</label>
-        <InputText id="applicationDeadline" v-model="applicationDeadline" type="datetime-local" required />
+        <label for="applicationDeadline">{{ t('recruitment.field.applicationDeadline') }}<span class="ml-1 text-red-500">＊</span></label>
+        <InputText
+          id="applicationDeadline"
+          v-model="applicationDeadline"
+          type="datetime-local"
+          required
+        />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="autoCancelAt">{{ t('recruitment.field.autoCancelAt') }}</label>
+        <label for="autoCancelAt">{{ t('recruitment.field.autoCancelAt') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputText id="autoCancelAt" v-model="autoCancelAt" type="datetime-local" required />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="capacity">{{ t('recruitment.field.capacity') }}</label>
+        <label for="capacity">{{ t('recruitment.field.capacity') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputNumber id="capacity" v-model="capacity" :min="1" required />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="minCapacity">{{ t('recruitment.field.minCapacity') }}</label>
+        <label for="minCapacity">{{ t('recruitment.field.minCapacity') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputNumber id="minCapacity" v-model="minCapacity" :min="1" required />
       </div>
     </div>
 
     <div class="flex flex-col gap-2">
-      <label for="location">{{ t('recruitment.field.location') }}</label>
-      <InputText id="location" v-model="location" />
+      <label for="location">{{ t('recruitment.field.location') }}<span class="ml-1 text-red-500">＊</span></label>
+      <InputText id="location" v-model="location" required />
     </div>
 
-    <div class="flex items-center gap-2">
+    <div v-if="!hidePayment" class="flex items-center gap-2">
       <Checkbox v-model="paymentEnabled" input-id="paymentEnabled" :binary="true" />
       <label for="paymentEnabled">{{ t('recruitment.field.paymentEnabled') }}</label>
     </div>
 
-    <template v-if="paymentEnabled">
+    <template v-if="!hidePayment && paymentEnabled">
       <div class="flex flex-col gap-2">
-        <label for="price">{{ t('recruitment.field.price') }}</label>
+        <label for="price">{{ t('recruitment.field.price') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputNumber id="price" v-model="price" :min="0" required />
       </div>
 
@@ -306,7 +354,7 @@ function onSubmit() {
       <div class="flex flex-col gap-2">
         <label for="payeeKind">
           {{ t('recruitment.field.payeeKind') }}
-          <span class="ml-1 text-red-500">*</span>
+          <span class="ml-1 text-red-500">＊</span>
         </label>
         <Select
           id="payeeKind"
@@ -324,7 +372,7 @@ function onSubmit() {
       <div v-if="payeeKind === 'USER'" class="flex flex-col gap-2">
         <label for="payeeUserId">
           {{ t('recruitment.field.payeeUser') }}
-          <span class="ml-1 text-red-500">*</span>
+          <span class="ml-1 text-red-500">＊</span>
         </label>
         <Select
           id="payeeUserId"
@@ -341,7 +389,7 @@ function onSubmit() {
     </template>
 
     <div v-if="!hideVisibility" class="flex flex-col gap-2">
-      <label for="visibility">{{ t('recruitment.field.visibility') }}</label>
+      <label for="visibility">{{ t('recruitment.field.visibility') }}<span class="ml-1 text-red-500">＊</span></label>
       <Select
         id="visibility"
         v-model="visibility"

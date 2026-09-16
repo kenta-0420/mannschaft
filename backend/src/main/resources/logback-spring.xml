@@ -56,4 +56,35 @@
             <appender-ref ref="CONSOLE_CI" />
         </root>
     </springProfile>
+
+    <!--
+        フォールバック（上記のどのプロファイルにも当てはまらない場合）
+
+        logback は root に appender が一つも紐付いていないと、そのアプリケーションのログを
+        **一切出力しない**（エラーもスタックトレースも消える）。
+        上の springProfile ブロックは prod / local / default / test / ci しか列挙していないため、
+        新しいプロファイル（openapi-gen など）を足すと、そのプロファイルでの起動は完全な無音になり、
+        「起動しないが理由が分からない」という診断不能状態に陥る。
+
+        実際に openapi-gen プロファイル（./gradlew generateOpenApiDocs のフォーク先）がこの穴に落ち、
+        起動が失敗しても**一行も出ないまま exit 1** になっていた。
+        このとき springdoc プラグイン側は「http://localhost:8082/v3/api-docs へ 1800 秒つないだが応答しない」
+        としか言えないため、原因（起動失敗なのか、単に遅いのか）の切り分けが不能になる。
+        PR6a と CMP-260912-1526 の両方で、この穴により openapi.json の再生成が空振りした。
+
+        そこで、列挙済みプロファイル以外すべてにマッチする否定式のブロックを置き、
+        どのプロファイルで起動してもコンソールにログが出ることを構造的に保証する。
+        openapi-gen だけを名指しで救う形にしないのは、次に誰かが新しいプロファイルを作ったときに
+        また同じ無音の穴に落ちるからである。ここを直し忘れても無音にはならない。
+    -->
+    <springProfile name="!prod &amp; !local &amp; !default &amp; !test &amp; !ci">
+        <appender name="CONSOLE_FALLBACK" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_FALLBACK" />
+        </root>
+    </springProfile>
 </configuration>

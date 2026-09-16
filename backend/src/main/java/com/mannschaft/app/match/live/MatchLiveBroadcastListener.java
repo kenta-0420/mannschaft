@@ -1,5 +1,7 @@
 package com.mannschaft.app.match.live;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,6 +80,8 @@ public class MatchLiveBroadcastListener {
      * <p>AFTER_COMMIT 発火により、記録 TX がコミット済みの差分のみ配信する（未コミットのイベントを観戦者へ
      * 見せない・ロールバック時の幻イベント残存を防ぐ・07 §J.2）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。試合ライブ更新の配信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onMatchLiveUpdate(MatchLiveUpdateEvent event) {
         Long serverSeq = nextServerSeq(event);

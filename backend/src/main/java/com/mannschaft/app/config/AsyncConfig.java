@@ -2,6 +2,7 @@ package com.mannschaft.app.config;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +14,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * 非同期処理設定。
@@ -26,9 +29,16 @@ import java.util.concurrent.Executor;
  * {@link com.mannschaft.app.errorreport.service.ErrorReportService#recordBackendException}
  * 等が requestId を引き続き拾えるようになる。</p>
  */
+@Slf4j
 @Configuration
 @EnableAsync
 public class AsyncConfig {
+
+    /**
+     * 既定 AbortPolicy（呼び出し元へ {@code RejectedExecutionException} を投げ返す）。
+     * 状態を持たないハンドラなので拒否のたびに new せず定数として使い回す。
+     */
+    private static final RejectedExecutionHandler ABORT_POLICY = new ThreadPoolExecutor.AbortPolicy();
 
     /**
      * イベント処理用スレッドプール。
@@ -43,6 +53,18 @@ public class AsyncConfig {
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("event-");
         executor.setTaskDecorator(new MdcTaskDecorator());
+        // Issue #2953: 投入拒否を silent drop にしない。
+        // 拒否方針そのもの（AbortPolicy = 例外送出）は 168 箇所の @Async("event-pool") 全体に効くため変更せず、
+        // 「拒否が起きた事実」を構造化 ERROR ログで観測できるようにするだけに留める。
+        executor.setRejectedExecutionHandler((runnable, poolExecutor) -> {
+            log.error("event-pool 投入拒否: pool_saturated event=async_task_rejected pool=event-pool "
+                            + "activeCount={} poolSize={} queueSize={} completedTaskCount={} task={}",
+                    poolExecutor.getActiveCount(), poolExecutor.getPoolSize(),
+                    poolExecutor.getQueue().size(), poolExecutor.getCompletedTaskCount(),
+                    runnable.getClass().getName());
+            // 既定 AbortPolicy と同じ意味論（呼び出し元へ例外を返す）を維持する。
+            ABORT_POLICY.rejectedExecution(runnable, poolExecutor);
+        });
         executor.initialize();
         return executor;
     }
@@ -209,6 +231,147 @@ public class AsyncConfig {
             if (!poolExecutor.isShutdown()) {
                 runnable.run();
             }
+        });
+        executor.initialize();
+        return executor;
+    }
+
+    /**
+     * 通知<b>単発</b>配信（{@link com.mannschaft.app.notification.service.NotificationDispatchService#dispatch}）
+     * 専用スレッドプール（Issue #2953）。
+     *
+     * <h2>なぜ分けるのか — event-pool の自己飽和</h2>
+     * <p>CMP-056 で確立した通知配送の型は
+     * 「{@code AFTER_COMMIT} + {@code @Async("event-pool")} の配送リスナー」→
+     * 「{@link com.mannschaft.app.notification.service.NotificationDeliveryRunner#sendOne}
+     * （{@code REQUIRES_NEW}）」→「{@code dispatch}（{@code @Async}）」という形をとる。
+     * {@code dispatch} が executor 無指定だと {@code @Primary} により <b>呼び出し元と同じ event-pool</b>
+     * へ再投入される（自己投入）。配送リスナーが event-pool のワーカーを占有したまま同じプールへ積むため、
+     * 受信者が多い経路では容易に自己飽和する。飽和すると既定 AbortPolicy が
+     * {@code RejectedExecutionException} を同期で投げ返し、それが {@code sendOne} の
+     * {@code REQUIRES_NEW} トランザクションを巻き戻して<b>作成済みの通知行そのものが消える</b>。</p>
+     *
+     * <h2>採った解</h2>
+     * <ol>
+     *   <li><b>物理分離</b>: {@code dispatch} を本プールへ移し、配送リスナー（event-pool）と
+     *       スレッドを奪い合わせない。自己投入が構造的に成立しなくなる。</li>
+     *   <li><b>CallerRuns</b>: それでも本プールが飽和した場合は、通知は欠損許容でないため捨てず、
+     *       呼び出し元スレッド（= event-pool ワーカー）で同期実行する。例外が発生しないため
+     *       {@code sendOne} の {@code REQUIRES_NEW} は決してロールバックせず、<b>通知行は残る</b>。
+     *       同時に投入側へ自然な背圧がかかる。</li>
+     *   <li><b>ERROR ログでの可視化</b>: 飽和は異常事態なので構造化 ERROR ログを残す
+     *       （本戦役では Micrometer カウンタを増やさない方針のため、可視化はログで行う）。</li>
+     * </ol>
+     *
+     * <p>一括配信（{@code dispatchBatch}）は従来どおり {@code notification-fanout-pool} を使う。
+     * 本プールは<b>単発配信専用</b>であり、バルク経路の設計には手を触れていない。</p>
+     *
+     * <h2>サイジング根拠</h2>
+     * <p>corePoolSize=4 / maxPoolSize=8 / queueCapacity=500。
+     * 1 タスク = 受信者 1 名への WebSocket/Push 送信で、DB アクセスは設定/種別/購読の読み取りのみ。
+     * 最大 8 並列は CI の Hikari プール 5 本（{@code application-ci.yml:25}）に対して過剰に見えるが、
+     * CallerRuns によりこれ以上の同時実行は投入側の背圧で自動的に抑えられる。無制限キューは
+     * OOM の入口になるため採らず、既存プール（{@code purge-pool} / {@code page-view-pool} /
+     * {@code notification-fanout-pool}）の前例に揃えて 500 で上限を切る。</p>
+     *
+     * <h2>CallerRuns の代償（Issue #2953 検分指摘1）</h2>
+     * <p>本プールのタスクは<b>短命な読み取りではない</b>。{@code dispatch} は最後に
+     * {@link com.mannschaft.app.notification.service.WebPushService#sendPushNotification}
+     * を呼び、これは<b>同期 HTTP + 429/5xx 時のリトライ + バックオフ sleep</b> を伴う。
+     * したがって CallerRuns が発火すると、外向き HTTP が
+     * {@link com.mannschaft.app.notification.service.NotificationDeliveryRunner#sendOne} の
+     * {@code REQUIRES_NEW} トランザクションの<b>内側</b>で、呼び出し元（= {@code event-pool}
+     * ワーカー）スレッドにより同期実行される。帰結として</p>
+     * <ul>
+     *   <li>Hikari コネクションを push の HTTP 往復とバックオフのあいだ保持し続ける</li>
+     *   <li>{@code event-pool}（maxPoolSize=5・AbortPolicy）のワーカーが塞がれ、
+     *       飽和の圧力が本プールから {@code event-pool} 側へ移りうる</li>
+     *   <li>410/404 時の {@code pushSubscriptionRepository.deleteByEndpoint} が、
+     *       インライン実行時は通知トランザクションに参加する（非同期実行時と境界が変わる）</li>
+     * </ul>
+     * <p>危険なのは接続の<b>本数</b>ではなく<b>保持時間</b>である。そのため
+     * {@code WebPushService} 側に 1 リクエスト 10 秒・1 通知あたり総予算 30 秒の上限を課し、
+     * 保持時間を上に有界にしてある（予算超過時は例外を投げず諦める。例外を投げると
+     * {@code REQUIRES_NEW} ごと巻き戻り通知行が消えるため）。
+     * push の HTTP をトランザクション境界の外へ出す本筋の是正は別 issue（#2998）とする。</p>
+     *
+     * @return notification-dispatch-pool エグゼキュータ
+     */
+    @Bean("notification-dispatch-pool")
+    public Executor notificationDispatchPool() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(500); // notification-fanout-pool / purge-pool の前例に揃える
+        executor.setThreadNamePrefix("notification-dispatch-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        // 通知は欠損許容ではない。飽和時も捨てず・例外も投げず、呼び出し元スレッドで実行する（CallerRuns）。
+        // 例外を投げないことが本質: 投げると sendOne の REQUIRES_NEW ごとロールバックし通知行が消える。
+        executor.setRejectedExecutionHandler((runnable, poolExecutor) -> {
+            log.error("notification-dispatch-pool 投入拒否: pool_saturated event=async_task_rejected "
+                            + "pool=notification-dispatch-pool policy=caller_runs "
+                            + "activeCount={} poolSize={} queueSize={} completedTaskCount={}",
+                    poolExecutor.getActiveCount(), poolExecutor.getPoolSize(),
+                    poolExecutor.getQueue().size(), poolExecutor.getCompletedTaskCount());
+            if (!poolExecutor.isShutdown()) {
+                runnable.run();
+            }
+        });
+        executor.initialize();
+        return executor;
+    }
+
+    /**
+     * 外部 AI API 呼び出し専用スレッドプール（Issue #2990 L4 検分是正）。
+     *
+     * <p>{@link com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisAsyncRunner#analyzeAsync}
+     * 用。中身は Claude API への HTTP 呼び出しを含み、1 タスクが<b>秒〜分オーダーでスレッドを占有</b>する。</p>
+     *
+     * <h2>なぜ event-pool ではないのか</h2>
+     * <p>{@code event-pool} は core2/max5/queue100・AbortPolicy で、監査ログ記録や
+     * AFTER_COMMIT 通知配送など 160 箇所超が相乗りする共用プールである。滞留の長い AI 呼び出しを
+     * ここに載せると 5 スレッドが AI 応答待ちで塞がり、通知配送まで遅延・拒否される
+     * （Issue #2953 で event-pool の自己飽和が問題になった経緯がある）。
+     * 「重い処理は専用/バッチ側、通知配送は event-pool」という本 issue の方針にも反する。</p>
+     *
+     * <h2>なぜ job-pool でもないのか</h2>
+     * <p>{@code job-pool} は core2/max4/queue50 と細く、日次・定期バッチ（Analytics バックフィル、
+     * AI ダイジェスト生成）が使っている。エラーレポートの AI 即時分析は<b>障害発生時にバースト</b>する
+     * （1 障害で多数のレポートが立つ）性質があり、job-pool に相乗りさせるとバースト時に
+     * 定期バッチが飢える。滞留時間の桁が違う処理を混ぜないため専用プールに分離する。</p>
+     *
+     * <h2>拒否方針: AbortPolicy 既定のまま（欠落しない）</h2>
+     * <p>飽和時は既定どおり呼び出し元へ例外を返す。呼び出し元
+     * （{@code ErrorReportAiAnalysisAsyncRunner} を呼ぶ AFTER_COMMIT コールバック）は業務TXの外に
+     * いるため業務処理を巻き戻さない。かつ拒否時は {@code last_ai_analysis_at} が未更新のまま残るので、
+     * {@code ErrorReportAiAnalysisBatch}（{@code last_ai_analysis_at IS NULL} が検索条件）が
+     * 5 分後に必ず拾い直す。すなわち拒否は<b>遅延であって欠落ではない</b>。
+     * CallerRuns を採らないのは、呼び出し元が HTTP リクエストスレッドになりうるためである
+     * （そこで AI 応答を待たせるのは L4 で是正した当の欠陥に戻る）。</p>
+     *
+     * <p>サイジング: corePoolSize=1 / maxPoolSize=2 / queueCapacity=100。AI 呼び出しは
+     * 月次予算ガード（{@code ErrorReportAiBudgetService}）で総量が抑えられており、並列度より
+     * 「他プールを巻き添えにしないこと」を優先する。</p>
+     *
+     * @return ai-analysis-pool エグゼキュータ
+     */
+    @Bean("ai-analysis-pool")
+    public Executor aiAnalysisPool() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("ai-analysis-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        // 拒否は「静かに捨てる」ではなく可視化する。欠落はしない（後追いバッチが拾う）が、
+        // 恒常的に拒否が出るならプール幅か AI 呼び出し頻度の見直しが要るためログで観測できるようにする。
+        executor.setRejectedExecutionHandler((runnable, poolExecutor) -> {
+            log.error("ai-analysis-pool 投入拒否: pool_saturated event=async_task_rejected pool=ai-analysis-pool "
+                            + "activeCount={} poolSize={} queueSize={} completedTaskCount={} "
+                            + "note=last_ai_analysis_at 未更新のため後追いバッチが再分析する",
+                    poolExecutor.getActiveCount(), poolExecutor.getPoolSize(),
+                    poolExecutor.getQueue().size(), poolExecutor.getCompletedTaskCount());
+            ABORT_POLICY.rejectedExecution(runnable, poolExecutor);
         });
         executor.initialize();
         return executor;

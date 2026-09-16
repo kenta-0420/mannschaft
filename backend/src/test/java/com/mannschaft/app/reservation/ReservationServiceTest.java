@@ -17,6 +17,7 @@ import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.service.ReservationService;
 import com.mannschaft.app.reservation.service.ReservationSlotService;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,6 +32,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -45,6 +47,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
@@ -108,6 +111,9 @@ class ReservationServiceTest {
     /** F03.4.3: 一覧のグループ要約一括解決（本テストの対象外のため mock。既定は空 Map）。 */
     @Mock
     private com.mannschaft.app.reservation.service.ReservationGroupSummaryResolver groupSummaryResolver;
+
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     private ReservationService service;
 
@@ -536,8 +542,8 @@ class ReservationServiceTest {
             CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
             ReservationSlotEntity slot = createAvailableSlotEntity();
             given(slotService.getSlotEntity(TEAM_ID, SLOT_ID)).willReturn(slot);
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(
-                    eq(TEAM_ID), eq(slot.getSlotDate())))
+            given(blockedTimeRepository.findEffectiveOnDate(
+                    eq(TEAM_ID), eq(slot.getSlotDate()), eq(slot.getSlotDate().minusDays(1))))
                     .willReturn(List.of(com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity.builder()
                             .teamId(TEAM_ID).blockedDate(slot.getSlotDate())
                             .resourceType(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM)
@@ -817,6 +823,26 @@ class ReservationServiceTest {
             verify(viewAccessGuard).assertCanView(TEAM_ID, USER_ID);
             assertThat(result).isNotNull();
             verify(reservationRepository).save(any(ReservationEntity.class));
+        }
+
+        @Test
+        @DisplayName("非JST境界: America/New_Yorkで開始済みの枠は予約作成を拒否する")
+        void 非JST境界の過去枠は予約作成を拒否する() {
+            reinitServiceWithClock(Clock.fixed(Instant.parse("2026-08-10T03:30:00Z"), ZoneOffset.UTC));
+            ReflectionTestUtils.setField(service, "teamTimezoneResolver", teamTimezoneResolver);
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
+            ReservationSlotEntity slot = ReservationSlotEntity.builder().id(SLOT_ID).teamId(TEAM_ID)
+                    .slotDate(LocalDate.of(2026, 8, 9)).startTime(LocalTime.of(23, 15))
+                    .endTime(LocalTime.of(23, 45)).build();
+            given(slotService.getSlotEntity(TEAM_ID, SLOT_ID)).willReturn(slot);
+            given(teamTimezoneResolver.toInstant(TEAM_ID, slot.getSlotDate(), slot.getStartTime()))
+                    .willReturn(Instant.parse("2026-08-10T03:15:00Z"));
+
+            assertThatThrownBy(() -> service.createReservation(TEAM_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.PAST_DATE_RESERVATION);
+            then(reservationRepository).should(org.mockito.Mockito.never()).save(any(ReservationEntity.class));
         }
     }
 
@@ -1405,7 +1431,12 @@ class ReservationServiceTest {
             given(reservationRepository.findUpcomingByUserId(
                     eq(USER_ID), any(LocalDate.class), any(LocalTime.class)))
                     .willReturn(entities);
-            given(reservationMapper.toReservationResponseList(entities)).willReturn(responses);
+            ReservationSlotEntity upcomingSlot = ReservationSlotEntity.builder().id(SLOT_ID).teamId(TEAM_ID)
+                    .slotDate(LocalDate.of(2026, 3, 2)).startTime(LocalTime.of(10, 0))
+                    .endTime(LocalTime.of(11, 0)).build();
+            given(slotRepository.findAllById(anyIterable())).willReturn(List.of(upcomingSlot));
+            given(reservationMapper.toReservationResponse(any(ReservationEntity.class), any(), any()))
+                    .willReturn(responses.get(0));
 
             // When
             List<ReservationResponse> result = service.listUpcomingReservations(USER_ID);
@@ -1430,8 +1461,8 @@ class ReservationServiceTest {
             // Then: 申込時刻ではなく「現在の日付＋時刻」で来店日時を絞り込む
             then(reservationRepository).should().findUpcomingByUserId(
                     eq(USER_ID),
-                    eq(LocalDate.of(2026, 4, 1)),
-                    eq(LocalTime.of(9, 30)));
+                    eq(LocalDate.of(2026, 3, 31)),
+                    eq(LocalTime.MIDNIGHT));
         }
 
         @Test
@@ -1465,6 +1496,27 @@ class ReservationServiceTest {
             assertThat(timeCaptor.getAllValues().get(0))
                     .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
                     .isEqualTo(timeCaptor.getAllValues().get(1));
+        }
+
+        @Test
+        @DisplayName("非JST境界: America/New_Yorkで翌日になる未来枠はupcomingに残る")
+        void 非JST境界の未来枠はupcomingに残る() {
+            reinitServiceWithClock(Clock.fixed(Instant.parse("2026-08-10T03:30:00Z"), ZoneOffset.UTC));
+            ReflectionTestUtils.setField(service, "teamTimezoneResolver", teamTimezoneResolver);
+            ReservationEntity entity = createReservationEntity();
+            ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                    .id(SLOT_ID).teamId(TEAM_ID).slotDate(LocalDate.of(2026, 8, 9))
+                    .startTime(LocalTime.of(23, 45)).endTime(LocalTime.of(23, 59)).build();
+            given(reservationRepository.findUpcomingByUserId(eq(USER_ID), any(LocalDate.class), any(LocalTime.class)))
+                    .willReturn(List.of(entity));
+            given(slotRepository.findAllById(anyIterable())).willReturn(List.of(slot));
+            given(teamTimezoneResolver.resolveZones(any())).willReturn(java.util.Map.of(TEAM_ID, ZoneId.of("America/New_York")));
+            given(teamTimezoneResolver.toInstant(slot.getSlotDate(), slot.getStartTime(), ZoneId.of("America/New_York")))
+                .willReturn(Instant.parse("2026-08-10T03:45:00Z"));
+            given(reservationMapper.toReservationResponse(any(ReservationEntity.class), any(), any()))
+                    .willReturn(createReservationResponse());
+
+            assertThat(service.listUpcomingReservations(USER_ID)).hasSize(1);
         }
     }
 

@@ -433,7 +433,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>同一コミットに以下の実装是正・契約テストを含む:</p>
      * <ul>
      *   <li>{@code GlobalExceptionHandler}: {@code PAYMENT_029}（会費支払い記録の不在）を 404、
-     *       {@code PAYMENT_030}（払い手／受益者以外のアクセス拒否）を 403、
+     *       {@code PAYMENT_030}（払い手／受益者以外のアクセス拒否）を 403
+     *       （<b>この 403 は後日 404 へ是正済み</b>。不在の {@code PAYMENT_029} と割れていて
+     *       存在オラクルになっていたため。現行値は {@code GlobalExceptionHandler} を参照）、
      *       {@code RECEIPT_002}（領収書の不在・宛先不一致）を 404 に登録。3 コードとも未登録のため
      *       {@code Severity.WARN} 既定の 400 が返っており、Javadoc の宣言と実挙動が乖離していた。
      *       同ファイルへの変更は<b>この 3 エントリとコメントのみ</b>（並行整備中のため最小限）。</li>
@@ -695,15 +697,26 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code entity} 直下にあったため対象外になっていなかった。規約に実体を合わせた結果、
      * dashboard / notification（2箇所） / role の計4クラスから参照していた既存違反6行が解消。
      * 違反隠蔽ではなく、共有値オブジェクトの置き場所を規約どおりに是正した結果の縮小。</p>
+     *
+     * <p>2129 → 2068（2026-08-27）: origin/main とのマージ（CMP-042 / #2787 復活作業）で、
+     * このブランチの分岐後に main 側で解消された D-1 越境依存 61 行が chip-away
+     * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
+     * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2129;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2065;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
      * 更新手順は {@link #EXPECTED_LINES_AUTHZ_WAVE4} と同様（対象ファイル:
      * {@code f14374b1-655e-4df2-8e82-2d79c8df9174}）。
+     *
+     * <p>1505 → 1459（2026-08-28）: origin/main とのマージ（CMP-042 / #2787 復活作業）で、
+     * このブランチの分岐後に main 側で解消された D-3 越境依存 46 行が chip-away
+     * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
+     * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値（JUnit XML の
+     * AssertionFailedError メッセージ「1505 → 1459 に減少（-46件）」）へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1508;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1459;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -714,8 +727,28 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 564 → 565。マスタ例外（全テナント共通・複合自然キー {@code (beta_phase, grant_kind)}・独立発番不要）で
      * CLAUDE.md 原則 #6 の明記された例外に該当し、設計是認済み（設計書 F20.3 01 §0/§2）。違反隠蔽ではなく
      * 設計是認例外の正規登録（{@code village.VillageFestivalLivePostEntity} と同型）。</p>
+     *
+     * <p>CMP-260901-1538 柱③-A 検分第3巡（2026-09-05）: {@code common.duplicatename.DuplicateNameLockEntity}
+     * （同名確認フロー用の行ロック専用テーブル）を 1 件追加し 565 → 566。マスタ例外に準じる
+     * （テナント・ユーザーごとに行が増える通常のドメインテーブルではなく、正規化名の種類数だけ
+     * 存在するロック専用の恒久データ。シャーディング時は全シャードへ同じ行をコピーする運用が自然で、
+     * 原則 #6 の意図＝各ノード独立発番に該当しない）。実データを持たず、
+     * {@code DuplicateNameGuardServiceImpl} がネイティブ SQL で直接ロックを取得するために存在する
+     * （{@code docs/architecture/domain_db_design_principles.md} 参照）。違反隠蔽ではなく
+     * 設計是認例外の正規登録。</p>
+     *
+     * <p>Billing Center PR6a（2026-09-12）: {@code billing.ActiveBillingContractOperationPointerEntity}
+     * （1契約につき進行中の操作 Saga を高々1件に限る lease 表）を 1 件追加し 566 → 567。
+     * <b>該当する例外区分</b>: {@code docs/architecture/domain_db_design_principles.md} 原則 6 の
+     * 「1:1 従属表（主キーが親の UUIDv7 そのもの）」。主キーは {@code billing_contracts.id} そのもの
+     * （{@code PRIMARY KEY (contract_id)}）で、DDL に {@code id} 列が存在しない。原則 6 の意図は
+     * <b>将来シャーディングしたときに各ノードが独立して主キーを発番できること</b>であり、本表の主キーは
+     * 親が発番した UUIDv7 をそのまま用いるため、その意図は既に完全に満たされている（BIGINT
+     * AUTO_INCREMENT のような中央発番はどこにも現れない）。むしろ代理キーを足すと「1契約1 lease」を
+     * 別途 UNIQUE 制約で守る必要が生じ、排他の不変条件の担保が弱くなる。DDL は V196 で確定済みであり
+     * 新規 migration での作り直しは行わない。違反隠蔽ではなく設計是認例外の正規登録。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 565;
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 567;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。
@@ -730,8 +763,31 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>2026-08-04 更新（2025→2022）: 通知 fan-out Wave-1 で
      * {@code ShiftPublishedNotificationListener}（shift ドメイン）の {@code UserRoleRepository}（role ドメイン）
      * 越境依存を耐久ジョブ enqueue への載せ替えで解消し、当該 3 行が正当に返済されたため実測値へ追随。</p>
+     *
+     * <p>2026-08-15 更新（2022→2013）: CMP-042 / Issue #2787（アンケートの対象人数スナップショット）で、
+     * survey ドメインの 4 クラス（{@code SurveyService} / {@code SurveyResultService} /
+     * {@code SurveyRemindService} / {@code SurveyPublishNotificationListener}）に重複していた
+     * {@code UserRoleRepository}（role ドメイン）越境依存を、母集団解決の唯一の窓口
+     * {@code SurveyUniverseResolver} 1 クラスへ集約した。13 行が消え 4 行が増えて差引 9 行の返済。
+     * 越境依存そのものは残るが、母集団の定義を 1 箇所に閉じたことで返済対象が 1 クラスに縮んだ。</p>
+     *
+     * <p>2026-08-27 更新（2013→1972）: origin/main とのマージ（CMP-042 / #2787 復活作業）で、
+     * このブランチの分岐後に main 側で解消された D-5 越境依存が chip-away（FreezingArchRule の
+     * 既定挙動・解消済み違反の自動削除）で反映された。フルビルド（{@code ./gradlew build}、
+     * {@code --tests} 絞り込みなし）で凍結ストアを実際に生成し直して実測した値。
+     * このマージ作業で {@code SurveyUniverseResolver}（survey ドメイン）の
+     * {@code UserRoleRepository}（role ドメイン）依存 4 行を新規の許容違反として凍結ストアへ
+     * 追記した（母集団解決の唯一の窓口という設計意図があり、意図的に凍結許容する）。</p>
+     *
+     * <p>2026-09-08 更新（1972→1967）: 柱③-B PR-3（CMP-260901-1538）で
+     * {@code WithdrawalStripeHandler}（gdpr ドメイン）がスタブのまま直接 DI していた
+     * {@code StripeCustomerRepository} 3 行・{@code TeamSubscriptionRepository} 2 行の計 5 行を返済した。
+     * 退会時の決済連携を実装するにあたり、payment ドメインへは
+     * {@code MembershipSubscriptionService} 経由（Service 経由・CLAUDE.md のモジュラーモノリス原則）で
+     * のみ触れる形に是正し、Repository への直接依存を撤去したため。
+     * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2022;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1967;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

@@ -1,6 +1,8 @@
 package com.mannschaft.app.weather.event;
 
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,8 @@ public class WeatherLocationCleanupListener {
      *
      * @param event 退会匿名化イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "退会匿名化イベントを購読し天気の地点情報（居住地に相当する PII）を消す。止めると残留し、イベントは再生されない")
     @Async("event-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

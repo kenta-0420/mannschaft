@@ -81,6 +81,8 @@ class PaymentMoneyScopeContractIT extends AbstractMySqlIntegrationTest {
     private static final String MEMBER_PAYMENT_NOT_FOUND = "PAYMENT_029";
     /** 払い手でも受益者でもない第三者の領収書アクセス（403）。 */
     private static final String PAYMENT_ACCESS_DENIED = "PAYMENT_030";
+    /** 課金ゲート対象コンテンツが存在しない（404・存在秘匿）。 */
+    private static final String CONTENT_NOT_FOUND = "PAYMENT_015";
 
     @Autowired
     private MockMvc mockMvc;
@@ -135,13 +137,15 @@ class PaymentMoneyScopeContractIT extends AbstractMySqlIntegrationTest {
     class MemberPaymentReceipt {
 
         @Test
-        @DisplayName("第三者は他人の会費領収書を取得できない（払い手・受益者本人は取得できる）")
+        @DisplayName("第三者は他人の会費領収書を取得できない — 不在と同じ 404 で秘匿（払い手・受益者本人は取得できる）")
         void 第三者は会費領収書を取得できない() throws Exception {
             Long paymentId = insertPaidMemberPayment();
 
+            // 越境は 403 ではなく 404。不在（下のテスト）と同一ステータスに揃えることで
+            // 応答差から支払い記録 ID の実在を判別できないようにしている（存在オラクル封じ）。
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/member-payments/{id}/receipt", paymentId))
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value(PAYMENT_ACCESS_DENIED));
 
             setAuthentication(payerId);
@@ -388,14 +392,14 @@ class PaymentMoneyScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("ペイウォール判定は受益者キーを認証主体に固定する（他会員を指定する余地がない）")
-        void ペイウォール判定は自己スコープに閉じる() throws Exception {
+        @DisplayName("ペイウォール判定は存在しないコンテンツを 404 で秘匿する")
+        void ペイウォール判定は存在しないコンテンツを秘匿する() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/content-gates/check")
                             .param("contentType", "POST")
                             .param("contentId", "999999999"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.accessible").value(true));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value(CONTENT_NOT_FOUND));
         }
     }
 

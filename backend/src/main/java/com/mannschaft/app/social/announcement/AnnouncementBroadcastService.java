@@ -2,6 +2,7 @@ package com.mannschaft.app.social.announcement;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.announcement.adapter.AnnouncementChannelAdapter;
 import com.mannschaft.app.social.announcement.adapter.AnnouncementChannelAdapterRegistry;
@@ -76,7 +77,7 @@ public class AnnouncementBroadcastService {
         // 4. テンプレート検証
         if (req.getTemplateId() != null) {
             AnnouncementScopeType announcementScopeType =
-                    AnnouncementScopeType.valueOf(req.getScopeType());
+                    EnumInputParser.parse(AnnouncementScopeType.class, req.getScopeType(), "scopeType");
             templateRepository.findById(req.getTemplateId())
                     .filter(t -> t.getScopeType() == announcementScopeType
                               && t.getScopeId().equals(req.getScopeId()))
@@ -99,7 +100,7 @@ public class AnnouncementBroadcastService {
 
         // 6. お知らせフィード登録
         AnnouncementScopeType announcementScopeType =
-                AnnouncementScopeType.valueOf(req.getScopeType());
+                EnumInputParser.parse(AnnouncementScopeType.class, req.getScopeType(), "scopeType");
 
         // titleCache: コンテンツのタイトルから設定（null の場合は空文字で代替）
         String titleCache = req.getContent() != null ? req.getContent().getTitle() : null;

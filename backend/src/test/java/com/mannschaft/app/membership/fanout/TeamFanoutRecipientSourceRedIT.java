@@ -5,6 +5,9 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
+import com.mannschaft.app.notification.fanout.FanoutPageRequest;
+import com.mannschaft.app.notification.fanout.FanoutRecipient;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSource;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSourceRegistry;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
@@ -92,8 +95,8 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedActiveMember(ScopeType.ORGANIZATION, teamId, base(teamId) + 91); // 同一 scope_id の別スコープ（除外）
         seedActiveMember(ScopeType.TEAM, teamId + 1, base(teamId) + 92);     // 別 TEAM（除外）
 
-        List<Long> page = membershipRepository.findActiveUserIdsByScopeKeyset(
-                ScopeType.TEAM, teamId, 0L, PageRequest.of(0, LARGE_LIMIT));
+        List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(membershipRepository.findActiveUserIdsByScopeKeyset(
+                ScopeType.TEAM, teamId, 0L, PageRequest.of(0, LARGE_LIMIT)));
 
         log.info("[AC-1] keyset 返却={}（現役={}）", page, active);
         assertThat(page)
@@ -118,8 +121,8 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedActiveMembershipWithUserState(teamId, deleted, "ACTIVE", true);
         seedActiveMembershipWithUserState(teamId, active2, "ACTIVE", false);
 
-        List<Long> page = membershipRepository.findActiveUserIdsByScopeKeyset(
-                ScopeType.TEAM, teamId, 0L, PageRequest.of(0, LARGE_LIMIT));
+        List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(membershipRepository.findActiveUserIdsByScopeKeyset(
+                ScopeType.TEAM, teamId, 0L, PageRequest.of(0, LARGE_LIMIT)));
 
         log.info("[Major①] 供給={}（期待=ACTIVE未削除のみ [{}, {}]）", page, active1, active2);
         assertThat(page)
@@ -138,7 +141,9 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         List<Long> members = seedActiveTeamMembers(teamId, 5);
 
         // green: scope_ref=teamId から keyset で現役メンバーを供給。現行は nextPage 未実装ゆえ FAIL(red)。
-        List<Long> page = teamSource.nextPage(String.valueOf(teamId), 0L, LARGE_LIMIT);
+        List<Long> page = teamSource.nextPage(
+                new FanoutPageRequest(String.valueOf(teamId), 0L, LARGE_LIMIT, true, 0, 1))
+                .stream().map(FanoutRecipient::userId).toList();
 
         log.info("[AC-2] nextPage 返却={}（期待={}）", page, members);
         assertThat(page).as("AC-2: nextPage は TEAM 現役メンバーを供給する").containsExactlyElementsOf(members);
@@ -169,7 +174,7 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         long teamId = 8_207L;
         String type = "TEAM_FANOUT_IT_AC7";
         List<Long> members = seedActiveTeamMembers(teamId, 6);
-        NotificationFanoutJob job = jobRepository.save(newTeamJob(teamId, type, 0L));
+        NotificationFanoutJob job = saveWithMessages(newTeamJob(teamId, type, 0L));
 
         // green: nextPage で供給されたメンバーへバルク配信。現行は nextPage 未実装ゆえ配信0件＝FAIL(red)。
         worker.processOne(job);
@@ -189,7 +194,7 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     void ac8_emptyTeamCompletesAsDone() {
         long teamId = 8_208L; // メンバーを seed しない（0件）
         String type = "TEAM_FANOUT_IT_AC8";
-        NotificationFanoutJob job = jobRepository.save(newTeamJob(teamId, type, 0L));
+        NotificationFanoutJob job = saveWithMessages(newTeamJob(teamId, type, 0L));
 
         // green: nextPage が空を返し markDone。現行は nextPage 未実装ゆえ DONE に到達せず＝FAIL(red)。
         worker.processOne(job);
@@ -214,12 +219,12 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         long u2 = members.get(1);
         long u4 = members.get(3);
 
-        List<Long> firstPage = membershipRepository.findActiveUserIdsByScopeKeyset(
-                ScopeType.TEAM, teamId, 0L, PageRequest.of(0, 2));
-        List<Long> secondPage = membershipRepository.findActiveUserIdsByScopeKeyset(
-                ScopeType.TEAM, teamId, u2, PageRequest.of(0, 2));
-        List<Long> afterLast = membershipRepository.findActiveUserIdsByScopeKeyset(
-                ScopeType.TEAM, teamId, u4, PageRequest.of(0, 2));
+        List<Long> firstPage = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(membershipRepository.findActiveUserIdsByScopeKeyset(
+                ScopeType.TEAM, teamId, 0L, PageRequest.of(0, 2)));
+        List<Long> secondPage = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(membershipRepository.findActiveUserIdsByScopeKeyset(
+                ScopeType.TEAM, teamId, u2, PageRequest.of(0, 2)));
+        List<Long> afterLast = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(membershipRepository.findActiveUserIdsByScopeKeyset(
+                ScopeType.TEAM, teamId, u4, PageRequest.of(0, 2)));
 
         log.info("[AC-9] page1={} page2={} afterLast={}", firstPage, secondPage, afterLast);
         assertThat(firstPage).as("AC-9: limit=2 ちょうどで先頭2件").containsExactly(members.get(0), members.get(1));
@@ -241,7 +246,7 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
             insertNotification(members.get(i), type);
         }
         long cursor = members.get(k - 1); // 処理済み末尾（k件目）の user_id
-        NotificationFanoutJob job = jobRepository.save(newTeamJob(teamId, type, cursor));
+        NotificationFanoutJob job = saveWithMessages(newTeamJob(teamId, type, cursor));
 
         // green: cursor より後の (N-k) 件のみ供給し、合計 N・欠落なし・DONE。
         // 現行は nextPage 未実装ゆえ再開分が供給されず＝FAIL(red)。
@@ -271,7 +276,9 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedActiveMember(ScopeType.ORGANIZATION, teamA, orgMember);
 
         // green: teamA の現役メンバーのみ。現行は nextPage 未実装ゆえ FAIL(red)。
-        List<Long> page = teamSource.nextPage(String.valueOf(teamA), 0L, LARGE_LIMIT);
+        List<Long> page = teamSource.nextPage(
+                new FanoutPageRequest(String.valueOf(teamA), 0L, LARGE_LIMIT, true, 0, 1))
+                .stream().map(FanoutRecipient::userId).toList();
 
         log.info("[AC-11] teamA 供給={}（teamB={} org={} を含まない想定）", page, bMembers, orgMember);
         assertThat(page).as("AC-11: teamA の現役メンバーのみ").containsExactlyInAnyOrderElementsOf(aMembers);
@@ -289,10 +296,10 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         String type = "TEAM_FANOUT_IT_AC12";
         UUID sourceEvent = UUID.randomUUID();
 
-        jobService.enqueue(TeamFanoutRecipientSource.SCOPE_TYPE, String.valueOf(teamId), type, sourceEvent, null,
-                "AC-12 冪等", "本文", NotificationPriority.NORMAL, "TEAM_FANOUT_IT", null, "/x", null);
-        jobService.enqueue(TeamFanoutRecipientSource.SCOPE_TYPE, String.valueOf(teamId), type, sourceEvent, null,
-                "AC-12 冪等", "本文", NotificationPriority.NORMAL, "TEAM_FANOUT_IT", null, "/x", null);
+        jobService.enqueue(TeamFanoutRecipientSource.SCOPE_TYPE, String.valueOf(teamId), type, sourceEvent, null,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-12 冪等"}, NotificationPriority.NORMAL, "TEAM_FANOUT_IT", null, "/x", null);
+        jobService.enqueue(TeamFanoutRecipientSource.SCOPE_TYPE, String.valueOf(teamId), type, sourceEvent, null,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-12 冪等"}, NotificationPriority.NORMAL, "TEAM_FANOUT_IT", null, "/x", null);
 
         Optional<NotificationFanoutJob> found = jobRepository
                 .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuid(
@@ -321,8 +328,8 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         long cursor = 0L;
         int firstChunkSize = -1;
         while (true) {
-            List<Long> page = membershipRepository.findActiveUserIdsByScopeKeyset(
-                    ScopeType.TEAM, teamId, cursor, PageRequest.of(0, chunk));
+            List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(membershipRepository.findActiveUserIdsByScopeKeyset(
+                    ScopeType.TEAM, teamId, cursor, PageRequest.of(0, chunk)));
             if (firstChunkSize < 0) {
                 firstChunkSize = page.size();
             }
@@ -426,7 +433,6 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
                 .scopeType(TeamFanoutRecipientSource.SCOPE_TYPE)
                 .scopeRef(String.valueOf(teamId))
                 .notificationType(type)
-                .title("TEAM fan-out IT")
                 .priority(NotificationPriority.NORMAL)
                 .sourceType("TEAM_FANOUT_IT")
                 .status(NotificationFanoutJobStatus.PENDING)
@@ -457,4 +463,33 @@ class TeamFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
                 "SELECT COUNT(DISTINCT user_id) FROM notifications WHERE notification_type = ?", Long.class, type);
         return c == null ? 0L : c;
     }
+
+    /**
+     * Issue #2871: ワーカーはジョブのロケール別文面（子表）を読んでから配信する。
+     *
+     * <p>本番では enqueue が「親ジョブ 1 行＋文面 6 行」を同一トランザクションで確定するため、
+     * 文面の無いジョブは存在しない。IT だけがジョブ行を直接組み立てているので、
+     * ここで同じ前提（6 配信ロケールぶんの文面）を用意する。</p>
+     */
+    private com.mannschaft.app.notification.fanout.NotificationFanoutJob saveWithMessages(
+            com.mannschaft.app.notification.fanout.NotificationFanoutJob job) {
+        com.mannschaft.app.notification.fanout.NotificationFanoutJob saved = jobRepository.save(job);
+        jobRepository.flush();
+        java.util.List<com.mannschaft.app.notification.fanout.NotificationFanoutJobMessage> rows =
+                new java.util.ArrayList<>();
+        for (String tag : com.mannschaft.app.common.i18n.DeliveryLocales.TAGS) {
+            rows.add(com.mannschaft.app.notification.fanout.NotificationFanoutJobMessage.builder()
+                    .jobId(saved.getId())
+                    .locale(tag)
+                    .title("IT-title-" + tag)
+                    .body("IT-body-" + tag)
+                    .build());
+        }
+        fanoutJobMessageRepositoryForIt.saveAll(rows);
+        return saved;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.mannschaft.app.notification.fanout.NotificationFanoutJobMessageRepository
+            fanoutJobMessageRepositoryForIt;
 }

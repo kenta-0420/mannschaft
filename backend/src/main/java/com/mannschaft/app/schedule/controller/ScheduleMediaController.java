@@ -1,6 +1,5 @@
 package com.mannschaft.app.schedule.controller;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.schedule.dto.ScheduleMediaListResponse;
@@ -36,10 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ScheduleMediaController {
 
-    private static final String SCOPE_TYPE_TEAM = "TEAM";
-
     private final ScheduleMediaService scheduleMediaService;
-    private final AccessControlService accessControlService;
 
     /**
      * スケジュールメディアのアップロード URL を発行する。
@@ -66,6 +62,19 @@ public class ScheduleMediaController {
         ScheduleMediaUploadUrlResponse response =
                 scheduleMediaService.generateUploadUrl(scheduleId, currentUserId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /** Presigned PUT完了後にR2実体を確認し、画像のACLと使用量を確定する。 */
+    @PostMapping("/{mediaId}/complete")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "スケジュール画像アップロード完了確認")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "完了確認成功")
+    public ResponseEntity<Void> confirmImageUpload(
+            @PathVariable Long scheduleId,
+            @PathVariable Long mediaId) {
+        scheduleMediaService.confirmImageUpload(scheduleId, mediaId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -121,12 +130,8 @@ public class ScheduleMediaController {
             @RequestBody @Valid ScheduleMediaPatchRequest request) {
 
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        // TODO(F03.12): スケジュールの所属チームIDを解決して scopeId を渡す必要がある。
-        //   現時点では ScheduleMediaService 内で isAdminOrDeputy 判定ロジックを持たせる。
-        //   スケジュール→チームID解決が実装されたら以下のように変更:
-        //   boolean isAdminOrDeputy = accessControlService.isAdminOrAbove(currentUserId, teamId, SCOPE_TYPE_TEAM);
         ScheduleMediaResponse response =
-                scheduleMediaService.updateMedia(scheduleId, mediaId, currentUserId, false, request);
+                scheduleMediaService.updateMedia(scheduleId, mediaId, currentUserId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -151,10 +156,7 @@ public class ScheduleMediaController {
             @PathVariable Long mediaId) {
 
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        // TODO(F03.12): スケジュールの所属チームIDを解決して scopeId を渡す必要がある。
-        //   スケジュール→チームID解決が実装されたら以下のように変更:
-        //   boolean isAdminOrDeputy = accessControlService.isAdminOrAbove(currentUserId, teamId, SCOPE_TYPE_TEAM);
-        scheduleMediaService.deleteMedia(scheduleId, mediaId, currentUserId, false);
+        scheduleMediaService.deleteMedia(scheduleId, mediaId, currentUserId);
         return ResponseEntity.noContent().build();
     }
 }

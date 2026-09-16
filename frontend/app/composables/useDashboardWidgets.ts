@@ -97,6 +97,7 @@ export const WidgetKeyMap: Record<string, { team?: string; organization?: string
   'my-timeline': { personal: 'PERSONAL_MY_TIMELINE' },
   'recent-activity': { personal: 'RECENT_ACTIVITY' },
   'personal-todo': { personal: 'PERSONAL_TODO' },
+  'return-stay-plan': { personal: 'RETURN_STAY_PLAN' },
 }
 
 export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
@@ -150,6 +151,15 @@ export function backendKeyForWidget(
 }
 
 const ALL_WIDGETS: WidgetDefinition[] = [
+  {
+    key: 'return-stay-plan',
+    label: '帰省・滞在予定',
+    labelKey: 'returnStayPlan.widget.title',
+    icon: 'pi pi-map-marker',
+    description: '帰省・滞在予定をチームに共有',
+    descriptionKey: 'returnStayPlan.widget.description',
+    scope: ['personal'],
+  },
   // =====================================================================
   // personal スコープ（対象3-B: DB永続化対象18ウィジェット）
   // 並び順はDashboardPersonalPanel.vue の初期描画順と一致させる

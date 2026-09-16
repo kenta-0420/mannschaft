@@ -20,6 +20,10 @@ import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -30,6 +34,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -43,7 +48,9 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 
 /**
  * {@link AnnouncementCreationService} の単体テスト。
@@ -116,6 +123,9 @@ class AnnouncementFeedServiceTest {
 
     @Mock
     private AnnouncementFeedQueryRepository feedQueryRepository;
+
+    @Mock
+    private PaymentGateService paymentGateService;
 
     @InjectMocks
     private AnnouncementFeedService announcementFeedService;
@@ -599,6 +609,9 @@ class AnnouncementFeedServiceTest {
 
         private void givenViewerRole(ViewerRole viewerRole) {
             given(roleResolver.resolveViewerRole(AUTHOR_USER_ID, "TEAM", TEAM_ID)).willReturn(viewerRole);
+            lenient().when(paymentGateService.checkAccess(
+                    eq(ContentGateType.ANNOUNCEMENT), eq(ANNOUNCEMENT_ID), eq(AUTHOR_USER_ID), any(ContentGateTarget.class)))
+                    .thenReturn(new GateCheckResponse(true, false, List.of()));
         }
 
         /** 当該スコープ（TEAM_ID）に帰属する内輪限定のお知らせフィードを組み立てる。 */
@@ -607,7 +620,7 @@ class AnnouncementFeedServiceTest {
         }
 
         private AnnouncementFeedEntity buildScopedFeed(String visibility) {
-            return AnnouncementFeedEntity.builder()
+            AnnouncementFeedEntity feed = AnnouncementFeedEntity.builder()
                     .scopeType(AnnouncementScopeType.TEAM)
                     .scopeId(TEAM_ID)
                     .sourceType(AnnouncementSourceType.BLOG_POST)
@@ -615,6 +628,8 @@ class AnnouncementFeedServiceTest {
                     .titleCache("お知らせ")
                     .visibility(visibility)
                     .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(feed, "id", ANNOUNCEMENT_ID);
+            return feed;
         }
     }
 
@@ -625,6 +640,66 @@ class AnnouncementFeedServiceTest {
     @Nested
     @DisplayName("getAnnouncementFeed（閲覧者ロール → 可視 visibility 集合）")
     class GetAnnouncementFeed {
+
+        private AnnouncementFeedEntity feed(long id) {
+            AnnouncementFeedEntity feed = mock(AnnouncementFeedEntity.class);
+            given(feed.getId()).willReturn(id);
+            given(feed.getScopeType()).willReturn(AnnouncementScopeType.TEAM);
+            given(feed.getScopeId()).willReturn(TEAM_ID);
+            return feed;
+        }
+
+        @Test
+        @DisplayName("HIDDENを除外して次chunkを補充し、ページ境界を維持する")
+        void hiddenRowsAreReplenishedFromNextChunk() {
+            AnnouncementFeedEntity hidden5 = feed(5L);
+            AnnouncementFeedEntity full4 = feed(4L);
+            AnnouncementFeedEntity hidden3 = feed(3L);
+            AnnouncementFeedEntity full2 = feed(2L);
+            AnnouncementFeedEntity full1 = feed(1L);
+            given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(),
+                    isNull(), eq(3))).willReturn(List.of(hidden5, full4, hidden3));
+            given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(),
+                    eq(3L), eq(3))).willReturn(List.of(full2, full1));
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(OTHER_USER_ID), any(Map.class)))
+                    .willReturn(java.util.Map.of(
+                            5L, new GateCheckResponse(false, true, List.of()),
+                            3L, new GateCheckResponse(false, true, List.of()),
+                            4L, new GateCheckResponse(false, false, List.of()),
+                            2L, new GateCheckResponse(false, false, List.of()),
+                            1L, new GateCheckResponse(true, false, List.of())));
+            AnnouncementFeedService.AnnouncementFeedResult result = announcementFeedService.getAnnouncementFeed(
+                    AnnouncementScopeType.TEAM, TEAM_ID, OTHER_USER_ID, "MEMBER", null, 2);
+
+            assertThat(result.data()).extracting(item -> item.feed().getId()).containsExactly(4L, 2L);
+            assertThat(result.data()).extracting(AnnouncementFeedService.AnnouncementFeedItem::accessState)
+                    .containsExactly("LOCKED", "LOCKED");
+            assertThat(result.hasNext()).isTrue();
+            assertThat(result.nextCursor()).isEqualTo(2L);
+            assertThat(result.unreadCount()).isEqualTo(2L);
+            verify(feedQueryRepository).findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(),
+                    eq(3L), eq(3));
+        }
+
+        @Test
+        @DisplayName("全件HIDDENなら空ページかつ次ページなし")
+        void allHiddenRowsAreExcluded() {
+            AnnouncementFeedEntity hidden2 = feed(2L);
+            AnnouncementFeedEntity hidden1 = feed(1L);
+            given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(),
+                    isNull(), eq(3))).willReturn(List.of(hidden2, hidden1));
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(OTHER_USER_ID), any(Map.class)))
+                    .willReturn(java.util.Map.of(
+                            2L, new GateCheckResponse(false, true, List.of()),
+                            1L, new GateCheckResponse(false, true, List.of())));
+            AnnouncementFeedService.AnnouncementFeedResult result = announcementFeedService.getAnnouncementFeed(
+                    AnnouncementScopeType.TEAM, TEAM_ID, OTHER_USER_ID, "MEMBER", null, 2);
+
+            assertThat(result.data()).isEmpty();
+            assertThat(result.hasNext()).isFalse();
+            assertThat(result.nextCursor()).isNull();
+            assertThat(result.unreadCount()).isZero();
+        }
 
         /**
          * 閲覧者ロール名から findByScope に渡される allowedVisibilities を捕捉する。

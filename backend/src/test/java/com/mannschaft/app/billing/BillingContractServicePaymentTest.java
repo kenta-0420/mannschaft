@@ -21,6 +21,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -62,6 +63,9 @@ class BillingContractServicePaymentTest {
     @Mock private EntitlementCacheEvictor cacheEvictor;
     @Mock private BillingPaymentGateway billingPaymentGateway;
     @Mock private BillingPriceResolver billingPriceResolver;
+    @Mock private BillingOperationAuthorizer billingOperationAuthorizer;
+    /** PR6a: 旧経路の pointer ガード（AC-20/21）・D3 の検疫貫通で新たに必要になった協調相手。 */
+    @Mock private BillingContractOperationSagaService billingContractOperationSagaService;
 
     private BillingContractService service;
 
@@ -74,7 +78,8 @@ class BillingContractServicePaymentTest {
                 billingContractRepository, activeContractPointerRepository, entitlementRepository,
                 planRepository, planFeatureRepository, featureCatalogRepository, planPriceBandRepository,
                 scopeMemberCountService, cacheEvictor, FIXED_CLOCK, billingPaymentGateway,
-                billingPriceResolver, issuanceService);
+                billingPriceResolver, issuanceService, billingOperationAuthorizer,
+                billingContractOperationSagaService);
     }
 
     // ============================================================
@@ -148,6 +153,8 @@ class BillingContractServicePaymentTest {
         verify(activeContractPointerRepository).saveAndFlush(any(ActiveContractPointerEntity.class));
         // ★entitlements は未発行（入金 webhook で初めて発行・AC-33）。
         verify(entitlementRepository, never()).saveAll(anyList());
+        // AC-2: 決済フロー起票（PENDING）でも payer_user_id は created_by と同値で初期化される。
+        assertThat(captor.getValue().getPayerUserId()).isEqualTo(9L);
     }
 
     @Test
@@ -296,6 +303,18 @@ class BillingContractServicePaymentTest {
         given(billingContractRepository.save(any(BillingContractEntity.class))).willAnswer(inv -> inv.getArgument(0));
         Instant periodEndInstant = PERIOD_END.toInstant(ZoneOffset.UTC);
         given(billingPaymentGateway.cancelAtPeriodEnd("sub_1")).willReturn(periodEndInstant);
+        // PR6a（AC-15 陽性対照）: 旧経路の有償期末解約も operation Saga に載る。期待は緩めず、
+        // 新しい協調相手の振る舞い（予約 → 反映処理をそのまま実行）だけをモックで与える。
+        UUID operationId = UUID.randomUUID();
+        given(billingContractOperationSagaService.reserve(any()))
+                .willReturn(new BillingContractOperationSagaService.OperationReservation(
+                        operationId, id, BillingOperationKind.CANCEL,
+                        BillingOperationStatus.CREATED, BillingOperationStep.RECEIVED, 0L));
+        // 再検分 P1 以降、本経路は「収束時に返す読み取り」を伴う3引数版を呼ぶ。スタブは
+        // 呼び出し形に追随させるだけで、振る舞いは従来と同一——自分が先着した場合を模し、
+        // 第2引数の反映処理をそのまま実行してその結果を返す（期待は一切緩めていない）。
+        given(billingContractOperationSagaService.applyAndFinalize(any(), any(), any()))
+                .willAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(1)).get());
 
         EntitlementEntity e1 = ent("ads.hide");
         given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
@@ -342,8 +361,11 @@ class BillingContractServicePaymentTest {
 
         assertThat(paid.getStatus()).isEqualTo(ContractStatus.EXPIRED);
         assertThat(e1.getRevokedAt()).isEqualTo(NOW);
-        verify(activeContractPointerRepository).hardDeleteBySlot(
-                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "");
+        // ★柱③-B AC-14: 削除は contract_id 一致条件つき（切替後に届いた旧 webhook が
+        //   新契約の pointer を巻き添えで消さないことの、呼び出し側での担保）。
+        verify(activeContractPointerRepository).hardDeleteBySlotAndContractId(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "", id);
+        verify(activeContractPointerRepository, never()).hardDeleteBySlot(any(), any(), any(), any());
         verify(cacheEvictor).evictScopeFeatures(eq(EntitlementScopeKind.USER), eq(9L), any());
     }
 
@@ -358,6 +380,29 @@ class BillingContractServicePaymentTest {
 
         verify(billingContractRepository, never()).save(any());
         verify(activeContractPointerRepository, never()).hardDeleteBySlot(any(), any(), any(), any());
+        verify(activeContractPointerRepository, never())
+                .hardDeleteBySlotAndContractId(any(), any(), any(), any(), any());
+        verify(entitlementRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("柱③-B（Codex検分1巡目P1-2）: PENDING_HANDOVER 契約への subscription.deleted は EXPIRED 化しない")
+    void handoverPendingHandover_subscriptionDeleted_doesNotExpire() {
+        UUID id = UUID.randomUUID();
+        BillingContractEntity handoverContract = contract(id, ContractStatus.PENDING_HANDOVER, 2000, "sub_new_trial");
+        given(billingContractRepository.findByPspSubscriptionRefAndDeletedAtIsNull("sub_new_trial"))
+                .willReturn(Optional.of(handoverContract));
+
+        service.expireSubscriptionContract("sub_new_trial", PERIOD_END);
+
+        // 設計書§3.1: PENDING_HANDOVER の出口は切替TX成功時のACTIVE／引継失敗時のCANCELLEDのみであり、
+        // customer.subscription.deleted による無条件EXPIRED化の対象外（引継の新規trialサブスク取消/失敗が
+        // この経路に紛れ込んでも、引継中の契約を誤ってEXPIREDにしない）。
+        assertThat(handoverContract.getStatus()).isEqualTo(ContractStatus.PENDING_HANDOVER);
+        verify(billingContractRepository, never()).save(any());
+        verify(activeContractPointerRepository, never()).hardDeleteBySlot(any(), any(), any(), any());
+        verify(activeContractPointerRepository, never())
+                .hardDeleteBySlotAndContractId(any(), any(), any(), any(), any());
         verify(entitlementRepository, never()).saveAll(anyList());
     }
 
@@ -533,13 +578,13 @@ class BillingContractServicePaymentTest {
         given(billingContractRepository.findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
                 eq(EntitlementScopeKind.USER), eq(9L), any()))
                 .willReturn(List.of(paid, freeAddon));
-        given(billingContractRepository.save(any(BillingContractEntity.class))).willAnswer(inv -> inv.getArgument(0));
         EntitlementEntity e1 = ent("ads.hide");
-        given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
-                EntitlementSourceKind.PLAN, paidId)).willReturn(List.of(e1));
-        given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
-                EntitlementSourceKind.ADDON, addonId)).willReturn(List.of());
-        given(entitlementRepository.saveAll(anyList())).willAnswer(inv -> inv.getArgument(0));
+        // PR6a AC-72b: purge の一括経路は契約数 M に比例した SQL を出さないため、
+        // 由来 entitlements は「1本の検索＋1本の一括 UPDATE」で処理する。
+        // スタブを実装の呼び出し形へ合わせるだけであり、下のアサーション
+        // （CANCELLED になること・revokedAt が入ること・スロットが解放されること）は変えていない。
+        given(entitlementRepository.findBySourceKindInAndSourceRefIdInAndRevokedAtIsNull(
+                anyCollection(), anyCollection())).willReturn(List.of(e1));
 
         List<String> refs = service.cancelAllUserContractsForPurge(9L);
 

@@ -30,12 +30,12 @@ const MOCK_SERVICE_RECORD = {
 
 const MOCK_RECORDS_LIST = {
   data: [MOCK_SERVICE_RECORD],
-  meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+  meta: { page: 0, size: 20, total: 1, totalPages: 1 },
 }
 
 const MOCK_RECORDS_EMPTY = {
   data: [],
-  meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+  meta: { page: 0, size: 20, total: 0, totalPages: 0 },
 }
 
 async function mockServiceRecordApis(page: Page): Promise<void> {
@@ -239,7 +239,7 @@ test.describe('SVC-001〜006: F07.1 サービス履歴', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [], meta: { totalElements: 0 } }),
+        body: JSON.stringify({ data: [], meta: { total: 0 } }),
       })
     })
 
@@ -247,7 +247,7 @@ test.describe('SVC-001〜006: F07.1 サービス履歴', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [], meta: { totalElements: 0 } }),
+        body: JSON.stringify({ data: [], meta: { total: 0 } }),
       })
     })
 

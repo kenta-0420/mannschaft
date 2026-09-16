@@ -26,9 +26,15 @@ public record ReservationRecurringOverlapRow(
         Long userId,
         Long slotId,
         LocalDate slotDate,
+        LocalDate endDate,
         Long lineId,
         Long staffUserId,
         LocalTime startTime,
         LocalTime endTime,
         ReservationStatus status) {
+
+    public ReservationRecurringOverlapRow(Long reservationId, Long userId, Long slotId, LocalDate slotDate,
+            Long lineId, Long staffUserId, LocalTime startTime, LocalTime endTime, ReservationStatus status) {
+        this(reservationId, userId, slotId, slotDate, slotDate, lineId, staffUserId, startTime, endTime, status);
+    }
 }

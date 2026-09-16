@@ -3,6 +3,8 @@ package com.mannschaft.app.errorreport.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.service.BatchJobLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
@@ -57,6 +59,8 @@ public class ErrorReportCleanupService {
     /**
      * 毎日 AM3:00（JST）に実行されるエントリポイント。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。エラーレポート関連表の保持期間超過削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "errorreport-cleanup-daily", description = "エラーレポート関連テーブルの保持期間超過レコードを毎日 03:00 にクリーンアップする")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(

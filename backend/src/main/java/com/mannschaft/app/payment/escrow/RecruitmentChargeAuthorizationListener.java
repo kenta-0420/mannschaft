@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.escrow;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
 import com.mannschaft.app.payment.escrow.event.ChargeAuthorizationFailedEvent;
@@ -67,6 +69,8 @@ public class RecruitmentChargeAuthorizationListener {
      *
      * @param event 応募確定イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると参加確定に対する与信が取られず、確定済みなのに支払い担保が無いという乖離が残る")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onParticipantConfirmed(RecruitmentParticipantConfirmedEvent event) {

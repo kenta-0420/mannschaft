@@ -1,3 +1,5 @@
+import dayjs from 'dayjs'
+
 export interface CalendarEventItem {
   id: number
   /**
@@ -170,10 +172,30 @@ export function useCalendarEvents(
     }
   }
 
-  function navigate(delta: number): void {
-    const next = addMonths(currentYear.value, currentMonth.value, delta)
-    currentYear.value = next.year
-    currentMonth.value = next.month
+  /**
+   * `refresh()` と同じ再取得を行い、**この呼び出しの成否を戻り値で返す**。
+   *
+   * `refresh()` は失敗しても正常に解決する（月移動で画面が落ちないための設計であり、
+   * 既存の呼び出し元がその挙動に依存しているため変えない）。そのため「自分が投げた
+   * 再取得が成功したか」を知りたい呼び出し元は本関数を使う。
+   *
+   * **成否は呼び出しごとに閉じている**（共有フラグを見ない）。`ref` に成否を書いて
+   * 後から読む形だと、月移動など並行する別の取得の結果で上書きされ、取り違える。
+   */
+  async function refreshWithResult(): Promise<{ ok: boolean; error?: unknown }> {
+    try {
+      await fetchAndCache(currentYear.value, currentMonth.value)
+      return { ok: true }
+    } catch (error) {
+      onError?.(error)
+      return { ok: false, error }
+    }
+  }
+
+  /** 表示中の年月を任意の年月へ直接移動する（キャッシュ範囲外なら再取得）。 */
+  function navigateTo(year: number, month: number): void {
+    currentYear.value = year
+    currentMonth.value = month
 
     if (cacheHalfMonths === 0 || !isWithinCache(currentYear.value, currentMonth.value)) {
       calendarLoading.value = true
@@ -181,6 +203,11 @@ export function useCalendarEvents(
         .catch((error) => { onError?.(error) })
         .finally(() => { calendarLoading.value = false })
     }
+  }
+
+  function navigate(delta: number): void {
+    const next = addMonths(currentYear.value, currentMonth.value, delta)
+    navigateTo(next.year, next.month)
   }
 
   function onPrevMonth(): void {
@@ -191,6 +218,19 @@ export function useCalendarEvents(
     navigate(1)
   }
 
+  /**
+   * 「今日」ボタン（§6.3・AC-12d）: ユーザータイムゾーン基準の今日が属する月へ移動する。
+   * 既に当月表示中の場合は再取得せず何もしない（呼び出し側がフォーカス移動のみ行う）。
+   */
+  function goToToday(): void {
+    const { userTimezone } = useDatetime()
+    const now = dayjs().tz(userTimezone.value)
+    const year = now.year()
+    const month = now.month() + 1
+    if (year === currentYear.value && month === currentMonth.value) return
+    navigateTo(year, month)
+  }
+
   return {
     currentYear,
     currentMonth,
@@ -199,7 +239,12 @@ export function useCalendarEvents(
     calendarLoading,
     loadEvents,
     refresh,
+    refreshWithResult,
     onPrevMonth,
     onNextMonth,
+    goToToday,
+    // F03.19 §6.5.3: 週ビューは表示中の週が月をまたぐことがあり、その週を包含する月へ
+    // 取得範囲を寄せるために任意の年月へ直接移動できる必要がある。
+    navigateTo,
   }
 }

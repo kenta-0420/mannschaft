@@ -101,6 +101,12 @@ interface MockOptions {
   onSearchTabs?: (url: URL) => void
   /** scope-tabs の public_id に slug を載せる（slug 移行後の実 BE 挙動を再現）*/
   withSlug?: boolean
+  /** 容量APIの呼出回数を検証するフック */
+  onStorageUsage?: () => void
+  /** 容量APIを失敗させる検証用フック */
+  storageUsageFailure?: boolean
+  /** 警告Dialog表示用の容量mock */
+  storageUsageWarning?: boolean
 }
 
 /**
@@ -120,6 +126,43 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
       // data を null・配列・オブジェクトのいずれでも受けられるよう空オブジェクトで返す。
       // 多くの widget は data 不在をローディング解除＆空状態として扱う。
       body: JSON.stringify({ data: {}, meta: {} }),
+    })
+  })
+
+  // 容量サマリーは配列レスポンスを前提とするため、catch-allより後に専用mockを登録する。
+  await page.route('**/api/v1/me/storage/usage', async (route: Route) => {
+    opts.onStorageUsage?.()
+    if (opts.storageUsageFailure) {
+      await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_STORAGE_FAILURE' } }) })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          scopeType: 'PERSONAL',
+          scopeId: 1,
+          scopeName: '個人',
+          slug: null,
+          usedBytes: 0,
+          fileCount: 0,
+          includedBytes: 1024,
+          maxBytes: 1024,
+          usagePercent: opts.storageUsageWarning ? 90 : 0,
+        },
+      ]),
+    })
+  })
+
+  // 有料プラン画面の route gate が参照する公開フラグ。
+  await page.route('**/api/v1/feature-flags', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [{ flagKey: 'FEATURE_BILLING_PAYMENT_ENABLED', enabled: true }],
+      }),
     })
   })
 
@@ -212,10 +255,18 @@ test('F22.1-1: /dashboard がカルーセルを描画し、初期は個人パネ
   page,
 }) => {
   await loginAsMember(page)
-  await mockDashboardApis(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  let storageUsageCalls = 0
+  await mockDashboardApis(page, { onStorageUsage: () => { storageUsageCalls += 1 } })
 
   await page.goto('/dashboard')
   await waitForCarousel(page)
+  await expect(page.getByTestId('dashboard-storage-summary')).toHaveCount(1)
+  await expect.poll(() => storageUsageCalls).toBe(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+  const summaryBox = await page.getByTestId('dashboard-storage-summary').boundingBox()
+  expect(summaryBox).not.toBeNull()
+  expect(summaryBox!.x + summaryBox!.width).toBeLessThanOrEqual(390)
 
   // セグメントトグル（個人/チーム/組織）が存在する
   await expect(page.getByTestId('scope-segment-PERSONAL')).toBeVisible()
@@ -236,6 +287,42 @@ test('F22.1-1: /dashboard がカルーセルを描画し、初期は個人パネ
   await expect(page.locator('#scope-panel-PERSONAL')).toHaveCount(1)
   await expect(page.locator('#scope-panel-TEAM')).toHaveCount(1)
   await expect(page.locator('#scope-panel-ORGANIZATION')).toHaveCount(1)
+})
+
+test('F22.1-9: 容量API失敗時もカルーセルと切替タブを維持する', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page, { storageUsageFailure: true })
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  await expect(page.getByTestId('storage-error')).toBeVisible()
+  await expect(page.getByTestId('scope-carousel')).toBeVisible()
+  await expect(page.getByTestId('scope-segment-PERSONAL')).toBeVisible()
+})
+
+test('F22.1-10: 容量カードの通常遷移と警告Dialogのプラン導線', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page)
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  await page.getByTestId('storage-card-0').click()
+  await expect(page).toHaveURL(/\/settings\/storage/)
+
+  await page.goto('/dashboard')
+  await mockDashboardApis(page, { storageUsageWarning: true })
+  await page.reload()
+  await waitForCarousel(page)
+  const warningCard = page.getByTestId('storage-card-0')
+  await warningCard.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(warningCard).toBeFocused()
+
+  await warningCard.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('button', { name: 'プランを見る' }).click()
+  await expect(page).toHaveURL(/\/billing\/plans/)
 })
 
 // ──────────────────────────────────────────────────────────────────────────

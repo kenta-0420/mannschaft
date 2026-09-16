@@ -1,12 +1,20 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.schedule.dto.ScheduleMediaListResponse;
 import com.mannschaft.app.schedule.dto.ScheduleMediaPatchRequest;
 import com.mannschaft.app.schedule.dto.ScheduleMediaResponse;
+import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.ScheduleMediaUploadEntity;
 import com.mannschaft.app.schedule.repository.ScheduleMediaUploadRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -46,19 +54,22 @@ public class ScheduleMediaQueryService {
 
     // ==================== 定数 ====================
 
-    /** R2 配信 URL プレースホルダーベース */
-    private static final String R2_BASE_URL = "https://storage.example.com/";
+    private static final java.time.Duration DOWNLOAD_TTL = java.time.Duration.ofMinutes(10);
 
     /** F13 Phase 4-γ: storage_usage_logs.reference_type に記録するテーブル名。 */
     private static final String REFERENCE_TYPE = "schedule_media_uploads";
+    private static final String MANAGE_SCHEDULES = "MANAGE_SCHEDULES";
 
     // ==================== 依存 ====================
 
     private final R2StorageService r2StorageService;
     private final ScheduleMediaUploadRepository scheduleMediaUploadRepository;
     private final ScheduleRepository scheduleRepository;
+    private final AccessControlService accessControlService;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
+    private final ScheduleMediaAclService mediaAclService;
+    private final StorageAccessService storageAccessService;
 
     // ==================== 公開メソッド ====================
 
@@ -77,9 +88,7 @@ public class ScheduleMediaQueryService {
             int page, int size) {
 
         // スケジュール存在確認
-        scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "スケジュールが見つかりません"));
+        var schedule = mediaAclService.requireReadable(scheduleId, SecurityUtils.getCurrentUserId());
 
         Pageable pageable = PageRequest.of(page - 1, size);
 
@@ -96,8 +105,15 @@ public class ScheduleMediaQueryService {
                     .findByScheduleIdOrderByCreatedAtDesc(scheduleId, pageable);
         }
 
+        List<StorageAclDownloadRequest> requests = resultPage.getContent().stream()
+                .map(media -> {
+                    var target = ScheduleMediaAclService.targetOf(schedule, media);
+                    return new StorageAclDownloadRequest(media.getR2Key(), target.scope(), target.parent(), target.binding());
+                }).toList();
+        var urls = storageAccessService.generateDownloadUrlsForList(requests, DOWNLOAD_TTL);
         List<ScheduleMediaResponse> items = resultPage.getContent().stream()
-                .map(this::toResponse)
+                .filter(media -> urls.containsKey(media.getR2Key()))
+                .map(media -> toResponse(media, urls.get(media.getR2Key())))
                 .collect(Collectors.toList());
 
         return ScheduleMediaListResponse.builder()
@@ -116,14 +132,12 @@ public class ScheduleMediaQueryService {
      * @param scheduleId      スケジュール ID
      * @param mediaId         メディア ID
      * @param requestUserId   リクエストを行うユーザー ID
-     * @param isAdminOrDeputy 管理者または副管理者フラグ
      * @param req             更新リクエスト
      * @return 更新後のメディアレスポンス
      */
     @Transactional
     public ScheduleMediaResponse updateMedia(
-            Long scheduleId, Long mediaId, Long requestUserId, boolean isAdminOrDeputy,
-            ScheduleMediaPatchRequest req) {
+            Long scheduleId, Long mediaId, Long requestUserId, ScheduleMediaPatchRequest req) {
 
         ScheduleMediaUploadEntity entity = scheduleMediaUploadRepository.findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -135,17 +149,28 @@ public class ScheduleMediaQueryService {
                     HttpStatus.NOT_FOUND, "指定されたスケジュールにメディアが見つかりません");
         }
 
-        // is_cover 変更権限チェック（MEMBER は変更不可）
-        if (req.getIsCover() != null && !isAdminOrDeputy) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN, "カバー写真の設定は管理者のみ変更できます");
-        }
+        ScheduleEntity schedule = findActiveSchedule(scheduleId);
+        boolean isManager = isScheduleMediaManager(schedule, requestUserId, false);
+        boolean isSelf = isScheduleMediaOwner(schedule, entity, requestUserId);
 
-        // 他人のメディアを操作する権限チェック
-        if (!requestUserId.equals(entity.getUploaderId()) && !isAdminOrDeputy) {
+        // 更新前に全フィールドの権限を検証し、拒否時の部分更新を防ぐ。
+        if (!isSelf && !isManager) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "他のユーザーがアップロードしたメディアは変更できません");
         }
+        if (req.getIsCover() != null && !isManager) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "カバー写真の設定は管理者のみ変更できます");
+        }
+        if (Boolean.FALSE.equals(req.getIsExpenseReceipt()) && !isManager) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "経費証憑フラグの解除は管理者のみ可能です");
+        }
+
+        // ACL不整合ならメタデータを一切変更する前に拒否する。
+        var target = ScheduleMediaAclService.targetOf(schedule, entity);
+        String url = storageAccessService.generateDownloadUrl(entity.getR2Key(), target.scope(),
+                target.parent(), target.binding(), DOWNLOAD_TTL);
 
         // フィールド更新
         if (req.getCaption() != null) {
@@ -162,18 +187,13 @@ public class ScheduleMediaQueryService {
         }
 
         if (req.getIsExpenseReceipt() != null) {
-            if (Boolean.FALSE.equals(req.getIsExpenseReceipt()) && !isAdminOrDeputy) {
-                // MEMBER は is_expense_receipt を false に変更不可
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN, "経費証憑フラグの解除は管理者のみ可能です");
-            }
             entity.updateIsExpenseReceipt(req.getIsExpenseReceipt());
         }
 
         ScheduleMediaUploadEntity saved = scheduleMediaUploadRepository.save(entity);
         log.info("メディアメタデータ更新: scheduleId={}, mediaId={}, userId={}",
                 scheduleId, mediaId, requestUserId);
-        return toResponse(saved);
+        return toResponse(saved, url);
     }
 
     /**
@@ -186,10 +206,9 @@ public class ScheduleMediaQueryService {
      * @param scheduleId      スケジュール ID
      * @param mediaId         メディア ID
      * @param requestUserId   リクエストを行うユーザー ID
-     * @param isAdminOrDeputy 管理者または副管理者フラグ
      */
     @Transactional
-    public void deleteMedia(Long scheduleId, Long mediaId, Long requestUserId, boolean isAdminOrDeputy) {
+    public void deleteMedia(Long scheduleId, Long mediaId, Long requestUserId) {
         ScheduleMediaUploadEntity entity = scheduleMediaUploadRepository.findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "メディアが見つかりません"));
@@ -200,8 +219,10 @@ public class ScheduleMediaQueryService {
                     HttpStatus.NOT_FOUND, "指定されたスケジュールにメディアが見つかりません");
         }
 
-        // 権限チェック（自分のメディアでない かつ 管理者でない → 403）
-        if (!requestUserId.equals(entity.getUploaderId()) && !isAdminOrDeputy) {
+        ScheduleEntity schedule = findActiveSchedule(scheduleId);
+        boolean isManager = isScheduleMediaManager(schedule, requestUserId, true);
+        boolean isSelf = isScheduleMediaOwner(schedule, entity, requestUserId);
+        if (!isSelf && !isManager) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "このメディアを削除する権限がありません");
         }
@@ -232,15 +253,55 @@ public class ScheduleMediaQueryService {
 
         // F13 Phase 4-γ: 使用量減算（スコープはスケジュールで判定）
         if (fileSize > 0) {
-            scheduleRepository.findById(scheduleId).ifPresent(schedule -> {
-                ScheduleMediaService.ScopeResolution scope =
-                        ScheduleMediaService.resolveScopeFor(schedule, requestUserId);
-                storageQuotaService.recordDeletion(
-                        scope.scopeType(), scope.scopeId(), fileSize,
-                        StorageFeatureType.SCHEDULE_MEDIA,
-                        REFERENCE_TYPE, mediaId, requestUserId);
-            });
+            ScheduleMediaService.ScopeResolution scope =
+                    ScheduleMediaService.resolveScopeFor(schedule, schedule.getUserId());
+            storageQuotaService.recordDeletion(
+                    scope.scopeType(), scope.scopeId(), fileSize,
+                    StorageFeatureType.SCHEDULE_MEDIA,
+                    REFERENCE_TYPE, mediaId, requestUserId);
         }
+    }
+
+    private ScheduleEntity findActiveSchedule(Long scheduleId) {
+        ScheduleEntity schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "スケジュールが見つかりません"));
+        if (schedule.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "スケジュールが見つかりません");
+        }
+        return schedule;
+    }
+
+    private boolean isScheduleMediaManager(
+            ScheduleEntity schedule, Long userId, boolean allowSystemAdmin) {
+        if (allowSystemAdmin && accessControlService.isSystemAdmin(userId)) {
+            return true;
+        }
+        if (schedule.isPersonal()) {
+            return false;
+        }
+        Long scopeId = schedule.isTeamScope() ? schedule.getTeamId() : schedule.getOrganizationId();
+        String scopeType = schedule.isTeamScope() ? "TEAM" : "ORGANIZATION";
+        if (scopeId == null) {
+            return false;
+        }
+        if (accessControlService.isAdmin(userId, scopeId, scopeType)) {
+            return true;
+        }
+        return "DEPUTY_ADMIN".equals(accessControlService.getRoleName(userId, scopeId, scopeType))
+                && accessControlService.hasPermission(userId, scopeId, scopeType, MANAGE_SCHEDULES);
+    }
+
+    private boolean isScheduleMediaOwner(
+            ScheduleEntity schedule, ScheduleMediaUploadEntity media, Long userId) {
+        if (schedule.isPersonal()) {
+            return userId.equals(schedule.getUserId());
+        }
+        Long scopeId = schedule.isTeamScope() ? schedule.getTeamId() : schedule.getOrganizationId();
+        String scopeType = schedule.isTeamScope() ? "TEAM" : "ORGANIZATION";
+        return scopeId != null
+                && userId.equals(media.getUploaderId())
+                && accessControlService.isMember(userId, scopeId, scopeType);
     }
 
     /**
@@ -248,6 +309,8 @@ public class ScheduleMediaQueryService {
      * schedule_id IS NULL かつ 72 時間以上経過したレコードを R2 から削除して物理削除する。
      * スケジュール削除時（ON DELETE SET NULL）によって schedule_id が NULL になったレコードも対象となる。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。孤立した予定メディアの物理削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "schedule-media-orphan-cleanup-daily", description = "72 時間以上孤立した schedule メディアを毎日 02:30 に R2 から物理削除する")
     @Scheduled(cron = "0 30 2 * * *")
     // 起動間隔は日次 02:30。1 件ごとに R2 削除が走るため、最悪ケースを 1 件 1 秒 × 数千件と見積もり 1 時間を上限とする。
@@ -257,7 +320,12 @@ public class ScheduleMediaQueryService {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(72);
         List<ScheduleMediaUploadEntity> orphans = scheduleMediaUploadRepository.findOrphanMedia(cutoff);
 
+        int deletedCount = 0;
         for (ScheduleMediaUploadEntity orphan : orphans) {
+            if (scheduleMediaUploadRepository.deleteCleanupCandidateById(orphan.getId()) == 0) {
+                continue;
+            }
+            deletedCount++;
             try {
                 r2StorageService.delete(orphan.getR2Key());
                 if (orphan.getThumbnailR2Key() != null) {
@@ -270,8 +338,8 @@ public class ScheduleMediaQueryService {
             }
         }
 
-        scheduleMediaUploadRepository.deleteAll(orphans);
-        log.info("孤立メディアのクリーンアップ完了: 削除件数={}", orphans.size());
+        log.info("孤立メディアのクリーンアップ完了: 対象件数={}, 削除件数={}",
+                orphans.size(), deletedCount);
     }
 
     // ==================== プライベートメソッド ====================
@@ -306,17 +374,14 @@ public class ScheduleMediaQueryService {
      * @param entity エンティティ
      * @return レスポンス DTO
      */
-    private ScheduleMediaResponse toResponse(ScheduleMediaUploadEntity entity) {
-        String url = R2_BASE_URL + entity.getR2Key();
-        String thumbnailUrl = entity.getThumbnailR2Key() != null
-                ? R2_BASE_URL + entity.getThumbnailR2Key()
-                : null;
+    private ScheduleMediaResponse toResponse(ScheduleMediaUploadEntity entity, String url) {
 
         return ScheduleMediaResponse.builder()
                 .id(entity.getId())
                 .mediaType(entity.getMediaType())
                 .url(url)
-                .thumbnailUrl(thumbnailUrl)
+                // 派生サムネイルは独立したCLAIMED ACLが登録されるまで配信しない。
+                .thumbnailUrl(null)
                 .fileName(entity.getFileName())
                 .fileSize(entity.getFileSize())
                 .caption(entity.getCaption())

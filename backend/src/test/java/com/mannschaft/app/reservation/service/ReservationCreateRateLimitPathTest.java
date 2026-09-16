@@ -341,6 +341,7 @@ class ReservationCreateRateLimitPathTest {
         ReservationWaitlistService waitlistService = new ReservationWaitlistService(
                 mock(com.mannschaft.app.reservation.repository.ReservationWaitlistEntryRepository.class),
                 slotRepository,
+                mock(com.mannschaft.app.reservation.repository.ReservationRepository.class),
                 viewAccessGuard,
                 valkeyRateLimiter,
                 mock(com.mannschaft.app.notification.service.NotificationHelper.class),

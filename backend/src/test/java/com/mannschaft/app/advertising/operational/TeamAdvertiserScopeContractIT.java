@@ -1,7 +1,10 @@
 package com.mannschaft.app.advertising.operational;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -108,10 +111,13 @@ class TeamAdvertiserScopeContractIT extends AbstractMySqlIntegrationTest {
         insertUserRole(orgAdminId, adminRoleId, null, orgId);
         insertUserRole(adminAId, adminRoleId, teamAId, null);
         insertUserRole(adminBId, adminRoleId, teamBId, null);
+        MembershipTestHelper.insertMembership(em, orgAdminId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
 
         // scope 化済み広告主アカウント（ORG = overview 用・TEAM A = チーム対 API 用）
-        insertAdvertiserAccount("ORGANIZATION", orgId, "組織広告主", "INVOICE");
-        Long teamAAccountId = insertAdvertiserAccount("TEAM", teamAId, "チームA広告主", "INVOICE");
+        insertAdvertiserAccount("ORGANIZATION", orgId, "組織広告主", "STRIPE");
+        Long teamAAccountId = insertAdvertiserAccount("TEAM", teamAId, "チームA広告主", "STRIPE");
 
         rateCardId = insertRateCard("CPM", UNIT_PRICE, MIN_DAILY_BUDGET, -30, null);
 
@@ -427,6 +433,15 @@ class TeamAdvertiserScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private void insertRole(String name, String displayName, int priority, boolean isSystem) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。CI shard 再編成で
+        // 同一 JVM 内の同居テストが変わり得るため、盲目的 INSERT は禁止）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
         em.createNativeQuery(
                         "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                                 + "VALUES (:name, :dn, :priority, :sys, NOW(), NOW())")

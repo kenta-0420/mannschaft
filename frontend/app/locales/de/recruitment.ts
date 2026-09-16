@@ -22,7 +22,9 @@ export default {
       "open": "Offen",
       "full": "Voll",
       "closed": "Geschlossen",
-      "cancelled": "Abgesagt"
+      "cancelled": "Abgesagt",
+      "auto_cancelled": "Automatisch abgesagt",
+      "completed": "Abgeschlossen"
     },
     "participantStatus": {
       "applied": "Beworben",
@@ -78,6 +80,8 @@ export default {
       "joinWaitlist": "Auf Warteliste setzen",
       "viewDetails": "Details anzeigen",
       "confirmApplication": "Bestätigen",
+      "cancelListing": "Ausschreibung zurückziehen",
+      "cancelledListing": "Ausschreibung zurückgezogen",
       "createPolicy": "Bedingungen erstellen"
     },
     "confirmModal": {
@@ -219,6 +223,12 @@ export default {
       "individual": "Einzelperson",
       "team": "Team"
     },
+    "validation": {
+      "eventTimeRange": "Das Ende muss nach dem Beginn liegen",
+      "applicationDeadline": "Die Bewerbungsfrist muss vor dem Beginn liegen",
+      "autoCancelAt": "Der Zeitpunkt der automatischen Absage muss spätestens zur Bewerbungsfrist liegen",
+      "capacity": "Die Mindestteilnehmerzahl darf die Kapazität nicht überschreiten"
+    },
     "payee": {
       "required": "Bitte wählen Sie einen Empfängertyp aus",
       "userRequired": "Bitte wählen Sie einen Empfänger-Benutzer aus",
@@ -248,6 +258,9 @@ export default {
       "RECRUITMENT_205": "Bild-URL nicht in der Whitelist",
       "RECRUITMENT_206": "Kapazität kann nicht unter die bestätigten Teilnehmer gesenkt werden",
       "RECRUITMENT_207": "Sichtbarkeit und Verteilziele inkonsistent",
+      "RECRUITMENT_216": "Das Veranstaltungsende muss nach dem Beginn liegen",
+      "RECRUITMENT_217": "Die Bewerbungsfrist muss vor Veranstaltungsbeginn liegen",
+      "RECRUITMENT_218": "Der Zeitpunkt der automatischen Absage darf nicht nach der Bewerbungsfrist liegen",
       "RECRUITMENT_301": "Zahlung der Stornierungsgebühr fehlgeschlagen",
       "RECRUITMENT_302": "Stornierungsbedingungen ungültig",
       "RECRUITMENT_303": "Stornierungsbedingungen haben mehr als 4 Stufen",

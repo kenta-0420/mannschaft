@@ -15,6 +15,7 @@ const props = withDefaults(defineProps<{
 })
 
 const { t } = useI18n()
+const { team } = useTeamShellContext()
 const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
 /** 管理者レンズがメンバー表示のときは、実ロールが管理者でも利用者向けUIへ切り替える。 */
@@ -49,14 +50,14 @@ const reservationListRef = ref<Refreshable | null>(null)
 /** 自分のキャンセル待ち一覧（W2-4-FE）。予約成立時に WAITING→CONVERTED で消え得るため onReserved から再読込する。 */
 const myWaitlistListRef = ref<Refreshable | null>(null)
 
-/** 詳細設定アコーディオンの開閉状態（初期 collapsed） */
+/** 詳細設定カードの選択状態（初期は詳細なし） */
 const advancedSettingsValue = ref<string | null>(null)
 
 /**
  * 「予約対象の管理」タブ内セクション（ライン/メニュー/週間テンプレート/枠管理）のアコーディオン開閉状態。
  * 初期は全閉（ADHD配慮=脳内摩擦削減。F03.4.5 §UX改善5点の2)）。multiple=true のため配列で複数開閉を保持する。
  */
-const managementAccordionValue = ref<string[]>([])
+const selectedManagementSection = ref<string | null>(null)
 
 /** アコーディオン件数バッジ用の子コンポーネント参照（既存 FriendFolderList/friend-folders.vue と同一パターン）。 */
 const lineManagerRef = ref<{ refresh: () => Promise<void>; items: ReservationLineResponse[] } | null>(null)
@@ -82,14 +83,40 @@ const weeklyScheduleCount = computed(() =>
   + (slotTemplateManagerRef.value?.recurringItems?.length ?? 0),
 )
 
+type ManagementCard = {
+  key: string
+  icon: string
+  titleKey: string
+  descriptionKey: string
+  count?: () => number
+}
+
+const managementCards: ManagementCard[] = [
+  { key: 'business_hours', icon: 'pi pi-clock', titleKey: 'reservation.management.cards.business_hours.title', descriptionKey: 'reservation.management.cards.business_hours.description' },
+  { key: 'lines', icon: 'pi pi-list', titleKey: 'reservation.management.cards.lines.title', descriptionKey: 'reservation.management.cards.lines.description', count: () => lineCount.value },
+  { key: 'menus', icon: 'pi pi-book', titleKey: 'reservation.management.cards.menus.title', descriptionKey: 'reservation.management.cards.menus.description', count: () => menuCount.value },
+  { key: 'weekly_schedule', icon: 'pi pi-calendar', titleKey: 'reservation.management.cards.weekly_schedule.title', descriptionKey: 'reservation.management.cards.weekly_schedule.description', count: () => weeklyScheduleCount.value },
+  { key: 'exception_day', icon: 'pi pi-calendar-times', titleKey: 'reservation.management.cards.exception_day.title', descriptionKey: 'reservation.management.cards.exception_day.description' },
+  { key: 'advanced', icon: 'pi pi-sliders-h', titleKey: 'reservation.management.cards.advanced.title', descriptionKey: 'reservation.management.cards.advanced.description' },
+]
+
+const managementGuideSection = ref<string | null>(null)
+function selectManagementSection(section: string) {
+  selectedManagementSection.value = section
+  advancedSettingsValue.value = section === 'advanced' ? 'advanced' : null
+}
+
+function openManagementGuide(section: string) {
+  managementGuideSection.value = section
+  showGuide.value = true
+}
+
 /**
  * ④週間スケジュールの空状態から「①営業時間を設定する」導線が押されたとき、
  * 営業時間セクションを開いてスクロールする（F03.4.5 §3.2・S-11）。
  */
 function openBusinessHoursSection() {
-  if (!managementAccordionValue.value.includes('business_hours')) {
-    managementAccordionValue.value = [...managementAccordionValue.value, 'business_hours']
-  }
+  selectedManagementSection.value = 'business_hours'
   if (import.meta.client) {
     nextTick(() => {
       document.getElementById('reservation-business-hours-section')
@@ -105,9 +132,7 @@ function openBusinessHoursSection() {
  */
 function openWeeklyScheduleSection() {
   activeTab.value = 2
-  if (!managementAccordionValue.value.includes('weekly_schedule')) {
-    managementAccordionValue.value = [...managementAccordionValue.value, 'weekly_schedule']
-  }
+  selectedManagementSection.value = 'weekly_schedule'
   if (import.meta.client) {
     nextTick(() => {
       document.getElementById('reservation-weekly-schedule-section')
@@ -247,7 +272,7 @@ onMounted(async () => {
         :label="t('reservation.team_guide.help_button')"
         text
         size="small"
-        @click="showGuide = true"
+        @click="managementGuideSection = null; showGuide = true"
       />
     </div>
 
@@ -273,6 +298,7 @@ onMounted(async () => {
             <SlotMatrixPicker
               ref="slotMatrixPickerRef"
               :team-id="props.teamId"
+              :team-timezone="team?.timezone ?? 'Asia/Tokyo'"
               :is-admin="isFullAdminView"
               @slot-selected="onSlotSelected"
               @manage-lines="activeTab = 2"
@@ -325,32 +351,56 @@ onMounted(async () => {
                並び順は初期セットアップの思考順（F03.4.5 §3.2 確定）:
                ①営業時間 → ②予約対象 → ③メニュー → ④週間スケジュール → ⑤例外日カレンダー → ⑥詳細設定（Accordion外・下部）。 -->
           <!-- 注意: AccordionContent に lazy を付けると閉状態の子が非マウントになり、件数バッジ（子の defineExpose({ items }) 参照）が機能しなくなる。常時マウント前提のため lazy 禁止 -->
-          <Accordion v-model:value="managementAccordionValue" multiple>
-            <!-- ①営業時間（BusinessHoursManager・F03.4.5 §3.2 新設） -->
-            <AccordionPanel id="reservation-business-hours-section" value="business_hours">
-              <AccordionHeader>
-                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  {{ t('reservation.business_hours.title') }}
+          <div
+            class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            data-testid="reservation-management-cards"
+          >
+            <div
+              v-for="card in managementCards"
+              :key="card.key"
+              class="flex min-h-11 items-center gap-3 rounded-lg border p-3 transition hover:border-primary hover:bg-primary/5"
+              :class="selectedManagementSection === card.key ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-surface-200 dark:border-surface-700'"
+              :data-testid="`management-card-${card.key}`"
+            >
+              <button
+                type="button"
+                class="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left"
+                :aria-pressed="selectedManagementSection === card.key"
+                @click="selectManagementSection(card.key)"
+              >
+                <i :class="card.icon" class="text-primary" aria-hidden="true" />
+                <span class="min-w-0 flex-1">
+                  <span class="block text-sm font-medium text-surface-700 dark:text-surface-300">{{ t(card.titleKey, { resourceName }) }}</span>
+                  <span class="block text-xs text-surface-500">{{ t(card.descriptionKey, { resourceName, n: card.count?.() ?? 0 }) }}</span>
                 </span>
-              </AccordionHeader>
-              <AccordionContent>
+                <span v-if="card.count" class="rounded-full bg-surface-100 px-2 py-0.5 text-xs text-surface-600 dark:bg-surface-700 dark:text-surface-300">{{ card.count() }}</span>
+              </button>
+              <span class="flex items-center gap-1">
+                <Button
+                  icon="pi pi-question-circle"
+                  text
+                  rounded
+                  size="small"
+                  class="min-h-11 min-w-11"
+                  :aria-label="t('reservation.management.card_help', { label: t(card.titleKey, { resourceName }) })"
+                  @click="openManagementGuide(card.key)"
+                />
+              </span>
+            </div>
+          </div>
+          <div v-show="selectedManagementSection" class="mt-4 rounded-lg border border-surface-200 p-4 dark:border-surface-700">
+            <!-- ①営業時間（BusinessHoursManager・F03.4.5 §3.2 新設） -->
+            <section v-show="selectedManagementSection === 'business_hours'" id="reservation-business-hours-section">
                 <ReservationBusinessHoursManager
                   ref="businessHoursManagerRef"
                   :team-id="props.teamId"
                   :disabled="!isAdmin"
                   @saved="onBusinessHoursSaved"
                 />
-              </AccordionContent>
-            </AccordionPanel>
+            </section>
 
             <!-- ②予約対象（呼称設定＋LineManager。呼称設定は F03.4.5 §5.1: セクション先頭に配置） -->
-            <AccordionPanel value="lines">
-              <AccordionHeader>
-                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  {{ t('reservation.management.section_count', { label: t('reservation.line_manage_title', { resourceName }), n: lineCount }) }}
-                </span>
-              </AccordionHeader>
-              <AccordionContent>
+            <section v-show="selectedManagementSection === 'lines'">
                 <div class="mb-4">
                   <!-- 呼称設定は ADMIN・DEPUTY_ADMIN とも編集可（マスター裁可 2026-07-11・設計§2）。ライン管理は ADMIN のみ -->
                   <ReservationResourceNameSettings
@@ -360,60 +410,38 @@ onMounted(async () => {
                   />
                 </div>
                 <LineManager ref="lineManagerRef" :team-id="props.teamId" />
-              </AccordionContent>
-            </AccordionPanel>
+            </section>
 
             <!-- ③メニュー管理セクション（機能E・F03.4.1） -->
-            <AccordionPanel value="menus">
-              <AccordionHeader>
-                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  {{ t('reservation.management.section_count', { label: t('reservation.menu.title'), n: menuCount }) }}
-                </span>
-              </AccordionHeader>
-              <AccordionContent>
+            <section v-show="selectedManagementSection === 'menus'">
                 <MenuManager ref="menuManagerRef" :team-id="props.teamId" />
-              </AccordionContent>
-            </AccordionPanel>
+            </section>
 
             <!-- ④週間スケジュール管理セクション（旧 SlotTemplateManager・F03.4.2/F03.4.5 §3.2）。
                  ラベルは「枠テンプレ」限定表現ではなく、枠テンプレ＋定期予約不可を包含する
                  「週間スケジュール」（検分指摘・軽4）。 -->
-            <AccordionPanel id="reservation-weekly-schedule-section" value="weekly_schedule">
-              <AccordionHeader>
-                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  {{ t('reservation.management.section_count', { label: t('reservation.weekly_schedule.section_title'), n: weeklyScheduleCount }) }}
-                </span>
-              </AccordionHeader>
-              <AccordionContent>
+            <section v-show="selectedManagementSection === 'weekly_schedule'" id="reservation-weekly-schedule-section">
                 <WeeklyScheduleManager
                   ref="slotTemplateManagerRef"
                   :team-id="props.teamId"
                   :has-business-hours="reservationSettings?.hasBusinessHours ?? true"
                   @focus-business-hours="openBusinessHoursSection"
                 />
-              </AccordionContent>
-            </AccordionPanel>
+            </section>
 
             <!-- ⑤例外日カレンダー（F03.4.5 §3.3・W2-1第二隊で実装完了） -->
-            <AccordionPanel value="exception_day">
-              <AccordionHeader>
-                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  {{ t('reservation.exception_day.title') }}
-                </span>
-              </AccordionHeader>
-              <AccordionContent>
+            <section v-show="selectedManagementSection === 'exception_day'">
                 <ScheduleExceptionPanel
                   :team-id="props.teamId"
                   @goto-list="activeTab = 1"
                   @goto-emergency-closure="activeTab = 3"
                   @goto-book="activeTab = 0"
                 />
-              </AccordionContent>
-            </AccordionPanel>
-          </Accordion>
+            </section>
+          </div>
 
           <!-- 詳細設定（ADMIN限定・既定 collapsed）-->
-          <div class="mt-6">
+          <div v-show="selectedManagementSection === 'advanced'" class="mt-6">
             <Accordion v-model:value="advancedSettingsValue">
               <AccordionPanel value="advanced">
                 <AccordionHeader>
@@ -458,6 +486,7 @@ onMounted(async () => {
                       </p>
                       <ReservationUnavailabilityManager
                         :team-id="props.teamId"
+                        :team-timezone="team?.timezone ?? 'Asia/Tokyo'"
                         :disabled="!isAdmin"
                       />
                     </div>
@@ -532,6 +561,7 @@ onMounted(async () => {
       :is-admin="isFullAdminView"
       :is-admin-or-deputy="isManagementView"
       :active-tab="activeTab"
+      :management-section="managementGuideSection"
     />
   </div>
 </template>

@@ -4,6 +4,7 @@
       "home": "首页",
       "schedule": "日程",
       "match": "比赛",
+      "market": "集市",
       "member": "成员",
       "ops": "业务运营",
       "ops_work": "任务与进度",
@@ -24,6 +25,7 @@
       "annual_plan": "年度计划",
       "matches": "比赛记录",
       "matchAnalytics": "比赛分析",
+      "market": "集市",
       "members": "成员",
       "circulation": "传阅",
       "safety_check": "安全确认",
@@ -43,7 +45,10 @@
       "faqSettings": "FAQ设置",
       "billing": "账单与套餐管理",
       "leagueTransfers": "联赛升降级",
-      "adminConsole": "管理控制台"
+      "adminConsole": "管理控制台",
+      "receipts": "收据",
+      "receiptSettings": "收据开票方设置",
+      "hourlyRate": "時給設定"
     }
   }
 }

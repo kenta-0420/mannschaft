@@ -23,7 +23,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
  *          隣接IDへの前方一致漏れ・`../` traversal・`%` エンコードを拒否する。
  *   関門2: `blog_media_uploads` 台帳との照合（`findByS3KeyIn`）。
  *          presign 経路を通していない手書き r2Key は解決されず、本文にそのまま残る。
- * → BLOG-IMG-02 はこの 2 つを「解決されないこと」の逆アサーションで踏む。
+ * → BLOG-IMG-02 はこの 2 つを本文へ保存できないことを確認する。
  *
  * ── 編集経路は解決しないのが正しい（AC-2）──────────────────────
  * `GET /api/v1/users/me/blog/posts/{id}`（`BlogPostService#getMyPostById`）は編集画面専用の入口で、
@@ -34,7 +34,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
  * ── テストID ──────────────────────────────────────────────
  *   BLOG-IMG-01  presign→実PUT→本文埋込→表示経路で署名URL化→ブラウザで実表示（AC-1）
  *                ＋ 編集経路は生r2Keyのまま（AC-2 / 逆アサーション）
- *   BLOG-IMG-02  越境キー（AC-3）・台帳未登録キー（AC-4）は署名URL化されず本文に残る
+ *   BLOG-IMG-02  越境キー（AC-3）・台帳未登録キー（AC-4）は保存時に拒否される
  *   BLOG-IMG-03  画像0枚の本文が500にならず、ブラウザで本文が表示される（AC-5）
  *   BLOG-IMG-04  画像30枚ちょうどは成功・31枚目は拒否（AC-6）
  *                ＋ 30枚の本文が1リクエストで全件署名URL化される（AC-7 / N+1なし）
@@ -152,12 +152,14 @@ async function updateBody(
   postId: number,
   title: string,
   body: string,
-): Promise<void> {
+  expectedStatus = 200,
+): Promise<boolean> {
   const res = await req.put(`${API_BASE}/api/v1/users/me/blog/posts/${postId}`, {
     data: { title, body, visibility: 'PUBLIC' },
     ...auth(token),
   })
-  expect(res.status(), `記事更新が200で返ること: ${res.ok() ? '' : await res.text()}`).toBe(200)
+  expect(res.status(), `記事更新が${expectedStatus}で返ること: ${res.ok() ? '' : await res.text()}`).toBe(expectedStatus)
+  return res.ok()
 }
 
 /**
@@ -170,7 +172,7 @@ async function presignImage(
   req: APIRequestContext,
   token: string,
   params: { scopeId: number, blogPostId: number },
-): Promise<{ fileKey: string, uploadUrl: string, status: number }> {
+): Promise<{ mediaId?: number, fileKey: string, uploadUrl: string, status: number }> {
   const res = await req.post(`${API_BASE}/api/v1/blog/media/upload-url`, {
     data: {
       media_type: 'IMAGE',
@@ -186,8 +188,8 @@ async function presignImage(
     // 上限超過（422）などの異常系は呼び出し側で status を検査する
     return { fileKey: '', uploadUrl: '', status: res.status() }
   }
-  const data = (await res.json()).data as { file_key: string, upload_url: string }
-  return { fileKey: data.file_key, uploadUrl: data.upload_url, status: res.status() }
+  const data = (await res.json()).data as { media_id: number, file_key: string, upload_url: string }
+  return { mediaId: data.media_id, fileKey: data.file_key, uploadUrl: data.upload_url, status: res.status() }
 }
 
 /**
@@ -212,6 +214,11 @@ async function uploadImage(
     headers: { 'Content-Type': 'image/png' },
   })
   expect([200, 204], `MinIO 直PUT が 200/204 であること（実値=${putRes.status()}）`).toContain(putRes.status())
+  const completeRes = await req.post(`${API_BASE}/api/v1/blog/media/${presign.mediaId}/complete`, {
+    ...auth(token),
+  })
+  expect(completeRes.status(),
+    `アップロード完了確認が204で返ること: ${completeRes.ok() ? '' : await completeRes.text()}`).toBe(204)
   return presign.fileKey
 }
 
@@ -340,9 +347,9 @@ test.describe('BLOG-IMG: ブログ本文画像の署名URL解決 実機E2E', () 
   })
 
   // ===========================================================================
-  // BLOG-IMG-02: AC-3（越境キー）／AC-4（台帳未登録キー）は解決されない
+  // BLOG-IMG-02: AC-3（越境キー）／AC-4（台帳未登録キー）は保存時に拒否される
   // ===========================================================================
-  test('BLOG-IMG-02: 越境キー（AC-3）と台帳未登録キー（AC-4）は署名URL化されず本文に残る', async ({ page }) => {
+  test('BLOG-IMG-02: 越境キー（AC-3）と台帳未登録キー（AC-4）は保存時に拒否される', async ({ page }) => {
     const ts = Date.now()
     const { token, me } = await login(page)
     const title = `E2E BlogImg Guard ${ts}`
@@ -381,7 +388,9 @@ test.describe('BLOG-IMG: ブログ本文画像の署名URL解決 実機E2E', () 
         `![台帳未登録](${unregisteredKey})`,
         '',
       ].join('\n')
-      await updateBody(page.request, token, post.id, title, body)
+      const updateAccepted = await updateBody(page.request, token, post.id, title, body, 404)
+      expect(updateAccepted, '不正なストレージキーを含む本文は保存されないこと').toBeFalsy()
+      if (!updateAccepted) return
 
       const viewBody = await fetchViewBody(page.request, token, me.id, slug)
       console.log('[BLOG-IMG-02] 表示経路 body:', viewBody)

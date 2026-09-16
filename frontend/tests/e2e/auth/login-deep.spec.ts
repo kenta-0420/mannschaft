@@ -5,6 +5,34 @@ import { fillInput, fillPassword } from '../helpers/form'
 test.use({ storageState: { cookies: [], origins: [] } })
 
 test.describe('AUTH-DEEP login: ログインフォーム深掘り', () => {
+  test('DEEP-LOGIN-000: 初回表示だけでCSRフォームが操作可能になる', async ({ page }) => {
+    let documentRequests = 0
+    page.on('request', (request) => {
+      if (request.resourceType() === 'document' && new URL(request.url()).pathname === '/login') {
+        documentRequests++
+      }
+    })
+
+    const response = await page.goto('/login')
+    if (!response) throw new Error('/login のHTTPレスポンスを取得できませんでした')
+
+    const serverHtml = await response.text()
+    expect(serverHtml).not.toContain('<form')
+    expect(serverHtml).not.toMatch(/<button[^>]*type="submit"[^>]*disabled/)
+
+    await page.waitForFunction(
+      () => {
+        const el = document.querySelector('#__nuxt')
+        return el !== null && '__vue_app__' in el
+      },
+      undefined,
+      { timeout: 60_000 },
+    )
+
+    await expect(page.getByRole('button', { name: 'ログイン', exact: true })).toBeEnabled()
+    expect(documentRequests).toBe(1)
+  })
+
   test('DEEP-LOGIN-001: 空フォームでの送信は HTML5 バリデーションでブロックされ API は呼ばれない', async ({
     page,
   }) => {
@@ -17,7 +45,7 @@ test.describe('AUTH-DEEP login: ログインフォーム深掘り', () => {
 
     await page.goto('/login')
     await waitForHydration(page)
-    await page.getByRole('button', { name: 'ログイン' }).click()
+    await page.getByRole('button', { name: 'ログイン', exact: true }).click()
 
     // HTML5 required 属性により送信がブロックされるため、API は呼ばれず URL も変化しない
     await page.waitForTimeout(500)
@@ -36,7 +64,7 @@ test.describe('AUTH-DEEP login: ログインフォーム深掘り', () => {
     await page.goto('/login')
     await waitForHydration(page)
     await fillInput(page.locator('input#email'), 'partial@example.com')
-    await page.getByRole('button', { name: 'ログイン' }).click()
+    await page.getByRole('button', { name: 'ログイン', exact: true }).click()
 
     await page.waitForTimeout(500)
     expect(apiCalled).toBe(false)
@@ -57,7 +85,7 @@ test.describe('AUTH-DEEP login: ログインフォーム深掘り', () => {
     await waitForHydration(page)
     await fillInput(page.locator('input#email'), 'not-an-email')
     await fillPassword(page.locator('input[type="password"]'), 'somepassword123')
-    await page.getByRole('button', { name: 'ログイン' }).click()
+    await page.getByRole('button', { name: 'ログイン', exact: true }).click()
 
     await page.waitForTimeout(500)
     expect(apiCalled).toBe(false)
@@ -71,7 +99,7 @@ test.describe('AUTH-DEEP login: ログインフォーム深掘り', () => {
     const emailInput = page.locator('input#email')
     await fillInput(emailInput, 'test-keep@example.com')
     await fillPassword(page.locator('input[type="password"]'), 'wrongpassword123')
-    await page.getByRole('button', { name: 'ログイン' }).click()
+    await page.getByRole('button', { name: 'ログイン', exact: true }).click()
 
     await expect(page.getByText('ログインに失敗しました')).toBeVisible({ timeout: 10_000 })
     // 失敗後も email 入力欄の値は保持される
@@ -96,7 +124,7 @@ test.describe('AUTH-DEEP login: ログインフォーム深掘り', () => {
     await fillInput(page.locator('input#email'), 'loading-test@example.com')
     await fillPassword(page.locator('input[type="password"]'), 'somepassword123')
 
-    const button = page.getByRole('button', { name: 'ログイン' })
+    const button = page.getByRole('button', { name: 'ログイン', exact: true })
     await button.click()
     // PrimeVue Button の loading 状態を確認（spinner アイコンの表示）
     await expect(button.locator('.pi-spin, .p-button-loading-icon').first()).toBeVisible({

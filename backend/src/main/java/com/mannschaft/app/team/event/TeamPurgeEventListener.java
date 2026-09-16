@@ -1,5 +1,7 @@
 package com.mannschaft.app.team.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
@@ -57,6 +59,8 @@ public class TeamPurgeEventListener {
      * （GDPR 30 日タイムリミット遵守のため）。失敗件は WARN ログを残し、
      * 夜次補正バッチで再処理する運用とする。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "退会アカウントの消去イベントを購読しチームドメインの個人データを消す。止めると GDPR 第17条の消去期限を破り、イベントは再生されない")
     @Async("purge-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

@@ -5,6 +5,7 @@
       "schedule": "일정",
       "member": "멤버",
       "ops": "업무 운영",
+      "market": "장터",
       "facility": "시설 설비",
       "resident": "주민·이용자",
       "data": "데이터·분석",
@@ -26,6 +27,7 @@
     "invite": "초대",
     "permissionGroups": "권한 그룹",
     "onboarding": "온보딩",
+    "market": "장터",
     "todos": "TODO",
     "workflows": "워크플로",
     "forms": "폼",
@@ -59,6 +61,8 @@
     "faqSettings": "FAQ 설정",
     "billing": "결제 및 요금제 관리",
     "leagueTransfers": "리그 이적",
-    "adminConsole": "관리 콘솔"
+    "adminConsole": "관리 콘솔",
+    "receipts": "영수증",
+    "receiptSettings": "영수증 발행자 설정"
   }
 }

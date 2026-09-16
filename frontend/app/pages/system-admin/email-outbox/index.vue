@@ -384,8 +384,8 @@ onMounted(() => {
           class="flex items-center justify-between px-4 py-3 text-sm text-surface-600"
         >
           <span>
-            {{ meta.totalElements }} 件中
-            {{ meta.page * meta.size + 1 }}〜{{ Math.min((meta.page + 1) * meta.size, meta.totalElements) }} 件
+            {{ meta.total }} 件中
+            {{ meta.page * meta.size + 1 }}〜{{ Math.min((meta.page + 1) * meta.size, meta.total) }} 件
           </span>
           <div class="flex gap-2">
             <Button

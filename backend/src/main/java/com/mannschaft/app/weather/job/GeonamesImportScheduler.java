@@ -1,6 +1,8 @@
 package com.mannschaft.app.weather.job;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.weather.config.WeatherLocationProperties;
 import com.mannschaft.app.weather.service.GeonamesImportService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,8 @@ public class GeonamesImportScheduler {
     /**
      * 月次取り込みバッチ。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。GeoNames 郵便番号データの取り込みであり、再開後の実行で最新版を取り込み直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "weather-geonames-import-monthly", description = "GeoNames 郵便番号データを毎月 1 回取り込み（デフォルト 5 日 02:00 UTC）")
     @Scheduled(cron = "${weather.location.geonames.cron:0 0 2 5 * ?}")
     // 起動間隔は月次。GeoNames の郵便番号 ZIP を外部からダウンロードして全件取り込むため、回線状況次第で数時間かかりうる。

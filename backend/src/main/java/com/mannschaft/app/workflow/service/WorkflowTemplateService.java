@@ -2,6 +2,7 @@ package com.mannschaft.app.workflow.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.workflow.ApprovalType;
 import com.mannschaft.app.workflow.ApproverType;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
@@ -288,8 +289,8 @@ public class WorkflowTemplateService {
                         .templateId(templateId)
                         .stepOrder(req.getStepOrder())
                         .name(req.getName())
-                        .approvalType(ApprovalType.valueOf(req.getApprovalType()))
-                        .approverType(ApproverType.valueOf(req.getApproverType()))
+                        .approvalType(EnumInputParser.parse(ApprovalType.class, req.getApprovalType(), "approvalType"))
+                        .approverType(EnumInputParser.parse(ApproverType.class, req.getApproverType(), "approverType"))
                         .approverUserIds(req.getApproverUserIds())
                         .approverRole(req.getApproverRole())
                         .autoApproveDays(req.getAutoApproveDays())
@@ -312,7 +313,7 @@ public class WorkflowTemplateService {
                         .templateId(templateId)
                         .fieldKey(req.getFieldKey())
                         .fieldLabel(req.getFieldLabel())
-                        .fieldType(WorkflowFieldType.valueOf(req.getFieldType()))
+                        .fieldType(EnumInputParser.parse(WorkflowFieldType.class, req.getFieldType(), "fieldType"))
                         .isRequired(req.getIsRequired())
                         .sortOrder(req.getSortOrder() != null ? req.getSortOrder() : 0)
                         .optionsJson(req.getOptionsJson())

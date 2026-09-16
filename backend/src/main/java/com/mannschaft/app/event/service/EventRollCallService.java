@@ -12,15 +12,16 @@ import com.mannschaft.app.event.dto.RollCallSessionRequest;
 import com.mannschaft.app.event.dto.RollCallSessionResponse;
 import com.mannschaft.app.event.entity.EventCheckinEntity;
 import com.mannschaft.app.event.entity.EventRsvpResponseEntity;
+import com.mannschaft.app.event.event.EventCareNotificationTriggerEvent;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
 import com.mannschaft.app.family.CareLinkStatus;
 import com.mannschaft.app.family.entity.UserCareLinkEntity;
 import com.mannschaft.app.family.repository.UserCareLinkRepository;
-import com.mannschaft.app.family.service.CareEventNotificationService;
 import com.mannschaft.app.family.service.CareLinkService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,7 +57,7 @@ public class EventRollCallService {
     private final UserCareLinkRepository careLinkRepository;
     private final UserRepository userRepository;
     private final CareLinkService careLinkService;
-    private final CareEventNotificationService careEventNotificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final MediaUrlResolver mediaUrlResolver;
 
     // =========================================================
@@ -156,6 +157,9 @@ public class EventRollCallService {
         int updatedCount = 0;
         int guardianNotificationsSent = 0;
         List<String> guardianSetupWarnings = new ArrayList<>();
+        // F03.12 見守り通知の送信対象（Issue #2990 L5）。業務TX内では宛先を積むだけに留め、
+        // 実配送は commit 後に EventCareNotificationTriggerListener が行う。
+        List<Long> guardianNotificationTargets = new ArrayList<>();
 
         for (RollCallEntryRequest entry : entries) {
             Long userId = entry.getUserId();
@@ -199,10 +203,10 @@ public class EventRollCallService {
                         guardianSetupWarnings.add(displayName + "（見守り者未設定）");
                         log.warn("ケア対象者の見守り者未設定: userId={}, displayName={}", userId, displayName);
                     } else {
-                        // 保護者通知を送信
-                        careEventNotificationService.notifyCheckin(userId, eventId);
+                        // 保護者通知の対象として確定（実配送は AFTER_COMMIT・Issue #2990 L5）
+                        guardianNotificationTargets.add(userId);
                         guardianNotificationsSent++;
-                        log.info("点呼チェックイン保護者通知送信: eventId={}, userId={}", eventId, userId);
+                        log.info("点呼チェックイン保護者通知の対象確定: eventId={}, userId={}", eventId, userId);
                     }
                 }
             } else if (STATUS_ABSENT.equals(entry.getStatus())) {
@@ -217,6 +221,15 @@ public class EventRollCallService {
                 }
                 // ABSENT は notifyCheckin を呼ばない（§14.4 設計通り）
             }
+        }
+
+        // ケア対象者見守り通知の配送要求（Issue #2990 L5）。業務TX内では publish だけに留める。
+        // 通知失敗で点呼セッション1回ぶんの event_checkins 行が全件巻き戻るのを防ぐ。
+        if (!guardianNotificationTargets.isEmpty()) {
+            eventPublisher.publishEvent(new EventCareNotificationTriggerEvent(
+                    eventId,
+                    EventCareNotificationTriggerEvent.Kind.CHECKIN,
+                    List.copyOf(guardianNotificationTargets)));
         }
 
         log.info("点呼セッション完了: eventId={}, sessionId={}, created={}, updated={}, notified={}",

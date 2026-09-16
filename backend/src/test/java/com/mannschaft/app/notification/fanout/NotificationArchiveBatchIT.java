@@ -46,6 +46,7 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
 
     private static final int READ_RETENTION_DAYS = 90;
     private static final int UNREAD_RETENTION_DAYS = 365;
+    private static final Duration TIME_TOLERANCE = Duration.ofSeconds(60);
 
     @Autowired
     private NotificationCleanupBatchService cleanupBatchService;
@@ -89,8 +90,8 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
         NotificationEntity saved = notificationRepository.saveAndFlush(n);
         Long id = saved.getId();
         // @PrePersist が created_at を now() にするため、年齢を JDBC で確定的に上書きする。
-        jdbc.update("UPDATE notifications SET created_at = ? WHERE id = ?",
-                LocalDateTime.now().minusDays(daysAgo), id);
+        jdbc.update(
+                "UPDATE notifications SET created_at = UTC_TIMESTAMP() - INTERVAL " + daysAgo + " DAY WHERE id = ?", id);
         entityManager.clear();
         return id;
     }
@@ -103,6 +104,10 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
     private long archiveCount(Long id) {
         Long c = jdbc.queryForObject("SELECT COUNT(*) FROM notifications_archive WHERE id = ?", Long.class, id);
         return c == null ? 0 : c;
+    }
+
+    private LocalDateTime dbUtcNow() {
+        return jdbc.queryForObject("SELECT UTC_TIMESTAMP()", LocalDateTime.class);
     }
 
     // ============================== AC-1 ==============================
@@ -219,22 +224,61 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
     // ============================== AC-6 ==============================
 
     @Test
-    @DisplayName("AC-6 未読エイジング閾値ちょうど/±1日の境界判定")
+    @DisplayName("AC-6 未読エイジング閾値1日前/閾値超過1秒/1日超過の境界判定")
     void ac6_unreadAgingBoundary() {
-        Long younger = seedNotification(106L, false, UNREAD_RETENTION_DAYS - 1); // 対象外
-        Long boundary = seedNotification(106L, false, UNREAD_RETENTION_DAYS);    // 閾値ちょうど（走行時に閾値未満へ）→対象
-        Long older = seedNotification(106L, false, UNREAD_RETENTION_DAYS + 1);   // 対象
+        Long younger = seedNotification(106L, false, UNREAD_RETENTION_DAYS - 1); // 閾値1日前: 対象外
+        Long boundary = seedNotification(106L, false, UNREAD_RETENTION_DAYS);
+        // strict < 比較の同一秒を避け、閾値より1秒だけ古い行を明示する。
+        jdbc.update("UPDATE notifications SET created_at = UTC_TIMESTAMP() - INTERVAL 365 DAY "
+                        + "- INTERVAL 1 SECOND WHERE id = ?",
+                boundary);
+        Long older = seedNotification(106L, false, UNREAD_RETENTION_DAYS + 1);   // 閾値を1日超過: 対象
 
         cleanupBatchService.cleanupOldReadNotifications();
 
         assertThat(notificationCount(younger)).as("364日相当は残る").isEqualTo(1);
         assertThat(archiveCount(younger)).isZero();
 
-        assertThat(archiveCount(boundary)).as("365日ちょうどは退避される").isEqualTo(1);
+        assertThat(archiveCount(boundary)).as("365日閾値を1秒超過した通知は退避される").isEqualTo(1);
         assertThat(notificationCount(boundary)).isZero();
 
         assertThat(archiveCount(older)).as("366日は退避される").isEqualTo(1);
         assertThat(notificationCount(older)).isZero();
+    }
+
+    @Test
+    @DisplayName("CMP-260910-0041: UTC基準の閾値内（既読90日・未読365日）はJST実行時刻に引きずられず残る")
+    void utcThresholdKeepsRowsWithinRetention() {
+        Long readWithinRetention = seedNotification(1061L, true, 1);
+        Long unreadWithinRetention = seedNotification(1062L, false, 1);
+        // DB 格納値を UTC 壁時計で明示する。JST の LocalDateTime.now() を閾値に束縛する旧実装では
+        // いずれも9時間早く移送対象になり、このテストが red になる。
+        jdbc.update("UPDATE notifications SET created_at = UTC_TIMESTAMP() - INTERVAL 90 DAY + INTERVAL 1 HOUR WHERE id = ?",
+                readWithinRetention);
+        jdbc.update("UPDATE notifications SET created_at = UTC_TIMESTAMP() - INTERVAL 365 DAY + INTERVAL 1 HOUR WHERE id = ?",
+                unreadWithinRetention);
+
+        cleanupBatchService.cleanupOldReadNotifications();
+
+        assertThat(notificationCount(readWithinRetention)).as("既読90日より1時間新しい通知は残る").isEqualTo(1);
+        assertThat(archiveCount(readWithinRetention)).isZero();
+        assertThat(notificationCount(unreadWithinRetention)).as("未読365日より1時間新しい通知は残る").isEqualTo(1);
+        assertThat(archiveCount(unreadWithinRetention)).isZero();
+    }
+
+    @Test
+    @DisplayName("CMP-260910-0041: archive の archived_at は UTC_TIMESTAMP() と同じUTC壁時計で記録される")
+    void archivedAtIsStoredAsUtcWallClock() {
+        Long id = seedNotification(1063L, true, READ_RETENTION_DAYS + 1);
+
+        cleanupBatchService.cleanupOldReadNotifications();
+
+        LocalDateTime archivedAt = jdbc.queryForObject(
+                "SELECT archived_at FROM notifications_archive WHERE id = ?", LocalDateTime.class, id);
+        assertThat(archivedAt).isNotNull();
+        assertThat(Duration.between(archivedAt, dbUtcNow()).abs())
+                .as("archived_at=%s は UTC_TIMESTAMP() と同じUTC壁時計である", archivedAt)
+                .isLessThanOrEqualTo(TIME_TOLERANCE);
     }
 
     // ============================== AC-7 ==============================

@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "Todo el día",
+      "startTime": "Hora de inicio",
+      "endTime": "Hora de fin",
+      "timeRangeInvalid": "La hora de inicio debe ser anterior a la de fin",
+      "notConfigured": "Aún no está configurado. Indica tu preferencia y horario para cada día y guarda.",
+      "loadError": "No se pudo cargar tu disponibilidad predeterminada",
+      "retry": "Reintentar"
+    },
     "board": {
       "title": "Tablero de turnos",
       "memberPool": "Miembros sin asignar",
@@ -20,7 +29,9 @@
       "revoke": "Descartar",
       "history": "Historial de ejecuciones",
       "slotsFilled": "{filled}/{total} turnos cubiertos",
-      "warnings": "{count} advertencias"
+      "warnings": "{count} advertencias",
+      "disabledBadge": "Suspendido",
+      "disabledReason": "La asignación automática está suspendida. Cree el turno manualmente."
     },
     "visualReview": {
       "title": "Revisión visual",
@@ -61,12 +72,6 @@
       "openCallLimit": "Las convocatorias abiertas están limitadas a 3 por mes",
       "fetchError": "Error al obtener las solicitudes de cambio"
     },
-    "openCall": {
-      "badge": "Buscando miembro sustituto",
-      "claim": "Cubriré este turno",
-      "claimed": "Ya solicitado",
-      "full": "Convocatoria cerrada"
-    },
     "pdf": {
       "teamLayout": "PDF del horario del equipo",
       "personalLayout": "PDF de la línea de tiempo personal",
@@ -74,7 +79,7 @@
       "error": "Error al generar el PDF"
     },
     "myShifts": {
-      "title": "Mis turnos",
+      "title": "Mis Turnos",
       "empty": "No hay turnos",
       "fetchError": "Error al obtener la información de turnos"
     },
@@ -87,7 +92,8 @@
       "detail": "Detalle",
       "edit": "Editar",
       "requests": "Solicitudes",
-      "workConstraints": "Restricciones de Trabajo"
+      "workConstraints": "Restricciones de Trabajo",
+      "teamLoadFailed": "No se pudo obtener la información del equipo"
     },
     "status": {
       "all": "Todos",
@@ -152,7 +158,9 @@
       "dayOfWeek": "Día de la semana",
       "dayOfWeekHint": "Las franjas se crean solo en los días seleccionados",
       "saveSuccess": "Franja guardada",
-      "deleteSuccess": "Franja eliminada"
+      "deleteSuccess": "Franja eliminada",
+      "assignmentMasked": "En ajuste",
+      "assignmentMaskedHint": "Las asignaciones se ocultan hasta que se publique el turno"
     },
     "requests": {
       "submissionRate": "Tasa de envío",
@@ -269,7 +277,30 @@
         "nightShift": "Miembros del turno de noche",
         "selectedCount": "{count} seleccionados"
       },
-      "templateHint": "Enviar a todos los miembros del turno {period} en el mismo horario"
+      "templateHint": "Enviar a todos los miembros del turno {period} en el mismo horario",
+      "list": {
+        "title": "Solicitudes de cambio de turno",
+        "requester": "Solicitante n.º {id}",
+        "accepter": "Compañero n.º {id}",
+        "accepterUndecided": "Compañero sin definir",
+        "slot": "Turno n.º {id}",
+        "reason": "Motivo: {reason}",
+        "cancel": "Retirar",
+        "reload": "Recargar",
+        "empty": "No hay solicitudes de cambio",
+        "loadFailed": "No se pudieron cargar las solicitudes de cambio",
+        "loadFailedBody": "No se pudieron obtener las solicitudes de cambio",
+        "actionFailed": "La operación ha fallado",
+        "acceptSucceeded": "Has aceptado el cambio",
+        "approveSucceeded": "Se ha aprobado el cambio",
+        "rejectSucceeded": "Se ha rechazado el cambio",
+        "cancelSucceeded": "Se ha retirado la solicitud",
+        "statusPending": "Pendiente de aceptación",
+        "statusAccepted": "Pendiente de aprobación",
+        "statusApproved": "Aprobado",
+        "statusRejected": "Rechazado",
+        "statusCancelled": "Retirado"
+      }
     },
     "reminder": {
       "send": "Enviar Recordatorio",
@@ -280,6 +311,11 @@
       "noShifts": "No hay turnos",
       "noRequests": "No hay solicitudes",
       "noConstraints": "No hay restricciones de trabajo configuradas"
+    },
+    "teamLoad": {
+      "timeout": "La información del equipo está tardando demasiado en cargarse. Comprueba la conexión y vuelve a intentarlo.",
+      "error": "No se pudo cargar la información del equipo. Inténtalo de nuevo más tarde.",
+      "retry": "Reintentar"
     },
     "notification": {
       "publishSuccess": "Turno publicado exitosamente",
@@ -321,11 +357,6 @@
       "totalLabel": "Total",
       "confirmSubmit": "¿Enviar con esta configuración?"
     },
-    "myShifts": {
-      "title": "Mis Turnos",
-      "empty": "No hay turnos",
-      "fetchError": "Error al obtener la información de turnos"
-    },
     "myShift": {
       "confirmedTitle": "Turno Confirmado",
       "upcomingTitle": "Próximos turnos confirmados",
@@ -339,6 +370,52 @@
         "schedule": "Horario",
         "noSlot": "No hay turnos este día"
       }
+    },
+    "entry": {
+      "sectionTitle": "Enviar preferencias / Tablero de turnos",
+      "bulkRequest": "Enviar preferencias en bloque",
+      "board": "Tablero de turnos",
+      "weeklyDefault": "Configurar valores por día de la semana",
+      "closed": "El plazo de preferencias ha terminado"
+    },
+    "submitConfirm": {
+      "title": "¿Enviar con este contenido?",
+      "filledLabel": "Días completados",
+      "defaultAppliedLabel": "Días rellenados desde tus valores por defecto",
+      "untouchedLabel": "Días sin completar",
+      "dayCount": "{count} día(s)",
+      "untouchedNotice": "Los días sin completar se envían como \"preferiblemente descansar\". Aun así, podrían pedirte trabajar si falta personal.",
+      "submit": "Enviar",
+      "back": "Volver a editar"
+    },
+    "hourlyRate": {
+      "title": "時給設定",
+      "description": "メンバーごとの時給を登録します。時給が未設定のメンバーのシフトは、シフト予算の消化額に反映されません。",
+      "missingWarning": "時給が未設定のメンバーが {count} 名います。このままではシフトを公開しても予算の消化額に反映されません。",
+      "unset": "未設定",
+      "setButton": "設定",
+      "perHour": "{amount}円/h",
+      "saved": "時給を保存しました",
+      "saveFailed": "時給の保存に失敗しました",
+      "loadFailed": "時給の取得に失敗しました",
+      "historyLoadFailed": "時給履歴の取得に失敗しました",
+      "permissionLoadFailed": "権限の取得に失敗しました",
+      "forbidden": "この画面を表示する権限がありません",
+      "noMembers": "メンバーがいません",
+      "dialogTitle": "{name} の時給設定",
+      "effectiveFromHint": "指定した日から適用されます。過去の設定は履歴として残ります。同じ日付で登録し直すと、その日の設定を訂正します。",
+      "historyTitle": "時給履歴",
+      "noHistory": "時給の登録履歴はありません",
+      "column": {
+        "member": "メンバー",
+        "rate": "時給",
+        "effectiveFrom": "適用開始日"
+      },
+      "validation": {
+        "rateRequired": "時給を入力してください",
+        "ratePositive": "時給は1円以上で入力してください"
+      },
+      "missingWarningPage": "このページに時給が未設定のメンバーが {count} 名います。このままではシフトを公開しても予算の消化額に反映されません。"
     }
   },
   "my_shift_guide": {

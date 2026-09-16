@@ -1,5 +1,8 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.common.SystemUsers;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.campaign.entity.AdBannerDelivery;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
@@ -51,8 +54,14 @@ public class AdCampaignStateTransitionScheduler {
     /** UUIDv7 の最小値（キーセットページングの初期カーソル）。 */
     private static final UUID MIN_UUID = new UUID(0L, 0L);
 
-    /** F09.19.7 §10.5: スケジューラ起因（ユーザー操作なし）イベントの actor = システムユーザー（V1.012 seed）。 */
-    private static final Long SYSTEM_USER_ID = 1L;
+    /**
+     * F09.19.7 §10.5: スケジューラ起因（ユーザー操作なし）イベントの actor = システムユーザー。
+     *
+     * <p>実体は {@code V1.012__seed_system_user.sql} が投入する id=1 の行である。
+     * 従来は本クラス private の定数として重複して持っていたが、共有の
+     * {@link SystemUsers#SYSTEM_USER_ID} に一元化した。</p>
+     */
+    private static final Long SYSTEM_USER_ID = SystemUsers.SYSTEM_USER_ID;
 
     static final String AUDIT_CAMPAIGN_DELIVERING_STARTED = "CAMPAIGN_DELIVERING_STARTED";
     static final String AUDIT_CAMPAIGN_COMPLETED = "CAMPAIGN_COMPLETED";
@@ -65,6 +74,9 @@ public class AdCampaignStateTransitionScheduler {
     /**
      * 5 分間隔 (Asia/Tokyo) で起動する状態遷移本体。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "止めてもキャンペーンが現在の状態に留まるだけで、再開後に同じ日時条件で遷移をまとめて追いつける")
     @Scheduled(cron = "${mannschaft.ad.state-transition.cron:0 */5 * * * *}", zone = "Asia/Tokyo")
     @SchedulerLock(name = "adCampaignStateTransition", lockAtMostFor = "PT15M", lockAtLeastFor = "1m")
     @BatchEndpoint(name = "ad-campaign-state-transition",
@@ -144,6 +156,9 @@ public class AdCampaignStateTransitionScheduler {
      * @return FreqCap 返却を試みた予約行数。ShedLock はプリミティブ戻り値のメソッドをロックできないため
      *         参照型 {@code Integer} を返す（issue #2724）。ロック未取得時は ShedLock が {@code null} を返す
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "予約行を残したまま日次で再スキャンしても over-decrement が起きない冪等設計であり、止めても再開後の再スキャンで FreqCap を返却し直せる")
     @Scheduled(cron = "0 15 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "adBannerReservationExpiry", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @BatchEndpoint(name = "ad-banner-reservation-expire-daily",

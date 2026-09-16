@@ -203,7 +203,29 @@ public enum ScheduleErrorCode implements ErrorCode {
 
     /** 指定された予定対象者が当該スコープの有効メンバーではない（存在秘匿）。 */
     SCHEDULE_TARGET_MEMBER_NOT_FOUND(
-            "SCHEDULE_094", "指定された予定対象者が見つかりません", Severity.WARN);
+            "SCHEDULE_094", "指定された予定対象者が見つかりません", Severity.WARN),
+
+    // --- F03.19 統合カレンダービュー: カレンダーレイヤー設定（設計書 §7） ---
+
+    /** カレンダーレイヤー設定が見つからない（404）。 */
+    CALENDAR_LAYER_NOT_FOUND(
+            "SCHEDULE_100", "カレンダーレイヤー設定が見つかりません", Severity.WARN),
+
+    /** 所属していないスコープのレイヤー設定変更（403）。存在しないIDも同じコードに畳んで存在秘匿する。 */
+    CALENDAR_LAYER_NOT_MEMBER(
+            "SCHEDULE_101", "所属していないスコープのレイヤー設定は変更できません", Severity.WARN),
+
+    /** 色の指定が #RRGGBB 形式でない（422）。 */
+    CALENDAR_LAYER_INVALID_COLOR(
+            "SCHEDULE_102", "色の指定が不正です（#RRGGBB 形式で指定してください）", Severity.WARN),
+
+    /** レイヤーのスコープ種別・スコープIDが不正（422）。 */
+    CALENDAR_LAYER_INVALID_SCOPE(
+            "SCHEDULE_103", "レイヤーのスコープ指定が不正です", Severity.WARN),
+
+    /** 1ユーザーあたりのレイヤー設定行数が上限に達した（400。件数上限は .claudecode.md §3.2.1 の本則どおり既定の 400）。 */
+    CALENDAR_LAYER_LIMIT_EXCEEDED(
+            "SCHEDULE_104", "カレンダーレイヤー設定の上限（1000件）に達しています", Severity.WARN);
 
     private final String code;
     private final String message;

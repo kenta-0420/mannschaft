@@ -105,6 +105,7 @@ const collapsed = ref(false)
         </h3>
       </div>
       <div class="flex items-center gap-1">
+        <slot name="actions" />
         <Button
           v-if="refreshable"
           icon="pi pi-refresh"

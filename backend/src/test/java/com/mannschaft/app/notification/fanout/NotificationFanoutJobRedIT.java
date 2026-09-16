@@ -100,10 +100,10 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
         String type = "FANOUT_IT_AC1";
         UUID sourceEvent = UUID.randomUUID();
 
-        jobService.enqueue(TEST_SCOPE, String.valueOf(scopeId), type, sourceEvent, null,
-                "AC-1 冪等", "本文", NotificationPriority.NORMAL, "FANOUT_IT", null, "/x", null);
-        jobService.enqueue(TEST_SCOPE, String.valueOf(scopeId), type, sourceEvent, null,
-                "AC-1 冪等", "本文", NotificationPriority.NORMAL, "FANOUT_IT", null, "/x", null);
+        jobService.enqueue(TEST_SCOPE, String.valueOf(scopeId), type, sourceEvent, null,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-1 冪等"}, NotificationPriority.NORMAL, "FANOUT_IT", null, "/x", null);
+        jobService.enqueue(TEST_SCOPE, String.valueOf(scopeId), type, sourceEvent, null,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-1 冪等"}, NotificationPriority.NORMAL, "FANOUT_IT", null, "/x", null);
 
         Optional<NotificationFanoutJob> found = jobRepository
                 .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuid(
@@ -138,7 +138,7 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
             insertNotification(uid, type);
         }
         // 再開待ちジョブ（cursor=先頭k件の末尾・status=PENDING）。
-        NotificationFanoutJob job = jobRepository.save(newJob(TEST_SCOPE, scopeId, type, UUID.randomUUID(),
+        NotificationFanoutJob job = saveWithMessages(newJob(TEST_SCOPE, scopeId, type, UUID.randomUUID(),
                 "AC-2 再開", base + k, k));
 
         // done 条件: worker は cursor より後の受信者のみ配信し、合計 N・重複なしで job=DONE にする。
@@ -168,7 +168,7 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-3 配信失敗はリトライ→上限超で DEAD_LETTER（行は残る・worker 未実装=red）")
     void ac3_retriesThenDeadLetters() {
         String type = "FANOUT_IT_AC3";
-        NotificationFanoutJob job = jobRepository.save(newJob(TEST_SCOPE, FAILING_SCOPE_ID, type,
+        NotificationFanoutJob job = saveWithMessages(newJob(TEST_SCOPE, FAILING_SCOPE_ID, type,
                 UUID.randomUUID(), "AC-3 失敗", 0L, 0));
 
         // done 条件: 失敗のたびに retry_count が増え、上限超で DEAD_LETTER に落ち、行は消えない。
@@ -205,9 +205,9 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-4 findReady は FOR UPDATE 保持中のジョブを飛ばして別ジョブを返す（SKIP LOCKED・現行 green）")
     void ac4_findReadySkipsLockedJob() throws Exception {
         // 2 ジョブを最古（1970 起点）で作り、汚染ジョブより必ず先頭に並ぶようにする。
-        NotificationFanoutJob jobA = jobRepository.save(newReadyJob("FANOUT_IT_AC4_A",
+        NotificationFanoutJob jobA = saveWithMessages(newReadyJob("FANOUT_IT_AC4_A",
                 LocalDateTime.of(1970, 1, 1, 0, 0)));
-        NotificationFanoutJob jobB = jobRepository.save(newReadyJob("FANOUT_IT_AC4_B",
+        NotificationFanoutJob jobB = saveWithMessages(newReadyJob("FANOUT_IT_AC4_B",
                 LocalDateTime.of(1970, 1, 2, 0, 0)));
         UUID jobAId = jobA.getId();
         UUID jobBId = jobB.getId();
@@ -261,8 +261,8 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
         statementCounter.register(JOB_INSERT, s -> s.contains("insert into notification_fanout_jobs"));
         statementCounter.reset();
 
-        jobService.enqueue(TEST_SCOPE, String.valueOf(9_007L), "FANOUT_IT_AC7", UUID.randomUUID(), null,
-                "AC-7 O(1)", "本文", NotificationPriority.NORMAL, "FANOUT_IT", null, "/x", null);
+        jobService.enqueue(TEST_SCOPE, String.valueOf(9_007L), "FANOUT_IT_AC7", UUID.randomUUID(), null,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-7 O(1)"}, NotificationPriority.NORMAL, "FANOUT_IT", null, "/x", null);
 
         long inserts = statementCounter.count(JOB_INSERT);
         log.info("[AC-7] notification_fanout_jobs INSERT 文数 = {}（期待=1）", inserts);
@@ -284,7 +284,6 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
                 .scopeType(scopeType)
                 .scopeRef(String.valueOf(scopeId))
                 .notificationType(type)
-                .title(title)
                 .priority(NotificationPriority.NORMAL)
                 .sourceType("FANOUT_IT")
                 .status(NotificationFanoutJobStatus.PENDING)
@@ -304,7 +303,6 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
                 .scopeType(TEST_SCOPE)
                 .scopeRef(String.valueOf(9_004L))
                 .notificationType(type)
-                .title("AC-4")
                 .priority(NotificationPriority.NORMAL)
                 .status(NotificationFanoutJobStatus.PENDING)
                 .cursorSubjectId(0L)
@@ -352,17 +350,21 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
                 }
 
                 @Override
-                public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
+                public List<FanoutRecipient> nextPage(FanoutPageRequest request) {
+                    String scopeRef = request.scopeRef();
+                    long cursorSubjectId = request.cursorSubjectId();
+                    int limit = request.limit();
                     long scopeId = Long.parseLong(scopeRef);
                     if (scopeId == FAILING_SCOPE_ID) {
                         throw new IllegalStateException("AC-3 配信失敗シミュレーション（scopeRef=" + scopeRef + "）");
                     }
                     long base = recipientBase(scopeId);
-                    java.util.List<Long> page = new java.util.ArrayList<>();
+                    // Issue #2871: 受信者は user_id ＋ locale の組。擬似ソースは既定ロケールで返す。
+                    java.util.List<FanoutRecipient> page = new java.util.ArrayList<>();
                     for (int i = 1; i <= RECIPIENTS_PER_SCOPE && page.size() < limit; i++) {
                         long id = base + i;
                         if (id > cursorSubjectId) {
-                            page.add(id);
+                            page.add(new FanoutRecipient(id, "ja"));
                         }
                     }
                     return page;
@@ -397,4 +399,33 @@ class NotificationFanoutJobRedIT extends AbstractMySqlIntegrationTest {
             };
         }
     }
+
+    /**
+     * Issue #2871: ワーカーはジョブのロケール別文面（子表）を読んでから配信する。
+     *
+     * <p>本番では enqueue が「親ジョブ 1 行＋文面 6 行」を同一トランザクションで確定するため、
+     * 文面の無いジョブは存在しない。IT だけがジョブ行を直接組み立てているので、
+     * ここで同じ前提（6 配信ロケールぶんの文面）を用意する。</p>
+     */
+    private com.mannschaft.app.notification.fanout.NotificationFanoutJob saveWithMessages(
+            com.mannschaft.app.notification.fanout.NotificationFanoutJob job) {
+        com.mannschaft.app.notification.fanout.NotificationFanoutJob saved = jobRepository.save(job);
+        jobRepository.flush();
+        java.util.List<com.mannschaft.app.notification.fanout.NotificationFanoutJobMessage> rows =
+                new java.util.ArrayList<>();
+        for (String tag : com.mannschaft.app.common.i18n.DeliveryLocales.TAGS) {
+            rows.add(com.mannschaft.app.notification.fanout.NotificationFanoutJobMessage.builder()
+                    .jobId(saved.getId())
+                    .locale(tag)
+                    .title("IT-title-" + tag)
+                    .body("IT-body-" + tag)
+                    .build());
+        }
+        fanoutJobMessageRepositoryForIt.saveAll(rows);
+        return saved;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.mannschaft.app.notification.fanout.NotificationFanoutJobMessageRepository
+            fanoutJobMessageRepositoryForIt;
 }

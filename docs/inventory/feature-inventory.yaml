@@ -33,6 +33,30 @@
 # 5. β解禁の判断が付き、ドメイン行（layer=ドメイン）を能力粒度へ展開する際は、
 #    ドメイン行を削除し、能力粒度の複数レコードに置き換える。
 # 6. gate_key は SCREAMING_SNAKE・あれば一意（AOP Gate 等の実装キーとの対応）。省略可。
+#    **gate_key の唯一の発行元は本ファイルである**（Gate 基盤工事②）。FE の route 束縛表
+#    frontend/app/constants/featureGates.ts の GATE_ROUTE_MAP はここに無いキーを使えず、
+#    番人 FeatureGateRouteMapGuardTest が双方向の整合を CI で検証する。
+# 6-b. β公開前の閉栓（gate_key のフラグを無効化する作業）を行う前に、
+#    Issue #2888「slug 配下のガード対象が SSR で隔離されない（91中44プレフィクス）」を
+#    必ず解消すること。閉じた瞬間に未公開機能の画面の外枠が SSR 出力へ露出するため。
+#    各対象行の blockers にも同じ紐付けを書いてある。
+# 7. 隔離対象（release.beta が β限定/内部限定/停止）の行に gate_key を発行したら、
+#    GATE_ROUTE_MAP に URL パスプレフィクスを束縛しなければ番人が red になる。
+#    専用の top-level route を持たない機能は gate_key を null のままにしておく
+#    （route 層の隔離対象外であることを台帳上で明示する意味になる）。
+# 7-b. ただし **BE 側だけをゲートで塞ぐ（gate_key は必要だが専用 URL は1本も無い）**機能は、
+#    gate_key を null にできない（null にすると番人 FeatureGateAnnotationKeyGuardTest が
+#    「@RequireFeature に実在しないキー」として red にする。台帳は gate_key の唯一の発行元であり、
+#    @RequireFeature のキーは台帳と seed の積集合に無ければならないため）。
+#    この場合だけ末尾の route_binding_exclusions に **理由付きで**宣言する。
+#    無審査で膨らむ baseline にならないよう、番人 FeatureGateRouteMapGuardTest が
+#    理由の空欄 (iv)・束縛済みなのに残る陳腐化 (v)・台帳に対応が無い綴り間違い (vi) を red にする。
+#    **さらに (vii) が「BE 入口を実際に塞いでいること」を機械的に照合する**:
+#    除外キーが本番コードの @RequireFeature に実在しなければ red になる
+#    （抽出は FeatureGateAnnotationKeyGuardTest#annotatedFeatureKeys と同一手段）。
+#    したがって「理由さえ書けば何でも除外できる」抜け道は無く、FE も BE も塞がない機能を
+#    この除外で通すことはできない（Codex 検分 P2 の指摘により追加）。
+#    親機能の route が既に当該画面を覆っている場合は、その旨を理由に書くこと。
 #
 records:
   # ==========================================================================
@@ -41,7 +65,8 @@ records:
   - feature_key: personal-profile
     name: 個人プロフィール編集
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.1_auth.md"
     implementation:
       frontend: 実装済
       backend: 実装済
@@ -52,7 +77,7 @@ records:
     release:
       beta: コア
       deploy_safety: 不明
-      gate_key: PERSONAL_PROFILE
+      gate_key: null
     blockers:
       - "CMP-103: 入力途中離脱で入力消失・未保存警告なし（Issue #2857）"
     notes: null
@@ -60,22 +85,52 @@ records:
   - feature_key: account-settings
     name: アカウント設定・退会
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.1_auth.md"
+      - "docs/features/F12.3_gdpr_personal_data.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 不明
-    verification: {}
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/auth/UserServiceTest.java", "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java", "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/settings/profile.spec.ts", "frontend/tests/e2e/settings/password.spec.ts", "frontend/tests/e2e/gdpr/gdpr.spec.ts"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/auth/UserControllerTest.java", "backend/src/test/java/com/mannschaft/app/gdpr/GdprSelfScopeContractIT.java"]}
+      real_e2e: {status: 未作成, evidence: []}
+      operation: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java", "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ1: 設定画面・プロフィール/パスワード更新API・退会/取消API・30日後削除/リマインドバッチまで実装を確認。実環境での退会E2Eは未作成。"
 
   - feature_key: auth
     name: 認証・ログイン・2FA
+    layer: 能力
+    design_docs:
+      - "docs/features/F01.1_auth.md"
+    implementation:
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/pages/login.spec.ts", "backend/src/test/java/com/mannschaft/app/auth/AuthServiceTest.java", "backend/src/test/java/com/mannschaft/app/auth/service/Auth2faServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/auth/login.spec.ts", "frontend/tests/e2e/auth/2fa.spec.ts"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/auth/AuthLoginControllerTest.java", "backend/src/test/java/com/mannschaft/app/auth/Auth2faControllerTest.java", "backend/src/test/java/com/mannschaft/app/config/SecurityConfigAuthorizationTest.java"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/auth-flow.spec.ts", "frontend/tests/e2e/real/2fa-flow.spec.ts", "frontend/tests/e2e/real/auth-cookie-origin.spec.ts"]}
+      operation: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/auth/AuthCleanupBatchServiceTest.java", "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"]}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "PR #2830 ハイドレーション即操作化済。棚卸バッチ1でログイン・2FA・DB・認証保守バッチの実装を確認。各テストは今回未実行。"
+
+  - feature_key: nav-settings
+    name: ナビ設定
     layer: 能力
     design_docs: []
     implementation:
@@ -83,82 +138,89 @@ records:
       backend: 実装済
       database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/stores/useNavSettingsStore.spec.ts", "backend/src/test/java/com/mannschaft/app/navsettings/service/NavSettingsServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/navsettings/controller/NavSettingsControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/navsettings/controller/NavSettingsControllerTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V9.20260528131746__nav_features_and_user_nav_settings.sql", "backend/src/main/resources/db/migration/V128.001__add_nav_display_order_to_user_nav_settings.sql"]}
+      real_e2e: {status: 未作成, evidence: []}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: "PR #2830 ハイドレーション即操作化済"
-
-  - feature_key: nav-settings
-    name: ナビ設定
-    layer: 能力
-    design_docs: []
-    implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 対象外
-    verification: {}
-    release:
-      beta: コア
-      deploy_safety: 不明
-      gate_key: null
-    blockers: []
-    notes: null
+    notes: "棚卸バッチ2: 個人ナビの表示/並び替え画面・API・DB・起動時同期を確認。専用の機能設計書と実環境E2Eは未確認。"
 
   - feature_key: team-create
     name: チーム作成
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.2_org_team_member_role"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/team/TeamServiceTest.java", "backend/src/test/java/com/mannschaft/app/team/TeamSlugServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/teams/team-hub.spec.ts", "frontend/tests/e2e/teams/template-module.spec.ts", "frontend/tests/e2e/slug/slug-url-migration.spec.ts"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V2.004__create_teams_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/activity-authz.spec.ts", "frontend/tests/e2e/real/dashboard-org-announcement.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ2: 作成ダイアログ・任意slug検証・POST /api/v1/teams・作成者ADMIN付与・teamsテーブルを確認。UIから作成完了までの専用実環境E2Eは未確認。"
 
   - feature_key: team-invite
     name: メンバー招待
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.2_org_team_member_role"
+      - "docs/features/F01.8_team_invite_qr_pdf.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/role/InviteServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/auth/invite.spec.ts", "frontend/tests/e2e/teams/invite-qr-pdf.spec.ts", "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerFolderTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerTest.java", "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerFolderTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V2.010__create_invite_tokens_table.sql"]}
+      real_e2e: {status: 未作成, evidence: []}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ2: 招待トークン発行/一覧/失効、招待プレビュー/参加、QR/PDF、使用期限/回数上限、招待先フォルダ境界を確認。モックなしの招待参加E2Eは未作成。"
 
   - feature_key: team-admin
     name: チーム管理コンソール
     layer: 能力
     design_docs:
       - "docs/features/F10.1.1_team_org_admin_console"
+      - "docs/features/F01.2_org_team_member_role"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/role/RoleServiceTest.java", "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/team/TeamCoreAuthzContractIT.java", "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupScopeIntegrationTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V2.006__create_user_roles_table.sql", "backend/src/main/resources/db/migration/V2.007__create_permission_groups_table.sql", "backend/src/main/resources/db/migration/V2.008__create_permission_group_permissions_table.sql", "backend/src/main/resources/db/migration/V2.009__create_user_permission_groups_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/admin/f1011-admin-console.spec.ts", "frontend/tests/e2e/real/org-admin.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ3: 管理コンソール、メンバー/ロール変更、権限グループ、除名、所有権・アーカイブ導線と認可境界を確認。テストは今回未実行。"
 
   - feature_key: team-modules
     name: モジュール有効化
@@ -166,85 +228,118 @@ records:
     design_docs:
       - "docs/features/F01.3_template_module.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/template/ModuleServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/teams/template-module.spec.ts", "backend/src/test/java/com/mannschaft/app/template/controller/TeamModuleControllerTest.java", "backend/src/test/java/com/mannschaft/app/template/controller/TeamModuleCatalogControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/template/TeamModuleScopeContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V2.019__create_template_modules_table.sql", "backend/src/main/resources/db/migration/V2.021__create_team_enabled_modules_table.sql", "backend/src/main/resources/db/migration/V158.20260718115027__module_activation_backfill_grandfather.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/module-settings-catalog.spec.ts", "frontend/tests/e2e/real/module-activation-backfill.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ3: モジュールカタログ、ON/OFF、テンプレート適用、有料権利/無料上限、チーム越境認可、既存有効化データ移行を確認。テストは今回未実行。"
 
   - feature_key: organization-manage
     name: 組織作成・管理
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.2_org_team_member_role"
+      - "docs/features/F10.1.1_team_org_admin_console"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/organization/OrganizationServiceTest.java", "backend/src/test/java/com/mannschaft/app/organization/OrganizationSlugServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/organizations/org-hub.spec.ts", "frontend/tests/e2e/organizations/org-list.spec.ts", "backend/src/test/java/com/mannschaft/app/organization/OrganizationControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/organization/OrganizationCoreAuthzContractIT.java", "backend/src/test/java/com/mannschaft/app/organization/OrganizationCreateParentAuthzContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V2.003__create_organizations_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/org-admin.spec.ts", "frontend/tests/e2e/real/org-features.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ3: 組織作成、親組織指定、更新/削除/アーカイブ、管理コンソールと越境認可を確認。テストは今回未実行。"
 
   - feature_key: organization-members
     name: 組織メンバー管理
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.2_org_team_member_role"
+      - "docs/features/F10.1.1_team_org_admin_console"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/organization/service/OrganizationMembershipServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/organization/OrganizationControllerTest.java", "backend/src/main/java/com/mannschaft/app/organization/service/OrganizationMembershipService.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/organization/OrganizationCoreAuthzContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V60.001__create_memberships_table.sql", "backend/src/main/resources/db/migration/V73.001__backfill_memberships_from_admin_user_roles.sql"]}
+      real_e2e: {status: 未作成, evidence: []}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ: 組織メンバー一覧・membershipサービス・共通membershipsテーブル・認可契約テストを確認。専用の実環境E2Eは未作成。"
 
   - feature_key: village-join
     name: 村へ参加
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F17.1_village_community.md"
+      - "docs/features/F17.1_village_community_phase2_3_api_addendum.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/composables/village/useVillageMembershipApi.spec.ts", "backend/src/test/java/com/mannschaft/app/village/service/VillageJoinRequestServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/village/controller/VillageJoinRequestControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/village/service/VillageBannedMemberAuthzIntegrationTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V9.129__create_village_join_requests.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/village-join-request.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ: 参加申請画面・申請/審査API・永続化・村BAN境界・実環境E2Eを確認。テストは今回未実行。"
 
   - feature_key: village-members
     name: 村の構成員管理
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F17.1_village_community.md"
+      - "docs/features/F17.1_village_headman_console_and_recruit_categories.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/composables/village/useVillageMembershipApi.spec.ts", "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/village/controller/VillageMembershipControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/village/service/VillageBannedMemberAuthzIntegrationTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V9.126__create_village_memberships.sql", "backend/src/main/resources/db/migration/V160.20260721095957__alter_village_memberships_add_profile_public.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/villages.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ: 構成員一覧画面・加入/脱退/追放API・公開プロフィール・BAN認可境界を確認。実環境E2Eは村全体導線までで、構成員管理の専用シナリオは未確認。"
 
   - feature_key: village-events
     name: 村行事
@@ -271,17 +366,22 @@ records:
     design_docs:
       - "docs/features/F04.11_notification_inbox"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 不明
-    verification: {}
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/composables/useNotificationApi.spec.ts", "backend/src/test/java/com/mannschaft/app/notification/NotificationServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/notification/NotificationControllerTest.java", "backend/src/test/java/com/mannschaft/app/notification/NotificationFolderFilterContractIT.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/notification/NotificationSelfScopeContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V4.019__create_notifications_table.sql", "backend/src/main/resources/db/migration/V173.20260730033806__create_notification_fanout_jobs.sql"]}
+      real_e2e: {status: 未作成, evidence: []}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ: 通知一覧/フォルダ画面、通知API、fanoutジョブ、配信runner、自己スコープ契約を確認。モックE2Eはあるが実環境E2Eは未作成。"
 
   - feature_key: timeline
     name: タイムライン
@@ -304,36 +404,49 @@ records:
   - feature_key: chat
     name: チャット
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F04.2_chat.md"
+      - "docs/features/F04.2.1_chat_multi_tab_ui.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 不明
-    verification: {}
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/composables/chat/chatMessageMapper.spec.ts", "backend/src/test/java/com/mannschaft/app/chat/service/ChatMessageServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/chat/controller/ChatMessageControllerTest.java", "backend/src/test/java/com/mannschaft/app/chat/ws/ChatChannelSubscriptionAuthzIntegrationTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/chat/ChatAuthzScopeContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V4.013__create_chat_channels_table.sql", "backend/src/main/resources/db/migration/V4.014__create_chat_messages_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/chat-page.spec.ts", "frontend/tests/e2e/real/chat-thread.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ: チーム/組織チャット、メッセージ/スレッド/既読/WebSocket、予約送信・アーカイブbatch、認可契約と実環境E2Eを確認。テストは今回未実行。"
 
   - feature_key: circulation
     name: 回覧
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F05.2_circular.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 対象外
-    verification: {}
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/circulation/CirculationServiceTest.java", "backend/src/test/java/com/mannschaft/app/circulation/CirculationStampServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/teams/circulation.spec.ts", "backend/src/test/java/com/mannschaft/app/circulation/CirculationControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/circulation/CirculationWriteAclScopeContractIT.java", "backend/src/test/java/com/mannschaft/app/circulation/CirculationStampRecipientAclScopeContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V5.007__create_circulation_documents_table.sql", "backend/src/main/resources/db/migration/V5.008__create_circulation_recipients_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/circulation-member.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ: チーム/組織回覧、宛先・押印・コメント・添付・非同期エクスポート、ACL契約と実環境E2Eを確認。テストは今回未実行。"
 
   - feature_key: dashboard
     name: 個人ダッシュボード
@@ -377,104 +490,146 @@ records:
   - feature_key: survey
     name: アンケート
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F05.4_survey_vote.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 不明
-    verification: {}
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/utils/surveyResults.spec.ts", "backend/src/test/java/com/mannschaft/app/survey/SurveyServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/surveys/survey-crud.spec.ts", "backend/src/test/java/com/mannschaft/app/survey/SurveyDetailShapeContractIT.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/survey/SurveyScopeContractIT.java", "backend/src/test/java/com/mannschaft/app/survey/SurveyResultAccessGuardTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V5.014__create_surveys_table.sql", "backend/src/main/resources/db/migration/V5.017__create_survey_responses_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/survey-response-real.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う"
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: 作成・公開・回答・集計、対象範囲/結果公開境界、公開時非同期通知、実環境回答E2Eを確認。テストは今回未実行。"
 
   - feature_key: todo-memo
     name: ToDo・メモ類
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F02.3_todo_project.md"
+      - "docs/features/F02.5_quick_memo.md"
+      - "docs/features/F02.5_action_memo.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 不明
-    verification: {}
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/todo/TodoCommentServiceTest.java", "backend/src/test/java/com/mannschaft/app/quickmemo/service/QuickMemoServiceTest.java", "backend/src/test/java/com/mannschaft/app/actionmemo/service/ActionMemoServiceCoreTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/teams/todos.spec.ts", "frontend/tests/e2e/quick-memos/quick-memo.spec.ts", "frontend/tests/e2e/action-memo.spec.ts"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/todo/TodoScopeContractIT.java", "backend/src/test/java/com/mannschaft/app/quickmemo/QuickMemoSelfScopeContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V3.022__create_todos_table.sql", "backend/src/main/resources/db/migration/V3.108__create_quick_memos_table.sql", "backend/src/main/resources/db/migration/V5.041__create_action_memos_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/cmp099-calendar-targets-todos-real.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う"
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: TODO作成/共有、ポイっとメモ作成/閲覧・所有者境界、アクションメモ、各reminder batchを確認。TODOの実環境導線はあるが、複合能力全体を覆う実環境E2Eは未作成。"
 
   - feature_key: corkboard
-    name: 掲示板
+    name: 掲示板・コルクボード
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F05.1_bulletin_board.md"
+      - "docs/features/F09.8_corkboard.md"
+      - "docs/features/F09.8.1_corkboard_pin_dashboard.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 不明
-    verification: {}
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/composables/useCorkboardApi.spec.ts", "backend/src/test/java/com/mannschaft/app/bulletin/service/BulletinThreadServiceTest.java", "backend/src/test/java/com/mannschaft/app/corkboard/service/CorkboardPermissionServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/teams/bulletin.spec.ts", "frontend/tests/e2e/corkboard/corkboard.spec.ts"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/bulletin/service/BulletinTournamentScopeAuthorizationTest.java", "backend/src/test/java/com/mannschaft/app/corkboard/service/CorkboardPermissionServiceTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V5.002__create_bulletin_threads_table.sql", "backend/src/main/resources/db/migration/V9.006__create_corkboards_table.sql", "backend/src/main/resources/db/migration/V9.007__create_corkboard_cards_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/bulletin-archive-folder.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う"
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。掲示板とコルクボードを別能力カードとして表示。両方の画面/API/DBを確認し、コルクボードの整合batchも確認。掲示板の実環境E2Eはあるが、コルクボードの実環境E2Eは未作成。"
 
   - feature_key: pointcard
     name: ウォレット・ポイント
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F18_point_card_wallet.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 不明
-    verification: {}
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/components/wallet/BarcodePreview.spec.ts", "backend/src/test/java/com/mannschaft/app/pointcard/service/PointCardBalanceServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/wallet.spec.ts", "backend/src/test/java/com/mannschaft/app/pointcard/PointCardWalletScopeContractIT.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/pointcard/PointCardWalletScopeContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V9.136__create_point_card_providers.sql", "backend/src/main/resources/db/migration/V9.137__create_user_point_cards.sql", "backend/src/main/resources/db/migration/V9.148__create_point_card_balance_events.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/wallet.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。詳細な能力分割は今後の棚卸し実測時に行う"
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: ウォレット、カード登録/グループ、組織スタンプ/残高、照合batch、匿名化/組織削除listener、実環境E2Eを確認。Gate停止判定は本棚卸の対象外。"
 
   - feature_key: tournament
     name: 大会・試合記録
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F08.7_tournament_league.md"
+      - "docs/features/F08.7.1_tournament_extensions"
+      - "docs/features/F08.10_match_record_analytics"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 不明
-    verification: {}
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/utils/tournamentStandings.spec.ts", "backend/src/test/java/com/mannschaft/app/tournament/TournamentServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/tournaments/tournaments.spec.ts", "backend/src/test/java/com/mannschaft/app/tournament/TournamentScopeContractIT.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/tournament/TournamentScopeContractIT.java", "backend/src/test/java/com/mannschaft/app/tournament/TournamentPdfScopeContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V8.038__create_tournaments_table.sql", "backend/src/main/resources/db/migration/V8.044__create_tournament_matches_table.sql", "backend/src/main/resources/db/migration/V8.048__create_tournament_standings_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/tournament/F0871-tournament-crud.spec.ts", "frontend/tests/e2e/real/tournament/f087-visibility-matrix.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う"
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: 大会CRUD、参加者/日程/試合/スコア/順位、ロスター等拡張、コミット後非同期順位再計算、実環境E2Eを確認。テストは今回未実行。"
 
   - feature_key: safetycheck
     name: 安否確認
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F03.6_safety_check.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 不明
-    verification: {}
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 対象外
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckServiceTest.java", "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyResponseServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/teams/safety-check.spec.ts", "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckMapperTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckScopeContractIT.java", "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckServiceAuthzTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V3.080__create_safety_checks_table.sql", "backend/src/main/resources/db/migration/V3.081__create_safety_responses_table.sql"]}
+      real_e2e: {status: 未作成, evidence: []}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。健康・気象は含めず weather-health として非COREに残す。詳細な能力分割は今後の棚卸し実測時に行う"
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: チーム/組織安否確認、回答、追跡、テンプレート、認可境界を確認。専用background処理と実環境E2Eは未作成。健康・気象はweather-healthとして非COREに分離。"
 
   # ==========================================================================
   # 非CORE（layer=ドメイン, beta=停止, deploy_safety=不明）
@@ -485,10 +640,34 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: FEATURE_SHIFT_ENABLED
+      route_keywords: ["shift"]
     blockers:
+      - "β公開前に FEATURE_SHIFT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
+
+  - feature_key: shift-auto-assign
+    name: シフト自動割当
+    layer: 能力
+    design_docs:
+      - "docs/features/F03.5_shift/06_manual_authoring.md"
+    implementation:
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 対象外
+    verification:
+      integration: {status: 通過, evidence: ["backend/src/test/java/com/mannschaft/app/shift/ShiftAutoAssignFeatureGateContractIT.java"]}
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: FEATURE_SHIFT_AUTO_ASSIGN_ENABLED
+      route_keywords: []
+    blockers:
+      - "停止理由: 時刻を見ない割当が二重割当を生むため。方針転換 2026-09-09（設計書 F03.5 §11.1）"
+      - "既知の制約: フラグOFF中は未確認 SUCCEEDED run を持つシフト表を公開できない（設計書 §11.1.3 の申し送り）。本番データが存在する状態で改めてOFFにする場合は段階的停止か後始末2経路のゲート例外化が必須"
+    notes: "BE 入口ゲートのみ（ShiftAutoAssignController にクラスレベル @RequireFeature）。自動割当専用の URL は1本も無く、UI は /teams/*/shifts/*/board のタブ・ボタンとして親機能 shift の route 束縛（FEATURE_SHIFT_ENABLED）の内側にある。ここを GATE_ROUTE_MAP に束縛すると /teams/*/shifts 全体を巻き添えで遮断してしまうため、末尾の route_binding_exclusions に理由付きで宣言している（設計書 F03.5 §11.1.2-5）。FE の出し分けはコンポーネント層（戦役B-2）。"
 
   - feature_key: matching
     name: マッチング・求人
@@ -496,8 +675,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_MATCHING_ENABLED
+      route_keywords: ["matching", "match-analytics", "/jobs"]
+    blockers:
+      - "β公開前に FEATURE_MATCHING_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: billing-payment
@@ -506,8 +687,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: FEATURE_BILLING_PAYMENT_ENABLED
+      route_keywords: ["billing", "payment", "contract", "wallet", "invoice", "fee-statement"]
     blockers:
+      - "β公開前に FEATURE_BILLING_PAYMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -517,8 +700,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: FEATURE_PROMOTION_ENABLED
+      route_keywords: ["ad-", "ads/", "advertis", "signage", "promotion", "campaign"]
     blockers:
+      - "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -528,8 +713,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_MARKET_ENABLED
+      route_keywords: ["market"]
+    blockers:
+      - "β公開前に FEATURE_MARKET_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: workflow-forms
@@ -538,8 +725,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_WORKFLOW_FORMS_ENABLED
+      route_keywords: ["workflow", "/forms"]
+    blockers:
+      - "β公開前に FEATURE_WORKFLOW_FORMS_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: facility
@@ -548,8 +737,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_FACILITY_ENABLED
+      route_keywords: ["facilit", "equipment", "parking"]
+    blockers:
+      - "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: property-repairplan
@@ -558,8 +749,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_PROPERTY_REPAIRPLAN_ENABLED
+      route_keywords: ["property", "repair"]
+    blockers:
+      - "β公開前に FEATURE_PROPERTY_REPAIRPLAN_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: "唯一AOP Gateあり（RequireRepairPlanModule）"
 
   - feature_key: family-care
@@ -568,19 +761,35 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_FAMILY_CARE_ENABLED
+      route_keywords: ["families", "care-link", "guardianship", "school-attendance"]
+    blockers:
+      - "β公開前に FEATURE_FAMILY_CARE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: weather-health
     name: 気象・健康
     layer: ドメイン
+    design_docs:
+      - "docs/features/F02.10_weather_widget.md"
+      - "docs/features/F03.12_care_recipient_event_watch_notification.md"
+    implementation:
+      frontend: 部分実装
+      backend: 部分実装
+      database: 部分実装
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/weather/service/WeatherForecastServiceTest.java", "backend/src/test/java/com/mannschaft/app/family/service/CareLinkServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/dashboard-weather.spec.ts", "backend/src/test/java/com/mannschaft/app/weather/controller/WeatherControllerIT.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/family/CareLinkInvitationScopeContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V66.003__create_user_weather_locations.sql"]}
+      real_e2e: {status: 未作成, evidence: []}
     release:
       beta: 停止
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置"
+    notes: "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置。棚卸バッチ: 天気widget/API/位置導出・取込schedulerと、別系統のケアリンク機能は確認できたが、統合された健康機能の画面/API/データモデルは確認できないため部分実装。"
 
   - feature_key: skill-resume
     name: スキル・履歴書
@@ -588,8 +797,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_SKILL_RESUME_ENABLED
+      route_keywords: ["resume", "/skills"]
+    blockers:
+      - "β公開前に FEATURE_SKILL_RESUME_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: recruitment
@@ -598,8 +809,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_RECRUITMENT_ENABLED
+      route_keywords: ["recruit"]
+    blockers:
+      - "β公開前に FEATURE_RECRUITMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: succession-proxy
@@ -608,8 +821,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_SUCCESSION_PROXY_ENABLED
+      route_keywords: ["succession", "proxy"]
+    blockers:
+      - "β公開前に FEATURE_SUCCESSION_PROXY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: gdpr-disclosure
@@ -618,8 +833,10 @@ records:
     release:
       beta: 内部限定
       deploy_safety: 不明
-      gate_key: null
+      gate_key: FEATURE_GDPR_DISCLOSURE_ENABLED
+      route_keywords: ["gdpr"]
     blockers:
+      - "β公開前に FEATURE_GDPR_DISCLOSURE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "CMP-102: cleanupExpiredExportsバッチが失敗中（Issue #2856）"
     notes: "基盤扱いすべきか要判断"
 
@@ -629,8 +846,10 @@ records:
     release:
       beta: 内部限定
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_MODERATION_INCIDENT_ENABLED
+      route_keywords: ["moderation", "incident"]
+    blockers:
+      - "β公開前に FEATURE_MODERATION_INCIDENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: "運用基盤"
 
   - feature_key: webhook-sync
@@ -639,8 +858,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: FEATURE_WEBHOOK_SYNC_ENABLED
+      route_keywords: ["webhook", "sync"]
     blockers:
+      - "β公開前に FEATURE_WEBHOOK_SYNC_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -650,8 +871,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_TRANSLATION_SEARCH_ENABLED
+      route_keywords: ["translation", "analytics"]
+    blockers:
+      - "β公開前に FEATURE_TRANSLATION_SEARCH_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: gamification
@@ -660,6 +883,41 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_GAMIFICATION_ENABLED
+      route_keywords: ["gamification", "supporter"]
+    blockers:
+      - "β公開前に FEATURE_GAMIFICATION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
+
+# ============================================================================
+# route ガードの除外ページ（隔離対象機能に属するが、意図的に束縛しないもの）
+# ============================================================================
+#
+# 番人 FeatureGatePageCoverageGuardTest が frontend/app/pages/ を走査し、
+# 隔離対象機能の route_keywords に一致するページが GATE_ROUTE_MAP で覆われているかを検査する。
+# ここに列挙したパスだけがその検査から除外される。**除外には必ず理由を書くこと**
+# （理由が空のエントリは番人が red にする）。
+#
+# 実在しないパス・既に覆われたパスが残っていても番人が red にする（陳腐化防止）。
+route_coverage_exclusions:
+  - path: "/ads/unsubscribe"
+    reason: "広告配信停止。definePageMeta({ auth: false }) の未ログイン導線であり、
+      メール内リンクから第三者が踏む。ここを塞ぐと配信停止そのものが不能になる（法令・信頼性の観点でも塞げない）。"
+  - path: "/care-links/invitations/[token]"
+    reason: "見守り招待の受諾。definePageMeta({ auth: false }) の未ログイン導線であり、
+      招待された側はまだアカウントを持たないことがある。塞ぐと招待受諾が成立しない。"
+
+# ==========================================================================
+# route 束縛の明示除外（規約 7-b）
+#
+# gate_key は発行済みだが **専用の URL を1本も持たない BE 専用ゲート**だけをここに書く。
+# 理由必須。番人 FeatureGateRouteMapGuardTest が理由の空欄・陳腐化・綴り間違いに加え、
+# **除外キーが本番コードの @RequireFeature に実在すること (vii)** を機械的に照合する。
+# ==========================================================================
+route_binding_exclusions:
+  - gate_key: FEATURE_SHIFT_AUTO_ASSIGN_ENABLED
+    reason: "自動割当は専用の top-level route を持たず、UI は /teams/*/shifts/*/board のタブ・ボタン
+      として親機能 shift の route 束縛（FEATURE_SHIFT_ENABLED）の内側にある。本キーを
+      GATE_ROUTE_MAP へ束縛すると /teams/*/shifts 全体が巻き添えで遮断されるため束縛しない。
+      入口の遮断は BE のクラスレベル @RequireFeature（ShiftAutoAssignController）が担い、
+      FE の出し分けはコンポーネント層で行う（設計書 docs/features/F03.5_shift/06_manual_authoring.md §11.1.2-5）。"

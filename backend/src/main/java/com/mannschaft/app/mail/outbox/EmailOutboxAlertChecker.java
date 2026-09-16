@@ -1,5 +1,7 @@
 package com.mannschaft.app.mail.outbox;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,8 @@ public class EmailOutboxAlertChecker {
 
     private final EmailOutboxRepository repository;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると outbox の PENDING 滞留・DEAD_LETTER 増加が誰にも気付かれず、メール送信の停止が無検知のまま継続する")
     @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
     // 起動間隔は 1 分（fixedDelay）。処理は集計クエリとアラート送出のみで通常は 1 秒未満。アラートは外部に届く副作用であるため多重送出を避ける必要があり、
     // 間隔の 5 倍を上限とする。

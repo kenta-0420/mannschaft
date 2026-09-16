@@ -1,6 +1,7 @@
 package com.mannschaft.app.errorreport.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.errorreport.ErrorReportErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
@@ -9,11 +10,16 @@ import com.mannschaft.app.errorreport.dto.ErrorReportBulkUpdateRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportRequest;
 import com.mannschaft.app.errorreport.dto.ErrorReportUpdateRequest;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
+import com.mannschaft.app.errorreport.event.ErrorReportRaisedEvent;
+import com.mannschaft.app.errorreport.event.ErrorReportRegressionDetectedEvent;
+import com.mannschaft.app.errorreport.event.ErrorReportResolvedEvent;
+import com.mannschaft.app.errorreport.event.ErrorReportSeverityEscalatedEvent;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,10 +44,15 @@ import java.util.Optional;
 public class ErrorReportService {
 
     private final ErrorReportRepository errorReportRepository;
-    private final ErrorReportNotifier errorReportNotifier;
+    /**
+     * Issue #2990 L11 — 通知は業務TX内で発火せず、ID だけを載せた業務イベントを publish する。
+     * 実配送は {@link ErrorReportNotificationListener} が {@code AFTER_COMMIT} で行う。
+     */
+    private final ApplicationEventPublisher eventPublisher;
     private final StringRedisTemplate redisTemplate;
     /** F12.5 Phase 2-C — CRITICAL/HIGH 新規 / REOPEN 時に AI 即時分析をキックする。 */
-    private final ErrorReportAiAnalysisService aiAnalysisService;
+    /** Issue #2990 L4: AI 即時分析の起動は Dispatcher 経由（プロキシ境界を跨がせるため）。 */
+    private final ErrorReportAiAnalysisDispatcher aiAnalysisDispatcher;
     /**
      * F10.5/F10.6 Phase 10-β 後続-⑥ — @Async プロキシバイパス回避のため、
      * バックエンド例外の非同期記録処理は別 Bean に切り出している。
@@ -89,10 +100,10 @@ public class ErrorReportService {
                 if (request.getUserComment() != null) {
                     report.setLatestUserComment(request.getUserComment());
                 }
-                errorReportNotifier.notifyRegression(report);
+                eventPublisher.publishEvent(new ErrorReportRegressionDetectedEvent(report.getId()));
                 // F12.5 Phase 2-C — REOPEN かつ severity HIGH 以上なら AI 即時分析をキック
                 if (report.getSeverity().ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
-                    aiAnalysisService.analyzeAfterCommit(report.getId(), null);
+                    aiAnalysisDispatcher.analyzeAfterCommit(report.getId(), null);
                 }
                 log.info("エラーレポートリグレッション検知: id={}, hash={}", report.getId(), errorHash);
                 return report;
@@ -121,7 +132,8 @@ public class ErrorReportService {
 
                 // severity 昇格通知
                 if (newSeverity.ordinal() > oldSeverity.ordinal()) {
-                    errorReportNotifier.notifyEscalation(updated, oldSeverity, newSeverity);
+                    eventPublisher.publishEvent(new ErrorReportSeverityEscalatedEvent(
+                            updated.getId(), oldSeverity, newSeverity));
                 }
 
                 log.info("エラーレポート重複集約: id={}, hash={}, count={}", updated.getId(), errorHash, updated.getOccurrenceCount());
@@ -163,10 +175,9 @@ public class ErrorReportService {
 
         // 新規作成時の通知
         if (severity.ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
-            errorReportNotifier.notifySlack(saved);
-            errorReportNotifier.notifySystemAdmins(saved);
+            eventPublisher.publishEvent(new ErrorReportRaisedEvent(saved.getId(), true));
             // F12.5 Phase 2-C — 新規 HIGH/CRITICAL は AI 即時分析をキック
-            aiAnalysisService.analyzeAfterCommit(saved.getId(), null);
+            aiAnalysisDispatcher.analyzeAfterCommit(saved.getId(), null);
         }
 
         log.info("エラーレポート新規作成: id={}, hash={}, severity={}", saved.getId(), errorHash, severity);
@@ -309,9 +320,9 @@ public class ErrorReportService {
                 .orElseThrow(() -> new BusinessException(ErrorReportErrorCode.ERROR_REPORT_NOT_FOUND));
 
         ErrorReportStatus newStatus = request.getStatus() != null
-                ? ErrorReportStatus.valueOf(request.getStatus()) : null;
+                ? EnumInputParser.parse(ErrorReportStatus.class, request.getStatus(), "status") : null;
         ErrorReportSeverity newSeverity = request.getSeverity() != null
-                ? ErrorReportSeverity.valueOf(request.getSeverity()) : null;
+                ? EnumInputParser.parse(ErrorReportSeverity.class, request.getSeverity(), "severity") : null;
 
         if (newStatus != null) {
             report.setStatus(newStatus);
@@ -327,7 +338,7 @@ public class ErrorReportService {
             report.resolve(adminId);
             // 報告者通知（user_id 非NULL時）
             if (report.getUserId() != null) {
-                errorReportNotifier.notifyResolution(report);
+                eventPublisher.publishEvent(new ErrorReportResolvedEvent(report.getId()));
             }
         }
 
@@ -342,7 +353,7 @@ public class ErrorReportService {
      * @return 更新件数
      */
     public int bulkUpdate(ErrorReportBulkUpdateRequest request) {
-        ErrorReportStatus status = ErrorReportStatus.valueOf(request.getStatus());
+        ErrorReportStatus status = EnumInputParser.parse(ErrorReportStatus.class, request.getStatus(), "status");
         if (status != ErrorReportStatus.RESOLVED
                 && status != ErrorReportStatus.IGNORED) {
             throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_INVALID_STATUS_TRANSITION);

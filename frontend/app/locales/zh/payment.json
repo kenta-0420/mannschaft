@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "支付管理",
+      "contentGate": {"title":"内容门管理","loading":"加载中…","loadError":"内容门加载失败","contentType":"内容类型","contentId":"内容 ID","post":"文章","announcement":"公告","save":"保存","saveSuccess":"内容门已保存","saveError":"内容门保存失败","titleHidden":"隐藏标题","noItems":"没有可用的收费项目","clearHint":"移除所有项目并保存即可解除门禁"},
       "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "支付项目",
       "selectItem": "请选择支付项目",

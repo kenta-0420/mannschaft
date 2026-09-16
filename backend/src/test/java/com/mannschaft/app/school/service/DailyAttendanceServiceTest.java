@@ -12,7 +12,9 @@ import com.mannschaft.app.school.dto.DailyRollCallRequest;
 import com.mannschaft.app.school.dto.DailyRollCallSummary;
 import com.mannschaft.app.school.entity.DailyAttendanceRecordEntity;
 import com.mannschaft.app.school.error.SchoolErrorCode;
+import com.mannschaft.app.school.event.DailyRollCallRecordedEvent;
 import com.mannschaft.app.school.repository.DailyAttendanceRecordRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -57,7 +59,7 @@ class DailyAttendanceServiceTest {
     private AccessControlService accessControlService;
 
     @Mock
-    private SchoolAttendanceNotificationService notificationService;
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private DailyAttendanceService dailyAttendanceService;
@@ -121,9 +123,10 @@ class DailyAttendanceServiceTest {
             given(dailyAttendanceRecordRepository.findByTeamIdAndStudentUserIdAndAttendanceDate(
                     any(), any(), any())).willReturn(Optional.empty());
 
+            java.util.concurrent.atomic.AtomicLong seq = new java.util.concurrent.atomic.AtomicLong(1000L);
             given(dailyAttendanceRecordRepository.save(any())).willAnswer(inv -> {
                 DailyAttendanceRecordEntity e = inv.getArgument(0);
-                ReflectionTestUtils.setField(e, "id", 1L);
+                ReflectionTestUtils.setField(e, "id", seq.incrementAndGet());
                 return e;
             });
 
@@ -141,7 +144,16 @@ class DailyAttendanceServiceTest {
             assertThat(summary.getRecordedAt()).isNotNull();
 
             verify(dailyAttendanceRecordRepository, times(3)).save(any());
-            verify(notificationService, times(3)).notifyDailyAttendance(any(), any(), any());
+
+            // Issue #2990 L6: 業務TX内では通知を直接呼ばず、登録した行の ID を載せたイベントを
+            // 1 回だけ publish する。UNDECIDED を含む全件を載せ、送るか否かの判定は
+            // SchoolAttendanceNotificationService（＝リスナー側）に残す。
+            ArgumentCaptor<DailyRollCallRecordedEvent> eventCaptor =
+                    ArgumentCaptor.forClass(DailyRollCallRecordedEvent.class);
+            verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+            DailyRollCallRecordedEvent published = eventCaptor.getValue();
+            assertThat(published.teamId()).isEqualTo(TEAM_ID);
+            assertThat(published.recordIds()).containsExactly(1001L, 1002L, 1003L);
         }
 
         @Test
@@ -174,6 +186,12 @@ class DailyAttendanceServiceTest {
 
             // save が呼ばれたこと（更新パスを通過）を確認
             verify(dailyAttendanceRecordRepository, times(1)).save(any());
+
+            // Issue #2990 L6: 更新パスでも既存行の ID を載せたイベントを publish する。
+            ArgumentCaptor<DailyRollCallRecordedEvent> eventCaptor =
+                    ArgumentCaptor.forClass(DailyRollCallRecordedEvent.class);
+            verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+            assertThat(eventCaptor.getValue().recordIds()).containsExactly(10L);
         }
 
         @Test
@@ -189,7 +207,13 @@ class DailyAttendanceServiceTest {
             doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
             given(dailyAttendanceRecordRepository.findByTeamIdAndStudentUserIdAndAttendanceDate(
                     any(), any(), any())).willReturn(Optional.empty());
-            given(dailyAttendanceRecordRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            // 新規行は save で採番される。Issue #2990 L6 のイベントは採番後の ID を載せるため、
+            // 実装と同じく save 後に ID が入る振る舞いを再現する。
+            given(dailyAttendanceRecordRepository.save(any())).willAnswer(inv -> {
+                DailyAttendanceRecordEntity e = inv.getArgument(0);
+                ReflectionTestUtils.setField(e, "id", 2001L);
+                return e;
+            });
 
             // Act
             DailyRollCallSummary summary = dailyAttendanceService.submitDailyRollCall(

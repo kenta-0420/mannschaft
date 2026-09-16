@@ -23,7 +23,7 @@ const maxWorkers = cpuCount >= 8 ? '25%' : undefined
 export default defineVitestConfig({
   test: {
     environment: 'nuxt',
-    include: ['tests/unit/**/*.spec.ts'],
+    include: ['tests/unit/**/*.spec.ts', 'app/**/*.spec.ts'],
     globals: true,
     hookTimeout: 120000,
     // ワーカー過剰供給の是正（Issue #2609）

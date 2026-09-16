@@ -48,12 +48,14 @@ class ReferenceTypeIntegrityCheckTest {
     private ReferenceTypeIntegrityCheck check;
     private ListAppender<ILoggingEvent> appender;
     private Logger targetLogger;
+    private Level originalLogLevel;
 
     @BeforeEach
     void setUp() {
         check = new ReferenceTypeIntegrityCheck(jdbcTemplate);
 
         targetLogger = (Logger) LoggerFactory.getLogger(ReferenceTypeIntegrityCheck.class);
+        originalLogLevel = targetLogger.getLevel();
         appender = new ListAppender<>();
         appender.start();
         targetLogger.addAppender(appender);
@@ -64,6 +66,7 @@ class ReferenceTypeIntegrityCheckTest {
     void tearDown() {
         targetLogger.detachAppender(appender);
         appender.stop();
+        targetLogger.setLevel(originalLogLevel);
     }
 
     @Test

@@ -399,7 +399,7 @@ export function useSurveyApi() {
     // 一覧は従来どおりフラットな SurveyResponse の配列。enum だけ FE 値へ写す。
     const raw = await api<{
       data: SurveyResponseWire[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys?${qs}`)
     return { ...raw, data: (raw.data ?? []).map(adaptSurvey) }
   }

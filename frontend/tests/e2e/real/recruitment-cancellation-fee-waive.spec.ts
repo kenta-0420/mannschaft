@@ -11,7 +11,7 @@
  *   近い時刻で（＝ tier が発火する時刻に）キャンセルする必要がある。
  *
  *   セットアップは market-apply.real.spec.ts に倣い API で高速に行う（UI を使わず）:
- *     1. ADMIN（e2e-admin, チーム FC東京U-18 の ADMIN）でキャンセルポリシーを作成
+ *     1. ADMIN（e2e-dummy-1, Team 1 の ADMIN）でキャンセルポリシーを作成
  *        （free_until_hours_before=200h, tier1: 100h 以内で 50%）
  *     2. paymentEnabled=true / price=2000 / payeeKind=TEAM の INDIVIDUAL 公開枠を作成・公開
  *        （startAt は現在+2h なので、直後の申込・即キャンセルは tier1（50%）に必ず該当する）
@@ -54,7 +54,9 @@ const BE = process.env.BE_ORIGIN ?? 'http://localhost:8080'
 const BE_API = `${BE}/api/v1`
 const API_BASE_URL = process.env.API_BASE_URL ?? BE
 
-const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
+// e2e-admin は SYSTEM_ADMIN であり、チーム単位の role は ADMIN ではない。
+// TEAM scope の作成・免除と READY な Connect 口座を一貫して使える Team 1 ADMIN を既定にする。
+const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-dummy-1@test.mannschaft.local'
 const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
 const APPLICANT_EMAIL = 'e2e-dummy-2@test.mannschaft.local'
 const APPLICANT_PASSWORD = 'TestPass2026!'
@@ -85,7 +87,7 @@ async function resolveAdminTeamId(api: APIRequestContext, token: string): Promis
   expect(res.status(), '/me/teams は 200').toBe(200)
   const json = (await res.json()) as { data: Array<{ id: number; name: string; role: string }> }
   const adminTeam =
-    json.data.find((t) => t.role === 'ADMIN' && t.name.includes('FC東京U-18')) ??
+    json.data.find((t) => t.role === 'ADMIN' && t.id === 1) ??
     json.data.find((t) => t.role === 'ADMIN')
   expect(adminTeam, 'ADMIN ロールのチームが存在する').toBeTruthy()
   return adminTeam!.id
@@ -236,6 +238,14 @@ test('CMP024-001: 申込者が UI から申込・キャンセルし、fee>0 の�
     applyButton.click(),
   ])
   expect(applyRes.status(), '申込 API は 201').toBe(201)
+
+  // 有料募集は応募者本人の支払い確認ダイアログを自動表示する。
+  // 本 spec の対象はキャンセル料免除であり、Stripe 与信そのものではないため、
+  // 導線が応募者側に表示されたことを確認して閉じ、キャンセル操作へ進む。
+  const paymentDialog = page.getByRole('dialog', { name: '謝礼のお支払い確認' })
+  await expect(paymentDialog).toBeVisible({ timeout: 15_000 })
+  await paymentDialog.getByRole('button', { name: 'キャンセル', exact: true }).click()
+  await expect(paymentDialog).not.toBeVisible({ timeout: 10_000 })
 
   // キャンセル（見積り取得 → 確認モーダル → 同意してキャンセル）
   const cancelButton = page.getByRole('button', { name: '申込をキャンセル', exact: true })

@@ -31,6 +31,8 @@ export type BillingPriceBandsReplaceRequest = components['schemas']['BillingPric
 export type BillingPlanFeaturesReplaceRequest = components['schemas']['BillingPlanFeaturesReplaceRequest']
 export type BillingManualGrantRequest = components['schemas']['BillingManualGrantRequest']
 export type BillingPagedContractResponse = components['schemas']['BillingPagedContractResponse']
+export type BillingCancelRequest = components['schemas']['BillingCancelRequest']
+export type BillingContractCancelResponse = components['schemas']['BillingContractCancelResponse']
 
 /** API 表現のスコープ種別（設計書 02 §0）。 */
 export type BillingScopeKind = 'USER' | 'TEAM' | 'ORG'
@@ -117,25 +119,45 @@ export function useBillingApi() {
   }
 
   // ============================================================
-  // 解約
+  // 解約（Billing Center PR6a: 期末解約の予約・撤回）
   // ============================================================
 
-  async function cancelMyContract(contractId: string) {
-    return api<{ data: BillingContractResponse }>(`/api/v1/me/billing/contracts/${contractId}`, { method: 'DELETE' })
+  /**
+   * 期末解約を予約する（無償契約は即時失効）。
+   *
+   * <p>正本 05_billing_center.md:334-335（D6）: スコープに関わらず唯一の {@code /me} 配下パスへ
+   * 集約する。TEAM/ORG の契約も {@code contractId} で操作し、認可は BE 側がスコープを解決して
+   * 判定する。旧 {@code DELETE /me|teams/{id}|organizations/{id}/billing/contracts/{contractId}}
+   * （即時削除）を呼んでいた FE 唯一の呼び出し元 {@code BillingManagePanel.vue} は本メソッドへ
+   * 完全移行した（Codex 検分 P1 是正）。FE composable からは旧メソッドを削除済み
+   * （呼び出し箇所ゼロのため）。BE 側の旧エンドポイント自体の要否は backend 側の判断であり、
+   * 本 PR では削除していない。</p>
+   *
+   * @param contractId 対象契約
+   * @param version    契約の CAS 期待値（不一致は 409）
+   */
+  async function cancelContractReservation(contractId: string, version: number) {
+    const body: BillingCancelRequest = { version }
+    return api<{ data: BillingContractCancelResponse }>(`/api/v1/me/billing/contracts/${contractId}/cancel`, {
+      method: 'POST',
+      body,
+      headers: idempotencyHeaders(),
+    })
   }
 
-  async function cancelTeamContract(teamId: string, contractId: string) {
-    return api<{ data: BillingContractResponse }>(`/api/v1/teams/${teamId}/billing/contracts/${contractId}`, { method: 'DELETE' })
-  }
-
-  async function cancelOrgContract(orgId: string, contractId: string) {
-    return api<{ data: BillingContractResponse }>(`/api/v1/organizations/${orgId}/billing/contracts/${contractId}`, { method: 'DELETE' })
-  }
-
-  async function cancelContract(scopeKind: BillingScopeKind, scopeId: string, contractId: string) {
-    if (scopeKind === 'USER') return cancelMyContract(contractId)
-    if (scopeKind === 'TEAM') return cancelTeamContract(scopeId, contractId)
-    return cancelOrgContract(scopeId, contractId)
+  /**
+   * 解約予約を撤回する（期末を跨ぐ前に限り可能）。
+   *
+   * @param contractId 対象契約
+   * @param version    契約の CAS 期待値（不一致は 409）
+   */
+  async function resumeContractCancellation(contractId: string, version: number) {
+    const body: BillingCancelRequest = { version }
+    return api<{ data: BillingContractCancelResponse }>(`/api/v1/me/billing/contracts/${contractId}/cancel`, {
+      method: 'DELETE',
+      body,
+      headers: idempotencyHeaders(),
+    })
   }
 
   // ============================================================
@@ -239,10 +261,8 @@ export function useBillingApi() {
     createTeamContract,
     createOrgContract,
     createContract,
-    cancelMyContract,
-    cancelTeamContract,
-    cancelOrgContract,
-    cancelContract,
+    cancelContractReservation,
+    resumeContractCancellation,
     changeMyPlan,
     changeTeamPlan,
     changeOrgPlan,

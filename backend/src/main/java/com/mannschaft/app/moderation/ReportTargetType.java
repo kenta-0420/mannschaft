@@ -11,5 +11,7 @@ public enum ReportTargetType {
     /** ソーシャルプロフィール */
     SOCIAL_PROFILE,
     /** ユーザー */
-    USER
+    USER,
+    /** 募集札 */
+    RECRUITMENT_LISTING
 }

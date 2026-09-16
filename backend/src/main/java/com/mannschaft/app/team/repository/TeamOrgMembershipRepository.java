@@ -127,4 +127,15 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
         + "WHERE m.teamId IN :teamIds "
         + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
     List<TeamOrgIdProjection> findTeamOrgIdProjectionsByTeamIdIn(@Param("teamIds") Set<Long> teamIds);
+
+    /**
+     * チームID集合に対応するACTIVEな所属組織IDを重複なく一括取得する。
+     *
+     * @param teamIds 対象チームID集合（空集合は呼び出し側で除外する）
+     * @return 所属組織ID一覧
+     */
+    @Query("SELECT DISTINCT m.organizationId FROM TeamOrgMembershipEntity m "
+        + "WHERE m.teamId IN :teamIds "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
+    List<Long> findDistinctOrganizationIdsByTeamIdIn(@Param("teamIds") Set<Long> teamIds);
 }

@@ -1,5 +1,8 @@
 package com.mannschaft.app.village.fanout;
 
+import com.mannschaft.app.notification.fanout.FanoutPageRequest;
+import com.mannschaft.app.notification.fanout.FanoutRecipient;
+import com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSource;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,9 +47,15 @@ public class VillageFanoutRecipientSource implements FanoutRecipientSource {
     }
 
     @Override
-    public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
-        UUID villageId = UUID.fromString(scopeRef);
-        return membershipRepository.findActiveUserSubjectIdsByVillageIdKeyset(
-                villageId, cursorSubjectId, PageRequest.of(0, limit));
+    public List<FanoutRecipient> nextPage(FanoutPageRequest request) {
+        if (!request.isSingleShard()) {
+            // VILLAGE はシャード分割に非対応（enqueue が shard_count=1 でしか発行しない）。
+            throw new UnsupportedOperationException(
+                    SCOPE_TYPE + " はシャード分割に非対応（shard_count>1 で呼ばれた）");
+        }
+        UUID villageId = UUID.fromString(request.scopeRef());
+        return FanoutRecipientRowMapper.toRecipients(
+                membershipRepository.findActiveUserSubjectIdsByVillageIdKeyset(
+                        villageId, request.cursorSubjectId(), PageRequest.of(0, request.limit())));
     }
 }

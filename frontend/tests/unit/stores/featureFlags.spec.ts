@@ -48,4 +48,38 @@ describe('useFeatureFlagStore', () => {
     expect(store.isEnabled('FEATURE_NEW_UI')).toBe(false)
     consoleErrorSpy.mockRestore()
   })
+  it('同時多重呼び出しでも公開フラグ API は1回しか叩かない（in-flight 重複排除）', async () => {
+    let resolveFetch: ((v: { flagKey: string, enabled: boolean }[]) => void) | undefined
+    publicApiMock.getPublicFlags.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve
+      }),
+    )
+
+    const store = useFeatureFlagStore()
+    const a = store.loadPublicFlags()
+    const b = store.loadPublicFlags()
+    const c = store.loadPublicFlags()
+
+    resolveFetch!([{ flagKey: 'FEATURE_MARKET_ENABLED', enabled: true }])
+    await Promise.all([a, b, c])
+
+    expect(publicApiMock.getPublicFlags).toHaveBeenCalledTimes(1)
+    expect(store.isEnabled('FEATURE_MARKET_ENABLED')).toBe(true)
+    expect(store.publicLoaded).toBe(true)
+  })
+
+  it('取得に失敗しても in-flight を解放し、次回の再試行を封じない', async () => {
+    publicApiMock.getPublicFlags.mockRejectedValueOnce(new Error('network error'))
+    const store = useFeatureFlagStore()
+    await expect(store.loadPublicFlags()).rejects.toThrow('network error')
+
+    publicApiMock.getPublicFlags.mockResolvedValueOnce([
+      { flagKey: 'FEATURE_MARKET_ENABLED', enabled: true },
+    ])
+    await store.loadPublicFlags()
+
+    expect(publicApiMock.getPublicFlags).toHaveBeenCalledTimes(2)
+    expect(store.isEnabled('FEATURE_MARKET_ENABLED')).toBe(true)
+  })
 })

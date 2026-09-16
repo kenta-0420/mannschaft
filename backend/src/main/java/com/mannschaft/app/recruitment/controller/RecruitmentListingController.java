@@ -3,7 +3,9 @@ package com.mannschaft.app.recruitment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CancellationFeeEstimateResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse;
@@ -66,6 +68,7 @@ public class RecruitmentListingController {
     @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/search")
     @Operation(summary = "募集枠 全体検索 (§Phase4)")
+    @RequireFeature("FEATURE_RECRUITMENT_ENABLED")
     public ResponseEntity<PagedResponse<RecruitmentListingSummaryResponse>> searchListings(
             @Valid @ModelAttribute RecruitmentListingSearchRequest req) {
         // XSS 対策: keyword・location をトリムし、空文字列は null に正規化
@@ -101,6 +104,8 @@ public class RecruitmentListingController {
 
     @PatchMapping("/{id}")
     @Operation(summary = "募集枠編集 (§5.7)")
+    // updateInternal が checkListingManagementAccess で札主スコープと認証主体を照合する。
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody UpdateRecruitmentListingRequest request) {
@@ -117,6 +122,8 @@ public class RecruitmentListingController {
 
     @PostMapping("/{id}/cancel")
     @Operation(summary = "募集枠 主催者キャンセル")
+    // cancelInternal が checkListingManagementAccess で札主スコープと認証主体を照合する。
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> cancel(
             @PathVariable Long id,
             @RequestBody(required = false) CancelRecruitmentListingRequest request) {

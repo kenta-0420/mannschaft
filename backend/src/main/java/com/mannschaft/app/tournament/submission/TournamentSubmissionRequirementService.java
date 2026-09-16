@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament.submission;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.forms.SubmissionStatus;
 import com.mannschaft.app.forms.dto.CreateFormSubmissionRequest;
 import com.mannschaft.app.forms.dto.FormSubmissionResponse;
@@ -108,7 +109,7 @@ public class TournamentSubmissionRequirementService {
         requireOrganizationTemplate(request.getFormTemplateId(), organizationId);
 
         SubmissionTargetScope scope = request.getTargetScope() != null
-                ? SubmissionTargetScope.valueOf(request.getTargetScope())
+                ? EnumInputParser.parse(SubmissionTargetScope.class, request.getTargetScope(), "targetScope")
                 : SubmissionTargetScope.ALL_TEAMS;
 
         TournamentSubmissionRequirementEntity req = TournamentSubmissionRequirementEntity.builder()
@@ -183,7 +184,7 @@ public class TournamentSubmissionRequirementService {
         }
 
         SubmissionTargetScope newScope = request.getTargetScope() != null
-                ? SubmissionTargetScope.valueOf(request.getTargetScope())
+                ? EnumInputParser.parse(SubmissionTargetScope.class, request.getTargetScope(), "targetScope")
                 : req.getTargetScope();
 
         req.update(request.getTitle(), request.getDescription(), request.getDivisionId(),

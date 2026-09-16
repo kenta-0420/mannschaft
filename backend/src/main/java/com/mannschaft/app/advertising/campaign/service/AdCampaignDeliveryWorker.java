@@ -1,5 +1,7 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
@@ -94,6 +96,9 @@ public class AdCampaignDeliveryWorker {
     /**
      * @Scheduled で 1 分間隔起動。{@code @SchedulerLock} で多重実行防止。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "止まるのは広告配信そのものであり、広告機能を閉じる目的と一致する。配信カーソルはメモリ上の再開位置に過ぎず既存行の整合性は壊れない")
     @Scheduled(cron = "${mannschaft.ad.delivery.cron:0 * * * * *}", zone = "Asia/Tokyo")
     @SchedulerLock(name = "adCampaignDelivery", lockAtMostFor = "5m", lockAtLeastFor = "30s")
     @BatchEndpoint(name = "ad-campaign-delivery",

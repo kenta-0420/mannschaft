@@ -37,6 +37,8 @@ export interface TeamShellMutators {
   updateTeamMapEmbed: (url: string | null) => void
   /** 所在地コード（都道府県/市区町村）を更新（updated:regionCodes 由来）。 */
   updateTeamRegionCodes: (prefectureCode: string | null, cityCode: string | null) => void
+  /** 予約枠の基準タイムゾーンを更新（updated:timezone 由来）。 */
+  updateTeamTimezone: (timezone: string) => void
 }
 
 /**

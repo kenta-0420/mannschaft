@@ -253,6 +253,32 @@ circulation / shift / chat / faq の一部 EP は、`@EnableMethodSecurity` 未�
 
 `isAuthenticated()` のみの 36 EP（§5）は「ログインさえしていれば誰でも」を意味するため、**本来は所有者ガードが必要な EP が紛れていないか Phase 3 で個別精査**する（特に media upload・personal timetable・announcement feed 系）。
 
+### 3.5 SYSTEM_ADMIN の UI 表示方針 — 「BE は常に通す」と「FE はスコープ管理者導線に出さない」は別の設計判断（CMP-260909-1509）
+
+**マスター判断（2026-09-09）**: プラットフォーム管理者（SYSTEM_ADMIN）は**運営専用の特別なアカウント**を想定しており、一般利用者アカウントとは**別の動作をするのが正**である。これは欠陥ではなく意図した設計であり、本節で明文化する。
+
+#### BE 側（不変・本節では変更しない）
+
+§3.3.1 のとおり、`AccessGuard` / `AccessControlService` 系の per-scope 判定は **SYSTEM_ADMIN を常に通す**（`isSystemAdmin(userId)` が true なら無条件許可）。この方針は変更しない。実例: `ShiftAutoAssignService`（`backend/src/main/java/com/mannschaft/app/shift/service/ShiftAutoAssignService.java:353,356,381,384,405,408`）は各 public 入口で `accessControlService.isSystemAdmin(userId)` を先に確認し、true なら即許可、false ならチームの `checkAdminOrAbove` / `isAdminOrAbove` へフォールバックする。**SYSTEM_ADMIN は当該チームの ADMIN/DEPUTY_ADMIN でなくても BE API は通る。**
+
+#### FE 側（本節で新規に明文化する方針）
+
+上記 BE の寛容さとは独立に、**チーム運営の導線（スコープ管理者向け UI）には SYSTEM_ADMIN を出さない**。実効ロール解決（`AccessControlService.resolveEffectiveRoleName`、§8.3 [F00.5](../features/F00.5_membership_basis.md#83-supporter-階層-実装済み統合ロール解決)）は `SYSTEM_ADMIN > ADMIN > DEPUTY_ADMIN > MEMBER > SUPPORTER > GUEST` の優先度で**最強ロール 1 値**を返す（[F00.5 §13.6.4](../features/F00.5_membership_basis.md#1364-memberquerydispatcheroq-10--oq-2-の決着実装)）。そのため、プラットフォーム SYSTEM_ADMIN が同時にチームの ADMIN でもある場合、`/api/v1/teams/{id}/me/permissions` の `roleName` は `SYSTEM_ADMIN` を返し、`ADMIN` は返らない。
+
+この性質を踏まえ、**スコープ管理者向け UI の表示判定は `roleName` の等値比較で `ADMIN` / `DEPUTY_ADMIN` のみを対象にし、`SYSTEM_ADMIN` を含めない**のが正しい実装である。
+
+```ts
+// frontend/app/pages/teams/[slug]/shifts/[scheduleId]/board.vue
+// frontend/app/pages/teams/[slug]/shifts.vue
+const isScopeAdmin = computed(
+  () => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN',
+)
+```
+
+- 参照実装: `frontend/app/pages/teams/[slug]/shifts/[scheduleId]/board.vue` の `isScopeAdmin`（シフトボードの自動割当ボタン・履歴ボタン）、`frontend/app/pages/teams/[slug]/shifts.vue` の `isScopeAdmin`（「シフトボード」ボタン）。
+- **UI を隠すことは認可の代替ではない。** 上記のとおり BE は SYSTEM_ADMIN を常に許可するため、このボタンを消しても「SYSTEM_ADMIN がその API を叩けなくなる」わけではない。あくまで「運営専用アカウントに、一般利用者向けの業務導線を出さない」という UX 上の方針である。
+- **この等値比較は将来「バグだ」と誤解して `hasRoleOrAbove` 的な包含判定に書き換えないこと。** 書き換えると SYSTEM_ADMIN にもチーム運営導線が出てしまい、本節の方針に反する。
+
 ---
 
 ## 4. 多層防御の全体像

@@ -1,5 +1,7 @@
 package com.mannschaft.app.role.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -62,6 +64,8 @@ public class UserRolePurgeBackfillBatchService {
      *   <li>1 件失敗しても他の userId / ロール行の処理を継続する</li>
      * </ol>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると論理削除済みユーザーロールの物理削除 backfill が進まず、消したはずの権限行が残って認可判定に影響する")
     @BatchEndpoint(
             name = "user-role-purge-backfill-daily",
             description = "AccountPurgedEvent 処理漏れの user_roles を毎日 03:00 に補正する"

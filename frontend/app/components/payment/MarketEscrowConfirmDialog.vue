@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * F22.1 市の謝礼決済: 札主の決済確認ダイアログ（成立前のカード与信）。
+ * F22.1 市の謝礼決済: 応募者（支払者本人）のカード与信確認ダイアログ。
  *
  * 設計（02 §1 行#8 / 04 §3.1・マスター裁可の7日失効表示）:
- *   札主（支払者本人）が応募者を成立させる前に、謝礼エスクローの clientSecret＋手数料内訳を取得し、
+ *   応募者（支払者本人）が申込後に、謝礼エスクローの clientSecret＋手数料内訳を取得し、
  *   Stripe.js（PaymentElement + confirmPayment / manual capture）でカード与信を確認する。
  *
  * BE 配線（recon 済み・実在 EP）:
@@ -13,7 +13,8 @@
  *
  * status 出し分け:
  *   - PENDING_CONFIRMATION: clientSecret あり → PaymentElement で confirm（与信）。
- *   - AUTHORIZED 以降:       確認済み（再 confirm 不要）。
+ *   - AUTHORIZED:            manual capture の確認済み状態、または automatic capture の confirm 待ち。
+ *                            後者は clientSecret ありなので PaymentElement を表示する。
  *   - DEFERRED:              7日超 fallback（いまは与信せず完了時に即時払い）。
  *   - HELD:                  受取側 onboarding 未完了（PI 未作成）。
  *   - 404（escrow 未準備・成立リスナ @Async 遅延）: リトライ案内。
@@ -39,7 +40,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  /** 与信確認（または DEFERRED/AUTHORIZED で確認不要）が完了し、成立を続行してよい状態。 */
+  /** Stripe の与信確認が完了した。 */
   confirmed: [escrowTransactionId: string]
 }>()
 
@@ -60,15 +61,14 @@ const elementDomId = `escrow-payment-element-${useId()}`
 let stripe: Stripe | null = null
 let elements: StripeElements | null = null
 let unmountElement: (() => void) | null = null
-let elementMounted = false
+const elementMounted = ref(false)
 
-/** clientSecret があり confirm が必要な状態か。 */
-const needsConfirm = computed(
-  () => view.value?.status === 'PENDING_CONFIRMATION' && !!view.value.clientSecret,
-)
+/** 状態名ではなく、払い手本人に clientSecret が返ったかを confirm 要否の正本とする。 */
+const needsConfirm = computed(() => !!view.value?.clientSecret)
 /** 既に与信確定済み（再 confirm 不要）。 */
 const alreadyAuthorized = computed(
   () => view.value != null
+    && !view.value.clientSecret
     && view.value.status !== 'PENDING_CONFIRMATION'
     && view.value.status !== 'DEFERRED'
     && view.value.status !== 'HELD',
@@ -90,7 +90,7 @@ function teardownElement() {
   unmountElement = null
   elements = null
   stripe = null
-  elementMounted = false
+  elementMounted.value = false
 }
 
 async function load() {
@@ -105,8 +105,8 @@ async function load() {
       props.participantId,
     )
     view.value = res.data
-    // PENDING_CONFIRMATION かつ clientSecret あり → PaymentElement をマウント。
-    if (view.value.status === 'PENDING_CONFIRMATION' && view.value.clientSecret) {
+    // manual/automatic とも、clientSecret が払い手本人へ返った場合は PaymentElement をマウント。
+    if (view.value.clientSecret) {
       await mountElement(view.value.clientSecret)
     }
   } catch (e: unknown) {
@@ -131,7 +131,7 @@ async function mountElement(clientSecret: string) {
     stripe = mounted.stripe
     elements = mounted.elements
     unmountElement = mounted.unmount
-    elementMounted = true
+    elementMounted.value = true
   } catch (e: unknown) {
     errorMessage.value
       = e instanceof Error ? e.message : t('market.payment.confirm.loadFailed')
@@ -159,11 +159,8 @@ async function onConfirmPayment() {
   }
 }
 
-/** DEFERRED / AUTHORIZED 等、確認不要で成立を続行する。 */
+/** DEFERRED / AUTHORIZED 等、カード確認が不要な状態を閉じる。 */
 function onProceedWithoutConfirm() {
-  if (view.value) {
-    emit('confirmed', view.value.escrowTransactionId)
-  }
   close()
 }
 
@@ -180,6 +177,7 @@ watch(
       teardownElement()
     }
   },
+  { immediate: true },
 )
 
 onUnmounted(teardownElement)
@@ -261,7 +259,7 @@ function extractHttpStatus(e: unknown): number | null {
         </p>
       </div>
 
-      <!-- 7日失効表示（PENDING_CONFIRMATION 時・マスター裁可） -->
+      <!-- カード確認が必要なときの7日失効表示（マスター裁可） -->
       <p
         v-if="needsConfirm"
         class="rounded bg-amber-50 p-2 text-xs text-amber-800"
@@ -270,7 +268,7 @@ function extractHttpStatus(e: unknown): number | null {
         {{ t('market.payment.confirm.expiryNotice') }}
       </p>
 
-      <!-- PENDING_CONFIRMATION: PaymentElement で confirm -->
+      <!-- clientSecret あり: PaymentElement で confirm -->
       <template v-if="needsConfirm">
         <div :id="elementDomId" />
         <p v-if="errorMessage" class="text-sm text-red-600" role="alert">
@@ -306,7 +304,7 @@ function extractHttpStatus(e: unknown): number | null {
         :disabled="submitting"
         @click="close"
       />
-      <!-- PENDING_CONFIRMATION: 与信確認 -->
+      <!-- clientSecret あり: 与信・即時徴収確認 -->
       <Button
         v-if="needsConfirm"
         :label="submitting
@@ -316,10 +314,10 @@ function extractHttpStatus(e: unknown): number | null {
         :disabled="!elementMounted"
         @click="onConfirmPayment"
       />
-      <!-- DEFERRED / AUTHORIZED 等: 確認不要で続行 -->
+      <!-- DEFERRED / AUTHORIZED 等: 確認不要なので閉じる -->
       <Button
         v-else-if="view && !isHeld && !notReady"
-        :label="t('market.payment.confirm.proceed')"
+        :label="t('common.close')"
         @click="onProceedWithoutConfirm"
       />
     </template>

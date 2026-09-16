@@ -22,7 +22,9 @@ export default {
       "open": "募集中",
       "full": "満員",
       "closed": "締切後",
-      "cancelled": "キャンセル"
+      "cancelled": "キャンセル",
+      "auto_cancelled": "自動キャンセル",
+      "completed": "募集成立"
     },
     "participantStatus": {
       "applied": "申込済み",
@@ -78,6 +80,8 @@ export default {
       "joinWaitlist": "キャンセル待ちに登録",
       "viewDetails": "詳細を見る",
       "confirmApplication": "成立させる",
+      "cancelListing": "募集を取り下げる",
+      "cancelledListing": "募集を取り下げました",
       "createPolicy": "ポリシー作成"
     },
     "confirmModal": {
@@ -219,6 +223,12 @@ export default {
       "individual": "個人",
       "team": "チーム"
     },
+    "validation": {
+      "eventTimeRange": "開催終了は開催開始より後に指定してください",
+      "applicationDeadline": "応募締切は開催開始より前に指定してください",
+      "autoCancelAt": "自動キャンセル判定は応募締切以前に指定してください",
+      "capacity": "最小定員は定員以下に指定してください"
+    },
     "payee": {
       "required": "受領者種別を選択してください",
       "userRequired": "受領者ユーザーを選択してください",
@@ -248,6 +258,9 @@ export default {
       "RECRUITMENT_205": "画像URLが許可リストに含まれていません",
       "RECRUITMENT_206": "定員を確定参加者数より少なく変更できません",
       "RECRUITMENT_207": "公開範囲と配信対象の組合せが不正です",
+      "RECRUITMENT_216": "開催終了は開催開始より後に指定してください",
+      "RECRUITMENT_217": "応募締切は開催開始より前に指定してください",
+      "RECRUITMENT_218": "自動キャンセル判定は応募締切以前に指定してください",
       "RECRUITMENT_301": "キャンセル料の決済に失敗しました",
       "RECRUITMENT_302": "キャンセルポリシーの設定が不正です",
       "RECRUITMENT_303": "キャンセルポリシーの段階が4を超えています",

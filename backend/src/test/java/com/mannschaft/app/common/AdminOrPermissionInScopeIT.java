@@ -57,7 +57,7 @@ class AdminOrPermissionInScopeIT extends AbstractMySqlIntegrationTest {
 
     /** 第一陣の migration。ここから MANAGE_SURVEYS のカタログ行を作る。 */
     private static final String MIGRATION_RESOURCE =
-            "db/migration/V187.20260819090014__add_manage_surveys_to_catalog.sql";
+            "db/migration/V213.20260916131000__add_manage_surveys_to_catalog.sql";
 
     private static final String PERMISSION = "MANAGE_SURVEYS";
     private static final String TEAM = "TEAM";

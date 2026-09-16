@@ -5,6 +5,7 @@
       "schedule": "Schedule",
       "member": "Members",
       "ops": "Operations",
+      "market": "Market",
       "facility": "Facilities",
       "resident": "Residents",
       "data": "Data & Analytics",
@@ -26,6 +27,7 @@
     "invite": "Invite",
     "permissionGroups": "Permission Groups",
     "onboarding": "Onboarding",
+    "market": "Market",
     "todos": "TODO",
     "workflows": "Workflows",
     "forms": "Forms",
@@ -59,6 +61,8 @@
     "faqSettings": "FAQ Settings",
     "billing": "Billing & plan management",
     "leagueTransfers": "League Transfers",
-    "adminConsole": "Admin Console"
+    "adminConsole": "Admin Console",
+    "receipts": "Receipts",
+    "receiptSettings": "Receipt issuer settings"
   }
 }

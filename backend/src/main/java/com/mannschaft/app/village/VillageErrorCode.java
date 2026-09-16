@@ -26,7 +26,25 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_001: 村が存在しない / 削除 / 凍結済み（404、IDOR 対策で統一） */
     VILLAGE_NOT_FOUND("VILLAGE_001", "村が見つかりません", Severity.WARN),
 
-    /** VILLAGE_002: UNLISTED 村に非村人がアクセス（403） */
+    /**
+     * VILLAGE_002: UNLISTED 村に非村人がアクセス。
+     *
+     * <p><b>新規使用禁止。過去互換（既存クライアントとステータス写像表）のためだけに残す。</b>
+     * 非可視の村は例外なく {@link #VILLAGE_NOT_FOUND}（{@code VILLAGE_001}）を投げること。</p>
+     *
+     * <p>理由: 本コードは 404 に写像されており<b>ステータスは不在と一致していた</b>が、
+     * 応答<b>本文</b>の {@code error.code} が {@code VILLAGE_002} と {@code VILLAGE_001} で割れるため、
+     * 本文だけで「その村 ID は実在するが非公開」と判別できた（存在オラクル）。
+     * ステータスを揃えるだけでは秘匿は完成しない。この約束は番人
+     * {@code VillageUnlistedErrorCodeRetirementGuardTest} が本番ソースの静的走査で強制する。</p>
+     *
+     * <p><b>非公開村の存在秘匿のため 404 固定</b>。UNLISTED 村は検索結果から意図的に除外され
+     * 「存在を隠す」設計であり、403 を返すと不在（{@link #VILLAGE_NOT_FOUND} = 404）との差で
+     * 村 ID の実在が漏れる（存在オラクル）。</p>
+     *
+     * <p>なお PUBLIC 村は検索で誰でも見つけられ存在自体が公開情報のため、非村人アクセス時の
+     * {@code VILLAGE_024}（MODERATION_FORBIDDEN）は 403 のままが正しい。ここへ巻き込まないこと。</p>
+     */
     VILLAGE_UNLISTED("VILLAGE_002", "この村は非公開です", Severity.WARN),
 
     /**

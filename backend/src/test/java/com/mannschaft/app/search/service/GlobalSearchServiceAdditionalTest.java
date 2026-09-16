@@ -120,7 +120,7 @@ class GlobalSearchServiceAdditionalTest {
         given(scheduleRepository.searchByKeyword(eq(query), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
         given(eventRepository.searchByKeyword(eq(query), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
         given(facilityBookingRepository.searchByKeyword(eq(query), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
-        given(shiftScheduleRepository.searchByKeyword(eq(query), anyCollection(), any(Pageable.class))).willReturn(List.of());
+        given(shiftScheduleRepository.searchByKeyword(eq(query), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
         given(safetyCheckRepository.searchByKeyword(eq(query), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
         given(queueTicketRepository.searchByKeyword(eq(query), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
         given(teamRepository.searchByKeyword(eq(query), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
@@ -156,7 +156,7 @@ class GlobalSearchServiceAdditionalTest {
             given(scheduleRepository.searchByKeyword(eq("春季"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of(schedule));
             given(eventRepository.searchByKeyword(eq("春季"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
             given(facilityBookingRepository.searchByKeyword(eq("春季"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
-            given(shiftScheduleRepository.searchByKeyword(eq("春季"), anyCollection(), any(Pageable.class))).willReturn(List.of());
+            given(shiftScheduleRepository.searchByKeyword(eq("春季"), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
             given(safetyCheckRepository.searchByKeyword(eq("春季"), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
             given(queueTicketRepository.searchByKeyword(eq("春季"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
             given(teamRepository.searchByKeyword(eq("春季"), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
@@ -195,7 +195,7 @@ class GlobalSearchServiceAdditionalTest {
             given(scheduleRepository.searchByKeyword(eq("ミーティング"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of(schedule));
             given(eventRepository.searchByKeyword(eq("ミーティング"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
             given(facilityBookingRepository.searchByKeyword(eq("ミーティング"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
-            given(shiftScheduleRepository.searchByKeyword(eq("ミーティング"), anyCollection(), any(Pageable.class))).willReturn(List.of());
+            given(shiftScheduleRepository.searchByKeyword(eq("ミーティング"), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
             given(safetyCheckRepository.searchByKeyword(eq("ミーティング"), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
             given(queueTicketRepository.searchByKeyword(eq("ミーティング"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
             given(teamRepository.searchByKeyword(eq("ミーティング"), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
@@ -302,7 +302,7 @@ class GlobalSearchServiceAdditionalTest {
             ReflectionTestUtils.setField(shift, "id", 3L);
 
             stubEmptyResults("5月");
-            given(shiftScheduleRepository.searchByKeyword(eq("5月"), anyCollection(), any(Pageable.class))).willReturn(List.of(shift));
+            given(shiftScheduleRepository.searchByKeyword(eq("5月"), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of(shift));
 
             // When
             SearchResultResponse result = globalSearchService.search("5月", USER_ID);
@@ -416,7 +416,7 @@ class GlobalSearchServiceAdditionalTest {
             given(scheduleRepository.searchByKeyword(eq("テスト"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of(schedule));
             given(eventRepository.searchByKeyword(eq("テスト"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
             given(facilityBookingRepository.searchByKeyword(eq("テスト"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
-            given(shiftScheduleRepository.searchByKeyword(eq("テスト"), anyCollection(), any(Pageable.class))).willReturn(List.of());
+            given(shiftScheduleRepository.searchByKeyword(eq("テスト"), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
             given(safetyCheckRepository.searchByKeyword(eq("テスト"), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
             given(queueTicketRepository.searchByKeyword(eq("テスト"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
             given(teamRepository.searchByKeyword(eq("テスト"), any(Pageable.class))).willReturn(new PageImpl<>(List.of(team)));
@@ -453,7 +453,7 @@ class GlobalSearchServiceAdditionalTest {
             given(scheduleRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of(invisible));
             given(eventRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
             given(facilityBookingRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
-            given(shiftScheduleRepository.searchByKeyword(eq("練習"), anyCollection(), any(Pageable.class))).willReturn(List.of());
+            given(shiftScheduleRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
             given(safetyCheckRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(Pageable.class))).willReturn(List.of());
             given(queueTicketRepository.searchByKeyword(eq("練習"), anyCollection(), anyCollection(), any(), any(Pageable.class))).willReturn(List.of());
             given(teamRepository.searchByKeyword(eq("練習"), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));

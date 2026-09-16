@@ -6,6 +6,8 @@ import com.mannschaft.app.auth.entity.ParentalConsentLinkEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.util.AgeGroupCalculator;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
@@ -87,6 +89,8 @@ public class ParentalConsentReleaseBatchService {
      * 18歳到達した子ユーザーの保護者同意リンクを自動解放するバッチ処理。
      * 毎日 02:00 JST に実行する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "18歳到達者の保護者同意を自動解放する。止めると成人した本人の同意リンクが APPROVED のまま残り、未成年保護の法的前提と食い違う")
     @BatchEndpoint(name = "parental-consent-release-batch", description = "18歳到達保護者同意自動解放バッチ")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "parentalConsentReleaseBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")

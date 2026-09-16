@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Locale;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -118,7 +119,9 @@ public class ReservationPendingExpireService {
      */
     @Transactional(readOnly = true)
     public List<PendingExpireUnit> findExpirableUnits() {
-        LocalDateTime now = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
+        Instant nowInstant = clock.instant();
+        LocalDateTime now = LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE);
+        // TeamTimezoneResolver converts each team's wall-clock deadline to the same Instant domain.
 
         // 1 本目: slot・policy を join して代表行のみ抽出する（グループは代表行基準で判定）。
         // 1 回あたり MAX_UNITS_PER_RUN 単位で打ち切り、初回デプロイ時の一斉失効を平滑化する。

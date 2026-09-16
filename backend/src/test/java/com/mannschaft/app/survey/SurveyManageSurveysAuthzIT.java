@@ -70,7 +70,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SurveyManageSurveysAuthzIT extends AbstractMySqlIntegrationTest {
 
     private static final String MIGRATION_RESOURCE =
-            "db/migration/V187.20260819090014__add_manage_surveys_to_catalog.sql";
+            "db/migration/V213.20260916131000__add_manage_surveys_to_catalog.sql";
     private static final String PERMISSION = "MANAGE_SURVEYS";
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);

@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
@@ -31,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -89,6 +91,9 @@ class PaymentW6TeamScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private PaymentItemRepository paymentItemRepository;
 
+    @MockitoBean
+    private BlogPostRepository blogPostRepository;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -112,6 +117,9 @@ class PaymentW6TeamScopeContractIT extends AbstractMySqlIntegrationTest {
 
         teamAId = insertTeam("PAYW6 チームA");
         teamBId = insertTeam("PAYW6 チームB");
+
+        // P0-A の実在コンテンツ検証を通すため、契約テストで使う固定 ID を teamA に所属させる。
+        when(blogPostRepository.existsByIdAndTeamId(12345L, teamAId)).thenReturn(true);
 
         adminTeamAId = insertUser("payw6-admin-team-a@example.com");
         adminTeamBId = insertUser("payw6-admin-team-b@example.com");
