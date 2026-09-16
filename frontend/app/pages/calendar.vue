@@ -76,6 +76,21 @@ const selectedEventId = ref<number | null>(null)
 const selectedEventIsPersonal = ref(false)
 const showDayPanel = ref(false)
 const showEventPanel = ref(false)
+// Dialog は body へ Teleport されるため、md:hidden だけではデスクトップ表示を抑止できない。
+const isMobileViewport = ref(false)
+let mobileMediaQuery: MediaQueryList | null = null
+function syncMobileViewport() {
+  isMobileViewport.value = mobileMediaQuery?.matches ?? false
+}
+
+onMounted(() => {
+  mobileMediaQuery = window.matchMedia('(max-width: 767px)')
+  syncMobileViewport()
+  mobileMediaQuery.addEventListener?.('change', syncMobileViewport)
+})
+onUnmounted(() => {
+  mobileMediaQuery?.removeEventListener?.('change', syncMobileViewport)
+})
 
 // 是正1: 通知リンク（?scheduleId=&commentId=）からの遷移先ハイライト対象（設計書 §6.4）。
 const linkedCommentId = ref<string | null>(null)
@@ -805,6 +820,50 @@ onMounted(async () => {
             : onEventClick(ev.id, ev.isPersonal)"
           @responded="refresh"
         />
+        <!-- モバイルではサイドパネルが非表示になるため、同じ詳細を Dialog で提供する。 -->
+        <Dialog
+          v-if="isMobileViewport && selectedEvent"
+          v-model:visible="showEventPanel"
+          modal
+          :header="selectedEvent.title"
+          class="w-[calc(100vw-1rem)] max-w-lg [&_.p-dialog-close-button]:min-h-11 [&_.p-dialog-close-button]:min-w-11"
+        >
+          <EventDetailPanel
+            :event="{
+              id: selectedEvent.id,
+              scheduleId: selectedEvent.scheduleId ?? null,
+              title: selectedEvent.title,
+              description: selectedEvent.description,
+              location: selectedEvent.location,
+              startAt: selectedEvent.startAt,
+              endAt: selectedEvent.endAt,
+              allDay: selectedEvent.allDay,
+              status: selectedEvent.status ?? 'PUBLISHED',
+              categoryName: selectedEvent.categoryName ?? null,
+              categoryColor: selectedEvent.categoryColor ?? null,
+              createdBy: selectedEvent.createdBy ?? { displayName: '' },
+              attendanceRequired: selectedEvent.attendanceRequired ?? false,
+              myAttendance: selectedEvent.myAttendance ?? null,
+              attendanceStats: selectedEvent.attendanceStats ?? null,
+              targetMode: selectedEvent.targetMode,
+              targetCount: selectedEvent.targetCount,
+              targets: selectedEvent.targets,
+            }"
+            :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
+            :scope-id="selectedEvent.scopeId ?? ''"
+            :can-edit="true"
+            :skip-delegations="selectedEventIsPersonal"
+            :scope-name="selectedEvent.scopeName ?? null"
+            :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
+            :show-audience="!selectedEventIsPersonal"
+            :highlight-comment-id="linkedCommentId"
+            class="[&_.pi-pencil]:text-base [&_button:has(.pi-pencil)]:min-h-11 [&_button:has(.pi-pencil)]:min-w-11"
+            @edit="onEditEvent"
+            @delete="onDeleteEvent"
+            @responded="refresh"
+            @comment-highlighted="clearLinkedQuery"
+          />
+        </Dialog>
       </div>
 
       <!-- ===== デスクトップ（768px以上）: 従来のカレンダー主体UI（不変） ===== -->
