@@ -113,6 +113,21 @@
       "adminOnlyNotice": "Only admins can change or cancel plans",
       "loadError": "Failed to load billing information",
       "viewPlansCta": "See all plans",
+      "planChange": {
+        "title": "Change plan",
+        "amountDueNow": "Amount due now",
+        "effectiveAt": "Effective from",
+        "amountInclTax": "Total (tax included)",
+        "amountExclTax": "Subtotal (tax excluded)",
+        "taxAmount": "Tax amount",
+        "taxRate": "Tax rate",
+        "staysOnOldPlan": "Failed to change your plan. You are still on your current plan",
+        "pendingPaymentNotice": "Payment for your plan change has not completed yet",
+        "expiresAtNotice": "This change will be automatically cancelled if payment is not completed by {date}",
+        "confirmCta": "Confirm this change",
+        "resumePaymentActionCta": "Resume payment",
+        "cancelCta": "Cancel"
+      },
       "help": {
         "title": "Guide to billing & plan management",
         "plan": {

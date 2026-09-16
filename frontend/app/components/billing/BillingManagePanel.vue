@@ -10,8 +10,14 @@
  *   同コンポーネント側で担保）。旧 `DELETE .../billing/contracts/{contractId}`（即時削除）は
  *   本パネルからの呼び出しを廃止した（Codex 検分 P1 是正。詳細は下記型定義コメント）。
  */
-import type { BillingActiveContract, BillingEntitledFeature, BillingScopeKind } from '~/composables/useBillingApi'
+import type {
+  BillingActiveContract,
+  BillingActiveContractWithPendingChange,
+  BillingEntitledFeature,
+  BillingScopeKind,
+} from '~/composables/useBillingApi'
 import BillingCancelReservationDialog from '~/components/billing/BillingCancelReservationDialog.vue'
+import BillingPlanChangeDialog from '~/components/billing/BillingPlanChangeDialog.vue'
 
 /**
  * BE の {@code BillingActiveContract} 投影は {@code version}（05_billing_center.md:344 の
@@ -137,6 +143,23 @@ async function confirmResumeReservation() {
   notification.success(t('billing.manage.resumeSuccess'))
 }
 
+// === プラン変更（Billing Center PR6b-1: 上位プラン変更・3DS。AC-125〜135） ===
+// 是正前提（PR6a と同型の欠陥の再発防止・AC-125）: 本パネルの「プラン変更」ボタンから
+// 実際に BillingPlanChangeDialog を開けることを結線として固定する。
+// 事前見積り（AC-1〜24）・実行（AC-25〜47）・3DS（AC-48〜73）は他隊（第6〜10隊）が実装した
+// BE API と連携する後続作業とし、本パネルは「入口から到達できる」ことを最優先で満たす。
+const planChangeTarget = ref<BillingActiveContractWithPendingChange | null>(null)
+const planChangeDialogOpen = ref(false)
+
+function openPlanChange(contract: BillingActiveContract) {
+  planChangeTarget.value = contract
+  planChangeDialogOpen.value = true
+}
+
+function closePlanChangeDialog() {
+  planChangeDialogOpen.value = false
+}
+
 onMounted(load)
 
 defineExpose({ load })
@@ -160,15 +183,24 @@ defineExpose({ load })
               {{ t('billing.manage.contractedAt', { date: formatDate(activePlan.contractedAt) }) }}
             </p>
           </div>
-          <Button
-            v-if="canManage"
-            :label="t('billing.manage.cancelCta')"
-            severity="danger"
-            outlined
-            size="small"
-            data-testid="billing-cancel-plan"
-            @click="openCancel(activePlan)"
-          />
+          <div v-if="canManage" class="flex items-center gap-2">
+            <Button
+              :label="t('billing.manage.planChange.title')"
+              severity="secondary"
+              outlined
+              size="small"
+              data-testid="billing-change-plan"
+              @click="openPlanChange(activePlan)"
+            />
+            <Button
+              :label="t('billing.manage.cancelCta')"
+              severity="danger"
+              outlined
+              size="small"
+              data-testid="billing-cancel-plan"
+              @click="openCancel(activePlan)"
+            />
+          </div>
         </div>
         <p v-else class="text-sm text-surface-500">
           {{ t('billing.manage.noContract') }}
@@ -245,6 +277,20 @@ defineExpose({ load })
       :on-refetch="refreshCancelReservationTarget"
       @cancel="closeCancelReservationDialog"
       @update:open="closeCancelReservationDialog"
+    />
+
+    <!-- プラン変更確認ダイアログ（Billing Center PR6b-1・AC-125〜132） -->
+    <BillingPlanChangeDialog
+      v-if="planChangeTarget"
+      :open="planChangeDialogOpen"
+      :preview="null"
+      :current-plan-key="planChangeTarget.planKey ?? ''"
+      :target-plan-key="''"
+      :pending-change="planChangeTarget.pendingChange ?? null"
+      :change-error="null"
+      :submitting="false"
+      @cancel="closePlanChangeDialog"
+      @update:open="closePlanChangeDialog"
     />
   </div>
 </template>

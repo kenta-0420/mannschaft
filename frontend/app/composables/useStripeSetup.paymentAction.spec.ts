@@ -15,8 +15,18 @@ import { useStripeSetup } from './useStripeSetup'
  * <p>AC-59: clientSecret を localStorage / sessionStorage へ書かない。</p>
  */
 
+// useRuntimeConfig は Nuxt 内部（router プラグイン等）も利用するため、stripePublishableKey
+// 以外のフィールド（app.baseURL 等）も保持した完全な形で返す。不完全な戻り値だと
+// setupNuxt 内の useRouter().afterEach が undefined を踏んで環境全体が失敗する
+// （tests/unit/composables/useStripeSetup.spec.ts の既存コメント・実装と同じ理由・同じ形。
+// 実測: 不完全な戻り値のままだと本ファイルは 3 件とも
+// `Cannot read properties of undefined (reading 'afterEach')` で毎回失敗する）。
 mockNuxtImport('useRuntimeConfig', () => () => ({
-  public: { stripePublishableKey: 'pk_test_dummy' },
+  app: { baseURL: '/', buildId: 'test', buildAssetsDir: '/_nuxt/', cdnURL: '' },
+  public: {
+    stripePublishableKey: 'pk_test_dummy',
+    i18n: { routesNameSeparator: '___', defaultLocaleRouteNameSuffix: 'default' },
+  },
 }))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 

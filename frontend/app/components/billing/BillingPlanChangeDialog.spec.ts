@@ -104,7 +104,11 @@ describe('BillingPlanChangeDialog — 表示の誠実さ（AC-126〜132）', () 
     // 税込が主表示であること（DOM順で税込ブロックが税抜より先に出る）
     const html = wrapper.html()
     expect(html.indexOf('plan-change-amount-incl-tax')).toBeLessThan(html.indexOf('plan-change-amount-excl-tax'))
-    expect(taxRate.exists()).toBe(true)
+    // `wrapper.get()` は要素が無ければ既に例外を投げているため、型上 `exists()` を持たない
+    // （`DOMWrapper<Element>` から `exists` を除いた型になる）。存在確認自体は `find()` で行う
+    // （アサーションの意味は変えていない。型エラーの是正のみ）。
+    expect(wrapper.find('[data-testid="plan-change-tax-rate"]').exists()).toBe(true)
+    void taxRate
   })
 
   it('AC-128（肯定形）: PENDING_PAYMENT の間はプラン名表示が旧プラン(currentPlanKey)のまま', async () => {
@@ -190,6 +194,9 @@ describe('BillingPlanChangeDialog — 表示の誠実さ（AC-126〜132）', () 
 
   it('AC-132: 3DS の戻り後、data-testid="plan-change-status" へ focus が移る', async () => {
     const Dialog = await loadDialog()
+    // jsdom は document に接続されていない要素へは focus() が効かない（document.activeElement が
+    // 更新されない）。同型の a11y テスト（BillingCancelReservationDialog.a11y.spec.ts）と同じく
+    // `attachTo: document.body` を指定する（アサーション内容は変えていない）。
     const wrapper = await mountSuspended(Dialog, {
       props: {
         open: true,
@@ -201,6 +208,7 @@ describe('BillingPlanChangeDialog — 表示の誠実さ（AC-126〜132）', () 
         submitting: false,
         justReturnedFrom3ds: true,
       } as never,
+      attachTo: document.body,
     })
     await flushPromises()
 

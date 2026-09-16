@@ -37,6 +37,34 @@ export type BillingContractCancelResponse = components['schemas']['BillingContra
 /** API 表現のスコープ種別（設計書 02 §0）。 */
 export type BillingScopeKind = 'USER' | 'TEAM' | 'ORG'
 
+/**
+ * Billing Center PR6b-1 AC-133: `BillingActiveContract` 投影に載る保留中のプラン変更。
+ *
+ * <p>BE 側（第7〜10隊）が実装中で、`docs/openapi.json` はまだこのフィールドを反映していない
+ * （生成型 {@link BillingActiveContract} に `pendingChange` が存在しない）。生成型を手編集せず、
+ * ここで手動拡張することで対応する。**BE の OpenAPI 再生成後は本拡張を外し、生成型へ移行すること**
+ * （i18n ルールと同様、生成型が真実のソースという方針は維持したまま暫定措置とする）。</p>
+ */
+export type BillingPendingChangeStatus = 'PENDING_PAYMENT' | 'REQUIRES_ACTION' | 'APPLIED' | 'FAILED' | 'CANCELLED'
+
+export interface BillingPendingChange {
+  status: BillingPendingChangeStatus
+  effectiveAt: string
+  paymentActionRequired: boolean
+}
+
+/** `pendingChange` を含む `BillingActiveContract` 投影（AC-133 の暫定拡張。上記コメント参照）。 */
+export type BillingActiveContractWithPendingChange = BillingActiveContract & {
+  pendingChange?: BillingPendingChange | null
+}
+
+/** `pendingChange` を含む `BillingEntitlementSummaryResponse` 投影。 */
+export type BillingEntitlementSummaryResponseWithPendingChange =
+  Omit<BillingEntitlementSummaryResponse, 'activePlan' | 'activeAddons'> & {
+    activePlan?: BillingActiveContractWithPendingChange | null
+    activeAddons?: BillingActiveContractWithPendingChange[]
+  }
+
 /** 契約作成に必須の Idempotency-Key ヘッダを生成する（連打・再送の二重発行防止・設計書 02 §0 M-1）。 */
 function idempotencyHeaders(): Record<string, string> {
   return { 'Idempotency-Key': crypto.randomUUID() }
@@ -65,15 +93,15 @@ export function useBillingApi() {
   // ============================================================
 
   async function getMyEntitlements() {
-    return api<{ data: BillingEntitlementSummaryResponse }>('/api/v1/me/entitlements')
+    return api<{ data: BillingEntitlementSummaryResponseWithPendingChange }>('/api/v1/me/entitlements')
   }
 
   async function getTeamEntitlements(teamId: string) {
-    return api<{ data: BillingEntitlementSummaryResponse }>(`/api/v1/teams/${teamId}/entitlements`)
+    return api<{ data: BillingEntitlementSummaryResponseWithPendingChange }>(`/api/v1/teams/${teamId}/entitlements`)
   }
 
   async function getOrgEntitlements(orgId: string) {
-    return api<{ data: BillingEntitlementSummaryResponse }>(`/api/v1/organizations/${orgId}/entitlements`)
+    return api<{ data: BillingEntitlementSummaryResponseWithPendingChange }>(`/api/v1/organizations/${orgId}/entitlements`)
   }
 
   /** スコープ種別に応じて権利サマリ取得を振り分ける。 */
