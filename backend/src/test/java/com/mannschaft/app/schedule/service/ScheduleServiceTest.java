@@ -1,4 +1,4 @@
-package com.mannschaft.app.schedule;
+package com.mannschaft.app.schedule.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
@@ -10,6 +10,13 @@ import com.mannschaft.app.dashboard.ActivityEvent;
 import com.mannschaft.app.dashboard.ActivityType;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.TargetType;
+import com.mannschaft.app.schedule.CommentOption;
+import com.mannschaft.app.schedule.EventType;
+import com.mannschaft.app.schedule.MinViewRole;
+import com.mannschaft.app.schedule.ScheduleErrorCode;
+import com.mannschaft.app.schedule.ScheduleStatus;
+import com.mannschaft.app.schedule.ScheduleTargetMode;
+import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
@@ -1222,10 +1229,9 @@ class ScheduleServiceTest {
             ScheduleEntity parentAfterUpdate = createTeamScheduleEntity().toBuilder()
                     .id(PARENT_ID).title("更新後(全体)").build();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
-            given(scheduleRepository.findById(PARENT_ID)).willReturn(Optional.of(parentAfterUpdate));
-            given(scheduleRepository.save(any(ScheduleEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
-            given(scheduleRepository.countByParentScheduleId(PARENT_ID)).willReturn(3L);
+            given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
+                    org.mockito.ArgumentMatchers.eq("ALL"), any())).willReturn(
+                            new ScheduleRecurrenceService.RecurringScheduleUpdateResult(parentAfterUpdate, 4L));
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新後(全体)", null, null, null, null, null, null, null, null, null,
                     null, null, null, null, null, null, null, null, null);
@@ -1237,7 +1243,88 @@ class ScheduleServiceTest {
             assertThat(countPublishedActivityEvents()).isEqualTo(1);
             ActivityEvent event = captureLastActivityEvent();
             assertThat(event.getTargetId()).isEqualTo(PARENT_ID);
+            assertThat(event.getDetail()).contains("\"affectedCount\":4");
+        }
+
+        @Test
+        @DisplayName("CMP-107: THIS_AND_FOLLOWINGは再帰サービスの実更新件数をフィードへ反映する")
+        void CMP107_THIS_AND_FOLLOWINGの実更新件数を反映する() {
+            // given
+            ScheduleEntity child = createTeamScheduleEntity().toBuilder()
+                    .id(SCHEDULE_ID).parentScheduleId(PARENT_ID).build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
+                    org.mockito.ArgumentMatchers.eq("THIS_AND_FOLLOWING"), any())).willAnswer(invocation -> {
+                        @SuppressWarnings("unchecked")
+                        java.util.function.BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate =
+                                invocation.getArgument(3);
+                        ScheduleEntity updated = applyUpdate.apply(child, invocation.getArgument(1));
+                        return new ScheduleRecurrenceService.RecurringScheduleUpdateResult(updated, 3L);
+                    });
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    "更新後(この回以降)", null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
+
+            // when
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_AND_FOLLOWING", USER_ID);
+
+            // then
+            ActivityEvent event = captureLastActivityEvent();
             assertThat(event.getDetail()).contains("\"affectedCount\":3");
+            verify(scheduleRepository, times(1)).save(org.mockito.ArgumentMatchers.argThat(saved ->
+                    saved.getId().equals(SCHEDULE_ID) && "更新後(この回以降)".equals(saved.getTitle())));
+        }
+
+        @Test
+        @DisplayName("過去起点の対象者変更は実更新した選択回と未来回だけに適用する")
+        void CMP107_対象者変更は終了済み後続回と例外回へ波及しない() {
+            ScheduleEntity selected = createTeamScheduleEntity().toBuilder()
+                    .id(SCHEDULE_ID).parentScheduleId(PARENT_ID).build();
+            ScheduleEntity future = createTeamScheduleEntity().toBuilder()
+                    .id(4L).parentScheduleId(PARENT_ID).build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(selected));
+            given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
+                    org.mockito.ArgumentMatchers.eq("THIS_AND_FOLLOWING"), any())).willReturn(
+                    new ScheduleRecurrenceService.RecurringScheduleUpdateResult(selected, 2L, List.of(SCHEDULE_ID, 4L)));
+            given(scheduleRepository.findAllById(List.of(SCHEDULE_ID, 4L)))
+                    .willReturn(List.of(selected, future));
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    null, null, null, null, null, null, null, null, null, null,
+                    "ALL_MEMBERS", List.of(), null, null, null, null, null, null, null, null, null);
+
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_AND_FOLLOWING", USER_ID);
+
+            verify(scheduleTargetService, times(1)).replaceForUpdate(
+                    org.mockito.ArgumentMatchers.argThat(entity -> entity.getId().equals(SCHEDULE_ID)),
+                    any(), any(), any(), any());
+            verify(scheduleTargetService, times(1)).replaceForUpdate(
+                    org.mockito.ArgumentMatchers.argThat(entity -> entity.getId().equals(4L)),
+                    any(), any(), any(), any());
+            verify(scheduleTargetService, times(2)).replaceForUpdate(any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("単一回の対象者変更は保存対象Entityと応答へ反映する")
+        void CMP107_単一回の対象者変更が応答へ反映する() {
+            ScheduleEntity selected = createTeamScheduleEntity().toBuilder().id(SCHEDULE_ID).build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(selected));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            org.mockito.Mockito.doAnswer(invocation -> {
+                ScheduleEntity entity = invocation.getArgument(0);
+                entity.updateTargetMode(ScheduleTargetMode.SELECTED_MEMBERS);
+                return null;
+            }).when(scheduleTargetService).replaceForUpdate(any(), any(), any(), any(), any());
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    null, null, null, null, null, null, null, null, null, null,
+                    "SELECTED_MEMBERS", List.of(USER_ID), null, null, null, null, null, null, null, null, null);
+
+            ScheduleResponse response = scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
+
+            assertThat(response.getTargetMode()).isEqualTo("SELECTED_MEMBERS");
+            verify(scheduleRepository, times(2)).save(any(ScheduleEntity.class));
         }
 
         @Test

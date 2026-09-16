@@ -121,7 +121,8 @@
       "end_never": "Never",
       "end_date": "On date",
       "end_count": "After",
-      "end_count_suffix": "times"
+      "end_count_suffix": "times",
+      "update_scope": { "title": "Update recurring event", "description": "Choose which events to update.", "this_only": "This event only", "this_and_following": "This and following events" }
     },
     "event_add": "Add event",
     "calendar_guide": {

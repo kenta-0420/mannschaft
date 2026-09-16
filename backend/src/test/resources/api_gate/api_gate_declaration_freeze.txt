@@ -572,8 +572,8 @@ HTTP|com.mannschaft.app.service.controller.ServiceRecordController|17|17
 HTTP|com.mannschaft.app.service.controller.ServiceRecordFieldController|7|7
 HTTP|com.mannschaft.app.service.controller.ServiceRecordTemplateController|9|9
 HTTP|com.mannschaft.app.shift.controller.MemberWorkConstraintController|7|7
-HTTP|com.mannschaft.app.shift.controller.ShiftAutoAssignController|6|6
-HTTP|com.mannschaft.app.shift.controller.ShiftAvailabilityController|5|5
+HTTP|com.mannschaft.app.shift.controller.ShiftAutoAssignController|0|6
+HTTP|com.mannschaft.app.shift.controller.ShiftAvailabilityController|6|6
 HTTP|com.mannschaft.app.shift.controller.ShiftChangeRequestController|5|5
 HTTP|com.mannschaft.app.shift.controller.ShiftMyController|1|1
 HTTP|com.mannschaft.app.shift.controller.ShiftPdfController|1|1
@@ -622,7 +622,7 @@ HTTP|com.mannschaft.app.survey.controller.SurveyThreadController|1|1
 HTTP|com.mannschaft.app.sync.controller.OfflineSyncController|5|5
 HTTP|com.mannschaft.app.team.controller.OrganizationTeamSearchController|1|1
 HTTP|com.mannschaft.app.team.controller.PublicTeamController|1|1
-HTTP|com.mannschaft.app.team.controller.TeamController|38|38
+HTTP|com.mannschaft.app.team.controller.TeamController|39|39
 HTTP|com.mannschaft.app.team.controller.TeamExtendedProfileController|12|12
 HTTP|com.mannschaft.app.team.controller.TeamShiftSettingsController|2|2
 HTTP|com.mannschaft.app.template.controller.ModuleController|2|2

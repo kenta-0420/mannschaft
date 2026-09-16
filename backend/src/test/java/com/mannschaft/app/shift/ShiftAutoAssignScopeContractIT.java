@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
@@ -12,9 +13,11 @@ import com.mannschaft.app.shift.repository.ShiftAssignmentRunRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -22,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -85,6 +89,12 @@ class ShiftAutoAssignScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ShiftAssignmentRepository assignmentRepository;
 
+    @Autowired
+    private FeatureFlagRepository featureFlagRepository;
+
+    @Autowired
+    private CacheManager cacheManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -113,6 +123,14 @@ class ShiftAutoAssignScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // F03.5 §11.1（戦役B-1）で ShiftAutoAssignController はクラスレベルの
+        // @RequireFeature("FEATURE_SHIFT_AUTO_ASSIGN_ENABLED") で塞がれた。本テストが検証するのは
+        // 「その先の per-scope 認可」であり、ゲートで一律 403（FEATURE_GATE_001）になると
+        // 認可の撃ち分けを一切測れなくなる。設計書 §11.1.2-6 の「テストは消さない・フラグ ON で実行する」
+        // に従い、フィクスチャでゲートを開ける。ゲート自体の検証は
+        // ShiftAutoAssignFeatureGateContractIT が担う。
+        FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager, "FEATURE_SHIFT_AUTO_ASSIGN_ENABLED");
+
         teamAId = insertTeam("WAVE7 自動割当 チームA");
         teamBId = insertTeam("WAVE7 自動割当 チームB");
 
@@ -156,6 +174,12 @@ class ShiftAutoAssignScopeContractIT extends AbstractMySqlIntegrationTest {
 
         em.flush();
         em.clear();
+    }
+
+    @AfterEach
+    void tearDownFeatureFlagCache() {
+        // フラグキャッシュはシングルトン Bean が持つため @Transactional のロールバック対象外。次テストへ漏らさない。
+        FeatureFlagTestSupport.clearFlagCaches(cacheManager);
     }
 
     // ═════════════════════════════════════════════════════════════════════

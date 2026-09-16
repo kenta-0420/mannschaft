@@ -121,7 +121,8 @@
       "end_never": "永不",
       "end_date": "日期",
       "end_count": "次数",
-      "end_count_suffix": "次"
+      "end_count_suffix": "次",
+      "update_scope": { "title": "更新重复日程", "description": "请选择要更新的日程范围。", "this_only": "仅此日程", "this_and_following": "此日程及之后" }
     },
     "event_add": "添加日程",
     "calendar_guide": {
