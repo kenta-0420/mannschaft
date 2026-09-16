@@ -938,9 +938,16 @@ dependencyCheck {
 // springdoc-openapi-gradle-plugin はプロジェクトをフォークした Spring Boot プロセスとして起動し、
 // /v3/api-docs エンドポイントから JSON を取得して outputDir に保存する。
 // openapi-gen プロファイル: MySQL 不要、H2 インメモリ DB + Flyway 無効 で起動する。
+// 生成用フォークプロセスの待ち受けポート。
+// 既定は 8082（dev サーバー :8080 と競合しない）だが、-PopenApiPort=8099 で上書きできる。
+// WSL2 の mirrored networking では WSL 側の listener も Windows の localhost に現れるため、
+// 並行セッションの E2E バックエンドが :8082 を掴んでいると、
+// フォークが bind できない／プラグインの GET が他セッションのアプリに繋がって別物の spec を拾う。
+// 衝突時は別ポートを指定して回避する。
+val openApiGenPort: String = (project.findProperty("openApiPort") as String?) ?: "8082"
+
 openApi {
-    // 8082 ポートを使用: dev サーバー(:8080)が稼働中でも競合しない
-    apiDocsUrl.set("http://localhost:8082/v3/api-docs")
+    apiDocsUrl.set("http://localhost:$openApiGenPort/v3/api-docs")
     // projectDir は backend/ ディレクトリを指すため、親（リポジトリルート）の docs/ を指定する
     outputDir.set(file("${projectDir.parentFile}/docs"))
     outputFileName.set("openapi.json")
@@ -954,7 +961,7 @@ openApi {
     customBootRun {
         // args.add は springdoc-openapi-gradle-plugin では機能しないため jvmArgs で -D オプションを使用する
         jvmArgs.add("-Dspring.profiles.active=openapi-gen")
-        jvmArgs.add("-Dserver.port=8082")
+        jvmArgs.add("-Dserver.port=$openApiGenPort")
         // bootRun は開発者向けの高速起動最適化として -XX:TieredStopAtLevel=1（C1 のみ）を付ける。
         // これは「起動してすぐ手で触る」用途には有効だが、generateOpenApiDocs の起動は
         // 全 Entity の DDL 生成・全 Bean 初期化・全 Controller スキャンという重い CPU バウンドの処理で、
@@ -963,7 +970,7 @@ openApi {
         jvmArgs.add("-XX:TieredStopAtLevel=4")
         // MapProperty.put() で systemProperties にも設定し二重に適用する
         systemProperties.put("spring.profiles.active", "openapi-gen")
-        systemProperties.put("server.port", "8082")
+        systemProperties.put("server.port", openApiGenPort)
         // フォークプロセスのクラスパスを最新コンパイル済みの sourceSets.main.runtimeClasspath に明示固定する。
         // プラグインは customBootRun.classpath が空の場合に bootRun.classpath をフォールバックで使うが、
         // それは Gradle build cache から復元されたクラスパス解決に依存しているため、
