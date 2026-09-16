@@ -67,6 +67,7 @@ const E2E_USER = {
   password: 'TestPass2026!',
 }
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
+const E2E_TEAM_SLUG = process.env.E2E_TEAM_SLUG ?? 'team-000092'
 
 interface FavoriteResponse {
   id: string
@@ -323,8 +324,9 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
   //
   //   このプロジェクトはURL識別子を slug に一本化済みで、数値IDのURL
   //   (/teams/1 等) はチームページとして解決しない（アプリ外枠のみ描画され
-  //   見出しが一切出ない）。実機確認済みの slug 'team-000092'（e2e-user が
-  //   MEMBER として所属、circulation-member.spec.ts と同一チーム）を使う。
+  //   見出しが一切出ない）。既定は実機確認済みの slug 'team-000092'
+  //   （circulation-member.spec.ts と同一チーム）。隔離DBでは E2E_TEAM_SLUG に
+  //   e2e-user が所属する実在チームの slug を指定する。
   //
   //   F02.9 Phase 3 の FavoriteToggleButton は main 未マージのため、
   //   ボタン有無に依存せず「チームページ自体が描画される」レベルで検証する。
@@ -332,8 +334,8 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
   //   など強い検証に書き換えること。
   // ===========================================================================
   test('FAV-008: /teams/{slug} ページが描画される (FavoriteToggleButton配置先)', async () => {
-    // team-000092 は実機確認済みの実在チーム（slug=team-000092, numericId=92）
-    await page.goto('/teams/team-000092')
+    // 既定は実機確認済みの team-000092。隔離DBでは実在チームの slug を指定する。
+    await page.goto(`/teams/${E2E_TEAM_SLUG}`)
     await waitForHydration(page)
     await waitForSpinnerGone(page)
 
