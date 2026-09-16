@@ -22,9 +22,10 @@ import type { ShiftHourlyRateResponse } from '~/types/shift'
  * 時給は「ユーザー × チーム × 適用開始日」の履歴管理型なので、登録は常に追加であり
  * 過去の設定は消えない（表示は「現在有効な時給」＋ダイアログ内の履歴一覧）。
  *
- * 一覧は 1 ページずつ表示する。メンバー一覧 API はページ要求のたびに所属情報を
- * 全件走査するため、画面側で全ページをまとめて取ると総処理量が人数の二乗になる
- * （詳細は useHourlyRateMemberPage の Javadoc）。
+ * 一覧はチーム全員を一括で取得する（CMP-260912-1525）。メンバーも時給も
+ * 一括取得の経路を使うので、サーバーへの要求は画面あたり合計 2 回で、
+ * サーバー側の処理量は人数に比例する（詳細は useHourlyRateMemberPage の Javadoc）。
+ * 表のページ送りは取得済み配列のクライアント側切り出しであり、要求は増えない。
  */
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -33,7 +34,7 @@ const teamSlug = String(route.params.slug)
 const { t } = useI18n()
 const notification = useNotification()
 const teamApi = useTeamApi()
-const { loadPage } = useHourlyRateMemberPage()
+const { loadAll } = useHourlyRateMemberPage()
 const { getHourlyRate, setHourlyRate } = useShiftHourlyRateApi()
 const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
@@ -42,7 +43,6 @@ const saving = ref(false)
 const rows = ref<MemberRateRow[]>([])
 const teamNumericId = ref<number | null>(null)
 const totalRecords = ref(0)
-const totalPages = ref(1)
 const firstRow = ref(0)
 
 const showDialog = ref(false)
@@ -67,9 +67,11 @@ const formRateErrorMessage = computed(() =>
   formRateError.value === null ? null : t(`shift.hourlyRate.validation.${formRateError.value}`),
 )
 
+/**
+ * 時給が未設定のメンバー数。全員を一括取得しているので、
+ * 表示中のページに限らず常にチーム全体の件数である。
+ */
 const missingCount = computed(() => rows.value.filter(r => r.rate === null).length)
-/** 全員が 1 ページに収まっているか（＝未設定件数をチーム全体の数として言い切れるか）。 */
-const isSinglePage = computed(() => totalPages.value <= 1)
 /** 1 ページに収まらないならページャーを出す（出ないと 101 人目以降へ到達できない）。 */
 const showPaginator = computed(() => shouldShowPaginator(totalRecords.value))
 
@@ -83,17 +85,15 @@ async function resolveTeamNumericId(): Promise<number> {
   return numericId
 }
 
-async function loadRows(page = 0) {
+async function loadRows() {
   loading.value = true
   try {
     const teamId = teamNumericId.value ?? (await resolveTeamNumericId())
     teamNumericId.value = teamId
     const today = dayjs().format('YYYY-MM-DD')
-    const result = await loadPage(teamSlug, String(teamId), page, today)
+    const result = await loadAll(teamSlug, String(teamId), today)
     rows.value = result.rows
     totalRecords.value = result.totalElements
-    totalPages.value = result.totalPages
-    firstRow.value = page * MEMBER_PAGE_SIZE
   }
   catch (error) {
     const status
@@ -111,8 +111,9 @@ async function loadRows(page = 0) {
   }
 }
 
+/** 表示位置を覚えるだけ。取得済みの配列を切り出すので再取得は起こさない。 */
 function onPage(event: { page: number }) {
-  void loadRows(event.page)
+  firstRow.value = event.page * MEMBER_PAGE_SIZE
 }
 
 function openEdit(row: MemberRateRow) {
@@ -163,7 +164,7 @@ async function submit() {
     })
     notification.success(t('shift.hourlyRate.saved'))
     showDialog.value = false
-    await loadRows(Math.floor(firstRow.value / MEMBER_PAGE_SIZE))
+    await loadRows()
   }
   catch {
     notification.error(t('shift.hourlyRate.saveFailed'))
@@ -185,7 +186,7 @@ onMounted(async () => {
     showError(createError({ statusCode: 403, statusMessage: t('shift.hourlyRate.forbidden') }))
     return
   }
-  await loadRows(0)
+  await loadRows()
 })
 </script>
 
@@ -206,11 +207,7 @@ onMounted(async () => {
         class="mb-4"
         data-testid="hourly-rate-missing-banner"
       >
-        {{
-          isSinglePage
-            ? $t('shift.hourlyRate.missingWarning', { count: missingCount })
-            : $t('shift.hourlyRate.missingWarningPage', { count: missingCount })
-        }}
+        {{ $t('shift.hourlyRate.missingWarning', { count: missingCount }) }}
       </Message>
 
       <div class="overflow-x-auto">
@@ -221,9 +218,7 @@ onMounted(async () => {
           data-testid="hourly-rate-table"
           :paginator="showPaginator"
           :rows="MEMBER_PAGE_SIZE"
-          :total-records="totalRecords"
           :first="firstRow"
-          lazy
           @page="onPage"
         >
           <Column :header="$t('shift.hourlyRate.column.member')">

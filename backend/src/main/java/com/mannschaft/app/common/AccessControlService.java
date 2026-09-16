@@ -87,6 +87,30 @@ public class AccessControlService {
     }
 
     /**
+     * スコープに<b>在籍中</b>のメンバーの userId を返す（CMP-260912-1525）。
+     *
+     * <p>{@link #isMember} の集合版であり、判定源は同じ {@code memberships}（{@code left_at IS NULL}）。
+     * 1 人ずつ {@link #isMember} を呼ぶと人数ぶんクエリが出るため、まとめて 1 クエリで引く。</p>
+     *
+     * <h2>なぜ要るのか</h2>
+     * <p>一覧系の API を「1 件ずつ取る経路」から「まとめて取る経路」へ変えると、
+     * <b>1 件ずつなら効いていた対象側の所属チェックが落ちやすい</b>。
+     * たとえば時給の一括取得を {@code teamId} だけで引くと、
+     * 時給を設定されたあとに脱退した元メンバーの金銭情報まで返ってしまう
+     * （単数取得は {@code checkMembership(targetUserId, ...)} で対象の現在の所属を見ていた）。
+     * 呼び出し元のロール検査（誰が呼べるか）と対象の絞り込み（誰のデータを返すか）は別の軸であり、
+     * 後者をこのメソッドで担保する。</p>
+     *
+     * @param scopeId   スコープ ID
+     * @param scopeType スコープ種別（{@code "TEAM"} 等）
+     * @return 在籍中メンバーの userId（重複なし。0 名なら空リスト）
+     */
+    public List<Long> listActiveMemberIds(Long scopeId, String scopeType) {
+        ScopeType scope = ScopeType.valueOf(scopeType);
+        return membershipRepository.findActiveDistinctUserIdsByScope(scope, scopeId);
+    }
+
+    /**
      * ユーザーがスコープのメンバー、または（ORGANIZATION スコープのとき）その配下ツリーの
      * <b>応答母集団メンバー</b>かどうかを返す（欠陥Z 根治）。
      *

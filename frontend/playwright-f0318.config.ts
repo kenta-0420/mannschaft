@@ -18,7 +18,10 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './tests/e2e/real',
-  testMatch: '**/schedule-activity-feed*.spec.ts',
+  testMatch: [
+    '**/schedule-activity-feed*.spec.ts',
+    '**/schedule-recurrence-scope.real.spec.ts',
+  ],
   fullyParallel: false,
   workers: 1,
   retries: 0,

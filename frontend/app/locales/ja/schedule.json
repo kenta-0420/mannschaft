@@ -121,7 +121,8 @@
       "end_never": "指定なし",
       "end_date": "日付",
       "end_count": "回数",
-      "end_count_suffix": "回"
+      "end_count_suffix": "回",
+      "update_scope": { "title": "繰り返し予定を更新", "description": "更新する予定の範囲を選択してください。", "this_only": "この予定のみ", "this_and_following": "この予定以降" }
     },
     "event_add": "予定を追加",
     "calendar_guide": {
