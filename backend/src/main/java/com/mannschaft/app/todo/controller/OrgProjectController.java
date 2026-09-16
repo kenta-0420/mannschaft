@@ -3,7 +3,7 @@ package com.mannschaft.app.todo.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.config.OrgScopeId;
 import com.mannschaft.app.todo.ProjectStatus;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.CreateMilestoneRequest;
@@ -39,8 +39,7 @@ import java.util.List;
 /**
  * 組織プロジェクトコントローラー。組織スコープのプロジェクト・マイルストーン API を提供する。
  *
- * <p>{@link TeamProjectController} の写経。teamId → {@code teamService.resolveTeamId} の代わりに
- * {@code organizationService.resolveOrgId(slug)} で組織内部 ID を解決し、
+ * <p>{@link TeamProjectController} の写経。slug / 数値 ID を {@link OrgScopeId} へ正準化して
  * {@link ProjectService} に {@link TodoScopeType#ORGANIZATION} と orgId を渡す。</p>
  *
  * <p><b>認可</b>: 各 EP の先頭で認可ゲートを呼ぶ。一覧／作成は
@@ -56,7 +55,6 @@ public class OrgProjectController {
 
     private final ProjectService projectService;
     private final TodoService todoService;
-    private final OrganizationService organizationService;
     // 各 EP 入口の認可ゲート（組織メンバーシップ + プロジェクトのスコープ束縛）。
     private final ProjectAccessGuard projectAccessGuard;
 
@@ -67,11 +65,11 @@ public class OrgProjectController {
     @Operation(summary = "プロジェクト一覧（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<ProjectResponse>> listProjects(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @RequestParam(defaultValue = "ACTIVE") String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgMembership(SecurityUtils.getCurrentUserId(), orgId);
         return ResponseEntity.ok(projectService.listProjects(
                 TodoScopeType.ORGANIZATION, orgId, ProjectStatus.valueOf(status), page, size));
@@ -84,9 +82,9 @@ public class OrgProjectController {
     @Operation(summary = "プロジェクト作成（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @Valid @RequestBody CreateProjectRequest request) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgMembership(SecurityUtils.getCurrentUserId(), orgId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(projectService.createProject(
@@ -100,9 +98,9 @@ public class OrgProjectController {
     @Operation(summary = "プロジェクト詳細（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ProjectDetailResponse>> getProject(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.getProject(id));
     }
@@ -114,10 +112,10 @@ public class OrgProjectController {
     @Operation(summary = "プロジェクト更新（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProject(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateProjectRequest request) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.updateProject(id, request));
     }
@@ -129,9 +127,9 @@ public class OrgProjectController {
     @Operation(summary = "プロジェクト削除（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteProject(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
@@ -144,9 +142,9 @@ public class OrgProjectController {
     @Operation(summary = "プロジェクト手動完了（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "完了成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> completeProject(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.completeProject(id));
     }
@@ -158,9 +156,9 @@ public class OrgProjectController {
     @Operation(summary = "プロジェクト再開（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再開成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> reopenProject(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.reopenProject(id));
     }
@@ -174,9 +172,9 @@ public class OrgProjectController {
     @Operation(summary = "マイルストーン一覧（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<MilestoneResponse>>> listMilestones(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.listMilestones(id));
     }
@@ -188,10 +186,10 @@ public class OrgProjectController {
     @Operation(summary = "マイルストーン作成（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<MilestoneResponse>> createMilestone(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id,
             @Valid @RequestBody CreateMilestoneRequest request) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(projectService.createMilestone(id, request));
@@ -204,11 +202,11 @@ public class OrgProjectController {
     @Operation(summary = "マイルストーン更新（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<MilestoneResponse>> updateMilestone(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id,
             @PathVariable Long mid,
             @Valid @RequestBody UpdateMilestoneRequest request) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.updateMilestone(id, mid, request));
     }
@@ -220,10 +218,10 @@ public class OrgProjectController {
     @Operation(summary = "マイルストーン削除（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteMilestone(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id,
             @PathVariable Long mid) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         projectService.deleteMilestone(id, mid);
         return ResponseEntity.noContent().build();
@@ -236,10 +234,10 @@ public class OrgProjectController {
     @Operation(summary = "マイルストーン完了（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "完了成功")
     public ResponseEntity<ApiResponse<MilestoneResponse>> completeMilestone(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id,
             @PathVariable Long mid) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.completeMilestone(id, mid));
     }
@@ -251,9 +249,9 @@ public class OrgProjectController {
     @Operation(summary = "プロジェクト内TODO一覧（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TodoResponse>>> listProjectTodos(
-            @PathVariable String slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long id) {
-        Long orgId = organizationService.resolveOrgId(slug);
+        Long orgId = scopeId.value();
         projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(todoService.listProjectTodos(id));
     }
