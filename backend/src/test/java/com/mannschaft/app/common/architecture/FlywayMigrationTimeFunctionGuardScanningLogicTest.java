@@ -300,11 +300,6 @@ class FlywayMigrationTimeFunctionGuardScanningLogicTest {
         /** スレッドの停止を待つ上限。 */
         private static final Duration STOP_DEADLINE = Duration.ofSeconds(20);
 
-        /**
-         * 本番経路の検体で使う上限。実物の走査（5〜8 秒）より十分短く、かつ走査スレッドが
-         * 起動して自分自身を記録する余裕はある長さにする（1 ms だと起動前に打ち切られうる）。
-         */
-        private static final Duration PRODUCTION_PROBE_TIMEOUT = Duration.ofMillis(300);
 
         /**
          * メモリを消費せずに「長時間終わらない正規表現走査」を作る合成入力。
@@ -389,28 +384,44 @@ class FlywayMigrationTimeFunctionGuardScanningLogicTest {
         }
 
         /**
-         * <b>本番の走査経路</b>が割り込みに応答することの回帰テスト。
+         * <b>本番の {@link Matcher} 生成</b>が割り込みに応答することの回帰テスト。
          *
-         * <p>上の検体は仕組み（ラッパ単体）を確かめるもので、{@code collectViolations} が実際に
-         * その仕組みを通しているかまでは保証しない。ここでは実物の migration 走査を極端に短い上限で
-         * 打ち切り、<b>本番経路のスレッドが即座に止まる</b>ことを見る。割り込み検査を外すと、
-         * 走査が自力で終わるまで（実測 5〜8 秒）スレッドが生き続けるため検出できる。</p>
+         * <p>上の検体はラッパ単体の仕組みを確かめるもので、本番の走査がその仕組みを通しているかは
+         * 保証しない。ここでは本番が使う唯一の生成入口
+         * {@code FlywayMigrationTimeFunctionGuardTest#sessionTzNowMatcher} へ、<b>1 ファイル分の入力として</b>
+         * 終わらない合成入力を流し込む。{@code sessionTzNowMatcher} から {@code interruptible} を外すと
+         * この走査は割り込みを無視し、スレッドが停止しないので落ちる。</p>
+         *
+         * <h4>前版の検体を捨てた理由（Codex 検分の指摘）</h4>
+         * <p>前版は実物の migration 走査を 300 ms で打ち切る形だった。これは2つの意味で誤りである。</p>
+         * <ol>
+         *   <li><b>実行速度に依存していた</b>。速い CI ホストや暖まったキャッシュで走査が 300 ms 以内に
+         *       終わると {@code AssertionError} が起きず、テストが偽陽性で落ちる。番人テストが不安定に
+         *       なると無関係な全 PR の CI を揺らす。</li>
+         *   <li><b>主張を分離できていなかった</b>。matcher のラッパを外しても、{@code collectViolations} の
+         *       <b>ファイル境界</b>にある割り込み検査で次のファイルへ進む際に停止してしまうため、
+         *       「本番の matcher が割り込みに応答すること」を確かめたことにならない。</li>
+         * </ol>
+         * <p>本版は 1 ファイル内の {@code find()} が<b>決して終わらない</b>ので、ファイル境界の検査には
+         * 到達せず、機械の速さにも依存しない（{@link EndlessCharSequence} は
+         * {@code Integer.MAX_VALUE} 文字すべてが {@code 'a'} で、検出パターンのどの別名にも一致しない）。</p>
          */
         @Test
-        @DisplayName("本番の走査経路も割り込みに応答する（実物の migration 走査を極短の上限で打ち切る）")
-        void productionScanPathRespondsToInterrupt() throws InterruptedException {
+        @DisplayName("本番の matcher 生成も割り込みに応答する（1ファイル分の終わらない入力を本番経路へ流す）")
+        void productionMatcherRespondsToInterrupt() throws InterruptedException {
             AtomicReference<Thread> scanThread = new AtomicReference<>();
 
             assertThatThrownBy(() -> FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(
-                    PRODUCTION_PROBE_TIMEOUT, () -> {
+                    PROBE_TIMEOUT, () -> {
                         scanThread.set(Thread.currentThread());
-                        return FlywayMigrationTimeFunctionGuardTest.collectViolations(
-                                FlywayMigrationTimeFunctionGuardTest.migrationRootForTest());
+                        // 本番と同じ生成入口を使う。ここがラッパを通していなければ止まらない。
+                        Matcher m = FlywayMigrationTimeFunctionGuardTest.sessionTzNowMatcher(
+                                new EndlessCharSequence());
+                        m.find();
+                        return List.of();
                     })).isInstanceOf(AssertionError.class);
 
-            // 実物の走査は 5〜8 秒かかる。割り込み検査を外すと最後まで走り切ってしまうので、
-            // 停止の許容を 3 秒にしておけば「検査が外れた」ことを検出できる。
-            assertThreadStops(scanThread.get(), Duration.ofSeconds(3));
+            assertThreadStops(scanThread.get(), STOP_DEADLINE);
         }
 
         private void assertThreadStops(Thread worker, Duration stopDeadline) throws InterruptedException {

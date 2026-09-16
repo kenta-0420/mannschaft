@@ -215,10 +215,7 @@ class FlywayMigrationTimeFunctionGuardTest {
         // O(ファイル長 × 一致件数) となり、117 件の一致を持つ migration（V2.027）などで
         // 走査全体が桁違いに遅くなる（実測 8.8 秒 → 是正後は後述の scanFinishesQuickly を参照）。
         LineCounter lines = new LineCounter();
-        // 入力を割り込み可能なラッパで包む。これが無いと、検出パターンが破滅的バックトラックへ
-        // 退行したときに走査スレッドが割り込みを無視して CPU を焼き続ける
-        // （InterruptibleCharSequence の Javadoc 参照）。
-        Matcher m = SESSION_TZ_NOW_NAME.matcher(interruptible(scan));
+        Matcher m = sessionTzNowMatcher(scan);
         while (m.find()) {
             if (precededByIdentifierPart(scan, m.start())) {
                 continue; // より長い識別子の一部（audit$current_date / `current_date` / t.current_date）
@@ -565,6 +562,19 @@ class FlywayMigrationTimeFunctionGuardTest {
         return new InterruptibleCharSequence(text);
     }
 
+    /**
+     * 本番の走査が使う {@link Matcher} を組み立てる<b>唯一の入口</b>。
+     *
+     * <p>入力を必ず {@link #interruptible} で包む。ここを経由しない {@code matcher()} を書くと、
+     * その走査だけが割り込みに応答しなくなり、退行時に走査スレッドが CPU を焼き続ける。
+     * 生成を 1 箇所に集約してあるのは、<b>この結線自体を回帰テストで固定できるようにする</b>ためである
+     * （{@code FlywayMigrationTimeFunctionGuardScanningLogicTest} の
+     * {@code productionMatcherRespondsToInterrupt}。ラッパを外すと当該テストが落ちる）。</p>
+     */
+    static Matcher sessionTzNowMatcher(CharSequence maskedText) {
+        return SESSION_TZ_NOW_NAME.matcher(interruptible(maskedText));
+    }
+
     @Test
     @DisplayName("走査が現実的な時間で終わる（上限で打ち切られること＝ハングしても落ちること）")
     void scanFinishesQuickly() {
@@ -642,11 +652,6 @@ class FlywayMigrationTimeFunctionGuardTest {
             counts.merge(parts[0], Integer.parseInt(parts[1].strip()), Integer::sum);
         }
         return counts;
-    }
-
-    /** 走査ロジックテストが本番経路（実物の migration 走査）を叩くための入口。 */
-    static Path migrationRootForTest() {
-        return migrationRoot();
     }
 
     private static Path migrationRoot() {
