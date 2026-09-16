@@ -102,13 +102,15 @@ class BillingReturnControllerTrialTest {
         given(returnStateService.verify(TOKEN, BillingReturnStateService.Purpose.PAYMENT_ACTION_RETURN))
                 .willReturn(state);
 
+        // E3'（PR6b-1・AC-60）: PAYMENT_ACTION_RETURN は既存 billing_return_state とは
+        // 別名の billing_payment_action_state cookie だけを読み・失効させる（path も専用に狭まる）。
         mockMvc.perform(get("/billing/payment-action/return")
-                        .cookie(new Cookie("billing_return_state", TOKEN))
+                        .cookie(new Cookie("billing_payment_action_state", TOKEN))
                         .principal(() -> "7"))
                 .andExpect(status().isSeeOther())
                 .andExpect(header().string("Location", not(containsString(TOKEN))))
                 .andExpect(content().string(not(containsString(TOKEN))))
-                .andExpect(cookie().maxAge("billing_return_state", 0));
+                .andExpect(cookie().maxAge("billing_payment_action_state", 0));
     }
 
     @Test
