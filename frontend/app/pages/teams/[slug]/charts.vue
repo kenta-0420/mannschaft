@@ -24,7 +24,7 @@ async function loadData(page = 0) {
     await loadPermissions()
     const res = await chartApi.list(teamSlug.value, { page, size: 20 })
     charts.value = res.data
-    totalRecords.value = res.meta.totalElements
+    totalRecords.value = res.meta.total
   } catch {
     notification.error('カルテの取得に失敗しました')
   } finally {

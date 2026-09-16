@@ -2436,5 +2436,16 @@
         "description": "大会参加費の確認・支払い"
       }
     }
+  },
+  "auditLog": {
+    "title": "監査ログ",
+    "empty": "ログがありません",
+    "loadFailed": "監査ログの取得に失敗しました",
+    "column": {
+      "datetime": "日時",
+      "user": "ユーザー",
+      "category": "カテゴリ",
+      "event": "イベント"
+    }
   }
 }

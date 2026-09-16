@@ -24,7 +24,7 @@ export function useContentPaymentGateApi() {
   async function getContentPaymentGates(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{
       data: ContentPaymentGateResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(base(scopeType, scopeId))
   }
 

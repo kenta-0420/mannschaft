@@ -22,7 +22,7 @@ interface ApiResponse<T> {
 interface PagedResponse<T> {
   data: T[]
   meta: {
-    totalElements: number
+    total: number
     pageNumber: number
     pageSize: number
     totalPages: number

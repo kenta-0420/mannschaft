@@ -39,7 +39,7 @@ async function mockWorkflowApis(page: import('@playwright/test').Page) {
         contentType: 'application/json',
         body: JSON.stringify({
           data: MOCK_WORKFLOW_REQUESTS,
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     } else {

@@ -57,7 +57,7 @@ export function useBulletinThreads() {
     })
     return api<{
       data: BulletinThreadResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/bulletin/threads?${qs}`)
   }
 
@@ -193,7 +193,7 @@ export function useBulletinThreads() {
     query.set('size', String(params?.size ?? 20))
     return api<{
       data: BulletinThreadResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/${scopeType}/${scopeId}/bulletin/threads?${query}`)
   }
 
@@ -208,7 +208,7 @@ export function useBulletinThreads() {
     query.set('size', String(params.size ?? 20))
     return api<{
       data: BulletinThreadResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/search?${query}`)
   }
 

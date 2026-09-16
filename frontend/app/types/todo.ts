@@ -226,5 +226,5 @@ export interface UpsertPersonalMemoRequest {
 // 共有メモ一覧レスポンス
 export interface SharedMemoListResponse {
   data: SharedMemoEntry[]
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: { page: number; size: number; total: number; totalPages: number }
 }

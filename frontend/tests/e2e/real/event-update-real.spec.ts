@@ -51,7 +51,7 @@ interface TimetableFixture {
 
 interface EventListResponse {
   data: Array<{ id: number }>
-  meta: { totalElements: number }
+  meta: { total: number }
 }
 
 let adminApi: APIRequestContext
@@ -176,7 +176,7 @@ async function expectUnchangedTarget(beforeTotal: number): Promise<void> {
   expect(detail.content?.subtitle, '拒否後も対象subtitleが変わらないこと').toBe(targetEvent.subtitle)
 
   const list = await listEvents(adminApi, adminLogin, targetTeam)
-  expect(list.meta.totalElements, '拒否後も一覧総件数が変わらないこと').toBe(beforeTotal)
+  expect(list.meta.total, '拒否後も一覧総件数が変わらないこと').toBe(beforeTotal)
   expect(list.data.filter(event => event.id === targetEvent.id), '対象IDが一覧に1件だけあること').toHaveLength(1)
 }
 
@@ -295,7 +295,7 @@ test.afterAll(async () => {
 test('EVENT-UPDATE-REAL-001: 管理者が詳細画面から更新しても同じID・一覧件数を維持する', async ({ page }) => {
   const path = `/api/v1/teams/${targetTeam.slug}/events/${targetEvent.id}`
   const baseline = await listEvents(adminApi, adminLogin, targetTeam)
-  const beforeTotal = baseline.meta.totalElements
+  const beforeTotal = baseline.meta.total
   expect(baseline.data.filter(event => event.id === targetEvent.id), '更新前に対象IDが1件だけあること').toHaveLength(1)
 
   await expectStatus(
@@ -358,7 +358,7 @@ test('EVENT-UPDATE-REAL-001: 管理者が詳細画面から更新しても同じ
   expect(updated.content?.subtitle, '更新後subtitleがAPIでも一致すること').toBe(updatedSubtitle)
 
   const after = await listEvents(adminApi, adminLogin, targetTeam)
-  expect(after.meta.totalElements, '更新後も一覧総件数が増えないこと').toBe(beforeTotal)
+  expect(after.meta.total, '更新後も一覧総件数が増えないこと').toBe(beforeTotal)
   expect(after.data.filter(event => event.id === targetEvent.id), '更新後も対象IDが一覧に1件だけあること').toHaveLength(1)
 })
 

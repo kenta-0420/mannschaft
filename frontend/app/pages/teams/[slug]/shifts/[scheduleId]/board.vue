@@ -34,23 +34,43 @@
           />
         </NuxtLink>
 
-        <!-- 自動割当は管理者専用（BE が per-scope 認可で 403 を返す） -->
-        <Button
+        <!-- 自動割当は管理者専用（BE が per-scope 認可で 403 を返す）。
+             フラグ FEATURE_SHIFT_AUTO_ASSIGN_ENABLED が OFF のときは
+             DOM から消さず disabled ＋ 理由ツールチップで「停止中」と示す
+             （docs/features/F03.5_shift/06_manual_authoring.md §11.1.2-4）。 -->
+        <span
           v-if="isScopeAdmin"
-          :label="$t('shift.autoAssign.history')"
-          icon="pi pi-history"
-          severity="secondary"
-          outlined
-          size="small"
-          @click="historyVisible = true"
-        />
-        <Button
-          v-if="isScopeAdmin"
-          :label="$t('shift.autoAssign.button')"
-          icon="pi pi-bolt"
-          size="small"
-          @click="autoAssignVisible = true"
-        />
+          v-tooltip.bottom="autoAssignEnabled ? '' : t('shift.autoAssign.disabledReason')"
+          :title="autoAssignEnabled ? '' : t('shift.autoAssign.disabledReason')"
+          :data-testid="autoAssignEnabled ? undefined : 'auto-assign-disabled-reason'"
+          class="flex items-center gap-2"
+        >
+          <Tag
+            v-if="!autoAssignEnabled"
+            :value="t('shift.autoAssign.disabledBadge')"
+            severity="secondary"
+            class="text-xs"
+            data-testid="auto-assign-disabled-badge"
+          />
+          <Button
+            :label="$t('shift.autoAssign.history')"
+            icon="pi pi-history"
+            severity="secondary"
+            outlined
+            size="small"
+            :disabled="!autoAssignEnabled"
+            data-testid="auto-assign-history-button"
+            @click="historyVisible = true"
+          />
+          <Button
+            :label="$t('shift.autoAssign.button')"
+            icon="pi pi-bolt"
+            size="small"
+            :disabled="!autoAssignEnabled"
+            data-testid="auto-assign-button"
+            @click="autoAssignVisible = true"
+          />
+        </span>
       </div>
     </div>
 
@@ -156,6 +176,12 @@ const isSupporter = computed(() => roleName.value === 'SUPPORTER')
 // 認可の代替ではない。`hasRoleOrAbove` 的な包含判定に書き換えて SYSTEM_ADMIN を含めないこと。
 const isScopeAdmin = computed(() => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN')
 
+// 自動割当は 2026-09-09 の方針転換で既定 OFF（BE も ShiftAutoAssignController の
+// クラスレベル @RequireFeature で 6 経路すべてを FEATURE_GATE_001 で拒否する）。
+// FE は導線を消さず「停止中」として残す。GATE_ROUTE_MAP には足さない
+// （足すと /teams/*/shifts 全体が巻き添えで遮断されるため。設計書 §11.1.2-5）。
+const { enabled: autoAssignEnabled } = useFeatureFlag('FEATURE_SHIFT_AUTO_ASSIGN_ENABLED')
+
 const shiftApi = useShiftApi()
 const teamApi = useTeamApi()
 const { t } = useI18n()
@@ -223,7 +249,9 @@ onMounted(async () => {
   // 認可根治 Wave7: 実行履歴 API は管理者専用になったため、権限解決後に管理者のときだけ取得する。
   // 従来どおり Promise.all に混ぜたままだと、一般メンバーでは 403 で Promise.all ごと失敗し
   // ボード画面全体が描画されなくなる（エラーを握りつぶさず、そもそも呼ばない形で解消する）。
-  if (isScopeAdmin.value) {
+  // フラグ OFF のときは実行履歴 API もゲートで 403（FEATURE_GATE_001）になるため呼ばない。
+  // 例外を握りつぶすのではなく、停止中の機能には最初から到達しない形で解消する。
+  if (isScopeAdmin.value && autoAssignEnabled.value) {
     await fetchRuns()
   }
 })

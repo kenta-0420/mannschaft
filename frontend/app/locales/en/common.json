@@ -2436,5 +2436,16 @@
         "description": "Check and pay tournament entry fees"
       }
     }
+  },
+  "auditLog": {
+    "title": "Audit log",
+    "empty": "No logs",
+    "loadFailed": "Failed to load the audit log",
+    "column": {
+      "datetime": "Date & time",
+      "user": "User",
+      "category": "Category",
+      "event": "Event"
+    }
   }
 }

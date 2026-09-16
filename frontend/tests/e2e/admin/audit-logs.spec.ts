@@ -63,7 +63,7 @@ const MOCK_AUDIT_LOGS_RESPONSE = {
   meta: {
     page: 0,
     size: 30,
-    totalElements: 3,
+    total: 3,
     totalPages: 1,
     hasNext: false,
   },
@@ -74,7 +74,7 @@ const MOCK_EMPTY_RESPONSE = {
   meta: {
     page: 0,
     size: 30,
-    totalElements: 0,
+    total: 0,
     totalPages: 0,
     hasNext: false,
   },
@@ -99,7 +99,7 @@ const MOCK_PAGINATED_RESPONSE = {
   meta: {
     page: 0,
     size: 30,
-    totalElements: 62,
+    total: 62,
     totalPages: 3,
     hasNext: true,
   },

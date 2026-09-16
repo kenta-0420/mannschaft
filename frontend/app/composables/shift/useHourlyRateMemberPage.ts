@@ -97,11 +97,11 @@ export function useHourlyRateMemberPage() {
 
     return {
       rows,
-      // BE の `PagedResponse.PageMeta` が送る総件数フィールドは `total`。
-      // `totalElements` は型にだけ存在して BE は送らないため、そちらを先に読むと
-      // 常に undefined になり、ページャーの表示判定が永久に偽になる（101 人目以降へ到達できない）。
-      // 互換のため total が無いときだけ totalElements を見る。
-      totalElements: res.meta?.total ?? res.meta?.totalElements ?? members.length,
+      // BE の `PagedResponse.PageMeta` が送る総件数フィールドは `total` のみ。
+      // かつて型にだけ存在した `totalElements` を読んでいたため常に undefined になり、
+      // ページャーの表示判定が永久に偽になっていた（101 人目以降へ到達できない）。
+      // 幽霊フィールドは CMP-260912-1823 で型ごと削除済み。
+      totalElements: res.meta?.total ?? members.length,
       totalPages: res.meta?.totalPages ?? 1,
     }
   }

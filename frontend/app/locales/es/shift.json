@@ -29,7 +29,9 @@
       "revoke": "Descartar",
       "history": "Historial de ejecuciones",
       "slotsFilled": "{filled}/{total} turnos cubiertos",
-      "warnings": "{count} advertencias"
+      "warnings": "{count} advertencias",
+      "disabledBadge": "Suspendido",
+      "disabledReason": "La asignación automática está suspendida. Cree el turno manualmente."
     },
     "visualReview": {
       "title": "Revisión visual",

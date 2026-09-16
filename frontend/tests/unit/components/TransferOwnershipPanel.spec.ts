@@ -83,7 +83,7 @@ function buildMember(overrides: Partial<MemberResponse> = {}): MemberResponse {
 function pagedMembers(members: MemberResponse[]) {
   return {
     data: members,
-    meta: { page: 0, size: 200, totalElements: members.length, totalPages: 1 },
+    meta: { page: 0, size: 200, total: members.length, totalPages: 1 },
   }
 }
 
