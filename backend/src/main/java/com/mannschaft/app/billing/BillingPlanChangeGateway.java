@@ -63,6 +63,35 @@ public interface BillingPlanChangeGateway {
     PlanChangeApplyResult applyPlanChange(PlanChangeApplyCommand command);
 
     /**
+     * AC-48/AC-54: 3DS（追加認証）の client secret を Stripe から<b>都度取得</b>する（<b>試練B の発注書</b>）。
+     *
+     * <p>{@code GET …/changes/{changeId}/payment-action} の唯一の Stripe 窓口である。取得した
+     * {@code clientSecret} は<b>DB に保存してはならない</b>（AC-57）。要求のたびに取り直すことで、
+     * 別端末・再ログインからの再開（AC-71）が成立する。</p>
+     *
+     * <p>change が {@code REQUIRES_ACTION} でない／他人の change（AC-53/AC-70）では<b>呼んではならない</b>。
+     * 試練は gateway の呼び出し回数 0 を直接観測する。</p>
+     *
+     * @param subscriptionRef 対象 Stripe Subscription（{@code sub_xxx}）
+     * @param invoiceRef      差額請求の Invoice（{@code in_xxx}・未確定なら null）
+     * @return 追加認証の情報（不要／取得できないなら空）
+     */
+    java.util.Optional<PaymentAction> retrievePaymentAction(String subscriptionRef, String invoiceRef);
+
+    /**
+     * 3DS の追加認証情報（AC-48）。
+     *
+     * <p>{@code clientSecret} は<b>短命な秘密</b>であり、URL・return state・DB・ログ・監査・
+     * browser storage のいずれにも残してはならない（AC-55〜59）。</p>
+     *
+     * @param type         追加認証の種別（{@code payment_intent} 等）
+     * @param clientSecret Stripe の client secret（都度取得・保存禁止）
+     * @param expiresAt    追加認証の期限
+     */
+    record PaymentAction(String type, String clientSecret, Instant expiresAt) {
+    }
+
+    /**
      * 見積り要求。
      *
      * @param subscriptionRef      対象 Stripe Subscription（{@code sub_xxx}）
