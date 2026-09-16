@@ -418,23 +418,13 @@ test.describe('NOTIF-001〜005: 通知', () => {
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
 
-    // actionUrl を持つ通知アイテムをクリックして遷移が発生することを確認
-    const notifItems = page.locator(
-      '[class*="cursor-pointer border-b"], [class*="notification-item"], .border-b',
-    )
-    const count = await notifItems.count()
-    if (count > 0) {
-      const urlBefore = page.url()
-      // 最初のアイテムをクリック（actionUrl がない通知の場合は URL が変わらない場合がある）
-      await notifItems.first().click()
-      await page.waitForTimeout(2_000)
-      // クリック後にエラーページに遷移していないこと
-      expect(page.url()).not.toContain('/error')
-      expect(page.url()).not.toContain('/404')
-      void urlBefore
-    } else {
-      // 通知が0件の場合はスキップ（seed 異常）
-      test.skip()
-    }
+    // seed 済み通知のクリック操作がエラー画面に遷移しないことを確認
+    const firstNotification = page.locator('[role="button"].border-b').first()
+    await expect(firstNotification, 'seed 済み通知が描画されていない').toBeVisible({ timeout: 30_000 })
+    // actionUrl がない通知の場合は URL が変わらない場合がある。
+    await firstNotification.click()
+    await page.waitForTimeout(2_000)
+    expect(page.url()).not.toContain('/error')
+    expect(page.url()).not.toContain('/404')
   })
 })
