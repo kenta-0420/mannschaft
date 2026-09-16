@@ -40,12 +40,18 @@ import java.util.Optional;
  *       {@code pending_update} の有無は「追加認証が要るか」の判定にそのまま使える</li>
  * </ul>
  *
- * <h2>申し送り</h2>
- * <p>Stripe は「見積りと実適用の按分を完全に一致させるには {@code proration_date} を両方へ渡せ」と
- * している。ポートの {@code PlanChangeApplyCommand} は按分基準日時を運ばないため、本実装は
- * 見積り・適用とも Stripe 側の「現在時刻」で按分させている。見積りから適用までの経過時間ぶん
- * （preview の有効期限は最大10分・AC-5）金額が動きうる。厳密一致が要件化されたらポートに
- * {@code prorationDate} を足すこと（試練の {@code @MockitoBean} も同時に移す）。</p>
+ * <h2>見積り額と請求額の一致（{@code proration_date}）</h2>
+ * <p>Stripe は「実際の按分を見積りと完全に一致させるには、実適用時にも {@code proration_date} を渡せ」と
+ * している。本実装は<b>見積り時に按分基準日時を固定して Stripe へ渡し、同じ値を
+ * {@link PlanChangeQuote#prorationAt()} で返す</b>。呼び出し側はそれを
+ * {@code billing_change_previews.proration_at} へ保存し、適用時に
+ * {@link PlanChangeApplyCommand#prorationDate()} として戻す。これを怠ると、preview の有効期限
+ * （最大10分・AC-5）ぶんの経過時間で<b>利用者が承認した額と実際の請求額がずれる</b>。</p>
+ *
+ * <h2>実機（Stripe テストモード）での要確認事項</h2>
+ * <p>見積りで {@code expand=total_tax_amounts.tax_rate} を指定して税名・税率を Stripe から運んでいるが、
+ * <b>実 API での動作は未検証</b>である（ローカルに Docker が無く、CI も Stripe を呼ばない）。
+ * テストモードでの疎通時に、この展開が受理されること・税名/税率が実際に埋まることを確認すること。</p>
  */
 @Slf4j
 @Service
@@ -67,12 +73,16 @@ public class StripeBillingPlanChangeGateway implements BillingPlanChangeGateway 
      */
     @Override
     public PlanChangeQuote previewPlanChange(PlanChangePreviewCommand command) {
+        // 按分の基準日時をここで1回だけ決め、Stripe へ渡し、同じ値を呼び出し側へ返す
+        // （呼び出し側が preview 行へ保存し、適用時に proration_date として戻す）。
+        Instant prorationAt = clock.instant();
         StripePaymentProvider.InvoicePreviewInfo preview =
                 stripePaymentProvider.previewSubscriptionPlanChange(
                         command.subscriptionRef(),
                         command.targetStripePriceRef(),
                         command.quantity() == null ? null : command.quantity().longValue(),
-                        PRORATION_BEHAVIOR_ALWAYS_INVOICE);
+                        PRORATION_BEHAVIOR_ALWAYS_INVOICE,
+                        prorationAt.getEpochSecond());
 
         return new PlanChangeQuote(
                 preview.currency(),
@@ -83,9 +93,7 @@ public class StripeBillingPlanChangeGateway implements BillingPlanChangeGateway 
                 toBasisPoints(preview.taxPercentage()),
                 toInstant(preview.periodStartEpochSec()),
                 toInstant(preview.periodEndEpochSec()),
-                // Stripe へ proration_date を渡していないため、按分基準は呼び出し時刻である
-                // （上記「申し送り」参照）。
-                clock.instant());
+                prorationAt);
     }
 
     /**
@@ -106,7 +114,9 @@ public class StripeBillingPlanChangeGateway implements BillingPlanChangeGateway 
                         command.prorationBehavior(),
                         command.paymentBehavior(),
                         command.metadata(),
-                        command.stripeIdempotencyKey());
+                        command.stripeIdempotencyKey(),
+                        // 見積り時の基準日時をそのまま渡す（ここで now を採ると見積り額とずれる）。
+                        command.prorationDate() == null ? null : command.prorationDate().getEpochSecond());
 
         Instant pendingUpdateExpiresAt = toInstant(applied.pendingUpdateExpiresAtEpochSec());
         return new PlanChangeApplyResult(

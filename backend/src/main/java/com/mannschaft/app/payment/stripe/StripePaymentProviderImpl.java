@@ -1517,7 +1517,8 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
     @Override
     public InvoicePreviewInfo previewSubscriptionPlanChange(
-            String subscriptionId, String targetPriceRef, Long quantity, String prorationBehavior) {
+            String subscriptionId, String targetPriceRef, Long quantity, String prorationBehavior,
+            Long prorationDateEpochSec) {
         try {
             Subscription subscription = Subscription.retrieve(subscriptionId);
             String itemId = soleSubscriptionItemId(subscription);
@@ -1529,12 +1530,17 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             if (quantity != null) {
                 item.setQuantity(quantity);
             }
+            InvoiceCreatePreviewParams.SubscriptionDetails.Builder details =
+                    InvoiceCreatePreviewParams.SubscriptionDetails.builder()
+                            .addItem(item.build())
+                            .setProrationBehavior(toPreviewProrationBehavior(prorationBehavior));
+            if (prorationDateEpochSec != null) {
+                // 実適用でも同じ proration_date を渡すため、見積り側でも基準日時を固定する。
+                details.setProrationDate(prorationDateEpochSec);
+            }
             InvoiceCreatePreviewParams params = InvoiceCreatePreviewParams.builder()
                     .setSubscription(subscriptionId)
-                    .setSubscriptionDetails(InvoiceCreatePreviewParams.SubscriptionDetails.builder()
-                            .addItem(item.build())
-                            .setProrationBehavior(toPreviewProrationBehavior(prorationBehavior))
-                            .build())
+                    .setSubscriptionDetails(details.build())
                     // 税の表示名・税率も「Stripe が返した値」として運ぶために展開する（AC-2）。
                     .addExpand("total_tax_amounts.tax_rate")
                     .build();
@@ -1564,7 +1570,8 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     public SubscriptionPlanChangeInfo changeSubscriptionPlan(
             String subscriptionId, String targetPriceRef, Long quantity,
             String prorationBehavior, String paymentBehavior,
-            Map<String, String> metadata, String idempotencyKey) {
+            Map<String, String> metadata, String idempotencyKey,
+            Long prorationDateEpochSec) {
         try {
             Subscription subscription = Subscription.retrieve(subscriptionId);
             String itemId = soleSubscriptionItemId(subscription);
@@ -1581,6 +1588,11 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     .setPaymentBehavior(toPaymentBehavior(paymentBehavior))
                     // latest_invoice を展開し、差額請求の ref/status を追加の往復なしに読む。
                     .addExpand("latest_invoice");
+            if (prorationDateEpochSec != null) {
+                // 見積り時と同じ基準日時で按分させる（渡さないと Stripe は「今」で按分し、
+                // 利用者が承認した額と実際の請求額がずれる）。
+                params.setProrationDate(prorationDateEpochSec);
+            }
             if (metadata != null && !metadata.isEmpty()) {
                 // 差分マージ（setMetadata は Stripe 側で metadata 全体を置き換えるため使わない）。
                 params.putAllMetadata(metadata);
@@ -1606,8 +1618,8 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     toPendingUpdateItems(pendingUpdate),
                     updated.getCurrentPeriodStart());
             log.info("PR6b-1: プラン変更適用: subscriptionId={}, targetPrice={}, prorationBehavior={}, "
-                            + "paymentBehavior={}, pendingUpdate={}, invoice={}, invoiceStatus={}",
-                    subscriptionId, targetPriceRef, prorationBehavior, paymentBehavior,
+                            + "paymentBehavior={}, prorationDate={}, pendingUpdate={}, invoice={}, invoiceStatus={}",
+                    subscriptionId, targetPriceRef, prorationBehavior, paymentBehavior, prorationDateEpochSec,
                     info.pendingUpdatePresent(), info.latestInvoiceRef(), info.latestInvoiceStatus());
             return info;
         } catch (StripeException e) {

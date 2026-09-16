@@ -112,7 +112,10 @@ public interface BillingPlanChangeGateway {
      * @param taxRateBasisPoints 税率（basis points・null 可）
      * @param periodStart        見積り対象期間の開始
      * @param periodEnd          見積り対象期間の終了
-     * @param prorationAt        按分の基準日時
+     * @param prorationAt        按分の基準日時（実装が Stripe の {@code proration_date} として
+     *                           <b>実際に渡した</b>値）。{@code billing_change_previews.proration_at} へ
+     *                           保存し、適用時に {@link PlanChangeApplyCommand#prorationDate()} へ
+     *                           戻すことで、見積り額と請求額が一致する
      */
     record PlanChangeQuote(String currency, long amountDueNow, long amountExcludingTax, long taxAmount,
                            String taxName, Integer taxRateBasisPoints,
@@ -131,11 +134,17 @@ public interface BillingPlanChangeGateway {
      * @param prorationBehavior     AC-29: {@link #PRORATION_BEHAVIOR_ALWAYS_INVOICE}
      * @param paymentBehavior       AC-29: {@link #PAYMENT_BEHAVIOR_PENDING_IF_INCOMPLETE}
      * @param metadata              AC-31: {@link #METADATA_OPERATION_ID_KEY} を含む差分マージ用 metadata
+     * @param prorationDate         按分の基準日時（Stripe の {@code proration_date}）。
+     *                              <b>消費した preview 行の {@code proration_at} をそのまま渡すこと</b>。
+     *                              ここで計算し直すと、利用者が承認した見積り額と実際の請求額がずれる
+     *                              （Stripe 公式「実際の按分を見積りと完全に一致させるには、実適用時にも
+     *                              {@code proration_date} を渡せ」）。preview は最大10分有効なので、
+     *                              渡さなければその経過時間ぶん金額が動きうる
      */
     record PlanChangeApplyCommand(String subscriptionRef, String targetStripePriceRef, Integer quantity,
                                   UUID operationId, String stripeIdempotencyKey,
                                   String prorationBehavior, String paymentBehavior,
-                                  Map<String, String> metadata) {
+                                  Map<String, String> metadata, Instant prorationDate) {
     }
 
     /**

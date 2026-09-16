@@ -96,7 +96,10 @@ public class BillingPlanChangePreviewService {
                 new BillingPlanChangeGateway.PlanChangePreviewCommand(
                         contract.getPspSubscriptionRef(), toBand.getStripePriceRef(), memberCount));
 
-        Instant prorationAt = now;
+        // AC-2/AC-4: 按分の基準日時は Stripe へ実際に渡した値を保存する。ここで now を採ると、
+        // 適用時に proration_date として戻したときに見積りと違う基準で按分され、
+        // 利用者へ見せた額と請求額がずれる。
+        Instant prorationAt = quote.prorationAt() != null ? quote.prorationAt() : now;
         Instant periodStart = now;
         Instant periodEnd = periodEndInstant != null ? periodEndInstant
                 : now.plus(30, java.time.temporal.ChronoUnit.DAYS);

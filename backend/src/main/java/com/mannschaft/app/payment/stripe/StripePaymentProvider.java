@@ -926,10 +926,13 @@ public interface StripePaymentProvider {
      * @param targetPriceRef    変更後の Stripe Price ID（{@code price_xxx}）
      * @param quantity          数量（人数band課金。個人契約は 1・null 可）
      * @param prorationBehavior {@code always_invoice} 等（Stripe の生値）
+     * @param prorationDateEpochSec 按分の基準日時（{@code proration_date}・unix 秒）。
+     *                              <b>実適用でも同じ値を渡すこと</b>で見積り額と請求額が一致する
      * @return 見積り請求書から読み取った金額・税・期間
      */
     InvoicePreviewInfo previewSubscriptionPlanChange(
-            String subscriptionId, String targetPriceRef, Long quantity, String prorationBehavior);
+            String subscriptionId, String targetPriceRef, Long quantity, String prorationBehavior,
+            Long prorationDateEpochSec);
 
     /**
      * Billing Center PR6b-1（AC-29/AC-30/AC-31）: Subscription の項目を差し替えてプラン変更を適用する。
@@ -950,12 +953,16 @@ public interface StripePaymentProvider {
      * @param paymentBehavior   {@code pending_if_incomplete}
      * @param metadata          焼き付ける metadata（既存キーは保持）
      * @param idempotencyKey    冪等性キー（{@code billing-operation-{operationId}}）
+     * @param prorationDateEpochSec 按分の基準日時（{@code proration_date}・unix 秒）。
+     *                              見積り時に渡した値と<b>同一</b>でなければ、利用者へ見せた額と
+     *                              実際の請求額がずれる
      * @return 適用結果（最新 Invoice ＋ {@code pending_update}）
      */
     SubscriptionPlanChangeInfo changeSubscriptionPlan(
             String subscriptionId, String targetPriceRef, Long quantity,
             String prorationBehavior, String paymentBehavior,
-            java.util.Map<String, String> metadata, String idempotencyKey);
+            java.util.Map<String, String> metadata, String idempotencyKey,
+            Long prorationDateEpochSec);
 
     /**
      * Billing Center PR6b-1（AC-48/AC-54）: 追加認証（3DS）の client secret を<b>都度取得</b>する。

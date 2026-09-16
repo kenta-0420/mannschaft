@@ -122,7 +122,9 @@ public class BillingPlanChangeService {
                     BillingContractOperationSagaService.stripeIdempotencyKeyOf(prepared.operationId()),
                     BillingPlanChangeGateway.PRORATION_BEHAVIOR_ALWAYS_INVOICE,
                     BillingPlanChangeGateway.PAYMENT_BEHAVIOR_PENDING_IF_INCOMPLETE,
-                    Map.of(BillingPlanChangeGateway.METADATA_OPERATION_ID_KEY, prepared.operationId().toString())));
+                    Map.of(BillingPlanChangeGateway.METADATA_OPERATION_ID_KEY, prepared.operationId().toString()),
+                    // 見積り時と同じ基準日時で按分させる（利用者が承認した額で請求する）。
+                    prepared.prorationAt()));
         } catch (RuntimeException e) {
             // AC-46: Stripe 呼び出し失敗は change も FAILED にする（operation/pointer とは別 tx でよい。
             // 同一 tx を要求するのは webhook 確定側の AC-37〜41 のみ）。
@@ -151,9 +153,21 @@ public class BillingPlanChangeService {
     // 予約（preview 消費 + Saga reserve + change 行の起票）
     // ============================================================
 
+    /**
+     * 予約 tx の成果。
+     *
+     * @param operationId  PR6a Saga の operationId
+     * @param changeId     作成した change 行の ID
+     * @param contract     対象契約
+     * @param change       作成した change 行
+     * @param toBand       変更後 band
+     * @param memberCount  人数
+     * @param prorationAt  消費した preview の按分基準日時（Stripe へ {@code proration_date} として戻す）
+     */
     private record Prepared(UUID operationId, UUID changeId, BillingContractEntity contract,
                             BillingContractChangeEntity change,
-                            BillingPriceBandVersionEntity toBand, int memberCount) {
+                            BillingPriceBandVersionEntity toBand, int memberCount,
+                            Instant prorationAt) {
     }
 
     private Prepared prepare(long actorId, UUID contractId, BillingPlanChangeRequest request, String requestBody) {
@@ -244,7 +258,9 @@ public class BillingPlanChangeService {
                 .build();
         changeRepository.save(change);
 
-        return new Prepared(reservation.operationId(), change.getId(), contract, change, toBand, memberCount);
+        // 見積り時に Stripe へ渡した按分基準日時をそのまま持ち回る（再計算しない）。
+        return new Prepared(reservation.operationId(), change.getId(), contract, change, toBand, memberCount,
+                preview.getProrationAt());
     }
 
     // ============================================================

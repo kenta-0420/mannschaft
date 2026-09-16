@@ -183,6 +183,10 @@ class BillingPlanUpgradeApiRedIT extends AbstractBillingPlanChangeApiIT {
         assertThat(command.operationId()).isEqualTo(operationId);
         assertThat(command.subscriptionRef()).isEqualTo(subscriptionRef);
         assertThat(command.targetStripePriceRef()).isEqualTo(TO_STRIPE_PRICE_REF);
+        assertThat(command.prorationDate())
+                .as("AC-29 補強: 消費した preview の proration_at をそのまま Stripe へ戻す。"
+                        + "ここで現在時刻を採り直すと、利用者が承認した見積り額と実際の請求額がずれる")
+                .isEqualTo(changePreviewRepository.findById(previewId).orElseThrow().getProrationAt());
     }
 
     // ═════════ AC-32〜35: E6' の4検体 ═════════
