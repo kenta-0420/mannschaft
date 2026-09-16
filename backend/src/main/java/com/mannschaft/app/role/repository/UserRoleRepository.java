@@ -750,6 +750,13 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "  AND ur.organization_id = :organizationId " +
             "  AND r.name = 'DEPUTY_ADMIN' " +
             "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND EXISTS ( " +
+            "    SELECT 1 FROM memberships active_ms " +
+            "    WHERE active_ms.user_id = ur.user_id " +
+            "      AND active_ms.scope_type = 'ORGANIZATION' " +
+            "      AND active_ms.scope_id = ur.organization_id " +
+            "      AND active_ms.left_at IS NULL " +
+            "  ) " +
             "  AND ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM role_permissions rp " +
@@ -814,9 +821,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     @Query(value =
             "SELECT COUNT(*) FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
             "WHERE ur.user_id = :userId " +
             "  AND ur.team_id = :teamId " +
             "  AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND EXISTS ( " +
+            "    SELECT 1 FROM memberships active_ms " +
+            "    WHERE active_ms.user_id = ur.user_id " +
+            "      AND active_ms.scope_type = 'TEAM' " +
+            "      AND active_ms.scope_id = ur.team_id " +
+            "      AND active_ms.left_at IS NULL " +
+            "  ) " +
             "  AND ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM role_permissions rp " +
@@ -830,6 +846,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE upg.user_id = ur.user_id " +
             "        AND pg.team_id = ur.team_id " +
             "        AND pg.deleted_at IS NULL " +
+            "        AND pg.target_role = 'DEPUTY_ADMIN' " +
             "        AND p2.name = :permissionName " +
             "    ) " +
             "  )",
@@ -855,9 +872,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     @Query(value =
             "SELECT DISTINCT ur.team_id FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
             "WHERE ur.user_id = :userId " +
             "  AND ur.team_id IN (:teamIds) " +
             "  AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND EXISTS ( " +
+            "    SELECT 1 FROM memberships active_ms " +
+            "    WHERE active_ms.user_id = ur.user_id " +
+            "      AND active_ms.scope_type = 'TEAM' " +
+            "      AND active_ms.scope_id = ur.team_id " +
+            "      AND active_ms.left_at IS NULL " +
+            "  ) " +
             "  AND ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM role_permissions rp " +
@@ -871,6 +897,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE upg.user_id = ur.user_id " +
             "        AND pg.team_id = ur.team_id " +
             "        AND pg.deleted_at IS NULL " +
+            "        AND pg.target_role = 'DEPUTY_ADMIN' " +
             "        AND p2.name = :permissionName " +
             "    ) " +
             "  )",
@@ -892,9 +919,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     @Query(value =
             "SELECT DISTINCT ur.organization_id FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
             "WHERE ur.user_id = :userId " +
             "  AND ur.organization_id IN (:organizationIds) " +
             "  AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND EXISTS ( " +
+            "    SELECT 1 FROM memberships active_ms " +
+            "    WHERE active_ms.user_id = ur.user_id " +
+            "      AND active_ms.scope_type = 'ORGANIZATION' " +
+            "      AND active_ms.scope_id = ur.organization_id " +
+            "      AND active_ms.left_at IS NULL " +
+            "  ) " +
             "  AND ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM role_permissions rp " +
@@ -908,6 +944,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE upg.user_id = ur.user_id " +
             "        AND pg.organization_id = ur.organization_id " +
             "        AND pg.deleted_at IS NULL " +
+            "        AND pg.target_role = 'DEPUTY_ADMIN' " +
             "        AND p2.name = :permissionName " +
             "    ) " +
             "  )",

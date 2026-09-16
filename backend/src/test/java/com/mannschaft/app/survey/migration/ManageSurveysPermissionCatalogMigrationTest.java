@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * CMP-041 試練: {@code MANAGE_SURVEYS} 権限カタログ登録 migration
- * （{@code V213.20260916131000__add_manage_surveys_to_catalog.sql}）の受け入れテスト。
+ * （{@code V214.20260916131000__add_manage_surveys_to_catalog.sql}）の受け入れテスト。
  *
  * <h2>なぜ Flyway を直接叩くのか</h2>
  * <p>test profile（{@code src/test/resources/application-test.yml}）は
@@ -53,7 +53,7 @@ class ManageSurveysPermissionCatalogMigrationTest {
 
     /** 検証対象 migration のリソースパス（本文の再適用＝冪等検証にも用いる）。 */
     private static final String MIGRATION_RESOURCE =
-            "db/migration/V213.20260916131000__add_manage_surveys_to_catalog.sql";
+            "db/migration/V214.20260916131000__add_manage_surveys_to_catalog.sql";
 
     private static final String PERMISSION_NAME = "MANAGE_SURVEYS";
 

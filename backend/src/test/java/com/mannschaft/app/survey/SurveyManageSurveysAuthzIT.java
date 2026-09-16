@@ -70,7 +70,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SurveyManageSurveysAuthzIT extends AbstractMySqlIntegrationTest {
 
     private static final String MIGRATION_RESOURCE =
-            "db/migration/V213.20260916131000__add_manage_surveys_to_catalog.sql";
+            "db/migration/V214.20260916131000__add_manage_surveys_to_catalog.sql";
     private static final String PERMISSION = "MANAGE_SURVEYS";
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);
@@ -713,6 +713,23 @@ class SurveyManageSurveysAuthzIT extends AbstractMySqlIntegrationTest {
                 .setParameter("tid", teamIdParam)
                 .setParameter("oid", orgIdParam)
                 .setParameter("role", roleName)
+                .executeUpdate();
+        if (teamIdParam != null) {
+            insertActiveMembership(userId, "TEAM", teamIdParam);
+        } else if (orgIdParam != null) {
+            insertActiveMembership(userId, "ORGANIZATION", orgIdParam);
+        }
+    }
+
+    private void insertActiveMembership(Long userId, String scopeType, Long scopeId) {
+        em.createNativeQuery(
+                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at, created_at, updated_at) "
+                        + "SELECT :uid, :scopeType, :scopeId, 'MEMBER', NOW(), NOW(), NOW() "
+                        + "WHERE NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = :uid "
+                        + "AND m.scope_type = :scopeType AND m.scope_id = :scopeId AND m.left_at IS NULL)")
+                .setParameter("uid", userId)
+                .setParameter("scopeType", scopeType)
+                .setParameter("scopeId", scopeId)
                 .executeUpdate();
     }
 

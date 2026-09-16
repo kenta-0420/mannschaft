@@ -1,5 +1,6 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.role.service.PermissionScopeQueryService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -48,6 +49,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li>AC-13: {@code is_default=0} の天井行だけでは通らない（ORGANIZATION 版と同一の扱い）</li>
  *   <li>AC-14: 他チーム・他組織の scopeId では拒否（IDOR）</li>
  *   <li>AC-15: 存在しない scopeId・ロール未登録 → 500 にせず拒否</li>
+ *   <li>AC-28: 離脱済みの DEPUTY_ADMIN は拒否</li>
+ *   <li>AC-29: 停止・論理削除ユーザーは拒否</li>
+ *   <li>AC-30: 対象ロール不一致の権限グループは拒否</li>
  * </ul>
  */
 @Transactional
@@ -57,7 +61,7 @@ class AdminOrPermissionInScopeIT extends AbstractMySqlIntegrationTest {
 
     /** 第一陣の migration。ここから MANAGE_SURVEYS のカタログ行を作る。 */
     private static final String MIGRATION_RESOURCE =
-            "db/migration/V213.20260916131000__add_manage_surveys_to_catalog.sql";
+            "db/migration/V214.20260916131000__add_manage_surveys_to_catalog.sql";
 
     private static final String PERMISSION = "MANAGE_SURVEYS";
     private static final String TEAM = "TEAM";
@@ -70,6 +74,9 @@ class AdminOrPermissionInScopeIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private AccessControlService accessControlService;
+
+    @Autowired
+    private PermissionScopeQueryService permissionScopeQueryService;
 
     private Long teamId;
     private Long otherTeamId;
@@ -350,6 +357,85 @@ class AdminOrPermissionInScopeIT extends AbstractMySqlIntegrationTest {
                 .isEqualTo(CommonErrorCode.COMMON_002);
     }
 
+    @Test
+    @DisplayName("AC-28: 離脱済み DEPUTY_ADMIN は単票・バルクの両経路で拒否される")
+    void ac28_離脱済み副管理者は拒否される() {
+        grantRolePermission("DEPUTY_ADMIN", PERMISSION, true);
+        Long teamDeputy = insertUser();
+        grantRole(teamDeputy, "DEPUTY_ADMIN", teamId, null);
+        Long orgDeputy = insertUser();
+        grantRole(orgDeputy, "DEPUTY_ADMIN", null, orgId);
+        endMembership(teamDeputy, TEAM, teamId);
+        endMembership(orgDeputy, ORGANIZATION, orgId);
+        em.flush();
+        em.clear();
+
+        assertThat(accessControlService.hasAdminOrPermissionInScope(
+                teamDeputy, teamId, TEAM, PERMISSION)).isFalse();
+        assertThat(accessControlService.hasAdminOrPermissionInScope(
+                orgDeputy, orgId, ORGANIZATION, PERMISSION)).isFalse();
+        assertThat(permissionScopeQueryService.findPermittedTeamIds(
+                teamDeputy, List.of(teamId), PERMISSION)).isEmpty();
+        assertThat(permissionScopeQueryService.findPermittedOrganizationIds(
+                orgDeputy, List.of(orgId), PERMISSION)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-29: 停止・論理削除ユーザーは単票・バルクの両経路で拒否される")
+    void ac29_停止または論理削除ユーザーは拒否される() {
+        grantRolePermission("DEPUTY_ADMIN", PERMISSION, true);
+        Long frozenTeamDeputy = insertUser();
+        grantRole(frozenTeamDeputy, "DEPUTY_ADMIN", teamId, null);
+        Long deletedOrgDeputy = insertUser();
+        grantRole(deletedOrgDeputy, "DEPUTY_ADMIN", null, orgId);
+        em.createNativeQuery("UPDATE users SET status = 'FROZEN' WHERE id = :uid")
+                .setParameter("uid", frozenTeamDeputy).executeUpdate();
+        em.createNativeQuery("UPDATE users SET deleted_at = NOW() WHERE id = :uid")
+                .setParameter("uid", deletedOrgDeputy).executeUpdate();
+        em.flush();
+        em.clear();
+
+        assertThat(accessControlService.hasAdminOrPermissionInScope(
+                frozenTeamDeputy, teamId, TEAM, PERMISSION)).isFalse();
+        assertThat(accessControlService.hasAdminOrPermissionInScope(
+                deletedOrgDeputy, orgId, ORGANIZATION, PERMISSION)).isFalse();
+        assertThat(permissionScopeQueryService.findPermittedTeamIds(
+                frozenTeamDeputy, List.of(teamId), PERMISSION)).isEmpty();
+        assertThat(permissionScopeQueryService.findPermittedOrganizationIds(
+                deletedOrgDeputy, List.of(orgId), PERMISSION)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-30: target_role 不一致の権限グループは単票・バルクの両経路で拒否される")
+    void ac30_対象ロール不一致の権限グループは拒否される() {
+        Long teamDeputy = insertUser();
+        grantRole(teamDeputy, "DEPUTY_ADMIN", teamId, null);
+        Long teamGroup = insertPermissionGroup(teamId, null);
+        addPermissionToGroup(teamGroup, PERMISSION);
+        assignGroupToUser(teamDeputy, teamGroup);
+        em.createNativeQuery("UPDATE permission_groups SET target_role = 'MEMBER' WHERE id = :gid")
+                .setParameter("gid", teamGroup).executeUpdate();
+
+        Long orgDeputy = insertUser();
+        grantRole(orgDeputy, "DEPUTY_ADMIN", null, orgId);
+        Long orgGroup = insertPermissionGroup(null, orgId);
+        addPermissionToGroup(orgGroup, PERMISSION);
+        assignGroupToUser(orgDeputy, orgGroup);
+        em.createNativeQuery("UPDATE permission_groups SET target_role = 'MEMBER' WHERE id = :gid")
+                .setParameter("gid", orgGroup).executeUpdate();
+        em.flush();
+        em.clear();
+
+        assertThat(accessControlService.hasAdminOrPermissionInScope(
+                teamDeputy, teamId, TEAM, PERMISSION)).isFalse();
+        assertThat(accessControlService.hasAdminOrPermissionInScope(
+                orgDeputy, orgId, ORGANIZATION, PERMISSION)).isFalse();
+        assertThat(permissionScopeQueryService.findPermittedTeamIds(
+                teamDeputy, List.of(teamId), PERMISSION)).isEmpty();
+        assertThat(permissionScopeQueryService.findPermittedOrganizationIds(
+                orgDeputy, List.of(orgId), PERMISSION)).isEmpty();
+    }
+
     // =====================================================================
     // フィクスチャ
     // =====================================================================
@@ -480,6 +566,34 @@ class AdminOrPermissionInScopeIT extends AbstractMySqlIntegrationTest {
                 .setParameter("tid", teamIdParam)
                 .setParameter("oid", orgIdParam)
                 .setParameter("role", roleName)
+                .executeUpdate();
+        if (teamIdParam != null) {
+            insertActiveMembership(userId, TEAM, teamIdParam);
+        } else if (orgIdParam != null) {
+            insertActiveMembership(userId, ORGANIZATION, orgIdParam);
+        }
+    }
+
+    private void insertActiveMembership(Long userId, String scopeType, Long scopeId) {
+        em.createNativeQuery(
+                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at, created_at, updated_at) "
+                        + "SELECT :uid, :scopeType, :scopeId, 'MEMBER', NOW(), NOW(), NOW() "
+                        + "WHERE NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = :uid "
+                        + "AND m.scope_type = :scopeType AND m.scope_id = :scopeId AND m.left_at IS NULL)")
+                .setParameter("uid", userId)
+                .setParameter("scopeType", scopeType)
+                .setParameter("scopeId", scopeId)
+                .executeUpdate();
+    }
+
+    private void endMembership(Long userId, String scopeType, Long scopeId) {
+        em.createNativeQuery(
+                "UPDATE memberships SET left_at = NOW(), leave_reason = 'OTHER', updated_at = NOW() "
+                        + "WHERE user_id = :uid AND scope_type = :scopeType "
+                        + "AND scope_id = :scopeId AND left_at IS NULL")
+                .setParameter("uid", userId)
+                .setParameter("scopeType", scopeType)
+                .setParameter("scopeId", scopeId)
                 .executeUpdate();
     }
 
