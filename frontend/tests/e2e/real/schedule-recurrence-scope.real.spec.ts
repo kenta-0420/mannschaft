@@ -73,6 +73,15 @@ async function scheduleDetail(id: number) {
   return (await res.json() as { data: { targetMode?: string; targets?: Array<{ userId: number }> } }).data
 }
 
+async function personalEntries(): Promise<Entry[]> {
+  // 個人予定一覧は OffsetDateTime ではなく LocalDateTime のクエリ契約。
+  const from = new Date(Date.now() - 25 * 86_400_000).toISOString().slice(0, 19)
+  const to = new Date(Date.now() + 45 * 86_400_000).toISOString().slice(0, 19)
+  const res = await api.get(`${V1}/me/schedules?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: h() })
+  expect(res.status()).toBe(200)
+  return (await res.json() as { data: Entry[] }).data
+}
+
 async function edit(id: number, before: string, after: string, testId: string, selectMemberAudience = false) {
   const entries = await teamEntries()
   const selected = entries.find(e => e.id === id)
@@ -311,6 +320,40 @@ test.describe('CMP107 recurring edit scope (real UI)', () => {
     const rows = (await feedResponse.json() as { data: { items: Feed[] } }).data.items
     expect(rows.filter(row => row.targetId === selected && row.type.startsWith('SCHEDULE_') && row.detail?.title === latest)).toHaveLength(1)
     expect(rows.filter(row => row.targetId === selected && row.type.startsWith('SCHEDULE_') && row.detail?.title === first)).toHaveLength(0)
+  })
+
+  test('personal recurring schedule also leaves other elapsed occurrences unchanged', async () => {
+    const beforeTitle = `CMP107-personal-past-${Date.now()}`
+    const afterTitle = `${beforeTitle}-changed`
+    const start = Date.now() - 15 * 86_400_000
+    const createResponse = await api.post(`${V1}/me/schedules`, { headers: h(), data: {
+      title: beforeTitle,
+      startAt: new Date(start).toISOString(),
+      endAt: new Date(start + 3_600_000).toISOString(),
+      allDay: false,
+      recurrenceRule: { type: 'WEEKLY', interval: 1, daysOfWeek: ['MONDAY'], endType: 'COUNT', count: 4 },
+    } })
+    expect(createResponse.status(), await createResponse.text()).toBe(201)
+    const original = (await personalEntries()).filter(entry => titleOf(entry) === beforeTitle)
+      .sort((a, b) => Date.parse(startOf(a)) - Date.parse(startOf(b)))
+    // recurrence count は親とは別に生成する子予定数なので、この契約では親を含め5件になる。
+    expect(original.length).toBeGreaterThan(3)
+    const selected = original[0]!
+    const expectedChangedIds = new Set([
+      selected.id,
+      ...original.filter(entry => Date.parse(endOf(entry)) > Date.now()).map(entry => entry.id),
+    ])
+
+    const updateResponse = await api.patch(`${V1}/me/schedules/${selected.id}`, { headers: h(), data: {
+      title: afterTitle,
+      updateScope: 'THIS_AND_FOLLOWING',
+    } })
+    expect(updateResponse.status(), await updateResponse.text()).toBe(200)
+
+    const updated = (await personalEntries()).filter(entry => original.some(item => item.id === entry.id))
+    expect(new Set(updated.filter(entry => titleOf(entry) === afterTitle).map(entry => entry.id))).toEqual(expectedChangedIds)
+    expect(updated.filter(entry => titleOf(entry) === beforeTitle).map(entry => entry.id).sort())
+      .toEqual(original.filter(entry => !expectedChangedIds.has(entry.id)).map(entry => entry.id).sort())
   })
 
   test('ALICE: independent admin, member and outsider contexts preserve edit authorization', async ({ browser }) => {
