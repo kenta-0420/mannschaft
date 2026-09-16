@@ -57,10 +57,14 @@ public class StripeWebhookService {
      * <p>受信記録は残すが {@code process_status} は {@code RECEIVED} のまま確定させない。
      * ここで {@code PROCESSED}/{@code IGNORED} にしてしまうと、PR6 でこれらを実装したときに
      * 冪等ゲートが「確定済み」と判定して<b>永久に拾えなくなる</b>。</p>
+     *
+     * <p><b>PR6b-1 第9隊 AC-74/75</b>: {@code invoice.payment_action_required} /
+     * {@code customer.subscription.pending_update_applied} は billing の受け口へ配線したため
+     * ここから外した（{@link MembershipSubscriptionWebhookService#isSubscriptionEvent} 経由で
+     * {@link BillingSubscriptionWebhookService} まで届く）。PR5 期に {@code RECEIVED} のまま溜まった
+     * 過去分は自動 drain しない（AC-87・正本 05 に明記）。</p>
      */
-    private static final java.util.Set<String> PR5_PENDING_EVENT_TYPES = java.util.Set.of(
-            "invoice.payment_action_required",
-            "customer.subscription.pending_update_applied");
+    private static final java.util.Set<String> PR5_PENDING_EVENT_TYPES = java.util.Set.of();
 
     /** 同じく PR5 で扱わない種別（接頭辞一致）。 */
     private static final String PENDING_SCHEDULE_PREFIX = "subscription_schedule.";
@@ -116,9 +120,11 @@ public class StripeWebhookService {
             // 従来（PR5 の保留リスト）と同じく RECEIVED のまま記録して取りこぼさない。
             // ここで会費側へ渡すと、未対応種別として確定（PROCESSED/IGNORED）され、
             // プラン変更を実装する PR6b が永久に拾えなくなる。
-            // PR6b-1 AC-40: pending_update_expired も同型（billing が所有しなければ従来どおり保留）。
+            // PR6b-1 AC-76/AC-75: pending_update_expired / pending_update_applied も同型
+            // （billing が所有しなければ従来どおり保留。会費側には無い種別のため渡さない）。
             if (BillingContractOperationRecoveryService.isRecoveryEntryEvent(event.type())
-                    || BillingSubscriptionWebhookService.SUBSCRIPTION_PENDING_UPDATE_EXPIRED.equals(event.type())) {
+                    || BillingSubscriptionWebhookService.SUBSCRIPTION_PENDING_UPDATE_EXPIRED.equals(event.type())
+                    || BillingSubscriptionWebhookService.SUBSCRIPTION_PENDING_UPDATE_APPLIED.equals(event.type())) {
                 recordPendingEvent(payload, event.type());
                 return;
             }

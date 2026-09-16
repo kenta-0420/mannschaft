@@ -9,6 +9,7 @@ import com.mannschaft.app.billing.invoice.StripeBillingObjectView.EventEnvelope;
 import com.mannschaft.app.billing.invoice.StripeBillingObjectView.InvoiceLineView;
 import com.mannschaft.app.billing.invoice.StripeBillingObjectView.InvoiceView;
 import com.mannschaft.app.billing.invoice.StripeBillingObjectView.RefundView;
+import com.mannschaft.app.billing.invoice.StripeBillingObjectView.SubscriptionView;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -127,6 +128,52 @@ public class StripeBillingPayloadParser {
                     text(node, "status"), text(node, "reason"), longOrNull(node, "created"),
                     expandedInvoiceRef);
         });
+    }
+
+    /**
+     * {@code data.object} が subscription のときだけ {@link SubscriptionView} を返す（PR6b-1 第9隊 AC-79）。
+     */
+    public Optional<SubscriptionView> parseSubscription(String payload) {
+        return dataObject(payload, "subscription").map(node -> {
+            JsonNode items = node.path("items").path("data");
+            String currentItemPriceRef = null;
+            if (items.isArray() && !items.isEmpty()) {
+                currentItemPriceRef = text(items.get(0).path("price"), "id");
+            }
+            JsonNode pendingUpdate = node.path("pending_update");
+            Long pendingUpdateExpiresAt = pendingUpdate.isObject() ? longOrNull(pendingUpdate, "expires_at") : null;
+            JsonNode metadata = node.path("metadata");
+            String billingOperationId = metadata.isObject() ? text(metadata, "billingOperationId") : null;
+            return new SubscriptionView(
+                    text(node, "id"),
+                    text(node, "customer"),
+                    billingOperationId,
+                    longOrNull(node, "current_period_end"),
+                    currentItemPriceRef,
+                    pendingUpdateExpiresAt);
+        });
+    }
+
+    /**
+     * change 行へ保存した {@code pending_update_target_snapshot}（{@code {"items":[{"price":"..."}]}}）
+     * から先頭 item の price ref を取り出す（PR6b-1 第9隊 AC-79・E2'）。読めなければ {@code null}
+     * （呼び出し側は「照合不能」として APPLIED にしない）。
+     */
+    public String targetPriceRefFromSnapshot(String snapshotJson) {
+        if (snapshotJson == null || snapshotJson.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode root = objectMapper.readTree(snapshotJson);
+            JsonNode items = root.path("items");
+            if (items.isArray() && !items.isEmpty()) {
+                return text(items.get(0), "price");
+            }
+            return null;
+        } catch (Exception e) {
+            log.warn("F20.1 PR6b-1: pending_update_target_snapshot を JSON として解釈できませんでした", e);
+            return null;
+        }
     }
 
     // ───────────── 内部 ─────────────

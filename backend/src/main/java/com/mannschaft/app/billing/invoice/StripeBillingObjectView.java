@@ -72,6 +72,30 @@ public final class StripeBillingObjectView {
             Long periodEndEpochSec) {
     }
 
+    /**
+     * Stripe Subscription（{@code customer.subscription.pending_update_applied} /
+     * {@code pending_update_expired} 等）。
+     *
+     * <p><b>E2'（PR6b-1 第9隊 AC-79）</b>: {@code pending_update} は Stripe が「適用が済んだ」と
+     * 言ってきた時点の Subscription にはもう live な値として載っていない（適用後は消える）。
+     * そのため照合材料は Stripe から取得した pending_update ではなく、change 行に<b>あらかじめ
+     * 保存しておいた</b> {@code pending_update_expires_at} / {@code pending_update_target_snapshot}
+     * と、この view が運ぶ<b>現在の items</b>（{@link #currentItemPriceRef}）である。
+     * {@link #pendingUpdateExpiresAtEpochSec} は {@code customer.subscription.updated} が運ぶ
+     * <b>まだ存続している</b> pending_update の失効時刻の照合にのみ使う（AC-83）。</p>
+     */
+    public record SubscriptionView(
+            String id,
+            String customerRef,
+            /** {@code metadata.billingOperationId}（invoice を経由しない解決に使う）。 */
+            String billingOperationId,
+            Long currentPeriodEndEpochSec,
+            /** 現在の items の先頭要素が指す price（単一 item 前提。プラン変更対象の判別に使う）。 */
+            String currentItemPriceRef,
+            /** live な {@code pending_update.expires_at}（無ければ null＝適用済みか失効後）。 */
+            Long pendingUpdateExpiresAtEpochSec) {
+    }
+
     /** Stripe Charge（{@code charge.refunded}）。 */
     public record ChargeView(
             String id,

@@ -1,5 +1,7 @@
 package com.mannschaft.app.billing;
 
+import com.mannschaft.app.billing.api.BillingInvoiceJpaRepository;
+import com.mannschaft.app.billing.invoice.StripeBillingPayloadParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,6 +48,10 @@ public class BillingPlanChangeConfirmationService {
     private final BillingContractRepository contractRepository;
     private final BillingContractOperationSagaService sagaService;
     private final BillingPaymentGateway billingPaymentGateway;
+    /** PR6b-1 第9隊 AC-80: pending_update_applied を確定してよいかの再確認（invoice.paid 済みか）に使う。 */
+    private final BillingInvoiceJpaRepository invoiceRepository;
+    /** PR6b-1 第9隊 AC-79: pending_update_target_snapshot から price ref を取り出す。 */
+    private final StripeBillingPayloadParser payloadParser;
 
     /**
      * invoice に対応する upgrade の change を解決する（AC-42）。
@@ -146,6 +152,106 @@ public class BillingPlanChangeConfirmationService {
             contractRepository.save(contract);
             return null;
         });
+    }
+
+    /**
+     * PR6b-1 第9隊 AC-74/78/83: {@code invoice.payment_action_required} を受けて
+     * {@code REQUIRES_ACTION} へ進める（二重照合済み。呼び出し元は owner/customer 一致を確認済み）。
+     *
+     * <p><b>単調維持（AC-82/83）</b>: {@link #IN_FLIGHT} でない（すでに {@code APPLIED}/{@code FAILED}
+     * 等の terminal）なら no-op。遅延到着した古い event が確定済みの状態を巻き戻さない。
+     * すでに {@code REQUIRES_ACTION} なら再送として冪等 no-op（AC-86）。</p>
+     */
+    public void confirmRequiresAction(BillingContractChangeEntity change) {
+        if (!IN_FLIGHT.contains(change.getStatus())) {
+            log.info("PR6b-1: 既に確定済みの change への action_required 再送を無視する: changeId={}, status={}",
+                    change.getId(), change.getStatus());
+            return;
+        }
+        if (change.getStatus() == BillingContractChangeStatus.REQUIRES_ACTION) {
+            return; // 冪等（AC-86）。
+        }
+        BillingContractChangeEntity locked = changeRepository
+                .findByOperationIdAndDeletedAtIsNull(change.getOperationId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "change が見つからない: " + change.getOperationId()));
+        if (locked.getStatus() != BillingContractChangeStatus.PENDING_PAYMENT) {
+            return; // すでに他イベントで進んでいれば触らない（単調維持）。
+        }
+        locked.setStatus(BillingContractChangeStatus.REQUIRES_ACTION);
+        changeRepository.save(locked);
+    }
+
+    /**
+     * PR6b-1 第9隊 AC-79/80: pending_update（3DS）経路の {@code invoice.paid} は支払いの成立<b>だけ</b>を
+     * 記録し、{@code APPLIED} への遷移は行わない。
+     *
+     * <p><b>なぜ即時 APPLIED にしないのか</b>: {@link #confirmPaid} は change の {@code toPlanKey} 等
+     * <b>保存済みの値</b>をそのまま契約へ書く。同期成功（{@code pending_update_expires_at} が
+     * NULL）なら Stripe が items を即時に切り替えているので問題ないが、3DS 経由（同カラムが
+     * 非NULL）は「支払いが成功した」時点でまだ Stripe 側の items 切替が反映されているとは限らない
+     * （invoice.paid と customer.subscription.pending_update_applied は別イベントで到着順序も
+     * 保証されない）。確定は {@code pending_update_applied} が現在の items を保存済み target と
+     * 照合できてから行う（E2'・{@link #confirmAppliedIfMatchingItems}）。</p>
+     */
+    public void acknowledgePendingPayment(BillingContractChangeEntity change, String invoiceRef) {
+        if (!IN_FLIGHT.contains(change.getStatus())) {
+            return;
+        }
+        if (invoiceRef == null || invoiceRef.equals(change.getStripeInvoiceRef())) {
+            return;
+        }
+        BillingContractChangeEntity locked = changeRepository
+                .findByOperationIdAndDeletedAtIsNull(change.getOperationId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "change が見つからない: " + change.getOperationId()));
+        locked.setStripeInvoiceRef(invoiceRef);
+        changeRepository.saveAndFlush(locked);
+    }
+
+    /**
+     * PR6b-1 第9隊 AC-75/79/80: {@code customer.subscription.pending_update_applied} を確定する。
+     *
+     * <h2>二段の再確認</h2>
+     * <ol>
+     *   <li><b>AC-80</b>: {@code invoice.paid} 済み（{@code stripe_invoice_ref} で引ける
+     *       {@code billing_invoices} 行の {@code paid_at} が非NULL）でなければ確定しない。</li>
+     *   <li><b>AC-79（E2'）</b>: change 行へ<b>保存した</b> {@code pending_update_target_snapshot} から
+     *       取り出した price ref と、event が運ぶ<b>現在の items</b>（{@code currentItemPriceRef}）が
+     *       一致しなければ確定しない（適用後の Subscription からは live な {@code pending_update}
+     *       を取得できないため、保存値と現在値の突合せで判定する）。</li>
+     * </ol>
+     *
+     * <p>両方満たせば {@link #confirmPaid} へ委譲する（AC-37 と同じ確定ロジックを再利用し、
+     * change/operation/権利/pointer の一括反映を保証する）。満たさなければ何もしない（次の
+     * event を待つ）。</p>
+     *
+     * @return 確定した（もしくは既に確定済みで no-op とした）なら {@code true}。まだ確定条件が
+     *         整っていない（呼び出し元は {@code PROCESSED} として扱ってよい・再送で拾い直す必要は無い）
+     *         なら {@code false}
+     */
+    public boolean confirmAppliedIfMatchingItems(BillingContractChangeEntity change, String currentItemPriceRef) {
+        if (!IN_FLIGHT.contains(change.getStatus())) {
+            return true; // 既に確定済み（AC-86 の冪等）。
+        }
+        String invoiceRef = change.getStripeInvoiceRef();
+        boolean paidConfirmed = invoiceRef != null
+                && invoiceRepository.findByPspInvoiceRef(invoiceRef)
+                        .map(inv -> inv.getPaidAt() != null)
+                        .orElse(false);
+        if (!paidConfirmed) {
+            log.info("PR6b-1: invoice.paid 未確認のため pending_update_applied を確定しない（AC-80）: changeId={}",
+                    change.getId());
+            return false;
+        }
+        String targetPriceRef = payloadParser.targetPriceRefFromSnapshot(change.getPendingUpdateTargetSnapshot());
+        if (targetPriceRef == null || !targetPriceRef.equals(currentItemPriceRef)) {
+            log.info("PR6b-1: 保存した target と現在 items が一致しないため確定しない（E2'・AC-79）: "
+                    + "changeId={}, target={}, current={}", change.getId(), targetPriceRef, currentItemPriceRef);
+            return false;
+        }
+        confirmPaid(change, invoiceRef);
+        return true;
     }
 
     /**

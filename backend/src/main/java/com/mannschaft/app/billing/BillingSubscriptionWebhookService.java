@@ -43,13 +43,18 @@ public class BillingSubscriptionWebhookService {
     private static final String INVOICE_VOIDED = "invoice.voided";
     private static final String INVOICE_PAID = "invoice.paid";
     private static final String INVOICE_PAYMENT_FAILED = "invoice.payment_failed";
+    /** PR6b-1 第9隊 AC-74: 3DS 等の追加認証要求。upgrade の REQUIRES_ACTION 遷移の入口。 */
+    private static final String INVOICE_PAYMENT_ACTION_REQUIRED = "invoice.payment_action_required";
     private static final String SUBSCRIPTION_DELETED = "customer.subscription.deleted";
     /** PR6a AC-83: 停止窓の回収の入口（プラン変更の APPLIED 判定は PR6b の担当）。 */
     private static final String SUBSCRIPTION_UPDATED =
             BillingContractOperationRecoveryService.RECOVERY_ENTRY_EVENT_TYPE;
-    /** PR6b-1 AC-40: 3DS の追加認証が失効した合図。upgrade の失敗確定の入口。 */
+    /** PR6b-1 AC-40/76: 3DS の追加認証が失効した合図。upgrade の失敗確定の入口。 */
     public static final String SUBSCRIPTION_PENDING_UPDATE_EXPIRED =
             "customer.subscription.pending_update_expired";
+    /** PR6b-1 第9隊 AC-75: pending_update（3DS）が適用された合図。upgrade の適用確定の入口。 */
+    public static final String SUBSCRIPTION_PENDING_UPDATE_APPLIED =
+            "customer.subscription.pending_update_applied";
 
     private final StripePaymentProvider stripePaymentProvider;
     private final WebhookIdempotencyService idempotencyService;
@@ -162,6 +167,9 @@ public class BillingSubscriptionWebhookService {
         if (SUBSCRIPTION_PENDING_UPDATE_EXPIRED.equals(event.type())) {
             return handlePendingUpdateExpired(event);
         }
+        if (SUBSCRIPTION_PENDING_UPDATE_APPLIED.equals(event.type())) {
+            return handlePendingUpdateApplied(event, payload);
+        }
 
         return runGated(event, () -> switch (event.type()) {
             case SUBSCRIPTION_DELETED -> {
@@ -203,6 +211,31 @@ public class BillingSubscriptionWebhookService {
         }
         return runGated(event, () -> {
             planChangeConfirmationService.confirmFailed(change.get(), "PENDING_UPDATE_EXPIRED");
+            return WebhookProcessStatus.PROCESSED;
+        });
+    }
+
+    /**
+     * {@code customer.subscription.pending_update_applied} を処理する（PR6b-1 第9隊 AC-75/79/80）。
+     *
+     * <p>invoice を経由しない適用確定の入口。event の {@code metadata.billingOperationId} から
+     * 直接 change を解決する（{@link #handlePendingUpdateExpired} と同型）。upgrade の change でなければ
+     * 所有を主張しない（{@code false}）。確定条件（invoice.paid 済み・E2' の items 照合）は
+     * {@link BillingPlanChangeConfirmationService#confirmAppliedIfMatchingItems} に委ねる。</p>
+     */
+    private boolean handlePendingUpdateApplied(BillingSubscriptionWebhookEventInfo event, String payload) {
+        UUID operationId = event.billingOperationId() == null || event.billingOperationId().isBlank()
+                ? null : UUID.fromString(event.billingOperationId());
+        Optional<BillingContractChangeEntity> change =
+                planChangeConfirmationService.resolveByOperationId(operationId);
+        if (change.isEmpty()) {
+            return false;
+        }
+        String currentItemPriceRef = payloadParser.parseSubscription(payload)
+                .map(com.mannschaft.app.billing.invoice.StripeBillingObjectView.SubscriptionView::currentItemPriceRef)
+                .orElse(null);
+        return runGated(event, () -> {
+            planChangeConfirmationService.confirmAppliedIfMatchingItems(change.get(), currentItemPriceRef);
             return WebhookProcessStatus.PROCESSED;
         });
     }
@@ -274,7 +307,22 @@ public class BillingSubscriptionWebhookService {
         if (planChange.isPresent()) {
             return switch (event.type()) {
                 case INVOICE_PAID -> {
-                    planChangeConfirmationService.confirmPaid(planChange.get(), invoiceRef);
+                    // PR6b-1 第9隊 AC-79/80（E2'）: pending_update（3DS）経路は invoice.paid だけで
+                    // APPLIED にしない。適用確定は customer.subscription.pending_update_applied の
+                    // 現在 items 照合に委ねる（confirmAppliedIfMatchingItems）。同期成功（pending_update
+                    // を経由しない upgrade）は従来どおり invoice.paid の一点で確定する（E6'・AC-37）。
+                    if (planChange.get().getPendingUpdateExpiresAt() != null) {
+                        planChangeConfirmationService.acknowledgePendingPayment(planChange.get(), invoiceRef);
+                    } else {
+                        planChangeConfirmationService.confirmPaid(planChange.get(), invoiceRef);
+                    }
+                    yield WebhookProcessStatus.PROCESSED;
+                }
+                case INVOICE_PAYMENT_ACTION_REQUIRED -> {
+                    // AC-74/78: ここに来る時点で owner（customer/subscription の二重照合）は
+                    // handleInvoiceEventIfBilling が既に確認済み。confirmRequiresAction 側の
+                    // IN_FLIGHT 判定が単調維持（AC-82/83）と冪等（AC-86）を担う。
+                    planChangeConfirmationService.confirmRequiresAction(planChange.get());
                     yield WebhookProcessStatus.PROCESSED;
                 }
                 case INVOICE_PAYMENT_FAILED -> {

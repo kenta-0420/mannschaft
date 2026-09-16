@@ -346,6 +346,8 @@ cancel/resume/downgrade-to-cancelは `billing_contract_operations` とactive poi
 
 **取り消しは PR6b-1 の対象外**: upgrade の change が `REQUIRES_ACTION`/`PENDING_PAYMENT` にある間、利用者自身がその変更を取り消す機能は本 PR には含めない（PR6b-3「上位変更の取り消し」で扱う。`docs/task-list.md` 起票済み）。**この結果として、3DS 確認を放置した場合、最大で `pending_update.expires_at`（Stripe 既定は概ね23時間）まで、当該 contract の解約・別の change・downgrade 等あらゆる操作が409で塞がれ続ける**という性質が PR6b-1 の時点では残る。この制約は隠さず正本に明記する。
 
+**保留 webhook の滞留（AC-87）は自動 drain しない**: `invoice.payment_action_required` / `customer.subscription.pending_update_applied` / `customer.subscription.pending_update_expired` は PR6b-1 でようやく billing の受け口へ配線されるが、PR5 期に受信して `stripe_webhook_events.process_status = 'RECEIVED'` のまま溜まった過去分は、Stripe が 200 済みの event を再送しない性質上、実装を入れても**ひとりでには処理されない**。PR6b-1 では自動 drain（滞留行を掘り起こして再処理するバッチ等）を作らない。**滞留している RECEIVED 行を拾う手段は運用の手動再投入**（対象 event を Stripe ダッシュボードから再送する、または保存済み payload を用いて `POST /api/v1/webhooks/stripe` を手動で叩き直す）に限る。放置しても自動的には消化されないことを踏まえ、運用は `SELECT COUNT(*) FROM stripe_webhook_events WHERE process_status = 'RECEIVED' AND type IN (...)`（AC-23/24 のクエリ）で滞留件数を定期確認し、必要に応じて手動再投入すること。
+
 価格backfillは **Expand→Provision→Contract** の三段階である。Flywayは外部Stripe APIを呼ばず、金額を持たないDRAFT catalog revisionと、Stripe refなしのDRAFT bandを作るだけにする。冪等service jobは**bandごと**にStripe Priceを作成/metadata照合してREADYまで昇格するだけであり、SCHEDULED/ACTIVEへの遷移は全band READYを確認したactivate APIだけが行う。既存subscription itemのPriceはreconcileして一致しない契約を販売/変更停止にする。placeholder Priceは作らない。
 
 Checkout、SetupIntent、off-session subscription updateは専用 `payment_method_configuration` を参照し、card/Linkだけを有効にする。payment method typeを個別APIで直指定しない。同configurationが利用不能なStripe APIではcard/Linkへ同値fallbackし、既存保存PMが別typeの場合のSetupIntent/Checkout/更新失敗をE2Eする。
