@@ -170,7 +170,7 @@ async function mockSafetyCheckApis(page: import('@playwright/test').Page) {
         contentType: 'application/json',
         body: JSON.stringify({
           data: MOCK_SAFETY_CHECKS,
-          meta: { page: 0, size: 20, totalElements: 2, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 2, totalPages: 1 },
         }),
       })
     } else {

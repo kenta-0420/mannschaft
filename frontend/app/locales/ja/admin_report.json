@@ -2,14 +2,6 @@
   "admin_report": {
     "title": "レポート管理",
     "empty": "レポートがありません",
-    "status_options": {
-      "all": "すべて",
-      "pending": "未対応",
-      "reviewing": "対応中",
-      "escalated": "エスカレーション",
-      "resolved": "解決済み",
-      "dismissed": "却下"
-    },
     "messages": {
       "load_failed": "レポートの取得に失敗しました",
       "note_added": "メモを追加しました",
@@ -42,8 +34,7 @@
       "target_type": "対象種別",
       "reason": "理由",
       "reported_at": "報告日",
-      "actions": "操作",
-      "status_placeholder": "ステータス"
+      "actions": "操作"
     },
     "actions": {
       "review": "レビュー",

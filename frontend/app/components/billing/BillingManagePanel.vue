@@ -4,11 +4,22 @@
  *
  * - 閲覧（契約中プラン・アドオン・利用できる機能一覧）はメンバー以上に許可。
  * - 操作（解約）は ADMIN のみ（`canManage` prop で出し分け。BE 認可と一致させること）。
- * - 解約は「誠実仕様」（AC-42）: 確認モーダルは1回のみ・多段引き止め禁止・使えなくなる機能を明示。
- *   有償契約は `currentPeriodEnd` を用いて「◯月◯日まで利用できます」を明示、
- *   無償契約は「すぐに使えなくなります」を明示する。
+ * - 解約・解約撤回は Billing Center PR6a の期末解約 saga API
+ *   （`POST/DELETE /api/v1/me/billing/contracts/{contractId}/cancel`）を
+ *   `BillingCancelReservationDialog` へ委譲する（一画面一確認・撤回導線はAC-58/59/62/63/64を
+ *   同コンポーネント側で担保）。旧 `DELETE .../billing/contracts/{contractId}`（即時削除）は
+ *   本パネルからの呼び出しを廃止した（Codex 検分 P1 是正。詳細は下記型定義コメント）。
  */
 import type { BillingActiveContract, BillingEntitledFeature, BillingScopeKind } from '~/composables/useBillingApi'
+import BillingCancelReservationDialog from '~/components/billing/BillingCancelReservationDialog.vue'
+
+/**
+ * BE の {@code BillingActiveContract} 投影は {@code version}（05_billing_center.md:344 の
+ * {@code ContractBase.version:int64}）を返す（第7隊 8f0a0bb5a1 で解消済み。Codex 検分 P1 是正）。
+ * とはいえ値が欠落するケースへの安全網として、無い場合は 0 決め打ちで送らず「操作不能」を
+ * 誠実に表示する（CAS の意味を失わせる対処療法はしない）。
+ */
+type BillingActiveContractWithVersion = BillingActiveContract & { version?: number }
 
 const props = defineProps<{
   scopeKind: BillingScopeKind
@@ -61,49 +72,69 @@ function sourceBadgeLabel(sourceKind: string | undefined): string {
   }
 }
 
-// === 解約（誠実仕様: 確認モーダルは1回のみ） ===
-const cancelTarget = ref<BillingActiveContract | null>(null)
-const cancelVisible = ref(false)
-const cancelSubmitting = ref(false)
+// === 解約（Billing Center PR6a: 期末解約の予約・撤回。AC-58/59/62/63/64 は BillingCancelReservationDialog 側） ===
+const reservationTarget = ref<BillingActiveContractWithVersion | null>(null)
+const reservationVisible = ref(false)
 
-/** 解約対象の契約に由来する機能キー一覧（PLAN は planKey 一致する entitledFeatures の PLAN 由来分。ADDON は featureKey 自身）。 */
-const cancelAffectedFeatures = computed(() => {
-  if (!cancelTarget.value) return [] as BillingEntitledFeature[]
-  if (cancelTarget.value.featureKey) {
-    // ADDON: featureKey が一致する 1 件
-    return entitledFeatures.value.filter(f => f.featureKey === cancelTarget.value!.featureKey)
-  }
-  // PLAN: sourceKind=PLAN の全件（プラン契約は複数機能を束ねる）
-  return entitledFeatures.value.filter(f => f.sourceKind === 'PLAN')
+/** 通常は BE から返るが、安全網として欠落時は undefined を保つ（コンポーネント冒頭のコメント参照）。 */
+const reservationVersion = computed<number | undefined>(() => {
+  const v = reservationTarget.value?.version
+  return typeof v === 'number' ? v : undefined
+})
+
+/** BillingScheduledCancel は両フィールドが optional だが、ダイアログ側は両方揃った形を要求する。 */
+const reservationCancelInfo = computed<{ scheduledAt: string; endAt: string } | null>(() => {
+  const c = reservationTarget.value?.cancel
+  if (c?.scheduledAt && c?.endAt) return { scheduledAt: c.scheduledAt, endAt: c.endAt }
+  return null
 })
 
 function openCancel(contract: BillingActiveContract) {
-  cancelTarget.value = contract
-  cancelVisible.value = true
+  reservationTarget.value = contract
+  reservationVisible.value = true
 }
 
-async function submitCancel() {
-  const target = cancelTarget.value
+function closeCancelReservationDialog() {
+  reservationVisible.value = false
+}
+
+/** 契約情報を再取得し、開いているダイアログの投影（canCancel/canResume 等）も最新化する（AC-59）。 */
+async function refreshCancelReservationTarget() {
+  await load()
+  const id = reservationTarget.value?.contractId
+  if (!id) return
+  const updated: BillingActiveContractWithVersion | null =
+    (activePlan.value?.contractId === id ? activePlan.value : null)
+    ?? activeAddons.value.find(a => a.contractId === id)
+    ?? null
+  reservationTarget.value = updated
+  if (!updated) reservationVisible.value = false
+}
+
+async function confirmCancelReservation() {
+  const target = reservationTarget.value
   if (!target?.contractId) return
-  cancelSubmitting.value = true
-  try {
-    const res = await billingApi.cancelContract(props.scopeKind, props.scopeId, target.contractId)
-    cancelVisible.value = false
-    if (res.data.currentPeriodEnd) {
-      // 有償解約: BE レスポンスの currentPeriodEnd を用いて「いつまで使えるか」を明示する（AC-42）。
-      notification.success(t('billing.manage.cancelSuccessPaid', { date: formatDate(res.data.currentPeriodEnd) }))
-    }
-    else {
-      notification.success(t('billing.manage.cancelSuccessFree'))
-    }
-    await load()
+  if (reservationVersion.value === undefined) {
+    // 症状を隠さない: version を決め打ちで送らず、明示的に失敗させて誠実にエラー表示する。
+    throw new Error('billing contract version is unavailable from BillingActiveContract projection')
   }
-  catch (err) {
-    handleApiError(err, 'billing.manage.cancel')
+  const res = await billingApi.cancelContractReservation(target.contractId, reservationVersion.value)
+  if (res.data.status === 'SCHEDULED' && res.data.endAt) {
+    notification.success(t('billing.manage.cancelSuccessPaid', { date: formatDate(res.data.endAt) }))
   }
-  finally {
-    cancelSubmitting.value = false
+  else {
+    notification.success(t('billing.manage.cancelSuccessFree'))
   }
+}
+
+async function confirmResumeReservation() {
+  const target = reservationTarget.value
+  if (!target?.contractId) return
+  if (reservationVersion.value === undefined) {
+    throw new Error('billing contract version is unavailable from BillingActiveContract projection')
+  }
+  await billingApi.resumeContractCancellation(target.contractId, reservationVersion.value)
+  notification.success(t('billing.manage.resumeSuccess'))
 }
 
 onMounted(load)
@@ -198,42 +229,22 @@ defineExpose({ load })
       </div>
     </template>
 
-    <!-- 解約確認モーダル（1回のみ・多段引き止め禁止） -->
-    <Dialog
-      v-model:visible="cancelVisible"
-      modal
-      :header="t('billing.manage.cancelConfirmTitle')"
-      class="w-full max-w-md"
-      data-testid="billing-cancel-confirm-modal"
-    >
-      <div v-if="cancelTarget" class="space-y-4">
-        <p class="text-sm leading-relaxed text-surface-700 dark:text-surface-300">
-          {{ cancelTarget.priceJpySnapshot != null
-            ? t('billing.manage.cancelConfirmBodyPaid')
-            : t('billing.manage.cancelConfirmBodyFree') }}
-        </p>
-        <div v-if="cancelAffectedFeatures.length > 0">
-          <p class="mb-1 text-xs font-semibold text-red-600 dark:text-red-400">
-            {{ t('billing.manage.cancelConfirmFeaturesLabel') }}
-          </p>
-          <ul class="space-y-1 text-sm">
-            <li v-for="f in cancelAffectedFeatures" :key="f.featureKey" class="flex items-center gap-2">
-              <i class="pi pi-minus-circle text-red-500" />
-              {{ t(`billing.features.${(f.featureKey ?? '').replace(/\./g, '_')}.name`, f.featureKey ?? '') }}
-            </li>
-          </ul>
-        </div>
-      </div>
-      <template #footer>
-        <Button :label="t('billing.manage.cancelConfirmCancel')" text severity="secondary" @click="cancelVisible = false" />
-        <Button
-          :label="t('billing.manage.cancelConfirmCta')"
-          severity="danger"
-          :loading="cancelSubmitting"
-          data-testid="billing-cancel-confirm-submit"
-          @click="submitCancel"
-        />
-      </template>
-    </Dialog>
+    <!-- 解約確認・撤回ダイアログ（Billing Center PR6a・一画面一確認。AC-58/59/62/63/64） -->
+    <BillingCancelReservationDialog
+      v-if="reservationTarget"
+      :open="reservationVisible"
+      :contract-id="reservationTarget.contractId ?? ''"
+      :contract-status="reservationTarget.status ?? 'ACTIVE'"
+      :version="reservationVersion ?? 0"
+      :current-period-end="reservationTarget.currentPeriodEnd ?? ''"
+      :cancel="reservationCancelInfo"
+      :can-cancel="reservationTarget.canCancel ?? false"
+      :can-resume="reservationTarget.canResume ?? false"
+      :on-confirm="confirmCancelReservation"
+      :on-resume="confirmResumeReservation"
+      :on-refetch="refreshCancelReservationTarget"
+      @cancel="closeCancelReservationDialog"
+      @update:open="closeCancelReservationDialog"
+    />
   </div>
 </template>

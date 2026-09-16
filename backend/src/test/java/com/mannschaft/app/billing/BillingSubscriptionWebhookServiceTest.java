@@ -63,6 +63,8 @@ class BillingSubscriptionWebhookServiceTest {
      */
     @Mock private BillingInvoiceProjectionService invoiceProjectionService;
     @Mock private BillingPayerHandoverService payerHandoverService;
+    /** PR6a AC-83: customer.subscription.updated の受け口（本テストは deleted/invoice 系のみを測る）。 */
+    @Mock private BillingContractOperationRecoveryService operationRecoveryService;
 
     private BillingSubscriptionWebhookService service;
 
@@ -74,7 +76,7 @@ class BillingSubscriptionWebhookServiceTest {
         service = new BillingSubscriptionWebhookService(
                 stripePaymentProvider, idempotencyService, billingContractService,
                 billingContractRepository, invoiceProjectionService, gate, parser,
-                payerHandoverService, FIXED_CLOCK);
+                payerHandoverService, operationRecoveryService, FIXED_CLOCK);
     }
 
     private BillingSubscriptionWebhookEventInfo event(

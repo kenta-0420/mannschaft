@@ -296,6 +296,34 @@ quote/change requestはclientの`priceVersionId`又は`priceBandVersionId`を受
 
 cancel/resume/downgrade-to-cancelは `billing_contract_operations` とactive pointerを同一transactionでCAS予約→commit→Stripe呼出→CAS結果反映する。期末ちょうどはStripeの最新subscription period endとDBのeffectiveAtを再読して片方だけを適用する。Schedule cancel後のsubscription cancelが失敗したら、Scheduleを再作成できる場合だけ補償し、できなければ `RECONCILIATION_REQUIRED` と運営incidentにする。UIはoperation中のボタンを無効化し、失敗は明示エラー後にsummaryをrefetchする。
 
+### 5.1 解約・解約撤回の確定仕様（Billing Center PR6a の設計判断 D1〜D8）
+
+本節は PR6a（解約・解約撤回と operation Saga の土台）で確定した判断である。上位の記述と食い違う箇所は本節が優先する。
+
+**D1 トランザクション分割**: 予約（tx1: contract を `SELECT ... FOR UPDATE` ＋ version CAS ＋ operation INSERT ＋ pointer INSERT）→ **commit** → Stripe 呼出 → 反映（tx2: operation を terminal へ ＋ pointer DELETE ＋ `cancelled_at`/`valid_until` 更新）。tx1 の中で Stripe を呼んではならない。tx2 が落ちた場合は `RECONCILIATION_REQUIRED`（pointer 保持）とし、黙って成功にしない。旧実装の「Stripe 成功後に tx をロールバックして webhook の自己修復に委ねる」方式は、Saga 側の補償（D8 の回収）へ置き換える。
+
+**D2 Stripe を伴わない解約は operation を作らない**: 無償契約の即時失効、退会 purge の一括解約、webhook 由来の `EXPIRED` の3経路。これらは「1契約1 mutation」の一件制約の外に置く（operation を作ると自分の pointer を取りに行って自縄自縛になる）。
+
+**D3 SYSTEM 経路は検疫を貫通する。ただし孤児を作らない**: `RECONCILIATION_REQUIRED` の契約でも、退会 purge と `customer.subscription.deleted` は通す（止めると退会者に課金と権利が残り GDPR 要件を破るため、検疫より purge を優先する）。**貫通時は、残っている非終端 operation を同一トランザクションで `CANCELLED` へ終端化してから pointer を削除する**。「貫通して pointer だけ消す」と非終端 operation が孤児化し、「pointer を保持する」と既に `EXPIRED`/`CANCELLED` の契約が永久検疫になる。どちらも採らない。purge と webhook が同時到達しても、契約行の排他ロックにより終端化と pointer 削除は一度しか起きない。
+
+**D4 `PAST_DUE` 契約の解約は許可する**（正本に記載が無かった事項）。ただし `current_period_end` が既に過去、または**ちょうど現在時刻**なら 409 とする（期末解約として意味を持たず、`valid_until` を過去に置いて即時失効になるため。半開区間の方針と整合させる）。Stripe と DB の period end が**ともに null** のときも 409 とし、DB を一切変更しない（cancel 応答の `endAt` は nullable ではないため、null のまま 200 を返してはならない）。引継側が `PAST_DUE` を拒否しているのとは非対称であり、これは意図である。
+
+**D5 撤回後の `valid_until` は NULL（無期限）へ戻す**。発行時は常に NULL であり旧値を保存していないため、「次期へ戻す」分岐は存在しえない。
+
+**D6 エンドポイントは2本**: `POST /me/billing/contracts/{id}/cancel` と `DELETE /me/billing/contracts/{id}/cancel`。TEAM/ORG の契約も `/me` 配下の contractId で操作し、認可はスコープ判定で行う（既存 controller が3スコープなのは旧 create/change/delete API であって、新 API を6本へ増やす根拠にはならない）。他スコープの contract id は **404** に畳む（403 と撃ち分けると契約 ID の存在オラクルが残る）。scope 内で権限が無い場合だけ 403 とする。
+
+**D7 エラーコードの採番**は `origin/main` の最大値の次から行い、pointer 競合・引継競合の 409 は既存の `ENTITLEMENT_021`（`CHANGE_CONFLICT`）を使う（新設しない）。
+
+**D8 プロセス停止窓の回収**（正本に記載が無かった事項）: D1 は既存の「期末 deleted による自己修復」を外すため、次の3つの停止窓を回収する仕組みを持つ。(a) tx1 commit 後〜Stripe 呼出前、(b) Stripe 成功後〜tx2 開始前、(c) tx2 失敗後〜検疫記録前。手段は「Stripe の subscription metadata に `operationId` を保存する」＋「stale な `CREATED`/`CALLING_STRIPE` を定期走査して Stripe と再照合する」である。metadata が保存されなければ回収は原理的に成立しないため、Stripe 呼出は metadata を書く形で行う。走査は stale 判定のしきい値（経過時間）を持ち、進行中の正常な operation を横取りしない。回収は status 一致を条件とする条件付き UPDATE の更新件数だけを「自分が勝った」根拠とし、二重に pointer を解放しない。`customer.subscription.updated` は回収の入口として受け取る（プラン変更の `APPLIED` 判定は後続 PR の担当）。**回収経路自身は operation を作らない**（D2 と同じ扱い）。
+
+**引継との排他（正本に記載が無かった事項）**: 解約・撤回は `billing_payer_handover_requests.old_contract_id = {contractId}` かつ status が非終端なら 409 とする。判定は**旧契約基準**で行う —— `PENDING_HANDOVER` は引継の**新**契約の状態であり、利用者が操作するのは**旧**契約なので、契約の状態だけを見ると素通りする。
+
+**`step` 列の値集合（正本に記載が無かった事項）**: `billing_contract_operations.step VARCHAR(32) NOT NULL` は、operation の進行位置を kind ごとの遷移列として持つ。予約直後の初期値は `RECEIVED` であり、NOT NULL を満たす。status の遷移は `CREATED → CALLING_STRIPE`、`CALLING_STRIPE → {APPLIED | FAILED | RECONCILIATION_REQUIRED | CANCELLED}`、`RECONCILIATION_REQUIRED → {APPLIED | FAILED | CANCELLED}`（reconcile による確定）、`CREATED → CANCELLED`（Stripe を呼ぶ前に停止窓の回収で取り消される場合）の各辺だけを許し、逆行・飛び越しを拒否する。
+
+**監査**: 解約・撤回の**作成・確定・失敗**を `BILLING_CANCEL_*`（`BILLING_CANCEL_REQUESTED` / `_APPLIED` / `_FAILED`、撤回は `BILLING_CANCEL_RESUME_*`）として actor・scope・object ref（contractId）と共に記録する。**成功だけを監査しない** —— Stripe 障害や競合で通らなかった事実も残す。監査 metadata に載せるのは scopeKind・scopeId・contractId・errorCode だけであり、カード番号・住所全文・URL・raw payload・client secret・例外メッセージ本文は載せない。
+
+**性能**: 退会 purge の一括解約は契約数 M に比例した SQL を発行しない（operation の終端化・pointer 解放・契約の `CANCELLED` 化・由来 entitlements の revoke をいずれも一括クエリに畳む）。由来 entitlements の `valid_until` 更新も発行数 N に比例させない。
+
 価格backfillは **Expand→Provision→Contract** の三段階である。Flywayは外部Stripe APIを呼ばず、金額を持たないDRAFT catalog revisionと、Stripe refなしのDRAFT bandを作るだけにする。冪等service jobは**bandごと**にStripe Priceを作成/metadata照合してREADYまで昇格するだけであり、SCHEDULED/ACTIVEへの遷移は全band READYを確認したactivate APIだけが行う。既存subscription itemのPriceはreconcileして一致しない契約を販売/変更停止にする。placeholder Priceは作らない。
 
 Checkout、SetupIntent、off-session subscription updateは専用 `payment_method_configuration` を参照し、card/Linkだけを有効にする。payment method typeを個別APIで直指定しない。同configurationが利用不能なStripe APIではcard/Linkへ同値fallbackし、既存保存PMが別typeの場合のSetupIntent/Checkout/更新失敗をE2Eする。

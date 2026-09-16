@@ -25,7 +25,7 @@ test.describe('GLOBAL-005: チャット', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: MOCK_CHANNELS,
-          meta: { page: 0, size: 50, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 50, total: 1, totalPages: 1 },
         }),
       })
     })

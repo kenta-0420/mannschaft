@@ -48,10 +48,10 @@ export function useScheduleCrud() {
     if (params?.categoryId) query.set('categoryId', String(params.categoryId))
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 50))
-    return api<{
-      data: unknown[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
-    }>(`${buildBase(scopeType, scopeId)}/schedules?${query}`)
+    // BE（Org/TeamScheduleController#listSchedules）は ApiResponse<List<ScheduleResponse>> を返し、
+    // meta を一切送らない。かつてここに meta を宣言していたが実体が無く、
+    // 読めば常に undefined になる幽霊フィールドだった（CMP-260912-1823）。
+    return api<{ data: unknown[] }>(`${buildBase(scopeType, scopeId)}/schedules?${query}`)
   }
 
   async function getSchedule(

@@ -24,7 +24,7 @@ interface Member {
 
 interface PagedMembers {
   data: Member[]
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: { page: number; size: number; total: number; totalPages: number }
 }
 
 const api = useApi()
@@ -87,7 +87,7 @@ async function loadMembers() {
     )
     if (sequence !== memberRequestSequence) return
     members.value = response.data
-    totalRecords.value = response.meta.totalElements
+    totalRecords.value = response.meta.total
     await loadReturnStayPlans()
   }
   catch {

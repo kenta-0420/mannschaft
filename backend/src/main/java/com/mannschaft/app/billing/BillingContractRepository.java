@@ -161,4 +161,31 @@ public interface BillingContractRepository
             @Param("scopeId") Long scopeId,
             @Param("status") ContractStatus status,
             Pageable pageable);
+
+    /**
+     * 退会 purge の一括解約で契約を CANCELLED にする（PR6a AC-72b）。
+     *
+     * <p>エンティティを1件ずつ書き換えて flush させると契約数 M に比例した UPDATE が出るため、
+     * 1本の一括 UPDATE に畳む。{@code @PreUpdate} を経由しないので {@code updated_at} は明示的に渡す。
+     * {@code version} 列は触らない（旧・逐次 save でも増えていなかった。CAS は operation 側の責務）。</p>
+     *
+     * <p>永続化コンテキストは<b>クリアする</b>（{@code clearAutomatically=true}）—— 読み出し済みの
+     * 契約エンティティが古い status のまま残ると、同一トランザクションの後続処理が嘘を読む。
+     * 呼び出し元はこの直後に処理を終えること。</p>
+     *
+     * @param ids       対象契約 ID
+     * @param status    遷移先（{@link ContractStatus#CANCELLED}）
+     * @param cancelledAt 解約日時（{@code updated_at} にも入れる）
+     * @return 更新件数
+     */
+    @org.springframework.data.jpa.repository.Modifying(
+            clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query(
+            "UPDATE BillingContractEntity c SET c.status = :status, c.cancelledAt = :cancelledAt, "
+                    + "c.updatedAt = :cancelledAt WHERE c.id IN :ids AND c.deletedAt IS NULL")
+    int bulkCancelForPurge(
+            @org.springframework.data.repository.query.Param("ids") java.util.Collection<UUID> ids,
+            @org.springframework.data.repository.query.Param("status") ContractStatus status,
+            @org.springframework.data.repository.query.Param("cancelledAt")
+            java.time.LocalDateTime cancelledAt);
 }

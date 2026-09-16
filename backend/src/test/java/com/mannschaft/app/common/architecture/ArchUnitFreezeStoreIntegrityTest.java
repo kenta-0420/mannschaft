@@ -736,8 +736,19 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code DuplicateNameGuardServiceImpl} がネイティブ SQL で直接ロックを取得するために存在する
      * （{@code docs/architecture/domain_db_design_principles.md} 参照）。違反隠蔽ではなく
      * 設計是認例外の正規登録。</p>
+     *
+     * <p>Billing Center PR6a（2026-09-12）: {@code billing.ActiveBillingContractOperationPointerEntity}
+     * （1契約につき進行中の操作 Saga を高々1件に限る lease 表）を 1 件追加し 566 → 567。
+     * <b>該当する例外区分</b>: {@code docs/architecture/domain_db_design_principles.md} 原則 6 の
+     * 「1:1 従属表（主キーが親の UUIDv7 そのもの）」。主キーは {@code billing_contracts.id} そのもの
+     * （{@code PRIMARY KEY (contract_id)}）で、DDL に {@code id} 列が存在しない。原則 6 の意図は
+     * <b>将来シャーディングしたときに各ノードが独立して主キーを発番できること</b>であり、本表の主キーは
+     * 親が発番した UUIDv7 をそのまま用いるため、その意図は既に完全に満たされている（BIGINT
+     * AUTO_INCREMENT のような中央発番はどこにも現れない）。むしろ代理キーを足すと「1契約1 lease」を
+     * 別途 UNIQUE 制約で守る必要が生じ、排他の不変条件の担保が弱くなる。DDL は V196 で確定済みであり
+     * 新規 migration での作り直しは行わない。違反隠蔽ではなく設計是認例外の正規登録。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 566;
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 567;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。

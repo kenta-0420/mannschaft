@@ -20488,6 +20488,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/billing/contracts/{contractId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 契約の解約（期末解約の予約）
+         * @description 有償契約は current_period_end までの利用を残したまま解約を予約する。Idempotency-Key 必須。
+         */
+        post: operations["cancel_12"];
+        /**
+         * 解約予約の撤回
+         * @description 期末を跨ぐ前に限り、cancel_at_period_end を解除して契約を継続させる。Idempotency-Key 必須。
+         */
+        delete: operations["resume_5"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/billing/checkout-sessions": {
         parameters: {
             query?: never;
@@ -23559,7 +23583,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** @deprecated */
-        post: operations["resume_5"];
+        post: operations["resume_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -23610,7 +23634,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** @deprecated */
-        post: operations["cancel_12"];
+        post: operations["cancel_13"];
         delete?: never;
         options?: never;
         head?: never;
@@ -26531,7 +26555,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 確認通知キャンセル */
-        patch: operations["cancel_13"];
+        patch: operations["cancel_14"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/circulations/{documentId}": {
@@ -29150,7 +29174,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 協会請求の取消（CANCELLED） */
-        patch: operations["cancel_14"];
+        patch: operations["cancel_15"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/matches/{matchId}/events/{eventId}": {
@@ -29273,7 +29297,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 確認通知キャンセル（組織） */
-        patch: operations["cancel_15"];
+        patch: operations["cancel_16"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/circulations/{documentId}": {
@@ -46087,7 +46111,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** チーム申請取消 */
-        delete: operations["cancel_16"];
+        delete: operations["cancel_17"];
         options?: never;
         head?: never;
         patch?: never;
@@ -46726,7 +46750,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 組織申請取消 */
-        delete: operations["cancel_17"];
+        delete: operations["cancel_18"];
         options?: never;
         head?: never;
         patch?: never;
@@ -46938,7 +46962,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 継続課金 期末解約（F08.9 P5） */
-        delete: operations["cancel_18"];
+        delete: operations["cancel_19"];
         options?: never;
         head?: never;
         patch?: never;
@@ -65381,6 +65405,35 @@ export interface components {
             /** @description Stripe Customer Portal の短命 URL */
             url?: string;
         };
+        /** @description 解約・解約撤回リクエスト */
+        BillingCancelRequest: {
+            /**
+             * Format: int64
+             * @description 契約の version（楽観ロックの期待値）
+             * @example 0
+             */
+            version: number;
+        };
+        ApiResponseBillingContractCancelResponse: {
+            data?: components["schemas"]["BillingContractCancelResponse"];
+        };
+        /** @description 解約・解約撤回の結果 */
+        BillingContractCancelResponse: {
+            canCancel?: boolean;
+            canResume?: boolean;
+            /** Format: uuid */
+            contractId?: string;
+            contractStatus?: string;
+            /** Format: date-time */
+            currentPeriodEnd?: string;
+            /** Format: date-time */
+            endAt?: string;
+            /** Format: date-time */
+            scheduledAt?: string;
+            status?: string;
+            /** Format: int64 */
+            version?: number;
+        };
         CreateBillingCheckoutSessionRequest: {
             /** Format: uuid */
             quoteId?: string;
@@ -73179,6 +73232,12 @@ export interface components {
         };
         /** @description F20.1 権利サマリ内のアクティブ契約 */
         BillingActiveContract: {
+            /** @description この契約を解約できるか（解約予約済みなら false） */
+            canCancel?: boolean;
+            /** @description 解約予約を撤回できるか（期末を跨いだら false） */
+            canResume?: boolean;
+            /** @description 解約予約の内容。予約が無ければ null */
+            cancel?: components["schemas"]["BillingScheduledCancel"];
             /**
              * @description 契約 ID（UUID）
              * @example 0198aaaa-bbbb-cccc-dddd-eeeeeeeeeeee
@@ -73189,6 +73248,11 @@ export interface components {
              * @description 契約日時（ISO-8601）
              */
             contractedAt?: string;
+            /**
+             * Format: date-time
+             * @description 現在の課金期間の終了時刻。期末を持たない契約は null
+             */
+            currentPeriodEnd?: string;
             /**
              * @description 機能キー（ADDON 契約時）。PLAN 時は null
              * @example ads.hide
@@ -73204,6 +73268,17 @@ export interface components {
              * @description 契約時単価スナップショット（円）。ベータ中は null（無償）
              */
             priceJpySnapshot?: number;
+            /**
+             * @description 契約状態（ContractStatus の6値: PENDING / ACTIVE / PAST_DUE / CANCELLED / EXPIRED / PENDING_HANDOVER）
+             * @example ACTIVE
+             */
+            status?: string;
+            /**
+             * Format: int64
+             * @description 楽観ロックのCAS期待値。解約・撤回APIの version に渡す
+             * @example 0
+             */
+            version?: number;
         };
         /** @description F20.1 利用できる 1 機能 */
         BillingEntitledFeature: {
@@ -73242,6 +73317,19 @@ export interface components {
              * @example TEAM
              */
             scopeKind?: string;
+        };
+        /** @description F20.1 解約予約の内容 */
+        BillingScheduledCancel: {
+            /**
+             * Format: date-time
+             * @description 利用可能期限（＝currentPeriodEnd）
+             */
+            endAt?: string;
+            /**
+             * Format: date-time
+             * @description 解約予約を入れた時刻（cancelled_at）
+             */
+            scheduledAt?: string;
         };
         ApiResponseListEmergencyClosureResponse: {
             data?: components["schemas"]["EmergencyClosureResponse"][];
@@ -125753,6 +125841,62 @@ export interface operations {
             };
         };
     };
+    cancel_12: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingCancelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractCancelResponse"];
+                };
+            };
+        };
+    };
+    resume_5: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingCancelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractCancelResponse"];
+                };
+            };
+        };
+    };
     createCheckoutSession: {
         parameters: {
             query?: never;
@@ -131173,7 +131317,7 @@ export interface operations {
             };
         };
     };
-    resume_5: {
+    resume_6: {
         parameters: {
             query: {
                 organizationId: number;
@@ -131245,7 +131389,7 @@ export interface operations {
             };
         };
     };
-    cancel_12: {
+    cancel_13: {
         parameters: {
             query: {
                 organizationId: number;
@@ -137021,7 +137165,7 @@ export interface operations {
             };
         };
     };
-    cancel_13: {
+    cancel_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -142086,7 +142230,7 @@ export interface operations {
             };
         };
     };
-    cancel_14: {
+    cancel_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -142357,7 +142501,7 @@ export interface operations {
             };
         };
     };
-    cancel_15: {
+    cancel_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -166484,7 +166628,7 @@ export interface operations {
             };
         };
     };
-    cancel_16: {
+    cancel_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -167248,7 +167392,7 @@ export interface operations {
             };
         };
     };
-    cancel_17: {
+    cancel_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -167513,7 +167657,7 @@ export interface operations {
             };
         };
     };
-    cancel_18: {
+    cancel_19: {
         parameters: {
             query?: never;
             header?: never;

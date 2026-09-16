@@ -43,7 +43,7 @@ type RawConflictDetail = {
 type RawPagedResponse = {
   data: RawConflictListItem[]
   meta: {
-    totalElements: number
+    total: number
     page: number
     size: number
     totalPages: number
@@ -112,7 +112,7 @@ export function useConflictResolver() {
       meta: {
         page: res.meta.page,
         size: res.meta.size,
-        totalElements: res.meta.totalElements,
+        total: res.meta.total,
         totalPages: res.meta.totalPages,
       },
     }

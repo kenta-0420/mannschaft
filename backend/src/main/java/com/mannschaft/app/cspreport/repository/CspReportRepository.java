@@ -4,11 +4,12 @@ import com.mannschaft.app.cspreport.entity.CspReportEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * CSP 違反レポートリポジトリ。
  */
-public interface CspReportRepository extends JpaRepository<CspReportEntity, Long> {
+public interface CspReportRepository extends JpaRepository<CspReportEntity, UUID> {
 
     /**
      * report_hash で CSP 違反レポートを検索する（重複集約用）。

@@ -29,7 +29,9 @@
       "revoke": "Discard",
       "history": "Run History",
       "slotsFilled": "{filled}/{total} slots filled",
-      "warnings": "{count} warnings"
+      "warnings": "{count} warnings",
+      "disabledBadge": "Suspended",
+      "disabledReason": "Auto-assignment is currently suspended. Please build the shift manually."
     },
     "visualReview": {
       "title": "Visual Review",

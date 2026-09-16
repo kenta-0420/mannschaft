@@ -101,7 +101,7 @@ export interface PagedResponseIncidentSummaryResponse {
   meta: {
     page: number
     size: number
-    totalElements: number
+    total: number
     totalPages: number
   }
 }

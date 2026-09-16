@@ -541,7 +541,7 @@ export async function mockSurveyApi(page: Page, opts: MockSurveyApiOptions): Pro
         meta: {
           page: 0,
           size: 50,
-          totalElements: data.length,
+          total: data.length,
           totalPages: data.length === 0 ? 0 : 1,
         },
       }),

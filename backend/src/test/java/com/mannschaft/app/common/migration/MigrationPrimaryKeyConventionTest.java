@@ -58,12 +58,10 @@ class MigrationPrimaryKeyConventionTest {
     /**
      * 既知の許容済み逸脱（allowlist）。これらは AUTO_INCREMENT 主キーでも fail させない。
      * <ul>
-     *   <li>{@code csp_reports}（V71.014）— CSP 違反レポートの追記専用ログ表</li>
      *   <li>{@code schedule_media_uploads}（V75.001）</li>
      * </ul>
      */
     private static final Set<String> ALLOWLISTED_TABLES = Set.of(
-        "csp_reports",
         "schedule_media_uploads");
 
     /** {@code V<major>.<minor>__name.sql} から major を取り出す。 */
@@ -84,16 +82,27 @@ class MigrationPrimaryKeyConventionTest {
     private static final Pattern AUTO_INCREMENT_PATTERN =
         Pattern.compile("AUTO_INCREMENT", Pattern.CASE_INSENSITIVE);
 
+    /** 後続 migration で補助 UUID 列を BINARY(16) 主キーへ交換した ALTER TABLE 文。 */
+    private static final Pattern ALTER_TABLE_STATEMENT_PATTERN = Pattern.compile(
+        "ALTER\\s+TABLE\\s+`?([A-Za-z0-9_]+)`?\\s+([^;]+);",
+        Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+    private static final Pattern UUID_PRIMARY_KEY_REPLACEMENT_PATTERN = Pattern.compile(
+        "CHANGE\\s+(?:COLUMN\\s+)?`?id_uuid`?\\s+`?id`?\\s+BINARY\\s*\\(\\s*16\\s*\\)"
+            + ".*ADD\\s+PRIMARY\\s+KEY\\s*\\(\\s*`?id`?\\s*\\)",
+        Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
     @Test
     @DisplayName("major>=70 の CREATE TABLE 主キーに AUTO_INCREMENT が使われていない_allowlist 除く")
     void newTablesMustNotUseAutoIncrementPrimaryKey() {
         Path migrationDir = locateMigrationDir();
         List<String> violations = new ArrayList<>();
+        Set<String> uuidMigratedTables = findTablesMigratedToUuidPrimaryKey(migrationDir);
 
         try (Stream<Path> files = Files.list(migrationDir)) {
             files.filter(p -> p.getFileName().toString().endsWith(".sql"))
                 .sorted()
-                .forEach(p -> collectViolations(p, violations));
+                .forEach(p -> collectViolations(p, uuidMigratedTables, violations));
         } catch (IOException e) {
             throw new UncheckedIOException(
                 "マイグレーションディレクトリの走査に失敗: " + migrationDir, e);
@@ -111,7 +120,10 @@ class MigrationPrimaryKeyConventionTest {
      * 1 ファイルを検査し、major>=70 かつ allowlist 外の AUTO_INCREMENT 主キーがあれば
      * {@code violations} に追記する。
      */
-    private static void collectViolations(Path sqlFile, List<String> violations) {
+    private static void collectViolations(
+            Path sqlFile,
+            Set<String> uuidMigratedTables,
+            List<String> violations) {
         String fileName = sqlFile.getFileName().toString();
         Integer major = extractMajor(fileName);
         if (major == null || major < CONVENTION_MIN_MAJOR) {
@@ -154,12 +166,43 @@ class MigrationPrimaryKeyConventionTest {
                 SqlTextScanningUtils.findStatementEnd(content, bodyStart));
 
             if (AUTO_INCREMENT_PATTERN.matcher(body).find()
-                    && !ALLOWLISTED_TABLES.contains(tableName)) {
+                    && !ALLOWLISTED_TABLES.contains(tableName)
+                    && !uuidMigratedTables.contains(tableName)) {
                 violations.add(String.format(
                     "%s: テーブル %s が AUTO_INCREMENT 主キーを使用（major=%d）",
                     fileName, tableName, major));
             }
         }
+    }
+
+    /**
+     * 歴史的な CREATE TABLE は改変せず、後続 migration が実際に UUID 主キーへ交換した表を抽出する。
+     * 単なる手動 allowlist ではなく、BINARY(16) への列交換と PRIMARY KEY 追加の両方を要求する。
+     */
+    private static Set<String> findTablesMigratedToUuidPrimaryKey(Path migrationDir) {
+        Set<String> migrated = new java.util.HashSet<>();
+        try (Stream<Path> files = Files.list(migrationDir)) {
+            files.filter(p -> p.getFileName().toString().endsWith(".sql"))
+                .sorted()
+                .forEach(path -> {
+                    try {
+                        String content = SqlTextScanningUtils.stripComments(
+                            Files.readString(path, StandardCharsets.UTF_8));
+                        Matcher alterMatcher = ALTER_TABLE_STATEMENT_PATTERN.matcher(content);
+                        while (alterMatcher.find()) {
+                            if (UUID_PRIMARY_KEY_REPLACEMENT_PATTERN
+                                    .matcher(alterMatcher.group(2)).find()) {
+                                migrated.add(alterMatcher.group(1));
+                            }
+                        }
+                    } catch (IOException e) {
+                        throw new UncheckedIOException("SQL 読み込み失敗: " + path, e);
+                    }
+                });
+        } catch (IOException e) {
+            throw new UncheckedIOException("migration ディレクトリ走査失敗: " + migrationDir, e);
+        }
+        return migrated;
     }
 
     // SQL コメント除去・引用符スキップ・文末検出は SqlTextScanningUtils（同パッケージ）に

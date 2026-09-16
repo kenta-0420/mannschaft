@@ -394,6 +394,63 @@ class FeatureGateAnnotationKeyGuardTest {
     }
 
     // ===================================================================
+    // 他の番人への提供口 — 本番コードに実在する @RequireFeature のキー
+    // ===================================================================
+
+    /**
+     * 本番コード（{@code src/main/java}）の {@code @RequireFeature} に
+     * <b>文字列リテラルで実際に書かれている</b>フラグキーを集める。
+     *
+     * <p>{@link FeatureGateRouteMapGuardTest} の (vii)（route 束縛の明示除外が
+     * 「BE 側だけを塞ぐ機能」に限られていることの検証）から流用される。
+     * キーの抽出は本番人の実ファイル走査と<b>同一の正規表現</b>（{@link #ANNOTATION} ／
+     * {@link #STRING_LITERAL}）を用いる。抽出手段を二重化すると、片方だけが書式変更に
+     * 追随できず「BE ゲートがあるのに無いと判定する」偽陽性を生むため。</p>
+     *
+     * <p><b>付与先がインターフェースの場合</b>も文字列としては拾われるが、
+     * それは {@code RequireFeatureInterfaceGuardTest} が別途 red にするため
+     * ここで撃ち分ける必要はない。</p>
+     */
+    static Set<String> annotatedFeatureKeys() throws IOException {
+        Path root = FeatureGateRouteMapGuardTest.resolveFromRepoRoot(MAIN_SOURCE_ROOT);
+        return annotatedFeatureKeys(loadSources(root));
+    }
+
+    /** 抽出コア（合成入力で自己検証できるよう切り出してある）。 */
+    static Set<String> annotatedFeatureKeys(List<Source> sources) {
+        Set<String> keys = new LinkedHashSet<>();
+        for (Source src : sources) {
+            if (!src.content.contains("@RequireFeature")) {
+                continue;
+            }
+            Matcher m = ANNOTATION.matcher(src.content);
+            while (m.find()) {
+                String body = m.group(1).strip();
+                if (body.startsWith("{") && body.endsWith("}")) {
+                    body = body.substring(1, body.length() - 1);
+                }
+                for (String token : body.split(",")) {
+                    Matcher lit = STRING_LITERAL.matcher(token.strip());
+                    if (lit.matches()) {
+                        keys.add(lit.group(1));
+                    }
+                }
+            }
+        }
+        return keys;
+    }
+
+    @Test
+    @DisplayName("裏取り: 本番コードの @RequireFeature からキーを実際に収集できていること")
+    void 付与済みキーを収集できている() throws IOException {
+        assertThat(annotatedFeatureKeys())
+                .as("本番コードの @RequireFeature を1件も読めていない。"
+                        + "抽出経路が壊れると FeatureGateRouteMapGuardTest の (vii) が"
+                        + "「BE ゲートが無い」と誤検出する（または誤って免除する）")
+                .isNotEmpty();
+    }
+
+    // ===================================================================
     // ファイル読み込み・小道具
     // ===================================================================
 

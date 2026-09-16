@@ -955,6 +955,12 @@ openApi {
         // args.add は springdoc-openapi-gradle-plugin では機能しないため jvmArgs で -D オプションを使用する
         jvmArgs.add("-Dspring.profiles.active=openapi-gen")
         jvmArgs.add("-Dserver.port=8082")
+        // bootRun は開発者向けの高速起動最適化として -XX:TieredStopAtLevel=1（C1 のみ）を付ける。
+        // これは「起動してすぐ手で触る」用途には有効だが、generateOpenApiDocs の起動は
+        // 全 Entity の DDL 生成・全 Bean 初期化・全 Controller スキャンという重い CPU バウンドの処理で、
+        // C1 のみだと数十分規模まで伸びて waitTimeInSeconds を食い潰す。
+        // 後勝ちで階層コンパイルを全段有効に戻す。
+        jvmArgs.add("-XX:TieredStopAtLevel=4")
         // MapProperty.put() で systemProperties にも設定し二重に適用する
         systemProperties.put("spring.profiles.active", "openapi-gen")
         systemProperties.put("server.port", "8082")
