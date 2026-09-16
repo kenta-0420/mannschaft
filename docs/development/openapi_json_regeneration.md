@@ -107,13 +107,27 @@ logback は root に appender が一つも紐付いていないと**そのプロ
 
 ```bash
 PORT=8082
-WIN=$(netstat -ano | findstr LISTENING | findstr ":$PORT ")
-WSLROW=$(wsl -e sh -c "ss -ltnp 2>/dev/null | grep ':$PORT '" 2>/dev/null)
-[ -n "$WIN" ] && echo "Windows 側: 使用中" && echo "$WIN"
-[ -z "$WIN" ] && echo "Windows 側: 空き"
-[ -n "$WSLROW" ] && echo "WSL 側: 使用中" && echo "$WSLROW"
-[ -z "$WSLROW" ] && echo "WSL 側: 空き"
-if [ -z "$WIN" ] && [ -z "$WSLROW" ]; then echo "==> 両側とも空き。このポートを使ってよい"; else echo "==> 使用中。別ポートへ避けるか、下の AND 判定で主を特定する"; fi
+# 各プローブは「出力が空か」より先に「コマンドが成功したか」を見る
+WINLIST=$(netstat -ano); WIN_RC=$?
+WSLLIST=$(wsl -e sh -c 'command -v ss >/dev/null 2>&1 || exit 127; ss -ltnp' 2>/dev/null); WSL_RC=$?
+
+if [ "$WIN_RC" -ne 0 ]; then WIN_STATE="不明（netstat 失敗 rc=$WIN_RC）"
+elif printf '%s
+' "$WINLIST" | grep LISTENING | grep -q ":$PORT "; then WIN_STATE="使用中"
+else WIN_STATE="空き"; fi
+
+if [ "$WSL_RC" -ne 0 ]; then WSL_STATE="不明（wsl/ss 失敗 rc=$WSL_RC）"
+elif printf '%s
+' "$WSLLIST" | grep -q ":$PORT "; then WSL_STATE="使用中"
+else WSL_STATE="空き"; fi
+
+echo "Windows 側: $WIN_STATE"
+echo "WSL 側: $WSL_STATE"
+if [ "$WIN_STATE" = "空き" ] && [ "$WSL_STATE" = "空き" ]; then
+  echo "==> 両側とも空き。このポートを使ってよい"
+else
+  echo "==> 使用中または確認不能。別ポートへ避ける"
+fi
 ```
 
 **「使ってよい」と言えるのは両側とも空きのときだけ。** 片側でも使用中なら、
@@ -140,6 +154,14 @@ if [ -z "$WIN" ] && [ -z "$WSLROW" ]; then echo "==> 両側とも空き。この
 | 3 | 自分は今 `generateOpenApiDocs` を走らせていない | 自分のシェル／`gradlew --status` |
 
 1 つでも満たさない、または**確認できない**なら**止めない**。別ポートで避ける。
+
+> **原則: 「結果が空である」と「結果を得られなかった」を同じ結論へ畳まないこと。**
+> プローブが失敗したとき（`wsl` が起動しない、`ss` や `netstat` が無い、権限が足りない）、
+> 変数は空になり、素朴に書くと「居ない＝空いている／止めてよい」という**危険な側**へ倒れる。
+> 判定コマンドは**出力が空かを見る前に終了ステータスを確かめ**、失敗したら「不明」として
+> **安全な側（止めない・別ポートへ避ける）**へ倒すこと。
+> 標準エラーを捨てる場合は、**終了ステータスで成否を判定していること**が条件である
+> （本書では WSL の `screen size is bogus` 警告を消す目的でのみ捨て、成否は rc で見ている）。
 `CreationDate` / 起動時刻は 3 の裏付けに使う**補助的な手がかり**に留め、単独の根拠にしない。
 
 | 判定 | 意味 | 対処 |
@@ -167,7 +189,7 @@ unzip -p "<jar>" META-INF/MANIFEST.MF \
 # → このパスが $MINE と同じ worktree を指していなければ、条件2 を満たさない = 止めない
 
 # --- WSL 側の候補を判定する ---
-wsl -e sh -c 'P=8082; ROW=$(ss -ltnp 2>/dev/null | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] WSL 側には居ない（まだ結論ではない。Windows 側も確認すること）"; exit; fi; echo "$ROW"; PID=$(echo "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止せず別ポートへ避ける"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止せず別ポートへ避ける"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
+wsl -e sh -c 'P=8082; command -v ss >/dev/null 2>&1 || { echo "[0] ss を実行できない → 確認不能。停止せず別ポートへ避ける"; exit 9; }; ALL=$(ss -ltnp) || { echo "[0] ss が失敗した → 確認不能。停止せず別ポートへ避ける"; exit 9; }; ROW=$(printf "%s\n" "$ALL" | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] WSL 側には居ない（まだ結論ではない。Windows 側も確認すること）"; exit; fi; echo "$ROW"; PID=$(printf "%s\n" "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止せず別ポートへ避ける"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止せず別ポートへ避ける"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
 # → cwd が $MINE 配下でなければ条件2 を満たさない = 止めない
 ```
 
@@ -235,6 +257,10 @@ Get-CimInstance Win32_Process -Filter "Name='java.exe'" |
   Select-Object ProcessId,ParentProcessId,CreationDate,CommandLine
 ```
 
+この列挙が**0 件だったことを「孤児は居ない」と読まないこと**。PowerShell 側の失敗でも
+0 件に見える。ポートが使えるかどうかは上の両側確認で決め、ここで何も分からなければ
+「確認不能」として別ポートへ避ける。
+
 これは**候補を洗い出すための列挙にすぎない**。`CreationDate` は補助的な手がかりであって、
 これだけで停止してはならない（並行セッションの生成も同じプロファイルで起動する）。
 **停止してよいかは上の「停止してよいのは『自分の worktree の孤児』だけ — 判定は AND」に従うこと。**
@@ -268,11 +294,13 @@ unzip -p "<jar>" META-INF/MANIFEST.MF \
 #### 次に WSL 側
 
 ```bash
-# 誰が :8082 を LISTEN しているか（WSL 側のみ）
+# 誰が :8082 を LISTEN しているか（WSL 側のみ / 素の一覧）
+# 注意: これは一覧表示にすぎず、出力が空でも「居ない」とは限らない
+#       （wsl や ss の失敗でも空になる）。判定には下の分岐版を使うこと。
 wsl -e sh -c "ss -ltnp 2>/dev/null | grep ':8082 '"
 
 # 掴んでいる主の素性と作業ディレクトリ
-wsl -e sh -c 'P=8082; ROW=$(ss -ltnp 2>/dev/null | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] WSL 側には居ない（まだ結論ではない。Windows 側も確認すること）"; exit; fi; echo "$ROW"; PID=$(echo "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止せず別ポートへ避ける"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止せず別ポートへ避ける"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
+wsl -e sh -c 'P=8082; command -v ss >/dev/null 2>&1 || { echo "[0] ss を実行できない → 確認不能。停止せず別ポートへ避ける"; exit 9; }; ALL=$(ss -ltnp) || { echo "[0] ss が失敗した → 確認不能。停止せず別ポートへ避ける"; exit 9; }; ROW=$(printf "%s\n" "$ALL" | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] WSL 側には居ない（まだ結論ではない。Windows 側も確認すること）"; exit; fi; echo "$ROW"; PID=$(printf "%s\n" "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止せず別ポートへ避ける"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止せず別ポートへ避ける"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
 ```
 
 **出力は 3 通りある。`ss` の一致行の有無と、PID が取れたかどうかを別の軸として見ること。**
@@ -376,6 +404,8 @@ git -C .. diff --quiet -- docs/openapi.json; echo "rc=$?"
 ```
 
 `rc=0` なら差分なし、`rc=1` なら差分あり（コミットが必要）。
+**`0` / `1` 以外（`git` 自体の失敗、リポジトリ外での実行など）は「判定不能」であり、
+差分なしと同じ扱いにしてはならない。** 原因を直してから測り直すこと。
 **この 3 つは 2026-09-16 に実測で検証済み**: `docs/openapi.json` を意図的に 1 バイト変更した状態で、
 `-- docs/openapi.json`（誤）は **rc=0** を返し、`-- ../docs/openapi.json` と `git -C ..`（正）は
 いずれも **rc=1** を返した。
