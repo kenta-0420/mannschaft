@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -13,6 +14,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -46,7 +48,13 @@ class ScheduleRecurrenceServiceTest {
     @BeforeEach
     void setUp() {
         ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-        service = new ScheduleRecurrenceService(scheduleRepository, scheduleTargetService, objectMapper);
+        service = new ScheduleRecurrenceService(scheduleRepository, scheduleTargetService, objectMapper,
+                fixedClock(LocalDateTime.of(2026, 9, 1, 0, 0)));
+    }
+
+    private Clock fixedClock(LocalDateTime now) {
+        return Clock.fixed(now.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant(),
+                UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
 
     private ScheduleEntity buildParent(LocalDateTime startAt, String recurrenceRuleJson) {
@@ -178,6 +186,31 @@ class ScheduleRecurrenceServiceTest {
         // then
         assertThat(affectedCount).isEqualTo(2);
         assertThat(applied).hasValue(2);
+    }
+
+    @Test
+    @DisplayName("過去の回を起点にしたこの日以降編集は、選択回と未来の回だけ更新する")
+    void thisAndFollowing_pastAnchorSkipsOtherCompletedOccurrences() {
+        ScheduleEntity selected = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 10, 11, 0)).build();
+        ScheduleEntity completed = child(11L, LocalDateTime.of(2026, 9, 17, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 17, 11, 0)).build();
+        ScheduleEntity future = child(12L, LocalDateTime.of(2026, 9, 24, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 24, 11, 0)).build();
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+                .thenReturn(List.of(selected, completed, future));
+        service = new ScheduleRecurrenceService(scheduleRepository, scheduleTargetService,
+                new ObjectMapper().registerModule(new JavaTimeModule()),
+                fixedClock(LocalDateTime.of(2026, 9, 20, 10, 0)));
+        List<Long> appliedIds = new ArrayList<>();
+
+        ScheduleRecurrenceService.RecurringScheduleUpdateResult result = service.updateRecurringSchedule(
+                selected, null, "THIS_AND_FOLLOWING",
+                (entity, ignored) -> { appliedIds.add(entity.getId()); return entity; });
+
+        assertThat(appliedIds).containsExactly(10L, 12L);
+        assertThat(result.updatedScheduleIds()).containsExactly(10L, 12L);
+        assertThat(result.affectedCount()).isEqualTo(2);
     }
 
     @Test

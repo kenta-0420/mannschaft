@@ -290,18 +290,21 @@ public class ScheduleService {
         ScheduleSnapshot before = ScheduleSnapshot.from(schedule);
 
         long affectedCount = 1;
+        List<Long> updatedScheduleIds = new ArrayList<>(1);
+        updatedScheduleIds.add(schedule.getId());
         if (schedule.isRecurring() || schedule.getParentScheduleId() != null) {
             ScheduleRecurrenceService.RecurringScheduleUpdateResult result = recurrenceService
                     .updateRecurringSchedule(schedule, req, updateScope, this::applyUpdateToSchedule);
             schedule = result.selectedSchedule();
             affectedCount = result.affectedCount();
+            updatedScheduleIds = result.updatedScheduleIds();
         } else {
             // F03.18: 戻り値で schedule 参照を差し替える（applyUpdateToSchedule は新インスタンスを
             // 構築するため、差し替えないと呼び出し元からは更新前の値のまま見えてしまう）。
             schedule = applyUpdateToSchedule(schedule, req);
         }
 
-        updateTargetsForRecurrenceScope(schedule, req, updateScope);
+        schedule = updateTargetsForRecurrenceScope(schedule, req, updatedScheduleIds);
 
         // 機能55 BE対応: リマインダー更新（null = 変更なし、空リスト = 全削除、非空 = 差し替え）
         if (req.getReminders() != null) {
@@ -637,26 +640,24 @@ public class ScheduleService {
                 scheduleTargetService.isActiveScopeMember(schedule, viewerUserId)).get(schedule.getId());
     }
 
-    private void updateTargetsForRecurrenceScope(ScheduleEntity schedule, UpdateScheduleRequest req,
-                                                  String updateScope) {
-        if (req.getTargetMode() == null && req.getTargetUserIds() == null) return;
-        List<ScheduleEntity> affected = new ArrayList<>();
-        if (UPDATE_SCOPE_ALL.equals(updateScope)
-                && (schedule.isRecurring() || schedule.getParentScheduleId() != null)) {
-            Long parentId = schedule.getParentScheduleId() == null ? schedule.getId() : schedule.getParentScheduleId();
-            affected.add(findScheduleOrThrow(parentId));
-            affected.addAll(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(parentId));
-        } else if (UPDATE_SCOPE_THIS_AND_FOLLOWING.equals(updateScope)
-                && schedule.getParentScheduleId() != null) {
-            affected.add(schedule);
-            affected.addAll(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(schedule.getParentScheduleId())
-                    .stream().filter(child -> child.getStartAt().isAfter(schedule.getStartAt())).toList());
-        } else {
-            affected.add(schedule);
+    private ScheduleEntity updateTargetsForRecurrenceScope(ScheduleEntity schedule, UpdateScheduleRequest req,
+                                                           List<Long> updatedScheduleIds) {
+        if (req.getTargetMode() == null && req.getTargetUserIds() == null) return schedule;
+        // 更新範囲を再計算すると、過去の終了済み回・例外回へ対象者だけが波及する。
+        // 予定本体の実更新IDを唯一の正として使う。
+        List<ScheduleEntity> affected = updatedScheduleIds.size() == 1
+                && updatedScheduleIds.get(0).equals(schedule.getId())
+                ? List.of(scheduleRepository.save(schedule)) : scheduleRepository.findAllById(updatedScheduleIds);
+        ScheduleEntity selectedAfterTargetUpdate = schedule;
+        for (ScheduleEntity affectedSchedule : affected) {
+            scheduleTargetService.replaceForUpdate(
+                    affectedSchedule, resolveScopeType(affectedSchedule), resolveScopeId(affectedSchedule),
+                    req.getTargetMode(), req.getTargetUserIds());
+            if (affectedSchedule.getId().equals(schedule.getId())) {
+                selectedAfterTargetUpdate = affectedSchedule;
+            }
         }
-        affected.forEach(affectedSchedule -> scheduleTargetService.replaceForUpdate(
-                affectedSchedule, resolveScopeType(affectedSchedule), resolveScopeId(affectedSchedule),
-                req.getTargetMode(), req.getTargetUserIds()));
+        return selectedAfterTargetUpdate;
     }
 
     /**

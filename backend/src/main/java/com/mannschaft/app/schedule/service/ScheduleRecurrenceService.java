@@ -11,9 +11,11 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,7 +41,17 @@ import java.util.function.BiFunction;
 @Transactional
 public class ScheduleRecurrenceService {
 
-    public record RecurringScheduleUpdateResult(ScheduleEntity selectedSchedule, long affectedCount) {}
+    public record RecurringScheduleUpdateResult(ScheduleEntity selectedSchedule, long affectedCount,
+                                                List<Long> updatedScheduleIds) {
+        public RecurringScheduleUpdateResult {
+            updatedScheduleIds = List.copyOf(updatedScheduleIds);
+        }
+
+        /** 既存の件数検証用モックとの互換性を保つ。実処理では3引数で更新IDを渡す。 */
+        public RecurringScheduleUpdateResult(ScheduleEntity selectedSchedule, long affectedCount) {
+            this(selectedSchedule, affectedCount, List.of(selectedSchedule.getId()));
+        }
+    }
 
     private static final int MAX_RECURRENCE_OCCURRENCES = 365;
     private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
@@ -50,6 +62,8 @@ public class ScheduleRecurrenceService {
     private final ScheduleRepository scheduleRepository;
     private final ScheduleTargetService scheduleTargetService;
     private final ObjectMapper objectMapper;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 繰り返しスケジュールを展開して子スケジュールを生成する。
@@ -108,7 +122,7 @@ public class ScheduleRecurrenceService {
                         : schedule;
                 ScheduleEntity updated = applyUpdate.apply(target, req);
                 // 繰り返しの例外としてマーク
-                return new RecurringScheduleUpdateResult(updated, 1);
+                return new RecurringScheduleUpdateResult(updated, 1, List.of(updated.getId()));
             }
             case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
                 ScheduleEntity originalSchedule = schedule.toBuilder().build();
@@ -117,20 +131,24 @@ public class ScheduleRecurrenceService {
                 List<ScheduleEntity> children = scheduleRepository
                         .findByParentScheduleIdOrderByStartAtAsc(parentId);
                 Duration shift = startShift(originalSchedule, req);
+                LocalDateTime editTime = LocalDateTime.now(wallClock);
                 if (!shift.isNegative() && !shift.isZero()) {
                     // uq_sch_parent_start は各 SQL 更新時に検証される。後ろへ移す場合は
                     // 末尾から確定し、次回の元日時を先に空けてから選択回を更新する。
-                    long followingCount = updateFollowingSchedules(
-                            originalSchedule, req, applyUpdate, children, shift);
+                    List<Long> followingIds = updateFollowingSchedules(
+                            originalSchedule, req, applyUpdate, children, shift, editTime);
                     ScheduleEntity updated = applyUpdate.apply(schedule, req);
                     scheduleRepository.flush();
-                    return new RecurringScheduleUpdateResult(updated, 1 + followingCount);
+                    return new RecurringScheduleUpdateResult(updated, 1 + followingIds.size(),
+                            selectedAndFollowingIds(updated, followingIds));
                 }
                 ScheduleEntity updated = applyUpdate.apply(schedule, req);
                 if (!shift.isZero()) scheduleRepository.flush();
                 // この日以降の子スケジュールも更新（例外を除く）
-                return new RecurringScheduleUpdateResult(updated,
-                        1 + updateFollowingSchedules(originalSchedule, req, applyUpdate, children, shift));
+                List<Long> followingIds = updateFollowingSchedules(
+                        originalSchedule, req, applyUpdate, children, shift, editTime);
+                return new RecurringScheduleUpdateResult(updated, 1 + followingIds.size(),
+                        selectedAndFollowingIds(updated, followingIds));
             }
             case UPDATE_SCOPE_ALL -> {
                 // 親を更新、全子を更新（例外を除く）
@@ -143,7 +161,8 @@ public class ScheduleRecurrenceService {
                 return updateAllChildSchedules(parentId, schedule, req, applyUpdate, originalParent, updatedParent);
             }
             default -> {
-                return new RecurringScheduleUpdateResult(applyUpdate.apply(schedule, req), 1);
+                ScheduleEntity updated = applyUpdate.apply(schedule, req);
+                return new RecurringScheduleUpdateResult(updated, 1, List.of(updated.getId()));
             }
         }
     }
@@ -313,22 +332,33 @@ public class ScheduleRecurrenceService {
     /**
      * 指定スケジュール以降の子スケジュールを更新する（例外は除く）。
      */
-    private long updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req,
+    private List<Long> updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req,
                                          BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate,
-                                         List<ScheduleEntity> children, Duration shift) {
+                                         List<ScheduleEntity> children, Duration shift, LocalDateTime editTime) {
         Comparator<ScheduleEntity> order = Comparator.comparing(ScheduleEntity::getStartAt);
         if (!shift.isNegative() && !shift.isZero()) order = order.reversed();
         List<ScheduleEntity> followingChildren = children.stream()
                 .filter(child -> !child.getIsException())
                 .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
                 .filter(child -> !child.getId().equals(schedule.getId()))
+                // 過去の回を起点にしても、選択回以外の終了済み回は履歴として残す。
+                .filter(child -> child.getEndAt() != null
+                        ? child.getEndAt().isAfter(editTime)
+                        : !child.getStartAt().isBefore(editTime))
                 .sorted(order)
                 .toList();
         for (ScheduleEntity child : followingChildren) {
             applyUpdate.apply(child, shiftedRequest(schedule, child, req));
             if (!shift.isZero()) scheduleRepository.flush();
         }
-        return followingChildren.size();
+        return followingChildren.stream().map(ScheduleEntity::getId).toList();
+    }
+
+    private List<Long> selectedAndFollowingIds(ScheduleEntity selected, List<Long> followingIds) {
+        List<Long> ids = new ArrayList<>(1 + followingIds.size());
+        ids.add(selected.getId());
+        ids.addAll(followingIds);
+        return ids;
     }
 
     /**
@@ -350,14 +380,17 @@ public class ScheduleRecurrenceService {
                 .sorted(order)
                 .toList();
         ScheduleEntity updatedSelected = selected.getId().equals(parentId) ? updatedParent : selected;
+        List<Long> updatedIds = new ArrayList<>(1 + nonExceptionChildren.size());
+        updatedIds.add(parentId);
         for (ScheduleEntity child : nonExceptionChildren) {
             ScheduleEntity updatedChild = applyUpdate.apply(child, shiftedRequest(originalParent, child, req));
             if (!shift.isZero()) scheduleRepository.flush();
+            updatedIds.add(child.getId());
             if (child.getId().equals(selected.getId())) {
                 updatedSelected = updatedChild;
             }
         }
-        return new RecurringScheduleUpdateResult(updatedSelected, 1 + nonExceptionChildren.size());
+        return new RecurringScheduleUpdateResult(updatedSelected, updatedIds.size(), updatedIds);
     }
 
     /** 起点の開始日時に対する変更量を求める。 */

@@ -36,7 +36,7 @@ async function createSeries(title: string, startOffsetDays = 7) {
 }
 
 async function teamEntries(): Promise<Entry[]> {
-  const from = new Date(Date.now() - 10 * 86_400_000).toISOString()
+  const from = new Date(Date.now() - 25 * 86_400_000).toISOString()
   const to = new Date(Date.now() + 45 * 86_400_000).toISOString()
   const res = await api.get(`${V1}/teams/${TEAM}/schedules?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: h() })
   expect(res.status()).toBe(200)
@@ -49,11 +49,11 @@ async function idsFor(title: string) {
     .map(e => e.id)
 }
 
-async function waitFeed(id: number, title: string, count: number) {
+async function waitFeed(id: number, title: string, count: number, readerToken = memberToken) {
   const deadline = Date.now() + 45_000
   while (Date.now() < deadline) {
     const res = await api.get(`${V1}/dashboard/activity?limit=50`, {
-      headers: { Authorization: `Bearer ${memberToken}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${readerToken}`, 'Content-Type': 'application/json' },
     })
     expect(res.status()).toBe(200)
     const items = (await res.json() as { data: { items: Feed[] } }).data.items
@@ -67,7 +67,13 @@ async function waitFeed(id: number, title: string, count: number) {
   throw new Error(`activity feed row not found: ${title}`)
 }
 
-async function edit(id: number, before: string, after: string, testId: string) {
+async function scheduleDetail(id: number) {
+  const res = await api.get(`${V1}/teams/${TEAM}/schedules/${id}`, { headers: h() })
+  expect(res.status()).toBe(200)
+  return (await res.json() as { data: { targetMode?: string; targets?: Array<{ userId: number }> } }).data
+}
+
+async function edit(id: number, before: string, after: string, testId: string, selectMemberAudience = false) {
   const entries = await teamEntries()
   const selected = entries.find(e => e.id === id)
   expect(selected).toBeDefined()
@@ -80,9 +86,9 @@ async function edit(id: number, before: string, after: string, testId: string) {
   await page.goto(`/teams/${TEAM}/schedule`, { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   const monthDelta = targetMonth - monthIndex(Date.now())
-  expect(monthDelta).toBeGreaterThanOrEqual(0)
-  for (let i = 0; i < monthDelta; i++) {
-    await page.locator('button').filter({ has: page.locator('.pi-chevron-right') }).first().click()
+  const navigationIcon = monthDelta < 0 ? '.pi-chevron-left' : '.pi-chevron-right'
+  for (let i = 0; i < Math.abs(monthDelta); i++) {
+    await page.locator('button').filter({ has: page.locator(navigationIcon) }).first().click()
   }
   await page.getByTestId('schedule-list-row-wrap').filter({ hasText: before }).nth(ordinal).click()
   const pencil = page.locator('button').filter({ has: page.locator('.pi-pencil') })
@@ -94,6 +100,28 @@ async function edit(id: number, before: string, after: string, testId: string) {
   const input = dialog.locator('input').first()
   await expect(input).toHaveValue(before)
   await input.fill(after)
+  let selectedAudienceUserId: number | undefined
+  if (selectMemberAudience) {
+    const meResponse = await api.get(`${V1}/users/me`, {
+      headers: { Authorization: `Bearer ${memberToken}` },
+    })
+    expect(meResponse.status()).toBe(200)
+    const me = (await meResponse.json() as { data: { id?: number; userId?: number } }).data
+    const memberId = me.id ?? me.userId
+    expect(memberId).toBeDefined()
+    selectedAudienceUserId = memberId
+    const membersResponse = await api.get(`${V1}/teams/${TEAM}/members?page=0&size=500`, { headers: h() })
+    expect(membersResponse.status()).toBe(200)
+    const members = (await membersResponse.json() as { data: Array<{ userId: number; displayName: string }> }).data
+    const memberName = members.find(member => member.userId === memberId)?.displayName
+    if (!memberName) throw new Error('member is not present in target audience options')
+    await dialog.locator('label[for="scheduleTargetSelected"]').click()
+    const picker = dialog.locator('.p-multiselect')
+    await expect(picker).toBeVisible()
+    await picker.click()
+    await page.locator('.p-multiselect-option').filter({ hasText: memberName }).first().click()
+    await expect(dialog.locator('#scheduleTargetSelected')).toBeChecked()
+  }
   await dialog.getByTestId('schedule-submit').click()
   const scope = page.getByTestId('recurrence-update-scope-dialog')
   await expect(scope).toBeVisible()
@@ -106,6 +134,11 @@ async function edit(id: number, before: string, after: string, testId: string) {
     scope.getByTestId(testId).click(),
   ])
   expect(updateResponse.status(), await updateResponse.text()).toBe(200)
+  if (selectMemberAudience) {
+    const posted = updateResponse.request().postDataJSON() as { targetMode?: string; targetUserIds?: number[] }
+    expect(posted.targetMode).toBe('SELECTED_MEMBERS')
+    expect(posted.targetUserIds).toContain(selectedAudienceUserId)
+  }
   await expect(scope).toBeHidden()
 }
 
@@ -113,13 +146,15 @@ test.describe('CMP107 recurring edit scope (real UI)', () => {
   test.setTimeout(120_000)
   test.beforeAll(async ({ browser }) => {
     api = await pwRequest.newContext()
+    page = await (await browser.newContext()).newPage()
+  })
+  test.beforeEach(async () => {
     const res = await api.post(`${V1}/auth/login`, { data: ADMIN })
     expect(res.status()).toBe(200)
     token = (await res.json() as { data: { accessToken: string } }).data.accessToken
     const memberLogin = await api.post(`${V1}/auth/login`, { data: { email: 'e2e-user@test.mannschaft.local', password: ADMIN.password } })
     expect(memberLogin.status()).toBe(200)
     memberToken = (await memberLogin.json() as { data: { accessToken: string } }).data.accessToken
-    page = await (await browser.newContext()).newPage()
     await loginViaApi(page, ADMIN, { apiBaseUrl: API })
   })
   test.afterAll(async () => { await page?.context().close(); await api?.dispose() })
@@ -172,6 +207,35 @@ test.describe('CMP107 recurring edit scope (real UI)', () => {
         expect(titleOf(entry)).toBe(before)
       }
     }
+  })
+
+  test('past anchor updates itself and future occurrences, leaving later completed ones intact', async () => {
+    const before = `CMP107-past-anchor-${Date.now()}`
+    const after = `${before}-changed`
+    await createSeries(before, -15)
+    const ids = await idsFor(before)
+    expect(ids.length).toBeGreaterThan(3)
+    const original = new Map((await teamEntries()).filter(e => ids.includes(e.id)).map(e => [e.id, e]))
+    const selectedId = ids[0]!
+    const completedLater = ids.slice(1).filter(id => Date.parse(endOf(original.get(id)!)) <= Date.now())
+    const future = ids.slice(1).filter(id => Date.parse(endOf(original.get(id)!)) > Date.now())
+    expect(completedLater.length).toBeGreaterThanOrEqual(2)
+    expect(future.length).toBeGreaterThanOrEqual(1)
+
+    await edit(selectedId, before, after, 'recurrence-update-following', true)
+
+    const updated = new Map((await teamEntries()).filter(e => ids.includes(e.id)).map(e => [e.id, e]))
+    expect(titleOf(updated.get(selectedId)!)).toBe(after)
+    expect((await scheduleDetail(selectedId)).targetMode).toBe('SELECTED_MEMBERS')
+    for (const id of completedLater) {
+      expect(titleOf(updated.get(id)!)).toBe(before)
+      expect((await scheduleDetail(id)).targetMode).toBe('ALL_MEMBERS')
+    }
+    for (const id of future) {
+      expect(titleOf(updated.get(id)!)).toBe(after)
+      expect((await scheduleDetail(id)).targetMode).toBe('SELECTED_MEMBERS')
+    }
+    await waitFeed(selectedId, after, 1 + future.length)
   })
 
   test('THIS_AND_FOLLOWING shifts each future occurrence by its own original time', async () => {
