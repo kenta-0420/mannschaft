@@ -39,6 +39,7 @@ cd backend
 | 状況 | 実測 |
 |---|---|
 | マシンが空いているとき（`-PopenApiPort=8099 --no-daemon --no-build-cache`） | **全体 9 分 13 秒** / アプリ起動 214 秒 |
+| 同上（`-PopenApiPort=8099 --console=plain`、デーモンあり・キャッシュあり） | **全体 8 分 15 秒** / アプリ起動 245 秒 |
 | 並行セッションで Gradle デーモン 3〜5 個がビジーな高負荷時 | **起動だけで 1741 秒**（その後のスキャン中に窓が閉じ、失敗） |
 
 同じコードでも負荷次第で 8 倍以上ぶれる。**空いているときに実行すること。**
@@ -108,9 +109,51 @@ Get-NetTCPConnection -LocalPort 8082 -State Listen | Select-Object LocalAddress,
 Get-CimInstance Win32_Process -Filter "ProcessId=<PID>" | Select-Object ProcessId,CreationDate,CommandLine
 ```
 
-コマンドラインが
-`... com.mannschaft.app.MannschaftApplication --spring.profiles.active=openapi-gen --server.port=8082`
-で、起動時刻が過去の失敗実行のものなら**自分が出した孤児**。停止してから再実行してよい。
+**フォークの実際のコマンドライン**は次の形（2026-09-16 に実測）。
+プロファイルとポートは `--` 形式の引数ではなく **JVM の `-D` システムプロパティ**として渡される
+（`build.gradle.kts` の `customBootRun { jvmArgs.add("-Dspring.profiles.active=openapi-gen") }` 由来）。
+
+```
+"C:\Program Files\...\bin\java.exe" -cp C:\Users\<user>\AppData\Local\Temp\gradle-javaexec-classpath<乱数>.jar
+  -Dserver.port=8099 -Dspring.profiles.active=openapi-gen -XX:TieredStopAtLevel=4
+  -Dfile.encoding=UTF-8 ... com.mannschaft.app.MannschaftApplication
+```
+
+したがって**探すべき文字列は `-Dspring.profiles.active=openapi-gen`**（`--spring.profiles.active=...` では**見つからない**）。
+
+```powershell
+# openapi-gen のフォークだけを一覧する
+Get-CimInstance Win32_Process -Filter "Name='java.exe'" |
+  Where-Object { $_.CommandLine -like '*-Dspring.profiles.active=openapi-gen*' } |
+  Select-Object ProcessId,ParentProcessId,CreationDate,CommandLine
+```
+
+これに該当し、かつ `CreationDate` が過去の失敗実行のものなら**孤児**。停止してから再実行してよい。
+
+##### Windows 側では「どの worktree のものか」がコマンドラインから分からない
+
+`-cp` に入るのは Gradle が生成する**一時 pathing jar**（`gradle-javaexec-classpath<乱数>.jar`）で、
+実際のクラスパスはその jar のマニフェストに隠れる。さらに **`Win32_Process` には
+作業ディレクトリのプロパティが無い**（`WorkingSet*` はメモリの話で cwd ではない）。
+つまり WSL 側のような `readlink /proc/<PID>/cwd` に相当する手段が無い。
+
+worktree を突き止めたいときは pathing jar のマニフェストを読む（2026-09-16 実測で有効）。
+
+```bash
+# <jar> は上の CommandLine の -cp に出ている .jar のパス
+unzip -p "<jar>" META-INF/MANIFEST.MF \
+  | sed -e ':a' -e 'N' -e '$!ba' -e 's/\r//g' -e 's/\n //g' \
+  | tr ' ' '\n' | grep -o 'file:/C:/Claude/mannschaft/[^ ]*' | head -2
+```
+
+→ `file:/C:/Claude/mannschaft/.claude/worktrees/<worktree名>/backend/build/classes/java/main/` のように出る。
+
+##### 「親プロセスが居ない」で孤児を判定しないこと
+
+フォークの親は **Gradle デーモン**（`org.gradle.launcher.daemon.bootstrap.GradleDaemon`）であり、
+デーモンは既定で数時間常駐する。したがって**孤児になってもしばらく親は生きている**し、
+逆にデーモンが落ちれば普通のフォークでも親を失う。親の有無は判定材料にならない。
+**`-Dspring.profiles.active=openapi-gen` の有無と `CreationDate` で判断すること。**
 
 #### 次に WSL 側
 
@@ -126,8 +169,8 @@ wsl -e sh -c 'PID=$(ss -ltnp 2>/dev/null | grep ":8082 " | sed -n "s/.*pid=\([0-
 
 | 主の正体 | 見分け方 | 対処 |
 |---|---|---|
-| **他セッションの生きたプロセス** | `cwd` が**他の worktree**（`.claude/worktrees/<別の名前>/...`）を指す | **kill 厳禁。`-PopenApiPort=8099` で避ける** |
-| **自分が出した孤児** | 自分の worktree で、引数が `--spring.profiles.active=openapi-gen --server.port=8082` | 停止してよい |
+| **他セッションの生きたプロセス** | `cwd` が**他の worktree**（`.claude/worktrees/<別の名前>/...`）を指す（WSL 側なら `readlink /proc/<PID>/cwd`、Windows 側は上記の pathing jar 経由） | **kill 厳禁。`-PopenApiPort=8099` で避ける** |
+| **自分が出した孤児** | コマンドラインに `-Dspring.profiles.active=openapi-gen` があり、`CreationDate` / 起動時刻が過去の失敗実行のもの | 停止してよい |
 | 開発サーバー | `:8080`（そもそも別ポート） | **触らない** |
 
 孤児が残る経路は実在する。前回の実行が異常終了するとフォークだけが生き残り、
