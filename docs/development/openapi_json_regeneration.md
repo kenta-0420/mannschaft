@@ -100,6 +100,77 @@ logback は root に appender が一つも紐付いていないと**そのプロ
 **`curl` は「何かが応答しているか」しか答えない。どちら側の誰かは教えてくれない。**
 応答があるのに両方の列挙に出ないということは無いので、必ず両方を叩くこと。
 
+### 停止してよいのは「自分の worktree の孤児」だけ — 判定は AND
+
+> **大原則: 迷ったら止めるな。`-PopenApiPort=<別ポート>` で避けろ。**
+> 避けるのはいつでも安全だが、他セッションの生成を止めるのは取り返しがつかない
+> （相手は数十分の実行を失い、しかも原因が分からない）。
+
+**`-Dspring.profiles.active=openapi-gen` だけでは判定にならない。**
+並行セッションの生成**も同じプロファイルで起動する**ため、この条件だけでは
+自分の孤児と他 worktree で実行中のプロセスが区別できない。
+同様に**起動時刻も単独では根拠にならない**（他セッションが先に started しているだけかもしれない）。
+
+停止してよいのは、次を**すべて**満たすときだけ:
+
+| # | 条件 | 確認方法 |
+|---|---|---|
+| 1 | `-Dspring.profiles.active=openapi-gen` で起動している | Windows: `CommandLine`／WSL: `ps -o args` |
+| 2 | **その worktree が自分の作業木と一致する**（必須） | Windows: **pathing jar のマニフェスト**（後述「まず Windows 側」）／WSL: `readlink -f /proc/<PID>/cwd` |
+| 3 | 自分は今 `generateOpenApiDocs` を走らせていない | 自分のシェル／`gradlew --status` |
+
+1 つでも満たさない、または**確認できない**なら**止めない**。別ポートで避ける。
+`CreationDate` / 起動時刻は 3 の裏付けに使う**補助的な手がかり**に留め、単独の根拠にしない。
+
+| 判定 | 意味 | 対処 |
+|---|---|---|
+| 1・2・3 をすべて満たす | 自分が出した孤児 | 停止してよい |
+| 2 が**他の worktree** | 他セッションのプロセス（実行中かもしれない） | **kill 厳禁。別ポートで避ける** |
+| 2 が**確認できない** | 不明 | **kill 厳禁。別ポートで避ける** |
+| `:8080` | 開発サーバー | **触らない** |
+
+#### 判定の実行例（2026-09-16 に実測）
+
+```bash
+# 自分の作業木
+MINE=$(git rev-parse --show-toplevel)
+
+# --- Windows 側の候補を判定する ---
+# 条件1 に合うプロセスを列挙し、-cp の pathing jar から worktree を読む（詳細は後述）
+powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='java.exe'\" |
+  Where-Object { \$_.CommandLine -like '*-Dspring.profiles.active=openapi-gen*' } |
+  Select-Object -ExpandProperty CommandLine"
+# → 出力の -cp にある .jar を <jar> に入れて:
+unzip -p "<jar>" META-INF/MANIFEST.MF \
+  | sed -e ':a' -e 'N' -e '$!ba' -e 's/\r//g' -e 's/\n //g' \
+  | tr ' ' '\n' | grep -o 'file:/C:/Claude/mannschaft/[^ ]*' | head -1
+# → このパスが $MINE と同じ worktree を指していなければ、条件2 を満たさない = 止めない
+
+# --- WSL 側の候補を判定する ---
+wsl -e sh -c 'PID=$(ss -ltnp 2>/dev/null | grep ":8082 " | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "WSL 側に :8082 の listener は無し"; else echo "PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $(readlink -f /proc/$PID/cwd)"; fi'
+# → cwd が $MINE 配下でなければ条件2 を満たさない = 止めない
+```
+
+実測結果（2026-09-16、自分の作業木 = `fix-1526`。同時に存在した全 java プロセスへ適用）:
+
+| 側 | PID | 条件1 `openapi-gen` | 条件2 worktree | 判定 |
+|---|---|---|---|---|
+| Windows | 46792 | ✅ | ✅ `fix-1526`（＝自分） | **自分のもの**（実行中のため条件3 で停止不可） |
+| Windows | 58432 | ❌（Gradle デーモン） | `fix-1526`（＝自分） | 停止禁止（条件1 を満たさない） |
+| Windows | 25020 | ❌ | ❌ `fix-1525` | **停止禁止**（他セッション） |
+| Windows | 20172 | ❌ | ❌ `fix-1446` | **停止禁止**（他セッション） |
+| WSL | 602973 | ❌ | ❌ `cmp107-affected-count` | **停止禁止**（他セッション） |
+| WSL | 607410 | ❌ | ❌ `cmp107-edit-scope-ui` | **停止禁止**（他セッション） |
+
+**自分のものと判定されたのは 1 件だけ**で、他 worktree の 4 件と、自分の作業木だが
+openapi-gen ではない 1 件は、いずれも正しく停止対象から外れた。
+同じ worktree でも条件1 を満たさなければ止めない（＝Gradle デーモンを巻き込まない）点にも注意。
+
+なお 2026-09-16 に `:8082` を掴んでいたのは WSL 側で走る他セッション
+（`cmp033-e2e-session`）の E2E バックエンドだった。条件2 を満たさないため停止せず、
+`-PopenApiPort=8099` で避けて生成を完走させた。**これが採るべき行動である。**
+
+
 #### まず Windows 側
 
 ```powershell
@@ -128,7 +199,9 @@ Get-CimInstance Win32_Process -Filter "Name='java.exe'" |
   Select-Object ProcessId,ParentProcessId,CreationDate,CommandLine
 ```
 
-これに該当し、かつ `CreationDate` が過去の失敗実行のものなら**孤児**。停止してから再実行してよい。
+これは**候補を洗い出すための列挙にすぎない**。`CreationDate` は補助的な手がかりであって、
+これだけで停止してはならない（並行セッションの生成も同じプロファイルで起動する）。
+**停止してよいかは上の「停止してよいのは『自分の worktree の孤児』だけ — 判定は AND」に従うこと。**
 
 ##### Windows 側では「どの worktree のものか」がコマンドラインから分からない
 
@@ -153,7 +226,8 @@ unzip -p "<jar>" META-INF/MANIFEST.MF \
 フォークの親は **Gradle デーモン**（`org.gradle.launcher.daemon.bootstrap.GradleDaemon`）であり、
 デーモンは既定で数時間常駐する。したがって**孤児になってもしばらく親は生きている**し、
 逆にデーモンが落ちれば普通のフォークでも親を失う。親の有無は判定材料にならない。
-**`-Dspring.profiles.active=openapi-gen` の有無と `CreationDate` で判断すること。**
+候補の絞り込みには `-Dspring.profiles.active=openapi-gen` の有無を使い、
+**停止の可否は上の AND 判定（worktree 一致が必須）で決めること。**
 
 #### 次に WSL 側
 
@@ -162,81 +236,11 @@ unzip -p "<jar>" META-INF/MANIFEST.MF \
 wsl -e sh -c "ss -ltnp 2>/dev/null | grep ':8082 '"
 
 # 掴んでいる主の素性と作業ディレクトリ
-wsl -e sh -c 'PID=$(ss -ltnp 2>/dev/null | grep ":8082 " | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); echo "PID=$PID"; ps -o pid,args -p $PID; readlink -f /proc/$PID/cwd'
+wsl -e sh -c 'PID=$(ss -ltnp 2>/dev/null | grep ":8082 " | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "WSL 側に :8082 の listener は無し"; else echo "PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $(readlink -f /proc/$PID/cwd)"; fi'
 ```
 
 **`readlink` が返す cwd が自分の作業木と一致しない限り、WSL 側のプロセスも停止してはならない。**
 Windows 側と同じ AND 判定（下記）を適用すること。片側だけ厳しくしても意味がない。
-
-### 停止してよいのは「自分の worktree の孤児」だけ — 判定は AND
-
-> **大原則: 迷ったら止めるな。`-PopenApiPort=<別ポート>` で避けろ。**
-> 避けるのはいつでも安全だが、他セッションの生成を止めるのは取り返しがつかない
-> （相手は数十分の実行を失い、しかも原因が分からない）。
-
-**`-Dspring.profiles.active=openapi-gen` だけでは判定にならない。**
-並行セッションの生成**も同じプロファイルで起動する**ため、この条件だけでは
-自分の孤児と他 worktree で実行中のプロセスが区別できない。
-同様に**起動時刻も単独では根拠にならない**（他セッションが先に started しているだけかもしれない）。
-
-停止してよいのは、次を**すべて**満たすときだけ:
-
-| # | 条件 | 確認方法 |
-|---|---|---|
-| 1 | `-Dspring.profiles.active=openapi-gen` で起動している | Windows: `CommandLine`／WSL: `ps -o args` |
-| 2 | **その worktree が自分の作業木と一致する**（必須） | Windows: **pathing jar のマニフェスト**（上記）／WSL: `readlink -f /proc/<PID>/cwd` |
-| 3 | 自分は今 `generateOpenApiDocs` を走らせていない | 自分のシェル／`gradlew --status` |
-
-1 つでも満たさない、または**確認できない**なら**止めない**。別ポートで避ける。
-`CreationDate` / 起動時刻は 3 の裏付けに使う**補助的な手がかり**に留め、単独の根拠にしない。
-
-| 判定 | 意味 | 対処 |
-|---|---|---|
-| 1・2・3 をすべて満たす | 自分が出した孤児 | 停止してよい |
-| 2 が**他の worktree** | 他セッションのプロセス（実行中かもしれない） | **kill 厳禁。別ポートで避ける** |
-| 2 が**確認できない** | 不明 | **kill 厳禁。別ポートで避ける** |
-| `:8080` | 開発サーバー | **触らない** |
-
-#### 判定の実行例（2026-09-16 に実測）
-
-```bash
-# 自分の作業木
-MINE=$(git rev-parse --show-toplevel)
-
-# --- Windows 側の候補を判定する ---
-# 条件1 に合うプロセスを列挙し、-cp の pathing jar から worktree を読む
-powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='java.exe'\" |
-  Where-Object { \$_.CommandLine -like '*-Dspring.profiles.active=openapi-gen*' } |
-  Select-Object -ExpandProperty CommandLine"
-# → 出力の -cp にある .jar を <jar> に入れて:
-unzip -p "<jar>" META-INF/MANIFEST.MF \
-  | sed -e ':a' -e 'N' -e '$!ba' -e 's/\r//g' -e 's/\n //g' \
-  | tr ' ' '\n' | grep -o 'file:/C:/Claude/mannschaft/[^ ]*' | head -1
-# → このパスが $MINE と同じ worktree を指していなければ、条件2 を満たさない = 止めない
-
-# --- WSL 側の候補を判定する ---
-wsl -e sh -c 'PID=$(ss -ltnp 2>/dev/null | grep ":8082 " | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); echo "PID=$PID"; ps -o pid,args -p $PID; readlink -f /proc/$PID/cwd'
-# → cwd が $MINE 配下でなければ条件2 を満たさない = 止めない
-```
-
-実測結果（2026-09-16、自分の作業木 = `fix-1526`。同時に存在した全 java プロセスへ適用）:
-
-| 側 | PID | 条件1 `openapi-gen` | 条件2 worktree | 判定 |
-|---|---|---|---|---|
-| Windows | 46792 | ✅ | ✅ `fix-1526`（＝自分） | **自分のもの**（実行中のため条件3 で停止不可） |
-| Windows | 58432 | ❌（Gradle デーモン） | `fix-1526`（＝自分） | 停止禁止（条件1 を満たさない） |
-| Windows | 25020 | ❌ | ❌ `fix-1525` | **停止禁止**（他セッション） |
-| Windows | 20172 | ❌ | ❌ `fix-1446` | **停止禁止**（他セッション） |
-| WSL | 602973 | ❌ | ❌ `cmp107-affected-count` | **停止禁止**（他セッション） |
-| WSL | 607410 | ❌ | ❌ `cmp107-edit-scope-ui` | **停止禁止**（他セッション） |
-
-**自分のものと判定されたのは 1 件だけ**で、他 worktree の 4 件と、自分の作業木だが
-openapi-gen ではない 1 件は、いずれも正しく停止対象から外れた。
-同じ worktree でも条件1 を満たさなければ止めない（＝Gradle デーモンを巻き込まない）点にも注意。
-
-なお 2026-09-16 に `:8082` を掴んでいたのは WSL 側で走る他セッション
-（`cmp033-e2e-session`）の E2E バックエンドだった。条件2 を満たさないため停止せず、
-`-PopenApiPort=8099` で避けて生成を完走させた。**これが採るべき行動である。**
 
 孤児が残る経路は実在する。前回の実行が異常終了するとフォークだけが生き残り、
 TCP は待ち受けるが応答しないため、プラグインの GET がそれに繋がって
