@@ -112,7 +112,7 @@ class FlywayMigrationTimeFunctionGuardTest {
      * <h3>この正規表現に量指定子が 1 つも無い理由【必読】</h3>
      * <p>本パターンは<b>純粋なリテラル選択肢だけ</b>で構成してあり、{@code \\s*} も {@code \\s{0,4}} も
      * 含まない。境界判定・括弧の有無・名前と括弧の間の空白は、すべて Java 側で<b>前方向へ 1 度だけ走る
-     * 線形処理</b>（{@link #isFunctionCallAt}）として書いてある。</p>
+     * 線形処理</b>（{@link FlywayMigrationTimeFunctionGuardTest#isFunctionCallAt}）として書いてある。</p>
      * <p>初版は {@code \\s{0,4}} で空白を吸っていたが、これは
      * {@code CURDATE     ()}（空白 5 文字以上）や、コメントを空白へ潰した結果生じる
      * {@code CURDATE                ()} を<b>取りこぼす</b>（Codex 検分の指摘）。かといって素朴に
@@ -121,10 +121,39 @@ class FlywayMigrationTimeFunctionGuardTest {
      * Javadoc と、走査正規表現に関する同種の記録）。
      * <b>「上限を上げる」でも「{@code *} へ広げる」でもなく、可変長部分を正規表現から追い出す</b>のが
      * 本質的な解である。こうすると空白は何文字でも受理でき、かつバックトラックは原理的に起こり得ない。</p>
+     *
+     * <h3>{@link Pattern} を入れ子クラスへ閉じ込めてある理由【必読】</h3>
+     * <p>パターンの実体は {@code private} フィールドとしてこの入れ子クラスの内側にあり、
+     * <b>外から {@code matcher()} を呼べない</b>。{@link #sessionTzNowMatcher} だけが唯一の入口であり、
+     * そこで入力を必ず {@link InterruptibleCharSequence} で包む。フィールドを晒すと
+     * 「ヘルパをやめて直接 {@code matcher()} を作る」という簡素化で割り込みラッパが迂回され、
+     * <b>回帰テストは緑のまま番人だけがハングする</b>状態を作れてしまう。
+     * テストで見張るのではなく、そう書けなくしてある。</p>
      */
-    static final Pattern SESSION_TZ_NOW_NAME = Pattern.compile(
-            "(?i)(?:CURRENT_TIMESTAMP|LOCALTIMESTAMP|CURRENT_DATE|CURRENT_TIME|LOCALTIME"
-                    + "|SYSDATE|CURDATE|CURTIME|NOW)");
+    private static final class SessionTzNowPattern {
+
+        /**
+         * 検出パターンの実体。<b>この入れ子クラスの外からは参照できない</b>。
+         *
+         * <p>フィールドとして外へ晒すと {@code PATTERN.matcher(text)} と直接書けてしまい、
+         * {@link #matcherFor} の割り込みラッパを<b>迂回</b>できる。迂回されても回帰テストは緑のまま
+         * 通るため（テストはヘルパ経由で検証するので、本番が直接生成に戻ったことを検知できない）、
+         * 将来の「ヘルパをやめて直接作る」という簡素化で<b>割り込みラッパが静かに無効化</b>され、
+         * 番人がハングして全 PR の CI を止めることになる。
+         * <b>テストで見張るのではなく、書けなくする</b>のがここの設計意図である（Codex 検分の指摘）。</p>
+         */
+        private static final Pattern PATTERN = Pattern.compile(
+                "(?i)(?:CURRENT_TIMESTAMP|LOCALTIMESTAMP|CURRENT_DATE|CURRENT_TIME|LOCALTIME"
+                        + "|SYSDATE|CURDATE|CURTIME|NOW)");
+
+        /** 検出パターンで {@link Matcher} を得る唯一の手段。入力は必ず割り込み可能にする。 */
+        private static Matcher matcherFor(CharSequence maskedText) {
+            return PATTERN.matcher(interruptible(maskedText));
+        }
+
+        private SessionTzNowPattern() {
+        }
+    }
 
     /**
      * 括弧が<b>必須</b>の関数名（小文字）。これらは裸で書いても関数呼び出しにならないため、
@@ -476,7 +505,7 @@ class FlywayMigrationTimeFunctionGuardTest {
      *
      * <h3>別スレッド実行で不安定にならないこと</h3>
      * <p>{@code collectViolations} が触るのは引数と局所変数だけである。
-     * {@link #SESSION_TZ_NOW_NAME} などの {@link Pattern} は不変かつスレッドセーフ、
+     * 検出パターンの {@link Pattern} は不変かつスレッドセーフ、
      * {@link LineCounter} はファイルごとに新規生成される局所オブジェクト、
      * 可変な静的フィールドは持たない。{@code ThreadLocal} も Spring のコンテキストも使わないため、
      * {@code assertTimeoutPreemptively} の既知の注意点（{@code ThreadLocal} 依存の状態が
@@ -495,7 +524,7 @@ class FlywayMigrationTimeFunctionGuardTest {
                     migration の走査が %d ms 以内に終わらなかった（打ち切った）。
                     検出パターンに可変長の量指定子を持ち込むと破滅的バックトラックで停止しうる
                     （本リポジトリには 55 分ハングの実例がある）。可変長は正規表現ではなく線形処理で
-                    扱うこと（SESSION_TZ_NOW_NAME の Javadoc）。""".formatted(timeout.toMillis()));
+                    扱うこと（SessionTzNowPattern の Javadoc）。""".formatted(timeout.toMillis()));
     }
 
     /** 走査が割り込まれたことを表す。{@link InterruptibleCharSequence} だけが投げる。 */
@@ -572,7 +601,7 @@ class FlywayMigrationTimeFunctionGuardTest {
      * {@code productionMatcherRespondsToInterrupt}。ラッパを外すと当該テストが落ちる）。</p>
      */
     static Matcher sessionTzNowMatcher(CharSequence maskedText) {
-        return SESSION_TZ_NOW_NAME.matcher(interruptible(maskedText));
+        return SessionTzNowPattern.matcherFor(maskedText);
     }
 
     @Test
