@@ -1513,7 +1513,32 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                 subscription.getCurrentPeriodStart(),
                 subscription.getCurrentPeriodEnd(),
                 subscription.getPendingSetupIntent(),
-                metadata);
+                metadata,
+                toSubscriptionItemDetails(subscription),
+                subscription.getPendingUpdate() == null
+                        ? null : subscription.getPendingUpdate().getExpiresAt());
+    }
+
+    /**
+     * Billing Center PR6b-1（AC-99）: Subscription の items を Price ref つきで写し取る。
+     *
+     * <p>upgrade の回収が「現在の items が target の Price へ切り替わっているか」を測るための
+     * 判定材料である。price が展開されていない items は Price ref を持てないため落とす
+     * （null の Price ref を運ぶと「切り替わっていない」と誤判定するため）。</p>
+     */
+    private List<SubscriptionItemDetail> toSubscriptionItemDetails(Subscription subscription) {
+        if (subscription.getItems() == null || subscription.getItems().getData() == null) {
+            return List.of();
+        }
+        List<SubscriptionItemDetail> items = new java.util.ArrayList<>();
+        for (com.stripe.model.SubscriptionItem item : subscription.getItems().getData()) {
+            String priceRef = item.getPrice() == null ? null : item.getPrice().getId();
+            if (priceRef == null) {
+                continue;
+            }
+            items.add(new SubscriptionItemDetail(item.getId(), priceRef, item.getQuantity()));
+        }
+        return List.copyOf(items);
     }
 
     /**

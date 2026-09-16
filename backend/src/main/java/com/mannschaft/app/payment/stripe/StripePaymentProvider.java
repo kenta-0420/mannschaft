@@ -924,5 +924,41 @@ public interface StripePaymentProvider {
     record SubscriptionDetail(String subscriptionId, String status, boolean cancelAtPeriodEnd,
                               Long currentPeriodStart, Long currentPeriodEnd,
                               String pendingSetupIntentId,
-                              java.util.Map<String, String> metadata) {}
+                              java.util.Map<String, String> metadata,
+                              java.util.List<SubscriptionItemDetail> items,
+                              Long pendingUpdateExpiresAtEpochSec) {
+
+        /**
+         * Billing Center PR6b-1（AC-99）: items / pending_update を運ばない従来の7項目版。
+         *
+         * @param subscriptionId       Stripe Subscription ID
+         * @param status               Stripe ステータス
+         * @param cancelAtPeriodEnd    期末解約が予約済みか
+         * @param currentPeriodStart   現サイクル開始（epoch 秒・null 可）
+         * @param currentPeriodEnd     現サイクル終了（epoch 秒・null 可）
+         * @param pendingSetupIntentId 未解決 SetupIntent（null 可）
+         * @param metadata             metadata
+         */
+        public SubscriptionDetail(String subscriptionId, String status, boolean cancelAtPeriodEnd,
+                                  Long currentPeriodStart, Long currentPeriodEnd,
+                                  String pendingSetupIntentId,
+                                  java.util.Map<String, String> metadata) {
+            this(subscriptionId, status, cancelAtPeriodEnd, currentPeriodStart, currentPeriodEnd,
+                    pendingSetupIntentId, metadata, java.util.List.of(), null);
+        }
+
+        /** null を運ばせない。 */
+        public SubscriptionDetail {
+            items = items == null ? java.util.List.of() : java.util.List.copyOf(items);
+        }
+    }
+
+    /**
+     * Billing Center PR6b-1（AC-99）: Subscription Item 1件（Price ref を運ぶ）。
+     *
+     * @param itemId   Stripe Subscription Item ID
+     * @param priceRef Stripe Price ID
+     * @param quantity 数量（null 可）
+     */
+    record SubscriptionItemDetail(String itemId, String priceRef, Long quantity) {}
 }

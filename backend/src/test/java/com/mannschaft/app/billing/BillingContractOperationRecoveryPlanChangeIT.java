@@ -476,11 +476,19 @@ class BillingContractOperationRecoveryPlanChangeIT extends AbstractMySqlIntegrat
     /**
      * Stripe 側の判定材料を与える。
      *
-     * <p>現行 {@code BillingPaymentGateway.SubscriptionSnapshot} は items / pending_update を
-     * 運べない（AC-99 の対象）ため、ここでは{@code cancelAtPeriodEnd} を itemsSwitched の代理として
-     * 与える。第10隊が SubscriptionSnapshot を拡張したら、この代理を本来の項目へ差し替えること
-     * （このテストのアサーションは operation/pointer/change の観測結果であり、代理の内部表現には
-     * 依存していない）。</p>
+     * <p>第10隊が {@code SubscriptionSnapshot} を items / pending_update まで運べるよう拡張した
+     * （AC-99）ため、試練が置いていた「{@code cancelAtPeriodEnd} を itemsSwitched の代理にする」
+     * 暫定を、本来の {@code items} へ差し替えてある（試練の javadoc が第10隊へ明示的に指示していた
+     * 差し替えである）。<b>各テストのアサーションは operation / pointer / change の観測結果であり
+     * 一切変えていない</b>。</p>
+     *
+     * <p>{@code itemsSwitched=false} でも items は<b>旧 Price で1件埋める</b>。空リストは
+     * 「参照したが切り替わっていない」ではなく「items を運べていない」であり、実装は後者を
+     * 見送り（AC-95）として扱うため、失敗確定（AC-92）の検体にならない。</p>
+     *
+     * @param fixture       対象の検体
+     * @param traceMatches  Stripe metadata の operationId が一致するか
+     * @param itemsSwitched 現在 items が target の Price へ切り替わっているか
      */
     private void givenStripeTrace(Fixture fixture, boolean traceMatches, boolean itemsSwitched) {
         Mockito.when(billingPaymentGateway.findOperationIdOnSubscription(fixture.subscriptionRef))
@@ -489,8 +497,14 @@ class BillingContractOperationRecoveryPlanChangeIT extends AbstractMySqlIntegrat
                 .truncatedTo(ChronoUnit.SECONDS).toInstant(java.time.ZoneOffset.UTC);
         Mockito.when(billingPaymentGateway.retrieveSubscription(fixture.subscriptionRef))
                 .thenReturn(new BillingPaymentGateway.SubscriptionSnapshot(
-                        fixture.subscriptionRef, "active", itemsSwitched,
-                        periodEnd.minus(30, ChronoUnit.DAYS), periodEnd, null));
+                        fixture.subscriptionRef, "active", false,
+                        periodEnd.minus(30, ChronoUnit.DAYS), periodEnd, null,
+                        java.util.List.of(new BillingPaymentGateway.SubscriptionItemSnapshot(
+                                "si_pc_recover", itemsSwitched ? TARGET_PRICE_REF : OLD_PRICE_REF,
+                                1L)),
+                        // 適用後の Subscription からは live な pending_update を取得できない（E2'）。
+                        // 存続判定は change 行に保存した pending_update_expires_at で行う。
+                        null));
     }
 
     private String markerHash() {
