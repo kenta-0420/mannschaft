@@ -74,6 +74,7 @@ const periodLabel = computed(() =>
     <div class="mb-3 flex items-center justify-center gap-3">
       <Button
         icon="pi pi-chevron-left"
+        class="min-h-11 min-w-11"
         text
         rounded
         severity="secondary"
@@ -85,6 +86,7 @@ const periodLabel = computed(() =>
       </span>
       <Button
         icon="pi pi-chevron-right"
+        class="min-h-11 min-w-11"
         text
         rounded
         severity="secondary"

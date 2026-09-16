@@ -817,6 +817,7 @@ function close() {
           : 'イベントを作成'
     "
     :style="{ width: '500px' }"
+    class="[&_.p-dialog-close-button]:min-h-11 [&_.p-dialog-close-button]:min-w-11"
     modal
     @update:visible="close"
     @hide="resetForm"
@@ -977,10 +978,11 @@ function close() {
       </div>
     </div>
     <template #footer>
-      <Button label="キャンセル" text @click="close" />
+      <Button label="キャンセル" class="min-h-11" text @click="close" />
       <Button
         :label="isEdit ? '更新' : '作成'"
         icon="pi pi-check"
+        class="min-h-11"
         :loading="submitting"
         @click="submit"
       />

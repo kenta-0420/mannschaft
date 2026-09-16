@@ -864,7 +864,7 @@ onMounted(async () => {
           v-model:visible="showEventPanel"
           modal
           :header="selectedEvent.title"
-          class="w-[calc(100vw-1rem)] max-w-lg"
+          class="w-[calc(100vw-1rem)] max-w-lg [&_.p-dialog-close-button]:min-h-11 [&_.p-dialog-close-button]:min-w-11"
         >
           <EventDetailPanel
             :event="{
