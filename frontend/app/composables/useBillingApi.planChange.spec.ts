@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * 試練D（第5隊）AC-133/134/135: `BillingActiveContract` 投影の `pendingChange` と、
- * FE ポーリングの間隔・回数上限を固定する。
+ * 試練D（第5隊）AC-133/134: `BillingActiveContract` 投影の `pendingChange` を固定する。
  *
  * PR6b-1 実装前は `useBillingApi.ts` に upgrade 系のエンドポイント呼び出しが
  * 一切無いため、本ファイルは import した関数が undefined であることをもって red になる。
+ *
+ * AC-135（`usePlanChangePolling`）は隣接ファイル `usePlanChangePolling.planChange.spec.ts` へ
+ * 分離してある。存在しないモジュールへの動的 import は Vite の変換段階で解決に失敗し、
+ * 同一ファイル内の無関係なテストまで巻き添えで「収集失敗（0件実行）」になることを
+ * 前回の実測（試練D・再開時）で確認したため、AC-133/134 の red 判定を汚染しないよう分離した。
  */
 
 const mockApi = vi.fn()
@@ -75,29 +79,5 @@ describe('AC-134: pendingChange 投影が N+1 にならない（FE 側は単一 
     // FE は1回の GET で全件（activePlan + N件の activeAddons の pendingChange 込み）を受け取る。
     // 契約件数ぶん追加リクエストが飛んでいたら N+1 の兆候であり、この期待値が壊れる。
     expect(mockApi.mock.calls.length).toBe(1)
-  })
-})
-
-describe('AC-135: FE のポーリングに間隔と回数の上限がある（payment-action は Stripe を都度叩くため）', () => {
-  it('usePlanChangePolling が既定の間隔・最大試行回数を公開する', async () => {
-    // 実装が無い間は import 自体が失敗して red になる。
-    const mod = await import('./usePlanChangePolling')
-    expect(typeof mod.usePlanChangePolling).toBe('function')
-
-    const polling = mod.usePlanChangePolling()
-    expect(polling.intervalMs).toBeGreaterThan(0)
-    expect(polling.maxAttempts).toBeGreaterThan(0)
-    expect(Number.isFinite(polling.maxAttempts)).toBe(true)
-  })
-
-  it('最大試行回数に到達するとポーリングを打ち切る（無限ポーリング防止）', async () => {
-    const mod = await import('./usePlanChangePolling')
-    const poll = vi.fn().mockResolvedValue({ done: false })
-    const polling = mod.usePlanChangePolling({ intervalMs: 0, maxAttempts: 3 })
-
-    await polling.start(poll)
-
-    expect(poll.mock.calls.length).toBeLessThanOrEqual(3)
-    expect(poll.mock.calls.length).toBeGreaterThan(0)
   })
 })
