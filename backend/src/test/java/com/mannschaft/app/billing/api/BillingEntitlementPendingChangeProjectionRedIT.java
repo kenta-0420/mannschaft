@@ -12,7 +12,6 @@ import com.mannschaft.app.billing.BillingContractChangeStatus;
 import com.mannschaft.app.billing.BillingContractEntity;
 import com.mannschaft.app.billing.BillingContractOperationEntity;
 import com.mannschaft.app.billing.BillingContractOperationRepository;
-import com.mannschaft.app.billing.BillingCustomerEntity;
 import com.mannschaft.app.billing.BillingOperationActorKind;
 import com.mannschaft.app.billing.BillingOperationKind;
 import com.mannschaft.app.billing.BillingOperationStatus;
