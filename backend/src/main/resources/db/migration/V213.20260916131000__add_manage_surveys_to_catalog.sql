@@ -22,7 +22,7 @@
 -- 1. permissions カタログへ登録（再実行安全: 既に存在すれば追加しない）
 -- ============================================================================
 INSERT INTO permissions (name, display_name, scope, created_at, updated_at)
-SELECT 'MANAGE_SURVEYS', 'アンケート・投票の管理', 'TEAM', NOW(), NOW()
+SELECT 'MANAGE_SURVEYS', 'アンケート・投票の管理', 'TEAM', UTC_TIMESTAMP(), UTC_TIMESTAMP()
 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'MANAGE_SURVEYS');
 
@@ -33,7 +33,7 @@ WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'MANAGE_SURVEYS');
 -- カタログは「その役職が能力を持つ」という設計事実を表す台帳であり、権限一覧 UI もこれを読む。
 -- role_id は決して数値直書きせず roles.name で解決する。
 INSERT INTO role_permissions (role_id, permission_id, is_default, created_at)
-SELECT r.id, p.id, 1, NOW()
+SELECT r.id, p.id, 1, UTC_TIMESTAMP()
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'ADMIN'

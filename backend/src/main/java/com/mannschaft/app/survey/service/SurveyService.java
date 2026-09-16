@@ -198,8 +198,10 @@ public class SurveyService {
         // CMP-041: 管理操作可否も BE の判定点（SurveyAccessGuard）から載せる。
         // FE がロール名で操作ボタンを出し分けると、権限を持たない DEPUTY_ADMIN に
         // 「押すと必ず 403 になるボタン」が見えるため、判定は BE 側に一本化する。
-        boolean viewerCanManage = surveyAccessGuard.canManage(userId, entity);
-        boolean viewerCanViewTeamBreakdown = surveyAccessGuard.hasSurveyAdminPermission(userId, entity);
+        boolean viewerCanManage = surveyAccessGuard.canManage(
+                userId, entity.getCreatedBy(), entity.getScopeId(), entity.getScopeType());
+        boolean viewerCanViewTeamBreakdown = surveyAccessGuard.hasSurveyAdminPermission(
+                userId, entity.getScopeId(), entity.getScopeType());
         return SurveyDetailResponse.of(surveyResponse, questions, viewerCanViewResults,
                 viewerCanManage, viewerCanViewTeamBreakdown);
     }

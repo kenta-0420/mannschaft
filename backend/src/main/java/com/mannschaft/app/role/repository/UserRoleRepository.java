@@ -750,13 +750,6 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "  AND ur.organization_id = :organizationId " +
             "  AND r.name = 'DEPUTY_ADMIN' " +
             "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND EXISTS ( " +
-            "    SELECT 1 FROM memberships active_ms " +
-            "    WHERE active_ms.user_id = ur.user_id " +
-            "      AND active_ms.scope_type = 'ORGANIZATION' " +
-            "      AND active_ms.scope_id = ur.organization_id " +
-            "      AND active_ms.left_at IS NULL " +
-            "  ) " +
             "  AND ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM role_permissions rp " +
