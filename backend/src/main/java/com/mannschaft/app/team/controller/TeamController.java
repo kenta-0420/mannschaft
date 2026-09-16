@@ -223,7 +223,7 @@ public class TeamController {
             description = "可視性レベル未満（非メンバー等）でアクセス不可")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
             description = "チームが存在しない / 論理削除済み")
-    public ResponseEntity<ApiResponse<List<MemberResponse>>> getAllMembers(@PathVariable String slug) {
+    public ResponseEntity<ApiResponse<List<MemberResponse>>> getAllTeamMembers(@PathVariable String slug) {
         Long id = teamService.resolveTeamId(slug);
         // F00 正準: ページング経路 getMembers と同一の visibility ラダーで保護する。
         // 一括化しても露出する情報は増えないため、認可条件も同じで揃える。

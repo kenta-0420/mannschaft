@@ -163,7 +163,7 @@ class TeamControllerTest {
                 List.of(new MemberResponse(USER_ID, "テスト", null, "ADMIN", LocalDateTime.now()),
                         new MemberResponse(2L, "テスト2", null, "MEMBER", LocalDateTime.now())));
 
-        var response = controller.getAllMembers(TEAM_SLUG);
+        var response = controller.getAllTeamMembers(TEAM_SLUG);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
@@ -179,7 +179,7 @@ class TeamControllerTest {
                 .given(contentVisibilityChecker)
                 .assertCanView(ReferenceType.TEAM, TEAM_ID, USER_ID);
 
-        assertThatThrownBy(() -> controller.getAllMembers(TEAM_SLUG))
+        assertThatThrownBy(() -> controller.getAllTeamMembers(TEAM_SLUG))
                 .isInstanceOf(BusinessException.class);
         verify(teamService, Mockito.never()).getAllMembers(TEAM_ID);
     }
