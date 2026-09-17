@@ -337,6 +337,21 @@ public class TeamService {
     }
 
     /**
+     * 数値スコープIDについて、従来のslug解決と同じ未削除かつACTIVEの境界を確認する。
+     * アーカイブ状態や公開範囲は判定しない。
+     *
+     * @param teamId チーム内部ID
+     * @throws BusinessException 不在・論理削除済み・PROVISIONEDの場合（TEAM_001）
+     */
+    @Transactional(readOnly = true)
+    public void assertActiveTeamExists(Long teamId) {
+        TeamEntity team = findTeamOrThrow(teamId);
+        if (team.getLifecycleStatus() != TeamEntity.LifecycleStatus.ACTIVE) {
+            throw new BusinessException(TeamErrorCode.TEAM_001);
+        }
+    }
+
+    /**
      * チームを slug（URL識別子）で取得する。
      *
      * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>

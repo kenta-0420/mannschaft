@@ -6,6 +6,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.template.dto.OrgModuleCatalogResponse;
 import com.mannschaft.app.template.dto.OrgModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
@@ -36,6 +37,7 @@ public class OrganizationModuleController {
 
     private final ModuleService moduleService;
     private final AccessControlService accessControlService;
+    private final OrganizationService organizationService;
 
     /**
      * 組織の有効モジュール一覧を取得する。
@@ -50,6 +52,7 @@ public class OrganizationModuleController {
     public ResponseEntity<ApiResponse<List<OrgModuleResponse>>> getOrganizationModules(
             @PathVariable("slug") OrgScopeId scopeId) {
         Long orgId = scopeId.value();
+        organizationService.assertActiveOrganizationExists(orgId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // MEMBER以上であることを確認（SUPPORTER/GUESTは isMember=false のため 403）
         accessControlService.checkMembership(currentUserId, orgId, "ORGANIZATION");
@@ -69,6 +72,7 @@ public class OrganizationModuleController {
     public ResponseEntity<ApiResponse<OrgModuleCatalogResponse>> getOrganizationModuleCatalog(
             @PathVariable("slug") OrgScopeId scopeId) {
         Long orgId = scopeId.value();
+        organizationService.assertActiveOrganizationExists(orgId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
         accessControlService.checkMembership(currentUserId, orgId, "ORGANIZATION");
@@ -92,6 +96,7 @@ public class OrganizationModuleController {
             @PathVariable Long moduleId,
             @Valid @RequestBody ToggleModuleRequest request) {
         Long orgId = scopeId.value();
+        organizationService.assertActiveOrganizationExists(orgId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // ADMINのみ許可
         if (!accessControlService.isAdmin(currentUserId, orgId, "ORGANIZATION")) {
