@@ -338,6 +338,45 @@ class AuthLoginControllerTest {
                 .andExpect(cookie().maxAge("refresh_token", 604800));
     }
 
+    @Test
+    @DisplayName("POST /refresh — deviceFingerprint 未指定時、User-Agent ヘッダからサーバー側でハッシュ導出して渡す"
+            + "（CMP-260917-1352 Phase 3: 同一端末判定の identity 源。ログイン時と同一の hashToken 導出）")
+    void refresh_derivesDeviceFingerprintFromUserAgentHeader() throws Exception {
+        var tokenResp = new TokenResponse("new-access-token", "new-refresh-token", 3600L);
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willReturn(ApiResponse.of(tokenResp));
+        given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
+        given(authTokenService.hashToken("Mozilla/5.0 (test-agent)")).willReturn("ua-derived-hash");
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .header("User-Agent", "Mozilla/5.0 (test-agent)")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "old-refresh-token")))
+                .andExpect(status().isOk());
+
+        org.mockito.Mockito.verify(authService)
+                .refreshAccessToken(eq("old-refresh-token"), eq("ua-derived-hash"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — User-Agent ヘッダが無いとき、hashToken(\"\") ではなく null を渡す"
+            + "（fail closed の中に隠れた fail open の回避。CMP-260917-1352 Phase 3 検分指摘）")
+    void refresh_withoutUserAgentHeader_passesNullNotEmptyHash() throws Exception {
+        var tokenResp = new TokenResponse("new-access-token", "new-refresh-token", 3600L);
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willReturn(ApiResponse.of(tokenResp));
+        given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "old-refresh-token")))
+                .andExpect(status().isOk());
+
+        // hashToken("") が呼ばれてしまうと「User-Agent 無し同士は同一端末とみなされる」
+        // fail open を生むため、hashToken は一切呼ばれず null がそのまま渡ることを確認する。
+        org.mockito.Mockito.verify(authTokenService, org.mockito.Mockito.never()).hashToken(anyString());
+        org.mockito.Mockito.verify(authService)
+                .refreshAccessToken(eq("old-refresh-token"), org.mockito.ArgumentMatchers.isNull());
+    }
+
     // ──────────────────────────────────────────────
     // POST /api/v1/auth/refresh — 失敗経路の HTTP ステータス契約
     //

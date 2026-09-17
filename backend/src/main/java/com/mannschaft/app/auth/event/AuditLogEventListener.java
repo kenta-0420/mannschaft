@@ -601,6 +601,40 @@ public class AuditLogEventListener {
         );
     }
 
+    /**
+     * CMP-260917-1352 Phase 3: grace window 超過の後継有りトークン再提示を同一端末の再試行と判定して
+     * 救済した（全デバイス無効化はしていない）ことを監査ログへ記録する。
+     *
+     * <p>{@link #handleTokenReuseDetected}（真リプレイ検出・全デバイス無効化）とは別イベント・別
+     * {@link com.mannschaft.app.auth.AuditEventType} で記録する。同一種別に混ぜると監視側で
+     * 「本物の盗難検知」と区別できなくなり誤報が増え、感度低下（狼少年化）を招くため意図的に分けている。</p>
+     *
+     * <p>救済は日常的に起こり得る操作（クライアント側タイムアウトからの正当な自動リトライ）であるため、
+     * ここでは {@code log.warn} 等の高い警告レベルは使わない（呼び出し元 {@code AuthTokenRotationService}
+     * 側で既に {@code log.info} 相当）。本ハンドラも監査記録という「事実の保存」に徹し、
+     * アラート的な扱いはしない（過検知で本物のアラートへの感度を下げないため）。</p>
+     */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleTokenReplaySameDeviceRescued(TokenReplaySameDeviceRescuedEvent event) {
+        auditLogService.record(
+            AuditEventType.TOKEN_REPLAY_RESCUED_SAME_DEVICE.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            toJson(Map.of(
+                "stale_token_id", event.getStaleTokenId() != null ? event.getStaleTokenId() : "",
+                "rescued_from_token_id", event.getRescuedFromTokenId() != null ? event.getRescuedFromTokenId() : ""
+            ))
+        );
+    }
+
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
