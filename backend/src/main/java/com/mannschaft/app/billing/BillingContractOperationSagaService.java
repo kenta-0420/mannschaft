@@ -65,6 +65,14 @@ public class BillingContractOperationSagaService {
     private final TransactionTemplate compensationTransactionTemplate;
 
     /**
+     * pointer の存在判定を<b>新しいトランザクション</b>（＝新しい読み取りビュー）で行うための template。
+     *
+     * <p>ギャップロックを伴うロック読みを避けつつ「最新のコミット済み」を読むための唯一の手段である
+     * （理由は {@link #reserve} 内のコメントを参照）。読み取り専用。</p>
+     */
+    private final TransactionTemplate pointerCurrentReadTemplate;
+
+    /**
      * 一括 UPDATE は {@code @PreUpdate} を経由しないため {@code updated_at} を明示的に渡す必要がある。
      * その時刻の出所（テストでも固定できる注入 Clock）。{@code updated_at} は「起きた瞬間」であり
      * {@link java.time.Instant} で扱う（日時方針 §1）。
@@ -87,6 +95,10 @@ public class BillingContractOperationSagaService {
         this.compensationTransactionTemplate = new TransactionTemplate(transactionManager);
         this.compensationTransactionTemplate.setPropagationBehavior(
                 TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.pointerCurrentReadTemplate = new TransactionTemplate(transactionManager);
+        this.pointerCurrentReadTemplate.setPropagationBehavior(
+                TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.pointerCurrentReadTemplate.setReadOnly(true);
     }
 
     /**
@@ -155,18 +167,35 @@ public class BillingContractOperationSagaService {
 
             // 進行中 operation の lease がある（検疫を含む）契約は 409（AC-3 / AC-8 / AC-14）。
             //
-            // 【必須・AC-122】この判定は<b>ロック読み（current read）</b>でなければならない。
+            // 【必須・AC-122】この判定は tx1 のスナップショットで読んではならない。
             // 直前の contract 行の SELECT ... FOR UPDATE は「契約単位で直列化する」ためのものだが、
-            // MySQL 既定の REPEATABLE READ では、その後に続く<b>素の SELECT</b>（旧実装の
+            // MySQL 既定の REPEATABLE READ では、その後に続く素の SELECT（旧実装の
             // {@code pointerRepository.findById}）は自分のトランザクション開始時点のスナップショットを
             // 読む。並行する2本の change 要求は、どちらも「pointer が無い」状態のスナップショットを
-            // 掴んでから contract のロック待ちに入るため、<b>後続側もこの判定を素通りし</b>、
+            // 掴んでから contract のロック待ちに入るため、後続側もこの判定を素通りし、
             // 409 ではなく pointer の主キー重複（DataIntegrityViolation → 500）で落ちていた。
-            // ロック読みは MVCC を迂回して最新のコミット済み行を読むため、後続側は
-            // 先行側が入れた pointer を確実に見て CHANGE_CONFLICT（409）で決着する。
-            // 行が無い場合もギャップロックを取り、その隙間への並行 INSERT を止める。
-            if (entityManager.find(ActiveBillingContractOperationPointerEntity.class,
-                    command.contractId(), LockModeType.PESSIMISTIC_WRITE) != null) {
+            //
+            // 【必須・なぜロック読み（PESSIMISTIC_WRITE）ではないか】
+            // 上記を一度は「pointer を SELECT ... FOR UPDATE で読む」ことで直した。しかし
+            // <b>存在しない行に対するロック読みはギャップロックを取る</b>。この表は契約あたり
+            // 高々1行しか無く通常ほぼ空であるため、そのギャップは実質「表全体」であり、
+            // 無関係な別契約の予約どうしが同じギャップを共有して掴み合う。2本の tx1 が
+            // どちらもギャップロックを持ったまま INSERT に進むと、INSERT の insert-intention lock が
+            // 相手のギャップロックと衝突して<b>デッドロック</b>になる（実測:
+            // {@code BillingCustomerLinkConcurrencyIT} で別契約2件の予約が
+            // LockAcquisitionException「Deadlock found」で落ちた）。
+            // 契約単位で直列化したいだけなのに表全体を直列化するのが誤りであり、
+            // リトライで覆うのは競合そのものを消さない対症療法である。
+            //
+            // 【採る形】ギャップロックを取らずに「最新のコミット済み」を読む。すなわち
+            // <b>新しいトランザクション</b>で読む（新しい読み取りビューを得る。
+            // {@code BillingCustomerProvisioner#findInNewTransaction} と同型）。
+            // 同一契約の直列性は contract 行の X ロックが既に保証しており、後続側は
+            // 先行側の commit（＝contract ロック解放）を待ってからこの読み取りに入るため、
+            // 先行側の pointer を必ず見て CHANGE_CONFLICT（409）で決着する。
+            // 別契約どうしは共有する資源が無くなるので衝突しない。
+            if (Boolean.TRUE.equals(pointerCurrentReadTemplate.execute(freshRead ->
+                    pointerRepository.findById(command.contractId()).isPresent()))) {
                 throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
             }
             // version CAS（AC-1）。SYSTEM 経路で CAS を行わない場合のみ null を許す。
