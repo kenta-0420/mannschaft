@@ -5,7 +5,9 @@ import { fillInput, fillPassword } from '../helpers/form'
 test.use({ storageState: { cookies: [], origins: [] } })
 
 test.describe('AUTH-DEEP login: ログインフォーム深掘り', () => {
-  test('DEEP-LOGIN-000: 初回HTMLにログインフォームが描画されhydration後に操作できる', async ({ page }) => {
+  test('DEEP-LOGIN-000: 初回HTMLと戻る操作後にログインフォームを操作できる', async ({ page }) => {
+    // 初回表示と戻る操作後、それぞれの hydration 完了を待つ。
+    test.setTimeout(120_000)
     let documentRequests = 0
     page.on('request', (request) => {
       if (request.resourceType() === 'document' && new URL(request.url()).pathname === '/login') {
@@ -35,6 +37,15 @@ test.describe('AUTH-DEEP login: ログインフォーム深掘り', () => {
 
     await expect(page.getByRole('button', { name: 'ログイン', exact: true })).toBeEnabled()
     expect(documentRequests).toBe(1)
+
+    // BFCache利用有無に依存せず、戻る操作で白画面にならない利用者結果を検証する。
+    await page.goto('/register')
+    await page.goBack({ waitUntil: 'domcontentloaded' })
+
+    await expect(page).toHaveURL(/\/login/)
+    await expect(page.locator('form')).toBeVisible()
+    await waitForHydration(page)
+    await expect(page.getByRole('button', { name: 'ログイン', exact: true })).toBeEnabled()
   })
 
   test('DEEP-LOGIN-001: 空フォームでの送信は HTML5 バリデーションでブロックされ API は呼ばれない', async ({
