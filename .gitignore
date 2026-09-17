@@ -91,3 +91,14 @@ docs/prototypes/.b0-local/
 # スキルの実体は .agents/skills/ 配下にコミットしているので、リンクが要る場合は
 # `npx skills add https://docs.stripe.com` を再実行して張り直すこと。
 .claude/skills/
+
+# 一時領域・ビルドキャッシュ（本陣で7万件・36GB まで膨らんだ実績あり）
+# .tmp は CI ログのダウンロード残骸が溜まる（1ファイル2GB超のものも）
+.tmp/
+.claude/tmp/
+.codex-tmp/
+
+# Gradle のキャッシュ。worktree ごとに GRADLE_USER_HOME を分けると
+# 同名パターンのディレクトリが増えるため接頭辞で一括除外する
+.gradle/
+.gradle-*/

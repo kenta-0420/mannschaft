@@ -252,6 +252,21 @@ public class OrganizationService {
     }
 
     /**
+     * 数値スコープIDについて、従来のslug解決と同じ未削除かつACTIVEの境界を確認する。
+     * アーカイブ状態や公開範囲は判定しない。
+     *
+     * @param orgId 組織内部ID
+     * @throws BusinessException 不在・論理削除済み・PROVISIONEDの場合（ORG_001）
+     */
+    @Transactional(readOnly = true)
+    public void assertActiveOrganizationExists(Long orgId) {
+        OrganizationEntity org = findOrganizationOrThrow(orgId);
+        if (org.getLifecycleStatus() != OrganizationEntity.LifecycleStatus.ACTIVE) {
+            throw new BusinessException(OrgErrorCode.ORG_001);
+        }
+    }
+
+    /**
      * F06.4 公開活動記録: 他ドメインが「この組織は匿名公開してよいか」を判定するための横断 SPI。
      *
      * <p>公開コンテンツ（活動記録など）を匿名公開する経路は、コンテンツ自身が PUBLIC でも

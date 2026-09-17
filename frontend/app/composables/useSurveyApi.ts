@@ -2,6 +2,7 @@ import type {
   SurveyResponse,
   SurveyDetailResponse,
   SurveyResultSummary,
+  SurveyResultsResponse,
   RespondentsResponse,
   RemindRespondentsResponse,
   QuestionType,
@@ -22,6 +23,7 @@ import type { components } from '~/types/generated'
 // F05.4 (B) チーム別内訳（by_team）の生成型エイリアス。
 // アンケート側は生成型が正準（survey.dto.SurveyTeamBreakdownResponse をそのまま反映している）。
 export type SurveyTeamBreakdownResponse = components['schemas']['SurveyTeamBreakdownResponse']
+type SurveyResultsWire = components['schemas']['SurveyResultResponse']
 
 // ---------------------------------------------------------------------------
 // BE ↔ FE 翻訳層（純関数）
@@ -43,6 +45,30 @@ function mapQuestionTypeToFe(be: BeQuestionType): QuestionType {
       return 'SINGLE_CHOICE'
     case 'MULTIPLE_CHOICE':
       return 'MULTIPLE_CHOICE'
+  }
+}
+
+/** 結果 API のwire objectを、表示用の設問単位ドメイン型へ変換する。 */
+export function adaptSurveyResults(wire: SurveyResultsWire): SurveyResultsResponse {
+  const responseCount = wire.responseCount ?? 0
+  return {
+    surveyId: wire.surveyId ?? 0,
+    title: wire.title ?? '',
+    responseCount,
+    targetCount: wire.targetCount ?? 0,
+    questionResults: (wire.questionResults ?? []).map((question): SurveyResultSummary => ({
+      questionId: question.questionId ?? 0,
+      questionText: question.questionText ?? '',
+      questionType: mapQuestionTypeToFe(question.questionType as BeQuestionType),
+      totalResponses: responseCount,
+      optionResults: (question.optionResults ?? []).map((option) => ({
+        optionId: option.optionId ?? 0,
+        optionText: option.optionText ?? '',
+        count: option.count ?? 0,
+        percentage: option.percentage ?? 0,
+      })),
+      textResponses: question.textResponses,
+    })),
   }
 }
 
@@ -272,12 +298,16 @@ function adaptDetail(
   wire: SurveyDetailWire['data'],
   hasResponded: boolean,
 ): SurveyDetailResponse['data'] {
-  const { questions, viewerCanViewResults, ...survey } = wire
+  const { questions, viewerCanViewResults, viewerCanManage, viewerCanViewTeamBreakdown, ...survey } =
+    wire
   return {
     ...adaptSurvey(survey),
     questions: (questions ?? []).map(adaptQuestion),
     hasResponded,
     viewerCanViewResults,
+    // CMP-041: 管理操作可否も同じ理由で明示的に写す（undeclared passthrough を作らない）。
+    viewerCanManage,
+    viewerCanViewTeamBreakdown,
   }
 }
 
@@ -544,8 +574,9 @@ export function useSurveyApi() {
   }
 
   // === Results ===
-  async function getResults(surveyId: number) {
-    return api<{ data: SurveyResultSummary[] }>(`/api/v1/surveys/${surveyId}/results`)
+  async function getResults(surveyId: number): Promise<{ data: SurveyResultsResponse }> {
+    const response = await api<{ data: SurveyResultsWire }>(`/api/v1/surveys/${surveyId}/results`)
+    return { data: adaptSurveyResults(response.data) }
   }
 
   /**

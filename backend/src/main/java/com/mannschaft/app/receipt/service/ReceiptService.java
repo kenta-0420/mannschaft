@@ -503,8 +503,12 @@ public class ReceiptService {
     }
 
     /**
-     * 発行済み領収書一覧を取得する（ADMIN用、ページネーション対応）。
-     * 認可: 指定スコープのメンバーのみ閲覧可能。
+     * 発行済み領収書一覧を取得する（{@code /api/v1/admin/receipts} 用、ページネーション対応）。
+     * 認可: 指定スコープの ADMIN/DEPUTY_ADMIN のみ閲覧可能（認可根治戦役 CMP-260917-1350 Phase 1）。
+     * 組織サイドバーで ADMIN/DEPUTY_ADMIN 限定表示している機能のため、従来の checkMembership
+     * （MEMBER も閲覧可能だった）から checkAdminOrAbove へ引き上げた。メンバー本人用の
+     * {@code /api/v1/my/receipts}（{@link com.mannschaft.app.receipt.service.ReceiptMyService} 等）
+     * は対象外で変更しない。
      *
      * @param scopeType     スコープ種別
      * @param scopeId       スコープID
@@ -515,7 +519,7 @@ public class ReceiptService {
      */
     public PagedResponse<ReceiptSummaryResponse> listReceipts(ReceiptScopeType scopeType, Long scopeId,
                                                                int page, int size, Long actorUserId) {
-        accessControlService.checkMembership(actorUserId, scopeId, scopeType.name());
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
 
         Pageable pageable = PageRequest.of(page, size);
         Page<ReceiptEntity> receiptPage = receiptRepository

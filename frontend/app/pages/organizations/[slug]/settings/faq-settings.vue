@@ -7,7 +7,7 @@
  *
  * 設計書: docs/features/F21.1_geo_optimization.md §5.5.6
  */
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: ['auth', 'org-role-guard'] })
 
 const route = useRoute()
 const orgSlug = String(route.params.slug)

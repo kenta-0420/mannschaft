@@ -55082,10 +55082,20 @@ export interface components {
             /** @enum {string} */
             status?: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
             /**
+             * @description この閲覧者がアンケートの管理操作（締切・設問追加・督促など）を行えるか。作成者 または ADMIN／MANAGE_SURVEYS 保有 DEPUTY_ADMIN で true
+             * @example true
+             */
+            viewerCanManage?: boolean;
+            /**
              * @description この閲覧者がアンケート結果を閲覧できるか。true なら結果取得 API は 200、false なら 403 を返す（結果取得の 403 プローブは不要）
              * @example true
              */
             viewerCanViewResults?: boolean;
+            /**
+             * @description この閲覧者がチーム別内訳を取得できるか。ADMIN／MANAGE_SURVEYS 保有 DEPUTY_ADMIN のみ true（作成者であることは条件にならない）
+             * @example false
+             */
+            viewerCanViewTeamBreakdown?: boolean;
         };
         SurveyDistributionDto: {
             autoPostToTimeline?: boolean;
@@ -88407,7 +88417,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -90953,7 +90963,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -90976,7 +90986,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -91003,7 +91013,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -91024,7 +91034,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
                 mid: number;
             };
@@ -91052,7 +91062,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
                 mid: number;
             };
@@ -116930,7 +116940,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -116952,7 +116962,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -116978,7 +116988,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -117001,7 +117011,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -131021,7 +131031,9 @@ export interface operations {
             query?: {
                 deviceFingerprint?: string;
             };
-            header?: never;
+            header?: {
+                "User-Agent"?: string;
+            };
             path?: never;
             cookie?: {
                 refresh_token?: string;
@@ -137860,7 +137872,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -137891,7 +137903,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -138097,7 +138109,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 moduleId: number;
             };
             cookie?: never;
@@ -140738,7 +140750,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -140761,7 +140773,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
                 mid: number;
             };
@@ -140785,7 +140797,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -140952,7 +140964,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 moduleId: number;
             };
             cookie?: never;
@@ -152487,7 +152499,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -152509,7 +152521,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -152749,7 +152761,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157457,7 +157469,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -157480,7 +157492,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157502,7 +157514,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157748,7 +157760,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -158203,7 +158215,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
             };
             cookie?: never;
         };

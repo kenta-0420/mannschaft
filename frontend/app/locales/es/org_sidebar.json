@@ -63,6 +63,11 @@
     "leagueTransfers": "Ascensos y descensos",
     "adminConsole": "Consola de administración",
     "receipts": "Recibos",
-    "receiptSettings": "Configuración del emisor de recibos"
+    "receiptSettings": "Configuración del emisor de recibos",
+    "vendors": "Maestro de proveedores",
+    "lineSettings": "Configuración de LINE",
+    "snsSettings": "Configuración de redes sociales",
+    "scheduleSettings": "Configuración de calendario",
+    "bulletinCategories": "Categorías del tablón"
   }
 }

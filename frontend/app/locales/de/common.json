@@ -1766,7 +1766,11 @@
       "gdprPurge": "DSGVO Bereinigungsstatus",
       "feedbackInbox": "Feedback-Posteingang (Global)",
       "billing": "Abrechnungs-Stammdaten",
-      "betaPerks": "ベータ特典管理"
+      "betaPerks": "ベータ特典管理",
+      "villageCreationRequests": "村作成申請",
+      "seasonalWallpapers": "季節壁紙",
+      "pointCardSynonyms": "ポイントカード同義語",
+      "appeals": "異議申立"
     },
     "impersonation": {
       "banner": "Identitätswechsel: {label}",
@@ -2399,7 +2403,7 @@
       },
       "shift": {
         "label": "Meine Schichten",
-        "description": "Eigene Schichten ansehen"
+        "description": "Kalender Ihrer bestätigten Einsätze"
       },
       "reservations": {
         "label": "Meine Reservierungen",

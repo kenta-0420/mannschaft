@@ -19,6 +19,8 @@ public interface UserPermissionGroupRepository extends JpaRepository<UserPermiss
 
     void deleteByUserIdAndGroupIdIn(Long userId, List<Long> groupIds);
 
+    void deleteByGroupId(Long groupId);
+
     @Query("select u.userId from UserPermissionGroupEntity u where u.groupId in :groupIds")
     List<Long> findUserIdsByGroupIdIn(@Param("groupIds") List<Long> groupIds);
 }

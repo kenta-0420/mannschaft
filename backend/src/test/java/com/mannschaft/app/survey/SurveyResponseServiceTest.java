@@ -589,7 +589,8 @@ class SurveyResponseServiceTest {
                     .isAnonymous(false).createdBy(USER_ID).build();
             survey.publish();
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(accessControlService.isAdminOrAbove(otherUser, 1L, "TEAM")).willReturn(false);
+            given(accessControlService.hasAdminOrPermissionInScope(otherUser, 1L, "TEAM", "MANAGE_SURVEYS"))
+                    .willReturn(false);
             given(resultViewerRepository.existsBySurveyIdAndUserId(SURVEY_ID, otherUser)).willReturn(false);
 
             // When & Then

@@ -270,8 +270,8 @@ class PermissionGroupServiceTest {
     class DeletePermissionGroup {
 
         @Test
-        @DisplayName("正常系: 権限グループが削除される")
-        void deletePermissionGroup_正常_削除される() {
+        @DisplayName("正常系: 子レコードを先に削除してから権限グループが削除される")
+        void deletePermissionGroup_正常_子レコードを先に削除してから削除される() {
             // Given
             PermissionGroupEntity existing = createGroupEntity(GROUP_ID, "削除対象");
             given(permissionGroupRepository.findByIdForUpdate(GROUP_ID)).willReturn(Optional.of(existing));
@@ -280,7 +280,13 @@ class PermissionGroupServiceTest {
             permissionGroupService.deletePermissionGroup(GROUP_ID, CREATED_BY);
 
             // Then
-            verify(permissionGroupRepository).delete(existing);
+            InOrder inOrder = inOrder(
+                    userPermissionGroupRepository,
+                    permissionGroupPermissionRepository,
+                    permissionGroupRepository);
+            inOrder.verify(userPermissionGroupRepository).deleteByGroupId(GROUP_ID);
+            inOrder.verify(permissionGroupPermissionRepository).deleteByGroupId(GROUP_ID);
+            inOrder.verify(permissionGroupRepository).delete(existing);
         }
 
         @Test

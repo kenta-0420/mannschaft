@@ -1766,7 +1766,11 @@
       "gdprPurge": "GDPR Purge Status",
       "feedbackInbox": "Feedback Inbox (Global)",
       "billing": "Billing master data",
-      "betaPerks": "Beta perk management"
+      "betaPerks": "Beta perk management",
+      "villageCreationRequests": "Village Creation Requests",
+      "seasonalWallpapers": "Seasonal Wallpapers",
+      "pointCardSynonyms": "Point Card Synonyms",
+      "appeals": "Appeals"
     },
     "impersonation": {
       "banner": "Impersonating: {label}",
@@ -2399,7 +2403,7 @@
       },
       "shift": {
         "label": "My Shifts",
-        "description": "Check your own shifts"
+        "description": "Calendar of your confirmed assignments"
       },
       "reservations": {
         "label": "My Reservations",
