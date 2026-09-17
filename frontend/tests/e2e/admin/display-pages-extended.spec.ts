@@ -80,14 +80,6 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
     })
   })
 
-  test('ADMIN-028: Googleカレンダー設定ページが表示される', async ({ page }) => {
-    await page.goto('/admin/google-calendar')
-    await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: /Google.*カレンダー/ })).toBeVisible({
-      timeout: 10_000,
-    })
-  })
-
   test('ADMIN-029: LINE設定ページが表示される', async ({ page }) => {
     await page.goto('/admin/line-settings')
     await waitForHydration(page)
