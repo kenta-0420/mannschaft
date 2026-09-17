@@ -1,5 +1,7 @@
 package com.mannschaft.app.notification;
 
+import com.mannschaft.app.committee.service.CommitteeAccessGuard;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.notification.dto.NotificationSettingsResponse;
@@ -30,6 +32,7 @@ import org.springframework.context.MessageSource;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -71,6 +74,12 @@ class NotificationPreferenceServiceTest {
 
     @Mock
     private MessageSource messageSource;
+
+    @Mock
+    private AccessControlService accessControlService;
+
+    @Mock
+    private CommitteeAccessGuard committeeAccessGuard;
 
     @InjectMocks
     private NotificationPreferenceService preferenceService;
@@ -432,7 +441,13 @@ class NotificationPreferenceServiceTest {
 
             given(preferenceRepository.findByUserId(USER_ID)).willReturn(List.of(entity));
             given(notificationMapper.toPreferenceResponse(entity)).willReturn(mapped);
-            given(nameResolverService.resolveScopeName("TEAM", 5L)).willReturn("FCバルセロナ");
+            // 認可根治戦役 Wave4 ロットD: scopeName は NameResolverService#resolveScopeName の
+            // 1件ずつ解決から、N+1 回避のためのバッチ解決（resolveTeamNames）に変更した
+            // （NotificationPreferenceService#ScopeAffiliationCache）。非所属スコープには実名を
+            // 返さないため、所属集合（findAffiliatedScopeIds）にも scopeId=5L を含める必要がある。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.findAffiliatedScopeIds(USER_ID, "TEAM")).willReturn(Set.of(5L));
+            given(nameResolverService.resolveTeamNames(Set.of(5L))).willReturn(Map.of(5L, "FCバルセロナ"));
 
             List<PreferenceResponse> result = preferenceService.listPreferences(USER_ID);
 
