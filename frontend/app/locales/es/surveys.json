@@ -95,6 +95,18 @@
     },
     "detail": {
       "scopeMissing": "Falta la información de alcance de la encuesta",
+      "scopeContext": {
+        "label": "Destino de la encuesta",
+        "type": { "TEAM": "Equipo de destino", "ORGANIZATION": "Organización de destino" },
+        "loading": "Cargando nombre…",
+        "nameUnavailable": "Nombre no disponible",
+        "management": {
+          "admin": "Gestionando como administrador",
+          "delegated": "Gestionando con permiso delegado de encuestas",
+          "creator": "Gestionando como creador",
+          "authorized": "Gestionando con permiso concedido"
+        }
+      },
       "fetchFailed": "No se pudo cargar la información de la encuesta",
       "back": "Volver",
       "answeredBadge": "Respondida",

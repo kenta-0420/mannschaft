@@ -25,6 +25,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 /**
  * スケジュールメディアコントローラー。
  * F03.12 カレンダー予定メディア管理（写真・動画添付）のAPIを提供する。
@@ -72,7 +74,7 @@ public class ScheduleMediaController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "完了確認成功")
     public ResponseEntity<Void> confirmImageUpload(
             @PathVariable Long scheduleId,
-            @PathVariable Long mediaId) {
+            @PathVariable UUID mediaId) {
         scheduleMediaService.confirmImageUpload(scheduleId, mediaId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
@@ -126,7 +128,7 @@ public class ScheduleMediaController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ScheduleMediaResponse>> updateMedia(
             @PathVariable Long scheduleId,
-            @PathVariable Long mediaId,
+            @PathVariable UUID mediaId,
             @RequestBody @Valid ScheduleMediaPatchRequest request) {
 
         Long currentUserId = SecurityUtils.getCurrentUserId();
@@ -153,7 +155,7 @@ public class ScheduleMediaController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteMedia(
             @PathVariable Long scheduleId,
-            @PathVariable Long mediaId) {
+            @PathVariable UUID mediaId) {
 
         Long currentUserId = SecurityUtils.getCurrentUserId();
         scheduleMediaService.deleteMedia(scheduleId, mediaId, currentUserId);

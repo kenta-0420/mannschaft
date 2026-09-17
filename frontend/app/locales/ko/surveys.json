@@ -95,6 +95,18 @@
     },
     "detail": {
       "scopeMissing": "설문 범위 정보가 없습니다",
+      "scopeContext": {
+        "label": "설문 대상",
+        "type": { "TEAM": "대상 팀", "ORGANIZATION": "대상 조직" },
+        "loading": "이름 확인 중…",
+        "nameUnavailable": "이름을 가져올 수 없습니다",
+        "management": {
+          "admin": "관리자로 관리 중",
+          "delegated": "위임된 설문 권한으로 관리 중",
+          "creator": "작성자로 관리 중",
+          "authorized": "관리 권한으로 관리 중"
+        }
+      },
       "fetchFailed": "설문 정보를 불러오지 못했습니다",
       "back": "뒤로",
       "answeredBadge": "응답 완료",

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import jakarta.persistence.LockModeType;
 
@@ -20,7 +21,7 @@ import jakarta.persistence.LockModeType;
  * スケジュールメディアアップロードリポジトリ。
  */
 @Repository
-public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMediaUploadEntity, Long> {
+public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMediaUploadEntity, UUID> {
 
     /** multipart開始・完了時に保存済みメディアを復元する。呼び出し側でもキーを厳密比較する。 */
     java.util.Optional<ScheduleMediaUploadEntity> findByR2Key(String r2Key);
@@ -28,7 +29,7 @@ public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMed
     /** 単発PUTの完了確認を直列化し、使用量の二重計上を防ぐ。 */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM ScheduleMediaUploadEntity m WHERE m.id = :id")
-    Optional<ScheduleMediaUploadEntity> findByIdForUploadCompletion(@Param("id") Long id);
+    Optional<ScheduleMediaUploadEntity> findByIdForUploadCompletion(@Param("id") UUID id);
 
     /**
      * スケジュール別メディア一覧（作成日時降順）。
@@ -69,5 +70,5 @@ public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMed
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM ScheduleMediaUploadEntity e WHERE e.id = :id "
             + "AND (e.scheduleId IS NULL OR (e.mediaType = 'IMAGE' AND e.processingStatus = 'UPLOADING'))")
-    int deleteCleanupCandidateById(@Param("id") Long id);
+    int deleteCleanupCandidateById(@Param("id") UUID id);
 }
