@@ -53,9 +53,13 @@ interface PlanChoice {
 
 /** `BillingActiveContract.pendingChange`（AC-133）と同じ形。 */
 interface PendingChange {
+  /** 変更 ID（AC-71: 再読込・別端末からの 3DS 再開に使う。親が payment-action の URL を組む）。 */
+  changeId?: string
   status: string
   effectiveAt: string
   paymentActionRequired: boolean
+  /** 支払い（3DS）の期限。無ければ null（`effectiveAt` で代用しない・P2-1）。 */
+  pendingUpdateExpiresAt?: string | null
 }
 
 interface Props {
@@ -117,11 +121,22 @@ const isPendingPayment = computed(() =>
 )
 
 /**
- * 確定ボタンの disabled 判定（AC-130）: 進行中、または失敗直後の再取得完了待ち。
- * 併せて、見積りが無い状態（変更先未選択・見積り取得失敗）では確定させない——
- * `POST …/changes` は `previewId` 必須であり、見積り無しで押せるボタンは必ず失敗する。
+ * 処理中の抑止（AC-130）: 確定の進行中、または失敗直後の再取得完了待ち。
+ * **見積りの有無はここに入れない**（修繕2巡目 P2-2）。
  */
-const confirmDisabled = computed(() => props.submitting || props.refetching || props.preview === null)
+const busy = computed(() => props.submitting || props.refetching)
+
+/**
+ * 確定ボタンの disabled 判定（AC-130）。処理中に加え、見積りが無い状態
+ * （変更先未選択・見積り取得失敗）では確定させない——`POST …/changes` は `previewId` 必須であり、
+ * 見積り無しで押せる確定ボタンは必ず失敗する。
+ *
+ * <p><b>この判定を閉じる・再開のボタンへ流用してはならない</b>: ダイアログを開いた直後や
+ * 既存の支払い待ちを表示した場合は `preview` が null なので、利用者が
+ * 「プランを選んで見積りに成功するまで閉じられない」「3DS を再開できない」状態に陥る
+ * （Codex 再検分 P2-2）。</p>
+ */
+const confirmDisabled = computed(() => busy.value || props.preview === null)
 
 function onTargetPlanChange(event: Event) {
   const value = (event.target as HTMLSelectElement | null)?.value ?? ''
@@ -139,7 +154,8 @@ async function onConfirmClick() {
 }
 
 async function onResumeClick() {
-  if (confirmDisabled.value) return
+  // 再開に見積りは要らない（AC-71/P2-2）。処理中だけ抑止する。
+  if (busy.value) return
   await props.onResumePaymentAction?.()
 }
 
@@ -182,8 +198,12 @@ onMounted(() => {
         class="billing-plan-change-dialog__notice"
       >
         {{ t('billing.manage.planChange.pendingPaymentNotice') }}
-        <template v-if="pendingChange?.effectiveAt">
-          {{ t('billing.manage.planChange.expiresAtNotice', { date: formatDateTime(pendingChange.effectiveAt) }) }}
+        <!-- P2-1: 期限は pending_update の失効時刻のみ。effectiveAt は期限ではない。 -->
+        <template v-if="pendingChange?.pendingUpdateExpiresAt">
+          {{ t('billing.manage.planChange.expiresAtNotice', { date: formatDateTime(pendingChange.pendingUpdateExpiresAt) }) }}
+        </template>
+        <template v-else>
+          {{ t('billing.manage.planChange.expiresAtUnknownNotice') }}
         </template>
       </p>
 
@@ -267,7 +287,7 @@ onMounted(() => {
           :label="t('billing.manage.planChange.cancelCta')"
           severity="secondary"
           text
-          :disabled="confirmDisabled"
+          :disabled="busy"
           data-testid="plan-change-dismiss-button"
           @click="close"
         />
@@ -276,7 +296,7 @@ onMounted(() => {
           v-if="isPendingPayment && pendingChange?.paymentActionRequired"
           :label="t('billing.manage.planChange.resumePaymentActionCta')"
           severity="secondary"
-          :disabled="confirmDisabled"
+          :disabled="busy"
           data-testid="plan-change-resume-payment-action-button"
           @click="onResumeClick"
         />

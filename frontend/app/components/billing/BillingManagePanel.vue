@@ -54,16 +54,25 @@ const plansLinkTo = computed(() => {
   return { path: '/billing/plans' }
 })
 
-async function load() {
+/**
+ * 契約サマリを取り直す。**成功したか否かを返す**（修繕2巡目 P2-3）。
+ *
+ * 失敗を内部で catch して握りつぶすと、呼び出し側は「古い投影＝最新の真実」と誤認する。
+ * エラー表示は従来どおり `handleApiError` が行い（症状を隠さない）、ここでは判別可能な
+ * 戻り値を足すだけにする。
+ */
+async function load(): Promise<boolean> {
   loading.value = true
   try {
     const res = await billingApi.getEntitlements(props.scopeKind, props.scopeId)
     activePlan.value = res.data.activePlan ?? null
     activeAddons.value = res.data.activeAddons ?? []
     entitledFeatures.value = res.data.entitledFeatures ?? []
+    return true
   }
   catch (err) {
     handleApiError(err, 'billing.manage.load')
+    return false
   }
   finally {
     loading.value = false
@@ -219,13 +228,27 @@ function closePlanChangeDialog() {
   planChangeDialogOpen.value = false
 }
 
-/** 変更先候補（現在のプラン以外）をカタログから取る。ダイアログを開いた時だけ叩く。 */
+/**
+ * 変更先候補をカタログから取る。ダイアログを開いた時だけ叩く。
+ *
+ * **実際にアップグレードになるもの（価格上位）だけを候補にする**（修繕2巡目 P2-4）。
+ * BE の見積りは変更先金額が現在以下なら必ず 409（`CHANGE_CONFLICT`）で拒否する
+ * （`BillingPlanChangePreviewService`: `toBand <= fromBand` で conflict。AC-22/23/24）ため、
+ * 下位・同額のプランは「選べるが必ず失敗する」項目にしかならない。価格が分からないプラン
+ * （`baseMonthlyPriceJpy` が null の無償プラン等）は上位であることを主張できないので出さない。
+ * なお**下位プランへの変更は PR6b-2 の題目**であり、本 PR では扱わない。
+ */
 async function loadPlanChangeCandidates() {
   try {
     const res = await billingApi.getPlanCatalog()
+    const plans = res.data.plans ?? []
     const current = planChangeTarget.value?.planKey
-    planChangePlans.value = (res.data.plans ?? [])
+    const priceOf = (planKey: string | undefined): number =>
+      plans.find(p => p.planKey === planKey)?.baseMonthlyPriceJpy ?? 0
+    const currentPrice = priceOf(current)
+    planChangePlans.value = plans
       .filter(p => typeof p.planKey === 'string' && p.planKey !== current)
+      .filter(p => (p.baseMonthlyPriceJpy ?? 0) > currentPrice)
       .map(p => ({ planKey: p.planKey as string, displayNameKey: p.displayNameKey }))
   }
   catch (err) {
@@ -296,9 +319,13 @@ async function confirmPlanChange() {
     })
     planChangeId.value = res.data.changeId
     planChangeLatest.value = {
+      changeId: res.data.changeId,
       status: res.data.status,
       effectiveAt: res.data.effectiveAt,
       paymentActionRequired: res.data.status === 'REQUIRES_ACTION',
+      // 実行応答は期限を返さない（`POST …/changes` は changeId/status/effectiveAt のみ・AC-25）。
+      // 分からないものを埋めず null のままにし、期限の誤表示を作らない。
+      pendingUpdateExpiresAt: null,
     }
     await afterPlanChangeAccepted(res.data.status)
   }
@@ -341,7 +368,10 @@ async function afterPlanChangeAccepted(status: BillingPendingChangeStatus) {
  */
 async function runPaymentAction() {
   const contractId = planChangeTarget.value?.contractId
-  const changeId = planChangeId.value
+  // AC-71: ページ再読込・別端末では `planChangeId`（このセッションで実行した時だけ入る ref）が
+  // null なので、BE 投影の `pendingChange.changeId` から再開する。ここを ref だけに頼ると
+  // 「支払いを再開する」が無言で何もしない no-op になる（Codex 再検分 P1）。
+  const changeId = planChangeId.value ?? planChangePending.value?.changeId ?? null
   if (!contractId || !changeId) return
 
   try {
@@ -375,7 +405,11 @@ async function runPaymentAction() {
  */
 async function pollPlanChangeStatus() {
   await planChangePolling.start(async () => {
-    await refreshPlanChangeTarget()
+    // 修繕2巡目 P2-3: 再取得が失敗した周は「状態が分かった」と見なさない。暫定状態
+    // （planChangeLatest）を保ったまま次の周で取り直す。ここで done を返すと、古い投影に
+    // pendingChange が無いせいで完了扱いになり、以降の監視が止まる。
+    const refreshed = await refreshPlanChangeTarget()
+    if (!refreshed) return { done: false }
     const status = planChangeTarget.value?.pendingChange?.status
     if (!status || status === 'APPLIED' || status === 'FAILED' || status === 'CANCELLED') {
       if (status === 'FAILED' || status === 'CANCELLED') planChangeError.value = 'PLAN_CHANGE_FAILED'
@@ -385,13 +419,18 @@ async function pollPlanChangeStatus() {
   })
 }
 
-/** 契約情報を取り直し、ダイアログの投影（pendingChange・version）も最新化する（AC-130）。 */
-async function refreshPlanChangeTarget() {
+/**
+ * 契約情報を取り直し、ダイアログの投影（pendingChange・version）も最新化する（AC-130）。
+ * **再取得に成功したかを返す**（修繕2巡目 P2-3。失敗を成功と取り違えないため）。
+ */
+async function refreshPlanChangeTarget(): Promise<boolean> {
   planChangeRefetching.value = true
   try {
-    await load()
+    const ok = await load()
+    // 失敗した再取得の結果（＝古いままの投影）で暫定状態を上書きしない。
+    if (!ok) return false
     const id = planChangeTarget.value?.contractId
-    if (!id) return
+    if (!id) return true
     const updated: BillingActiveContractWithVersion | null =
       (activePlan.value?.contractId === id ? activePlan.value : null)
       ?? activeAddons.value.find(a => a.contractId === id)
@@ -400,6 +439,7 @@ async function refreshPlanChangeTarget() {
     // 再取得できた時点で BE 投影が真であり、自前の暫定 status は捨てる。
     planChangeLatest.value = null
     if (!updated) planChangeDialogOpen.value = false
+    return true
   }
   finally {
     planChangeRefetching.value = false
@@ -436,8 +476,13 @@ defineExpose({ load })
               class="mt-1 text-xs text-orange-600"
             >
               {{ t('billing.manage.planChange.pendingPaymentNotice') }}
-              <template v-if="activePlanPendingChange.effectiveAt">
-                {{ t('billing.manage.planChange.expiresAtNotice', { date: formatDate(activePlanPendingChange.effectiveAt) }) }}
+              <!-- 期限は pending_update の失効時刻だけを根拠にする。effectiveAt（＝変更行を作った
+                   時刻）を期限として出すと「現在時刻までに払え」と読ませる誤表示になる（P2-1）。 -->
+              <template v-if="activePlanPendingChange.pendingUpdateExpiresAt">
+                {{ t('billing.manage.planChange.expiresAtNotice', { date: formatDate(activePlanPendingChange.pendingUpdateExpiresAt) }) }}
+              </template>
+              <template v-else>
+                {{ t('billing.manage.planChange.expiresAtUnknownNotice') }}
               </template>
             </p>
           </div>

@@ -151,10 +151,14 @@ public class BillingEntitlementQueryService {
                         : null)
                 // PR6b-1 AC-107/AC-133: 進行中の変更が無ければ null（常時表示にしない）。
                 .pendingChange(pendingChange == null ? null : ActiveContract.PendingChange.builder()
+                        // AC-71: 別端末・再ログインから 3DS を再開するには変更 ID が要る。
+                        .changeId(pendingChange.getId() == null ? null : pendingChange.getId().toString())
                         .status(pendingChange.getStatus().name())
                         .effectiveAt(pendingChange.getEffectiveAt())
                         .paymentActionRequired(
                                 pendingChange.getStatus() == BillingContractChangeStatus.REQUIRES_ACTION)
+                        // AC-105: 期限は pending_update の失効時刻。effectiveAt で代用しない。
+                        .pendingUpdateExpiresAt(pendingChange.getPendingUpdateExpiresAt())
                         .build())
                 .build();
     }

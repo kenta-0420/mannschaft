@@ -96,6 +96,18 @@ public class ActiveContract {
     @Schema(name = "BillingPendingChange", description = "F20.1 進行中のプラン変更（upgrade）の内容")
     public static class PendingChange {
 
+        /**
+         * 変更 ID（{@code billing_contract_changes.id}）。
+         *
+         * <p><b>これが無いと AC-71（別端末・再ログインからの再開）が成立しない</b>。FE は
+         * {@code GET …/contracts/{contractId}/changes/{changeId}/payment-action} を組み立てて
+         * clientSecret を取り直すため、変更 ID を投影から得られないとページ再読込後に
+         * 3DS を再開する術が無くなる（正本 05_billing_center.md:293-295）。</p>
+         */
+        @Schema(description = "変更 ID（UUID）。GET …/changes/{changeId}/payment-action に使う",
+                example = "0198aaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+        private final String changeId;
+
         @Schema(description = "変更の状態（PENDING_PAYMENT または REQUIRES_ACTION）",
                 example = "REQUIRES_ACTION")
         private final String status;
@@ -105,5 +117,17 @@ public class ActiveContract {
 
         @Schema(description = "3DS等の追加認証待ちか（true なら GET …/payment-action を叩ける）")
         private final boolean paymentActionRequired;
+
+        /**
+         * 支払い（3DS）の期限（{@code billing_contract_changes.pending_update_expires_at}）。
+         *
+         * <p>AC-105 が言う「いつまでに完了しないと自動的に取り消されるか」の唯一の根拠である。
+         * {@code effectiveAt} は<b>変更行を作った時刻</b>（{@code effectiveAt(now)}）であって期限では
+         * ないため、表示の代用にしてはならない（利用者に「現在時刻までに払え」と読ませてしまう）。
+         * Stripe が pending_update を返していない同期成功の検体などでは期限が存在しないので
+         * {@code null} を許し、<b>取れないときは期限を断定しない</b>（FE も文言を出し分ける）。</p>
+         */
+        @Schema(description = "支払い（3DS）の期限。pending_update が無ければ null", nullable = true)
+        private final Instant pendingUpdateExpiresAt;
     }
 }

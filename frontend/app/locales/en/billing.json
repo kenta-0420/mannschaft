@@ -130,6 +130,7 @@
         "staysOnOldPlan": "Failed to change your plan. You are still on your current plan",
         "pendingPaymentNotice": "Payment for your plan change has not completed yet",
         "expiresAtNotice": "This change will be automatically cancelled if payment is not completed by {date}",
+        "expiresAtUnknownNotice": "We are checking the payment deadline. If payment is not completed, this change will be cancelled automatically later.",
         "confirmCta": "Confirm this change",
         "resumePaymentActionCta": "Resume payment",
         "cancelCta": "Cancel"

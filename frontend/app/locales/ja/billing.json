@@ -130,6 +130,7 @@
         "staysOnOldPlan": "プランの変更に失敗しました。現在のプランのままです",
         "pendingPaymentNotice": "プラン変更のお支払いが完了していません",
         "expiresAtNotice": "{date}までにお支払いが完了しない場合、この変更は自動的に取り消されます",
+        "expiresAtUnknownNotice": "お支払いの期限を確認しています。完了しない場合、この変更は後ほど自動的に取り消されます",
         "confirmCta": "この内容で変更する",
         "resumePaymentActionCta": "お支払いを再開する",
         "cancelCta": "やめておく"

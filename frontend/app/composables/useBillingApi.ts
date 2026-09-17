@@ -48,9 +48,21 @@ export type BillingScopeKind = 'USER' | 'TEAM' | 'ORG'
 export type BillingPendingChangeStatus = 'PENDING_PAYMENT' | 'REQUIRES_ACTION' | 'APPLIED' | 'FAILED' | 'CANCELLED'
 
 export interface BillingPendingChange {
+  /**
+   * 変更 ID。`GET …/contracts/{contractId}/changes/{changeId}/payment-action` の組み立てに使う。
+   *
+   * <p>ページ再読込・別端末では FE のローカル状態（実行応答で得た changeId）が失われるため、
+   * この投影が唯一の再開手段になる（AC-71）。</p>
+   */
+  changeId: string
   status: BillingPendingChangeStatus
   effectiveAt: string
   paymentActionRequired: boolean
+  /**
+   * 支払い（3DS）の期限。`effectiveAt`（＝変更行を作った時刻）は期限ではないので代用しない。
+   * pending_update が無い検体では null になり、その場合は期限を断定しない文言へ倒す（AC-105）。
+   */
+  pendingUpdateExpiresAt?: string | null
 }
 
 /** `pendingChange` を含む `BillingActiveContract` 投影（AC-133 の暫定拡張。上記コメント参照）。 */

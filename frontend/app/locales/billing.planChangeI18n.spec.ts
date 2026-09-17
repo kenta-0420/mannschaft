@@ -38,6 +38,8 @@ const REQUIRED_KEYS = [
   'billing.manage.planChange.staysOnOldPlan',
   'billing.manage.planChange.pendingPaymentNotice',
   'billing.manage.planChange.expiresAtNotice',
+  // 修繕（2巡目 P2-1）: 期限が取れないときに「嘘の期限」を出さないための代替文言。
+  'billing.manage.planChange.expiresAtUnknownNotice',
   'billing.manage.planChange.confirmCta',
   'billing.manage.planChange.resumePaymentActionCta',
 ] as const
