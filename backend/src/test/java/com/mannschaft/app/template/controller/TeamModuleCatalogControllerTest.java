@@ -4,7 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.team.TeamErrorCode;
+import com.mannschaft.app.config.TeamScopeId;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.dto.TeamModuleCatalogResponse;
 import com.mannschaft.app.template.service.ModuleService;
@@ -41,6 +41,7 @@ class TeamModuleCatalogControllerTest {
     private static final Long USER_ID = 2L;
     private static final Long TEAM_ID = 20L;
     private static final String TEAM_SLUG = "team-000001";
+    private static final TeamScopeId TEAM_SCOPE = new TeamScopeId(TEAM_ID);
 
     @Mock private ModuleService moduleService;
     @Mock private TeamService teamService;
@@ -63,17 +64,17 @@ class TeamModuleCatalogControllerTest {
     @Test
     @DisplayName("MEMBER がカタログを取得 – slug 解決＋認可後 200")
     void getTeamModuleCatalog_member_200() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willDoNothing().given(teamService).assertActiveTeamExists(TEAM_ID);
         willDoNothing().given(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
         TeamModuleCatalogResponse body = TeamModuleCatalogResponse.builder()
                 .planLimit(10).enabledCount(0L).hasPaidPlan(false).modules(List.of()).build();
         given(moduleService.getTeamModuleCatalog(TEAM_ID)).willReturn(body);
 
         ResponseEntity<ApiResponse<TeamModuleCatalogResponse>> resp =
-                controller.getTeamModuleCatalog(TEAM_SLUG);
+                controller.getTeamModuleCatalog(TEAM_SCOPE);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(teamService).resolveTeamId(TEAM_SLUG);
+        verify(teamService).assertActiveTeamExists(TEAM_ID);
         verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
         verify(moduleService).getTeamModuleCatalog(TEAM_ID);
     }
@@ -81,25 +82,14 @@ class TeamModuleCatalogControllerTest {
     @Test
     @DisplayName("AC-9: 非メンバーは checkMembership が COMMON_002 を投げる")
     void getTeamModuleCatalog_nonMember_403() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willDoNothing().given(teamService).assertActiveTeamExists(TEAM_ID);
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                 .given(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
 
-        assertThatThrownBy(() -> controller.getTeamModuleCatalog(TEAM_SLUG))
+        assertThatThrownBy(() -> controller.getTeamModuleCatalog(TEAM_SCOPE))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(CommonErrorCode.COMMON_002));
     }
 
-    @Test
-    @DisplayName("AC-8: 存在しない slug は resolveTeamId が TEAM_001 例外")
-    void getTeamModuleCatalog_notFoundSlug_throws() {
-        given(teamService.resolveTeamId("unknown-slug"))
-                .willThrow(new BusinessException(TeamErrorCode.TEAM_001));
-
-        assertThatThrownBy(() -> controller.getTeamModuleCatalog("unknown-slug"))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                        .isEqualTo(TeamErrorCode.TEAM_001));
-    }
 }

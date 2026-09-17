@@ -8,6 +8,7 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.config.OrgScopeIdConverter;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.todo.ProjectStatus;
 import com.mannschaft.app.todo.TodoErrorCode;
@@ -30,6 +31,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.context.MessageSource;
+import org.springframework.format.support.DefaultFormattingConversionService;
+import org.springframework.format.support.FormattingConversionService;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -110,9 +113,16 @@ class OrgProjectControllerTest {
     void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setConversionService(scopeConversionService())
                 .setControllerAdvice(new GlobalExceptionHandler(messageSource))
                 .build();
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+    }
+
+    private FormattingConversionService scopeConversionService() {
+        FormattingConversionService conversionService = new DefaultFormattingConversionService();
+        conversionService.addConverter(new OrgScopeIdConverter(organizationService));
+        return conversionService;
     }
 
     private ProjectResponse sampleProject() {

@@ -210,6 +210,17 @@ class OrganizationTeamSearchControllerTest {
                 .andExpect(jsonPath("$.meta.total").value(0));
     }
 
+    @Test
+    @DisplayName("CMP-112: 数値IDの組織パスでも公開検索を行える")
+    void search_numericOrgId_returns200() throws Exception {
+        given(teamSearchService.search(eq(ORG_ID), any(TeamSearchCriteria.class), any(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
     // ════════════════════════════════════════════════════════════
     // 400: バリデーション違反
     // ════════════════════════════════════════════════════════════

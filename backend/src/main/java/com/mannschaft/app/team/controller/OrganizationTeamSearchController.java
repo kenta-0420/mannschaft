@@ -2,9 +2,12 @@ package com.mannschaft.app.team.controller;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.exception.OrganizationNotFoundException;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.dto.TeamPublicSummaryResponse;
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -97,7 +101,7 @@ public class OrganizationTeamSearchController {
             description = "未ログインでも実行可能。組織メンバーには詳細版、非メンバー／未ログインには抑制版 DTO を返す。"
                     + "F22.1: prefectureCode/cityCode 指定時はコード優先、未指定なら名称（prefecture/city）にフォールバック（dual-support）。")
     public ResponseEntity<PagedResponse<?>> search(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String prefecture,
             @RequestParam(required = false) String city,
@@ -124,7 +128,8 @@ public class OrganizationTeamSearchController {
         Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();
 
         // 5. publicId → 内部 orgId 解決
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
+        assertActiveOrganization(orgId);
 
         // 6. 検索実行（TeamSearchService 内で 404 判定を含む）
         Page<TeamEntity> resultPage = teamSearchService.search(orgId, criteria, currentUserId, pageable);
@@ -224,6 +229,31 @@ public class OrganizationTeamSearchController {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.of(Map.of("error", "Organization not found")));
+    }
+
+    private void assertActiveOrganization(Long orgId) {
+        try {
+            organizationService.assertActiveOrganizationExists(orgId);
+        } catch (BusinessException ex) {
+            if (ex.getErrorCode() == OrgErrorCode.ORG_001) {
+                throw new OrganizationNotFoundException();
+            }
+            throw ex;
+        }
+    }
+
+    /**
+     * 正準スコープ変換で未知 slug を 404 にした場合も、公開検索の従来本文を維持する。
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleScopeNotFound(
+            ResponseStatusException ex) {
+        if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.of(Map.of("error", "Organization not found")));
+        }
+        throw ex;
     }
 
     /**

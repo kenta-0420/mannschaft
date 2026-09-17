@@ -123,6 +123,16 @@ class OrganizationAnalyticsControllerTest {
                 .andExpect(jsonPath("$.data.topContent").exists());
     }
 
+    @Test
+    @DisplayName("CMP-112: 数値IDの組織パスも正準スコープ型で受け付ける")
+    void getAnalytics_numericOrgId_returns200() throws Exception {
+        given(analyticsService.getAnalytics(eq(PageViewScopeType.ORGANIZATION), eq(ORG_ID), isNull(), isNull()))
+                .willReturn(mockResult());
+
+        mockMvc.perform(get("/api/v1/organizations/{slug}/analytics", ORG_ID))
+                .andExpect(status().isOk());
+    }
+
     // ─── AC-09: 非メンバー → 404 ─────────────────────────────────────
 
     @Test

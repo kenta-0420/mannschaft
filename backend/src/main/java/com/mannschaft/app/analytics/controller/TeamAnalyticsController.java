@@ -13,6 +13,7 @@ import com.mannschaft.app.analytics.service.PageViewAnalyticsService.SummaryStat
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.config.TeamScopeId;
 import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -69,12 +70,13 @@ public class TeamAnalyticsController {
     @GetMapping("/analytics")
     @Operation(summary = "チームアクセス解析取得", description = "チームの PV 集計を返す。メンバーのみ閲覧可。")
     public ResponseEntity<ApiResponse<PageViewAnalyticsResponse>> getAnalytics(
-            @PathVariable String slug,
+            @PathVariable TeamScopeId slug,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
 
         // slug → 数値 ID 解決（存在しない slug は TeamService が TEAM_001 / 404 を投げる）
-        Long teamId = teamService.resolveTeamId(slug);
+        Long teamId = slug.value();
+        teamService.assertActiveTeamExists(teamId);
 
         // 認可ガード（非メンバー・未認証は TEAMANALYTICS_001 / 404）
         Long userId = SecurityUtils.getCurrentUserIdOrNull();
