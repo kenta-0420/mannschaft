@@ -514,14 +514,19 @@ onMounted(async () => {
       </div>
 
       <!-- 回答フォーム -->
-      <SurveyResponseForm
-        v-else-if="displayMode === 'response'"
-        :survey="survey"
-        :already-responded="hasResponded"
-        :allow-multiple="survey.policy?.allowMultipleSubmissions ?? false"
-        data-testid="survey-mode-response"
-        @submitted="onSubmitted"
-      />
+      <!--
+        SurveyResponseForm 自身の root は survey-response-form / survey-already-responded
+        として E2E の契約にする。ここへ data-testid を直接渡すと Vue の attribute
+        fallthrough でその識別子を上書きしてしまうため、表示モードの識別子は wrapper に置く。
+      -->
+      <div v-else-if="displayMode === 'response'" data-testid="survey-mode-response">
+        <SurveyResponseForm
+          :survey="survey"
+          :already-responded="hasResponded"
+          :allow-multiple="survey.policy?.allowMultipleSubmissions ?? false"
+          @submitted="onSubmitted"
+        />
+      </div>
 
       <!-- 結果パネル -->
       <!--

@@ -207,11 +207,18 @@ public class DirectMailService {
     }
 
     /**
-     * メール一覧を取得する。閲覧系のため操作者はスコープのメンバーであること。
+     * メール一覧を取得する。
+     *
+     * <p><b>認可根治戦役 CMP-260917-1350 Phase 1 で是正（スコープ差分あり）</b>: 組織サイドバーで
+     * ADMIN/DEPUTY_ADMIN 限定表示している機能のため、<b>ORGANIZATION スコープのみ</b> ADMIN 以上に
+     * 限定する。<b>TEAM スコープは従来どおり checkMembership のまま維持する</b>
+     * （{@code DirectMailScopeContractIT}「一般メンバーのメール一覧取得は200（閲覧系はcheckMembership）」
+     * が意図的に固定した契約であり、これを崩してはならない。2026-09-17 CI で誤って ORGANIZATION と
+     * 同じ扱いにし赤化させかけた事故の是正）。</p>
      */
     public PagedResponse<DirectMailResponse> listMails(String scopeType, Long scopeId, Long actorUserId,
                                                         Pageable pageable) {
-        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
+        checkReadAccess(scopeType, scopeId, actorUserId);
         Page<DirectMailLogEntity> page = mailLogRepository
                 .findByScopeTypeAndScopeIdOrderByCreatedAtDesc(scopeType, scopeId, pageable);
         List<DirectMailResponse> content = directMailMapper.toMailResponseList(page.getContent());
@@ -221,13 +228,25 @@ public class DirectMailService {
     }
 
     /**
-     * メール詳細を取得する。閲覧系のため操作者はスコープのメンバーであること。
-     * path スコープと不一致の mailId は 404（存在秘匿）。
+     * メール詳細を取得する。{@link #listMails} と同じスコープ差分方針（ORGANIZATION のみ ADMIN 必須、
+     * TEAM は checkMembership 維持）。path スコープと不一致の mailId は 404（存在秘匿）。
      */
     public DirectMailResponse getMail(String scopeType, Long scopeId, Long actorUserId, Long mailId) {
-        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
+        checkReadAccess(scopeType, scopeId, actorUserId);
         DirectMailLogEntity entity = findMailOrThrow(scopeType, scopeId, mailId);
         return directMailMapper.toMailResponse(entity);
+    }
+
+    /**
+     * 閲覧系（listMails / getMail）の認可判定。ORGANIZATION スコープのみ ADMIN 以上に限定し、
+     * TEAM スコープは従来どおり checkMembership のまま維持する。
+     */
+    private void checkReadAccess(String scopeType, Long scopeId, Long actorUserId) {
+        if ("ORGANIZATION".equals(scopeType)) {
+            accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
+        } else {
+            accessControlService.checkMembership(actorUserId, scopeId, scopeType);
+        }
     }
 
     /**

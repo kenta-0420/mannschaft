@@ -83782,6 +83782,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {

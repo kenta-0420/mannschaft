@@ -454,6 +454,78 @@
       "upload_success": "„{name}“ erfolgreich hochgeladen",
       "upload_error": "Fehler beim Hochladen von „{name}“",
       "uploading": "Wird hochgeladen..."
+    },
+    "hub": {
+      "pageTitle": "Einstellungen",
+      "searchPlaceholder": "Einstellungen durchsuchen...",
+      "noSearchResults": "Keine Einstellungen gefunden, die mit \"{query}\" übereinstimmen",
+      "individualListToggle": "Liste der Einzeleinstellungen",
+      "itemCount": "({count} Einträge)",
+      "account": {
+        "description": "Alle Einstellungen auf einem Bildschirm verwalten"
+      },
+      "profile": {
+        "description": "Profilinformationen und Passwort verwalten"
+      },
+      "security": {
+        "label": "Sicherheit",
+        "description": "2FA, Sitzungsverwaltung, Sicherheitsschlüssel"
+      },
+      "email": {
+        "description": "E-Mail-Adresse ändern"
+      },
+      "password": {
+        "description": "Passwort ändern oder festlegen"
+      },
+      "language": {
+        "description": "Einstellungen für Anzeigesprache und Zeitzone"
+      },
+      "loginHistory": {
+        "description": "Anmelde- und Authentifizierungsverlauf"
+      },
+      "linkedAccounts": {
+        "description": "OAuth- und LINE-Verknüpfungen verwalten"
+      },
+      "appearance": {
+        "description": "Design, Hintergrundfarbe, Anzeigeeinstellungen"
+      },
+      "navigation": {
+        "description": "Anpassen der angezeigten Navigationselemente"
+      },
+      "memberCards": {
+        "description": "Mitgliedskarte anzeigen und Check-in-Verlauf"
+      },
+      "socialProfiles": {
+        "description": "Anonyme Profile und Follows verwalten"
+      },
+      "seals": {
+        "description": "Stempelanzeige und bereichsspezifische Einstellungen"
+      },
+      "notifications": {
+        "description": "Einstellungen für den Benachrichtigungsempfang"
+      },
+      "calendarSync": {
+        "description": "Kalendersynchronisierung und iCal-Integration"
+      },
+      "contactPrivacy": {
+        "description": "Sichtbarkeitseinstellungen für Suche, Direktnachrichten und Online-Status"
+      },
+      "contactInviteTokens": {
+        "description": "Einladungs-URLs zum Hinzufügen von Kontakten ausstellen und verwalten"
+      },
+      "contactRequestBlocks": {
+        "label": "Liste vorab abgelehnter Anfragen",
+        "description": "Kontaktanfragen von bestimmten Benutzern blockieren"
+      },
+      "storage": {
+        "description": "Speichernutzung für persönlich, Team und Organisation prüfen"
+      },
+      "billing": {
+        "description": "Aktuellen Plan, Add-ons und verfügbare Funktionen einsehen"
+      },
+      "parentalConsentManage": {
+        "description": "Genehmigte Eltern und betreute Kinderkonten verwalten"
+      }
     }
   }
 }

@@ -130836,7 +130836,9 @@ export interface operations {
             query?: {
                 deviceFingerprint?: string;
             };
-            header?: never;
+            header?: {
+                "User-Agent"?: string;
+            };
             path?: never;
             cookie?: {
                 refresh_token?: string;

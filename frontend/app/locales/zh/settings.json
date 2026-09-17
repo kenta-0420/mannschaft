@@ -454,6 +454,78 @@
       "upload_success": "「{name}」上传成功",
       "upload_error": "「{name}」上传失败",
       "uploading": "上传中..."
+    },
+    "hub": {
+      "pageTitle": "设置",
+      "searchPlaceholder": "搜索设置...",
+      "noSearchResults": "未找到与\"{query}\"匹配的设置",
+      "individualListToggle": "单项设置列表",
+      "itemCount": "（{count}项）",
+      "account": {
+        "description": "在一个页面管理所有设置"
+      },
+      "profile": {
+        "description": "管理个人资料信息和密码"
+      },
+      "security": {
+        "label": "安全",
+        "description": "双重验证・会话管理・安全密钥"
+      },
+      "email": {
+        "description": "更改电子邮件地址"
+      },
+      "password": {
+        "description": "更改或设置密码"
+      },
+      "language": {
+        "description": "显示语言和时区设置"
+      },
+      "loginHistory": {
+        "description": "登录和身份验证历史记录"
+      },
+      "linkedAccounts": {
+        "description": "管理OAuth和LINE连接"
+      },
+      "appearance": {
+        "description": "主题・背景色・显示设置"
+      },
+      "navigation": {
+        "description": "自定义显示的导航项目"
+      },
+      "memberCards": {
+        "description": "会员卡显示・签到历史"
+      },
+      "socialProfiles": {
+        "description": "管理匿名资料和关注"
+      },
+      "seals": {
+        "description": "印章显示和按范围设置"
+      },
+      "notifications": {
+        "description": "通知接收设置"
+      },
+      "calendarSync": {
+        "description": "日历同步・iCal集成"
+      },
+      "contactPrivacy": {
+        "description": "搜索・私信接收・在线状态的公开范围"
+      },
+      "contactInviteTokens": {
+        "description": "发放和管理用于添加联系人的邀请链接"
+      },
+      "contactRequestBlocks": {
+        "label": "申请预先拒绝列表",
+        "description": "拒绝特定用户的联系人申请"
+      },
+      "storage": {
+        "description": "查看个人・团队・组织的容量使用情况"
+      },
+      "billing": {
+        "description": "查看当前订阅的方案・附加功能・可用功能"
+      },
+      "parentalConsentManage": {
+        "description": "管理已批准的监护人和受监护的子账户"
+      }
     }
   }
 }
