@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { NotificationCreditBalance, NotificationCreditPurchase } from '~/types/notification-credit'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: ['auth', 'org-role-guard'] })
 
 const { t } = useI18n()
 const { formatDate: formatDateBase } = useDatetime()
