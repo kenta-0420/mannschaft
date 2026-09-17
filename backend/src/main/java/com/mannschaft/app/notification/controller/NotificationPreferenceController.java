@@ -38,6 +38,13 @@ public class NotificationPreferenceController {
     /**
      * 通知設定一覧を取得する。
      */
+    // 認可根治戦役 Wave4 ロットD: 返す行そのものは preferenceRepository.findByUserId(userId) で
+    // 自分の行に閉じている（@SelfScopedEndpoint の対象は維持）。ただし行が非所属スコープを指す場合
+    // （レガシーデータ・脱退後の残置行等）に scopeName へ実名を返すと、存在／非存在の区別が付く
+    // 名前列挙オラクルになる欠陥があったため、NotificationPreferenceService#fillScopeName で
+    // 所属チェック（ScopeAffiliationCache）を通し、非所属スコープには実名を返さないよう修正した
+    // （「対象行が自分の行に限定される」ことと「行が指すスコープ名を実名で見てよい」ことは別の認可軸のため、
+    // 後者は @SelfScopedEndpoint の宣言範囲外の認可シグナルとして Service 側で別途保証する）。
     @SelfScopedEndpoint("preferenceRepository.findByUserId の検索条件が SecurityUtils.getCurrentUserId() の"
             + "userId のみで、リクエストは他ユーザーの識別子を受け取らない（NotificationPreferenceService#listPreferences）")
     @GetMapping("/notification-preferences")
@@ -51,15 +58,15 @@ public class NotificationPreferenceController {
     /**
      * 通知設定を更新する。
      */
-    // 認可根治戦役 Wave4 ロットD: request.scopeType/scopeId は検索・作成条件だが、
-    // preferenceRepository.findByUserIdAndScopeTypeAndScopeId は userId を必須条件に含む複合検索であり、
-    // 対象が存在しなければ builder で userId=SecurityUtils.getCurrentUserId() の新規行を作る
-    // （NotificationPreferenceService.java:98-113）。したがって scopeId にどんな値を渡しても
-    // 更新・作成できるのは常に呼び出しユーザー自身の設定行のみで、他ユーザーの行には userId 不一致のため
-    // 到達しない。
-    @SelfScopedEndpoint("preferenceRepository.findByUserIdAndScopeTypeAndScopeId が userId を必須条件に含む"
-            + "複合キー検索であり、対象行が無ければ userId=SecurityUtils.getCurrentUserId() で新規作成する"
-            + "ため、常に呼び出しユーザー自身の設定行しか更新できない（NotificationPreferenceService.java:98-113）")
+    // 認可根治戦役 Wave4 ロットD: 更新・作成できるのは常に呼び出しユーザー自身の設定行のみだが
+    // （preferenceRepository.findByUserIdAndScopeTypeAndScopeId が userId を必須条件に含む複合検索であり、
+    // 対象が無ければ userId=SecurityUtils.getCurrentUserId() で新規作成する。
+    // NotificationPreferenceService.java 参照）、request.scopeType/scopeId に任意の値を渡せば
+    // 他テナントのチーム/組織/委員会の行を自分名義で作成・更新できてしまっていた（スコープ所属の未検証）。
+    // 「自分の行しか触れない」ことは保証されていても「そのスコープに属してよい」ことは保証されないため、
+    // @SelfScopedEndpoint（対象が認証主体に構造的に束縛される旨の宣言）の対象から外し、
+    // NotificationPreferenceService#authorizeScope によるスコープ別の資格検証（軍議で定めた認可式）を
+    // 通す構成に変更した。
     @PutMapping("/notification-preferences")
     @Operation(summary = "通知設定更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
