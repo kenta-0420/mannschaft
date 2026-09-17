@@ -37,7 +37,12 @@ export type AdminScopeMinRole = 'ADMIN' | 'DEPUTY_ADMIN'
 /** 所属一覧に role が存在し、かつ要求ロール以上か。未所属（found なし）は常に false。 */
 function meetsMinRole(role: string | undefined, minRole: AdminScopeMinRole): boolean {
   if (!role) return false
-  return (ROLE_RANK[role] ?? -1) >= ROLE_RANK[minRole]
+  // 左辺（実際に持っているロール）が未知なら -1（＝権限なし扱い）で fail closed。
+  // 右辺（要求ロール）が未知の場合は、逆に「誰でも通る」低い値に倒すと認可が素通しになる
+  // （未知の要求ロールをどんな所持ロールでも満たせてしまう）ため、到達不能に高い値で
+  // 拒否側に倒す（MAX_SAFE_INTEGER 以上の所持ロールは存在しないため必ず false になる）。
+  const requiredRank = ROLE_RANK[minRole] ?? Number.MAX_SAFE_INTEGER
+  return (ROLE_RANK[role] ?? -1) >= requiredRank
 }
 
 export interface AdminScopeGuardSource {
