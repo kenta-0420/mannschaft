@@ -48,7 +48,12 @@
       "adminConsole": "Administrationskonsole",
       "receipts": "Belege",
       "receiptSettings": "Aussteller-Einstellungen für Belege",
-      "hourlyRate": "時給設定"
+      "hourlyRate": "時給設定",
+      "vendors": "Anbieterverzeichnis",
+      "lineSettings": "LINE-Einstellungen",
+      "snsSettings": "SNS-Einstellungen",
+      "scheduleSettings": "Terminplan-Einstellungen",
+      "bulletinCategories": "Pinnwand-Kategorien"
     }
   }
 }

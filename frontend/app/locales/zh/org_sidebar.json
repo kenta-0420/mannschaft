@@ -63,6 +63,11 @@
     "leagueTransfers": "联赛升降级",
     "adminConsole": "管理控制台",
     "receipts": "收据",
-    "receiptSettings": "收据开票方设置"
+    "receiptSettings": "收据开票方设置",
+    "vendors": "供应商台账",
+    "lineSettings": "LINE设置",
+    "snsSettings": "社交媒体设置",
+    "scheduleSettings": "日程设置",
+    "bulletinCategories": "公告栏分类管理"
   }
 }

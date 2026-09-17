@@ -1766,7 +1766,11 @@
       "gdprPurge": "GDPR Purge Status",
       "feedbackInbox": "Feedback Inbox (Global)",
       "billing": "Billing master data",
-      "betaPerks": "Beta perk management"
+      "betaPerks": "Beta perk management",
+      "villageCreationRequests": "Village Creation Requests",
+      "seasonalWallpapers": "Seasonal Wallpapers",
+      "pointCardSynonyms": "Point Card Synonyms",
+      "appeals": "Appeals"
     },
     "impersonation": {
       "banner": "Impersonating: {label}",
