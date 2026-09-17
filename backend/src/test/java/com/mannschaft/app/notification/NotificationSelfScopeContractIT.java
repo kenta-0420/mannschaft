@@ -210,6 +210,13 @@ class NotificationSelfScopeContractIT extends AbstractMySqlIntegrationTest {
         @WithMockUser(username = "916401")
         @DisplayName("updatePreference は自分の行のみを作成・更新し、他ユーザーの行には触れない")
         void updatePreference_は自分の行のみ更新する() throws Exception {
+            // 本EPは非メンバーのチーム書き込みを403で拒否するようになったため、行の分離
+            // （自分の行のみ作成・更新し他人の行には触れない）を検証するには ME が当該チームの
+            // 正規メンバーである前提が要る（CMP-260917 認可根治・ScopeAuthorizationRed 導入に伴う
+            // 前提追加。行の分離という本テストの趣旨・アサーションは変更していない）。
+            MembershipTestHelper.insertMembership(em, ME, ScopeType.TEAM, 9L, RoleKind.MEMBER);
+            em.flush();
+
             preferenceRepository.save(NotificationPreferenceEntity.builder()
                     .userId(OTHER).scopeType("TEAM").scopeId(9L).isEnabled(true).build());
 
