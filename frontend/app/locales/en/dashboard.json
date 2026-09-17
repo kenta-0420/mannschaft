@@ -99,6 +99,7 @@
       "feed": "Feeds",
       "content_affiliation": "My content & groups",
       "more_count": "and {count} more",
+      "visible_count": "{count} visible",
       "empty": "0",
       "count": "{count}"
     },

@@ -81,27 +81,12 @@ onMounted(() => {
       <Skeleton height="7rem" /><Skeleton height="3.5rem" /><Skeleton height="3.5rem" />
     </div>
     <template v-else>
-      <div
-        v-if="visibleWidgets.length === 0"
-        class="mb-8 rounded-xl border border-dashed border-surface-400 py-12 text-center dark:border-surface-600"
-      >
-        <i class="pi pi-th-large mb-3 text-4xl text-surface-300" />
-        <p class="text-surface-400">{{ $t('dashboard.widget_settings.no_widgets_message') }}</p>
-        <Button
-          :label="$t('dashboard.widget_settings.add_widget_button')"
-          icon="pi pi-plus"
-          text
-          size="small"
-          class="mt-2"
-          @click="showConfig = true"
-        />
-      </div>
       <DashboardPersonalAccordion
-        v-else
         :widgets="visibleWidgets"
         :collapsed-keys="collapsedKeys"
         class="mb-8"
         @toggle-collapse="toggleCollapse"
+        @configure="showConfig = true"
       />
     </template>
 

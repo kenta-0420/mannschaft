@@ -13,6 +13,7 @@ const expectedKeys = [
   'more_count',
   'schedule',
   'todo',
+  'visible_count',
 ]
 
 function accordionMessages(locale: string): Record<string, string> {

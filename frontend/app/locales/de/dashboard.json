@@ -100,7 +100,8 @@
       "content_affiliation": "Meine Inhalte & Gruppen",
       "more_count": "und {count} weitere",
       "empty": "0",
-      "count": "{count}"
+      "count": "{count}",
+      "visible_count": "{count} sichtbar"
     },
     "widget_labels": {
       "event-dismissal-reminder": "解散通知リマインダー",

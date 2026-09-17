@@ -99,6 +99,7 @@
       "feed": "动态",
       "content_affiliation": "我的内容与所属",
       "more_count": "另有 {count} 项",
+      "visible_count": "显示 {count} 项",
       "empty": "0",
       "count": "{count}"
     },

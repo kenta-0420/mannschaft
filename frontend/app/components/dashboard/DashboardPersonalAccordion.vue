@@ -5,15 +5,17 @@ type SectionKey = 'schedule' | 'todo' | 'communication' | 'feed' | 'content-affi
 interface SectionDefinition {
   key: SectionKey
   labelKey: string
+  icon: string
   widgetKeys: readonly string[]
 }
 const props = defineProps<{ widgets: WidgetDefinition[]; collapsedKeys: Set<string> }>()
-const emit = defineEmits<{ 'toggle-collapse': [key: string] }>()
+const emit = defineEmits<{ 'toggle-collapse': [key: string]; configure: [] }>()
 const { t } = useI18n()
 const sections: readonly SectionDefinition[] = [
   {
     key: 'schedule',
     labelKey: 'dashboard.personal_accordion.schedule',
+    icon: '📆',
     widgetKeys: [
       'upcoming-events',
       'my-recruitments',
@@ -25,21 +27,25 @@ const sections: readonly SectionDefinition[] = [
   {
     key: 'todo',
     labelKey: 'dashboard.personal_accordion.todo',
+    icon: '✅',
     widgetKeys: ['personal-todo', 'reflection-today', 'todo-countdown', 'event-dismissal-reminder'],
   },
   {
     key: 'communication',
     labelKey: 'dashboard.personal_accordion.communication',
+    icon: '💬',
     widgetKeys: ['unread-threads', 'team-announcements', 'org-announcements'],
   },
   {
     key: 'feed',
     labelKey: 'dashboard.personal_accordion.feed',
+    icon: '📰',
     widgetKeys: ['my-timeline', 'recruitment-feed', 'village-lobby-digest', 'recent-activity'],
   },
   {
     key: 'content-affiliation',
     labelKey: 'dashboard.personal_accordion.content_affiliation',
+    icon: '🗂️',
     widgetKeys: [
       'quick-memo',
       'my-blog',
@@ -109,16 +115,12 @@ function badgeLabel(count: number): string {
         <button
           :id="`personal-dashboard-section-button-${section.key}`"
           type="button"
-          class="flex min-h-11 w-full items-center gap-3 rounded-xl px-4 py-3 text-left hover:bg-surface-50 dark:hover:bg-surface-800"
+          class="flex min-h-11 w-full items-center gap-3 rounded-xl px-4 py-3 text-left hover:bg-surface-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary dark:hover:bg-surface-800"
           :aria-expanded="isExpanded(section.key)"
           :aria-controls="`personal-dashboard-section-${section.key}`"
           @click="toggleSection(section.key)"
         >
-          <i
-            class="pi pi-chevron-right text-xs text-surface-500 transition-transform"
-            :class="{ 'rotate-90': isExpanded(section.key) }"
-            aria-hidden="true"
-          />
+          <span aria-hidden="true">{{ section.icon }}</span>
           <span class="min-w-0 flex-1">
             <span class="block font-semibold">{{ t(section.labelKey) }}</span>
             <span v-if="previewLabels(section)" class="block truncate text-xs text-surface-500"
@@ -129,26 +131,53 @@ function badgeLabel(count: number): string {
             >
           </span>
           <span
-            class="rounded-full bg-surface-100 px-2 py-0.5 text-xs text-surface-600 dark:bg-surface-700 dark:text-surface-300"
-            :class="{ 'text-surface-400': (sectionWidgets.get(section.key)?.length ?? 0) === 0 }"
+            class="min-w-5 rounded-full px-2 py-0.5 text-center text-xs font-bold tabular-nums"
+            :class="
+              (sectionWidgets.get(section.key)?.length ?? 0) === 0
+                ? 'bg-surface-100 text-surface-400 dark:bg-surface-700'
+                : 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
+            "
             :data-widget-count="sectionWidgets.get(section.key)?.length ?? 0"
+            :aria-label="
+              t('dashboard.personal_accordion.visible_count', {
+                count: sectionWidgets.get(section.key)?.length ?? 0,
+              })
+            "
             >{{ badgeLabel(sectionWidgets.get(section.key)?.length ?? 0) }}</span
           >
+          <i
+            class="pi pi-chevron-right text-xs text-surface-500 transition-transform"
+            :class="{ 'rotate-90': isExpanded(section.key) }"
+            aria-hidden="true"
+          />
         </button>
         <div
-          v-if="mountedKeys.has(section.key)"
           v-show="isExpanded(section.key)"
           :id="`personal-dashboard-section-${section.key}`"
           role="region"
           :aria-labelledby="`personal-dashboard-section-button-${section.key}`"
           class="border-t border-surface-200 p-4 dark:border-surface-700"
         >
-          <DashboardPersonalWidgetGrid
-            :widgets="sectionWidgets.get(section.key) ?? []"
-            :collapsed-keys="collapsedKeys"
-            class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4"
-            @toggle-collapse="emit('toggle-collapse', $event)"
-          />
+          <template v-if="mountedKeys.has(section.key)">
+            <DashboardPersonalWidgetGrid
+              v-if="(sectionWidgets.get(section.key)?.length ?? 0) > 0"
+              :widgets="sectionWidgets.get(section.key) ?? []"
+              :collapsed-keys="collapsedKeys"
+              class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4"
+              @toggle-collapse="emit('toggle-collapse', $event)"
+            />
+            <div v-else class="py-4 text-center text-sm text-surface-500">
+              <p>{{ t('dashboard.widget_settings.no_widgets_message') }}</p>
+              <Button
+                :label="t('dashboard.widget_settings.add_widget_button')"
+                icon="pi pi-plus"
+                text
+                size="small"
+                class="mt-2"
+                @click="emit('configure')"
+              />
+            </div>
+          </template>
         </div>
       </section>
     </div>

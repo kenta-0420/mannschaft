@@ -99,6 +99,7 @@
       "feed": "피드",
       "content_affiliation": "내 콘텐츠·소속",
       "more_count": "외 {count}개",
+      "visible_count": "{count}개 표시 중",
       "empty": "0",
       "count": "{count}"
     },

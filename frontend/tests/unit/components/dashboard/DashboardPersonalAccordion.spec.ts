@@ -74,12 +74,28 @@ describe('DashboardPersonalAccordion', () => {
     const emptyWrapper = await mountAccordion([widget('my-calendar'), widget('notices')])
     const schedule = emptyWrapper.get('#personal-dashboard-section-button-schedule')
     expect(schedule.attributes('aria-controls')).toBe('personal-dashboard-section-schedule')
+    expect(emptyWrapper.get('#personal-dashboard-section-schedule').attributes('role')).toBe(
+      'region',
+    )
     expect(schedule.find('[data-widget-count]').attributes('data-widget-count')).toBe('0')
+    expect(schedule.find('[data-widget-count]').attributes('aria-label')).toBeTruthy()
+    expect(emptyWrapper.text()).toContain('📆')
+    expect(emptyWrapper.text()).toContain('🗂️')
     const allWidgetsWrapper = await mountAccordion()
     for (const button of allWidgetsWrapper.findAll('button')) await button.trigger('click')
     const assignedKeys = allWidgetsWrapper
       .findAll('.widget-grid')
       .flatMap((grid) => grid.text().split(','))
     expect(assignedKeys.sort()).toEqual(widgets.map((item) => item.key).sort())
+  })
+  it('keeps five categories when every widget is hidden and opens settings from an empty category', async () => {
+    const wrapper = await mountAccordion([])
+    expect(wrapper.findAll('[data-testid="personal-dashboard-accordion"] section')).toHaveLength(5)
+    const schedule = wrapper.get('#personal-dashboard-section-button-schedule')
+    await schedule.trigger('click')
+    const region = wrapper.get('#personal-dashboard-section-schedule')
+    expect(region.text()).toContain('No widgets to display')
+    await region.get('button').trigger('click')
+    expect(wrapper.emitted('configure')).toHaveLength(1)
   })
 })

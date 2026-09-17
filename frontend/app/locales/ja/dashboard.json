@@ -99,6 +99,7 @@
       "feed": "フィード",
       "content_affiliation": "マイコンテンツ・所属",
       "more_count": "ほか{count}件",
+      "visible_count": "表示中{count}件",
       "empty": "0",
       "count": "{count}"
     },
