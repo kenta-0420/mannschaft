@@ -189,7 +189,6 @@ tests/e2e/
 | 6 | `/admin/bulletin-categories` | ADMIN-025 |
 | 7 | `/admin/campaigns` | ADMIN-026 |
 | 8 | `/admin/equipment` | ADMIN-027 |
-| 9 | `/admin/google-calendar` | ADMIN-028 |
 | 10 | `/admin/line-settings` | ADMIN-029 |
 | 11 | `/admin/member-permissions` | ADMIN-030 |
 | 12 | `/admin/member-profiles` | ADMIN-031 |
