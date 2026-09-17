@@ -127,12 +127,17 @@ public class AuthTokenRotationService {
         RefreshTokenEntity existingToken = refreshTokenRepository.findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_007));
 
+        // 時刻計測の起点を1回だけ取得し、以降のロールバック内で使い回す
+        // （DateTimeAndZoneGuardTest: クラス単位で凍結された引数なし now() 件数を新たに増やさないため。
+        // Phase 3 で追加した resolveCurrentChainHead の期限切れ判定にもこの値を渡す）。
+        LocalDateTime now = LocalDateTime.now();
+
         // 2. 失効済みトークンの再提示 → 種別に応じて分岐
         if (existingToken.getRevokedAt() != null) {
             if (existingToken.getReplacedByTokenHash() != null) {
                 // ローテーションで正規に置換された（後継ポインタ有り）トークン。
                 long secondsSinceRevoke = Duration
-                        .between(existingToken.getRevokedAt(), LocalDateTime.now())
+                        .between(existingToken.getRevokedAt(), now)
                         .getSeconds();
 
                 if (secondsSinceRevoke <= refreshRotationGraceSeconds) {
@@ -149,7 +154,7 @@ public class AuthTokenRotationService {
                 // まだ有効なら、盗難ではなく「クライアント側 abort によるジャー汚染からの自動リトライ」とみなし
                 // リプレイ扱いを回避して現行トークンを基点に新トークンを発行する（自爆バグの根治点）。
                 if (isSameDeviceRetry(deviceFingerprint, existingToken)) {
-                    var currentHead = resolveCurrentChainHead(existingToken);
+                    var currentHead = resolveCurrentChainHead(existingToken, now);
                     if (currentHead.isPresent()) {
                         log.info("grace 超過だが同一端末の再試行と判定し正規化（誤リプレイ判定回避）: "
                                         + "userId={}, tokenId={}, sinceRevoke={}s（grace={}s）, successorTokenId={}",
@@ -192,7 +197,7 @@ public class AuthTokenRotationService {
 
         // 3. 有効期限チェック。
         // 旧実装は退会申請不存在の AUTH_032 を誤用していた。期限切れは「無効/失効済み」の意味論に沿う AUTH_007 を返す。
-        if (existingToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (existingToken.getExpiresAt().isBefore(now)) {
             throw new BusinessException(AuthErrorCode.AUTH_007);
         }
 
@@ -296,9 +301,12 @@ public class AuthTokenRotationService {
      * ロック取得後に改めて失効していないことを確認する。</p>
      *
      * @param source grace 超過で再提示された（失効済み・後継有りの）起点トークン
+     * @param now    期限切れ判定に使う「現在時刻」。呼び出し元（{@link #refreshAccessToken}）が1回だけ
+     *               取得した値を渡す（DateTimeAndZoneGuardTest: クラス単位で凍結された引数なし now() の
+     *               件数を新たに増やさないため、本メソッド内では新規に {@code LocalDateTime.now()} を呼ばない）
      * @return 解決できた現行トークン。循環・不整合・期限切れ・見つからない場合は空
      */
-    private java.util.Optional<RefreshTokenEntity> resolveCurrentChainHead(RefreshTokenEntity source) {
+    private java.util.Optional<RefreshTokenEntity> resolveCurrentChainHead(RefreshTokenEntity source, LocalDateTime now) {
         Long userId = source.getUserId();
         String nextHash = source.getReplacedByTokenHash();
 
@@ -309,7 +317,7 @@ public class AuthTokenRotationService {
             }
 
             if (next.getRevokedAt() == null) {
-                if (next.getExpiresAt().isBefore(LocalDateTime.now())) {
+                if (next.getExpiresAt().isBefore(now)) {
                     return java.util.Optional.empty();
                 }
                 // 並行操作との競合を避けるため悲観ロック版で取り直し、ロック取得後も未失効であることを再確認する。
