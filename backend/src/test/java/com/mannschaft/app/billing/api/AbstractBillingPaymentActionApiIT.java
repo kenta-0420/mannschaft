@@ -202,6 +202,39 @@ abstract class AbstractBillingPaymentActionApiIT extends AbstractBillingPlanChan
     }
 
     /**
+     * PLAN_CHANGE の operation だけを作る（pointer は張らない）。
+     *
+     * <p>{@code billing_contract_changes} は {@code uk_bcc_operation (operation_id)} と
+     * {@code uk_bcc_idempotency (contract_id, idempotency_key)} で operation と 1:1 に縛られている。
+     * したがって<b>1つのテストで複数の change 検体を並べる場合、operation も検体ごとに要る</b>
+     * （同じ operationId を使い回すと 2件目の INSERT が一意制約で落ち、assert に到達しない）。
+     * pointer は contract_id が主キーで契約あたり 1 行しか置けないため、ここでは張らない
+     * （payment-action は pointer を見ない。lease は {@link #insertPlanChangeOperation} が張る 1 本で足りる）。</p>
+     *
+     * @return operationId
+     */
+    protected UUID insertPlanChangeOperationWithoutPointer() {
+        return transactionTemplate.execute(tx -> {
+            BillingContractOperationEntity op = BillingContractOperationEntity.builder()
+                    .contractId(contractId)
+                    .billingCustomerId(customerId)
+                    .kind(BillingOperationKind.PLAN_CHANGE)
+                    .status(BillingOperationStatus.CALLING_STRIPE)
+                    .step(BillingOperationStep.STRIPE_APPLY_PLAN_CHANGE)
+                    .idempotencyKey(UUID.randomUUID().toString())
+                    .requestHash("0".repeat(64))
+                    .stripeSubscriptionRef(subscriptionRef)
+                    .version(0L)
+                    .actorKind(BillingOperationActorKind.USER)
+                    .createdBy(userId)
+                    .build();
+            entityManager.persist(op);
+            entityManager.flush();
+            return op.getId();
+        });
+    }
+
+    /**
      * upgrade の change 行を作る。
      *
      * @param operationId            1:1 で結ぶ operation

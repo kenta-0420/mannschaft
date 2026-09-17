@@ -39,8 +39,16 @@ class BillingPaymentActionApiRedIT extends AbstractBillingPaymentActionApiIT {
         cleanupScope();
     }
 
+    /**
+     * 検体の change を1件作る。
+     *
+     * <p>AC-53 のように<b>1テストで複数の検体</b>を並べるため、change ごとに新しい operation を切る
+     * （{@code uk_bcc_operation} により change と operation は 1:1。使い回すと 2件目の INSERT が
+     * 一意制約で落ち、assert に到達しない）。</p>
+     */
     private UUID change(BillingContractChangeStatus status) {
-        return insertChange(operationId, status, userId, Instant.now(clock).plusSeconds(3_600));
+        return insertChange(insertPlanChangeOperationWithoutPointer(), status, userId,
+                Instant.now(clock).plusSeconds(3_600));
     }
 
     // ═════════ AC-48: 正常系（陽性対照そのもの） ═════════

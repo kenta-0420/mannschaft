@@ -36,12 +36,11 @@ class BillingPaymentActionCookieRedIT extends AbstractBillingPaymentActionApiIT 
     /** 既存 Checkout 退避 cookie の検体（AC-63 の共存検体。署名検証は必ず落ちる不透明値）。 */
     private static final String FOREIGN_CHECKOUT_TOKEN = "kid.foreign-checkout-payload.signature";
 
-    private UUID operationId;
-
     @BeforeEach
     void setUp() {
         seedUpgradableContract("cookie");
-        operationId = insertPlanChangeOperation();
+        // E1F の耐久 lease（pointer）を1本張っておく。検体の change 用 operation は change() が切る。
+        insertPlanChangeOperation();
         stubPaymentAction(Instant.now(clock).plusSeconds(900));
     }
 
@@ -52,8 +51,10 @@ class BillingPaymentActionCookieRedIT extends AbstractBillingPaymentActionApiIT 
 
     /** 3DS 待ちの change を作る。{@code pendingUpdateExpiresAt} が cookie 期限の根拠（AC-61）。 */
     private UUID change(Instant pendingUpdateExpiresAt) {
-        return insertChange(operationId, BillingContractChangeStatus.REQUIRES_ACTION, userId,
-                pendingUpdateExpiresAt);
+        // AC-61 は期限違いの検体を2つ並べる。change と operation は uk_bcc_operation で 1:1 なので
+        // 検体ごとに operation を切る（使い回すと 2件目の INSERT が一意制約で落ちる）。
+        return insertChange(insertPlanChangeOperationWithoutPointer(),
+                BillingContractChangeStatus.REQUIRES_ACTION, userId, pendingUpdateExpiresAt);
     }
 
     /** payment-action を叩いて発行された生 Set-Cookie 行を得る。 */

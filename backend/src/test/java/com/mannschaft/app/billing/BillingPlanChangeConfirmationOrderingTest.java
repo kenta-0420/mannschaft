@@ -10,6 +10,7 @@ import com.mannschaft.app.billing.invoice.StripeBillingObjectView.InvoiceView;
 import com.mannschaft.app.billing.invoice.StripeBillingPayloadParser;
 import com.mannschaft.app.billing.api.BillingInvoiceEntity;
 import com.mannschaft.app.payment.WebhookIdempotencyService;
+import com.mannschaft.app.payment.service.StripeWebhookRetryableException;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider.BillingSubscriptionWebhookEventInfo;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -43,9 +45,15 @@ import static org.mockito.Mockito.verify;
  *
  * <h2>P1-2: applied が paid より先に着くと確定できないまま固まる</h2>
  * <p>{@code customer.subscription.pending_update_applied} が {@code invoice.paid} より先に届くと
- * items 照合の前提（invoice.paid 済み）が満たせず確定できない。Stripe は applied を再発行しないため、
- * 後続の {@code invoice.paid} が items を<b>再照合して確定する</b>のでなければ change は
+ * items 照合の前提（invoice.paid 済み）が満たせず確定できない。このとき event を
+ * {@code PROCESSED} で<b>消費してしまう</b>と、Stripe は applied を再発行しないため change は
  * {@code REQUIRES_ACTION} のまま固まり、pointer が後続のあらゆる操作を遮断する。</p>
+ *
+ * <p>したがって受け口は<b>消費せず例外を投げ</b>、受信記録を {@code FAILED} にして 5xx を返す
+ * （{@code FAILED} 行は {@code WebhookIdempotencyService#tryBegin} が再処理を許可するため、
+ * Stripe の再送で拾い直せる）。{@code invoice.paid} の側から
+ * {@code retrieveSubscription} で現在 items を引き直す方式は採らない——webhook 処理に同期の
+ * 外部往復が入り、Stripe が一時的に引けないだけで<b>正常順序（paid → applied）まで 5xx になる</b>。</p>
  *
  * <p>Docker 不要の純 UT。確定サービスと webhook サービスは<b>実体</b>を組み立て、外周
  * （Repository / Stripe ゲートウェイ / Saga）だけを Mockito で差し替える。確定の分岐そのものを
@@ -146,8 +154,8 @@ class BillingPlanChangeConfirmationOrderingTest {
     // ════════ P1-2: applied → paid の逆順でも確定する ════════
 
     @Test
-    @DisplayName("P1-2: applied が paid より先に着いても、paid 到着時に items を再照合して APPLIED へ確定する")
-    void appliedBeforePaidStillConfirmsOnPaid() {
+    @DisplayName("P1-2: applied が paid より先に着いたら event を消費せず、再送で APPLIED へ確定する")
+    void appliedBeforePaidIsRedeliveredAndThenConfirms() {
         UUID contractId = UUID.randomUUID();
         BillingContractChangeEntity change = changeFixture(
                 contractId, BillingContractChangeStatus.REQUIRES_ACTION);
@@ -163,38 +171,41 @@ class BillingPlanChangeConfirmationOrderingTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
         given(contractRepository.findByIdAndDeletedAtIsNull(contractId))
                 .willReturn(Optional.of(contract));
-        // paid 到着の時点では Stripe 側の items は既に target へ切り替わっている
-        // （applied が先着したのだから当然である）。
-        given(billingPaymentGateway.retrieveSubscription(SUBSCRIPTION_REF)).willReturn(
-                new BillingPaymentGateway.SubscriptionSnapshot(
-                        SUBSCRIPTION_REF, "active", false, null, null, null,
-                        List.of(new BillingPaymentGateway.SubscriptionItemSnapshot(
-                                "si_1", "price_full", 1L)),
-                        null));
 
-        // ① applied が先着する（この時点では invoice.paid 未確認なので確定できない）。
-        givenSubscriptionEvent(BillingSubscriptionWebhookService.SUBSCRIPTION_PENDING_UPDATE_APPLIED,
-                change.getOperationId());
-        webhookService.handleSubscriptionEventIfBilling("p", "s");
+        // ① applied が先着する。invoice.paid 未確認なので確定できない。
+        //    ここで PROCESSED にすると Stripe は再送しないため、必ず失敗として突き返すこと。
+        String appliedPayload = givenPendingUpdateAppliedPayload(change.getOperationId(), "price_full");
+        assertThatThrownBy(() -> webhookService.handleSubscriptionEventIfBilling(appliedPayload, "s"))
+                .as("消費すると change が REQUIRES_ACTION のまま固まる。5xx で再送させる。"
+                        + "StripeWebhookController の包括 catch は他の例外を 200 で畳むため型も固定する")
+                .isInstanceOf(StripeWebhookRetryableException.class);
+        verify(idempotencyService).markFailed("evt_" + BillingSubscriptionWebhookService
+                .SUBSCRIPTION_PENDING_UPDATE_APPLIED);
         assertThat(change.getStatus())
                 .as("applied 単独では確定しない（invoice.paid が確定の唯一の根拠）")
                 .isEqualTo(BillingContractChangeStatus.REQUIRES_ACTION);
 
-        // ② 続いて invoice.paid が着く。Stripe は applied を再発行しないので、ここで
-        //    items を再照合して確定できなければ change は永久に REQUIRES_ACTION のまま固まる。
+        // ② invoice.paid が着く。invoice ref を bind するだけで、Stripe を引き直さない。
         givenBillingInvoice("in_upgrade", "invoice.paid");
         webhookService.handleSubscriptionEventIfBilling("p", "s");
+        assertThat(change.getStatus())
+                .as("paid 単独でも確定しない（items の照合材料は applied が運ぶ）")
+                .isEqualTo(BillingContractChangeStatus.REQUIRES_ACTION);
+        verify(billingPaymentGateway, never()).retrieveSubscription(anyString());
+
+        // ③ Stripe が applied を再送する。今度は paid 済みなので確定できる。
+        webhookService.handleSubscriptionEventIfBilling(appliedPayload, "s");
 
         assertThat(change.getStatus())
-                .as("paid 到着時に items を再照合して確定する")
+                .as("再送された applied が items を照合して確定する")
                 .isEqualTo(BillingContractChangeStatus.APPLIED);
         assertThat(contract.getPlanKey()).as("権利が target プランへ切り替わる").isEqualTo("FULL");
         verify(billingContractService, never()).extendContractPeriod(anyString(), any());
     }
 
     @Test
-    @DisplayName("P1-2: items がまだ切り替わっていない paid では確定しない（単調性・確定の主体は webhook のみ）")
-    void paidWithoutItemSwitchDoesNotConfirm() {
+    @DisplayName("P1-2: invoice.paid は 3DS 経路で Stripe を引き直さない（同期の外部往復を webhook に挟まない）")
+    void paidDoesNotRoundTripToStripe() {
         UUID contractId = UUID.randomUUID();
         BillingContractChangeEntity change = changeFixture(
                 contractId, BillingContractChangeStatus.REQUIRES_ACTION);
@@ -207,19 +218,14 @@ class BillingPlanChangeConfirmationOrderingTest {
                 .willReturn(Optional.of(change));
         given(changeRepository.saveAndFlush(any(BillingContractChangeEntity.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
-        given(billingPaymentGateway.retrieveSubscription(SUBSCRIPTION_REF)).willReturn(
-                new BillingPaymentGateway.SubscriptionSnapshot(
-                        SUBSCRIPTION_REF, "active", false, null, null, null,
-                        List.of(new BillingPaymentGateway.SubscriptionItemSnapshot(
-                                "si_1", "price_basic", 1L)),
-                        null));
 
         givenBillingInvoice("in_upgrade", "invoice.paid");
         webhookService.handleSubscriptionEventIfBilling("p", "s");
 
         assertThat(change.getStatus())
-                .as("items が未切替なら確定せず pending_update_applied を待つ")
+                .as("確定は pending_update_applied の items 照合まで待つ（確定の主体は webhook のみ）")
                 .isEqualTo(BillingContractChangeStatus.REQUIRES_ACTION);
+        verify(billingPaymentGateway, never()).retrieveSubscription(anyString());
     }
 
     // ════════ フィクスチャ ════════
@@ -255,11 +261,35 @@ class BillingPlanChangeConfirmationOrderingTest {
         given(invoiceRepository.findByPspInvoiceRef(invoiceRef)).willReturn(Optional.of(paidInvoice));
     }
 
-    private void givenSubscriptionEvent(String type, UUID operationId) {
-        given(stripePaymentProvider.constructBillingSubscriptionEvent("p", "s")).willReturn(
+    /**
+     * {@code customer.subscription.pending_update_applied} の実 payload を伴う検体。
+     *
+     * <p>受け口は payload を実パーサで読んで<b>現在の items</b> を取り出す（E2'・AC-79）。
+     * ダミー文字列のままでは price ref が取れず、照合が通らない。</p>
+     *
+     * @param operationId  {@code metadata.billingOperationId}
+     * @param itemPriceRef 現在の items が指す price
+     * @return payload 文字列（{@code handleSubscriptionEventIfBilling} へそのまま渡す）
+     */
+    private String givenPendingUpdateAppliedPayload(UUID operationId, String itemPriceRef) {
+        // パーサは event 封筒（data.object）を読む。素の subscription オブジェクトでは price ref が取れない。
+        String payload = """
+                {"id":"evt_applied","object":"event","livemode":false,"created":1789000000,
+                 "type":"customer.subscription.pending_update_applied",
+                 "data":{"object":{
+                   "id":"%s","object":"subscription","customer":"cus_1","status":"active",
+                   "metadata":{"billingOperationId":"%s"},
+                   "items":{"object":"list","has_more":false,"data":[
+                     {"id":"si_1","object":"subscription_item",
+                      "price":{"id":"%s","object":"price","currency":"jpy","unit_amount":3000}}]}}}}"""
+                .formatted(SUBSCRIPTION_REF, operationId, itemPriceRef);
+        given(stripePaymentProvider.constructBillingSubscriptionEvent(payload, "s")).willReturn(
                 new BillingSubscriptionWebhookEventInfo(
-                        "evt_" + type, type, false, null, null,
-                        SUBSCRIPTION_REF, "cus_1", PERIOD_END_EPOCH, operationId.toString()));
+                        "evt_" + BillingSubscriptionWebhookService.SUBSCRIPTION_PENDING_UPDATE_APPLIED,
+                        BillingSubscriptionWebhookService.SUBSCRIPTION_PENDING_UPDATE_APPLIED,
+                        false, null, null, SUBSCRIPTION_REF, "cus_1", PERIOD_END_EPOCH,
+                        operationId.toString()));
+        return payload;
     }
 
     private BillingContractChangeEntity changeFixture(UUID contractId, BillingContractChangeStatus status) {

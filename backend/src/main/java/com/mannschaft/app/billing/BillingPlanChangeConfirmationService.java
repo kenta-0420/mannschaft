@@ -237,49 +237,28 @@ public class BillingPlanChangeConfirmationService {
     }
 
     /**
-     * pending_update（3DS）経路の {@code invoice.paid} を処理する（修繕・P1-2）。
-     *
-     * <h2>なぜ paid 側でも items を照合するのか</h2>
-     * <p>{@code customer.subscription.pending_update_applied} が {@code invoice.paid} より
-     * <b>先に</b>届くと、applied の時点では「invoice.paid 済み」を確認できず確定できない
-     * （{@link #confirmAppliedIfMatchingItems} が {@code false} を返す）。Stripe は applied を
-     * 再発行しないため、paid 側が items を再照合して確定しなければ change は
-     * {@code REQUIRES_ACTION} のまま固まり、pointer が後続のあらゆる操作を恒久的に遮断する。</p>
-     *
-     * <p>したがって paid 到着時に <b>Stripe の現在 items</b> を取得し、change 行へ保存した
-     * target（{@code pending_update_target_snapshot}）と一致していれば、その場で確定する
-     * （E2' と同じ照合軸・確定ロジックは {@link #confirmPaid} を再利用）。まだ切り替わって
-     * いなければ invoice ref の bind だけ行い、applied の到着を待つ（従来どおり）。</p>
-     *
-     * <p><b>確定の主体は webhook だけ</b>という大原則は崩していない（ここは webhook 経路である）。
-     * 単調性は {@link #confirmPaid} の {@link #IN_FLIGHT} 判定が、冪等性は「確定済みなら no-op」が担う。
-     * Stripe 参照に失敗した場合は<b>握り潰さず</b>例外を外へ出し、webhook ゲートの再送へ委ねる
-     * （AC-85: 所有確定後の一時失敗は 5xx）。</p>
-     *
-     * @param change          解決済みの upgrade change（{@code pending_update_expires_at} が非 NULL）
-     * @param invoiceRef      bind すべき invoice ref
-     * @param subscriptionRef 現在 items を取りに行く Stripe Subscription ID
+     * {@code customer.subscription.pending_update_applied} の確定可否（{@link
+     * #confirmAppliedIfMatchingItems} の結果）。
      */
-    void confirmPaidForPendingUpdate(
-            BillingContractChangeEntity change, String invoiceRef, String subscriptionRef) {
-        if (!IN_FLIGHT.contains(change.getStatus())) {
-            return; // 既に確定済み（冪等）。
-        }
-        acknowledgePendingPayment(change, invoiceRef);
-        String targetPriceRef = payloadParser.targetPriceRefFromSnapshot(
-                change.getPendingUpdateTargetSnapshot());
-        if (targetPriceRef == null || subscriptionRef == null || subscriptionRef.isBlank()) {
-            // 照合材料が無い。確定はせず pending_update_applied を待つ（回収の失効判定が受け皿）。
-            return;
-        }
-        BillingPaymentGateway.SubscriptionSnapshot snapshot =
-                billingPaymentGateway.retrieveSubscription(subscriptionRef);
-        if (snapshot == null || !snapshot.hasItems() || !snapshot.containsPriceRef(targetPriceRef)) {
-            log.info("PR6b-1: invoice.paid 時点で items が target へ未切替のため確定しない: changeId={}",
-                    change.getId());
-            return;
-        }
-        confirmPaid(change, invoiceRef);
+    enum AppliedConfirmation {
+        /** 確定した（もしくは既に確定済みで冪等 no-op とした）。 */
+        CONFIRMED,
+        /**
+         * {@code invoice.paid} をまだ観測していない（applied が先着した）。
+         *
+         * <p>この event を消費してはならない。消費すると Stripe は applied を再発行しないため、
+         * change は {@code REQUIRES_ACTION} のまま固まり pointer が後続のあらゆる操作を
+         * 恒久的に遮断する（修繕・P1-2 が根治した欠陥）。呼び出し元は<b>確定させずに例外を投げ</b>、
+         * webhook ゲートの {@code FAILED} 記録＋5xx によって Stripe の再送へ委ねる
+         * （{@code FAILED} 行は {@code WebhookIdempotencyService#tryBegin} が再処理を許可する）。</p>
+         */
+        AWAITING_INVOICE_PAID,
+        /**
+         * 保存した target と現在 items が一致しない（E2'・AC-79）。この event は<b>消費してよい</b>。
+         * 切替がまだなら Stripe があらためて applied を送るか、失効して
+         * {@code pending_update_expired} が失敗確定させる。
+         */
+        ITEMS_NOT_MATCHING
     }
 
     /**
@@ -296,16 +275,18 @@ public class BillingPlanChangeConfirmationService {
      * </ol>
      *
      * <p>両方満たせば {@link #confirmPaid} へ委譲する（AC-37 と同じ確定ロジックを再利用し、
-     * change/operation/権利/pointer の一括反映を保証する）。満たさなければ何もしない（次の
-     * event を待つ）。</p>
+     * change/operation/権利/pointer の一括反映を保証する）。満たさなければ何も書かず、
+     * <b>どちらの条件で止まったか</b>を戻り値で呼び出し元へ返す——止まった理由によって
+     * 「この event を消費してよいか」が変わるためである（{@link AppliedConfirmation}）。</p>
      *
-     * @return 確定した（もしくは既に確定済みで no-op とした）なら {@code true}。まだ確定条件が
-     *         整っていない（呼び出し元は {@code PROCESSED} として扱ってよい・再送で拾い直す必要は無い）
-     *         なら {@code false}
+     * @return 確定可否の内訳（{@link AppliedConfirmation}）。
+     *         {@link AppliedConfirmation#AWAITING_INVOICE_PAID} は<b>この event を消費してはならない</b>
+     *         ことを意味する（Stripe の再送で拾い直す）
      */
-    boolean confirmAppliedIfMatchingItems(BillingContractChangeEntity change, String currentItemPriceRef) {
+    AppliedConfirmation confirmAppliedIfMatchingItems(
+            BillingContractChangeEntity change, String currentItemPriceRef) {
         if (!IN_FLIGHT.contains(change.getStatus())) {
-            return true; // 既に確定済み（AC-86 の冪等）。
+            return AppliedConfirmation.CONFIRMED; // 既に確定済み（AC-86 の冪等）。
         }
         String invoiceRef = change.getStripeInvoiceRef();
         boolean paidConfirmed = invoiceRef != null
@@ -315,16 +296,16 @@ public class BillingPlanChangeConfirmationService {
         if (!paidConfirmed) {
             log.info("PR6b-1: invoice.paid 未確認のため pending_update_applied を確定しない（AC-80）: changeId={}",
                     change.getId());
-            return false;
+            return AppliedConfirmation.AWAITING_INVOICE_PAID;
         }
         String targetPriceRef = payloadParser.targetPriceRefFromSnapshot(change.getPendingUpdateTargetSnapshot());
         if (targetPriceRef == null || !targetPriceRef.equals(currentItemPriceRef)) {
             log.info("PR6b-1: 保存した target と現在 items が一致しないため確定しない（E2'・AC-79）: "
                     + "changeId={}, target={}, current={}", change.getId(), targetPriceRef, currentItemPriceRef);
-            return false;
+            return AppliedConfirmation.ITEMS_NOT_MATCHING;
         }
         confirmPaid(change, invoiceRef);
-        return true;
+        return AppliedConfirmation.CONFIRMED;
     }
 
     /**

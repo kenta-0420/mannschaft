@@ -395,10 +395,12 @@ class BillingPlanChangeWebhookRedIT extends AbstractBillingInvoiceWebhookIT {
     @DisplayName("AC-87: 既に RECEIVED で溜まっている保留行は、後続イベントの処理で自動 drain されない（運用の手動再投入で拾う）")
     void AC87_保留行を自動drainしない() throws Exception {
         // PR5 期に RECEIVED のまま溜まった行を模す（Stripe は 200 済みを再送しない）。
+        // id は BINARY(16) NOT NULL で既定値を持たない（V72.008）。省くと INSERT 自体が落ちる。
         jdbcTemplate.update("""
                 INSERT INTO stripe_webhook_events
-                    (event_id, type, livemode, received_at, process_status, attempt_count)
-                VALUES ('evt_ac87_backlog', 'invoice.payment_action_required', 0, NOW(6), 'RECEIVED', 0)
+                    (id, event_id, type, livemode, received_at, process_status, attempt_count)
+                VALUES (UNHEX(REPLACE(UUID(), '-', '')), 'evt_ac87_backlog',
+                        'invoice.payment_action_required', 0, NOW(6), 'RECEIVED', 0)
                 """);
 
         postSigned(StripeWebhookPayloadFixture.event(

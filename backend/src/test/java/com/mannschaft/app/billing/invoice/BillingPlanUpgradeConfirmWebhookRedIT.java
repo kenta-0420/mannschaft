@@ -24,6 +24,7 @@ import com.mannschaft.app.billing.BillingProductKind;
 import com.mannschaft.app.billing.BillingTaxBehavior;
 import com.mannschaft.app.billing.ContractStatus;
 import com.mannschaft.app.billing.EntitlementScopeKind;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,17 @@ class BillingPlanUpgradeConfirmWebhookRedIT extends AbstractBillingInvoiceWebhoo
     private UUID toBandId;
     private UUID operationId;
 
+    /**
+     * 本クラスが作った price_version / band_version（{@code @AfterEach} で消す）。
+     *
+     * <p>{@link #insertBand} が作る行は<b>どのテストでも同条件・同 bandNo</b> であり、消さずに残すと
+     * band を「product_key + scope_kind + 人数」で解決する他クラス（見積り系）の先頭候補が
+     * 前のテストの残骸になりうる。本クラス自身は band を解決せず ID を直接持ち回るので影響を受けないが、
+     * テスト間に残骸を撒く側になってはならない。</p>
+     */
+    private final java.util.List<UUID> createdBandIds = new java.util.ArrayList<>();
+    private final java.util.List<UUID> createdPriceVersionIds = new java.util.ArrayList<>();
+
     @BeforeEach
     void seedUpgradeInFlight() {
         jdbcTemplate.update("DELETE FROM billing_contract_changes");
@@ -94,6 +106,24 @@ class BillingPlanUpgradeConfirmWebhookRedIT extends AbstractBillingInvoiceWebhoo
 
         operationId = insertOperation(billingContractId);
         insertPointer(billingContractId, operationId);
+    }
+
+    /**
+     * 本クラスが作った価格行を消す（FK 順: band → price_version）。
+     *
+     * <p>契約・change・operation・pointer は {@code @BeforeEach} が毎回消しているが、価格行だけが
+     * 誰にも消されずに積み上がっていた。assert は一切変えない——消すのは<b>検体ではなく残骸</b>である。</p>
+     */
+    @AfterEach
+    void cleanupPriceRows() {
+        for (UUID bandId : createdBandIds) {
+            jdbcTemplate.update("DELETE FROM billing_price_band_versions WHERE id = ?", uuidBytes(bandId));
+        }
+        for (UUID versionId : createdPriceVersionIds) {
+            jdbcTemplate.update("DELETE FROM billing_price_versions WHERE id = ?", uuidBytes(versionId));
+        }
+        createdBandIds.clear();
+        createdPriceVersionIds.clear();
     }
 
     // ═════════ AC-37: paid 確定の原子性 ═════════
@@ -289,8 +319,14 @@ class BillingPlanUpgradeConfirmWebhookRedIT extends AbstractBillingInvoiceWebhoo
     // ════════════════════════════════════════════════
 
     private String upgradeInvoice(String invoiceRef, String status) {
+        // 税は<b>外税</b>（inclusive=false）で組む。invoice 側の総額は
+        // subtotal(2_100) - discount(0) + tax(190) = total(2_290) で立ててあり、
+        // これは外税の恒等式である。line だけ inclusive=true にすると
+        // BillingInvoiceProjectionService#validateLines の「line の税込合計 == total」
+        // （inclusive では amount - discount = 2_100）が破れ、fail-closed で投影が拒否され、
+        // 契約遷移（＝この検体の観測対象）まで一度も走らない。
         String line = StripeWebhookPayloadFixture.lineObject(
-                "il_" + invoiceRef, "プラン変更差額", 1L, 2_100L, 0L, 190L, true, 1000);
+                "il_" + invoiceRef, "プラン変更差額", 1L, 2_100L, 0L, 190L, false, 1000);
         return StripeWebhookPayloadFixture.invoiceObject(
                 invoiceRef, BILLING_CUSTOMER_REF, BILLING_SUBSCRIPTION_REF, status,
                 "jpy", 2_100L, 0L, 190L, 2_290L, line);
@@ -331,8 +367,9 @@ class BillingPlanUpgradeConfirmWebhookRedIT extends AbstractBillingInvoiceWebhoo
                         .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL)
                         .createdAt(now)
                         .build());
+        createdPriceVersionIds.add(version.getId());
         long excluding = Math.round(amountIncludingTax / 1.1d);
-        return bandRepository.saveAndFlush(BillingPriceBandVersionEntity.builder()
+        UUID bandId = bandRepository.saveAndFlush(BillingPriceBandVersionEntity.builder()
                 .productKind(BillingProductKind.PLAN)
                 .productKey(productKey)
                 .scopeKind(EntitlementScopeKind.USER)
@@ -356,6 +393,8 @@ class BillingPlanUpgradeConfirmWebhookRedIT extends AbstractBillingInvoiceWebhoo
                 .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL)
                 .createdAt(now)
                 .build()).getId();
+        createdBandIds.add(bandId);
+        return bandId;
     }
 
     private UUID insertOperation(UUID contractId) {

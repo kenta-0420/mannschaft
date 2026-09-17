@@ -7,6 +7,7 @@ import com.mannschaft.app.billing.invoice.StripeBillingObjectView.EventEnvelope;
 import com.mannschaft.app.billing.invoice.StripeBillingObjectView.InvoiceView;
 import com.mannschaft.app.billing.invoice.StripeBillingPayloadParser;
 import com.mannschaft.app.payment.WebhookIdempotencyService;
+import com.mannschaft.app.payment.service.StripeWebhookRetryableException;
 import com.mannschaft.app.payment.WebhookProcessStatus;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider.BillingSubscriptionWebhookEventInfo;
@@ -235,17 +236,32 @@ public class BillingSubscriptionWebhookService {
                 .map(com.mannschaft.app.billing.invoice.StripeBillingObjectView.SubscriptionView::currentItemPriceRef)
                 .orElse(null);
         return runGated(event, () -> {
-            boolean confirmed = planChangeConfirmationService
-                    .confirmAppliedIfMatchingItems(change.get(), currentItemPriceRef);
-            if (!confirmed) {
-                // 【修繕・P1-2】この event は消費してよい。確定できなかったのは
-                // invoice.paid がまだ届いていない（applied が先着した）ためであり、
-                // 後続の invoice.paid が現在 items を再照合して確定する
-                // （BillingPlanChangeConfirmationService#confirmPaidForPendingUpdate）。
-                // Stripe は applied を再発行しないため、この受け皿が無いと change は
-                // 永久に REQUIRES_ACTION のまま固まる。
-                log.info("PR6b-1: pending_update_applied 時点では確定条件が未成立。後続の invoice.paid に委ねる: "
-                        + "eventId={}", event.eventId());
+            BillingPlanChangeConfirmationService.AppliedConfirmation confirmation =
+                    planChangeConfirmationService
+                            .confirmAppliedIfMatchingItems(change.get(), currentItemPriceRef);
+            if (confirmation
+                    == BillingPlanChangeConfirmationService.AppliedConfirmation.AWAITING_INVOICE_PAID) {
+                // 【修繕・P1-2】applied が invoice.paid より先着した。ここで PROCESSED として
+                // 消費すると、Stripe は applied を再発行しないため change は REQUIRES_ACTION の
+                // まま固まり、pointer が後続のあらゆる操作を恒久的に遮断する。
+                //
+                // よって消費せず例外を投げる。runGated が受信記録を FAILED にして例外を再送出し、
+                // Controller が 5xx を返すことで Stripe が同じ event を再送する
+                // （FAILED 行は WebhookIdempotencyService#tryBegin が再処理を許可する・AC-85 の流儀）。
+                // 再送までの間に invoice.paid が届いて投影されるため、再送時には確定できる。
+                //
+                // 【なぜ invoice.paid 側で Stripe を引き直さないのか】 paid 側から
+                // retrieveSubscription で現在 items を取りに行く方式は、(1) webhook の処理中に
+                // 同期の外部往復を挟み、(2) Stripe が一時的に引けないだけで「確定できたはずの
+                // 正常順序（paid → applied）」まで 5xx にしてしまう。順序の逆転という稀な事象の
+                // 受け皿は、既存の再送機構で足りる。
+                // StripeWebhookRetryableException でなければならない。StripeWebhookController の
+                // 包括 catch は<b>それ以外の例外を 200 で畳む</b>ため、素の RuntimeException では
+                // Stripe が再送せず、狙った受け皿が働かない。
+                throw new StripeWebhookRetryableException(
+                        "pending_update_applied が invoice.paid より先着したため確定できない。"
+                                + "再送に委ねる: eventId=" + event.eventId()
+                                + ", changeId=" + change.get().getId());
             }
             return WebhookProcessStatus.PROCESSED;
         });
@@ -322,13 +338,13 @@ public class BillingSubscriptionWebhookService {
                     // APPLIED にしない。適用確定は customer.subscription.pending_update_applied の
                     // 現在 items 照合に委ねる（confirmAppliedIfMatchingItems）。同期成功（pending_update
                     // を経由しない upgrade）は従来どおり invoice.paid の一点で確定する（E6'・AC-37）。
-                    // 【修繕・P1-2】applied が paid より先に着いた場合、applied 側では
-                    // 「invoice.paid 済み」を確認できず確定できない。Stripe は applied を
-                    // 再発行しないため、paid 側で現在 items を再照合して確定しなければ
-                    // change は REQUIRES_ACTION のまま固まり pointer が操作を遮断し続ける。
                     if (planChange.get().getPendingUpdateExpiresAt() != null) {
-                        planChangeConfirmationService.confirmPaidForPendingUpdate(
-                                planChange.get(), invoiceRef, subscriptionId);
+                        // 3DS 経路: 支払いの成立だけを記録し（invoice ref の bind）、APPLIED への
+                        // 遷移は customer.subscription.pending_update_applied の items 照合に委ねる。
+                        // applied が先着していた場合は、その event が消費されずに再送されてくる
+                        // （handlePendingUpdateApplied の AWAITING_INVOICE_PAID 分岐）。
+                        planChangeConfirmationService.acknowledgePendingPayment(
+                                planChange.get(), invoiceRef);
                     } else {
                         planChangeConfirmationService.confirmPaid(planChange.get(), invoiceRef);
                     }
