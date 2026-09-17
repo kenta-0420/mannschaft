@@ -95,6 +95,18 @@
     },
     "detail": {
       "scopeMissing": "缺少问卷范围信息",
+      "scopeContext": {
+        "label": "问卷对象",
+        "type": { "TEAM": "目标团队", "ORGANIZATION": "目标组织" },
+        "loading": "正在确认名称…",
+        "nameUnavailable": "无法获取名称",
+        "management": {
+          "admin": "以管理员身份管理",
+          "delegated": "使用委托的问卷权限管理",
+          "creator": "以创建者身份管理",
+          "authorized": "使用管理权限管理"
+        }
+      },
       "fetchFailed": "无法获取问卷详情",
       "back": "返回",
       "answeredBadge": "已回答",
