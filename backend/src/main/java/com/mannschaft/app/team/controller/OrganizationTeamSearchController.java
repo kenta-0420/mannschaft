@@ -1,12 +1,15 @@
 package com.mannschaft.app.team.controller;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.exception.OrganizationNotFoundException;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.dto.TeamPublicSummaryResponse;
 import com.mannschaft.app.team.dto.TeamSearchCriteria;
 import com.mannschaft.app.team.dto.TeamSearchResultResponse;
@@ -67,6 +70,7 @@ public class OrganizationTeamSearchController {
     private final AccessControlService accessControlService;
     /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
     private final MediaUrlResolver mediaUrlResolver;
+    private final OrganizationService organizationService;
 
     /**
      * 組織配下のチーム（店舗）を検索する。
@@ -125,6 +129,7 @@ public class OrganizationTeamSearchController {
 
         // 5. OrgScopeIdConverter で slug / 数値を正準化
         Long orgId = orgScopeId.value();
+        assertActiveOrganization(orgId);
 
         // 6. 検索実行（TeamSearchService 内で 404 判定を含む）
         Page<TeamEntity> resultPage = teamSearchService.search(orgId, criteria, currentUserId, pageable);
@@ -230,9 +235,23 @@ public class OrganizationTeamSearchController {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleScopeNotFound(
             ResponseStatusException ex) {
+        if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
+            throw ex;
+        }
         return ResponseEntity
                 .status(ex.getStatusCode())
                 .body(ApiResponse.of(Map.of("error", "Organization not found")));
+    }
+
+    private void assertActiveOrganization(Long orgId) {
+        try {
+            organizationService.assertActiveOrganizationExists(orgId);
+        } catch (BusinessException ex) {
+            if (ex.getErrorCode() == OrgErrorCode.ORG_001) {
+                throw new OrganizationNotFoundException();
+            }
+            throw ex;
+        }
     }
 
     /**
