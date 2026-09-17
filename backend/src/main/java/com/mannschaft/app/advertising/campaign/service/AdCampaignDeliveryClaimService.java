@@ -1,9 +1,9 @@
 package com.mannschaft.app.advertising.campaign.service;
 
 import com.mannschaft.app.advertising.campaign.repository.AdCampaignDeliveryClaimRepository;
+import com.mannschaft.app.common.UuidV7;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.id.uuid.CustomVersionOneStrategy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,10 +48,9 @@ public class AdCampaignDeliveryClaimService {
      * user 単位の配信処理と独立したコミット単位に保ち、後続の配信処理が例外で巻き戻っても
      * claim/解放の事実が失われないようにするため。</p>
      *
-     * <p>id は JPA の {@code @GeneratedValue} ライフサイクルを経由しないネイティブ INSERT のため
+     * <p>id は JPA のライフサイクルを経由しないネイティブ INSERT のため
      * 呼び出し側で事前生成する。{@link com.mannschaft.app.common.entity.UuidV7Entity} と同じ
-     * 採番機構（Hibernate {@code @UuidGenerator(style = TIME)} が内部で使う
-     * {@link CustomVersionOneStrategy}）をそのまま呼び出すことで、B-Tree page split 抑制という
+     * {@link UuidV7} を使うことで、B-Tree page split 抑制という
      * UUIDv7 採用の目的をこのテーブルでも維持する。</p>
      *
      * @return 確保できた場合 true。既に他の実行が確保済みの場合 false（例外は投げない）。
@@ -61,7 +60,7 @@ public class AdCampaignDeliveryClaimService {
         if (campaignId == null || userId == null || weekStart == null) {
             throw new IllegalArgumentException("campaignId, userId, weekStart は必須です");
         }
-        UUID id = UUID_GENERATOR.generateUuid(null);
+        UUID id = UuidV7.generate();
         // created_at はアプリ側 LocalDateTime.now() で確定させる（DB の NOW() は使わない）。
         // 他の Entity の @PrePersist（例: AdCampaignDeliveryClaim 自身の onCreate、AdEmailDelivery 等）
         // が軒並みアプリ側 LocalDateTime.now() を使っており、DB サーバーとアプリでタイムゾーン設定が
@@ -74,13 +73,6 @@ public class AdCampaignDeliveryClaimService {
         }
         return true;
     }
-
-    /**
-     * {@link com.mannschaft.app.common.entity.UuidV7Entity} が {@code @UuidGenerator(style = TIME)}
-     * 経由で使うのと同じ採番戦略。{@code generateUuid} は引数の session を参照しないため
-     * {@code null} を渡してよい（Hibernate 実装依存だが、当面の Hibernate バージョンで確認済み）。
-     */
-    private static final CustomVersionOneStrategy UUID_GENERATOR = new CustomVersionOneStrategy();
 
     /**
      * 全チャネル skip（実配信 0 件）だった場合に claim を解放する。
