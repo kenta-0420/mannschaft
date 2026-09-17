@@ -28,6 +28,13 @@ public interface BillingContractChangeRepository
     List<BillingContractChangeEntity> findByContractIdAndStatusAndDeletedAtIsNull(
             UUID contractId, BillingContractChangeStatus status);
 
+    /**
+     * 契約の変更履歴を複数ステータスで絞り込む（PR6b-1 AC-101: 支払い待ち判定は
+     * {@code PENDING_PAYMENT}/{@code REQUIRES_ACTION} の2種をまとめて見る）。
+     */
+    List<BillingContractChangeEntity> findByContractIdAndStatusInAndDeletedAtIsNull(
+            UUID contractId, List<BillingContractChangeStatus> statuses);
+
     /** 主キーで取得する（deleted_at 除外）。 */
     Optional<BillingContractChangeEntity> findByIdAndDeletedAtIsNull(UUID id);
 

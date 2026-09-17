@@ -155,6 +155,13 @@ abstract class AbstractBillingPlanChangeApiIT extends AbstractMySqlIntegrationTe
                 TO_STRIPE_PRICE_REF, 1, null);
         contractId = insertContract(fromBandId, LocalDateTime.now(clock).plusDays(20).withNano(0));
         stubStripeQuote(STRIPE_QUOTED_AMOUNT);
+        // AC-123陽性対照・AC-122並行changeの土台: applyPlanChange の既定スタブ。
+        // このメソッドを呼ばずに change() を叩くテスト（G群 認可・競合）は Mockito の
+        // 既定応答（null）を受け取り、finalizeChange 内の result.invoiceRef() で NPE→500 になり、
+        // 「202/409 のどちらかで決着する」という観測点が原理的に成立しなかった
+        // （実装ではなく試練の土台の欠陥。個別に E6' の検体を作るテストは自分で
+        // stubStripeApply を呼び直してこの既定値を上書きする）。
+        stubStripeApply("in_pr6b1_default_" + userId, "open", false);
     }
 
     // ============================================================

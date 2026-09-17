@@ -116,6 +116,10 @@ public class BillingPlanChangeController {
             @Valid @RequestBody BillingPlanChangeRequest request,
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 36) String idempotencyKey) {
         long actorId = SecurityUtils.getCurrentUserId();
+        // AC-124: 認可判定より先に冪等台帳へ書かない（PR6a のcancel/resumeと同じ順序）。
+        // authorize() は非認可時に BusinessException(403/404) を投げて return し、
+        // 以降の idempotencyService.begin() へは進ませない。
+        changeService.authorize(actorId, contractId);
         String path = String.format(CHANGES_PATH_FORMAT, contractId);
         String requestHash = requestHash(actorId, METHOD_CHANGE, path, request);
         String leaseOwner = UUID.randomUUID().toString();

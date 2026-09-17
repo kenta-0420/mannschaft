@@ -101,6 +101,26 @@ public class BillingPlanChangeService {
         this.newTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
+    /**
+     * 認可だけを先に済ませる（AC-124。PR6a {@code BillingContractCancelApplicationService#authorize}
+     * と同一の流儀）。
+     *
+     * <p><b>冪等台帳より前に呼ばれることが本メソッドの存在理由</b>である。他スコープ／権限不足の
+     * 要求で先に {@code BillingDurableIdempotencyService#begin} を呼ぶと、認可判定より前に
+     * 台帳へ行を作ってしまい、以後その actor / key の組み合わせが塞がれる存在オラクルになる
+     * （PR5 の実在欠陥と同型）。controller はこの戻り値を受け取らないと冪等処理へ進めない形にする。</p>
+     *
+     * @throws BusinessException scope 外なら 404、scope 内で権限不足なら 403
+     */
+    public ChangeAuthorization authorize(long actorId, UUID contractId) {
+        loadManageable(actorId, contractId);
+        return new ChangeAuthorization(contractId);
+    }
+
+    /** 認可が通ったことの証（controller が冪等台帳へ進むための通行手形）。 */
+    public record ChangeAuthorization(UUID contractId) {
+    }
+
     public BillingContractChangeResponse change(
             long actorId, UUID contractId, BillingPlanChangeRequest request,
             String idempotencyKey, String requestBody) {

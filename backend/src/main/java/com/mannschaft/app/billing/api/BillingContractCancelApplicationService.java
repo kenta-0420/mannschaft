@@ -4,17 +4,22 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.billing.BillingContractCancelService;
 import com.mannschaft.app.billing.BillingContractCancelService.CancelView;
+import com.mannschaft.app.billing.BillingContractChangeRepository;
+import com.mannschaft.app.billing.BillingContractChangeStatus;
 import com.mannschaft.app.billing.BillingContractEntity;
 import com.mannschaft.app.billing.BillingContractRepository;
 import com.mannschaft.app.billing.BillingContractService;
 import com.mannschaft.app.billing.EntitlementErrorCode;
 import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.api.BillingConflictException.BillingConflictDetails;
+import com.mannschaft.app.billing.api.BillingConflictException.Reason;
 import com.mannschaft.app.billing.api.dto.BillingContractCancelResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -41,6 +46,12 @@ public class BillingContractCancelApplicationService {
     private final BillingContractService billingContractService;
     private final BillingAccessGuard billingAccessGuard;
     private final AuditLogService auditLogService;
+    /** AC-101: CHANGE_CONFLICT が「upgrade の支払い待ち」由来かを判別するための逆引き。 */
+    private final BillingContractChangeRepository billingContractChangeRepository;
+
+    /** AC-101 の判別対象（支払い待ちの2状態）。 */
+    private static final List<BillingContractChangeStatus> PENDING_PAYMENT_STATUSES =
+            List.of(BillingContractChangeStatus.PENDING_PAYMENT, BillingContractChangeStatus.REQUIRES_ACTION);
 
     /**
      * 認可だけを先に済ませ、契約の所属 scope を返す（AC-54）。
@@ -100,8 +111,36 @@ public class BillingContractCancelApplicationService {
         } catch (RuntimeException e) {
             // AC-66: 失敗も記録する（成功だけを監査しない）。握り潰さず必ず再送出する。
             audit(AuditEventType.BILLING_CANCEL_FAILED, actorId, contract, errorCodeOf(e));
-            throw e;
+            throw enrichPendingPaymentConflict(e, contractId);
         }
+    }
+
+    /**
+     * AC-101: {@code CHANGE_CONFLICT} が upgrade の支払い待ち（{@code PENDING_PAYMENT}/
+     * {@code REQUIRES_ACTION}）に由来するなら、一般の {@code CHANGE_CONFLICT} と区別できる
+     * {@code pendingChangeStatus} を details に載せて返す。
+     *
+     * <p>{@link BillingContractCancelService#scheduleCancel} は pointer 競合を
+     * {@link BillingConflictException} ではない素の {@link BusinessException} として投げる
+     * （PR6a 由来・kind 非依存の汎用判定のため）。ここで初めて「その pointer の持ち主が upgrade の
+     * 支払い待ちか」を逆引きし、判別できる形へ包み直す。upgrade 以外が原因の CHANGE_CONFLICT
+     * （引継との排他・解約予約中など）はそのまま素通りする（該当する change 行が無いため）。</p>
+     */
+    private RuntimeException enrichPendingPaymentConflict(RuntimeException e, UUID contractId) {
+        if (!(e instanceof BusinessException businessException)
+                || e instanceof BillingConflictException
+                || businessException.getErrorCode() != EntitlementErrorCode.CHANGE_CONFLICT) {
+            return e;
+        }
+        return billingContractChangeRepository
+                .findByContractIdAndStatusInAndDeletedAtIsNull(contractId, PENDING_PAYMENT_STATUSES)
+                .stream()
+                .findFirst()
+                .<RuntimeException>map(change -> new BillingConflictException(
+                        EntitlementErrorCode.CHANGE_CONFLICT,
+                        new BillingConflictDetails(
+                                Reason.CHANGE_CONFLICT, null, null, change.getStatus().name())))
+                .orElse(e);
     }
 
     /**
