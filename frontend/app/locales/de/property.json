@@ -98,6 +98,9 @@
     "vendor": {
       "title": "Auftragnehmer-Stammdaten",
       "subtitle": "Stammdaten für Bau- und Inspektionsfirmen",
+      "notice": {
+        "personalScopeUnsupported": "Die Auftragnehmer-Verwaltung ist im persönlichen Bereich nicht verfügbar. Bitte wechseln Sie zu einem Team- oder Organisationsbereich."
+      },
       "newVendor": "Neuer Auftragnehmer",
       "editVendor": "Auftragnehmer bearbeiten",
       "deleteConfirm": "Auftragnehmer logisch löschen?",
