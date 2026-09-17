@@ -322,11 +322,10 @@ WHERE ((is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
 
 時系列順でソート可能な UUIDv7 を新規テーブルの標準 ID 型として採用する。
 
-> 2026-09-15 の CMP-008 CI 実測では、既存 `UuidV7Entity` の
-> `@UuidGenerator(style = TIME)` は UUIDv7 ではなく UUIDv1 を生成した。
-> 以下は当初の設計意図を示す記録であり、真正の v7 生成を保証する実装例ではない。
-> CSP 報告の第一波は専用生成器で v7 を検証済み。共通基底と既存利用テーブルの
-> 是正は影響範囲を調査して別途判断する。
+> 2026-09-15 の CMP-008 CI 実測で、旧 `@UuidGenerator(style = TIME)` が
+> UUIDv7ではなくUUIDv1を生成すると判明した。2026-09-17に共通 `UuidV7.generate()` と
+> `@PrePersist` へ切り替え、BINARY(16)・CHAR(36)の新規採番が真正UUIDv7であること、
+> 既存UUIDv1と混在してCRUDできることを実MySQLで検証した。
 
 ```java
 /**
@@ -338,9 +337,14 @@ WHERE ((is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
 public abstract class UuidV7Entity {
 
     @Id
-    @UuidGenerator(style = UuidGenerator.Style.TIME)
-    @Column(name = "id", updatable = false, nullable = false, length = 36)
-    private String id;
+    private UUID id;
+
+    @PrePersist
+    protected void assignId() {
+        if (id == null) {
+            id = UuidV7.generate();
+        }
+    }
 }
 ```
 

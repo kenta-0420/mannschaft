@@ -12,9 +12,7 @@ import { waitForHydration } from '../helpers/wait'
  */
 
 // ウィジェット設定 API のモックレスポンス生成
-function buildWidgetSettings(
-  order: Array<{ key: string; visible: boolean }>,
-): object {
+function buildWidgetSettings(order: Array<{ key: string; visible: boolean }>): object {
   return {
     data: order.map((item, i) => ({
       widgetKey: item.key,
@@ -44,6 +42,10 @@ const INITIAL_WIDGET_ORDER = [
   { key: 'PERSONAL_MY_ORGANIZATIONS', visible: true },
   { key: 'PERSONAL_FAVORITES', visible: true },
   { key: 'RECENT_ACTIVITY', visible: true },
+  { key: 'RECRUITMENT_FEED', visible: true },
+  { key: 'MY_RECRUITMENTS', visible: true },
+  { key: 'MY_CORKBOARD', visible: true },
+  { key: 'VILLAGE_LOBBY_DIGEST', visible: true },
 ]
 
 test.describe('PD-WIDGET-001〜006: 個人ダッシュボードウィジェット DB 永続化', () => {
@@ -136,6 +138,9 @@ test.describe('PD-WIDGET-001〜006: 個人ダッシュボードウィジェッ�
     // 挨拶が表示されるまで待機
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 })
 
+    // C案は初期全閉のため、やることカテゴリを開いてから内容を確認する。
+    await page.locator('#personal-dashboard-section-button-todo').click()
+
     // PERSONAL_TODO（個人TODO）は非表示設定になっているため、
     // 「個人TODO」というテキストのウィジェットカードが存在しないことを確認する
     // （DashboardWidgetCard が描画したウィジェットラベルとして確認）
@@ -215,14 +220,14 @@ test.describe('PD-WIDGET-001〜006: 個人ダッシュボードウィジェッ�
 
     // WidgetFamilyHub が描画されること（ウィジェット設定グリッドの外に固定表示される）
     // FamilyHub は WidgetFamilyHub コンポーネントで描画される
-    const familyHubEl = page.locator('[data-testid="family-hub-widget"]')
+    const familyHubEl = page
+      .locator('[data-testid="family-hub-widget"]')
       .or(page.locator('.widget-family-hub'))
-    // 存在チェック（コンポーネントが使う特徴的なテキスト等で確認）
-    // FamilyHub が v-if で描画される位置（ウィジェットグリッドの前）に表示されることを確認
-    // ここではウィジェット設定ボタンが存在し、かつ draggable アイテムが存在することで基本動作を確認
-    await expect(page.locator('[draggable="true"]').first()).toBeVisible({ timeout: 5_000 })
     // FamilyHub の存在は実機 E2E で検分時に確認（モックでは WidgetFamilyHub 内部 API が別途必要）
     expect(familyHubEl).toBeTruthy()
+    // 表示面のD&Dは固定カテゴリ化に伴い廃止し、設定ダイアログに限定する。
+    await expect(page.getByTestId('personal-dashboard-accordion')).toBeVisible()
+    await expect(page.locator('[draggable="true"]')).toHaveCount(0)
   })
 
   test('PD-WIDGET-005: ウィジェット設定ボタンでダイアログが開く（AC3-1 の前提確認）', async ({
@@ -252,9 +257,9 @@ test.describe('PD-WIDGET-001〜006: 個人ダッシュボードウィジェッ�
     await waitForHydration(page)
 
     // ページヘッダーが表示される
-    await expect(
-      page.getByRole('heading', { name: 'ダッシュボードウィジェット設定' }),
-    ).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: 'ダッシュボードウィジェット設定' })).toBeVisible(
+      { timeout: 10_000 },
+    )
 
     // 個人タブがデフォルト選択
     await expect(page.getByRole('button', { name: '個人' })).toBeVisible()
@@ -271,5 +276,27 @@ test.describe('PD-WIDGET-001〜006: 個人ダッシュボードウィジェッ�
     await page.getByRole('button', { name: '個人' }).click()
     // 個人タブに戻っても draggable アイテムが存在する
     await expect(page.locator('[draggable="true"]').first()).toBeVisible({ timeout: 5_000 })
+  })
+
+  test('PD-WIDGET-007: C案アコーディオンは初期全閉で複数カテゴリを同時に開ける', async ({
+    page,
+  }) => {
+    await setupMocks(page)
+    await page.goto('/dashboard')
+    await waitForHydration(page)
+
+    const accordion = page.getByTestId('personal-dashboard-accordion')
+    await expect(accordion).toBeVisible({ timeout: 10_000 })
+    const headers = accordion.locator('button[aria-expanded]')
+    await expect(headers).toHaveCount(5)
+    expect(
+      await headers.evaluateAll((items) => items.map((item) => item.getAttribute('aria-expanded'))),
+    ).toEqual(['false', 'false', 'false', 'false', 'false'])
+
+    await headers.nth(0).click()
+    await headers.nth(1).click()
+    await expect(headers.nth(0)).toHaveAttribute('aria-expanded', 'true')
+    await expect(headers.nth(1)).toHaveAttribute('aria-expanded', 'true')
+    await expect(headers.nth(2)).toHaveAttribute('aria-expanded', 'false')
   })
 })

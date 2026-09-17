@@ -144,6 +144,16 @@ class TeamAnalyticsControllerTest {
         verify(accessGuard).requireScopeMember(isNull(), eq(PageViewScopeType.TEAM), eq(42L));
     }
 
+    @Test
+    @DisplayName("CMP-112: 数値IDのチームパスも正準スコープ型で受け付ける")
+    void getAnalytics_numericTeamId_returns200() throws Exception {
+        given(analyticsService.getAnalytics(eq(PageViewScopeType.TEAM), eq(TEAM_ID), isNull(), isNull()))
+                .willReturn(mockResult());
+
+        mockMvc.perform(get("/api/v1/teams/{slug}/analytics", TEAM_ID))
+                .andExpect(status().isOk());
+    }
+
     // ─── AC-09: 非メンバー → 404 ─────────────────────────────────────
 
     @Test

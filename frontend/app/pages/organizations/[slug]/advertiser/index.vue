@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AdvertiserAccountResponse, AdvertiserOverviewResponse } from '~/types/advertiser'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'org-role-guard'] })
 const route = useRoute()
 const { t } = useI18n()
 const orgSlug = String(route.params.slug)

@@ -6,7 +6,7 @@
  */
 import type { AnalyticsResponse } from '~/types/analytics'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: ['auth', 'org-role-guard'] })
 
 const route = useRoute()
 const orgSlug = computed(() => String(route.params.slug))

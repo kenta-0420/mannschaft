@@ -224,6 +224,15 @@ public class PerformanceStatsService {
         // チームIDリストを決定（指定なしの場合はユーザーの全所属チーム）
         List<Long> teamIds;
         if (teamId != null) {
+            // teamId 指定時のみ所属検証を適用する（CMP-260826-2127 派生: 非所属 teamId 指定で
+            // 指標定義名・チーム名が読めていた欠陥の根治）。null（省略）は主経路であり、
+            // 全所属チーム横断集計という既存挙動を壊さないためここでは検証しない。
+            // 存在しない teamId も非メンバーと同じ 403 とし、存在オラクルを作らない。
+            if (!accessControlService.isSystemAdmin(currentUserId)
+                    && !accessControlService.isAdminOrAbove(currentUserId, teamId, SCOPE_TEAM)
+                    && !accessControlService.isMember(currentUserId, teamId, SCOPE_TEAM)) {
+                throw new com.mannschaft.app.common.BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+            }
             teamIds = List.of(teamId);
         } else {
             // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
