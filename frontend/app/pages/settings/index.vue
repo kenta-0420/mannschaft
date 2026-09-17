@@ -108,6 +108,18 @@ const individualItems = [
     to: '/settings/contact-privacy',
   },
   {
+    label: 'プロフィール公開設定',
+    description: '未ログインユーザーにプロフィールを公開するかどうかの設定',
+    icon: 'pi pi-eye',
+    to: '/settings/profile-visibility',
+  },
+  {
+    label: '保護者同意リンク管理',
+    description: '承認済みの保護者・監護している子アカウントの管理',
+    icon: 'pi pi-user-plus',
+    to: '/parental-consent/manage',
+  },
+  {
     label: '招待URL管理',
     description: '連絡先追加用の招待URLを発行・管理',
     icon: 'pi pi-link',
