@@ -255,10 +255,9 @@ watch(
 const isEmpty = computed(() => !loading.value && items.value.length === 0 && !errorMessage.value)
 
 onMounted(async () => {
-  if (isAuthenticated.value) {
-    await loadPrefectures()
-    if (prefectureCode.value) await loadCities(prefectureCode.value)
-  }
+  // 公開検索の絞り込みにも必要な、個人・テナント情報を含まない地域マスタ。
+  await loadPrefectures()
+  if (prefectureCode.value) await loadCities(prefectureCode.value)
   // 組織詳細 API は認証必須。公開検索の未ログイン利用者を 401 共通処理で
   // ログイン画面へ送らないよう、組織名の補助表示は認証済みの場合だけ取得する。
   if (isAuthenticated.value) await loadOrganizationName()

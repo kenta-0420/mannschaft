@@ -95,7 +95,7 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
     private static final int TOURNAMENT_AGGREGATE_AUTHENTICATED_RATE_PER_MINUTE = 80;
     /** 大会の重い集計エンドポイントの未認証上限（DB 負荷対策のため PUBLIC_API より厳しい）。 */
     private static final int TOURNAMENT_AGGREGATE_ANONYMOUS_RATE_PER_MINUTE = 20;
-    /** 低リスク静的・準静的系（contact-invite / stats / postal-code / active-incidents）の認証済み上限。 */
+    /** 低リスク静的・準静的系（contact-invite / stats / postal-code / active-incidents / region master）の認証済み上限。 */
     private static final int MISC_LOW_AUTHENTICATED_RATE_PER_MINUTE = 120;
     /** 低リスク静的・準静的系の未認証上限。 */
     private static final int MISC_LOW_ANONYMOUS_RATE_PER_MINUTE = 30;
@@ -258,6 +258,10 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
     private static final Pattern ACTIVE_INCIDENTS_PATH =
             Pattern.compile("^/api/v1/active-incidents$");
 
+    /** 公開検索で使用する都道府県・市区町村の読み取り専用マスタ。 */
+    private static final Pattern REGION_MASTER_PATH =
+            Pattern.compile("^/api/v1/master/prefectures(/[^/]+/cities)?$");
+
     // ──── 公開網漏れ是正（署名検証済み POST Webhook 系） ────────
     /**
      * 署名 / トークン検証を Controller 側で行う POST 系公開エンドポイント。
@@ -416,7 +420,8 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
         if (CONTACT_INVITE_PATH.matcher(path).matches()
                 || PUBLIC_STATS_PATH.matcher(path).matches()
                 || POSTAL_CODE_POLICIES_PATH.matcher(path).matches()
-                || ACTIVE_INCIDENTS_PATH.matcher(path).matches()) {
+                || ACTIVE_INCIDENTS_PATH.matcher(path).matches()
+                || REGION_MASTER_PATH.matcher(path).matches()) {
             return Target.MISC_LOW;
         }
         if (isWebhookPath(path)) {

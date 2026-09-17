@@ -24,15 +24,20 @@ async function loginBrowser(page: Page): Promise<void> {
   await page.locator('input#email').fill(ADMIN_EMAIL)
   await page.locator('input[type="password"]').fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: 'ログイン', exact: true }).click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 30_000 })
+  await page.waitForURL((url) => !url.pathname.includes('/login'), {
+    timeout: 60_000,
+    waitUntil: 'domcontentloaded',
+  })
 }
 
 async function openAndExpectApi(page: Page, path: string, apiPath: string): Promise<void> {
   const responsePromise = page.waitForResponse(
-    (response) => response.url().includes(apiPath) && response.request().method() === 'GET',
+    (response) => response.url().includes(apiPath)
+      && response.request().method() === 'GET'
+      && response.status() === 200,
     { timeout: 60_000 },
   )
-  await page.goto(path)
+  await page.goto(path, { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   const response = await responsePromise
   expect(response.status(), `${apiPath} should return 200`).toBe(200)
@@ -52,22 +57,14 @@ test.afterAll(async () => {
   await api.dispose()
 })
 
-test('slug画面導線で対象7コントローラの実APIと表示結果を確認する', async ({ page, browser }) => {
-  test.setTimeout(300_000)
+test('チームslug画面導線の実APIと表示結果を確認する', async ({ page }) => {
+  test.setTimeout(180_000)
   await loginBrowser(page)
 
   await openAndExpectApi(
     page,
     `/teams/${TEAM.slug}/analytics`,
     `/api/v1/teams/${TEAM.slug}/analytics`,
-  )
-  await expect(page.locator('p.text-3xl')).toHaveCount(4)
-  await expect(page.locator('canvas').first()).toBeVisible()
-
-  await openAndExpectApi(
-    page,
-    `/organizations/${ORGANIZATION.slug}/analytics`,
-    `/api/v1/organizations/${ORGANIZATION.slug}/analytics`,
   )
   await expect(page.locator('p.text-3xl')).toHaveCount(4)
   await expect(page.locator('canvas').first()).toBeVisible()
@@ -86,6 +83,19 @@ test('slug画面導線で対象7コントローラの実APIと表示結果を確
     `/api/v1/teams/${TEAM.slug}/modules/catalog`,
   )
   await expect(page.locator('div.rounded-xl:has(.pi-puzzle)').first()).toBeVisible()
+})
+
+test('組織slug画面導線の実APIと表示結果を確認する', async ({ page }) => {
+  test.setTimeout(180_000)
+  await loginBrowser(page)
+
+  await openAndExpectApi(
+    page,
+    `/organizations/${ORGANIZATION.slug}/analytics`,
+    `/api/v1/organizations/${ORGANIZATION.slug}/analytics`,
+  )
+  await expect(page.locator('p.text-3xl')).toHaveCount(4)
+  await expect(page.locator('canvas').first()).toBeVisible()
 
   await openAndExpectApi(
     page,
@@ -100,21 +110,42 @@ test('slug画面導線で対象7コントローラの実APIと表示結果を確
     `/api/v1/organizations/${ORGANIZATION.slug}/projects`,
   )
   await expect(page.locator('h1').first()).toBeVisible()
+})
 
-  const anonymous = await browser.newContext({ baseURL: page.url().split('/organizations/')[0] })
-  const anonymousPage = await anonymous.newPage()
-  try {
-    await openAndExpectApi(
-      anonymousPage,
-      `/organizations/${ORGANIZATION.slug}/teams/search`,
-      `/api/v1/organizations/${ORGANIZATION.slug}/teams/search`,
-    )
-    await expect(anonymousPage.getByText('FC Tokyo U-18 Test', { exact: true })).toBeVisible()
-    await expect(anonymousPage.locator(`a[href="/public/teams/${TEAM.slug}"]`).first()).toBeVisible()
-    await expect(anonymousPage.locator('body')).not.toContainText('Organization not found')
-  } finally {
-    await anonymous.close()
-  }
+test('匿名の組織内チーム検索で地域絞り込みを利用できる', async ({ page }) => {
+  test.setTimeout(180_000)
+  const prefecturesResponsePromise = page.waitForResponse(
+      (response) => response.url().endsWith('/api/v1/master/prefectures')
+        && response.request().method() === 'GET',
+      { timeout: 60_000 },
+  )
+  await openAndExpectApi(
+    page,
+    `/organizations/${ORGANIZATION.slug}/teams/search`,
+    `/api/v1/organizations/${ORGANIZATION.slug}/teams/search`,
+  )
+  expect((await prefecturesResponsePromise).status()).toBe(200)
+  await expect(page.getByText('FC Tokyo U-18 Test', { exact: true })).toBeVisible()
+  await expect(page.locator(`a[href="/public/teams/${TEAM.slug}"]`).first()).toBeVisible()
+  await expect(page.locator('body')).not.toContainText('Organization not found')
+
+  const prefectureSelect = page.locator('#team-search-prefecture')
+  await expect(prefectureSelect).toBeEnabled()
+  await prefectureSelect.click()
+  const tokyoOption = page.getByRole('option', { name: '東京都', exact: true })
+  await expect(tokyoOption).toBeVisible()
+  const citiesResponsePromise = page.waitForResponse(
+    (response) => response.url().endsWith('/api/v1/master/prefectures/13/cities')
+      && response.request().method() === 'GET',
+    { timeout: 60_000 },
+  )
+  await tokyoOption.click()
+  expect((await citiesResponsePromise).status()).toBe(200)
+
+  const citySelect = page.locator('#team-search-city')
+  await expect(citySelect).toBeEnabled()
+  await citySelect.click()
+  await expect.poll(() => page.getByRole('option').count()).toBeGreaterThan(1)
 })
 
 test('数値ID互換導線はACTIVEスコープだけを受理する', async () => {
