@@ -416,6 +416,27 @@ export function buildResultSummary(opts: BuildResultOptions): SurveyResultSummar
   }
 }
 
+function resultQuestionTypeToWire(questionType: SurveyResultSummary['questionType']) {
+  switch (questionType) {
+    case 'TEXT':
+      return 'FREE_TEXT'
+    case 'RATING':
+      return 'SCALE'
+    default:
+      return questionType
+  }
+}
+
+function resultSummaryToWire(result: SurveyResultSummary) {
+  return {
+    questionId: result.questionId,
+    questionText: result.questionText,
+    questionType: resultQuestionTypeToWire(result.questionType),
+    optionResults: result.optionResults,
+    textResponses: result.textResponses,
+  }
+}
+
 /** RespondentItem の雛形を生成する。 */
 export function buildRespondent(
   opts: Partial<RespondentItem> & { userId: number; fullName: string },
@@ -657,10 +678,19 @@ export async function mockSurveyApi(page: Page, opts: MockSurveyApiOptions): Pro
       return
     }
     const results = opts.resultsById?.[id] ?? []
+    const survey = opts.surveys?.find((item) => item.id === id)
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: results }),
+      body: JSON.stringify({
+        data: {
+          surveyId: id,
+          title: survey?.content?.title ?? '',
+          responseCount: survey?.stats?.responseCount ?? results[0]?.totalResponses ?? 0,
+          targetCount: survey?.stats?.targetCount ?? 0,
+          questionResults: results.map(resultSummaryToWire),
+        },
+      }),
     })
   })
 

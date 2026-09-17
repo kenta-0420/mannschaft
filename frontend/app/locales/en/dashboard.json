@@ -92,6 +92,17 @@
       "create_team_button": "Create Team",
       "create_org_button": "Create Organization"
     },
+    "personal_accordion": {
+      "schedule": "Schedule & time",
+      "todo": "To do",
+      "communication": "Messages & notices",
+      "feed": "Feeds",
+      "content_affiliation": "My content & groups",
+      "more_count": "and {count} more",
+      "visible_count": "{count} visible",
+      "empty": "0",
+      "count": "{count}"
+    },
     "widget_labels": {
       "event-dismissal-reminder": "Disbanding Reminder",
       "notices": "Announcements",

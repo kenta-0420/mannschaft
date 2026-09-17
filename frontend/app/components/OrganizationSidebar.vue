@@ -3,6 +3,8 @@ import type { SidebarCategory, SidebarItem } from '~/types/sidebar'
 
 const props = defineProps<{
   orgId: string
+  /** 管理者/メンバーレンズが「メンバー」プレビュー中か。BaseSidebar.vue へそのまま転送する。 */
+  memberLensActive?: boolean
 }>()
 
 const categories: SidebarCategory[] = [
@@ -108,7 +110,9 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.leagueTransfers', icon: 'pi pi-arrow-right-arrow-left', path: 'league-transfers', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.queue', icon: 'pi pi-sort-numeric-up', path: 'queue', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.timelineDigest', icon: 'pi pi-align-left', path: 'timeline-digest', moduleSlug: null, requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.translations', icon: 'pi pi-language', path: 'translations', moduleSlug: null, requiredRole: 'ADMIN' },
+      // CMP-260917-1351 課題C: 実装（translations.vue は middleware:'auth' のみ・ADMIN限定ではない）に
+      // 合わせて MEMBER 可へ訂正（殿の裁可済み）。
+      { labelKey: 'orgSidebar.translations', icon: 'pi pi-language', path: 'translations', moduleSlug: null, requiredRole: 'MEMBER' },
     ],
   },
   {
@@ -176,6 +180,7 @@ function handleTabNavigate(item: SidebarItem) {
     scope-type="organization"
     :scope-id="props.orgId"
     :categories="categories"
+    :member-lens-active="props.memberLensActive"
     @tab-navigate="handleTabNavigate"
   />
 </template>

@@ -6,6 +6,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.config.TeamScopeId;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.dto.TeamModuleCatalogResponse;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
@@ -37,6 +38,7 @@ public class TeamModuleController {
 
     private final ModuleService moduleService;
     private final AccessControlService accessControlService;
+    private final TeamService teamService;
 
 
     /**
@@ -51,6 +53,7 @@ public class TeamModuleController {
     public ResponseEntity<ApiResponse<List<TeamModuleResponse>>> getTeamModules(
             @PathVariable("slug") TeamScopeId scopeId) {
         Long teamId = scopeId.value();
+        teamService.assertActiveTeamExists(teamId);
         // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
         accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
         return ResponseEntity.ok(ApiResponse.of(moduleService.getTeamModules(teamId)));
@@ -69,6 +72,7 @@ public class TeamModuleController {
     public ResponseEntity<ApiResponse<TeamModuleCatalogResponse>> getTeamModuleCatalog(
             @PathVariable("slug") TeamScopeId scopeId) {
         Long teamId = scopeId.value();
+        teamService.assertActiveTeamExists(teamId);
         // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
         accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
         return ResponseEntity.ok(ApiResponse.of(moduleService.getTeamModuleCatalog(teamId)));
@@ -88,6 +92,7 @@ public class TeamModuleController {
             @PathVariable Long moduleId,
             @Valid @RequestBody ToggleModuleRequest request) {
         Long teamId = scopeId.value();
+        teamService.assertActiveTeamExists(teamId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // ADMINのみ許可（手本: OrganizationModuleController#toggleOrganizationModule）
         if (!accessControlService.isAdmin(currentUserId, teamId, "TEAM")) {
@@ -110,6 +115,7 @@ public class TeamModuleController {
             @PathVariable("slug") TeamScopeId scopeId,
             @RequestParam Long templateId) {
         Long teamId = scopeId.value();
+        teamService.assertActiveTeamExists(teamId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // ADMINのみ許可（テンプレート一括適用はチーム全体のモジュール設定を書き換えるため）
         if (!accessControlService.isAdmin(currentUserId, teamId, "TEAM")) {
