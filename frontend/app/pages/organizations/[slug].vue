@@ -430,7 +430,7 @@ provideOrgShellContext({
         :tabs="tabs"
         :active-tab="activeTab"
         :sidebar="OrganizationSidebar"
-        :sidebar-props="{ orgId: orgSlug }"
+        :sidebar-props="{ orgId: orgSlug, memberLensActive: !adminLens }"
         :show-sidebar="showSidebar"
         :show-lens="isAdminOrDeputy"
         :lens="adminLens"

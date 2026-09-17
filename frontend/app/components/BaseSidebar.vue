@@ -5,6 +5,16 @@ const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: string
   categories: SidebarCategory[]
+  /**
+   * 管理者/メンバーレンズが「メンバー」プレビュー中か（true=メンバー項目のみに絞る）。
+   * CMP-260917-1351 課題A: レンズはあくまで表示の絞り込み（プレビュー）であり、実ロールの
+   * 昇格には使わない。ここでの判定は常に自前で取得した実ロール（roleName/isAdmin/
+   * isAdminOrDeputy、下の useRoleAccess 参照）が土台であり、レンズは ADMIN/DEPUTY_ADMIN 項目を
+   * 追加で隠す方向にしか働かない（実ロールが MEMBER のユーザーに、レンズを「管理者」にしても
+   * 管理者項目が見えることは無い）。省略時（チーム等・レンズ機構を持たないスコープ）は
+   * 従来どおり実ロールのみで判定する。
+   */
+  memberLensActive?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -30,9 +40,16 @@ const { getTeamModules } = useModuleApi()
 
 // 項目表示判定
 function isItemVisible(item: SidebarItem): boolean {
-  if (roleName.value === 'SYSTEM_ADMIN') return true
+  // レンズが「メンバー」プレビュー中は SYSTEM_ADMIN バイパスも効かせない（実ロールを問わず
+  // メンバー項目のみに絞る＝プレビューとして機能させる）。
+  if (roleName.value === 'SYSTEM_ADMIN' && !props.memberLensActive) return true
   if (!isMember.value) return false
   if (item.moduleSlug !== null && !enabledSlugs.value.has(item.moduleSlug)) return false
+  if (props.memberLensActive) {
+    // レンズ=メンバー: 実ロールに関わらず ADMIN/DEPUTY_ADMIN 項目は隠す（狭める方向のみ）。
+    if (item.requiredRole === 'DEPUTY_ADMIN' || item.requiredRole === 'ADMIN') return false
+    return true
+  }
   if (item.requiredRole === 'DEPUTY_ADMIN' && !isAdminOrDeputy.value) return false
   if (item.requiredRole === 'ADMIN' && !isAdmin.value) return false
   return true

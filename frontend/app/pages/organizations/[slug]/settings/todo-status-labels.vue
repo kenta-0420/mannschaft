@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'organization',
-  middleware: 'auth',
+  middleware: ['auth', 'org-role-guard'],
 })
 
 const route = useRoute()
