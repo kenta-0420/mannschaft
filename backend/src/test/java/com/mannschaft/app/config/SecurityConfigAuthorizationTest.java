@@ -428,6 +428,26 @@ class SecurityConfigAuthorizationTest {
 
     @Test
     @WithAnonymousUser
+    @DisplayName("F15.4: 匿名の地域マスタGETだけは認証で弾かれない")
+    void anonymous_region_master_get_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(mockMvc.perform(get("/api/v1/master/prefectures")),
+                "GET /api/v1/master/prefectures");
+        expectNotAuthRejected(mockMvc.perform(get("/api/v1/master/prefectures/13/cities")),
+                "GET /api/v1/master/prefectures/{code}/cities");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("F15.4: 地域マスタの書込みと余分な階層は認証必須")
+    void anonymous_region_master_non_get_or_extra_path_is_auth_rejected() throws Exception {
+        expectAuthRejected(mockMvc.perform(post("/api/v1/master/prefectures")),
+                "POST /api/v1/master/prefectures");
+        expectAuthRejected(mockMvc.perform(get("/api/v1/master/prefectures/13/cities/extra")),
+                "GET /api/v1/master/prefectures/{code}/cities/extra");
+    }
+
+    @Test
+    @WithAnonymousUser
     @DisplayName("BC-11: 匿名のGET /api/v1/public/billing/plans は認証で弾かれない")
     void anonymous_public_billing_plans_get_not_auth_rejected() throws Exception {
         expectNotAuthRejected(mockMvc.perform(get("/api/v1/public/billing/plans")),

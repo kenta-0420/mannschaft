@@ -88278,7 +88278,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -90824,7 +90824,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -90847,7 +90847,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -90874,7 +90874,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -90895,7 +90895,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
                 mid: number;
             };
@@ -90923,7 +90923,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
                 mid: number;
             };
@@ -116801,7 +116801,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -116823,7 +116823,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -116849,7 +116849,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -116872,7 +116872,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -137675,7 +137675,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -137706,7 +137706,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -137912,7 +137912,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 moduleId: number;
             };
             cookie?: never;
@@ -140553,7 +140553,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -140576,7 +140576,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
                 mid: number;
             };
@@ -140600,7 +140600,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -140767,7 +140767,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 moduleId: number;
             };
             cookie?: never;
@@ -152302,7 +152302,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -152324,7 +152324,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -152564,7 +152564,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157272,7 +157272,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
@@ -157295,7 +157295,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157317,7 +157317,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157563,7 +157563,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                slug: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -158018,7 +158018,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
             };
             cookie?: never;
         };
