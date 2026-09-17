@@ -507,16 +507,49 @@ User-Agent ハッシュによる同一端末判定は **なりすまし可能な
 User-Agent 由来の identity は補助的なシグナルに過ぎず、より強い判定（IP アドレスの一致・地理的整合性等）を
 追加のシグナルとして組み合わせる余地は今後の検討課題として残る。
 
-#### 7.9.5 テスト戦略（Phase 3）
+#### 7.9.5 救済経路の監査痕跡（検分指摘により追加。2026-09-17）
+
+**指摘**: 救済経路は `log.info(...)` を出すだけで、`TokenReuseDetectedEvent` のような監査イベントを一切
+発行していなかった。§7.9.4 の評価どおり User-Agent はなりすませるため、「攻撃者が被害者の User-Agent を
+模倣して盗難トークンを再提示した」ケースは、この救済経路を通って有効なセッションを得たうえ、**監査上は
+何も起きなかったことになる**。従来は（誤検知もろとも）少なくとも `TokenReuseDetectedEvent` が上がっていたため、
+これは純粋な後退にあたる。
+
+**対処**: 救済時も新設のイベント `TokenReplaySameDeviceRescuedEvent`（`userId` / `staleTokenId`
+/ `rescuedFromTokenId` を保持）を発行し、`AuditLogEventListener#handleTokenReplaySameDeviceRescued`
+経由で `AuditEventType.TOKEN_REPLAY_RESCUED_SAME_DEVICE` として監査ログへ記録する。**全デバイス無効化は
+しない**（救済は維持する）が、「grace 超過の再提示が起き、同一端末と判定して救済した」事実は必ず記録に残す。
+救済は「検知を消したのではなく、全デバイス無効化をやめて記録に変えた」という位置づけである。
+
+**`TokenReuseDetectedEvent` を流用しなかった理由**: 同一イベント型に混ぜると「本物の盗難検知」と
+「同一端末と判定した救済」が監視側で区別できなくなり、誤報が増えて本物のアラートへの感度が下がる
+（§7.9.4 で懸念した「頻繁な強制ログアウトは異常ではないという誤学習」と対称の問題を、今度は
+監視ダッシュボード側で起こしてしまう）。既存の `TokenReuseDetectedEvent` /
+`DeviceFingerprintMismatchEvent` と同じ「イベントクラス 1 個 + `AuditEventType` 1 値 + 専用リスナーメソッド」
+という本リポジトリ既存の流儀にそのまま揃え、新しい流儀は持ち込んでいない。
+
+**警告レベルの考え方**: 救済は「クライアント側タイムアウトからの正当な自動リトライ」で日常的に起こり得る
+（稼働中 BE のログに 2-a 経路の「grace window 内で正規化」が既に複数回記録されている程度の頻度）。
+そのため救済経路のログは呼び出し元で既に `log.info`（`log.warn` ではない）とし、監査イベント・リスナー側も
+「事実の保存」に徹してアラート的な扱いはしない。真リプレイ検出（`TokenReuseDetectedEvent`、`log.warn` +
+全デバイス無効化）とは明確に温度差を残すことで、警告レベルを上げすぎて本物のアラートへの感度が下がる
+（§7.9.4 で自ら指摘した懸念を自分で作り出す）事態を避けている。
+
+#### 7.9.6 テスト戦略（Phase 3）
 
 `AuthTokenRotationServiceTest`（`SameDeviceRetryRescue` ネストクラス）でテスト先行（red→green）実装した:
 
-- AC-1: grace 超過 + フィンガープリント一致 + 後継チェーンの現行トークンが有効 → 200・`logoutAllDevices` 未呼出
+- AC-1: grace 超過 + フィンガープリント一致 + 後継チェーンの現行トークンが有効 → 200・`logoutAllDevices` 未呼出。
+  併せて `TokenReplaySameDeviceRescuedEvent` が発行され `TokenReuseDetectedEvent` は発行されないことも検証（§7.9.5）
 - AC-2: フィンガープリント不一致（別端末） → 従来どおり `AUTH_026`・全デバイス無効化
 - AC-3a/3b: リクエスト側/トークン側いずれかのフィンガープリントが null → fail closed（従来どおりリプレイ扱い）
 - AC-5: 後継チェーンが自己参照で循環していても `MAX_CHAIN_RESOLUTION_HOPS`（25）で打ち切り、
   無限ループせず有限時間で真リプレイとして処理される
 - AC-6: grace window 内（2-a 経路）の並行 refresh は本改修の影響を受けず従来どおり 200
+
+`AuditLogEventListenerTest` にも `handleTokenReplaySameDeviceRescued` の専用テストを追加し、
+`TOKEN_REPLAY_RESCUED_SAME_DEVICE` として記録され `staleTokenId` / `rescuedFromTokenId` が
+metadata に含まれることを検証した。
 
 ---
 
@@ -531,3 +564,4 @@ User-Agent 由来の identity は補助的なシグナルに過ぎず、より�
 | 2026-07-02 | §7 JWT Refresh Token 競合制御を実装に同期。並行更新を一律リプレイ誤判定して全デバイス無効化する自爆バグ（F01.1）を根治。旧設計（Valkey `SET NX` 分散ロック・409 Conflict）は fail-open と両立しない／負け側を救済できないため不採用と明記し、DB `PESSIMISTIC_WRITE` 行ロック + grace window（`replaced_by_token_hash` 後継ポインタ・既定 60 秒）方式に更新。`AUTH_026`/`AUTH_039` の 401 マッピングを追記 |
 | 2026-07-02 | §7.7 追加: 真リプレイ検出時の全デバイス無効化が呼び出し元トランザクションのロールバックで巻き戻り永続化されない過小無効化バグ（実機 E2E で発見）を根治。`AuthSessionService.logoutAllDevices()` を `@Transactional(REQUIRES_NEW)` 化し独立トランザクションで即コミット。純 Mockito UT では検知不能なため実 tx 境界を踏む結合テスト `AuthTokenReplayLogoutPersistenceIT` を追加（§7.8） |
 | 2026-09-17 | §7.9 追加（CMP-260917-1352 Phase 3）: FE の 15 秒 abort によりサーバー側ローテーションは完了しているのに Cookie ジャーに旧トークンが残り、30 秒後の自動リトライが grace window を超過して真リプレイと誤判定 → 正当な後継トークンまで巻き添えで全デバイス強制ログアウトする自爆バグを実機確認・根治。`deviceFingerprint`（User-Agent からサーバー側導出、ログイン時と同一方法）が一致し後継チェーンの現行トークンが有効な場合のみリプレイ扱いを回避。フィンガープリント欠落時は fail closed。盗難検知が弱まる範囲を正直に評価（§7.9.4） |
+| 2026-09-17 | §7.9.3 是正 + §7.9.5 追加（検分指摘）: User-Agent 無し時に `hashToken("")` を渡すと「fail closed の中に隠れた fail open」（User-Agent 無し同士が常に同一端末とみなされる）になる不備を修正し `null` を渡すよう是正。加えて救済経路が監査イベントを一切発行しておらず、User-Agent を模倣した攻撃者の再提示が「監査上は何も起きなかったことになる」退行を検分で指摘され、`TokenReplaySameDeviceRescuedEvent` を新設して `TOKEN_REPLAY_RESCUED_SAME_DEVICE` として記録するよう追加（`TokenReuseDetectedEvent` とは意図的に別種別。警告レベルは上げず日常的な救済として記録に徹する） |

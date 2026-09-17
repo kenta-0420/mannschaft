@@ -508,6 +508,15 @@ class AuthTokenRotationServiceTest {
             assertThat(response.getData().getRefreshToken()).isNotBlank();
             verify(authSessionService, never()).logoutAllDevices(anyLong());
             verify(authSessionService, never()).logoutAllDevices(anyLong(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+
+            // AC-7: 救済したことが監査ログで追える（TokenReuseDetectedEvent とは別イベントで記録される）。
+            // テスト用エンティティは builder で id を設定していない（自動採番のため null）ので、
+            // ここでは「正しいイベント型が正しい userId で 1 回発行された」ことのみを検証する。
+            verify(eventPublisher).publish(org.mockito.ArgumentMatchers.argThat(published ->
+                    published instanceof com.mannschaft.app.auth.event.TokenReplaySameDeviceRescuedEvent rescued
+                            && rescued.getUserId().equals(1L)));
+            verify(eventPublisher, never()).publish(org.mockito.ArgumentMatchers.any(
+                    com.mannschaft.app.auth.event.TokenReuseDetectedEvent.class));
         }
 
         @Test

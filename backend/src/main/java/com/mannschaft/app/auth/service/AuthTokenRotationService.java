@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.AuthErrorCode;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import com.mannschaft.app.auth.event.DeviceFingerprintMismatchEvent;
+import com.mannschaft.app.auth.event.TokenReplaySameDeviceRescuedEvent;
 import com.mannschaft.app.auth.event.TokenReuseDetectedEvent;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -52,8 +53,19 @@ import java.util.UUID;
  * {@code deviceFingerprint} が一致し、かつ後継チェーンを辿った現行トークンが有効な場合のみリプレイ扱いを
  * 回避し、現行トークンを基点に新トークンペアを発行する（{@code logoutAllDevices} は呼ばない）。
  * フィンガープリントが片方でも null/空のときは同一端末と確認できないため fail closed とし、従来どおり
- * リプレイ扱い（全デバイス無効化）とする。別端末からの再提示（＝本物の盗難）も従来どおり全デバイス無効化する。
- * {@code deviceFingerprint} はクライアントの申告値をそのまま信頼せず、呼び出し元（Controller）が
+ * リプレイ扱い（全デバイス無効化）とする。別端末からの再提示（＝本物の盗難）も従来どおり全デバイス無効化する。</p>
+ *
+ * <p><b>救済経路の監査痕跡</b>: 全デバイス無効化はしないが、「grace 超過の再提示が起き、同一端末と判定して
+ * 救済した」事実は {@link TokenReplaySameDeviceRescuedEvent} で必ず記録する。{@code deviceFingerprint} は
+ * User-Agent ハッシュというなりすまし可能な弱い identity であり、この救済経路自体が悪用され得るため
+ * （攻撃者が被害者の User-Agent を模倣すれば、盗難トークンでも救済され得る）、監査上の痕跡を残さないと
+ * 「検知が完全に消える」退行になる。{@link TokenReuseDetectedEvent}（真リプレイ検出）とは意図的に別イベント
+ * にしており、混ぜると監視側で本物の盗難検知と区別が付かず誤報が増える。救済は正当な自動リトライとして
+ * 日常的に起こり得るため、本イベント発行・対応するログ（{@code log.info}）ともに警告レベルは上げない
+ * （過検知で本物のアラートへの感度を下げないため）。
+ * 詳細評価は {@code docs/security/06_business_logic_and_abuse_prevention.md} §7.9.4/§7.9.5 を参照。</p>
+ *
+ * <p>{@code deviceFingerprint} はクライアントの申告値をそのまま信頼せず、呼び出し元（Controller）が
  * User-Agent ヘッダからサーバー側で導出したものを使う（ログイン時の {@code AuthTokenService#hashToken(userAgent)}
  * と同一の導出方法。導出が食い違うと全件不一致になり本救済が機能しなくなるため）。</p>
  *
@@ -143,6 +155,13 @@ public class AuthTokenRotationService {
                                         + "userId={}, tokenId={}, sinceRevoke={}s（grace={}s）, successorTokenId={}",
                                 existingToken.getUserId(), existingToken.getId(),
                                 secondsSinceRevoke, refreshRotationGraceSeconds, currentHead.get().getId());
+                        // 監査上の痕跡を残す（全デバイス無効化はしないが「救済した」事実は記録する）。
+                        // User-Agent はなりすまし可能なため、この救済経路自体が悪用され得る（詳細評価は
+                        // docs/security/06_business_logic_and_abuse_prevention.md §7.9.4）。
+                        // TokenReuseDetectedEvent（真リプレイ検出）とは意図的に別イベントにし、
+                        // 監視側で本物の盗難検知と混同されないようにする。
+                        eventPublisher.publish(new TokenReplaySameDeviceRescuedEvent(
+                                existingToken.getUserId(), existingToken.getId(), currentHead.get().getId()));
                         return issueRotatedTokens(currentHead.get(), true);
                     }
                     log.warn("同一端末の再試行判定だが後継チェーンの現行トークンが解決できず、リプレイとして扱う: "
