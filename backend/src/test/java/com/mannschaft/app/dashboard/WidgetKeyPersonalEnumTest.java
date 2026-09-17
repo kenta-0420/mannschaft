@@ -155,6 +155,17 @@ class WidgetKeyPersonalEnumTest {
         void personal_favorites_存在() {
             assertThat(WidgetKey.valueOf("PERSONAL_FAVORITES").getScopeType()).isEqualTo(ScopeType.PERSONAL);
         }
+
+        @Test
+        @DisplayName("C案の固定カテゴリ用 recruitment 系キーが PERSONAL スコープで存在する")
+        void c案_recruitment系キー_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_RECRUITMENT_FEED").getScopeType())
+                    .isEqualTo(ScopeType.PERSONAL);
+            assertThat(WidgetKey.valueOf("PERSONAL_MY_RECRUITMENTS").getScopeType())
+                    .isEqualTo(ScopeType.PERSONAL);
+            assertThat(WidgetKey.valueOf("PERSONAL_VILLAGE_LOBBY_DIGEST").getScopeType())
+                    .isEqualTo(ScopeType.PERSONAL);
+        }
     }
 
     // ========================================
@@ -194,16 +205,30 @@ class WidgetKeyPersonalEnumTest {
     class PersonalScopeCount {
 
         @Test
-        @DisplayName("PERSONAL スコープのキーが 27 件（F02.11を含む）")
-        void personal_scope_total_27件() {
+        @DisplayName("PERSONAL スコープのキーが 30 件（C案の recruitment 系3キーを含む）")
+        void personal_scope_total_30件() {
             List<WidgetKey> personalKeys = Arrays.stream(WidgetKey.values())
                     .filter(wk -> wk.getScopeType() == ScopeType.PERSONAL)
                     .collect(Collectors.toList());
 
             assertThat(personalKeys)
-                    .as("PERSONAL スコープのキーが 27 件あること（F02.11 RETURN_STAY_PLAN 追加）")
-                    .hasSize(27)
-                    .contains(WidgetKey.RETURN_STAY_PLAN);
+                    .as("PERSONAL スコープのキーが 30 件あること（C案の recruitment 系3キーを含む）")
+                    .hasSize(30)
+                    .contains(WidgetKey.RETURN_STAY_PLAN,
+                            WidgetKey.valueOf("PERSONAL_RECRUITMENT_FEED"),
+                            WidgetKey.valueOf("PERSONAL_MY_RECRUITMENTS"),
+                            WidgetKey.valueOf("PERSONAL_VILLAGE_LOBBY_DIGEST"));
+        }
+
+        @Test
+        @DisplayName("PERSONAL スコープの sortOrder が一意である")
+        void personal_scope_sort_order_unique() {
+            List<Integer> sortOrders = Arrays.stream(WidgetKey.values())
+                    .filter(wk -> wk.getScopeType() == ScopeType.PERSONAL)
+                    .map(WidgetKey::getDefaultSortOrder)
+                    .collect(Collectors.toList());
+
+            assertThat(sortOrders).doesNotHaveDuplicates();
         }
 
         @Test
@@ -246,6 +271,9 @@ class WidgetKeyPersonalEnumTest {
                     WidgetKey.valueOf("PERSONAL_REFLECTION_TODAY"),
                     WidgetKey.valueOf("PERSONAL_TEAM_ANNOUNCEMENTS"),
                     WidgetKey.valueOf("PERSONAL_ORG_ANNOUNCEMENTS"),
+                    WidgetKey.valueOf("PERSONAL_RECRUITMENT_FEED"),
+                    WidgetKey.valueOf("PERSONAL_MY_RECRUITMENTS"),
+                    WidgetKey.valueOf("PERSONAL_VILLAGE_LOBBY_DIGEST"),
                     WidgetKey.valueOf("PERSONAL_BLOG"),
                     WidgetKey.valueOf("PERSONAL_MY_TEAMS"),
                     WidgetKey.valueOf("PERSONAL_MY_ORGANIZATIONS"),
