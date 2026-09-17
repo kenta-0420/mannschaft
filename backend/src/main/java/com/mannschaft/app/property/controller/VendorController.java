@@ -36,9 +36,14 @@ import java.util.List;
  * <p>設計書 {@code docs/features/F09.13_property_history.md} §4「業者マスタ API」に対応。
  * パス: {@code /api/v1/{scope}/{id}/vendors}（{@code scope} = "teams" or "organizations"）。</p>
  *
- * <p><b>認可根治戦役 Wave3-B5</b>: 閲覧系（一覧/サジェスト/単体取得）は
- * {@link AccessControlService#checkMembership}、作成/更新/削除は
- * {@link AccessControlService#checkAdminOrAbove} で保護する。
+ * <p><b>認可根治戦役 Wave3-B5 → CMP-260917-1350 Phase 1 で是正（スコープ差分あり）</b>:
+ * 作成/更新/削除は Wave3-B5 以来 {@link AccessControlService#checkAdminOrAbove} で保護する。
+ * 閲覧系（一覧/サジェスト/単体取得）は <b>ORGANIZATION スコープのみ</b> ADMIN/DEPUTY_ADMIN 限定
+ * （組織サイドバーの表示条件に合わせて是正）とし、<b>TEAM スコープは従来どおり
+ * {@link AccessControlService#checkMembership}</b> のまま維持する。TEAM は
+ * {@code PropertyScopeContractIT}「一般メンバーの業者一覧取得は200」が過去戦役 Wave3-B5 の
+ * 正本依頼どおり意図的に固定した契約であり、これを崩してはならない
+ * （2026-09-17 CI で誤って ORGANIZATION と同じ扱いにし赤化させた事故の是正）。
  * BOLA（IDOR）防止は従来どおり {@code VendorService} 側の
  * {@code ensureScopeMatches}（scope 不一致は PROPERTY_005 で存在秘匿）に委ねる。</p>
  */
@@ -71,7 +76,7 @@ public class VendorController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         String scopeType = toScopeType(scope);
-        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
+        checkReadAccess(scopeType, scopeId);
         Pageable pageable = PageRequest.of(page, size);
 
         // q または category が指定されていれば絞り込みリストを返す（一覧表示用に Page 化はせず簡易ラップ）
@@ -111,7 +116,7 @@ public class VendorController {
             @PathVariable("scopeId") Long scopeId,
             @RequestParam("q") String q) {
         String scopeType = toScopeType(scope);
-        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
+        checkReadAccess(scopeType, scopeId);
         List<VendorEntity> list = vendorService.suggestByName(scopeType, scopeId, q);
         return ApiResponse.of(list.stream().map(VendorSuggestionResponse::from).toList());
     }
@@ -126,7 +131,7 @@ public class VendorController {
             @PathVariable("scopeId") Long scopeId,
             @PathVariable("vendorId") Long vendorId) {
         String scopeType = toScopeType(scope);
-        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
+        checkReadAccess(scopeType, scopeId);
         // IDOR 防止: VendorService 側で scope 一致を検証する
         VendorEntity vendor = vendorService.getVendor(scopeType, scopeId, vendorId);
         return ApiResponse.of(VendorResponse.from(vendor));
@@ -171,6 +176,19 @@ public class VendorController {
     // =========================================================================
     // 内部ヘルパー
     // =========================================================================
+
+    /**
+     * 閲覧系（一覧/サジェスト/単体取得）の認可判定。ORGANIZATION スコープのみ ADMIN 以上に限定し、
+     * TEAM スコープは従来どおり checkMembership のまま維持する（クラス doc 参照）。
+     */
+    private void checkReadAccess(String scopeType, Long scopeId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        if ("ORGANIZATION".equals(scopeType)) {
+            accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+        } else {
+            accessControlService.checkMembership(userId, scopeId, scopeType);
+        }
+    }
 
     private String toScopeType(String scope) {
         return switch (scope) {
