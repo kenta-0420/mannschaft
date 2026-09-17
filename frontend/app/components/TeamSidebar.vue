@@ -134,10 +134,10 @@ const categories: SidebarCategory[] = [
       // 全レベル常時有効（V2.024/CLAUDE.md）のため moduleSlug: 'schedule' を付けても実害はないが、
       // カテゴリ管理自体はモジュール可否と無関係の設定画面なので他の設定項目と同じく null とする。
       { labelKey: 'teamSidebar.item.scheduleSettings', icon: 'pi pi-calendar-times', path: '', absolutePath: '/admin/schedule-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
-      // BulletinCategoryService は閲覧・作成・更新・削除のすべてが checkMembership のみ（ADMIN 昇格チェック無し。
-      // BE 実装がそうなっているため、ナビもそれに合わせて MEMBER 以上に表示する。BE 側の権限設計自体は
-      // 別途要確認の欠陥候補として報告する）。
-      { labelKey: 'teamSidebar.item.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'MEMBER' },
+      // BulletinCategoryService はカテゴリの作成・更新・削除で checkMembership に加えて
+      // requireManageContent を呼ぶ（BulletinAccessGuard:150）。この権限は DEPUTY_ADMIN 付与判定に
+      // 使われるものなので、一般 MEMBER に項目を出しても操作は 403 になる。
+      { labelKey: 'teamSidebar.item.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
 ]

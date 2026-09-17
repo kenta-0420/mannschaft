@@ -96,6 +96,9 @@ describe('Phase 3 運営管理ページ導線', () => {
     expect(html).not.toContain('/admin/line-settings')
     expect(html).not.toContain('/admin/sns-settings')
     expect(html).not.toContain('/admin/schedule-settings')
+    // カテゴリ CRUD は BE が requireManageContent（DEPUTY_ADMIN 付与判定）を要求するため、
+    // 一般 MEMBER に見せると押しても 403 になる導線を作ることになる。
+    expect(html).not.toContain('/admin/bulletin-categories')
   })
 
   it('P3-TEAM-004: DEPUTY_ADMIN なら line/sns/schedule-settings・bulletin-categories が出る', async () => {

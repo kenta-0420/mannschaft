@@ -148,8 +148,8 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.lineSettings', icon: 'pi pi-comment', path: '', absolutePath: '/admin/line-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
       { labelKey: 'orgSidebar.snsSettings', icon: 'pi pi-share-alt', path: '', absolutePath: '/admin/sns-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
       { labelKey: 'orgSidebar.scheduleSettings', icon: 'pi pi-calendar-times', path: '', absolutePath: '/admin/schedule-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
-      // BulletinCategoryService は checkMembership のみ（TeamSidebar と同じ根拠）。
-      { labelKey: 'orgSidebar.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'MEMBER' },
+      // カテゴリ CRUD は requireManageContent を要求する（TeamSidebar と同じ根拠）。
+      { labelKey: 'orgSidebar.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
 ]
