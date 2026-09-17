@@ -1171,6 +1171,10 @@
       "description": "井戸端会議の在席インジケーター"
     },
     {
+      "name": "課金 - プラン変更",
+      "description": "Billing Center PR6b-1 事前見積り・upgrade 実行"
+    },
+    {
       "name": "試合イベント",
       "description": "F08.10 タイムラインイベント記録・取得"
     },
@@ -1945,6 +1949,10 @@
     {
       "name": "システム管理 - スコープ強制復元",
       "description": "柱①ADMINゼロ根治 force-unarchive"
+    },
+    {
+      "name": "課金 - プラン変更",
+      "description": "Billing Center PR6b-1 3DS payment-action"
     },
     {
       "name": "議決権行使・委任状",
@@ -76236,6 +76244,112 @@
         }
       }
     },
+    "/api/v1/me/billing/contracts/{contractId}/changes": {
+      "post": {
+        "tags": [
+          "課金 - プラン変更"
+        ],
+        "summary": "PLAN 変更（upgrade）の実行",
+        "description": "事前見積りを一回だけ消費して upgrade を予約する。Idempotency-Key 必須。 clientSecret は返さない。",
+        "operationId": "change",
+        "parameters": [
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingPlanChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractChangeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/billing/contracts/{contractId}/change-previews": {
+      "post": {
+        "tags": [
+          "課金 - プラン変更"
+        ],
+        "summary": "PLAN 変更の事前見積り",
+        "description": "upgrade 対象の金額・期間を Stripe から取得する。Idempotency-Key 必須。",
+        "operationId": "preview_6",
+        "parameters": [
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingChangePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingChangePreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/billing/contracts/{contractId}/cancel": {
       "post": {
         "tags": [
@@ -108547,7 +108661,7 @@
         "operationId": "paymentActionReturn",
         "parameters": [
           {
-            "name": "billing_return_state",
+            "name": "billing_payment_action_state",
             "in": "cookie",
             "required": false,
             "schema": {
@@ -137617,6 +137731,48 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBillingInvoiceDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/billing/contracts/{contractId}/changes/{changeId}/payment-action": {
+      "get": {
+        "tags": [
+          "課金 - プラン変更"
+        ],
+        "summary": "3DS payment-action の取得",
+        "description": "change が REQUIRES_ACTION のときだけ、Stripe から都度 clientSecret を取得して返す。DB には保存しない。",
+        "operationId": "paymentAction",
+        "parameters": [
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "changeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPaymentActionResponse"
                 }
               }
             }
@@ -196304,6 +196460,115 @@
           }
         }
       },
+      "BillingPlanChangeRequest": {
+        "type": "object",
+        "properties": {
+          "previewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "previewId",
+          "version"
+        ]
+      },
+      "ApiResponseBillingContractChangeResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingContractChangeResponse"
+          }
+        }
+      },
+      "BillingContractChangeResponse": {
+        "type": "object",
+        "properties": {
+          "changeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "effectiveAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_PAYMENT",
+              "REQUIRES_ACTION",
+              "CREATING_SCHEDULE",
+              "SCHEDULED",
+              "APPLIED",
+              "FAILED",
+              "CANCELLED"
+            ]
+          }
+        }
+      },
+      "BillingChangePreviewRequest": {
+        "type": "object",
+        "properties": {
+          "toProductKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "toProductKind": {
+            "type": "string",
+            "enum": [
+              "PLAN",
+              "ADDON"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "toProductKind",
+          "version"
+        ]
+      },
+      "ApiResponseBillingChangePreviewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingChangePreviewResponse"
+          }
+        }
+      },
+      "BillingChangePreviewResponse": {
+        "type": "object",
+        "properties": {
+          "amountDueNow": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "effectiveAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "UPGRADE",
+              "DOWNGRADE"
+            ]
+          },
+          "previewId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "BillingCancelRequest": {
         "type": "object",
         "description": "解約・解約撤回リクエスト",
@@ -217940,6 +218205,10 @@
             "description": "機能キー（ADDON 契約時）。PLAN 時は null",
             "example": "ads.hide"
           },
+          "pendingChange": {
+            "$ref": "#/components/schemas/BillingPendingChange",
+            "description": "進行中のプラン変更（upgrade）の内容。進行中の変更が無ければ null"
+          },
           "planKey": {
             "type": "string",
             "description": "プランキー（PLAN 契約時）。ADDON 時は null",
@@ -218016,6 +218285,36 @@
             "type": "string",
             "description": "スコープ種別（USER / TEAM / ORG）",
             "example": "TEAM"
+          }
+        }
+      },
+      "BillingPendingChange": {
+        "type": "object",
+        "description": "F20.1 進行中のプラン変更（upgrade）の内容",
+        "properties": {
+          "changeId": {
+            "type": "string",
+            "description": "変更 ID（UUID）。GET …/changes/{changeId}/payment-action に使う",
+            "example": "0198aaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+          },
+          "effectiveAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "変更の効力発生予定の瞬間（ISO-8601 Instant）"
+          },
+          "paymentActionRequired": {
+            "type": "boolean",
+            "description": "3DS等の追加認証待ちか（true なら GET …/payment-action を叩ける）"
+          },
+          "pendingUpdateExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "支払い（3DS）の期限。pending_update が無ければ null"
+          },
+          "status": {
+            "type": "string",
+            "description": "変更の状態（PENDING_PAYMENT または REQUIRES_ACTION）",
+            "example": "REQUIRES_ACTION"
           }
         }
       },
@@ -233810,6 +234109,37 @@
             "format": "int32",
             "description": "税率（basis points。1000 \u003d 10%）",
             "example": 1000
+          }
+        }
+      },
+      "ApiResponseBillingPaymentActionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingPaymentActionResponse"
+          }
+        }
+      },
+      "BillingPaymentActionResponse": {
+        "type": "object",
+        "properties": {
+          "paymentAction": {
+            "$ref": "#/components/schemas/PaymentActionDto"
+          }
+        }
+      },
+      "PaymentActionDto": {
+        "type": "object",
+        "properties": {
+          "clientSecret": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "type": {
+            "type": "string"
           }
         }
       },
