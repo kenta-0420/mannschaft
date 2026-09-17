@@ -360,10 +360,13 @@ public class DirectMailService {
     }
 
     /**
-     * 送信統計を取得する。閲覧系のため操作者はスコープのメンバーであること（集計値のみ・PIIなし）。
+     * 送信統計を取得する（集計値のみ・PIIなし）。{@link #listMails} と同じスコープ差分方針
+     * （認可根治戦役 CMP-260917-2102 Phase 1 の追撃: ORGANIZATION のみ ADMIN 必須、
+     * TEAM は checkMembership 維持。{@code DirectMailScopeContractIT}
+     * 「一般メンバーの送信統計は200」の TEAM 契約を崩さない）。
      */
     public DirectMailStatsResponse getStats(String scopeType, Long scopeId, Long actorUserId, Long mailId) {
-        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
+        checkReadAccess(scopeType, scopeId, actorUserId);
         DirectMailLogEntity entity = findMailOrThrow(scopeType, scopeId, mailId);
 
         double openRate = entity.getTotalRecipients() > 0
@@ -385,12 +388,14 @@ public class DirectMailService {
     /**
      * メールプレビューを生成する。
      *
-     * <p>純関数（Markdown→HTML）だがスコープ付き公開入口のため、操作者はスコープのメンバーであること
-     * （認可皆無の入口を残さない）。</p>
+     * <p>純関数（Markdown→HTML）だがスコープ付き公開入口のため認可皆無の入口を残さない。
+     * {@link #listMails} と同じスコープ差分方針（認可根治戦役 CMP-260917-2102 Phase 1 の追撃:
+     * ORGANIZATION のみ ADMIN 必須、TEAM は checkMembership 維持。
+     * {@code DirectMailScopeContractIT}「一般メンバーのプレビューは200」の TEAM 契約を崩さない）。</p>
      */
     public PreviewMailResponse preview(String scopeType, Long scopeId, Long actorUserId,
                                         PreviewMailRequest request) {
-        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
+        checkReadAccess(scopeType, scopeId, actorUserId);
         String html = MarkdownConverter.toHtml(request.getBodyMarkdown());
         return new PreviewMailResponse(html);
     }
