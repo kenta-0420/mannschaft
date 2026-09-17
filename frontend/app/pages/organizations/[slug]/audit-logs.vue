@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AuditLog } from '~/types/audit-log'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: ['auth', 'org-role-guard'] })
 
 const route = useRoute()
 const orgSlug = computed(() => String(route.params.slug))

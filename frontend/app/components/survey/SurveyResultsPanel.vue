@@ -44,7 +44,7 @@ async function loadResults() {
   forbidden.value = false
   try {
     const res = await getResults(props.surveyId)
-    results.value = res.data ?? []
+    results.value = res.data.questionResults
   } catch (e) {
     const err = e as { statusCode?: number; response?: { status?: number } }
     const code = err.statusCode ?? err.response?.status

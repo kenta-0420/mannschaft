@@ -454,6 +454,78 @@
       "upload_success": "«{name}» subido correctamente",
       "upload_error": "Error al subir «{name}»",
       "uploading": "Subiendo..."
+    },
+    "hub": {
+      "pageTitle": "Configuración",
+      "searchPlaceholder": "Buscar configuración...",
+      "noSearchResults": "No se encontraron configuraciones que coincidan con \"{query}\"",
+      "individualListToggle": "Lista de configuraciones individuales",
+      "itemCount": "({count} elementos)",
+      "account": {
+        "description": "Gestiona toda la configuración en una sola pantalla"
+      },
+      "profile": {
+        "description": "Gestiona la información del perfil y la contraseña"
+      },
+      "security": {
+        "label": "Seguridad",
+        "description": "2FA, gestión de sesiones, claves de seguridad"
+      },
+      "email": {
+        "description": "Cambiar tu dirección de correo electrónico"
+      },
+      "password": {
+        "description": "Cambiar o configurar tu contraseña"
+      },
+      "language": {
+        "description": "Configuración de idioma de visualización y zona horaria"
+      },
+      "loginHistory": {
+        "description": "Historial de inicio de sesión y autenticación"
+      },
+      "linkedAccounts": {
+        "description": "Gestionar conexiones OAuth y LINE"
+      },
+      "appearance": {
+        "description": "Tema, color de fondo, configuración de visualización"
+      },
+      "navigation": {
+        "description": "Personaliza los elementos de navegación mostrados"
+      },
+      "memberCards": {
+        "description": "Ver la tarjeta de socio e historial de check-in"
+      },
+      "socialProfiles": {
+        "description": "Gestionar perfiles anónimos y seguidores"
+      },
+      "seals": {
+        "description": "Visualización del sello y configuración por ámbito"
+      },
+      "notifications": {
+        "description": "Configuración de recepción de notificaciones"
+      },
+      "calendarSync": {
+        "description": "Sincronización de calendario e integración iCal"
+      },
+      "contactPrivacy": {
+        "description": "Configuración de visibilidad para búsqueda, mensajes directos y estado en línea"
+      },
+      "contactInviteTokens": {
+        "description": "Emitir y gestionar URLs de invitación para agregar contactos"
+      },
+      "contactRequestBlocks": {
+        "label": "Lista de solicitudes bloqueadas previamente",
+        "description": "Bloquear solicitudes de contacto de usuarios específicos"
+      },
+      "storage": {
+        "description": "Consultar el uso de almacenamiento personal, de equipo y de organización"
+      },
+      "billing": {
+        "description": "Revisa tu plan actual, complementos y funciones disponibles"
+      },
+      "parentalConsentManage": {
+        "description": "Gestionar padres aprobados y cuentas infantiles supervisadas"
+      }
     }
   }
 }
