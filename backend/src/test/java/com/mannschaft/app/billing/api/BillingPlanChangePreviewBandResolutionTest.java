@@ -82,7 +82,8 @@ class BillingPlanChangePreviewBandResolutionTest {
         memberCountService = mock(ScopeMemberCountService.class);
         planChangeGateway = mock(BillingPlanChangeGateway.class);
         service = new BillingPlanChangePreviewService(
-                contractRepository, previewRepository, bandRepository, priceVersionRepository,
+                contractRepository, previewRepository,
+                new BillingCurrentBandResolver(priceVersionRepository, bandRepository),
                 accessGuard, memberCountService, planChangeGateway, new ObjectMapper(),
                 Clock.fixed(NOW, ZONE));
 

@@ -231,26 +231,28 @@ function closePlanChangeDialog() {
 }
 
 /**
- * 変更先候補をカタログから取る。ダイアログを開いた時だけ叩く。
+ * 変更先候補を組み立てる。ダイアログを開いた時だけ叩く。
  *
- * **実際にアップグレードになるもの（価格上位）だけを候補にする**（修繕2巡目 P2-4）。
- * BE の見積りは変更先金額が現在以下なら必ず 409（`CHANGE_CONFLICT`）で拒否する
- * （`BillingPlanChangePreviewService`: `toBand <= fromBand` で conflict。AC-22/23/24）ため、
- * 下位・同額のプランは「選べるが必ず失敗する」項目にしかならない。価格が分からないプラン
- * （`baseMonthlyPriceJpy` が null の無償プラン等）は上位であることを主張できないので出さない。
- * なお**下位プランへの変更は PR6b-2 の題目**であり、本 PR では扱わない。
+ * **候補の決定は BE の {@code changeablePlanKeys} に一本化する**（Codex 検分3巡目 P1 是正）。
+ * 以前はカタログの {@code baseMonthlyPriceJpy} で「現行プランより上位か」を FE で推測していたが、
+ * {@code baseMonthlyPriceJpy} は販売価格の正本ではない（実際の upgrade 判定は現行 revision の
+ * {@code billing_price_band_versions.amount_including_tax} と現在の人数で行う・
+ * 設計書 05_billing_center.md §5）。基準額が null・古い、あるいは TEAM/ORG のように人数 band で
+ * 価格が変わる構成では、この推測は「有効な上位プランを隠す」か「必ず 409 になる候補を出す」
+ * のどちらかを起こしうる。BE（{@code BillingCurrentBandResolver}・見積りと同じ band 解決）が
+ * 確定した候補一覧だけを使い、カタログは表示名（{@code displayNameKey}）の解決にのみ使う。
  */
 async function loadPlanChangeCandidates() {
   try {
+    const changeableKeys = new Set(planChangeTarget.value?.changeablePlanKeys ?? [])
+    if (changeableKeys.size === 0) {
+      planChangePlans.value = []
+      return
+    }
     const res = await billingApi.getPlanCatalog()
     const plans = res.data.plans ?? []
-    const current = planChangeTarget.value?.planKey
-    const priceOf = (planKey: string | undefined): number =>
-      plans.find(p => p.planKey === planKey)?.baseMonthlyPriceJpy ?? 0
-    const currentPrice = priceOf(current)
     planChangePlans.value = plans
-      .filter(p => typeof p.planKey === 'string' && p.planKey !== current)
-      .filter(p => (p.baseMonthlyPriceJpy ?? 0) > currentPrice)
+      .filter(p => typeof p.planKey === 'string' && changeableKeys.has(p.planKey))
       .map(p => ({ planKey: p.planKey as string, displayNameKey: p.displayNameKey }))
   }
   catch (err) {

@@ -20,6 +20,9 @@ import com.mannschaft.app.billing.PlanEntity;
 import com.mannschaft.app.billing.PlanFeatureEntity;
 import com.mannschaft.app.billing.PlanFeatureRepository;
 import com.mannschaft.app.billing.PlanRepository;
+import com.mannschaft.app.billing.BillingPriceBandVersionEntity;
+import com.mannschaft.app.billing.BillingProductKind;
+import com.mannschaft.app.billing.ScopeMemberCountService;
 import com.mannschaft.app.billing.api.dto.ActiveContract;
 import com.mannschaft.app.billing.api.dto.EntitledFeature;
 import com.mannschaft.app.billing.api.dto.EntitlementCheckResponse;
@@ -31,12 +34,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -65,6 +70,8 @@ public class BillingEntitlementQueryService {
     private final PlanFeatureRepository planFeatureRepository;
     private final PlanRepository planRepository;
     private final AccessControlService accessControlService;
+    private final BillingCurrentBandResolver currentBandResolver;
+    private final ScopeMemberCountService scopeMemberCountService;
     private final Clock clock;
 
     /** 権利サマリの投影に載せる契約状態（AC-65。PAST_DUE は期末まで利用でき解約もできる・D4）。 */
@@ -160,7 +167,48 @@ public class BillingEntitlementQueryService {
                         // AC-105: 期限は pending_update の失効時刻。effectiveAt で代用しない。
                         .pendingUpdateExpiresAt(pendingChange.getPendingUpdateExpiresAt())
                         .build())
+                .changeablePlanKeys(resolveChangeablePlanKeys(c))
                 .build();
+    }
+
+    /**
+     * PR6b-1 残務③: 変更先として選べる PLAN の候補を、見積り（{@link BillingPlanChangePreviewService}）
+     * が実際に使っている band 解決（{@link BillingCurrentBandResolver}）と同じ読み方で解決する。
+     *
+     * <p>ADDON 契約は対象外（{@code null}/空扱いではなく空配列を返す）。候補算出はカタログ
+     * （{@code enabled} な PLAN 一覧・小さいマスタ）を1回取得し、契約 1 件あたり高々カタログ件数ぶんの
+     * band 解決に留める。表示対象契約は {@link #getSummary} で既にスコープ1件分に絞られているため、
+     * 契約 N 件でも SQL 発行数はカタログ件数に比例するだけで N に比例しない（AC-134 と同型の配慮）。</p>
+     */
+    private List<String> resolveChangeablePlanKeys(BillingContractEntity contract) {
+        if (contract.getContractKind() != ContractKind.PLAN || contract.getPlanKey() == null) {
+            return List.of();
+        }
+        Instant now = clock.instant();
+        int memberCount = scopeMemberCountService.countActiveMembers(contract.getScopeKind(), contract.getScopeId());
+        Optional<BillingPriceBandVersionEntity> fromBand =
+                currentBandResolver.resolveContractBand(contract, memberCount, now);
+        if (fromBand.isEmpty()) {
+            return List.of();
+        }
+        long fromAmount = fromBand.get().getAmountIncludingTax();
+
+        List<String> candidates = new ArrayList<>();
+        for (PlanEntity plan : planRepository.findByEnabledTrueOrderBySortOrderAsc()) {
+            String candidateKey = plan.getPlanKey();
+            if (candidateKey.equals(contract.getPlanKey())) {
+                continue;
+            }
+            currentBandResolver
+                    .resolveCurrentBand(BillingProductKind.PLAN, candidateKey, contract.getScopeKind(),
+                            memberCount, now)
+                    // 見積り側と同じ 2 条件（AC-20c: Stripe Price ref 必須 / AC-22〜24: 上位のみ）を
+                    // 満たすものだけを候補にする。この2条件を満たさない候補は見積りが必ず 409 を返す。
+                    .filter(band -> band.getStripePriceRef() != null && !band.getStripePriceRef().isBlank())
+                    .filter(band -> band.getAmountIncludingTax() > fromAmount)
+                    .ifPresent(band -> candidates.add(candidateKey));
+        }
+        return candidates;
     }
 
     /**

@@ -112,6 +112,12 @@ class BillingPlanChangeAuthzRedIT extends AbstractBillingPlanChangeApiIT {
             preview(fx.actorId(), fx.contractId(), TO_PLAN_KEY, 0L, newKey())
                     .andExpect(MockMvcResultMatchers.status().isForbidden());
             cleanupScopeOf(fx.actorId());
+            // PR6b-1 残務①②の番人拡張で billing_contracts.uk_bc_psp_subscription が test profile の
+            // schema にも再現されるようになったため、teamContractWithRole が固定 TEAM_ID・固定
+            // pspSubscriptionRef で作る TEAM 契約を、次の同クラス内テスト（deputyWithoutGroupIs403）が
+            // 再利用する前に必ず消す（scope_id = TEAM_ID は actorId とは別 scope のため
+            // cleanupScopeOf(fx.actorId()) だけでは消えない）。
+            cleanupScopeOf(TEAM_ID);
         }
 
         @Test
@@ -122,6 +128,7 @@ class BillingPlanChangeAuthzRedIT extends AbstractBillingPlanChangeApiIT {
             preview(fx.actorId(), fx.contractId(), TO_PLAN_KEY, 0L, newKey())
                     .andExpect(MockMvcResultMatchers.status().isForbidden());
             cleanupScopeOf(fx.actorId());
+            cleanupScopeOf(TEAM_ID);
         }
 
         @Test
@@ -242,8 +249,13 @@ class BillingPlanChangeAuthzRedIT extends AbstractBillingPlanChangeApiIT {
     private RoleFixture teamContractWithRole(String roleName) throws Exception {
         Long actor = insertUser("authz-role-" + roleName.toLowerCase() + "-" + SEQ.incrementAndGet());
         grantRole(actor, roleName, TEAM_ID);
-        UUID teamBand = insertBand(TO_PLAN_KEY, TO_AMOUNT,
-                com.mannschaft.app.billing.BillingPriceVersionStatus.ACTIVE, TO_STRIPE_PRICE_REF, 1, null);
+        // 【根治】以前はここで insertBand(TO_STRIPE_PRICE_REF) をもう一本作っていたが、
+        // 戻り値の teamBand はどこからも参照されず（下の契約は fromBandId を使う）完全な死コードで、
+        // かつ seedUpgradableContract（@BeforeEach）が既に同じ TO_STRIPE_PRICE_REF で toBandId を
+        // 作っているため、そのまま呼べば同一テスト内で billing_price_band_versions.uk_bpbv_stripe_price
+        // に必ず違反する。PR6b-1 残務②の番人拡張で billing_price_band_versions 側の宣言漏れが
+        // 塞がれる（test profile の schema にも UNIQUE が再現される）まで、この死コードは実害を
+        // 出さず埋もれていた。
         UUID teamContractId = transactionTemplate.execute(tx -> {
             com.mannschaft.app.billing.BillingContractEntity c =
                     com.mannschaft.app.billing.BillingContractEntity.builder()

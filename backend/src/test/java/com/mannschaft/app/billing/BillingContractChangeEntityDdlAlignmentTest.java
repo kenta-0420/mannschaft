@@ -3,6 +3,9 @@ package com.mannschaft.app.billing;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -10,8 +13,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -104,5 +110,52 @@ class BillingContractChangeEntityDdlAlignmentTest {
         assertThat(fragment)
                 .contains("kind = 'DOWNGRADE' AND status IN ('SCHEDULED','APPLIED') AND stripe_schedule_ref IS NOT NULL");
         assertThat(fragment).contains("kind = 'DOWNGRADE' AND status IN ('FAILED','CANCELLED')");
+    }
+
+    /**
+     * PR6b-1 残務①: 従来ここには CHECK 制約の比較しかなく、{@code UNIQUE KEY} は一度も
+     * 突き合わせていなかった。この穴のせいで {@code uk_bcc_invoice} の Entity 宣言漏れが
+     * 試練（AC-41）を一度も本当に検証できないまま放置されていた（直前の commit で Entity 側の
+     * 宣言自体は追加済み・本テストはその整合を継続的に機械担保する）。
+     */
+    @Test
+    @DisplayName("billing_contract_changes の UNIQUE KEY が V196 の DDL と名前・対象カラムの両方で一致する")
+    void uniqueKeysMatchEntityDeclaration() {
+        String sql = readMigrationSql();
+        int tableStart = sql.indexOf("CREATE TABLE billing_contract_changes");
+        assertThat(tableStart).as("billing_contract_changes の CREATE TABLE が見つかること").isNotNegative();
+        int tableEnd = sql.indexOf(") ENGINE=InnoDB", tableStart);
+        assertThat(tableEnd).as("billing_contract_changes の CREATE TABLE 終端が見つかること").isNotNegative();
+        String tableDdl = sql.substring(tableStart, tableEnd);
+
+        Pattern uniqueKeyPattern = Pattern.compile("UNIQUE\\s+KEY\\s+(\\w+)\\s*\\(([^)]+)\\)");
+        Matcher matcher = uniqueKeyPattern.matcher(tableDdl);
+        Map<String, TreeSet<String>> ddlUniqueKeys = new LinkedHashMap<>();
+        while (matcher.find()) {
+            TreeSet<String> columns = Arrays.stream(matcher.group(2).split(","))
+                    .map(String::trim)
+                    .collect(Collectors.toCollection(TreeSet::new));
+            ddlUniqueKeys.put(matcher.group(1), columns);
+        }
+        // この番人自体が空集合のまま緑を返す偽陰性を防ぐ（4件: operation/idempotency/invoice/schedule）。
+        assertThat(ddlUniqueKeys).as("V196 の billing_contract_changes に UNIQUE KEY が実在すること").hasSize(4);
+
+        Table table = BillingContractChangeEntity.class.getAnnotation(Table.class);
+        assertThat(table).as("BillingContractChangeEntity に @Table が付与されていること").isNotNull();
+        Map<String, TreeSet<String>> entityUniqueKeys = new LinkedHashMap<>();
+        for (UniqueConstraint uc : table.uniqueConstraints()) {
+            entityUniqueKeys.put(uc.name(),
+                    Arrays.stream(uc.columnNames()).collect(Collectors.toCollection(TreeSet::new)));
+        }
+
+        assertThat(entityUniqueKeys.keySet())
+                .as("BillingContractChangeEntity の UNIQUE KEY 名集合は V196 と完全一致すること"
+                        + "（片方にしか無いものを見逃さない）")
+                .containsExactlyInAnyOrderElementsOf(ddlUniqueKeys.keySet());
+        for (String name : ddlUniqueKeys.keySet()) {
+            assertThat(entityUniqueKeys.get(name))
+                    .as("UNIQUE KEY " + name + " の対象カラムが V196 と完全一致すること")
+                    .isEqualTo(ddlUniqueKeys.get(name));
+        }
     }
 }

@@ -11,9 +11,13 @@ import com.mannschaft.app.billing.ContractStatus;
 import com.mannschaft.app.billing.EntitlementQueryService;
 import com.mannschaft.app.billing.EntitlementRepository;
 import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.BillingPriceBandVersionEntity;
+import com.mannschaft.app.billing.BillingProductKind;
 import com.mannschaft.app.billing.FeatureCatalogRepository;
+import com.mannschaft.app.billing.PlanEntity;
 import com.mannschaft.app.billing.PlanFeatureRepository;
 import com.mannschaft.app.billing.PlanRepository;
+import com.mannschaft.app.billing.ScopeMemberCountService;
 import com.mannschaft.app.billing.api.dto.ActiveContract;
 import com.mannschaft.app.billing.api.dto.EntitlementSummaryResponse;
 import com.mannschaft.app.common.AccessControlService;
@@ -29,6 +33,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -36,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 
 /**
@@ -70,6 +76,8 @@ class BillingEntitlementQueryServicePendingChangeIdentityTest {
     @Mock private PlanFeatureRepository planFeatureRepository;
     @Mock private PlanRepository planRepository;
     @Mock private AccessControlService accessControlService;
+    @Mock private BillingCurrentBandResolver currentBandResolver;
+    @Mock private ScopeMemberCountService scopeMemberCountService;
 
     private BillingEntitlementQueryService service;
 
@@ -78,7 +86,7 @@ class BillingEntitlementQueryServicePendingChangeIdentityTest {
         service = new BillingEntitlementQueryService(
                 entitlementQueryService, entitlementRepository, billingContractRepository,
                 billingContractChangeRepository, featureCatalogRepository, planFeatureRepository,
-                planRepository, accessControlService,
+                planRepository, accessControlService, currentBandResolver, scopeMemberCountService,
                 Clock.fixed(EFFECTIVE_AT, ZoneId.of("Asia/Tokyo")));
     }
 
@@ -151,5 +159,79 @@ class BillingEntitlementQueryServicePendingChangeIdentityTest {
     void doesNotSubstituteEffectiveAtWhenExpiryUnknown() {
         ActiveContract.PendingChange pending = project(null);
         assertThat(pending.getPendingUpdateExpiresAt()).isNull();
+    }
+
+    // ============================================================
+    // PR6b-1 残務③: changeablePlanKeys（BillingCurrentBandResolver と同じ読み方の候補投影）
+    // ============================================================
+
+    private PlanEntity plan(String planKey) {
+        return PlanEntity.builder().planKey(planKey).displayNameKey("plan." + planKey)
+                .descriptionKey("plan." + planKey + ".desc").build();
+    }
+
+    private BillingPriceBandVersionEntity band(long amountIncludingTax, String stripePriceRef) {
+        BillingPriceBandVersionEntity band = BillingPriceBandVersionEntity.builder()
+                .productKind(BillingProductKind.PLAN)
+                .amountIncludingTax(amountIncludingTax)
+                .stripePriceRef(stripePriceRef)
+                .build();
+        return band;
+    }
+
+    private ActiveContract projectActivePlan() {
+        when(billingContractRepository.findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(EntitlementScopeKind.USER), eq(1L), anyList())).thenReturn(List.of(contract()));
+        when(billingContractChangeRepository.findByContractIdInAndStatusInAndDeletedAtIsNull(
+                anyList(), anyList())).thenReturn(List.of());
+        when(entitlementQueryService.entitledFeatureKeys(any(), any())).thenReturn(Set.of());
+        when(entitlementRepository.findActiveByScope(any(), any(), any())).thenReturn(List.of());
+
+        EntitlementSummaryResponse res = service.getSummary(EntitlementScopeKind.USER, 1L);
+        ActiveContract plan = res.getActivePlan();
+        assertThat(plan).isNotNull();
+        return plan;
+    }
+
+    @Test
+    @DisplayName("BASIC(1000)からFULL(2000, Stripe Price ref あり)へは changeablePlanKeys に載る")
+    void 上位でStripePriceRefがある候補は載る() {
+        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.USER, 1L)).willReturn(1);
+        given(currentBandResolver.resolveContractBand(any(), eq(1), any()))
+                .willReturn(Optional.of(band(1_000L, "price_basic")));
+        given(planRepository.findByEnabledTrueOrderBySortOrderAsc())
+                .willReturn(List.of(plan("BASIC"), plan("FULL")));
+        given(currentBandResolver.resolveCurrentBand(
+                eq(BillingProductKind.PLAN), eq("FULL"), eq(EntitlementScopeKind.USER), eq(1), any()))
+                .willReturn(Optional.of(band(2_000L, "price_full")));
+
+        assertThat(projectActivePlan().getChangeablePlanKeys()).containsExactly("FULL");
+    }
+
+    @Test
+    @DisplayName("同額・下位・Stripe Price ref 無しの候補は載らない（見積りが必ず409になるものを出さない）")
+    void 見積りが必ず409になる候補は載らない() {
+        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.USER, 1L)).willReturn(1);
+        given(currentBandResolver.resolveContractBand(any(), eq(1), any()))
+                .willReturn(Optional.of(band(1_000L, "price_basic")));
+        given(planRepository.findByEnabledTrueOrderBySortOrderAsc())
+                .willReturn(List.of(plan("BASIC"), plan("SAME"), plan("NO_REF")));
+        given(currentBandResolver.resolveCurrentBand(
+                eq(BillingProductKind.PLAN), eq("SAME"), eq(EntitlementScopeKind.USER), eq(1), any()))
+                .willReturn(Optional.of(band(1_000L, "price_same")));
+        given(currentBandResolver.resolveCurrentBand(
+                eq(BillingProductKind.PLAN), eq("NO_REF"), eq(EntitlementScopeKind.USER), eq(1), any()))
+                .willReturn(Optional.of(band(5_000L, null)));
+
+        assertThat(projectActivePlan().getChangeablePlanKeys()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("現行 band が解決できない契約は changeablePlanKeys が空配列（カタログ検索自体を行わない）")
+    void 現行bandが解決できなければ空配列() {
+        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.USER, 1L)).willReturn(1);
+        given(currentBandResolver.resolveContractBand(any(), eq(1), any())).willReturn(Optional.empty());
+
+        assertThat(projectActivePlan().getChangeablePlanKeys()).isEmpty();
     }
 }

@@ -69,6 +69,7 @@ function activePlanFixture(overrides: Record<string, unknown> = {}) {
     cancel: null,
     version: 3,
     pendingChange: null,
+    changeablePlanKeys: ['FULL'],
     ...overrides,
   }
 }
@@ -244,7 +245,7 @@ describe('P2-3(AC-135): 再取得が失敗しても暫定状態を捨てず監�
 })
 
 describe('P2-4: 必ず 409 になる変更先を候補に出さない', () => {
-  it('現行 BASIC の候補は上位プランだけ（FREE・同額 STANDARD・自分自身は出ない）', async () => {
+  it('BE の changeablePlanKeys に載ったものだけを候補として出す（残務③: FE は価格を推測しない）', async () => {
     mockApi.mockImplementation(async (url: string) => {
       if (String(url).includes('/entitlements')) return entitlementsResponse(activePlanFixture())
       if (String(url) === '/api/v1/billing/plans') return catalogResponse()

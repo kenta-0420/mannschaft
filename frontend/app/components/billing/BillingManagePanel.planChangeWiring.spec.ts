@@ -70,6 +70,7 @@ function activePlanFixture(overrides: Record<string, unknown> = {}) {
     cancel: null,
     version: 3,
     pendingChange: null,
+    changeablePlanKeys: ['FULL'],
     ...overrides,
   }
 }

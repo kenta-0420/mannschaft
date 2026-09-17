@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
@@ -25,7 +26,13 @@ import java.util.UUID;
  * 親 revision への複合 FK は、JPA 関連ではなく {@code priceVersionId} と商品識別子を明示して保持する。</p>
  */
 @Entity
-@Table(name = "billing_price_band_versions")
+@Table(name = "billing_price_band_versions",
+        // V196 の uk_bpbv_stripe_price / uk_bpbv_revision_band と同一（uk_bcc_invoice と同型の宣言漏れ）。
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_bpbv_stripe_price", columnNames = {"stripe_price_ref"}),
+                @UniqueConstraint(name = "uk_bpbv_revision_band",
+                        columnNames = {"price_version_id", "band_no"})
+        })
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

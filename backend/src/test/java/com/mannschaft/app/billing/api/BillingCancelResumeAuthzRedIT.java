@@ -71,6 +71,13 @@ class BillingCancelResumeAuthzRedIT extends AbstractBillingCancelResumeApiIT {
     void tearDown() {
         cleanupScope(ownerId);
         cleanupScope(strangerId);
+        // PR6b-1 残務①の番人拡張で billing_contracts.uk_bc_psp_subscription が test profile の
+        // schema にも再現されるようになったことで顕在化した宣言漏れ: insertTeamContract は固定の
+        // TEAM_ID（scope_id = TEAM_ID）に同じ SUB_REF で契約を作るが、TEAM 契約は scope_id = ユーザーID
+        // ではないため cleanupScope(ownerId/strangerId/...) では一切消えず、クラス内の複数テストを
+        // 跨いで蓄積していた。以前は Entity 側に UNIQUE 宣言が無く schema にも制約が無かったため
+        // 実害が出ず気付けなかった（production の実制約とは乖離した状態でテストが緑だった）。
+        cleanupScope(TEAM_ID);
     }
 
     // ═════════ AC-50: 未認証は401 ═════════

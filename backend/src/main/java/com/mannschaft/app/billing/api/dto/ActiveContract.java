@@ -7,6 +7,7 @@ import lombok.Getter;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * F20.1: 権利サマリ内のアクティブ契約（PLAN または ADDON・設計書 02 §2.2）。
@@ -66,6 +67,20 @@ public class ActiveContract {
      */
     @Schema(description = "進行中のプラン変更（upgrade）の内容。進行中の変更が無ければ null", nullable = true)
     private final PendingChange pendingChange;
+
+    /**
+     * この契約が変更先として選べる PLAN の {@code plan_key} 一覧（PR6b-1 残務③）。
+     *
+     * <p><b>FE がカタログの {@code baseMonthlyPriceJpy} で upgrade 判定を推測しない</b>ための投影。
+     * {@code baseMonthlyPriceJpy} は販売価格の正本ではなく、実際の upgrade 判定は現行 revision の
+     * {@code billing_price_band_versions.amount_including_tax} と現在の人数で行われる
+     * （{@code BillingPlanChangePreviewService}/{@link com.mannschaft.app.billing.api.BillingCurrentBandResolver}
+     * と同じ読み方）。ここに載る plan_key は「いま選んでも 409 CHANGE_CONFLICT にならない」ことを
+     * BE が保証した候補のみ。ADDON 契約・PLAN 契約でも候補が無ければ空配列（null にはしない。
+     * null は「この投影が未対応」に読めてしまい、FE 側の分岐が増える）。</p>
+     */
+    @Schema(description = "変更先として選べる PLAN の plan_key 一覧（ADDON 契約や候補が無ければ空配列）")
+    private final List<String> changeablePlanKeys;
 
     /**
      * 解約予約の内容（PR6a AC-60）。予約が入っていないときは親の {@code cancel} 自体が null になる。

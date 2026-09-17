@@ -73376,6 +73376,8 @@ export interface components {
             canResume?: boolean;
             /** @description 解約予約の内容。予約が無ければ null */
             cancel?: components["schemas"]["BillingScheduledCancel"];
+            /** @description 変更先として選べる PLAN の plan_key 一覧（ADDON 契約や候補が無ければ空配列） */
+            changeablePlanKeys?: string[];
             /**
              * @description 契約 ID（UUID）
              * @example 0198aaaa-bbbb-cccc-dddd-eeeeeeeeeeee

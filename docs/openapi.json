@@ -218185,6 +218185,13 @@
             "$ref": "#/components/schemas/BillingScheduledCancel",
             "description": "解約予約の内容。予約が無ければ null"
           },
+          "changeablePlanKeys": {
+            "type": "array",
+            "description": "変更先として選べる PLAN の plan_key 一覧（ADDON 契約や候補が無ければ空配列）",
+            "items": {
+              "type": "string"
+            }
+          },
           "contractId": {
             "type": "string",
             "description": "契約 ID（UUID）",
