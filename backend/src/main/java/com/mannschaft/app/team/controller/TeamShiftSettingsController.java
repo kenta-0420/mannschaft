@@ -6,6 +6,7 @@ import com.mannschaft.app.config.TeamScopeId;
 import com.mannschaft.app.team.dto.TeamShiftSettingsResponse;
 import com.mannschaft.app.team.dto.UpdateTeamShiftSettingsRequest;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
+import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,6 +32,7 @@ public class TeamShiftSettingsController {
 
     private final TeamShiftSettingsService settingsService;
     private final AccessControlService accessControlService;
+    private final TeamService teamService;
 
     @GetMapping
     @Operation(summary = "チームシフト設定取得（メンバー限定）")
@@ -40,6 +42,7 @@ public class TeamShiftSettingsController {
     public ResponseEntity<TeamShiftSettingsResponse> getSettings(
             @PathVariable("slug") TeamScopeId scopeId) {
         Long teamId = scopeId.value();
+        teamService.assertActiveTeamExists(teamId);
         // shift ドメインの既定の流儀（参照=checkMembership / 変更=checkAdminOrAbove。
         // 例: MemberWorkConstraintService / ShiftScheduleService）に揃える。
         accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, SCOPE_TYPE);
@@ -55,6 +58,7 @@ public class TeamShiftSettingsController {
             @PathVariable("slug") TeamScopeId scopeId,
             @Valid @RequestBody UpdateTeamShiftSettingsRequest request) {
         Long teamId = scopeId.value();
+        teamService.assertActiveTeamExists(teamId);
         // 設定変更はチーム運営の権限（shift ドメインの変更系と同じ粒度）。
         accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), teamId, SCOPE_TYPE);
         return ResponseEntity.ok(settingsService.updateSettings(teamId, request));
