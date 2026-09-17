@@ -128,6 +128,18 @@ abstract class AbstractBillingPlanChangeApiIT extends AbstractMySqlIntegrationTe
     /** {@link #insertForeignScope} で作った別スコープの後始末対象。 */
     protected final List<Long> foreignScopeUserIds = new java.util.ArrayList<>();
 
+    /**
+     * {@link #insertBand} が作った価格 revision / band の後始末対象。
+     *
+     * <p><b>なぜ必要か</b>: これを消さないと、テストごとに「PLAN/FULL・USER・1名から有効」な
+     * ACTIVE band が DB に積み上がる。2本目以降のテストでは、server が解決した band が
+     * <b>前のテストの残骸</b>になり、当該テストが壊した band（削除・RETIRED・Price ref 消去・減額）が
+     * 一切効かなくなる。AC-4 / AC-17 / AC-19 / AC-20a-c / AC-23 / AC-24 / AC-15 が CI で
+     * 落ちていた原因はこれで、実装ではなくフィクスチャの後始末漏れだった。</p>
+     */
+    private final List<UUID> fixtureBandIds = new java.util.ArrayList<>();
+    private final List<UUID> fixturePriceVersionIds = new java.util.ArrayList<>();
+
     // ============================================================
     // 既定のフィクスチャ（BASIC 契約 → FULL へ upgrade できる状態）
     // ============================================================
@@ -342,6 +354,8 @@ abstract class AbstractBillingPlanChangeApiIT extends AbstractMySqlIntegrationTe
                     .build();
             entityManager.persist(band);
             entityManager.flush();
+            fixturePriceVersionIds.add(version.getId());
+            fixtureBandIds.add(band.getId());
             return band.getId();
         });
     }
@@ -541,6 +555,29 @@ abstract class AbstractBillingPlanChangeApiIT extends AbstractMySqlIntegrationTe
         cleanupScopeOf(userId);
         foreignScopeUserIds.forEach(this::cleanupScopeOf);
         foreignScopeUserIds.clear();
+        cleanupFixturePrices();
+    }
+
+    /** このテストが作った価格 revision / band を消す（次のテストへ ACTIVE band を持ち越さない）。 */
+    protected void cleanupFixturePrices() {
+        if (fixtureBandIds.isEmpty() && fixturePriceVersionIds.isEmpty()) {
+            return;
+        }
+        transactionTemplate.executeWithoutResult(tx -> {
+            if (!fixtureBandIds.isEmpty()) {
+                entityManager.createQuery(
+                                "DELETE FROM BillingPriceBandVersionEntity b WHERE b.id IN :ids")
+                        .setParameter("ids", fixtureBandIds).executeUpdate();
+            }
+            if (!fixturePriceVersionIds.isEmpty()) {
+                entityManager.createQuery(
+                                "DELETE FROM BillingPriceVersionEntity p WHERE p.id IN :ids")
+                        .setParameter("ids", fixturePriceVersionIds).executeUpdate();
+            }
+            entityManager.flush();
+        });
+        fixtureBandIds.clear();
+        fixturePriceVersionIds.clear();
     }
 
     /**

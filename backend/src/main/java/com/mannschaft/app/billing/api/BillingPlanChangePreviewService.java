@@ -10,9 +10,12 @@ import com.mannschaft.app.billing.BillingContractRepository;
 import com.mannschaft.app.billing.BillingPlanChangeGateway;
 import com.mannschaft.app.billing.BillingPriceBandVersionEntity;
 import com.mannschaft.app.billing.BillingPriceBandVersionRepository;
+import com.mannschaft.app.billing.BillingPriceVersionEntity;
+import com.mannschaft.app.billing.BillingPriceVersionRepository;
 import com.mannschaft.app.billing.BillingPriceVersionStatus;
 import com.mannschaft.app.billing.BillingProductKind;
 import com.mannschaft.app.billing.EntitlementErrorCode;
+import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.ScopeMemberCountService;
 import com.mannschaft.app.billing.api.BillingConflictException.BillingConflictDetails;
 import com.mannschaft.app.billing.api.BillingConflictException.Reason;
@@ -56,6 +59,7 @@ public class BillingPlanChangePreviewService {
     private final BillingContractRepository billingContractRepository;
     private final BillingChangePreviewRepository changePreviewRepository;
     private final BillingPriceBandVersionRepository bandRepository;
+    private final BillingPriceVersionRepository priceVersionRepository;
     private final BillingAccessGuard billingAccessGuard;
     private final ScopeMemberCountService scopeMemberCountService;
     private final BillingPlanChangeGateway planChangeGateway;
@@ -152,30 +156,65 @@ public class BillingPlanChangePreviewService {
             return bandRepository.findByIdAndDeletedAtIsNull(contract.getPriceBandVersionId())
                     .orElseThrow(() -> conflict(Reason.CHANGE_CONFLICT, null));
         }
-        List<BillingPriceBandVersionEntity> candidates = bandRepository.findEffectiveCandidates(
-                BillingProductKind.PLAN, contract.getPlanKey(), contract.getScopeKind(),
-                List.of(BillingPriceVersionStatus.ACTIVE), now, memberCount);
-        if (candidates.isEmpty()) {
-            // AC-19b: NOT NULL 制約違反を 500 として漏らさず 409 CHANGE_CONFLICT で畳む。
-            throw conflict(Reason.CHANGE_CONFLICT, null);
-        }
-        return candidates.get(0);
+        // AC-19b: 解決できないときは NOT NULL 制約違反を 500 として漏らさず 409 CHANGE_CONFLICT で畳む。
+        return resolveCurrentBand(contract.getPlanKey(), contract.getScopeKind(), memberCount, now);
     }
 
     /** AC-20a/b/c: target band が不在・非ACTIVE・Stripe Price ref 無しはいずれも 409。 */
     private BillingPriceBandVersionEntity resolveToBand(
             String toProductKey, BillingContractEntity contract, int memberCount, Instant now) {
-        List<BillingPriceBandVersionEntity> candidates = bandRepository.findEffectiveCandidates(
-                BillingProductKind.PLAN, toProductKey, contract.getScopeKind(),
-                List.of(BillingPriceVersionStatus.ACTIVE), now, memberCount);
-        if (candidates.isEmpty()) {
-            throw conflict(Reason.CHANGE_CONFLICT, null);
-        }
-        BillingPriceBandVersionEntity band = candidates.get(0);
+        BillingPriceBandVersionEntity band =
+                resolveCurrentBand(toProductKey, contract.getScopeKind(), memberCount, now);
         if (band.getStripePriceRef() == null || band.getStripePriceRef().isBlank()) {
             throw conflict(Reason.CHANGE_CONFLICT, null);
         }
         return band;
+    }
+
+    /**
+     * 「いま販売中の band」を <b>現行 revision（＝最新の ACTIVE な price_version）だけ</b>から解決する。
+     *
+     * <p><b>なぜ band を直接横断検索しないか</b>: 同じ商品・スコープに ACTIVE な band が複数世代
+     * 残っていると、band を直接引く検索（{@code findEffectiveCandidates}）は bandNo が同値のとき
+     * 順序が定まらず、<b>どの世代の値段で請求したのか説明できないまま金額を確定してしまう</b>。
+     * カタログの正は「現行 revision は1つ、その配下の band が販売価格」であり（{@code BillingPriceSelector}
+     * と同じ読み方）、ここでもそれに揃える。</p>
+     *
+     * <p><b>古い世代へフォールバックしない</b>のも意図的である。現行 revision の band が
+     * 削除・RETIRED・人数レンジ外で使えないなら、それは「いま売っていない」のであって、
+     * 旧世代の値段で売ってよい理由にはならない（AC-19b / AC-20a/b）。</p>
+     *
+     * @param productKey  PLAN の {@code product_key}
+     * @param scopeKind   契約のスコープ種別
+     * @param memberCount 現在の人数（band のレンジ判定に使う）
+     * @param now         判定時点
+     * @return 現行 revision 配下で、いまの人数に当たる band
+     */
+    private BillingPriceBandVersionEntity resolveCurrentBand(
+            String productKey, EntitlementScopeKind scopeKind, int memberCount, Instant now) {
+        BillingPriceVersionEntity revision = priceVersionRepository.findEffectiveCandidates(
+                        BillingProductKind.PLAN, productKey, scopeKind,
+                        List.of(BillingPriceVersionStatus.ACTIVE), now)
+                .stream().findFirst()
+                .orElseThrow(() -> conflict(Reason.CHANGE_CONFLICT, null));
+
+        return bandRepository.findByPriceVersionIdAndDeletedAtIsNullOrderByBandNoAsc(revision.getId())
+                .stream()
+                .filter(band -> band.getStatus() == BillingPriceVersionStatus.ACTIVE)
+                .filter(band -> isEffectiveAt(band, now))
+                .filter(band -> coversMemberCount(band, memberCount))
+                .findFirst()
+                .orElseThrow(() -> conflict(Reason.CHANGE_CONFLICT, null));
+    }
+
+    private static boolean isEffectiveAt(BillingPriceBandVersionEntity band, Instant at) {
+        return band.getEffectiveFrom() != null && !band.getEffectiveFrom().isAfter(at)
+                && (band.getEffectiveUntil() == null || at.isBefore(band.getEffectiveUntil()));
+    }
+
+    private static boolean coversMemberCount(BillingPriceBandVersionEntity band, int memberCount) {
+        return band.getMinMembers() != null && band.getMinMembers() <= memberCount
+                && (band.getMaxMembers() == null || memberCount <= band.getMaxMembers());
     }
 
     // ============================================================

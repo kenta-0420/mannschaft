@@ -144,6 +144,31 @@ class BillingPlanChangeGuardExistenceRedIT extends AbstractMySqlIntegrationTest 
 
     // ═════════ AC-146: 新規Flyway migrationを作らない ═════════
 
+    /**
+     * PR6b-1 着手時点（PR6a 完了時点）に実在した billing 系 migration の実測一覧。
+     *
+     * <p><b>なぜ「V196 より新しい名前が無いこと」で測らないか</b>: ファイル名の辞書順比較は
+     * Flyway の version 順と一致しない。{@code V198…} / {@code V203…} / {@code V9.027…} はいずれも
+     * 文字列としては {@code "V196…"} より大きいため、<b>PR6b-1 が1本も migration を足していなくても
+     * 必ず赤になる</b>（実際 CI で赤になった。いずれも PR6a 以前から main にある既存ファイル）。
+     * 番人が測るべきは「この戦役で billing 系 migration が増えていないこと」なので、
+     * <b>実測した一覧との完全一致</b>で測る。追加はもちろん、取り違えた削除・改名も落ちるため
+     * 辞書順版より強い。</p>
+     */
+    private static final List<String> BILLING_MIGRATIONS_AT_PR6A = List.of(
+            "V150.20260710030424__create_billing_master_tables.sql",
+            "V150.20260710030425__create_billing_contracts.sql",
+            "V150.20260710030427__seed_billing_master.sql",
+            "V151.20260710123257__expand_billing_contracts_psp.sql",
+            "V196.20260831142049__expand_billing_center.sql",
+            "V198.20260901225758__add_billing_checkout_session_ref_and_reconciliation.sql",
+            "V203.20260905100628__alter_billing_contracts_add_payer_handover.sql",
+            "V203.20260905100629__create_billing_payer_handover_requests.sql",
+            "V205.20260909093522__add_billing_payer_handover_setup_intent_verified_at.sql",
+            "V206.20260909102921__add_billing_payer_handover_failing_cleanup_status.sql",
+            "V207.20260909111023__add_billing_payer_handover_cleanup_policy.sql",
+            "V9.027__create_promotion_billing_records_table.sql");
+
     @Test
     @DisplayName("AC-146: PR6a以降、billing系の新規Flyway migrationファイルが追加されていない")
     void AC146_billing系の新規migrationを作らない() throws IOException {
@@ -162,10 +187,10 @@ class BillingPlanChangeGuardExistenceRedIT extends AbstractMySqlIntegrationTest 
         assertThat(billingMigrations)
                 .as("V196.20260831142049__expand_billing_center.sql が"
                         + "PR6b-1（見積り・upgrade変更）に必要な列を既に持つ前提（正本V196:265-302）。"
-                        + "これより新しいbilling系migrationが増えていたら根治の対象（新規テーブル追加が必要な"
-                        + "設計に倒れていないか見直すこと）")
-                .noneMatch(name -> name.compareTo("V196.20260831142049__expand_billing_center.sql") > 0
-                        && billingFileNamePattern.matcher(name).matches());
+                        + "billing系migrationが増えていたら根治の対象（新規テーブル追加が必要な"
+                        + "設計に倒れていないか見直すこと）。減っていた場合も課金データの再構築が"
+                        + "できなくなるため同じく赤にする")
+                .containsExactlyInAnyOrderElementsOf(BILLING_MIGRATIONS_AT_PR6A);
     }
 
     // ═════════ AC-147: 表示経路でStripeを呼ばない（payment-actionだけが例外） ═════════
