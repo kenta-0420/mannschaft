@@ -159,11 +159,11 @@ class WidgetKeyPersonalEnumTest {
         @Test
         @DisplayName("C案の固定カテゴリ用 recruitment 系キーが PERSONAL スコープで存在する")
         void c案_recruitment系キー_存在() {
-            assertThat(WidgetKey.valueOf("PERSONAL_RECRUITMENT_FEED").getScopeType())
+            assertThat(WidgetKey.valueOf("RECRUITMENT_FEED").getScopeType())
                     .isEqualTo(ScopeType.PERSONAL);
-            assertThat(WidgetKey.valueOf("PERSONAL_MY_RECRUITMENTS").getScopeType())
+            assertThat(WidgetKey.valueOf("MY_RECRUITMENTS").getScopeType())
                     .isEqualTo(ScopeType.PERSONAL);
-            assertThat(WidgetKey.valueOf("PERSONAL_VILLAGE_LOBBY_DIGEST").getScopeType())
+            assertThat(WidgetKey.valueOf("VILLAGE_LOBBY_DIGEST").getScopeType())
                     .isEqualTo(ScopeType.PERSONAL);
         }
     }
@@ -188,9 +188,6 @@ class WidgetKeyPersonalEnumTest {
             assertThat(personalKeyNames)
                     .doesNotContain(
                             "PERSONAL_NOTIFICATIONS",
-                            "PERSONAL_RECRUITMENT_FEED",
-                            "PERSONAL_MY_RECRUITMENTS",
-                            "PERSONAL_VILLAGE_LOBBY_DIGEST",
                             "PERSONAL_INBOX"
                     );
         }
@@ -215,9 +212,9 @@ class WidgetKeyPersonalEnumTest {
                     .as("PERSONAL スコープのキーが 30 件あること（C案の recruitment 系3キーを含む）")
                     .hasSize(30)
                     .contains(WidgetKey.RETURN_STAY_PLAN,
-                            WidgetKey.valueOf("PERSONAL_RECRUITMENT_FEED"),
-                            WidgetKey.valueOf("PERSONAL_MY_RECRUITMENTS"),
-                            WidgetKey.valueOf("PERSONAL_VILLAGE_LOBBY_DIGEST"));
+                            WidgetKey.valueOf("RECRUITMENT_FEED"),
+                            WidgetKey.valueOf("MY_RECRUITMENTS"),
+                            WidgetKey.valueOf("VILLAGE_LOBBY_DIGEST"));
         }
 
         @Test
@@ -271,9 +268,9 @@ class WidgetKeyPersonalEnumTest {
                     WidgetKey.valueOf("PERSONAL_REFLECTION_TODAY"),
                     WidgetKey.valueOf("PERSONAL_TEAM_ANNOUNCEMENTS"),
                     WidgetKey.valueOf("PERSONAL_ORG_ANNOUNCEMENTS"),
-                    WidgetKey.valueOf("PERSONAL_RECRUITMENT_FEED"),
-                    WidgetKey.valueOf("PERSONAL_MY_RECRUITMENTS"),
-                    WidgetKey.valueOf("PERSONAL_VILLAGE_LOBBY_DIGEST"),
+                    WidgetKey.valueOf("RECRUITMENT_FEED"),
+                    WidgetKey.valueOf("MY_RECRUITMENTS"),
+                    WidgetKey.valueOf("VILLAGE_LOBBY_DIGEST"),
                     WidgetKey.valueOf("PERSONAL_BLOG"),
                     WidgetKey.valueOf("PERSONAL_MY_TEAMS"),
                     WidgetKey.valueOf("PERSONAL_MY_ORGANIZATIONS"),
@@ -292,7 +289,7 @@ class WidgetKeyPersonalEnumTest {
     class DefaultSortOrder {
 
         @Test
-        @DisplayName("新規追加キー 12 件の defaultSortOrder が既存の最大値（14）より大きい")
+        @DisplayName("新規追加キー 15 件の defaultSortOrder が既存の最大値（14）より大きい")
         void new_keys_sort_order_gt_14() {
             // MY_CORKBOARD が defaultSortOrder=14 で最後の既存キー
             List<WidgetKey> newKeys = Arrays.stream(WidgetKey.values())
@@ -300,8 +297,8 @@ class WidgetKeyPersonalEnumTest {
                     .filter(wk -> wk.getDefaultSortOrder() > 14)
                     .collect(Collectors.toList());
 
-            // 新規追加した 12 件全てが order > 14（連番 15〜26・RETURN_STAY_PLAN=26）であること
-            assertThat(newKeys).hasSize(12);
+            // C案の3キーを含む新規追加 15 件が order > 14（連番 15〜29）であること
+            assertThat(newKeys).hasSize(15);
         }
     }
 }

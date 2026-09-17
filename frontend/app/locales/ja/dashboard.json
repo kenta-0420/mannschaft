@@ -92,6 +92,16 @@
       "create_team_button": "チームを作る",
       "create_org_button": "組織を作る"
     },
+    "personal_accordion": {
+      "schedule": "予定・時間",
+      "todo": "やること",
+      "communication": "連絡・お知らせ",
+      "feed": "フィード",
+      "content_affiliation": "マイコンテンツ・所属",
+      "more_count": "ほか{count}件",
+      "empty": "0",
+      "count": "{count}"
+    },
     "widget_labels": {
       "event-dismissal-reminder": "解散通知リマインダー",
       "notices": "お知らせ",

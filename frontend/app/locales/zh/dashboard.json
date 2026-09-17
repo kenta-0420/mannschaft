@@ -92,6 +92,16 @@
       "create_team_button": "创建团队",
       "create_org_button": "创建组织"
     },
+    "personal_accordion": {
+      "schedule": "日程与时间",
+      "todo": "待办事项",
+      "communication": "联系与通知",
+      "feed": "动态",
+      "content_affiliation": "我的内容与所属",
+      "more_count": "另有 {count} 项",
+      "empty": "0",
+      "count": "{count}"
+    },
     "widget_labels": {
       "event-dismissal-reminder": "解散通知リマインダー",
       "notices": "お知らせ",

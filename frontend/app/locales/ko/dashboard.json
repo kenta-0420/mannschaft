@@ -92,6 +92,16 @@
       "create_team_button": "팀 만들기",
       "create_org_button": "조직 만들기"
     },
+    "personal_accordion": {
+      "schedule": "일정·시간",
+      "todo": "할 일",
+      "communication": "연락·알림",
+      "feed": "피드",
+      "content_affiliation": "내 콘텐츠·소속",
+      "more_count": "외 {count}개",
+      "empty": "0",
+      "count": "{count}"
+    },
     "widget_labels": {
       "event-dismissal-reminder": "解散通知リマインダー",
       "notices": "お知らせ",
