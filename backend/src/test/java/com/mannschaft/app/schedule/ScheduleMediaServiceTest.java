@@ -40,6 +40,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -147,7 +148,7 @@ class ScheduleMediaServiceTest {
     private static final Long SCHEDULE_ID = 100L;
 
     /** テスト用メディア ID */
-    private static final Long MEDIA_ID = 200L;
+    private static final UUID MEDIA_ID = UUID.fromString("019954cc-1a40-7000-8000-000000000200");
 
     /** 別ユーザー ID（権限テスト用） */
     private static final Long OTHER_USER_ID = 2L;
@@ -182,7 +183,7 @@ class ScheduleMediaServiceTest {
      * テスト用メディアエンティティを組み立てるヘルパー。
      */
     private ScheduleMediaUploadEntity buildMediaEntity(
-            Long id, Long scheduleId, Long uploaderId, String mediaType) {
+            UUID id, Long scheduleId, Long uploaderId, String mediaType) {
         return ScheduleMediaUploadEntity.builder()
                 .id(id)
                 .scheduleId(scheduleId)
@@ -545,7 +546,7 @@ class ScheduleMediaServiceTest {
             // given
             ScheduleMediaUploadEntity entity = buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
             ScheduleMediaUploadEntity existingCover = ScheduleMediaUploadEntity.builder()
-                    .id(999L)
+                    .id(UUID.fromString("019954cc-1a40-7000-8000-000000000999"))
                     .scheduleId(SCHEDULE_ID)
                     .uploaderId(UPLOADER_ID)
                     .mediaType("IMAGE")
@@ -1007,7 +1008,7 @@ class ScheduleMediaServiceTest {
 
             then(r2StorageService).should().delete(entity.getR2Key());
             then(scheduleMediaUploadRepository).should().delete(entity);
-            then(storageQuotaService).should().recordDeletion(
+            then(storageQuotaService).should().recordUuidDeletion(
                     StorageScopeType.PERSONAL, OTHER_USER_ID, entity.getFileSize(),
                     StorageFeatureType.SCHEDULE_MEDIA, "schedule_media_uploads", MEDIA_ID, UPLOADER_ID);
         }
@@ -1059,7 +1060,7 @@ class ScheduleMediaServiceTest {
         void 正常系_孤立メディアを削除() {
             // given
             ScheduleMediaUploadEntity orphanImage = ScheduleMediaUploadEntity.builder()
-                    .id(1L)
+                    .id(UUID.fromString("019954cc-1a40-7000-8000-000000000001"))
                     .uploaderId(UPLOADER_ID)
                     .mediaType("IMAGE")
                     .r2Key("schedules/100/orphan-image.jpg")
@@ -1070,7 +1071,7 @@ class ScheduleMediaServiceTest {
                     .build();
 
             ScheduleMediaUploadEntity orphanVideo = ScheduleMediaUploadEntity.builder()
-                    .id(2L)
+                    .id(UUID.fromString("019954cc-1a40-7000-8000-000000000002"))
                     .uploaderId(UPLOADER_ID)
                     .mediaType("VIDEO")
                     .r2Key("schedules/100/orphan-video.mp4")
@@ -1083,7 +1084,7 @@ class ScheduleMediaServiceTest {
 
             given(scheduleMediaUploadRepository.findOrphanMedia(any(LocalDateTime.class)))
                     .willReturn(List.of(orphanImage, orphanVideo));
-            given(scheduleMediaUploadRepository.deleteCleanupCandidateById(anyLong())).willReturn(1);
+            given(scheduleMediaUploadRepository.deleteCleanupCandidateById(any(UUID.class))).willReturn(1);
 
             // when
             scheduleMediaService.cleanupOrphanMedia();
@@ -1094,7 +1095,7 @@ class ScheduleMediaServiceTest {
             then(r2StorageService).should().delete("schedules/100/orphan-video-thumb.jpg");
             // DB から一括削除
             then(scheduleMediaUploadRepository).should(org.mockito.Mockito.times(2))
-                    .deleteCleanupCandidateById(anyLong());
+                    .deleteCleanupCandidateById(any(UUID.class));
             then(scheduleMediaUploadRepository).should(never()).deleteAll(any());
         }
 
@@ -1102,13 +1103,14 @@ class ScheduleMediaServiceTest {
         @DisplayName("完了処理が先にREADY化した候補はR2から削除しない")
         void completedCandidateIsNotDeleted() {
             ScheduleMediaUploadEntity candidate = ScheduleMediaUploadEntity.builder()
-                    .id(3L).scheduleId(100L).uploaderId(UPLOADER_ID)
+                    .id(UUID.fromString("019954cc-1a40-7000-8000-000000000003"))
+                    .scheduleId(100L).uploaderId(UPLOADER_ID)
                     .mediaType("IMAGE").r2Key("schedules/100/completed.jpg")
                     .fileName("completed.jpg").fileSize(1024L)
                     .contentType("image/jpeg").processingStatus("UPLOADING").build();
             given(scheduleMediaUploadRepository.findOrphanMedia(any(LocalDateTime.class)))
                     .willReturn(List.of(candidate));
-            given(scheduleMediaUploadRepository.deleteCleanupCandidateById(3L)).willReturn(0);
+            given(scheduleMediaUploadRepository.deleteCleanupCandidateById(candidate.getId())).willReturn(0);
 
             scheduleMediaService.cleanupOrphanMedia();
 
@@ -1147,7 +1149,7 @@ class ScheduleMediaServiceTest {
                     eq(new com.mannschaft.app.common.storage.acl.StorageAclContentReference("SCHEDULE", "100")),
                     eq(new com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding(
                             "SCHEDULE_MEDIA_UPLOAD", String.valueOf(MEDIA_ID))));
-            then(storageQuotaService).should().recordUpload(
+            then(storageQuotaService).should().recordUuidUpload(
                     StorageScopeType.TEAM, 50L, 1024L, StorageFeatureType.SCHEDULE_MEDIA,
                     "schedule_media_uploads", MEDIA_ID, UPLOADER_ID);
         }
@@ -1178,7 +1180,8 @@ class ScheduleMediaServiceTest {
                     SCHEDULE_ID, MEDIA_ID, UPLOADER_ID)).isInstanceOf(ResponseStatusException.class);
 
             then(storageAclService).should(never()).claimPending(anyString(), anyLong(), any(), any(), any());
-            then(storageQuotaService).should(never()).recordUpload(any(), anyLong(), anyLong(), any(), anyString(), anyLong(), anyLong());
+            then(storageQuotaService).should(never()).recordUuidUpload(
+                    any(), anyLong(), anyLong(), any(), anyString(), any(UUID.class), anyLong());
         }
     }
 
@@ -1240,7 +1243,7 @@ class ScheduleMediaServiceTest {
             then(storageQuotaService).should()
                     .checkQuota(StorageScopeType.TEAM, 50L, 1024L * 1024);
             then(storageQuotaService).should(never())
-                    .recordUpload(any(), anyLong(), anyLong(), any(), anyString(), anyLong(), anyLong());
+                    .recordUuidUpload(any(), anyLong(), anyLong(), any(), anyString(), any(UUID.class), anyLong());
         }
 
         @Test
@@ -1281,7 +1284,7 @@ class ScheduleMediaServiceTest {
             then(storageQuotaService).should()
                     .checkQuota(StorageScopeType.ORGANIZATION, 60L, 200L * 1024 * 1024);
             then(storageQuotaService).should()
-                    .recordUpload(eq(StorageScopeType.ORGANIZATION), eq(60L), eq(200L * 1024 * 1024),
+                    .recordUuidUpload(eq(StorageScopeType.ORGANIZATION), eq(60L), eq(200L * 1024 * 1024),
                             eq(StorageFeatureType.SCHEDULE_MEDIA),
                             eq("schedule_media_uploads"), eq(MEDIA_ID), eq(UPLOADER_ID));
         }
@@ -1309,7 +1312,7 @@ class ScheduleMediaServiceTest {
                             .isEqualTo(HttpStatus.CONFLICT));
             // recordUpload は呼ばれない
             then(storageQuotaService).should(never())
-                    .recordUpload(any(), anyLong(), anyLong(), any(), anyString(), anyLong(), anyLong());
+                    .recordUuidUpload(any(), anyLong(), anyLong(), any(), anyString(), any(UUID.class), anyLong());
         }
 
         @Test
@@ -1328,7 +1331,7 @@ class ScheduleMediaServiceTest {
 
             // then: TEAM スコープで recordDeletion が呼ばれる
             then(storageQuotaService).should()
-                    .recordDeletion(eq(StorageScopeType.TEAM), eq(50L), eq(fileSize),
+                    .recordUuidDeletion(eq(StorageScopeType.TEAM), eq(50L), eq(fileSize),
                             eq(StorageFeatureType.SCHEDULE_MEDIA),
                             eq("schedule_media_uploads"), eq(MEDIA_ID), eq(UPLOADER_ID));
         }

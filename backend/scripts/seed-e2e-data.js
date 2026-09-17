@@ -49,7 +49,7 @@ function encryptForTest(plain) {
 
 (async () => {
   const conn = await mysql.createConnection({
-    host: '127.0.0.1', port: 3306,
+    host: '127.0.0.1', port: Number(process.env.E2E_DB_PORT ?? 3306),
     user: process.env.E2E_DB_USER ?? 'mannschaft',
     password: process.env.E2E_DB_PASSWORD ?? 'mannschaft',
     database: process.env.E2E_DB_NAME ?? 'mannschaft',

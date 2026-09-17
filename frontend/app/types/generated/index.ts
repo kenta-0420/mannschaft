@@ -62932,8 +62932,8 @@ export interface components {
         ScheduleMediaUploadUrlResponse: {
             /** Format: int32 */
             expiresIn?: number;
-            /** Format: int64 */
-            mediaId?: number;
+            /** Format: uuid */
+            mediaId?: string;
             mediaType?: string;
             /** Format: int64 */
             partSize?: number;
@@ -69376,8 +69376,8 @@ export interface components {
             fileName?: string;
             /** Format: int64 */
             fileSize?: number;
-            /** Format: int64 */
-            id?: number;
+            /** Format: uuid */
+            id?: string;
             isCover?: boolean;
             isExpenseReceipt?: boolean;
             mediaType?: string;
@@ -114859,7 +114859,7 @@ export interface operations {
             header?: never;
             path: {
                 scheduleId: number;
-                mediaId: number;
+                mediaId: string;
             };
             cookie?: never;
         };
@@ -139624,7 +139624,7 @@ export interface operations {
             header?: never;
             path: {
                 scheduleId: number;
-                mediaId: number;
+                mediaId: string;
             };
             cookie?: never;
         };
@@ -139645,7 +139645,7 @@ export interface operations {
             header?: never;
             path: {
                 scheduleId: number;
-                mediaId: number;
+                mediaId: string;
             };
             cookie?: never;
         };

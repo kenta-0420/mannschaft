@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 /**
  * スケジュールメディア（写真・動画）アップロード管理サービス（ファサード）。
  *
@@ -62,7 +64,7 @@ public class ScheduleMediaService {
     }
 
     /** Presigned PUT完了後の画像実在確認をアップロードサービスへ委譲する。 */
-    public void confirmImageUpload(Long scheduleId, Long mediaId, Long uploaderId) {
+    public void confirmImageUpload(Long scheduleId, UUID mediaId, Long uploaderId) {
         uploadService.confirmImageUpload(scheduleId, mediaId, uploaderId);
     }
 
@@ -97,7 +99,7 @@ public class ScheduleMediaService {
      * @return 更新後のメディアレスポンス
      */
     public ScheduleMediaResponse updateMedia(
-            Long scheduleId, Long mediaId, Long requestUserId, ScheduleMediaPatchRequest req) {
+            Long scheduleId, UUID mediaId, Long requestUserId, ScheduleMediaPatchRequest req) {
         return queryService.updateMedia(scheduleId, mediaId, requestUserId, req);
     }
 
@@ -111,7 +113,7 @@ public class ScheduleMediaService {
      * @param mediaId         メディア ID
      * @param requestUserId   リクエストを行うユーザー ID
      */
-    public void deleteMedia(Long scheduleId, Long mediaId, Long requestUserId) {
+    public void deleteMedia(Long scheduleId, UUID mediaId, Long requestUserId) {
         queryService.deleteMedia(scheduleId, mediaId, requestUserId);
     }
 
