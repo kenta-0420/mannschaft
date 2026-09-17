@@ -34,6 +34,7 @@
     "tournament": {"stage":"B1","audience":"soccer","priority":"must","reason":"サッカー固有の試合・大会記録で初期利用の明確な差別化になる。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
     "safetycheck": {"stage":"B2","audience":"both","priority":"should","reason":"成人コミュニティの緊急連絡価値は高いが、B1の基本連絡検証後に導入する。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
     "shift": {"stage":"B4","audience":"both","priority":"defer","reason":"勤務シフトはサッカー・同窓会の初期対象外で、正本でも停止扱い。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
+    "shift-auto-assign": {"stage":"B4","audience":"both","priority":"defer","reason":"時刻を考慮しない自動割当は二重割当ての危険があり、正本で停止扱いのため親機能shiftと同じB4まで延期する。","sourceRefs":["docs/inventory/feature-inventory.yaml","docs/features/F03.5_shift/06_manual_authoring.md"],"decisionStatus":"proposed"},
     "matching": {"stage":"B4","audience":"both","priority":"defer","reason":"求人・マッチングは主対象外で、停止機能を広げない。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
     "billing-payment": {"stage":"B3","audience":"both","priority":"defer","reason":"会費決済は規模拡大後の運営課題であり、初期のLINE置換から分離する。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
     "promotion": {"stage":"B4","audience":"both","priority":"defer","reason":"広告・販促は知人中心のB0〜B3では不要。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},

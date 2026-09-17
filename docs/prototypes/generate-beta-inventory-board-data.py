@@ -271,7 +271,7 @@ def feature_view(record: dict) -> dict:
     refs = record.get("design_docs") or []
     refs = [str(ref) for ref in refs]
     is_core = record.get("layer") == "\u80fd\u529b" and release.get("beta") == "\u30b3\u30a2"
-    classification = "core" if is_core else "noncore" if record.get("layer") == "\u30c9\u30e1\u30a4\u30f3" else "未設定"
+    classification = "core" if is_core else "noncore"
     return {
         "key": text(record.get("feature_key"), "未設定"),
         "title": text(record.get("name")),
@@ -368,7 +368,7 @@ def build_data() -> dict:
     allowed_decision_statuses = {"proposed", "confirmed"}
     allowed_gate_statuses = {"done", "working", "blocked", "unknown"}
     if set(decision_features) != {feature["key"] for feature in features}:
-        errors.append("Phase 2分類が43機能と完全一致しません")
+        errors.append("Phase 2分類が正本の機能と完全一致しません")
     if set(decision_capabilities) != {capability["key"] for capability in capabilities}:
         errors.append("能力単位のPhase 2分類が表示能力と一致しません")
     capability_key_set = {capability["key"] for capability in capabilities}

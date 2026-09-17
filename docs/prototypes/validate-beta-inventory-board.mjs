@@ -69,7 +69,7 @@ for (const item of gateItems) {
 }
 
 const decisions = data.decisions;
-if (!decisions || Object.keys(decisions.features || {}).length !== data.features.length) throw new Error('Phase 2分類が43機能と一致しません');
+if (!decisions || Object.keys(decisions.features || {}).length !== data.features.length) throw new Error('Phase 2分類が正本の機能と一致しません');
 if (decisions.capabilityOverrides && Object.keys(decisions.capabilityOverrides).some((key) => !data.capabilities.some((item) => item.key === key))) throw new Error('capabilityOverridesに存在しない能力keyがあります');
 if (Object.keys(decisions.capabilities || {}).length !== data.capabilities.length) throw new Error('能力単位のPhase 2分類が表示能力と一致しません');
 const allowedStages = new Set(['B0', 'B1', 'B2', 'B3', 'B4']);
