@@ -85,12 +85,12 @@ public void createSchedule(...) { ... }
 ```
 
 ### 6. 新規テーブルの主キーは UuidV7Entity を継承する（2026-05-11〜）
-**新規に作成するテーブルの Entity** は `UuidV7Entity` を継承し、主キーを UUIDv7 にすること。既存テーブルの BIGINT ID は原則として変更しない。CMP-008 では、外部公開 ID と参照 FK のない `csp_reports` に限り、既存行を保全する移行テストを伴って段階的に UUIDv7 化する。
+**新規に作成するテーブルの Entity** は `UuidV7Entity` を継承し、主キーを UUIDv7 にすること。既存テーブルの BIGINT ID は原則として変更しない。変更する場合は、公開APIと参照先を同一リリースで一括移行し、既存行を保全する実DB migrationテストを必須とする。CMP-008 では `csp_reports` と `schedule_media_uploads` にこの条件を適用した。
 
 > 2026-09-15 の CMP-008 CI で、既存 `UuidV7Entity` の Hibernate TIME 方式は
 > 実際には UUIDv1 を生成すると確認した。この継承規約と「真正の UUIDv7」要件は
-> 現状の実装では両立しない。第一波の `csp_reports` は専用生成器で v7 を保証し、
-> 共通基底の是正は既存利用テーブルへの影響を調査して別途判断する。
+> 2026-09-17 に共通 `UuidV7Entity` を `UuidV7.generate()` と `@PrePersist` へ切り替え、
+> BINARY(16)・CHAR(36)の新規採番が真正UUIDv7であることと、既存UUIDv1との混在CRUDを実MySQLで検証した。
 
 ```java
 // 新規 Entity はこれを継承する
