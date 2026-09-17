@@ -454,6 +454,78 @@
       "upload_success": "「{name}」을(를) 업로드했습니다",
       "upload_error": "「{name}」 업로드에 실패했습니다",
       "uploading": "업로드 중..."
+    },
+    "hub": {
+      "pageTitle": "설정",
+      "searchPlaceholder": "설정 검색...",
+      "noSearchResults": "\"{query}\"과(와) 일치하는 설정을 찾을 수 없습니다",
+      "individualListToggle": "개별 설정 목록",
+      "itemCount": "({count}개 항목)",
+      "account": {
+        "description": "모든 설정을 한 화면에서 관리"
+      },
+      "profile": {
+        "description": "프로필 정보 및 비밀번호 관리"
+      },
+      "security": {
+        "label": "보안",
+        "description": "2FA・세션 관리・보안 키"
+      },
+      "email": {
+        "description": "이메일 주소 변경"
+      },
+      "password": {
+        "description": "비밀번호 변경・설정"
+      },
+      "language": {
+        "description": "표시 언어・시간대 설정"
+      },
+      "loginHistory": {
+        "description": "로그인・인증 이력"
+      },
+      "linkedAccounts": {
+        "description": "OAuth・LINE 연동 관리"
+      },
+      "appearance": {
+        "description": "테마・배경색・표시 설정"
+      },
+      "navigation": {
+        "description": "표시할 내비게이션 항목 사용자 지정"
+      },
+      "memberCards": {
+        "description": "회원증 표시・체크인 이력"
+      },
+      "socialProfiles": {
+        "description": "익명 프로필・팔로우 관리"
+      },
+      "seals": {
+        "description": "인감 표시・범위별 설정"
+      },
+      "notifications": {
+        "description": "알림 수신 설정"
+      },
+      "calendarSync": {
+        "description": "캘린더 동기화・iCal 연동"
+      },
+      "contactPrivacy": {
+        "description": "검색・DM 수신・온라인 상태 공개 범위"
+      },
+      "contactInviteTokens": {
+        "description": "연락처 추가용 초대 URL 발급・관리"
+      },
+      "contactRequestBlocks": {
+        "label": "신청 사전 거부 목록",
+        "description": "특정 사용자의 연락처 신청 거부"
+      },
+      "storage": {
+        "description": "개인・팀・조직의 용량 사용 현황 확인"
+      },
+      "billing": {
+        "description": "계약 중인 플랜・애드온・이용 가능 기능 확인"
+      },
+      "parentalConsentManage": {
+        "description": "승인된 보호자・보호 중인 자녀 계정 관리"
+      }
     }
   }
 }
