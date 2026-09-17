@@ -2451,5 +2451,11 @@
       "category": "カテゴリ",
       "event": "イベント"
     }
+  },
+  "memberProfile": {
+    "loadFailed": "メンバー情報を読み込めませんでした",
+    "unavailable": "この機能は現在ご利用いただけません（準備中です）",
+    "saveFailed": "保存に失敗しました",
+    "deleteFailed": "削除に失敗しました"
   }
 }
