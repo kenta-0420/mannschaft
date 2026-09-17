@@ -19,7 +19,6 @@ import java.time.LocalDate;
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
-import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * パフォーマンス個人・テンプレートコントローラー。
@@ -37,9 +36,9 @@ public class PerformancePersonalController {
 
     /**
      * 自分のパフォーマンスを全チーム横断で取得する。
+     * teamId 指定時は PerformanceStatsService#getMyPerformance が AccessControlService で所属検証する
+     * （CMP-260826-2127 派生: 非所属 teamId 指定で指標定義名・チーム名が読めていた欠陥の根治）。
      */
-    // PerformanceStatsService#getMyPerformance が SecurityUtils.getCurrentUserId() のみを検索条件に使う。
-    @SelfScopedEndpoint("PerformanceStatsService#getMyPerformance が呼び出し元 userId のみを対象に集計する")
     @GetMapping("/me")
     @Operation(summary = "自分のパフォーマンス（全チーム横断）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
