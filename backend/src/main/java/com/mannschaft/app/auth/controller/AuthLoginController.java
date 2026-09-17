@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.auth.dto.UpdateSessionDeviceNameRequest;
@@ -484,9 +485,25 @@ public class AuthLoginController {
     public ResponseEntity<ApiResponse<TokenResponse>> refresh(
             @CookieValue(name = "refresh_token", required = false) String rawRefreshToken,
             @RequestParam(required = false) String deviceFingerprint,
+            @RequestHeader(value = HttpHeaders.USER_AGENT, required = false) String userAgent,
             HttpServletResponse response) {
 
-        ApiResponse<TokenResponse> apiResponse = authService.refreshAccessToken(rawRefreshToken, deviceFingerprint);
+        // deviceFingerprint はクライアント申告値（FE は現状送っていないため常に null）。
+        // Phase 3 の同一端末判定（誤リプレイ判定の根治）はサーバー側で User-Agent から導出した値で行う
+        // （ログイン時の AuthService#hashToken(userAgent) と同一の導出方法。CMP-260917-1352）。
+        // クライアント申告値が来た場合はそちらを優先する（ログイン時の deviceFingerprint 導出と揃える）。
+        //
+        // User-Agent が無い（null/空白）場合は hashToken("") を導出せず null を渡す。
+        // hashToken("") は null でも空白でもない「正規の」文字列になるため、これを渡すと
+        // AuthTokenRotationService#isSameDeviceRetry の「非 null かつ非空白なら判定する」チェックを
+        // すり抜け、「User-Agent を持たないリクエスト同士は常に同一端末とみなされる」という
+        // fail closed の中に隠れた fail open を生む（AC-3 の趣旨に反する）。null を渡せば
+        // isSameDeviceRetry は無条件に false（fail closed = 従来どおりリプレイ扱い）になる。
+        String effectiveDeviceFingerprint = deviceFingerprint != null
+                ? deviceFingerprint
+                : (userAgent != null && !userAgent.isBlank() ? authTokenService.hashToken(userAgent) : null);
+
+        ApiResponse<TokenResponse> apiResponse = authService.refreshAccessToken(rawRefreshToken, effectiveDeviceFingerprint);
         if (apiResponse.getData() != null && apiResponse.getData().getAccessToken() != null) {
             response.addHeader(HttpHeaders.SET_COOKIE,
                     buildAccessTokenCookie(apiResponse.getData().getAccessToken()).toString());

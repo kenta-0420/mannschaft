@@ -38,8 +38,24 @@ import java.util.UUID;
  *       （{@link RefreshTokenEntity#markRotated(String)}）を記録する。後継ポインタ有りの失効済みトークンが
  *       grace window（{@code mannschaft.jwt.refresh-rotation-grace-seconds}）以内に再提示された場合は、
  *       並行更新の負け側とみなしてリプレイ扱いにせず新トークンを発行する（2 タブとも有効トークンへ収束）。
- *       grace 超過の後継有りトークン再提示のみを真リプレイとして全セッション無効化する。</li>
+ *       grace 超過の後継有りトークン再提示は、下記「Phase 3」の同一端末判定で救済できない場合のみ
+ *       真リプレイとして全セッション無効化する。</li>
  * </ol>
+ *
+ * <h2>Phase 3: 同一端末からの grace 超過再試行の救済（誤リプレイ判定による全デバイス強制ログアウトの根治）</h2>
+ * <p>実機で確認された因果連鎖: FE の refresh リクエストが 15 秒でクライアント側から abort される一方、
+ * サーバー側ではローテーションが完了している（Set-Cookie がブラウザへ届かず古いトークンがジャーに残る）。
+ * クライアントは 30 秒後に古いトークンで自動再試行するが、これが grace window（既定60秒）を超過していると
+ * 従来実装は一律「真リプレイ攻撃」と誤判定し、正当な後継トークンまで巻き添えで全デバイス無効化していた。</p>
+ *
+ * <p>根治方針: 「同一端末からの再試行」は盗難とみなさない。grace 超過の後継有りトークン再提示は、
+ * {@code deviceFingerprint} が一致し、かつ後継チェーンを辿った現行トークンが有効な場合のみリプレイ扱いを
+ * 回避し、現行トークンを基点に新トークンペアを発行する（{@code logoutAllDevices} は呼ばない）。
+ * フィンガープリントが片方でも null/空のときは同一端末と確認できないため fail closed とし、従来どおり
+ * リプレイ扱い（全デバイス無効化）とする。別端末からの再提示（＝本物の盗難）も従来どおり全デバイス無効化する。
+ * {@code deviceFingerprint} はクライアントの申告値をそのまま信頼せず、呼び出し元（Controller）が
+ * User-Agent ヘッダからサーバー側で導出したものを使う（ログイン時の {@code AuthTokenService#hashToken(userAgent)}
+ * と同一の導出方法。導出が食い違うと全件不一致になり本救済が機能しなくなるため）。</p>
  *
  * <p>リプレイ検出時の全デバイス無効化（logoutAllDevices）は {@link AuthSessionService} へ委譲する。
  * 当メソッドは {@code @Transactional}（REQUIRED）で動作し、真リプレイ検出時は全デバイス無効化の直後に
@@ -116,8 +132,28 @@ public class AuthTokenRotationService {
                     return issueRotatedTokens(existingToken, false);
                 }
 
-                // 2-b. grace 超過の後継有りトークン再提示 → 真リプレイ攻撃 → 全トークン無効化。
-                log.warn("リプレイ攻撃検出（grace 超過の後継有りトークン再提示）: userId={}, tokenId={}, sinceRevoke={}s（grace={}s）",
+                // 2-b. grace 超過の後継有りトークン再提示。
+                // Phase 3: 同一端末（deviceFingerprint 一致）からの再試行で、かつ後継チェーンの現行トークンが
+                // まだ有効なら、盗難ではなく「クライアント側 abort によるジャー汚染からの自動リトライ」とみなし
+                // リプレイ扱いを回避して現行トークンを基点に新トークンを発行する（自爆バグの根治点）。
+                if (isSameDeviceRetry(deviceFingerprint, existingToken)) {
+                    var currentHead = resolveCurrentChainHead(existingToken);
+                    if (currentHead.isPresent()) {
+                        log.info("grace 超過だが同一端末の再試行と判定し正規化（誤リプレイ判定回避）: "
+                                        + "userId={}, tokenId={}, sinceRevoke={}s（grace={}s）, successorTokenId={}",
+                                existingToken.getUserId(), existingToken.getId(),
+                                secondsSinceRevoke, refreshRotationGraceSeconds, currentHead.get().getId());
+                        return issueRotatedTokens(currentHead.get(), true);
+                    }
+                    log.warn("同一端末の再試行判定だが後継チェーンの現行トークンが解決できず、リプレイとして扱う: "
+                                    + "userId={}, tokenId={}",
+                            existingToken.getUserId(), existingToken.getId());
+                }
+
+                // 真リプレイ攻撃（別端末からの再提示、または deviceFingerprint 欠落で同一端末と確認できない）
+                // → 全トークン無効化。
+                log.warn("リプレイ攻撃検出（grace 超過の後継有りトークン再提示。同一端末と確認できず）: "
+                                + "userId={}, tokenId={}, sinceRevoke={}s（grace={}s）",
                         existingToken.getUserId(), existingToken.getId(),
                         secondsSinceRevoke, refreshRotationGraceSeconds);
                 eventPublisher.publish(new TokenReuseDetectedEvent(existingToken.getUserId(), existingToken.getId()));
@@ -198,5 +234,72 @@ public class AuthTokenRotationService {
 
         return ApiResponse.of(new TokenResponse(
                 newAccessToken, newRawRefreshToken, newToken.getId(), authTokenService.getAccessTokenExpirationSeconds()));
+    }
+
+    /**
+     * 後継チェーンを辿る際の最大ホップ数。
+     *
+     * <p>データ不整合や悪意ある操作で {@code replacedByTokenHash} が循環参照を起こしても
+     * 無限ループ・スタックオーバーフローに陥らないための安全弁（AC-5）。通常のローテーション連鎖が
+     * この上限に達することは想定しない。</p>
+     */
+    private static final int MAX_CHAIN_RESOLUTION_HOPS = 25;
+
+    /**
+     * grace 超過で再提示されたトークンが「同一端末からの再試行」と確認できるかを判定する。
+     *
+     * <p>両方の deviceFingerprint が非 null かつ非空白で、かつ一致する場合のみ true を返す。
+     * 片方でも null/空のときは同一端末と確認できないため false（fail closed）を返す。
+     * 「null なら通す」実装は認可を素通しさせる穴になるため、意図的に排除している（AC-3）。</p>
+     *
+     * @param requestFingerprint 今回のリクエストで導出された deviceFingerprint（Controller が
+     *                           User-Agent ヘッダからサーバー側で導出したもの）
+     * @param token              再提示された（grace 超過・後継有りの）トークン
+     * @return 同一端末からの再試行と確認できれば true
+     */
+    private boolean isSameDeviceRetry(String requestFingerprint, RefreshTokenEntity token) {
+        String storedFingerprint = token.getDeviceFingerprint();
+        if (requestFingerprint == null || requestFingerprint.isBlank()) {
+            return false;
+        }
+        if (storedFingerprint == null || storedFingerprint.isBlank()) {
+            return false;
+        }
+        return requestFingerprint.equals(storedFingerprint);
+    }
+
+    /**
+     * 後継ポインタ（{@code replacedByTokenHash}）のチェーンを辿り、現行（まだ失効していない）トークンを解決する。
+     *
+     * <p>チェーンの各ホップで同一ユーザーであることを確認し、循環参照や不整合に対しては
+     * {@link #MAX_CHAIN_RESOLUTION_HOPS} で打ち切って {@link Optional#empty()} を返す（真リプレイ扱いへフォールバック）。
+     * 現行トークン候補が見つかった場合は悲観ロック版ファインダで取り直し（並行操作との競合を避けるため）、
+     * ロック取得後に改めて失効していないことを確認する。</p>
+     *
+     * @param source grace 超過で再提示された（失効済み・後継有りの）起点トークン
+     * @return 解決できた現行トークン。循環・不整合・期限切れ・見つからない場合は空
+     */
+    private java.util.Optional<RefreshTokenEntity> resolveCurrentChainHead(RefreshTokenEntity source) {
+        Long userId = source.getUserId();
+        String nextHash = source.getReplacedByTokenHash();
+
+        for (int hop = 0; hop < MAX_CHAIN_RESOLUTION_HOPS && nextHash != null; hop++) {
+            RefreshTokenEntity next = refreshTokenRepository.findByTokenHash(nextHash).orElse(null);
+            if (next == null || !userId.equals(next.getUserId())) {
+                return java.util.Optional.empty();
+            }
+
+            if (next.getRevokedAt() == null) {
+                if (next.getExpiresAt().isBefore(LocalDateTime.now())) {
+                    return java.util.Optional.empty();
+                }
+                // 並行操作との競合を避けるため悲観ロック版で取り直し、ロック取得後も未失効であることを再確認する。
+                return refreshTokenRepository.findByTokenHashForUpdate(next.getTokenHash())
+                        .filter(locked -> locked.getRevokedAt() == null);
+            }
+
+            nextHash = next.getReplacedByTokenHash();
+        }
+        return java.util.Optional.empty();
     }
 }

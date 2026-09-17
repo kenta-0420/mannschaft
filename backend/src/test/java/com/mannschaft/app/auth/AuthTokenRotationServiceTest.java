@@ -443,4 +443,214 @@ class AuthTokenRotationServiceTest {
                             .isEqualTo("AUTH_007"));
         }
     }
+
+    /**
+     * 戦役 CMP-260917-1352 Phase 3: grace 超過の後継有りトークン再提示を一律リプレイと誤判定し
+     * 全デバイス強制ログアウトさせていた自爆バグの根治。
+     *
+     * <p>実機で確認された因果連鎖: FE の 15 秒 abort によりサーバー側ローテーションは完了しているのに
+     * クライアントの Cookie ジャーには旧トークンが残り、30 秒後の自動リトライが grace window（既定60秒）を
+     * 超過した旧トークンで行われる → 従来実装はこれを盗難トークンの再提示と誤判定し、正当な後継トークンまで
+     * 巻き添えで全滅させていた。</p>
+     *
+     * <p>方針: 「同一端末からの再試行」は盗難とみなさない。判定は deviceFingerprint（サーバー側で
+     * User-Agent から導出）の一致で行い、一致 かつ 後継チェーンの現行トークンが有効なときのみ
+     * リプレイ扱いを回避して新トークンを発行する。フィンガープリントが片方でも null/空のときは
+     * 同一端末と確認できないため fail closed（従来どおりリプレイ扱い）とする。別端末からの再提示は
+     * 従来どおり全デバイス無効化する。</p>
+     */
+    @Nested
+    @DisplayName("Phase 3: 同一端末の再試行はリプレイ扱いにしない（誤リプレイ判定による全デバイス強制ログアウトの根治）")
+    class SameDeviceRetryRescue {
+
+        private static final String SAME_FINGERPRINT = "ua-hash-same-device";
+
+        @Test
+        @DisplayName("AC-1: grace超過 + フィンガープリント一致 + 後継チェーンの現行トークンが有効 → "
+                + "200で新トークンを発行し、logoutAllDevicesは呼ばれず、現行トークンも巻き添えで失効しない")
+        void ac1_同一端末_grace超過でも救済される() {
+            // Given: 旧トークン（grace 超過・後継有り・deviceFingerprint 一致）
+            String rawRefreshToken = "stale-retry-token";
+            String tokenHash = "hashed-stale-retry-token";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity staleToken = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .deviceFingerprint(SAME_FINGERPRINT)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(longAgoRevoked())
+                    .replacedByTokenHash("current-live-hash")
+                    .build();
+            stubTokenLookup(tokenHash, staleToken);
+
+            // 後継チェーンの現行（生存中）トークン
+            RefreshTokenEntity currentLiveToken = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash("current-live-hash")
+                    .rememberMe(false)
+                    .deviceFingerprint(SAME_FINGERPRINT)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .build();
+            given(refreshTokenRepository.findByTokenHash("current-live-hash"))
+                    .willReturn(Optional.of(currentLiveToken));
+            given(refreshTokenRepository.findByTokenHashForUpdate("current-live-hash"))
+                    .willReturn(Optional.of(currentLiveToken));
+            stubIssuePath(1L);
+
+            // When
+            ApiResponse<TokenResponse> response =
+                    authTokenRotationService.refreshAccessToken(rawRefreshToken, SAME_FINGERPRINT);
+
+            // Then: 巻き添え無効化は起きず、新トークンが発行される
+            assertThat(response.getData().getAccessToken()).isNotBlank();
+            assertThat(response.getData().getRefreshToken()).isNotBlank();
+            verify(authSessionService, never()).logoutAllDevices(anyLong());
+            verify(authSessionService, never()).logoutAllDevices(anyLong(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        }
+
+        @Test
+        @DisplayName("AC-2: grace超過 + フィンガープリント不一致 → 従来どおり全デバイス無効化＋AUTH_026（盗難検知は弱めない）")
+        void ac2_フィンガープリント不一致_全デバイス無効化() {
+            // Given: リクエスト側フィンガープリントがトークンに記録された値と異なる（別端末の再提示＝本物の盗難疑い）
+            String rawRefreshToken = "replayed-from-other-device";
+            String tokenHash = "hashed-replayed-other-device";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity staleToken = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .deviceFingerprint(SAME_FINGERPRINT)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(longAgoRevoked())
+                    .replacedByTokenHash("current-live-hash-2")
+                    .build();
+            stubTokenLookup(tokenHash, staleToken);
+
+            // When / Then
+            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, "ua-hash-different-device"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_026"));
+            verify(authSessionService).logoutAllDevices(1L);
+        }
+
+        @Test
+        @DisplayName("AC-3a: grace超過 + リクエスト側フィンガープリントが null → fail closed（従来どおりリプレイ扱い）")
+        void ac3a_リクエスト側fingerprintがnull_failClosed() {
+            String rawRefreshToken = "stale-retry-no-fp";
+            String tokenHash = "hashed-stale-retry-no-fp";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity staleToken = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .deviceFingerprint(SAME_FINGERPRINT)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(longAgoRevoked())
+                    .replacedByTokenHash("current-live-hash-3")
+                    .build();
+            stubTokenLookup(tokenHash, staleToken);
+
+            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_026"));
+            verify(authSessionService).logoutAllDevices(1L);
+        }
+
+        @Test
+        @DisplayName("AC-3b: grace超過 + トークン側に記録された deviceFingerprint が null → fail closed（従来どおりリプレイ扱い）")
+        void ac3b_トークン側fingerprintがnull_failClosed() {
+            // Given: ローテーション以前（旧仕様）に発行され deviceFingerprint が未記録のトークン
+            String rawRefreshToken = "stale-retry-legacy-token";
+            String tokenHash = "hashed-stale-retry-legacy-token";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity staleToken = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .deviceFingerprint(null)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(longAgoRevoked())
+                    .replacedByTokenHash("current-live-hash-4")
+                    .build();
+            stubTokenLookup(tokenHash, staleToken);
+
+            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, SAME_FINGERPRINT))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_026"));
+            verify(authSessionService).logoutAllDevices(1L);
+        }
+
+        @Test
+        @DisplayName("AC-5: 後継チェーンが循環していても無限ループせず、上限到達で従来どおりリプレイ扱いにする")
+        void ac5_循環チェーンでも無限ループしない() {
+            // Given: 後継ポインタが自分自身を指す循環チェーン（データ不整合・攻撃を模した異常系）
+            String rawRefreshToken = "cyclic-chain-token";
+            String tokenHash = "hashed-cyclic-chain-token";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity staleToken = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .deviceFingerprint(SAME_FINGERPRINT)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(longAgoRevoked())
+                    .replacedByTokenHash("cyclic-hash")
+                    .build();
+            stubTokenLookup(tokenHash, staleToken);
+
+            RefreshTokenEntity cyclicToken = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash("cyclic-hash")
+                    .rememberMe(false)
+                    .deviceFingerprint(SAME_FINGERPRINT)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(longAgoRevoked())
+                    .replacedByTokenHash("cyclic-hash") // 自己参照の循環
+                    .build();
+            given(refreshTokenRepository.findByTokenHash("cyclic-hash")).willReturn(Optional.of(cyclicToken));
+
+            // When / Then: スタックオーバーフロー・無限ループせず、有限時間で真リプレイとして処理される
+            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, SAME_FINGERPRINT))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_026"));
+            verify(authSessionService).logoutAllDevices(1L);
+        }
+
+        @Test
+        @DisplayName("AC-6: grace window内の並行refresh（2-a経路）は本改修の影響を受けず従来どおり200")
+        void ac6_grace内の並行refreshは影響を受けない() {
+            String rawRefreshToken = "within-grace-token";
+            String tokenHash = "hashed-within-grace-token";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity rotatedWithinGrace = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .deviceFingerprint(SAME_FINGERPRINT)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(justRevoked())
+                    .replacedByTokenHash("successor-hash-grace")
+                    .build();
+            stubTokenLookup(tokenHash, rotatedWithinGrace);
+            stubIssuePath(1L);
+
+            assertThatCode(() -> {
+                ApiResponse<TokenResponse> response =
+                        authTokenRotationService.refreshAccessToken(rawRefreshToken, "any-fingerprint-value");
+                assertThat(response.getData().getAccessToken()).isNotBlank();
+            }).doesNotThrowAnyException();
+            verify(authSessionService, never()).logoutAllDevices(anyLong());
+        }
+    }
 }
