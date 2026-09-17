@@ -63,6 +63,11 @@
     "leagueTransfers": "Liga-Transfers",
     "adminConsole": "Administrationskonsole",
     "receipts": "Belege",
-    "receiptSettings": "Aussteller-Einstellungen für Belege"
+    "receiptSettings": "Aussteller-Einstellungen für Belege",
+    "vendors": "Anbieterverzeichnis",
+    "lineSettings": "LINE-Einstellungen",
+    "snsSettings": "SNS-Einstellungen",
+    "scheduleSettings": "Terminplan-Einstellungen",
+    "bulletinCategories": "Pinnwand-Kategorien"
   }
 }

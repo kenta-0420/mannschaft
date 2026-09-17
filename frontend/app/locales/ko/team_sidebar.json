@@ -48,7 +48,12 @@
       "adminConsole": "관리 콘솔",
       "receipts": "영수증",
       "receiptSettings": "영수증 발행자 설정",
-      "hourlyRate": "時給設定"
+      "hourlyRate": "時給設定",
+      "vendors": "업체 마스터",
+      "lineSettings": "LINE 설정",
+      "snsSettings": "SNS 설정",
+      "scheduleSettings": "일정 설정",
+      "bulletinCategories": "게시판 카테고리 관리"
     }
   }
 }

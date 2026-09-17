@@ -48,7 +48,12 @@
       "adminConsole": "管理コンソール",
       "receipts": "領収書",
       "receiptSettings": "領収書の発行者設定",
-      "hourlyRate": "時給設定"
+      "hourlyRate": "時給設定",
+      "vendors": "業者マスタ",
+      "lineSettings": "LINE設定",
+      "snsSettings": "SNS設定",
+      "scheduleSettings": "スケジュール設定",
+      "bulletinCategories": "掲示板カテゴリ管理"
     }
   }
 }

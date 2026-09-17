@@ -73,6 +73,9 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.equipment', icon: 'pi pi-box', path: 'equipment', moduleSlug: 'equipment', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.parking', icon: 'pi pi-car', path: 'parking', moduleSlug: 'parking', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.signage', icon: 'pi pi-desktop', path: 'signage', moduleSlug: null, requiredRole: 'ADMIN' },
+      // CMP-260909-1141 Phase 3: 業者マスタ（/admin/vendors）。repair_longterm_plan は ORGANIZATION/TEAM
+      // 両レベルで有効化可能（V13.053）。TeamSidebar と同じ根拠で DEPUTY_ADMIN・クエリ付き absolutePath。
+      { labelKey: 'orgSidebar.vendors', icon: 'pi pi-briefcase', path: '', absolutePath: `/admin/vendors?scope=organizations&scopeId=${props.orgId}`, moduleSlug: 'repair_longterm_plan', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
   {
@@ -140,6 +143,13 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
       // F20.1: 課金・プラン管理（閲覧はメンバー可・操作はADMIN限定。ナビはメンバー以上に表示）
       { labelKey: 'orgSidebar.billing', icon: 'pi pi-credit-card', path: 'settings/billing', moduleSlug: null, requiredRole: 'MEMBER' },
+      // CMP-260909-1141 Phase 3: TeamSidebar と同じ根拠（LineBotConfigService/SnsFeedConfigService の
+      // checkAdminOrAbove → DEPUTY_ADMIN、moduleSlug は該当モジュール無しのため null）。
+      { labelKey: 'orgSidebar.lineSettings', icon: 'pi pi-comment', path: '', absolutePath: '/admin/line-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'orgSidebar.snsSettings', icon: 'pi pi-share-alt', path: '', absolutePath: '/admin/sns-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'orgSidebar.scheduleSettings', icon: 'pi pi-calendar-times', path: '', absolutePath: '/admin/schedule-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      // カテゴリ CRUD は requireManageContent を要求する（TeamSidebar と同じ根拠）。
+      { labelKey: 'orgSidebar.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
 ]

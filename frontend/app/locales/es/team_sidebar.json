@@ -48,7 +48,12 @@
       "adminConsole": "Consola de administración",
       "receipts": "Recibos",
       "receiptSettings": "Configuración del emisor de recibos",
-      "hourlyRate": "時給設定"
+      "hourlyRate": "時給設定",
+      "vendors": "Maestro de proveedores",
+      "lineSettings": "Configuración de LINE",
+      "snsSettings": "Configuración de redes sociales",
+      "scheduleSettings": "Configuración de calendario",
+      "bulletinCategories": "Categorías del tablón"
     }
   }
 }
