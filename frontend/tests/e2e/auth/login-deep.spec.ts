@@ -5,7 +5,7 @@ import { fillInput, fillPassword } from '../helpers/form'
 test.use({ storageState: { cookies: [], origins: [] } })
 
 test.describe('AUTH-DEEP login: ログインフォーム深掘り', () => {
-  test('DEEP-LOGIN-000: 初回表示だけでCSRフォームが操作可能になる', async ({ page }) => {
+  test('DEEP-LOGIN-000: 初回HTMLにログインフォームが描画されhydration後に操作できる', async ({ page }) => {
     let documentRequests = 0
     page.on('request', (request) => {
       if (request.resourceType() === 'document' && new URL(request.url()).pathname === '/login') {
@@ -17,8 +17,12 @@ test.describe('AUTH-DEEP login: ログインフォーム深掘り', () => {
     if (!response) throw new Error('/login のHTTPレスポンスを取得できませんでした')
 
     const serverHtml = await response.text()
-    expect(serverHtml).not.toContain('<form')
-    expect(serverHtml).not.toMatch(/<button[^>]*type="submit"[^>]*disabled/)
+    // 属性の並び順や Vue の class 出力に依存せず、初回 HTTP HTML の form と
+    // disabled な submit button を検証する。これにより hydration 前にも白画面にしない。
+    expect(serverHtml).toMatch(/<form\b[^>]*>/i)
+    expect(serverHtml).toMatch(
+      /<button\b(?=[^>]*\btype=(?:"submit"|'submit'|submit)(?:\s|>))(?=[^>]*\bdisabled(?:\s|=|>))[^>]*>/i,
+    )
 
     await page.waitForFunction(
       () => {
