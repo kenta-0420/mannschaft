@@ -171,30 +171,61 @@ public void withdrawUser(Long userId) {
 
 ---
 
-## §3. 9 ドメイン匿名化リスナー網羅表（**7 配線済 + 1 未配線 + 1 別構造**）— 現状休眠の影響
+## §3. 退会イベント購読者の正本（2026-09-17 実装同期）
 
-| # | ドメイン | リスナー / クラス | 監視テーブル | 操作 | 現状休眠の影響 |
-|---|---|---|---|---|---|
-| 1 | auth | `AuthAnonymizationEventListener` | `oauth_accounts`, `two_factor_auth` | DELETE（`deleteByUserId`）| 退会後 30 日間 OAuth 連携と 2FA 設定が残存。**さらに 30 日後 `AccountPurgeService` も削除しない**（親 §2.3 注: 二重削除は冪等な前提だが、片方しか動かない場合は完全に温存）|
-| 2 | favorite | `FavoriteAnonymizationEventListener` | `user_favorites` | DELETE（`deleteAllByUserId`）| お気に入りデータ残存。**`AccountPurgeService` 側にも削除無し** → 永久残存 |
-| 3 | notification | `NotificationAnonymizationEventListener` | `push_subscriptions`, `notification_preferences`, `notification_type_preferences` | DELETE × 3 | プッシュ通知購読が残存。**退会後にユーザーへ通知が飛び続ける可能性**。GDPR 同意撤回権侵害リスク |
-| 4 | social | `SocialAnonymizationEventListener` | `follows`, `user_social_profiles` | follows DELETE + profile `deactivate()` | フォロー関係残存。退会者を他ユーザーが follow 一覧で見続ける |
-| 5 | schedule | `IntegrationAnonymizationEventListener` | `user_google_calendar_connections` | DELETE（`deleteByUserId`）| **Google Calendar OAuth トークンが残存 → 退会後もカレンダー連携が裏で生き続ける**。最重大級の GDPR 違反候補 |
-| 6 | village | `VillageUserCleanerEventListener` | `user_village_nicknames`, `user_village_pins`, `village_memberships` | DELETE × 2 + `leftAt`/`bannedReason="ANONYMIZED"` | 村ニックネーム・ピンが残存。`village_memberships` も active のまま |
-| 7 | weather | `WeatherLocationCleanupListener` | `user_weather_locations` | DELETE（`deleteByUserId`）| 地理情報残存（個人特定可能性ありと設計書明記） |
-| 8 | scopefolder | **未配線**（フックメソッド `MyScopeFolderService#deleteAllByUserId` のみ存在、リスナー無し）| `my_scope_folders`, `my_scope_folder_items` | （実行されない）| F15.3 設計書 §9.4 で「後続 PR でリスナー追加」と書かれたまま塩漬け（[`MyScopeFolderService.java:457`](../../backend/src/main/java/com/mannschaft/app/scopefolder/service/MyScopeFolderService.java)）|
-| 9 | schedule | `CalendarLayerLifecycleListener`（**本監査より後に新設・配線済**）| `user_calendar_layer_settings` | DELETE（`deleteByUserId`。即時＝弱匿名化の段）| （該当なし。F03.19 W1-e で最初から配線して追加したため休眠期を持たない）|
+この表は `UserAnonymizedEvent`（即時匿名化層）と `AccountPurgedEvent`（30日後の確定削除層）を実際に購読するクラスの正本である。同じクラスが両イベントを購読する場合は、イベントごとの削除責務が異なるため2行に分ける。
 
-> **追記（F03.19 W1-e）:** 上表 #9 `user_calendar_layer_settings` は本監査の後に新設された表であり、当初の「7 配線済 + 1 未配線 + 1 別構造」の数え上げには含まれない。本表は**退会時に削除される表の正本一覧**として今後も追記していく（F03.19 設計書 §10.4 の指示による）。
->
-> **注:** 指示書では「9 ドメイン」だったが、本検分の結果 **配線済は 7 + scopefolder 未配線 + chart は未実装 = 実体 7 リスナー**。`chart` ドメインには `UserAnonymizedEvent` を購読する Listener は存在しない（`grep` 確定）。`chart_records.anonymizeCustomerUserId` は `AccountPurgeService` から直接呼ばれているのみ（親 §2.1 表 #11）。
+`WithdrawalPersonalDataListenerCoverageGuardTest` は本表のマーカー内とプロダクションコードの購読者を完全一致で照合する。リスナーを追加・削除・購読イベント変更した場合は、実装とこの表を同じPRで更新すること。表だけの免除行や番人側の除外リストは設けない。
 
-### 3.1 chart / scopefolder の扱い
-
-| ドメイン | 即時匿名化リスナー | 30 日後 `AccountPurgeService` | 結論 |
+<!-- GDPR_EVENT_LISTENER_LEDGER_START -->
+| イベント | 購読クラス（FQCN） | ドメイン | 対象データと操作 |
 |---|---|---|---|
-| chart | ❌ 未実装 | ✅ `chart_records.anonymizeCustomerUserId` | **30 日まで PII 残存だが最終的に匿名化はされる**（親設計書 Phase B-4 で AccountPurgedEvent 経由に整理予定）|
-| scopefolder | ❌ 未配線 | ❌ どこからも呼ばれない | **永久残存** — 即時匿名化を有効化する際に同時に整備すべき |
+| UserAnonymizedEvent | `com.mannschaft.app.actionmemo.event.ActionMemoAnonymizationEventListener` | actionmemo | `action_memos` を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.actionmemo.event.ActionMemoAnonymizationEventListener` | actionmemo | `action_memo_tags` と `user_action_memo_settings` を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.auth.event.AuthAnonymizationEventListener` | auth | `oauth_accounts` と `two_factor_auth` を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.billing.BillingPurgeEventListener` | billing | ユーザー課金契約を取消し、Stripe subscription を即時解約 |
+| AccountPurgedEvent | `com.mannschaft.app.billing.beta.BetaPerkPurgeEventListener` | billing | USERスコープのベータ特典と由来 entitlement を取消 |
+| AccountPurgedEvent | `com.mannschaft.app.chart.event.ChartPurgeEventListener` | chart | `chart_records.customer_user_id` を匿名化 |
+| AccountPurgedEvent | `com.mannschaft.app.errorreport.event.ErrorReportPurgeEventListener` | errorreport | `error_report_occurrences` のユーザー参照を匿名化 |
+| UserAnonymizedEvent | `com.mannschaft.app.favorite.event.FavoriteAnonymizationEventListener` | favorite | `user_favorites` を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.inbox.event.InboxAnonymizationEventListener` | inbox | `inbox_label_links`、`inbox_item_states`、`notification_labels` を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.membership.event.ScopeMemberCalendarSettingAnonymizationEventListener` | membership | スコープメンバーのカレンダー設定を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.notification.event.NotificationAnonymizationEventListener` | notification | push・通知設定・通知本体・`notifications_archive` を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.payment.event.PaymentPurgeEventListener` | payment | `member_payments.user_id` をセンチネル化し、`stripe_customers` を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.pointcard.event.PointCardAnonymizationEventListener` | pointcard | `user_point_cards` を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.pointcard.event.PointCardAnonymizationEventListener` | pointcard | `point_card_groups` と `point_card_user_settings` を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.proxy.event.ProxyPurgeEventListener` | proxy | `proxy_input_records` を物理削除し、`proxy_input_consents` を論理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.reservation.event.ReservationAnonymizationEventListener` | reservation | `emergency_closure_confirmations` を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.resident.event.ResidentAnonymizationEventListener` | resident | `property_listing_inquiries` を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.resume.event.ResumePurgeEventListener` | resume | 履歴書のR2オブジェクトと `resumes` を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.returnstayplan.event.ReturnStayPlanLifecycleListener` | returnstayplan | 所有者の帰省・滞在予定を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.returnstayplan.event.ReturnStayPlanLifecycleListener` | returnstayplan | 所有者の帰省・滞在予定を冪等に物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.role.event.RolePurgeEventListener` | role | ロール・メンバーシップを除去し、必要時に管理者を承継 |
+| UserAnonymizedEvent | `com.mannschaft.app.schedule.event.IntegrationAnonymizationEventListener` | schedule | `user_google_calendar_connections` を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.schedule.event.ScheduleTargetAnonymizationEventListener` | schedule | ユーザー宛て schedule target を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.schedule.listener.CalendarLayerLifecycleListener` | schedule | `user_calendar_layer_settings` を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.schedule.listener.ScheduleKeepAnonymizationEventListener` | schedule | ユーザーの schedule keep を論理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.search.event.SearchAnonymizationEventListener` | search | 検索履歴を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.search.event.SearchAnonymizationEventListener` | search | 保存検索条件を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.social.event.SocialAnonymizationEventListener` | social | USER型followを物理削除し、social profileを無効化 |
+| AccountPurgedEvent | `com.mannschaft.app.team.event.TeamPurgeEventListener` | team | `team_org_memberships.invited_by/responded_by` をNULL化 |
+| AccountPurgedEvent | `com.mannschaft.app.timeline.event.TimelineBookmarkAnonymizationEventListener` | timeline | timeline bookmark を物理削除 |
+| UserAnonymizedEvent | `com.mannschaft.app.village.event.VillageUserCleanerEventListener` | village | nickname・pinを削除し、membershipを離脱化、charter drafterをNULL化 |
+| UserAnonymizedEvent | `com.mannschaft.app.weather.event.WeatherLocationCleanupListener` | weather | `user_weather_locations` を物理削除 |
+<!-- GDPR_EVENT_LISTENER_LEDGER_END -->
+
+実装同期時点の件数は `UserAnonymizedEvent` 18クラス、`AccountPurgedEvent` 14クラス、両方を購読する4クラス、ユニーク28クラスである。件数は説明用であり、番人は固定件数ではなく購読者の集合そのものを照合する。
+
+この番人が保証するのは、**既に実装された2イベントの購読者と本台帳のドリフトが無いこと**である。新しい個人データ表にリスナー自体を実装し忘れた場合、既存リスナー内の対象表だけを変更した場合、または実装と台帳を同時に誤って削除した場合までは検出できない。「全個人データ表の削除経路が存在すること」の保証には、`@PersonalData`・削除方式・CASCADE・外部リソースを含む別の宣言的マニフェストが必要になる。
+
+なお `UserAnonymizedEvent` は §1〜§2記載のとおり、本番の退会受付経路から発火されず現在も休眠中である。本表への収載は配線済み購読者の棚卸しであり、CMP-113で即時匿名化を有効化したことを意味しない。`AccountPurgedEvent` は30日後の `AccountPurgeService` から発火される。
+
+### 3.1 購読者ではない既知の削除フック
+
+| ドメイン | 状態 | 扱い |
+|---|---|---|
+| scopefolder | `MyScopeFolderService#deleteAllByUserId` は存在するが、両イベントの購読者は無い | 本表と番人の対象外。フックをイベントへ配線したPRで本表へ追加する |
+| `AccountPurgeService` 直処理 | GDPR自ドメインの直接削除とイベント発火前処理 | イベント購読者ではないため本表と番人の対象外 |
 
 ---
 

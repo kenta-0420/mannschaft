@@ -111,7 +111,7 @@ NO_ARG_NOW|com.mannschaft.app.auth.service.AuthPasswordResetService|2
 NO_ARG_NOW|com.mannschaft.app.auth.service.AuthRegistrationService|4
 NO_ARG_NOW|com.mannschaft.app.auth.service.AuthService|2
 NO_ARG_NOW|com.mannschaft.app.auth.service.AuthSessionService|4
-NO_ARG_NOW|com.mannschaft.app.auth.service.AuthTokenRotationService|3
+NO_ARG_NOW|com.mannschaft.app.auth.service.AuthTokenRotationService|2
 NO_ARG_NOW|com.mannschaft.app.auth.service.AuthWebAuthnService|1
 NO_ARG_NOW|com.mannschaft.app.auth.service.NewDeviceDetectionService|1
 NO_ARG_NOW|com.mannschaft.app.auth.service.ParentalConsentCleanupBatchService|1
