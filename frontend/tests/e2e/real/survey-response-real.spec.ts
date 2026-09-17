@@ -1,105 +1,155 @@
 /**
- * 実機E2E（モック不使用・実BE/実FE）: アンケート回答フロー一気通貫の回帰テスト。
+ * アンケート回答フォームの実アプリ E2E。
  *
- * 背景: FE↔BE の詳細/回答契約が複数次元で不一致（survey入れ子 / 設問content・scaleConfig入れ子 /
- * questionType SCALE・FREE_TEXT 語彙 / 送信 optionIds・textResponse / hasResponded 不在）だったため、
- * 実BEではメンバーがアンケート回答画面に到達できず「締切・結果非公開」ロックに誤分岐していた。
- * useSurveyApi の BE↔FE 翻訳層（adaptDetail / adaptSubmit / adaptMyResponse）で根治。
- * 本specは「実ブラウザが回答画面を描画し、実BEへ回答が永続化される」ことを担保する。
- *
- * 前提: 実BE(API_BASE_URL, 既定 http://localhost:8080) / 実FE(BASE_URL) が起動済み。
- *   - 実FEのオリジンはBEのCORS許可リスト（既定 :3000 / :3001）に含まれること。
- *   - WSL2 等で browser↔BE 直結が不安定な環境では、playwright config 側で
- *     localhost のプロキシバイパスを設定すること（本ファイルは環境非依存に保つ）。
- * 認証: e2e-user@test.mannschaft.local / TestPass2026!（team fc-u-18 の MEMBER）。
+ * chromium-real の setup-real-user が作る保存済み認証を使う。spec 内で UI ログインを
+ * 重ねない。未回答用と回答済み用のアンケートを別々に作り、後者だけ API で同じユーザーの
+ * 回答を事前投入するため、各表示状態を手補正なしで再現できる。
  */
-import { test, expect, type APIRequestContext } from '@playwright/test'
+import { expect, test, type APIRequestContext } from '@playwright/test'
 
 const BACKEND_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
-const E2E_USER = { email: 'e2e-user@test.mannschaft.local', password: 'TestPass2026!' }
-const E2E_ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: 'TestPass2026!' }
+const E2E_USER = {
+  email: process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local',
+  password: process.env.TEST_USER_PASSWORD ?? 'TestPass2026!',
+}
+const E2E_ADMIN = {
+  email: process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local',
+  password: process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!',
+}
 const TEAM_SLUG = 'fc-u-18'
 
+type QuestionWire = {
+  id: number
+  questionType: string
+  options?: Array<{ id: number }>
+}
+
 async function loginToken(request: APIRequestContext, email: string, password: string): Promise<string | null> {
-  const res = await request.post(`${BACKEND_URL}/api/v1/auth/login`, {
+  const response = await request.post(`${BACKEND_URL}/api/v1/auth/login`, {
     data: { email, password },
     headers: { 'Content-Type': 'application/json' },
   })
-  if (!res.ok()) return null
-  return (await res.json())?.data?.accessToken ?? null
+  if (!response.ok()) return null
+  return (await response.json())?.data?.accessToken ?? null
 }
 
 async function backendAlive(request: APIRequestContext): Promise<boolean> {
   try {
-    const res = await request.get(`${BACKEND_URL}/actuator/health`, { timeout: 5000 })
-    return (await res.json())?.status === 'UP'
+    const response = await request.get(`${BACKEND_URL}/actuator/health`, { timeout: 5_000 })
+    return (await response.json())?.status === 'UP'
   } catch {
     return false
   }
 }
 
-test.describe('SURVEY-REAL: アンケート回答フロー実機一気通貫', () => {
+test.describe('SURVEY-REAL: アンケート回答フォーム', () => {
   let adminToken: string
-  let surveyId: number
+  let unansweredSurveyId: number
+  let answeredSurveyId: number
 
-  test.beforeAll(async ({ request }) => {
-    test.skip(!(await backendAlive(request)), 'BE 未起動のためスキップ')
-    const at = await loginToken(request, E2E_ADMIN.email, E2E_ADMIN.password)
-    test.skip(!at, 'admin ログイン不可（認証ドリフト/ロック）のためスキップ')
-    adminToken = at!
-    // 公開中アンケートを作成（ALL配信・非匿名・AFTER_RESPONSE・SINGLE_CHOICE + FREE_TEXT + SCALE）
+  async function createPublishedSurvey(request: APIRequestContext, state: '未回答' | '回答済み'): Promise<number> {
     const create = await request.post(`${BACKEND_URL}/api/v1/teams/${TEAM_SLUG}/surveys`, {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
       data: {
-        title: `【実機E2E自動】回答フロー回帰 ${Date.now()}`,
-        description: '実機E2E回答フロー回帰。afterAllで削除。',
+        title: `実機E2E ${state} アンケート ${Date.now()}`,
+        description: 'CMP-260917-1209 の実機E2E。afterAll で削除する。',
         isAnonymous: false,
         allowMultipleSubmissions: false,
-        resultsVisibility: 'AFTER_RESPONSE',
+        // 一般メンバーは結果を見られないため、回答後も response mode の
+        // survey-already-responded を検証できる。
+        resultsVisibility: 'ADMINS_ONLY',
         distributionMode: 'ALL',
         unrespondedVisibility: 'ALL_MEMBERS',
         questions: [
-          { questionType: 'SINGLE_CHOICE', questionText: '好きな季節は？', isRequired: true, displayOrder: 1,
-            options: [{ optionText: '春', displayOrder: 1 }, { optionText: '夏', displayOrder: 2 }] },
-          { questionType: 'FREE_TEXT', questionText: 'ひとこと', isRequired: false, displayOrder: 2 },
-          { questionType: 'SCALE', questionText: '満足度', isRequired: true, displayOrder: 3, scaleMin: 1, scaleMax: 5 },
+          {
+            questionType: 'SINGLE_CHOICE',
+            questionText: '好きな競技は？',
+            isRequired: true,
+            displayOrder: 1,
+            options: [
+              { optionText: '野球', displayOrder: 1 },
+              { optionText: 'サッカー', displayOrder: 2 },
+            ],
+          },
+          {
+            questionType: 'FREE_TEXT',
+            questionText: 'ひとこと',
+            isRequired: false,
+            displayOrder: 2,
+          },
+          {
+            questionType: 'SCALE',
+            questionText: '満足度',
+            isRequired: true,
+            displayOrder: 3,
+            scaleMin: 1,
+            scaleMax: 5,
+          },
         ],
       },
     })
-    expect(create.status(), 'アンケート作成').toBe(201)
-    // Issue #2635 で作成 POST のレスポンスがフラット化され data.survey の入れ子が消えた。
-    surveyId = (await create.json())?.data?.id
-    expect(surveyId, 'surveyId').toBeTruthy()
-    const pub = await request.post(`${BACKEND_URL}/api/v1/teams/${TEAM_SLUG}/surveys/${surveyId}/publish`, {
+    expect(create.status(), `${state}アンケートの作成`).toBe(201)
+    const surveyId = (await create.json())?.data?.id as number | undefined
+    expect(surveyId, `${state} surveyId`).toBeTruthy()
+
+    const publish = await request.post(`${BACKEND_URL}/api/v1/teams/${TEAM_SLUG}/surveys/${surveyId}/publish`, {
       headers: { Authorization: `Bearer ${adminToken}` },
     })
-    expect(pub.ok(), 'アンケート公開').toBeTruthy()
+    expect(publish.ok(), `${state}アンケートの公開`).toBeTruthy()
+    return surveyId!
+  }
+
+  test.beforeAll(async ({ request }) => {
+    test.skip(!(await backendAlive(request)), 'バックエンドが起動していない')
+    const token = await loginToken(request, E2E_ADMIN.email, E2E_ADMIN.password)
+    test.skip(!token, '管理者のAPIログインに失敗した')
+    adminToken = token!
+    unansweredSurveyId = await createPublishedSurvey(request, '未回答')
+    answeredSurveyId = await createPublishedSurvey(request, '回答済み')
+
+    // 保存済み browser auth を変更しないため、状態作成用の API token は別に取得する。
+    const userToken = await loginToken(request, E2E_USER.email, E2E_USER.password)
+    test.skip(!userToken, '回答済み状態を作るユーザーのAPIログインに失敗した')
+    const detail = await request.get(`${BACKEND_URL}/api/v1/teams/${TEAM_SLUG}/surveys/${answeredSurveyId}`, {
+      headers: { Authorization: `Bearer ${userToken}` },
+    })
+    expect(detail.ok(), '回答済み用アンケート詳細の取得').toBeTruthy()
+    const questions = (await detail.json())?.data?.questions as QuestionWire[]
+    const choice = questions.find((question) => question.questionType === 'SINGLE_CHOICE')
+    const scale = questions.find((question) => question.questionType === 'SCALE')
+    const choiceOptionId = choice?.options?.[0]?.id
+    expect(choiceOptionId, '単一選択肢').toBeTruthy()
+    expect(scale?.id, '尺度設問').toBeTruthy()
+
+    const answer = await request.post(`${BACKEND_URL}/api/v1/surveys/${answeredSurveyId}/responses`, {
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${userToken}` },
+      data: {
+        answers: [
+          { questionId: choice!.id, optionIds: [choiceOptionId!] },
+          { questionId: scale!.id, textResponse: '5' },
+        ],
+      },
+    })
+    expect(answer.status(), '回答済み状態の作成').toBe(201)
   })
 
   test.afterAll(async ({ request }) => {
-    if (surveyId && adminToken) {
+    if (!adminToken) return
+    for (const surveyId of [unansweredSurveyId, answeredSurveyId]) {
+      if (!surveyId) continue
       await request.delete(`${BACKEND_URL}/api/v1/teams/${TEAM_SLUG}/surveys/${surveyId}`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       }).catch(() => {})
     }
   })
 
-  test('SURVEY-REAL-1: メンバーが回答画面に到達→各設問入力→送信201（翻訳層根治の回帰）', async ({ page }) => {
-    // UIログイン
-    await page.goto('/login')
-    await page.getByRole('button', { name: 'ログイン', exact: true }).waitFor({ timeout: 20000 })
-    await page.locator('input#email').fill(E2E_USER.email)
-    await page.locator('input[type="password"]').fill(E2E_USER.password)
-    await page.getByRole('button', { name: 'ログイン', exact: true }).click()
-    await page.waitForURL(/\/my\/|\/dashboard/, { timeout: 30000 })
+  test('SURVEY-REAL-1: 未回答状態でフォームを表示して回答する', async ({ page }) => {
+    // chromium-real の保存済み storageState を使う。UI の再ログインは行わない。
+    await page.goto(`/surveys/${unansweredSurveyId}?scope=team&scopeId=${TEAM_SLUG}`)
 
-    // 回答ページへ直接遷移
-    await page.goto(`/surveys/${surveyId}?scope=team&scopeId=${TEAM_SLUG}`)
+    await expect(page.getByTestId('survey-mode-response')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByTestId('survey-response-form')).toBeVisible()
 
-    // AC-1: 回答フォームが表示される（締切・結果非公開ロックに誤分岐しない）
-    await expect(page.getByTestId('survey-response-form')).toBeVisible({ timeout: 20000 })
-
-    // AC-2: 各設問種別の入力欄が描画される（SINGLE_CHOICE=radio / FREE_TEXT=textarea / SCALE=rating）
     const radios = page.locator('[data-testid^="response-radio-"]')
     const ratings = page.locator('[data-testid^="response-rating-"]')
     await expect(radios.first()).toBeVisible()
@@ -107,12 +157,21 @@ test.describe('SURVEY-REAL: アンケート回答フロー実機一気通貫', (
     await radios.first().click()
     await ratings.nth(3).click()
 
-    // AC-3: 送信→201（実BEへ永続化）
-    const submitResp = page.waitForResponse(
-      (r) => r.url().includes(`/surveys/${surveyId}/responses`) && r.request().method() === 'POST',
+    const submitResponse = page.waitForResponse(
+      (response) => response.url().includes(`/surveys/${unansweredSurveyId}/responses`) && response.request().method() === 'POST',
     )
     await page.getByTestId('survey-response-submit').click()
-    const sr = await submitResp
-    expect(sr.status(), '回答送信').toBe(201)
+    expect((await submitResponse).status(), '回答送信').toBe(201)
+
+    // 回答後の表示も同じ testid 契約で確認する。
+    await expect(page.getByTestId('survey-already-responded')).toBeVisible({ timeout: 20_000 })
+  })
+
+  test('SURVEY-REAL-2: 事前回答済み状態ではフォームを出さず回答済み表示を出す', async ({ page }) => {
+    await page.goto(`/surveys/${answeredSurveyId}?scope=team&scopeId=${TEAM_SLUG}`)
+
+    await expect(page.getByTestId('survey-mode-response')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByTestId('survey-already-responded')).toBeVisible()
+    await expect(page.getByTestId('survey-response-form')).toHaveCount(0)
   })
 })

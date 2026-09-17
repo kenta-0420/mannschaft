@@ -18,6 +18,12 @@ public enum AuditEventType {
     LOGOUT_SESSION(AuditEventCategory.AUTH),
     LOGOUT_ALL_SESSIONS(AuditEventCategory.AUTH),
     TOKEN_REUSE_DETECTED(AuditEventCategory.AUTH),
+    /**
+     * CMP-260917-1352 Phase 3: grace window 超過の後継有りトークン再提示を、同一端末（deviceFingerprint
+     * 一致）からの再試行と判定して救済（全デバイス無効化を回避）した。{@link #TOKEN_REUSE_DETECTED}
+     * （真リプレイ検出）とは意図的に別種別。混ぜると監視側で本物の盗難検知と区別が付かなくなる。
+     */
+    TOKEN_REPLAY_RESCUED_SAME_DEVICE(AuditEventCategory.AUTH),
     DEVICE_FINGERPRINT_MISMATCH(AuditEventCategory.AUTH),
     NEW_DEVICE_LOGIN(AuditEventCategory.AUTH),
 
