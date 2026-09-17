@@ -42,6 +42,8 @@ class OrgModuleCatalogControllerTest {
 
     private static final Long USER_ID = 1L;
     private static final Long ORG_ID = 10L;
+    private static final String ORG_SLUG = "org-000001";
+    private static final OrgScopeId ORG_SCOPE = new OrgScopeId(ORG_ID);
 
     @Mock private ModuleService moduleService;
     @Mock private AccessControlService accessControlService;
@@ -64,15 +66,17 @@ class OrgModuleCatalogControllerTest {
     @Test
     @DisplayName("MEMBER がカタログを取得 – slug 解決＋認可後 200")
     void getOrganizationModuleCatalog_member_200() {
+        willDoNothing().given(organizationService).assertActiveOrganizationExists(ORG_ID);
         willDoNothing().given(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
         OrgModuleCatalogResponse body = OrgModuleCatalogResponse.builder()
                 .planLimit(10).enabledCount(0L).hasPaidPlan(false).modules(List.of()).build();
         given(moduleService.getOrganizationModuleCatalog(ORG_ID)).willReturn(body);
 
         ResponseEntity<ApiResponse<OrgModuleCatalogResponse>> resp =
-                controller.getOrganizationModuleCatalog(new OrgScopeId(ORG_ID));
+                controller.getOrganizationModuleCatalog(ORG_SCOPE);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(organizationService).assertActiveOrganizationExists(ORG_ID);
         verify(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
         verify(moduleService).getOrganizationModuleCatalog(ORG_ID);
     }
@@ -80,17 +84,18 @@ class OrgModuleCatalogControllerTest {
     @Test
     @DisplayName("AC-9: 非メンバーは checkMembership が COMMON_002 を投げる")
     void getOrganizationModuleCatalog_nonMember_403() {
+        willDoNothing().given(organizationService).assertActiveOrganizationExists(ORG_ID);
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                 .given(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
 
-        assertThatThrownBy(() -> controller.getOrganizationModuleCatalog(new OrgScopeId(ORG_ID)))
+        assertThatThrownBy(() -> controller.getOrganizationModuleCatalog(ORG_SCOPE))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(CommonErrorCode.COMMON_002));
     }
 
     @Test
-    @DisplayName("AC-8: 存在しない slug は resolveOrgId が ORG_001 例外")
+    @DisplayName("AC-8: 存在しないslugはORG_001相当の404へ変換する")
     void getOrganizationModuleCatalog_notFoundSlug_throws() {
         given(organizationService.resolveOrgId("unknown-slug"))
                 .willThrow(new BusinessException(com.mannschaft.app.organization.OrgErrorCode.ORG_001));
@@ -100,4 +105,5 @@ class OrgModuleCatalogControllerTest {
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                         .isEqualTo(HttpStatus.NOT_FOUND));
     }
+
 }

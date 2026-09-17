@@ -1,10 +1,17 @@
 package com.mannschaft.app.config;
 
+import com.mannschaft.app.analytics.controller.OrganizationAnalyticsController;
+import com.mannschaft.app.analytics.controller.TeamAnalyticsController;
 import com.mannschaft.app.reflection.RecallDirection;
 import com.mannschaft.app.schedule.controller.OrgScheduleController;
 import com.mannschaft.app.schedule.controller.OrgScheduleKeepController;
 import com.mannschaft.app.schedule.controller.TeamScheduleController;
 import com.mannschaft.app.schedule.controller.TeamScheduleKeepController;
+import com.mannschaft.app.team.controller.OrganizationTeamSearchController;
+import com.mannschaft.app.team.controller.TeamShiftSettingsController;
+import com.mannschaft.app.template.controller.OrganizationModuleController;
+import com.mannschaft.app.template.controller.TeamModuleController;
+import com.mannschaft.app.todo.controller.OrgProjectController;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.media.IntegerSchema;
 import io.swagger.v3.oas.models.media.Schema;
@@ -21,6 +28,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -32,6 +40,20 @@ import java.util.stream.Collectors;
  */
 @Configuration
 public class OpenApiConfig {
+
+    /** 数値IDとslugの両方を受け付けるため、OpenAPIをstringのまま維持するController。 */
+    private static final Set<Class<?>> SLUG_COMPATIBLE_SCOPE_CONTROLLERS = Set.of(
+            TeamScheduleController.class,
+            OrgScheduleController.class,
+            TeamScheduleKeepController.class,
+            OrgScheduleKeepController.class,
+            OrganizationAnalyticsController.class,
+            TeamAnalyticsController.class,
+            OrganizationTeamSearchController.class,
+            TeamShiftSettingsController.class,
+            OrganizationModuleController.class,
+            TeamModuleController.class,
+            OrgProjectController.class);
 
     /**
      * 型付きパス変数 {@link OrgScopeId} / {@link TeamScopeId}（課題 #12・案A）を、OpenAPI 上では
@@ -48,16 +70,17 @@ public class OpenApiConfig {
      * スキーマを {@code integer/int64} に明示上書きし、従来（{@code Long} 時代）の表現を維持して
      * 生成物のドリフトを根治する。対象は本 2 型のパス変数のみ（3 コントローラ計 11 箇所）。</p>
      *
-     * <p><b>チーム/組織スケジュール系4コントローラは対象外（CMP-054 P1・CMP-260826-1920是正）:</b>
+     * <p><b>slug互換Controllerは対象外（CMP-054 P1・CMP-260826-1920・CMP-112）:</b>
      * {@link TeamScheduleController} / {@link OrgScheduleController} の {@code teamPublicId} /
      * {@code orgPublicId} と、{@link TeamScheduleKeepController} /
      * {@link OrgScheduleKeepController} の同名パス変数は、実装が数値ID・slug の両方を受け付ける
      * （{@code ScopeSlugResolution} の
      * 数値高速パス＋slug 解決）。{@code integer/int64} と描画するのは実装より狭い契約を宣言する嘘に
-     * なるため、この4コントローラだけはこの Customizer を適用せず、springdoc の既定推論
+     * なるため、これらのコントローラにはこの Customizer を適用せず、springdoc の既定推論
      * （登録済み {@code Converter<String, ...>} のソース型＝{@code string}）に委ねる。
      * 既存4コントローラ（{@code EventDismissalController} 等）も同様に slug を受け付けており
-     * 同じ嘘を抱えているが、それらの契約修正は本変更の対象外（別課題）。</p>
+     * 同じ嘘を抱えているが、それらの契約修正は本変更の対象外（別課題）。CMP-112で正準型へ
+     * 移行したAnalytics・組織チーム検索・Shift設定・Module・OrgProjectも同じ理由で対象外とする。</p>
      */
     @Bean
     public ParameterCustomizer scopeIdParameterCustomizer() {
@@ -70,10 +93,7 @@ public class OpenApiConfig {
                 return parameterModel;
             }
             Class<?> declaringClass = methodParameter.getDeclaringClass();
-            if (declaringClass == TeamScheduleController.class
-                    || declaringClass == OrgScheduleController.class
-                    || declaringClass == TeamScheduleKeepController.class
-                    || declaringClass == OrgScheduleKeepController.class) {
+            if (SLUG_COMPATIBLE_SCOPE_CONTROLLERS.contains(declaringClass)) {
                 return parameterModel;
             }
             parameterModel.setSchema(new IntegerSchema().format("int64"));

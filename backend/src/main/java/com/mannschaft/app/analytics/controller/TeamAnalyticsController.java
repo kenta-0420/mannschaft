@@ -14,6 +14,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.config.TeamScopeId;
+import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +57,7 @@ public class TeamAnalyticsController {
 
     private final PageViewAnalyticsAccessGuard accessGuard;
     private final PageViewAnalyticsService analyticsService;
+    private final TeamService teamService;
 
     /**
      * チームのアクセス解析を取得する。
@@ -74,6 +76,7 @@ public class TeamAnalyticsController {
 
         // TeamScopeIdConverter で slug / 数値を正準化し、同じ ID で認可・集計する
         Long teamId = scopeId.value();
+        teamService.assertActiveTeamExists(teamId);
 
         // 認可ガード（非メンバー・未認証は TEAMANALYTICS_001 / 404）
         Long userId = SecurityUtils.getCurrentUserIdOrNull();
