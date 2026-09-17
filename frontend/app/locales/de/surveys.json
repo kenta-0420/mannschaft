@@ -95,6 +95,18 @@
     },
     "detail": {
       "scopeMissing": "Bereichsinformationen zur Umfrage fehlen",
+      "scopeContext": {
+        "label": "Umfrageziel",
+        "type": { "TEAM": "Zielteam", "ORGANIZATION": "Zielorganisation" },
+        "loading": "Name wird geladen…",
+        "nameUnavailable": "Name nicht verfügbar",
+        "management": {
+          "admin": "Verwaltung als Administrator",
+          "delegated": "Verwaltung mit delegierter Umfrageberechtigung",
+          "creator": "Verwaltung als Ersteller",
+          "authorized": "Verwaltung mit erteilter Berechtigung"
+        }
+      },
       "fetchFailed": "Umfragedetails konnten nicht geladen werden",
       "back": "Zurück",
       "answeredBadge": "Beantwortet",
