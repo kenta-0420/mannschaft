@@ -79,15 +79,16 @@
       "error": "PDF-Erstellung fehlgeschlagen"
     },
     "myShifts": {
-      "title": "Meine Schichten",
+      "title": "Meine Schichtanfragen",
       "empty": "Keine Schichten gefunden",
-      "fetchError": "Schichtinformationen konnten nicht abgerufen werden"
+      "fetchError": "Schichtinformationen konnten nicht abgerufen werden",
+      "description": "Eingereichte Anfragen und ihr Genehmigungsstatus"
     },
     "page": {
       "title": "Schicht",
       "myShift": "Meine Schicht",
       "submitRequest": "Wunsch einreichen",
-      "availability": "Standard-Verfügbarkeit",
+      "availability": "Standard-Wochenverfügbarkeit",
       "schedules": "Schichtplan-Liste",
       "detail": "Detail",
       "edit": "Bearbeiten",

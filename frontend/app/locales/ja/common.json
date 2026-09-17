@@ -2399,7 +2399,7 @@
       },
       "shift": {
         "label": "マイシフト",
-        "description": "自分のシフトの確認"
+        "description": "確定した割当のカレンダー確認"
       },
       "reservations": {
         "label": "マイ予約",

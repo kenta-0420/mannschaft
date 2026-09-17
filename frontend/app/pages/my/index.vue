@@ -43,6 +43,21 @@ const cards = computed<MyPageCard[]>(() => [
     to: '/my/shift',
   },
   {
+    // CMP-260909-1141 Phase 2: 自分が提出したシフト希望とその審査状況（PENDING/CONFIRMED/REJECTED）。
+    // 直上の `/my/shift`（確定した割当のカレンダー）とは別画面であり、重複ではない。
+    label: t('shift.myShifts.title'),
+    description: t('shift.myShifts.description'),
+    icon: 'pi pi-clock',
+    to: '/my/shifts',
+  },
+  {
+    // CMP-260909-1141 Phase 2: 曜日別の既定シフト希望（希望提出フォームの初期値）。
+    label: t('shift.page.availability'),
+    description: t('shift.availabilityDescription'),
+    icon: 'pi pi-sliders-h',
+    to: '/my/shift-availability',
+  },
+  {
     label: t('myPage.cards.reservations.label'),
     description: t('myPage.cards.reservations.description'),
     icon: 'pi pi-bookmark',

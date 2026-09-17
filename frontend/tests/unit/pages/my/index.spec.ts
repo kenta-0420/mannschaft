@@ -18,6 +18,11 @@ import { matchGateKey } from '~/constants/featureGates'
  *   MY-004 全フラグ無効 → ガード対象カードは全消滅、ガード対象外カードは残る
  *   MY-005 ゲート対応表の前提固定（`/me/tournament-fees` はガード対象外であること等）
  *
+ * Phase 2（シフト2画面）で追加した観点:
+ *   MY-006 ゲート対応表の前提固定（シフト3画面はいずれも `FEATURE_SHIFT_ENABLED` 配下）
+ *   MY-007 全フラグ有効 → `/my/shifts` と `/my/shift-availability` のカードが描画される
+ *   MY-008 FEATURE_SHIFT_ENABLED を落とす → シフト3画面のカードが消え、他のカードは残る
+ *
  * ## 偽陽性（常に緑）にしないための作り
  * 「描画される」だけを見るテストはフラグ判定を外しても緑のままになる。よって
  *   ① 同一の DOM に対して「フラグを落とすと**消える**」ことを対で確認し、
@@ -50,6 +55,14 @@ mockNuxtImport('useFeatureFlagStore', () => () => ({
 const RECEIPTS = '/me/payments/receipts'
 const BULK_PAYMENT = '/me/guardianship/bulk-payment'
 const TOURNAMENT_FEES = '/me/tournament-fees'
+
+/**
+ * Phase 2 で導線を追加したシフト2画面と、既にカードがあった `/my/shift`。
+ * 3枚はいずれも `FEATURE_SHIFT_ENABLED` 配下なので、フラグを落とすと同時に消える。
+ */
+const MY_SHIFT = '/my/shift'
+const MY_SHIFTS = '/my/shifts'
+const SHIFT_AVAILABILITY = '/my/shift-availability'
 
 /** 描画されたカードの遷移先パス一覧を取る（文言に依存しないのでロケール非依存）。 */
 async function renderedLinks(): Promise<string[]> {
@@ -124,5 +137,31 @@ describe('pages/my/index.vue — カードの機能フラグ連動', () => {
 
     for (const gated of gatedPaths) expect(links).not.toContain(gated)
     for (const ungated of ungatedPaths) expect(links).toContain(ungated)
+  })
+
+  it('MY-006: ゲート対応表の前提（シフト3画面の gate_key）', () => {
+    expect(matchGateKey(MY_SHIFT)).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey(MY_SHIFTS)).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey(SHIFT_AVAILABILITY)).toBe('FEATURE_SHIFT_ENABLED')
+  })
+
+  it('MY-007: 全フラグ有効ならシフト希望一覧・既定希望のカードが出る', async () => {
+    const links = await renderedLinks()
+    expect(links).toContain(MY_SHIFTS)
+    expect(links).toContain(SHIFT_AVAILABILITY)
+    // 既存の確定シフトカードを取り違えて置換していないことも同時に見る。
+    expect(links).toContain(MY_SHIFT)
+  })
+
+  it('MY-008: シフトフラグを落とすとシフト3画面だけが消える', async () => {
+    disabledKeys = new Set(['FEATURE_SHIFT_ENABLED'])
+    const links = await renderedLinks()
+    expect(links).not.toContain(MY_SHIFT)
+    expect(links).not.toContain(MY_SHIFTS)
+    expect(links).not.toContain(SHIFT_AVAILABILITY)
+    // 巻き添えで全部消える実装（フィルタの退化）を殺すための対のアサーション。
+    expect(links).toContain(RECEIPTS)
+    expect(links).toContain(BULK_PAYMENT)
+    expect(links).toContain(TOURNAMENT_FEES)
   })
 })

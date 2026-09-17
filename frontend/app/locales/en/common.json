@@ -2399,7 +2399,7 @@
       },
       "shift": {
         "label": "My Shifts",
-        "description": "Check your own shifts"
+        "description": "Calendar of your confirmed assignments"
       },
       "reservations": {
         "label": "My Reservations",

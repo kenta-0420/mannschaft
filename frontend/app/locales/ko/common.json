@@ -2399,7 +2399,7 @@
       },
       "shift": {
         "label": "내 시프트",
-        "description": "내 시프트 확인"
+        "description": "확정된 배정 캘린더 확인"
       },
       "reservations": {
         "label": "내 예약",
