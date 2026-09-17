@@ -3,19 +3,20 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPreference;
 import com.mannschaft.app.shift.dto.AvailabilityDefaultResponse;
 import com.mannschaft.app.shift.dto.BulkAvailabilityDefaultRequest;
 import com.mannschaft.app.shift.entity.MemberAvailabilityDefaultEntity;
 import com.mannschaft.app.shift.repository.MemberAvailabilityDefaultRepository;
-import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * シフト勤務可能時間サービス。メンバーのデフォルト勤務可能時間の管理を担当する。
@@ -28,9 +29,12 @@ public class ShiftAvailabilityService {
 
     private final MemberAvailabilityDefaultRepository availabilityRepository;
     private final ShiftMapper shiftMapper;
-    /** クロスドメインFK禁止の原則に従い、teamId は Long で保持し TeamRepository 経由で実在確認する */
-    private final TeamRepository teamRepository;
     private final AccessControlService accessControlService;
+    /**
+     * D-5（クロスドメイン Repository 依存の禁止）により team ドメインの Repository を
+     * 直接引けないため、common の越境窓口 {@link NameResolverService} を使って teamId の実在確認を行う。
+     */
+    private final NameResolverService nameResolverService;
 
     /**
      * デフォルト勤務可能時間を取得する。
@@ -110,12 +114,15 @@ public class ShiftAvailabilityService {
      *
      * <p>存在しない teamId は、SYSTEM_ADMIN であっても非メンバーと同一の 403 とする
      * （存在オラクルを作らない。実在確認をアプリ層で行う理由は
-     * {@code member_availability_defaults.team_id} のクロスドメイン FK が既に削除済みで DB が止めないため）。</p>
+     * {@code member_availability_defaults.team_id} のクロスドメイン FK が既に削除済みで DB が止めないため）。
+     * D-5（クロスドメイン Repository 依存の禁止）により team ドメインの Repository を直接引けないため、
+     * common の越境窓口 {@link NameResolverService} を使う。{@code findAllById} の結果に現れないことが
+     * 非実在を意味する。</p>
      *
      * @throws BusinessException 認可拒否時（{@link CommonErrorCode#COMMON_002} / 403）
      */
     private void checkTeamAccess(Long userId, Long teamId) {
-        if (!teamRepository.existsById(teamId)) {
+        if (!nameResolverService.resolveTeamNames(Set.of(teamId)).containsKey(teamId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         if (accessControlService.isSystemAdmin(userId)) {

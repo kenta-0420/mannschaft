@@ -1,13 +1,13 @@
 package com.mannschaft.app.shift;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.shift.dto.AvailabilityDefaultRequest;
 import com.mannschaft.app.shift.dto.AvailabilityDefaultResponse;
 import com.mannschaft.app.shift.dto.BulkAvailabilityDefaultRequest;
 import com.mannschaft.app.shift.entity.MemberAvailabilityDefaultEntity;
 import com.mannschaft.app.shift.repository.MemberAvailabilityDefaultRepository;
 import com.mannschaft.app.shift.service.ShiftAvailabilityService;
-import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,6 +21,8 @@ import org.mockito.quality.Strictness;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -46,10 +48,10 @@ class ShiftAvailabilityServiceTest {
     private ShiftMapper shiftMapper;
 
     @Mock
-    private TeamRepository teamRepository;
+    private AccessControlService accessControlService;
 
     @Mock
-    private AccessControlService accessControlService;
+    private NameResolverService nameResolverService;
 
     @InjectMocks
     private ShiftAvailabilityService shiftAvailabilityService;
@@ -57,7 +59,7 @@ class ShiftAvailabilityServiceTest {
     @BeforeEach
     void setUpAuthzStubs() {
         // per-scope 認可は本テストの検証対象外のため、常に通過させる（SYSTEM_ADMIN 扱い）
-        given(teamRepository.existsById(TEAM_ID)).willReturn(true);
+        given(nameResolverService.resolveTeamNames(Set.of(TEAM_ID))).willReturn(Map.of(TEAM_ID, "チームA"));
         given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
     }
 
