@@ -3,6 +3,8 @@ package com.mannschaft.app.schedule.dto;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.UUID;
+
 /**
  * スケジュールメディアアップロード URL 発行レスポンス DTO。
  * F03.12 カレンダー予定メディア管理。
@@ -14,7 +16,7 @@ import lombok.Getter;
 public class ScheduleMediaUploadUrlResponse {
 
     /** 作成されたメディアID */
-    private Long mediaId;
+    private UUID mediaId;
 
     /** メディア種別（"IMAGE" または "VIDEO"） */
     private String mediaType;

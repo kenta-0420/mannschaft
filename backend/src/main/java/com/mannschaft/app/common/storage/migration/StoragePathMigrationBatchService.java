@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -250,7 +251,7 @@ public class StoragePathMigrationBatchService {
                     migrated++;
                 } catch (Exception e) {
                     log.warn("SCHEDULE_MEDIA 移行スキップ: id={}, error={}", media.getId(), e.getMessage());
-                    recordError("schedule_media_uploads", media.getId(),
+                    recordUuidError("schedule_media_uploads", media.getId(),
                             media.getR2Key(), "", e.getMessage());
                 }
             }
@@ -362,7 +363,7 @@ public class StoragePathMigrationBatchService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void migrateOneScheduleMedia(Long mediaId, String oldKey, String newKey) {
+    public void migrateOneScheduleMedia(UUID mediaId, String oldKey, String newKey) {
         r2StorageService.copyObject(oldKey, newKey);
         scheduleMediaUploadRepository.findById(mediaId).ifPresent(media -> {
             ScheduleMediaUploadEntity updated = media.toBuilder().r2Key(newKey).build();
@@ -656,6 +657,22 @@ public class StoragePathMigrationBatchService {
         errorRepository.save(error);
         log.warn("ストレージ移行エラー記録: referenceType={}, referenceId={}, error={}",
                 referenceType, referenceId, errorMessage);
+    }
+
+    /** UUID主キーを持つ対象の移行エラーを記録する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordUuidError(String referenceType, UUID referenceUuid,
+                                String oldKey, String newKey, String errorMessage) {
+        StorageMigrationErrorEntity error = StorageMigrationErrorEntity.builder()
+                .referenceType(referenceType)
+                .referenceUuid(referenceUuid)
+                .oldFileKey(oldKey)
+                .newFileKey(newKey)
+                .errorMessage(errorMessage)
+                .build();
+        errorRepository.save(error);
+        log.warn("ストレージ移行エラー記録: referenceType={}, referenceUuid={}, error={}",
+                referenceType, referenceUuid, errorMessage);
     }
 
     // ==================== ステータス集計ヘルパー ====================

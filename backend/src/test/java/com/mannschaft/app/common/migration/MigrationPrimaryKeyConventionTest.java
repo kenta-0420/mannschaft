@@ -55,14 +55,8 @@ class MigrationPrimaryKeyConventionTest {
     /** 本規約を適用し始める major バージョン（原則 #6 導入時期相当）。 */
     private static final int CONVENTION_MIN_MAJOR = 70;
 
-    /**
-     * 既知の許容済み逸脱（allowlist）。これらは AUTO_INCREMENT 主キーでも fail させない。
-     * <ul>
-     *   <li>{@code schedule_media_uploads}（V75.001）</li>
-     * </ul>
-     */
-    private static final Set<String> ALLOWLISTED_TABLES = Set.of(
-        "schedule_media_uploads");
+    /** 既知の許容済み逸脱（allowlist）。 */
+    private static final Set<String> ALLOWLISTED_TABLES = Set.of();
 
     /** {@code V<major>.<minor>__name.sql} から major を取り出す。 */
     private static final Pattern VERSION_PATTERN =
