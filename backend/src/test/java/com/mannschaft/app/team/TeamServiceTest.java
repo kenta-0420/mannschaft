@@ -576,6 +576,42 @@ class TeamServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("assertActiveTeamExists")
+    class AssertActiveTeamExists {
+
+        @Test
+        @DisplayName("ACTIVEチームは通過する")
+        void activeは通過する() {
+            TeamEntity team = TeamEntity.builder()
+                    .name("有効チーム")
+                    .template("sports")
+                    .lifecycleStatus(TeamEntity.LifecycleStatus.ACTIVE)
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+
+            service.assertActiveTeamExists(TEAM_ID);
+
+            verify(teamRepository).findById(TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("PROVISIONEDチームはTEAM_001で拒否する")
+        void provisionedは拒否する() {
+            TeamEntity team = TeamEntity.builder()
+                    .name("承諾前チーム")
+                    .template("sports")
+                    .lifecycleStatus(TeamEntity.LifecycleStatus.PROVISIONED)
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+
+            assertThatThrownBy(() -> service.assertActiveTeamExists(TEAM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TeamErrorCode.TEAM_001));
+        }
+    }
+
     /**
      * CMP-260912-1525: チームメンバーの一括取得。
      *

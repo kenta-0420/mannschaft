@@ -14,6 +14,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.organization.service.OrganizationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,7 @@ public class OrganizationAnalyticsController {
 
     private final PageViewAnalyticsAccessGuard accessGuard;
     private final PageViewAnalyticsService analyticsService;
+    private final OrganizationService organizationService;
 
     /**
      * 組織のアクセス解析を取得する（AC-17）。
@@ -69,6 +71,7 @@ public class OrganizationAnalyticsController {
 
         // OrgScopeIdConverter で slug / 数値を正準化し、同じ ID で認可・集計する
         Long orgId = scopeId.value();
+        organizationService.assertActiveOrganizationExists(orgId);
 
         // 認可ガード（非メンバー・未認証は TEAMANALYTICS_001 / 404）
         Long userId = SecurityUtils.getCurrentUserIdOrNull();

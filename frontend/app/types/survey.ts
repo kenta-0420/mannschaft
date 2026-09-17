@@ -149,6 +149,15 @@ export interface SurveyResultSummary {
   textResponses?: string[]
 }
 
+/** アンケート結果 API の集計全体。設問ごとの描画データは questionResults に入る。 */
+export interface SurveyResultsResponse {
+  surveyId: number
+  title: string
+  responseCount: number
+  targetCount: number
+  questionResults: SurveyResultSummary[]
+}
+
 export interface CreateSurveyRequest {
   title: string
   description?: string

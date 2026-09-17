@@ -33,11 +33,11 @@ function effectiveMinRole(
 
 export interface WidgetDefinition {
   key: string
-  label: string        // 後方互換のため残す（fallback表示用）
-  labelKey: string     // i18n キー (例: 'dashboard.widget_labels.weather')
+  label: string // 後方互換のため残す（fallback表示用）
+  labelKey: string // i18n キー (例: 'dashboard.widget_labels.weather')
   icon: string
-  description: string  // 後方互換のため残す
-  descriptionKey: string  // i18n キー (例: 'dashboard.widget_descriptions.weather')
+  description: string // 後方互換のため残す
+  descriptionKey: string // i18n キー (例: 'dashboard.widget_descriptions.weather')
   scope: Array<'personal' | 'team' | 'organization'>
   defaultMinRole?: MinRole
 }
@@ -52,10 +52,17 @@ export interface WidgetDefinition {
  * 注意: schedule（カレンダー）は upcoming-events と区別するため専用キー TEAM_SCHEDULE_CALENDAR /
  * ORG_SCHEDULE_CALENDAR を使う（旧実装は両者が TEAM_UPCOMING_EVENTS に衝突していた）。
  */
-export const WidgetKeyMap: Record<string, { team?: string; organization?: string; personal?: string }> = {
+export const WidgetKeyMap: Record<
+  string,
+  { team?: string; organization?: string; personal?: string }
+> = {
   // --- team / organization スコープ ---
   bulletin: { team: 'TEAM_NOTICES', organization: 'ORG_NOTICES' },
-  'upcoming-events': { team: 'TEAM_UPCOMING_EVENTS', organization: 'ORG_UPCOMING_EVENTS', personal: 'UPCOMING_EVENTS' },
+  'upcoming-events': {
+    team: 'TEAM_UPCOMING_EVENTS',
+    organization: 'ORG_UPCOMING_EVENTS',
+    personal: 'UPCOMING_EVENTS',
+  },
   todos: { team: 'TEAM_TODO', organization: 'ORG_TODO' },
   timeline: { team: 'TEAM_LATEST_POSTS', organization: 'ORG_LATEST_POSTS' },
   chat: { team: 'TEAM_UNREAD_THREADS', organization: 'ORG_UNREAD_THREADS' },
@@ -98,6 +105,10 @@ export const WidgetKeyMap: Record<string, { team?: string; organization?: string
   'recent-activity': { personal: 'RECENT_ACTIVITY' },
   'personal-todo': { personal: 'PERSONAL_TODO' },
   'return-stay-plan': { personal: 'RETURN_STAY_PLAN' },
+  'recruitment-feed': { personal: 'RECRUITMENT_FEED' },
+  'my-recruitments': { personal: 'MY_RECRUITMENTS' },
+  'my-corkboard': { personal: 'MY_CORKBOARD' },
+  'village-lobby-digest': { personal: 'VILLAGE_LOBBY_DIGEST' },
 }
 
 export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
@@ -617,7 +628,8 @@ export function useDashboardWidgets(
 
   // team/organization/personal はすべて DB 永続化。
   // personal は対象3-B で DB 化（scope_id=0 で BE が個人を識別）。
-  const isApiScope = scopeType === 'team' || scopeType === 'organization' || scopeType === 'personal'
+  const isApiScope =
+    scopeType === 'team' || scopeType === 'organization' || scopeType === 'personal'
 
   function isVisible(widgetKey: string): boolean {
     return !hiddenKeys.value.has(widgetKey)
@@ -738,9 +750,7 @@ export function useDashboardWidgets(
         orderedKeys.value = [...snapshot.order]
         // setup 外でも安全に呼べるよう $i18n / $toast 経由（useI18n は使わない）。
         const t = (key: string) => nuxtApp.$i18n.t(key)
-        const toast = nuxtApp.$toast as
-          | { add: (opts: Record<string, unknown>) => void }
-          | undefined
+        const toast = nuxtApp.$toast as { add: (opts: Record<string, unknown>) => void } | undefined
         toast?.add({
           severity: 'error',
           summary: t('dashboard.widget_settings.save_error_title'),
@@ -784,8 +794,12 @@ export function useDashboardWidgets(
 
   // isApiScope は常に true のため、このコードパスには到達しない
   // 型エラー防止のための fallback return（実際には到達しない）
-  function toggleWidget(_widgetKey: string) { /* noop */ }
-  function reorder(_fromIndex: number, _toIndex: number) { /* noop */ }
+  function toggleWidget(_widgetKey: string) {
+    /* noop */
+  }
+  function reorder(_fromIndex: number, _toIndex: number) {
+    /* noop */
+  }
 
   return {
     availableWidgets,

@@ -2,6 +2,7 @@ package com.mannschaft.app.todo.security;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.todo.TodoErrorCode;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.entity.ProjectEntity;
@@ -37,6 +38,7 @@ public class ProjectAccessGuard {
 
     private final ProjectRepository projectRepository;
     private final AccessControlService accessControlService;
+    private final OrganizationService organizationService;
 
     /**
      * 個人プロジェクトへのアクセスを検証する。
@@ -109,6 +111,7 @@ public class ProjectAccessGuard {
      * @param projectId パス上のプロジェクト ID
      */
     public void validateOrgProjectAccess(Long userId, Long orgId, Long projectId) {
+        organizationService.assertActiveOrganizationExists(orgId);
         // プロジェクトが存在し、組織スコープ・スコープ ID が一致することを検証
         ProjectEntity project = projectRepository.findByIdAndDeletedAtIsNull(projectId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.PROJECT_NOT_FOUND));
@@ -132,6 +135,7 @@ public class ProjectAccessGuard {
      * @param orgId  パス上の組織内部 ID（resolveOrgId 済み）
      */
     public void validateOrgMembership(Long userId, Long orgId) {
+        organizationService.assertActiveOrganizationExists(orgId);
         // メンバーシップ検証（一覧・作成 EP 用・projectId なし）
         accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
     }

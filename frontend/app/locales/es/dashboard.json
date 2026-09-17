@@ -92,6 +92,17 @@
       "create_team_button": "Crear equipo",
       "create_org_button": "Crear organización"
     },
+    "personal_accordion": {
+      "schedule": "Agenda y tiempo",
+      "todo": "Tareas",
+      "communication": "Mensajes y avisos",
+      "feed": "Novedades",
+      "content_affiliation": "Mi contenido y grupos",
+      "more_count": "y {count} más",
+      "empty": "0",
+      "count": "{count}",
+      "visible_count": "{count} visibles"
+    },
     "widget_labels": {
       "event-dismissal-reminder": "解散通知リマインダー",
       "notices": "お知らせ",

@@ -1,0 +1,4 @@
+interface:
+  display_name: "棚卸更新"
+  short_description: "CMP・Issueを同期してβ棚卸しボードを更新"
+  default_prompt: "$inventory-update を使って、最新の正本・CMP・Issueからβ棚卸しボードを更新して"

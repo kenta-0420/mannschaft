@@ -687,6 +687,36 @@ class OrganizationServiceTest {
     // ヘルパー
     // ========================================
 
+    @Nested
+    @DisplayName("assertActiveOrganizationExists")
+    class AssertActiveOrganizationExists {
+
+        @Test
+        @DisplayName("ACTIVE組織は通過する")
+        void activeは通過する() {
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+
+            organizationService.assertActiveOrganizationExists(ORG_ID);
+
+            verify(organizationRepository).findById(ORG_ID);
+        }
+
+        @Test
+        @DisplayName("PROVISIONED組織はORG_001で拒否する")
+        void provisionedは拒否する() {
+            OrganizationEntity org = createOrganization();
+            ReflectionTestUtils.setField(
+                    org, "lifecycleStatus", OrganizationEntity.LifecycleStatus.PROVISIONED);
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+
+            assertThatThrownBy(() -> organizationService.assertActiveOrganizationExists(ORG_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(OrgErrorCode.ORG_001));
+        }
+    }
+
     private OrganizationEntity createOrganization() {
         OrganizationEntity org = OrganizationEntity.builder()
                 .name("テスト組織")
