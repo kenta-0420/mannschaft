@@ -36,6 +36,13 @@ import java.util.UUID;
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_bcc_operation", columnNames = {"operation_id"}),
                 @UniqueConstraint(name = "uk_bcc_idempotency", columnNames = {"contract_id", "idempotency_key"}),
+                // 【必須・AC-41】uk_bcc_invoice は V196 の DDL には在るのに、ここ（Entity）に無かった。
+                // 結合テストのスキーマは Flyway ではなく Hibernate の ddl-auto:create が生成する
+                // （application-test.yml）ため、この宣言漏れは「本番にはある一意制約が、試練の DB にだけ
+                // 存在しない」という乖離になる。AC-41 は「同じ invoice ref を別契約が既に握っている状態で
+                // 確定を試みると uk_bcc_invoice で落ち、確定が丸ごと巻き戻る」ことを測る検体だが、
+                // 制約が無いぶん bind が素通りし、change だけが APPLIED でコミットされていた。
+                @UniqueConstraint(name = "uk_bcc_invoice", columnNames = {"stripe_invoice_ref"}),
                 @UniqueConstraint(name = "uk_bcc_schedule", columnNames = {"stripe_schedule_ref"})
         })
 @Getter

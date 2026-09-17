@@ -248,9 +248,14 @@ class BillingPlanChangeConflictRedIT extends AbstractBillingPlanChangeApiIT {
             CountDownLatch go = new CountDownLatch(1);
             AtomicInteger successCount = new AtomicInteger();
             AtomicInteger conflictCount = new AtomicInteger();
+            // 診断用（assert は一切変えない）。この検体は CI でのみ再現し、
+            // 「202/409 のどちらでもない応答が1本あった」ことまでしか分からなかった。
+            // どちらのスレッドが何を返した／投げたのかを失敗メッセージへ載せ、
+            // 次の CI 一周で真因（ステータスと本文）が名指しできるようにする。
+            java.util.List<String> observed = new java.util.concurrent.CopyOnWriteArrayList<>();
 
-            Runnable task1 = raceTask(previewId1, version, ready, go, successCount, conflictCount);
-            Runnable task2 = raceTask(previewId2, version, ready, go, successCount, conflictCount);
+            Runnable task1 = raceTask(previewId1, version, ready, go, successCount, conflictCount, observed);
+            Runnable task2 = raceTask(previewId2, version, ready, go, successCount, conflictCount, observed);
             pool.submit(task1);
             pool.submit(task2);
             ready.await(10, TimeUnit.SECONDS);
@@ -262,24 +267,30 @@ class BillingPlanChangeConflictRedIT extends AbstractBillingPlanChangeApiIT {
                     .as("pointer は contract あたり最大1行。両方成功してはならない")
                     .isLessThanOrEqualTo(1);
             assertThat(successCount.get() + conflictCount.get())
-                    .as("成功か競合(409)かのいずれかで決着し、原因不明の応答を残さない")
+                    .as("成功か競合(409)かのいずれかで決着し、原因不明の応答を残さない。観測: %s", observed)
                     .isEqualTo(2);
         }
 
         private Runnable raceTask(UUID previewId, long version, CountDownLatch ready, CountDownLatch go,
-                                   AtomicInteger successCount, AtomicInteger conflictCount) {
+                                   AtomicInteger successCount, AtomicInteger conflictCount,
+                                   java.util.List<String> observed) {
             return () -> {
                 ready.countDown();
                 try {
                     go.await(10, TimeUnit.SECONDS);
-                    int status = change(userId, contractId, previewId, version, newKey())
-                            .andReturn().getResponse().getStatus();
+                    var result = change(userId, contractId, previewId, version, newKey()).andReturn();
+                    int status = result.getResponse().getStatus();
+                    observed.add("status=" + status
+                            + ", body=" + result.getResponse().getContentAsString(
+                                    java.nio.charset.StandardCharsets.UTF_8)
+                            + ", resolvedException=" + result.getResolvedException());
                     if (status == 202) {
                         successCount.incrementAndGet();
                     } else if (status == 409) {
                         conflictCount.incrementAndGet();
                     }
                 } catch (Exception e) {
+                    observed.add("throwable=" + e);
                     throw new RuntimeException(e);
                 }
             };

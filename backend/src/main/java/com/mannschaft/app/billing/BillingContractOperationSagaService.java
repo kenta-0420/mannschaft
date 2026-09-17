@@ -154,7 +154,19 @@ public class BillingContractOperationSagaService {
             BillingContractEntity contract = lockContractForUpdate(command.contractId());
 
             // 進行中 operation の lease がある（検疫を含む）契約は 409（AC-3 / AC-8 / AC-14）。
-            if (pointerRepository.findById(command.contractId()).isPresent()) {
+            //
+            // 【必須・AC-122】この判定は<b>ロック読み（current read）</b>でなければならない。
+            // 直前の contract 行の SELECT ... FOR UPDATE は「契約単位で直列化する」ためのものだが、
+            // MySQL 既定の REPEATABLE READ では、その後に続く<b>素の SELECT</b>（旧実装の
+            // {@code pointerRepository.findById}）は自分のトランザクション開始時点のスナップショットを
+            // 読む。並行する2本の change 要求は、どちらも「pointer が無い」状態のスナップショットを
+            // 掴んでから contract のロック待ちに入るため、<b>後続側もこの判定を素通りし</b>、
+            // 409 ではなく pointer の主キー重複（DataIntegrityViolation → 500）で落ちていた。
+            // ロック読みは MVCC を迂回して最新のコミット済み行を読むため、後続側は
+            // 先行側が入れた pointer を確実に見て CHANGE_CONFLICT（409）で決着する。
+            // 行が無い場合もギャップロックを取り、その隙間への並行 INSERT を止める。
+            if (entityManager.find(ActiveBillingContractOperationPointerEntity.class,
+                    command.contractId(), LockModeType.PESSIMISTIC_WRITE) != null) {
                 throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
             }
             // version CAS（AC-1）。SYSTEM 経路で CAS を行わない場合のみ null を許す。
