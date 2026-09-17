@@ -55,11 +55,8 @@ class UserWeatherLocationRepositoryTest extends AbstractMySqlIntegrationTest {
         em.clear();
 
         assertThat(saved.getId()).isNotNull();
-        // 時刻順ソート可能な UUID（基底 UuidV7Entity 経由で自動採番）であること
-        // 注: 既存 UuidV7Entity は Hibernate @UuidGenerator(style=TIME) を使用し
-        // 実装上は UUIDv1（タイムベース）を生成する。クラス名と実装の乖離は基盤側の
-        // 既知課題で、本機能のスコープ外。version() の厳密検証はしない
-        assertThat(saved.getId().variant()).isEqualTo(2);  // RFC 4122 variant
+        assertThat(saved.getId().version()).isEqualTo(7);
+        assertThat(saved.getId().variant()).isEqualTo(2);
 
         Optional<UserWeatherLocationEntity> found = repository.findByUserIdAndLabel(1001L, "home");
         assertThat(found).isPresent();
@@ -115,5 +112,36 @@ class UserWeatherLocationRepositoryTest extends AbstractMySqlIntegrationTest {
         Optional<UserWeatherLocationEntity> found = repository.findById(id);
         assertThat(found).isPresent();
         assertThat(found.get().getUserId()).isEqualTo(4001L);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("既存UUIDv1と新規UUIDv7が混在してもCRUDできる")
+    void shouldCrudExistingV1AlongsideNewV7() {
+        UUID existingV1 = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+        UserWeatherLocationEntity legacy = buildEntity(5001L, "legacy");
+        legacy.setId(existingV1);
+        repository.saveAndFlush(legacy);
+
+        UserWeatherLocationEntity current = repository.saveAndFlush(buildEntity(5002L, "current"));
+        UUID currentV7 = current.getId();
+        em.clear();
+
+        assertThat(repository.findById(existingV1)).isPresent();
+        assertThat(repository.findById(currentV7)).isPresent();
+        assertThat(currentV7.version()).isEqualTo(7);
+
+        UserWeatherLocationEntity reloadedLegacy = repository.findById(existingV1).orElseThrow();
+        reloadedLegacy.setPlaceNameSnapshot("更新済み");
+        repository.saveAndFlush(reloadedLegacy);
+        em.clear();
+        assertThat(repository.findById(existingV1).orElseThrow().getPlaceNameSnapshot())
+                .isEqualTo("更新済み");
+
+        repository.deleteById(existingV1);
+        repository.flush();
+        em.clear();
+        assertThat(repository.findById(existingV1)).isEmpty();
+        assertThat(repository.findById(currentV7)).isPresent();
     }
 }
