@@ -3,153 +3,193 @@ definePageMeta({
   middleware: 'auth',
 })
 
-const accountItem = {
-  label: 'アカウント設定',
-  description: '全設定をひとつの画面で管理',
-  icon: 'pi pi-user-edit',
-  to: '/settings/account',
+const { t } = useI18n()
+
+interface SettingsHubItem {
+  label: string
+  description: string
+  icon: string
+  to: string
 }
 
-const individualItems = [
+/**
+ * ハブに並べる項目の定義。
+ *
+ * ラベル・説明は i18n 必須（CLAUDE.md「UIに表示する文字列は直書き禁止」）。
+ * 遷移先ページが独自のタイトル/セクション見出しキーを持つ場合はそのキーを再利用し、
+ * 持たない場合のみ `settings.hub.*` に専用キーを置く（文言の二重管理を避けるため）。
+ *
+ * `computed` にしているのはロケール切替へ追従させるため（setup 時に t() を1回だけ
+ * 呼ぶ旧実装では、言語を切り替えてもラベルが元の言語のまま残る）。
+ */
+const accountItem = computed<SettingsHubItem>(() => ({
+  label: t('settings.account.page_title'),
+  description: t('settings.hub.account.description'),
+  icon: 'pi pi-user-edit',
+  to: '/settings/account',
+}))
+
+const individualItems = computed<SettingsHubItem[]>(() => [
   {
-    label: 'プロフィール',
-    description: 'プロフィール情報・パスワードの管理',
+    // account.vue の SettingsProfileSection と同じキー（settings.profile.section_title）を再利用。
+    label: t('settings.profile.section_title'),
+    description: t('settings.hub.profile.description'),
     icon: 'pi pi-user',
     to: '/settings/profile',
   },
   {
-    label: 'セキュリティ',
-    description: '2FA・セッション管理・セキュリティキー',
+    label: t('settings.hub.security.label'),
+    description: t('settings.hub.security.description'),
     icon: 'pi pi-shield',
     to: '/settings/security',
   },
   {
-    label: 'メールアドレス変更',
-    description: 'メールアドレスの変更',
+    // account.vue の SettingsEmailSection と同じキー。
+    label: t('settings.email.section_title'),
+    description: t('settings.hub.email.description'),
     icon: 'pi pi-envelope',
     to: '/settings/email',
   },
   {
-    label: 'パスワード変更',
-    description: 'パスワードの変更・設定',
+    // password.vue 自身が使うキー（settings.password.section_title_change）を再利用。
+    label: t('settings.password.section_title_change'),
+    description: t('settings.hub.password.description'),
     icon: 'pi pi-lock',
     to: '/settings/password',
   },
   {
-    label: '言語・タイムゾーン',
-    description: '表示言語・タイムゾーンの設定',
+    // language.vue 自身が使うキー。
+    label: t('settings.language.title'),
+    description: t('settings.hub.language.description'),
     icon: 'pi pi-globe',
     to: '/settings/language',
   },
   {
-    label: 'ログイン履歴',
-    description: 'ログイン・認証の履歴',
+    // account.vue の SettingsLoginHistorySection と同じキー。
+    label: t('settings.login_history.section_title'),
+    description: t('settings.hub.loginHistory.description'),
     icon: 'pi pi-history',
     to: '/settings/login-history',
   },
   {
-    label: 'アカウント連携',
-    description: 'OAuth・LINE連携管理',
+    // linked-accounts.vue 自身が使うキー。
+    label: t('settings.linked_accounts.page_title'),
+    description: t('settings.hub.linkedAccounts.description'),
     icon: 'pi pi-link',
     to: '/settings/linked-accounts',
   },
   {
-    label: '外観',
-    description: 'テーマ・背景色・表示設定',
+    // account.vue の SettingsAppearanceSection と同じキー。
+    label: t('settings.appearance.section_title'),
+    description: t('settings.hub.appearance.description'),
     icon: 'pi pi-palette',
     to: '/settings/appearance',
   },
   {
-    label: 'ナビゲーション',
-    description: '表示するナビゲーション項目をカスタマイズ',
+    // navigation.vue 自身が使うキー。
+    label: t('settings.navigation.title'),
+    description: t('settings.hub.navigation.description'),
     icon: 'pi pi-bars',
     to: '/settings/navigation',
   },
   {
-    label: 'ダッシュボードウィジェット',
-    description: 'ダッシュボードのウィジェット表示・並び順の設定',
+    // dashboard-widgets.vue 自身がこのハブ用に用意しているキー。
+    label: t('dashboard.widget_settings.settings_entry_label'),
+    description: t('dashboard.widget_settings.settings_entry_description'),
     icon: 'pi pi-th-large',
     to: '/settings/dashboard-widgets',
   },
   {
-    label: 'QR会員証',
-    description: '会員証の表示・チェックイン履歴',
+    // account.vue の SettingsMemberCardSection と同じキー。
+    label: t('settings.member_card.section_title'),
+    description: t('settings.hub.memberCards.description'),
     icon: 'pi pi-id-card',
     to: '/settings/member-cards',
   },
   {
-    label: 'ソーシャルプロフィール',
-    description: '匿名プロフィール・フォロー管理',
+    // account.vue の SettingsSocialProfileSection と同じキー。
+    label: t('settings.social_profile.section_title'),
+    description: t('settings.hub.socialProfiles.description'),
     icon: 'pi pi-users',
     to: '/settings/social-profiles',
   },
   {
-    label: '電子印鑑',
-    description: '印鑑の表示・スコープ別設定',
+    // account.vue の SettingsSealSection と同じキー。
+    label: t('settings.seal.section_title'),
+    description: t('settings.hub.seals.description'),
     icon: 'pi pi-verified',
     to: '/settings/seals',
   },
   {
-    label: '通知',
-    description: '通知の受け取り設定',
+    // account.vue が通知タブに使うキー。
+    label: t('settings.account.notification_settings'),
+    description: t('settings.hub.notifications.description'),
     icon: 'pi pi-bell',
     to: '/settings/notifications',
   },
   {
-    label: 'Google Calendar',
-    description: 'カレンダー同期・iCal連携',
+    // calendar-sync.vue 自身が使うキー。
+    label: t('settings.gcal.section_title'),
+    description: t('settings.hub.calendarSync.description'),
     icon: 'pi pi-google',
     to: '/settings/calendar-sync',
   },
   {
-    label: '連絡先プライバシー',
-    description: '検索・DM受信・オンライン状態の公開範囲',
+    // contact-privacy.vue 自身が使うキー。
+    label: t('contact_privacy.title'),
+    description: t('settings.hub.contactPrivacy.description'),
     icon: 'pi pi-lock',
     to: '/settings/contact-privacy',
   },
   {
-    label: 'プロフィール公開設定',
-    description: '未ログインユーザーにプロフィールを公開するかどうかの設定',
+    // CMP-260909-1141 Phase 4: プロフィール公開設定。profile-visibility.vue 自身のキーを再利用。
+    label: t('public.profileVisibility.title'),
+    description: t('public.profileVisibility.description'),
     icon: 'pi pi-eye',
     to: '/settings/profile-visibility',
   },
   {
-    label: '保護者同意リンク管理',
-    description: '承認済みの保護者・監護している子アカウントの管理',
+    // CMP-260909-1141 Phase 4: 保護者同意リンク管理。manage.vue と同じ台帳が使うキーを再利用。
+    label: t('parental_consent.manage_title'),
+    description: t('settings.hub.parentalConsentManage.description'),
     icon: 'pi pi-user-plus',
     to: '/parental-consent/manage',
   },
   {
-    label: '招待URL管理',
-    description: '連絡先追加用の招待URLを発行・管理',
+    // contact-invite-tokens.vue 自身が使うキー。
+    label: t('contact_invite.page_title'),
+    description: t('settings.hub.contactInviteTokens.description'),
     icon: 'pi pi-link',
     to: '/settings/contact-invite-tokens',
   },
   {
-    label: '申請事前拒否リスト',
-    description: '特定ユーザーからの連絡先申請を拒否',
+    label: t('settings.hub.contactRequestBlocks.label'),
+    description: t('settings.hub.contactRequestBlocks.description'),
     icon: 'pi pi-ban',
     to: '/settings/contact-request-blocks',
   },
   {
-    label: '広告受信設定',
-    description: '広告のチャネル別オプトアウト・広告主ブロック',
+    // ad-preferences.vue 自身が使うキー。
+    label: t('advertising.pages.settings_ad_preferences.title'),
+    description: t('advertising.pages.settings_ad_preferences.description'),
     icon: 'pi pi-megaphone',
     to: '/settings/ad-preferences',
   },
   {
-    label: 'ストレージ',
-    description: '個人・チーム・組織の容量使用状況を確認',
+    // storage.vue 自身が使うキー。
+    label: t('settings.storage.page_title'),
+    description: t('settings.hub.storage.description'),
     icon: 'pi pi-database',
     to: '/settings/storage',
   },
   {
-    label: '課金・プラン管理',
-    description: '契約中のプラン・アドオン・利用できる機能の確認',
+    // billing.vue 自身が使うキー。
+    label: t('billing.manage.personalTitle'),
+    description: t('settings.hub.billing.description'),
     icon: 'pi pi-credit-card',
     to: '/settings/billing',
   },
-]
+])
 
 const searchQuery = ref('')
 const showIndividual = useState('settings-show-individual', () => false)
@@ -196,11 +236,11 @@ function onLeave(el: Element) {
   e.style.opacity = '0'
 }
 
-const allItems = [accountItem, ...individualItems]
+const allItems = computed<SettingsHubItem[]>(() => [accountItem.value, ...individualItems.value])
 
 const searchResults = computed(() => {
   const q = searchQuery.value.toLowerCase()
-  return allItems.filter(
+  return allItems.value.filter(
     (item) => item.label.toLowerCase().includes(q) || item.description.toLowerCase().includes(q),
   )
 })
@@ -208,18 +248,18 @@ const searchResults = computed(() => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="設定" />
+    <PageHeader :title="t('settings.hub.pageTitle')" />
 
     <IconField class="mb-6">
       <InputIcon class="pi pi-search" />
-      <InputText v-model="searchQuery" placeholder="設定を検索..." class="w-full" />
+      <InputText v-model="searchQuery" :placeholder="t('settings.hub.searchPlaceholder')" class="w-full" />
     </IconField>
 
     <!-- 検索結果モード -->
     <template v-if="isSearching">
       <div class="space-y-3">
         <p v-if="searchResults.length === 0" class="py-8 text-center text-surface-400">
-          「{{ searchQuery }}」に一致する設定が見つかりませんでした
+          {{ t('settings.hub.noSearchResults', { query: searchQuery }) }}
         </p>
         <NuxtLink
           v-for="item in searchResults"
@@ -267,8 +307,8 @@ const searchResults = computed(() => {
       >
         <div class="flex items-center gap-3">
           <i class="pi pi-list text-surface-400" />
-          <span class="font-medium">個別設定一覧</span>
-          <span class="text-sm text-surface-400">（{{ individualItems.length }}項目）</span>
+          <span class="font-medium">{{ t('settings.hub.individualListToggle') }}</span>
+          <span class="text-sm text-surface-400">{{ t('settings.hub.itemCount', { count: individualItems.length }) }}</span>
         </div>
         <i
           class="pi transition-transform duration-200"
