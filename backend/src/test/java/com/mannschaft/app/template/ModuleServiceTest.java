@@ -382,6 +382,167 @@ class ModuleServiceTest {
             // Then
             assertThat(result).isEmpty();
         }
+
+        @Test
+        @DisplayName("取得_DEFAULTモジュールをisEnabled=trueで含む（サイドバー27項目消失の根治）")
+        void 取得_DEFAULTモジュールを含む() {
+            // Given: team_enabled_modules には行が無い（DEFAULT は有効化フラグを持たない設計）
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(List.of());
+            ModuleDefinitionEntity defaultModule = createDefaultModule().toBuilder().id(20L).build();
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.DEFAULT))
+                    .willReturn(List.of(defaultModule));
+
+            // When
+            List<TeamModuleResponse> result = moduleService.getTeamModules(TEAM_ID);
+
+            // Then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getModuleSlug()).isEqualTo("member-management");
+            assertThat(result.get(0).getIsEnabled()).isTrue();
+            assertThat(result.get(0).getEnabledAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("取得_DEFAULTとOPTIONALが共存_両方が独立して反映される")
+        void 取得_DEFAULTとOPTIONALが共存() {
+            // Given: OPTIONAL は無効化状態（isEnabled=false）で存在
+            ModuleDefinitionEntity optionalModule = createOptionalModule().toBuilder().id(MODULE_ID).build();
+            TeamEnabledModuleEntity disabledOptional = TeamEnabledModuleEntity.builder()
+                    .teamId(TEAM_ID).moduleId(MODULE_ID).isEnabled(false).build();
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(List.of(disabledOptional));
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(optionalModule));
+
+            ModuleDefinitionEntity defaultModule = createDefaultModule().toBuilder().id(20L).build();
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.DEFAULT))
+                    .willReturn(List.of(defaultModule));
+
+            // When
+            List<TeamModuleResponse> result = moduleService.getTeamModules(TEAM_ID);
+
+            // Then: OPTIONAL は無効のまま、DEFAULT は常に有効 — DEFAULT を足したことで OPTIONAL の判定は壊れない
+            assertThat(result).hasSize(2);
+            assertThat(result).anySatisfy(r -> {
+                assertThat(r.getModuleSlug()).isEqualTo("reservation");
+                assertThat(r.getIsEnabled()).isFalse();
+            });
+            assertThat(result).anySatisfy(r -> {
+                assertThat(r.getModuleSlug()).isEqualTo("member-management");
+                assertThat(r.getIsEnabled()).isTrue();
+            });
+        }
+
+        @Test
+        @DisplayName("取得_is_active falseのDEFAULTモジュールは除外される")
+        void 取得_非アクティブなDEFAULTは除外() {
+            // Given
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(List.of());
+            ModuleDefinitionEntity inactiveDefault = createDefaultModule().toBuilder()
+                    .id(21L).isActive(false).build();
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.DEFAULT))
+                    .willReturn(List.of(inactiveDefault));
+
+            // When
+            List<TeamModuleResponse> result = moduleService.getTeamModules(TEAM_ID);
+
+            // Then
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("取得_DEFAULTにteam_enabled_modules行が存在しても重複しない")
+        void 取得_DEFAULT行が有効化テーブルにも存在_重複しない() {
+            // Given: 万一 DEFAULT にも有効化行が存在する環境を想定
+            ModuleDefinitionEntity defaultModule = createDefaultModule().toBuilder().id(20L).build();
+            TeamEnabledModuleEntity legacyRow = TeamEnabledModuleEntity.builder()
+                    .teamId(TEAM_ID).moduleId(20L).isEnabled(true).enabledAt(LocalDateTime.now()).build();
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(List.of(legacyRow));
+            given(moduleDefinitionRepository.findById(20L)).willReturn(Optional.of(defaultModule));
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.DEFAULT))
+                    .willReturn(List.of(defaultModule));
+
+            // When
+            List<TeamModuleResponse> result = moduleService.getTeamModules(TEAM_ID);
+
+            // Then: 同じ moduleId が2回返らない
+            assertThat(result).hasSize(1);
+        }
+    }
+
+    // ========================================
+    // getOrganizationModules
+    // ========================================
+
+    @Nested
+    @DisplayName("getOrganizationModules")
+    class GetOrganizationModules {
+
+        private static final Long ORG_ID = 30L;
+
+        @Test
+        @DisplayName("取得_DEFAULTモジュールをisEnabled=trueで含む（サイドバー27項目消失の根治）")
+        void 取得_DEFAULTモジュールを含む() {
+            // Given
+            given(organizationEnabledModuleRepository.findByOrganizationId(ORG_ID)).willReturn(List.of());
+            ModuleDefinitionEntity defaultModule = createDefaultModule().toBuilder().id(20L).build();
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.DEFAULT))
+                    .willReturn(List.of(defaultModule));
+
+            // When
+            List<com.mannschaft.app.template.dto.OrgModuleResponse> result =
+                    moduleService.getOrganizationModules(ORG_ID);
+
+            // Then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getModuleSlug()).isEqualTo("member-management");
+            assertThat(result.get(0).getIsEnabled()).isTrue();
+            assertThat(result.get(0).getEnabledAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("取得_OPTIONALの有効/無効判定はDEFAULT追加後も維持される")
+        void 取得_OPTIONAL判定は維持される() {
+            // Given
+            ModuleDefinitionEntity optionalModule = createOptionalModule().toBuilder().id(MODULE_ID).build();
+            OrganizationEnabledModuleEntity enabledOptional = OrganizationEnabledModuleEntity.builder()
+                    .organizationId(ORG_ID).moduleId(MODULE_ID).isEnabled(true)
+                    .enabledAt(LocalDateTime.now()).build();
+            given(organizationEnabledModuleRepository.findByOrganizationId(ORG_ID))
+                    .willReturn(List.of(enabledOptional));
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(optionalModule));
+
+            ModuleDefinitionEntity defaultModule = createDefaultModule().toBuilder().id(20L).build();
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.DEFAULT))
+                    .willReturn(List.of(defaultModule));
+
+            // When
+            List<com.mannschaft.app.template.dto.OrgModuleResponse> result =
+                    moduleService.getOrganizationModules(ORG_ID);
+
+            // Then
+            assertThat(result).hasSize(2);
+            assertThat(result).anySatisfy(r -> {
+                assertThat(r.getModuleSlug()).isEqualTo("reservation");
+                assertThat(r.getIsEnabled()).isTrue();
+            });
+        }
+
+        @Test
+        @DisplayName("取得_is_active falseのDEFAULTモジュールは除外される")
+        void 取得_非アクティブなDEFAULTは除外() {
+            // Given
+            given(organizationEnabledModuleRepository.findByOrganizationId(ORG_ID)).willReturn(List.of());
+            ModuleDefinitionEntity inactiveDefault = createDefaultModule().toBuilder()
+                    .id(21L).isActive(false).build();
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.DEFAULT))
+                    .willReturn(List.of(inactiveDefault));
+
+            // When
+            List<com.mannschaft.app.template.dto.OrgModuleResponse> result =
+                    moduleService.getOrganizationModules(ORG_ID);
+
+            // Then
+            assertThat(result).isEmpty();
+        }
     }
 
     // ========================================

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { BudgetSummary } from '~/types/budget'
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: ['auth', 'org-role-guard'] })
 const route = useRoute()
 const orgSlug = String(route.params.slug)
 const { getSummary, getFiscalYears } = useBudgetApi()

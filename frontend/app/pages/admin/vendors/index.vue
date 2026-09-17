@@ -35,6 +35,14 @@ const scopeId = computed<string>(() => {
   return String(Array.isArray(raw) ? raw[0] : raw ?? '')
 })
 
+// 業者マスタは repair_longterm_plan モジュールの管理項目（DEPUTY_ADMIN 以上）。
+// 直リンク防御（CMP-260917-1351 課題B）。scope クエリは 'teams'/'organizations' 表記のため
+// useAdminScopeGuard が期待する 'team'/'organization' へ変換する。
+useAdminScopeGuard('DEPUTY_ADMIN', {
+  scopeType: computed(() => (scope.value === 'organizations' ? 'organization' : 'team')),
+  scopeId,
+})
+
 const api = computed(() => useVendorApi(scope.value, scopeId.value))
 
 const items = ref<VendorResponse[]>([])

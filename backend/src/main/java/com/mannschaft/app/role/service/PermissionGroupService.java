@@ -201,6 +201,8 @@ public class PermissionGroupService {
                 BillingPermissionGroupGuard.Operation.DELETE,
                 actorUserId, scopeId, scopeType, groupId, permissionIds, List.of());
         requireMutationAuthority(actorUserId, group, permissionIds);
+        userPermissionGroupRepository.deleteByGroupId(groupId);
+        permissionGroupPermissionRepository.deleteByGroupId(groupId);
         permissionGroupRepository.delete(group);
         evictAfterCommit(affectedUsers, group);
         if (billingProtected) {
