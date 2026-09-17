@@ -32,6 +32,8 @@ const scopeType = computed((): ReceiptScopeType =>
 )
 // 領収書はチーム／組織スコープのみが対象（F08.4 §2）。個人スコープでは案内を出して終える。
 const isPersonalScope = computed(() => scopeStore.current.type === 'personal')
+// 操作は checkAdminOrAbove（DEPUTY_ADMIN 以上）要求。直リンク防御（CMP-260917-1351 課題B）。
+useAdminScopeGuard('DEPUTY_ADMIN')
 const scopeReady = computed(() => !isPersonalScope.value && !!scopeId.value)
 
 const receipts = ref<ReceiptResponse[]>([])

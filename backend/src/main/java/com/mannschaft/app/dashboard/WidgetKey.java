@@ -59,6 +59,12 @@ public enum WidgetKey {
     PERSONAL_MY_TIMELINE(ScopeType.PERSONAL, true, 25),
     /** F02.11: 帰省・滞在予定を個人ダッシュボードで管理するウィジェット */
     RETURN_STAY_PLAN(ScopeType.PERSONAL, true, 26),
+    /** F02.2.2 C案: フォロー先・サポーター先の新着募集 */
+    RECRUITMENT_FEED(ScopeType.PERSONAL, true, 27),
+    /** F02.2.2 C案: 自分の確定・キャンセル待ち参加予定 */
+    MY_RECRUITMENTS(ScopeType.PERSONAL, true, 28),
+    /** F02.2.2 C案: ピン留め村の井戸端在席ダイジェスト */
+    VILLAGE_LOBBY_DIGEST(ScopeType.PERSONAL, true, 29),
 
     // --- チームダッシュボード ---
     TEAM_NOTICES(ScopeType.TEAM, true, 0),

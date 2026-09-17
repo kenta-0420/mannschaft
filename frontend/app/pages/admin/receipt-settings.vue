@@ -20,6 +20,8 @@ const scopeType = computed((): 'TEAM' | 'ORGANIZATION' =>
 )
 // 発行者設定はチーム／組織スコープのみが対象（F08.4 §2）。個人スコープでは対象外の案内を出して終える。
 const isPersonalScope = computed(() => scopeStore.current.type === 'personal')
+// 操作は checkAdminOrAbove（DEPUTY_ADMIN 以上）要求。直リンク防御（CMP-260917-1351 課題B）。
+useAdminScopeGuard('DEPUTY_ADMIN')
 
 const SEAL_VARIANTS = ['LAST_NAME', 'FULL_NAME', 'FIRST_NAME'] as const
 const sealVariantOptions = SEAL_VARIANTS.map((v) => ({
