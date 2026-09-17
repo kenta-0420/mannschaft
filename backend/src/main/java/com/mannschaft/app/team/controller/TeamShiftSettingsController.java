@@ -5,8 +5,8 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.config.TeamScopeId;
 import com.mannschaft.app.team.dto.TeamShiftSettingsResponse;
 import com.mannschaft.app.team.dto.UpdateTeamShiftSettingsRequest;
-import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
+import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,16 +31,17 @@ public class TeamShiftSettingsController {
     private static final String SCOPE_TYPE = "TEAM";
 
     private final TeamShiftSettingsService settingsService;
-    private final TeamService teamService;
     private final AccessControlService accessControlService;
+    private final TeamService teamService;
 
     @GetMapping
     @Operation(summary = "チームシフト設定取得（メンバー限定）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
             description = "当該チームのメンバーでない")
-    public ResponseEntity<TeamShiftSettingsResponse> getSettings(@PathVariable TeamScopeId slug) {
-        Long teamId = slug.value();
+    public ResponseEntity<TeamShiftSettingsResponse> getSettings(
+            @PathVariable("slug") TeamScopeId scopeId) {
+        Long teamId = scopeId.value();
         teamService.assertActiveTeamExists(teamId);
         // shift ドメインの既定の流儀（参照=checkMembership / 変更=checkAdminOrAbove。
         // 例: MemberWorkConstraintService / ShiftScheduleService）に揃える。
@@ -54,9 +55,9 @@ public class TeamShiftSettingsController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
             description = "当該チームの ADMIN/DEPUTY でない")
     public ResponseEntity<TeamShiftSettingsResponse> updateSettings(
-            @PathVariable TeamScopeId slug,
+            @PathVariable("slug") TeamScopeId scopeId,
             @Valid @RequestBody UpdateTeamShiftSettingsRequest request) {
-        Long teamId = slug.value();
+        Long teamId = scopeId.value();
         teamService.assertActiveTeamExists(teamId);
         // 設定変更はチーム運営の権限（shift ドメインの変更系と同じ粒度）。
         accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), teamId, SCOPE_TYPE);

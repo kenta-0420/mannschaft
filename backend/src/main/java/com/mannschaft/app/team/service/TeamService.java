@@ -870,6 +870,53 @@ public class TeamService {
     }
 
     /**
+     * チームの全メンバーを 1 回の呼び出しで取得する（CMP-260912-1525）。
+     *
+     * <h2>なぜページング経路と別に要るのか</h2>
+     * <p>{@link #getMembers} は 1 ページ要求ごとに
+     * {@link MemberQueryDispatcher#queryMemberIdentities} を呼ぶ。これは
+     * {@code user_roles} と {@code memberships} を<b>スコープ全件走査</b>して
+     * 重複排除と OQ-2 優先度解決を行う処理であり、1 ページぶんに絞り込めない
+     * （どの行が何位になるかは全件見ないと決まらないため）。したがって
+     * 「全員を見たい画面」が全ページをめくると、総走査量はメンバー数 N に対して
+     * {@code N × ceil(N / ページサイズ)} になる。ページサイズを大きくしても
+     * 並列を直列に変えても、この総量そのものは減らない。</p>
+     *
+     * <p>本メソッドは走査を<b>ちょうど 1 回</b>に固定する。実体化（表示名・アバター）と
+     * カレンダー色の解決も全員ぶんをまとめて 1 クエリずつで行うため、
+     * 総処理量は N に比例する。</p>
+     *
+     * <h2>結果の同一性</h2>
+     * <p>集約規則（OQ-2 優先度）・並び順・総件数は {@link #getMembers} と同一である。
+     * 同じ {@code queryMemberIdentities} → {@code hydrate} の順路を、切り出しを挟まずに
+     * 通しているだけであり、意味論は変えていない。</p>
+     *
+     * <p>認可はページング経路と同じく呼び出し元（コントローラ）の可視性チェックに委ねる。
+     * 返す情報は {@link #getMembers} と同一で、一括化によって新たに露出する項目は無い。</p>
+     *
+     * @param teamId チームID
+     * @return チームの全メンバー（並び順は {@link #getMembers} と同一）
+     */
+    public List<MemberResponse> getAllMembers(Long teamId) {
+        findTeamOrThrow(teamId);
+
+        var identities = memberQueryDispatcher.queryMemberIdentities(teamId, ScopeType.TEAM, null);
+        var memberDtos = memberQueryDispatcher.hydrate(identities);
+        var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
+                ScopeType.TEAM, teamId, memberDtos.stream().map(dto -> dto.userId()).toList());
+
+        return memberDtos.stream()
+                .map(dto -> new MemberResponse(
+                        dto.userId(),
+                        dto.displayName(),
+                        dto.avatarUrl(),
+                        dto.roleName(),
+                        dto.joinedAt(),
+                        colorsByUserId.get(dto.userId())))
+                .toList();
+    }
+
+    /**
      * SUPPORTERとしてチームをフォローする（自己登録）。
      *
      * <p>F00.5 Phase 5: memberships への書き込みに切替。MembershipService.join() 経由で

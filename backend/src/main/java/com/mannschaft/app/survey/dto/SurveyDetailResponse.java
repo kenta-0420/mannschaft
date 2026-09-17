@@ -44,6 +44,36 @@ public class SurveyDetailResponse {
     private final Boolean viewerCanViewResults;
 
     /**
+     * この応答を受け取る閲覧者が、当該アンケートの<b>管理操作</b>（締切・設問追加・公開・削除・
+     * 督促送信・回答者一覧の閲覧など）を行えるか。
+     *
+     * <p>CMP-041: 値は管理操作 API が 403 を投げるのと<b>同じ判定点</b>
+     * （{@code SurveyAccessGuard#canManage} = 作成者 or 「ADMIN or MANAGE_SURVEYS 保有 DEPUTY_ADMIN」）
+     * から得ている。{@code true} なら管理操作は認可を通り、{@code false} なら必ず 403 になる。
+     * フロントエンドはロール名で操作ボタンを出し分けてはならない（BE が権限で締めた結果、
+     * 権限を持たない副管理者に「押すと必ず 403 になるボタン」が見えていた）。</p>
+     */
+    @io.swagger.v3.oas.annotations.media.Schema(
+            description = "この閲覧者がアンケートの管理操作（締切・設問追加・督促など）を行えるか。"
+                    + "作成者 または ADMIN／MANAGE_SURVEYS 保有 DEPUTY_ADMIN で true",
+            example = "true")
+    private final Boolean viewerCanManage;
+
+    /**
+     * この応答を受け取る閲覧者が、<b>チーム別内訳</b>（組織の管理ビュー）を取得できるか。
+     *
+     * <p>CMP-041: チーム別内訳 API は結果閲覧可否より厳格な管理ビュー専用ゲートであり、
+     * <b>作成者高速パスを持たない</b>（{@code SurveyResultService#getTeamBreakdown} は
+     * {@code checkAdminOrHasPermissionInScope} のみ）。したがって {@link #viewerCanManage} とは
+     * 別項目にして、判定を実際の API と一致させる。</p>
+     */
+    @io.swagger.v3.oas.annotations.media.Schema(
+            description = "この閲覧者がチーム別内訳を取得できるか。ADMIN／MANAGE_SURVEYS 保有 DEPUTY_ADMIN のみ true"
+                    + "（作成者であることは条件にならない）",
+            example = "false")
+    private final Boolean viewerCanViewTeamBreakdown;
+
+    /**
      * フラットな {@link SurveyResponse} と設問一覧から詳細レスポンスを組み立てる。
      *
      * <p>一覧・更新等が返す {@link SurveyResponse} と本 DTO のフィールドを 1 箇所で対応付けるため、
@@ -52,13 +82,19 @@ public class SurveyDetailResponse {
      * @param survey               アンケート本体（null 不可でない場合は全フィールド null で構築される）
      * @param questions            設問一覧（null 可）
      * @param viewerCanViewResults 閲覧者が結果を閲覧できるか
+     * @param viewerCanManage      閲覧者が管理操作を行えるか（CMP-041）
+     * @param viewerCanViewTeamBreakdown 閲覧者がチーム別内訳を取得できるか（CMP-041）
      * @return フラット形の詳細レスポンス
      */
     public static SurveyDetailResponse of(SurveyResponse survey, List<QuestionResponse> questions,
-                                          boolean viewerCanViewResults) {
+                                          boolean viewerCanViewResults,
+                                          boolean viewerCanManage,
+                                          boolean viewerCanViewTeamBreakdown) {
         SurveyDetailResponseBuilder builder = SurveyDetailResponse.builder()
                 .questions(questions)
-                .viewerCanViewResults(viewerCanViewResults);
+                .viewerCanViewResults(viewerCanViewResults)
+                .viewerCanManage(viewerCanManage)
+                .viewerCanViewTeamBreakdown(viewerCanViewTeamBreakdown);
         if (survey == null) {
             return builder.build();
         }

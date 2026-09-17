@@ -32,7 +32,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.context.MessageSource;
 import org.springframework.format.support.DefaultFormattingConversionService;
-import org.springframework.format.support.FormattingConversionService;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -50,6 +49,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -112,17 +112,32 @@ class OrgProjectControllerTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        DefaultFormattingConversionService conversionService = new DefaultFormattingConversionService();
+        conversionService.addConverter(new OrgScopeIdConverter(organizationService));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setConversionService(scopeConversionService())
                 .setControllerAdvice(new GlobalExceptionHandler(messageSource))
+                .setConversionService(conversionService)
                 .build();
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
     }
 
-    private FormattingConversionService scopeConversionService() {
-        FormattingConversionService conversionService = new DefaultFormattingConversionService();
-        conversionService.addConverter(new OrgScopeIdConverter(organizationService));
-        return conversionService;
+    @Test
+    @DisplayName("CMP-112: 数値組織IDはslug解決を呼ばず認可を通る")
+    void listProjects_numericOrgId_usesCanonicalScopeId() throws Exception {
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+            PagedResponse<ProjectResponse> paged = PagedResponse.of(
+                    List.of(), new PagedResponse.PageMeta(0L, 0, 20, 0));
+            given(projectService.listProjects(
+                    eq(TodoScopeType.ORGANIZATION), eq(ORG_ID), eq(ProjectStatus.ACTIVE), anyInt(), anyInt()))
+                    .willReturn(paged);
+
+            mockMvc.perform(get("/api/v1/organizations/{slug}/projects", ORG_ID))
+                    .andExpect(status().isOk());
+
+            verify(organizationService, never()).resolveOrgId(String.valueOf(ORG_ID));
+            verify(projectAccessGuard).validateOrgMembership(USER_ID, ORG_ID);
+        }
     }
 
     private ProjectResponse sampleProject() {

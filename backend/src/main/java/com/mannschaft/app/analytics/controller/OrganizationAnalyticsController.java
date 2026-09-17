@@ -38,8 +38,7 @@ import java.util.Objects;
  * <p>{@code GET /api/v1/organizations/{slug}/analytics} — 指定組織のアクセス解析を返す。
  * チーム版（{@link TeamAnalyticsController}）と同一構造・同一権限規則（AC-17）。</p>
  *
- * <p>{@link OrgScopeId} が slug または数値 ID を正準の組織内部 ID に変換する。
- * コントローラは処理前に ACTIVE な組織の実在を確認する。</p>
+ * <p>slug / 数値 ID は {@link com.mannschaft.app.config.OrgScopeIdConverter} で正準化する。</p>
  */
 @Slf4j
 @RestController
@@ -51,14 +50,14 @@ public class OrganizationAnalyticsController {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
 
-    private final OrganizationService organizationService;
     private final PageViewAnalyticsAccessGuard accessGuard;
     private final PageViewAnalyticsService analyticsService;
+    private final OrganizationService organizationService;
 
     /**
      * 組織のアクセス解析を取得する（AC-17）。
      *
-     * @param slug     組織 slug
+     * @param scopeId  組織 slug または数値 ID を正準化したスコープ ID
      * @param dateFrom 集計開始日（省略可・"YYYY-MM-DD"）
      * @param dateTo   集計終了日（省略可・"YYYY-MM-DD"）
      * @return 200 + {@link PageViewAnalyticsResponse}
@@ -66,12 +65,12 @@ public class OrganizationAnalyticsController {
     @GetMapping("/analytics")
     @Operation(summary = "組織アクセス解析取得", description = "組織の PV 集計を返す。メンバーのみ閲覧可。")
     public ResponseEntity<ApiResponse<PageViewAnalyticsResponse>> getAnalytics(
-            @PathVariable OrgScopeId slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
 
-        // slug → 数値 ID 解決（存在しない slug は OrganizationService が 404 を投げる）
-        Long orgId = slug.value();
+        // OrgScopeIdConverter で slug / 数値を正準化し、同じ ID で認可・集計する
+        Long orgId = scopeId.value();
         organizationService.assertActiveOrganizationExists(orgId);
 
         // 認可ガード（非メンバー・未認証は TEAMANALYTICS_001 / 404）

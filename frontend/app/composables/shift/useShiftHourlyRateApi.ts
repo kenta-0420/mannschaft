@@ -72,8 +72,29 @@ export function useShiftHourlyRateApi() {
     return res.data
   }
 
+  /**
+   * チーム全員ぶんの「基準日時点で有効な時給」を 1 リクエストで取得する（CMP-260912-1525）。
+   *
+   * メンバー 1 人ずつ {@link getHourlyRate} を引くと人数ぶんの往復になる。
+   * 時給は金銭情報のため BE 側は ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）のみ許可し、
+   * それ以外は 403 を返す。時給が未設定のメンバーは結果に含まれない。
+   */
+  async function getTeamEffectiveRates(
+    teamId: string,
+    date: string,
+  ): Promise<ShiftHourlyRateResponse[]> {
+    const query = new URLSearchParams()
+    query.set('teamId', String(teamId))
+    query.set('date', date)
+    const res = await api<{ data: ShiftHourlyRateResponse[] }>(
+      `/api/v1/shifts/hourly-rates?${query.toString()}`,
+    )
+    return res.data
+  }
+
   return {
     getHourlyRate,
+    getTeamEffectiveRates,
     setHourlyRate,
   }
 }

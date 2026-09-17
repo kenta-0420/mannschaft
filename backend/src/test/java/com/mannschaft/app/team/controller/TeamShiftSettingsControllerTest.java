@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.config.TeamScopeId;
+import com.mannschaft.app.config.TeamScopeIdConverter;
 import com.mannschaft.app.team.dto.TeamShiftSettingsResponse;
 import com.mannschaft.app.team.dto.UpdateTeamShiftSettingsRequest;
 import com.mannschaft.app.team.service.TeamService;
@@ -20,6 +21,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.format.support.DefaultFormattingConversionService;
 
 import java.util.List;
 
@@ -28,6 +32,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * {@link TeamShiftSettingsController} の単体テスト（認可根治戦役 Wave6）。
@@ -49,11 +56,17 @@ class TeamShiftSettingsControllerTest {
 
     @InjectMocks
     private TeamShiftSettingsController controller;
+    private MockMvc mockMvc;
 
     @BeforeEach
     void setUpSecurityContext() {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(String.valueOf(USER_ID), null, List.of()));
+        DefaultFormattingConversionService conversionService = new DefaultFormattingConversionService();
+        conversionService.addConverter(new TeamScopeIdConverter(teamService));
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setConversionService(conversionService)
+                .build();
     }
 
     @AfterEach
@@ -97,5 +110,17 @@ class TeamShiftSettingsControllerTest {
         assertThatThrownBy(() -> controller.updateSettings(new TeamScopeId(TEAM_ID), req))
                 .isInstanceOf(BusinessException.class);
         verify(settingsService, Mockito.never()).updateSettings(TEAM_ID, req);
+    }
+
+    @Test
+    @DisplayName("CMP-112: 数値チームIDはslug解決を呼ばず認可を通る")
+    void getSettings_numericTeamId_usesCanonicalScopeId() throws Exception {
+        given(settingsService.getSettings(TEAM_ID)).willReturn(TeamShiftSettingsResponse.builder().build());
+
+        mockMvc.perform(get("/api/v1/teams/{slug}/shift-settings", TEAM_ID))
+                .andExpect(status().isOk());
+
+        verify(teamService, never()).resolveTeamId(String.valueOf(TEAM_ID));
+        verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
     }
 }

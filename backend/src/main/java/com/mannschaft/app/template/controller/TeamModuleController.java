@@ -51,8 +51,8 @@ public class TeamModuleController {
     @Operation(summary = "チームモジュール一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TeamModuleResponse>>> getTeamModules(
-            @PathVariable TeamScopeId slug) {
-        Long teamId = slug.value();
+            @PathVariable("slug") TeamScopeId scopeId) {
+        Long teamId = scopeId.value();
         teamService.assertActiveTeamExists(teamId);
         // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
         accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
@@ -70,8 +70,8 @@ public class TeamModuleController {
     @Operation(summary = "チーム機能カタログ＋有効状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<TeamModuleCatalogResponse>> getTeamModuleCatalog(
-            @PathVariable TeamScopeId slug) {
-        Long teamId = slug.value();
+            @PathVariable("slug") TeamScopeId scopeId) {
+        Long teamId = scopeId.value();
         teamService.assertActiveTeamExists(teamId);
         // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
         accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
@@ -88,10 +88,10 @@ public class TeamModuleController {
     @Operation(summary = "モジュール有効/無効切替")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "切替成功")
     public ResponseEntity<Void> toggleTeamModule(
-            @PathVariable TeamScopeId slug,
+            @PathVariable("slug") TeamScopeId scopeId,
             @PathVariable Long moduleId,
             @Valid @RequestBody ToggleModuleRequest request) {
-        Long teamId = slug.value();
+        Long teamId = scopeId.value();
         teamService.assertActiveTeamExists(teamId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // ADMINのみ許可（手本: OrganizationModuleController#toggleOrganizationModule）
@@ -112,9 +112,9 @@ public class TeamModuleController {
     @Operation(summary = "テンプレート適用")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "適用成功")
     public ResponseEntity<Void> applyTemplate(
-            @PathVariable TeamScopeId slug,
+            @PathVariable("slug") TeamScopeId scopeId,
             @RequestParam Long templateId) {
-        Long teamId = slug.value();
+        Long teamId = scopeId.value();
         teamService.assertActiveTeamExists(teamId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // ADMINのみ許可（テンプレート一括適用はチーム全体のモジュール設定を書き換えるため）

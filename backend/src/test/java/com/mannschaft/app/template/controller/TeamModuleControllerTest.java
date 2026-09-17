@@ -5,6 +5,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.config.TeamScopeId;
+import com.mannschaft.app.config.TeamScopeIdConverter;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
@@ -19,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -29,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 /**
  * {@link TeamModuleController} の単体テスト。
@@ -156,6 +159,42 @@ class TeamModuleControllerTest {
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(CommonErrorCode.COMMON_002));
         org.mockito.Mockito.verifyNoInteractions(moduleService);
+    }
+
+    @Test
+    @DisplayName("CMP-112: 数値チームIDは正規スコープとして認可を通る")
+    void getTeamModules_numericId_usesCanonicalScopeId() {
+        willDoNothing().given(teamService).assertActiveTeamExists(TEAM_ID);
+        given(moduleService.getTeamModules(TEAM_ID)).willReturn(List.of());
+        willDoNothing().given(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+
+        ResponseEntity<ApiResponse<List<TeamModuleResponse>>> resp =
+                controller.getTeamModules(new TeamScopeId(TEAM_ID));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(teamService).assertActiveTeamExists(TEAM_ID);
+        verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+    }
+
+    @Test
+    @DisplayName("AC-4: 存在しないslugはTEAM_001相当の404へ変換する")
+    void getTeamModules_notFoundSlug_throws() {
+        given(teamService.resolveTeamId("unknown-slug"))
+                .willThrow(new BusinessException(com.mannschaft.app.team.TeamErrorCode.TEAM_001));
+
+        assertThatThrownBy(() -> new TeamScopeIdConverter(teamService).convert("unknown-slug"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("CMP-112: 数値チームIDはslug解決を呼ばず正規スコープになる")
+    void numericTeamId_skipsSlugResolution() {
+        TeamScopeId scopeId = new TeamScopeIdConverter(teamService).convert(String.valueOf(TEAM_ID));
+
+        assertThat(scopeId.value()).isEqualTo(TEAM_ID);
+        verify(teamService, never()).resolveTeamId(String.valueOf(TEAM_ID));
     }
 
 }

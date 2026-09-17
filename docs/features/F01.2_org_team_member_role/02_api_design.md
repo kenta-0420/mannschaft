@@ -22,6 +22,7 @@
 | PATCH | `/api/v1/teams/{slug}` | 必要（ADMIN+）| チーム情報更新 |
 | DELETE | `/api/v1/teams/{slug}` | 必要（ADMIN+）| チーム論理削除 |
 | GET | `/api/v1/teams/{slug}/members` | 必要（visibility = PUBLIC / ORGANIZATION_ONLY は外部閲覧可）| チームメンバー一覧（visibility 依存の認可・返却粒度あり）|
+| GET | `/api/v1/teams/{slug}/members/all` | 一覧と同じ（visibility 依存）| チームメンバー**全件**一括取得（ページングなし。CMP-260912-1525）|
 | PATCH | `/api/v1/teams/{slug}/members/{userId}/role` | 必要（ADMIN）| メンバーロール変更 |
 | DELETE | `/api/v1/teams/{slug}/members/{userId}` | 必要（ADMIN）| メンバー除名 |
 | POST | `/api/v1/teams/{slug}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム招待トークン発行（※INVITE_MEMBERS + MANAGE_INVITE_TOKENS 権限必要）|
@@ -321,6 +322,47 @@ MEMBER / SUPPORTER / GUEST またはチーム非メンバー（PUBLIC / ORGANIZA
 |-----------|------|
 | 401 | 未認証 |
 | 403 | `visibility = PRIVATE` かつ呼び出し者がチームメンバーでない / `visibility = ORGANIZATION_ONLY` かつ呼び出し者が当該チームのメンバーでも所属組織のメンバーでもない |
+| 404 | チームが存在しない / 論理削除済み |
+
+---
+
+#### `GET /api/v1/teams/{slug}/members/all`（CMP-260912-1525）
+
+チームの**全メンバーを 1 レスポンスで**返す。ページングパラメータは取らない。
+
+**なぜページング経路と別に要るのか**
+
+`TeamService#getMembers` は 1 ページ要求ごとに `user_roles` と `memberships` を
+**スコープ全件走査**して重複排除と OQ-2 優先度解決を行う。どの行が何位になるかは
+全件見ないと決まらないため、この走査はページぶんに絞り込めない。したがって
+「全員を必要とする画面」（時給設定など）が全ページをめくると、総走査量はメンバー数 N に対して
+`N × ceil(N / ページサイズ)` になる。ページサイズを大きくしても並列を直列にしても総量は変わらない。
+
+本 EP は走査をちょうど 1 回に固定する。表示名・アバターの実体化とカレンダー色の解決も
+全員ぶんをまとめて 1 クエリずつで行うため、総処理量は N に比例する。
+
+**認可**: ページング経路 `GET /api/v1/teams/{slug}/members` と**同一**の visibility ラダー
+（`ContentVisibilityChecker#assertCanView`）。返却項目も同一であり、一括化によって
+新たに露出する情報は無い（ページングでも全ページをめくれば同じ集合が得られる）。
+
+**集約規則・並び順**: ページング経路と同一（OQ-2 優先度。同じ
+`queryMemberIdentities` → `hydrate` の順路を、切り出しを挟まずに通しているだけ）。
+
+**レスポンス（200 OK）** — `meta` は付かない（`ApiResponse` ラッパー）。
+```json
+{
+  "data": [
+    { "userId": 42, "displayName": "田中太郎", "avatarUrl": null,
+      "roleName": "DEPUTY_ADMIN", "joinedAt": "2026-03-01T10:00:00", "calendarColor": null }
+  ]
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 401 | 未認証 |
+| 403 | 可視性レベル未満（非メンバー等） |
 | 404 | チームが存在しない / 論理削除済み |
 
 ---

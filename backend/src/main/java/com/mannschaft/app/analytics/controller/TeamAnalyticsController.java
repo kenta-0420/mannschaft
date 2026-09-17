@@ -55,14 +55,14 @@ public class TeamAnalyticsController {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
 
-    private final TeamService teamService;
     private final PageViewAnalyticsAccessGuard accessGuard;
     private final PageViewAnalyticsService analyticsService;
+    private final TeamService teamService;
 
     /**
      * チームのアクセス解析を取得する。
      *
-     * @param slug     チーム slug
+     * @param scopeId  チーム slug または数値 ID を正準化したスコープ ID
      * @param dateFrom 集計開始日（省略可・"YYYY-MM-DD"）
      * @param dateTo   集計終了日（省略可・"YYYY-MM-DD"）
      * @return 200 + {@link PageViewAnalyticsResponse}
@@ -70,12 +70,12 @@ public class TeamAnalyticsController {
     @GetMapping("/analytics")
     @Operation(summary = "チームアクセス解析取得", description = "チームの PV 集計を返す。メンバーのみ閲覧可。")
     public ResponseEntity<ApiResponse<PageViewAnalyticsResponse>> getAnalytics(
-            @PathVariable TeamScopeId slug,
+            @PathVariable("slug") TeamScopeId scopeId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
 
-        // slug → 数値 ID 解決（存在しない slug は TeamService が TEAM_001 / 404 を投げる）
-        Long teamId = slug.value();
+        // TeamScopeIdConverter で slug / 数値を正準化し、同じ ID で認可・集計する
+        Long teamId = scopeId.value();
         teamService.assertActiveTeamExists(teamId);
 
         // 認可ガード（非メンバー・未認証は TEAMANALYTICS_001 / 404）

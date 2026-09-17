@@ -50,8 +50,8 @@ public class OrganizationModuleController {
     @Operation(summary = "組織モジュール一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<OrgModuleResponse>>> getOrganizationModules(
-            @PathVariable OrgScopeId slug) {
-        Long orgId = slug.value();
+            @PathVariable("slug") OrgScopeId scopeId) {
+        Long orgId = scopeId.value();
         organizationService.assertActiveOrganizationExists(orgId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // MEMBER以上であることを確認（SUPPORTER/GUESTは isMember=false のため 403）
@@ -70,8 +70,8 @@ public class OrganizationModuleController {
     @Operation(summary = "組織機能カタログ＋有効状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<OrgModuleCatalogResponse>> getOrganizationModuleCatalog(
-            @PathVariable OrgScopeId slug) {
-        Long orgId = slug.value();
+            @PathVariable("slug") OrgScopeId scopeId) {
+        Long orgId = scopeId.value();
         organizationService.assertActiveOrganizationExists(orgId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
@@ -92,10 +92,10 @@ public class OrganizationModuleController {
     @Operation(summary = "組織モジュール有効/無効切替")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "切替成功")
     public ResponseEntity<Void> toggleOrganizationModule(
-            @PathVariable OrgScopeId slug,
+            @PathVariable("slug") OrgScopeId scopeId,
             @PathVariable Long moduleId,
             @Valid @RequestBody ToggleModuleRequest request) {
-        Long orgId = slug.value();
+        Long orgId = scopeId.value();
         organizationService.assertActiveOrganizationExists(orgId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // ADMINのみ許可

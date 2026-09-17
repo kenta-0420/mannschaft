@@ -5,6 +5,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.config.OrgScopeIdConverter;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.template.dto.OrgModuleCatalogResponse;
 import com.mannschaft.app.template.service.ModuleService;
@@ -18,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -90,6 +92,18 @@ class OrgModuleCatalogControllerTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(CommonErrorCode.COMMON_002));
+    }
+
+    @Test
+    @DisplayName("AC-8: 存在しないslugはORG_001相当の404へ変換する")
+    void getOrganizationModuleCatalog_notFoundSlug_throws() {
+        given(organizationService.resolveOrgId("unknown-slug"))
+                .willThrow(new BusinessException(com.mannschaft.app.organization.OrgErrorCode.ORG_001));
+
+        assertThatThrownBy(() -> new OrgScopeIdConverter(organizationService).convert("unknown-slug"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
     }
 
 }

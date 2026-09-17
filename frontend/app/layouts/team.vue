@@ -53,6 +53,7 @@ watch(() => route.path, () => {
         <div v-if="canShowSidebar" class="px-4 pt-3">
           <Button
             icon="pi pi-bars"
+            class="min-h-11 min-w-11"
             text
             size="small"
             :aria-label="$t('common.menu')"
