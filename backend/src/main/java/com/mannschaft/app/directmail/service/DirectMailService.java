@@ -207,11 +207,13 @@ public class DirectMailService {
     }
 
     /**
-     * メール一覧を取得する。閲覧系のため操作者はスコープのメンバーであること。
+     * メール一覧を取得する。閲覧系だが組織サイドバーで ADMIN/DEPUTY_ADMIN 限定表示している
+     * 機能のため、操作者はスコープの ADMIN 以上であること（認可根治戦役 CMP-260917-1350 Phase 1。
+     * 従来は checkMembership で MEMBER も閲覧できていた）。
      */
     public PagedResponse<DirectMailResponse> listMails(String scopeType, Long scopeId, Long actorUserId,
                                                         Pageable pageable) {
-        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
         Page<DirectMailLogEntity> page = mailLogRepository
                 .findByScopeTypeAndScopeIdOrderByCreatedAtDesc(scopeType, scopeId, pageable);
         List<DirectMailResponse> content = directMailMapper.toMailResponseList(page.getContent());
@@ -221,11 +223,13 @@ public class DirectMailService {
     }
 
     /**
-     * メール詳細を取得する。閲覧系のため操作者はスコープのメンバーであること。
+     * メール詳細を取得する。閲覧系だが組織サイドバーで ADMIN/DEPUTY_ADMIN 限定表示している
+     * 機能のため、操作者はスコープの ADMIN 以上であること（認可根治戦役 CMP-260917-1350 Phase 1。
+     * 従来は checkMembership で MEMBER も閲覧できていた）。
      * path スコープと不一致の mailId は 404（存在秘匿）。
      */
     public DirectMailResponse getMail(String scopeType, Long scopeId, Long actorUserId, Long mailId) {
-        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
         DirectMailLogEntity entity = findMailOrThrow(scopeType, scopeId, mailId);
         return directMailMapper.toMailResponse(entity);
     }

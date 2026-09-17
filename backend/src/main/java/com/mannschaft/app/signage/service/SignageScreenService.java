@@ -163,12 +163,16 @@ public class SignageScreenService {
     }
 
     /**
-     * 認証ユーザー向けにスコープの画面一覧を取得する（メンバーシップ必須）。
+     * 認証ユーザー向けにスコープの画面一覧を取得する。
      *
-     * <p>認可根治戦役 Wave7: {@link #getScreenForActor} と同一の理由。</p>
+     * <p>認可根治戦役 CMP-260917-1350 Phase 1 で是正: 組織サイドバーで ADMIN/DEPUTY_ADMIN
+     * 限定表示している機能のため、ADMIN 以上に限定する（従来は Wave7 で checkMembership を
+     * 追加したが MEMBER も閲覧できてしまっていた）。サイネージ端末が無記名で表示する経路
+     * （{@code signage_access_tokens} 経由・{@link #listScreens}）はこのガードの対象外で
+     * 引き続き認可なしのまま維持する。</p>
      */
     public List<SignageScreenResponse> listScreensForActor(String scopeType, Long scopeId, Long actor) {
-        accessControlService.checkMembership(actor, scopeId, scopeType);
+        accessControlService.checkAdminOrAbove(actor, scopeId, scopeType);
         return listScreens(scopeType, scopeId);
     }
 

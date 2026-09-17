@@ -36,9 +36,10 @@ import java.util.List;
  * <p>設計書 {@code docs/features/F09.13_property_history.md} §4「業者マスタ API」に対応。
  * パス: {@code /api/v1/{scope}/{id}/vendors}（{@code scope} = "teams" or "organizations"）。</p>
  *
- * <p><b>認可根治戦役 Wave3-B5</b>: 閲覧系（一覧/サジェスト/単体取得）は
- * {@link AccessControlService#checkMembership}、作成/更新/削除は
- * {@link AccessControlService#checkAdminOrAbove} で保護する。
+ * <p><b>認可根治戦役 Wave3-B5 → CMP-260917-1350 Phase 1 で是正</b>: 組織サイドバーで
+ * ADMIN/DEPUTY_ADMIN 限定表示している機能のため、閲覧系（一覧/サジェスト/単体取得）・
+ * 作成/更新/削除いずれも {@link AccessControlService#checkAdminOrAbove} で保護する
+ * （従来、閲覧系は {@code checkMembership} 止まりで MEMBER も閲覧できていた認可漏れ）。
  * BOLA（IDOR）防止は従来どおり {@code VendorService} 側の
  * {@code ensureScopeMatches}（scope 不一致は PROPERTY_005 で存在秘匿）に委ねる。</p>
  */
@@ -71,7 +72,7 @@ public class VendorController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         String scopeType = toScopeType(scope);
-        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         Pageable pageable = PageRequest.of(page, size);
 
         // q または category が指定されていれば絞り込みリストを返す（一覧表示用に Page 化はせず簡易ラップ）
@@ -111,7 +112,7 @@ public class VendorController {
             @PathVariable("scopeId") Long scopeId,
             @RequestParam("q") String q) {
         String scopeType = toScopeType(scope);
-        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         List<VendorEntity> list = vendorService.suggestByName(scopeType, scopeId, q);
         return ApiResponse.of(list.stream().map(VendorSuggestionResponse::from).toList());
     }
@@ -126,7 +127,7 @@ public class VendorController {
             @PathVariable("scopeId") Long scopeId,
             @PathVariable("vendorId") Long vendorId) {
         String scopeType = toScopeType(scope);
-        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         // IDOR 防止: VendorService 側で scope 一致を検証する
         VendorEntity vendor = vendorService.getVendor(scopeType, scopeId, vendorId);
         return ApiResponse.of(VendorResponse.from(vendor));

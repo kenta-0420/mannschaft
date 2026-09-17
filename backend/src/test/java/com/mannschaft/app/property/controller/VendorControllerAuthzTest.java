@@ -1,0 +1,137 @@
+package com.mannschaft.app.property.controller;
+
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.property.entity.VendorEntity;
+import com.mannschaft.app.property.service.VendorService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+
+/**
+ * {@link VendorController} の閲覧系（一覧/サジェスト/単体取得）認可単体テスト
+ * （CMP-260917-1350 Phase 1）。
+ *
+ * <p>組織サイドバーで ADMIN/DEPUTY_ADMIN 限定表示している「業者マスタ」機能の GET が
+ * {@code checkMembership} 止まりで MEMBER も閲覧できていた認可漏れを根治する。</p>
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("VendorController 認可単体テスト（閲覧系）")
+class VendorControllerAuthzTest {
+
+    @Mock private VendorService vendorService;
+    @Mock private AccessControlService accessControlService;
+
+    private VendorController controller;
+    private MockedStatic<SecurityUtils> securityUtils;
+
+    private static final Long USER_ID = 100L;
+    private static final Long SCOPE_ID = 1L;
+    private static final Long VENDOR_ID = 5L;
+
+    @BeforeEach
+    void setUp() {
+        controller = new VendorController(vendorService, accessControlService);
+        securityUtils = Mockito.mockStatic(SecurityUtils.class);
+        securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+    }
+
+    @AfterEach
+    void tearDown() {
+        securityUtils.close();
+    }
+
+    @Test
+    @DisplayName("listVendors: MEMBER は 403（COMMON_002）で拒否される")
+    void listVendors_member_isForbidden() {
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+
+        assertThatThrownBy(() -> controller.listVendors("teams", SCOPE_ID, null, null, null, 0, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_002);
+    }
+
+    @Test
+    @DisplayName("listVendors: ADMIN は 200 相当で取得できる")
+    void listVendors_admin_isAllowed() {
+        doNothing().when(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+        given(vendorService.listActiveVendors(eq("TEAM"), eq(SCOPE_ID), any()))
+                .willReturn(Page.empty(PageRequest.of(0, 20)));
+
+        assertThatCode(() -> controller.listVendors("teams", SCOPE_ID, null, null, null, 0, 20))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("searchVendors: MEMBER は 403（COMMON_002）で拒否される")
+    void searchVendors_member_isForbidden() {
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+
+        assertThatThrownBy(() -> controller.searchVendors("teams", SCOPE_ID, "塗装"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_002);
+    }
+
+    @Test
+    @DisplayName("searchVendors: ADMIN は 200 相当で取得できる")
+    void searchVendors_admin_isAllowed() {
+        doNothing().when(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+        given(vendorService.suggestByName(eq("TEAM"), eq(SCOPE_ID), any()))
+                .willReturn(java.util.List.of());
+
+        assertThatCode(() -> controller.searchVendors("teams", SCOPE_ID, "塗装"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("getVendor: MEMBER は 403（COMMON_002）で拒否される")
+    void getVendor_member_isForbidden() {
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+
+        assertThatThrownBy(() -> controller.getVendor("teams", SCOPE_ID, VENDOR_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_002);
+    }
+
+    @Test
+    @DisplayName("getVendor: ADMIN は 200 相当で取得できる")
+    void getVendor_admin_isAllowed() {
+        doNothing().when(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+        given(vendorService.getVendor("TEAM", SCOPE_ID, VENDOR_ID))
+                .willReturn(VendorEntity.builder()
+                        .scopeType("TEAM")
+                        .scopeId(SCOPE_ID)
+                        .name("テスト業者")
+                        .isActive(true)
+                        .build());
+
+        assertThatCode(() -> controller.getVendor("teams", SCOPE_ID, VENDOR_ID))
+                .doesNotThrowAnyException();
+    }
+}
