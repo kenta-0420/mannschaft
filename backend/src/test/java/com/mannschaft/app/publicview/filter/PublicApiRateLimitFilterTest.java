@@ -1117,6 +1117,18 @@ class PublicApiRateLimitFilterTest {
         assertRateLimited("/api/v1/active-incidents", "198.51.100.233", "public-api:MISC_LOW", 30);
     }
 
+    @Test
+    @DisplayName("F15.4 都道府県マスタGETはレート対象（MISC_LOW zone）")
+    void regionMasterPrefectures_isRateLimited() throws Exception {
+        assertRateLimited("/api/v1/master/prefectures", "198.51.100.234", "public-api:MISC_LOW", 30);
+    }
+
+    @Test
+    @DisplayName("F15.4 市区町村マスタGETはレート対象（MISC_LOW zone）")
+    void regionMasterCities_isRateLimited() throws Exception {
+        assertRateLimited("/api/v1/master/prefectures/13/cities", "198.51.100.235", "public-api:MISC_LOW", 30);
+    }
+
     // ────────────────────────────────────────────────────────────
     // 公開網漏れ是正: 署名検証済み Webhook 系（WEBHOOK・120/min・POST 限定）
     // ────────────────────────────────────────────────────────────
