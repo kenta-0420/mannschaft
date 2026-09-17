@@ -126,7 +126,10 @@ describe('Phase 4 設定ハブ導線', () => {
 
     // 後続テストへの影響を避けるため元に戻す。
     await switchLocaleAndSettle('ja')
-  })
+    // このケースだけロケールカタログの動的インポートを2回（ja→en→ja）行うため、
+    // 他の it より本質的に重い。CI の実測で既定 5000ms を超えて落ちた（PR #3330）。
+    // 全体の testTimeout を上げると他テストの本物の hang を隠すので、このケースにだけ与える。
+  }, 30000)
 })
 
 describe('Phase 4 保護者同意 pending → manage 遷移', () => {
