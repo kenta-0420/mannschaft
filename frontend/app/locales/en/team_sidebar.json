@@ -48,7 +48,12 @@
       "adminConsole": "Admin Console",
       "receipts": "Receipts",
       "receiptSettings": "Receipt issuer settings",
-      "hourlyRate": "Hourly rate"
+      "hourlyRate": "Hourly rate",
+      "vendors": "Vendors",
+      "lineSettings": "LINE Settings",
+      "snsSettings": "SNS Settings",
+      "scheduleSettings": "Schedule Settings",
+      "bulletinCategories": "Bulletin Categories"
     }
   }
 }

@@ -91,6 +91,11 @@ const categories: SidebarCategory[] = [
       { labelKey: 'teamSidebar.item.repair_plan', icon: 'pi pi-wrench', path: 'repair-plan', moduleSlug: 'repair_longterm_plan', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.equipment', icon: 'pi pi-cog', path: 'equipment', moduleSlug: 'equipment', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.parking', icon: 'pi pi-car', path: 'parking', moduleSlug: 'parking', requiredRole: 'MEMBER' },
+      // CMP-260909-1141 Phase 3: 業者マスタ（/admin/vendors）は repair_longterm_plan（修繕長期計画）
+      // モジュールが持つ相見積もりカンバンで使う業者台帳。スコープをクエリで受け取る実装のため
+      // absolutePath にクエリを付けて渡す（BaseSidebar が itemLinkTo() でそのまま使う）。
+      // 閲覧は checkMembership・作成/更新/削除は checkAdminOrAbove（VendorController 参照）のため DEPUTY_ADMIN。
+      { labelKey: 'teamSidebar.item.vendors', icon: 'pi pi-briefcase', path: '', absolutePath: `/admin/vendors?scope=teams&scopeId=${props.teamId}`, moduleSlug: 'repair_longterm_plan', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
   {
@@ -118,6 +123,21 @@ const categories: SidebarCategory[] = [
       { labelKey: 'teamSidebar.item.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
       // F20.1: 課金・プラン管理（閲覧はメンバー可・操作はADMIN限定。ナビはメンバー以上に表示）
       { labelKey: 'teamSidebar.item.billing', icon: 'pi pi-credit-card', path: 'settings/billing', moduleSlug: null, requiredRole: 'MEMBER' },
+      // CMP-260909-1141 Phase 3: /admin/line-settings・/admin/sns-settings・/admin/schedule-settings・
+      // /admin/bulletin-categories はスコープ横断ルートだが、実装は useScopeStore().current を読むため
+      // absolutePath の素のパスで足りる（vendors のようなクエリ受け取りは不要）。
+      // LINE 連携・SNS フィード連携はモジュール定義に対応スラッグが無い（module_definitions に存在しない）ため moduleSlug: null。
+      // 権限は LineBotConfigService/SnsFeedConfigService の checkAdminOrAbove（作成/更新/削除）に合わせ DEPUTY_ADMIN。
+      { labelKey: 'teamSidebar.item.lineSettings', icon: 'pi pi-comment', path: '', absolutePath: '/admin/line-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'teamSidebar.item.snsSettings', icon: 'pi pi-share-alt', path: '', absolutePath: '/admin/sns-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      // EventCategoryCommonController.checkCategoryScopeAdminAccess は checkAdminOrAbove。schedule モジュールは
+      // 全レベル常時有効（V2.024/CLAUDE.md）のため moduleSlug: 'schedule' を付けても実害はないが、
+      // カテゴリ管理自体はモジュール可否と無関係の設定画面なので他の設定項目と同じく null とする。
+      { labelKey: 'teamSidebar.item.scheduleSettings', icon: 'pi pi-calendar-times', path: '', absolutePath: '/admin/schedule-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      // BulletinCategoryService は閲覧・作成・更新・削除のすべてが checkMembership のみ（ADMIN 昇格チェック無し。
+      // BE 実装がそうなっているため、ナビもそれに合わせて MEMBER 以上に表示する。BE 側の権限設計自体は
+      // 別途要確認の欠陥候補として報告する）。
+      { labelKey: 'teamSidebar.item.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'MEMBER' },
     ],
   },
 ]

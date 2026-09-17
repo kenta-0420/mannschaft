@@ -63,6 +63,11 @@
     "leagueTransfers": "League Transfers",
     "adminConsole": "Admin Console",
     "receipts": "Receipts",
-    "receiptSettings": "Receipt issuer settings"
+    "receiptSettings": "Receipt issuer settings",
+    "vendors": "Vendors",
+    "lineSettings": "LINE Settings",
+    "snsSettings": "SNS Settings",
+    "scheduleSettings": "Schedule Settings",
+    "bulletinCategories": "Bulletin Categories"
   }
 }
