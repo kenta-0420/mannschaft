@@ -38,10 +38,14 @@ import static org.mockito.Mockito.doThrow;
  * （CMP-260917-1350 Phase 1）。
  *
  * <p>組織サイドバーで ADMIN/DEPUTY_ADMIN 限定表示している「ダイレクトメール」機能の GET が
- * {@code checkMembership} 止まりで MEMBER も閲覧できていた認可漏れを根治する。</p>
+ * {@code checkMembership} 止まりで MEMBER も閲覧できていた認可漏れを根治する。ただし
+ * <b>ORGANIZATION スコープのみ</b> ADMIN 必須とし、<b>TEAM スコープは
+ * {@code DirectMailScopeContractIT} が固定した契約（一般メンバーのメール一覧取得は200・
+ * 閲覧系はcheckMembership）を維持する</b>。本テストはスコープ差分を番人として固定する
+ * （2026-09-17: 最初の是正がスコープを区別せず TEAM 側の契約を巻き込みかけた）。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("DirectMailService 認可単体テスト（listMails / getMail）")
+@DisplayName("DirectMailService 認可単体テスト（listMails / getMail・スコープ差分）")
 class DirectMailServiceAuthzTest {
 
     @Mock private AccessControlService accessControlService;
@@ -54,7 +58,6 @@ class DirectMailServiceAuthzTest {
     @Mock private EmailOutboxService emailOutboxService;
     @InjectMocks private DirectMailService service;
 
-    private static final String SCOPE_TYPE = "TEAM";
     private static final Long SCOPE_ID = 1L;
     private static final Long MAIL_ID = 10L;
     private static final Long ACTOR_ID = 100L;
@@ -64,29 +67,55 @@ class DirectMailServiceAuthzTest {
     class ListMails {
 
         @Test
-        @DisplayName("MEMBER は 403（COMMON_002）で拒否される")
-        void member_isForbidden() {
+        @DisplayName("ORGANIZATIONスコープ: MEMBERは403（COMMON_002）で拒否される")
+        void organization_member_isForbidden() {
             doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkAdminOrAbove(anyLong(), eq(SCOPE_ID), eq(SCOPE_TYPE));
+                    .when(accessControlService).checkAdminOrAbove(anyLong(), eq(SCOPE_ID), eq("ORGANIZATION"));
 
             Pageable pageable = PageRequest.of(0, 20);
-            assertThatThrownBy(() -> service.listMails(SCOPE_TYPE, SCOPE_ID, ACTOR_ID, pageable))
+            assertThatThrownBy(() -> service.listMails("ORGANIZATION", SCOPE_ID, ACTOR_ID, pageable))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(CommonErrorCode.COMMON_002);
         }
 
         @Test
-        @DisplayName("ADMIN は 200 相当で取得できる")
-        void admin_isAllowed() {
-            doNothing().when(accessControlService).checkAdminOrAbove(anyLong(), eq(SCOPE_ID), eq(SCOPE_TYPE));
+        @DisplayName("ORGANIZATIONスコープ: ADMINは200相当で取得できる")
+        void organization_admin_isAllowed() {
+            doNothing().when(accessControlService).checkAdminOrAbove(anyLong(), eq(SCOPE_ID), eq("ORGANIZATION"));
             Pageable pageable = PageRequest.of(0, 20);
-            given(mailLogRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(eq(SCOPE_TYPE), eq(SCOPE_ID), any()))
+            given(mailLogRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(eq("ORGANIZATION"), eq(SCOPE_ID), any()))
                     .willReturn(Page.empty(pageable));
             given(directMailMapper.toMailResponseList(any())).willReturn(java.util.List.of());
 
-            assertThatCode(() -> service.listMails(SCOPE_TYPE, SCOPE_ID, ACTOR_ID, pageable))
+            assertThatCode(() -> service.listMails("ORGANIZATION", SCOPE_ID, ACTOR_ID, pageable))
                     .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("TEAMスコープ: MEMBERは200相当で取得できる（スコープ契約維持）")
+        void team_member_isAllowed() {
+            doNothing().when(accessControlService).checkMembership(anyLong(), eq(SCOPE_ID), eq("TEAM"));
+            Pageable pageable = PageRequest.of(0, 20);
+            given(mailLogRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(eq("TEAM"), eq(SCOPE_ID), any()))
+                    .willReturn(Page.empty(pageable));
+            given(directMailMapper.toMailResponseList(any())).willReturn(java.util.List.of());
+
+            assertThatCode(() -> service.listMails("TEAM", SCOPE_ID, ACTOR_ID, pageable))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("TEAMスコープ: 非メンバーは403（COMMON_002）で拒否される")
+        void team_nonMember_isForbidden() {
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(anyLong(), eq(SCOPE_ID), eq("TEAM"));
+
+            Pageable pageable = PageRequest.of(0, 20);
+            assertThatThrownBy(() -> service.listMails("TEAM", SCOPE_ID, ACTOR_ID, pageable))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
         }
     }
 
@@ -95,34 +124,65 @@ class DirectMailServiceAuthzTest {
     class GetMail {
 
         @Test
-        @DisplayName("MEMBER は 403（COMMON_002）で拒否される")
-        void member_isForbidden() {
+        @DisplayName("ORGANIZATIONスコープ: MEMBERは403（COMMON_002）で拒否される")
+        void organization_member_isForbidden() {
             doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkAdminOrAbove(anyLong(), eq(SCOPE_ID), eq(SCOPE_TYPE));
+                    .when(accessControlService).checkAdminOrAbove(anyLong(), eq(SCOPE_ID), eq("ORGANIZATION"));
 
-            assertThatThrownBy(() -> service.getMail(SCOPE_TYPE, SCOPE_ID, ACTOR_ID, MAIL_ID))
+            assertThatThrownBy(() -> service.getMail("ORGANIZATION", SCOPE_ID, ACTOR_ID, MAIL_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(CommonErrorCode.COMMON_002);
         }
 
         @Test
-        @DisplayName("ADMIN は 200 相当で取得できる")
-        void admin_isAllowed() {
-            doNothing().when(accessControlService).checkAdminOrAbove(anyLong(), eq(SCOPE_ID), eq(SCOPE_TYPE));
+        @DisplayName("ORGANIZATIONスコープ: ADMINは200相当で取得できる")
+        void organization_admin_isAllowed() {
+            doNothing().when(accessControlService).checkAdminOrAbove(anyLong(), eq(SCOPE_ID), eq("ORGANIZATION"));
             DirectMailLogEntity entity = DirectMailLogEntity.builder()
-                    .scopeType(SCOPE_TYPE)
+                    .scopeType("ORGANIZATION")
                     .scopeId(SCOPE_ID)
                     .senderId(ACTOR_ID)
                     .subject("件名")
                     .bodyMarkdown("本文")
                     .recipientType("ALL")
                     .build();
-            given(mailLogRepository.findByIdAndScopeTypeAndScopeId(MAIL_ID, SCOPE_TYPE, SCOPE_ID))
+            given(mailLogRepository.findByIdAndScopeTypeAndScopeId(MAIL_ID, "ORGANIZATION", SCOPE_ID))
                     .willReturn(Optional.of(entity));
 
-            assertThatCode(() -> service.getMail(SCOPE_TYPE, SCOPE_ID, ACTOR_ID, MAIL_ID))
+            assertThatCode(() -> service.getMail("ORGANIZATION", SCOPE_ID, ACTOR_ID, MAIL_ID))
                     .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("TEAMスコープ: MEMBERは200相当で取得できる（スコープ契約維持）")
+        void team_member_isAllowed() {
+            doNothing().when(accessControlService).checkMembership(anyLong(), eq(SCOPE_ID), eq("TEAM"));
+            DirectMailLogEntity entity = DirectMailLogEntity.builder()
+                    .scopeType("TEAM")
+                    .scopeId(SCOPE_ID)
+                    .senderId(ACTOR_ID)
+                    .subject("件名")
+                    .bodyMarkdown("本文")
+                    .recipientType("ALL")
+                    .build();
+            given(mailLogRepository.findByIdAndScopeTypeAndScopeId(MAIL_ID, "TEAM", SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            assertThatCode(() -> service.getMail("TEAM", SCOPE_ID, ACTOR_ID, MAIL_ID))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("TEAMスコープ: 非メンバーは403（COMMON_002）で拒否される")
+        void team_nonMember_isForbidden() {
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(anyLong(), eq(SCOPE_ID), eq("TEAM"));
+
+            assertThatThrownBy(() -> service.getMail("TEAM", SCOPE_ID, ACTOR_ID, MAIL_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
         }
     }
 }
