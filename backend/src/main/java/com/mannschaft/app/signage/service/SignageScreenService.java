@@ -163,12 +163,23 @@ public class SignageScreenService {
     }
 
     /**
-     * 認証ユーザー向けにスコープの画面一覧を取得する（メンバーシップ必須）。
+     * 認証ユーザー向けにスコープの画面一覧を取得する。
      *
-     * <p>認可根治戦役 Wave7: {@link #getScreenForActor} と同一の理由。</p>
+     * <p><b>認可根治戦役 CMP-260917-1350 Phase 1 で是正（スコープ差分あり）</b>: 組織サイドバーで
+     * ADMIN/DEPUTY_ADMIN 限定表示している機能のため、<b>ORGANIZATION スコープのみ</b> ADMIN 以上に
+     * 限定する。<b>TEAM スコープは Wave7 が固定した従来どおり checkMembership のまま維持する</b>
+     * （{@code SignageScopeContractIT}「一般メンバー(非ADMIN)の画面一覧取得は200」は Wave7 の
+     * 正本依頼どおり意図的に固定した契約であり、これを崩してはならない。2026-09-17 CI で誤って
+     * ORGANIZATION と同じ扱いにし赤化させた事故の是正）。サイネージ端末が無記名で表示する経路
+     * （{@code signage_access_tokens} 経由・{@link #listScreens}）はこのガードの対象外で
+     * 引き続き認可なしのまま維持する。</p>
      */
     public List<SignageScreenResponse> listScreensForActor(String scopeType, Long scopeId, Long actor) {
-        accessControlService.checkMembership(actor, scopeId, scopeType);
+        if ("ORGANIZATION".equals(scopeType)) {
+            accessControlService.checkAdminOrAbove(actor, scopeId, scopeType);
+        } else {
+            accessControlService.checkMembership(actor, scopeId, scopeType);
+        }
         return listScreens(scopeType, scopeId);
     }
 

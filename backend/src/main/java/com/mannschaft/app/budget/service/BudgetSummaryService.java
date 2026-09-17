@@ -51,7 +51,9 @@ public class BudgetSummaryService {
     public BudgetSummaryResponse getFiscalYearSummary(Long fiscalYearId) {
         BudgetFiscalYearEntity fy = fiscalYearService.findById(fiscalYearId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, fy.getScopeId(), fy.getScopeType());
+        // 認可根治戦役 CMP-260917-1350 Phase 1: 組織サイドバーで ADMIN/DEPUTY_ADMIN 限定表示している
+        // 機能のため、閲覧も ADMIN 以上に限定する（従来は checkMembership で MEMBER も閲覧できていた）。
+        accessControlService.checkAdminOrAbove(currentUserId, fy.getScopeId(), fy.getScopeType());
 
         // 承認済み取引のみ集計
         List<BudgetTransactionEntity> transactions = transactionRepository.findByFiscalYearId(fiscalYearId)
