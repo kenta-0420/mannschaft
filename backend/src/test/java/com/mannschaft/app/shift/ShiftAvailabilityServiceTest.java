@@ -1,11 +1,14 @@
 package com.mannschaft.app.shift;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.shift.dto.AvailabilityDefaultRequest;
 import com.mannschaft.app.shift.dto.AvailabilityDefaultResponse;
 import com.mannschaft.app.shift.dto.BulkAvailabilityDefaultRequest;
 import com.mannschaft.app.shift.entity.MemberAvailabilityDefaultEntity;
 import com.mannschaft.app.shift.repository.MemberAvailabilityDefaultRepository;
 import com.mannschaft.app.shift.service.ShiftAvailabilityService;
+import com.mannschaft.app.team.repository.TeamRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -13,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -25,8 +30,12 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link ShiftAvailabilityService} の単体テスト。
  * デフォルト勤務可能時間の取得・設定・削除を検証する。
+ *
+ * <p>per-scope 認可（{@code checkTeamAccess}）は {@link ShiftAvailabilityScopeContractIT} が正本のため、
+ * ここでは常に通過するようスタブし（SYSTEM_ADMIN 扱い）、既存の取得/設定/削除ロジックのみを検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("ShiftAvailabilityService 単体テスト")
 class ShiftAvailabilityServiceTest {
 
@@ -36,8 +45,21 @@ class ShiftAvailabilityServiceTest {
     @Mock
     private ShiftMapper shiftMapper;
 
+    @Mock
+    private TeamRepository teamRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private ShiftAvailabilityService shiftAvailabilityService;
+
+    @BeforeEach
+    void setUpAuthzStubs() {
+        // per-scope 認可は本テストの検証対象外のため、常に通過させる（SYSTEM_ADMIN 扱い）
+        given(teamRepository.existsById(TEAM_ID)).willReturn(true);
+        given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー
