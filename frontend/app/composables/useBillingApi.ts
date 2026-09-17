@@ -40,93 +40,40 @@ export type BillingScopeKind = 'USER' | 'TEAM' | 'ORG'
 /**
  * Billing Center PR6b-1 AC-133: `BillingActiveContract` 投影に載る保留中のプラン変更。
  *
- * <p>BE 側（第7〜10隊）が実装中で、`docs/openapi.json` はまだこのフィールドを反映していない
- * （生成型 {@link BillingActiveContract} に `pendingChange` が存在しない）。生成型を手編集せず、
- * ここで手動拡張することで対応する。**BE の OpenAPI 再生成後は本拡張を外し、生成型へ移行すること**
- * （i18n ルールと同様、生成型が真実のソースという方針は維持したまま暫定措置とする）。</p>
+ * <p>生成型（`docs/openapi.json` 再生成後）へ移行済み。BE スキーマは全フィールドが optional
+ * （`changeId?` / `status?` / `effectiveAt?` / `paymentActionRequired?` /
+ * `pendingUpdateExpiresAt?`）であり、値が無いことは実際に起こりうる状態を表す本物の事実である。
+ * 呼び出し側は「無い」を偽の既定値で埋めず、不在として正しく扱うこと
+ * （支払期限が無ければ断定しない文言へ、changeId が無ければ 3DS 再開ボタン自体を出さない）。</p>
  */
-export type BillingPendingChangeStatus = 'PENDING_PAYMENT' | 'REQUIRES_ACTION' | 'APPLIED' | 'FAILED' | 'CANCELLED'
-
-export interface BillingPendingChange {
-  /**
-   * 変更 ID。`GET …/contracts/{contractId}/changes/{changeId}/payment-action` の組み立てに使う。
-   *
-   * <p>ページ再読込・別端末では FE のローカル状態（実行応答で得た changeId）が失われるため、
-   * この投影が唯一の再開手段になる（AC-71）。</p>
-   */
-  changeId: string
-  status: BillingPendingChangeStatus
-  effectiveAt: string
-  paymentActionRequired: boolean
-  /**
-   * 支払い（3DS）の期限。`effectiveAt`（＝変更行を作った時刻）は期限ではないので代用しない。
-   * pending_update が無い検体では null になり、その場合は期限を断定しない文言へ倒す（AC-105）。
-   */
-  pendingUpdateExpiresAt?: string | null
-}
-
-/** `pendingChange` を含む `BillingActiveContract` 投影（AC-133 の暫定拡張。上記コメント参照）。 */
-export type BillingActiveContractWithPendingChange = BillingActiveContract & {
-  pendingChange?: BillingPendingChange | null
-}
-
-/** `pendingChange` を含む `BillingEntitlementSummaryResponse` 投影。 */
-export type BillingEntitlementSummaryResponseWithPendingChange =
-  Omit<BillingEntitlementSummaryResponse, 'activePlan' | 'activeAddons'> & {
-    activePlan?: BillingActiveContractWithPendingChange | null
-    activeAddons?: BillingActiveContractWithPendingChange[]
-  }
+export type BillingPendingChange = components['schemas']['BillingPendingChange']
 
 // ============================================================
 // プラン変更（upgrade）— Billing Center PR6b-1 A群/B群/C群
 // ============================================================
 //
-// 下記の型は BE の record（`BillingChangePreviewRequest` / `BillingChangePreviewResponse` /
-// `BillingPlanChangeRequest` / `BillingContractChangeResponse` / `BillingPaymentActionResponse`）を
-// 実読して写したものである。`docs/openapi.json` の再生成が BE 側の宿題として未了のため
-// 生成型（`components['schemas']`）にこれらのスキーマがまだ存在しない。**再生成後は本節の手動型を
-// 撤去して生成型へ移行すること**（上記 `BillingActiveContractWithPendingChange` と同じ暫定措置）。
+// 下記は BE の record（`BillingChangePreviewRequest` / `BillingChangePreviewResponse` /
+// `BillingPlanChangeRequest` / `BillingContractChangeResponse` / `BillingPaymentActionResponse` /
+// `Money`）に対応する生成型（`docs/openapi.json` 再生成済み）を再エクスポートしたもの。
+// 以前はここに手書きの暫定型を置いていたが、生成型が真実のソースという方針どおり撤去した。
 
-/** 見積り金額（BE `BillingChangePreviewResponse.Money`）。税はすべて BE 由来でこちらで計算しない。 */
-export interface BillingChangePreviewMoney {
-  currency: string
-  amountIncludingTax: number
-  amountExcludingTax: number
-  taxAmount: number
-  taxName: string
-  /** 税率（ベーシスポイント。10% なら 1000）。税率不明の契約では null。 */
-  taxRateBasisPoints: number | null
-}
+/** 見積り金額（BE `Money`）。税はすべて BE 由来でこちらで計算しない。 */
+export type BillingChangePreviewMoney = components['schemas']['Money']
 
 /** `POST …/change-previews` のリクエスト（AC-17: 価格・band の版は server が tx 内で確定するため送らない）。 */
-export interface BillingChangePreviewRequestBody {
-  toProductKind: 'PLAN' | 'ADDON'
-  toProductKey: string
-  /** 契約の CAS 期待値（不一致は 409）。 */
-  version: number
-}
+export type BillingChangePreviewRequestBody = components['schemas']['BillingChangePreviewRequest']
 
-/** `POST …/change-previews` のレスポンス（AC-1）。 */
-export interface BillingChangePreviewResponse {
-  previewId: string
-  kind: string
-  amountDueNow: BillingChangePreviewMoney
-  effectiveAt: string
-  expiresAt: string
-}
+/** `POST …/change-previews` のレスポンス（AC-1）。`amountDueNow` は optional（BE 応答不備時の安全網）。 */
+export type BillingChangePreviewResponse = components['schemas']['BillingChangePreviewResponse']
 
 /** `POST …/changes` のリクエスト（AC-25: previewId 必須）。 */
-export interface BillingPlanChangeExecuteRequest {
-  previewId: string
-  version: number
-}
+export type BillingPlanChangeExecuteRequest = components['schemas']['BillingPlanChangeRequest']
 
-/** `POST …/changes` のレスポンス（AC-25: clientSecret は返らない）。 */
-export interface BillingContractChangeResponse {
-  changeId: string
-  status: BillingPendingChangeStatus
-  effectiveAt: string
-}
+/**
+ * `POST …/changes` のレスポンス（AC-25: clientSecret は返らない）。
+ * `status` は生成型では `string` 合併（7値。DOWNGRADE 系の `CREATING_SCHEDULE`/`SCHEDULED` を含む）。
+ */
+export type BillingContractChangeResponse = components['schemas']['BillingContractChangeResponse']
 
 /**
  * `GET …/changes/{changeId}/payment-action` のレスポンス（AC-48/54）。
@@ -135,13 +82,7 @@ export interface BillingContractChangeResponse {
  * 残してはならない（AC-55〜59）。受け取った値は `stripe.handleNextAction` へ渡す一時変数として
  * だけ扱い、ログ・URL・browser storage・DOM 属性のいずれにも書かないこと。</p>
  */
-export interface BillingPaymentActionResponse {
-  paymentAction: {
-    type: string
-    clientSecret: string
-    expiresAt: string
-  }
-}
+export type BillingPaymentActionResponse = components['schemas']['BillingPaymentActionResponse']
 
 /** 契約作成に必須の Idempotency-Key ヘッダを生成する（連打・再送の二重発行防止・設計書 02 §0 M-1）。 */
 function idempotencyHeaders(): Record<string, string> {
@@ -171,15 +112,15 @@ export function useBillingApi() {
   // ============================================================
 
   async function getMyEntitlements() {
-    return api<{ data: BillingEntitlementSummaryResponseWithPendingChange }>('/api/v1/me/entitlements')
+    return api<{ data: BillingEntitlementSummaryResponse }>('/api/v1/me/entitlements')
   }
 
   async function getTeamEntitlements(teamId: string) {
-    return api<{ data: BillingEntitlementSummaryResponseWithPendingChange }>(`/api/v1/teams/${teamId}/entitlements`)
+    return api<{ data: BillingEntitlementSummaryResponse }>(`/api/v1/teams/${teamId}/entitlements`)
   }
 
   async function getOrgEntitlements(orgId: string) {
-    return api<{ data: BillingEntitlementSummaryResponseWithPendingChange }>(`/api/v1/organizations/${orgId}/entitlements`)
+    return api<{ data: BillingEntitlementSummaryResponse }>(`/api/v1/organizations/${orgId}/entitlements`)
   }
 
   /** スコープ種別に応じて権利サマリ取得を振り分ける。 */

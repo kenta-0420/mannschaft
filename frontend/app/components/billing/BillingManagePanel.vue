@@ -12,10 +12,9 @@
  */
 import type {
   BillingActiveContract,
-  BillingActiveContractWithPendingChange,
+  BillingContractChangeResponse,
   BillingEntitledFeature,
   BillingPendingChange,
-  BillingPendingChangeStatus,
   BillingScopeKind,
 } from '~/composables/useBillingApi'
 import BillingCancelReservationDialog from '~/components/billing/BillingCancelReservationDialog.vue'
@@ -26,8 +25,11 @@ import BillingPlanChangeDialog from '~/components/billing/BillingPlanChangeDialo
  * {@code ContractBase.version:int64}）を返す（第7隊 8f0a0bb5a1 で解消済み。Codex 検分 P1 是正）。
  * とはいえ値が欠落するケースへの安全網として、無い場合は 0 決め打ちで送らず「操作不能」を
  * 誠実に表示する（CAS の意味を失わせる対処療法はしない）。
+ *
+ * 生成型 {@link BillingActiveContract} は {@code version}/{@code pendingChange} を含め
+ * 全フィールドが optional なので、以前の手動拡張（`WithPendingChange`）は撤去し生成型を直接使う。
  */
-type BillingActiveContractWithVersion = BillingActiveContractWithPendingChange & { version?: number }
+type BillingActiveContractWithVersion = BillingActiveContract
 
 const props = defineProps<{
   scopeKind: BillingScopeKind
@@ -201,7 +203,7 @@ const planChangePending = computed<BillingPendingChange | null>(() =>
 
 /** 契約カードに出す「支払い待ち」表示の判定（AC-104: 押す前から見える）。 */
 const activePlanPendingChange = computed<BillingPendingChange | null>(() => {
-  const pc = (activePlan.value as BillingActiveContractWithPendingChange | null)?.pendingChange ?? null
+  const pc = activePlan.value?.pendingChange ?? null
   if (!pc) return null
   return pc.status === 'PENDING_PAYMENT' || pc.status === 'REQUIRES_ACTION' ? pc : null
 })
@@ -278,20 +280,35 @@ async function onPlanChangeTargetSelected(planKey: string) {
       toProductKey: planKey,
       version: planChangeVersion.value,
     })
-    const money = res.data.amountDueNow
+    const { previewId, kind, amountDueNow: money, effectiveAt, expiresAt } = res.data
+    // 生成型では全フィールドが optional。確定前に金額・期限を必ず見せる仕様（AC-126/127）上、
+    // 欠けたものを 0 や空文字で埋めて「見積れた」と偽装せず、見積り失敗として扱う。
+    if (
+      !previewId || !kind || !effectiveAt || !expiresAt
+      || money?.amountIncludingTax == null || money?.amountExcludingTax == null || money?.taxAmount == null
+    ) {
+      planChangePreviewError.value = t('billing.manage.planChange.previewFailed')
+      handleApiError(
+        new Error('billing plan change preview response missing required fields'),
+        'billing.manage.planChange.preview',
+      )
+      return
+    }
     planChangePreview.value = {
-      previewId: res.data.previewId,
-      kind: res.data.kind,
+      previewId,
+      kind,
       // 税込を主表示にする（AC-127）。税率は BE のベーシスポイントを率へ直すだけで金額計算はしない。
       amountDueNow: money.amountIncludingTax,
       taxSnapshot: {
         amountInclTax: money.amountIncludingTax,
         amountExclTax: money.amountExcludingTax,
         taxAmount: money.taxAmount,
+        // 税率不明（null）の契約は 0% と決め打ちせず、率不明として 0 表示に倒す（AC-127 の範囲内の
+        // 妥協点。金額自体は BE 値そのまま、計算するのは表示用の率だけ）。
         taxRate: (money.taxRateBasisPoints ?? 0) / 10000,
       },
-      effectiveAt: res.data.effectiveAt,
-      expiresAt: res.data.expiresAt,
+      effectiveAt,
+      expiresAt,
     }
   }
   catch (err) {
@@ -317,17 +334,30 @@ async function confirmPlanChange() {
       previewId: preview.previewId,
       version: planChangeVersion.value,
     })
-    planChangeId.value = res.data.changeId
-    planChangeLatest.value = {
-      changeId: res.data.changeId,
-      status: res.data.status,
-      effectiveAt: res.data.effectiveAt,
-      paymentActionRequired: res.data.status === 'REQUIRES_ACTION',
-      // 実行応答は期限を返さない（`POST …/changes` は changeId/status/effectiveAt のみ・AC-25）。
-      // 分からないものを埋めず null のままにし、期限の誤表示を作らない。
-      pendingUpdateExpiresAt: null,
+    const { changeId, status, effectiveAt } = res.data
+    // 生成型では changeId/status/effectiveAt がすべて optional。欠けたまま「受理できた」と
+    // 偽装せず、明示的に失敗として扱う（対処療法禁止・根治治療の原則）。
+    if (!changeId || !status || !effectiveAt) {
+      planChangeError.value = 'PLAN_CHANGE_FAILED'
+      handleApiError(
+        new Error('billing plan change response missing changeId/status/effectiveAt'),
+        'billing.manage.planChange.execute',
+      )
+      await refreshPlanChangeTarget()
+      return
     }
-    await afterPlanChangeAccepted(res.data.status)
+    planChangeId.value = changeId
+    planChangeLatest.value = {
+      changeId,
+      status,
+      effectiveAt,
+      paymentActionRequired: status === 'REQUIRES_ACTION',
+      // 実行応答は期限を返さない（`POST …/changes` は changeId/status/effectiveAt のみ・AC-25）。
+      // 分からないものを埋めず未設定のままにし、期限の誤表示を作らない
+      // （生成型は `string | undefined` のため null ではなく undefined を保つ）。
+      pendingUpdateExpiresAt: undefined,
+    }
+    await afterPlanChangeAccepted(status)
   }
   catch (err) {
     // 症状を隠さない: 失敗は明示し（AC-129）、再取得の完了まで確定ボタンを解除しない（AC-130）。
@@ -341,7 +371,7 @@ async function confirmPlanChange() {
 }
 
 /** 実行応答の status に応じて、3DS・確定待ちの追跡・失敗表示へ振り分ける。 */
-async function afterPlanChangeAccepted(status: BillingPendingChangeStatus) {
+async function afterPlanChangeAccepted(status: NonNullable<BillingContractChangeResponse['status']>) {
   if (status === 'REQUIRES_ACTION') {
     await runPaymentAction()
     return
@@ -376,8 +406,20 @@ async function runPaymentAction() {
 
   try {
     const res = await billingApi.getPlanChangePaymentAction(contractId, changeId)
+    const clientSecret = res.data.paymentAction?.clientSecret
+    if (!clientSecret) {
+      // 生成型では paymentAction/clientSecret とも optional。欠けたまま Stripe SDK へ渡さず、
+      // 明示的に失敗として扱う（symptom を隠さない）。
+      planChangeError.value = 'PLAN_CHANGE_FAILED'
+      handleApiError(
+        new Error('billing plan change payment-action response missing clientSecret'),
+        'billing.manage.planChange.paymentAction',
+      )
+      await refreshPlanChangeTarget()
+      return
+    }
     const result = await confirmPaymentAction({
-      clientSecret: res.data.paymentAction.clientSecret,
+      clientSecret,
       // リダイレクト型 3DS の戻り先（BE の `GET /billing/payment-action/return`・E3'）。
       returnUrl: `${window.location.origin}/billing/payment-action/return`,
     })

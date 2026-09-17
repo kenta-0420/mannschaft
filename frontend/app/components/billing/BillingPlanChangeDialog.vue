@@ -28,6 +28,7 @@
  * `onResumePaymentAction`）に委譲し、本コンポーネント自身は行わない
  * （`useStripeSetup.confirmPaymentAction` / `usePlanChangePolling` は親側で使う）。</p>
  */
+import type { BillingPendingChange } from '~/composables/useBillingApi'
 
 /** 事前見積り（AC-1〜24）の投影。金額・税はすべて BE（Stripe 見積り）由来でこちらで計算しない。 */
 interface PlanChangePreview {
@@ -51,16 +52,13 @@ interface PlanChoice {
   displayNameKey?: string
 }
 
-/** `BillingActiveContract.pendingChange`（AC-133）と同じ形。 */
-interface PendingChange {
-  /** 変更 ID（AC-71: 再読込・別端末からの 3DS 再開に使う。親が payment-action の URL を組む）。 */
-  changeId?: string
-  status: string
-  effectiveAt: string
-  paymentActionRequired: boolean
-  /** 支払い（3DS）の期限。無ければ null（`effectiveAt` で代用しない・P2-1）。 */
-  pendingUpdateExpiresAt?: string | null
-}
+/**
+ * `BillingActiveContract.pendingChange`（AC-133）そのもの。生成型に移行済み
+ * （`docs/openapi.json` 再生成後）で、全フィールドが optional。以前はここに手書きの必須型を
+ * 置いていたが、生成型が真実のソースという方針どおり撤去した。値の欠落は本物の状態
+ * （例: changeId が無ければ 3DS 再開ボタンを出さない）として扱うこと。
+ */
+type PendingChange = BillingPendingChange
 
 interface Props {
   /** ダイアログの開閉状態。 */
@@ -292,8 +290,10 @@ onMounted(() => {
           @click="close"
         />
 
+        <!-- changeId が無ければ再開ボタン自体を出さない（無言の no-op 禁止。生成型は optional のため
+             再検分で一度指摘された「押しても何も起きない」欠陥を再発させない）。 -->
         <Button
-          v-if="isPendingPayment && pendingChange?.paymentActionRequired"
+          v-if="isPendingPayment && pendingChange?.paymentActionRequired && pendingChange?.changeId"
           :label="t('billing.manage.planChange.resumePaymentActionCta')"
           severity="secondary"
           :disabled="busy"
