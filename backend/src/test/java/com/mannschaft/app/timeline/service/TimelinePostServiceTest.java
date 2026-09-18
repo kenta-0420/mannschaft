@@ -1620,6 +1620,21 @@ class TimelinePostServiceTest {
         }
     }
 
+        @Test
+        @DisplayName("AC-村のみ: TEAM/ORG 非所属でも現役村 ID を解決して個人集約フィードに含める")
+        void 村のみ所属でも現役村IDを解決する() {
+            // given: TEAM/ORG が空でも、退村・BAN 済みを除外する村の現役所属は存在する。
+            UUID villageId = UUID.randomUUID();
+            given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of());
+            given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
+            given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(villageId));
+
+            // when
+            timelinePostService.getMyFeed(USER_ID, null, 20);
+
+            // then: 実装は VILLAGE の scopeVillageId IN 条件へ渡す村 ID を必ず解決する。
+            verify(postingIdentityService).getActiveVillageIdsByUser(USER_ID);
+        }
     // ========================================
     // togglePin
     // ========================================
