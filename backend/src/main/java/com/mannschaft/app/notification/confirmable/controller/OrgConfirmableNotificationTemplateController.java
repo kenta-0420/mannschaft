@@ -45,6 +45,17 @@ public class OrgConfirmableNotificationTemplateController {
     private final AccessControlService accessControlService;
 
     /**
+     * F04.9 §2 が定める確認通知の送信権限（CMP-260909-1141）。
+     *
+     * <p>書き込み系（送信・キャンセル・リマインド再送・設定更新・テンプレート CRUD）は
+     * 「ADMIN、または本権限を持つ DEPUTY_ADMIN」で認可する。カタログ登録と DEPUTY_ADMIN への
+     * 既定付与（{@code is_default=1}）は
+     * {@code V216.20260918083734__add_send_notification_permission.sql} が行う。
+     * 閲覧系は従来どおり {@code checkMembership} のままである。</p>
+     */
+    private static final String SEND_NOTIFICATION = "SEND_NOTIFICATION";
+
+    /**
      * 組織の確認通知テンプレート一覧を取得する（論理削除済み除外）。
      *
      * <p>認可根治戦役 Wave7: 閲覧系のため {@code checkMembership}（兄弟の通知一覧取得と同じ粒度）。</p>
@@ -64,7 +75,8 @@ public class OrgConfirmableNotificationTemplateController {
     /**
      * 確認通知テンプレートを作成する。
      *
-     * <p>認可根治戦役 Wave7: 管理操作のため {@code checkAdminOrAbove}（兄弟の通知送信と同じ粒度）。</p>
+     * <p>認可根治戦役 Wave7 → CMP-260909-1141: 管理操作のため
+     * {@code checkAdminOrHasPermissionInScope(..., "SEND_NOTIFICATION")}（兄弟の通知送信と同じ粒度）。</p>
      */
     @PostMapping
     @Operation(summary = "確認通知テンプレート作成（組織）")
@@ -73,7 +85,8 @@ public class OrgConfirmableNotificationTemplateController {
             @PathVariable Long orgId,
             @Valid @RequestBody ConfirmableNotificationTemplateCreateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name());
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, orgId, ScopeType.ORGANIZATION.name(), SEND_NOTIFICATION);
         ConfirmableNotificationTemplateEntity entity = templateService.create(
                 ScopeType.ORGANIZATION,
                 orgId,
@@ -106,7 +119,8 @@ public class OrgConfirmableNotificationTemplateController {
         if (!ScopeType.ORGANIZATION.equals(existing.getScopeType()) || !orgId.equals(existing.getScopeId())) {
             throw new BusinessException(ConfirmableNotificationErrorCode.TEMPLATE_NOT_FOUND);
         }
-        accessControlService.checkAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name());
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, orgId, ScopeType.ORGANIZATION.name(), SEND_NOTIFICATION);
         ConfirmableNotificationTemplateEntity entity = templateService.update(
                 templateId,
                 request.getName(),
@@ -135,7 +149,8 @@ public class OrgConfirmableNotificationTemplateController {
         if (!ScopeType.ORGANIZATION.equals(existing.getScopeType()) || !orgId.equals(existing.getScopeId())) {
             throw new BusinessException(ConfirmableNotificationErrorCode.TEMPLATE_NOT_FOUND);
         }
-        accessControlService.checkAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name());
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, orgId, ScopeType.ORGANIZATION.name(), SEND_NOTIFICATION);
         templateService.softDelete(templateId);
         return ResponseEntity.noContent().build();
     }
