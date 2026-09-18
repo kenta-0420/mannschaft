@@ -1,0 +1,188 @@
+# 「実装済みなのに画面から到達できないページ」再発防止台帳（正本）
+#
+# CMP-260909-1141 Phase 5。番人 `OrphanPageGuardTest`
+# （backend/src/test/java/com/mannschaft/app/common/architecture/）がこの台帳を検査する。
+#
+# ## 背景 — 5類型（詳しくは docs/task-list.md の CMP-260909-1141 を参照）
+#
+# | 型 | 例 | 本台帳・番人が扱うか |
+# |---|---|---|
+# | ① リンクが無い | Phase 1〜4 で導線を足した18枚 | 扱う（reachable） |
+# | ② リンクはあるが条件で永久に消える（機能フラグ等） | サイドバー27項目の永久非表示（#3322で根治） | **扱わない**（別番人を後続で作る） |
+# | ③ スコープ配下に同機能ページがある残骸 | /admin/equipment 等4枚（CMP-260917-0041） | 扱う（duplicate-remnant） |
+#
+# 注: /admin/google-calendar（CMP-260912-0911）は当初この台帳にも duplicate-remnant として
+# 載せていたが、本番人の初回実行で「該当ページが実在しない」red を検出した。実測すると
+# frontend/app/pages/admin/google-calendar.vue は既に削除済みだった（本戦役の PR #3336 で
+# 削除済み。docs/task-list.md 側の「対応中」表記はこの時点で陳腐化している）。本番人が
+# 検出できることの実例としてここに記録し、台帳からは当該エントリを除いた。
+# | ④ BE が無く到達しても動かない | /admin/campaigns 等7枚（CMP-260912-0909 系） | 扱う（be-pending） |
+# | ⑤ 走査後に他セッションが導線を足した | /my/shift-availability（PR #3183 が先行していたのに誤検出） | 番人では防げない。**運用ルール**: 着手直前に最新 main で再確認すること |
+#
+# ## 分類（4値。すべて reason 必須）
+#
+# - reachable: 導線があり到達できる。番人は当該パスへのリンクが実在することを検査する
+#     （リンクが無くなったら red = 今回直した18枚の退行を捕まえる）
+# - duplicate-remnant: 同機能ページが別スコープにある残骸。削除待ち。
+#     `replacement`（代替ページの絶対ルートパス）が必須で、そのページが実在し、
+#     そこへのリンクが実在することを検査する
+# - be-pending: BE が無く動かない。BE 実装待ち。`cmp`（対応する CMP 番号）が必須
+# - intentional-direct-only: 意図的に直打ち専用（メールリンク前提など）。reason のみ必須
+#
+# ## 番人の検査範囲（段階導入 — prefix ではなく exact-match の追跡リスト）
+#
+# frontend/app/pages/ は500ファイル超あり、今回の戦役で実測できたのは
+# CMP-260909-1141 の30ルートのみ。**ディレクトリ prefix（例: `/admin/` 配下すべて）で
+# 網羅性を取る案は採用しなかった**: `/admin/` 配下には今回調査していない
+# 20枚超（`/admin/users`・`/admin/permission-groups`・`/admin/shift-budget/alerts` 等）が
+# 別に存在し、それらを実測せずに prefix に含めると、未分類の大量 red が出て
+# 番人が最初から無効化される（intentional-direct-only 等で無審査に埋めるのも同じ理由で不可）。
+# `/my/`・`/me/`・`/settings/` も同様に今回調査していない他のページを多数含む。
+#
+# そのため本番人は `tracked_paths`（下記の30パスちょうど）に対する **exact-match** で
+# 網羅性を取る: 「tracked_paths に載っているが pages: に無い」「pages: にあるが実在しない」
+# の両方向で陳腐化を検出する。新規ページの黙った孤立を機械的に防ぐという本来の狙い（対象を
+# 全FEに広げること）はまだ果たせていない — **対象を広げるときは、その prefix 配下を実測してから
+# tracked_paths に個別のパスとして追記すること**（未実測のまま prefix ごと足すと同じ事故になる）。
+tracked_paths:
+  - /me/payments/receipts
+  - /me/guardianship/bulk-payment
+  - /me/tournament-fees
+  - /my/shift-availability
+  - /my/shifts
+  - /admin/vendors
+  - /admin/line-settings
+  - /admin/sns-settings
+  - /admin/schedule-settings
+  - /admin/bulletin-categories
+  - /admin/villages/creation-requests
+  - /admin/seasonal-wallpapers
+  - /admin/point-card-synonyms
+  - /admin/appeals
+  - /profile/followers
+  - /profile/following
+  - /settings/profile-visibility
+  - /parental-consent/manage
+  - /admin/equipment
+  - /admin/member-profiles
+  - /admin/reservation-settings
+  - /admin/blog-management
+  - /admin/campaigns
+  - /admin/promotions
+  - /admin/packages
+  - /admin/module-pricing
+  - /admin/org-billing
+  - /admin/tax-settings
+  - /admin/member-permissions
+
+pages:
+  # --- Phase 1（完了・PR #3232）: 金銭に関わり本人が到達できないと実害が出る3枚 ---
+  - path: /me/payments/receipts
+    classification: reachable
+    reason: "Phase 1（PR #3232）でマイページハブ（pages/my/index.vue の cards）から導線を追加。実機でクリック到達確認済み"
+  - path: /me/guardianship/bulk-payment
+    classification: reachable
+    reason: "Phase 1（PR #3232）でマイページハブから導線を追加。実機でクリック到達確認済み"
+  - path: /me/tournament-fees
+    classification: reachable
+    reason: "Phase 1（PR #3232）でマイページハブから導線を追加。実機でクリック到達確認済み"
+
+  # --- Phase 2（完了・PR #3300）: シフト希望・確定シフト ---
+  - path: /my/shift-availability
+    classification: reachable
+    reason: "Phase 2（PR #3300）でマイページハブから導線を追加。なお着手時点で teams/[slug]/shifts.vue からの navigateTo も既に存在していた（PR #3183 が先行・偵察の誤認あり）"
+  - path: /my/shifts
+    classification: reachable
+    reason: "Phase 2（PR #3300）でマイページハブから導線を追加。実機でクリック到達確認済み"
+
+  # --- Phase 3（完了・PR #3305）: 運営管理21枚のうち、生きていて導線が足りなかった9枚 ---
+  - path: /admin/vendors
+    classification: reachable
+    reason: "Phase 3（PR #3305）でTeamSidebar/OrganizationSidebarへabsolutePath（クエリ付き）で追加。実機でクリック到達確認済み"
+  - path: /admin/line-settings
+    classification: reachable
+    reason: "Phase 3（PR #3305）でTeamSidebar/OrganizationSidebarへabsolutePathで追加。実機でクリック到達確認済み"
+  - path: /admin/sns-settings
+    classification: reachable
+    reason: "Phase 3（PR #3305）でTeamSidebar/OrganizationSidebarへabsolutePathで追加。実機でクリック到達確認済み"
+  - path: /admin/schedule-settings
+    classification: reachable
+    reason: "Phase 3（PR #3305）でTeamSidebar/OrganizationSidebarへabsolutePathで追加。実機でクリック到達確認済み"
+  - path: /admin/bulletin-categories
+    classification: reachable
+    reason: "Phase 3（PR #3305）でTeamSidebar/OrganizationSidebarへabsolutePathで追加。実機でクリック到達確認済み"
+  - path: /admin/villages/creation-requests
+    classification: reachable
+    reason: "Phase 3（PR #3305）でSystemAdminQuickLinks.vueのquickLinksへ追加。実機でクリック到達確認済み"
+  - path: /admin/seasonal-wallpapers
+    classification: reachable
+    reason: "Phase 3（PR #3305）でSystemAdminQuickLinks.vueのquickLinksへ追加。実機でクリック到達確認済み"
+  - path: /admin/point-card-synonyms
+    classification: reachable
+    reason: "Phase 3（PR #3305）でSystemAdminQuickLinks.vueのquickLinksへ追加。実機でクリック到達確認済み"
+  - path: /admin/appeals
+    classification: reachable
+    reason: "Phase 3（PR #3305）でSystemAdminQuickLinks.vueのquickLinksへ追加。実機でクリック到達確認済み"
+
+  # --- Phase 4（完了・PR #3330）: その他4枚 ---
+  - path: /profile/followers
+    classification: reachable
+    reason: "Phase 4（PR #3330）でSocialProfileCard.vueの<span>を<NuxtLink>化。実機は未踏（検証アカウントにソーシャルプロフィールが無くカード自体が描画されないため）。ユニットテストでの担保にとどまる"
+  - path: /profile/following
+    classification: reachable
+    reason: "Phase 4（PR #3330）でSocialProfileCard.vueの<span>を<NuxtLink>化。実機は未踏（上記と同理由）。ユニットテストでの担保にとどまる"
+  - path: /settings/profile-visibility
+    classification: reachable
+    reason: "Phase 4（PR #3330）で設定ハブ（pages/settings/index.vue の individualItems）へ追加。実機でクリック到達確認済み"
+  - path: /parental-consent/manage
+    classification: reachable
+    reason: "Phase 4（PR #3330）で設定ハブへ追加。あわせて pending.vue の承認済み時の逃げ先を manage に修正。実機でクリック到達確認済み"
+
+  # --- 重複残骸5枚（CMP-260917-0041 / CMP-260912-0911）: 削除待ち ---
+  - path: /admin/equipment
+    classification: duplicate-remnant
+    replacement: /teams/[slug]/equipment
+    reason: "CMP-260917-0041①。teams/[slug]/equipment.vue と organizations/[slug]/equipment.vue が同じ useMemberProfileApi系ではなくequipment APIを叩き、両サイドバーに導線あり。teamsを代表としてreplacementに記載（organizations版も別途導線あり）。削除するかどうかは未着手（要確認事項あり）"
+  - path: /admin/member-profiles
+    classification: duplicate-remnant
+    replacement: /organizations/[slug]/member-profiles
+    reason: "CMP-260917-0041②。organizations/[slug]/member-profiles.vue が同一のuseMemberProfileApi().listFields(scopeType, scopeId)を叩き、OrganizationSidebar.vueに導線あり。削除は未着手"
+  - path: /admin/reservation-settings
+    classification: duplicate-remnant
+    replacement: /teams/[slug]/reservations
+    link_detection_note: "teams/[slug]/admin/index.vue の AdminConsoleCard は to: `${base.value}/reservations` という動的テンプレートリテラルで導線を持つが、base.value（スコープ基底パス）が実行時にしか決まらないため静的走査では抽出できない（先頭が${で始まり切り落とし後に空文字列になる）。番人の偽陰性を避けるためここで抑制する"
+    reason: "CMP-260917-0041③。teams/[slug]/reservations.vue のLineManager.vueが同じreservation-lines APIを叩き、管理コンソールカード（teams/[slug]/admin/index.vue:78）から到達可能。ただしorganizations配下に予約機能自体が無く単純削除できない可能性があるため要確認（未着手）"
+  - path: /admin/blog-management
+    classification: duplicate-remnant
+    replacement: /organizations/[slug]/blog
+    reason: "CMP-260917-0041④。organizations/[slug]/blog.vue（teams/[slug]/blog.vueも同様）が同じ/api/v1/blog/postsを叩き、OrganizationSidebar.vue（path:'blog'）に導線あり。ただしadmin側はタグCRUD等の受け皿を持つため単純削除できない可能性があり要確認（未着手）"
+
+  # --- BE不在7枚（CMP-260912-0909系）: BE実装待ち。正規ナビへ未公開 ---
+  - path: /admin/campaigns
+    classification: be-pending
+    cmp: CMP-260917-0121
+    reason: "/api/v1/system-admin/discount-campaigns がBEに存在しない。BE実装後に正規ナビへ公開する方針（未完成FEを削除せずBEを実装する裁可済み）"
+  - path: /admin/promotions
+    classification: be-pending
+    cmp: CMP-260917-0121
+    reason: "/{scope}/{scopeId}/promotions・/coupons・/segment-presets がBEに存在しない（既存PromotionControllerは大会限定の別物）。BE実装後に正規ナビへ公開する方針"
+  - path: /admin/packages
+    classification: be-pending
+    cmp: CMP-260917-0122
+    reason: "/api/v1/system-admin/packages がBEに存在しない。BE実装後に正規ナビへ公開する方針"
+  - path: /admin/module-pricing
+    classification: be-pending
+    cmp: CMP-260911-0109
+    reason: "モジュール価格設定APIがBEに存在しない。BE実装後に正規ナビへ公開する方針"
+  - path: /admin/org-billing
+    classification: be-pending
+    cmp: CMP-260917-0123
+    reason: "/api/v1/system-admin/org-billing がBEに存在しない。BE実装後に正規ナビへ公開する方針"
+  - path: /admin/tax-settings
+    classification: be-pending
+    cmp: CMP-260917-0123
+    reason: "/api/v1/system-admin/tax-settings がBEに存在しない。BE実装後に正規ナビへ公開する方針"
+  - path: /admin/member-permissions
+    classification: be-pending
+    cmp: CMP-260912-0910
+    reason: "/{scopeType}s/{scopeId}/role-permissions/member がBEに存在しない。かつ現状はcatchで404を握りつぶし「全権限有効」と嘘表示する危険度の高い欠陥がある（BE実装と同時に必ず除去すること）。BE実装後に正規ナビへ公開する方針"
