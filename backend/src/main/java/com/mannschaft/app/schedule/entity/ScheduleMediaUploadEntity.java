@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.entity;
 
+import com.mannschaft.app.common.entity.UuidV7Entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -16,11 +17,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
-public class ScheduleMediaUploadEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class ScheduleMediaUploadEntity extends UuidV7Entity {
 
     /** スケジュール ID（FK → schedules。SET NULL on delete）*/
     private Long scheduleId;

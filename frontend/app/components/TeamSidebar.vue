@@ -51,6 +51,7 @@ const categories: SidebarCategory[] = [
     labelKey: 'teamSidebar.category.member',
     icon: 'pi pi-users',
     items: [
+      { labelKey: 'teamSidebar.item.member_profiles', icon: 'pi pi-id-card', path: 'member-profiles', moduleSlug: 'member_intro', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.circulation', icon: 'pi pi-envelope', path: 'circulation', moduleSlug: 'circulation', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.safety_check', icon: 'pi pi-shield', path: 'safety', moduleSlug: 'safety_check', requiredRole: 'MEMBER' },
     ],
@@ -121,6 +122,9 @@ const categories: SidebarCategory[] = [
       // 0 円のままになっていたため新設。金銭情報なので ADMIN 限定。
       { labelKey: 'teamSidebar.item.hourlyRate', icon: 'pi pi-yen', path: 'settings/hourly-rate', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'teamSidebar.item.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
+      // CMP-260909-1141: /admin/reservation-settings（無関係2機能同居の到達不能ページ）から
+      // 確認通知（F04.9）を移設。BE の checkAdminOrAbove（ADMIN/DEPUTY_ADMIN 許可）に合わせ DEPUTY_ADMIN。
+      { labelKey: 'teamSidebar.item.confirmableNotifications', icon: 'pi pi-verified', path: 'settings/confirmable-notifications', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
       // F20.1: 課金・プラン管理（閲覧はメンバー可・操作はADMIN限定。ナビはメンバー以上に表示）
       { labelKey: 'teamSidebar.item.billing', icon: 'pi pi-credit-card', path: 'settings/billing', moduleSlug: null, requiredRole: 'MEMBER' },
       // CMP-260909-1141 Phase 3: /admin/line-settings・/admin/sns-settings・/admin/schedule-settings・

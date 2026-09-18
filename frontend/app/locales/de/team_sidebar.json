@@ -15,6 +15,7 @@
     },
     "item": {
       "dashboard": "Dashboard",
+      "member_profiles": "メンバー紹介",
       "announcements": "Ankündigungen",
       "chat": "Chat",
       "bulletin": "Schwarzes Brett",
@@ -43,6 +44,7 @@
       "audit_logs": "Audit-Protokolle",
       "settings": "Einstellungen",
       "faqSettings": "FAQ-Einstellungen",
+      "confirmableNotifications": "Bestätigungsbenachrichtigungen",
       "billing": "Abrechnung & Planverwaltung",
       "leagueTransfers": "Liga-Transfers",
       "adminConsole": "Administrationskonsole",

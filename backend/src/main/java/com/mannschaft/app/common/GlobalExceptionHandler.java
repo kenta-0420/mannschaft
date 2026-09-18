@@ -514,8 +514,9 @@ public class GlobalExceptionHandler {
             // 同一概念）が既定 400 のままであるため、系統を割らないよう既定 400 のまま据え置く
             // （GlobalExceptionHandlerTest の系統の割れ防止番人が固定）。
             Map.entry("SCHEDULE_011", HttpStatus.CONFLICT),                 // CROSS_INVITE_INVALID_STATUS
-            Map.entry("SCHEDULE_019", HttpStatus.CONFLICT),                 // PERSONAL_REMINDER_LIMIT_EXCEEDED
-            Map.entry("SCHEDULE_020", HttpStatus.CONFLICT),                 // PERSONAL_SCHEDULE_LIMIT_EXCEEDED
+            // SCHEDULE_019/020（個人リマインダー・個人予定の件数上限超過）は
+            // .claudecode.md §3.2.1 の本則どおり Severity.WARN 既定の 400 とする。
+            // 409 への上書き登録は行わない（回帰固定: GlobalExceptionHandlerTest CMP-114）。
             // SCHEDULE_002/003/012/014/015/016/021/030/032/033/041〜044/050/060〜067/090 は
             // 入力バリデーション・未使用定数のいずれかであり Severity.WARN/ERROR 既定が妥当と判定し変更なし。
             // F03.8 / 認可根治 Wave3-B12event: イベント本体・サブリソースの IDOR 秘匿。

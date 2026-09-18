@@ -230,6 +230,12 @@ Query: contentType, contentId, beneficiaryUserId?(既定=自分)
 
 ## 7. 協会→加盟チーム請求
 
+### 支払い確定と冪等性（P7）
+
+`POST /api/v1/teams/{teamId}/payment-requests/{id}/pay` は `Idempotency-Key` を必須とし、blank または 255 文字超を 400 とする。開始レスポンスは `PROCESSING` の PaymentIntent client secret を返し、成功 webhook を受けるまで `PAID` を返さない。同一 key は既存 attempt/PaymentIntent を返し、PROCESSING 中の別 key は 409。`payment_intent.payment_failed` は同じ PaymentIntent を再確認できるため `PROCESSING` のまま保持し、終端の `payment_intent.canceled` だけが現行 attempt を元の `SENT`/`VIEWED`/`OVERDUE` へ戻す。古い attempt の webhook は現在の request を変更しない。
+
+PaymentIntent metadata の `paymentRequestId`/`paymentAttemptId` は webhook 相関に必須とする。metadata が P7 attempt を示すのに escrow attachment が未保存なら webhook handler は retryable 5xx を返す。
+
 ```
 POST   /api/v1/organizations/{orgId}/payment-requests           # 発行（DRAFT）
 PATCH  /api/v1/organizations/{orgId}/payment-requests/{id}/send # 配信（SENT・通知一斉送信）

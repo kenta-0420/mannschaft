@@ -15,6 +15,7 @@
     },
     "item": {
       "dashboard": "仪表盘",
+      "member_profiles": "メンバー紹介",
       "announcements": "公告",
       "chat": "聊天",
       "bulletin": "公告板",
@@ -43,6 +44,7 @@
       "audit_logs": "审计日志",
       "settings": "设置",
       "faqSettings": "FAQ设置",
+      "confirmableNotifications": "确认通知设置",
       "billing": "账单与套餐管理",
       "leagueTransfers": "联赛升降级",
       "adminConsole": "管理控制台",

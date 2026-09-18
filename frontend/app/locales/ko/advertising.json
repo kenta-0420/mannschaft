@@ -11,6 +11,9 @@
       "saved": "계정 설정을 저장했습니다.",
       "save_failed": "저장에 실패했습니다."
     },
+    "admin_affiliate_settings": {
+      "placeholder_tag_warning": "태그 ID가 설정되지 않아 이 광고는 표시되지 않습니다"
+    },
     "spotlight": {
       "hide_advertiser": "이 광고주 숨기기",
       "hide_advertiser_done": "이 광고주의 광고를 숨겼습니다",

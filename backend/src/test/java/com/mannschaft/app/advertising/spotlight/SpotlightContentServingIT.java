@@ -119,6 +119,31 @@ class SpotlightContentServingIT extends AbstractSpotlightIT {
         assertThat(items).isEmpty();
     }
 
+    @Test
+    @DisplayName("CMP-260918-0025: tag_id がプレースホルダの行は候補から除外され items:[] になる")
+    void プレースホルダtagIdは除外され空配列() {
+        insertAffiliateConfig("AMAZON", "PLACEHOLDER_AMAZON_TAG", TILE, 0);
+        em.flush();
+
+        List<SpotlightItem> items = content(1, "PERSONAL", null);
+
+        assertThat(items).isEmpty();
+    }
+
+    @Test
+    @DisplayName("CMP-260918-0025: プレースホルダ行と本物のtag_id行が混在する場合は本物のみ返る")
+    void プレースホルダと本物が混在すると本物のみ返る() {
+        insertAffiliateConfig("AMAZON", "PLACEHOLDER_AMAZON_TAG", TILE, 0);
+        insertAffiliateConfig("RAKUTEN", "mannschaft-22", TILE, 1);
+        em.flush();
+
+        List<SpotlightItem> items = content(1, "PERSONAL", null);
+
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).source()).isEqualTo("AFFILIATE");
+        assertThat(items.get(0).affiliate().provider()).isEqualTo("RAKUTEN");
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // AC-2.2 予約優先
     // ═════════════════════════════════════════════════════════════════════

@@ -486,6 +486,10 @@
   },
   "confirmable": {
     "title": "确认通知",
+    "page": {
+      "settings_title": "确认通知设置",
+      "settings_subtitle": "管理确认通知的设置、发送与发送历史"
+    },
     "settings": "确认通知设置",
     "send": "发送确认通知",
     "history": "发送历史",
@@ -652,7 +656,25 @@
       "selfReviewHelp": "设定的时间段将作为发布前的审阅期",
       "saveSettings": "保存设置",
       "loadFailed": "无法加载文章",
-      "scheduledPublishUnavailable": "定时发布目前不可用。发布后文章将立即公开。"
+      "scheduledPublishUnavailable": "定时发布目前不可用。发布后文章将立即公开。",
+      "listHeading": "記事",
+      "createButton": "新規作成",
+      "createDialogTitle": "新規記事作成",
+      "titleLabel": "タイトル",
+      "titlePlaceholder": "記事タイトルを入力",
+      "createDialogHint": "下書きとして保存されます。タイトル入力後、編集ページで本文を書いてください。",
+      "loadListFailed": "記事一覧の取得に失敗しました",
+      "createFailed": "記事の作成に失敗しました",
+      "archived": "アーカイブ",
+      "publishSuccess": "公開しました",
+      "unpublishSuccess": "非公開にしました",
+      "publishStatusFailed": "ステータスの変更に失敗しました",
+      "deleteConfirm": "この記事を削除しますか？",
+      "deleteSuccess": "記事を削除しました",
+      "deleteFailed": "削除に失敗しました",
+      "publishButton": "公開",
+      "unpublishButton": "非公開",
+      "updatedAt": "更新日"
     },
     "autoSave": {
       "label": "自动保存",
@@ -660,6 +682,19 @@
       "lastSaved": "自动保存于{time}",
       "enabled": "已启用自动保存",
       "disabled": "已禁用自动保存"
+    },
+    "tag": {
+      "heading": "タグ",
+      "addButton": "タグを追加",
+      "addDialogTitle": "タグを追加",
+      "nameLabel": "タグ名",
+      "namePlaceholder": "例: お知らせ",
+      "empty": "タグがありません",
+      "loadFailed": "タグの取得に失敗しました",
+      "createSuccess": "タグを作成しました",
+      "createFailed": "作成に失敗しました",
+      "deleteSuccess": "タグを削除しました",
+      "deleteFailed": "削除に失敗しました"
     }
   },
   "todo": {
@@ -2450,6 +2485,56 @@
       "user": "用户",
       "category": "类别",
       "event": "事件"
+    }
+  },
+  "memberProfile": {
+    "loadFailed": "无法加载成员信息",
+    "unavailable": "该功能目前尚无法使用（准备中）",
+    "saveFailed": "保存失败",
+    "deleteFailed": "删除失败",
+    "pages": {
+      "title": "メンバー紹介ページ",
+      "newPage": "新規ページ作成",
+      "empty": "ページがまだありません",
+      "titleLabel": "タイトル",
+      "slugLabel": "URLスラッグ",
+      "yearLabel": "対象年度",
+      "visibilityLabel": "公開範囲",
+      "visibilityPublic": "全体公開",
+      "visibilityMembersOnly": "メンバー限定",
+      "statusDraft": "下書き",
+      "statusPublished": "公開中",
+      "publish": "公開する",
+      "unpublish": "下書きに戻す",
+      "delete": "ページを削除",
+      "deleteConfirm": "このページを削除しますか？この操作は元に戻せません。",
+      "createSuccess": "ページを作成しました",
+      "createFailed": "ページの作成に失敗しました",
+      "updateSuccess": "ページを更新しました",
+      "statusChangeFailed": "公開ステータスの変更に失敗しました",
+      "deleteSuccess": "ページを削除しました",
+      "deleteFailed": "ページの削除に失敗しました",
+      "open": "メンバーを見る",
+      "copyFromPrevious": "前年度からメンバーをコピー",
+      "copySourceLabel": "コピー元ページ",
+      "copyConfirm": "コピーする",
+      "copySuccess": "{count}件のメンバーをコピーしました",
+      "copyFailed": "メンバーのコピーに失敗しました"
+    },
+    "members": {
+      "title": "メンバー一覧",
+      "add": "メンバー追加",
+      "edit": "メンバー編集",
+      "empty": "メンバーが登録されていません",
+      "bulkRegister": "一括登録",
+      "bulkRegisterHelp": "1行に1名、「表示名,番号」の形式で入力してください（番号は省略可）",
+      "bulkRegisterSuccess": "{count}件のメンバーを登録しました",
+      "bulkRegisterFailed": "一括登録に失敗しました",
+      "deleteConfirm": "このメンバーを削除しますか？",
+      "back": "ページ一覧に戻る",
+      "customFieldsError": "カスタム項目の読み込みに失敗しました",
+      "optionsInvalidFormat": "選択肢データの形式が不正です",
+      "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
   }
 }

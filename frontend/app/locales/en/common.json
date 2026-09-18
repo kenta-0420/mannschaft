@@ -486,6 +486,10 @@
   },
   "confirmable": {
     "title": "Confirmation Notice",
+    "page": {
+      "settings_title": "Confirmation Notice Settings",
+      "settings_subtitle": "Manage confirmation notice settings, sending, and history"
+    },
     "settings": "Confirmation Notice Settings",
     "send": "Send Confirmation Notice",
     "history": "History",
@@ -652,7 +656,25 @@
       "selfReviewHelp": "The configured time period is treated as a review window before publishing",
       "saveSettings": "Save Settings",
       "loadFailed": "Failed to load the post",
-      "scheduledPublishUnavailable": "Scheduled publishing is currently unavailable. Publishing makes the post live immediately."
+      "scheduledPublishUnavailable": "Scheduled publishing is currently unavailable. Publishing makes the post live immediately.",
+      "listHeading": "Posts",
+      "createButton": "New post",
+      "createDialogTitle": "New post",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Enter a post title",
+      "createDialogHint": "The post will be saved as a draft. After entering a title, write the body on the edit page.",
+      "loadListFailed": "Failed to load the post list",
+      "createFailed": "Failed to create the post",
+      "archived": "Archived",
+      "publishSuccess": "Published",
+      "unpublishSuccess": "Unpublished",
+      "publishStatusFailed": "Failed to change the publish status",
+      "deleteConfirm": "Delete this post?",
+      "deleteSuccess": "Post deleted",
+      "deleteFailed": "Failed to delete",
+      "publishButton": "Publish",
+      "unpublishButton": "Unpublish",
+      "updatedAt": "Updated"
     },
     "autoSave": {
       "label": "Auto-save",
@@ -660,6 +682,19 @@
       "lastSaved": "Auto-saved at {time}",
       "enabled": "Auto-save enabled",
       "disabled": "Auto-save disabled"
+    },
+    "tag": {
+      "heading": "Tags",
+      "addButton": "Add tag",
+      "addDialogTitle": "Add tag",
+      "nameLabel": "Tag name",
+      "namePlaceholder": "e.g. Announcement",
+      "empty": "No tags",
+      "loadFailed": "Failed to load tags",
+      "createSuccess": "Tag created",
+      "createFailed": "Failed to create",
+      "deleteSuccess": "Tag deleted",
+      "deleteFailed": "Failed to delete"
     }
   },
   "todo": {
@@ -2450,6 +2485,56 @@
       "user": "User",
       "category": "Category",
       "event": "Event"
+    }
+  },
+  "memberProfile": {
+    "loadFailed": "Could not load member information",
+    "unavailable": "This feature is currently unavailable (coming soon)",
+    "saveFailed": "Failed to save",
+    "deleteFailed": "Failed to delete",
+    "pages": {
+      "title": "Member Introduction Pages",
+      "newPage": "New page",
+      "empty": "No pages yet",
+      "titleLabel": "Title",
+      "slugLabel": "URL slug",
+      "yearLabel": "Year",
+      "visibilityLabel": "Visibility",
+      "visibilityPublic": "Public",
+      "visibilityMembersOnly": "Members only",
+      "statusDraft": "Draft",
+      "statusPublished": "Published",
+      "publish": "Publish",
+      "unpublish": "Unpublish",
+      "delete": "Delete page",
+      "deleteConfirm": "Delete this page? This cannot be undone.",
+      "createSuccess": "Page created",
+      "createFailed": "Failed to create the page",
+      "updateSuccess": "Page updated",
+      "statusChangeFailed": "Failed to change the publish status",
+      "deleteSuccess": "Page deleted",
+      "deleteFailed": "Failed to delete the page",
+      "open": "View members",
+      "copyFromPrevious": "Copy members from a previous page",
+      "copySourceLabel": "Source page",
+      "copyConfirm": "Copy",
+      "copySuccess": "Copied {count} member(s)",
+      "copyFailed": "Failed to copy members"
+    },
+    "members": {
+      "title": "Members",
+      "add": "Add member",
+      "edit": "Edit member",
+      "empty": "No members registered",
+      "bulkRegister": "Bulk register",
+      "bulkRegisterHelp": "One member per line, formatted as \"Display name,Number\" (number is optional)",
+      "bulkRegisterSuccess": "Registered {count} member(s)",
+      "bulkRegisterFailed": "Failed to bulk register members",
+      "deleteConfirm": "Delete this member?",
+      "back": "Back to pages",
+      "customFieldsError": "Failed to load custom fields",
+      "optionsInvalidFormat": "The options data is in an invalid format",
+      "optionsLoadFailed": "Failed to load the options data"
     }
   }
 }

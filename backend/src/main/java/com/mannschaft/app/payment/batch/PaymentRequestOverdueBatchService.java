@@ -25,7 +25,7 @@ import java.util.Set;
  * F08.9 P7 第二波: 協会請求の期限超過バッチ（OVERDUE 遷移・02_api §7）。
  *
  * <p>支払期限（{@code due_date}）が当日より前で、まだ {@code SENT}/{@code VIEWED} の請求を {@code OVERDUE} へ
- * 遷移させる。OVERDUE でも支払いは可能（{@link com.mannschaft.app.payment.service.PaymentRequestService#pay}）。
+ * 遷移させる。OVERDUE でも支払いは可能（{@link com.mannschaft.app.payment.service.PaymentRequestPaymentCoordinator#pay}）。
  * {@code PAID}/{@code CANCELLED}/{@code DRAFT} は対象外（抽出クエリで SENT/VIEWED に絞り、Entity 側でも
  * {@link PaymentRequestEntity#markAsOverdueIfDue} が二重防御する）。</p>
  *

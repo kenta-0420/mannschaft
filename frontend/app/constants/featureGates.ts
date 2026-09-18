@@ -150,7 +150,7 @@ export const GATE_ROUTE_MAP: Record<string, string[]> = {
     '/system-admin/analytics',
   ],
   FEATURE_GAMIFICATION_ENABLED: [
-    '/organizations/*/gamification',
+    // CMP-260918-0024: ゲーミフィケーションはチーム固有機能に決定。組織ページは削除済み。
     '/organizations/*/supporters',
     '/teams/*/gamification',
     '/teams/*/supporters',
@@ -229,10 +229,10 @@ export function matchGateKey(path: string): string | null {
  * 実測の内訳は次のとおりで、<b>およそ半分が抑止の対象外</b>である。
  * <ul>
  *   <li>静的プレフィクス（`ssr: false` を出す） … 48 件</li>
- *   <li>動的プレフィクス（<b>出さない = SSR 抑止なし</b>） … 46 件（`/teams/{slug}/…`・
+ *   <li>動的プレフィクス（<b>出さない = SSR 抑止なし</b>） … 45 件（`/teams/{slug}/…`・
  *       `/organizations/{slug}/…` 系がまるごと該当）</li>
  * </ul>
- * この 46 経路は <b>routeRules による SSR 抑止も middleware 判定も掛からない</b>
+ * この 45 経路は <b>routeRules による SSR 抑止も middleware 判定も掛からない</b>
  * （middleware は SSR では `ssr-defer` で一切判定しないため）。
  * 隔離は<b>ハイドレーション後のクライアント側判定だけに依存する</b>。
  *

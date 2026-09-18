@@ -10054,7 +10054,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 協会請求の支払い（案3 立替課金） */
+        /** 協会請求の支払い開始 */
         post: operations["pay"];
         delete?: never;
         options?: never;
@@ -43884,7 +43884,7 @@ export interface paths {
         };
         /**
          * 組織 支払サマリ（管理者レンズ）
-         * @description ADMIN/DEPUTY 向け。組織が発行した未収請求件数（SENT/VIEWED/OVERDUE）と期限超過件数（OVERDUE 単体）を返す
+         * @description ADMIN/DEPUTY 向け。組織が発行した未収請求件数（SENT/VIEWED/PROCESSING/OVERDUE）と期限超過件数（OVERDUE 単体）を返す
          */
         get: operations["getOrgPaymentSummary"];
         put?: never;
@@ -43964,7 +43964,7 @@ export interface paths {
         };
         /**
          * 組織横断承認待ち集約
-         * @description ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/OVERDUE）を集約。preview_size=0 で件数のみ
+         * @description ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/PROCESSING/OVERDUE）を集約。preview_size=0 で件数のみ
          */
         get: operations["getOrgAdminActionRequired"];
         put?: never;
@@ -52439,6 +52439,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             isActive?: boolean;
+            placeholderTagId?: boolean;
             placement?: string;
             provider?: string;
             tagId?: string;
@@ -62992,8 +62993,8 @@ export interface components {
         ScheduleMediaUploadUrlResponse: {
             /** Format: int32 */
             expiresIn?: number;
-            /** Format: int64 */
-            mediaId?: number;
+            /** Format: uuid */
+            mediaId?: string;
             mediaType?: string;
             /** Format: int64 */
             partSize?: number;
@@ -64646,7 +64647,7 @@ export interface components {
             /** Format: date-time */
             sentAt?: string;
             /** @enum {string} */
-            status?: "DRAFT" | "SENT" | "VIEWED" | "PAID" | "OVERDUE" | "CANCELLED";
+            status?: "DRAFT" | "SENT" | "VIEWED" | "PROCESSING" | "PAID" | "OVERDUE" | "CANCELLED";
             /** Format: uuid */
             supersededById?: string;
             taxCategory?: string;
@@ -69474,8 +69475,8 @@ export interface components {
             fileName?: string;
             /** Format: int64 */
             fileSize?: number;
-            /** Format: int64 */
-            id?: number;
+            /** Format: uuid */
+            id?: string;
             isCover?: boolean;
             isExpenseReceipt?: boolean;
             mediaType?: string;
@@ -106023,8 +106024,8 @@ export interface operations {
     pay: {
         parameters: {
             query?: never;
-            header?: {
-                "Idempotency-Key"?: string;
+            header: {
+                "Idempotency-Key": string;
             };
             path: {
                 teamId: number;
@@ -114998,7 +114999,7 @@ export interface operations {
             header?: never;
             path: {
                 scheduleId: number;
-                mediaId: number;
+                mediaId: string;
             };
             cookie?: never;
         };
@@ -122008,7 +122009,7 @@ export interface operations {
     list_58: {
         parameters: {
             query?: {
-                status?: ("DRAFT" | "SENT" | "VIEWED" | "PAID" | "OVERDUE" | "CANCELLED")[];
+                status?: ("DRAFT" | "SENT" | "VIEWED" | "PROCESSING" | "PAID" | "OVERDUE" | "CANCELLED")[];
                 page?: number;
                 size?: number;
             };
@@ -139819,7 +139820,7 @@ export interface operations {
             header?: never;
             path: {
                 scheduleId: number;
-                mediaId: number;
+                mediaId: string;
             };
             cookie?: never;
         };
@@ -139840,7 +139841,7 @@ export interface operations {
             header?: never;
             path: {
                 scheduleId: number;
-                mediaId: number;
+                mediaId: string;
             };
             cookie?: never;
         };
@@ -152925,7 +152926,7 @@ export interface operations {
         parameters: {
             query: {
                 q: string;
-                teamPageId?: number;
+                teamPageId: number;
                 limit?: number;
             };
             header?: never;

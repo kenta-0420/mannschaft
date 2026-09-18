@@ -6,6 +6,9 @@ import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.entity.PaymentRequestEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -28,6 +31,10 @@ public interface PaymentRequestRepository
      * 支払い対象の請求を ID で引く（論理削除を除外）。支払い・取消・閲覧で使用する。
      */
     Optional<PaymentRequestEntity> findByIdAndDeletedAtIsNull(UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from PaymentRequestEntity p where p.id = :id and p.deletedAt is null")
+    Optional<PaymentRequestEntity> findByIdAndDeletedAtIsNullForUpdate(UUID id);
 
     /**
      * チーム（請求先）が受信した請求一覧（idx_pr_payer で引く）。チーム視点の受信一覧 API の本体。

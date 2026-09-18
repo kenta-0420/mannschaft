@@ -185,4 +185,70 @@ class DirectMailServiceAuthzTest {
                     .isEqualTo(CommonErrorCode.COMMON_002);
         }
     }
+
+    @Nested
+    @DisplayName("getStats（CMP-260917-2102 Phase 1 の追撃）")
+    class GetStats {
+
+        @Test
+        @DisplayName("ORGANIZATIONスコープ: MEMBERは403（COMMON_002）で拒否される")
+        void organization_member_isForbidden() {
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(anyLong(), eq(SCOPE_ID), eq("ORGANIZATION"));
+
+            assertThatThrownBy(() -> service.getStats("ORGANIZATION", SCOPE_ID, ACTOR_ID, MAIL_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("TEAMスコープ: MEMBERは200相当で取得できる（スコープ契約維持）")
+        void team_member_isAllowed() {
+            doNothing().when(accessControlService).checkMembership(anyLong(), eq(SCOPE_ID), eq("TEAM"));
+            DirectMailLogEntity entity = DirectMailLogEntity.builder()
+                    .scopeType("TEAM")
+                    .scopeId(SCOPE_ID)
+                    .senderId(ACTOR_ID)
+                    .subject("件名")
+                    .bodyMarkdown("本文")
+                    .recipientType("ALL")
+                    .build();
+            given(mailLogRepository.findByIdAndScopeTypeAndScopeId(MAIL_ID, "TEAM", SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            assertThatCode(() -> service.getStats("TEAM", SCOPE_ID, ACTOR_ID, MAIL_ID))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Nested
+    @DisplayName("preview（CMP-260917-2102 Phase 1 の追撃）")
+    class Preview {
+
+        @Test
+        @DisplayName("ORGANIZATIONスコープ: MEMBERは403（COMMON_002）で拒否される")
+        void organization_member_isForbidden() {
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(anyLong(), eq(SCOPE_ID), eq("ORGANIZATION"));
+
+            var request = new com.mannschaft.app.directmail.dto.PreviewMailRequest("# プレビュー");
+
+            assertThatThrownBy(() -> service.preview("ORGANIZATION", SCOPE_ID, ACTOR_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("TEAMスコープ: MEMBERは200相当で取得できる（スコープ契約維持）")
+        void team_member_isAllowed() {
+            doNothing().when(accessControlService).checkMembership(anyLong(), eq(SCOPE_ID), eq("TEAM"));
+
+            var request = new com.mannschaft.app.directmail.dto.PreviewMailRequest("# プレビュー");
+
+            assertThatCode(() -> service.preview("TEAM", SCOPE_ID, ACTOR_ID, request))
+                    .doesNotThrowAnyException();
+        }
+    }
 }

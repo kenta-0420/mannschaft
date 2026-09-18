@@ -85,8 +85,10 @@ public class EquipmentReplenishLinkController {
         }
 
         // Amazon アフィリエイトタグを取得
+        // tag_id 未設定（プレースホルダ）行は未設定扱いとする（CMP-260918-0025）。
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Tokyo"));
-        Optional<AffiliateConfigEntity> configOpt = affiliateConfigRepository.findActiveAmazonConfig(now);
+        Optional<AffiliateConfigEntity> configOpt = affiliateConfigRepository.findActiveAmazonConfig(now)
+                .filter(config -> !config.isPlaceholderTagId());
 
         String replenishUrl;
         if (configOpt.isPresent()) {

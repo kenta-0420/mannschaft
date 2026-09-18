@@ -105,7 +105,14 @@ const categories: SidebarCategory[] = [
     labelKey: 'orgSidebar.category.other',
     icon: 'pi pi-ellipsis-h',
     items: [
-      { labelKey: 'orgSidebar.gamification', icon: 'pi pi-star', path: 'gamification', moduleSlug: null, requiredRole: 'MEMBER' },
+      // CMP-260918-0024: ゲーミフィケーションはチーム固有機能（マスター裁可）。BE が
+      // /api/v1/teams/{teamId}/gamification/... のチームスコープ専用実装であり、組織スコープの
+      // API が存在しないため、ここでは項目そのものを削除した（moduleSlug で弾く方式ではない）。
+      // 加えて BE 側でも組織での有効化自体を封じるため、module_level_availability の
+      // ORGANIZATION 行を is_available=0 で投入した（Flyway V216）。ModuleService.isLevelAvailable
+      // は行が無い場合「制約なし＝利用可」（orElse(true)、ModuleService.java:225-229）として扱う
+      // ため、行の追加そのものが必須だった。二段構え（導線を消す＋BEで有効化を封じる）にすることで、
+      // 万一サイドバーへ項目が復活しても組織 ADMIN が機能設定画面から有効化できない。
       { labelKey: 'orgSidebar.tournaments', icon: 'pi pi-trophy', path: 'tournaments', moduleSlug: 'tournament', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.leagueTransfers', icon: 'pi pi-arrow-right-arrow-left', path: 'league-transfers', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.queue', icon: 'pi pi-sort-numeric-up', path: 'queue', moduleSlug: null, requiredRole: 'MEMBER' },
@@ -145,6 +152,9 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.notificationCredits', icon: 'pi pi-bell', path: 'settings/notification-credits', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.todoStatusLabels', icon: 'pi pi-tags', path: 'settings/todo-status-labels', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
+      // CMP-260909-1141: /admin/reservation-settings（無関係2機能同居の到達不能ページ）から
+      // 確認通知（F04.9）を移設。BE の checkAdminOrAbove（ADMIN/DEPUTY_ADMIN 許可）に合わせ DEPUTY_ADMIN。
+      { labelKey: 'orgSidebar.confirmableNotifications', icon: 'pi pi-verified', path: 'settings/confirmable-notifications', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
       // F20.1: 課金・プラン管理（閲覧はメンバー可・操作はADMIN限定。ナビはメンバー以上に表示）
       { labelKey: 'orgSidebar.billing', icon: 'pi pi-credit-card', path: 'settings/billing', moduleSlug: null, requiredRole: 'MEMBER' },
       // CMP-260909-1141 Phase 3: TeamSidebar と同じ根拠（LineBotConfigService/SnsFeedConfigService の

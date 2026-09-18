@@ -23,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,6 +36,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ScheduleMediaAclReadTest {
     private static final String KEY = "schedules/TEAM/12/100/video.mp4";
+    private static final UUID MEDIA_ID = UUID.fromString("019954cc-1a40-7000-8000-000000000007");
     @Mock private R2StorageService storage;
     @Mock private ScheduleMediaUploadRepository media;
     @Mock private ScheduleRepository schedules;
@@ -53,7 +55,7 @@ class ScheduleMediaAclReadTest {
                 new StorageAccessService(acls, storage));
         when(schedules.findById(100L)).thenReturn(Optional.of(ScheduleEntity.builder().id(100L).teamId(12L).build()));
         when(media.findByScheduleIdOrderByCreatedAtDesc(eq(100L), any())).thenReturn(new PageImpl<>(List.of(
-                ScheduleMediaUploadEntity.builder().id(7L).scheduleId(100L).uploaderId(1L).r2Key(KEY).build())));
+                ScheduleMediaUploadEntity.builder().id(MEDIA_ID).scheduleId(100L).uploaderId(1L).r2Key(KEY).build())));
     }
 
     @AfterEach
@@ -87,6 +89,6 @@ class ScheduleMediaAclReadTest {
         return StorageAclEntity.builder().fileKey(KEY).ownerId(1L).scopeType(StorageAclScopeType.TEAM)
                 .scopeKey("12").aclMode(StorageAclMode.CONTENT_BOUND).status(StorageAclStatus.CLAIMED)
                 .parentContentReferenceType("SCHEDULE").parentContentReferenceKey("100")
-                .attachmentBindingType("SCHEDULE_MEDIA_UPLOAD").attachmentBindingKey("7").build();
+                .attachmentBindingType("SCHEDULE_MEDIA_UPLOAD").attachmentBindingKey(MEDIA_ID.toString()).build();
     }
 }

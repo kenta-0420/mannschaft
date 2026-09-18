@@ -11,6 +11,9 @@
       "saved": "账户设置已保存。",
       "save_failed": "保存失败。"
     },
+    "admin_affiliate_settings": {
+      "placeholder_tag_warning": "由于标签ID尚未设置，此广告目前不会显示"
+    },
     "spotlight": {
       "hide_advertiser": "隐藏该广告主",
       "hide_advertiser_done": "已隐藏该广告主的广告",

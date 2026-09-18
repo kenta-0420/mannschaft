@@ -15,6 +15,7 @@
     },
     "item": {
       "dashboard": "Panel",
+      "member_profiles": "メンバー紹介",
       "announcements": "Anuncios",
       "chat": "Chat",
       "bulletin": "Tablón de anuncios",
@@ -43,6 +44,7 @@
       "audit_logs": "Registros de auditoría",
       "settings": "Configuración",
       "faqSettings": "Configuración de FAQ",
+      "confirmableNotifications": "Notificaciones de confirmación",
       "billing": "Facturación y gestión de planes",
       "leagueTransfers": "Ascensos y descensos",
       "adminConsole": "Consola de administración",

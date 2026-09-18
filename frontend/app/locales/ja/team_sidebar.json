@@ -15,6 +15,7 @@
     },
     "item": {
       "dashboard": "ダッシュボード",
+      "member_profiles": "メンバー紹介",
       "announcements": "お知らせ",
       "chat": "チャット",
       "bulletin": "掲示板",
@@ -43,6 +44,7 @@
       "audit_logs": "監査ログ",
       "settings": "設定",
       "faqSettings": "FAQ設定",
+      "confirmableNotifications": "確認通知設定",
       "billing": "課金・プラン管理",
       "leagueTransfers": "リーグ移籍",
       "adminConsole": "管理コンソール",

@@ -15,6 +15,7 @@
     },
     "item": {
       "dashboard": "대시보드",
+      "member_profiles": "メンバー紹介",
       "announcements": "공지사항",
       "chat": "채팅",
       "bulletin": "게시판",
@@ -43,6 +44,7 @@
       "audit_logs": "감사 로그",
       "settings": "설정",
       "faqSettings": "FAQ 설정",
+      "confirmableNotifications": "확인 알림 설정",
       "billing": "결제 및 요금제 관리",
       "leagueTransfers": "리그 이적",
       "adminConsole": "관리 콘솔",
