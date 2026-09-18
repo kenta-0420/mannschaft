@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MemberProfile } from '~/types/member-profile'
 
-defineProps<{
+const props = defineProps<{
   profile: MemberProfile
   editable?: boolean
   /** F08.10 §G.9: 指定時、userId を持つメンバー行に試合分析リンクを表示する */
@@ -14,19 +14,34 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+
+/**
+ * バックエンドの customFieldValues は JSON 文字列（{"fieldId": "value"}）。
+ * パース失敗を空オブジェクトへ握りつぶすと「カスタム項目が無い」という偽の0件表示になり、
+ * 直前の戦役で修正した「404を空状態に偽装する」欠陥と同じ穴になる。
+ * そのためパース失敗はエラー状態として保持し、画面に読み込み失敗を明示する。
+ */
+const customFieldsResult = computed<{ error: boolean, data: Record<string, string> }>(() => {
+  if (!props.profile.customFieldValues) return { error: false, data: {} }
+  try {
+    const parsed = JSON.parse(props.profile.customFieldValues)
+    if (parsed && typeof parsed === 'object') return { error: false, data: parsed }
+    console.error('customFieldValues is not a JSON object', props.profile.id, props.profile.customFieldValues)
+    return { error: true, data: {} }
+  } catch (e) {
+    console.error('customFieldValues JSON parse failed', props.profile.id, e)
+    return { error: true, data: {} }
+  }
+})
+const customFields = computed(() => customFieldsResult.value.data)
+const customFieldsError = computed(() => customFieldsResult.value.error)
 </script>
 
 <template>
   <Card class="w-full">
     <template #content>
       <div class="flex items-center gap-4">
-        <img
-          v-if="profile.photoUrl"
-          :src="profile.photoUrl"
-          alt=""
-          class="h-16 w-16 rounded-full object-cover"
-        >
-        <div v-else class="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-xl text-primary">
+        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-xl text-primary">
           {{ profile.displayName.charAt(0) }}
         </div>
         <div class="flex-1">
@@ -36,9 +51,12 @@ const { t } = useI18n()
           </div>
           <p v-if="profile.position" class="text-sm text-surface-500">{{ profile.position }}</p>
           <p v-if="profile.bio" class="mt-1 text-sm text-surface-600 dark:text-surface-400">{{ profile.bio }}</p>
-          <div v-if="Object.keys(profile.customFields).length > 0" class="mt-2 flex flex-wrap gap-2">
+          <p v-if="customFieldsError" class="mt-2 text-xs text-red-500">
+            {{ t('common.memberProfile.members.customFieldsError') }}
+          </p>
+          <div v-else-if="Object.keys(customFields).length > 0" class="mt-2 flex flex-wrap gap-2">
             <span
-              v-for="(value, key) in profile.customFields"
+              v-for="(value, key) in customFields"
               :key="key"
               class="rounded-full bg-surface-100 px-2 py-0.5 text-xs dark:bg-surface-700"
             >
