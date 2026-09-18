@@ -105,9 +105,9 @@ describe('featureGates 定数と純関数', () => {
     // 静的ではない（前回のコミットで「静的プレフィクスを除去」と誤って書いたのを訂正する）。
     // よって動的が1件減（46→45）、静的は48のまま変わらず、全体は1件減（94→93）。
     // 数値は GATE_ROUTE_MAP を直接カウントするスクリプトで実測し直して確認済み。
-    expect(all).toHaveLength(93)
+    expect(all).toHaveLength(95)
     expect(staticOnly).toHaveLength(48)
-    expect(dynamic).toHaveLength(45)
+    expect(dynamic).toHaveLength(47)
 
     const rules = buildGateRouteRules()
     // 静的プレフィクスは 1 件につき `/x` と `/x/**` の 2 エントリを生む。
@@ -140,6 +140,10 @@ describe('featureGates 定数と純関数', () => {
     expect(matchGateKey('/admin/shift-budget/alerts')).toBe('FEATURE_SHIFT_ENABLED')
     expect(matchGateKey('/settings/billing')).toBe('FEATURE_BILLING_PAYMENT_ENABLED')
     expect(matchGateKey('/wallet/cards/new')).toBe('FEATURE_BILLING_PAYMENT_ENABLED')
+    expect(matchGateKey('/organizations/acme/payment-requests')).toBe('FEATURE_BILLING_PAYMENT_ENABLED')
+    expect(matchGateKey('/organizations/acme/payment-requests/new')).toBe('FEATURE_BILLING_PAYMENT_ENABLED')
+    expect(matchGateKey('/teams/my-team/payment-requests')).toBe('FEATURE_BILLING_PAYMENT_ENABLED')
+    expect(matchGateKey('/teams/my-team/payment-requests/request-1')).toBe('FEATURE_BILLING_PAYMENT_ENABLED')
     expect(matchGateKey('/me/jobs')).toBe('FEATURE_MATCHING_ENABLED')
     expect(matchGateKey('/me/recruitment-feed')).toBe('FEATURE_RECRUITMENT_ENABLED')
     expect(matchGateKey('/me/care-links/invite-watcher')).toBe('FEATURE_FAMILY_CARE_ENABLED')
