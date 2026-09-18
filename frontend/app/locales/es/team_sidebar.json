@@ -15,6 +15,7 @@
     },
     "item": {
       "dashboard": "Panel",
+      "member_profiles": "メンバー紹介",
       "announcements": "Anuncios",
       "chat": "Chat",
       "bulletin": "Tablón de anuncios",
