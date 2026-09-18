@@ -70,6 +70,8 @@ class RoleSuccessionServiceTest {
     private UserRowLockService userRowLockService;
     @Mock
     private MembershipService membershipService;
+    @Mock
+    private RolePermissionCacheGenerationService cacheGenerationService;
 
     @InjectMocks
     private RoleSuccessionService service;
@@ -198,6 +200,7 @@ class RoleSuccessionServiceTest {
             verify(eventPublisher).publishEvent(eq(new AdminSuccessionForcedNotificationEvent(
                     "TEAM", SCOPE_ID, DEPUTY_ID, WITHDRAWING_USER_ID,
                     AdminSuccessionForcedNotificationEvent.Reason.PURGE)));
+            verify(cacheGenerationService).incrementGeneration("TEAM", SCOPE_ID);
         }
     }
 
@@ -555,6 +558,7 @@ class RoleSuccessionServiceTest {
             service.forceAssignInitialAdminOnUnarchive(SCOPE_ID, "TEAM", DEPUTY_ID, systemAdminId);
 
             verify(userRoleRepository).save(argThatRoleIdAndUser(ADMIN_ROLE_ID, DEPUTY_ID));
+            verify(cacheGenerationService).incrementGeneration("TEAM", SCOPE_ID);
         }
 
         @Test

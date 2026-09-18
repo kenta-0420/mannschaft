@@ -101,6 +101,7 @@ public class RoleSuccessionService {
     private final OrganizationService organizationService;
     private final UserRowLockService userRowLockService;
     private final MembershipService membershipService;
+    private final RolePermissionCacheGenerationService cacheGenerationService;
 
     /**
      * {@code userId} が唯一の ADMIN であるスコープを全て返す（他メンバー0人のスコープも含む）。
@@ -577,6 +578,7 @@ public class RoleSuccessionService {
             builder.organizationId(scopeId);
         }
         userRoleRepository.save(builder.build());
+        cacheGenerationService.incrementGeneration(scopeType, scopeId);
     }
 
     /** AC8: 候補資格者が1人もいないスコープを archive する（既存 archive API を再利用）。 */
