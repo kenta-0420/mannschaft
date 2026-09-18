@@ -652,7 +652,25 @@
       "selfReviewHelp": "El período configurado se trata como tiempo de revisión antes de publicar",
       "saveSettings": "Guardar configuración",
       "loadFailed": "No se pudo cargar el artículo",
-      "scheduledPublishUnavailable": "La publicación programada no está disponible por ahora. Al publicar, la entrada se hace pública de inmediato."
+      "scheduledPublishUnavailable": "La publicación programada no está disponible por ahora. Al publicar, la entrada se hace pública de inmediato.",
+      "listHeading": "記事",
+      "createButton": "新規作成",
+      "createDialogTitle": "新規記事作成",
+      "titleLabel": "タイトル",
+      "titlePlaceholder": "記事タイトルを入力",
+      "createDialogHint": "下書きとして保存されます。タイトル入力後、編集ページで本文を書いてください。",
+      "loadListFailed": "記事一覧の取得に失敗しました",
+      "createFailed": "記事の作成に失敗しました",
+      "archived": "アーカイブ",
+      "publishSuccess": "公開しました",
+      "unpublishSuccess": "非公開にしました",
+      "publishStatusFailed": "ステータスの変更に失敗しました",
+      "deleteConfirm": "この記事を削除しますか？",
+      "deleteSuccess": "記事を削除しました",
+      "deleteFailed": "削除に失敗しました",
+      "publishButton": "公開",
+      "unpublishButton": "非公開",
+      "updatedAt": "更新日"
     },
     "autoSave": {
       "label": "Guardado automático",
@@ -660,6 +678,19 @@
       "lastSaved": "Guardado automáticamente a las {time}",
       "enabled": "Guardado automático activado",
       "disabled": "Guardado automático desactivado"
+    },
+    "tag": {
+      "heading": "タグ",
+      "addButton": "タグを追加",
+      "addDialogTitle": "タグを追加",
+      "nameLabel": "タグ名",
+      "namePlaceholder": "例: お知らせ",
+      "empty": "タグがありません",
+      "loadFailed": "タグの取得に失敗しました",
+      "createSuccess": "タグを作成しました",
+      "createFailed": "作成に失敗しました",
+      "deleteSuccess": "タグを削除しました",
+      "deleteFailed": "削除に失敗しました"
     }
   },
   "todo": {
