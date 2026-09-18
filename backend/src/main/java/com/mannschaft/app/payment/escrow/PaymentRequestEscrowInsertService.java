@@ -12,7 +12,7 @@ public class PaymentRequestEscrowInsertService {
     private final EscrowTransactionRepository escrowTransactionRepository;
 
     @Transactional
-    public EscrowTransactionEntity insert(EscrowTransactionEntity escrow) {
+    EscrowTransactionEntity insert(EscrowTransactionEntity escrow) {
         return escrowTransactionRepository.saveAndFlush(escrow);
     }
 }

@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.payment.dto.PaymentRequestPayResponse;
 import com.mannschaft.app.payment.dto.PaymentRequestResponse;
 import com.mannschaft.app.payment.entity.PaymentRequestEntity;
@@ -71,6 +72,7 @@ public class TeamPaymentRequestController {
      */
     @PostMapping("/{id}/pay")
     @Operation(summary = "協会請求の支払い開始")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<PaymentRequestPayResponse>> pay(
             @PathVariable Long teamId,
             @PathVariable UUID id,

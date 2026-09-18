@@ -410,9 +410,15 @@ public class ConnectChargeService {
                     fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
                     payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.paymentMethodId(), cmd.idempotencyKey());
         } else {
-            pi = stripePaymentProvider.createDestinationPaymentIntent(
-                    fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
-                    payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.idempotencyKey(), cmd.metadata());
+            if (cmd.metadata() == null || cmd.metadata().isEmpty()) {
+                pi = stripePaymentProvider.createDestinationPaymentIntent(
+                        fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
+                        payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.idempotencyKey());
+            } else {
+                pi = stripePaymentProvider.createDestinationPaymentIntent(
+                        fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
+                        payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.idempotencyKey(), cmd.metadata());
+            }
         }
 
         // escrow を MEMBERSHIP/AUTOMATIC で INSERT。hold_expires_at=NULL（即時・与信フェーズなし）。

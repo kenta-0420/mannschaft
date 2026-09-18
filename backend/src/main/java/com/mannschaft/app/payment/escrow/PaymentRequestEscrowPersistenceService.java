@@ -12,7 +12,7 @@ public class PaymentRequestEscrowPersistenceService {
     private final EscrowTransactionRepository escrowTransactionRepository;
     private final PaymentRequestEscrowInsertService insertService;
 
-    public EscrowTransactionEntity persist(EscrowTransactionEntity escrow) {
+    EscrowTransactionEntity persist(EscrowTransactionEntity escrow) {
         try {
             return insertService.insert(escrow);
         } catch (DataIntegrityViolationException e) {

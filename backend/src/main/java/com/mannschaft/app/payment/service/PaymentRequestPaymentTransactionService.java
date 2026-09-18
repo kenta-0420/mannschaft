@@ -84,7 +84,7 @@ public class PaymentRequestPaymentTransactionService {
     }
 
     @Transactional
-    public PaymentRequestPaymentAttemptEntity attach(UUID attemptId, String paymentIntentId, UUID escrowId) {
+    PaymentRequestPaymentAttemptEntity attach(UUID attemptId, String paymentIntentId, UUID escrowId) {
         PaymentRequestPaymentAttemptEntity attempt = attemptRepository.findByIdForUpdate(attemptId)
                 .orElseThrow(() -> new IllegalStateException("決済試行が見つかりません"));
         PaymentRequestEntity request = paymentRequestRepository

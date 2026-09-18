@@ -14,7 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -54,41 +54,41 @@ public class PaymentRequestPaymentAttemptEntity extends UuidV7Entity {
     private PaymentRequestPaymentAttemptStatus status = PaymentRequestPaymentAttemptStatus.CREATING;
 
     @Column(name = "completed_at")
-    private LocalDateTime completedAt;
+    private Instant completedAt;
 
     @Column(name = "failure_code", length = 64)
     private String failureCode;
 
     @Column(name = "created_at", nullable = false)
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
     @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private Instant updatedAt = Instant.now();
 
     public void attachStripe(String paymentIntentId, UUID escrowId) {
         this.stripePaymentIntentId = paymentIntentId;
         this.escrowTransactionId = escrowId;
         this.status = PaymentRequestPaymentAttemptStatus.REQUIRES_ACTION;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     public void succeed() {
         this.status = PaymentRequestPaymentAttemptStatus.SUCCEEDED;
-        this.completedAt = LocalDateTime.now();
+        this.completedAt = Instant.now();
         this.updatedAt = this.completedAt;
     }
 
     public void noteRetryableFailure(String code) {
         this.failureCode = code;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     public void fail(String code) {
         this.status = PaymentRequestPaymentAttemptStatus.FAILED;
         this.failureCode = code;
-        this.completedAt = LocalDateTime.now();
+        this.completedAt = Instant.now();
         this.updatedAt = this.completedAt;
     }
 }
