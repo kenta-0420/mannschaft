@@ -1,5 +1,4 @@
 import { computed, defineComponent, h, ref } from 'vue'
-import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
@@ -7,7 +6,6 @@ import TeamSidebar from '~/components/TeamSidebar.vue'
 import OrganizationSidebar from '~/components/OrganizationSidebar.vue'
 import TeamConfirmableNotificationsPage from '~/pages/teams/[slug]/settings/confirmable-notifications.vue'
 import OrgConfirmableNotificationsPage from '~/pages/organizations/[slug]/settings/confirmable-notifications.vue'
-import { useScopeStore } from '~/stores/useScopeStore'
 
 /**
  * CMP-260909-1141: 確認通知（F04.9）を /admin/reservation-settings.vue から
@@ -43,6 +41,22 @@ vi.mock('~/composables/useOrganizationModuleApi', () => ({
 vi.mock('~/composables/useModuleApi', () => ({
   useModuleApi: () => ({
     getTeamModules: () => Promise.resolve({ data: enabledModules.value }),
+  }),
+}))
+
+/**
+ * useScopeStore を直接モックする（実 Pinia を介した状態受け渡しは、mountSuspended が
+ * 構築する Nuxt アプリコンテキストと、テストが setActivePinia したコンテキストが
+ * 一致しない実測により scope-id が空文字になる事故があったため採用しない）。
+ */
+const currentScope = ref<{ type: 'personal' | 'team' | 'organization', id: string | null, name: string }>({
+  type: 'personal',
+  id: null,
+  name: '個人',
+})
+vi.mock('~/stores/useScopeStore', () => ({
+  useScopeStore: () => ({
+    current: currentScope.value,
   }),
 }))
 
@@ -117,12 +131,11 @@ const HistoryStub = defineComponent({
 
 describe('確認通知設定ページ: props の受け渡し', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
+    currentScope.value = { type: 'personal', id: null, name: '個人' }
   })
 
   it('CN-PAGE-001: TEAM スコープでは scope-type=TEAM・scope-id=現在の team id が渡る', async () => {
-    const scopeStore = useScopeStore()
-    scopeStore.setTeamScope(123, 'テストチーム')
+    currentScope.value = { type: 'team', id: '123', name: 'テストチーム' }
 
     const wrapper = await mountSuspended(TeamConfirmableNotificationsPage, {
       global: {
@@ -149,8 +162,7 @@ describe('確認通知設定ページ: props の受け渡し', () => {
   })
 
   it('CN-PAGE-002: ORGANIZATION スコープでは scope-type=ORGANIZATION・scope-id=現在の org id が渡る', async () => {
-    const scopeStore = useScopeStore()
-    scopeStore.setOrganizationScope(456, 'テスト組織')
+    currentScope.value = { type: 'organization', id: '456', name: 'テスト組織' }
 
     const wrapper = await mountSuspended(OrgConfirmableNotificationsPage, {
       global: {
