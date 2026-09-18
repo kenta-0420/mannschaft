@@ -22,7 +22,7 @@ import java.util.UUID;
  * F08.9 P7 第一波: 協会請求の立替/精算記録サービス（team_payment_advances・案3）。
  *
  * <p>協会→チーム請求を「チーム ADMIN 個人の Stripe Customer で立替課金」（案3・README §6.3）した事実を
- * {@code PENDING} で起票し（{@link #createAdvance}・{@link PaymentRequestService#pay} 内部から呼ぶ）、後に
+ * {@code PENDING} で起票し（{@link #createAdvance}・成功 webhook から呼ぶ）、後に
  * チームから精算された事実を {@code SETTLED} に確定する（{@link #confirmSettlement}・F04.9 確認必須通知から）。</p>
  *
  * <p>ドメイン境界: 本サービスは payment ドメイン内に閉じる（team/user は論理参照・ID のみ）。team ADMIN 認可は
@@ -50,7 +50,7 @@ public class TeamPaymentAdvanceService {
     private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
-     * 協会請求支払い時に立替記録を {@code PENDING} で起票する（{@link PaymentRequestService#pay} 内部用）。
+     * 協会請求の成功 webhook で立替記録を {@code PENDING} として起票する。
      *
      * <p><b>冪等（1請求＝1立替）:</b> 同一 {@code paymentRequestId} の立替が既にあれば再作成せず既存を返す
      * （DB の {@code uk_tpa_request} UNIQUE と相まって二重起票を防ぐ）。pay 側の status ゲートと二重防御。</p>

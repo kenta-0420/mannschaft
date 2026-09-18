@@ -9,6 +9,7 @@ import com.mannschaft.app.payment.PaymentRequestStatus;
 import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.entity.PaymentRequestEntity;
 import com.mannschaft.app.payment.service.PaymentRequestPayResult;
+import com.mannschaft.app.payment.service.PaymentRequestPaymentCoordinator;
 import com.mannschaft.app.payment.service.PaymentRequestService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +55,7 @@ class TeamPaymentRequestControllerTest {
     private static final Long ACTOR_ID = 700L;
 
     @Mock private PaymentRequestService paymentRequestService;
+    @Mock private PaymentRequestPaymentCoordinator paymentCoordinator;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -63,7 +65,7 @@ class TeamPaymentRequestControllerTest {
     void setUp() {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
-        TeamPaymentRequestController controller = new TeamPaymentRequestController(paymentRequestService);
+        TeamPaymentRequestController controller = new TeamPaymentRequestController(paymentRequestService, paymentCoordinator);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
@@ -122,16 +124,15 @@ class TeamPaymentRequestControllerTest {
     void 支払い() throws Exception {
         UUID id = UUID.randomUUID();
         UUID escrow = UUID.randomUUID();
-        UUID advance = UUID.randomUUID();
-        given(paymentRequestService.pay(eq(TEAM_ID), eq(id), eq(ACTOR_ID), eq("idem-key-xyz")))
-                .willReturn(new PaymentRequestPayResult(id, escrow, advance, "cs_secret"));
+        given(paymentCoordinator.pay(eq(TEAM_ID), eq(id), eq(ACTOR_ID), eq("idem-key-xyz")))
+                .willReturn(new PaymentRequestPayResult(id, escrow, null, "cs_secret"));
 
         mockMvc.perform(post("/api/v1/teams/{teamId}/payment-requests/{id}/pay", TEAM_ID, id)
                         .header("Idempotency-Key", "idem-key-xyz"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.clientSecret").value("cs_secret"))
-                .andExpect(jsonPath("$.data.advanceId").value(advance.toString()));
-        verify(paymentRequestService).pay(TEAM_ID, id, ACTOR_ID, "idem-key-xyz");
+                .andExpect(jsonPath("$.data.advanceId").doesNotExist());
+        verify(paymentCoordinator).pay(TEAM_ID, id, ACTOR_ID, "idem-key-xyz");
     }
 
     @Test
@@ -140,7 +141,7 @@ class TeamPaymentRequestControllerTest {
         mockMvc.perform(post("/api/v1/teams/{teamId}/payment-requests/{id}/pay", TEAM_ID, UUID.randomUUID()))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(paymentRequestService);
+        verifyNoInteractions(paymentCoordinator);
     }
 
     @Test
@@ -150,7 +151,7 @@ class TeamPaymentRequestControllerTest {
                         .header("Idempotency-Key", "   "))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(paymentRequestService);
+        verifyNoInteractions(paymentCoordinator);
     }
 
     @Test
@@ -160,17 +161,18 @@ class TeamPaymentRequestControllerTest {
                         .header("Idempotency-Key", "a".repeat(256)))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(paymentRequestService);
+        verifyNoInteractions(paymentCoordinator);
     }
 
     @Test
     @DisplayName("IDOR: 他チーム宛て支払いは 403（NOT_FOR_THIS_TEAM）")
     void 他チーム支払い403() throws Exception {
         UUID id = UUID.randomUUID();
-        given(paymentRequestService.pay(eq(OTHER_TEAM_ID), eq(id), eq(ACTOR_ID), any()))
+        given(paymentCoordinator.pay(eq(OTHER_TEAM_ID), eq(id), eq(ACTOR_ID), any()))
                 .willThrow(new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOR_THIS_TEAM));
 
-        mockMvc.perform(post("/api/v1/teams/{teamId}/payment-requests/{id}/pay", OTHER_TEAM_ID, id))
+        mockMvc.perform(post("/api/v1/teams/{teamId}/payment-requests/{id}/pay", OTHER_TEAM_ID, id)
+                        .header("Idempotency-Key", "idem-other-team"))
                 .andExpect(status().isForbidden());
     }
 }

@@ -6,6 +6,7 @@ import com.mannschaft.app.payment.dto.PaymentRequestPayResponse;
 import com.mannschaft.app.payment.dto.PaymentRequestResponse;
 import com.mannschaft.app.payment.entity.PaymentRequestEntity;
 import com.mannschaft.app.payment.service.PaymentRequestPayResult;
+import com.mannschaft.app.payment.service.PaymentRequestPaymentCoordinator;
 import com.mannschaft.app.payment.service.PaymentRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,7 +26,7 @@ import java.util.UUID;
  * F08.9 P7 第二波: チーム（請求先）視点の協会請求コントローラー（02_api §7）。
  *
  * <p>チーム ADMIN が受信した請求を一覧・詳細（初閲覧で VIEWED 遷移）・支払い（案3 立替課金）する。
- * 認可・IDOR は {@link PaymentRequestService} 内部（{@code requireTeamAdmin}・payer_scope_id 一致）で行う。</p>
+ * 支払い開始の認可・IDOR は {@link PaymentRequestPaymentCoordinator} が短い DB transaction 内で検証する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/payment-requests")
@@ -34,6 +35,7 @@ import java.util.UUID;
 public class TeamPaymentRequestController {
 
     private final PaymentRequestService paymentRequestService;
+    private final PaymentRequestPaymentCoordinator paymentCoordinator;
 
     /**
      * チームが受信した請求一覧を取得する（新しい順）。
@@ -63,19 +65,21 @@ public class TeamPaymentRequestController {
     }
 
     /**
-     * 請求を支払う（案3 立替課金・SENT/VIEWED/OVERDUE → PAID）。
+     * 請求の支払いを開始する（SENT/VIEWED/OVERDUE → PROCESSING）。
      *
-     * <p>冪等性: {@code Idempotency-Key} ヘッダが付いていればそれを Stripe へ橋渡しする。省略時は UUID を生成。</p>
+     * <p>冪等性: {@code Idempotency-Key} は必須で、空白および 255 文字超を拒否する。成功 webhook だけが PAID を確定する。</p>
      */
     @PostMapping("/{id}/pay")
-    @Operation(summary = "協会請求の支払い（案3 立替課金）")
+    @Operation(summary = "協会請求の支払い開始")
     public ResponseEntity<ApiResponse<PaymentRequestPayResponse>> pay(
             @PathVariable Long teamId,
             @PathVariable UUID id,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKeyHeader) {
-        String idempotencyKey = idempotencyKeyHeader != null && !idempotencyKeyHeader.isBlank()
-                ? idempotencyKeyHeader : UUID.randomUUID().toString();
-        PaymentRequestPayResult result = paymentRequestService.pay(
+            @RequestHeader("Idempotency-Key") String idempotencyKeyHeader) {
+        if (idempotencyKeyHeader.isBlank() || idempotencyKeyHeader.length() > 255) {
+            return ResponseEntity.badRequest().build();
+        }
+        String idempotencyKey = idempotencyKeyHeader;
+        PaymentRequestPayResult result = paymentCoordinator.pay(
                 teamId, id, SecurityUtils.getCurrentUserId(), idempotencyKey);
         return ResponseEntity.ok(ApiResponse.of(PaymentRequestPayResponse.from(result)));
     }

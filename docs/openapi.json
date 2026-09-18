@@ -42973,7 +42973,7 @@
         "tags": [
           "協会請求（チーム視点）"
         ],
-        "summary": "協会請求の支払い（案3 立替課金）",
+        "summary": "協会請求の支払い開始",
         "operationId": "pay",
         "parameters": [
           {
@@ -42997,7 +42997,7 @@
           {
             "name": "Idempotency-Key",
             "in": "header",
-            "required": false,
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -69783,6 +69783,7 @@
                   "DRAFT",
                   "SENT",
                   "VIEWED",
+                  "PROCESSING",
                   "PAID",
                   "OVERDUE",
                   "CANCELLED"
@@ -139988,7 +139989,7 @@
           "ダッシュボード（管理者レンズサマリ）"
         ],
         "summary": "組織 支払サマリ（管理者レンズ）",
-        "description": "ADMIN/DEPUTY 向け。組織が発行した未収請求件数（SENT/VIEWED/OVERDUE）と期限超過件数（OVERDUE 単体）を返す",
+        "description": "ADMIN/DEPUTY 向け。組織が発行した未収請求件数（SENT/VIEWED/PROCESSING/OVERDUE）と期限超過件数（OVERDUE 単体）を返す",
         "operationId": "getOrgPaymentSummary",
         "parameters": [
           {
@@ -140136,7 +140137,7 @@
           "ダッシュボード（管理者承認待ち）"
         ],
         "summary": "組織横断承認待ち集約",
-        "description": "ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/OVERDUE）を集約。preview_size\u003d0 で件数のみ",
+        "description": "ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/PROCESSING/OVERDUE）を集約。preview_size\u003d0 で件数のみ",
         "operationId": "getOrgAdminActionRequired",
         "parameters": [
           {
@@ -193757,6 +193758,7 @@
               "DRAFT",
               "SENT",
               "VIEWED",
+              "PROCESSING",
               "PAID",
               "OVERDUE",
               "CANCELLED"
