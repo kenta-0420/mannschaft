@@ -2496,7 +2496,8 @@
       "bulkRegisterSuccess": "Registered {count} member(s)",
       "bulkRegisterFailed": "Failed to bulk register members",
       "deleteConfirm": "Delete this member?",
-      "back": "Back to pages"
+      "back": "Back to pages",
+      "customFieldsError": "Failed to load custom fields"
     }
   }
 }

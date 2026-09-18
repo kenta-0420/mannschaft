@@ -82,23 +82,35 @@ function openCreate() {
   showDialog.value = true
 }
 
-function parseOptions(options: string | null): string[] {
+/**
+ * options は BE では SELECT 型選択肢の JSON 文字列（配列）。パース失敗を空配列へ
+ * 握りつぶすと「選択肢が無い」という偽の0件表示になり、既存の選択肢を編集で
+ * 消してしまう事故につながる。そのため失敗時は通知で表面化させ、呼び出し元に
+ * 「失敗した」ことが分かる形（null）を返す。
+ */
+function parseOptions(options: string | null): string[] | null {
   if (!options) return []
   try {
     const parsed = JSON.parse(options)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
+    if (Array.isArray(parsed)) return parsed
+    notification.error('選択肢データの形式が不正です')
+    return null
+  } catch (e) {
+    console.error('field.options JSON parse failed', options, e)
+    notification.error('選択肢データの読み込みに失敗しました')
+    return null
   }
 }
 
 function openEdit(field: MemberProfileField) {
   editingField.value = field
+  const parsedOptions = parseOptions(field.options)
   form.value = {
     fieldName: field.fieldName,
     fieldType: field.fieldType,
     isRequired: field.isRequired,
-    optionsText: parseOptions(field.options).join('\n'),
+    // パース失敗時は元データを推測で書き換えないよう空文字のままにし、通知で異常を伝える
+    optionsText: parsedOptions ? parsedOptions.join('\n') : '',
   }
   showDialog.value = true
 }

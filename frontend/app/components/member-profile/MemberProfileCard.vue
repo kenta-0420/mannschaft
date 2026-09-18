@@ -17,17 +17,24 @@ const { t } = useI18n()
 
 /**
  * バックエンドの customFieldValues は JSON 文字列（{"fieldId": "value"}）。
- * 不正な JSON でも画面を壊さないよう、パース失敗時は空オブジェクトにフォールバックする。
+ * パース失敗を空オブジェクトへ握りつぶすと「カスタム項目が無い」という偽の0件表示になり、
+ * 直前の戦役で修正した「404を空状態に偽装する」欠陥と同じ穴になる。
+ * そのためパース失敗はエラー状態として保持し、画面に読み込み失敗を明示する。
  */
-const customFields = computed<Record<string, string>>(() => {
-  if (!props.profile.customFieldValues) return {}
+const customFieldsResult = computed<{ error: boolean, data: Record<string, string> }>(() => {
+  if (!props.profile.customFieldValues) return { error: false, data: {} }
   try {
     const parsed = JSON.parse(props.profile.customFieldValues)
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return {}
+    if (parsed && typeof parsed === 'object') return { error: false, data: parsed }
+    console.error('customFieldValues is not a JSON object', props.profile.id, props.profile.customFieldValues)
+    return { error: true, data: {} }
+  } catch (e) {
+    console.error('customFieldValues JSON parse failed', props.profile.id, e)
+    return { error: true, data: {} }
   }
 })
+const customFields = computed(() => customFieldsResult.value.data)
+const customFieldsError = computed(() => customFieldsResult.value.error)
 </script>
 
 <template>
@@ -44,7 +51,10 @@ const customFields = computed<Record<string, string>>(() => {
           </div>
           <p v-if="profile.position" class="text-sm text-surface-500">{{ profile.position }}</p>
           <p v-if="profile.bio" class="mt-1 text-sm text-surface-600 dark:text-surface-400">{{ profile.bio }}</p>
-          <div v-if="Object.keys(customFields).length > 0" class="mt-2 flex flex-wrap gap-2">
+          <p v-if="customFieldsError" class="mt-2 text-xs text-red-500">
+            {{ t('common.memberProfile.members.customFieldsError') }}
+          </p>
+          <div v-else-if="Object.keys(customFields).length > 0" class="mt-2 flex flex-wrap gap-2">
             <span
               v-for="(value, key) in customFields"
               :key="key"

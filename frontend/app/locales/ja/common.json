@@ -2496,7 +2496,8 @@
       "bulkRegisterSuccess": "{count}件のメンバーを登録しました",
       "bulkRegisterFailed": "一括登録に失敗しました",
       "deleteConfirm": "このメンバーを削除しますか？",
-      "back": "ページ一覧に戻る"
+      "back": "ページ一覧に戻る",
+      "customFieldsError": "カスタム項目の読み込みに失敗しました"
     }
   }
 }
