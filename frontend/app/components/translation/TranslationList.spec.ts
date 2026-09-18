@@ -76,6 +76,7 @@ describe('TranslationList', () => {
     getDashboard.mockResolvedValue(makeDashboardResponse())
     const wrapper = await mountList()
     // 例外を投げずマウントできること自体が回帰確認（byStatus 未定義参照でのクラッシュ再発防止）
+    expect(wrapper.text()).toContain('10')
     expect(wrapper.text()).toContain('3')
     expect(wrapper.text()).toContain('2')
     expect(wrapper.text()).toContain('4')

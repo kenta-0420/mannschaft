@@ -652,7 +652,25 @@
       "selfReviewHelp": "Der konfigurierte Zeitraum wird als Überprüfungsfenster vor der Veröffentlichung behandelt",
       "saveSettings": "Einstellungen speichern",
       "loadFailed": "Artikel konnte nicht geladen werden",
-      "scheduledPublishUnavailable": "Geplantes Veröffentlichen ist derzeit nicht verfügbar. Beim Veröffentlichen wird der Beitrag sofort sichtbar."
+      "scheduledPublishUnavailable": "Geplantes Veröffentlichen ist derzeit nicht verfügbar. Beim Veröffentlichen wird der Beitrag sofort sichtbar.",
+      "listHeading": "記事",
+      "createButton": "新規作成",
+      "createDialogTitle": "新規記事作成",
+      "titleLabel": "タイトル",
+      "titlePlaceholder": "記事タイトルを入力",
+      "createDialogHint": "下書きとして保存されます。タイトル入力後、編集ページで本文を書いてください。",
+      "loadListFailed": "記事一覧の取得に失敗しました",
+      "createFailed": "記事の作成に失敗しました",
+      "archived": "アーカイブ",
+      "publishSuccess": "公開しました",
+      "unpublishSuccess": "非公開にしました",
+      "publishStatusFailed": "ステータスの変更に失敗しました",
+      "deleteConfirm": "この記事を削除しますか？",
+      "deleteSuccess": "記事を削除しました",
+      "deleteFailed": "削除に失敗しました",
+      "publishButton": "公開",
+      "unpublishButton": "非公開",
+      "updatedAt": "更新日"
     },
     "autoSave": {
       "label": "Automatisch speichern",
@@ -660,6 +678,19 @@
       "lastSaved": "Automatisch gespeichert um {time}",
       "enabled": "Automatisches Speichern aktiviert",
       "disabled": "Automatisches Speichern deaktiviert"
+    },
+    "tag": {
+      "heading": "タグ",
+      "addButton": "タグを追加",
+      "addDialogTitle": "タグを追加",
+      "nameLabel": "タグ名",
+      "namePlaceholder": "例: お知らせ",
+      "empty": "タグがありません",
+      "loadFailed": "タグの取得に失敗しました",
+      "createSuccess": "タグを作成しました",
+      "createFailed": "作成に失敗しました",
+      "deleteSuccess": "タグを削除しました",
+      "deleteFailed": "削除に失敗しました"
     }
   },
   "todo": {
@@ -2456,6 +2487,50 @@
     "loadFailed": "Mitgliederinformationen konnten nicht geladen werden",
     "unavailable": "Diese Funktion ist derzeit nicht verfügbar (in Vorbereitung)",
     "saveFailed": "Speichern fehlgeschlagen",
-    "deleteFailed": "Löschen fehlgeschlagen"
+    "deleteFailed": "Löschen fehlgeschlagen",
+    "pages": {
+      "title": "メンバー紹介ページ",
+      "newPage": "新規ページ作成",
+      "empty": "ページがまだありません",
+      "titleLabel": "タイトル",
+      "slugLabel": "URLスラッグ",
+      "yearLabel": "対象年度",
+      "visibilityLabel": "公開範囲",
+      "visibilityPublic": "全体公開",
+      "visibilityMembersOnly": "メンバー限定",
+      "statusDraft": "下書き",
+      "statusPublished": "公開中",
+      "publish": "公開する",
+      "unpublish": "下書きに戻す",
+      "delete": "ページを削除",
+      "deleteConfirm": "このページを削除しますか？この操作は元に戻せません。",
+      "createSuccess": "ページを作成しました",
+      "createFailed": "ページの作成に失敗しました",
+      "updateSuccess": "ページを更新しました",
+      "statusChangeFailed": "公開ステータスの変更に失敗しました",
+      "deleteSuccess": "ページを削除しました",
+      "deleteFailed": "ページの削除に失敗しました",
+      "open": "メンバーを見る",
+      "copyFromPrevious": "前年度からメンバーをコピー",
+      "copySourceLabel": "コピー元ページ",
+      "copyConfirm": "コピーする",
+      "copySuccess": "{count}件のメンバーをコピーしました",
+      "copyFailed": "メンバーのコピーに失敗しました"
+    },
+    "members": {
+      "title": "メンバー一覧",
+      "add": "メンバー追加",
+      "edit": "メンバー編集",
+      "empty": "メンバーが登録されていません",
+      "bulkRegister": "一括登録",
+      "bulkRegisterHelp": "1行に1名、「表示名,番号」の形式で入力してください（番号は省略可）",
+      "bulkRegisterSuccess": "{count}件のメンバーを登録しました",
+      "bulkRegisterFailed": "一括登録に失敗しました",
+      "deleteConfirm": "このメンバーを削除しますか？",
+      "back": "ページ一覧に戻る",
+      "customFieldsError": "カスタム項目の読み込みに失敗しました",
+      "optionsInvalidFormat": "選択肢データの形式が不正です",
+      "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
+    }
   }
 }

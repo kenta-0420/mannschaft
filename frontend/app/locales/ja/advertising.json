@@ -11,6 +11,9 @@
       "saved": "アカウント設定を保存しました。",
       "save_failed": "保存に失敗しました。"
     },
+    "admin_affiliate_settings": {
+      "placeholder_tag_warning": "タグIDが未設定のため、この広告は表示されていません"
+    },
     "spotlight": {
       "hide_advertiser": "この広告主を非表示",
       "hide_advertiser_done": "この広告主の広告を非表示にしました",

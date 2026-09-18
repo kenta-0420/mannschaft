@@ -11,6 +11,9 @@
       "saved": "Configuración de la cuenta guardada.",
       "save_failed": "Error al guardar."
     },
+    "admin_affiliate_settings": {
+      "placeholder_tag_warning": "Este anuncio no se muestra porque su ID de etiqueta aún no está configurado."
+    },
     "spotlight": {
       "hide_advertiser": "Ocultar este anunciante",
       "hide_advertiser_done": "Los anuncios de este anunciante ya están ocultos",

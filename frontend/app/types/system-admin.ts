@@ -258,6 +258,8 @@ export interface AffiliateConfigResponse {
   displayPriority: number
   createdAt: string
   updatedAt: string
+  /** タグIDが未設定（Flyway シード等のプレースホルダ）かどうか（CMP-260918-0025）。 */
+  placeholderTagId: boolean
 }
 
 export interface CreateAffiliateConfigRequest {

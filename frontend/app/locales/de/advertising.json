@@ -11,6 +11,9 @@
       "saved": "Kontoeinstellungen gespeichert.",
       "save_failed": "Speichern fehlgeschlagen."
     },
+    "admin_affiliate_settings": {
+      "placeholder_tag_warning": "Diese Anzeige wird nicht angezeigt, da die Tag-ID noch nicht konfiguriert ist."
+    },
     "spotlight": {
       "hide_advertiser": "Diesen Werbetreibenden ausblenden",
       "hide_advertiser_done": "Anzeigen dieses Werbetreibenden sind jetzt ausgeblendet",
