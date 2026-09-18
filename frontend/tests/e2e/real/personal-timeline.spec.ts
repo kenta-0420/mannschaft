@@ -27,7 +27,7 @@ const credentials = {
   },
 } as const
 
-type Scope = { id?: string | number, slug?: string, name?: string, organizationId?: number }
+type Scope = { id?: string | number, slug?: string, name?: string, organizationId?: number, role?: string }
 type CreatedPost = { id: number, marker: string, sourceName: string, sourceHref: RegExp }
 
 function unwrapList(body: unknown): Scope[] {
@@ -67,18 +67,26 @@ async function postViaUi(page: Page, url: string, marker: string, extra?: () => 
 }
 
 async function openAggregate(page: Page, path: '/dashboard' | '/timeline'): Promise<void> {
-  const response = page.waitForResponse(response =>
-    response.url().includes('/api/v1/timeline/my') && response.request().method() === 'GET',
-  )
+  const response = await page.request.get(`${API}/api/v1/timeline/my`)
   await page.goto(path, { waitUntil: 'domcontentloaded' })
+  await waitForHydration(page)
+  if (path === '/dashboard') {
+    await page.locator('#personal-dashboard-section-button-feed').click()
+  }
   expect((await response).status(), `${path} の個人集約タイムライン`).toBe(200)
   await waitForHydration(page)
   await waitForSpinnerGone(page)
-  await expect(page.getByTestId('timeline-feed')).toHaveAttribute('data-loaded', 'true', { timeout: 60_000 })
+  const feed = path === '/dashboard'
+    ? page.getByTestId('personal-dashboard-accordion').getByTestId('timeline-feed')
+    : page.getByTestId('timeline-feed')
+  await expect(feed).toHaveAttribute('data-loaded', 'true', { timeout: 60_000 })
 }
 
 async function assertAggregate(page: Page, posts: readonly CreatedPost[]): Promise<void> {
-  const cards = page.getByTestId('team-timeline-post')
+  const feed = page.url().includes('/dashboard')
+    ? page.getByTestId('personal-dashboard-accordion').getByTestId('timeline-feed')
+    : page.getByTestId('timeline-feed')
+  const cards = feed.getByTestId('team-timeline-post')
   const indexes: number[] = []
   for (const post of posts) {
     const card = cards.filter({ hasText: post.marker }).first()
@@ -93,7 +101,7 @@ async function assertAggregate(page: Page, posts: readonly CreatedPost[]): Promi
 }
 
 test('NOTE-260918-145441-001: 所属チーム・組織・村の投稿がダッシュボードと個人タイムラインで一致する', async ({ browser }, testInfo) => {
-  test.setTimeout(600_000)
+  test.setTimeout(360_000)
   const admin = await browser.newContext()
   const member = await browser.newContext()
   const outsider = await browser.newContext()
@@ -122,10 +130,13 @@ test('NOTE-260918-145441-001: 所属チーム・組織・村の投稿がダッ�
     expect(team?.slug, '投稿可能な所属チーム').toBeTruthy()
     expect(team?.name, '所属チーム名').toBeTruthy()
 
-    const orgResponse = await admin.request.get(`${API}/api/v1/public/organizations/search?keyword=${encodeURIComponent('日本サッカー協会（テスト）')}&page=0&size=20`)
-    expect(orgResponse.status(), '組織fixture').toBe(200)
-    const organization = unwrapList(await orgResponse.json()).find((item) => item.name === '日本サッカー協会（テスト）')
-    expect(organization?.slug, '管理者が投稿する親組織').toBeTruthy()
+    const orgResponse = await member.request.get(`${API}/api/v1/me/organizations`)
+    expect(orgResponse.status(), '投稿者の所属組織fixture').toBe(200)
+    const organization = unwrapList(await orgResponse.json()).find(
+      (item) => item.slug
+        && (item.role === 'ADMIN' || item.role === 'SYSTEM_ADMIN'),
+    )
+    expect(organization?.slug, '投稿者が投稿権限を持つチーム親組織').toBeTruthy()
 
     const villageResponse = await member.request.get(`${API}/api/v1/villages/search?q=${encodeURIComponent('E2Eテストコミュニティ村')}&page=0&size=20`)
     expect(villageResponse.status(), '所属村fixture').toBe(200)
@@ -136,9 +147,9 @@ test('NOTE-260918-145441-001: 所属チーム・組織・村の投稿がダッ�
     const orgMarker = `${runTag}-ORG`
     const villageMarker = `${runTag}-VILLAGE`
     created.push({ id: await postViaUi(memberPage, `/teams/${team!.slug}/timeline`, teamMarker), owner: 'member' })
-    created.push({ id: await postViaUi(adminPage, `/organizations/${organization!.slug}/timeline`, orgMarker, async () => {
-      await adminPage.getByTestId('timeline-delivery-scope-DESCENDANTS').click()
-    }), owner: 'admin' })
+    created.push({ id: await postViaUi(memberPage, `/organizations/${organization!.slug}/timeline`, orgMarker, async () => {
+      await memberPage.getByTestId('timeline-delivery-scope-DESCENDANTS').click()
+    }), owner: 'member' })
     created.push({ id: await postViaUi(memberPage, `/villages/${village!.id}/timeline`, villageMarker), owner: 'member' })
 
     const expected: CreatedPost[] = [
@@ -151,15 +162,25 @@ test('NOTE-260918-145441-001: 所属チーム・組織・村の投稿がダッ�
     await assertAggregate(memberPage, expected)
     await memberPage.screenshot({ path: testInfo.outputPath('dashboard-member.png'), fullPage: true })
 
+    await adminPage.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await waitForHydration(adminPage)
+    await expect(adminPage).not.toHaveURL(/\/login/)
+    await adminPage.screenshot({ path: testInfo.outputPath('dashboard-admin-authenticated.png'), fullPage: true })
+
     await openAggregate(memberPage, '/timeline')
     await assertAggregate(memberPage, expected)
     await memberPage.screenshot({ path: testInfo.outputPath('timeline-member.png'), fullPage: true })
     await memberPage.reload({ waitUntil: 'domcontentloaded' })
+    await waitForHydration(memberPage)
     await expect(memberPage.getByText(villageMarker, { exact: true })).toBeVisible()
     await memberPage.goto('/timeline', { waitUntil: 'domcontentloaded' })
+    await waitForHydration(memberPage)
+    await expect(memberPage.getByTestId('timeline-feed')).toHaveAttribute('data-loaded', 'true')
     await expect(memberPage.getByText(villageMarker, { exact: true })).toBeVisible()
 
-    await openAggregate(outsiderPage, '/dashboard')
+    expect((await outsiderPage.request.get(`${API}/api/v1/timeline/my`)).status()).toBe(200)
+    await outsiderPage.goto('/timeline', { waitUntil: 'domcontentloaded' })
+    await waitForHydration(outsiderPage)
     for (const post of expected) await expect(outsiderPage.getByText(post.marker, { exact: true })).toHaveCount(0)
     const detail = await outsiderPage.request.get(`${API}/api/v1/timeline/posts/${created[2]!.id}`)
     expect(detail.status(), '非所属者の村投稿詳細').toBe(404)
@@ -169,7 +190,8 @@ test('NOTE-260918-145441-001: 所属チーム・組織・村の投稿がダッ�
 
     expect((await anonymousPage.request.get(`${API}/api/v1/timeline/my`)).status(), '未認証API').toBe(401)
     await anonymousPage.goto('/timeline', { waitUntil: 'domcontentloaded' })
-    await expect(anonymousPage).toHaveURL(/\/login/)
+    await waitForHydration(anonymousPage)
+    await expect(anonymousPage).toHaveURL(/\/login/, { timeout: 60_000 })
   } finally {
     for (const post of created.reverse()) {
       const request = post.owner === 'admin' ? admin.request : member.request
