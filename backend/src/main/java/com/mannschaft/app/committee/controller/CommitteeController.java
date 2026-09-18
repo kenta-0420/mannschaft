@@ -14,6 +14,7 @@ import com.mannschaft.app.committee.entity.CommitteeStatus;
 import com.mannschaft.app.committee.service.CommitteeService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -188,6 +189,7 @@ public class CommitteeController {
      */
     @PatchMapping("/committees/{committeeId}/members/{userId}")
     @Operation(summary = "委員会メンバーロール変更")
+    @AuthorizedInService
     public ApiResponse<CommitteeMemberResponse> updateMemberRole(
             @PathVariable Long committeeId,
             @PathVariable Long userId,
@@ -204,6 +206,7 @@ public class CommitteeController {
      */
     @DeleteMapping("/committees/{committeeId}/members/{userId}")
     @Operation(summary = "委員会メンバー解任")
+    @AuthorizedInService
     public ResponseEntity<Void> removeMember(
             @PathVariable Long committeeId,
             @PathVariable Long userId) {
@@ -218,6 +221,7 @@ public class CommitteeController {
      */
     @PostMapping("/committees/{committeeId}/members/me/leave")
     @Operation(summary = "委員会から離脱")
+    @AuthorizedInService
     public ResponseEntity<Void> leaveCommittee(@PathVariable Long committeeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         committeeService.leaveCommittee(committeeId, currentUserId);

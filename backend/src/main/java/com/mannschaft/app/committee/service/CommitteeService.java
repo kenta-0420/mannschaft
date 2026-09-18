@@ -1,5 +1,7 @@
 package com.mannschaft.app.committee.service;
 
+import com.mannschaft.app.auth.service.UserRowLockService;
+
 import com.mannschaft.app.committee.dto.CommitteeCreateRequest;
 import com.mannschaft.app.committee.dto.CommitteeStatusTransitionRequest;
 import com.mannschaft.app.committee.dto.CommitteeUpdateRequest;
@@ -36,6 +38,7 @@ public class CommitteeService {
     private final CommitteeRepository committeeRepository;
     private final CommitteeMemberRepository committeeMemberRepository;
     private final AccessControlService accessControlService;
+    private final UserRowLockService userRowLockService;
 
     /** 委員会メンバーシップ・委員会内ロールに基づく認可判定の一元窓口。 */
     private final CommitteeAccessGuard committeeAccessGuard;
@@ -50,6 +53,11 @@ public class CommitteeService {
      */
     @Transactional
     public CommitteeEntity createCommittee(Long organizationId, CommitteeCreateRequest request, Long currentUserId) {
+        // 組織離脱と直列化し、離脱済みユーザーを初期委員長として再登録しない。
+        userRowLockService.lockAll(request.getInitialChairUserId());
+        accessControlService.checkMembership(
+                request.getInitialChairUserId(), organizationId, "ORGANIZATION");
+
         // 認可チェック: ORG_ADMIN または MANAGE_COMMITTEE 権限
         boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, organizationId, "ORGANIZATION");
         if (!isAdmin) {
@@ -274,17 +282,16 @@ public class CommitteeService {
     @Transactional
     public CommitteeMemberEntity updateMemberRole(Long committeeId, Long targetUserId,
                                                    CommitteeRole newRole, Long currentUserId) {
-        getCommitteeOrThrow(committeeId);
+        LockedCommittee locked = lockCommitteeAndActiveMembers(committeeId);
 
-        // 認可チェック: CHAIR のみ
-        committeeAccessGuard.requireCommitteeRole(committeeId, currentUserId, CommitteeRole.CHAIR);
+        // ロック後の最新行で認可を再判定する。
+        requireLockedRole(locked.activeMembers(), currentUserId, CommitteeRole.CHAIR);
 
-        CommitteeMemberEntity member = getMemberOrThrow(committeeId, targetUserId);
+        CommitteeMemberEntity member = getLockedMemberOrThrow(locked.activeMembers(), targetUserId);
 
         // CHAIR → 非CHAIR への変更時: CHAIR が 1 名以下になる場合はエラー
         if (CommitteeRole.CHAIR.equals(member.getRole()) && !CommitteeRole.CHAIR.equals(newRole)) {
-            long chairCount = committeeMemberRepository.countByCommitteeIdAndRoleAndLeftAtIsNull(
-                    committeeId, CommitteeRole.CHAIR);
+            long chairCount = countLockedMembersWithRole(locked.activeMembers(), CommitteeRole.CHAIR);
             if (chairCount <= 1) {
                 throw new BusinessException(CommitteeErrorCode.CHAIR_REQUIRED);
             }
@@ -300,17 +307,16 @@ public class CommitteeService {
      */
     @Transactional
     public void removeMember(Long committeeId, Long targetUserId, Long currentUserId) {
-        getCommitteeOrThrow(committeeId);
+        LockedCommittee locked = lockCommitteeAndActiveMembers(committeeId);
 
-        // 認可チェック: CHAIR のみ
-        committeeAccessGuard.requireCommitteeRole(committeeId, currentUserId, CommitteeRole.CHAIR);
+        // ロック後の最新行で認可を再判定する。
+        requireLockedRole(locked.activeMembers(), currentUserId, CommitteeRole.CHAIR);
 
-        CommitteeMemberEntity member = getMemberOrThrow(committeeId, targetUserId);
+        CommitteeMemberEntity member = getLockedMemberOrThrow(locked.activeMembers(), targetUserId);
 
         // CHAIR を解任する場合: CHAIR が 1 名以下になる場合はエラー
         if (CommitteeRole.CHAIR.equals(member.getRole())) {
-            long chairCount = committeeMemberRepository.countByCommitteeIdAndRoleAndLeftAtIsNull(
-                    committeeId, CommitteeRole.CHAIR);
+            long chairCount = countLockedMembersWithRole(locked.activeMembers(), CommitteeRole.CHAIR);
             if (chairCount <= 1) {
                 throw new BusinessException(CommitteeErrorCode.CHAIR_REQUIRED);
             }
@@ -325,15 +331,14 @@ public class CommitteeService {
      */
     @Transactional
     public void leaveCommittee(Long committeeId, Long currentUserId) {
-        getCommitteeOrThrow(committeeId);
+        LockedCommittee locked = lockCommitteeAndActiveMembers(committeeId);
 
-        // 認可チェック: 当該委員会の現役メンバー本人のみが離脱できる
-        CommitteeMemberEntity member = committeeAccessGuard.requireCommitteeMember(committeeId, currentUserId);
+        // ロック後の最新行で、当該委員会の現役メンバー本人であることを再判定する。
+        CommitteeMemberEntity member = requireLockedMember(locked.activeMembers(), currentUserId);
 
         // 唯一のCHAIRの場合は離脱不可
         if (CommitteeRole.CHAIR.equals(member.getRole())) {
-            long chairCount = committeeMemberRepository.countByCommitteeIdAndRoleAndLeftAtIsNull(
-                    committeeId, CommitteeRole.CHAIR);
+            long chairCount = countLockedMembersWithRole(locked.activeMembers(), CommitteeRole.CHAIR);
             if (chairCount <= 1) {
                 throw new BusinessException(CommitteeErrorCode.LAST_CHAIR_CANNOT_LEAVE);
             }
@@ -367,12 +372,49 @@ public class CommitteeService {
                 .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_FOUND));
     }
 
-    /**
-     * ユーザーの現役メンバーシップを取得し、存在しなければ NOT_MEMBER をスローする。
-     */
-    private CommitteeMemberEntity getMemberOrThrow(Long committeeId, Long userId) {
-        return committeeMemberRepository.findByCommitteeIdAndUserIdAndLeftAtIsNull(committeeId, userId)
+    /** 委員会親行を先に、その後に現役メンバー行を一定順序でロックする。 */
+    private LockedCommittee lockCommitteeAndActiveMembers(Long committeeId) {
+        CommitteeEntity committee = committeeRepository.findByIdForUpdate(committeeId)
+                .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_FOUND));
+        List<CommitteeMemberEntity> activeMembers = committeeMemberRepository
+                .findByCommitteeIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc(committeeId);
+        return new LockedCommittee(committee, activeMembers);
+    }
+
+    private CommitteeMemberEntity requireLockedMember(
+            List<CommitteeMemberEntity> activeMembers, Long userId) {
+        return activeMembers.stream()
+                .filter(member -> userId.equals(member.getUserId()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
+    }
+
+    private CommitteeMemberEntity getLockedMemberOrThrow(
+            List<CommitteeMemberEntity> activeMembers, Long userId) {
+        return activeMembers.stream()
+                .filter(member -> userId.equals(member.getUserId()))
+                .findFirst()
                 .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_MEMBER));
+    }
+
+    private void requireLockedRole(
+            List<CommitteeMemberEntity> activeMembers, Long userId, CommitteeRole role) {
+        CommitteeMemberEntity member = requireLockedMember(activeMembers, userId);
+        if (member.getRole() != role) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    private long countLockedMembersWithRole(
+            List<CommitteeMemberEntity> activeMembers, CommitteeRole role) {
+        return activeMembers.stream()
+                .filter(member -> member.getRole() == role)
+                .count();
+    }
+
+    private record LockedCommittee(
+            CommitteeEntity committee,
+            List<CommitteeMemberEntity> activeMembers) {
     }
 
     /**
