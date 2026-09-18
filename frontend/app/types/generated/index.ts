@@ -52379,6 +52379,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             isActive?: boolean;
+            placeholderTagId?: boolean;
             placement?: string;
             provider?: string;
             tagId?: string;
