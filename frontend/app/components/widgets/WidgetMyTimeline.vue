@@ -2,8 +2,8 @@
 /**
  * 個人ダッシュボード集約タイムライン Widget。
  *
- * <p>ログインユーザーが所属する全チーム/組織（MEMBER / SUPPORTER 両方）の timeline 投稿を
- * 横断集約して新しい順で表示する（GET /api/v1/timeline/my）。VILLAGE は集約対象外・自分の投稿も含む。</p>
+ * <p>ログインユーザーが所属する全チーム/組織/村（MEMBER / SUPPORTER 両方）の timeline 投稿を
+ * 横断集約して新しい順で表示する（GET /api/v1/timeline/my）。自分の投稿も含む。</p>
  *
  * <p>実体は {@link TimelineFeed} に {@code my-feed} を渡して描画する（pinned は常に空・実カーソル）。
  * カードフッターに「もっと見る」導線（{@code /timeline}）を置く。</p>

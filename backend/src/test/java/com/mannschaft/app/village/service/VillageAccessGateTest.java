@@ -125,10 +125,11 @@ class VillageAccessGateTest {
         frozen.setId(frozenId);
         when(villageRepository.findAllById(any())).thenReturn(List.of(active, deleted, frozen));
 
-        List<VillageEntity> result = gate.findActiveVisibleVillages(
+        List<VillageAccessGate.VisibleVillage> result = gate.findActiveVisibleVillages(
                 List.of(activeId, deletedId, frozenId, activeId), MEMBER_ID);
 
-        assertThat(result).containsExactly(active);
+        assertThat(result).containsExactly(new VillageAccessGate.VisibleVillage(
+                activeId, active.getName(), active.getSlug()));
         verify(villageRepository).findAllById(any());
         verifyNoInteractions(membershipRepository, accessControlService);
     }

@@ -33,7 +33,6 @@ import com.mannschaft.app.timeline.repository.TimelinePostAttachmentRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostEditRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostReactionRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
-import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
 import com.mannschaft.app.village.service.VillageAccessGate;
@@ -214,8 +213,8 @@ class TimelinePostServiceTest {
     @DisplayName("AC-村: 村のみ所属でも一括解決した UUID・名前・遷移用 slug を返し limit+1 件を要求する")
     void villageOnlyMyFeed_enrichesIdentityAndRequestsOneExtraRow() {
         UUID villageId = UUID.fromString("018f0000-0000-7000-8000-000000000101");
-        VillageEntity village = VillageEntity.builder().name("村一").slug("village-one").build();
-        village.setId(villageId);
+        VillageAccessGate.VisibleVillage village = new VillageAccessGate.VisibleVillage(
+                villageId, "村一", "village-one");
         PostResponse raw = PostResponse.builder()
                 .id(10L)
                 .scope(new PostResponse.PostScopeDto("VILLAGE", 0L, villageId, null, null))
@@ -248,8 +247,8 @@ class TimelinePostServiceTest {
     @DisplayName("AC-ページング: TEAM と VILLAGE の投稿をID降順で合流し、各クエリは limit+1 までに留める")
     void myFeed_mergesTeamAndVillageByIdWithOneExtraRowPerQuery() {
         UUID villageId = UUID.fromString("018f0000-0000-7000-8000-000000000102");
-        VillageEntity village = VillageEntity.builder().name("村").slug("village-two").build();
-        village.setId(villageId);
+        VillageAccessGate.VisibleVillage village = new VillageAccessGate.VisibleVillage(
+                villageId, "村", "village-two");
         TimelinePostEntity teamPost12 = TimelinePostEntity.builder()
                 .id(12L).scopeType(PostScopeType.TEAM).scopeId(1L).build();
         TimelinePostEntity teamPost10 = TimelinePostEntity.builder()

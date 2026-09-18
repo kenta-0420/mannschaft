@@ -42,7 +42,6 @@ import com.mannschaft.app.timeline.repository.TimelinePostEditRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostReactionRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.village.VillageErrorCode;
-import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
@@ -916,9 +915,9 @@ public class TimelinePostService {
         List<Long> teamIds = membershipService.getActiveTeamIdsByUser(userId);
         List<Long> orgIds = membershipService.getActiveOrgIdsByUser(userId);
         List<UUID> activeVillageIds = postingIdentityService.getActiveVillageIdsByUser(userId);
-        List<VillageEntity> activeVisibleVillages =
+        List<VillageAccessGate.VisibleVillage> activeVisibleVillages =
                 villageAccessGate.findActiveVisibleVillages(activeVillageIds, userId);
-        List<UUID> villageIds = activeVisibleVillages.stream().map(VillageEntity::getId).toList();
+        List<UUID> villageIds = activeVisibleVillages.stream().map(VillageAccessGate.VisibleVillage::id).toList();
 
         // 空ガード: 所属がゼロなら DB を叩かず空（JPQL IN () エラー回避）。
         if (teamIds.isEmpty() && orgIds.isEmpty() && villageIds.isEmpty()) {
@@ -956,8 +955,8 @@ public class TimelinePostService {
                 .sorted(Comparator.comparing(TimelinePostEntity::getId).reversed())
                 .limit(feedSize + 1L)
                 .toList();
-        Map<UUID, VillageEntity> villagesById = activeVisibleVillages.stream()
-                .collect(Collectors.toMap(VillageEntity::getId, village -> village));
+        Map<UUID, VillageAccessGate.VisibleVillage> villagesById = activeVisibleVillages.stream()
+                .collect(Collectors.toMap(VillageAccessGate.VisibleVillage::id, village -> village));
         return enrichPosts(timelineMapper.toPostResponseList(posts), villagesById);
     }
 
@@ -989,7 +988,7 @@ public class TimelinePostService {
 
     /** 個人集約フィードの一括解決済み村を投稿元表示に利用する。 */
     private List<PostResponse> enrichPosts(
-            List<PostResponse> posts, Map<UUID, VillageEntity> villagesById) {
+            List<PostResponse> posts, Map<UUID, VillageAccessGate.VisibleVillage> villagesById) {
         if (posts == null || posts.isEmpty()) {
             return posts;
         }
@@ -1203,7 +1202,7 @@ public class TimelinePostService {
     private PostResponse.PostScopeDto enrichScope(PostResponse.PostScopeDto scope,
                                                   Map<Long, String> teamNames, Map<Long, String> orgNames,
                                                   Map<Long, String> teamSlugs, Map<Long, String> orgSlugs,
-                                                  Map<UUID, VillageEntity> villagesById) {
+                                                  Map<UUID, VillageAccessGate.VisibleVillage> villagesById) {
         if (scope == null) {
             return scope;
         }
@@ -1218,10 +1217,10 @@ public class TimelinePostService {
                     orgSlugs.get(scope.scopeId()));
         }
         if (PostScopeType.VILLAGE.name().equals(scope.scopeType()) && scope.scopeVillageId() != null) {
-            VillageEntity village = villagesById.get(scope.scopeVillageId());
+            VillageAccessGate.VisibleVillage village = villagesById.get(scope.scopeVillageId());
             if (village != null) {
                 return new PostResponse.PostScopeDto(scope.scopeType(), scope.scopeId(),
-                        scope.scopeVillageId(), village.getName(), village.getSlug());
+                        scope.scopeVillageId(), village.name(), village.slug());
             }
         }
         return scope;

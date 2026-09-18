@@ -68,6 +68,12 @@ public class VillageAccessGate {
     private final AccessControlService accessControlService;
 
     /**
+     * 可視な村の表示に必要な値だけを表す、他ドメインへ返却可能な値型。
+     */
+    public record VisibleVillage(UUID id, String name, String slug) {
+    }
+
+    /**
      * write / member-scoped 操作用に、稼働中の村をロードする。
      *
      * <p>判定順序は以下に固定する。<b>この順序自体が秘匿契約の一部であり、入れ替えてはならない。</b></p>
@@ -328,7 +334,7 @@ public class VillageAccessGate {
      * @return 生存かつ可視な村。入力 ID の重複は除く
      */
     @Transactional(readOnly = true)
-    public List<VillageEntity> findActiveVisibleVillages(
+    public List<VisibleVillage> findActiveVisibleVillages(
             Collection<UUID> villageIds, @Nullable Long actorUserId) {
         if (villageIds == null || villageIds.isEmpty()) {
             return List.of();
@@ -350,7 +356,9 @@ public class VillageAccessGate {
                 active.add(village);
             }
         }
-        return filterVisible(active, actorUserId);
+        return filterVisible(active, actorUserId).stream()
+                .map(village -> new VisibleVillage(village.getId(), village.getName(), village.getSlug()))
+                .toList();
     }
 
     /**
