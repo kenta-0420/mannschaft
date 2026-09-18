@@ -22,6 +22,7 @@ useServerHead({
 // ref('') のままだとハイドレーション時に空で上書きされて消える。必ずセットアップ時に読むこと。
 const email = ref(readPrefilledInputValue('email'))
 const password = ref(readPrefilledInputValue('password'))
+const passwordInputProps: Record<string, string> = { 'data-allow-mismatch': '' }
 const loading = ref(
   import.meta.client
   && document.getElementById('login-form')?.dataset.preHydrationSubmit === 'pending',
@@ -300,7 +301,7 @@ async function handleLogin() {
           fluid
           required
           data-allow-mismatch
-          :input-props="{ 'data-allow-mismatch': '' }"
+          :input-props="passwordInputProps"
         />
       </div>
       <Button
