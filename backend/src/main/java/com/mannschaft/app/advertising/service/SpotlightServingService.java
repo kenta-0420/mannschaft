@@ -12,6 +12,7 @@ import com.mannschaft.app.advertising.dto.SpotlightViewResponse;
 import com.mannschaft.app.advertising.dto.SpotlightVisitRequest;
 import com.mannschaft.app.advertising.dto.SpotlightVisitResponse;
 import com.mannschaft.app.advertising.entity.AdEntity;
+import com.mannschaft.app.advertising.entity.AffiliateConfigEntity;
 import com.mannschaft.app.advertising.repository.AdEntityRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.service.MembershipService;
@@ -344,6 +345,12 @@ public class SpotlightServingService {
         for (Object[] r : rows) {
             String provider = (String) r[0];
             String tagId = (String) r[1];
+            // tag_id 未設定（プレースホルダ）行は候補から除外する（CMP-260918-0025）。
+            // 広告主タグが無いまま表示すると紹介料が計上されないリンクが利用者に出てしまうため、
+            // HOUSE・AFFILIATE 双方が空でも枠を静かに出さない（既存の items:[] 仕様どおり・エラーにしない）。
+            if (AffiliateConfigEntity.isPlaceholderTagId(tagId)) {
+                continue;
+            }
             SpotlightAllocationSelector.Candidate candidate = new SpotlightAllocationSelector.Candidate(
                     "AFFILIATE", null, null, null, null, provider, false);
             SpotlightAffiliateItem affiliate = new SpotlightAffiliateItem(
