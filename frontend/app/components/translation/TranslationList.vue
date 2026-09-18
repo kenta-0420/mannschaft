@@ -141,7 +141,7 @@ onMounted(() => {
     <div v-if="dashboard" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
       <Card class="text-center">
         <template #content>
-          <div class="text-2xl font-bold text-primary">{{ dashboard.totalCount }}</div>
+          <div class="text-2xl font-bold text-primary">{{ dashboard.totalTranslations }}</div>
           <div class="text-sm text-muted-color">{{ $t('translation.total_count') }}</div>
         </template>
       </Card>
