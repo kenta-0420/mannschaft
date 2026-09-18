@@ -158,16 +158,17 @@ async function run() {
   for (const [id, item] of journeys()) {
     const dedicatedProof = dedicatedProofs[id];
     if (!dedicatedProof) {
-      result.journeys.push({ id, status: 'blocked', specPaths: item.specPaths, reason: '専用proof spec未整備' });
+      result.journeys.push({ id, status: 'blocked', coverageSpecPaths: item.specPaths, reason: '専用proof spec未整備' });
       continue;
     }
-    if (!item.specPaths.includes(dedicatedProof)) throw new Error(`B0-J1: 専用proof specがmanifestにありません: ${dedicatedProof}`);
+    if (!item.specPaths.includes(dedicatedProof)) throw new Error(`${id}: 専用proof specがmanifestにありません: ${dedicatedProof}`);
     const jsonPath = path.join(outputDir, `${id}-${Date.now()}.json`);
     const playwrightCli = path.join(root, 'frontend/node_modules/@playwright/test/cli.js');
     if (!fs.existsSync(playwrightCli)) throw new Error('Playwright依存がありません: frontend/node_modules/@playwright/test/cli.js');
     const specs = id === 'B0-J1'
       ? [...new Set([...item.specPaths, dedicatedProof])].map(normalizeSpecPath)
       : [normalizeSpecPath(dedicatedProof)];
+    const executedSpecPaths = specs.map((spec) => `frontend/${spec.replaceAll('\\', '/')}`);
     const playwrightArgs = id === 'B0-J7'
       ? [playwrightCli, 'test', ...specs, '--config', 'playwright-real.config.ts', '--project', 'chromium-real', '--no-deps', '--workers=1', '--reporter=json']
       : [playwrightCli, 'test', ...specs, '--reporter=json'];
@@ -203,7 +204,7 @@ async function run() {
         screenshotPath: ''
       });
     }
-    result.journeys.push({ id, status, specPaths: item.specPaths, summary, evidencePath, insightCount: result.insights.filter((insight) => insight.journeyId === id).length });
+    result.journeys.push({ id, status, executedSpecPaths, coverageSpecPaths: item.specPaths, summary, evidencePath, insightCount: result.insights.filter((insight) => insight.journeyId === id).length });
     if (status === 'test-passed') result.conditions.separateBrowserContexts = 'proven';
   }
   result.finishedAt = new Date().toISOString();
