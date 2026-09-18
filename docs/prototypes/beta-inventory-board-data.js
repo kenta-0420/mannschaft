@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-09-18T18:26:07+00:00",
+  "generatedAt": "2026-09-18T18:33:21+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,19 +8,19 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d5887cc325e481e2cfe5c521267bf9f4bcc83034",
-    "taskListCommit": "d5887cc325e481e2cfe5c521267bf9f4bcc83034",
+    "taskListCommit": "c71da5601d0aac15622d193a4a7f67228b9a837a",
     "inventorySha256": "83a1b5fba7151b5785f85c8f54f8e9e13913ae7136a281d36e3b01d11685216f",
-    "taskListSha256": "c76b76934a3ab8e860d174420a1bf2722ca93efadc53415b9a4b30c96467f58d",
+    "taskListSha256": "1429b9220555fa2bbf15042c8fae66cba1e874da7b03412c4de11ccd7eadc8a3",
     "decisionsSha256": "b9f1cb383aecd684a026dcd486aad6474c6d48bea1bf0342b78a30a7351799e8",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "b93e04c91279a5572dce0ca2c51d03168c7bd4d2b085c9932311d59f3d09aea9"
+    "githubSnapshotSha256": "81bd74c89b53b1c2881e7a909f0589f7d004354023d0c50ad32c550f9bfcabd7"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 249,
+    "campaigns": 251,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 249
+      "campaigns": 251
     },
     "parsed": {
       "features": 44,
-      "campaigns": 249,
+      "campaigns": 251,
       "core": 25,
       "noncore": 19,
       "blockers": 23,
@@ -17288,28 +17288,28 @@ window.BETA_INVENTORY_DATA = {
     },
     {
       "id": "CMP-260820-1011",
-      "title": "所属終了時にドメイン固有の管理ロールが後始末されない（`chat_channel_members.role`／`village_memberships.role`／`committee_members.role`／`corkboards.owner_id`）（優先: 高）",
-      "status": "unknown",
-      "statusLabel": "保留（仕様判断待ち）",
+      "title": "所属終了時に対象スコープのチャット・委員会ロールが後始末されない（優先: 高）",
+      "status": "done",
+      "statusLabel": "完了（2026-09-18）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "`removeMember`／`leaveScope`／自動退会（F14.3）のいずれの経路でも、上記4表のロール・所有権がクリーンアップされること。除名・退会後に元組合員がチャンネル OWNER・委員会 CHAIR のまま残らないこと",
+      "nextAction": "①`removeMember`／`leaveScope`／将来の自動退会（F14.3）が発火する共通の所属終了イベントで、対象TEAM/ORGANIZATIONに属する`chat_channel_members`行だけを削除すること（DM・GROUP_DM・村等の独立チャンネルは不変）②ORGANIZATION離脱では配下委員会の対象`committee_members`を終了すること③対象が唯一のCHAIRなら、現役残存者からVICE_CHAIR→SECRETARY→MEMBER、同順位は参加が古い順で後任を自動選出し、残存者ゼロなら委員会をARCHIVEDにすること④独立した`village_memberships`とPERSONAL `corkboards.owner_id`は変更しないこと⑤後始末失敗時に所属終了だけを確定させないこと",
       "acceptance": [
-        "`removeMember`／`leaveScope`／自動退会（F14.3）のいずれの経路でも、上記4表のロール・所有権がクリーンアップされること。除名・退会後に元組合員がチャンネル OWNER・委員会 CHAIR のまま残らないこと"
+        "①`removeMember`／`leaveScope`／将来の自動退会（F14.3）が発火する共通の所属終了イベントで、対象TEAM/ORGANIZATIONに属する`chat_channel_members`行だけを削除すること（DM・GROUP_DM・村等の独立チャンネルは不変）②ORGANIZATION離脱では配下委員会の対象`committee_members`を終了すること③対象が唯一のCHAIRなら、現役残存者からVICE_CHAIR→SECRETARY→MEMBER、同順位は参加が古い順で後任を自動選出し、残存者ゼロなら委員会をARCHIVEDにすること④独立した`village_memberships`とPERSONAL `corkboards.owner_id`は変更しないこと⑤後始末失敗時に所属終了だけを確定させないこと"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "出典: F14.3設計書 `docs/features/F14.3_resident_life_events.md` §19.4・§20.2 U-10（§8.3.1・§3.6.1で棚卸し）。**保留理由（2026-09-18）**: 実装調査により、`village_memberships` はTEAM/ORGANIZATIONと対応キーを持たない独立した村所属、`corkboards.owner_id` はPERSONALボードの所有者であり、組合退会時の一律クリーンアップは無関係な権限・個人データを失わせると判明した。対象スコープに安全に結び付けられるのはチャット所属とORGANIZATION配下の委員会所属だが、唯一のCHAIRは現行仕様で後任設定まで離脱不可であり、強制退会・自動退会時に「後任を自動選出する／委員会を休止・終了する」等の製品判断が必要なため保留。**F14.3固有の欠陥ではなく、通常の除名でも起きる既存の横断欠陥である**（`chatChannelMemberRepository.delete*` 系の呼出は `backend/src/main` にゼロ件・実測）。マスター裁可（2026-08-20）によりF14.3の対象外とし、代わりにF14.3 §3.6で保証範囲を「組合スコープの管理権限」に限定した。**とりわけ逝去による退会では遺族の心情・運営実務の観点で優先度が高い**",
+          "label": "出典: F14.3設計書 `docs/features/F14.3_resident_life_events.md` §19.4・§20.2 U-10（§8.3.1・§3.6.1で棚卸し）。**仕様決定（2026-09-18）**: 実装調査により、`village_memberships`はTEAM/ORGANIZATIONと対応キーを持たない独立した村所属、`corkboards.owner_id`はPERSONALボードの所有者であり、組合退会時の一律クリーンアップは無関係な権限・個人データを失わせると判明したため対象外とする。対象スコープへ安全に結び付くチャット所属とORGANIZATION配下の委員会所属だけを後始末する。唯一のCHAIRは上記ACの順で後任を自動選出し、後任不在なら委員会をARCHIVEDにする方針をマスター承認。**F14.3固有の欠陥ではなく、通常の除名でも起きる既存の横断欠陥である**。**とりわけ逝去による退会では遺族の心情・運営実務の観点で優先度が高い**。**完了確認（2026-09-18）**: 対象ユニット／統合／ArchUnitテストがgreen。隔離DB・専用ポートの実機E2Eで通常管理者による除名、Pixel 5表示、チャット再追加拒否、失効招待受諾拒否を確認し、DB実測で委員長承継・空委員会ARCHIVED・招待CANCELLED・DM／村所属／個人Corkboard不変を確認した。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "出典: F14.3設計書 `docs/features/F14.3_resident_life_events.md` §19.4・§20.2 U-10（§8.3.1・§3.6.1で棚卸し）。**保留理由（2026-09-18）**: 実装調査により、`village_memberships` はTEAM/ORGANIZATIONと対応キーを持たない独立した村所属、`corkboards.owner_id` はPERSONALボードの所有者であり、組合退会時の一律クリーンアップは無関係な権限・個人データを失わせると判明した。対象スコープに安全に結び付けられるのはチャット所属とORGANIZATION配下の委員会所属だが、唯一のCHAIRは現行仕様で後任設定まで離脱不可であり、強制退会・自動退会時に「後任を自動選出する／委員会を休止・終了する」等の製品判断が必要なため保留。**F14.3固有の欠陥ではなく、通常の除名でも起きる既存の横断欠陥である**（`chatChannelMemberRepository.delete*` 系の呼出は `backend/src/main` にゼロ件・実測）。マスター裁可（2026-08-20）によりF14.3の対象外とし、代わりにF14.3 §3.6で保証範囲を「組合スコープの管理権限」に限定した。**とりわけ逝去による退会では遺族の心情・運営実務の観点で優先度が高い**"
+        "出典: F14.3設計書 `docs/features/F14.3_resident_life_events.md` §19.4・§20.2 U-10（§8.3.1・§3.6.1で棚卸し）。**仕様決定（2026-09-18）**: 実装調査により、`village_memberships`はTEAM/ORGANIZATIONと対応キーを持たない独立した村所属、`corkboards.owner_id`はPERSONALボードの所有者であり、組合退会時の一律クリーンアップは無関係な権限・個人データを失わせると判明したため対象外とする。対象スコープへ安全に結び付くチャット所属とORGANIZATION配下の委員会所属だけを後始末する。唯一のCHAIRは上記ACの順で後任を自動選出し、後任不在なら委員会をARCHIVEDにする方針をマスター承認。**F14.3固有の欠陥ではなく、通常の除名でも起きる既存の横断欠陥である**。**とりわけ逝去による退会では遺族の心情・運営実務の観点で優先度が高い**。**完了確認（2026-09-18）**: 対象ユニット／統合／ArchUnitテストがgreen。隔離DB・専用ポートの実機E2Eで通常管理者による除名、Pixel 5表示、チャット再追加拒否、失効招待受諾拒否を確認し、DB実測で委員長承継・空委員会ARCHIVED・招待CANCELLED・DM／村所属／個人Corkboard不変を確認した。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -17317,22 +17317,28 @@ window.BETA_INVENTORY_DATA = {
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
-        "chat_channel_members",
-        "role",
-        "village_memberships",
-        "role",
-        "committee_members",
-        "role",
-        "corkboards",
-        "owner_id",
         "removeMember",
         "leaveScope",
         "F14",
-        "OWNER",
-        "CHAIR"
+        "TEAM",
+        "ORGANIZATION",
+        "chat_channel_members",
+        "DM",
+        "GROUP_DM",
+        "ORGANIZATION",
+        "committee_members",
+        "CHAIR",
+        "VICE_CHAIR",
+        "SECRETARY",
+        "MEMBER",
+        "ARCHIVED",
+        "village_memberships",
+        "PERSONAL",
+        "corkboards",
+        "owner_id"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
       "githubRefs": [],
       "github": []
@@ -27569,7 +27575,7 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260918-0024",
       "title": "組織スコープのゲーミフィケーションとタイムラインダイジェストで裏のAPIが失敗している",
       "status": "unknown",
-      "statusLabel": "未着手",
+      "statusLabel": "①ゲーミフィケーション: 完了（チーム固有機能と決定・PR待ち） ②タイムラインダイジェスト400: 残件（本戦役では未着手）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -27592,7 +27598,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "アリシゼーション期の住民観測を殿が実機（localhost:3001 / BE 8080、main `8c49ed428`）でブラウザから API 捕捉して裏取り。対象を2件に絞った（当初報告した順番待ち・委員会・広告主・予算は以下の理由で除外）: 順番待ち・委員会＝失敗APIなし（誤報。委員会は `CMP-260918-0023` として別途「未再現」で記録）。広告主＝ `GET /api/v1/advertiser/account?organizationId=org-000009` は404だが画面は「広告主登録してください」と正しい誘導を出しており未登録を表す正常な404。**①ゲーミフィケーション（組織スコープ）＝ 404、根本原因まで判明**: `GET /api/v1/organizations/org-000009/gamification/config` が404。BE の `backend/src/main/java/com/mannschaft/app/gamification/controller/GamificationBadgeController.java:32` は `@RequestMapping(\"/api/v1/teams/{teamId}/gamification/badges\")` でチームスコープ専用であり、組織スコープのゲーミフィケーション API は BE に存在しない（slug・数値IDいずれも404）。にもかかわらず `OrganizationSidebar` に組織のゲーミフィケーション項目があり、FE の `useGamificationApi.ts:12` が `${base}/gamification/config` を呼んでいる。**`CMP-260918-0841`（メンバー紹介のBE未実装）と同型の「導線はあるが機能が無い」欠陥であり、相互参照とする**（他にも同種が潜んでいる可能性を示唆）。**②タイムラインダイジェスト＝ 400（実証済み）**: `GET /api/v1/timeline-digest?limit=20` が400を返すことを殿が実機で確認。原因未特定"
+        "アリシゼーション期の住民観測を殿が実機（localhost:3001 / BE 8080、main `8c49ed428`）でブラウザから API 捕捉して裏取り。対象を2件に絞った（当初報告した順番待ち・委員会・広告主・予算は以下の理由で除外）: 順番待ち・委員会＝失敗APIなし（誤報。委員会は `CMP-260918-0023` として別途「未再現」で記録）。広告主＝ `GET /api/v1/advertiser/account?organizationId=org-000009` は404だが画面は「広告主登録してください」と正しい誘導を出しており未登録を表す正常な404。**①ゲーミフィケーション（組織スコープ）＝ 404、根本原因まで判明**: `GET /api/v1/organizations/org-000009/gamification/config` が404。BE の `backend/src/main/java/com/mannschaft/app/gamification/controller/GamificationBadgeController.java:32` は `@RequestMapping(\"/api/v1/teams/{teamId}/gamification/badges\")` でチームスコープ専用であり、組織スコープのゲーミフィケーション API は BE に存在しない（slug・数値IDいずれも404）。にもかかわらず `OrganizationSidebar` に組織のゲーミフィケーション項目があり、FE の `useGamificationApi.ts:12` が `${base}/gamification/config` を呼んでいる。**`CMP-260918-0841`（メンバー紹介のBE未実装）と同型の「導線はあるが機能が無い」欠陥であり、相互参照とする**（他にも同種が潜んでいる可能性を示唆）。**②タイムラインダイジェスト＝ 400（実証済み）**: `GET /api/v1/timeline-digest?limit=20` が400を返すことを殿が実機で確認。原因未特定。**【2026-09-18 足軽2・裁可済み方針で決着】** マスター裁可: ゲーミフィケーションは組織へ広げず「チーム固有機能」に確定。`ModuleService.getOrganizationModuleCatalog`／`getTeamModuleCatalog` は既に `module_level_availability` のレベル別可否を反映していた（`isLevelAvailable`）ため、正しい直し方は「gamification の ORGANIZATION レベルを利用不可にする」だけで済むと確認。Flyway `V216.20260918053554__disable_gamification_module_for_organization_level.sql` で ORGANIZATION 行を `is_available=0` に投入（V208 の payment 有効化と対称の書き方）。`OrganizationSidebar.vue:108` のゲーミフィケーション項目を削除し、`organizations/[slug]/gamification.vue` ページも削除（対応する組織スコープ BE が無いため案内文ではなく削除を選択。他ページからのリンク無しを grep で確認済み）。`useGamificationApi.ts` の `getConfig`/`updateConfig` にあった `scopeType: 'team'"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -27982,12 +27988,121 @@ window.BETA_INVENTORY_DATA = {
           "ci": null
         }
       ]
+    },
+    {
+      "id": "CMP-260918-1357",
+      "title": "メンバー検索 lookup の teamPageId 未指定時、認可チェックが条件分岐の外側にしか無く分岐から素通りする構造だった",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`teamPageId` を必須パラメータ化し（未指定は400）、認可チェック（`checkPageMembershipOrNotFound`）を条件分岐の外に出して全経路で必ず実行されること。member パッケージ全体（TeamPageService/MemberProfileFieldService/TeamPageSectionService）を走査し同型の穴が無いことを確認すること",
+      "acceptance": [
+        "`teamPageId` を必須パラメータ化し（未指定は400）、認可チェック（`checkPageMembershipOrNotFound`）を条件分岐の外に出して全経路で必ず実行されること。member パッケージ全体（TeamPageService/MemberProfileFieldService/TeamPageSectionService）を走査し同型の穴が無いことを確認すること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "PR #3355",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3355"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "足軽3（メンバー検索の認可穴を根治）が発見・是正。`MemberProfileService#lookupMembers` は `teamPageId` が null のとき認可チェックを一切通らずリポジトリへ抜けており、安全性は SQL の `WHERE teamPageId = NULL` が三値論理で常に偽になる副作用に依存していた（実害は低いが、正しく実装し直した瞬間に認可なき全件検索が成立し得る危険な構造）。設計書 `docs/features/F06.2_member_gallery.md` が定めていた「未指定時は最新 PUBLISHED ページから検索」も未実装だった上、FE 実装（`useMemberProfileApi.ts`）にも `teamPageId` を省略する呼び出し元が実在しなかったため、案A（`teamPageId` を必須パラメータ化・400化）を採用。設計書も実装に合わせて修正済み。兄弟3クラス（TeamPageService/MemberProfileFieldService/TeamPageSectionService）を走査したが同型の穴は他に無し（全 if/else 分岐が両方の枝で認可チェックを通る構造）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "lookup",
+        "teamPageId",
+        "teamPageId",
+        "checkPageMembershipOrNotFound",
+        "member",
+        "TeamPageService",
+        "MemberProfileFieldService",
+        "TeamPageSectionService"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        3355
+      ],
+      "github": [
+        {
+          "number": 3355,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: メンバー検索lookupのteamPageId未指定時の認可穴を根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3355",
+          "updatedAt": "2026-09-18T13:31:57Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260918-1344",
+      "title": "ゲーミフィケーションのポイント付与アクション4種が未実装",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`ActionType.ACTIVITY_PARTICIPATE`／`SCHEDULE_ATTEND`／`KNOWLEDGE_BASE_CREATE`／`SKILL_REGISTER` の4種について、それぞれ「実際にポイントを付与するリスナー／サービス直呼びを実装する」か「enum から削除しUIの説明文からも外す」かを決めて実装する。決着後、`ActionType` に定義された全アクションについて発火経路が最低1つ存在することを保証する何らかのテスト（列挙走査など）があること",
+      "acceptance": [
+        "`ActionType.ACTIVITY_PARTICIPATE`／`SCHEDULE_ATTEND`／`KNOWLEDGE_BASE_CREATE`／`SKILL_REGISTER` の4種について、それぞれ「実際にポイントを付与するリスナー／サービス直呼びを実装する」か「enum から削除しUIの説明文からも外す」かを決めて実装する。決着後、`ActionType` に定義された全アクションについて発火経路が最低1つ存在することを保証する何らかのテスト（列挙走査など）があること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260918-0024（組織ゲーミフィケーション戦役）の副産物として `backend/src/main/java/com/mannschaft/app/gamification/ActionType.java` を確認した際に判明。`git grep` で実発火箇所を再確認済み: 実際にポイントが動くのは `TIMELINE_POST`（`GamificationPointListener.java:48`）・`DAILY_LOGIN`（同:76,86）・`ADMIN_ADJUST`（`GamificationPointService.java:257,297`、管理者による手動調整専用）の3種のみ。`ACTIVITY_PARTICIPATE`／`SCHEDULE_ATTEND`／`KNOWLEDGE_BASE_CREATE`／`SKILL_REGISTER` は enum 宣言（`ActionType.java:12,15,18,24`）があるのみで、リスナー・イベント発火元・サービス直呼びいずれにも参照が無い（`grep -rn` で `ActionType.ACTIVITY_PARTICIPATE` 等の使用箇所は宣言行以外ゼロ）。ユーザーから見ると「活動参加・出欠・ナレッジベース投稿・スキル登録でポイントが貰えるはず」という期待が生まれうるが実際には何も起きない、無言の未実装。番人（自動検出）は無い"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ActionType",
+        "ACTIVITY_PARTICIPATE",
+        "SCHEDULE_ATTEND",
+        "KNOWLEDGE_BASE_CREATE",
+        "SKILL_REGISTER",
+        "enum",
+        "UI",
+        "ActionType"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
     }
   ],
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-09-18T18:24:10+00:00",
+    "synchronizedAt": "2026-09-18T18:32:30+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -28771,7 +28886,11 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260918-1913": [
         2041,
         3358
-      ]
+      ],
+      "CMP-260918-1357": [
+        3355
+      ],
+      "CMP-260918-1344": []
     },
     "items": {
       "902": {
@@ -32649,6 +32768,20 @@ window.BETA_INVENTORY_DATA = {
         "updatedAt": "2026-09-18T09:07:08Z",
         "ci": null
       },
+      "3355": {
+        "number": 3355,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: メンバー検索lookupのteamPageId未指定時の認可穴を根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3355",
+        "updatedAt": "2026-09-18T13:31:57Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3357": {
         "number": 3357,
         "kind": "pull_request",
@@ -32676,8 +32809,8 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-09-18T18:24:10+00:00",
-      "referenceCount": 295
+      "synchronizedAt": "2026-09-18T18:32:30+00:00",
+      "referenceCount": 296
     }
   }
 };
