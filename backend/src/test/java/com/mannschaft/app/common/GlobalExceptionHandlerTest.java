@@ -972,6 +972,47 @@ class GlobalExceptionHandlerTest {
             assertThat(result).isEqualTo(HttpStatus.BAD_REQUEST);
         }
 
+        @ParameterizedTest(name = "{0} は 400 / {1}")
+        @CsvSource({
+                "PERSONAL_REMINDER_LIMIT_EXCEEDED, SCHEDULE_019",
+                "PERSONAL_SCHEDULE_LIMIT_EXCEEDED, SCHEDULE_020"
+        })
+        @DisplayName("CMP-114: 個人予定・リマインダーの件数上限超過は 400 BadRequest")
+        void handleBusinessException_personalLimitExceeded_400(
+                String errorCodeName,
+                String expectedCode) {
+            com.mannschaft.app.schedule.ScheduleErrorCode errorCode =
+                    com.mannschaft.app.schedule.ScheduleErrorCode.valueOf(errorCodeName);
+
+            assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(
+                    new BusinessException(errorCode));
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo(expectedCode);
+        }
+
+        @ParameterizedTest(name = "{0} は 409")
+        @CsvSource({
+                "ATTENDANCE_DEADLINE_PASSED",
+                "SCHEDULE_ALREADY_CANCELLED",
+                "MAX_SURVEYS_EXCEEDED",
+                "CROSS_INVITE_ALREADY_EXISTS",
+                "CROSS_INVITE_INVALID_STATUS",
+                "TODO_ALREADY_LINKED"
+        })
+        @DisplayName("CMP-114: 状態競合の Schedule エラーコードは 409 Conflict を維持する")
+        void resolveHttpStatus_scheduleStateConflicts_409(String errorCodeName) {
+            com.mannschaft.app.schedule.ScheduleErrorCode errorCode =
+                    com.mannschaft.app.schedule.ScheduleErrorCode.valueOf(errorCodeName);
+
+            assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                    .isEqualTo(HttpStatus.CONFLICT);
+        }
+
         @Test
         @DisplayName("F03.4 バグ#5: INVALID_TIME_RANGE（start>=end）は WARN severity で 400 BadRequest になる（500 漏れ防止の回帰固定）")
         void resolveHttpStatus_INVALID_TIME_RANGE_400() {
