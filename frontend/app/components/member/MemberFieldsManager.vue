@@ -93,24 +93,30 @@ function parseOptions(options: string | null): string[] | null {
   try {
     const parsed = JSON.parse(options)
     if (Array.isArray(parsed)) return parsed
-    notification.error('選択肢データの形式が不正です')
+    notification.error(t('common.memberProfile.members.optionsInvalidFormat'))
     return null
   } catch (e) {
     console.error('field.options JSON parse failed', options, e)
-    notification.error('選択肢データの読み込みに失敗しました')
+    notification.error(t('common.memberProfile.members.optionsLoadFailed'))
     return null
   }
 }
 
+/**
+ * パースに失敗した場合は編集ダイアログを開かない。空のフォームを見せて保存させると、
+ * 壊れていただけの既存の選択肢を利用者の保存操作で本当に消してしまう事故になるため
+ * （壊れたデータの復旧は別の導線で行う）。
+ */
 function openEdit(field: MemberProfileField) {
-  editingField.value = field
   const parsedOptions = parseOptions(field.options)
+  if (parsedOptions === null) return
+
+  editingField.value = field
   form.value = {
     fieldName: field.fieldName,
     fieldType: field.fieldType,
     isRequired: field.isRequired,
-    // パース失敗時は元データを推測で書き換えないよう空文字のままにし、通知で異常を伝える
-    optionsText: parsedOptions ? parsedOptions.join('\n') : '',
+    optionsText: parsedOptions.join('\n'),
   }
   showDialog.value = true
 }

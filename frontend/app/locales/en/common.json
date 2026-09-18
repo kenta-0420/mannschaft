@@ -2528,7 +2528,9 @@
       "bulkRegisterFailed": "Failed to bulk register members",
       "deleteConfirm": "Delete this member?",
       "back": "Back to pages",
-      "customFieldsError": "Failed to load custom fields"
+      "customFieldsError": "Failed to load custom fields",
+      "optionsInvalidFormat": "The options data is in an invalid format",
+      "optionsLoadFailed": "Failed to load the options data"
     }
   }
 }

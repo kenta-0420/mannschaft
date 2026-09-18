@@ -2528,7 +2528,9 @@
       "bulkRegisterFailed": "一括登録に失敗しました",
       "deleteConfirm": "このメンバーを削除しますか？",
       "back": "ページ一覧に戻る",
-      "customFieldsError": "カスタム項目の読み込みに失敗しました"
+      "customFieldsError": "カスタム項目の読み込みに失敗しました",
+      "optionsInvalidFormat": "選択肢データの形式が不正です",
+      "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
   }
 }
