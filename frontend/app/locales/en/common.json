@@ -652,7 +652,25 @@
       "selfReviewHelp": "The configured time period is treated as a review window before publishing",
       "saveSettings": "Save Settings",
       "loadFailed": "Failed to load the post",
-      "scheduledPublishUnavailable": "Scheduled publishing is currently unavailable. Publishing makes the post live immediately."
+      "scheduledPublishUnavailable": "Scheduled publishing is currently unavailable. Publishing makes the post live immediately.",
+      "listHeading": "Posts",
+      "createButton": "New post",
+      "createDialogTitle": "New post",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Enter a post title",
+      "createDialogHint": "The post will be saved as a draft. After entering a title, write the body on the edit page.",
+      "loadListFailed": "Failed to load the post list",
+      "createFailed": "Failed to create the post",
+      "archived": "Archived",
+      "publishSuccess": "Published",
+      "unpublishSuccess": "Unpublished",
+      "publishStatusFailed": "Failed to change the publish status",
+      "deleteConfirm": "Delete this post?",
+      "deleteSuccess": "Post deleted",
+      "deleteFailed": "Failed to delete",
+      "publishButton": "Publish",
+      "unpublishButton": "Unpublish",
+      "updatedAt": "Updated"
     },
     "autoSave": {
       "label": "Auto-save",
@@ -660,6 +678,19 @@
       "lastSaved": "Auto-saved at {time}",
       "enabled": "Auto-save enabled",
       "disabled": "Auto-save disabled"
+    },
+    "tag": {
+      "heading": "Tags",
+      "addButton": "Add tag",
+      "addDialogTitle": "Add tag",
+      "nameLabel": "Tag name",
+      "namePlaceholder": "e.g. Announcement",
+      "empty": "No tags",
+      "loadFailed": "Failed to load tags",
+      "createSuccess": "Tag created",
+      "createFailed": "Failed to create",
+      "deleteSuccess": "Tag deleted",
+      "deleteFailed": "Failed to delete"
     }
   },
   "todo": {
