@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import type { TranslationResponse, TranslationStatus, TranslationSourceType } from '~/types/translation'
+import type {
+  TranslationResponse,
+  TranslationStatus,
+  TranslationSourceType,
+  TranslationDashboard,
+} from '~/types/translation'
 
 const props = defineProps<{
   orgId: string
@@ -22,20 +27,14 @@ const totalRecords = ref(0)
 const loading = ref(false)
 const dashboardLoading = ref(false)
 
-const dashboard = ref<{
-  totalCount: number
-  byStatus: Record<string, number>
-  byLanguage: Record<string, number>
-} | null>(null)
+const dashboard = ref<TranslationDashboard | null>(null)
 
 const statusOptions = computed(() => [
   { label: t('translation.filter_all'), value: '' },
   { label: t('translation.status_draft'), value: 'DRAFT' },
   { label: t('translation.status_in_review'), value: 'IN_REVIEW' },
-  { label: t('translation.status_approved'), value: 'APPROVED' },
   { label: t('translation.status_published'), value: 'PUBLISHED' },
-  { label: t('translation.status_stale'), value: 'STALE' },
-  { label: t('translation.status_rejected'), value: 'REJECTED' },
+  { label: t('translation.status_needs_update'), value: 'NEEDS_UPDATE' },
 ])
 
 const languageOptions = computed(() => [
@@ -103,8 +102,8 @@ function onFilterChange() {
   fetchTranslations()
 }
 
-async function onApprove(row: TranslationResponse) {
-  await updateStatus(props.orgId, row.id, 'APPROVED' as TranslationStatus)
+async function onStartReview(row: TranslationResponse) {
+  await updateStatus(props.orgId, row.id, 'IN_REVIEW' as TranslationStatus)
   fetchTranslations()
   fetchDashboard()
 }
@@ -122,12 +121,10 @@ function formatDate(dateStr: string) {
 const statusCardItems = computed(() => {
   if (!dashboard.value) return []
   return [
-    { label: t('translation.status_draft'), value: dashboard.value.byStatus['DRAFT'] ?? 0, color: 'text-gray-500' },
-    { label: t('translation.status_in_review'), value: dashboard.value.byStatus['IN_REVIEW'] ?? 0, color: 'text-yellow-500' },
-    { label: t('translation.status_approved'), value: dashboard.value.byStatus['APPROVED'] ?? 0, color: 'text-blue-500' },
-    { label: t('translation.status_published'), value: dashboard.value.byStatus['PUBLISHED'] ?? 0, color: 'text-green-500' },
-    { label: t('translation.status_stale'), value: dashboard.value.byStatus['STALE'] ?? 0, color: 'text-orange-500' },
-    { label: t('translation.status_rejected'), value: dashboard.value.byStatus['REJECTED'] ?? 0, color: 'text-red-500' },
+    { label: t('translation.status_draft'), value: dashboard.value.draft ?? 0, color: 'text-gray-500' },
+    { label: t('translation.status_in_review'), value: dashboard.value.inReview ?? 0, color: 'text-yellow-500' },
+    { label: t('translation.status_published'), value: dashboard.value.published ?? 0, color: 'text-green-500' },
+    { label: t('translation.status_needs_update'), value: dashboard.value.needsUpdate ?? 0, color: 'text-orange-500' },
   ]
 })
 
@@ -227,14 +224,14 @@ onMounted(() => {
         <template #body="{ data }">
           <div class="flex gap-2">
             <Button
-              v-if="data.status === 'DRAFT' || data.status === 'IN_REVIEW'"
-              :label="$t('translation.button_approve')"
+              v-if="data.status === 'DRAFT'"
+              :label="$t('translation.button_start_review')"
               size="small"
               severity="info"
-              @click="onApprove(data)"
+              @click="onStartReview(data)"
             />
             <Button
-              v-if="data.status === 'APPROVED'"
+              v-if="data.status === 'DRAFT' || data.status === 'IN_REVIEW' || data.status === 'NEEDS_UPDATE'"
               :label="$t('translation.button_publish')"
               size="small"
               severity="success"
