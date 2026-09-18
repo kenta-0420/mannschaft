@@ -135,52 +135,72 @@ class SelfScopedGuardRegressionTest {
     @DisplayName("AC-34b: NotificationPreferenceController#listPreferences の根拠コメントが実態と合っていること")
     class Ac34bListPreferencesRationale {
 
-        private static final Path SERVICE_PATH = Paths.get(
-            "src", "main", "java", "com", "mannschaft", "app",
-            "notification", "service", "NotificationPreferenceService.java");
+        private static final String SERVICE_FQN =
+            "com.mannschaft.app.notification.service.NotificationPreferenceService";
 
         /**
          * listPreferences の根拠コメントは「preferenceRepository.findByUserId の検索条件が
          * userId のみで、他ユーザーの識別子を受け取らない」と主張する。
          *
          * <p>この主張が崩れるのは、{@code listPreferences} の実装に
-         * {@code findByUserId(userId)} 単一引数以外の検索（例えば所属チーム経由で他ユーザーの
-         * 設定行まで拾うような join）が入ったとき。そうなった場合に本テストが赤くなることで、
-         * 「読み取り側に所属判定が入った後も自己スコープの主張が成立するか」を継続的に見張る。
+         * {@code findByUserId(userId)} 単一引数以外の Repository 呼び出し（例えば所属チーム
+         * 経由で他ユーザーの設定行まで拾うような join、別 Repository への問い合わせ）が
+         * 直接足されたとき。そうなった場合に本テストが赤くなることで、「読み取り側に
+         * 所属判定が入った後も自己スコープの主張が成立するか」を継続的に見張る。
          *
-         * <p>2026-09-17 時点の実測: {@code NotificationPreferenceService#listPreferences} は
-         * {@code preferenceRepository.findByUserId(userId)} を直接呼ぶのみで、所属判定・
-         * スコープ横断 join は一切無い。コメントの主張は現状の実装と一致している
-         * （PR #3328 が予告する「読み取り側への所属判定追加」はまだ着地していない）。
+         * <p><b>文字列部分一致からの是正</b>: 旧版はソースをテキストとして
+         * {@code contains("preferenceRepository.findByUserId(userId)")} /
+         * {@code !contains("findByUserIdAnd")} で判定しており、{@code findAll()} や
+         * 別 Repository への問い合わせ、スコープ横断処理を <b>追加しても検出できない</b>
+         * 空証明だった。ArchUnit の呼び出しグラフ（{@link JavaMethod#getMethodCallsFromSelf()}）で
+         * {@code listPreferences} から直接呼ばれる Repository 呼び出し集合を取り、
+         * {@code findByUserId} 以外が1件も無いことを検証する（{@link AuthzControllerGuardArchTest}
+         * と同じ直接呼び出し判定方式）。</p>
+         *
+         * <p>2026-09-18 時点の実測: {@code NotificationPreferenceService#listPreferences} は
+         * {@code preferenceRepository.findByUserId(userId)} を直接呼ぶのみで、他の Repository
+         * 呼び出しは一切無い。コメントの主張は現状の実装と一致している（PR #3328 が読み取り側へ
+         * 追加した {@code ScopeAffiliationCache} 所属判定は {@code fillScopeName} 経由の別呼び出しで
+         * あり、{@code @SelfScopedEndpoint} の宣言範囲外の別軸として Service 側コメントが
+         * 明示的に切り分けている）。
          */
         @Test
-        @DisplayName("listPreferences は findByUserId(userId) 単一引数のみを呼び、他の検索条件を持たないこと")
-        void listPreferencesはuserId単一引数のfindByUserIdのみを呼ぶこと() throws IOException {
-            String content = Files.readString(SERVICE_PATH, StandardCharsets.UTF_8);
-            String masked = SelfScopedEndpointMarkerGuardTest.mask(content);
+        @DisplayName("listPreferences から直接呼ばれる Repository は findByUserId(userId) 単一引数のみであること")
+        void listPreferencesはuserId単一引数のfindByUserIdのみを呼ぶこと() {
+            JavaClass serviceClass = importedClasses.get(SERVICE_FQN);
+            JavaMethod method = serviceClass.getMethods().stream()
+                .filter(m -> m.getName().equals("listPreferences"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                    "listPreferences メソッドが見つかりません: " + SERVICE_FQN
+                        + "。シグネチャが変わっていないか確認してください。"));
 
-            int methodAt = masked.indexOf("public List<PreferenceResponse> listPreferences(Long userId)");
-            assertTrue(methodAt >= 0,
-                "listPreferences(Long userId) のシグネチャが見つかりません。"
-                    + "シグネチャが変わっていないか確認してください: " + SERVICE_PATH.toAbsolutePath());
+            boolean sawFindByUserId = false;
+            java.util.Set<String> otherRepositoryCalls = new java.util.TreeSet<>();
 
-            int bodyEnd = masked.indexOf("private PreferenceResponse fillScopeName", methodAt);
-            assertTrue(bodyEnd > methodAt,
-                "listPreferences の本体の終端（次メソッド fillScopeName）が見つかりません。"
-                    + "メソッド構成が変わっていないか確認してください。");
+            for (com.tngtech.archunit.core.domain.JavaMethodCall call : method.getMethodCallsFromSelf()) {
+                JavaClass owner = call.getTarget().getOwner();
+                if (!owner.getSimpleName().endsWith("Repository")) {
+                    continue;
+                }
+                String calledMethodName = call.getTarget().getName();
+                if ("findByUserId".equals(calledMethodName)) {
+                    sawFindByUserId = true;
+                    continue;
+                }
+                otherRepositoryCalls.add(owner.getSimpleName() + "#" + calledMethodName);
+            }
 
-            String body = masked.substring(methodAt, bodyEnd);
-
-            assertTrue(body.contains("preferenceRepository.findByUserId(userId)"),
+            assertTrue(sawFindByUserId,
                 "listPreferences は preferenceRepository.findByUserId(userId) を呼ぶべきである"
-                    + "（@SelfScopedEndpoint の根拠コメントの主張）。実装:\n" + body);
+                    + "（@SelfScopedEndpoint の根拠コメントの主張）。呼び出しグラフから "
+                    + "findByUserId 呼び出しが検出できませんでした。");
 
-            // findByUserId は単一引数版のみを呼ぶこと（findByUserIdAnd... 等の複合検索を含まない）。
-            assertTrue(!body.contains("findByUserIdAnd"),
-                "listPreferences が findByUserIdAndXxx のような複合検索・所属判定を呼ぶように"
+            assertTrue(otherRepositoryCalls.isEmpty(),
+                "listPreferences が findByUserId 以外の Repository 呼び出しを持つように"
                     + "なっている場合、「userId のみで他ユーザーの識別子を受け取らない」という"
                     + "@SelfScopedEndpoint の根拠コメントは実態と合わなくなっている可能性がある。"
-                    + "コメントを実態に合わせて見直すこと。実装:\n" + body);
+                    + "コメントを実態に合わせて見直すこと。検出された呼び出し: " + otherRepositoryCalls);
         }
     }
 
@@ -205,6 +225,47 @@ class SelfScopedGuardRegressionTest {
          * どちらの場合も {@code extractTargets} が対象を検出しない（＝契約テストを要求しない）
          * ことを固定する。</p>
          */
+        @Test
+        @DisplayName("対象5メソッドの現物ソースに @SelfScopedEndpoint が存在しないこと（シミュレーションなし）")
+        void 対象5メソッドの現物ソースにSelfScopedEndpoint注釈が存在しないこと() throws IOException {
+            List<Path> paths = List.of(
+                Paths.get("src", "main", "java", "com", "mannschaft", "app",
+                    "shift", "controller", "ShiftAvailabilityController.java"),
+                Paths.get("src", "main", "java", "com", "mannschaft", "app",
+                    "notification", "controller", "NotificationPreferenceController.java"),
+                Paths.get("src", "main", "java", "com", "mannschaft", "app",
+                    "performance", "controller", "PerformancePersonalController.java")
+            );
+
+            List<String> methodsToCheck = List.of(
+                "getAvailabilityDefaults", "setAvailabilityDefaults", "deleteAvailabilityDefaults",
+                "updatePreference", "getMyPerformance");
+
+            StringBuilder failures = new StringBuilder();
+            for (Path path : paths) {
+                String rawContent = Files.readString(path, StandardCharsets.UTF_8);
+
+                // シミュレーションで加工しない現物ソースをそのまま渡す。listPreferences は
+                // 意図的に @SelfScopedEndpoint を維持しているため extractTargets が検出しても
+                // methodsToCheck に含まれず無視される。
+                SelfScopedEndpointMarkerGuardTest.Src src =
+                    new SelfScopedEndpointMarkerGuardTest.Src(path.toString().replace('\\', '/'), rawContent);
+                List<SelfScopedEndpointMarkerGuardTest.Target> targets =
+                    SelfScopedEndpointMarkerGuardTest.extractTargets(src);
+
+                for (SelfScopedEndpointMarkerGuardTest.Target t : targets) {
+                    if (methodsToCheck.contains(t.methodName)) {
+                        failures.append("  x ").append(t).append('\n');
+                    }
+                }
+            }
+
+            if (failures.length() > 0) {
+                fail("対象5メソッドの現物ソースに @SelfScopedEndpoint が検出された"
+                    + "（注釈削除の回帰、または再付与）:\n" + failures);
+            }
+        }
+
         @Test
         @DisplayName("注釈削除後、5メソッドは SelfScopedEndpointMarkerGuardTest の走査対象から外れること")
         void 注釈削除後は5メソッドが契約テスト必須の走査対象から外れること() throws IOException {
