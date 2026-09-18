@@ -38,7 +38,11 @@ async function requireRuntime() {
   if (missing.length) throw new Error(`実行条件不足（値は記録しません）: ${missing.join(', ')}`);
   if (process.env.B0_REAL_DB !== 'true') throw new Error('B0_REAL_DB=true が必要です。モックDBでは実測しません。');
   if (process.env.B0_THREE_BROWSER_CONTEXTS !== 'true') throw new Error('B0_THREE_BROWSER_CONTEXTS=true はオペレータ申告です。3利用者の別BrowserContextを保証する専用fixtureがないため、実測はblockedです。');
-  for (const state of ['tests/e2e/.auth/admin.json', 'tests/e2e/.auth/user.json']) if (!fs.existsSync(path.join(root, 'frontend', state))) throw new Error(`認証storageStateがありません: ${state}`);
+  if (journeys().some(([id]) => id === 'B0-J1')) {
+    for (const state of ['tests/e2e/.auth/admin.json', 'tests/e2e/.auth/user.json']) {
+      if (!fs.existsSync(path.join(root, 'frontend', state))) throw new Error(`認証storageStateがありません: ${state}`);
+    }
+  }
   const runtimeProbes = [
     ['BASE_URL', process.env.BASE_URL, (response) => response.ok],
     ['API_BASE_URL', new URL('/api/v1/users/me', process.env.API_BASE_URL).toString(), (response) => response.ok || response.status === 401]
