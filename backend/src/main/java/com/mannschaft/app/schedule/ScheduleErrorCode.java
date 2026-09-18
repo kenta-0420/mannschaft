@@ -78,7 +78,7 @@ public enum ScheduleErrorCode implements ErrorCode {
             Severity.WARN),
 
     /** 個人リマインダー上限超過（400: 件数上限は入力制約違反） */
-    PERSONAL_REMINDER_LIMIT_EXCEEDED("SCHEDULE_019", "個人スケジュールのリマインダーは最大3件です", Severity.WARN),
+    PERSONAL_REMINDER_LIMIT_EXCEEDED("SCHEDULE_019", "個人スケジュールのリマインダーは相対・絶対の合計で最大5件です", Severity.WARN),
 
     /** 個人スケジュール上限超過（400: 件数上限は入力制約違反） */
     PERSONAL_SCHEDULE_LIMIT_EXCEEDED("SCHEDULE_020", "個人スケジュールの上限（1000件）に達しています", Severity.WARN),

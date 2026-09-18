@@ -974,13 +974,14 @@ class GlobalExceptionHandlerTest {
 
         @ParameterizedTest(name = "{0} は 400 / {1}")
         @CsvSource({
-                "PERSONAL_REMINDER_LIMIT_EXCEEDED, SCHEDULE_019",
-                "PERSONAL_SCHEDULE_LIMIT_EXCEEDED, SCHEDULE_020"
+                "PERSONAL_REMINDER_LIMIT_EXCEEDED, SCHEDULE_019, 個人スケジュールのリマインダーは相対・絶対の合計で最大5件です",
+                "PERSONAL_SCHEDULE_LIMIT_EXCEEDED, SCHEDULE_020, 個人スケジュールの上限（1000件）に達しています"
         })
         @DisplayName("CMP-114: 個人予定・リマインダーの件数上限超過は 400 BadRequest")
         void handleBusinessException_personalLimitExceeded_400(
                 String errorCodeName,
-                String expectedCode) {
+                String expectedCode,
+                String expectedMessage) {
             com.mannschaft.app.schedule.ScheduleErrorCode errorCode =
                     com.mannschaft.app.schedule.ScheduleErrorCode.valueOf(errorCodeName);
 
@@ -993,6 +994,7 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo(expectedCode);
+            assertThat(response.getBody().getError().getMessage()).isEqualTo(expectedMessage);
         }
 
         @ParameterizedTest(name = "{0} は 409")
