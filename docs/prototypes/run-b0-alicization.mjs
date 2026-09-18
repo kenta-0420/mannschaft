@@ -48,7 +48,7 @@ async function requireRuntime() {
     ['API_BASE_URL', new URL('/api/v1/users/me', process.env.API_BASE_URL).toString(), (response) => response.ok || response.status === 401]
   ];
   for (const [name, url, accepts] of runtimeProbes) {
-    const response = await fetch(url, { signal: AbortSignal.timeout(5000) }).catch(() => null);
+    const response = await fetch(url, { signal: AbortSignal.timeout(60_000) }).catch(() => null);
     if (!response || !accepts(response)) throw new Error(`${name} 到達不可またはHTTP ${response?.status || '接続失敗'}`);
   }
 }
