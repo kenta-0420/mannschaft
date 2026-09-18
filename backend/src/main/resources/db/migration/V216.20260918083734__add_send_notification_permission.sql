@@ -51,11 +51,27 @@ WHERE r.name = 'ADMIN'
 -- 本件は逆の判断である。理由:
 --   確認通知の送信は既に本番で DEPUTY_ADMIN が checkAdminOrAbove 経由で実行できており、
 --   権限判定を後から入れるだけでは「画面は見えるが押すと 403」という退行を新たに作ってしまう。
---   よって初期状態では従来どおり全 DEPUTY_ADMIN が送信できるようにし、
---   絞り込みたい組織は role_permissions / permission_groups 側で外す運用とする。
+--   よって初期状態では従来どおり全 DEPUTY_ADMIN が送信できるようにする。
 -- 認可判定は rp.is_default = 1 の行のみを実付与とみなす
 --   （UserRoleRepository.countDeputyAdminWithPermissionInTeam / ...InOrganization）ため、
 --   ここは 0（天井行）ではなく 1 でなければ意味を成さない。
+--
+-- 【この行が意味すること — 運用で外すことはできない】
+--   role_permissions は (role_id, permission_id, is_default) だけを持つ**グローバル表**であり、
+--   組織列もチーム列も無い（V2.005__create_role_permissions_table.sql）。したがって
+--   この行が入っている限り、**全組織・全チームの DEPUTY_ADMIN が恒久的に本権限を保持する**。
+--   さらに判定クエリは
+--     「is_default=1 の role_permissions 行がある」OR「権限グループ経由で付与されている」
+--   の OR であり、第 1 項が常に真になるため、**権限グループ側で何をしても外れない**。
+--   すなわち「特定の組織だけ副管理者から送信権限を外す」手段は現状の仕組みには存在しない。
+--
+-- 【将来、権限で実際に絞りたくなったときの道筋】
+--   1. 本 INSERT が作った DEPUTY_ADMIN × SEND_NOTIFICATION の行を DELETE する migration を打つ
+--      （これで第 1 項が偽になり、判定が権限グループ経路だけを見るようになる）
+--   2. 付与は permission_groups（権限グループ画面）経由の個別付与へ一本化する
+--      — V214（MANAGE_SURVEYS）が最初から採っている形と同じになる
+--   ただし 1 を打った瞬間、個別付与を受けていない既存の副管理者は一斉に 403 になる。
+--   移行時は先に権限グループでの付与を済ませてから削除すること。
 INSERT INTO role_permissions (role_id, permission_id, is_default, created_at)
 SELECT r.id, p.id, 1, UTC_TIMESTAMP()
 FROM roles r
