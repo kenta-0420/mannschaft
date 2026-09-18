@@ -100,11 +100,14 @@ describe('featureGates 定数と純関数', () => {
 
     // 実測の内訳（doc・PR 本文・Issue と数値を揃えてある）。
     // CMP-260918-0024: organizations/[slug]/gamification.vue の削除に伴い
-    // FEATURE_GAMIFICATION_ENABLED から静的プレフィクス '/organizations/*/gamification' を
-    // 除去したため、静的1件減（48→47）・全体1件減（94→93）。動的は変わらず46のまま。
+    // FEATURE_GAMIFICATION_ENABLED から '/organizations/*/gamification' を除去した。
+    // このプレフィクスは '*'（組織 slug の動的セグメント）を含むため**動的**であり、
+    // 静的ではない（前回のコミットで「静的プレフィクスを除去」と誤って書いたのを訂正する）。
+    // よって動的が1件減（46→45）、静的は48のまま変わらず、全体は1件減（94→93）。
+    // 数値は GATE_ROUTE_MAP を直接カウントするスクリプトで実測し直して確認済み。
     expect(all).toHaveLength(93)
-    expect(staticOnly).toHaveLength(47)
-    expect(dynamic).toHaveLength(46)
+    expect(staticOnly).toHaveLength(48)
+    expect(dynamic).toHaveLength(45)
 
     const rules = buildGateRouteRules()
     // 静的プレフィクスは 1 件につき `/x` と `/x/**` の 2 エントリを生む。
