@@ -13,8 +13,8 @@
 #
 # 注: /admin/google-calendar（CMP-260912-0911）は当初この台帳にも duplicate-remnant として
 # 載せていたが、本番人の初回実行で「該当ページが実在しない」red を検出した。実測すると
-# frontend/app/pages/admin/google-calendar.vue は既に削除済みだった（他セッションが先行して
-# 削除完了。docs/task-list.md 側の「対応中」表記はこの時点で陳腐化している）。本番人が
+# frontend/app/pages/admin/google-calendar.vue は既に削除済みだった（本戦役の PR #3336 で
+# 削除済み。docs/task-list.md 側の「対応中」表記はこの時点で陳腐化している）。本番人が
 # 検出できることの実例としてここに記録し、台帳からは当該エントリを除いた。
 # | ④ BE が無く到達しても動かない | /admin/campaigns 等7枚（CMP-260912-0909 系） | 扱う（be-pending） |
 # | ⑤ 走査後に他セッションが導線を足した | /my/shift-availability（PR #3183 が先行していたのに誤検出） | 番人では防げない。**運用ルール**: 着手直前に最新 main で再確認すること |
