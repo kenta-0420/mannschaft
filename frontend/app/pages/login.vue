@@ -4,11 +4,28 @@ definePageMeta({
   middleware: 'guest',
 })
 
+// Vue の hydration より先に送信された場合だけ、ブラウザ標準の GET 送信を止める。
+// 静的スクリプトとして head に置き、クリック直後の loading 表示と送信予約を担当する。
+const PRE_HYDRATION_SUBMIT_GUARD = `(()=>{const e="login-form",t="login:hydrated",i=n=>{const o=n.target;if(!(o instanceof HTMLFormElement)||o.id!==e)return;n.preventDefault();n.stopImmediatePropagation();if(o.dataset.preHydrationSubmit==="pending")return;o.dataset.preHydrationSubmit="pending";const d=o.querySelector("[data-login-submit]");if(!d)return;d.disabled=true;d.setAttribute("aria-busy","true");d.setAttribute("data-p-disabled","true");d.setAttribute("data-p","loading");d.classList.add("p-button-loading");const a=d.querySelector(".p-button-icon");if(a){a.className="p-button-loading-icon p-button-icon p-button-icon-left pi pi-spinner pi-spin";a.removeAttribute("data-p");a.setAttribute("data-pc-section","loadingicon")}};document.addEventListener("submit",i,true);document.addEventListener(t,()=>document.removeEventListener("submit",i,true),{once:true})})();`
+
+useServerHead({
+  script: [
+    {
+      key: 'login-pre-hydration-submit-guard',
+      innerHTML: PRE_HYDRATION_SUBMIT_GUARD,
+      tagPosition: 'head',
+    },
+  ],
+})
+
 // ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
 // ref('') のままだとハイドレーション時に空で上書きされて消える。必ずセットアップ時に読むこと。
 const email = ref(readPrefilledInputValue('email'))
 const password = ref(readPrefilledInputValue('password'))
-const loading = ref(false)
+const loading = ref(
+  import.meta.client
+  && document.getElementById('login-form')?.dataset.preHydrationSubmit === 'pending',
+)
 const googleLoading = ref(false)
 
 const api = useApi()
@@ -22,13 +39,22 @@ const route = useRoute()
 const { applyUserLocale } = useLocale()
 const { t } = useI18n()
 
-// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
-// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
-const hydrated = useHydrated()
-// ハイドレーション待ちの間もボタンをローディング表示にする（無反応に見える問題の解消）。
-// :disabled="!hydrated" は Enter キーによる implicit submission 抑止のため別途維持する
-// （PrimeVue の loading は内部的に disabled 相当になるが、明示指定で確実に塞ぐ）。
-const submitting = computed(() => loading.value || !hydrated.value)
+onMounted(async () => {
+  const form = document.getElementById('login-form') as HTMLFormElement | null
+  const shouldReplaySubmit = form?.dataset.preHydrationSubmit === 'pending'
+
+  // ここからは Vue の @submit.prevent が処理できるため、head の一時ガードを解除する。
+  document.dispatchEvent(new Event('login:hydrated'))
+
+  if (form && shouldReplaySubmit) {
+    await nextTick()
+    if (!form.reportValidity()) {
+      loading.value = false
+      return
+    }
+    form.requestSubmit()
+  }
+})
 
 // OAuth競合メッセージ（/auth/oauth/callback → ?oauthConflict=true で遷移してきた場合）
 const oauthConflictMessage = computed<string | null>(() => {
@@ -198,7 +224,11 @@ async function handleLogin() {
 </script>
 
 <template>
-  <form @submit.prevent="handleLogin">
+  <form
+    id="login-form"
+    :data-pre-hydration-submit="loading ? 'pending' : undefined"
+    @submit.prevent="handleLogin"
+  >
     <div class="flex flex-col gap-4">
       <!-- 戻るリンク -->
       <NuxtLink
@@ -257,6 +287,7 @@ async function handleLogin() {
           type="email"
           placeholder="example@mannschaft.app"
           required
+          data-allow-mismatch
         />
       </div>
       <div class="flex flex-col gap-2">
@@ -268,14 +299,18 @@ async function handleLogin() {
           toggle-mask
           fluid
           required
+          data-allow-mismatch
+          :input-props="{ 'data-allow-mismatch': '' }"
         />
       </div>
       <Button
         type="submit"
         :label="t('auth.login.submit')"
         icon="pi pi-sign-in"
-        :loading="submitting"
-        :disabled="!hydrated"
+        loading-icon="pi pi-spinner pi-spin"
+        :loading="loading"
+        :aria-busy="loading || undefined"
+        data-login-submit
         class="mt-2"
       />
       <div class="flex flex-col items-center gap-2">
