@@ -283,7 +283,7 @@
 | Task | 機能 | 推奨ページパス | 備考 |
 |------|------|--------------|------|
 | 6-3 | スケジュール管理設定 | `admin/schedule-settings.vue` | カレンダー設定・カテゴリ管理 |
-| 6-4 | ブログ管理 | `admin/blog-management.vue` | 記事管理・カテゴリ・編集フロー |
+| 6-4 | ブログ管理 | ~~`admin/blog-management.vue`~~（CMP-260917-0041で削除。機能は`BlogPostList.vue`へ移植済み） | 記事管理・カテゴリ・編集フロー |
 | 6-5 | 掲示板カテゴリ管理 | `admin/bulletin-categories.vue` | カテゴリCRUD・権限設定 |
 | 6-6 | 備品管理（admin） | `admin/equipment.vue` | 備品カタログ・在庫・貸出 |
 | 6-7 | メンバー紹介管理 | `admin/member-profiles.vue` | プロフィール項目カスタマイズ |

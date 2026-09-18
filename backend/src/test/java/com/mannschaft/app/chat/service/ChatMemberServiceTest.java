@@ -14,6 +14,8 @@ import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,9 @@ class ChatMemberServiceTest {
 
     @Mock
     private com.mannschaft.app.common.AccessControlService accessControlService;
+
+    @Mock
+    private MembershipService membershipService;
 
     /**
      * チャンネル内の管理権限判定は本ガードに集約されている。
@@ -102,6 +107,8 @@ class ChatMemberServiceTest {
                     0, null, false, false, null, null);
 
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(membershipService.isActiveMemberForUpdate(USER_ID, ScopeType.TEAM, JOIN_TEAM_ID))
+                    .willReturn(true);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
             given(memberRepository.save(any(ChatChannelMemberEntity.class))).willReturn(saved);
             given(chatMapper.toMemberResponse(any(ChatChannelMemberEntity.class))).willReturn(expected);
@@ -120,6 +127,8 @@ class ChatMemberServiceTest {
             ChatChannelEntity channel = ChatChannelEntity.builder()
                     .channelType(ChannelType.TEAM_PUBLIC).teamId(JOIN_TEAM_ID).name("test").build();
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(membershipService.isActiveMemberForUpdate(USER_ID, ScopeType.TEAM, JOIN_TEAM_ID))
+                    .willReturn(true);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
 
             // when & then
@@ -169,8 +178,8 @@ class ChatMemberServiceTest {
             ChatChannelEntity channel = ChatChannelEntity.builder()
                     .channelType(ChannelType.TEAM_PUBLIC).teamId(JOIN_TEAM_ID).name("test").build();
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
-            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkMembership(USER_ID, JOIN_TEAM_ID, "TEAM");
+            given(membershipService.isActiveMemberForUpdate(USER_ID, ScopeType.TEAM, JOIN_TEAM_ID))
+                    .willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> chatMemberService.joinChannel(CHANNEL_ID, USER_ID))
@@ -482,7 +491,7 @@ class ChatMemberServiceTest {
             Long existingUser = 400L;
             AddMemberRequest req = new AddMemberRequest(List.of(newUser, existingUser));
             ChatChannelEntity channel = ChatChannelEntity.builder()
-                    .channelType(ChannelType.TEAM_PUBLIC).name("test").build();
+                    .channelType(ChannelType.DM).name("test").build();
 
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
             given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, newUser)).willReturn(false);
@@ -516,6 +525,60 @@ class ChatMemberServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
             verify(memberRepository, never()).save(any(ChatChannelMemberEntity.class));
+        }
+        @Test
+        @DisplayName("TEAM channel に非在籍ユーザーは追加できない")
+        void teamOutsiderIsRejected() {
+            Long outsiderId = 300L;
+            AddMemberRequest req = new AddMemberRequest(List.of(outsiderId));
+            ChatChannelEntity channel = ChatChannelEntity.builder()
+                    .channelType(ChannelType.TEAM_PRIVATE).teamId(JOIN_TEAM_ID).build();
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(membershipService.isActiveMemberForUpdate(outsiderId, ScopeType.TEAM, JOIN_TEAM_ID))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> chatMemberService.addMembers(CHANNEL_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(memberRepository, never()).save(any(ChatChannelMemberEntity.class));
+        }
+
+        @Test
+        @DisplayName("ORG channel に非在籍ユーザーは追加できない")
+        void organizationOutsiderIsRejected() {
+            Long organizationId = 20L;
+            Long outsiderId = 300L;
+            AddMemberRequest req = new AddMemberRequest(List.of(outsiderId));
+            ChatChannelEntity channel = ChatChannelEntity.builder()
+                    .channelType(ChannelType.ORG_PRIVATE).organizationId(organizationId).build();
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(membershipService.isActiveMemberForUpdate(outsiderId, ScopeType.ORGANIZATION, organizationId))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> chatMemberService.addMembers(CHANNEL_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(memberRepository, never()).save(any(ChatChannelMemberEntity.class));
+        }
+
+        @Test
+        @DisplayName("DM への追加ではスコープ在籍を確認しない")
+        void dmAdditionDoesNotCheckScopeMembership() {
+            Long inviteeId = 300L;
+            AddMemberRequest req = new AddMemberRequest(List.of(inviteeId));
+            ChatChannelEntity channel = ChatChannelEntity.builder().channelType(ChannelType.DM).build();
+            given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
+            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, inviteeId)).willReturn(false);
+            given(memberRepository.save(any(ChatChannelMemberEntity.class)))
+                    .willReturn(ChatChannelMemberEntity.builder().build());
+            given(chatMapper.toMemberResponseList(any())).willReturn(List.of());
+
+            chatMemberService.addMembers(CHANNEL_ID, USER_ID, req);
+
+            verify(membershipService, never()).isActiveMemberForUpdate(any(), any(), any());
+            verify(memberRepository).save(any(ChatChannelMemberEntity.class));
         }
     }
 }

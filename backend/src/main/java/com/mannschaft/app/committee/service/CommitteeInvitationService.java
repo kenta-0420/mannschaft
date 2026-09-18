@@ -1,14 +1,18 @@
 package com.mannschaft.app.committee.service;
 
 import com.mannschaft.app.committee.dto.CommitteeInviteRequest;
+import com.mannschaft.app.committee.entity.CommitteeEntity;
 import com.mannschaft.app.committee.entity.CommitteeInvitationEntity;
 import com.mannschaft.app.committee.entity.CommitteeInvitationResolution;
 import com.mannschaft.app.committee.entity.CommitteeMemberEntity;
 import com.mannschaft.app.committee.entity.CommitteeRole;
+import com.mannschaft.app.committee.entity.CommitteeStatus;
 import com.mannschaft.app.committee.error.CommitteeErrorCode;
 import com.mannschaft.app.committee.repository.CommitteeInvitationRepository;
 import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.committee.repository.CommitteeRepository;
+import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -30,6 +35,8 @@ public class CommitteeInvitationService {
     private final CommitteeRepository committeeRepository;
     private final CommitteeMemberRepository committeeMemberRepository;
     private final CommitteeInvitationRepository committeeInvitationRepository;
+    private final AccessControlService accessControlService;
+    private final UserRowLockService userRowLockService;
 
     /** 委員会メンバーシップ・委員会内ロール・招集状の宛先本人性に基づく認可判定の一元窓口。 */
     private final CommitteeAccessGuard committeeAccessGuard;
@@ -168,16 +175,34 @@ public class CommitteeInvitationService {
      */
     @Transactional
     public CommitteeMemberEntity acceptInvitation(String inviteToken, Long currentUserId) {
-        CommitteeInvitationEntity invitation = committeeInvitationRepository.findByInviteToken(inviteToken)
+        // 組織脱退は user → committee → member → invitation の順にロックするため、同じ順序に揃える。
+        userRowLockService.lockAll(currentUserId);
+
+        CommitteeInvitationEntity initialInvitation = committeeInvitationRepository.findByInviteToken(inviteToken)
                 .orElseThrow(() -> new BusinessException(CommitteeErrorCode.INVITATION_TOKEN_INVALID));
 
-        // 認可チェック: 被招集者本人のみ受諾できる（冪等応答を返す分岐よりも前に通す）
+        CommitteeEntity committee = committeeRepository.findByIdForUpdate(initialInvitation.getCommitteeId())
+                .orElseThrow(() -> new BusinessException(CommitteeErrorCode.INVITATION_EXPIRED));
+        List<CommitteeMemberEntity> activeMembers = committeeMemberRepository
+                .findByCommitteeIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc(committee.getId());
+        CommitteeInvitationEntity invitation = committeeInvitationRepository
+                .findByIdForUpdate(initialInvitation.getId())
+                .orElseThrow(() -> new BusinessException(CommitteeErrorCode.INVITATION_TOKEN_INVALID));
+
+        // ロック後の最新行で、宛先本人・委員会状態・親組織所属を再検査する。
         committeeAccessGuard.requireInvitee(invitation, currentUserId);
+        if (committee.getStatus() != CommitteeStatus.DRAFT
+                && committee.getStatus() != CommitteeStatus.ACTIVE) {
+            throw new BusinessException(CommitteeErrorCode.INVITATION_EXPIRED);
+        }
+        accessControlService.checkMembership(
+                currentUserId, committee.getOrganizationId(), "ORGANIZATION");
 
         // 既に ACCEPTED 済みの場合は冪等に既存メンバーシップを返す
         if (CommitteeInvitationResolution.ACCEPTED.equals(invitation.getResolution())) {
-            return committeeMemberRepository
-                    .findByCommitteeIdAndUserIdAndLeftAtIsNull(invitation.getCommitteeId(), currentUserId)
+            return activeMembers.stream()
+                    .filter(member -> currentUserId.equals(member.getUserId()))
+                    .findFirst()
                     .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_MEMBER));
         }
 
@@ -195,13 +220,13 @@ public class CommitteeInvitationService {
         }
 
         // 既に現役メンバーの場合は ACCEPTED にして既存メンバーシップを返す
-        if (committeeMemberRepository.existsByCommitteeIdAndUserIdAndLeftAtIsNull(
-                invitation.getCommitteeId(), currentUserId)) {
+        Optional<CommitteeMemberEntity> existingMember = activeMembers.stream()
+                .filter(member -> currentUserId.equals(member.getUserId()))
+                .findFirst();
+        if (existingMember.isPresent()) {
             invitation.markAccepted();
             committeeInvitationRepository.save(invitation);
-            return committeeMemberRepository
-                    .findByCommitteeIdAndUserIdAndLeftAtIsNull(invitation.getCommitteeId(), currentUserId)
-                    .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_MEMBER));
+            return existingMember.get();
         }
 
         // 招集状を受諾済みにしてメンバーを追加

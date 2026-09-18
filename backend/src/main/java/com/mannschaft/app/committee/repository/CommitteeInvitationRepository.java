@@ -1,7 +1,9 @@
 package com.mannschaft.app.committee.repository;
 
 import com.mannschaft.app.committee.entity.CommitteeInvitationEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,6 +20,11 @@ public interface CommitteeInvitationRepository extends JpaRepository<CommitteeIn
      * トークンで招集状を検索する。
      */
     Optional<CommitteeInvitationEntity> findByInviteToken(String inviteToken);
+
+    /** 親委員会・現役メンバーをロックした後に招集状の最新状態を取得する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM CommitteeInvitationEntity i WHERE i.id = :invitationId")
+    Optional<CommitteeInvitationEntity> findByIdForUpdate(@Param("invitationId") Long invitationId);
 
     /**
      * 委員会の未解決招集状一覧を取得する。
@@ -39,4 +46,21 @@ public interface CommitteeInvitationRepository extends JpaRepository<CommitteeIn
      */
     @Query("SELECT i FROM CommitteeInvitationEntity i WHERE i.resolvedAt IS NULL AND i.expiresAt < :now")
     List<CommitteeInvitationEntity> findExpiredPendingInvitations(@Param("now") LocalDateTime now);
+
+    /**
+     * 組織脱退者宛ての未解決招集状を、論理削除済み委員会も含めてロック取得する。
+     */
+    @Query(value = """
+            SELECT i.*
+              FROM committee_invitations i
+              JOIN committees c ON c.id = i.committee_id
+             WHERE c.organization_id = :organizationId
+               AND i.invitee_user_id = :inviteeUserId
+               AND i.resolved_at IS NULL
+             ORDER BY i.committee_id ASC, i.id ASC
+             FOR UPDATE
+            """, nativeQuery = true)
+    List<CommitteeInvitationEntity> findPendingByOrganizationAndInviteeForUpdate(
+            @Param("organizationId") Long organizationId,
+            @Param("inviteeUserId") Long inviteeUserId);
 }
