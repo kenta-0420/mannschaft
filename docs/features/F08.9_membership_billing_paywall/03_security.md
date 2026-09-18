@@ -7,6 +7,10 @@
 
 ## 1. 認可マトリクス
 
+### P7 協会請求の決済境界
+
+支払いの team scope と ADMIN/DEPUTY_ADMIN 認可、request の支払い可能 status、Connect READY は Stripe 呼出より前の短い DB transaction で検証する。raw `Idempotency-Key`、PaymentIntent client secret、Stripe 秘密情報を DB またはログへ保存しない。hash 済み key と Stripe metadata は相関専用であり、webhook payload の metadata は信頼済み Stripe signature 検証後にのみ用いる。
+
 | 操作 | 許可される主体 | 検証 |
 |---|---|---|
 | 会費決済（受益者指定） | 払い手＝本人 / 後見保護者 / 有効 grant 保有者 / チーム・組織 ADMIN(手動記録) | §2 代理払い認可 |

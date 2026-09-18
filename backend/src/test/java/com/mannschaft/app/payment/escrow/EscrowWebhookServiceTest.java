@@ -4,6 +4,8 @@ import com.mannschaft.app.payment.WebhookIdempotencyService;
 import com.mannschaft.app.payment.WebhookProcessStatus;
 import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.escrow.event.EscrowCapturedEvent;
+import com.mannschaft.app.payment.service.PaymentRequestPaymentWebhookService;
+import com.mannschaft.app.payment.service.StripeWebhookRetryableException;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,11 +43,13 @@ class EscrowWebhookServiceTest {
     @Mock private EscrowTransactionRepository escrowTransactionRepository;
     @Mock private LedgerEntryRepository ledgerEntryRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private PaymentRequestPaymentWebhookService paymentRequestPaymentWebhookService;
 
     @InjectMocks private EscrowWebhookService service;
 
     private StripePaymentProvider.EscrowWebhookEventInfo event(String id, String type) {
-        return new StripePaymentProvider.EscrowWebhookEventInfo(id, type, false, "pi_abc", null, null, null, null);
+        return new StripePaymentProvider.EscrowWebhookEventInfo(
+                id, type, false, "pi_abc", null, null, null, null, Map.of());
     }
 
     private static final UUID ESCROW_ID = UUID.fromString("019607a0-0000-7000-8000-0000000000aa");
@@ -140,6 +145,50 @@ class EscrowWebhookServiceTest {
         assertThat(captor.getValue().getStatus()).isEqualTo(EscrowStatus.CANCELLED);
         assertThat(captor.getValue().getCancelledAt()).isNotNull();
         verify(idempotencyService).markProcessed("evt_pf", WebhookProcessStatus.PROCESSED);
+    }
+
+    @Test
+    @DisplayName("P7 payment_failed は escrow を取消さず同じ PaymentIntent の再確認を許す")
+    void paymentRequestPaymentFailed_remainsRetryable() {
+        StripePaymentProvider.EscrowWebhookEventInfo event =
+                new StripePaymentProvider.EscrowWebhookEventInfo(
+                        "evt_p7_pf", "payment_intent.payment_failed", false, "pi_abc", null,
+                        null, null, null, Map.of("paymentAttemptId", UUID.randomUUID().toString()));
+        given(stripePaymentProvider.constructEscrowEvent(any(), any())).willReturn(event);
+        given(idempotencyService.tryBegin("evt_p7_pf", "payment_intent.payment_failed", false)).willReturn(true);
+        EscrowTransactionEntity authorized = escrow(EscrowStatus.AUTHORIZED);
+        given(escrowTransactionRepository.findByStripePaymentIntentId("pi_abc"))
+                .willReturn(Optional.of(authorized));
+
+        service.handleWebhook("payload", "sig");
+
+        assertThat(authorized.getStatus()).isEqualTo(EscrowStatus.AUTHORIZED);
+        verify(escrowTransactionRepository, never()).save(any());
+        verify(paymentRequestPaymentWebhookService)
+                .noteRetryableFailure("pi_abc", "payment_intent.payment_failed");
+        verify(idempotencyService).markProcessed("evt_p7_pf", WebhookProcessStatus.PROCESSED);
+    }
+
+    @Test
+    @DisplayName("P7 attempt 相関の commit 前は escrow が見えてもイベント全体を再送対象にする")
+    void paymentRequestAttachmentPending_marksEventFailedForRetry() {
+        Map<String, String> metadata = Map.of("paymentAttemptId", UUID.randomUUID().toString());
+        StripePaymentProvider.EscrowWebhookEventInfo event =
+                new StripePaymentProvider.EscrowWebhookEventInfo(
+                        "evt_p7_early", "payment_intent.succeeded", false, "pi_abc", null,
+                        null, null, null, metadata);
+        given(stripePaymentProvider.constructEscrowEvent(any(), any())).willReturn(event);
+        given(idempotencyService.tryBegin("evt_p7_early", "payment_intent.succeeded", false)).willReturn(true);
+        org.mockito.BDDMockito.willThrow(new StripeWebhookRetryableException("attachment pending"))
+                .given(paymentRequestPaymentWebhookService)
+                .requireEscrowAttachmentForPaymentRequest("pi_abc", metadata);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.handleWebhook("payload", "sig"))
+                .isInstanceOf(StripeWebhookRetryableException.class);
+
+        verify(escrowTransactionRepository, never()).findByStripePaymentIntentIdForUpdate(any());
+        verify(idempotencyService).markFailed("evt_p7_early");
+        verify(idempotencyService, never()).markProcessed(any(), any());
     }
 
     @Test

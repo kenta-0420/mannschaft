@@ -227,6 +227,13 @@ Stripe Subscription（スケジュールの主）と escrow 台帳（金の記�
 
 ## 6. 協会→加盟チーム請求（E）
 
+### 6.1a P7 決済確定の境界（2026-09-18）
+
+- 支払い開始は `PROCESSING` と現在の payment attempt を記録するだけで、`PAID` と `team_payment_advances` の作成は Stripe の `payment_intent.succeeded` webhook でのみ確定する。
+- client の `Idempotency-Key` は SHA-256 hash だけを attempt に保存する。Stripe idempotency key は `prpay-{attempt UUIDv7}`、PaymentIntent metadata は `paymentRequestId` と `paymentAttemptId` で相関する。
+- 同一 request/key は同じ attempt/PaymentIntent に収束し、別 key は PROCESSING 中に 409 とする。カード失敗は同じ PaymentIntent の再確認に備えて PROCESSING を維持し、canceled は現行 attempt のみ開始前 status へ復帰する。
+- prepare/attach は短い DB transaction、Stripe I/O は transaction 外で実施する。PI 作成後に attachment が未反映の webhook は retryable 5xx として Stripe 再送で回収する。
+
 ### 6.1 請求モデル `payment_requests`
 
 組織(協会=ORG)が加盟チーム(TEAM)に対して発行する請求書。
