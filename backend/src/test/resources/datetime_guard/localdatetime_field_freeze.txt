@@ -676,7 +676,7 @@ LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.StripeCustomerEntity|1
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.TeamAccessRequirementEntity|1
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.TeamPaymentAdvanceEntity|5
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.TeamSubscriptionEntity|1
-LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.escrow.ConnectChargeService|1
+LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.escrow.EscrowQueryService|1
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.escrow.EscrowTransactionEntity|6
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.escrow.LedgerEntryEntity|1
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.escrow.RefundEntity|2
