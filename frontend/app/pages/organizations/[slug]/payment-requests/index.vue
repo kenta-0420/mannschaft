@@ -134,7 +134,7 @@ onMounted(load)
       <DashboardEmptyState
         v-if="requests.length === 0"
         icon="pi pi-file"
-        :title="t('payment.membership.paymentRequest.empty')"
+        :message="t('payment.membership.paymentRequest.empty')"
       />
       <div v-else class="grid gap-3">
         <SectionCard v-for="request in requests" :key="request.id" :title="request.title || '-'">

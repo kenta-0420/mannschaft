@@ -86,7 +86,7 @@ test.describe('CMP-011 P7 支払依頼 UI', () => {
     })
     await page.route(`**/api/v1/organizations/${ORG_ID}/payment-requests/${REQUEST_ID}/send`, async (route) => {
       expect(route.request().method()).toBe('PATCH')
-      requests = [{ ...requests[0], status: 'SENT' }]
+      requests = [{ ...(requests[0] ?? draftRequest()), status: 'SENT' }]
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: requests[0] }) })
     })
 

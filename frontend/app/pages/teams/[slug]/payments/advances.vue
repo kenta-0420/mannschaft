@@ -78,7 +78,7 @@ onMounted(load)
     <DashboardEmptyState
       v-else-if="advances.length === 0"
       icon="pi pi-wallet"
-      :title="t('payment.membership.paymentRequest.empty')"
+      :message="t('payment.membership.paymentRequest.empty')"
     />
     <div v-else class="grid gap-3">
       <SectionCard

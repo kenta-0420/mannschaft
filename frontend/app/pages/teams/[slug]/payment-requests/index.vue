@@ -83,7 +83,7 @@ onMounted(load)
     <DashboardEmptyState
       v-else-if="requests.length === 0"
       icon="pi pi-inbox"
-      :title="t('payment.membership.paymentRequest.empty')"
+      :message="t('payment.membership.paymentRequest.empty')"
     />
     <div v-else class="grid gap-3">
       <NuxtLink
