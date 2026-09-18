@@ -52379,7 +52379,6 @@ export interface components {
             /** Format: int64 */
             id?: number;
             isActive?: boolean;
-            placeholderTagId?: boolean;
             placement?: string;
             provider?: string;
             tagId?: string;
@@ -152731,7 +152730,7 @@ export interface operations {
         parameters: {
             query: {
                 q: string;
-                teamPageId?: number;
+                teamPageId: number;
                 limit?: number;
             };
             header?: never;
