@@ -22,8 +22,8 @@ const credentials = {
     password: process.env.TEST_USER_PASSWORD ?? 'TestPass2026!',
   },
   outsider: {
-    email: process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-outsider@test.mannschaft.local',
-    password: process.env.TEST_OUTSIDER_PASSWORD ?? 'TestPass2026!',
+    email: process.env.TEST_USER2_EMAIL ?? process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-outsider@test.mannschaft.local',
+    password: process.env.TEST_USER2_PASSWORD ?? process.env.TEST_OUTSIDER_PASSWORD ?? 'TestPass2026!',
   },
 } as const
 

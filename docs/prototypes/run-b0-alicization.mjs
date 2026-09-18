@@ -143,9 +143,13 @@ async function run() {
   const startedAt = new Date().toISOString();
   const runId = `B0-${startedAt.replaceAll(':', '-')}`;
   const result = { schemaVersion: 2, runId, startedAt, mode: 'real-ui-real-db', selectedJourneys: journeys().map(([id]) => id), conditions: { baseUrlConfigured: true, apiBaseUrlConfigured: true, realDb: true, threeUsers: 'operator-declared', separateBrowserContexts: 'not-proven' }, journeys: [], insights: [] };
-  const dedicatedProof = 'frontend/tests/e2e/real/b0-j1-dashboard-scope.spec.ts';
+  const dedicatedProofs = {
+    'B0-J1': 'frontend/tests/e2e/real/b0-j1-dashboard-scope.spec.ts',
+    'B0-J7': 'frontend/tests/e2e/real/personal-timeline.spec.ts'
+  };
   for (const [id, item] of journeys()) {
-    if (id !== 'B0-J1') {
+    const dedicatedProof = dedicatedProofs[id];
+    if (!dedicatedProof) {
       result.journeys.push({ id, status: 'blocked', specPaths: item.specPaths, reason: '専用proof spec未整備' });
       continue;
     }
@@ -153,8 +157,13 @@ async function run() {
     const jsonPath = path.join(outputDir, `${id}-${Date.now()}.json`);
     const playwrightCli = path.join(root, 'frontend/node_modules/@playwright/test/cli.js');
     if (!fs.existsSync(playwrightCli)) throw new Error('Playwright依存がありません: frontend/node_modules/@playwright/test/cli.js');
-    const specs = [...new Set([...item.specPaths, dedicatedProof])].map(normalizeSpecPath);
-    const child = spawnSync(process.execPath, [playwrightCli, 'test', ...specs, '--reporter=json'], { cwd: path.join(root, 'frontend'), env: { ...process.env }, encoding: 'utf8' });
+    const specs = id === 'B0-J1'
+      ? [...new Set([...item.specPaths, dedicatedProof])].map(normalizeSpecPath)
+      : [normalizeSpecPath(dedicatedProof)];
+    const playwrightArgs = id === 'B0-J7'
+      ? [playwrightCli, 'test', ...specs, '--config', 'playwright-real.config.ts', '--project', 'chromium-real', '--no-deps', '--workers=1', '--reporter=json']
+      : [playwrightCli, 'test', ...specs, '--reporter=json'];
+    const child = spawnSync(process.execPath, playwrightArgs, { cwd: path.join(root, 'frontend'), env: { ...process.env }, encoding: 'utf8' });
     const stdout = child.stdout || '';
     const parsed = (() => { try { return JSON.parse(stdout); } catch { return null; } })();
     const summary = summarizeSuites(parsed?.suites);
