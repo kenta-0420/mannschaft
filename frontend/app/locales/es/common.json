@@ -486,6 +486,10 @@
   },
   "confirmable": {
     "title": "Notificación de confirmación",
+    "page": {
+      "settings_title": "Configuración de notificaciones de confirmación",
+      "settings_subtitle": "Gestiona la configuración, el envío y el historial de notificaciones de confirmación"
+    },
     "settings": "Configuración de notificaciones de confirmación",
     "send": "Enviar notificación de confirmación",
     "history": "Historial de envíos",

@@ -486,6 +486,10 @@
   },
   "confirmable": {
     "title": "확인 알림",
+    "page": {
+      "settings_title": "확인 알림 설정",
+      "settings_subtitle": "확인 알림의 설정, 발송, 발송 기록을 관리합니다"
+    },
     "settings": "확인 알림 설정",
     "send": "확인 알림 보내기",
     "history": "발송 기록",
