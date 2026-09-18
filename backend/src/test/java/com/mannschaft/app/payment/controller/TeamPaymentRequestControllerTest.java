@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -131,6 +132,35 @@ class TeamPaymentRequestControllerTest {
                 .andExpect(jsonPath("$.data.clientSecret").value("cs_secret"))
                 .andExpect(jsonPath("$.data.advanceId").value(advance.toString()));
         verify(paymentRequestService).pay(TEAM_ID, id, ACTOR_ID, "idem-key-xyz");
+    }
+
+    @Test
+    @DisplayName("受け入れ契約: Idempotency-Key 欠落は 400 で、決済 Service を呼ばない")
+    void 支払いはIdempotencyKey必須() throws Exception {
+        mockMvc.perform(post("/api/v1/teams/{teamId}/payment-requests/{id}/pay", TEAM_ID, UUID.randomUUID()))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(paymentRequestService);
+    }
+
+    @Test
+    @DisplayName("受け入れ契約: blank の Idempotency-Key は 400 で、決済 Service を呼ばない")
+    void blankIdempotencyKeyは拒否する() throws Exception {
+        mockMvc.perform(post("/api/v1/teams/{teamId}/payment-requests/{id}/pay", TEAM_ID, UUID.randomUUID())
+                        .header("Idempotency-Key", "   "))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(paymentRequestService);
+    }
+
+    @Test
+    @DisplayName("受け入れ契約: 長過ぎる Idempotency-Key は 400 で、決済 Service を呼ばない")
+    void 長過ぎるIdempotencyKeyは拒否する() throws Exception {
+        mockMvc.perform(post("/api/v1/teams/{teamId}/payment-requests/{id}/pay", TEAM_ID, UUID.randomUUID())
+                        .header("Idempotency-Key", "a".repeat(256)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(paymentRequestService);
     }
 
     @Test

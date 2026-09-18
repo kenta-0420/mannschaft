@@ -44,6 +44,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -301,8 +302,8 @@ class PaymentRequestServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: SENT を支払い PAID 化し escrow 連結・立替を起票・charge 引数を検証")
-        void 支払い成功とcharge引数() {
+        @DisplayName("受け入れ契約: 支払い起票直後は PAID/立替確定にせず、Webhook 確定待ちへ留める")
+        void 支払い起票直後はWebhook確定待ち() {
             PaymentRequestEntity r = payableRequest(PaymentRequestStatus.SENT);
             given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
             given(paymentRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -310,10 +311,13 @@ class PaymentRequestServiceTest {
 
             PaymentRequestPayResult result = service.pay(TEAM_ID, r.getId(), ADMIN_USER_ID, "idem-1");
 
-            assertThat(r.getStatus()).isEqualTo(PaymentRequestStatus.PAID);
+            // PaymentIntent 作成/confirm 前の応答は決済成功の根拠にしない。PROCESSING 導入まで
+            // 状態語彙は実装に委ねるが、少なくとも PAID へ先走ってはならない。
+            assertThat(r.getStatus()).isNotEqualTo(PaymentRequestStatus.PAID);
             assertThat(r.getEscrowTransactionId()).isEqualTo(ESCROW_ID);
             assertThat(result.escrowTransactionId()).isEqualTo(ESCROW_ID);
             assertThat(result.clientSecret()).isEqualTo("secret_x");
+            assertThat(result.advanceId()).isNull();
 
             ArgumentCaptor<MembershipChargeCommand> captor = ArgumentCaptor.forClass(MembershipChargeCommand.class);
             verify(connectChargeService).charge(captor.capture());
@@ -324,9 +328,47 @@ class PaymentRequestServiceTest {
             assertThat(cmd.payerUserId()).isEqualTo(ADMIN_USER_ID);
             assertThat(cmd.idempotencyKey()).isEqualTo("idem-1");
 
-            verify(teamPaymentAdvanceService).createAdvance(
+            verify(teamPaymentAdvanceService, never()).createAdvance(
                     eq(ORG_ID), eq(TEAM_ID), eq(ADMIN_USER_ID), eq(ESCROW_ID), eq(r.getId()),
                     eq(30000), eq("JPY"));
+        }
+
+        @Test
+        @DisplayName("受け入れ契約: 同一 Idempotency-Key 再送は起票結果へ収束し、別キーは確定待ち中に外部課金しない")
+        void 同一キー再送は収束し別キーは確定待ち中に拒否する() {
+            PaymentRequestEntity r = payableRequest(PaymentRequestStatus.SENT);
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+            given(paymentRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            stubReadyPayeeAndCustomerAndCharge();
+
+            PaymentRequestPayResult first = service.pay(TEAM_ID, r.getId(), ADMIN_USER_ID, "same-key");
+            PaymentRequestPayResult replay = service.pay(TEAM_ID, r.getId(), ADMIN_USER_ID, "same-key");
+
+            assertThat(replay).isEqualTo(first);
+            assertThat(r.getStatus()).isNotEqualTo(PaymentRequestStatus.PAID);
+            verify(connectChargeService, times(1)).charge(any(MembershipChargeCommand.class));
+            verify(teamPaymentAdvanceService, never()).createAdvance(
+                    anyLong(), anyLong(), anyLong(), any(), any(), anyInt(), any());
+
+            assertThatThrownBy(() -> service.pay(TEAM_ID, r.getId(), ADMIN_USER_ID, "different-key"))
+                    .isInstanceOf(BusinessException.class);
+            verify(connectChargeService, times(1)).charge(any(MembershipChargeCommand.class));
+        }
+
+        @Test
+        @DisplayName("受け入れ契約: 外部決済が canceled/failed なら PAID/立替を確定せず支払い可能状態へ戻す")
+        void canceledOrFailedでは請求を確定しない() {
+            PaymentRequestEntity r = payableRequest(PaymentRequestStatus.SENT);
+            given(paymentRequestRepository.findByIdAndDeletedAtIsNull(r.getId())).willReturn(Optional.of(r));
+            given(paymentRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            stubReadyPayeeAndCustomerAndCharge();
+            given(connectChargeService.charge(any(MembershipChargeCommand.class)))
+                    .willReturn(new MembershipChargeResult(ESCROW_ID, "secret_x", "pi_x", EscrowStatus.CANCELLED));
+
+            service.pay(TEAM_ID, r.getId(), ADMIN_USER_ID, "failed-key");
+
+            assertThat(r.getStatus()).isNotEqualTo(PaymentRequestStatus.PAID);
+            verify(teamPaymentAdvanceService, never()).createAdvance(anyLong(), anyLong(), anyLong(), any(), any(), anyInt(), any());
         }
 
         @Test
