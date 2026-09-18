@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 import dotenv from 'dotenv'
 import path from 'path'
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env.test') })
+dotenv.config({ path: path.resolve(process.cwd(), '.env.test'), quiet: true })
 
 // .env.test は .gitignore 対象（追跡外）のため、未設定環境では API_BASE_URL が
 // 空文字（baseURL相対）になり fixtures/auth.ts の loginViaApi が Nuxt(3000) に

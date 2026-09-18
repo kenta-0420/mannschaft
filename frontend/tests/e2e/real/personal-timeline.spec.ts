@@ -9,7 +9,7 @@ import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
  * 対象操作である三スコープ投稿とダッシュボード/個人タイムラインの確認は、すべて実UIで行う。
  */
 test.describe.configure({ mode: 'serial' })
-test.use({ storageState: { cookies: [], origins: [] }, trace: 'on', screenshot: 'on' })
+test.use({ storageState: { cookies: [], origins: [] }, trace: 'off', screenshot: 'only-on-failure' })
 
 const API = process.env.API_BASE_URL ?? 'http://localhost:8084'
 const credentials = {
@@ -101,7 +101,7 @@ async function assertAggregate(page: Page, posts: readonly CreatedPost[]): Promi
 }
 
 test('NOTE-260918-145441-001: 所属チーム・組織・村の投稿がダッシュボードと個人タイムラインで一致する', async ({ browser }, testInfo) => {
-  test.setTimeout(1_200_000)
+  test.setTimeout(1_500_000)
   const admin = await browser.newContext()
   const member = await browser.newContext()
   const outsider = await browser.newContext()

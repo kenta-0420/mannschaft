@@ -171,7 +171,12 @@ async function run() {
     const playwrightArgs = id === 'B0-J7'
       ? [playwrightCli, 'test', ...specs, '--config', 'playwright-real.config.ts', '--project', 'chromium-real', '--no-deps', '--workers=1', '--reporter=json']
       : [playwrightCli, 'test', ...specs, '--reporter=json'];
-    const child = spawnSync(process.execPath, playwrightArgs, { cwd: path.join(root, 'frontend'), env: { ...process.env }, encoding: 'utf8' });
+    const child = spawnSync(process.execPath, playwrightArgs, {
+      cwd: path.join(root, 'frontend'),
+      env: { ...process.env },
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024
+    });
     const stdout = child.stdout || '';
     const parsed = (() => { try { return JSON.parse(stdout); } catch { return null; } })();
     const summary = summarizeSuites(parsed?.suites);
