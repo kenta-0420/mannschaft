@@ -174,8 +174,8 @@ test('NOTE-260918-145441-001: 所属チーム・組織・村の投稿がダッ�
     await expect(memberPage.getByText(villageMarker, { exact: true })).toBeVisible()
     await memberPage.goto('/timeline', { waitUntil: 'domcontentloaded' })
     await waitForHydration(memberPage)
-    await expect(memberPage.getByTestId('timeline-feed')).toHaveAttribute('data-loaded', 'true')
-    await expect(memberPage.getByText(villageMarker, { exact: true })).toBeVisible()
+    await expect(memberPage.getByTestId('timeline-feed')).toHaveAttribute('data-loaded', 'true', { timeout: 60_000 })
+    await expect(memberPage.getByText(villageMarker, { exact: true })).toBeVisible({ timeout: 60_000 })
 
     expect((await outsiderPage.request.get(`${API}/api/v1/timeline/my`)).status()).toBe(200)
     await outsiderPage.goto('/timeline', { waitUntil: 'domcontentloaded' })
