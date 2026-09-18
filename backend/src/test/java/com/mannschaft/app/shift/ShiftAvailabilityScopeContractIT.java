@@ -279,25 +279,32 @@ class ShiftAvailabilityScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("AC-8: 既存行がある状態で非メンバーがPUTすると403 かつ既存行は残る"
+        @DisplayName("AC-8: 攻撃者自身の孤児行がある状態で非メンバーPUTすると403 かつその行は残る"
                 + "（全削除→再作成の実装が拒否経路でも破壊的先行削除をしないこと）")
         void 既存行がある状態で非メンバーPUTは既存行を破壊しない() throws Exception {
-            // Given: teamA の正当メンバーが既にデフォルトを設定済み
-            setAuth(memberTeamAId);
-            mockMvc.perform(put(BASE).param("teamId", teamAId.toString())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(bulkBody())))
-                    .andExpect(status().isOk());
+            // Given: nonMemberId × teamAId の行が既に存在する（根治前に作られてしまった孤児行を模したもの。
+            // 実際に「認可なしで書き込めていた期間」に生成され得る状態）。
+            // 攻撃者自身の行でなければ「PUT は自己スコープなので最初から届かない」だけで通ってしまい、
+            // AC-8（拒否経路での破壊的先行削除をしないこと）を証明できない。
+            availabilityRepository.save(MemberAvailabilityDefaultEntity.builder()
+                    .userId(nonMemberId)
+                    .teamId(teamAId)
+                    .dayOfWeek(2)
+                    .startTime(LocalTime.of(10, 0))
+                    .endTime(LocalTime.of(18, 0))
+                    .preference(ShiftPreference.AVAILABLE)
+                    .note("孤児行フィクスチャ")
+                    .build());
+            em.flush();
+            em.clear();
 
             List<MemberAvailabilityDefaultEntity> before = availabilityRepository
-                    .findByUserIdAndTeamIdOrderByDayOfWeekAscStartTimeAsc(memberTeamAId, teamAId);
+                    .findByUserIdAndTeamIdOrderByDayOfWeekAscStartTimeAsc(nonMemberId, teamAId);
             assertThat(before).isNotEmpty();
 
-            // When: 非メンバー（別ユーザー）が同じ teamId へ PUT を試みる。
-            // 攻撃者自身の行は無いため、既存行破壊の有無は「メンバー本人の行」で確認する
-            // （PUT は userId=呼び出し元自身に自己スコープされるため、攻撃者の PUT は
-            //   本来 memberTeamA の行には触れ得ない設計だが、認可チェックそのものが
-            //   無い現状ではリクエストが 200 で通ってしまい、この AC が red になる）。
+            // When: 非メンバー（攻撃者本人）が同じ teamId へ PUT を試みる。
+            // setAvailabilityDefaults は deleteByUserIdAndTeamId(userId=攻撃者自身, teamId) を先に呼ぶ実装
+            // なので、認可検証を delete より後ろに置くとここで攻撃者自身の孤児行が消えてしまう。
             setAuth(nonMemberId);
             mockMvc.perform(put(BASE).param("teamId", teamAId.toString())
                             .contentType(MediaType.APPLICATION_JSON)
@@ -305,9 +312,9 @@ class ShiftAvailabilityScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.error.code").value("COMMON_002"));
 
-            // Then: memberTeamA 本人の既存行は変化していない
+            // Then: 攻撃者自身の孤児行が消えずに残っている
             List<MemberAvailabilityDefaultEntity> after = availabilityRepository
-                    .findByUserIdAndTeamIdOrderByDayOfWeekAscStartTimeAsc(memberTeamAId, teamAId);
+                    .findByUserIdAndTeamIdOrderByDayOfWeekAscStartTimeAsc(nonMemberId, teamAId);
             assertThat(after).hasSameSizeAs(before);
         }
 
