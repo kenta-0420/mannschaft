@@ -2451,5 +2451,11 @@
       "category": "Kategorie",
       "event": "Ereignis"
     }
+  },
+  "memberProfile": {
+    "loadFailed": "Mitgliederinformationen konnten nicht geladen werden",
+    "unavailable": "Diese Funktion ist derzeit nicht verfügbar (in Vorbereitung)",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "deleteFailed": "Löschen fehlgeschlagen"
   }
 }
