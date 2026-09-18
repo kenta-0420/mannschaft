@@ -985,8 +985,12 @@ class GlobalExceptionHandlerTest {
             com.mannschaft.app.schedule.ScheduleErrorCode errorCode =
                     com.mannschaft.app.schedule.ScheduleErrorCode.valueOf(errorCodeName);
 
+            when(messageSource.getMessage(anyString(), any(), any()))
+                    .thenThrow(new org.springframework.context.NoSuchMessageException(expectedCode));
+
             assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
                     .isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(errorCode.getMessage()).isEqualTo(expectedMessage);
 
             ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(
                     new BusinessException(errorCode));
