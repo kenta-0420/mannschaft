@@ -99,8 +99,11 @@ describe('featureGates 定数と純関数', () => {
     const staticOnly = all.filter((p) => !p.includes('*'))
 
     // 実測の内訳（doc・PR 本文・Issue と数値を揃えてある）。
-    expect(all).toHaveLength(94)
-    expect(staticOnly).toHaveLength(48)
+    // CMP-260918-0024: organizations/[slug]/gamification.vue の削除に伴い
+    // FEATURE_GAMIFICATION_ENABLED から静的プレフィクス '/organizations/*/gamification' を
+    // 除去したため、静的1件減（48→47）・全体1件減（94→93）。動的は変わらず46のまま。
+    expect(all).toHaveLength(93)
+    expect(staticOnly).toHaveLength(47)
     expect(dynamic).toHaveLength(46)
 
     const rules = buildGateRouteRules()

@@ -11,10 +11,10 @@
 -- 冪等性: 該当行が既に存在する環境では ON DUPLICATE KEY（uq_module_level）で UPDATE、
 -- 行が無い環境では INSERT となる。
 INSERT INTO module_level_availability (module_id, level, is_available, note, created_at, updated_at)
-SELECT md.id, 'ORGANIZATION', 0, 'ゲーミフィケーションはチーム固有機能のため組織スコープでは利用不可（CMP-260918-0024）', NOW(), NOW()
+SELECT md.id, 'ORGANIZATION', 0, 'ゲーミフィケーションはチーム固有機能のため組織スコープでは利用不可（CMP-260918-0024）', UTC_TIMESTAMP(), UTC_TIMESTAMP()
 FROM module_definitions md
 WHERE md.slug = 'gamification'
 ON DUPLICATE KEY UPDATE
     is_available = 0,
     note = 'ゲーミフィケーションはチーム固有機能のため組織スコープでは利用不可（CMP-260918-0024）',
-    updated_at = NOW();
+    updated_at = UTC_TIMESTAMP();
