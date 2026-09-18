@@ -28,5 +28,5 @@ CREATE TABLE payment_request_payment_attempts (
     CONSTRAINT uk_pr_attempt_escrow UNIQUE (escrow_transaction_id),
     CONSTRAINT chk_pr_attempt_status CHECK (status IN ('CREATING', 'REQUIRES_ACTION', 'SUCCEEDED', 'FAILED')),
     INDEX idx_pr_attempt_request_status (payment_request_id, status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='F08.9 協会請求の決済試行';
