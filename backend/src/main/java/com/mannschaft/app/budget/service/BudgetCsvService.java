@@ -57,7 +57,10 @@ public class BudgetCsvService {
     public byte[] export(Long fiscalYearId) {
         BudgetFiscalYearEntity fy = fiscalYearService.findById(fiscalYearId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, fy.getScopeId(), fy.getScopeType());
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: CSVエクスポートは取引全件を含む一括漏洩経路
+        // であり、checkMembership止まりでMEMBERも全件エクスポートできていた実機バグを根治する。
+        // 予算はスコープ問わずDEPUTY_ADMIN限定のためスコープ分岐は不要。
+        accessControlService.checkAdminOrAbove(currentUserId, fy.getScopeId(), fy.getScopeType());
 
         List<BudgetTransactionEntity> transactions = transactionRepository.findByFiscalYearId(fiscalYearId);
 

@@ -2451,5 +2451,11 @@
       "category": "Category",
       "event": "Event"
     }
+  },
+  "memberProfile": {
+    "loadFailed": "Could not load member information",
+    "unavailable": "This feature is currently unavailable (coming soon)",
+    "saveFailed": "Failed to save",
+    "deleteFailed": "Failed to delete"
   }
 }

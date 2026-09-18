@@ -98,6 +98,9 @@
     "vendor": {
       "title": "Proveedores",
       "subtitle": "Datos maestros de contratistas e inspectores",
+      "notice": {
+        "personalScopeUnsupported": "La gestión de proveedores no está disponible en el ámbito personal. Cambie a un ámbito de equipo u organización."
+      },
       "newVendor": "Añadir proveedor",
       "editVendor": "Editar proveedor",
       "deleteConfirm": "¿Eliminar lógicamente este proveedor?",

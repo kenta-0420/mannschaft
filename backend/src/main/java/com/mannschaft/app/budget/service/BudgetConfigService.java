@@ -36,7 +36,12 @@ public class BudgetConfigService {
      */
     public BudgetConfigResponse getByScope(String scopeType, Long scopeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: TeamBudgetConfigController/
+        // OrgBudgetConfigController は呼び出し前にcheckAdminOrAboveで既に二重防御しているため
+        // 実機露出は無かったが、サービス層がcheckMembership止まりのままではガード無しの
+        // 呼び出し元が将来追加された際に穴になる（共通ヘルパ一元化≠全経路使用の戒め）。
+        // 予算はスコープ問わずDEPUTY_ADMIN限定のためサービス層でも揃えてcheckAdminOrAboveにする。
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
 
         BudgetConfigEntity config = configRepository.findByScopeTypeAndScopeId(scopeType, scopeId)
                 .orElseGet(() -> createDefault(scopeType, scopeId));

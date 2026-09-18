@@ -2451,5 +2451,11 @@
       "category": "类别",
       "event": "事件"
     }
+  },
+  "memberProfile": {
+    "loadFailed": "无法加载成员信息",
+    "unavailable": "该功能目前尚无法使用（准备中）",
+    "saveFailed": "保存失败",
+    "deleteFailed": "删除失败"
   }
 }

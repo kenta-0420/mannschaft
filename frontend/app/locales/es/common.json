@@ -2451,5 +2451,11 @@
       "category": "Categoría",
       "event": "Evento"
     }
+  },
+  "memberProfile": {
+    "loadFailed": "No se pudo cargar la información de los miembros",
+    "unavailable": "Esta función no está disponible actualmente (próximamente)",
+    "saveFailed": "Error al guardar",
+    "deleteFailed": "Error al eliminar"
   }
 }

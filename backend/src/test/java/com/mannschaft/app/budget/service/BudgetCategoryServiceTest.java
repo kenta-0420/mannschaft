@@ -106,24 +106,26 @@ class BudgetCategoryServiceTest {
     }
 
     @Test
-    @DisplayName("認可根治Wave7: listByFiscalYear は会計年度の真のscopeでcheckMembershipする")
-    void listByFiscalYear_会員チェック実施() {
+    @DisplayName("認可根治CMP-260917-2102: listByFiscalYear は会計年度の真のscopeでcheckAdminOrAboveする"
+            + "（予算はTeamSidebar/OrganizationSidebarともDEPUTY_ADMIN限定のためスコープ問わずADMIN必須。"
+            + "旧: checkMembership止まりでMEMBERも閲覧できていた実機バグを根治）")
+    void listByFiscalYear_管理者チェック実施() {
         given(fiscalYearRepository.findById(FISCAL_YEAR_ID)).willReturn(Optional.of(existingFiscalYear()));
         given(categoryRepository.findByFiscalYearId(FISCAL_YEAR_ID)).willReturn(java.util.List.of());
 
         service.listByFiscalYear(FISCAL_YEAR_ID);
 
-        verify(accessControlService).checkMembership(CURRENT_USER_ID, SCOPE_ID, SCOPE_TYPE);
+        verify(accessControlService).checkAdminOrAbove(CURRENT_USER_ID, SCOPE_ID, SCOPE_TYPE);
     }
 
     @Test
-    @DisplayName("認可根治Wave7: 非会員のlistByFiscalYearはcheckMembershipの例外がそのまま伝播する")
-    void listByFiscalYear_非会員は例外伝播() {
+    @DisplayName("認可根治CMP-260917-2102: 非管理者のlistByFiscalYearはcheckAdminOrAboveの例外がそのまま伝播する")
+    void listByFiscalYear_非管理者は例外伝播() {
         given(fiscalYearRepository.findById(FISCAL_YEAR_ID)).willReturn(Optional.of(existingFiscalYear()));
         org.mockito.BDDMockito.willThrow(
                         new com.mannschaft.app.common.BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
                 .given(accessControlService)
-                .checkMembership(CURRENT_USER_ID, SCOPE_ID, SCOPE_TYPE);
+                .checkAdminOrAbove(CURRENT_USER_ID, SCOPE_ID, SCOPE_TYPE);
 
         assertThat(org.assertj.core.api.Assertions.catchThrowable(() -> service.listByFiscalYear(FISCAL_YEAR_ID)))
                 .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
