@@ -569,10 +569,22 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(ownerId);
             mockMvc.perform(post("/api/v1/chat/channels/{channelId}/members", teamChannelId)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("userIds", List.of(outsiderId)))))
+                            .content(json(Map.of("userIds", List.of(teamAdminId)))))
                     .andExpect(status().isCreated());
 
-            assertThat(memberRepository.existsByChannelIdAndUserId(teamChannelId, outsiderId)).isTrue();
+            assertThat(memberRepository.existsByChannelIdAndUserId(teamChannelId, teamAdminId)).isTrue();
+        }
+
+        @Test
+        @DisplayName("異常系: OWNERでもチーム非所属者は追加できない")
+        void OWNERでもチーム非所属者の追加は403() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/chat/channels/{channelId}/members", teamChannelId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("userIds", List.of(outsiderId)))))
+                    .andExpect(status().isForbidden());
+
+            assertThat(memberRepository.existsByChannelIdAndUserId(teamChannelId, outsiderId)).isFalse();
         }
     }
 

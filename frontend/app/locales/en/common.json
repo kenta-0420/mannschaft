@@ -486,6 +486,10 @@
   },
   "confirmable": {
     "title": "Confirmation Notice",
+    "page": {
+      "settings_title": "Confirmation Notice Settings",
+      "settings_subtitle": "Manage confirmation notice settings, sending, and history"
+    },
     "settings": "Confirmation Notice Settings",
     "send": "Send Confirmation Notice",
     "history": "History",

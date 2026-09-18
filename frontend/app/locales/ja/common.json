@@ -486,6 +486,10 @@
   },
   "confirmable": {
     "title": "確認通知",
+    "page": {
+      "settings_title": "確認通知設定",
+      "settings_subtitle": "確認通知の設定・送信・発信履歴を管理します"
+    },
     "settings": "確認通知設定",
     "send": "確認通知を送信",
     "history": "発信履歴",

@@ -20,6 +20,7 @@ import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,7 +68,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Transactional
 public class ConnectChargeService {
 
@@ -119,6 +120,35 @@ public class ConnectChargeService {
     private final PayeeScopeResolver payeeScopeResolver;
     private final FeePolicyResolver feePolicyResolver;
     private final FeeRecoveryBalanceRepository feeRecoveryBalanceRepository;
+    private final PaymentRequestEscrowPersistenceService paymentRequestEscrowPersistenceService;
+
+    /** Compatibility constructor for existing charge-service unit tests. */
+    public ConnectChargeService(
+            EscrowTransactionRepository escrowTransactionRepository,
+            ConnectAccountRepository connectAccountRepository,
+            PaymentFeeCalculator paymentFeeCalculator,
+            StripePaymentProvider stripePaymentProvider,
+            AccessControlService accessControlService,
+            LedgerEntryRepository ledgerEntryRepository,
+            RefundRepository refundRepository,
+            PayeeScopeResolver payeeScopeResolver,
+            FeePolicyResolver feePolicyResolver,
+            FeeRecoveryBalanceRepository feeRecoveryBalanceRepository) {
+        this(
+                escrowTransactionRepository,
+                connectAccountRepository,
+                paymentFeeCalculator,
+                stripePaymentProvider,
+                accessControlService,
+                ledgerEntryRepository,
+                refundRepository,
+                payeeScopeResolver,
+                feePolicyResolver,
+                feeRecoveryBalanceRepository,
+                new PaymentRequestEscrowPersistenceService(
+                        escrowTransactionRepository,
+                        new PaymentRequestEscrowInsertService(escrowTransactionRepository)));
+    }
 
     /**
      * 謝礼の与信を開始する（設計書 02 §5.1）。
@@ -298,6 +328,21 @@ public class ConnectChargeService {
      * @return charge 結果（escrow ID / clientSecret / paymentIntentId / status＝通常 AUTHORIZED）
      */
     public MembershipChargeResult charge(MembershipChargeCommand cmd) {
+        return chargeInternal(cmd, false);
+    }
+
+    /**
+     * Payment Request 専用の決済起票。Stripe I/O 中に呼出元の transaction を保持しない。
+     *
+     * <p>PaymentIntent 作成後に escrow 永続化が失敗しても、attempt UUID 由来の Stripe idempotency key で
+     * 再試行すると同じ PaymentIntent を取得して DB 相関を回復する。</p>
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public MembershipChargeResult chargePaymentRequest(MembershipChargeCommand cmd) {
+        return chargeInternal(cmd, true);
+    }
+
+    private MembershipChargeResult chargeInternal(MembershipChargeCommand cmd, boolean separatePersistence) {
         if (cmd.faceAmount() <= 0L) {
             throw new IllegalArgumentException("faceAmount must be positive (会費・円整数): " + cmd.faceAmount());
         }
@@ -365,9 +410,15 @@ public class ConnectChargeService {
                     fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
                     payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.paymentMethodId(), cmd.idempotencyKey());
         } else {
-            pi = stripePaymentProvider.createDestinationPaymentIntent(
-                    fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
-                    payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.idempotencyKey());
+            if (cmd.metadata() == null || cmd.metadata().isEmpty()) {
+                pi = stripePaymentProvider.createDestinationPaymentIntent(
+                        fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
+                        payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.idempotencyKey());
+            } else {
+                pi = stripePaymentProvider.createDestinationPaymentIntent(
+                        fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
+                        payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.idempotencyKey(), cmd.metadata());
+            }
         }
 
         // escrow を MEMBERSHIP/AUTOMATIC で INSERT。hold_expires_at=NULL（即時・与信フェーズなし）。
@@ -378,7 +429,7 @@ public class ConnectChargeService {
         // 新規経路で使う際は誤再利用（P7 が P5 の escrow を流用するなど）に注意。
         // 将来は source_ref（ドメインプレフィックス付き文字列キー）等での厳密化を検討する
         // （F08.9 R2-2 検分 2026-06-08）。
-        EscrowTransactionEntity charged = EscrowTransactionEntity.builder()
+        EscrowTransactionEntity candidate = EscrowTransactionEntity.builder()
                 .sourceKind(EscrowSourceKind.MEMBERSHIP)
                 .captureMode(EscrowCaptureMode.AUTOMATIC)
                 .sourceId(cmd.sourceId())
@@ -400,9 +451,14 @@ public class ConnectChargeService {
                 .authorizedAt(LocalDateTime.now())
                 .holdExpiresAt(null)
                 .build();
-        charged = escrowTransactionRepository.save(charged);
+        EscrowTransactionEntity charged = separatePersistence
+                ? paymentRequestEscrowPersistenceService.persist(candidate)
+                : escrowTransactionRepository.save(candidate);
         // §6.3 第四陣 A: PI に上乗せした回収を outstanding 減算＋RECOVERY 仕訳で記帳（冪等・self-balancing 別バッチ）。
-        recordRecoveryExecution(charged, recovery, pi.paymentIntentId());
+        // 同一 key の並行再送で UNIQUE 競合から既存 escrow を回収した側は、回収仕訳を重ねない。
+        if (charged == candidate) {
+            recordRecoveryExecution(charged, recovery, pi.paymentIntentId());
+        }
 
         log.info("会費 charge を作成（即時 AUTOMATIC・succeeded webhook で CAPTURED+記帳）: escrowId={}, piId={}, "
                         + "charge={}, selfFee={}, recovery={}",

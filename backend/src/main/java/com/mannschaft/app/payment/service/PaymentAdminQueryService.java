@@ -34,7 +34,11 @@ public class PaymentAdminQueryService {
 
     /** 未収（まだ支払い完了していない）と見なす請求ステータス（§3.4）。 */
     private static final Set<PaymentRequestStatus> UNSETTLED_STATUSES =
-            Set.of(PaymentRequestStatus.SENT, PaymentRequestStatus.VIEWED, PaymentRequestStatus.OVERDUE);
+            Set.of(
+                    PaymentRequestStatus.SENT,
+                    PaymentRequestStatus.VIEWED,
+                    PaymentRequestStatus.PROCESSING,
+                    PaymentRequestStatus.OVERDUE);
 
     private final PaymentRequestRepository paymentRequestRepository;
     private final NameResolverService nameResolverService;
