@@ -2456,6 +2456,47 @@
     "loadFailed": "Could not load member information",
     "unavailable": "This feature is currently unavailable (coming soon)",
     "saveFailed": "Failed to save",
-    "deleteFailed": "Failed to delete"
+    "deleteFailed": "Failed to delete",
+    "pages": {
+      "title": "Member Introduction Pages",
+      "newPage": "New page",
+      "empty": "No pages yet",
+      "titleLabel": "Title",
+      "slugLabel": "URL slug",
+      "yearLabel": "Year",
+      "visibilityLabel": "Visibility",
+      "visibilityPublic": "Public",
+      "visibilityMembersOnly": "Members only",
+      "statusDraft": "Draft",
+      "statusPublished": "Published",
+      "publish": "Publish",
+      "unpublish": "Unpublish",
+      "delete": "Delete page",
+      "deleteConfirm": "Delete this page? This cannot be undone.",
+      "createSuccess": "Page created",
+      "createFailed": "Failed to create the page",
+      "updateSuccess": "Page updated",
+      "statusChangeFailed": "Failed to change the publish status",
+      "deleteSuccess": "Page deleted",
+      "deleteFailed": "Failed to delete the page",
+      "open": "View members",
+      "copyFromPrevious": "Copy members from a previous page",
+      "copySourceLabel": "Source page",
+      "copyConfirm": "Copy",
+      "copySuccess": "Copied {count} member(s)",
+      "copyFailed": "Failed to copy members"
+    },
+    "members": {
+      "title": "Members",
+      "add": "Add member",
+      "edit": "Edit member",
+      "empty": "No members registered",
+      "bulkRegister": "Bulk register",
+      "bulkRegisterHelp": "One member per line, formatted as \"Display name,Number\" (number is optional)",
+      "bulkRegisterSuccess": "Registered {count} member(s)",
+      "bulkRegisterFailed": "Failed to bulk register members",
+      "deleteConfirm": "Delete this member?",
+      "back": "Back to pages"
+    }
   }
 }

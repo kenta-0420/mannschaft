@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MemberProfile } from '~/types/member-profile'
 
-defineProps<{
+const props = defineProps<{
   profile: MemberProfile
   editable?: boolean
   /** F08.10 §G.9: 指定時、userId を持つメンバー行に試合分析リンクを表示する */
@@ -14,19 +14,27 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+
+/**
+ * バックエンドの customFieldValues は JSON 文字列（{"fieldId": "value"}）。
+ * 不正な JSON でも画面を壊さないよう、パース失敗時は空オブジェクトにフォールバックする。
+ */
+const customFields = computed<Record<string, string>>(() => {
+  if (!props.profile.customFieldValues) return {}
+  try {
+    const parsed = JSON.parse(props.profile.customFieldValues)
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+})
 </script>
 
 <template>
   <Card class="w-full">
     <template #content>
       <div class="flex items-center gap-4">
-        <img
-          v-if="profile.photoUrl"
-          :src="profile.photoUrl"
-          alt=""
-          class="h-16 w-16 rounded-full object-cover"
-        >
-        <div v-else class="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-xl text-primary">
+        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-xl text-primary">
           {{ profile.displayName.charAt(0) }}
         </div>
         <div class="flex-1">
@@ -36,9 +44,9 @@ const { t } = useI18n()
           </div>
           <p v-if="profile.position" class="text-sm text-surface-500">{{ profile.position }}</p>
           <p v-if="profile.bio" class="mt-1 text-sm text-surface-600 dark:text-surface-400">{{ profile.bio }}</p>
-          <div v-if="Object.keys(profile.customFields).length > 0" class="mt-2 flex flex-wrap gap-2">
+          <div v-if="Object.keys(customFields).length > 0" class="mt-2 flex flex-wrap gap-2">
             <span
-              v-for="(value, key) in profile.customFields"
+              v-for="(value, key) in customFields"
               :key="key"
               class="rounded-full bg-surface-100 px-2 py-0.5 text-xs dark:bg-surface-700"
             >

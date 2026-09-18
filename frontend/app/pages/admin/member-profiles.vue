@@ -3,7 +3,14 @@ definePageMeta({ middleware: 'auth' })
 
 const scopeStore = useScopeStore()
 const scopeType = computed(() => scopeStore.current.type as 'team' | 'organization')
-const scopeId = computed(() => scopeStore.current.id ?? '')
+// scopeStore.current.id は setTeamScope/setOrganizationScope で渡された数値ID（文字列化）。
+// BE の /api/v1/team/member-fields は teamId/organizationId を数値で要求する。
+const scopeNumericId = computed(() => {
+  const raw = scopeStore.current.id
+  if (!raw) return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+})
 const { success, error: showError } = useNotification()
 const { listFields, createField } = useMemberProfileApi()
 
@@ -35,9 +42,12 @@ function fieldTypeLabel(t: string) {
 }
 
 async function load() {
+  if (scopeNumericId.value == null) return
   loading.value = true
   try {
-    fields.value = await listFields(scopeType.value, scopeId.value) as ProfileField[]
+    const teamId = scopeType.value === 'team' ? scopeNumericId.value : undefined
+    const organizationId = scopeType.value === 'organization' ? scopeNumericId.value : undefined
+    fields.value = await listFields(teamId, organizationId) as ProfileField[]
   } catch {
     showError('項目の取得に失敗しました')
   } finally {
@@ -46,15 +56,17 @@ async function load() {
 }
 
 async function save() {
-  if (!form.value.fieldName) return
+  if (!form.value.fieldName || scopeNumericId.value == null) return
   saving.value = true
   try {
     const options = form.value.fieldType === 'SELECT'
-      ? form.value.options.split('\n').map((s) => s.trim()).filter(Boolean)
+      ? JSON.stringify(form.value.options.split('\n').map((s) => s.trim()).filter(Boolean))
       : undefined
-    await createField(scopeType.value, scopeId.value, {
+    await createField({
+      teamId: scopeType.value === 'team' ? scopeNumericId.value : undefined,
+      organizationId: scopeType.value === 'organization' ? scopeNumericId.value : undefined,
       fieldName: form.value.fieldName,
-      fieldType: form.value.fieldType,
+      fieldType: form.value.fieldType as 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT',
       isRequired: form.value.isRequired,
       options,
     })
@@ -68,8 +80,8 @@ async function save() {
   }
 }
 
-watch(scopeId, (v) => { if (v) load() })
-onMounted(() => { if (scopeId.value) load() })
+watch(scopeNumericId, (v) => { if (v) load() })
+onMounted(() => { if (scopeNumericId.value) load() })
 </script>
 
 <template>

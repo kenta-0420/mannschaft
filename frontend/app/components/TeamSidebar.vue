@@ -51,6 +51,7 @@ const categories: SidebarCategory[] = [
     labelKey: 'teamSidebar.category.member',
     icon: 'pi pi-users',
     items: [
+      { labelKey: 'teamSidebar.item.member_profiles', icon: 'pi pi-id-card', path: 'member-profiles', moduleSlug: 'member_intro', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.circulation', icon: 'pi pi-envelope', path: 'circulation', moduleSlug: 'circulation', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.safety_check', icon: 'pi pi-shield', path: 'safety', moduleSlug: 'safety_check', requiredRole: 'MEMBER' },
     ],
