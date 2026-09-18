@@ -39,9 +39,13 @@ async function requireRuntime() {
   if (process.env.B0_REAL_DB !== 'true') throw new Error('B0_REAL_DB=true が必要です。モックDBでは実測しません。');
   if (process.env.B0_THREE_BROWSER_CONTEXTS !== 'true') throw new Error('B0_THREE_BROWSER_CONTEXTS=true はオペレータ申告です。3利用者の別BrowserContextを保証する専用fixtureがないため、実測はblockedです。');
   for (const state of ['tests/e2e/.auth/admin.json', 'tests/e2e/.auth/user.json']) if (!fs.existsSync(path.join(root, 'frontend', state))) throw new Error(`認証storageStateがありません: ${state}`);
-  for (const [name, url] of [['BASE_URL', process.env.BASE_URL], ['API_BASE_URL', process.env.API_BASE_URL]]) {
+  const runtimeProbes = [
+    ['BASE_URL', process.env.BASE_URL, (response) => response.ok],
+    ['API_BASE_URL', new URL('/api/v1/users/me', process.env.API_BASE_URL).toString(), (response) => response.ok || response.status === 401]
+  ];
+  for (const [name, url, accepts] of runtimeProbes) {
     const response = await fetch(url, { signal: AbortSignal.timeout(5000) }).catch(() => null);
-    if (!response || !response.ok) throw new Error(`${name} 到達不可またはHTTP ${response?.status || '接続失敗'}`);
+    if (!response || !accepts(response)) throw new Error(`${name} 到達不可またはHTTP ${response?.status || '接続失敗'}`);
   }
 }
 
