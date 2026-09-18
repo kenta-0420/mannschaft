@@ -98,6 +98,9 @@
     "vendor": {
       "title": "Vendors",
       "subtitle": "Master data for construction / inspection contractors",
+      "notice": {
+        "personalScopeUnsupported": "Vendor management is not available in personal scope. Please switch to a team or organization scope."
+      },
       "newVendor": "Add vendor",
       "editVendor": "Edit vendor",
       "deleteConfirm": "Soft-delete this vendor?",

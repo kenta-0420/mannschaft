@@ -14,6 +14,8 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
 
+import java.util.HashSet;
+
 /**
  * 委員会ドメインの認可判定を一元化するガード。
  *
@@ -90,6 +92,20 @@ public class CommitteeAccessGuard {
                     return false;
                 })
                 .orElse(false);
+    }
+
+    /**
+     * ユーザーが現役として所属する委員会 ID を一括で返す（他ドメインからの越境窓口・N+1 回避用）。
+     *
+     * <p>通知設定（notification ドメイン）の一覧 API など、複数行の所属可否をまとめて判定したい
+     * 呼び出し元向け。1 行ずつ {@link #requireCommitteeMember} を呼ぶと行数ぶんクエリが増えるため、
+     * まとめて 1 クエリで取得する集合版を用意する。</p>
+     *
+     * @param userId 判定対象ユーザー ID
+     * @return 現役として所属する委員会 ID の集合（重複なし。所属が無ければ空集合）
+     */
+    public Set<Long> findActiveCommitteeIds(Long userId) {
+        return new HashSet<>(committeeMemberRepository.findActiveCommitteeIdsByUserId(userId));
     }
 
     /**

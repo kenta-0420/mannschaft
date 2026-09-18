@@ -40,7 +40,7 @@ import java.util.UUID;
  * {@code REQUIRES_NEW} 内で例外を捕まえて正常 return してもコミット時に
  * {@code UnexpectedRollbackException} が飛び原理的に成立しなかった（詳細は
  * {@code AdCampaignDeliveryClaimRepository} / {@code AdCampaignDeliveryClaimService} の Javadoc）。
- * ネイティブ INSERT は JPA の {@code @GeneratedValue}/{@code @PrePersist} ライフサイクルを経由しない
+ * ネイティブ INSERT は JPA の {@code @PrePersist} ライフサイクルを経由しない
  * ため、{@code id} は呼び出し側が {@code UuidV7Entity} と同じ採番機構で事前生成し、
  * {@code created_at} も DB 側 DEFAULT に頼らず呼び出し側で明示的にバインドする
  * （test プロファイルの Hibernate {@code ddl-auto=create} スキーマは DB 側 DEFAULT を持たないため）。</p>

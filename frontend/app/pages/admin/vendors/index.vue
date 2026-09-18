@@ -9,9 +9,8 @@
  * - カテゴリフィルタ・名前/カナ検索
  * - 有効/無効フラグ表示
  *
- * Phase 1 では admin guard は middleware:'auth' のみ。ロール検証は今後の中央化に従う
- * （バックエンドの @PreAuthorize で 403 を返すため、UI 側で誤って表示しても
- * API 呼び出しは安全に拒否される）。
+ * admin guard は useAdminScopeGuard('DEPUTY_ADMIN') による直リンク防御（CMP-260917-1351）。
+ * BE も組織スコープでは checkAdminOrAbove を要求する二重防御（CMP-260917-1350）。
  */
 import type {
   VendorCategory,
@@ -220,12 +219,14 @@ function categoryLabel(c: VendorCategory | null): string {
       />
     </header>
 
-    <p
+    <div
       v-if="!scopeId"
-      class="rounded-md border border-dashed border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
+      class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-300"
     >
-      ?scope=teams&scopeId=N
-    </p>
+      <i class="pi pi-info-circle mr-1" />
+      {{ t('property.vendor.notice.personalScopeUnsupported') }}
+      <ScopeSwitchHint class="mt-3" />
+    </div>
 
     <section v-else class="space-y-3">
       <div class="flex flex-wrap gap-2">

@@ -32,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -137,7 +138,7 @@ public class ScheduleMediaQueryService {
      */
     @Transactional
     public ScheduleMediaResponse updateMedia(
-            Long scheduleId, Long mediaId, Long requestUserId, ScheduleMediaPatchRequest req) {
+            Long scheduleId, UUID mediaId, Long requestUserId, ScheduleMediaPatchRequest req) {
 
         ScheduleMediaUploadEntity entity = scheduleMediaUploadRepository.findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -208,7 +209,7 @@ public class ScheduleMediaQueryService {
      * @param requestUserId   リクエストを行うユーザー ID
      */
     @Transactional
-    public void deleteMedia(Long scheduleId, Long mediaId, Long requestUserId) {
+    public void deleteMedia(Long scheduleId, UUID mediaId, Long requestUserId) {
         ScheduleMediaUploadEntity entity = scheduleMediaUploadRepository.findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "メディアが見つかりません"));
@@ -255,7 +256,7 @@ public class ScheduleMediaQueryService {
         if (fileSize > 0) {
             ScheduleMediaService.ScopeResolution scope =
                     ScheduleMediaService.resolveScopeFor(schedule, schedule.getUserId());
-            storageQuotaService.recordDeletion(
+            storageQuotaService.recordUuidDeletion(
                     scope.scopeType(), scope.scopeId(), fileSize,
                     StorageFeatureType.SCHEDULE_MEDIA,
                     REFERENCE_TYPE, mediaId, requestUserId);

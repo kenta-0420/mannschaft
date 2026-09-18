@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,6 +31,8 @@ import static org.mockito.Mockito.when;
 /** 予定の保存済み親スコープ復元と閲覧・アップロード認可の回帰試練。 */
 @ExtendWith(MockitoExtension.class)
 class ScheduleMediaAclServiceTest {
+    private static final UUID MEDIA_ID = UUID.fromString("019954cc-1a40-7000-8000-000000000007");
+
     @Mock private ScheduleMediaUploadRepository mediaRepository;
     @Mock private ScheduleRepository scheduleRepository;
     @Mock private ContentVisibilityChecker visibility;
@@ -74,13 +77,13 @@ class ScheduleMediaAclServiceTest {
         var target = service.resolveMultipartTarget(media.getR2Key(), 1L).orElseThrow();
         assertThat(target.scope()).isEqualTo(StorageAclScope.team(12L));
         assertThat(target.parent().key()).isEqualTo("100");
-        assertThat(target.binding().key()).isEqualTo("7");
+        assertThat(target.binding().key()).isEqualTo(MEDIA_ID.toString());
         verify(visibility).assertCanView(ReferenceType.SCHEDULE, 100L, 1L);
         verify(access).checkMembership(1L, 12L, "TEAM");
     }
 
     private ScheduleMediaUploadEntity media() {
-        return ScheduleMediaUploadEntity.builder().id(7L).scheduleId(100L).uploaderId(1L)
+        return ScheduleMediaUploadEntity.builder().id(MEDIA_ID).scheduleId(100L).uploaderId(1L)
                 .r2Key("schedules/TEAM/12/100/video.mp4").build();
     }
 }

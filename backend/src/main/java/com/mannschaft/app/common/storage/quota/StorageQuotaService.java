@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 /**
  * F13 統合ストレージクォータサービス。
  *
@@ -87,7 +89,16 @@ public class StorageQuotaService {
                               long fileSizeBytes, StorageFeatureType featureType,
                               String referenceType, Long referenceId, Long actorId) {
         applyDelta(scopeType, scopeId, fileSizeBytes, +1, featureType,
-                referenceType, referenceId, actorId, StorageActionType.UPLOAD);
+                referenceType, referenceId, null, actorId, StorageActionType.UPLOAD);
+    }
+
+    /** UUID主キーを持つコンテンツのアップロード使用量を記録する。 */
+    @Transactional
+    public void recordUuidUpload(StorageScopeType scopeType, Long scopeId,
+                                 long fileSizeBytes, StorageFeatureType featureType,
+                                 String referenceType, UUID referenceUuid, Long actorId) {
+        applyDelta(scopeType, scopeId, fileSizeBytes, +1, featureType,
+                referenceType, null, referenceUuid, actorId, StorageActionType.UPLOAD);
     }
 
     /**
@@ -98,7 +109,16 @@ public class StorageQuotaService {
                                 long fileSizeBytes, StorageFeatureType featureType,
                                 String referenceType, Long referenceId, Long actorId) {
         applyDelta(scopeType, scopeId, -fileSizeBytes, -1, featureType,
-                referenceType, referenceId, actorId, StorageActionType.DELETE);
+                referenceType, referenceId, null, actorId, StorageActionType.DELETE);
+    }
+
+    /** UUID主キーを持つコンテンツの削除使用量を記録する。 */
+    @Transactional
+    public void recordUuidDeletion(StorageScopeType scopeType, Long scopeId,
+                                   long fileSizeBytes, StorageFeatureType featureType,
+                                   String referenceType, UUID referenceUuid, Long actorId) {
+        applyDelta(scopeType, scopeId, -fileSizeBytes, -1, featureType,
+                referenceType, null, referenceUuid, actorId, StorageActionType.DELETE);
     }
 
     // ---- Internal ----
@@ -106,7 +126,7 @@ public class StorageQuotaService {
     private void applyDelta(StorageScopeType scopeType, Long scopeId,
                             long deltaBytes, int deltaCount,
                             StorageFeatureType featureType,
-                            String referenceType, Long referenceId, Long actorId,
+                            String referenceType, Long referenceId, UUID referenceUuid, Long actorId,
                             StorageActionType action) {
         StorageSubscriptionEntity subscription = ensureSubscription(scopeType, scopeId);
         // 悲観ロックで取り直す（lost update 防止）
@@ -123,6 +143,7 @@ public class StorageQuotaService {
                 .featureType(featureType.name())
                 .referenceType(referenceType)
                 .referenceId(referenceId)
+                .referenceUuid(referenceUuid)
                 .action(action.name())
                 .actorId(actorId)
                 .build();

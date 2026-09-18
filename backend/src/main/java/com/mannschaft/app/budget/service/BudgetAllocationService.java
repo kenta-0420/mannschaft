@@ -44,7 +44,9 @@ public class BudgetAllocationService {
     public List<AllocationResponse> listByFiscalYear(Long fiscalYearId) {
         BudgetFiscalYearEntity fy = fiscalYearService.findById(fiscalYearId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, fy.getScopeId(), fy.getScopeType());
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: checkMembership止まりでMEMBERも予算配分を
+        // 閲覧できていた実機バグを根治する。予算はスコープ問わずDEPUTY_ADMIN限定のためスコープ分岐は不要。
+        accessControlService.checkAdminOrAbove(currentUserId, fy.getScopeId(), fy.getScopeType());
 
         return allocationRepository.findByFiscalYearId(fiscalYearId)
                 .stream()

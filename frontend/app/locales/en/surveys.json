@@ -95,6 +95,18 @@
     },
     "detail": {
       "scopeMissing": "Survey scope information is missing",
+      "scopeContext": {
+        "label": "Survey target",
+        "type": { "TEAM": "Target team", "ORGANIZATION": "Target organization" },
+        "loading": "Loading name…",
+        "nameUnavailable": "Name unavailable",
+        "management": {
+          "admin": "Managing as an administrator",
+          "delegated": "Managing with delegated survey permission",
+          "creator": "Managing as the creator",
+          "authorized": "Managing with granted permission"
+        }
+      },
       "fetchFailed": "Failed to load survey details",
       "back": "Back",
       "answeredBadge": "Answered",

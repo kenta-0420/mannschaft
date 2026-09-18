@@ -35,7 +35,17 @@ public class ReceiptPresetService {
 
     /**
      * プリセット一覧を取得する。
-     * 認可: 指定スコープのメンバーのみ閲覧可能。
+     *
+     * <p><b>認可根治戦役 CMP-260917-2102 Phase 1 の追撃（スコープ差分あり）</b>: 実機で
+     * ORGANIZATION の MEMBER が一覧取得できることを確認したため、当初は無条件
+     * checkAdminOrAbove に是正しようとしたが、既存 IT {@code ReceiptAuthzContractTest}
+     * 「AC-2-1c: teamAの非ADMINメンバーはプリセット一覧を閲覧できる → 200」が
+     * TEAM スコープでの MEMBER 閲覧可を意図的に固定した契約であることが判明した
+     * （{@code PlatformReceiptAuthzContractIT} が固定するのは領収書一覧（{@code ReceiptService}）
+     * であり、プリセット一覧とは別物）。よって {@code DirectMailService#listMails} と同型の
+     * スコープ分岐にする：<b>ORGANIZATION スコープのみ</b> ADMIN 以上に限定し、
+     * <b>TEAM スコープは従来どおり checkMembership のまま維持する</b>
+     * （既存契約テストを書き換えて通すのは禁止のため、契約を尊重してスコープ分岐に倒した）。
      *
      * @param scopeType   スコープ種別
      * @param scopeId     スコープID
@@ -43,7 +53,11 @@ public class ReceiptPresetService {
      * @return プリセットレスポンスリスト
      */
     public List<PresetResponse> listPresets(ReceiptScopeType scopeType, Long scopeId, Long actorUserId) {
-        accessControlService.checkMembership(actorUserId, scopeId, scopeType.name());
+        if (scopeType == ReceiptScopeType.ORGANIZATION) {
+            accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
+        } else {
+            accessControlService.checkMembership(actorUserId, scopeId, scopeType.name());
+        }
 
         List<ReceiptPresetEntity> presets = presetRepository
                 .findByScopeTypeAndScopeIdOrderByCreatedAtDesc(scopeType, scopeId);

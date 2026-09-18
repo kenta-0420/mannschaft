@@ -652,7 +652,25 @@
       "selfReviewHelp": "설정한 시간대는 게시 전 검토 기간으로 처리됩니다",
       "saveSettings": "설정 저장",
       "loadFailed": "게시글을 불러올 수 없습니다",
-      "scheduledPublishUnavailable": "예약 발행은 현재 사용할 수 없습니다. 발행하면 게시물이 즉시 공개됩니다."
+      "scheduledPublishUnavailable": "예약 발행은 현재 사용할 수 없습니다. 발행하면 게시물이 즉시 공개됩니다.",
+      "listHeading": "記事",
+      "createButton": "新規作成",
+      "createDialogTitle": "新規記事作成",
+      "titleLabel": "タイトル",
+      "titlePlaceholder": "記事タイトルを入力",
+      "createDialogHint": "下書きとして保存されます。タイトル入力後、編集ページで本文を書いてください。",
+      "loadListFailed": "記事一覧の取得に失敗しました",
+      "createFailed": "記事の作成に失敗しました",
+      "archived": "アーカイブ",
+      "publishSuccess": "公開しました",
+      "unpublishSuccess": "非公開にしました",
+      "publishStatusFailed": "ステータスの変更に失敗しました",
+      "deleteConfirm": "この記事を削除しますか？",
+      "deleteSuccess": "記事を削除しました",
+      "deleteFailed": "削除に失敗しました",
+      "publishButton": "公開",
+      "unpublishButton": "非公開",
+      "updatedAt": "更新日"
     },
     "autoSave": {
       "label": "자동 저장",
@@ -660,6 +678,19 @@
       "lastSaved": "{time}에 자동 저장됨",
       "enabled": "자동 저장이 활성화되었습니다",
       "disabled": "자동 저장이 비활성화되었습니다"
+    },
+    "tag": {
+      "heading": "タグ",
+      "addButton": "タグを追加",
+      "addDialogTitle": "タグを追加",
+      "nameLabel": "タグ名",
+      "namePlaceholder": "例: お知らせ",
+      "empty": "タグがありません",
+      "loadFailed": "タグの取得に失敗しました",
+      "createSuccess": "タグを作成しました",
+      "createFailed": "作成に失敗しました",
+      "deleteSuccess": "タグを削除しました",
+      "deleteFailed": "削除に失敗しました"
     }
   },
   "todo": {
@@ -2451,5 +2482,11 @@
       "category": "카테고리",
       "event": "이벤트"
     }
+  },
+  "memberProfile": {
+    "loadFailed": "회원 정보를 불러오지 못했습니다",
+    "unavailable": "이 기능은 현재 이용하실 수 없습니다(준비 중)",
+    "saveFailed": "저장에 실패했습니다",
+    "deleteFailed": "삭제에 실패했습니다"
   }
 }

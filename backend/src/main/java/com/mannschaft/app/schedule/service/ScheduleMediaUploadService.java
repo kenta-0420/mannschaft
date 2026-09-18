@@ -252,7 +252,7 @@ public class ScheduleMediaUploadService {
 
     /** 単発PUT画像のR2実在を確認してから、ACLと使用量を一度だけ確定する。 */
     @Transactional
-    public void confirmImageUpload(Long scheduleId, Long mediaId, Long uploaderId) {
+    public void confirmImageUpload(Long scheduleId, UUID mediaId, Long uploaderId) {
         ScheduleMediaUploadEntity media = scheduleMediaUploadRepository.findByIdForUploadCompletion(mediaId)
                 .orElseThrow(() -> new com.mannschaft.app.common.BusinessException(
                         com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
@@ -287,7 +287,7 @@ public class ScheduleMediaUploadService {
         }
         storageAclService.claimPending(media.getR2Key(), uploaderId,
                 target.scope(), target.parent(), target.binding());
-        storageQuotaService.recordUpload(
+        storageQuotaService.recordUuidUpload(
                 scope.scopeType(), scope.scopeId(), actualSize,
                 StorageFeatureType.SCHEDULE_MEDIA, REFERENCE_TYPE, media.getId(), uploaderId);
         media.updateProcessingStatus("READY");
@@ -360,7 +360,7 @@ public class ScheduleMediaUploadService {
                 uploaderId, scheduleId, saved.getId(), startResponse.getUploadId(), startResponse.getFileKey());
 
         // F13 Phase 4-γ: 使用量加算（Multipart 開始＋DB INSERT 完了を確定とみなす）
-        storageQuotaService.recordUpload(
+        storageQuotaService.recordUuidUpload(
                 scope.scopeType(), scope.scopeId(), req.getFileSize(),
                 StorageFeatureType.SCHEDULE_MEDIA,
                 REFERENCE_TYPE, saved.getId(), uploaderId);

@@ -20,9 +20,9 @@ async function loadData() {
   try {
     const [invs, parents] = await Promise.all([getInvitations(), getParents()])
     invitations.value = invs
-    // 承認済み保護者がいれば → ホームへ
+    // 承認済み保護者がいれば → 保護者管理画面へ
     if (parents.length > 0) {
-      await navigateTo('/')
+      await navigateTo('/parental-consent/manage')
     }
   } finally {
     loading.value = false

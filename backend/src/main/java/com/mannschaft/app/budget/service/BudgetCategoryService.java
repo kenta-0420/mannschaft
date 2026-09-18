@@ -140,13 +140,18 @@ public class BudgetCategoryService {
      * 会計年度のカテゴリ一覧をツリー構造で取得する。
      *
      * <p>認可根治戦役 Wave7: {@link #create}/{@link #update}/{@link #delete} と同一の
-     * 親子鎖（fiscalYearId → 会計年度 → 真の scope）を辿り、
-     * {@link AccessControlService#checkMembership} で会員に限定する
-     * （読取＝会員・変更＝ADMINの通例。書込系は checkAdminOrAbove）。</p>
+     * 親子鎖（fiscalYearId → 会計年度 → 真の scope）を辿る。</p>
+     *
+     * <p>認可根治戦役 CMP-260917-2102 Phase 1 の追撃: 当初は
+     * {@link AccessControlService#checkMembership} で会員に限定していたが、実機で
+     * ORGANIZATION の MEMBER がカテゴリ一覧を閲覧できることを確認した。予算は
+     * TeamSidebar/OrganizationSidebar とも requiredRole: 'DEPUTY_ADMIN' でスコープ問わず
+     * 管理者限定のため、{@link #getById}系の他の予算閲覧系（getFiscalYearSummary等）と
+     * 揃えて {@link AccessControlService#checkAdminOrAbove} に是正する。</p>
      */
     public List<CategoryTreeResponse> listByFiscalYear(Long fiscalYearId) {
         BudgetFiscalYearEntity fiscalYear = findFiscalYearOrThrow(fiscalYearId);
-        accessControlService.checkMembership(
+        accessControlService.checkAdminOrAbove(
                 SecurityUtils.getCurrentUserId(), fiscalYear.getScopeId(), fiscalYear.getScopeType());
         List<BudgetCategoryEntity> allCategories = categoryRepository.findByFiscalYearId(fiscalYearId);
         return buildTree(allCategories);

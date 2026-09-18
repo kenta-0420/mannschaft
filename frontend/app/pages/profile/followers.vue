@@ -24,7 +24,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-2xl px-4 py-6">
-    <PageHeader :title="`${$t('label.followers')} ${totalCount}`" back-to="/profile" />
+    <PageHeader :title="`${$t('label.followers')} ${totalCount}`" back-to="/settings/social-profiles" />
 
     <PageLoading v-if="followersLoading && followers.length === 0" />
 

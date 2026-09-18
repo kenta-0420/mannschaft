@@ -9,8 +9,11 @@ const memberProfileApi = useMemberProfileApi()
 const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('organization', orgSlug)
 
+const { t } = useI18n()
+
 const profiles = ref<MemberProfile[]>([])
 const loading = ref(true)
+const loadError = ref(false)
 const showDialog = ref(false)
 const editingProfile = ref<MemberProfile | null>(null)
 
@@ -23,11 +26,13 @@ const form = ref<CreateMemberProfileRequest>({
 
 async function loadData() {
   loading.value = true
+  loadError.value = false
   try {
     await loadPermissions()
     profiles.value = await memberProfileApi.listMembers('organization', orgSlug.value)
   } catch {
-    notification.error('メンバー情報の取得に失敗しました')
+    loadError.value = true
+    notification.error(t('common.memberProfile.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -67,7 +72,7 @@ async function save() {
     showDialog.value = false
     await loadData()
   } catch {
-    notification.error('保存に失敗しました')
+    notification.error(t('common.memberProfile.saveFailed'))
   }
 }
 
@@ -77,7 +82,7 @@ async function handleDelete(id: number) {
     notification.success('メンバーを削除しました')
     await loadData()
   } catch {
-    notification.error('削除に失敗しました')
+    notification.error(t('common.memberProfile.deleteFailed'))
   }
 }
 
@@ -91,6 +96,11 @@ onMounted(loadData)
     </div>
 
     <PageLoading v-if="loading" />
+
+    <div v-else-if="loadError" class="py-12 text-center text-surface-500">
+      <i class="pi pi-exclamation-triangle mb-2 text-4xl text-orange-500" />
+      <p>{{ $t('common.memberProfile.unavailable') }}</p>
+    </div>
 
     <template v-else>
       <MemberProfileList

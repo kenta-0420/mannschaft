@@ -322,25 +322,29 @@ WHERE ((is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
 
 時系列順でソート可能な UUIDv7 を新規テーブルの標準 ID 型として採用する。
 
-> 2026-09-15 の CMP-008 CI 実測では、既存 `UuidV7Entity` の
-> `@UuidGenerator(style = TIME)` は UUIDv7 ではなく UUIDv1 を生成した。
-> 以下は当初の設計意図を示す記録であり、真正の v7 生成を保証する実装例ではない。
-> CSP 報告の第一波は専用生成器で v7 を検証済み。共通基底と既存利用テーブルの
-> 是正は影響範囲を調査して別途判断する。
+> 2026-09-15 の CMP-008 CI 実測で、旧 `@UuidGenerator(style = TIME)` が
+> UUIDv7ではなくUUIDv1を生成すると判明した。2026-09-17に共通 `UuidV7.generate()` と
+> `@PrePersist` へ切り替え、BINARY(16)・CHAR(36)の新規採番が真正UUIDv7であること、
+> 既存UUIDv1と混在してCRUDできることを実MySQLで検証した。
 
 ```java
 /**
  * UUIDv7（時系列順・衝突耐性）を ID に使う Entity の基底クラス。
  * 新規テーブル作成時はこのクラスを継承する。
- * 既存テーブルの ID 変更は行わない（互換性維持）。
+ * 既存テーブルの ID 変更は、公開契約と参照先を一括移行できる場合に限る。
  */
 @MappedSuperclass
 public abstract class UuidV7Entity {
 
     @Id
-    @UuidGenerator(style = UuidGenerator.Style.TIME)
-    @Column(name = "id", updatable = false, nullable = false, length = 36)
-    private String id;
+    private UUID id;
+
+    @PrePersist
+    protected void assignId() {
+        if (id == null) {
+            id = UuidV7.generate();
+        }
+    }
 }
 ```
 
@@ -500,12 +504,12 @@ Valkey 断のときに `@CacheEvict` を持つミューテーション（`RoleSe
 | `AbstractTenantAwareRepository` の全面適用 | 高 | `ScheduleRepository` のみ適用済み。他リポジトリへの順次適用が必要 |
 | イベント駆動アーキテクチャへの移行 | 中 | `@Transactional` クロスドメイン箇所（TODO コメント済み）をドメインイベントで分離 |
 | シャーディング本実装 | 低 | `organization_id` をシャーディングキーとした水平分割。UUIDv7 導入済みで基盤は整備済み |
-| 既存テーブルの UUIDv7 移行 | 低 | CMP-008 第一波で非公開・FKなしの `csp_reports` を UUIDv7 化。数値 ID を API へ出す `schedule_media_uploads` は互換性判断後に着手 |
+| 追加の既存テーブル UUIDv7 移行 | 低 | CMP-008 で `csp_reports` と `schedule_media_uploads` を UUIDv7 化済み。後者は公開API、ストレージ監査参照、ACL binding key を同一リリースで一括移行した。今後は同じく参照関係と公開契約を列挙し、既存行保全テストを伴う場合だけ実施する |
 | リードレプリカの本番適用 | 中 | `replica.enabled=false` のままのため、本番環境の DB 構成確定後に有効化 |
 | audit_logs パーティション 2030年以降 | 中 | V64.001 で 2029-12 まで定義済み。`AuditLogPartitionMaintenanceBatchService` が自動追加するため人手対応は不要 |
 | chat_messages_archive の R2 アップロード | 低 | 現状はアーカイブテーブルへの退避のみ。将来は R2 への JSONL.gz 保存も検討 |
 
-`csp_reports` の V212 移行を実環境へ適用するときは、書き込みを停止し、移行前の復元可能な DB バックアップを取る。移行後は行数・報告内容・索引・全 ID の UUIDv7 形式を照合してから書き込みを再開する。MySQL 8 の DDL は**各文は原子的でも、複数文をまとめてロールバックできない**。途中失敗時は書き込み停止を維持し、`csp_reports` の `id` / `id_uuid` と索引、Flyway 履歴を確認する。`flyway repair` だけで残存する列や索引は消えないため、自動再実行せず、事前バックアップから復元して原因を解消した後に再適用する。AWS未稼働の現在は本番適用を行わない（[MySQL 8 Atomic DDL](https://dev.mysql.com/doc/refman/8.0/en/atomic-ddl.html)、[Flyway repair](https://documentation.red-gate.com/flyway/reference/commands/repair)）。
+`csp_reports` の V212 または `schedule_media_uploads` の V215 移行を実環境へ適用するときは、書き込みを停止し、移行前の復元可能な DB バックアップを取る。移行後は行数・業務データ・索引・全 ID の UUIDv7 形式を照合し、V215 では加えて `storage_usage_logs` / `storage_migration_errors` の参照と `storage_acls.attachment_binding_key` の変換を確認してから書き込みを再開する。MySQL 8 の DDL は**各文は原子的でも、複数文をまとめてロールバックできない**。途中失敗時は書き込み停止を維持し、対象テーブルの `id` / `id_uuid` と索引、Flyway 履歴を確認する。`flyway repair` だけで残存する列や索引は消えないため、自動再実行せず、事前バックアップから復元して原因を解消した後に再適用する。AWS未稼働の現在は本番適用を行わない（[MySQL 8 Atomic DDL](https://dev.mysql.com/doc/refman/8.0/en/atomic-ddl.html)、[Flyway repair](https://documentation.red-gate.com/flyway/reference/commands/repair)）。
 
 ### 監視・アラート推奨項目
 

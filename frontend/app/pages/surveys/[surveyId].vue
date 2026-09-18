@@ -17,8 +17,17 @@ import {
   canRemindSurvey,
   canViewSurveyTeamBreakdown,
 } from '~/utils/surveyViewerCapabilities'
+import {
+  normalizeSurveyScopeName,
+  resolveSurveyManagementContext,
+  surveyDetailPageKey,
+} from '~/utils/surveyScopeContext'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({
+  middleware: 'auth',
+  // 同じページコンポーネントで別survey/scopeへ遷移した際に、旧名称・旧権限を持ち越さない。
+  key: surveyDetailPageKey,
+})
 
 const route = useRoute()
 const surveyId = Number(route.params.surveyId)
@@ -35,6 +44,13 @@ const { getSurveyThread } = useSurveyBulletinThread()
 const { error: showError, success: showSuccess } = useNotification()
 const { confirmAction } = useConfirmDialog()
 const authStore = useAuthStore()
+const teamApi = useTeamApi()
+const organizationApi = useOrganizationApi()
+const {
+  permissions: scopePermissions,
+  roleName: scopeRoleName,
+  loadPermissions: loadScopePermissions,
+} = useRoleAccess(scopeType === 'TEAM' ? 'team' : 'organization', scopeId)
 
 // アンケートに紐づく掲示板スレッド（null = スレッド未生成 = 表示しない）
 const bulletinThread = ref<BulletinThreadResponse | null>(null)
@@ -51,6 +67,9 @@ const survey = ref<SurveyDetailResponse['data'] | null>(null)
 const loading = ref(true)
 const fetchError = ref(false)
 const actionLoading = ref(false)
+const scopeName = ref<string | null>(null)
+const scopeContextLoading = ref(true)
+let scopeContextRequestId = 0
 
 // === DRAFTモード用: インライン設問追加 ===
 // SurveyQuestionEditor は QuestionDraft[] を v-model で扱うため、
@@ -111,6 +130,28 @@ const isCreator = computed(() => {
 })
 
 /**
+ * URLで指定されたスコープの表示名と利用者の役割を取得する。
+ * 取得開始時に名称を消し、遅れて完了した旧リクエストも捨てることで、別スコープ名の混入を防ぐ。
+ */
+async function fetchScopeContext() {
+  const requestId = ++scopeContextRequestId
+  scopeName.value = null
+  scopeContextLoading.value = true
+
+  const nameRequest =
+    scopeType === 'TEAM'
+      ? teamApi.getTeam(scopeId).then((response) => response.data.basicInfo?.name)
+      : organizationApi.getOrganization(scopeId).then((response) => response.data.basicInfo?.name)
+
+  const [nameResult] = await Promise.allSettled([nameRequest, loadScopePermissions()])
+  if (requestId !== scopeContextRequestId) return
+
+  scopeName.value =
+    nameResult.status === 'fulfilled' ? normalizeSurveyScopeName(nameResult.value) : null
+  scopeContextLoading.value = false
+}
+
+/**
  * 管理操作を行えるか（CMP-041）。
  *
  * 定義は BE と同一で「**作成者 または ADMIN／MANAGE_SURVEYS を持つ DEPUTY_ADMIN**」である。
@@ -126,6 +167,15 @@ const isCreator = computed(() => {
  * 欠けている応答は fail-closed（操作させない）に倒す。
  */
 const canManage = computed(() => canManageSurvey(survey.value))
+
+const managementContext = computed(() =>
+  resolveSurveyManagementContext({
+    canManage: canManage.value,
+    roleName: scopeRoleName.value,
+    permissions: scopePermissions.value,
+    isCreator: isCreator.value,
+  }),
+)
 
 /**
  * F05.4 (B) チーム別内訳パネルの表示ガード。
@@ -365,6 +415,7 @@ async function onSubmitted() {
 onMounted(async () => {
   await Promise.all([
     fetchDetail(),
+    fetchScopeContext(),
     // 掲示板スレッド情報を取得（404 の場合は null のまま = 表示しない）
     getSurveyThread(surveyId).then((thread) => {
       bulletinThread.value = thread
@@ -400,6 +451,13 @@ onMounted(async () => {
           severity="success"
         />
       </PageHeader>
+
+      <SurveyScopeContext
+        :scope-type="scopeTypeStrict"
+        :scope-name="scopeName"
+        :loading="scopeContextLoading"
+        :management-context="managementContext"
+      />
 
       <!-- メタ情報 -->
       <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-surface-500 dark:text-surface-400">
@@ -514,14 +572,19 @@ onMounted(async () => {
       </div>
 
       <!-- 回答フォーム -->
-      <SurveyResponseForm
-        v-else-if="displayMode === 'response'"
-        :survey="survey"
-        :already-responded="hasResponded"
-        :allow-multiple="survey.policy?.allowMultipleSubmissions ?? false"
-        data-testid="survey-mode-response"
-        @submitted="onSubmitted"
-      />
+      <!--
+        SurveyResponseForm 自身の root は survey-response-form / survey-already-responded
+        として E2E の契約にする。ここへ data-testid を直接渡すと Vue の attribute
+        fallthrough でその識別子を上書きしてしまうため、表示モードの識別子は wrapper に置く。
+      -->
+      <div v-else-if="displayMode === 'response'" data-testid="survey-mode-response">
+        <SurveyResponseForm
+          :survey="survey"
+          :already-responded="hasResponded"
+          :allow-multiple="survey.policy?.allowMultipleSubmissions ?? false"
+          @submitted="onSubmitted"
+        />
+      </div>
 
       <!-- 結果パネル -->
       <!--

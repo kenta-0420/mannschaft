@@ -51,7 +51,9 @@ public class BudgetSummaryService {
     public BudgetSummaryResponse getFiscalYearSummary(Long fiscalYearId) {
         BudgetFiscalYearEntity fy = fiscalYearService.findById(fiscalYearId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, fy.getScopeId(), fy.getScopeType());
+        // 認可根治戦役 CMP-260917-1350 Phase 1: 組織サイドバーで ADMIN/DEPUTY_ADMIN 限定表示している
+        // 機能のため、閲覧も ADMIN 以上に限定する（従来は checkMembership で MEMBER も閲覧できていた）。
+        accessControlService.checkAdminOrAbove(currentUserId, fy.getScopeId(), fy.getScopeType());
 
         // 承認済み取引のみ集計
         List<BudgetTransactionEntity> transactions = transactionRepository.findByFiscalYearId(fiscalYearId)
@@ -105,7 +107,11 @@ public class BudgetSummaryService {
     public CategorySummaryResponse getCategorySummary(Long categoryId, Long fiscalYearId) {
         BudgetFiscalYearEntity fy = fiscalYearService.findById(fiscalYearId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, fy.getScopeId(), fy.getScopeType());
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: getFiscalYearSummary（CMP-260917-1350）と
+        // 同一画面（会計年度サマリ）の兄弟エンドポイントのため、checkMembership止まりでMEMBERも
+        // 閲覧できていた実機バグを同様に根治する。TeamSidebar/OrganizationSidebarともbudgetは
+        // requiredRole: 'DEPUTY_ADMIN'でスコープ問わず管理者限定のためスコープ分岐は不要。
+        accessControlService.checkAdminOrAbove(currentUserId, fy.getScopeId(), fy.getScopeType());
 
         var category = categoryService.findById(categoryId);
 
