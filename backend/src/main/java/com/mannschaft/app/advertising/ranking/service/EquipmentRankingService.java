@@ -84,9 +84,10 @@ public class EquipmentRankingService {
             throw new BusinessException(EquipmentRankingErrorCode.RANKING_NOT_READY);
         }
 
-        // Amazon アフィリエイトタグ
+        // Amazon アフィリエイトタグ（tag_id 未設定＝プレースホルダは未設定扱い。CMP-260918-0025）
         String amazonTag = affiliateConfigRepository
                 .findActiveAmazonConfig(LocalDateTime.now(ZoneId.of("Asia/Tokyo")))
+                .filter(config -> !config.isPlaceholderTagId())
                 .map(AffiliateConfigEntity::getTagId)
                 .orElse(null);
 

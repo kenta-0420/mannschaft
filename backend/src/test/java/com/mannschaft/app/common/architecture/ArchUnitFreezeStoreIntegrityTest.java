@@ -787,7 +787,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * のみ触れる形に是正し、Repository への直接依存を撤去したため。
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1967;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1955;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

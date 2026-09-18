@@ -11,6 +11,9 @@
       "saved": "Account settings saved.",
       "save_failed": "Failed to save."
     },
+    "admin_affiliate_settings": {
+      "placeholder_tag_warning": "This ad is not shown because its tag ID has not been configured yet."
+    },
     "spotlight": {
       "hide_advertiser": "Hide this advertiser",
       "hide_advertiser_done": "Ads from this advertiser are now hidden",

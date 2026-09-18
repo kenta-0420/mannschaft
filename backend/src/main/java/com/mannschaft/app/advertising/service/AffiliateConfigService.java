@@ -104,19 +104,23 @@ public class AffiliateConfigService {
 
     /**
      * 現在有効な広告一覧を取得する（公開API）。
+     * tag_id 未設定（プレースホルダ）行は除外する（CMP-260918-0025）。
      */
     public List<ActiveAdResponse> findActiveAds() {
         return affiliateConfigRepository.findActiveAds(LocalDateTime.now()).stream()
+                .filter(entity -> !entity.isPlaceholderTagId())
                 .map(advertisingMapper::toActiveAdResponse)
                 .toList();
     }
 
     /**
      * ユーザー属性に基づいてターゲティングされた広告一覧を取得する。
+     * tag_id 未設定（プレースホルダ）行は除外する（CMP-260918-0025）。
      */
     public List<ActiveAdResponse> findTargetedAds(String template, String prefecture, String locale) {
         return affiliateConfigRepository.findTargetedAds(
                         LocalDateTime.now(), template, prefecture, locale).stream()
+                .filter(entity -> !entity.isPlaceholderTagId())
                 .map(advertisingMapper::toActiveAdResponse)
                 .toList();
     }
