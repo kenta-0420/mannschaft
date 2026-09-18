@@ -397,14 +397,14 @@ records:
     verification:
       unit: {status: 通過, evidence: ["backend/src/test/java/com/mannschaft/app/timeline/service/TimelinePostServiceTest.java", "backend/src/test/java/com/mannschaft/app/timeline/dto/TimelineFeedResponseTest.java", "backend/src/test/java/com/mannschaft/app/village/service/VillageAccessGateTest.java", "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts", "frontend/tests/unit/components/timeline/TimelinePostCard.village-source.spec.ts", "frontend/tests/unit/pages/timeline-index-my-feed.spec.ts"]}
       integration: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java"]}
-      real_e2e: {status: 通過, evidence: ["frontend/tests/e2e/real/personal-timeline.spec.ts", "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T15-57-01.555Z）"]}
+      real_e2e: {status: 通過, evidence: ["frontend/tests/e2e/real/personal-timeline.spec.ts", "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T17-45-01.082Z）"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers:
       - "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定"
-    notes: "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・FE9件が通過。B0-J7 runId B0-2026-09-18T15-57-01.555Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。"
+    notes: "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。"
 
   - feature_key: chat
     name: チャット

@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-09-18T16:36:43+00:00",
+  "generatedAt": "2026-09-18T18:16:30+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -7,10 +7,10 @@ window.BETA_INVENTORY_DATA = {
     "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
-    "inventoryCommit": "3c345a2bfdcafcfe580ee85d72220398b4652eb4",
-    "taskListCommit": "7f421ae84f1a661eebf3db48665782d83e34c44c",
-    "inventorySha256": "af4b22dfe07cc8a2f87fdea7b7fca831d960e8aca7d1f64d913b8ad6d45bcc60",
-    "taskListSha256": "c00eb1433f915953d0d6fcf66d99977c57e754c3618f89c7ed6761703ec13ea1",
+    "inventoryCommit": "363cdb07c6c869eb77f1edb958389f894b867670",
+    "taskListCommit": "363cdb07c6c869eb77f1edb958389f894b867670",
+    "inventorySha256": "83a1b5fba7151b5785f85c8f54f8e9e13913ae7136a281d36e3b01d11685216f",
+    "taskListSha256": "c76b76934a3ab8e860d174420a1bf2722ca93efadc53415b9a4b30c96467f58d",
     "decisionsSha256": "b9f1cb383aecd684a026dcd486aad6474c6d48bea1bf0342b78a30a7351799e8",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -1001,7 +1001,7 @@ window.BETA_INVENTORY_DATA = {
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・FE9件が通過。B0-J7 runId B0-2026-09-18T15-57-01.555Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
       "blocker": "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定",
       "refs": [
@@ -1037,7 +1037,7 @@ window.BETA_INVENTORY_DATA = {
           "status": "通過",
           "evidence": [
             "frontend/tests/e2e/real/personal-timeline.spec.ts",
-            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T15-57-01.555Z）"
+            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T17-45-01.082Z）"
           ]
         }
       },
@@ -4570,7 +4570,7 @@ window.BETA_INVENTORY_DATA = {
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・FE9件が通過。B0-J7 runId B0-2026-09-18T15-57-01.555Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
       "blocker": "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定",
       "refs": [
@@ -4606,7 +4606,7 @@ window.BETA_INVENTORY_DATA = {
           "status": "通過",
           "evidence": [
             "frontend/tests/e2e/real/personal-timeline.spec.ts",
-            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T15-57-01.555Z）"
+            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T17-45-01.082Z）"
           ]
         }
       },
@@ -4638,7 +4638,7 @@ window.BETA_INVENTORY_DATA = {
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・FE9件が通過。B0-J7 runId B0-2026-09-18T15-57-01.555Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
       "blocker": "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定",
       "refs": [
@@ -4674,7 +4674,7 @@ window.BETA_INVENTORY_DATA = {
           "status": "通過",
           "evidence": [
             "frontend/tests/e2e/real/personal-timeline.spec.ts",
-            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T15-57-01.555Z）"
+            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T17-45-01.082Z）"
           ]
         }
       },
@@ -4706,7 +4706,7 @@ window.BETA_INVENTORY_DATA = {
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・FE9件が通過。B0-J7 runId B0-2026-09-18T15-57-01.555Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
       "blocker": "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定",
       "refs": [
@@ -4742,7 +4742,7 @@ window.BETA_INVENTORY_DATA = {
           "status": "通過",
           "evidence": [
             "frontend/tests/e2e/real/personal-timeline.spec.ts",
-            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T15-57-01.555Z）"
+            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T17-45-01.082Z）"
           ]
         }
       },
@@ -8385,8 +8385,8 @@ window.BETA_INVENTORY_DATA = {
   },
   "b0RunOverlay": {
     "schemaVersion": 2,
-    "runId": "B0-2026-09-18T15-57-01.555Z",
-    "startedAt": "2026-09-18T15:57:01.555Z",
+    "runId": "B0-2026-09-18T17-45-01.082Z",
+    "startedAt": "2026-09-18T17:45:01.082Z",
     "mode": "real-ui-real-db",
     "selectedJourneys": [
       "B0-J7"
@@ -8402,7 +8402,10 @@ window.BETA_INVENTORY_DATA = {
       {
         "id": "B0-J7",
         "status": "test-passed",
-        "specPaths": [
+        "executedSpecPaths": [
+          "frontend/tests/e2e/real/personal-timeline.spec.ts"
+        ],
+        "coverageSpecPaths": [
           "frontend/tests/e2e/real/personal-timeline.spec.ts",
           "frontend/tests/e2e/global/timeline.spec.ts",
           "frontend/tests/e2e/organizations/org-timeline.spec.ts",
@@ -8415,12 +8418,12 @@ window.BETA_INVENTORY_DATA = {
           "skipped": 0,
           "results": 1
         },
-        "evidencePath": "docs/prototypes/.b0-local/B0-J7-1789747021556.json",
+        "evidencePath": "docs/prototypes/.b0-local/B0-J7-1789753501088.json",
         "insightCount": 0
       }
     ],
     "insights": [],
-    "finishedAt": "2026-09-18T16:23:30.194Z"
+    "finishedAt": "2026-09-18T18:13:39.147Z"
   },
   "decisions": {
     "schemaVersion": 1,
@@ -27590,12 +27593,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "Issue #3358 / NOTE-260918-145441-001。試練 `e81cc9c`、実装 `608fa5e`、修正 `a96e848`・`eb6cc05`。BE単体・返信系、FE9件 green。B0-J7 runId `B0-2026-09-18T15-57-01.555Z` は実UI/実API/実DB、3認証主体・別BrowserContextで expected=1 / unexpected=0 / skipped=0 / results=1。統合IT・PR・CIは未完",
+          "label": "Issue #3358 / NOTE-260918-145441-001。試練 `e81cc9c`、実装 `608fa5e`、修正 `a96e848`・`eb6cc05`・D-1是正 `1a0657c`。BE単体・返信系・村Entity越境ArchUnit、FE9件 green。D-1是正後のB0-J7 runId `B0-2026-09-18T17-45-01.082Z` は実UI/実API/実DB、3認証主体・別BrowserContextで expected=1 / unexpected=0 / skipped=0 / results=1。統合IT・PR・CIは未完",
           "state": "unknown"
         }
       ],
       "prs": [
-        "Issue #3358 / NOTE-260918-145441-001。試練 `e81cc9c`、実装 `608fa5e`、修正 `a96e848`・`eb6cc05`。BE単体・返信系、FE9件 green。B0-J7 runId `B0-2026-09-18T15-57-01.555Z` は実UI/実API/実DB、3認証主体・別BrowserContextで expected=1 / unexpected=0 / skipped=0 / results=1。統合IT・PR・CIは未完"
+        "Issue #3358 / NOTE-260918-145441-001。試練 `e81cc9c`、実装 `608fa5e`、修正 `a96e848`・`eb6cc05`・D-1是正 `1a0657c`。BE単体・返信系・村Entity越境ArchUnit、FE9件 green。D-1是正後のB0-J7 runId `B0-2026-09-18T17-45-01.082Z` は実UI/実API/実DB、3認証主体・別BrowserContextで expected=1 / unexpected=0 / skipped=0 / results=1。統合IT・PR・CIは未完"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
