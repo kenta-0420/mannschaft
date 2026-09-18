@@ -78,6 +78,38 @@ public interface ChatChannelMemberRepository extends JpaRepository<ChatChannelMe
     void deleteByChannelIdAndUserId(Long channelId, Long userId);
 
     /**
+     * チーム離脱者を同チームのメンバーシップ連動チャネルからのみ除外する。
+     * DM・GROUP_DM・イベント等の行は対象にしない。
+     *
+     * @param userId 対象ユーザー ID
+     * @param teamId チーム ID
+     * @return 削除件数
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "DELETE m FROM chat_channel_members m "
+            + "INNER JOIN chat_channels c ON c.id = m.channel_id "
+            + "WHERE m.user_id = :userId AND c.team_id = :teamId "
+            + "AND c.channel_type IN ('TEAM_PUBLIC', 'TEAM_PRIVATE')", nativeQuery = true)
+    int deleteByUserIdAndTeamScopeChannels(@Param("userId") Long userId,
+                                           @Param("teamId") Long teamId);
+
+    /**
+     * 組織離脱者を同組織のメンバーシップ連動チャネルからのみ除外する。
+     * DM・GROUP_DM・イベント等の行は対象にしない。
+     *
+     * @param userId 対象ユーザー ID
+     * @param organizationId 組織 ID
+     * @return 削除件数
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "DELETE m FROM chat_channel_members m "
+            + "INNER JOIN chat_channels c ON c.id = m.channel_id "
+            + "WHERE m.user_id = :userId AND c.organization_id = :organizationId "
+            + "AND c.channel_type IN ('ORG_PUBLIC', 'ORG_PRIVATE')", nativeQuery = true)
+    int deleteByUserIdAndOrganizationScopeChannels(@Param("userId") Long userId,
+                                                   @Param("organizationId") Long organizationId);
+
+    /**
      * 指定ユーザーの指定チャンネル群における未読件数の合計を返す（F10.7 業務アラート用）。
      */
     @Query("SELECT COALESCE(SUM(m.unreadCount), 0) FROM ChatChannelMemberEntity m " +

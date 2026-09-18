@@ -22,6 +22,7 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
@@ -30,6 +31,8 @@ import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.user.repository.UserBlockRepository;
 import com.mannschaft.app.chat.event.InquiryChannelChangedEvent;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -65,6 +68,7 @@ public class ChatChannelService {
     private final ChatContactFolderItemRepository chatContactFolderItemRepository;
     private final ChatChannelAccessGuard channelAccessGuard;
     private final ChatAttachmentService chatAttachmentService;
+    private final MembershipService membershipService;
 
     /**
      * ユーザーが参加しているチャンネル一覧を取得する。
@@ -230,6 +234,9 @@ public class ChatChannelService {
         channelAccessGuard.requireChannelCreationScope(
                 channelType, request.getTeamId(), request.getOrganizationId(), isPrivate, createdBy);
 
+        requireScopeMembershipForRequestedMembers(
+                channelType, request.getTeamId(), request.getOrganizationId(), request.getMemberUserIds(), createdBy);
+
         validateChannelNameUniqueness(request, channelType);
 
         // DMチャンネル作成時: ブロック・DM受信制限チェック
@@ -274,6 +281,34 @@ public class ChatChannelService {
 
         log.info("チャンネル作成完了: channelId={}, type={}, createdBy={}", saved.getId(), channelType, createdBy);
         return chatMapper.toChannelResponse(saved);
+    }
+
+    /** スコープ連動チャネルへ追加する利用者が、同じスコープに在籍していることを確認する。 */
+    private void requireScopeMembershipForRequestedMembers(ChannelType channelType, Long teamId,
+                                                            Long organizationId, List<Long> userIds, Long createdBy) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        if (channelType == ChannelType.TEAM_PUBLIC || channelType == ChannelType.TEAM_PRIVATE) {
+            for (Long userId : userIds) {
+                if (!userId.equals(createdBy)) {
+                    requireActiveMembershipForUpdate(userId, ScopeType.TEAM, teamId);
+                }
+            }
+        } else if (channelType == ChannelType.ORG_PUBLIC || channelType == ChannelType.ORG_PRIVATE) {
+            for (Long userId : userIds) {
+                if (!userId.equals(createdBy)) {
+                    requireActiveMembershipForUpdate(userId, ScopeType.ORGANIZATION, organizationId);
+                }
+            }
+        }
+    }
+
+    /** 離脱処理と同じ membership 行をロックして、作成時の追加と離脱の競合を直列化する。 */
+    private void requireActiveMembershipForUpdate(Long userId, ScopeType scopeType, Long scopeId) {
+        if (!membershipService.isActiveMemberForUpdate(userId, scopeType, scopeId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**

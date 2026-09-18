@@ -66,7 +66,6 @@ tracked_paths:
   - /admin/equipment
   - /admin/member-profiles
   - /admin/reservation-settings
-  - /admin/blog-management
   - /admin/campaigns
   - /admin/promotions
   - /admin/packages
@@ -74,6 +73,8 @@ tracked_paths:
   - /admin/org-billing
   - /admin/tax-settings
   - /admin/member-permissions
+  - /teams/[slug]/settings/confirmable-notifications
+  - /organizations/[slug]/settings/confirmable-notifications
 
 pages:
   # --- Phase 1（完了・PR #3232）: 金銭に関わり本人が到達できないと実害が出る3枚 ---
@@ -151,11 +152,15 @@ pages:
     classification: duplicate-remnant
     replacement: /teams/[slug]/reservations
     link_detection_note: "teams/[slug]/admin/index.vue の AdminConsoleCard は to: `${base.value}/reservations` という動的テンプレートリテラルで導線を持つが、base.value（スコープ基底パス）が実行時にしか決まらないため静的走査では抽出できない（先頭が${で始まり切り落とし後に空文字列になる）。番人の偽陰性を避けるためここで抑制する"
-    reason: "CMP-260917-0041③。teams/[slug]/reservations.vue のLineManager.vueが同じreservation-lines APIを叩き、管理コンソールカード（teams/[slug]/admin/index.vue:78）から到達可能。ただしorganizations配下に予約機能自体が無く単純削除できない可能性があるため要確認（未着手）"
-  - path: /admin/blog-management
-    classification: duplicate-remnant
-    replacement: /organizations/[slug]/blog
-    reason: "CMP-260917-0041④。organizations/[slug]/blog.vue（teams/[slug]/blog.vueも同様）が同じ/api/v1/blog/postsを叩き、OrganizationSidebar.vue（path:'blog'）に導線あり。ただしadmin側はタグCRUD等の受け皿を持つため単純削除できない可能性があり要確認（未着手）"
+    reason: "CMP-260917-0041③。teams/[slug]/reservations.vue のLineManager.vueが同じreservation-lines APIを叩き、管理コンソールカード（teams/[slug]/admin/index.vue:78）から到達可能。ただしorganizations配下に予約機能自体が無く単純削除できない可能性があるため要確認（未着手）。
+      【2026-09-18 追加調査（マスター裁可は予約ライン重複の削除のみを対象としており、これは未確認だった）】
+      本ページは reservation-lines の他に ConfirmableNotificationSettings/Sender/History（確認通知設定・手動送信・履歴）セクションも埋め込んでいる（frontend/app/pages/admin/reservation-settings.vue:151-178）。
+      これら3コンポーネントは frontend/app 全体でこのページからしか描画されておらず（grep実測）、単純削除すると確認通知機能（TEAM/ORGANIZATION両スコープ）が導線ごと消える。
+      予約ライン部分は teams/[slug]/reservations.vue でカバーされるが、確認通知セクションの受け皿が無いため、このページはまだ削除できない。削除するには確認通知セクションの移設先を別途設計する必要がある（未着手）。"
+# /admin/blog-management は CMP-260917-0041（マスター裁可 2026-09-18）で削除済み。
+# 機能移植は PR #3350（BlogPostList.vue へタグCRUD・公開切替・記事削除を移植）、ページ削除は本PRで実施。
+# teams/[slug]/blog.vue・organizations/[slug]/blog.vue が同一のBlogPostList.vueを描画し、
+# 両サイドバーに導線あり（team/organization両スコープをカバー）。
 
   # --- BE不在7枚（CMP-260912-0909系）: BE実装待ち。正規ナビへ未公開 ---
   - path: /admin/campaigns
@@ -186,3 +191,13 @@ pages:
     classification: be-pending
     cmp: CMP-260912-0910
     reason: "/{scopeType}s/{scopeId}/role-permissions/member がBEに存在しない。かつ現状はcatchで404を握りつぶし「全権限有効」と嘘表示する危険度の高い欠陥がある（BE実装と同時に必ず除去すること）。BE実装後に正規ナビへ公開する方針"
+
+  # --- CMP-260909-1141 続報: /admin/reservation-settings（型③ duplicate-remnant 内、予約ライン CRUD と
+  # 確認通知F04.9が無関係に同居する到達不能ページ）のうち、確認通知3コンポーネントの新設移設先。
+  # 移設元ページ自体は本PRでは削除しない（新導線が生きたことを確認してから別PRで削除する）。
+  - path: /teams/[slug]/settings/confirmable-notifications
+    classification: reachable
+    reason: "CMP-260909-1141。旧 /admin/reservation-settings.vue（サイドバー導線が無く URL 直打ちでしか開けなかった）から確認通知3コンポーネント（ConfirmableNotificationSettings/Sender/History）を移設。TeamSidebar.vue の settings カテゴリへ path: 'settings/confirmable-notifications' で追加"
+  - path: /organizations/[slug]/settings/confirmable-notifications
+    classification: reachable
+    reason: "CMP-260909-1141。上記のOrganization版。OrganizationSidebar.vue の settings カテゴリへ path: 'settings/confirmable-notifications' で追加"

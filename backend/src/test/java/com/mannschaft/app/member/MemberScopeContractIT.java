@@ -38,6 +38,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -783,6 +784,38 @@ class MemberScopeContractIT extends AbstractMySqlIntegrationTest {
                             .param("q", "選手")
                             .param("teamPageId", pageAId.toString()))
                     .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("teamPageId未指定は400（認可チェックが必ず経路上を通るよう必須パラメータ化）")
+        void teamPageId未指定は400() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/team/members/lookup")
+                            .param("q", "選手"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("非メンバー（完全な部外者）は404")
+        void 非メンバーは404() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(get("/api/v1/team/members/lookup")
+                            .param("q", "選手")
+                            .param("teamPageId", pageAId.toString()))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("他チームのメンバーが検索結果に混ざらない（越境の検体）")
+        void 他チームのメンバーは混入しない() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/team/members/lookup")
+                            .param("q", "選手")
+                            .param("teamPageId", pageAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].memberProfileId").value(profileAId))
+                    .andExpect(jsonPath("$.data[?(@.memberProfileId == " + profileBId + ")]").isEmpty());
         }
     }
 

@@ -263,10 +263,10 @@ public class MemberProfileService {
      * メンバー番号・表示名でメンバーを検索する（コンボボックス用）。
      */
     public List<MemberLookupResponse> lookupMembers(Long actorUserId, Long teamPageId, String query, int limit) {
-        if (teamPageId != null) {
-            TeamPageEntity page = pageService.findPageOrThrow(teamPageId);
-            pageService.checkPageMembershipOrNotFound(actorUserId, page);
-        }
+        // teamPageId は必須パラメータ（Wave3-B2 member 認可根治）。分岐の外で必ず認可チェックを通す
+        // ことで、「if の中にしか認可判定が無く未指定時に素通りする」構造を排除する。
+        TeamPageEntity page = pageService.findPageOrThrow(teamPageId);
+        pageService.checkPageMembershipOrNotFound(actorUserId, page);
         String numberQuery = query + "%";
         String nameQuery = "%" + query + "%";
         Pageable pageable = PageRequest.of(0, Math.min(limit, 20));

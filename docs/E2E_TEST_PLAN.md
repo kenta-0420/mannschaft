@@ -185,7 +185,7 @@ tests/e2e/
 | 2 | `/admin/ad-rate-cards` | ADMIN-021 |
 | 3 | `/admin/affiliate-settings` | ADMIN-022 |
 | 4 | `/admin/appeals` | ADMIN-023 |
-| 5 | `/admin/blog-management` | ADMIN-024 |
+| 5 | ~~`/admin/blog-management`~~ | ~~ADMIN-024~~（CMP-260917-0041でページごと削除。機能はBlogPostList.vue経由でteams/organizations配下から到達可能） |
 | 6 | `/admin/bulletin-categories` | ADMIN-025 |
 | 7 | `/admin/campaigns` | ADMIN-026 |
 | 8 | `/admin/equipment` | ADMIN-027 |
