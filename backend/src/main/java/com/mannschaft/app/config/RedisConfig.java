@@ -11,7 +11,6 @@ import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.cache.interceptor.CacheErrorHandler;
-import org.springframework.cache.transaction.TransactionAwareCacheManagerProxy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -232,6 +231,6 @@ public class RedisConfig {
     public CacheManager testInMemoryCacheManager() {
         // 名前を渡さない ConcurrentMapCacheManager は要求されたキャッシュ名を動的生成する
         // （アプリで使う全キャッシュ名を列挙せずに済む）。
-        return new TransactionAwareCacheManagerProxy(new ConcurrentMapCacheManager());
+        return new ConcurrentMapCacheManager();
     }
 }
