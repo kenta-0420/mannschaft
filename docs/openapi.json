@@ -121042,7 +121042,7 @@
           {
             "name": "teamPageId",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "type": "integer",
               "format": "int64"
@@ -160667,9 +160667,6 @@
             "format": "int64"
           },
           "isActive": {
-            "type": "boolean"
-          },
-          "placeholderTagId": {
             "type": "boolean"
           },
           "placement": {
