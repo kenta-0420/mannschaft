@@ -893,10 +893,11 @@ public class TimelinePostService {
     /**
      * 個人ダッシュボード集約タイムライン（マイフィード）を取得する。
      *
-     * <p>ログインユーザーが所属する全チーム/組織（MEMBER / SUPPORTER 両方）の
+     * <p>ログインユーザーが現役所属する TEAM / ORGANIZATION / VILLAGE の
      * タイムライン投稿を横断集約し、新しい順（id 降順）で返す。timeline 投稿に
      * 可視性列は無く所属スコープ一致＝可視のため、サポーターもメンバーと完全同一の
-     * 投稿が見える。VILLAGE は集約対象外（殿の確定仕様 b）。自分の投稿も含む（仕様 a）。</p>
+     * 投稿が見える。VILLAGE は VillageAccessGate が一括解決した現役所属かつ可視の村に限定する。
+     * 自分の投稿も含む（仕様 a）。</p>
      *
      * <p>所属スコープ ID は {@link com.mannschaft.app.membership.service.MembershipService}
      * 経由で解決する（ドメイン境界原則）。両メソッドは MEMBER / SUPPORTER 両方を含む。</p>

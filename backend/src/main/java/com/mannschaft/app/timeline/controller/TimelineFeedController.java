@@ -73,8 +73,8 @@ public class TimelineFeedController {
     /**
      * 個人ダッシュボード集約タイムライン（マイフィード）を取得する。
      *
-     * <p>ログインユーザーが所属する全チーム/組織（MEMBER / SUPPORTER 両方）の投稿を
-     * 横断集約し、新しい順で返す。VILLAGE は集約対象外。自分の投稿も含む。</p>
+     * <p>ログインユーザーが現役所属する TEAM / ORGANIZATION / VILLAGE の投稿を
+     * 横断集約し、新しい順で返す。自分の投稿も含む。</p>
      *
      * <p>認証必須: 本 EP は SecurityConfig の permitAll に含めない（deny-by-default で
      * 未認証は 401）。{@link SecurityUtils#getCurrentUserId()} がトークンからユーザー ID を取得する。</p>

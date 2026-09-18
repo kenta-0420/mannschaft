@@ -345,7 +345,7 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     descriptionKey: 'dashboard.widget_descriptions.favorites',
     scope: ['personal'],
   },
-  // 個人集約タイムライン（WidgetMyTimeline・所属 team/org 横断）
+  // 個人集約タイムライン（WidgetMyTimeline・現役所属 team/org/village 横断）
   {
     key: 'my-timeline',
     label: '集約タイムライン',
