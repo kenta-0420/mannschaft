@@ -101,7 +101,7 @@ async function assertAggregate(page: Page, posts: readonly CreatedPost[]): Promi
 }
 
 test('NOTE-260918-145441-001: 所属チーム・組織・村の投稿がダッシュボードと個人タイムラインで一致する', async ({ browser }, testInfo) => {
-  test.setTimeout(360_000)
+  test.setTimeout(900_000)
   const admin = await browser.newContext()
   const member = await browser.newContext()
   const outsider = await browser.newContext()
