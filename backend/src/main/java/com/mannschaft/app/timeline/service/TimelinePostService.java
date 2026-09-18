@@ -1304,7 +1304,7 @@ public class TimelinePostService {
      * @param cursor 起点カーソル（この投稿 ID より後を取得）。null なら先頭から
      * @param size   取得件数（1 件以上・0 以下は既定 20）
      * @param userId 呼び出し元ユーザー ID（親投稿の可視性検証用）
-     * @return enrich 済みリプライ一覧（ID 昇順）
+     * @return enrich 済みリプライ一覧（ID 昇順・ページング判定用の最大 {@code size + 1} 件）
      */
     public List<PostResponse> getReplies(Long postId, Long cursor, int size, Long userId) {
         TimelinePostEntity parent = findPostOrThrow(postId);
@@ -1313,7 +1313,7 @@ public class TimelinePostService {
         }
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
         List<TimelinePostEntity> replies = postRepository.findRepliesByParentIdAfterCursor(
-                postId, cursor, PageRequest.of(0, feedSize));
+                postId, cursor, PageRequest.of(0, feedSize + 1));
         return enrichPosts(timelineMapper.toPostResponseList(replies));
     }
 

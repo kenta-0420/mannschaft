@@ -113,7 +113,7 @@ public class TimelineFeedResponse {
      * ページネーション（{@code hasNext}/{@code nextCursor}）は {@link #ofMyFeed} と同じ
      * ID キーセット方式（ID 昇順の末尾 = 最大 ID を次カーソルとする）。</p>
      *
-     * @param replies enrich 済みリプライ一覧（ID 昇順・最大 limit 件）
+     * @param replies enrich 済みリプライ一覧（ID 昇順・最大 {@code limit + 1} 件）
      * @param limit   リクエスト件数
      * @return タイムラインフィードレスポンス（pinned 空・実カーソル付き）
      */

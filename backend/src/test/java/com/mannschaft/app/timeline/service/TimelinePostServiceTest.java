@@ -2097,6 +2097,8 @@ class TimelinePostServiceTest {
 
             // then
             assertThat(result).hasSize(1);
+            verify(postRepository).findRepliesByParentIdAfterCursor(
+                    eq(parentId), isNull(), eq(PageRequest.of(0, 11)));
         }
 
         @Test
@@ -2115,7 +2117,7 @@ class TimelinePostServiceTest {
             timelinePostService.getReplies(parentId, null, -1, USER_ID);
 
             // then
-            verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), isNull(), eq(PageRequest.of(0, 20)));
+            verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), isNull(), eq(PageRequest.of(0, 21)));
         }
 
         @Test
@@ -2135,7 +2137,7 @@ class TimelinePostServiceTest {
             timelinePostService.getReplies(parentId, cursor, 20, USER_ID);
 
             // then
-            verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), eq(cursor), eq(PageRequest.of(0, 20)));
+            verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), eq(cursor), eq(PageRequest.of(0, 21)));
         }
 
         @Test
