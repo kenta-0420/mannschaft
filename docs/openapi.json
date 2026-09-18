@@ -121043,7 +121043,7 @@
           {
             "name": "teamPageId",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "type": "integer",
               "format": "int64"

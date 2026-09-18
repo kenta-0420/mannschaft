@@ -486,6 +486,10 @@
   },
   "confirmable": {
     "title": "Bestätigungsbenachrichtigung",
+    "page": {
+      "settings_title": "Einstellungen für Bestätigungsbenachrichtigungen",
+      "settings_subtitle": "Verwalten Sie Einstellungen, Versand und Verlauf von Bestätigungsbenachrichtigungen"
+    },
     "settings": "Einstellungen für Bestätigungsbenachrichtigungen",
     "send": "Bestätigungsbenachrichtigung senden",
     "history": "Sendungsverlauf",

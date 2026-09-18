@@ -59,4 +59,14 @@ public class CommitteeMemberEntity extends BaseEntity {
     public void leave() {
         this.leftAt = LocalDateTime.now();
     }
+
+    /**
+     * 指定日時で離脱処理を行う。
+     *
+     * <p>組織脱退に伴う一括クリーンアップでは、同一イベントで終了する全メンバーシップに
+     * 同じ日時を記録し、処理結果を決定的にするために使用する。</p>
+     */
+    public void leaveAt(LocalDateTime leftAt) {
+        this.leftAt = leftAt;
+    }
 }

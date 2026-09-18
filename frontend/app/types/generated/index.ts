@@ -152731,7 +152731,7 @@ export interface operations {
         parameters: {
             query: {
                 q: string;
-                teamPageId?: number;
+                teamPageId: number;
                 limit?: number;
             };
             header?: never;

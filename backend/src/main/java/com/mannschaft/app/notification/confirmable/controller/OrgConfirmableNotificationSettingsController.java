@@ -36,6 +36,17 @@ public class OrgConfirmableNotificationSettingsController {
     private final AccessControlService accessControlService;
 
     /**
+     * F04.9 §2 が定める確認通知の送信権限（CMP-260909-1141）。
+     *
+     * <p>書き込み系（送信・キャンセル・リマインド再送・設定更新・テンプレート CRUD）は
+     * 「ADMIN、または本権限を持つ DEPUTY_ADMIN」で認可する。カタログ登録と DEPUTY_ADMIN への
+     * 既定付与（{@code is_default=1}）は
+     * {@code V216.20260918083734__add_send_notification_permission.sql} が行う。
+     * 閲覧系は従来どおり {@code checkMembership} のままである。</p>
+     */
+    private static final String SEND_NOTIFICATION = "SEND_NOTIFICATION";
+
+    /**
      * 組織の確認通知設定を取得する（存在しない場合はデフォルト値で作成）。
      *
      * <p>認可根治戦役 Wave7: 閲覧系のため {@code checkMembership}（非メンバーの設定窃視を根治）。</p>
@@ -56,7 +67,8 @@ public class OrgConfirmableNotificationSettingsController {
      * 組織の確認通知設定を更新する。
      *
      * <p>認可根治戦役 Wave7: デフォルトのリマインド設定・アラート閾値・未確認者公開範囲を変更する
-     * 管理操作のため {@code checkAdminOrAbove}（兄弟の送信・キャンセル操作と同じ粒度）。</p>
+     * 管理操作のため {@code checkAdminOrHasPermissionInScope(..., "SEND_NOTIFICATION")}
+     * （CMP-260909-1141。兄弟の送信・キャンセル操作と同じ粒度）。</p>
      */
     @PutMapping
     @Operation(summary = "確認通知設定更新（組織）")
@@ -65,7 +77,8 @@ public class OrgConfirmableNotificationSettingsController {
             @PathVariable Long orgId,
             @RequestBody ConfirmableNotificationSettingsUpdateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name());
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, orgId, ScopeType.ORGANIZATION.name(), SEND_NOTIFICATION);
         ConfirmableNotificationSettingsEntity entity = settingsService.update(
                 ScopeType.ORGANIZATION,
                 orgId,
