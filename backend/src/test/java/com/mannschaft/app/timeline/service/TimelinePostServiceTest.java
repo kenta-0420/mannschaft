@@ -33,8 +33,10 @@ import com.mannschaft.app.timeline.repository.TimelinePostAttachmentRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostEditRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostReactionRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
+import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
+import com.mannschaft.app.village.service.VillageAccessGate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -96,6 +98,9 @@ class TimelinePostServiceTest {
 
     @Mock
     private PostingIdentityService postingIdentityService;
+
+    @Mock
+    private VillageAccessGate villageAccessGate;
 
     @Mock
     private AccessControlService accessControlService;
@@ -203,6 +208,76 @@ class TimelinePostServiceTest {
         org.mockito.Mockito.lenient().when(nameResolverService.resolveOrganizationIconUrls(anySet())).thenReturn(Map.of());
         org.mockito.Mockito.lenient().when(nameResolverService.resolveUserDisplayNames(anySet())).thenReturn(Map.of());
         org.mockito.Mockito.lenient().when(nameResolverService.resolveUserAvatarUrls(anySet())).thenReturn(Map.of());
+    }
+
+    @Test
+    @DisplayName("AC-村: 村のみ所属でも一括解決した UUID・名前・遷移用 slug を返し limit+1 件を要求する")
+    void villageOnlyMyFeed_enrichesIdentityAndRequestsOneExtraRow() {
+        UUID villageId = UUID.fromString("018f0000-0000-7000-8000-000000000101");
+        VillageEntity village = VillageEntity.builder().name("村一").slug("village-one").build();
+        village.setId(villageId);
+        PostResponse raw = PostResponse.builder()
+                .id(10L)
+                .scope(new PostResponse.PostScopeDto("VILLAGE", 0L, villageId, null, null))
+                .author(new PostResponse.PostAuthorDto(USER_ID, null, "USER", null))
+                .content(new PostResponse.PostContentDto("村投稿", null, null, "PUBLISHED", null, false))
+                .stats(new PostResponse.PostStatsDto(0, 0, 0, (short) 0, (short) 0))
+                .audit(new PostResponse.PostAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                .build();
+        given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of());
+        given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
+        given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(villageId));
+        given(villageAccessGate.findActiveVisibleVillages(List.of(villageId), USER_ID)).willReturn(List.of(village));
+        given(postRepository.findMyVillageFeed(anyList(), any(), any(PageRequest.class)))
+                .willReturn(List.of());
+        given(timelineMapper.toPostResponseList(any())).willReturn(List.of(raw));
+
+        List<PostResponse> result = timelinePostService.getMyFeed(USER_ID, null, 2);
+
+        assertThat(result).singleElement().satisfies(post -> {
+            assertThat(post.getScope().scopeVillageId()).isEqualTo(villageId);
+            assertThat(post.getScope().name()).isEqualTo("村一");
+            assertThat(post.getScope().slug()).isEqualTo("village-one");
+        });
+        verify(villageAccessGate).findActiveVisibleVillages(List.of(villageId), USER_ID);
+        verify(postRepository).findMyVillageFeed(
+                eq(List.of(villageId)), isNull(), eq(PageRequest.of(0, 3)));
+    }
+
+    @Test
+    @DisplayName("AC-ページング: TEAM と VILLAGE の投稿をID降順で合流し、各クエリは limit+1 までに留める")
+    void myFeed_mergesTeamAndVillageByIdWithOneExtraRowPerQuery() {
+        UUID villageId = UUID.fromString("018f0000-0000-7000-8000-000000000102");
+        VillageEntity village = VillageEntity.builder().name("村").slug("village-two").build();
+        village.setId(villageId);
+        TimelinePostEntity teamPost12 = TimelinePostEntity.builder()
+                .id(12L).scopeType(PostScopeType.TEAM).scopeId(1L).build();
+        TimelinePostEntity teamPost10 = TimelinePostEntity.builder()
+                .id(10L).scopeType(PostScopeType.TEAM).scopeId(1L).build();
+        TimelinePostEntity villagePost11 = TimelinePostEntity.builder()
+                .id(11L).scopeType(PostScopeType.VILLAGE).scopeVillageId(villageId).build();
+        TimelinePostEntity villagePost9 = TimelinePostEntity.builder()
+                .id(9L).scopeType(PostScopeType.VILLAGE).scopeVillageId(villageId).build();
+        given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of(1L));
+        given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
+        given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(villageId));
+        given(villageAccessGate.findActiveVisibleVillages(List.of(villageId), USER_ID)).willReturn(List.of(village));
+        given(postRepository.findMyFeed(anyList(), anyList(), anyList(), anyList(), anyList(), anyList(), isNull(), any(PageRequest.class)))
+                .willReturn(List.of(teamPost12, teamPost10));
+        given(postRepository.findMyVillageFeed(eq(List.of(villageId)), isNull(), any(PageRequest.class)))
+                .willReturn(List.of(villagePost11, villagePost9));
+        given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+        timelinePostService.getMyFeed(USER_ID, null, 2);
+
+        ArgumentCaptor<List<TimelinePostEntity>> postsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(timelineMapper).toPostResponseList(postsCaptor.capture());
+        assertThat(postsCaptor.getValue()).extracting(TimelinePostEntity::getId)
+                .containsExactly(12L, 11L, 10L);
+        verify(postRepository).findMyFeed(
+                eq(List.of(1L)), eq(List.of(-1L)), anyList(), anyList(), anyList(), anyList(),
+                isNull(), eq(PageRequest.of(0, 3)));
+        verify(postRepository).findMyVillageFeed(eq(List.of(villageId)), isNull(), eq(PageRequest.of(0, 3)));
     }
 
     // ========================================

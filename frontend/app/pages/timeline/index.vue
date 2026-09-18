@@ -4,11 +4,6 @@ definePageMeta({
 })
 
 const router = useRouter()
-const feedRef = ref<{ refresh: () => void } | null>(null)
-
-function onPostCreated() {
-  feedRef.value?.refresh()
-}
 </script>
 
 <template>
@@ -18,10 +13,6 @@ function onPostCreated() {
       <h2 class="text-2xl font-semibold">タイムライン</h2>
     </div>
 
-    <div class="mb-6">
-      <TimelinePostForm scope-type="PUBLIC" @posted="onPostCreated" />
-    </div>
-
-    <TimelineFeed ref="feedRef" scope-type="PUBLIC" />
+    <TimelineFeed my-feed />
   </div>
 </template>

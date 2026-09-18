@@ -7,6 +7,7 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * タイムライン投稿レスポンスDTO（一覧用）。
@@ -67,13 +68,18 @@ public class PostResponse {
     /**
      * 投稿スコープ。
      *
-     * <p>{@code name}/{@code slug} は個人集約タイムラインで投稿元（TEAM/ORGANIZATION）を
+     * <p>{@code name}/{@code slug} は個人集約タイムラインで投稿元（TEAM/ORGANIZATION/VILLAGE）を
      * 表示・遷移させるために enrich される。それ以外の経路では {@code null}。</p>
      */
-    public record PostScopeDto(String scopeType, Long scopeId, String name, String slug) {
+    public record PostScopeDto(String scopeType, Long scopeId, UUID scopeVillageId, String name, String slug) {
         /** 後方互換: name/slug を持たない従来の 2 引数コンストラクタ（enrich 前の既定経路用）。 */
         public PostScopeDto(String scopeType, Long scopeId) {
-            this(scopeType, scopeId, null, null);
+            this(scopeType, scopeId, null, null, null);
+        }
+
+        /** 後方互換: TEAM/ORGANIZATION の投稿元表示を持つ従来の 4 引数コンストラクタ。 */
+        public PostScopeDto(String scopeType, Long scopeId, String name, String slug) {
+            this(scopeType, scopeId, null, name, slug);
         }
     }
 

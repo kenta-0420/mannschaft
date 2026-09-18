@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -109,6 +110,27 @@ class VillageAccessGateTest {
     private VillageErrorCode codeOf(Throwable t) {
         assertThat(t).isInstanceOf(BusinessException.class);
         return (VillageErrorCode) ((BusinessException) t).getErrorCode();
+    }
+
+    @Test
+    @DisplayName("現役可視村の一括解決は削除・凍結を除外し repository を一回だけ読む")
+    void findActiveVisibleVillages_batchesAndFiltersInactiveVillages() {
+        UUID activeId = VILLAGE_ID;
+        UUID deletedId = UUID.fromString("018f0000-0000-7000-8000-000000000002");
+        UUID frozenId = UUID.fromString("018f0000-0000-7000-8000-000000000003");
+        VillageEntity active = village(VillageVisibility.PUBLIC, null, null);
+        VillageEntity deleted = village(VillageVisibility.PUBLIC, LocalDateTime.now(), null);
+        deleted.setId(deletedId);
+        VillageEntity frozen = village(VillageVisibility.PUBLIC, null, LocalDateTime.now());
+        frozen.setId(frozenId);
+        when(villageRepository.findAllById(any())).thenReturn(List.of(active, deleted, frozen));
+
+        List<VillageEntity> result = gate.findActiveVisibleVillages(
+                List.of(activeId, deletedId, frozenId, activeId), MEMBER_ID);
+
+        assertThat(result).containsExactly(active);
+        verify(villageRepository).findAllById(any());
+        verifyNoInteractions(membershipRepository, accessControlService);
     }
 
     // ==================================================================

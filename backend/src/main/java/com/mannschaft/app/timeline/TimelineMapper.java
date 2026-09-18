@@ -30,7 +30,10 @@ public interface TimelineMapper {
                 .id(entity.getId())
                 .scope(new PostResponse.PostScopeDto(
                         entity.getScopeType().name(),
-                        entity.getScopeId()))
+                        entity.getScopeId(),
+                        entity.getScopeVillageId(),
+                        null,
+                        null))
                 .author(new PostResponse.PostAuthorDto(
                         entity.getUserId(),
                         entity.getSocialProfileId(),

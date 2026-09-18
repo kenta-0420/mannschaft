@@ -168,6 +168,20 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             @Param("cursorId") Long cursorId,
             Pageable pageable);
 
+    @Query("""
+            SELECT p FROM TimelinePostEntity p
+            WHERE p.scopeType = com.mannschaft.app.timeline.PostScopeType.VILLAGE
+              AND p.scopeVillageId IN :villageIds
+              AND p.parentId IS NULL
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+              AND (:cursorId IS NULL OR p.id < :cursorId)
+            ORDER BY p.id DESC
+            """)
+    List<TimelinePostEntity> findMyVillageFeed(
+            @Param("villageIds") List<UUID> villageIds,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable);
+
     /**
      * ユーザーの投稿一覧を取得する（scope 無視・全件）。
      *

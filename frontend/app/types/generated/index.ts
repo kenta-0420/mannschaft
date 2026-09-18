@@ -32513,7 +32513,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 個人集約タイムライン取得（所属team/org横断） */
+        /** 個人集約タイムライン取得（所属team/org/village横断） */
         get: operations["getMyFeed"];
         put?: never;
         post?: never;
@@ -56873,6 +56873,8 @@ export interface components {
             /** Format: int64 */
             scopeId?: number;
             scopeType?: string;
+            /** Format: uuid */
+            scopeVillageId?: string;
             slug?: string;
         };
         PostStatsDto: {

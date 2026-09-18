@@ -112250,7 +112250,7 @@
         "tags": [
           "タイムラインフィード"
         ],
-        "summary": "個人集約タイムライン取得（所属team/org横断）",
+        "summary": "個人集約タイムライン取得（所属team/org/village横断）",
         "operationId": "getMyFeed",
         "parameters": [
           {
@@ -172927,6 +172927,10 @@
           },
           "scopeType": {
             "type": "string"
+          },
+          "scopeVillageId": {
+            "type": "string",
+            "format": "uuid"
           },
           "slug": {
             "type": "string"

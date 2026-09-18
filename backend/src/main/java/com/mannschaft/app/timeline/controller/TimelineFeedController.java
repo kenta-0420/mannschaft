@@ -98,7 +98,7 @@ public class TimelineFeedController {
             "postService.getMyFeed(userId, ...) は SecurityUtils.getCurrentUserId() のみを"
                     + "検索条件に渡す（TimelineFeedController#getMyFeed）")
     @GetMapping("/my")
-    @Operation(summary = "個人集約タイムライン取得（所属team/org横断）")
+    @Operation(summary = "個人集約タイムライン取得（所属team/org/village横断）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<TimelineFeedResponse> getMyFeed(
             @RequestParam(required = false) Long cursor,

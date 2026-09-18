@@ -93,12 +93,14 @@ public class TimelineFeedResponse {
      * @return タイムラインフィードレスポンス（pinned 空・実カーソル付き）
      */
     public static TimelineFeedResponse ofMyFeed(List<PostResponse> posts, int limit) {
-        boolean hasNext = posts.size() >= limit;
-        Long nextCursor = (hasNext && !posts.isEmpty())
-                ? posts.get(posts.size() - 1).getId()
+        int pageSize = limit > 0 ? limit : 20;
+        boolean hasNext = posts.size() > pageSize;
+        List<PostResponse> pagePosts = hasNext ? posts.subList(0, pageSize) : posts;
+        Long nextCursor = (hasNext && !pagePosts.isEmpty())
+                ? pagePosts.get(pagePosts.size() - 1).getId()
                 : null;
-        FeedData feedData = new FeedData(List.of(), posts);
-        FeedMeta feedMeta = new FeedMeta(nextCursor, limit, hasNext);
+        FeedData feedData = new FeedData(List.of(), pagePosts);
+        FeedMeta feedMeta = new FeedMeta(nextCursor, pageSize, hasNext);
         return new TimelineFeedResponse(feedData, feedMeta);
     }
 
