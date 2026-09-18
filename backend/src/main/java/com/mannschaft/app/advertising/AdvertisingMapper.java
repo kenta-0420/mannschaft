@@ -31,6 +31,7 @@ public interface AdvertisingMapper {
      */
     @Mapping(target = "provider", expression = "java(entity.getProvider().name())")
     @Mapping(target = "placement", expression = "java(entity.getPlacement().name())")
+    @Mapping(target = "placeholderTagId", expression = "java(entity.isPlaceholderTagId())")
     AffiliateConfigResponse toResponse(AffiliateConfigEntity entity);
 
     /**

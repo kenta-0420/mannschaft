@@ -4,6 +4,7 @@ import type { AffiliateConfigResponse, CreateAffiliateConfigRequest } from '~/ty
 definePageMeta({ middleware: 'auth' })
 
 const systemAdminApi = useSystemAdminApi()
+const { t } = useI18n()
 const { success, error: showError } = useNotification()
 const { formatDate, formatDateTime } = useDatetime()
 
@@ -156,6 +157,10 @@ onMounted(load)
           />
           <ToggleSwitch :model-value="cfg.isActive" @update:model-value="() => toggle(cfg)" />
         </div>
+
+        <Message v-if="cfg.placeholderTagId" severity="warn" :closable="false" class="mb-2 text-xs">
+          {{ t('advertising.admin_affiliate_settings.placeholder_tag_warning') }}
+        </Message>
 
         <dl class="mb-2 space-y-1 text-sm [&_dd]:inline [&_dt]:inline [&_dt]:font-medium [&_dt]:text-surface-500">
           <div><dt>タグID:</dt> <dd class="font-mono">{{ cfg.tagId }}</dd></div>
