@@ -486,6 +486,10 @@
   },
   "confirmable": {
     "title": "确认通知",
+    "page": {
+      "settings_title": "确认通知设置",
+      "settings_subtitle": "管理确认通知的设置、发送与发送历史"
+    },
     "settings": "确认通知设置",
     "send": "发送确认通知",
     "history": "发送历史",

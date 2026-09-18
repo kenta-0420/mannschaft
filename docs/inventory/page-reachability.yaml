@@ -73,6 +73,8 @@ tracked_paths:
   - /admin/org-billing
   - /admin/tax-settings
   - /admin/member-permissions
+  - /teams/[slug]/settings/confirmable-notifications
+  - /organizations/[slug]/settings/confirmable-notifications
 
 pages:
   # --- Phase 1（完了・PR #3232）: 金銭に関わり本人が到達できないと実害が出る3枚 ---
@@ -189,3 +191,13 @@ pages:
     classification: be-pending
     cmp: CMP-260912-0910
     reason: "/{scopeType}s/{scopeId}/role-permissions/member がBEに存在しない。かつ現状はcatchで404を握りつぶし「全権限有効」と嘘表示する危険度の高い欠陥がある（BE実装と同時に必ず除去すること）。BE実装後に正規ナビへ公開する方針"
+
+  # --- CMP-260909-1141 続報: /admin/reservation-settings（型③ duplicate-remnant 内、予約ライン CRUD と
+  # 確認通知F04.9が無関係に同居する到達不能ページ）のうち、確認通知3コンポーネントの新設移設先。
+  # 移設元ページ自体は本PRでは削除しない（新導線が生きたことを確認してから別PRで削除する）。
+  - path: /teams/[slug]/settings/confirmable-notifications
+    classification: reachable
+    reason: "CMP-260909-1141。旧 /admin/reservation-settings.vue（サイドバー導線が無く URL 直打ちでしか開けなかった）から確認通知3コンポーネント（ConfirmableNotificationSettings/Sender/History）を移設。TeamSidebar.vue の settings カテゴリへ path: 'settings/confirmable-notifications' で追加"
+  - path: /organizations/[slug]/settings/confirmable-notifications
+    classification: reachable
+    reason: "CMP-260909-1141。上記のOrganization版。OrganizationSidebar.vue の settings カテゴリへ path: 'settings/confirmable-notifications' で追加"
