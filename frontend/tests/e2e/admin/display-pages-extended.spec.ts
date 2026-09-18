@@ -48,13 +48,11 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
     })
   })
 
-  test('ADMIN-024: ブログ管理ページが表示される', async ({ page }) => {
-    await page.goto('/admin/blog-management')
-    await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'ブログ管理' })).toBeVisible({
-      timeout: 10_000,
-    })
-  })
+  // ADMIN-024（旧: /admin/blog-management 表示確認）は CMP-260917-0041 で削除。
+  // 機能は BlogPostList.vue へ移植済み（PR #3350）で teams/[slug]/blog.vue・
+  // organizations/[slug]/blog.vue から到達可能。実機E2E側は BLOG-SCOPE-001
+  // （frontend/tests/e2e/real/blog/blog-full-e2e.spec.ts）が /teams/{id}/blog への
+  // 到達とAPI疎通を既に担保しているため、二重管理を避けて本テストは移設せず削除する。
 
   test('ADMIN-025: 掲示板カテゴリ管理ページが表示される', async ({ page }) => {
     await page.goto('/admin/bulletin-categories')
