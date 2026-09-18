@@ -192,8 +192,32 @@ class PersonalScheduleServiceTest {
         }
 
         @Test
-        @DisplayName("個人スケジュール作成_上限超過_例外スロー")
-        void 個人スケジュール作成_上限超過_例外スロー() {
+        @DisplayName("CMP-114: 個人予定999件では1000件目を作成できる")
+        void 個人スケジュール作成_999件では1000件目を作成できる() {
+            // given
+            List<ScheduleEntity> nineHundredNinetyNineSchedules =
+                    java.util.stream.IntStream.range(0, 999)
+                            .mapToObj(i -> createPersonalScheduleEntity())
+                            .toList();
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(nineHundredNinetyNineSchedules);
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null, null, null, null);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then
+            verify(scheduleRepository).save(any(ScheduleEntity.class));
+        }
+
+        @Test
+        @DisplayName("CMP-114: 個人予定1000件では1001件目を拒否する")
+        void 個人スケジュール作成_1000件では1001件目を拒否する() {
             // given
             List<ScheduleEntity> thousandSchedules =
                     java.util.stream.IntStream.range(0, 1000)
@@ -211,6 +235,49 @@ class PersonalScheduleServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.PERSONAL_SCHEDULE_LIMIT_EXCEEDED);
+        }
+
+        @Test
+        @DisplayName("CMP-114: 相対・絶対リマインダー合計5件は作成できる")
+        void 個人スケジュール作成_リマインダー合計5件は作成できる() {
+            // given
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    List.of(10, 30, 60), List.of(START_ODT.minusHours(1), START_ODT.minusMinutes(5)), null);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then
+            verify(reminderRepository).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("CMP-114: 相対・絶対リマインダー合計6件は拒否する")
+        void 個人スケジュール作成_リマインダー合計6件は拒否する() {
+            // given
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    List.of(10, 30, 60), List.of(START_ODT.minusHours(1), START_ODT.minusMinutes(5), START_ODT), null);
+
+            // when & then
+            assertThatThrownBy(() -> personalScheduleService.createPersonalSchedule(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ScheduleErrorCode.PERSONAL_REMINDER_LIMIT_EXCEEDED);
+            verify(reminderRepository, never()).saveAll(any());
         }
 
         @Test
