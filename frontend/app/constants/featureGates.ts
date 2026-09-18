@@ -150,7 +150,7 @@ export const GATE_ROUTE_MAP: Record<string, string[]> = {
     '/system-admin/analytics',
   ],
   FEATURE_GAMIFICATION_ENABLED: [
-    '/organizations/*/gamification',
+    // CMP-260918-0024: ゲーミフィケーションはチーム固有機能に決定。組織ページは削除済み。
     '/organizations/*/supporters',
     '/teams/*/gamification',
     '/teams/*/supporters',

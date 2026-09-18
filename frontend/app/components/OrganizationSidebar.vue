@@ -105,7 +105,11 @@ const categories: SidebarCategory[] = [
     labelKey: 'orgSidebar.category.other',
     icon: 'pi pi-ellipsis-h',
     items: [
-      { labelKey: 'orgSidebar.gamification', icon: 'pi pi-star', path: 'gamification', moduleSlug: null, requiredRole: 'MEMBER' },
+      // CMP-260918-0024: ゲーミフィケーションはチーム固有機能（マスター裁可）。BE が
+      // /api/v1/teams/{teamId}/gamification/... のチームスコープ専用実装のため、組織では
+      // module_level_availability の ORGANIZATION 行を利用不可にしている（V216）。
+      // moduleSlug を与えることで BaseSidebar の isItemVisible が enabledSlugs に含まれない
+      // gamification を弾き、組織サイドバーには表示されない。
       { labelKey: 'orgSidebar.tournaments', icon: 'pi pi-trophy', path: 'tournaments', moduleSlug: 'tournament', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.leagueTransfers', icon: 'pi pi-arrow-right-arrow-left', path: 'league-transfers', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.queue', icon: 'pi pi-sort-numeric-up', path: 'queue', moduleSlug: null, requiredRole: 'MEMBER' },
