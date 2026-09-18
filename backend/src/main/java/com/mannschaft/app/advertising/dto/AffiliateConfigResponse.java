@@ -30,4 +30,9 @@ public class AffiliateConfigResponse {
     private final String targetLocale;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+    /**
+     * tag_id が未設定（Flyway シード等のプレースホルダ）かどうか（CMP-260918-0025）。
+     * SYSTEM_ADMIN 向け画面で警告表示するためのフラグ。
+     */
+    private final Boolean placeholderTagId;
 }

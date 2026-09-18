@@ -98,9 +98,10 @@ public class EquipmentRankingBatchService {
         List<Long> optOutTeamIds = exclusionRepository.findOptOutTeamIds();
         List<String> excludedNames = exclusionRepository.findExcludedNormalizedNames();
 
-        // 2. Amazon アフィリエイトタグを取得（存在しない場合は null）
+        // 2. Amazon アフィリエイトタグを取得（存在しない、またはプレースホルダの場合は null。CMP-260918-0025）
         String amazonTag = affiliateConfigRepository
                 .findActiveAmazonConfig(startedAt)
+                .filter(config -> !config.isPlaceholderTagId())
                 .map(AffiliateConfigEntity::getTagId)
                 .orElse(null);
 

@@ -290,11 +290,16 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
     }
 
     protected void insertAffiliateConfig(String provider, String placement, int displayPriority) {
+        insertAffiliateConfig(provider, provider.toLowerCase() + "-tag", placement, displayPriority);
+    }
+
+    /** tag_id を明示指定できる版（CMP-260918-0025: プレースホルダ除外の試練用）。 */
+    protected void insertAffiliateConfig(String provider, String tagId, String placement, int displayPriority) {
         em.createNativeQuery(
                         "INSERT INTO affiliate_configs (provider, tag_id, placement, banner_image_url, "
                                 + "is_active, display_priority, created_at, updated_at) "
                                 + "VALUES (:prov, :tag, :pl, 'https://example.com/aff.png', TRUE, :prio, NOW(), NOW())")
-                .setParameter("prov", provider).setParameter("tag", provider.toLowerCase() + "-tag")
+                .setParameter("prov", provider).setParameter("tag", tagId)
                 .setParameter("pl", placement).setParameter("prio", displayPriority)
                 .executeUpdate();
     }
