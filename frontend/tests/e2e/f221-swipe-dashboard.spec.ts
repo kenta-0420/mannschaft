@@ -586,3 +586,24 @@ test('F22.1-8: slug ロード時に UUID 宛のダッシュボード取得が発
     `UUID 宛のダッシュボード取得が発生した（slug 移行後は slug 宛であるべき）: ${uuidDashboardCalls.join(', ')}`,
   ).toHaveLength(0)
 })
+
+test('F22.1-9: selected scope chips open their scope pages by keyboard', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page, { withSlug: true })
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+
+  const teamChip = page.getByTestId(`scope-tab-chip-TEAM-${TEAM_SLUG}`)
+  await page.getByTestId('scope-segment-TEAM').click()
+  await expect(teamChip).toHaveAttribute('aria-pressed', 'true')
+  await teamChip.press('Enter')
+  await page.waitForURL(`**/teams/${TEAM_SLUG}`)
+
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  const orgChip = page.getByTestId(`scope-tab-chip-ORGANIZATION-${ORG_SLUG}`)
+  await page.getByTestId('scope-segment-ORGANIZATION').click()
+  await expect(orgChip).toHaveAttribute('aria-pressed', 'true')
+  await orgChip.press('Space')
+  await page.waitForURL(`**/organizations/${ORG_SLUG}`)
+})

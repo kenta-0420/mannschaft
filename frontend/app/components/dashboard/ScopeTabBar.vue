@@ -82,6 +82,22 @@ function selectScope(scopeId: string) {
   store.persistToStorage()
 }
 
+async function onScopeChipClick(item: { scopeId: string, slug: string | null, name: string | null }) {
+  const scopeId = item.slug ?? item.scopeId
+  if (scopeId === selectedScopeId.value) {
+    await navigateTo(props.scopeType === 'TEAM' ? `/teams/${scopeId}` : `/organizations/${scopeId}`)
+    return
+  }
+  selectScope(scopeId)
+}
+
+function scopeChipAriaLabel(item: { scopeId: string, slug: string | null, name: string | null }) {
+  const scopeId = item.slug ?? item.scopeId
+  return scopeId === selectedScopeId.value
+    ? $t('scopeDashboard.tagBar.goToScopePage', { name: item.name ?? '' })
+    : (item.name ?? '')
+}
+
 async function goPrevPage() {
   if (!hasPrev.value) return
   const next = Math.max(0, currentPage.value - 1)
@@ -130,13 +146,14 @@ async function onFolderChange(folderId: number | null) {
             role="button"
             :data-testid="`scope-tab-chip-${scopeType}-${item.slug ?? item.scopeId}`"
             :aria-pressed="(item.slug ?? item.scopeId) === selectedScopeId"
+            :aria-label="scopeChipAriaLabel(item)"
             class="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors"
             :class="
               (item.slug ?? item.scopeId) === selectedScopeId
                 ? 'border-primary bg-primary text-primary-contrast'
                 : 'border-surface-300 bg-surface-0 hover:bg-surface-100 dark:border-surface-600 dark:bg-surface-800'
             "
-            @click="selectScope(item.slug ?? item.scopeId)"
+            @click="onScopeChipClick(item)"
           >
             <Avatar
               :image="item.avatarUrl ?? undefined"
@@ -183,20 +200,6 @@ async function onFolderChange(folderId: number | null) {
       </div>
 
       <!-- 選択中スコープページへ -->
-      <NuxtLink
-        v-if="selectedScopeId"
-        :to="scopeType === 'TEAM' ? `/teams/${selectedScopeId}` : `/organizations/${selectedScopeId}`"
-        :data-testid="`scope-tab-go-to-page-${scopeType}`"
-      >
-        <Button
-          icon="pi pi-external-link"
-          :label="$t('scopeDashboard.tagBar.goToScopePage')"
-          text
-          size="small"
-          :aria-label="$t('scopeDashboard.tagBar.goToScopePage')"
-        />
-      </NuxtLink>
-
       <!-- 表示順設定 -->
       <Button
         v-if="!isEmpty"

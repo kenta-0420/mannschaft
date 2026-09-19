@@ -235,6 +235,12 @@ test.describe('AR-003〜010: ダッシュボード要対応ウィジェット実
     }
 
     if (selectedChip) {
+      const wasSelected = await selectedChip.getAttribute('aria-pressed') === 'true'
+      if (wasSelected) {
+        await expect(page.getByTestId('swipe-widget-grid-TEAM')).toBeVisible({ timeout: 20_000 })
+        return selectedChipId
+      }
+
       // action-required API レスポンスを待機するプロミスを先に作成する（クリック前に登録）
       const actionRequiredApiPattern = /\/api\/v1\/dashboard\/team\/[^/]+\/action-required/
       const actionRequiredPromise = page

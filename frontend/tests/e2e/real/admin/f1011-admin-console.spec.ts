@@ -282,7 +282,7 @@ async function selectScopeTabBySlug(
   const nextBtn = page.getByTestId(`scope-tab-nextpage-${scope}`)
   for (let i = 0; i < 12; i++) {
     if (await chip.count()) {
-      await chip.click()
+      if (await chip.getAttribute('aria-pressed') !== 'true') await chip.click()
       return
     }
     // 次ページが無ければ終了（チップは見つからなかった → 後段の expect で顕在化）。
@@ -298,7 +298,7 @@ async function selectScopeTabBySlug(
   await expect(chip, `タグ一覧に ${scope} スコープ ${targetSlug} のチップが見つかること`).toBeVisible({
     timeout: 10_000,
   })
-  await chip.click()
+  if (await chip.getAttribute('aria-pressed') !== 'true') await chip.click()
 }
 
 /**
@@ -640,11 +640,11 @@ test.describe('F10.1.1 管理者レンズ — 2ボタン表示＋スコープ導
     await gotoDashboardScope(page, 'TEAM', teamSlug)
 
     // スコープリンクボタンが visible であること
-    const goLink = page.getByTestId('scope-tab-go-to-page-TEAM')
-    await expect(goLink, 'scope-tab-go-to-page-TEAM が visible').toBeVisible({ timeout: 15_000 })
+    const chip = page.getByTestId(`scope-tab-chip-TEAM-${teamSlug}`)
+    await expect(chip).toHaveAttribute('aria-pressed', 'true', { timeout: 15_000 })
 
     // クリックでチームページへ遷移
-    await goLink.click()
+    await chip.click()
     await page.waitForURL(`**/teams/${teamSlug}`, { timeout: 15_000 })
     expect(page.url(), 'URL に /teams/{slug} を含む').toContain(`/teams/${teamSlug}`)
   })
