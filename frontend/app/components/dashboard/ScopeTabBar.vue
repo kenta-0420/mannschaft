@@ -10,7 +10,7 @@
  * - 表示順設定ダイアログ起動ボタン（⚙）。
  * - 横スクロール禁止（6 件固定 + ページ送り。カルーセル左右スワイプとのジェスチャ競合回避）。
  */
-import type { ScopeTabType } from '~/types/dashboard-scope'
+import type { ScopeTabItem, ScopeTabType } from '~/types/dashboard-scope'
 import type { ScopeFolder } from '~/types/scopeFolder'
 
 const props = defineProps<{
@@ -19,6 +19,7 @@ const props = defineProps<{
 
 const store = useScopeDashboardStore()
 const foldersStore = useScopeFoldersStore()
+const { t } = useI18n()
 
 const showOrderDialog = ref(false)
 
@@ -82,7 +83,7 @@ function selectScope(scopeId: string) {
   store.persistToStorage()
 }
 
-async function onScopeChipClick(item: { scopeId: string, slug: string | null, name: string | null }) {
+async function onScopeChipClick(item: ScopeTabItem) {
   const scopeId = item.slug ?? item.scopeId
   if (scopeId === selectedScopeId.value) {
     await navigateTo(props.scopeType === 'TEAM' ? `/teams/${scopeId}` : `/organizations/${scopeId}`)
@@ -91,11 +92,11 @@ async function onScopeChipClick(item: { scopeId: string, slug: string | null, na
   selectScope(scopeId)
 }
 
-function scopeChipAriaLabel(item: { scopeId: string, slug: string | null, name: string | null }) {
+function scopeChipAriaLabel(item: ScopeTabItem) {
   const scopeId = item.slug ?? item.scopeId
   return scopeId === selectedScopeId.value
-    ? $t('scopeDashboard.tagBar.goToScopePage', { name: item.name ?? '' })
-    : (item.name ?? '')
+    ? t('scopeDashboard.tagBar.goToScopePage', { name: item.name })
+    : item.name
 }
 
 async function goPrevPage() {

@@ -236,20 +236,19 @@ test.describe('AR-003〜010: ダッシュボード要対応ウィジェット実
 
     if (selectedChip) {
       const wasSelected = await selectedChip.getAttribute('aria-pressed') === 'true'
-      if (wasSelected) {
-        await expect(page.getByTestId('swipe-widget-grid-TEAM')).toBeVisible({ timeout: 20_000 })
-        return selectedChipId
+      let actionRequiredPromise: Promise<Response | null> | null = null
+      if (!wasSelected) {
+
+        // action-required API レスポンスを待機するプロミスを先に作成する（クリック前に登録）
+        const actionRequiredApiPattern = /\/api\/v1\/dashboard\/team\/[^/]+\/action-required/
+        actionRequiredPromise = page
+          .waitForResponse((r: Response) => actionRequiredApiPattern.test(r.url()) && r.request().method() === 'GET', {
+            timeout: 40_000,
+          })
+          .catch(() => null)
+
+        await selectedChip.click()
       }
-
-      // action-required API レスポンスを待機するプロミスを先に作成する（クリック前に登録）
-      const actionRequiredApiPattern = /\/api\/v1\/dashboard\/team\/[^/]+\/action-required/
-      const actionRequiredPromise = page
-        .waitForResponse((r: Response) => actionRequiredApiPattern.test(r.url()) && r.request().method() === 'GET', {
-          timeout: 40_000,
-        })
-        .catch(() => null)
-
-      await selectedChip.click()
 
       // スクロールして IntersectionObserver をトリガーする
       // - まず少し待機して選択が反映されるまで待つ
@@ -282,7 +281,7 @@ test.describe('AR-003〜010: ダッシュボード要対応ウィジェット実
       await page.waitForTimeout(500)
 
       // action-required API のレスポンスを待つ（最大 40 秒）
-      await actionRequiredPromise
+      if (actionRequiredPromise) await actionRequiredPromise
 
       // ローディングスピナーが消えるまで追加待機
       await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})

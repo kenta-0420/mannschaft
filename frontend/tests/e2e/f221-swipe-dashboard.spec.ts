@@ -43,8 +43,10 @@ const ORG_SLUG = 'tokyo-fa'
  * @param withSlug true のとき public_id に人間可読 slug を載せる（slug 移行後の実 BE 挙動）。
  *   false のとき public_id を省略し scope_id（BIGINT）のみ（移行前 / 旧モック互換）。
  */
-function mockScopeTabPage(scopeType: 'TEAM' | 'ORGANIZATION', withSlug = false) {
+function mockScopeTabPage(scopeType: 'TEAM' | 'ORGANIZATION', withSlug = false, multipleScopes = false) {
   const isTeam = scopeType === 'TEAM'
+  const secondaryId = isTeam ? 5002 : 6002
+  const secondarySlug = isTeam ? 'fc-u-18-b' : 'tokyo-fa-b'
   return {
     items: [
       {
@@ -56,11 +58,22 @@ function mockScopeTabPage(scopeType: 'TEAM' | 'ORGANIZATION', withSlug = false) 
         unread_count: 0,
         sort_order: 0,
       },
+      ...(multipleScopes
+        ? [{
+            scope_id: secondaryId,
+            ...(withSlug ? { public_id: secondarySlug } : {}),
+            scope_type: scopeType,
+            name: isTeam ? 'E2E チームB' : 'E2E 組織B',
+            avatar_url: null,
+            unread_count: 0,
+            sort_order: 1,
+          }]
+        : []),
     ],
     page: 0,
     page_size: 6,
     total_pages: 1,
-    total_count: 1,
+    total_count: multipleScopes ? 2 : 1,
     has_next: false,
     has_prev: false,
   }
@@ -101,6 +114,8 @@ interface MockOptions {
   onSearchTabs?: (url: URL) => void
   /** scope-tabs の public_id に slug を載せる（slug 移行後の実 BE 挙動を再現）*/
   withSlug?: boolean
+  /** 複数タグを返し、未選択タグのキーボード操作を検証するためのfixture */
+  multipleScopes?: boolean
   /** 容量APIの呼出回数を検証するフック */
   onStorageUsage?: () => void
   /** 容量APIを失敗させる検証用フック */
@@ -185,7 +200,7 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: mockScopeTabPage(scopeType, opts.withSlug) }),
+      body: JSON.stringify({ data: mockScopeTabPage(scopeType, opts.withSlug, opts.multipleScopes) }),
     })
   })
 
@@ -299,7 +314,7 @@ test('F22.1-9: 容量API失敗時もカルーセルと切替タブを維持す�
   await expect(page.getByTestId('scope-segment-PERSONAL')).toBeVisible()
 })
 
-test('F22.1-10: 容量カードの通常遷移と警告Dialogのプラン導線', async ({ page }) => {
+test('F22.1-11: 容量カードの通常遷移と警告Dialogのプラン導線', async ({ page }) => {
   await loginAsMember(page)
   await mockDashboardApis(page)
   await page.goto('/dashboard')
@@ -595,6 +610,7 @@ test('F22.1-9: selected scope chips open their scope pages by keyboard', async (
 
   const teamChip = page.getByTestId(`scope-tab-chip-TEAM-${TEAM_SLUG}`)
   await page.getByTestId('scope-segment-TEAM').click()
+  await expect(page.getByTestId('scope-tab-go-to-page-TEAM')).toHaveCount(0)
   await expect(teamChip).toHaveAttribute('aria-pressed', 'true')
   await teamChip.press('Enter')
   await page.waitForURL(`**/teams/${TEAM_SLUG}`)
@@ -603,7 +619,29 @@ test('F22.1-9: selected scope chips open their scope pages by keyboard', async (
   await waitForCarousel(page)
   const orgChip = page.getByTestId(`scope-tab-chip-ORGANIZATION-${ORG_SLUG}`)
   await page.getByTestId('scope-segment-ORGANIZATION').click()
+  await expect(page.getByTestId('scope-tab-go-to-page-ORGANIZATION')).toHaveCount(0)
   await expect(orgChip).toHaveAttribute('aria-pressed', 'true')
   await orgChip.press('Space')
   await page.waitForURL(`**/organizations/${ORG_SLUG}`)
+})
+
+test('F22.1-10: unselected scope chips are selected without navigation by keyboard', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page, { withSlug: true, multipleScopes: true })
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+
+  await page.getByTestId('scope-segment-TEAM').click()
+  const secondaryTeamChip = page.getByTestId('scope-tab-chip-TEAM-fc-u-18-b')
+  await expect(secondaryTeamChip).toHaveAttribute('aria-pressed', 'false')
+  await secondaryTeamChip.press('Enter')
+  await expect(secondaryTeamChip).toHaveAttribute('aria-pressed', 'true')
+  await expect(page).toHaveURL(/\/dashboard(?:\/|$)/)
+
+  await page.getByTestId('scope-segment-ORGANIZATION').click()
+  const secondaryOrgChip = page.getByTestId('scope-tab-chip-ORGANIZATION-tokyo-fa-b')
+  await expect(secondaryOrgChip).toHaveAttribute('aria-pressed', 'false')
+  await secondaryOrgChip.press('Space')
+  await expect(secondaryOrgChip).toHaveAttribute('aria-pressed', 'true')
+  await expect(page).toHaveURL(/\/dashboard(?:\/|$)/)
 })
