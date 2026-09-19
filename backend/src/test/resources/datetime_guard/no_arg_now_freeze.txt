@@ -467,7 +467,6 @@ NO_ARG_NOW|com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.service.MemberPaymentService|2
 NO_ARG_NOW|com.mannschaft.app.payment.service.MembershipSubscriptionService|3
 NO_ARG_NOW|com.mannschaft.app.payment.service.MembershipSubscriptionWebhookService|4
-NO_ARG_NOW|com.mannschaft.app.payment.service.PaymentAuthorizationService|1
 NO_ARG_NOW|com.mannschaft.app.payment.service.PaymentSummaryService|1
 NO_ARG_NOW|com.mannschaft.app.payment.service.ReceiptService|1
 NO_ARG_NOW|com.mannschaft.app.payment.service.StripeWebhookService|1
