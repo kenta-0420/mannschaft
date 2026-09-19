@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-09-19T01:27:06+00:00",
+  "generatedAt": "2026-09-19T04:21:04+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -7,20 +7,20 @@ window.BETA_INVENTORY_DATA = {
     "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
-    "inventoryCommit": "d5887cc325e481e2cfe5c521267bf9f4bcc83034",
-    "taskListCommit": "c71da5601d0aac15622d193a4a7f67228b9a837a",
-    "inventorySha256": "f6b935b5d7d7400cb5bb2a673aa5f765c5ea8b7fd2dcc5d2041b4213c2677fdf",
-    "taskListSha256": "ddec928017ecb243464c65356ad64bcd036427d63f0c21e3cd47e6be8f4b6f7a",
-    "decisionsSha256": "b9f1cb383aecd684a026dcd486aad6474c6d48bea1bf0342b78a30a7351799e8",
+    "inventoryCommit": "a6f44a6c92a2ef1a8cdc77d182cad7f9c48c149b",
+    "taskListCommit": "e5dcac1c01279822c78186e3fe84c6bb76a31e5b",
+    "inventorySha256": "15bcdcdf662e4633cf4f0322ab011aea0e0c6f83c0457f040832a6face448531",
+    "taskListSha256": "bf04a3399c219b55876a97c8ee038f7fccc1cb70f3578b9381f180101de5de2b",
+    "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "94b140f41b4ccb74fc8fafbd9b719163197aa4fb95bc52a6d364134097296a48"
+    "githubSnapshotSha256": "9b15756eff809200d6f12c96dd8cd0b84d69de0cdbf8e359f1e3fcd4096ed3f9"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 251,
+    "campaigns": 254,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 251
+      "campaigns": 254
     },
     "parsed": {
       "features": 44,
-      "campaigns": 251,
+      "campaigns": 254,
       "core": 25,
       "noncore": 19,
       "blockers": 22,
@@ -8379,48 +8379,7 @@ window.BETA_INVENTORY_DATA = {
       }
     }
   },
-  "b0RunOverlay": {
-    "schemaVersion": 2,
-    "runId": "B0-2026-09-18T17-45-01.082Z",
-    "startedAt": "2026-09-18T17:45:01.082Z",
-    "mode": "real-ui-real-db",
-    "selectedJourneys": [
-      "B0-J7"
-    ],
-    "conditions": {
-      "baseUrlConfigured": true,
-      "apiBaseUrlConfigured": true,
-      "realDb": true,
-      "threeUsers": "operator-declared",
-      "separateBrowserContexts": "proven"
-    },
-    "journeys": [
-      {
-        "id": "B0-J7",
-        "status": "test-passed",
-        "executedSpecPaths": [
-          "frontend/tests/e2e/real/personal-timeline.spec.ts"
-        ],
-        "coverageSpecPaths": [
-          "frontend/tests/e2e/real/personal-timeline.spec.ts",
-          "frontend/tests/e2e/global/timeline.spec.ts",
-          "frontend/tests/e2e/organizations/org-timeline.spec.ts",
-          "frontend/tests/e2e/real/timeline-delivery-scope-and-mute.spec.ts",
-          "frontend/tests/e2e/action-memo/phase3-team-timeline.spec.ts"
-        ],
-        "summary": {
-          "expected": 1,
-          "unexpected": 0,
-          "skipped": 0,
-          "results": 1
-        },
-        "evidencePath": "docs/prototypes/.b0-local/B0-J7-1789753501088.json",
-        "insightCount": 0
-      }
-    ],
-    "insights": [],
-    "finishedAt": "2026-09-18T18:13:39.147Z"
-  },
+  "b0RunOverlay": null,
   "decisions": {
     "schemaVersion": 1,
     "phase": "Phase 2A",
@@ -27978,21 +27937,22 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3358,
           "kind": "issue",
-          "state": "open",
+          "state": "closed",
           "title": "不具合: 個人タイムラインに所属組織・村の投稿が揃わない",
           "url": "https://github.com/kenta-0420/mannschaft/issues/3358",
-          "updatedAt": "2026-09-18T06:17:16Z",
+          "updatedAt": "2026-09-19T01:41:10Z",
           "ci": null
         },
         {
           "number": 3369,
           "kind": "pull_request",
-          "state": "open",
+          "state": "merged",
           "title": "個人タイムラインを所属チーム・組織・村で統一",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3369",
-          "updatedAt": "2026-09-19T00:30:12Z",
+          "updatedAt": "2026-09-19T01:48:09Z",
           "ci": {
-            "status": "success",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -28107,12 +28067,156 @@ window.BETA_INVENTORY_DATA = {
       ],
       "githubRefs": [],
       "github": []
+    },
+    {
+      "id": "CMP-260919-1139",
+      "title": "i18n の `common.` 接頭辞の誤用が40種、FE 全体に残っている",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`t('common.◯◯')` のうちロケール JSON で解決できないものがゼロであること／同種の誤りを CI で機械的に検出する番人があること（`t()` の参照先とロケール JSON の実構造を突き合わせる）／6言語すべてで検証されること",
+      "acceptance": [
+        "`t('common.◯◯')` のうちロケール JSON で解決できないものがゼロであること／同種の誤りを CI で機械的に検出する番人があること（`t()` の参照先とロケール JSON の実構造を突き合わせる）／6言語すべてで検証されること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "アリシゼーションで判明。`frontend/app/locales/ja/common.json` は大半のキーを接頭辞なし（フラット）で公開しており、`t('common.xxx')` が正しいのは common.json 内の `common` サブオブジェクト配下 8 キー（`cancel`／`search`／`edit`／`save`／`resume`／`menu`／`scopeShell`／`unsavedChanges`）のみ。FE 全体（`frontend/app` 配下の `.vue`／`.ts`）を `t('common.` で走査すると 155 種の参照があり、うち 40 種が common.json では解決できない（殿が JSON を実際に引いて判定）。解決できない例: `common.back`, `common.close`, `common.create`, `common.delete`, `common.download`, `common.action`, `common.count_suffix`, `common.delete_failed`, `common.deleted`, `common.dialog.confirm_delete`, `common.dialog.confirm_title`, `common.dialog.error`, `common.dialog.success`, `common.end_date`, `common.error.loadFailed` など。画面に翻訳前の生キーがそのまま露出する。同種の誤りにより「メンバー紹介」機能一帯で生キーが露出していたことをアリシゼーションの住民が目撃し殿が実コードで裏取り済み（PR #3374 で修繕済み。本件はそれ以外の残り）。再発を防ぐ番人（`t()` の参照先がロケール JSON に実在するかを機械的に検証する lint ルール／テスト）は現状存在しない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "i18n",
+        "common",
+        "FE",
+        "common",
+        "JSON",
+        "CI",
+        "JSON"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3374
+      ],
+      "github": [
+        {
+          "number": 3374,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: メンバー紹介の翻訳キーに誤った common. 接頭辞が付き生キーが露出する不具合を修正",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3374",
+          "updatedAt": "2026-09-19T02:35:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260919-1140",
+      "title": "ダッシュボードの「メンバー」ウィジェットと上部タブ「メンバー」が別機能を指している",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ダッシュボードのウィジェット名と遷移先が一致していること（名前を「メンバー紹介」に改めるか、遷移先を名簿に改めるか、いずれかを設計判断として決める）／一般利用者が「メンバー紹介を作りたい」と思って画面を辿ったとき、迷わず到達できること",
+      "acceptance": [
+        "ダッシュボードのウィジェット名と遷移先が一致していること（名前を「メンバー紹介」に改めるか、遷移先を名簿に改めるか、いずれかを設計判断として決める）／一般利用者が「メンバー紹介を作りたい」と思って画面を辿ったとき、迷わず到達できること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "アリシゼーションで判明・殿が実コードで裏取り。`frontend/app/components/ScopeDashboard.vue:188` に `members: \\`${base}/member-profiles\\`` とあり、`members` という名のウィジェットが「メンバー紹介」画面へ飛ぶ。一方、組織ページの上部タブ `members`（`frontend/app/pages/organizations/[slug].vue:147` 付近の `SEGMENT_TO_TAB`）は `/organizations/{slug}/members`（名簿管理）へ飛ぶ。両画面とも実在する（`frontend/app/pages/organizations/[slug]/members.vue` と `.../member-profiles.vue`）。サイドバーは正しく区別できている（`frontend/app/locales/ja/org_sidebar.json` で `memberProfiles = メンバー紹介`／`memberList = メンバー一覧`）が、ダッシュボードのウィジェットだけが区別できていない。アリシゼーションの住民（一般利用者・素直な導線追跡）が実際に迷い、「上部ナビの『メンバー』を素直に辿ると名簿に入ってしまい、メンバー紹介へは辿り着けない」と報告した。**どちらに寄せるかはマスターの設計判断を要する（ウィジェット名を変えるのか、遷移先を変えるのか）**"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260919-1141",
+      "title": "実機E2E の既存テスト1本に構文エラーがあり、一括実行が全滅する",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`shift-request-entry-2118.spec.ts` の構文エラーが解消していること／`--grep` による一括実行が、ロード段階で落ちずに走ること／同種の「ロードできない spec」を CI で検出できること（検討でよい）",
+      "acceptance": [
+        "`shift-request-entry-2118.spec.ts` の構文エラーが解消していること／`--grep` による一括実行が、ロード段階で落ちずに走ること／同種の「ロードできない spec」を CI で検出できること（検討でよい）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "実機E2E 実行中に判明。`frontend/tests/e2e/real/shift-request-entry-2118.spec.ts` に TypeScript の構文エラーがある（`test.beforeEach((_, testInfo)` の destructuring 不備）。このため `npx playwright test --config=playwright-real.config.ts --grep <パターン>` のように複数ファイルをまとめて実行すると、ファイルのロード段階で全体が落ちる（個別にファイルパスを指定すれば他のテストは動く）。今回の戦役とは無関係の既存不具合だが、この状態では実機E2E の一括実行が機能しないため、実機E2E が形骸化する危険がある"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "E2E",
+        "shift-request-entry-2118",
+        "spec",
+        "ts",
+        "grep",
+        "spec",
+        "CI"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
     }
   ],
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-09-19T01:25:34+00:00",
+    "synchronizedAt": "2026-09-19T04:19:56+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -28901,7 +29005,12 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260918-1357": [
         3355
       ],
-      "CMP-260918-1344": []
+      "CMP-260918-1344": [],
+      "CMP-260919-1139": [
+        3374
+      ],
+      "CMP-260919-1140": [],
+      "CMP-260919-1141": []
     },
     "items": {
       "902": {
@@ -32810,21 +32919,36 @@ window.BETA_INVENTORY_DATA = {
       "3358": {
         "number": 3358,
         "kind": "issue",
-        "state": "open",
+        "state": "closed",
         "title": "不具合: 個人タイムラインに所属組織・村の投稿が揃わない",
         "url": "https://github.com/kenta-0420/mannschaft/issues/3358",
-        "updatedAt": "2026-09-18T06:17:16Z",
+        "updatedAt": "2026-09-19T01:41:10Z",
         "ci": null
       },
       "3369": {
         "number": 3369,
         "kind": "pull_request",
-        "state": "open",
+        "state": "merged",
         "title": "個人タイムラインを所属チーム・組織・村で統一",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3369",
-        "updatedAt": "2026-09-19T00:30:12Z",
+        "updatedAt": "2026-09-19T01:48:09Z",
         "ci": {
-          "status": "success",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3374": {
+        "number": 3374,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: メンバー紹介の翻訳キーに誤った common. 接頭辞が付き生キーが露出する不具合を修正",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3374",
+        "updatedAt": "2026-09-19T02:35:22Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -32833,8 +32957,8 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-09-19T01:25:34+00:00",
-      "referenceCount": 297
+      "synchronizedAt": "2026-09-19T04:19:56+00:00",
+      "referenceCount": 298
     }
   }
 };
