@@ -236,8 +236,7 @@
       "via": {
         "SELF": "Selbst",
         "GUARDIAN": "Vormund",
-        "GUARDIAN_PROXY": "Vormund-Stellvertreter",
-        "PROXY_GRANT": "Vollmacht"
+        "GUARDIAN_PROXY": "Vormund-Stellvertreter"
       },
       "selectAll": "Alle auswählen",
       "deselectAll": "Alle abwählen",

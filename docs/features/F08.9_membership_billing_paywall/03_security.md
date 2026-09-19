@@ -39,20 +39,18 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
   if payerUserId == beneficiaryUserId: return SELF
   if parentalConsentLink(child=beneficiary, parent=payer).status == APPROVED: return GUARDIAN
   if userCareLink(recipient=beneficiary, watcher=payer, relationship=PARENT).status == ACTIVE: return GUARDIAN
-  if paymentProxyGrant(beneficiary, payer, item|null).status == ACTIVE
-       and now in [effective_from, effective_until]: return PROXY_GRANT
   if caller is ADMIN of scope(paymentItem) and manualRecord: return ADMIN_MANUAL
   else: throw MEMBERSHIP_PAYER_NOT_AUTHORIZED
 ```
 
-- 結果（`SELF`/`GUARDIAN`/`GUARDIAN_PROXY`/`PROXY_GRANT`/`ADMIN_MANUAL`）と権原ID（grant_id 等）を `member_payments.payer_relationship`/`payment_proxy_grant_id` に**記録**（監査・非否認）。**後見切替セッション中（`X-Proxy-For-User-Id` 付き）の決済は `GUARDIAN`（保護者リンクで権原成立）だが `payer_relationship=GUARDIAN_PROXY` として区別記録**し、「子の自己払い」と誤読させない。
+- 結果（`SELF`/`GUARDIAN`/`GUARDIAN_PROXY`/`ADMIN_MANUAL`）を `member_payments.payer_relationship` に**記録**（監査・非否認）。**後見切替セッション中（`X-Proxy-For-User-Id` 付き）の決済は `GUARDIAN`（保護者リンクで権原成立）だが `payer_relationship=GUARDIAN_PROXY` として区別記録**し、「子の自己払い」と誤読させない。
   - **実装（P3c-2・2026-06-05）**: `PaymentAuthorizationService` に `ProxyInputContext`（RequestScope・`AuthenticationCriticalOperationGuard` と同じ scoped proxy 注入）を注入し、`GUARDIAN_PROXY` を実評価する。条件は「GUARDIAN 成立（保護者リンク）**かつ** `proxyInputContext.isProxy()`（`X-Proxy-For-User-Id` 付き）**かつ** 切替対象の子（`subjectUserId`）＝受益者（`beneficiaryUserId`）」で、このとき `GUARDIAN_PROXY` を `GUARDIAN` より優先して返す。本人払い（`SELF`）は先に確定するため切替中でも子自身の自己払いは `SELF`。別の子へ acting-as 中（`subject≠beneficiary`）の支払いは誤分類せず `GUARDIAN`。権原評価そのものは `GUARDIAN` と同一（保護者リンクが無ければ `isProxy` でも 403）。
-- **F14.1 の代理権は本 authorizePayment の経路に含めない**（日常の代理払いは SELF/保護者リンク/grant/ADMIN の4経路のみ）。代理権スコープ `PAYMENT` は紙同意書ベースの**組織代理の重い経路**として温存し、必要時に別途評価する（README §3.3 と一致）。
+- **F14.1 の代理権は本 authorizePayment の経路に含めない**（日常の直接支払いは SELF/保護者リンク/ADMIN の3経路のみ）。代理権スコープ `PAYMENT` は紙同意書ベースの**組織代理の重い経路**として維持し、必要時に別途評価する（README §3.3 と一致）。
   - **是正（2026-06-04）**: scope `PAYMENT` は実在の `proxy_input_consent_scopes.feature_scope`（VARCHAR(64)・V18.011・CHECK なし・実機確認済）に **enum 値 `PAYMENT` を1つ足すだけ**で表現する（`proxy_input_consents` 本体への列追加・DDL は不要）。代理払い認可・退会失効はこの scope 行（同意書ごとの許可スコープ）で判定する。
   - **実装（P3b・2026-06-04）**: `FeatureScope.PAYMENT` を追加（DDL 不要）。`ProxyInputContextFilter` は検証済み同意書の許可スコープ集合を `ProxyInputContext.activate(...)` に渡し、決済系 Service は `ProxyInputContext.hasScope(FeatureScope.PAYMENT)` で代理払いの要求スコープを検証できる（素地）。実際の代理払い認可経路（`authorizePayment` での scope `PAYMENT` 評価）は P1/P3c の管轄。
 - **IDOR 防止**：`beneficiaryUserId` を payload で受けるが、上記権原検証なしには一切起票しない。`payable-dues` も「自分が払える受益者」だけを返し、他人の未払いを列挙させない。**まとめ決済(bulk-checkout)は一覧取得後の権原失効・支払い済み化に備え、起票直前に明細ごと再認可**（02_api §1.2）。
 - **状態照会の秘匿**：`GET /payment-items/{itemId}/checkout/{memberPaymentId}` は `memberPayment` の払い手本人または受益者本人だけに返す。不在と権限外を同じ 404 に畳み、連番 ID から他人の支払い状態を列挙できないようにする。
-- **権原の失効**：保護者リンク取消・grant 失効・受益者退会で即時に権原消失（毎回実行時評価・キャッシュしない or 短TTL）。
+- **権原の失効**：保護者リンク取消・受益者退会で即時に権原消失（毎回実行時評価・キャッシュしない）。非後見第三者への直接grant・招待は提供しない。
 
 ---
 
@@ -174,7 +172,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 | 11-2 | 税務6論点 | 税理士確認（実装はからくりのみで先行可・NoOp 既定） |
 | 11-3 | invoice 固定手数料上書き × destination charge | Stripe テスト環境 PoC 成立（不成立時は自前バッチ退避） |
 | 11-4 | 協会請求の手数料負担 | **御裁可済**（会費と同折半） |
-| 11-5 | 第三者代理払いの許諾UX | 設計内確定（保護者は自動・第三者は grant） |
+| 11-5 | 非後見第三者への直接代理払い | 不提供（援助は組織管理の補助・免除・クレジットへ分離） |
 | 11-6 | 既存データ移行 | 解決済（不要・データ無し） |
 | 11-7 | 無ログイン管理子アカウント | 解決済（不採用） |
 

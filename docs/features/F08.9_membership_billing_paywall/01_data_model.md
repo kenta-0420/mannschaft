@@ -27,8 +27,7 @@
 | 追加列 | 型 | NULL | 説明 |
 |---|---|---|---|
 | `payer_user_id` | BIGINT UNSIGNED | YES→将来NOT NULL | **払い手**（実際に決済した人）。論理参照・FKなし・INDEX。NULL は手動記録の移行期のみ許容、新規は必須 |
-| `payment_proxy_grant_id` | BINARY(16) | YES | 代理払いの権原（保護者リンク経由は NULL・第三者払いは grant を指す） |
-| `payer_relationship` | VARCHAR(16) | YES | 払い手と受益者の関係スナップショット：`SELF`/`GUARDIAN`/`GUARDIAN_PROXY`（後見切替セッション中の代理払い）/`PROXY_GRANT`/`ADMIN_MANUAL`（監査・表示用） |
+| `payer_relationship` | VARCHAR(16) | YES | 払い手と受益者の関係スナップショット：`SELF`/`GUARDIAN`/`GUARDIAN_PROXY`（後見切替セッション中の代理払い）/`ADMIN_MANUAL`（監査・表示用） |
 | `escrow_transaction_id` | BINARY(16) | YES | F22.1 money rail への連結（Connect 決済時）。手動記録は NULL |
 | `membership_subscription_id` | BINARY(16) | YES | 継続課金由来の支払いを親サブスクへ連結 |
 
@@ -94,7 +93,6 @@ CREATE TABLE membership_subscriptions (
     payment_item_id BIGINT UNSIGNED NOT NULL,        -- 対象会費項目（論理参照）
     beneficiary_user_id BIGINT UNSIGNED NOT NULL,    -- 受益者（会員）・論理参照
     payer_user_id BIGINT UNSIGNED NOT NULL,          -- 払い手・論理参照
-    payment_proxy_grant_id BINARY(16) NULL,          -- 第三者代理払いの権原
     scope_kind VARCHAR(8) NOT NULL,                  -- TEAM/ORG（受領主体）
     scope_id BIGINT UNSIGNED NOT NULL,
     payee_connect_account_id BINARY(16) NOT NULL,    -- 受領 Connect 口座（論理参照）
@@ -176,41 +174,9 @@ CREATE TABLE payment_requests (
 
 試行 status は `CREATING`、`REQUIRES_ACTION`、`SUCCEEDED`、`FAILED`。request status の `PROCESSING` は未収だが overdue バッチの対象外である。
 
-### 2.3 `payment_proxy_grants`（第三者代理払い許可）
+### 2.3 非後見第三者への直接代理払い
 
-保護者でない払い手（祖父母・スポンサー等）が受益者の会費を払うための明示許諾。
-
-```sql
-CREATE TABLE payment_proxy_grants (
-    id BINARY(16) NOT NULL,                          -- UUIDv7
-    organization_id BIGINT UNSIGNED NULL,            -- テナント
-    beneficiary_user_id BIGINT UNSIGNED NOT NULL,    -- 受益者（許可を出す側）・論理参照
-    payer_user_id BIGINT UNSIGNED NOT NULL,          -- 払い手（許可される側）・論理参照
-    scope VARCHAR(16) NOT NULL DEFAULT 'PAYMENT',    -- 用途固定
-    payment_item_id BIGINT UNSIGNED NULL,            -- 特定項目限定（NULL=受益者の全会費）
-    max_amount INT UNSIGNED NULL,                    -- 1回あたり支払い上限（円・濫用抑止）。NULL=上限なし
-    status VARCHAR(12) NOT NULL DEFAULT 'PENDING',   -- PENDING/ACTIVE/REVOKED/EXPIRED
-    effective_from DATETIME NOT NULL,
-    effective_until DATETIME NULL,                   -- NULL=無期限（取消まで）。ただし payment_item_id IS NULL の包括 grant は NOT NULL 必須（下記 CHECK）
-    granted_via VARCHAR(16) NOT NULL,                -- INVITE_TOKEN/IN_APP
-    revoked_at DATETIME NULL,
-    revoked_by BIGINT UNSIGNED NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at DATETIME NULL,                        -- 論理削除（GDPR/退会）。テナント基底の deleted_at 規約に対応・業務状態(status)とは独立
-    PRIMARY KEY (id),
-    KEY idx_ppg_beneficiary (beneficiary_user_id, status),
-    KEY idx_ppg_payer (payer_user_id, status),
-    UNIQUE KEY uk_ppg_active (beneficiary_user_id, payer_user_id, payment_item_id, status),
-    CONSTRAINT chk_ppg_blanket_expiry CHECK (payment_item_id IS NOT NULL OR effective_until IS NOT NULL)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-```
-
-> **後見（保護者）経由の代理払いは grant 不要**：`parental_consent_links.status=APPROVED` または `user_care_links(relationship=PARENT, status=ACTIVE)` を実行時に確認すれば足りる（既存テーブルを参照するのみ・新規行不要）。`payment_proxy_grants` は**非後見の第三者払い専用**。
-
-**status 遷移と失効**：`PENDING`（招待発行）→ `ACTIVE`（払い手が受諾）→ `REVOKED`（受益者/払い手が取消）or `EXPIRED`（`effective_until` 超過）。
-- 失効は**実行時ゲート**（決済時に `status=ACTIVE AND now ∈ [effective_from, effective_until]` を都度評価）を一次防御とし、**@Scheduled バッチ（ShedLock・日次）**が `status=ACTIVE AND effective_until < now` を `EXPIRED` へ掃く（一覧表示の正確化）。
-- **包括 grant（item NULL）の濫用抑止**：`effective_until` 必須（CHECK）＋ `max_amount` 推奨。受益者に新会費項目が追加されても、上限・期限の範囲でのみ有効。
+第三者への直接grant・招待は、金銭的圧力、いじめ、招待スパム、関係性の露出を避けるため提供しない。支払者権原は本人、承認済み保護者・後見人、管理者手動記録に限定する。援助制度は将来、組織管理の補助・免除・クレジットとして別モデルで設計する。
 
 ### 2.5 `team_payment_advances`（協会請求の立替/精算記録・payer=TEAM 案3）
 
@@ -312,7 +278,6 @@ users(既存)
   ├─(論理)─ memberships(既存: 受益者の所属)
   ├─(論理)─ parental_consent_links(F01.9) ─┐  後見＝代理払いの権原
   ├─(論理)─ user_care_links(F03.12) ───────┤  （保護者リンク）
-  └─(論理)─ payment_proxy_grants(新) ───────┘  第三者代理払いの権原
 
 payment_items(拡張: TERM/recurring/tax)
   ├─(論理)─ member_payments(拡張: payer_user_id/escrow_transaction_id/subscription_id)
@@ -348,13 +313,14 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 
 | 版（予定） | 内容 |
 |---|---|
-| `V74.001__alter_member_payments_add_payer.sql` | `payer_user_id`/`payment_proxy_grant_id`/`payer_relationship`/`escrow_transaction_id`/`membership_subscription_id` 追加・INDEX |
+| `V74.001__alter_member_payments_add_payer.sql` | 履歴migration。払い手分離列等を追加（grant参照列は V218 で撤去） |
 | `V74.20260605130020__alter_payment_items_add_recurring.sql`（**P5 第一波・実装済 2026-06-05**） | **継続課金列のみ**：`is_recurring`/`billing_interval` 追加（タイムスタンプ式採番）。`type` ENUM の `TERM`／`term_*`／`tax_*` は別スコープゆえ後続波で追加（本波には含めない） |
 | `V74.002__alter_payment_items_add_term_tax.sql`（TERM/税は後続波・未着手） | `type` ENUM に `TERM` 追加／`term_starts_on`/`term_ends_on`/`tax_category`/`tax_rate`/`price_includes_tax` 追加（採番はマージ直前にタイムスタンプ式で確定） |
 | `V74.003__alter_connect_accounts_add_tax.sql` | `tax_registration_number`/`tax_status` 追加（F22.1 テーブルへの追記・要 F22.1 側調整） |
 | `V74.20260605130010__create_membership_subscriptions.sql`（**P5 第一波・実装済 2026-06-05**） | 継続課金テーブル（UUIDv7・`fee_policy_key`・`skip_until`・`face_amount`/`currency` price-lock 含む）。タイムスタンプ式採番（origin/main 最大 `V74.20260605120020` の後にソート） |
 | `V74.20260605120010__create_payment_requests.sql`（**P7 第一波・実装済 2026-06-05**） | 協会請求テーブル（UUIDv7）。タイムスタンプ式採番（origin/main 最大 `V74.20260605000020` の後にソート） |
-| `V74.006__create_payment_proxy_grants.sql`（P1・実装済） | 第三者代理払い許可テーブル（UUIDv7） |
+| `V74.006__create_payment_proxy_grants.sql`（履歴・変更禁止） | 旧第三者代理払い許可テーブル。V218 で撤去 |
+| `V218.20260919101733__remove_payment_proxy_grants.sql` | 非後見第三者grantの参照列2本とテーブルを前進削除 |
 | `V74.20260605120020__create_team_payment_advances.sql`（**P7 第一波・実装済 2026-06-05**） | 立替/精算記録テーブル（UUIDv7・案3・§2.5）。`payment_request_id` に UNIQUE（1請求＝1立替の冪等） |
 | `V124.001__alter_member_payments_extend_payment_method.sql`（**手動入金管理の実用化・実装済**） | `member_payments.payment_method` ENUM に `CASH`/`BANK_TRANSFER` 追加（`STRIPE`/`MANUAL` は不変）。採番は origin/main 最大の次（確認時 V123 → V124） |
 
@@ -375,11 +341,9 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
   - **是正（P3c・2026-06-05）**：後見切替は紙の同意書（`proxy_input_consents`）を伴わないステートレス代理のため、`proxy_input_records.proxy_input_consent_id` を **NULLABLE 化**（V74.010）した。後見切替由来の記録は `proxy_input_consent_id=NULL`・`input_source='GUARDIANSHIP_SWITCH'`（新 enum 値・`input_source` は VARCHAR(32)・CHECK なしゆえ DDL 追加不要）・`feature_scope='PAYMENT'`・`target_entity_type='GUARDIANSHIP_SWITCH'`・`target_entity_id=childUserId` で追記する。FK は NULL を参照整合性チェックから除外するため支障なし。既存の紙運用（F14.1）の記録は従来どおり consent_id を持つ。
 - **退会時のアトミック失効**（受益者 or 払い手の退会処理＝`UserWithdrawalService` のトランザクション内で実行・宙ぶらりんを残さない）：
   1. 当該ユーザーが受益者の `membership_subscriptions` を `CANCELLED`（＋ Stripe Subscription を cancel）
-  2. 当該ユーザーが受益者/払い手の `payment_proxy_grants` を `REVOKED`
   3. 当該ユーザー関連の代理権スコープ `PAYMENT`（`proxy_input_consent_scopes.feature_scope='PAYMENT'` の同意行）を失効（F14.1 の scope 行失効と同型。**scope は VARCHAR に値1つ追加で実現＝専用テーブル/列なし**・§3.3 是正）
   4. 払い手が抜けた継続課金は受益者へ「支払者不在」を通知（別の払い手に切替を促す）
   - バッチ（日次）は**取りこぼしの掃き取り**（二重防御）であって主経路ではない。順序は user 失効より先に下流（grant/subscription）を倒し、不整合を残さない。
-- `payment_proxy_grants` は受益者退会で `REVOKED`（上記1トランザクションに含む）。
 - `connect_accounts.tax_registration_number` は公開情報ゆえ暗号化不要。会員 PII（氏名等）は領収書生成時に既存の暗号化済み `users` から都度復号（保存しない）。
 
 ---

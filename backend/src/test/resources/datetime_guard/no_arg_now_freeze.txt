@@ -451,7 +451,6 @@ NO_ARG_NOW|com.mannschaft.app.payment.entity.MembershipSubscriptionEntity|3
 NO_ARG_NOW|com.mannschaft.app.payment.entity.OrganizationAccessRequirementEntity|1
 NO_ARG_NOW|com.mannschaft.app.payment.entity.PaymentBeneficiarySettingEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.entity.PaymentItemEntity|1
-NO_ARG_NOW|com.mannschaft.app.payment.entity.PaymentProxyGrantEntity|3
 NO_ARG_NOW|com.mannschaft.app.payment.entity.PaymentRequestEntity|5
 NO_ARG_NOW|com.mannschaft.app.payment.entity.StripeCustomerEntity|1
 NO_ARG_NOW|com.mannschaft.app.payment.entity.TeamAccessRequirementEntity|1

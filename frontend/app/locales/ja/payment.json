@@ -236,8 +236,7 @@
       "via": {
         "SELF": "本人",
         "GUARDIAN": "後見人",
-        "GUARDIAN_PROXY": "後見代理",
-        "PROXY_GRANT": "代理権"
+        "GUARDIAN_PROXY": "後見代理"
       },
       "selectAll": "全て選択",
       "deselectAll": "全て解除",

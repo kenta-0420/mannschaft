@@ -236,8 +236,7 @@
       "via": {
         "SELF": "本人",
         "GUARDIAN": "监护人",
-        "GUARDIAN_PROXY": "监护代理",
-        "PROXY_GRANT": "代理权"
+        "GUARDIAN_PROXY": "监护代理"
       },
       "selectAll": "全部选择",
       "deselectAll": "全部取消",
