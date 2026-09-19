@@ -36,6 +36,11 @@ export type RetrieveSetupIntentResult =
   | { status: 'ok'; setupIntent: SetupIntent }
   | { status: 'error'; message: string }
 
+/** retrievePaymentIntent の戻り値（3DS 復帰時に状態を確認する）。 */
+export type RetrievePaymentIntentResult =
+  | { status: 'ok'; paymentIntent: PaymentIntent }
+  | { status: 'error'; message: string }
+
 /**
  * confirmPayment の戻り値（F22.1 謝礼エスクローの manual-capture PaymentIntent 用）。
  *   - succeeded: 与信（amount_capturable）確定。manual capture では PaymentIntent.status は
@@ -152,6 +157,22 @@ export function useStripeSetup() {
     return { status: 'ok', setupIntent: result.setupIntent }
   }
 
+  /** 3DS リダイレクト復帰用に PaymentIntent を取得する。 */
+  async function retrievePaymentIntent(clientSecret: string): Promise<RetrievePaymentIntentResult> {
+    const stripe = await getStripe()
+    const result = await stripe.retrievePaymentIntent(clientSecret)
+    if (result.error) {
+      return {
+        status: 'error',
+        message: result.error.message ?? t('payment.membership.subscribe.genericError'),
+      }
+    }
+    if (!result.paymentIntent) {
+      return { status: 'error', message: t('payment.membership.subscribe.genericError') }
+    }
+    return { status: 'ok', paymentIntent: result.paymentIntent }
+  }
+
   /**
    * PaymentIntent を確定する（F22.1 謝礼エスクローの manual-capture・redirect:'if_required'）。
    *   - 成功（非リダイレクト）: { status:'succeeded', paymentIntentStatus } を返す。
@@ -191,6 +212,7 @@ export function useStripeSetup() {
     confirmSetup,
     confirmPayment,
     retrieveSetupIntent,
+    retrievePaymentIntent,
   }
 }
 

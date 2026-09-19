@@ -81,6 +81,17 @@ export interface CheckoutSessionResponse {
   expiresAt: string
 }
 
+export interface ConnectCheckoutResponse {
+  clientSecret: string
+  memberPaymentId: number
+  escrowTransactionId: string
+}
+
+export interface ConnectCheckoutStatusResponse {
+  memberPaymentId: number
+  status: PaymentStatus
+}
+
 export interface PaymentSummaryResponse {
   totalMembers: number
   items: Array<{

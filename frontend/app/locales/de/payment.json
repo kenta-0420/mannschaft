@@ -244,8 +244,25 @@
       "paySelected": "{count} Posten bezahlen",
       "totalAmount": "Gesamt: ¥{amount}",
       "processing": "Wird verarbeitet...",
+      "confirmTitle": "Zahlungen bestätigen",
+      "confirmCount": "Du führst {count} Zahlung(en) aus.",
+      "confirmTotal": "Gesamt: ¥{amount}",
+      "confirmDisclosure": "Die Zahlungen werden je Empfänger einzeln verarbeitet und können mehrfach auf der Kartenabrechnung erscheinen. Bei einem Abbruch werden erfolgreiche Zahlungen nicht erneut belastet; nur offene Posten werden wiederholt.",
+      "confirmStart": "Bestätigen und bezahlen",
+      "confirmPayment": "Diesen Posten bezahlen",
+      "paymentTitle": "Kartenzahlung",
+      "paymentError": "Diese Zahlung konnte nicht abgeschlossen werden",
+      "unknownRecipient": "Unbekannter Empfänger",
+      "webhookPending": "Die Zahlungsbestätigung steht noch aus. Der Posten gilt noch nicht als bezahlt.",
       "result": {
         "title": "Zahlungsergebnis",
+        "retryNotice": "Nicht bezahlte Posten bleiben ausgewählt. Prüfe den Status vor einem erneuten Versuch.",
+        "status": {
+          "PAID": "Bezahlt",
+          "REFLECTING": "Bestätigung läuft",
+          "FAILED": "Fehlgeschlagen",
+          "UNPROCESSED": "Nicht verarbeitet"
+        },
         "checkedOut": "Zahlung abgeschlossen",
         "skipped": "Übersprungen",
         "skipReasons": {

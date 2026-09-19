@@ -11,8 +11,13 @@ public class PaymentRequestEscrowInsertService {
 
     private final EscrowTransactionRepository escrowTransactionRepository;
 
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     EscrowTransactionEntity insert(EscrowTransactionEntity escrow) {
         return escrowTransactionRepository.saveAndFlush(escrow);
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW, readOnly = true)
+    java.util.Optional<EscrowTransactionEntity> findByIdempotencyKey(String key) {
+        return escrowTransactionRepository.findByStripeIdempotencyKey(key);
     }
 }

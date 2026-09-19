@@ -21,13 +21,15 @@
 
 ```
 POST /api/v1/payment-items/{itemId}/checkout
-Body: { beneficiaryUserId: number, idempotencyKey?: string }
-Headers: Idempotency-Key
+Body: { beneficiaryUserId: number }
+Headers: Idempotency-Key（必須）
 ```
 - **払い手の確定**：払い手は常に `SecurityUtils.getCurrentUserId()`（＝実際にログインしている人）。**後見切替セッション中（`X-Proxy-For-User-Id` 付き）でも払い手は保護者のまま**（子になりすまさない）。この場合 `payer_relationship=GUARDIAN_PROXY` を記録し、決済が「子の自己払い」と誤読されないようにする。`beneficiaryUserId` は明示パラメータ（切替中は子＝`X-Proxy-For-User-Id` と一致を検証）。
 - 認可：払い手が `beneficiaryUserId` に対し代理払い可（§03_security §2）。本人なら `beneficiaryUserId==self`。
 - 処理：`ConnectChargeService.charge(MEMBERSHIP, AUTOMATIC, faceAmount, payeeConnectAccountId, payerStripeCustomerId, idempotencyKey)` を呼び、`member_payments`（PENDING→Webhook で PAID）＋`escrow_transaction_id` 連結。
-- レスポンス：`CheckoutResponse { checkoutUrl | clientSecret, memberPaymentId }`
+- レスポンス：`ConnectCheckoutResponse { clientSecret, memberPaymentId, escrowTransactionId }`
+- **再送契約**：同じ `Idempotency-Key` の再送は同じ PaymentIntent・`memberPayment` を返し、新しい決済を起票しない。Stripe confirm 前の通信断から再開できるよう、未確定の PaymentIntent では `clientSecret` も再取得して返す。`PAID` の確定は同期レスポンスではなく署名検証済み Webhook のみが行う。
+- 状態照会：`GET /api/v1/payment-items/{itemId}/checkout/{memberPaymentId}` は、払い手本人または受益者本人に限り `{ memberPaymentId, status }` を返す。不在・権限外は同じ 404 とし、他人の決済有無を秘匿する。
 - エラー：`MEMBERSHIP_PAYER_NOT_AUTHORIZED`(403)／`MEMBERSHIP_ALREADY_PAID`(409)／`CONNECT_ACCOUNT_NOT_READY`(409)／`PAYMENT_ITEM_INACTIVE`(422)。
 - **受領者 Connect 口座が READY でない場合**：払い手へは「このチーム/組織は現在お支払いの受け取り準備中です。しばらくお待ちください」と返し（払い手向け文言・04 §3）、受領者へは onboarding 督促通知（恒久/一時の別は `onboarding_status` で判定し、`DISABLED`=恒久、`PENDING/ONBOARDING/RESTRICTED`=一時）。定期監視で `is_active` な会費項目の受領口座が非 READY なものをアラート。
 
@@ -40,12 +42,15 @@ GET  /api/v1/me/payable-dues
 - レスポンス：`PayableDuesResponse { items: [{ beneficiaryUserId, beneficiaryDisplayName, scope, paymentItemId, name, faceAmount, payerSurcharge, totalCharge, dueDate, kind(ONE_TIME|RECURRING|TERM), authorizationVia, alreadyPaid: boolean, paidBy?: { userId, displayName }, paidAt? }] }`
 
 ```
-POST /api/v1/me/payable-dues/bulk-checkout
-Body: { selections: [{ paymentItemId, beneficiaryUserId }], idempotencyKey }
+POST /api/v1/payment-items/{itemId}/checkout
+Body: { beneficiaryUserId: number }
+Headers: Idempotency-Key（選択明細ごとに安定したキー）
 ```
-- 選択した複数会費を**1セッションでまとめて決済**（受領者ごとに destination 振り分け）。各明細を個別 `member_payments` として起票し、まとめの領収書はそれぞれ受領者名義で発行。
-- **起票直前に各明細を再認可**（一覧取得後に権原が失効/支払い済みに変わる可能性があるため）：明細ごとに `authorizePayment(payer, beneficiary, item)` と `existsValidPaidPayment` を**都度評価**し、権原喪失/支払い済みの明細は**スキップして結果に理由を返す**（部分成功）。確認画面で「誰の・どの会費を・いくら」を明細表示してから決済（受益者の取り違え防止）。
-- レスポンス：`BulkCheckoutResponse { checkoutUrl, lines: [{ paymentItemId, beneficiaryUserId, memberPaymentId, accepted: boolean, skipReason? }] }`
+- 「まとめて決済」は **1回の利用者選択・確認フロー**を意味し、Stripe上の単一 PaymentIntent を意味しない。複数受領者へ destination charge で直接着金するため、選択明細ごとに上記個別 checkout を順次起票・confirm する。1つの platform PaymentIntent を後から複数受領者へ振り分ける方式は採用しない。
+- **開始前の明示同意**：確認モーダルで、決済件数・受益者/受領先・明細・合計額に加え、カード明細が複数になる可能性、順次処理であること、途中失敗時は一部だけ成功し得ること、成功済み明細は再課金せず未完了分のみ再試行することを表示する。利用者が同意するまで checkout を1件も起票しない。
+- **各起票直前に再認可**（一覧取得後に権原が失効/支払い済みに変わる可能性があるため）：明細ごとに `authorizePayment(payer, beneficiary, item)` と `existsValidPaidPayment` を**都度評価**する。権原喪失/支払い済みは当該明細だけ失敗として表示し、後続を自動課金しない。
+- 各明細は Payment Element で confirm し、上記状態照会を `memberPaymentId` で短時間 poll する。confirm 成功だけでは「支払い済み」と表示せず、状態が `PAID` になった明細だけ完了とする（支払済みになると未払い一覧から消えるため、`GET /me/payable-dues` は確定判定には使わない）。途中失敗時は `支払い済み / 反映待ち / 失敗 / 未処理` を区別して表示する。
+- 明細ごとの `Idempotency-Key` は処理完了まで同じ値を再利用し、Webhook で `PAID` を確認した時点で破棄する。これにより画面再読込・通信再送でも二重 PaymentIntent を作らない。
 
 ---
 

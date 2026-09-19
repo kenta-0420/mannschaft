@@ -60132,9 +60132,10 @@
           {
             "name": "Idempotency-Key",
             "in": "header",
-            "required": false,
+            "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             }
           }
         ],
@@ -128786,6 +128787,47 @@
         }
       }
     },
+    "/api/v1/payment-items/{itemId}/checkout/{memberPaymentId}": {
+      "get": {
+        "tags": [
+          "会費 Connect チェックアウト"
+        ],
+        "summary": "会費 Connect チェックアウト状態取得",
+        "operationId": "getConnectCheckoutStatus",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "memberPaymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseConnectCheckoutStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/parental-consent/parents": {
       "get": {
         "tags": [
@@ -190914,9 +190956,6 @@
           "beneficiaryUserId": {
             "type": "integer",
             "format": "int64"
-          },
-          "idempotencyKey": {
-            "type": "string"
           }
         },
         "required": [
@@ -228426,6 +228465,26 @@
               "TEAM",
               "ORG"
             ]
+          }
+        }
+      },
+      "ApiResponseConnectCheckoutStatusResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConnectCheckoutStatusResponse"
+          }
+        }
+      },
+      "ConnectCheckoutStatusResponse": {
+        "type": "object",
+        "properties": {
+          "memberPaymentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
           }
         }
       },

@@ -302,6 +302,17 @@ public enum MembershipBillingErrorCode implements ErrorCode {
     SUBSCRIPTION_OFF_SESSION_AUTHENTICATION_REQUIRED(
             "MEMBERSHIP_BILLING_023",
             "保存済みのカードで初回の会費を確定できませんでした。カードの再認証または別のカードの登録が必要です",
+            Severity.WARN),
+
+    /** 同じ Idempotency-Key が別の会費決済に再利用された。409。 */
+    MEMBERSHIP_IDEMPOTENCY_KEY_REUSED(
+            "MEMBERSHIP_BILLING_024",
+            "この Idempotency-Key は別の会費決済ですでに使用されています",
+            Severity.WARN),
+
+    MEMBERSHIP_CHECKOUT_NOT_FOUND(
+            "MEMBERSHIP_BILLING_025",
+            "支払い状況が見つかりません",
             Severity.WARN);
 
     private final String code;
