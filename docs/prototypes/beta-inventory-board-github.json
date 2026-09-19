@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-09-19T01:25:34+00:00",
+  "synchronizedAt": "2026-09-19T04:19:56+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -790,7 +790,12 @@
     "CMP-260918-1357": [
       3355
     ],
-    "CMP-260918-1344": []
+    "CMP-260918-1344": [],
+    "CMP-260919-1139": [
+      3374
+    ],
+    "CMP-260919-1140": [],
+    "CMP-260919-1141": []
   },
   "items": {
     "902": {
@@ -4699,21 +4704,36 @@
     "3358": {
       "number": 3358,
       "kind": "issue",
-      "state": "open",
+      "state": "closed",
       "title": "不具合: 個人タイムラインに所属組織・村の投稿が揃わない",
       "url": "https://github.com/kenta-0420/mannschaft/issues/3358",
-      "updatedAt": "2026-09-18T06:17:16Z",
+      "updatedAt": "2026-09-19T01:41:10Z",
       "ci": null
     },
     "3369": {
       "number": 3369,
       "kind": "pull_request",
-      "state": "open",
+      "state": "merged",
       "title": "個人タイムラインを所属チーム・組織・村で統一",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3369",
-      "updatedAt": "2026-09-19T00:30:12Z",
+      "updatedAt": "2026-09-19T01:48:09Z",
       "ci": {
-        "status": "success",
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3374": {
+      "number": 3374,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: メンバー紹介の翻訳キーに誤った common. 接頭辞が付き生キーが露出する不具合を修正",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3374",
+      "updatedAt": "2026-09-19T02:35:22Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }

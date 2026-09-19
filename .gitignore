@@ -102,3 +102,17 @@ docs/prototypes/.b0-local/
 # 同名パターンのディレクトリが増えるため接頭辞で一括除外する
 .gradle/
 .gradle-*/
+
+# ローカル worktree・実行環境・生成キャッシュ
+.crm-worktrees/
+.tmp-codex-node-v22.23.2/
+node_modules/
+__pycache__/
+*.pyc
+
+# ローカル翻訳生成物（製品の正本ではない）
+data/translation/
+
+# ローカル起動用バッチ（鍵・環境固有設定を含む）
+start-be.bat
+start-fe.bat
