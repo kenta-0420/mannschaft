@@ -59,6 +59,28 @@ describe('DashboardPersonalAccordion', () => {
     expect(wrapper.findAll('.widget-grid')).toHaveLength(1)
     expect(wrapper.find('.widget-grid').text()).toBe('my-calendar,notices')
   })
+  it('今すぐ層と展開カテゴリへ、それぞれのグリッドclassを渡す', async () => {
+    const wrapper = await mountAccordion()
+    const nowGrid = wrapper.get('.widget-grid')
+
+    expect(nowGrid.classes()).toEqual(
+      expect.arrayContaining([
+        'grid',
+        'gap-4',
+        'grid-cols-[repeat(auto-fit,minmax(230px,1fr))]',
+      ]),
+    )
+
+    await wrapper.get('#personal-dashboard-section-button-schedule').trigger('click')
+    const scheduleGrid = wrapper.findAll('.widget-grid')[1]!
+    expect(scheduleGrid.classes()).toEqual(
+      expect.arrayContaining([
+        'grid',
+        'gap-4',
+        'grid-cols-[repeat(auto-fit,minmax(220px,1fr))]',
+      ]),
+    )
+  })
   it('opens categories independently and keeps a mounted grid after close and reopen', async () => {
     const wrapper = await mountAccordion()
     const buttons = wrapper.findAll('button')
