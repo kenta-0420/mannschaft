@@ -49,7 +49,27 @@ public record MembershipChargeCommand(
         String idempotencyKey,
         String subKey,
         String paymentMethodId,
-        boolean confirmImmediately) {
+        boolean confirmImmediately,
+        java.util.Map<String, String> metadata) {
+
+    public MembershipChargeCommand {
+        metadata = metadata == null ? java.util.Map.of() : java.util.Map.copyOf(metadata);
+    }
+
+    public MembershipChargeCommand(
+            long faceAmount,
+            UUID payeeConnectAccountId,
+            String payerStripeCustomerId,
+            Long payerUserId,
+            Long sourceId,
+            Long organizationId,
+            String idempotencyKey,
+            String subKey,
+            String paymentMethodId,
+            boolean confirmImmediately) {
+        this(faceAmount, payeeConnectAccountId, payerStripeCustomerId, payerUserId, sourceId, organizationId,
+                idempotencyKey, subKey, paymentMethodId, confirmImmediately, java.util.Map.of());
+    }
 
     /**
      * 後方互換コンストラクタ（{@code subKey=null}＝MEMBERSHIP の既定手数料パターンを引く・
@@ -65,7 +85,7 @@ public record MembershipChargeCommand(
             Long organizationId,
             String idempotencyKey) {
         this(faceAmount, payeeConnectAccountId, payerStripeCustomerId, payerUserId, sourceId, organizationId,
-                idempotencyKey, null, null, false);
+                idempotencyKey, null, null, false, java.util.Map.of());
     }
 
     /**
@@ -82,6 +102,6 @@ public record MembershipChargeCommand(
             String idempotencyKey,
             String subKey) {
         this(faceAmount, payeeConnectAccountId, payerStripeCustomerId, payerUserId, sourceId, organizationId,
-                idempotencyKey, subKey, null, false);
+                idempotencyKey, subKey, null, false, java.util.Map.of());
     }
 }

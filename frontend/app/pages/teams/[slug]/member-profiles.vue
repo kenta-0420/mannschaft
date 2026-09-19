@@ -61,7 +61,7 @@ async function loadData() {
     await loadPages()
   } catch {
     loadError.value = true
-    notification.error(t('common.memberProfile.loadFailed'))
+    notification.error(t('memberProfile.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -89,11 +89,11 @@ async function savePage() {
       year: pageForm.value.pageType === 'YEARLY' ? pageForm.value.year : undefined,
       visibility: pageForm.value.visibility,
     })
-    notification.success(t('common.memberProfile.pages.createSuccess'))
+    notification.success(t('memberProfile.pages.createSuccess'))
     showPageDialog.value = false
     await loadPages()
   } catch {
-    notification.error(t('common.memberProfile.pages.createFailed'))
+    notification.error(t('memberProfile.pages.createFailed'))
   }
 }
 
@@ -101,10 +101,10 @@ async function togglePublish(page: TeamPage) {
   try {
     const nextStatus = page.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'
     await memberProfileApi.changePageStatus(page.id, nextStatus)
-    notification.success(t('common.memberProfile.pages.updateSuccess'))
+    notification.success(t('memberProfile.pages.updateSuccess'))
     await loadPages()
   } catch {
-    notification.error(t('common.memberProfile.pages.statusChangeFailed'))
+    notification.error(t('memberProfile.pages.statusChangeFailed'))
   }
 }
 
@@ -117,12 +117,12 @@ async function executeDeletePage() {
   if (!deleteTargetPage.value) return
   try {
     await memberProfileApi.deletePage(deleteTargetPage.value.id)
-    notification.success(t('common.memberProfile.pages.deleteSuccess'))
+    notification.success(t('memberProfile.pages.deleteSuccess'))
     showDeletePageDialog.value = false
     deleteTargetPage.value = null
     await loadPages()
   } catch {
-    notification.error(t('common.memberProfile.pages.deleteFailed'))
+    notification.error(t('memberProfile.pages.deleteFailed'))
   }
 }
 
@@ -145,7 +145,7 @@ async function loadMembers() {
     const res = await memberProfileApi.listMembers(selectedPage.value.id, 0, 100)
     members.value = res.data
   } catch {
-    notification.error(t('common.memberProfile.loadFailed'))
+    notification.error(t('memberProfile.loadFailed'))
   } finally {
     membersLoading.value = false
   }
@@ -202,7 +202,7 @@ async function saveMember() {
     showMemberDialog.value = false
     await loadMembers()
   } catch {
-    notification.error(t('common.memberProfile.saveFailed'))
+    notification.error(t('memberProfile.saveFailed'))
   }
 }
 
@@ -212,7 +212,7 @@ async function handleDeleteMember(id: number) {
     notification.success('メンバーを削除しました')
     await loadMembers()
   } catch {
-    notification.error(t('common.memberProfile.deleteFailed'))
+    notification.error(t('memberProfile.deleteFailed'))
   }
 }
 
@@ -234,12 +234,12 @@ async function executeBulkRegister() {
       teamPageId: selectedPage.value.id,
       members: items,
     })
-    notification.success(t('common.memberProfile.members.bulkRegisterSuccess', { count: res.createdCount }))
+    notification.success(t('memberProfile.members.bulkRegisterSuccess', { count: res.createdCount }))
     showBulkDialog.value = false
     bulkText.value = ''
     await loadMembers()
   } catch {
-    notification.error(t('common.memberProfile.members.bulkRegisterFailed'))
+    notification.error(t('memberProfile.members.bulkRegisterFailed'))
   }
 }
 
@@ -256,11 +256,11 @@ async function executeCopy() {
   if (!selectedPage.value || copySourcePageId.value == null) return
   try {
     const res = await memberProfileApi.copyMembers(selectedPage.value.id, copySourcePageId.value)
-    notification.success(t('common.memberProfile.pages.copySuccess', { count: res.copiedCount }))
+    notification.success(t('memberProfile.pages.copySuccess', { count: res.copiedCount }))
     showCopyDialog.value = false
     await loadMembers()
   } catch {
-    notification.error(t('common.memberProfile.pages.copyFailed'))
+    notification.error(t('memberProfile.pages.copyFailed'))
   }
 }
 
@@ -270,20 +270,20 @@ onMounted(loadData)
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-center gap-3">
-      <PageHeader :title="t('common.memberProfile.pages.title')" />
+      <PageHeader :title="t('memberProfile.pages.title')" />
     </div>
 
     <PageLoading v-if="loading" />
 
     <div v-else-if="loadError" class="py-12 text-center text-surface-500">
       <i class="pi pi-exclamation-triangle mb-2 text-4xl text-orange-500" />
-      <p>{{ $t('common.memberProfile.unavailable') }}</p>
+      <p>{{ $t('memberProfile.unavailable') }}</p>
     </div>
 
     <template v-else-if="view === 'pages'">
       <div v-if="isAdmin" class="mb-4 flex justify-end">
         <Button
-          :label="t('common.memberProfile.pages.newPage')"
+          :label="t('memberProfile.pages.newPage')"
           icon="pi pi-plus"
           @click="openCreatePage"
         />
@@ -291,7 +291,7 @@ onMounted(loadData)
 
       <div v-if="pages.length === 0" class="py-12 text-center text-surface-500">
         <i class="pi pi-book mb-2 text-4xl" />
-        <p>{{ t('common.memberProfile.pages.empty') }}</p>
+        <p>{{ t('memberProfile.pages.empty') }}</p>
       </div>
 
       <div v-else class="grid gap-4 md:grid-cols-2">
@@ -303,8 +303,8 @@ onMounted(loadData)
                   <p class="font-semibold">{{ page.title }}</p>
                   <Tag
                     :value="page.status === 'PUBLISHED'
-                      ? t('common.memberProfile.pages.statusPublished')
-                      : t('common.memberProfile.pages.statusDraft')"
+                      ? t('memberProfile.pages.statusPublished')
+                      : t('memberProfile.pages.statusDraft')"
                     :severity="page.status === 'PUBLISHED' ? 'success' : 'secondary'"
                   />
                 </div>
@@ -313,7 +313,7 @@ onMounted(loadData)
             </div>
             <div class="mt-4 flex flex-wrap items-center gap-2">
               <Button
-                :label="t('common.memberProfile.pages.open')"
+                :label="t('memberProfile.pages.open')"
                 icon="pi pi-users"
                 size="small"
                 @click="openPage(page)"
@@ -321,8 +321,8 @@ onMounted(loadData)
               <template v-if="isAdmin">
                 <Button
                   :label="page.status === 'PUBLISHED'
-                    ? t('common.memberProfile.pages.unpublish')
-                    : t('common.memberProfile.pages.publish')"
+                    ? t('memberProfile.pages.unpublish')
+                    : t('memberProfile.pages.publish')"
                   icon="pi pi-eye"
                   size="small"
                   severity="secondary"
@@ -334,7 +334,7 @@ onMounted(loadData)
                   size="small"
                   severity="danger"
                   text
-                  :aria-label="t('common.memberProfile.pages.delete')"
+                  :aria-label="t('memberProfile.pages.delete')"
                   @click="confirmDeletePage(page)"
                 />
               </template>
@@ -349,7 +349,7 @@ onMounted(loadData)
         <div class="flex items-center gap-3">
           <Button
             icon="pi pi-arrow-left"
-            :label="t('common.memberProfile.members.back')"
+            :label="t('memberProfile.members.back')"
             text
             severity="secondary"
             @click="backToPages"
@@ -358,7 +358,7 @@ onMounted(loadData)
         </div>
         <div v-if="isAdmin" class="flex flex-wrap gap-2">
           <Button
-            :label="t('common.memberProfile.pages.copyFromPrevious')"
+            :label="t('memberProfile.pages.copyFromPrevious')"
             icon="pi pi-copy"
             size="small"
             severity="secondary"
@@ -367,7 +367,7 @@ onMounted(loadData)
             @click="openCopyDialog"
           />
           <Button
-            :label="t('common.memberProfile.members.bulkRegister')"
+            :label="t('memberProfile.members.bulkRegister')"
             icon="pi pi-file-import"
             size="small"
             severity="secondary"
@@ -391,30 +391,30 @@ onMounted(loadData)
 
     <Dialog
       v-model:visible="showPageDialog"
-      :header="t('common.memberProfile.pages.newPage')"
+      :header="t('memberProfile.pages.newPage')"
       :modal="true"
       class="w-full max-w-md"
     >
       <div class="space-y-4">
         <div>
-          <label class="mb-1 block text-sm font-medium">{{ t('common.memberProfile.pages.titleLabel') }} *</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('memberProfile.pages.titleLabel') }} *</label>
           <InputText v-model="pageForm.title" class="w-full" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">{{ t('common.memberProfile.pages.slugLabel') }} *</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('memberProfile.pages.slugLabel') }} *</label>
           <InputText v-model="pageForm.slug" class="w-full" placeholder="members-2026" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">{{ t('common.memberProfile.pages.yearLabel') }}</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('memberProfile.pages.yearLabel') }}</label>
           <InputNumber v-model="pageForm.year" class="w-full" :use-grouping="false" />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">{{ t('common.memberProfile.pages.visibilityLabel') }}</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('memberProfile.pages.visibilityLabel') }}</label>
           <Select
             v-model="pageForm.visibility"
             :options="[
-              { label: t('common.memberProfile.pages.visibilityMembersOnly'), value: 'MEMBERS_ONLY' },
-              { label: t('common.memberProfile.pages.visibilityPublic'), value: 'PUBLIC' },
+              { label: t('memberProfile.pages.visibilityMembersOnly'), value: 'MEMBERS_ONLY' },
+              { label: t('memberProfile.pages.visibilityPublic'), value: 'PUBLIC' },
             ]"
             option-label="label"
             option-value="value"
@@ -435,11 +435,11 @@ onMounted(loadData)
 
     <Dialog
       v-model:visible="showDeletePageDialog"
-      :header="t('common.memberProfile.pages.delete')"
+      :header="t('memberProfile.pages.delete')"
       :modal="true"
       class="w-full max-w-sm"
     >
-      <p>{{ t('common.memberProfile.pages.deleteConfirm') }}</p>
+      <p>{{ t('memberProfile.pages.deleteConfirm') }}</p>
       <template #footer>
         <Button :label="t('button.cancel')" severity="secondary" @click="showDeletePageDialog = false" />
         <Button :label="t('button.delete')" severity="danger" icon="pi pi-trash" @click="executeDeletePage" />
@@ -448,7 +448,7 @@ onMounted(loadData)
 
     <Dialog
       v-model:visible="showMemberDialog"
-      :header="editingMember ? t('common.memberProfile.members.edit') : t('common.memberProfile.members.add')"
+      :header="editingMember ? t('memberProfile.members.edit') : t('memberProfile.members.add')"
       :modal="true"
       class="w-full max-w-md"
     >
@@ -473,7 +473,7 @@ onMounted(loadData)
       <template #footer>
         <Button :label="t('button.cancel')" severity="secondary" @click="showMemberDialog = false" />
         <Button
-          :label="editingMember ? t('button.save') : t('common.memberProfile.members.add')"
+          :label="editingMember ? t('button.save') : t('memberProfile.members.add')"
           icon="pi pi-check"
           :disabled="!memberForm.displayName"
           @click="saveMember"
@@ -483,16 +483,16 @@ onMounted(loadData)
 
     <Dialog
       v-model:visible="showBulkDialog"
-      :header="t('common.memberProfile.members.bulkRegister')"
+      :header="t('memberProfile.members.bulkRegister')"
       :modal="true"
       class="w-full max-w-lg"
     >
-      <p class="mb-2 text-sm text-surface-500">{{ t('common.memberProfile.members.bulkRegisterHelp') }}</p>
+      <p class="mb-2 text-sm text-surface-500">{{ t('memberProfile.members.bulkRegisterHelp') }}</p>
       <Textarea v-model="bulkText" class="w-full" rows="8" placeholder="田中太郎,10&#10;鈴木花子,11" />
       <template #footer>
         <Button :label="t('button.cancel')" severity="secondary" @click="showBulkDialog = false" />
         <Button
-          :label="t('common.memberProfile.members.bulkRegister')"
+          :label="t('memberProfile.members.bulkRegister')"
           icon="pi pi-check"
           :disabled="!bulkText.trim()"
           @click="executeBulkRegister"
@@ -502,12 +502,12 @@ onMounted(loadData)
 
     <Dialog
       v-model:visible="showCopyDialog"
-      :header="t('common.memberProfile.pages.copyFromPrevious')"
+      :header="t('memberProfile.pages.copyFromPrevious')"
       :modal="true"
       class="w-full max-w-sm"
     >
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ t('common.memberProfile.pages.copySourceLabel') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ t('memberProfile.pages.copySourceLabel') }}</label>
         <Select
           v-model="copySourcePageId"
           :options="copyCandidatePages"
@@ -519,7 +519,7 @@ onMounted(loadData)
       <template #footer>
         <Button :label="t('button.cancel')" severity="secondary" @click="showCopyDialog = false" />
         <Button
-          :label="t('common.memberProfile.pages.copyConfirm')"
+          :label="t('memberProfile.pages.copyConfirm')"
           icon="pi pi-copy"
           :disabled="copySourcePageId == null"
           @click="executeCopy"

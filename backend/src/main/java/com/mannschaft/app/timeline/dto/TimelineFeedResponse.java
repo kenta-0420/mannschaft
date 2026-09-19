@@ -93,12 +93,14 @@ public class TimelineFeedResponse {
      * @return タイムラインフィードレスポンス（pinned 空・実カーソル付き）
      */
     public static TimelineFeedResponse ofMyFeed(List<PostResponse> posts, int limit) {
-        boolean hasNext = posts.size() >= limit;
-        Long nextCursor = (hasNext && !posts.isEmpty())
-                ? posts.get(posts.size() - 1).getId()
+        int pageSize = limit > 0 ? limit : 20;
+        boolean hasNext = posts.size() > pageSize;
+        List<PostResponse> pagePosts = hasNext ? posts.subList(0, pageSize) : posts;
+        Long nextCursor = (hasNext && !pagePosts.isEmpty())
+                ? pagePosts.get(pagePosts.size() - 1).getId()
                 : null;
-        FeedData feedData = new FeedData(List.of(), posts);
-        FeedMeta feedMeta = new FeedMeta(nextCursor, limit, hasNext);
+        FeedData feedData = new FeedData(List.of(), pagePosts);
+        FeedMeta feedMeta = new FeedMeta(nextCursor, pageSize, hasNext);
         return new TimelineFeedResponse(feedData, feedMeta);
     }
 
@@ -111,7 +113,7 @@ public class TimelineFeedResponse {
      * ページネーション（{@code hasNext}/{@code nextCursor}）は {@link #ofMyFeed} と同じ
      * ID キーセット方式（ID 昇順の末尾 = 最大 ID を次カーソルとする）。</p>
      *
-     * @param replies enrich 済みリプライ一覧（ID 昇順・最大 limit 件）
+     * @param replies enrich 済みリプライ一覧（ID 昇順・最大 {@code limit + 1} 件）
      * @param limit   リクエスト件数
      * @return タイムラインフィードレスポンス（pinned 空・実カーソル付き）
      */

@@ -50,7 +50,9 @@ const sourceBadge = computed(() => {
   const scope = props.post.scope
   if (!scope?.name) return null
   let to: string | null = null
-  if (scope.slug) {
+  if (scope.scopeType === 'VILLAGE' && scope.scopeVillageId) {
+    to = `/villages/${scope.scopeVillageId}`
+  } else if (scope.slug) {
     if (scope.scopeType === 'TEAM') to = `/teams/${scope.slug}`
     else if (scope.scopeType === 'ORGANIZATION') to = `/organizations/${scope.slug}`
   }

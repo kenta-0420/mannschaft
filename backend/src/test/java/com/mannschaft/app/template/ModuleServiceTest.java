@@ -1584,4 +1584,107 @@ class ModuleServiceTest {
                     .isEqualTo(0L);
         }
     }
+
+    // ========================================
+    // CMP-260918-0024: ゲーミフィケーションは組織スコープで利用不可（チーム固有機能）
+    // ========================================
+
+    @Nested
+    @DisplayName("CMP-260918-0024: ゲーミフィケーションの組織スコープ利用不可判定")
+    class GamificationOrganizationLevelUnavailable {
+
+        private static final Long ORG_ID = 300L;
+
+        private ModuleDefinitionEntity createGamificationModule() {
+            return ModuleDefinitionEntity.builder()
+                    .name("ゲーミフィケーション")
+                    .slug("gamification")
+                    .description("ポイント・バッジ・ランキング機能")
+                    .moduleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
+                    .moduleNumber(40)
+                    .requiresPaidPlan(false)
+                    .trialDays(14)
+                    .isActive(true)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("組織カタログ: gamification は levelAvailable=false（V216 マイグレーションの意図どおり）")
+        void 組織カタログ_gamificationはlevelAvailableがfalse() {
+            // Given: V216 マイグレーションが挿入する module_level_availability 行
+            // （module_id=gamification, level=ORGANIZATION, is_available=0）を再現する。
+            ModuleDefinitionEntity module = createGamificationModule().toBuilder().id(MODULE_ID).build();
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL))
+                    .willReturn(List.of(module));
+            given(organizationEnabledModuleRepository.findByOrganizationId(ORG_ID)).willReturn(List.of());
+
+            ModuleLevelAvailabilityEntity orgUnavailable = ModuleLevelAvailabilityEntity.builder()
+                    .moduleId(MODULE_ID)
+                    .level(ModuleLevelAvailabilityEntity.Level.ORGANIZATION)
+                    .isAvailable(false)
+                    .note("ゲーミフィケーションはチーム固有機能のため組織スコープでは利用不可（CMP-260918-0024）")
+                    .build();
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    MODULE_ID, ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.of(orgUnavailable));
+
+            // When
+            OrgModuleCatalogResponse resp = moduleService.getOrganizationModuleCatalog(ORG_ID);
+
+            // Then
+            assertThat(resp.getModules()).hasSize(1);
+            assertThat(resp.getModules().get(0).getSlug()).isEqualTo("gamification");
+            assertThat(resp.getModules().get(0).getLevelAvailable())
+                    .as("組織スコープでは利用不可であること")
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("組織トグル: gamification を有効化しようとすると TMPL_005 例外")
+        void 組織トグル_gamification有効化はTMPL005例外() {
+            // Given
+            ModuleDefinitionEntity module = createGamificationModule().toBuilder().id(MODULE_ID).build();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+
+            ModuleLevelAvailabilityEntity orgUnavailable = ModuleLevelAvailabilityEntity.builder()
+                    .moduleId(MODULE_ID)
+                    .level(ModuleLevelAvailabilityEntity.Level.ORGANIZATION)
+                    .isAvailable(false)
+                    .build();
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    MODULE_ID, ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.of(orgUnavailable));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When / Then
+            assertThatThrownBy(() -> moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TMPL_005"));
+        }
+
+        @Test
+        @DisplayName("チームカタログ: gamification は既存どおり levelAvailable=true（組織限定の変更で退行しない）")
+        void チームカタログ_gamificationはlevelAvailableがtrueのまま() {
+            // Given: TEAM レベルの行は無い（V216 は ORGANIZATION 行のみ追加）ので既定の「制約なし＝利用可」。
+            ModuleDefinitionEntity module = createGamificationModule().toBuilder().id(MODULE_ID).build();
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL))
+                    .willReturn(List.of(module));
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(List.of());
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    MODULE_ID, ModuleLevelAvailabilityEntity.Level.TEAM))
+                    .willReturn(Optional.empty());
+
+            // When
+            TeamModuleCatalogResponse resp = moduleService.getTeamModuleCatalog(TEAM_ID);
+
+            // Then
+            assertThat(resp.getModules()).hasSize(1);
+            assertThat(resp.getModules().get(0).getSlug()).isEqualTo("gamification");
+            assertThat(resp.getModules().get(0).getLevelAvailable())
+                    .as("チームスコープは従来どおり利用可能")
+                    .isTrue();
+        }
+    }
 }

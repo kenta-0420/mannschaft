@@ -50,6 +50,17 @@ public class TeamConfirmableNotificationController {
     private final AccessControlService accessControlService;
 
     /**
+     * F04.9 §2 が定める確認通知の送信権限（CMP-260909-1141）。
+     *
+     * <p>書き込み系（送信・キャンセル・リマインド再送・設定更新・テンプレート CRUD）は
+     * 「ADMIN、または本権限を持つ DEPUTY_ADMIN」で認可する。カタログ登録と DEPUTY_ADMIN への
+     * 既定付与（{@code is_default=1}）は
+     * {@code V216.20260918083734__add_send_notification_permission.sql} が行う。
+     * 閲覧系は従来どおり {@code checkMembership} のままである。</p>
+     */
+    private static final String SEND_NOTIFICATION = "SEND_NOTIFICATION";
+
+    /**
      * 確認通知を送信する。
      *
      * <p>受信者への確認トークン付与・リマインド設定解決を行い、F04.3通知基盤に引き渡す。</p>
@@ -61,8 +72,10 @@ public class TeamConfirmableNotificationController {
             @PathVariable Long teamId,
             @Valid @RequestBody ConfirmableNotificationCreateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        // 認可根治 Wave3-B12notif: 通知送信は管理操作（受信者へ強制配信）。
-        accessControlService.checkAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name());
+        // 認可根治 Wave3-B12notif → CMP-260909-1141: 通知送信は管理操作（受信者へ強制配信）。
+        // 設計書 F04.9 §2 のとおり「ADMIN、または SEND_NOTIFICATION を持つ DEPUTY_ADMIN」で判定する。
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
         ConfirmableNotificationEntity entity = notificationService.send(
                 ScopeType.TEAM,
                 teamId,
@@ -156,8 +169,9 @@ public class TeamConfirmableNotificationController {
         if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
             throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
         }
-        // 認可根治 Wave3-B12notif: キャンセルは管理操作のため checkAdminOrAbove。
-        accessControlService.checkAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name());
+        // 認可根治 Wave3-B12notif → CMP-260909-1141: キャンセルは管理操作のため SEND_NOTIFICATION で判定。
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
 
         notificationService.cancel(notificationId, currentUserId);
         return ResponseEntity.noContent().build();
@@ -181,8 +195,9 @@ public class TeamConfirmableNotificationController {
         if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
             throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
         }
-        // 認可根治 Wave3-B12notif: リマインド再送は管理操作のため checkAdminOrAbove。
-        accessControlService.checkAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name());
+        // 認可根治 Wave3-B12notif → CMP-260909-1141: リマインド再送は管理操作のため SEND_NOTIFICATION で判定。
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
 
         notificationService.resendReminder(notificationId);
         return ResponseEntity.noContent().build();
