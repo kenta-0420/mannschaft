@@ -104,9 +104,13 @@ describe('featureGates 定数と純関数', () => {
     // このプレフィクスは '*'（組織 slug の動的セグメント）を含むため**動的**であり、
     // 静的ではない（前回のコミットで「静的プレフィクスを除去」と誤って書いたのを訂正する）。
     // よって動的が1件減（46→45）、静的は48のまま変わらず、全体は1件減（94→93）。
+    // CMP-260909-1141: /admin/org-billing.vue のお蔵入り（削除）に伴い
+    // FEATURE_BILLING_PAYMENT_ENABLED から '/admin/org-billing' を除去した。
+    // こちらは '*' を含まない**静的**プレフィクスであるため、静的が1件減（48→47）、
+    // 動的は47のまま変わらず、全体は1件減（95→94）。
     // 数値は GATE_ROUTE_MAP を直接カウントするスクリプトで実測し直して確認済み。
-    expect(all).toHaveLength(95)
-    expect(staticOnly).toHaveLength(48)
+    expect(all).toHaveLength(94)
+    expect(staticOnly).toHaveLength(47)
     expect(dynamic).toHaveLength(47)
 
     const rules = buildGateRouteRules()
