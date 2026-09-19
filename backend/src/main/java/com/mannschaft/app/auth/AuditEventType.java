@@ -577,7 +577,30 @@ public enum AuditEventType {
     BILLING_CANCEL_RESUME_APPLIED(AuditEventCategory.BILLING),
 
     /** 解約撤回が失敗した（PR6a AC-66）。metadata に errorCode を含める。 */
-    BILLING_CANCEL_RESUME_FAILED(AuditEventCategory.BILLING);
+    BILLING_CANCEL_RESUME_FAILED(AuditEventCategory.BILLING),
+
+    /**
+     * 上位プラン変更（upgrade）の実行要求を受け付けた（PR6b-1 AC-136）。change 行の<b>作成</b>に対応する。
+     * userId=操作者 / teamId または organizationId=対象スコープ /
+     * metadata に scopeKind・scopeId・contractId・changeId・fromPlanKey・toPlanKey を含める。
+     * <b>clientSecret・Stripe raw payload・URL・カード情報は含めない</b>（AC-139・正本 §370）。
+     */
+    BILLING_PLAN_CHANGE_REQUESTED(AuditEventCategory.BILLING),
+
+    /**
+     * 上位プラン変更が {@code invoice.paid} で<b>確定</b>した（PR6b-1 AC-137）。
+     * metadata は {@link #BILLING_PLAN_CHANGE_REQUESTED} と同じ項目。
+     */
+    BILLING_PLAN_CHANGE_APPLIED(AuditEventCategory.BILLING),
+
+    /**
+     * 上位プラン変更が<b>失敗</b>した（PR6b-1 AC-138。3DS 失敗・カード拒否・invoice 失効・
+     * Stripe 呼び出し失敗を含む）。成功だけを監査すると「利用者が upgrade を試みたが
+     * 通らなかった」事実が残らないため、失敗も同じ接頭辞で記録する。
+     * metadata に errorCode（アプリのエラーコード）を含める。
+     * <b>例外メッセージ本文は含めない</b>（AC-139）。
+     */
+    BILLING_PLAN_CHANGE_FAILED(AuditEventCategory.BILLING);
 
     private final AuditEventCategory category;
 }

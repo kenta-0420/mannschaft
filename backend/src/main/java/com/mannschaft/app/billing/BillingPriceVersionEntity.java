@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
@@ -24,7 +25,18 @@ import java.time.Instant;
  * {@code lockVersion} は Provision / activate 時の CAS 専用であり、revision 番号とは別物である。</p>
  */
 @Entity
-@Table(name = "billing_price_versions")
+@Table(name = "billing_price_versions",
+        // V196 の uk_bpv_identity / uk_bpv_revision_no / uk_bpv_catalog_revision と同一。
+        // test profile は ddl-auto=create で Entity から schema を作るため、ここに書かないと
+        // テストの schema にだけ UNIQUE が無い状態になる（uk_bcc_invoice と同型の宣言漏れ）。
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_bpv_identity",
+                        columnNames = {"id", "product_kind", "product_key", "scope_kind"}),
+                @UniqueConstraint(name = "uk_bpv_revision_no",
+                        columnNames = {"product_kind", "product_key", "scope_kind", "revision_no"}),
+                @UniqueConstraint(name = "uk_bpv_catalog_revision",
+                        columnNames = {"product_kind", "product_key", "scope_kind", "catalog_revision"})
+        })
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

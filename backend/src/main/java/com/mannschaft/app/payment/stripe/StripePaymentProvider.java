@@ -805,11 +805,14 @@ public interface StripePaymentProvider {
      * @param subscriptionId           Stripe Subscription ID（{@code sub_xxx}・逆引きキー）
      * @param customerId               Stripe Customer ID（{@code cus_xxx}・焼付用・{@code checkout.session.completed} のみ）
      * @param currentPeriodEndEpochSec 現サイクル終了の unix 秒（valid_until 延長/失効時刻・null 可）
+     * @param billingOperationId       {@code data.object.metadata.billingOperationId}（PR6b-1 AC-40。
+     *                                 {@code customer.subscription.*} のみ・invoice を経由せず change を
+     *                                 解決するための痕跡。無ければ {@code null}）
      */
     record BillingSubscriptionWebhookEventInfo(
             String eventId, String type, boolean livemode,
             String sessionId, String billingContractId, String subscriptionId, String customerId,
-            Long currentPeriodEndEpochSec) {}
+            Long currentPeriodEndEpochSec, String billingOperationId) {}
 
     // ========================================
     // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md §2.3・§3.2・§3.4）
@@ -922,6 +925,132 @@ public interface StripePaymentProvider {
                 "Billing Center PR6a: metadata を書ける実装で override すること");
     }
 
+    // ========================================
+    // Billing Center PR6b-1: プラン変更（upgrade）＋ 3DS
+    // ========================================
+
+    /**
+     * Billing Center PR6b-1（AC-1/AC-2）: プラン変更の<b>見積り請求書</b>を Stripe に作らせる。
+     *
+     * <p>Stripe の {@code POST /v1/invoices/create_preview} を {@code subscription} ＋
+     * {@code subscription_details.items} ＋ {@code subscription_details.proration_behavior} で呼ぶ。
+     * <b>日割りをこちらで計算してはならない</b>（AC-2: 金額の唯一の出所は Stripe）。</p>
+     *
+     * <p>対象の Subscription Item は<b>実物から解決する</b>（{@code items[0][id]} を指定しないと
+     * Stripe は「項目の追加」と解釈し、旧プランと新プランの二重課金になる）。契約用の Subscription は
+     * 項目1件で作られるため、項目が1件でない場合は推測せず例外にする。</p>
+     *
+     * @param subscriptionId    対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param targetPriceRef    変更後の Stripe Price ID（{@code price_xxx}）
+     * @param quantity          数量（人数band課金。個人契約は 1・null 可）
+     * @param prorationBehavior {@code always_invoice} 等（Stripe の生値）
+     * @param prorationDateEpochSec 按分の基準日時（{@code proration_date}・unix 秒）。
+     *                              <b>実適用でも同じ値を渡すこと</b>で見積り額と請求額が一致する
+     * @return 見積り請求書から読み取った金額・税・期間
+     */
+    InvoicePreviewInfo previewSubscriptionPlanChange(
+            String subscriptionId, String targetPriceRef, Long quantity, String prorationBehavior,
+            Long prorationDateEpochSec);
+
+    /**
+     * Billing Center PR6b-1（AC-29/AC-30/AC-31）: Subscription の項目を差し替えてプラン変更を適用する。
+     *
+     * <p>{@code proration_behavior=always_invoice}（差額を即時請求）＋
+     * {@code payment_behavior=pending_if_incomplete}（支払いが通らなければ適用を保留）で呼ぶ。
+     * <b>支払いが同期的に成功した場合 {@code pending_update} は返らない</b>。追加認証（3DS）や
+     * カード拒否で支払いが完了しなかったときだけ {@code pending_update} が返る
+     * （Stripe 公式「更新の保留」）。</p>
+     *
+     * <p>metadata は {@code putAllMetadata} で<b>差分マージ</b>する（既存の
+     * {@code handoverRequestId} 等を巻き添えで消さない）。</p>
+     *
+     * @param subscriptionId    対象 Stripe Subscription ID
+     * @param targetPriceRef    変更後の Stripe Price ID
+     * @param quantity          数量（null 可）
+     * @param prorationBehavior {@code always_invoice}
+     * @param paymentBehavior   {@code pending_if_incomplete}
+     * @param metadata          焼き付ける metadata（既存キーは保持）
+     * @param idempotencyKey    冪等性キー（{@code billing-operation-{operationId}}）
+     * @param prorationDateEpochSec 按分の基準日時（{@code proration_date}・unix 秒）。
+     *                              見積り時に渡した値と<b>同一</b>でなければ、利用者へ見せた額と
+     *                              実際の請求額がずれる
+     * @return 適用結果（最新 Invoice ＋ {@code pending_update}）
+     */
+    SubscriptionPlanChangeInfo changeSubscriptionPlan(
+            String subscriptionId, String targetPriceRef, Long quantity,
+            String prorationBehavior, String paymentBehavior,
+            java.util.Map<String, String> metadata, String idempotencyKey,
+            Long prorationDateEpochSec);
+
+    /**
+     * Billing Center PR6b-1（AC-48/AC-54）: 追加認証（3DS）の client secret を<b>都度取得</b>する。
+     *
+     * <p>{@code pending_update} を生んだ差額請求の Invoice から PaymentIntent を辿り、
+     * その {@code client_secret} を返す。<b>返り値をログ・DB へ出してはならない</b>（AC-57/AC-58）。
+     * 既に決済済み／取り消し済みで追加認証の余地が無い場合は空を返す。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID
+     * @param invoiceId      差額請求の Invoice ID（未確定なら null。その場合は {@code latest_invoice} を辿る）
+     * @return 追加認証情報（不要なら空）
+     */
+    java.util.Optional<SubscriptionPaymentActionInfo> retrieveSubscriptionPaymentAction(
+            String subscriptionId, String invoiceId);
+
+    /**
+     * Billing Center PR6b-1（AC-2）: 見積り請求書から読み取った値。
+     *
+     * <p>時刻は Stripe 由来の unix 秒のまま保持する（変換は呼び出し側の責務）。</p>
+     *
+     * @param currency            通貨（小文字の ISO コード）
+     * @param amountDue           今すぐ請求される額（最小貨幣単位・税込）
+     * @param totalExcludingTax   税抜額（取得できなければ null）
+     * @param taxAmount           税額（取得できなければ null）
+     * @param taxDisplayName      税の表示名（{@code total_tax_amounts.tax_rate} 展開時のみ・null 可）
+     * @param taxPercentage       税率（パーセント・展開時のみ・null 可）
+     * @param periodStartEpochSec 見積り対象期間の開始（null 可）
+     * @param periodEndEpochSec   見積り対象期間の終了（null 可）
+     */
+    record InvoicePreviewInfo(String currency, Long amountDue, Long totalExcludingTax, Long taxAmount,
+                              String taxDisplayName, BigDecimal taxPercentage,
+                              Long periodStartEpochSec, Long periodEndEpochSec) {}
+
+    /**
+     * Billing Center PR6b-1（AC-32/AC-33）: プラン変更適用の結果。
+     *
+     * @param subscriptionId                Stripe Subscription ID
+     * @param status                        Subscription のステータス
+     * @param latestInvoiceRef              差額請求の Invoice ID（発行されなければ null）
+     * @param latestInvoiceStatus           その Invoice のステータス（{@code paid}/{@code open} 等・null 可）
+     * @param pendingUpdatePresent          {@code pending_update} が返ったか（＝支払い未了・追加認証が要る）
+     * @param pendingUpdateExpiresAtEpochSec {@code pending_update.expires_at}（null 可）
+     * @param pendingUpdateItems            {@code pending_update.subscription_items}（無ければ空）
+     * @param currentPeriodStartEpochSec    現サイクル開始（null 可）
+     */
+    record SubscriptionPlanChangeInfo(String subscriptionId, String status,
+                                      String latestInvoiceRef, String latestInvoiceStatus,
+                                      boolean pendingUpdatePresent,
+                                      Long pendingUpdateExpiresAtEpochSec,
+                                      java.util.List<SubscriptionItemDetail> pendingUpdateItems,
+                                      Long currentPeriodStartEpochSec) {
+
+        /** null を運ばせない。 */
+        public SubscriptionPlanChangeInfo {
+            pendingUpdateItems = pendingUpdateItems == null
+                    ? java.util.List.of() : java.util.List.copyOf(pendingUpdateItems);
+        }
+    }
+
+    /**
+     * Billing Center PR6b-1（AC-48）: 追加認証の情報。
+     *
+     * <p>{@code clientSecret} は<b>短命な秘密</b>である。ログ・DB・URL のいずれにも残してはならない。</p>
+     *
+     * @param type              追加認証の種別（{@code payment_intent}）
+     * @param clientSecret      PaymentIntent の client secret
+     * @param expiresAtEpochSec 追加認証の期限（{@code pending_update.expires_at}・null 可）
+     */
+    record SubscriptionPaymentActionInfo(String type, String clientSecret, Long expiresAtEpochSec) {}
+
     /**
      * Stripe Subscription 実物のスナップショット（設計書 §3.6.1・§3.2）。
      *
@@ -939,5 +1068,41 @@ public interface StripePaymentProvider {
     record SubscriptionDetail(String subscriptionId, String status, boolean cancelAtPeriodEnd,
                               Long currentPeriodStart, Long currentPeriodEnd,
                               String pendingSetupIntentId,
-                              java.util.Map<String, String> metadata) {}
+                              java.util.Map<String, String> metadata,
+                              java.util.List<SubscriptionItemDetail> items,
+                              Long pendingUpdateExpiresAtEpochSec) {
+
+        /**
+         * Billing Center PR6b-1（AC-99）: items / pending_update を運ばない従来の7項目版。
+         *
+         * @param subscriptionId       Stripe Subscription ID
+         * @param status               Stripe ステータス
+         * @param cancelAtPeriodEnd    期末解約が予約済みか
+         * @param currentPeriodStart   現サイクル開始（epoch 秒・null 可）
+         * @param currentPeriodEnd     現サイクル終了（epoch 秒・null 可）
+         * @param pendingSetupIntentId 未解決 SetupIntent（null 可）
+         * @param metadata             metadata
+         */
+        public SubscriptionDetail(String subscriptionId, String status, boolean cancelAtPeriodEnd,
+                                  Long currentPeriodStart, Long currentPeriodEnd,
+                                  String pendingSetupIntentId,
+                                  java.util.Map<String, String> metadata) {
+            this(subscriptionId, status, cancelAtPeriodEnd, currentPeriodStart, currentPeriodEnd,
+                    pendingSetupIntentId, metadata, java.util.List.of(), null);
+        }
+
+        /** null を運ばせない。 */
+        public SubscriptionDetail {
+            items = items == null ? java.util.List.of() : java.util.List.copyOf(items);
+        }
+    }
+
+    /**
+     * Billing Center PR6b-1（AC-99）: Subscription Item 1件（Price ref を運ぶ）。
+     *
+     * @param itemId   Stripe Subscription Item ID
+     * @param priceRef Stripe Price ID
+     * @param quantity 数量（null 可）
+     */
+    record SubscriptionItemDetail(String itemId, String priceRef, Long quantity) {}
 }

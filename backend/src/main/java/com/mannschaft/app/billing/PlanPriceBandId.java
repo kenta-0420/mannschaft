@@ -19,6 +19,6 @@ public class PlanPriceBandId implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String planKey;
-    private String scopeKind;
+    private PlanPriceBandScopeKind scopeKind;
     private Short bandNo;
 }

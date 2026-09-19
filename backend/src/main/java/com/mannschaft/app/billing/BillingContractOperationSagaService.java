@@ -45,6 +45,12 @@ public class BillingContractOperationSagaService {
     /** 予約直後の暫定 {@code idempotency_key}（persist 直後に operationId へ差し替える）。 */
     private static final String PENDING_IDEMPOTENCY_KEY = "0".repeat(36);
 
+    /** MySQL の重複キーエラー番号（{@code ER_DUP_ENTRY}）。 */
+    private static final int ER_DUP_ENTRY = 1062;
+
+    /** pointer 表の物理名（重複キーエラーが<b>この表</b>を名指ししているかの判定に使う）。 */
+    private static final String POINTER_TABLE_NAME = "active_billing_contract_operation_pointers";
+
     private final BillingContractOperationRepository operationRepository;
     private final ActiveBillingContractOperationPointerRepository pointerRepository;
     private final EntityManager entityManager;
@@ -63,6 +69,17 @@ public class BillingContractOperationSagaService {
 
     /** tx2 が落ちたときの補償（検疫記録）を<b>別トランザクション</b>で行うための template（AC-19）。 */
     private final TransactionTemplate compensationTransactionTemplate;
+
+    /**
+     * tx1（{@link #reserve}）専用の template。伝播は既定（{@code REQUIRED}）のままだが、
+     * 分離レベルだけ {@code READ COMMITTED} を指定する。
+     *
+     * <p>理由は {@link #reserve} 内のコメントを参照。この設定は<b>この template が開始した
+     * トランザクションにのみ</b>効き、他ドメインにも本クラスの他メソッドにも波及しない
+     * （{@code TransactionTemplate} はインスタンス単位の設定であり、分離レベルは
+     * トランザクション終了時に接続へ復元される）。</p>
+     */
+    private final TransactionTemplate reserveTransactionTemplate;
 
     /**
      * 一括 UPDATE は {@code @PreUpdate} を経由しないため {@code updated_at} を明示的に渡す必要がある。
@@ -87,6 +104,9 @@ public class BillingContractOperationSagaService {
         this.compensationTransactionTemplate = new TransactionTemplate(transactionManager);
         this.compensationTransactionTemplate.setPropagationBehavior(
                 TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.reserveTransactionTemplate = new TransactionTemplate(transactionManager);
+        this.reserveTransactionTemplate.setIsolationLevel(
+                TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
 
     /**
@@ -150,10 +170,36 @@ public class BillingContractOperationSagaService {
         // chk_bco_actor（actor_kind と created_by の対）を DB へ到達させる前に弾く（AC-13）。
         requireValidActor(command.actorKind(), command.actorUserId());
 
-        return transactionTemplate.execute(tx -> {
+        return reserveTransactionTemplate.execute(tx -> {
             BillingContractEntity contract = lockContractForUpdate(command.contractId());
 
             // 進行中 operation の lease がある（検疫を含む）契約は 409（AC-3 / AC-8 / AC-14）。
+            //
+            // 【必須・AC-122】この判定は「最新のコミット済み」を読まねばならない。
+            // 直前の contract 行の SELECT ... FOR UPDATE は「契約単位で直列化する」ためのものだが、
+            // MySQL 既定の REPEATABLE READ では、その後に続く素の SELECT は自分のトランザクション
+            // 開始時点のスナップショットを読む。並行する2本の change 要求は、どちらも「pointer が無い」
+            // スナップショットを掴んでから contract のロック待ちに入るため、後続側もこの判定を
+            // 素通りし、409 ではなく pointer の主キー重複（DataIntegrityViolation → 500）で落ちていた。
+            //
+            // 【採らない形1・ロック読み】pointer を PESSIMISTIC_WRITE で読むと 409 では決着するが、
+            // <b>存在しない行へのロック読みはギャップロックを取る</b>。この表は契約あたり高々1行で
+            // 通常ほぼ空のため、そのギャップは実質「表全体」であり、無関係な別契約の予約どうしが
+            // 同じギャップを掴み合い、INSERT の insert-intention lock と衝突して<b>デッドロック</b>に
+            // なった（実測: {@code BillingCustomerLinkConcurrencyIT}）。
+            //
+            // 【採らない形2・REQUIRES_NEW の読み取り】新しいトランザクションで読めばギャップロックは
+            // 消えるが、外側 tx が接続を保持したまま<b>2本目の接続</b>を要求する。異なる契約への予約が
+            // 接続プール上限ぶん同時に入ると、全スレッドが互いの接続解放を待って総崩れになる
+            // （CI 上限5・本番既定50。Codex 検分 P1）。デッドロックをより広い同時失敗に置き換えただけである。
+            //
+            // 【採る形】tx1 自体を READ COMMITTED で開く。READ COMMITTED は
+            //   - 文ごとに新しい読み取りビューを取るため、<b>素の SELECT で最新のコミット済みが読める</b>
+            //   - InnoDB がギャップロックを実質取らない（外部キー検査と重複キー検査を除く）
+            //   - <b>追加の接続を要さない</b>
+            // の3つを同時に満たす。同一契約の直列性は contract 行の X ロックが保証しており、
+            // 後続側は先行側の commit（＝ロック解放）を待ってからこの読み取りに入るため、
+            // 先行側の pointer を必ず見て CHANGE_CONFLICT（409）で決着する。
             if (pointerRepository.findById(command.contractId()).isPresent()) {
                 throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
             }
@@ -187,11 +233,36 @@ public class BillingContractOperationSagaService {
             entityManager.flush();
 
             // AC-2: pointer INSERT は operation INSERT と同一トランザクション。片方だけ残らない。
-            entityManager.persist(ActiveBillingContractOperationPointerEntity.builder()
-                    .contractId(contract.getId())
-                    .operationId(operation.getId())
-                    .build());
-            entityManager.flush();
+            //
+            // 【必須・AC-122 の最終防波堤】上の事前判定は「tx1 を自分で開いたとき」だけ
+            // READ COMMITTED で行われる。{@code BillingContractService#cancelPaidAtPeriodEnd} のように
+            // 呼び出し元が既にトランザクションを持つ経路では、伝播 REQUIRED で<b>参加する</b>ため
+            // Spring は分離レベルの指定を黙って無視し（既定 validateExistingTransaction=false）、
+            // 判定は呼び出し元の分離レベル（REPEATABLE READ）で行われる。そこで、主キー重複そのものを
+            // 409 へ写像して「どの分離レベルでも 500 にならない」ことを構造で保証する。
+            // ★これは握り潰しではない（剥がさないこと）—— InnoDB は並行 INSERT に対する重複キー
+            // エラーを<b>相手の commit 後</b>に返す。つまりこの例外は「先行する lease が確実に
+            // 存在する」という<b>事実そのもの</b>であり、409 はその事実を正しく写しているだけで、
+            // 何かを隠してはいない。変換するのは pointer 表を名指しした主キー重複だけであり、
+            // 他表・他制約の整合性違反はそのまま素通しする（本物の不整合を 409 で隠さない）。
+            try {
+                entityManager.persist(ActiveBillingContractOperationPointerEntity.builder()
+                        .contractId(contract.getId())
+                        .operationId(operation.getId())
+                        .build());
+                entityManager.flush();
+            } catch (RuntimeException e) {
+                // 掴む型を広く取り、<b>写像するかどうかは原因鎖の実体で決める</b>。
+                // flush() の重複キーは Hibernate の ConstraintViolationException（HibernateException）
+                // として素で飛ぶことも、JPA/Spring の型へ包まれて飛ぶこともあり、型で絞ると
+                // 経路によって取りこぼして 500 に戻る。重複キーでなければそのまま素通しする。
+                if (!isPointerPrimaryKeyDuplicate(e)) {
+                    throw e;
+                }
+                log.info("AC-122: pointer の主キー重複で並行予約に敗れたため 409 で決着させる: contractId={}",
+                        command.contractId());
+                throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
+            }
 
             return new OperationReservation(
                     operation.getId(), contract.getId(), operation.getKind(),
@@ -575,6 +646,48 @@ public class BillingContractOperationSagaService {
         contract.setBillingCustomerId(resolved);
         entityManager.flush();
         return resolved;
+    }
+
+    /**
+     * 例外の原因鎖に <b>pointer 表の主キー重複</b>（MySQL {@code ER_DUP_ENTRY} = 1062）が居るかを判定する。
+     *
+     * <p>{@code try} で囲っているのは pointer の INSERT 1文だけであり、その表で重複しうるのは
+     * 主キー {@code contract_id}（＝lease の二重取得）だけである（{@code uk_abcop_operation} は
+     * 採番したての operationId なので原理的に重複しない）。さらに<b>例外が pointer 表を名指しして
+     * いることまで確かめる</b>ので、他表・他制約の一意違反を 409 で隠すことはない
+     * （本物の不整合は握らず呼び出し元へ上げる）。</p>
+     *
+     * @param throwable 判定対象
+     * @return 重複キーなら {@code true}
+     */
+    private static boolean isPointerPrimaryKeyDuplicate(Throwable throwable) {
+        for (Throwable t = throwable; t != null; t = t.getCause()) {
+            if (t instanceof java.sql.SQLException sqlException
+                    && sqlException.getErrorCode() == ER_DUP_ENTRY
+                    && mentionsPointerTable(sqlException.getMessage())) {
+                return true;
+            }
+            if (t instanceof org.hibernate.exception.ConstraintViolationException hibernateViolation
+                    && mentionsPointerTable(hibernateViolation.getConstraintName())) {
+                return true;
+            }
+            if (t.getCause() == t) {
+                break;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * MySQL 8.0 は重複キーの相手を {@code '<表名>.<キー名>'} の形で報告する
+     * （例: {@code Duplicate entry '…' for key 'active_billing_contract_operation_pointers.PRIMARY'}）。
+     * <b>この表名が現れることを写像の条件にする</b>ことで、他表・他制約の 1062 を巻き込まない。
+     *
+     * @param text 例外メッセージまたは制約名（{@code null} 可）
+     * @return pointer 表を名指ししていれば {@code true}
+     */
+    private static boolean mentionsPointerTable(String text) {
+        return text != null && text.contains(POINTER_TABLE_NAME);
     }
 
     /** 契約行を {@code SELECT ... FOR UPDATE} で取得する（AC-1）。 */

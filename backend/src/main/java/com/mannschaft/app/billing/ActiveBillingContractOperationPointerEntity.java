@@ -6,6 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -42,7 +43,10 @@ import java.util.UUID;
  * <p>設計書: docs/features/F20.1_entitlement_billing/05_billing_center.md §5</p>
  */
 @Entity
-@Table(name = "active_billing_contract_operation_pointers")
+@Table(name = "active_billing_contract_operation_pointers",
+        // uk_abcop_operation は V196 の DDL には在るのに、ここ（Entity）に無かった
+        // （uk_bcc_invoice と同型の宣言漏れ。前隊の申し送りで発覚）。
+        uniqueConstraints = @UniqueConstraint(name = "uk_abcop_operation", columnNames = {"operation_id"}))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
