@@ -17,7 +17,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import javax.sql.DataSource;
+
+import java.sql.Connection;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -57,6 +61,7 @@ class BillingCustomerLinkConcurrencyIT extends AbstractBillingCancelResumeApiIT 
     @Autowired private BillingContractOperationRepository operationRepository;
     @Autowired private ActiveBillingContractOperationPointerRepository pointerRepository;
     @Autowired private BillingCustomerJpaRepository billingCustomerJpaRepository;
+    @Autowired private DataSource dataSource;
 
     private Long userId;
     private LocalDateTime periodEnd;
@@ -141,6 +146,71 @@ class BillingCustomerLinkConcurrencyIT extends AbstractBillingCancelResumeApiIT 
                 .as("2度目は引き上げず既存行を使う").isEqualTo(firstCustomerId);
         assertThat(billingCustomerJpaRepository
                 .findByScopeKindAndScopeId(EntitlementScopeKind.USER, userId)).isPresent();
+    }
+
+    /**
+     * Codex 検分 P1（4巡目）の検体 — <b>予約（tx1）は接続を2本要求してはならない</b>。
+     *
+     * <h2>何が壊れていたか</h2>
+     * <p>pointer の存在判定を {@code REQUIRES_NEW} の読み取り専用トランザクションで行っていた。
+     * 外側 tx は自分の接続を保持したまま新しいトランザクションを開くため、1回の予約が
+     * <b>接続を2本</b>占有する。異なる契約への予約が接続プール上限ぶん同時に入ると、
+     * 全スレッドが1本目を握ったまま2本目を待ち、互いに解放を待って総崩れになる
+     * （CI 上限5・本番既定50）。無関係な契約どうしでも課金操作が一斉に失敗する。</p>
+     *
+     * <h2>どう測るか</h2>
+     * <p>プール上限 {@code max} に対して {@code max - 1} 本を<b>テスト側で掴んだまま</b>予約を1回行う。
+     * 予約が1本で足りるなら残り1本で成立し、2本必要なら空きが無く接続取得タイムアウトで落ちる。
+     * 別スレッドや多重並行に頼らないので、タイミングに依存せず<b>決定的</b>に赤／緑が分かれる。</p>
+     *
+     * <p>引き上げ（{@code billing_customers} の provision）も {@code REQUIRES_NEW} であり2本目を要するため、
+     * 測りたい pointer 判定だけを切り出すべく、<b>先に1度予約して紐付けを済ませてから</b>測る
+     * （2度目の予約は既存 Customer を再利用し、入れ子トランザクションを開かない）。</p>
+     */
+    @Test
+    @DisplayName("P1: 予約(tx1)は接続を2本要求しない — プール残1本でも成立する")
+    void reservationDoesNotRequireASecondConnection() throws Exception {
+        UUID contractId = insertContract(userId, ContractStatus.ACTIVE, PRICE_JPY,
+                "sub_pool_" + userId, periodEnd, null);
+
+        // 1度目: billing_customers の引き上げ（REQUIRES_NEW）をここで済ませ、lease は解放しておく。
+        Outcome warmUp = reserve(contractId);
+        assertThat(warmUp.reserved()).as("前提となる1度目の予約: %s", warmUp.failure()).isTrue();
+        sagaService.cancelAndRelease(warmUp.operationId(), "TEST_RELEASE");
+        assertThat(reloadContract(contractId).getBillingCustomerId())
+                .as("以後の予約が引き上げ(REQUIRES_NEW)に入らない前提").isNotNull();
+
+        com.zaxxer.hikari.HikariDataSource hikari =
+                dataSource.unwrap(com.zaxxer.hikari.HikariDataSource.class);
+        int max = hikari.getMaximumPoolSize();
+        assertThat(max).as("この検体は上限2本以上のプールを前提にする").isGreaterThanOrEqualTo(2);
+
+        List<Connection> held = new ArrayList<>();
+        Outcome outcome;
+        try {
+            for (int i = 0; i < max - 1; i++) {
+                held.add(dataSource.getConnection());
+            }
+            // 残り1本。予約が2本目を要求するなら、ここで接続取得タイムアウトになる。
+            outcome = reserve(contractId);
+        } finally {
+            for (Connection c : held) {
+                try {
+                    c.close();
+                } catch (Exception ignored) {
+                    // 後片付けの失敗で本来の失敗理由を覆い隠さない。
+                }
+            }
+        }
+
+        assertThat(outcome.reserved())
+                .as("プール残1本でも予約は成立しなければならない（入れ子トランザクション禁止）。理由: %s",
+                        outcome.failure())
+                .isTrue();
+        // 空虚な緑の排除 —— 実際に lease と operation が出来ている。
+        assertThat(pointerRepository.findById(contractId)).as("lease").isPresent();
+        assertThat(operationRepository.findByContractIdAndStatusAndDeletedAtIsNull(
+                contractId, BillingOperationStatus.CREATED)).as("operation").hasSize(1);
     }
 
     // ============================================================

@@ -244,8 +244,25 @@
       "paySelected": "支付{count}件",
       "totalAmount": "合计: ¥{amount}",
       "processing": "处理中...",
+      "confirmTitle": "确认付款内容",
+      "confirmCount": "将支付{count}笔款项。",
+      "confirmTotal": "合计: ¥{amount}",
+      "confirmDisclosure": "将按收款方逐笔处理，银行卡账单可能出现多笔记录。若中途失败，已成功的款项不会重复扣款，只需重试未完成项目。",
+      "confirmStart": "确认并付款",
+      "confirmPayment": "支付此项目",
+      "paymentTitle": "银行卡付款",
+      "paymentError": "此项目付款失败",
+      "unknownRecipient": "收款方未知",
+      "webhookPending": "尚未确认付款结果，此项目不会显示为已支付。",
       "result": {
         "title": "支付结果",
+        "retryNotice": "未显示为已支付的项目仍保持选中，请确认状态后重试。",
+        "status": {
+          "PAID": "已支付",
+          "REFLECTING": "等待确认",
+          "FAILED": "失败",
+          "UNPROCESSED": "未处理"
+        },
         "checkedOut": "支付完成",
         "skipped": "已跳过",
         "skipReasons": {

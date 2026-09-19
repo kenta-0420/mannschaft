@@ -29,7 +29,7 @@ class PaymentRequestEscrowPersistenceServiceTest {
                 .stripeIdempotencyKey("prpay-attempt")
                 .build();
         given(insertService.insert(candidate)).willThrow(new DataIntegrityViolationException("duplicate"));
-        given(repository.findByStripeIdempotencyKey("prpay-attempt")).willReturn(Optional.of(existing));
+        given(insertService.findByIdempotencyKey("prpay-attempt")).willReturn(Optional.of(existing));
 
         PaymentRequestEscrowPersistenceService service =
                 new PaymentRequestEscrowPersistenceService(repository, insertService);

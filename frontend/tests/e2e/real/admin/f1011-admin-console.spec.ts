@@ -198,9 +198,10 @@ async function resolveAdminTeamSlug(api: APIRequestContext, token: string): Prom
   const res = await api.get(`${BE_API}/me/teams`, { headers: authHeaders(token) })
   expect(res.status(), '/me/teams は 200').toBe(200)
   const data = (await res.json()).data as Array<{ slug: string; name: string; role: string }>
-  const team =
-    data.find((t) => t.role === 'ADMIN' && t.name.includes('FC東京U-18')) ??
-    data.find((t) => t.role === 'ADMIN')
+  const hasAdminRole = (role: string) => role === 'ADMIN' || role === 'SYSTEM_ADMIN'
+  // scope-tabs は参加日時の新しい順に表示されるため、API末尾の最新管理チームを使う。
+  // 古い固定seedを選ぶと、長期運用DBではページ探索上限より後ろへ押し出される。
+  const team = data.filter((t) => hasAdminRole(t.role)).at(-1)
   expect(team, 'ADMIN ロールのチームが存在すること').toBeTruthy()
   return team!.slug
 }
@@ -282,7 +283,7 @@ async function selectScopeTabBySlug(
   const nextBtn = page.getByTestId(`scope-tab-nextpage-${scope}`)
   for (let i = 0; i < 12; i++) {
     if (await chip.count()) {
-      await chip.click()
+      if (await chip.getAttribute('aria-pressed') !== 'true') await chip.click()
       return
     }
     // 次ページが無ければ終了（チップは見つからなかった → 後段の expect で顕在化）。
@@ -298,7 +299,7 @@ async function selectScopeTabBySlug(
   await expect(chip, `タグ一覧に ${scope} スコープ ${targetSlug} のチップが見つかること`).toBeVisible({
     timeout: 10_000,
   })
-  await chip.click()
+  if (await chip.getAttribute('aria-pressed') !== 'true') await chip.click()
 }
 
 /**
@@ -343,7 +344,7 @@ test.beforeAll(async () => {
 
   const orgRes = await sharedApi.get(`${BE_API}/me/organizations`, { headers: authHeaders(adminToken) })
   const orgs = (await orgRes.json()).data as Array<{ slug: string | null; role: string }>
-  const adminOrg = orgs.find((o) => o.role === 'ADMIN')
+  const adminOrg = orgs.find((o) => o.role === 'ADMIN' || o.role === 'SYSTEM_ADMIN')
   expect(adminOrg, 'ADMIN ロールの組織が存在すること').toBeTruthy()
   orgSlug = adminOrg!.slug!
 
@@ -640,12 +641,23 @@ test.describe('F10.1.1 管理者レンズ — 2ボタン表示＋スコープ導
     await gotoDashboardScope(page, 'TEAM', teamSlug)
 
     // スコープリンクボタンが visible であること
-    const goLink = page.getByTestId('scope-tab-go-to-page-TEAM')
-    await expect(goLink, 'scope-tab-go-to-page-TEAM が visible').toBeVisible({ timeout: 15_000 })
+    const chip = page.getByTestId(`scope-tab-chip-TEAM-${teamSlug}`)
+    await expect(chip).toHaveAttribute('aria-pressed', 'true', { timeout: 15_000 })
 
     // クリックでチームページへ遷移
-    await goLink.click()
+    await chip.click()
     await page.waitForURL(`**/teams/${teamSlug}`, { timeout: 15_000 })
     expect(page.url(), 'URL に /teams/{slug} を含む').toContain(`/teams/${teamSlug}`)
+  })
+
+  test('SCOPELINK-ORG-001: 選択済み組織チップの再押下で組織ページへ遷移', async ({ page }) => {
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await gotoDashboardScope(page, 'ORGANIZATION', orgSlug)
+
+    const chip = page.getByTestId(`scope-tab-chip-ORGANIZATION-${orgSlug}`)
+    await expect(chip).toHaveAttribute('aria-pressed', 'true', { timeout: 15_000 })
+    await chip.click()
+    await page.waitForURL(`**/organizations/${orgSlug}`, { timeout: 15_000 })
+    expect(page.url(), 'URL に /organizations/{slug} を含む').toContain(`/organizations/${orgSlug}`)
   })
 })

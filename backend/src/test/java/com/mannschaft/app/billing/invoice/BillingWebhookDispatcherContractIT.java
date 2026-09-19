@@ -21,12 +21,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("F20.1 PR5: webhook dispatcher 契約 IT（AC-15〜25, 27）")
 class BillingWebhookDispatcherContractIT extends AbstractBillingInvoiceWebhookIT {
 
-    /** PR5 では扱わない（受信するが確定させない）イベント種別。 */
+    /**
+     * PR5 では扱わない（受信するが確定させない）イベント種別。
+     *
+     * <p><b>PR6b-1 第9隊 AC-74/75/76</b>: {@code invoice.payment_action_required} /
+     * {@code customer.subscription.pending_update_applied} / {@code customer.subscription.pending_update_expired}
+     * の3種は billing の受け口へ配線したためここから外した（弱体化ではなく、保留リストから外した
+     * ことへの追随。{@code com.mannschaft.app.billing.BillingSubscriptionWebhookService} が処理する
+     * ようになったので、このクラスの「未対応（RECEIVED のまま）」の主張はもう成り立たない）。
+     * 残る2種は PR6b-1 でも引き続き未対応のまま（{@code customer.subscription.updated} はプラン変更以外の PR6b-1 対象外
+     * 目的での回収入口、{@code subscription_schedule.*} は PR6b-2 の担当）。</p>
+     */
     private static final String[] PENDING_EVENT_TYPES = {
-            "invoice.payment_action_required",
             "customer.subscription.updated",
-            "customer.subscription.pending_update_applied",
-            "customer.subscription.pending_update_expired",
             "subscription_schedule.updated",
     };
 

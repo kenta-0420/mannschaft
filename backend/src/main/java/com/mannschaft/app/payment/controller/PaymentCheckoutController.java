@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.payment.dto.ConnectCheckoutResponse;
+import com.mannschaft.app.payment.dto.ConnectCheckoutStatusResponse;
 import com.mannschaft.app.payment.dto.MembershipCheckoutRequest;
 import com.mannschaft.app.payment.dto.PaymentItemResponse;
 import com.mannschaft.app.payment.service.MemberPaymentService;
@@ -12,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
 
-import java.util.UUID;
 
 /**
  * 会費 Connect 即時チェックアウトコントローラー（F08.9 P1 Wave5）。
@@ -92,12 +93,12 @@ public class PaymentCheckoutController {
      * PaymentIntent 作成・member_payments 起票のすべてより前</b>にあり、権原なき要求では
      * 課金も起票も発生しない。</p>
      *
-     * <p>冪等性：{@code Idempotency-Key} ヘッダが付いていればそれを優先し、
-     * 省略時はリクエストボディの {@code idempotencyKey} を使い、どちらも無ければ UUID を生成する。</p>
+     * <p>冪等性：{@code Idempotency-Key} ヘッダは必須。空白値も受け付けず、
+     * 同じ業務要求を再送する場合は必ず同じ値を送る。</p>
      *
      * @param itemId             支払い対象の会費項目 ID
-     * @param idempotencyKeyHeader {@code Idempotency-Key} ヘッダ（省略可）
-     * @param request            受益者 ID・冪等キー
+     * @param idempotencyKeyHeader {@code Idempotency-Key} ヘッダ（必須）
+     * @param request            受益者 ID
      * @return 201 Created + {@link ConnectCheckoutResponse}（clientSecret / memberPaymentId / escrowTransactionId）
      */
     @AuthorizedInService
@@ -105,19 +106,28 @@ public class PaymentCheckoutController {
     @Operation(summary = "会費 Connect 即時チェックアウト（F08.9 P1）")
     public ResponseEntity<ApiResponse<ConnectCheckoutResponse>> createConnectCheckout(
             @PathVariable Long itemId,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKeyHeader,
+            @RequestHeader("Idempotency-Key") @jakarta.validation.constraints.NotBlank String idempotencyKeyHeader,
             @Valid @RequestBody MembershipCheckoutRequest request) {
 
         Long payerUserId = SecurityUtils.getCurrentUserId();
-
-        // 冪等キー解決: ヘッダ > ボディ > 自動生成（UUID）
-        String idempotencyKey = idempotencyKeyHeader != null ? idempotencyKeyHeader
-                : request.getIdempotencyKey() != null ? request.getIdempotencyKey()
-                : UUID.randomUUID().toString();
+        String idempotencyKey = idempotencyKeyHeader.trim();
+        if (idempotencyKey.isEmpty() || idempotencyKey.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Idempotency-Key は空白にできません");
+        }
 
         ConnectCheckoutResponse response = memberPaymentService.createConnectCheckout(
                 itemId, request.getBeneficiaryUserId(), payerUserId, idempotencyKey);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    @AuthorizedInService
+    @GetMapping("/checkout/{memberPaymentId}")
+    @Operation(summary = "会費 Connect チェックアウト状態取得")
+    public ResponseEntity<ApiResponse<ConnectCheckoutStatusResponse>> getConnectCheckoutStatus(
+            @PathVariable Long itemId, @PathVariable Long memberPaymentId) {
+        ConnectCheckoutStatusResponse response = memberPaymentService.getConnectCheckoutStatus(
+                itemId, memberPaymentId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

@@ -244,8 +244,25 @@
       "paySelected": "Pagar {count} elemento(s)",
       "totalAmount": "Total: ¥{amount}",
       "processing": "Procesando...",
+      "confirmTitle": "Confirmar los pagos",
+      "confirmCount": "Vas a realizar {count} pago(s).",
+      "confirmTotal": "Total: ¥{amount}",
+      "confirmDisclosure": "Los pagos se procesan por separado para cada destinatario y pueden aparecer varios cargos en la tarjeta. Si el proceso se detiene, los pagos completados no se cobrarán de nuevo y solo se reintentarán los pendientes.",
+      "confirmStart": "Confirmar y pagar",
+      "confirmPayment": "Pagar este concepto",
+      "paymentTitle": "Pago con tarjeta",
+      "paymentError": "No se pudo completar este pago",
+      "unknownRecipient": "Destinatario desconocido",
+      "webhookPending": "La confirmación sigue pendiente. Este concepto aún no figura como pagado.",
       "result": {
         "title": "Resultado del pago",
+        "retryNotice": "Los conceptos no pagados siguen seleccionados. Comprueba su estado antes de reintentar.",
+        "status": {
+          "PAID": "Pagado",
+          "REFLECTING": "Confirmando",
+          "FAILED": "Fallido",
+          "UNPROCESSED": "Sin procesar"
+        },
         "checkedOut": "Pago completado",
         "skipped": "Omitido",
         "skipReasons": {

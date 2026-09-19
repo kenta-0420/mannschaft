@@ -113,6 +113,28 @@
       "adminOnlyNotice": "プランの変更・解約は管理者のみ行えます",
       "loadError": "課金情報の取得に失敗しました",
       "viewPlansCta": "プラン一覧を見る",
+      "planChange": {
+        "targetPlanLabel": "변경할 플랜",
+        "targetPlanPlaceholder": "플랜을 선택하세요",
+        "catalogLoadFailed": "플랜 목록을 가져오지 못했습니다. 잠시 후 다시 열어 주세요.",
+        "previewFailed": "결제 예상 금액을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "versionUnavailable": "계약 정보를 가져올 수 없어 플랜 변경을 실행할 수 없습니다.",
+        "appliedSuccess": "플랜을 변경했습니다.",
+        "title": "プランを変更する",
+        "amountDueNow": "今回のお支払い額",
+        "effectiveAt": "適用日時",
+        "amountInclTax": "税込金額",
+        "amountExclTax": "税抜金額",
+        "taxAmount": "消費税額",
+        "taxRate": "税率",
+        "staysOnOldPlan": "プランの変更に失敗しました。現在のプランのままです",
+        "pendingPaymentNotice": "プラン変更のお支払いが完了していません",
+        "expiresAtNotice": "{date}までにお支払いが完了しない場合、この変更は自動的に取り消されます",
+        "expiresAtUnknownNotice": "결제 기한을 확인하고 있습니다. 결제가 완료되지 않으면 이 변경은 나중에 자동으로 취소됩니다",
+        "confirmCta": "この内容で変更する",
+        "resumePaymentActionCta": "お支払いを再開する",
+        "cancelCta": "やめておく"
+      },
       "help": {
         "title": "課金・プラン管理の使い方ガイド",
         "plan": {

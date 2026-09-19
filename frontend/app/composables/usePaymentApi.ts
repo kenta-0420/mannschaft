@@ -2,6 +2,8 @@ import type {
   PaymentItemResponse,
   MemberPaymentResponse,
   CheckoutSessionResponse,
+  ConnectCheckoutResponse,
+  ConnectCheckoutStatusResponse,
   PaymentSummaryResponse,
   MyPaymentResponse,
   MemberPaymentReceiptResponse,
@@ -106,6 +108,24 @@ export function usePaymentApi() {
     return api<{ data: CheckoutSessionResponse }>(`/api/v1/payment-items/${itemId}/checkout`, {
       method: 'POST',
     })
+  }
+
+  async function createConnectCheckout(
+    itemId: number,
+    beneficiaryUserId: number,
+    idempotencyKey: string,
+  ) {
+    return api<{ data: ConnectCheckoutResponse }>(`/api/v1/payment-items/${itemId}/checkout`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: { beneficiaryUserId },
+    })
+  }
+
+  async function getConnectCheckoutStatus(itemId: number, memberPaymentId: number) {
+    return api<{ data: ConnectCheckoutStatusResponse }>(
+      `/api/v1/payment-items/${itemId}/checkout/${memberPaymentId}`,
+    )
   }
 
   /**
@@ -242,6 +262,8 @@ export function usePaymentApi() {
     sendReminder,
     getPaymentSummary,
     createCheckoutSession,
+    createConnectCheckout,
+    getConnectCheckoutStatus,
     getPaymentItemById,
     getMyPayments,
     getMySubscriptions,

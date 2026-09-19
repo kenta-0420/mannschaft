@@ -16,7 +16,7 @@ public class PaymentRequestEscrowPersistenceService {
         try {
             return insertService.insert(escrow);
         } catch (DataIntegrityViolationException e) {
-            return escrowTransactionRepository.findByStripeIdempotencyKey(escrow.getStripeIdempotencyKey())
+            return insertService.findByIdempotencyKey(escrow.getStripeIdempotencyKey())
                     .orElseThrow(() -> e);
         }
     }

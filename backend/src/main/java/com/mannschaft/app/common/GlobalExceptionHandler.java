@@ -1,7 +1,9 @@
 package com.mannschaft.app.common;
 
 import com.mannschaft.app.billing.FeatureNotEntitledException;
+import com.mannschaft.app.billing.api.BillingConflictException;
 import com.mannschaft.app.billing.api.BillingIdempotencyProcessingException;
+import com.mannschaft.app.billing.api.dto.BillingConflictErrorResponse;
 import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
 import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationErrorResponse;
 import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequiredException;
@@ -1147,6 +1149,8 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBERSHIP_BILLING_021", HttpStatus.CONFLICT),        // 同一受益者・項目に有効な継続課金が既存（二重加入防止・02_api §4.1 SUBSCRIPTION_ALREADY_EXISTS）
             Map.entry("MEMBERSHIP_BILLING_022", HttpStatus.CONFLICT),        // 継続課金がスキップ中でないため再開できない（02_api §4.3 SUBSCRIPTION_NOT_SKIPPED）
             Map.entry("MEMBERSHIP_BILLING_023", HttpStatus.PAYMENT_REQUIRED), // 保存済みカードが off-session 初回課金に使えない（R2-1・02_api §4.1 SUBSCRIPTION_OFF_SESSION_AUTHENTICATION_REQUIRED）
+            Map.entry("MEMBERSHIP_BILLING_024", HttpStatus.CONFLICT),        // Idempotency-Key の別要求への再利用
+            Map.entry("MEMBERSHIP_BILLING_025", HttpStatus.NOT_FOUND),       // checkout 状態なし/参照権限なし（IDOR 秘匿）
             // セキュリティインシデント（GDPR Article 33）
             Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND),             // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
             // F08.10 試合記録・分析（03 §C.4/C.6: 不在/越境/親子不一致は 404、権限不足は 403、検証系は 400）
@@ -2591,6 +2595,25 @@ public class GlobalExceptionHandler {
         FeatureNotEntitledErrorResponse body =
                 new FeatureNotEntitledErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+    }
+
+    /**
+     * Billing Center PR6b-1 A群追補: {@link BillingConflictException} 専用ハンドラ（金型:
+     * {@link #handleFeatureNotEntitled}）。
+     *
+     * <p>月境界（{@code ENTITLEMENT_022}）・preview/quote 競合（{@code ENTITLEMENT_020/021/023}）で
+     * {@code $.error.details.reason} / {@code $.error.details.availableAt} を返す
+     * （AC-18/AC-19b/AC-20/AC-21）。HTTP ステータスは {@link #resolveHttpStatus} に委ねる
+     * （全て 4xx のため error_reports への記録はしない）。</p>
+     */
+    @ExceptionHandler(BillingConflictException.class)
+    public ResponseEntity<BillingConflictErrorResponse> handleBillingConflict(BillingConflictException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("BillingConflictException: code={}, reason={}",
+                ex.getErrorCode().getCode(), ex.getDetails().reason());
+        BillingConflictErrorResponse body =
+                new BillingConflictErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
+        return ResponseEntity.status(resolveHttpStatus(ex.getErrorCode())).body(body);
     }
 
     /**

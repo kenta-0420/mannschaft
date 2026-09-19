@@ -26,6 +26,7 @@ import type { StripeElements, Stripe } from '@stripe/stripe-js'
 interface Props {
   clientSecret: string
   returnUrl: string
+  mode?: 'setup' | 'payment'
 }
 
 const props = defineProps<Props>()
@@ -36,7 +37,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const { mountPaymentElement, confirmSetup } = useStripeSetup()
+const { mountPaymentElement, confirmSetup, confirmPayment } = useStripeSetup()
 
 /** PaymentElement のマウント先 DOM の一意 ID（複数フォーム共存時の衝突回避）。 */
 const elementDomId = `stripe-payment-element-${useId()}`
@@ -81,13 +82,23 @@ async function onSubmit() {
   formError.value = null
 
   try {
-    const result = await confirmSetup({ stripe, elements, returnUrl: props.returnUrl })
-    if (result.status === 'succeeded') {
-      emit('success', result.paymentMethodId)
+    if (props.mode === 'payment') {
+      const result = await confirmPayment({ stripe, elements, returnUrl: props.returnUrl })
+      if (result.status === 'succeeded') {
+        emit('success', result.paymentIntentStatus)
+      } else {
+        formError.value = result.message
+        emit('error', result.message)
+      }
     } else {
-      // result.message は Stripe 提供文言（i18n フォールバック込み）。
-      formError.value = result.message
-      emit('error', result.message)
+      const result = await confirmSetup({ stripe, elements, returnUrl: props.returnUrl })
+      if (result.status === 'succeeded') {
+        emit('success', result.paymentMethodId)
+      } else {
+        // result.message は Stripe 提供文言（i18n フォールバック込み）。
+        formError.value = result.message
+        emit('error', result.message)
+      }
     }
   } finally {
     // リダイレクト時はこの行に到達しない（ブラウザ遷移済み）。
@@ -115,7 +126,7 @@ async function onSubmit() {
     >
       {{ submitting
         ? t('payment.membership.subscribe.processing')
-        : t('payment.membership.subscribe.submit') }}
+        : t(props.mode === 'payment' ? 'payment.guardianBulkPayment.confirmPayment' : 'payment.membership.subscribe.submit') }}
     </button>
   </form>
 </template>
