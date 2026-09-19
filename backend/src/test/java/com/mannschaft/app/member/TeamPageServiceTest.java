@@ -2,12 +2,15 @@ package com.mannschaft.app.member;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.member.dto.CreateTeamPageRequest;
 import com.mannschaft.app.member.dto.TeamPageResponse;
 import com.mannschaft.app.member.entity.TeamPageEntity;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import com.mannschaft.app.member.repository.TeamPageRepository;
 import com.mannschaft.app.member.repository.TeamPageSectionRepository;
+import com.mannschaft.app.member.service.MemberSubtabVisibilityService;
 import com.mannschaft.app.member.service.TeamPageService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,7 +19,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,9 +35,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("TeamPageService 単体テスト")
 class TeamPageServiceTest {
 
@@ -36,7 +49,11 @@ class TeamPageServiceTest {
     @Mock private MemberProfileRepository profileRepository;
     @Mock private MemberMapper memberMapper;
     @Mock private AccessControlService accessControlService;
+    @Mock private MemberSubtabVisibilityService memberSubtabVisibilityService;
     @InjectMocks private TeamPageService service;
+
+    private static final Long ORG_ID = 500L;
+    private static final Long ACTOR_ID = 999L;
 
     @Nested
     @DisplayName("createPage")
@@ -114,6 +131,139 @@ class TeamPageServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBER_001"));
+        }
+    }
+
+    @Nested
+    @DisplayName("CMP-260919-1140 Phase 1: getPage 合成ルール（外側の門×内側の扉）")
+    class GetPageCompositionRule {
+
+        @Test
+        @DisplayName("下書き(DRAFT)ページは ADMIN 以外に見せない → MEMBER_001（404 相当・存在秘匿）")
+        void 下書き_非管理者_404秘匿() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .organizationId(ORG_ID).title("下書き").slug("draft-page").pageType(PageType.YEARLY)
+                    .build(); // status デフォルト DRAFT
+            given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+
+            assertThatThrownBy(() -> service.getPage(ACTOR_ID, 1L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("MEMBER_001"));
+            org.mockito.Mockito.verifyNoInteractions(memberSubtabVisibilityService);
+        }
+
+        @Test
+        @DisplayName("ADMIN は下書きページも閲覧できる")
+        void 下書き_管理者_閲覧可() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .organizationId(ORG_ID).title("下書き").slug("draft-page").pageType(PageType.YEARLY)
+                    .build();
+            given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            given(sectionRepository.findByTeamPageIdOrderBySortOrder(1L)).willReturn(List.of());
+            given(profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(1L)).willReturn(List.of());
+            given(memberMapper.toSectionResponseList(any())).willReturn(List.of());
+            given(memberMapper.toMemberProfileResponseList(any())).willReturn(List.of());
+            given(memberMapper.toTeamPageDetailResponse(any(), any(), any())).willReturn(
+                    new TeamPageResponse(1L, null, ORG_ID, "下書き", "draft-page",
+                            "YEARLY", null, null, null, "MEMBERS_ONLY", "DRAFT", false, 0, null, null, null, null, null));
+
+            TeamPageResponse result = service.getPage(ACTOR_ID, 1L);
+            assertThat(result.getSlug()).isEqualTo("draft-page");
+        }
+
+        @Test
+        @DisplayName("公開済みページ: サブタブ min_role の外側の門を通過できれば閲覧可（既定値=MEMBER）")
+        void 公開済み_門通過_閲覧可() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .organizationId(ORG_ID).title("紹介").slug("intro").pageType(PageType.MAIN)
+                    .status(PageStatus.PUBLISHED)
+                    .build();
+            given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            // assertViewable は正常時 void（何もしない）
+            given(sectionRepository.findByTeamPageIdOrderBySortOrder(1L)).willReturn(List.of());
+            given(profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(1L)).willReturn(List.of());
+            given(memberMapper.toSectionResponseList(any())).willReturn(List.of());
+            given(memberMapper.toMemberProfileResponseList(any())).willReturn(List.of());
+            given(memberMapper.toTeamPageDetailResponse(any(), any(), any())).willReturn(
+                    new TeamPageResponse(1L, null, ORG_ID, "紹介", "intro",
+                            "MAIN", null, null, null, "MEMBERS_ONLY", "PUBLISHED", false, 0, null, null, null, null, null));
+
+            TeamPageResponse result = service.getPage(ACTOR_ID, 1L);
+
+            assertThat(result.getSlug()).isEqualTo("intro");
+            verify(memberSubtabVisibilityService).assertViewable(
+                    ACTOR_ID, ScopeType.ORGANIZATION, ORG_ID, MemberSubtabKey.MEMBER_PROFILES);
+        }
+
+        @Test
+        @DisplayName("公開済みページ: 外側の門で拒否されたら MEMBER_001（403 ではなく 404 秘匿を維持）")
+        void 公開済み_門拒否_404秘匿() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .organizationId(ORG_ID).title("紹介").slug("intro").pageType(PageType.MAIN)
+                    .status(PageStatus.PUBLISHED)
+                    .build();
+            given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(memberSubtabVisibilityService)
+                    .assertViewable(ACTOR_ID, ScopeType.ORGANIZATION, ORG_ID, MemberSubtabKey.MEMBER_PROFILES);
+
+            assertThatThrownBy(() -> service.getPage(ACTOR_ID, 1L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("MEMBER_001"));
+        }
+    }
+
+    @Nested
+    @DisplayName("CMP-260919-1140 Phase 1: listPages 合成ルール")
+    class ListPagesCompositionRule {
+
+        @Test
+        @DisplayName("組織スコープ: 外側の門で拒否されたら例外伝播（非会員の一覧列挙を遮断）")
+        void 組織_門拒否_例外伝播() {
+            Pageable pageable = PageRequest.of(0, 10);
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(memberSubtabVisibilityService)
+                    .assertViewable(ACTOR_ID, ScopeType.ORGANIZATION, ORG_ID, MemberSubtabKey.MEMBER_PROFILES);
+
+            assertThatThrownBy(() -> service.listPages(ACTOR_ID, null, ORG_ID, pageable))
+                    .isInstanceOf(BusinessException.class);
+            org.mockito.Mockito.verifyNoInteractions(pageRepository);
+        }
+
+        @Test
+        @DisplayName("組織スコープ: 非管理者は PUBLISHED のみ取得（下書きは一覧から除外）")
+        void 組織_非管理者_公開済みのみ() {
+            Pageable pageable = PageRequest.of(0, 10);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            Page<TeamPageEntity> emptyPage = new PageImpl<>(List.of());
+            given(pageRepository.findByOrganizationIdAndStatusOrderBySortOrder(ORG_ID, PageStatus.PUBLISHED, pageable))
+                    .willReturn(emptyPage);
+
+            service.listPages(ACTOR_ID, null, ORG_ID, pageable);
+
+            verify(pageRepository).findByOrganizationIdAndStatusOrderBySortOrder(ORG_ID, PageStatus.PUBLISHED, pageable);
+            verify(pageRepository, never()).findByOrganizationIdOrderBySortOrder(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("組織スコープ: ADMIN は下書き含む全ページを取得")
+        void 組織_管理者_下書き含む全件() {
+            Pageable pageable = PageRequest.of(0, 10);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            Page<TeamPageEntity> emptyPage = new PageImpl<>(List.of());
+            given(pageRepository.findByOrganizationIdOrderBySortOrder(ORG_ID, pageable)).willReturn(emptyPage);
+
+            service.listPages(ACTOR_ID, null, ORG_ID, pageable);
+
+            verify(pageRepository).findByOrganizationIdOrderBySortOrder(ORG_ID, pageable);
+            verify(pageRepository, never())
+                    .findByOrganizationIdAndStatusOrderBySortOrder(anyLong(), any(), any());
         }
     }
 

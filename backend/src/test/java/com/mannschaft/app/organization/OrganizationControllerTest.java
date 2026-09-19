@@ -76,6 +76,7 @@ class OrganizationControllerTest {
     @Mock private BlockService blockService;
     @Mock private SupporterService supporterService;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    @Mock private com.mannschaft.app.member.service.MemberSubtabVisibilityService memberSubtabVisibilityService;
 
     @InjectMocks
     private OrganizationController controller;
@@ -240,6 +241,20 @@ class OrganizationControllerTest {
         willThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
                 .given(contentVisibilityChecker)
                 .assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+        assertThatThrownBy(() -> controller.getMembers(ORG_SLUG, pageable))
+                .isInstanceOf(BusinessException.class);
+        verify(organizationService, org.mockito.Mockito.never()).getMembers(ORG_ID, pageable);
+    }
+
+    @Test
+    @DisplayName("getMembers: CMP-260919-1140 一覧タブの外側の門（min_role）で拒否されたらメンバー一覧を取得しない")
+    void getMembers_subtabGateDenied_throws() {
+        Pageable pageable = PageRequest.of(0, 10);
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(memberSubtabVisibilityService)
+                .assertViewable(USER_ID, com.mannschaft.app.dashboard.ScopeType.ORGANIZATION, ORG_ID,
+                        com.mannschaft.app.member.MemberSubtabKey.MEMBER_LIST);
         assertThatThrownBy(() -> controller.getMembers(ORG_SLUG, pageable))
                 .isInstanceOf(BusinessException.class);
         verify(organizationService, org.mockito.Mockito.never()).getMembers(ORG_ID, pageable);
