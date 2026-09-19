@@ -244,8 +244,25 @@
       "paySelected": "{count}件を支払う",
       "totalAmount": "合計: ¥{amount}",
       "processing": "処理中...",
+      "confirmTitle": "支払い内容の確認",
+      "confirmCount": "{count}件を支払います。",
+      "confirmTotal": "合計: ¥{amount}",
+      "confirmDisclosure": "受領先ごとに順番に決済します。カード明細が複数になる可能性があり、途中で失敗した場合は成功分を再課金せず未完了分のみ再試行できます。",
+      "confirmStart": "確認して支払う",
+      "confirmPayment": "この内容で支払う",
+      "paymentTitle": "カード決済",
+      "paymentError": "この項目の決済に失敗しました",
+      "unknownRecipient": "受領先不明",
+      "webhookPending": "決済の反映を確認できませんでした。未完了として扱います。",
       "result": {
         "title": "支払い結果",
+        "retryNotice": "支払い済み以外の項目は選択されたままです。状態を確認してから再試行してください。",
+        "status": {
+          "PAID": "支払い済み",
+          "REFLECTING": "反映待ち",
+          "FAILED": "失敗",
+          "UNPROCESSED": "未処理"
+        },
         "checkedOut": "支払い完了",
         "skipped": "スキップ",
         "skipReasons": {

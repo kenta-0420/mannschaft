@@ -39137,6 +39137,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payment-items/{itemId}/checkout/{memberPaymentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 会費 Connect チェックアウト状態取得 */
+        get: operations["getConnectCheckoutStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/parental-consent/parents": {
         parameters: {
             query?: never;
@@ -63576,7 +63593,6 @@ export interface components {
         MembershipCheckoutRequest: {
             /** Format: int64 */
             beneficiaryUserId: number;
-            idempotencyKey?: string;
         };
         ApiResponseConnectCheckoutResponse: {
             data?: components["schemas"]["ConnectCheckoutResponse"];
@@ -77471,6 +77487,14 @@ export interface components {
             scopeId?: number;
             /** @enum {string} */
             scopeKind?: "USER" | "TEAM" | "ORG";
+        };
+        ApiResponseConnectCheckoutStatusResponse: {
+            data?: components["schemas"]["ConnectCheckoutStatusResponse"];
+        };
+        ConnectCheckoutStatusResponse: {
+            /** Format: int64 */
+            memberPaymentId?: number;
+            status?: string;
         };
         ApiResponseListParentLinkResponse: {
             data?: components["schemas"]["ParentLinkResponse"][];
@@ -116606,8 +116630,8 @@ export interface operations {
     createConnectCheckout: {
         parameters: {
             query?: never;
-            header?: {
-                "Idempotency-Key"?: string;
+            header: {
+                "Idempotency-Key": string;
             };
             path: {
                 itemId: number;
@@ -157313,6 +157337,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePaymentItemResponse"];
+                };
+            };
+        };
+    };
+    getConnectCheckoutStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: number;
+                memberPaymentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseConnectCheckoutStatusResponse"];
                 };
             };
         };

@@ -51,6 +51,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
   - **是正（2026-06-04）**: scope `PAYMENT` は実在の `proxy_input_consent_scopes.feature_scope`（VARCHAR(64)・V18.011・CHECK なし・実機確認済）に **enum 値 `PAYMENT` を1つ足すだけ**で表現する（`proxy_input_consents` 本体への列追加・DDL は不要）。代理払い認可・退会失効はこの scope 行（同意書ごとの許可スコープ）で判定する。
   - **実装（P3b・2026-06-04）**: `FeatureScope.PAYMENT` を追加（DDL 不要）。`ProxyInputContextFilter` は検証済み同意書の許可スコープ集合を `ProxyInputContext.activate(...)` に渡し、決済系 Service は `ProxyInputContext.hasScope(FeatureScope.PAYMENT)` で代理払いの要求スコープを検証できる（素地）。実際の代理払い認可経路（`authorizePayment` での scope `PAYMENT` 評価）は P1/P3c の管轄。
 - **IDOR 防止**：`beneficiaryUserId` を payload で受けるが、上記権原検証なしには一切起票しない。`payable-dues` も「自分が払える受益者」だけを返し、他人の未払いを列挙させない。**まとめ決済(bulk-checkout)は一覧取得後の権原失効・支払い済み化に備え、起票直前に明細ごと再認可**（02_api §1.2）。
+- **状態照会の秘匿**：`GET /payment-items/{itemId}/checkout/{memberPaymentId}` は `memberPayment` の払い手本人または受益者本人だけに返す。不在と権限外を同じ 404 に畳み、連番 ID から他人の支払い状態を列挙できないようにする。
 - **権原の失効**：保護者リンク取消・grant 失効・受益者退会で即時に権原消失（毎回実行時評価・キャッシュしない or 短TTL）。
 
 ---
@@ -126,7 +127,8 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 
 - **PCI SAQ-A**：カード情報は Stripe Elements/Checkout のみ。Mannschaft は PAN を一切受けない・保存しない。
 - **Webhook 署名検証**：`StripeWebhookController` で署名必須・`event_id` UNIQUE 冪等（既存）。`invoice.created`/`invoice.paid`/`invoice.payment_failed`/`customer.subscription.deleted` を追加処理。
-- **二重課金防止**：起票系は `Idempotency-Key`、Webhook は冪等ゲート＋行ロック。
+- **二重課金防止**：起票系は必須 `Idempotency-Key` を Stripe とDBの両方へ橋渡しし、同じキーの再送では既存 PaymentIntent・会費支払い行を返す。まとめ支払いは明細ごとの安定キーを `PAID` 確認まで再利用する。Webhook は冪等ゲート＋行ロック。
+- **複数決済の明示同意**：まとめ支払いは単一 PaymentIntent ではなく複数の destination charge を順次 confirm する。開始前に件数・受領先別の請求・複数のカード明細・部分成功の可能性と再試行範囲を表示し、同意前は起票しない。
 - **手数料取りこぼしの可視化**：`invoice.created` 上書き失敗を握りつぶさず記録・再試行・アラート（[[feedback_root_cause_fix]]）。
 - **資金移動業回避**：会費も destination charge で受領者へ直接着金。Mannschaft は資金を保持しない（F22.1 §資金移動業回避の根拠を踏襲）。
 

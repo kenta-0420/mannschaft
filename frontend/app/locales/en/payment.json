@@ -244,8 +244,25 @@
       "paySelected": "Pay {count} item(s)",
       "totalAmount": "Total: ¥{amount}",
       "processing": "Processing...",
+      "confirmTitle": "Confirm payment details",
+      "confirmCount": "You are about to make {count} payment(s).",
+      "confirmTotal": "Total: ¥{amount}",
+      "confirmDisclosure": "Payments are processed separately for each recipient. Multiple card statement entries may appear. If processing stops partway through, completed payments will not be charged again and only unfinished items can be retried.",
+      "confirmStart": "Confirm and pay",
+      "confirmPayment": "Pay this item",
+      "paymentTitle": "Card payment",
+      "paymentError": "This payment could not be completed",
+      "unknownRecipient": "Unknown recipient",
+      "webhookPending": "Payment confirmation is still pending. This item has not been marked paid.",
       "result": {
         "title": "Payment result",
+        "retryNotice": "Items not marked paid remain selected. Check their status before retrying.",
+        "status": {
+          "PAID": "Paid",
+          "REFLECTING": "Confirming",
+          "FAILED": "Failed",
+          "UNPROCESSED": "Not processed"
+        },
         "checkedOut": "Payment complete",
         "skipped": "Skipped",
         "skipReasons": {

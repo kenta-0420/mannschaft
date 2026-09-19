@@ -6,6 +6,7 @@ import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.FeeBreakdown;
 import com.mannschaft.app.payment.FeePolicy;
 import com.mannschaft.app.payment.FeePolicyResolver;
+import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.PaymentFeeCalculator;
 import com.mannschaft.app.payment.connect.ConnectAccountEntity;
 import com.mannschaft.app.payment.connect.ConnectAccountRepository;
@@ -328,7 +329,23 @@ public class ConnectChargeService {
      * @return charge 結果（escrow ID / clientSecret / paymentIntentId / status＝通常 AUTHORIZED）
      */
     public MembershipChargeResult charge(MembershipChargeCommand cmd) {
-        return chargeInternal(cmd, false);
+        return chargeInternal(cmd);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasExistingIdempotencyKey(String idempotencyKey) {
+        return escrowTransactionRepository.findByStripeIdempotencyKey(idempotencyKey).isPresent();
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<MembershipChargeResult> findExistingMembershipCharge(MembershipChargeCommand cmd) {
+        return escrowTransactionRepository.findByStripeIdempotencyKey(cmd.idempotencyKey()).map(existing -> {
+            assertSameMembershipRequest(existing, cmd);
+            String clientSecret = existing.getStripePaymentIntentId() == null ? null
+                    : stripePaymentProvider.retrievePaymentIntentClientSecret(existing.getStripePaymentIntentId()).clientSecret();
+            return new MembershipChargeResult(existing.getId(), clientSecret,
+                    existing.getStripePaymentIntentId(), existing.getStatus());
+        });
     }
 
     /**
@@ -339,10 +356,10 @@ public class ConnectChargeService {
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public MembershipChargeResult chargePaymentRequest(MembershipChargeCommand cmd) {
-        return chargeInternal(cmd, true);
+        return chargeInternal(cmd);
     }
 
-    private MembershipChargeResult chargeInternal(MembershipChargeCommand cmd, boolean separatePersistence) {
+    private MembershipChargeResult chargeInternal(MembershipChargeCommand cmd) {
         if (cmd.faceAmount() <= 0L) {
             throw new IllegalArgumentException("faceAmount must be positive (会費・円整数): " + cmd.faceAmount());
         }
@@ -365,9 +382,12 @@ public class ConnectChargeService {
             var existing = escrowTransactionRepository.findByStripeIdempotencyKey(cmd.idempotencyKey());
             if (existing.isPresent()) {
                 EscrowTransactionEntity e = existing.get();
+                assertSameMembershipRequest(e, cmd);
                 log.info("会費 charge は既に存在します（冪等・再作成しない・idempotencyKey 一致）: escrowId={}, status={}",
                         e.getId(), e.getStatus());
-                return new MembershipChargeResult(e.getId(), null, e.getStripePaymentIntentId(), e.getStatus());
+                String clientSecret = e.getStripePaymentIntentId() == null ? null
+                        : stripePaymentProvider.retrievePaymentIntentClientSecret(e.getStripePaymentIntentId()).clientSecret();
+                return new MembershipChargeResult(e.getId(), clientSecret, e.getStripePaymentIntentId(), e.getStatus());
             }
         }
 
@@ -433,7 +453,7 @@ public class ConnectChargeService {
                 .sourceKind(EscrowSourceKind.MEMBERSHIP)
                 .captureMode(EscrowCaptureMode.AUTOMATIC)
                 .sourceId(cmd.sourceId())
-                .sourceParticipantId(null)
+                .sourceParticipantId(cmd.beneficiaryUserId())
                 .payerScopeKind(ScopeKind.USER)
                 .payerScopeId(cmd.payerUserId())
                 .payerStripeCustomerId(cmd.payerStripeCustomerId())
@@ -451,9 +471,10 @@ public class ConnectChargeService {
                 .authorizedAt(LocalDateTime.now())
                 .holdExpiresAt(null)
                 .build();
-        EscrowTransactionEntity charged = separatePersistence
-                ? paymentRequestEscrowPersistenceService.persist(candidate)
-                : escrowTransactionRepository.save(candidate);
+        // Stripe 呼出し後の escrow は独立 TX で確定する。UNIQUE 競合時は既存行を回収するため、
+        // 同じキーの並行再送でも PaymentIntent/escrow を二重作成しない。
+        EscrowTransactionEntity charged = paymentRequestEscrowPersistenceService.persist(candidate);
+        assertSameMembershipRequest(charged, cmd);
         // §6.3 第四陣 A: PI に上乗せした回収を outstanding 減算＋RECOVERY 仕訳で記帳（冪等・self-balancing 別バッチ）。
         // 同一 key の並行再送で UNIQUE 競合から既存 escrow を回収した側は、回収仕訳を重ねない。
         if (charged == candidate) {
@@ -464,6 +485,22 @@ public class ConnectChargeService {
                         + "charge={}, selfFee={}, recovery={}",
                 charged.getId(), pi.paymentIntentId(), fee.chargeAmount(), selfFee, recovery);
         return new MembershipChargeResult(charged.getId(), pi.clientSecret(), pi.paymentIntentId(), charged.getStatus());
+    }
+
+    /** 同じ冪等キーを異なる課金内容へ流用させない。UNIQUE 競合回収後にも同じ検証を行う。 */
+    private void assertSameMembershipRequest(EscrowTransactionEntity existing, MembershipChargeCommand cmd) {
+        if (existing.getSourceKind() != EscrowSourceKind.MEMBERSHIP
+                || existing.getCaptureMode() != EscrowCaptureMode.AUTOMATIC
+                || !Objects.equals(existing.getSourceId(), cmd.sourceId())
+                || !Objects.equals(existing.getSourceParticipantId(), cmd.beneficiaryUserId())
+                || existing.getPayerScopeKind() != ScopeKind.USER
+                || !Objects.equals(existing.getPayerScopeId(), cmd.payerUserId())
+                || !Objects.equals(existing.getPayerStripeCustomerId(), cmd.payerStripeCustomerId())
+                || !Objects.equals(existing.getPayeeConnectAccountId(), cmd.payeeConnectAccountId())
+                || !Objects.equals(existing.getOrganizationId(), cmd.organizationId())
+                || !Objects.equals(existing.getFaceAmount(), cmd.faceAmount())) {
+            throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_IDEMPOTENCY_KEY_REUSED);
+        }
     }
 
     /**

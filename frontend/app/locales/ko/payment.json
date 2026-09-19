@@ -244,8 +244,25 @@
       "paySelected": "{count}건 결제",
       "totalAmount": "합계: ¥{amount}",
       "processing": "처리 중...",
+      "confirmTitle": "결제 내용 확인",
+      "confirmCount": "{count}건을 결제합니다.",
+      "confirmTotal": "합계: ¥{amount}",
+      "confirmDisclosure": "수취인별로 순차 결제되며 카드 명세에 여러 건이 표시될 수 있습니다. 중간에 실패하면 완료된 결제는 다시 청구하지 않고 미완료 항목만 재시도합니다.",
+      "confirmStart": "확인 후 결제",
+      "confirmPayment": "이 항목 결제",
+      "paymentTitle": "카드 결제",
+      "paymentError": "이 항목의 결제에 실패했습니다",
+      "unknownRecipient": "수취인 알 수 없음",
+      "webhookPending": "결제 반영을 아직 확인하지 못했습니다. 결제 완료로 표시하지 않습니다.",
       "result": {
         "title": "결제 결과",
+        "retryNotice": "결제 완료가 아닌 항목은 선택된 상태입니다. 상태 확인 후 재시도하세요.",
+        "status": {
+          "PAID": "결제 완료",
+          "REFLECTING": "반영 대기",
+          "FAILED": "실패",
+          "UNPROCESSED": "미처리"
+        },
         "checkedOut": "결제 완료",
         "skipped": "건너뜀",
         "skipReasons": {
