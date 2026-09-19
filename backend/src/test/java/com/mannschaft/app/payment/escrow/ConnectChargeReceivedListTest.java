@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -129,7 +130,7 @@ class ConnectChargeReceivedListTest {
                 any(), eq(EscrowStatus.PARTIALLY_REFUNDED), eq(pageable)))
                 .willReturn(new PageImpl<>(List.of(e), pageable, 1));
         RefundEntity ok = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
-                .stripeRefundId("re_1").amount(3_000L).currency("JPY").reason("REQUESTED_BY_CUSTOMER")
+                .stripeRefundId("re_1").amount(3_000L).currency("jpy").reason("REQUESTED_BY_CUSTOMER")
                 .status(RefundStatus.SUCCEEDED).build();
         RefundEntity failed = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
                 .stripeRefundId("re_2").amount(9_999L).currency("JPY").reason("REQUESTED_BY_CUSTOMER")
@@ -144,6 +145,56 @@ class ConnectChargeReceivedListTest {
         assertThat(result.getContent().get(0).refundedAmount()).isEqualTo(3_000L);
         verify(accessControlService).checkPermission(
                 eq(ACTOR_USER_ID), eq(TEAM_ID), eq("TEAM"), any());
+    }
+
+    @Test
+    @DisplayName("FAILED返金はMoney生成前に除外し、成功返金の通貨不一致は拒否する")
+    void receivedList_excludesFailedBeforeMoneyConversionAndRejectsSuccessfulCurrencyMismatch() {
+        EscrowQueryService svc = service();
+        given(connectAccountRepository.findByScopeKindAndScopeIdAndDeletedAtIsNull(
+                ScopeKind.TEAM, TEAM_ID))
+                .willReturn(Optional.of(payeeAccount(ScopeKind.TEAM, TEAM_ID)));
+        Pageable pageable = PageRequest.of(0, 20);
+        given(escrowTransactionRepository.findByPayeeConnectAccountIdOrderByCreatedAtDesc(any(), eq(pageable)))
+                .willReturn(new PageImpl<>(List.of(captured()), pageable, 1));
+        RefundEntity failedDifferentCurrency = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
+                .stripeRefundId("re_failed").amount(9_999L).currency("USD").reason("REQUESTED_BY_CUSTOMER")
+                .status(RefundStatus.FAILED).build();
+        RefundEntity succeededDifferentCurrency = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
+                .stripeRefundId("re_succeeded").amount(1L).currency("USD").reason("REQUESTED_BY_CUSTOMER")
+                .status(RefundStatus.SUCCEEDED).build();
+        given(refundRepository.findByEscrowTransactionId(any()))
+                .willReturn(List.of(failedDifferentCurrency));
+
+        assertThat(svc.listReceivedEscrows(ScopeKind.TEAM, TEAM_ID, null, ACTOR_USER_ID, pageable)
+                .getContent().get(0).refundedAmount()).isZero();
+
+        given(refundRepository.findByEscrowTransactionId(any()))
+                .willReturn(List.of(succeededDifferentCurrency));
+        assertThatIllegalArgumentException().isThrownBy(() ->
+                svc.listReceivedEscrows(ScopeKind.TEAM, TEAM_ID, null, ACTOR_USER_ID, pageable));
+    }
+
+    @Test
+    @DisplayName("成功返金の累計がlongを超える場合は例外にする")
+    void receivedList_rejectsSuccessfulRefundOverflow() {
+        EscrowQueryService svc = service();
+        given(connectAccountRepository.findByScopeKindAndScopeIdAndDeletedAtIsNull(
+                ScopeKind.TEAM, TEAM_ID))
+                .willReturn(Optional.of(payeeAccount(ScopeKind.TEAM, TEAM_ID)));
+        Pageable pageable = PageRequest.of(0, 20);
+        given(escrowTransactionRepository.findByPayeeConnectAccountIdOrderByCreatedAtDesc(any(), eq(pageable)))
+                .willReturn(new PageImpl<>(List.of(captured()), pageable, 1));
+        RefundEntity first = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
+                .stripeRefundId("re_max").amount(Long.MAX_VALUE).currency("JPY").reason("REQUESTED_BY_CUSTOMER")
+                .status(RefundStatus.SUCCEEDED).build();
+        RefundEntity second = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
+                .stripeRefundId("re_one").amount(1L).currency("JPY").reason("REQUESTED_BY_CUSTOMER")
+                .status(RefundStatus.SUCCEEDED).build();
+        given(refundRepository.findByEscrowTransactionId(any())).willReturn(List.of(first, second));
+
+        assertThatThrownBy(() -> svc.listReceivedEscrows(ScopeKind.TEAM, TEAM_ID, null, ACTOR_USER_ID, pageable))
+                .isInstanceOf(ArithmeticException.class);
     }
 
     @Test

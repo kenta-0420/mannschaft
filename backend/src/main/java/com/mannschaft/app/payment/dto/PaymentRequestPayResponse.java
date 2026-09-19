@@ -9,7 +9,8 @@ import java.util.UUID;
  * F08.9 P7: 協会請求支払いのレスポンス DTO（POST /teams/{teamId}/payment-requests/{id}/pay・02_api §7）。
  *
  * <p>払い手本人（チーム ADMIN）が Stripe.js で confirm するための {@code clientSecret} を含む（PCI SAQ-A）。
- * 立替記録（team_payment_advances）の ID も返し、チーム精算フローへつなぐ。casing は camelCase。</p>
+ * 立替記録（team_payment_advances）は成功 webhook で起票するため、支払い開始レスポンスの
+ * {@code advanceId} は {@code null}。casing は camelCase。</p>
  */
 @Builder
 public record PaymentRequestPayResponse(

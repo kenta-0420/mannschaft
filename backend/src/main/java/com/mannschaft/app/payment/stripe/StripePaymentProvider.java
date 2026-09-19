@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.stripe;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 /**
  * Stripe 決済プロバイダーインターフェース。
@@ -186,6 +187,22 @@ public interface StripePaymentProvider {
                                                      String payerCustomerId, long applicationFeeMinor,
                                                      String destinationAccountId, CaptureMethod captureMethod,
                                                      String idempotencyKey);
+
+    /**
+     * PaymentIntent に業務相関 metadata を設定して作成する。
+     *
+     * <p>既存の呼出し互換性を保つため通常の destination charge は空 metadata を渡す。metadata は機密値を
+     * 含めず、webhook で業務レコードを特定する UUID 等に限定する。</p>
+     */
+    default PaymentIntentInfo createDestinationPaymentIntent(long chargeAmountMinor, String currency,
+                                                               String payerCustomerId, long applicationFeeMinor,
+                                                               String destinationAccountId,
+                                                               CaptureMethod captureMethod,
+                                                               String idempotencyKey,
+                                                               Map<String, String> metadata) {
+        return createDestinationPaymentIntent(chargeAmountMinor, currency, payerCustomerId, applicationFeeMinor,
+                destinationAccountId, captureMethod, idempotencyKey);
+    }
 
     /**
      * Destination Charge の PaymentIntent を作成し、保存済み PaymentMethod で<b>server-side off-session 即時確定</b>する
@@ -642,7 +659,8 @@ public interface StripePaymentProvider {
      */
     record EscrowWebhookEventInfo(String eventId, String type, boolean livemode,
                                   String paymentIntentId, String paymentIntentStatus,
-                                  String refundId, Long refundedAmountMinor, Long chargeAmountMinor) {}
+                                  String refundId, Long refundedAmountMinor, Long chargeAmountMinor,
+                                  Map<String, String> metadata) {}
 
     /**
      * Connect 返金情報（設計書 02 §6.1・設定A）。

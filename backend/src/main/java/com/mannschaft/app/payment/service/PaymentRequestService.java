@@ -14,14 +14,7 @@ import com.mannschaft.app.payment.connect.ConnectAccountEntity;
 import com.mannschaft.app.payment.connect.ConnectAccountRepository;
 import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.entity.PaymentRequestEntity;
-import com.mannschaft.app.payment.entity.StripeCustomerEntity;
-import com.mannschaft.app.payment.entity.TeamPaymentAdvanceEntity;
-import com.mannschaft.app.payment.escrow.ConnectChargeService;
-import com.mannschaft.app.payment.escrow.MembershipChargeCommand;
-import com.mannschaft.app.payment.escrow.MembershipChargeResult;
 import com.mannschaft.app.payment.repository.PaymentRequestRepository;
-import com.mannschaft.app.payment.repository.StripeCustomerRepository;
-import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,19 +32,11 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * F08.9 P7 第一波: 協会→加盟チーム請求サービス（payment_requests・基盤＋支払い）。
+ * F08.9 P7: 協会→加盟チーム請求の発行・配信サービス。
  *
  * <p>協会(ORG)が加盟チーム(TEAM)へ請求を発行（{@link #create}・DRAFT）し、取消（{@link #cancel}）でき、
- * チーム ADMIN が「チーム ADMIN 個人の Stripe Customer で立替課金」（案3・README §6.3）して支払う（{@link #pay}）。
- * 配信（SENT 化＋確認必須通知）・OVERDUE バッチ・Controller・一覧 API は第二波。</p>
- *
- * <p><b>money rail（案3 の Stripe 表現・README §6.3 / 01 §3.1）:</b> 支払いは
- * {@link ConnectChargeService#charge(MembershipChargeCommand)}（即時モード・consume のみ・無改変）へ橋渡しする。
- * 既存 {@code charge()} は escrow を {@code source_kind=MEMBERSHIP}・{@code payer_scope=USER}（操作 ADMIN 個人＝
- * 実際の Stripe Customer）で記録する。設計書 §3.1 は協会請求の escrow を {@code payer=TEAM} と記すが、
- * <b>consume 専用の {@code charge()} は payer=USER を焼くため、ここでは payer=USER（ADMIN）で記録し、業務上の
- * 「請求主体＝チーム」は {@code payment_requests.payer_scope}＋{@code team_payment_advances.team_id} が担う</b>
- * （案3 の「課金主体＝個人 Customer／請求主体＝チーム」の乖離を立替記録で埋める設計と整合）。差異は設計書側へ同期記載した。</p>
+ * 支払い開始は {@link PaymentRequestPaymentCoordinator} が担当し、外部 Stripe I/O をこのサービスのトランザクションから
+ * 分離する。配信（SENT 化＋確認必須通知）・OVERDUE バッチ・一覧 API はこのサービスが担当する。</p>
  *
  * <p>ドメイン境界: payment ドメイン内に閉じる（org/team/user は論理参照・ID のみ）。ADMIN 認可は
  * {@link AccessControlService} 経由でロール判定する（クロスドメイン Repository 参照をしない）。</p>
@@ -77,20 +62,12 @@ public class PaymentRequestService {
     /** 配信時の確認必須通知本文 i18n キー（額面・期限を引数に）。 */
     private static final String NOTIF_SEND_BODY_KEY = "notification.payment_request.send.body";
 
-    /** 支払い可能な状態（SENT/VIEWED/OVERDUE）。OVERDUE でも支払える（実運用・02_api §7 / 本第一波で確定）。 */
-    private static final Set<PaymentRequestStatus> PAYABLE_STATUSES =
-            Set.of(PaymentRequestStatus.SENT, PaymentRequestStatus.VIEWED, PaymentRequestStatus.OVERDUE);
-
     /** 取消可能な状態（DRAFT/SENT のみ・PAID 後不可）。 */
     private static final Set<PaymentRequestStatus> CANCELLABLE_STATUSES =
             Set.of(PaymentRequestStatus.DRAFT, PaymentRequestStatus.SENT);
 
     private final PaymentRequestRepository paymentRequestRepository;
     private final ConnectAccountRepository connectAccountRepository;
-    private final StripeCustomerRepository stripeCustomerRepository;
-    private final StripePaymentProvider stripePaymentProvider;
-    private final ConnectChargeService connectChargeService;
-    private final TeamPaymentAdvanceService teamPaymentAdvanceService;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
     /** 第二波: 配信時の確認必須通知（F04.9）の一斉送信。 */
@@ -291,114 +268,6 @@ public class PaymentRequestService {
     }
 
     /**
-     * チーム ADMIN が協会請求を支払う（案3 立替課金・SENT/VIEWED/OVERDUE → PAID・02_api §7）。
-     *
-     * <ol>
-     *   <li>請求を ID で引き、{@code payer_scope_kind==TEAM} かつ {@code payer_scope_id==teamId} を検証（IDOR・403）。</li>
-     *   <li>当該チーム ADMIN を {@link AccessControlService} で検証（403）。</li>
-     *   <li>状態ゲート: SENT/VIEWED/OVERDUE のみ。PAID は 409（二重支払い防止）。他は 409。</li>
-     *   <li>着金先（協会の Connect 口座）の READY（payouts_enabled）を<b>支払い時に</b>検証（即時モードゆえ HELD にしない）。</li>
-     *   <li>操作 ADMIN 個人の Stripe Customer を get-or-create（案3・課金主体＝個人）。</li>
-     *   <li>{@link ConnectChargeService#charge} で Destination PI 作成（consume・無改変）。</li>
-     *   <li>請求を PAID 化＋escrow 連結。{@code team_payment_advances} を PENDING で起票（同一 Tx・冪等）。</li>
-     * </ol>
-     *
-     * <p><b>PAID 化のタイミング（設計判断）:</b> escrow は {@code charge()} 直後 AUTHORIZED（succeeded webhook で
-     * CAPTURED）だが、設計書 02 §7 は支払い操作で {@code status=PAID} と定める。本第一波は設計書に従い、charge 成功
-     * （PI 作成成立＝払い手が支払い操作を完了）をもって請求を PAID とする（会費 member_payments の PENDING→webhook PAID
-     * とは状態語彙が異なる＝payment_requests に PENDING が無いため）。webhook 連動の厳密化は第二波の検討事項。</p>
-     *
-     * @param teamId         請求先チーム ID（URL スコープ）
-     * @param requestId      支払い対象の請求 ID
-     * @param actorUserId    操作者（チーム ADMIN・立替える個人）
-     * @param idempotencyKey 冪等性キー（Idempotency-Key ヘッダ起源・Stripe へ橋渡し）
-     * @return 支払い結果（escrow ID / 立替 ID / clientSecret）
-     */
-    public PaymentRequestPayResult pay(Long teamId, UUID requestId, Long actorUserId, String idempotencyKey) {
-        PaymentRequestEntity request = paymentRequestRepository.findByIdAndDeletedAtIsNull(requestId)
-                .orElseThrow(() -> new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOUND));
-
-        // 1. IDOR: 請求先チーム一致を検証（payer_scope_kind=TEAM かつ payer_scope_id==teamId）。
-        if (request.getPayerScopeKind() != ScopeKind.TEAM || !request.getPayerScopeId().equals(teamId)) {
-            log.warn("協会請求支払い: 請求先チーム不一致（403）: requestId={}, urlTeam={}, payerScope={}/{}",
-                    requestId, teamId, request.getPayerScopeKind(), request.getPayerScopeId());
-            throw new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOR_THIS_TEAM);
-        }
-
-        // 2. 認可: 当該チーム ADMIN/DEPUTY_ADMIN のみ支払える（03_security §1）。
-        requireTeamAdmin(actorUserId, teamId);
-
-        // 3. 状態ゲート: 支払い可能は SENT/VIEWED/OVERDUE のみ。PAID は二重支払い防止で 409。
-        if (request.getStatus() == PaymentRequestStatus.PAID) {
-            throw new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_ALREADY_PAID);
-        }
-        if (!PAYABLE_STATUSES.contains(request.getStatus())) {
-            // DRAFT（未配信）/CANCELLED からの支払いは不可（症状を隠さず 409）。
-            throw new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_INVALID_STATUS);
-        }
-
-        // 4. 着金先（協会の Connect 口座）の READY を支払い時に検証（発行時ではない・即時モードゆえ HELD にしない）。
-        ConnectAccountEntity payee = connectAccountRepository.findById(request.getPayeeConnectAccountId())
-                .orElseThrow(() -> new BusinessException(
-                        MembershipBillingErrorCode.PAYMENT_REQUEST_CONNECT_NOT_READY));
-        if (!Boolean.TRUE.equals(payee.getPayoutsEnabled())) {
-            log.warn("協会請求支払い拒否（着金口座が未 READY）: requestId={}, payeeAccountId={}",
-                    requestId, payee.getId());
-            throw new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_CONNECT_NOT_READY);
-        }
-
-        // 5. 操作 ADMIN 個人の Stripe Customer を get-or-create（案3・課金主体＝個人）。
-        StripeCustomerEntity payerCustomer = getOrCreateStripeCustomer(actorUserId);
-
-        // 6. ConnectChargeService.charge（consume・無改変）。escrow source_id には請求先 teamId を渡す
-        //    （payment_request は UUID で escrow source_id=BIGINT に載らないため。実質の二重防止は本メソッドの
-        //    status ゲート＋ team_payment_advances の UNIQUE＋ Stripe Idempotency-Key が担う）。
-        long faceAmount = request.getFaceAmount().longValue();
-        MembershipChargeResult chargeResult = connectChargeService.charge(new MembershipChargeCommand(
-                faceAmount,
-                payee.getId(),
-                payerCustomer.getStripeCustomerId(),
-                actorUserId,
-                teamId,
-                request.getOrganizationId(),
-                idempotencyKey));
-
-        // 7. 請求を PAID 化＋escrow 連結。team_payment_advances を PENDING で起票（同一 Tx・冪等）。
-        //
-        // ⚠️ 決済補償方針（既知リスク・02_api §11.1）: charge() は @Transactional で本メソッドの Tx に participate する
-        //    （REQUIRES_NEW ではない）。よって以下の DB 処理が例外を投げると Tx ロールバックで escrow 行の INSERT も
-        //    巻き戻り、Stripe で作成済みの PaymentIntent が孤児化する（escrow 行が消えるため payment_intent.succeeded
-        //    webhook の findByStripePaymentIntentId が対象を見つけられず自動リカバリ不可）。症状を隠さず、孤児 PI を
-        //    運用で手動補正できるよう専用 ERROR ログ（piId/requestId/idempotencyKey）を残してから再 throw する。
-        try {
-            request.markAsPaid(chargeResult.escrowTransactionId());
-            paymentRequestRepository.save(request);
-
-            TeamPaymentAdvanceEntity advance = teamPaymentAdvanceService.createAdvance(
-                    request.getOrganizationId(), teamId, actorUserId,
-                    chargeResult.escrowTransactionId(), request.getId(),
-                    request.getFaceAmount(), request.getCurrency());
-
-            recordAudit(AuditEventType.PAYMENT_REQUEST_PAID, actorUserId, teamId, request.getOrganizationId(),
-                    String.format("{\"paymentRequestId\":\"%s\",\"escrowId\":\"%s\",\"advanceId\":\"%s\"}",
-                            request.getId(), chargeResult.escrowTransactionId(), advance.getId()));
-            log.info("協会請求を支払い PAID（案3 立替課金）: requestId={}, teamId={}, payer={}, escrowId={}, advanceId={}",
-                    request.getId(), teamId, actorUserId, chargeResult.escrowTransactionId(), advance.getId());
-            return new PaymentRequestPayResult(
-                    request.getId(), chargeResult.escrowTransactionId(), advance.getId(), chargeResult.clientSecret());
-        } catch (RuntimeException e) {
-            // charge は成立済み（Stripe で課金された）が PAID 反映/立替起票で失敗 → Tx ロールバックで escrow も巻き戻る。
-            // 孤児 PI を Stripe ダッシュボードで突合・手動補正するための調査キーを ERROR で残す（02_api §11.1）。
-            log.error("協会請求支払いの charge 成功後に DB 処理が失敗。Tx ロールバックで escrow 行も巻き戻り Stripe PI が"
-                            + "孤児化します。Stripe ダッシュボードで piId/idempotencyKey を突合し手動補正してください: "
-                            + "requestId={}, teamId={}, payer={}, escrowId={}, paymentIntentId={}, idempotencyKey={}",
-                    request.getId(), teamId, actorUserId, chargeResult.escrowTransactionId(),
-                    chargeResult.paymentIntentId(), idempotencyKey, e);
-            throw e;
-        }
-    }
-
-    /**
      * チーム（請求先）が受信した請求一覧を取得する（チーム視点一覧の本体・Controller は第二波）。
      *
      * @param teamId      チーム ID
@@ -506,18 +375,6 @@ public class PaymentRequestService {
         } catch (BusinessException e) {
             throw new BusinessException(MembershipBillingErrorCode.PAYMENT_REQUEST_NOT_FOR_THIS_TEAM, e);
         }
-    }
-
-    /** 操作 ADMIN 個人の Stripe Customer を get-or-create（案3・課金主体＝個人・P1 と同パターン）。 */
-    private StripeCustomerEntity getOrCreateStripeCustomer(Long userId) {
-        return stripeCustomerRepository.findByUserId(userId)
-                .orElseGet(() -> {
-                    String customerId = stripePaymentProvider.createCustomer("user@example.com", userId);
-                    return stripeCustomerRepository.save(StripeCustomerEntity.builder()
-                            .userId(userId)
-                            .stripeCustomerId(customerId)
-                            .build());
-                });
     }
 
     private void recordAudit(AuditEventType eventType, Long actorUserId, Long teamId, Long orgId, String metadata) {

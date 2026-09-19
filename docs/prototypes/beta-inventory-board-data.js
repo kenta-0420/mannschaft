@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-09-14T22:24:55+00:00",
+  "generatedAt": "2026-09-19T04:21:04+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -7,56 +7,56 @@ window.BETA_INVENTORY_DATA = {
     "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
-    "inventoryCommit": "2ad4e778c42d06cb3707f027ce66db837625e51b",
-    "taskListCommit": "222a62fd6ba280f929c25fe8c96832d7f302a861",
-    "inventorySha256": "7e58c58b15abadc3d42efb5a70c15f6c166e84ecd6ad3208727b564a19ee4dae",
-    "taskListSha256": "4819c95c786dd43d5c091c5abc9bd2fa45b89a076e48c0bdf8fafcc4d3ef088f",
-    "decisionsSha256": "5721052631110d26b34bf2288bc6e8a9de069a030b7f8d63808f8304348f7a4d",
+    "inventoryCommit": "a6f44a6c92a2ef1a8cdc77d182cad7f9c48c149b",
+    "taskListCommit": "e5dcac1c01279822c78186e3fe84c6bb76a31e5b",
+    "inventorySha256": "15bcdcdf662e4633cf4f0322ab011aea0e0c6f83c0457f040832a6face448531",
+    "taskListSha256": "bf04a3399c219b55876a97c8ee038f7fccc1cb70f3578b9381f180101de5de2b",
+    "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "098ef9345060a1cceca3dd63d39a89302e92f9218728af600c664210fe872cba"
+    "githubSnapshotSha256": "9b15756eff809200d6f12c96dd8cd0b84d69de0cdbf8e359f1e3fcd4096ed3f9"
   },
   "sourceCounts": {
-    "features": 43,
-    "capabilities": 94,
+    "features": 44,
+    "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 215,
+    "campaigns": 254,
     "layer": {
-      "能力": 25,
+      "能力": 26,
       "ドメイン": 18
     },
-    "blockers": 21,
+    "blockers": 22,
     "coreStatus": {
       "blocked": 4,
       "unknown": 0,
       "incomplete": 0,
-      "verifying": 21,
-      "ready": 0
+      "verifying": 20,
+      "ready": 1
     }
   },
   "verification": {
     "raw": {
-      "features": 43,
-      "campaigns": 215
+      "features": 44,
+      "campaigns": 254
     },
     "parsed": {
-      "features": 43,
-      "campaigns": 215,
+      "features": 44,
+      "campaigns": 254,
       "core": 25,
-      "noncore": 18,
-      "blockers": 21,
+      "noncore": 19,
+      "blockers": 22,
       "coreStatus": {
         "blocked": 4,
         "unknown": 0,
         "incomplete": 0,
-        "verifying": 21,
-        "ready": 0
+        "verifying": 20,
+        "ready": 1
       }
     },
     "passed": true
   },
   "warnings": [
-    "正本は43大分類、表示・集計は94能力単位。分割親は33件。",
+    "正本は44大分類、表示・集計は95能力単位。分割親は33件。",
     "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
     "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
     "Gate前提工事はbeta-inventory-board-gate.jsonの根拠付きoverlayから表示。未確認項目は公開候補に含めない。",
@@ -995,16 +995,19 @@ window.BETA_INVENTORY_DATA = {
       "title": "タイムライン",
       "stage": "未設定",
       "phase": "コア",
-      "status": "verifying",
-      "statusLabel": "検証中",
+      "status": "ready",
+      "statusLabel": "β準備完了",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "実機E2E作業中spec群あり（frontend/tests/e2e/real/personal-timeline.spec.ts 等）",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / PR #3369 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。PR #3369 CI run 35409546051 はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等が通過。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F04.1_timeline.md",
+        "docs/features/F17.1_village_community.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
@@ -1013,9 +1016,30 @@ window.BETA_INVENTORY_DATA = {
         "background": "実装済"
       },
       "verification": {
+        "unit": {
+          "status": "通過",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/timeline/service/TimelinePostServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/timeline/dto/TimelineFeedResponseTest.java",
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageAccessGateTest.java",
+            "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts",
+            "frontend/tests/unit/components/timeline/TimelinePostCard.village-source.spec.ts",
+            "frontend/tests/unit/pages/timeline-index-my-feed.spec.ts"
+          ]
+        },
+        "integration": {
+          "status": "通過",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java",
+            "PR #3369 Backend CI run 35409546051（6/6 shards + Compile & Test）"
+          ]
+        },
         "real_e2e": {
-          "status": "未実行",
-          "evidence": []
+          "status": "通過",
+          "evidence": [
+            "frontend/tests/e2e/real/personal-timeline.spec.ts",
+            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T17-45-01.082Z）"
+          ]
         }
       },
       "release": {
@@ -1715,6 +1739,53 @@ window.BETA_INVENTORY_DATA = {
       "blockers": [
         "β公開前に FEATURE_SHIFT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
         "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml"
+    },
+    {
+      "key": "shift-auto-assign",
+      "title": "シフト自動割当",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "implementation/blockersから機械導出",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "BE 入口ゲートのみ（ShiftAutoAssignController にクラスレベル @RequireFeature）。自動割当専用の URL は1本も無く、UI は /teams/*/shifts/*/board のタブ・ボタンとして親機能 shift の route 束縛（FEATURE_SHIFT_ENABLED）の内側にある。ここを GATE_ROUTE_MAP に束縛すると /teams/*/shifts 全体を巻き添えで遮断してしまうため、末尾の route_binding_exclusions に理由付きで宣言している（設計書 F03.5 §11.1.2-5）。FE の出し分けはコンポーネント層（戦役B-2）。",
+      "acceptance": [],
+      "blocker": "停止理由: 時刻を見ない割当が二重割当を生むため。方針転換 2026-09-09（設計書 F03.5 §11.1） / 既知の制約: フラグOFF中は未確認 SUCCEEDED run を持つシフト表を公開できない（設計書 §11.1.3 の申し送り）。本番データが存在する状態で改めてOFFにする場合は段階的停止か後始末2経路のゲート例外化が必須",
+      "refs": [
+        "docs/features/F03.5_shift/06_manual_authoring.md"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "対象外"
+      },
+      "verification": {
+        "integration": {
+          "status": "通過",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/shift/ShiftAutoAssignFeatureGateContractIT.java"
+          ]
+        }
+      },
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_SHIFT_AUTO_ASSIGN_ENABLED",
+        "route_keywords": []
+      },
+      "blockers": [
+        "停止理由: 時刻を見ない割当が二重割当を生むため。方針転換 2026-09-09（設計書 F03.5 §11.1）",
+        "既知の制約: フラグOFF中は未確認 SUCCEEDED run を持つシフト表を公開できない（設計書 §11.1.3 の申し送り）。本番データが存在する状態で改めてOFFにする場合は段階的停止か後始末2経路のゲート例外化が必須"
       ],
       "classification": "noncore",
       "publication": "未設定",
@@ -4492,16 +4563,19 @@ window.BETA_INVENTORY_DATA = {
       "title": "タイムライン投稿",
       "stage": "未設定",
       "phase": "コア",
-      "status": "verifying",
-      "statusLabel": "検証中",
+      "status": "ready",
+      "statusLabel": "β準備完了",
       "statusSource": "timeline由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "実機E2E作業中spec群あり（frontend/tests/e2e/real/personal-timeline.spec.ts 等）",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / PR #3369 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。PR #3369 CI run 35409546051 はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等が通過。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F04.1_timeline.md",
+        "docs/features/F17.1_village_community.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
@@ -4510,9 +4584,30 @@ window.BETA_INVENTORY_DATA = {
         "background": "実装済"
       },
       "verification": {
+        "unit": {
+          "status": "通過",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/timeline/service/TimelinePostServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/timeline/dto/TimelineFeedResponseTest.java",
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageAccessGateTest.java",
+            "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts",
+            "frontend/tests/unit/components/timeline/TimelinePostCard.village-source.spec.ts",
+            "frontend/tests/unit/pages/timeline-index-my-feed.spec.ts"
+          ]
+        },
+        "integration": {
+          "status": "通過",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java",
+            "PR #3369 Backend CI run 35409546051（6/6 shards + Compile & Test）"
+          ]
+        },
         "real_e2e": {
-          "status": "未実行",
-          "evidence": []
+          "status": "通過",
+          "evidence": [
+            "frontend/tests/e2e/real/personal-timeline.spec.ts",
+            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T17-45-01.082Z）"
+          ]
         }
       },
       "release": {
@@ -4535,16 +4630,19 @@ window.BETA_INVENTORY_DATA = {
       "title": "タイムライン閲覧",
       "stage": "未設定",
       "phase": "コア",
-      "status": "verifying",
-      "statusLabel": "検証中",
+      "status": "ready",
+      "statusLabel": "β準備完了",
       "statusSource": "timeline由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "実機E2E作業中spec群あり（frontend/tests/e2e/real/personal-timeline.spec.ts 等）",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / PR #3369 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。PR #3369 CI run 35409546051 はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等が通過。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F04.1_timeline.md",
+        "docs/features/F17.1_village_community.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
@@ -4553,9 +4651,30 @@ window.BETA_INVENTORY_DATA = {
         "background": "実装済"
       },
       "verification": {
+        "unit": {
+          "status": "通過",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/timeline/service/TimelinePostServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/timeline/dto/TimelineFeedResponseTest.java",
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageAccessGateTest.java",
+            "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts",
+            "frontend/tests/unit/components/timeline/TimelinePostCard.village-source.spec.ts",
+            "frontend/tests/unit/pages/timeline-index-my-feed.spec.ts"
+          ]
+        },
+        "integration": {
+          "status": "通過",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java",
+            "PR #3369 Backend CI run 35409546051（6/6 shards + Compile & Test）"
+          ]
+        },
         "real_e2e": {
-          "status": "未実行",
-          "evidence": []
+          "status": "通過",
+          "evidence": [
+            "frontend/tests/e2e/real/personal-timeline.spec.ts",
+            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T17-45-01.082Z）"
+          ]
         }
       },
       "release": {
@@ -4578,16 +4697,19 @@ window.BETA_INVENTORY_DATA = {
       "title": "タイムライン共有範囲",
       "stage": "未設定",
       "phase": "コア",
-      "status": "verifying",
-      "statusLabel": "検証中",
+      "status": "ready",
+      "statusLabel": "β準備完了",
       "statusSource": "timeline由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "実機E2E作業中spec群あり（frontend/tests/e2e/real/personal-timeline.spec.ts 等）",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / PR #3369 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。PR #3369 CI run 35409546051 はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等が通過。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F04.1_timeline.md",
+        "docs/features/F17.1_village_community.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
@@ -4596,9 +4718,30 @@ window.BETA_INVENTORY_DATA = {
         "background": "実装済"
       },
       "verification": {
+        "unit": {
+          "status": "通過",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/timeline/service/TimelinePostServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/timeline/dto/TimelineFeedResponseTest.java",
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageAccessGateTest.java",
+            "frontend/tests/unit/components/timeline/TimelineFeed.spec.ts",
+            "frontend/tests/unit/components/timeline/TimelinePostCard.village-source.spec.ts",
+            "frontend/tests/unit/pages/timeline-index-my-feed.spec.ts"
+          ]
+        },
+        "integration": {
+          "status": "通過",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java",
+            "PR #3369 Backend CI run 35409546051（6/6 shards + Compile & Test）"
+          ]
+        },
         "real_e2e": {
-          "status": "未実行",
-          "evidence": []
+          "status": "通過",
+          "evidence": [
+            "frontend/tests/e2e/real/personal-timeline.spec.ts",
+            "docs/prototypes/beta-inventory-board-data.js（b0RunOverlay: B0-2026-09-18T17-45-01.082Z）"
+          ]
         }
       },
       "release": {
@@ -6085,6 +6228,57 @@ window.BETA_INVENTORY_DATA = {
       "parentFeatureKey": "shift",
       "gateGroup": "FEATURE_SHIFT_ENABLED",
       "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "shift-auto-assign",
+      "title": "シフト自動割当",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "shift-auto-assign由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "BE 入口ゲートのみ（ShiftAutoAssignController にクラスレベル @RequireFeature）。自動割当専用の URL は1本も無く、UI は /teams/*/shifts/*/board のタブ・ボタンとして親機能 shift の route 束縛（FEATURE_SHIFT_ENABLED）の内側にある。ここを GATE_ROUTE_MAP に束縛すると /teams/*/shifts 全体を巻き添えで遮断してしまうため、末尾の route_binding_exclusions に理由付きで宣言している（設計書 F03.5 §11.1.2-5）。FE の出し分けはコンポーネント層（戦役B-2）。",
+      "acceptance": [],
+      "blocker": "停止理由: 時刻を見ない割当が二重割当を生むため。方針転換 2026-09-09（設計書 F03.5 §11.1） / 既知の制約: フラグOFF中は未確認 SUCCEEDED run を持つシフト表を公開できない（設計書 §11.1.3 の申し送り）。本番データが存在する状態で改めてOFFにする場合は段階的停止か後始末2経路のゲート例外化が必須",
+      "refs": [
+        "docs/features/F03.5_shift/06_manual_authoring.md"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "対象外"
+      },
+      "verification": {
+        "integration": {
+          "status": "通過",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/shift/ShiftAutoAssignFeatureGateContractIT.java"
+          ]
+        }
+      },
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_SHIFT_AUTO_ASSIGN_ENABLED",
+        "route_keywords": []
+      },
+      "blockers": [
+        "停止理由: 時刻を見ない割当が二重割当を生むため。方針転換 2026-09-09（設計書 F03.5 §11.1）",
+        "既知の制約: フラグOFF中は未確認 SUCCEEDED run を持つシフト表を公開できない（設計書 §11.1.3 の申し送り）。本番データが存在する状態で改めてOFFにする場合は段階的停止か後始末2経路のゲート例外化が必須"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "shift-auto-assign",
+      "gateGroup": "FEATURE_SHIFT_AUTO_ASSIGN_ENABLED",
+      "isCapability": false,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
@@ -8151,6 +8345,7 @@ window.BETA_INVENTORY_DATA = {
       },
       "B0-J7": {
         "specPaths": [
+          "frontend/tests/e2e/real/personal-timeline.spec.ts",
           "frontend/tests/e2e/global/timeline.spec.ts",
           "frontend/tests/e2e/organizations/org-timeline.spec.ts",
           "frontend/tests/e2e/real/timeline-delivery-scope-and-mute.spec.ts",
@@ -8447,6 +8642,17 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ]
+      },
+      "shift-auto-assign": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "シフト自動割当は正本で停止中であり、初期対象へ導入しない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F03.5_shift/06_manual_authoring.md"
+        ],
+        "decisionStatus": "proposed"
       },
       "matching": {
         "stage": "B4",
@@ -8916,12 +9122,17 @@ window.BETA_INVENTORY_DATA = {
       "timeline-view": {
         "stage": "B0",
         "audience": "both",
-        "priority": "must",
-        "reason": "タイムライン閲覧を別ログインで実測する。",
+        "priority": "should",
+        "reason": "チーム・組織・村を横断する個人タイムライン閲覧をB0で実測する。",
         "sourceRefs": [
-          "docs/features/F04.1_timeline.md"
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F04.1_timeline.md",
+          "docs/task-list.md"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed",
+        "confirmedBy": "user",
+        "confirmedAt": "2026-09-18T22:30:55+09:00",
+        "confirmationNote": "ユーザー明示指定: 区分 Core、最早導入段階 B0、優先度 should、対象ユースケース soccer / alumni、公開状態 未設定、Gate適用状態 未設定。"
       },
       "timeline-sharing": {
         "stage": "B0",
@@ -9389,6 +9600,17 @@ window.BETA_INVENTORY_DATA = {
         "reason": "成人コミュニティの緊急連絡価値は高いが、B1の基本連絡検証後に導入する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "shift-auto-assign": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "シフト自動割当は正本で停止中であり、初期対象へ導入しない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F03.5_shift/06_manual_authoring.md"
         ],
         "decisionStatus": "proposed"
       },
@@ -9867,12 +10089,17 @@ window.BETA_INVENTORY_DATA = {
       "timeline-view": {
         "stage": "B0",
         "audience": "both",
-        "priority": "must",
-        "reason": "タイムライン閲覧を別ログインで実測する。",
+        "priority": "should",
+        "reason": "チーム・組織・村を横断する個人タイムライン閲覧をB0で実測する。",
         "sourceRefs": [
-          "docs/features/F04.1_timeline.md"
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F04.1_timeline.md",
+          "docs/task-list.md"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed",
+        "confirmedBy": "user",
+        "confirmedAt": "2026-09-18T22:30:55+09:00",
+        "confirmationNote": "ユーザー明示指定: 区分 Core、最早導入段階 B0、優先度 should、対象ユースケース soccer / alumni、公開状態 未設定、Gate適用状態 未設定。"
       },
       "timeline-sharing": {
         "stage": "B0",
@@ -10340,6 +10567,17 @@ window.BETA_INVENTORY_DATA = {
         "reason": "成人コミュニティの緊急連絡価値は高いが、B1の基本連絡検証後に導入する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "shift-auto-assign": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "シフト自動割当は正本で停止中であり、初期対象へ導入しない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F03.5_shift/06_manual_authoring.md"
         ],
         "decisionStatus": "proposed"
       },
@@ -10826,26 +11064,26 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-004",
       "title": "WS外部ブローカー化＋IaCコスト削減戦役",
       "status": "unknown",
-      "statusLabel": "保留（AWS未稼働）",
+      "statusLabel": "保留",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "A案（Valkey中継）の実装・ローカル実機検証は完了。本番ECS 1→2台化とローリングデプロイ観測はAWS稼働開始後に行う",
+      "nextAction": "Valkey中継・Principal配線・チャットSUBSCRIBE認可・FE通知購読・IaCの実装とローカル2ノード3シナリオgreenは完了。AWS稼働後、desired_count=2でローリング中のWS/HTTP 5xxゼロ・circuit breaker非発火を実測する（AC-8）",
       "acceptance": [
-        "A案（Valkey中継）の実装・ローカル実機検証は完了。本番ECS 1→2台化とローリングデプロイ観測はAWS稼働開始後に行う"
+        "Valkey中継・Principal配線・チャットSUBSCRIBE認可・FE通知購読・IaCの実装とローカル2ノード3シナリオgreenは完了。AWS稼働後、desired_count=2でローリング中のWS/HTTP 5xxゼロ・circuit breaker非発火を実測する（AC-8）"
       ],
-      "blocker": "AWS稼働開始",
+      "blocker": "AWS稼働開始＋本番/staging適用の明示承認",
       "issues": [
         {
-          "label": "設計 #2218／チャットSUBSCRIBE認可 #2228／FE通知購読 #2229／BE中核 #2231／IaC #2237／実機E2E #2260（ローカル2ノード3シナリオgreen）。殿の方針により現時点ではAWSを動かさず、AC-8（本番/stagingのdesired_count=2・ローリングデプロイ実機検証）を保留して次CMPへ進む",
+          "label": "既存PR #2218／#2228／#2229／#2231／#2237／#2260。AC-8は未実施。現行IaCのdesired_count=1、staging定義なし。AWS未操作のため、AWS稼働開始＋本番/staging適用の明示承認を再開条件として保留",
           "state": "unknown"
         }
       ],
       "prs": [
-        "設計 #2218／チャットSUBSCRIBE認可 #2228／FE通知購読 #2229／BE中核 #2231／IaC #2237／実機E2E #2260（ローカル2ノード3シナリオgreen）。殿の方針により現時点ではAWSを動かさず、AC-8（本番/stagingのdesired_count=2・ローリングデプロイ実機検証）を保留して次CMPへ進む"
+        "既存PR #2218／#2228／#2229／#2231／#2237／#2260。AC-8は未実施。現行IaCのdesired_count=1、staging定義なし。AWS未操作のため、AWS稼働開始＋本番/staging適用の明示承認を再開条件として保留"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -10856,8 +11094,19 @@ window.BETA_INVENTORY_DATA = {
         "WS",
         "IaC",
         "Valkey",
-        "ECS",
-        "AWS"
+        "Principal",
+        "SUBSCRIBE",
+        "FE",
+        "IaC",
+        "green",
+        "AWS",
+        "desired_count",
+        "WS",
+        "HTTP",
+        "xx",
+        "circuit",
+        "breaker",
+        "AC-8"
       ],
       "tags": [
         "未整理"
@@ -11180,8 +11429,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-007",
       "title": "toBuilder更新破壊campaign",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -11195,12 +11444,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "発端のEventService修正 #1643 と、第三波14修正 #1648/#1649/#1651/#1655/#1656/#1658/#1667/#1668/#1670/#1671/#1673/#1675/#1676/#1677 がmain着地済み。旧14作業ブランチとのpatch-id一致を2026-09-15に再照合し、代表15テストクラス（auth・feature flag/notification credit・team/org・school・shift・timetable・forms・signage・knowledgebase・jobmatching・budget・event・template・misc）を現行mainで一括再実行してgreen（8分38秒）。AWSを使用せず、ローカル実ブラウザ＋実BE/MySQLで発端のイベント本体更新と第三波 #1676 のタイムテーブル項目更新を実走し、更新前後で同一ID・対象一覧総件数不変・対象IDが1件だけであることと画面反映を確認（準備を含む3件green、33.7秒）。両更新経路で未認証401、同一チームMEMBER 403、別チーム配下ID 404、拒否後の対象データと対象一覧件数不変、別チームデータ不変、使い捨て2項目・2イベント・2チームのcleanup成功を確認。再発防止としてBaseEntity継承Entityの不正な `@Builder(toBuilder=true)` を #1726/#1736 の番人で禁止済み。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "発端のEventService修正 #1643 と、第三波14修正 #1648/#1649/#1651/#1655/#1656/#1658/#1667/#1668/#1670/#1671/#1673/#1675/#1676/#1677 がmain着地済み。旧14作業ブランチとのpatch-id一致を2026-09-15に再照合し、代表15テストクラス（auth・feature flag/notification credit・team/org・school・shift・timetable・forms・signage・knowledgebase・jobmatching・budget・event・template・misc）を現行mainで一括再実行してgreen（8分38秒）。AWSを使用せず、ローカル実ブラウザ＋実BE/MySQLで発端のイベント本体更新と第三波 #1676 のタイムテーブル項目更新を実走し、更新前後で同一ID・対象一覧総件数不変・対象IDが1件だけであることと画面反映を確認（準備を含む3件green、33.7秒）。両更新経路で未認証401、同一チームMEMBER 403、別チーム配下ID 404、拒否後の対象データと対象一覧件数不変、別チームデータ不変、使い捨て2項目・2イベント・2チームのcleanup成功を確認。再発防止としてBaseEntity継承Entityの不正な `@Builder(toBuilder=true)` を #1726/#1736 の番人で禁止済み。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -11212,16 +11461,273 @@ window.BETA_INVENTORY_DATA = {
         "campaign"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        1643,
+        1648,
+        1649,
+        1651,
+        1655,
+        1656,
+        1658,
+        1667,
+        1668,
+        1670,
+        1671,
+        1673,
+        1675,
+        1676,
+        1677,
+        1726,
+        1736
+      ],
+      "github": [
+        {
+          "number": 1643,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: イベント更新の常時500(toBuilder id欠落)と可視性enum新値500を根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1643",
+          "updatedAt": "2026-06-18T15:51:30Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1648,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: UserService の toBuilder 更新破壊(id欠落でINSERT化)を直接ミューテートで根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1648",
+          "updatedAt": "2026-06-19T00:35:03Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1649,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: FeatureFlag/NotificationCredit の toBuilder 更新破壊を直接ミューテートで根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1649",
+          "updatedAt": "2026-06-19T01:16:27Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1651,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: Team/Organization 系の toBuilder 更新破壊(id欠落でINSERT化)を直接ミューテートで根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1651",
+          "updatedAt": "2026-06-19T02:58:48Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1655,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: school/attendance の toBuilder 更新破壊(id欠落で行重複INSERT)を直接ミューテートで根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1655",
+          "updatedAt": "2026-06-19T05:48:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1656,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: timetable の toBuilder 更新破壊(id欠落で行重複INSERT)を直接ミューテートで根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1656",
+          "updatedAt": "2026-06-19T07:01:35Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1658,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: shift の toBuilder 更新破壊(id欠落で行重複INSERT)を直接ミューテートで根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1658",
+          "updatedAt": "2026-06-19T05:48:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1667,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: forms/onboarding の toBuilder 更新破壊(id欠落で行重複INSERT)を直接ミューテートで根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1667",
+          "updatedAt": "2026-06-19T09:25:20Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1668,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: signage の toBuilder 更新破壊（id欠落で行重複INSERT）を根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1668",
+          "updatedAt": "2026-06-19T09:40:40Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1670,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "fix(knowledgebase): toBuilder→UPDATE化バグを根治（KbPageService/KbRevisionService/KbTemplateService）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1670",
+          "updatedAt": "2026-06-19T09:49:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1671,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: jobmatchingドメインのtoBuilder更新によるid欠落INSERT化バグを根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1671",
+          "updatedAt": "2026-06-19T09:49:44Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1673,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: budgetドメインのtoBuilder更新によるINSERT化バグを根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1673",
+          "updatedAt": "2026-06-19T09:43:42Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1675,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: templateドメイン toBuilder id欠落 INSERT化バグを根治（ModuleService・SystemAdminTemplateService）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1675",
+          "updatedAt": "2026-06-19T11:05:16Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1676,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(event): toBuilder更新破壊(id欠落でINSERT化)を直接ミューテートで根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1676",
+          "updatedAt": "2026-06-19T11:25:32Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1677,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "fix(tobuilder): committee/skill/webhook/analytics/memberinfo/digest/circulation の toBuilder→save を直接ミューテートに根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1677",
+          "updatedAt": "2026-06-19T11:25:38Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1726,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "test(arch): D-5 - BaseEntity継承Entityへの@Builder(toBuilder=true)禁止番人テスト",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1726",
+          "updatedAt": "2026-06-20T04:54:45Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1736,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "ci(arch): D-5番人 grep ガード追加（@Builder(toBuilder=true)のBaseEntity継承禁止）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1736",
+          "updatedAt": "2026-06-20T09:46:51Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-008",
       "title": "1000万ユーザーDB再構築",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "done",
+      "statusLabel": "完了（ローカル／CI検証範囲。AWS依存項目は保留）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -11232,19 +11738,19 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "新規テーブルのUUID方針（ポストポリシー長PK違反ゼロ）を含む再構築完了"
       ],
-      "blocker": "—",
+      "blocker": "AWS未稼働の項目は保留",
       "issues": [
         {
-          "label": "—",
+          "label": "第一波 PR #3280 で `csp_reports` を真正UUIDv7へ移行し、PR #3331 で共通 `UuidV7Entity` の誤ったUUIDv1採番を真正UUIDv7へ根治。第2波で外部公開数値IDだった `schedule_media_uploads` とAPI・ACL・監査参照をUUIDへ一括統一し、既存行・R2キー・孤立監査参照を保全するV215 migrationを追加した。実MySQL全migration＋既存データ移行＋JPA永続化、対象サービス／Controller／ACL、OpenAPI生成型、フロントtypecheckを検証済み。ローカルMinIO実HTTPはfixtureの実PUT／completeまで是正したが共有環境の隔離BE終了により最終spec完走はCIゲートへ委ねる。リードレプリカ本番適用・AWS/R2依存アーカイブ実走・本番シャーディングは殿の方針によりAWSを起動せず保留",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "第一波 PR #3280 で `csp_reports` を真正UUIDv7へ移行し、PR #3331 で共通 `UuidV7Entity` の誤ったUUIDv1採番を真正UUIDv7へ根治。第2波で外部公開数値IDだった `schedule_media_uploads` とAPI・ACL・監査参照をUUIDへ一括統一し、既存行・R2キー・孤立監査参照を保全するV215 migrationを追加した。実MySQL全migration＋既存データ移行＋JPA永続化、対象サービス／Controller／ACL、OpenAPI生成型、フロントtypecheckを検証済み。ローカルMinIO実HTTPはfixtureの実PUT／completeまで是正したが共有環境の隔離BE終了により最終spec完走はCIゲートへ委ねる。リードレプリカ本番適用・AWS/R2依存アーカイブ実走・本番シャーディングは殿の方針によりAWSを起動せず保留"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "—"
+        "`docs/architecture/db_scalability.md`"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -11253,35 +11759,67 @@ window.BETA_INVENTORY_DATA = {
         "PK"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3280,
+        3331
+      ],
+      "github": [
+        {
+          "number": 3280,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-008: CSP報告主キーをUUIDv7へ移行",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3280",
+          "updatedAt": "2026-09-15T15:37:34Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3331,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 共通UUID採番を真正UUIDv7へ統一",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3331",
+          "updatedAt": "2026-09-17T12:08:00Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-009",
       "title": "F18 残高凍結＋AccountPurge法務対応",
-      "status": "blocked",
-      "statusLabel": "凍結",
+      "status": "unknown",
+      "statusLabel": "保留",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "法務レビュー完了後、AccountPurgeの実装・実機検証完了",
+      "nextAction": "F18残高の再開条件を満たし、AccountPurge Phase D残務・法務レビュー・実機検証を完了",
       "acceptance": [
-        "法務レビュー完了後、AccountPurgeの実装・実機検証完了"
+        "F18残高の再開条件を満たし、AccountPurge Phase D残務・法務レビュー・実機検証を完了"
       ],
-      "blocker": "法務レビュー",
+      "blocker": "F18法務整備＋AccountPurge Phase D残務・法務レビュー",
       "issues": [
         {
-          "label": "—",
+          "label": "F18自店発行残高は資金決済法上の前払式支払手段に該当するため、弁護士意見書・規約改訂・6ヶ月有効期限ガード・1000万円アラート・発行体表示／払戻し条件の法務整備が未完了。AccountPurgeもPhase Dの夜次補正バッチ6ドメインと、その完了後のGDPR 30日要件・監査ログ・削除証跡に関する法務レビューが未完了。これらを再開・完了条件として保留",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "F18自店発行残高は資金決済法上の前払式支払手段に該当するため、弁護士意見書・規約改訂・6ヶ月有効期限ガード・1000万円アラート・発行体表示／払戻し条件の法務整備が未完了。AccountPurgeもPhase Dの夜次補正バッチ6ドメインと、その完了後のGDPR 30日要件・監査ログ・削除証跡に関する法務レビューが未完了。これらを再開・完了条件として保留"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -11291,10 +11829,12 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "F18",
         "AccountPurge",
-        "AccountPurge"
+        "F18",
+        "AccountPurge",
+        "Phase"
       ],
       "tags": [
-        "停止中"
+        "未整理"
       ],
       "githubRefs": [],
       "github": []
@@ -11302,27 +11842,27 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-010",
       "title": "収益化・信頼の輪・ベータ特典の方針（F20.3）",
-      "status": "working",
-      "statusLabel": "実装中",
+      "status": "unknown",
+      "statusLabel": "保留",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "ゲート③（規約弁護士確認）④（承認）⑤（UTC統一 #2486）完了",
+      "nextAction": "ゲート③（規約弁護士確認）④（承認）を完了し、確定条文を6言語の規約本体へ反映する。ゲート⑤（UTC統一）は完了済み",
       "acceptance": [
-        "ゲート③（規約弁護士確認）④（承認）⑤（UTC統一 #2486）完了"
+        "ゲート③（規約弁護士確認）④（承認）を完了し、確定条文を6言語の規約本体へ反映する。ゲート⑤（UTC統一）は完了済み"
       ],
-      "blocker": "—",
+      "blocker": "規約弁護士レビュー＋マスター最終承認",
       "issues": [
         {
-          "label": "ゲート①②完了（#2482）",
+          "label": "F20.3本体PR #2454／#2459／#2462／#2466／#2467／#2470、ゲート①② #2482、UTC統一 #2506、後続改善 #2521はmain着地済み。第27条案は #2215／#2498 で起草・是正済みだが、弁護士レビューと条文本体のマスター承認は未完了。消費者契約法・景品表示法、免責、最低2年保証、存続条項、挿入方式の法務判断後に再開するため保留",
           "state": "unknown"
         }
       ],
       "prs": [
-        "ゲート①②完了（#2482）"
+        "F20.3本体PR #2454／#2459／#2462／#2466／#2467／#2470、ゲート①② #2482、UTC統一 #2506、後続改善 #2521はmain着地済み。第27条案は #2215／#2498 で起草・是正済みだが、弁護士レビューと条文本体のマスター承認は未完了。消費者契約法・景品表示法、免責、最低2年保証、存続条項、挿入方式の法務判断後に再開するため保留"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -11334,13 +11874,120 @@ window.BETA_INVENTORY_DATA = {
         "UTC"
       ],
       "tags": [
-        "進行中"
+        "未整理"
       ],
       "githubRefs": [
+        2215,
+        2454,
+        2459,
+        2462,
+        2466,
+        2467,
+        2470,
         2482,
-        2486
+        2498,
+        2506,
+        2521
       ],
       "github": [
+        {
+          "number": 2215,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "ドキュメント(規約): ベータ特典条項（第27条）の条文案・6言語対訳を提案文書として起草（B-1）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2215",
+          "updatedAt": "2026-07-10T01:57:35Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 2454,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加(課金): F20.3ベータ特典 Phase1骨格 — beta_grantsテーブル・Entity/Repo・発行サービス抽出・ErrorCode",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2454",
+          "updatedAt": "2026-07-22T07:51:36Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 2459,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加(課金 F20.3 Phase1): ベータ特典の付与機構（付与/取消/延長/退会・シスアド運用API・本人/団体照会）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2459",
+          "updatedAt": "2026-07-23T03:02:34Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 2462,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト(F20.3 Phase1): ベータ特典 書込パスの実DB統合テスト（付与原子性・取消カスケード・延長append-only）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2462",
+          "updatedAt": "2026-07-23T05:39:10Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 2466,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加(課金 F20.3 Phase2 Wave2a): 個人ベータ特典の活動実績ゲート自動付与バッチ（本番無効・N+1回避）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2466",
+          "updatedAt": "2026-07-23T08:13:01Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 2467,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加(課金 F20.3 Phase2 Wave2b): ベータ特典の本人/団体照会FEセクション＋6言語＋使い方ガイド",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2467",
+          "updatedAt": "2026-07-23T07:32:23Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 2470,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加(課金 F20.3 Phase3): シスアド ベータ特典 審査運用画面＋付与一覧の表示名解決",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2470",
+          "updatedAt": "2026-07-23T11:07:46Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
         {
           "number": 2482,
           "kind": "pull_request",
@@ -11356,13 +12003,46 @@ window.BETA_INVENTORY_DATA = {
           }
         },
         {
-          "number": 2486,
-          "kind": "issue",
-          "state": "open",
-          "title": "基盤: DB格納時刻の基準タイムゾーンをUTCに統一する（環境ごとに割れている・F20.3本番有効化ゲート⑤）",
-          "url": "https://github.com/kenta-0420/mannschaft/issues/2486",
-          "updatedAt": "2026-07-28T10:00:24Z",
-          "ci": null
+          "number": 2498,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(法務): ベータ特典 第27条 条文案の起草段階是正（免責を第18条の上限へ委譲・最低2年保証の優先関係を確定）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2498",
+          "updatedAt": "2026-07-29T00:09:45Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 2506,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(基盤): DB格納時刻の基準タイムゾーンを全プロファイルでUTCに統一（番人テスト新設・F20.3本番有効化ゲート⑤）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2506",
+          "updatedAt": "2026-07-29T04:38:20Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 2521,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "改善(#2487 F20.3後続): TZ/ロケールキャッシュの件数上限・timezone入口検証・走査上限WARN・特殊オフセットと非破壊migrationの番人",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2521",
+          "updatedAt": "2026-07-29T23:50:35Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -12742,27 +13422,27 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-033",
       "title": "実機E2Eを単一セッション設計へ是正（dashboard.spec.ts / favorites.spec.ts）",
-      "status": "unknown",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実機検証待ち（住民3体同時再実施待ち）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "villages.spec.ts で是正済みの単一セッション設計を横展開し、通しで全緑になること",
+      "nextAction": "villages.spec.ts で是正済みの単一セッション設計を横展開し、2ファイル通しで全緑になること",
       "acceptance": [
-        "villages.spec.ts で是正済みの単一セッション設計を横展開し、通しで全緑になること"
+        "villages.spec.ts で是正済みの単一セッション設計を横展開し、2ファイル通しで全緑になること"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "アクセストークン寿命900秒に対し dashboard.spec.ts は通し16分かかり、リフレッシュトークンのローテーションで storageState が陳腐化し後半が総崩れになると判明。実測: 通し16 failed/10 passed、4件に絞って新鮮セッションなら全緑",
+          "label": "PR #2795 は両specを「1ファイル=1 BrowserContext=1新規ログイン」に是正したが、PR本文で実機E2E未実行と明記しているため完了扱いにしない。PR #3289 で固定8080のAPI補助呼び出しとシードの固定DBを隔離実機環境で使えるよう是正し、合同実機E2Eは実BE・隔離MySQL・実ブラウザで37件全緑（2026-09-16）。アリシゼーションは3人格・別BrowserContextで探索したが、枠制限により2体同時＋1体直列で、3体同時の受入条件は未達。旧実測: dashboard通し16 failed/10 passed、4件に絞った新鮮セッションなら全緑",
           "state": "unknown"
         }
       ],
       "prs": [
-        "アクセストークン寿命900秒に対し dashboard.spec.ts は通し16分かかり、リフレッシュトークンのローテーションで storageState が陳腐化し後半が総崩れになると判明。実測: 通し16 failed/10 passed、4件に絞って新鮮セッションなら全緑"
+        "PR #2795 は両specを「1ファイル=1 BrowserContext=1新規ログイン」に是正したが、PR本文で実機E2E未実行と明記しているため完了扱いにしない。PR #3289 で固定8080のAPI補助呼び出しとシードの固定DBを隔離実機環境で使えるよう是正し、合同実機E2Eは実BE・隔離MySQL・実ブラウザで37件全緑（2026-09-16）。アリシゼーションは3人格・別BrowserContextで探索したが、枠制限により2体同時＋1体直列で、3体同時の受入条件は未達。旧実測: dashboard通し16 failed/10 passed、4件に絞った新鮮セッションなら全緑"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -12782,57 +13462,42 @@ window.BETA_INVENTORY_DATA = {
         "ts"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
-      "githubRefs": [],
-      "github": []
-    },
-    {
-      "id": "CMP-034",
-      "title": "FE CI の Lint ゲートが恒常的に赤",
-      "status": "unknown",
-      "statusLabel": "未着手（**2026-08-11 実測発見**）",
-      "stage": "未設定",
-      "priority": "未設定",
-      "audiences": [],
-      "featureKey": null,
-      "updated": "未設定",
-      "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "`frontend-ci.yml` の lint ジョブが手元の最新 main と同じ結果（exit 0 相当）でCI上も通ること。**対処療法（警告の握りつぶし・`\\",
-      "acceptance": [
-        "`frontend-ci.yml` の lint ジョブが手元の最新 main と同じ結果（exit 0 相当）でCI上も通ること。**対処療法（警告の握りつぶし・`\\"
+      "githubRefs": [
+        2795,
+        3289
       ],
-      "blocker": "—",
-      "issues": [
+      "github": [
         {
-          "label": "\\",
-          "state": "unknown"
+          "number": 2795,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(実機E2E): dashboard/favorites を単一セッション設計に是正",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2795",
+          "updatedAt": "2026-08-14T13:53:02Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3289,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-033: 実機E2Eの隔離環境対応と台帳是正",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3289",
+          "updatedAt": "2026-09-16T04:36:54Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
-      ],
-      "prs": [
-        "\\"
-      ],
-      "ci": "正本に記載された証拠を確認してください。",
-      "refs": [
-        "true`）は禁止**"
-      ],
-      "source": "docs/task-list.md",
-      "sourceTokens": [
-        "FE",
-        "CI",
-        "Lint",
-        "frontend-ci",
-        "yml",
-        "lint",
-        "main",
-        "exit",
-        "CI"
-      ],
-      "tags": [
-        "未整理"
-      ],
-      "githubRefs": [],
-      "github": []
+      ]
     },
     {
       "id": "CMP-035",
@@ -13561,8 +14226,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-041",
       "title": "`ADMIN+` の定義が仕様と2方向に食い違う（Issue #2804）",
-      "status": "unknown",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了（2026-09-16）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -13576,12 +14241,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "CMP-039 の過程で発見。仕様は「ADMIN または `MANAGE_SURVEYS` を持つ DEPUTY_ADMIN」だが、Service 層は権限を一切見ず緩すぎる（無権限の DEPUTY_ADMIN も通る）一方、可視性層は `hasRoleOrAbove(ADMIN)` で厳しすぎる（有権限でも通らない）。さらに前提の `MANAGE_SURVEYS` が権限カタログに実在しない（設計書が挙げる migration も実在しない）。片側だけ直すと新たな非対称が生まれる。CMP-037 の一部として扱うのが自然",
+          "label": "PR #2880。`MANAGE_SURVEYS` を権限カタログへ追加し、TEAM/ORGANIZATION 共通の認可判定へ Service 層9経路・可視性層・詳細応答・FE管理導線を統一した。無権限 DEPUTY_ADMIN は管理不可、有権限 DEPUTY_ADMIN と ADMIN は管理可。受け入れ条件は実DB認可テストと番人で固定し、Backend 6 shard・Frontend・Smoke E2E・OpenAPI/型生成・秘密情報検査を含むCIが全緑。ローカル実機E2Eでは4人格（ADMIN／権限なしDEPUTY_ADMIN／権限ありDEPUTY_ADMIN／部外者）を同時保持し、管理導線、直URL、直API拒否、UI公開、`PUBLISHED` 永続化まで確認済み。**AWSは殿様方針により未起動・クラウド実機確認は未実施**（AWS運用開始時に別途確認）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "CMP-039 の過程で発見。仕様は「ADMIN または `MANAGE_SURVEYS` を持つ DEPUTY_ADMIN」だが、Service 層は権限を一切見ず緩すぎる（無権限の DEPUTY_ADMIN も通る）一方、可視性層は `hasRoleOrAbove(ADMIN)` で厳しすぎる（有権限でも通らない）。さらに前提の `MANAGE_SURVEYS` が権限カタログに実在しない（設計書が挙げる migration も実在しない）。片側だけ直すと新たな非対称が生まれる。CMP-037 の一部として扱うのが自然"
+        "PR #2880。`MANAGE_SURVEYS` を権限カタログへ追加し、TEAM/ORGANIZATION 共通の認可判定へ Service 層9経路・可視性層・詳細応答・FE管理導線を統一した。無権限 DEPUTY_ADMIN は管理不可、有権限 DEPUTY_ADMIN と ADMIN は管理可。受け入れ条件は実DB認可テストと番人で固定し、Backend 6 shard・Frontend・Smoke E2E・OpenAPI/型生成・秘密情報検査を含むCIが全緑。ローカル実機E2Eでは4人格（ADMIN／権限なしDEPUTY_ADMIN／権限ありDEPUTY_ADMIN／部外者）を同時保持し、管理導線、直URL、直API拒否、UI公開、`PUBLISHED` 永続化まで確認済み。**AWSは殿様方針により未起動・クラウド実機確認は未実施**（AWS運用開始時に別途確認）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -13597,10 +14262,11 @@ window.BETA_INVENTORY_DATA = {
         "DEPUTY_ADMIN"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
       "githubRefs": [
-        2804
+        2804,
+        2880
       ],
       "github": [
         {
@@ -13611,6 +14277,20 @@ window.BETA_INVENTORY_DATA = {
           "url": "https://github.com/kenta-0420/mannschaft/issues/2804",
           "updatedAt": "2026-08-14T14:18:46Z",
           "ci": null
+        },
+        {
+          "number": 2880,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(認可): アンケートの ADMIN+ 判定を仕様どおり MANAGE_SURVEYS 委任へ揃える（CMP-041 / Issue #2804）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2880",
+          "updatedAt": "2026-09-16T16:34:30Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -15914,46 +16594,64 @@ window.BETA_INVENTORY_DATA = {
     },
     {
       "id": "CMP-107",
-      "title": "繰り返し予定を `THIS_AND_FOLLOWING` で更新すると影響件数が実際と食い違う（F03.18 実機E2Eで発見）",
-      "status": "unknown",
-      "statusLabel": "未着手（**2026-08-19 実機E2Eで発見・DB実測で裏取り**）",
+      "title": "繰り返し予定の更新範囲と活動履歴の影響件数を一致させる",
+      "status": "done",
+      "statusLabel": "**完了**（main 着地 PR #3279 / 2026-09-16）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "アクティビティフィードの `detail.affectedCount` が、実際に書き換わった予定の件数と一致すること",
+      "nextAction": "`THIS_ONLY` は選択した1件、`THIS_AND_FOLLOWING` は選択した1件と未経過の後続、互換APIの `ALL` は全更新件数を `detail.affectedCount` に記録する。対象者の変更も同じ予定集合にのみ反映し、過去に終了した他の日は変えない",
       "acceptance": [
-        "アクティビティフィードの `detail.affectedCount` が、実際に書き換わった予定の件数と一致すること"
+        "`THIS_ONLY` は選択した1件、`THIS_AND_FOLLOWING` は選択した1件と未経過の後続、互換APIの `ALL` は全更新件数を `detail.affectedCount` に記録する。対象者の変更も同じ予定集合にのみ反映し、過去に終了した他の日は変えない"
       ],
       "blocker": "CMP-106",
       "issues": [
         {
-          "label": "**実測**: `THIS_AND_FOLLOWING` で親+子の計5行（`schedules` id 930〜934）のタイトルが実際に書き換わったのに、フィードは `affectedCount: 1` を表示する。実装は設計書の文言どおり（数えるのは `updateScope=ALL` のときのみ）だが、**設計書自身が `THIS_AND_FOLLOWING` を数え漏らしている**。利用者から見れば「影響1件」は嘘である。修正は (a) `THIS_AND_FOLLOWING` でも対象件数を数える (b) 設計を改めて件数を出さない のどちらか。**着手前に設計書 §3.2 の `affectedCount` の定義から見直すこと**",
+          "label": "**原因**: 旧実機E2Eで予定5件更新に対し活動履歴が1件を表示。**修正・証拠**: 実際に更新した予定IDを返し、本文・対象者・活動履歴の集合を統一。共有予定・個人予定ともUIで「この予定のみ」「この日以降」を選択でき、過去の他の日は不変。BE対象70件＋個人予定2クラス、実機9観点、管理者・メンバー・部外者のアリシゼーション、最終CI全件が成功",
           "state": "unknown"
         }
       ],
       "prs": [
-        "**実測**: `THIS_AND_FOLLOWING` で親+子の計5行（`schedules` id 930〜934）のタイトルが実際に書き換わったのに、フィードは `affectedCount: 1` を表示する。実装は設計書の文言どおり（数えるのは `updateScope=ALL` のときのみ）だが、**設計書自身が `THIS_AND_FOLLOWING` を数え漏らしている**。利用者から見れば「影響1件」は嘘である。修正は (a) `THIS_AND_FOLLOWING` でも対象件数を数える (b) 設計を改めて件数を出さない のどちらか。**着手前に設計書 §3.2 の `affectedCount` の定義から見直すこと**"
+        "**原因**: 旧実機E2Eで予定5件更新に対し活動履歴が1件を表示。**修正・証拠**: 実際に更新した予定IDを返し、本文・対象者・活動履歴の集合を統一。共有予定・個人予定ともUIで「この予定のみ」「この日以降」を選択でき、過去の他の日は不変。BE対象70件＋個人予定2クラス、実機9観点、管理者・メンバー・部外者のアリシゼーション、最終CI全件が成功"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "—"
+        "PR #3279"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
+        "THIS_ONLY",
         "THIS_AND_FOLLOWING",
-        "F03",
-        "E2E",
+        "API",
+        "ALL",
         "detail",
         "affectedCount"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3279
+      ],
+      "github": [
+        {
+          "number": 3279,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "fix: CMP107 繰り返し予定の編集範囲と影響件数を是正",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3279",
+          "updatedAt": "2026-09-16T06:40:32Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-108",
@@ -16075,31 +16773,31 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-110",
       "title": "**秘密情報混入の機械的防止（gitleaks 必須CIゲート＋`.gitignore` 強化）**",
-      "status": "done",
-      "statusLabel": "完了（2026-08-18・PR #2749 `206b88200` で main へマージ済み）。ただし**殿/マスターの手が要る残務が1件あり**（後述）",
+      "status": "unknown",
+      "statusLabel": "**保留**（本体完了。AWS Secrets Manager での本番鍵ローテーション待ち）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "PRに秘密が含まれる場合にCIが赤で落ちること（必須ゲート）。週次でフル履歴が走り、恒久赤にならないこと。追跡中のファイルが `.gitignore` 対象にならないこと",
+      "nextAction": "PR に秘密が含まれる場合に必須 CI ゲートで失敗し、週次フル履歴走査が恒久赤にならないこと",
       "acceptance": [
-        "PRに秘密が含まれる場合にCIが赤で落ちること（必須ゲート）。週次でフル履歴が走り、恒久赤にならないこと。追跡中のファイルが `.gitignore` 対象にならないこと"
+        "PR に秘密が含まれる場合に必須 CI ゲートで失敗し、週次フル履歴走査が恒久赤にならないこと"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "契機: リポジトリが CI を回すため現在 PUBLIC 運用（デプロイ前に Private 化予定）であり、`config/`・`data/`・`logs/`・`*.txt`（cookie/レスポンスダンプ）が未追跡のまま散在していて `git add -A` 一発で混入しうる状態だった。入ったもの3点: `.gitignore` 強化（`logs/`・`data/scheduler/`・`config/scheduler/`・`*.diff`/`*.patch`・`*cookie*.txt`・`*_response.txt`・`.claude/handoffs/`。**blanket `*.txt` は禁止** — `backend/src/test/resources/paging_guard/pageimpl_total_count_size_freeze.txt` と `frontend/public/robots.txt` が追跡中のため。`git ls-files \\",
+          "label": "本体は PR #2749（`206b88200`）で main 着地済み。公開履歴に残る開発用署名鍵は履歴を書き換えずローテーションで無力化する方針。AWS Secrets Manager に本番用の新規 `MANNSCHAFT_JWT_SECRET` / `MANNSCHAFT_HMAC_KEY` を投入し、ECS 注入値を切替・旧鍵を無効化する残務は AWS 権限が必要なため保留。リポジトリ現行ツリーに当該値は存在しない。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "契機: リポジトリが CI を回すため現在 PUBLIC 運用（デプロイ前に Private 化予定）であり、`config/`・`data/`・`logs/`・`*.txt`（cookie/レスポンスダンプ）が未追跡のまま散在していて `git add -A` 一発で混入しうる状態だった。入ったもの3点: `.gitignore` 強化（`logs/`・`data/scheduler/`・`config/scheduler/`・`*.diff`/`*.patch`・`*cookie*.txt`・`*_response.txt`・`.claude/handoffs/`。**blanket `*.txt` は禁止** — `backend/src/test/resources/paging_guard/pageimpl_total_count_size_freeze.txt` と `frontend/public/robots.txt` が追跡中のため。`git ls-files \\"
+        "本体は PR #2749（`206b88200`）で main 着地済み。公開履歴に残る開発用署名鍵は履歴を書き換えずローテーションで無力化する方針。AWS Secrets Manager に本番用の新規 `MANNSCHAFT_JWT_SECRET` / `MANNSCHAFT_HMAC_KEY` を投入し、ECS 注入値を切替・旧鍵を無効化する残務は AWS 権限が必要なため保留。リポジトリ現行ツリーに当該値は存在しない。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "git check-ignore --stdin --no-index -v` が空であることで検証済み）／`.gitleaks.toml`／`.github/workflows/secret-scan.yml`。ワークフロー構成: PR差分スキャン（`pull_request` と main への `push`、**必須ゲート＝赤で落とす**）＋週次フル履歴スキャン（火曜 `0 1 * * 2`。既存 `security-scan.yml` の月曜とずらしてある）。`gitleaks/gitleaks-action` は**有料の org license が必要なため使わず**、pinned バージョン（8.28.0）のバイナリを curl で取得している。`concurrency.cancel-in-progress: false`（検査ジョブを打ち切らせないため）。`.gitleaks.toml` の設計則: **値ベースの allowlist のみ。ファイル単位の `paths` 丸ごと除外は行わない**（そのファイルに将来本物の秘密が混じっても永久に検知できなくなるため）。gitleaks 8.28.0 の設定スキーマに **fingerprint 単位の allowlist は存在しない**（fingerprint は `--baseline-path` のレポート重複排除専用）ため、履歴の既知混入は `commits` + `paths` + `condition = \"AND\"` で個別に許可している。検分で差し戻した欠陥3件（同じ轍を踏まぬよう明記）: ①allowlist が33パスを丸ごと除外し検出器を骨抜きにしていた（`infra/terraform/bootstrap/README.md`・`docs/openapi.json`・`application-ci.yml` を含む） ②週次フル履歴ジョブが初日から恒久赤になる状態だった（足軽は作業ツリーしか検証しておらず、殿のフル履歴走査で34件検出。真因は歴史上のファイルパスが現在と異なること） ③`cancel-in-progress: true` になっていた。陽性対照: 偽の秘密を仕込んで gitleaks が exit 1 になること、実際に過去漏洩したのと同じ形（`MANNSCHAFT_HMAC_KEY=\"...\"`、entropy 4.65）を検出することを実測した。**限界（正直に記す）**: 検出は行単位で完全ではない。`settings.local.json` 形状のカナリアで2行仕込んだうち1行しか発火しなかった。ファイル単位で1件でも拾えばCIは赤になるためゲートとしては機能するが、**「gitleaks が通った」＝「秘密ゼロ」ではない**。GitHub 側の穴: `secret_scanning` と `secret_scanning_push_protection` は有効だが、`secret_scanning_non_provider_patterns` と `secret_scanning_validity_checks` は PATCH が静かに無視され有効化できない（有料 GitHub Advanced Security とみられる）。gitleaks がこの穴を埋めている。**残務（マスターの手が要る・これが未了）**: 公開履歴に開発用の署名鍵の実値が残っている（2026年前半の2コミット。混入経路はローカル設定ファイル。**具体的な所在はここには書かない** — 本リポジトリは公開運用のため、正本に所在を明記すること自体が地図になる。所在は `.gitleaks.toml` の allowlist が機構上保持している）。**マスター裁可により履歴書き換え（filter-repo）は行わず、ローテーションで無力化する方針**。影響範囲は限定的（当該値は現在のツリーに不在＝`git grep` 0件、本番鍵は Terraform → Secrets Manager → ECS 経由で注入されるためリポジトリとは無関係）。**よって、デプロイ時に Secrets Manager へ投入する本番鍵（`MANNSCHAFT_JWT_SECRET` / `MANNSCHAFT_HMAC_KEY`）は、この漏洩した dev 値とは別の新規生成値にすること。** これが済むまでこの残務は消えない"
+        "—"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -16107,11 +16805,10 @@ window.BETA_INVENTORY_DATA = {
         "CI",
         "gitignore",
         "PR",
-        "CI",
-        "gitignore"
+        "CI"
       ],
       "tags": [
-        "完了"
+        "未整理"
       ],
       "githubRefs": [
         2749
@@ -16136,27 +16833,27 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-111",
       "title": "F03.19 統合カレンダービュー改善",
-      "status": "unknown",
-      "statusLabel": "進行中（Wave1 BE基盤が実装完了・PR準備中。**3本のPRに分けて逐次着地**する方針 2026-08-19 マスター裁可）",
+      "status": "done",
+      "statusLabel": "**完了**（Wave1〜Wave3-d 実装・実機E2E完了、PR #3052）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "所属スコープが常時レイヤーとして実体化され、レイヤー別に色分けでき、週ビュー／アジェンダビューとグリッドのドラッグによる予定作成が使えること。**既知の404バグ（CMP-054）もこの戦役で根治する**",
+      "nextAction": "所属スコープの常時レイヤー化、レイヤー別色、週／アジェンダ／モバイルビュー、グリッド作成を利用できること。CMP-054 も本戦役で根治すること",
       "acceptance": [
-        "所属スコープが常時レイヤーとして実体化され、レイヤー別に色分けでき、週ビュー／アジェンダビューとグリッドのドラッグによる予定作成が使えること。**既知の404バグ（CMP-054）もこの戦役で根治する**"
+        "所属スコープの常時レイヤー化、レイヤー別色、週／アジェンダ／モバイルビュー、グリッド作成を利用できること。CMP-054 も本戦役で根治すること"
       ],
       "blocker": "CMP-102（F03.18 着地済）",
       "issues": [
         {
-          "label": "設計書 `docs/features/F03.19_unified_calendar_view.md`（未決ゼロ・W1-a〜W3-d の13段・推奨モデル指定済）。**マスター裁可4件**: (1)CMP-054 を本戦役で直す（壊れたクリック経路の上に新画面を2つ乗せない） (2)3本のPRに分割 (3)着手前に設計書を現実へ同期（**PR #2867 で着地済**） (4)設計書内の既存裁定は再議しない。**Wave1 実装済**: Flyway V187 `user_calendar_layer_settings`／レイヤーAPI3本（`GET/PATCH/DELETE /me/calendar-layers`）＋自動色12色＋認可＋行数上限1000／色解決の合流（`CalendarContentDto` 5→8引数・後方互換維持）／ライフサイクル（削除・退会で消し脱退では残す=R9）／OpenAPI・生成型の同期。**殿が実検した要点**: パレット12色が設計書の確定順と完全一致／認可番人と凍結ストアは無改変／正準コンストラクタ拡張で呼び出し破壊0件／購読イベントちょうど3種で脱退を含まないことをリフレクションで固定。**殿の裁定2件**: 個人予定の色は一覧のみ解決色（詳細を潰すと**ユーザーが保存し直した瞬間に自分の色が壊れる**）／散文と裁定が食い違う場合は裁定を優先。**環境の重大事**: この機のウイルス対策が Java のクラスロードを走査し `generateOpenApiDocs` が Windows 側で6回連続失敗（CPUを12%しか使えず残りはI/O待ち。jstackで実証）。**WSL2 ネイティブ側では6分12秒で完走**。マスター裁可により除外設定を依頼済み",
+          "label": "設計書の W1-a〜W3-d 全13段を main へ着地。レイヤーAPI・自動色・認可・1000件上限、週／アジェンダ／モバイルUI、作成導線、凡例・フィルタ・色変更を実装。実機E2Eは PR #3052 で受け入れ条件25件を完走し、実行中に検出した2欠陥は PR #3051 で根治、範囲外の残件は #3046／#3057 として分離済み。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "設計書 `docs/features/F03.19_unified_calendar_view.md`（未決ゼロ・W1-a〜W3-d の13段・推奨モデル指定済）。**マスター裁可4件**: (1)CMP-054 を本戦役で直す（壊れたクリック経路の上に新画面を2つ乗せない） (2)3本のPRに分割 (3)着手前に設計書を現実へ同期（**PR #2867 で着地済**） (4)設計書内の既存裁定は再議しない。**Wave1 実装済**: Flyway V187 `user_calendar_layer_settings`／レイヤーAPI3本（`GET/PATCH/DELETE /me/calendar-layers`）＋自動色12色＋認可＋行数上限1000／色解決の合流（`CalendarContentDto` 5→8引数・後方互換維持）／ライフサイクル（削除・退会で消し脱退では残す=R9）／OpenAPI・生成型の同期。**殿が実検した要点**: パレット12色が設計書の確定順と完全一致／認可番人と凍結ストアは無改変／正準コンストラクタ拡張で呼び出し破壊0件／購読イベントちょうど3種で脱退を含まないことをリフレクションで固定。**殿の裁定2件**: 個人予定の色は一覧のみ解決色（詳細を潰すと**ユーザーが保存し直した瞬間に自分の色が壊れる**）／散文と裁定が食い違う場合は裁定を優先。**環境の重大事**: この機のウイルス対策が Java のクラスロードを走査し `generateOpenApiDocs` が Windows 側で6回連続失敗（CPUを12%しか使えず残りはI/O待ち。jstackで実証）。**WSL2 ネイティブ側では6分12秒で完走**。マスター裁可により除外設定を依頼済み"
+        "設計書の W1-a〜W3-d 全13段を main へ着地。レイヤーAPI・自動色・認可・1000件上限、週／アジェンダ／モバイルUI、作成導線、凡例・フィルタ・色変更を実装。実機E2Eは PR #3052 で受け入れ条件25件を完走し、実行中に検出した2欠陥は PR #3051 で根治、範囲外の残件は #3046／#3057 として分離済み。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -16168,19 +16865,64 @@ window.BETA_INVENTORY_DATA = {
         "CMP-054"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
       "githubRefs": [
-        2867
+        3046,
+        3051,
+        3052,
+        3057
       ],
       "github": [
         {
-          "number": 2867,
+          "number": 3046,
           "kind": "pull_request",
           "state": "merged",
-          "title": "文書修正: F03.19 設計書の陳腐化した前提を是正し、着地済み設計書3本のステータスを同期",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/2867",
-          "updatedAt": "2026-08-19T18:43:10Z",
+          "title": "ドキュメント: F03.19 統合カレンダーの積み残し2件を台帳へ起票",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3046",
+          "updatedAt": "2026-09-01T13:09:31Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3051,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 実機E2Eが摘出した2欠陥を根治し、型と鍵の一元化で再発を封じる",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3051",
+          "updatedAt": "2026-09-02T06:29:20Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3052,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト追加: F03.19 統合カレンダーの実機E2E（受け入れ条件25件）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3052",
+          "updatedAt": "2026-09-02T09:35:08Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3057,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "ドキュメント: 実機E2Eが掘り当てた欠陥2件を台帳へ起票",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3057",
+          "updatedAt": "2026-09-02T01:49:53Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -16193,8 +16935,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-112",
       "title": "スコープのパス変数を生 String で受けている Controller 9本（正準機構 `ScopeSlugResolution` の適用漏れ）",
-      "status": "unknown",
-      "statusLabel": "未着手（**2026-08-19 F03.19 着手時に殿が実測で発見**）",
+      "status": "done",
+      "statusLabel": "完了（2026-09-17、PR #3298・#3307）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -16208,12 +16950,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-054",
       "issues": [
         {
-          "label": "**実測**: `ScopeSlugResolution`（課題#12・案A）は数値の高速パス＋slug解決＋失敗を404に統一する共通ロジックで、`TeamScopeIdConverter`／`OrgScopeIdConverter` が `WebMvcConfig` に大域登録済み。しかし採用しているのは `MatchRecordController`／`TournamentEntryTemplateController`／`MatchStatsController` の**3本のみ**で、**9本が生 `String` のまま**（OrganizationAnalytics／TeamAnalytics／OrgScheduleKeep／TeamScheduleKeep／OrganizationTeamSearch／TeamShiftSettings／OrganizationModule／TeamModule／OrgProject）。⚠️ **今日は壊れていない**——呼び手が `/teams/[slug]/...` 経由で slug を渡すため。**呼び手次第で壊れる構造**であり、CMP-054 が顕在化したのは `/my/calendar` の `CalendarScopeDto.scopeId` が数値だったからにすぎない。統合カレンダーのように数値IDを持つ呼び手が繋がった瞬間に404になる。**着手前に各Controllerの呼び手を実測すること**",
+          "label": "PR #3298 で対象9 Controllerを `TeamScopeId`／`OrgScopeId` へ統一。PR #3307 で数値ID時にも slug と同じ ACTIVE 実在境界を適用し、公開組織チーム検索の匿名導線・空クエリを実機E2Eで回帰確認",
           "state": "unknown"
         }
       ],
       "prs": [
-        "**実測**: `ScopeSlugResolution`（課題#12・案A）は数値の高速パス＋slug解決＋失敗を404に統一する共通ロジックで、`TeamScopeIdConverter`／`OrgScopeIdConverter` が `WebMvcConfig` に大域登録済み。しかし採用しているのは `MatchRecordController`／`TournamentEntryTemplateController`／`MatchStatsController` の**3本のみ**で、**9本が生 `String` のまま**（OrganizationAnalytics／TeamAnalytics／OrgScheduleKeep／TeamScheduleKeep／OrganizationTeamSearch／TeamShiftSettings／OrganizationModule／TeamModule／OrgProject）。⚠️ **今日は壊れていない**——呼び手が `/teams/[slug]/...` 経由で slug を渡すため。**呼び手次第で壊れる構造**であり、CMP-054 が顕在化したのは `/my/calendar` の `CalendarScopeDto.scopeId` が数値だったからにすぎない。統合カレンダーのように数値IDを持つ呼び手が繋がった瞬間に404になる。**着手前に各Controllerの呼び手を実測すること**"
+        "PR #3298 で対象9 Controllerを `TeamScopeId`／`OrgScopeId` へ統一。PR #3307 で数値ID時にも slug と同じ ACTIVE 実在境界を適用し、公開組織チーム検索の匿名導線・空クエリを実機E2Eで回帰確認"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -16230,72 +16972,67 @@ window.BETA_INVENTORY_DATA = {
         "OrgScopeId"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3298,
+        3307
+      ],
+      "github": [
+        {
+          "number": 3298,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-112: Controllerのスコープ識別子を正準化",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3298",
+          "updatedAt": "2026-09-16T12:55:27Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3307,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "fix: CMP-112 スコープslug正準化の境界を補強",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3307",
+          "updatedAt": "2026-09-17T05:45:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-113",
       "title": "退会時の個人データ消し忘れを検出する仕組みが無く、正本の表が陳腐化している",
-      "status": "unknown",
-      "statusLabel": "未着手（**2026-08-19 F03.19 W1-e が掘り当て・殿が確認**）",
+      "status": "done",
+      "statusLabel": "**完了（PR #3329）**",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "退会（匿名化）時に消すべきテーブル／リスナーの正本が実態と一致し、消し忘れを機械的に検出できること",
+      "nextAction": "`UserAnonymizedEvent`／`AccountPurgedEvent` の全購読クラス台帳が実装と一致し、購読者の追加・削除・購読イベント変更によるドリフトを機械的に検出できること",
       "acceptance": [
-        "退会（匿名化）時に消すべきテーブル／リスナーの正本が実態と一致し、消し忘れを機械的に検出できること"
+        "`UserAnonymizedEvent`／`AccountPurgedEvent` の全購読クラス台帳が実装と一致し、購読者の追加・削除・購読イベント変更によるドリフトを機械的に検出できること"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "**実測**: 退会フローの対象テーブルの正本は `docs/architecture/withdrawal_flow_immediate_anonymization_fix.md` §3 の網羅表だが、これは過去の「リスナー休眠」監査の記録であり、**その後に追加された10前後のリスナー（ActionMemo／Timeline／Inbox 等）が未収載で陳腐化している**。さらに**この表の記載を強制する機械ガードが存在しない**——`PersonalDataCoverageValidator` はエクスポート用カテゴリの検査であり、しかも `log.error` するだけで落ちない。すなわち「退会時に消し忘れた表」を検出する仕組みが今も無い。**CLAUDE.md は GDPR Art.17 準拠（二段匿名化モデル）を掲げており、個人データが残り続ける経路が誰にも見えていない状態は放置できない**。対処方針: (a)表を実態へバックフィル (b)`UserAnonymizedEvent`／`AccountPurgedEvent` の購読者を機械列挙して表と突き合わせる番人を新設。**番人は置いたら必ず一度わざと壊して red を確認すること**（最初から緑の番人は「守っている」でなく「測っていない」）",
+          "label": "§3を現行の `UserAnonymizedEvent` 18購読クラス・`AccountPurgedEvent` 14購読クラス（重複4、32組）へバックフィル。`WithdrawalPersonalDataListenerCoverageGuardTest` が引数型・`value`／`classes`属性・合成アノテーション階層から実装集合を列挙し、FQCN台帳と双方向完全一致・重複・空解析を検査する。初回green後に `WeatherLocationCleanupListener` 行を一時除去し、対象FQCNを不足として 1 test / 1 failed になるredを実測、復元後green。既存 `BackgroundEntryPolicyDeclarationGuardTest` との併走もgreen。保証範囲は「既に存在する2イベント購読者と台帳のドリフト」であり、リスナー自体を作り忘れた新規PII表までは検出しない旨を正本へ明記。削除DML・イベント配線・30日取消・認証情報は変更しない",
           "state": "unknown"
         }
       ],
       "prs": [
-        "**実測**: 退会フローの対象テーブルの正本は `docs/architecture/withdrawal_flow_immediate_anonymization_fix.md` §3 の網羅表だが、これは過去の「リスナー休眠」監査の記録であり、**その後に追加された10前後のリスナー（ActionMemo／Timeline／Inbox 等）が未収載で陳腐化している**。さらに**この表の記載を強制する機械ガードが存在しない**——`PersonalDataCoverageValidator` はエクスポート用カテゴリの検査であり、しかも `log.error` するだけで落ちない。すなわち「退会時に消し忘れた表」を検出する仕組みが今も無い。**CLAUDE.md は GDPR Art.17 準拠（二段匿名化モデル）を掲げており、個人データが残り続ける経路が誰にも見えていない状態は放置できない**。対処方針: (a)表を実態へバックフィル (b)`UserAnonymizedEvent`／`AccountPurgedEvent` の購読者を機械列挙して表と突き合わせる番人を新設。**番人は置いたら必ず一度わざと壊して red を確認すること**（最初から緑の番人は「守っている」でなく「測っていない」）"
-      ],
-      "ci": "正本に記載された証拠を確認してください。",
-      "refs": [
-        "—"
-      ],
-      "source": "docs/task-list.md",
-      "sourceTokens": [],
-      "tags": [
-        "未整理"
-      ],
-      "githubRefs": [],
-      "github": []
-    },
-    {
-      "id": "CMP-114",
-      "title": "個人予定・リマインダーの上限超過が規約に反して 409 を返す（F03.19 Wave1 検分で発覚）",
-      "status": "unknown",
-      "statusLabel": "未着手（**2026-08-20 Codex検分の派生・殿が実測で裏取り**）",
-      "stage": "未設定",
-      "priority": "未設定",
-      "audiences": [],
-      "featureKey": null,
-      "updated": "未設定",
-      "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "「件数の上限超過」を表すエラーコードがドメイン内で統一され、規約 `backend/.claudecode.md` §3.2.1 の本則どおり 400 を返すこと",
-      "acceptance": [
-        "「件数の上限超過」を表すエラーコードがドメイン内で統一され、規約 `backend/.claudecode.md` §3.2.1 の本則どおり 400 を返すこと"
-      ],
-      "blocker": "CMP-111",
-      "issues": [
-        {
-          "label": "**実測**: `GlobalExceptionHandler` の `ERROR_CODE_STATUS_MAP` に `SCHEDULE_019`(PERSONAL_REMINDER_LIMIT_EXCEEDED) と `SCHEDULE_020`(PERSONAL_SCHEDULE_LIMIT_EXCEEDED・上限1000件) が **CONFLICT(409)** で登録されている。規約 §3.2.1 は「件数/サイズの上限超過は **400（既定のまま）**」「**『上限超過は409』ではない**」と全数調査（154件中 400が113件・409が21件）付きで明記しており、409 は少数派の負債側である。 F03.19 Wave1 で新設した `SCHEDULE_104`（レイヤー設定の上限1000件）は検分指摘を受けて 400 に是正したが、**文言も上限値も最も近い兄弟である `SCHEDULE_020` が 409 のまま**であり、同一ドメイン内で 104=400 / 020=409 と割れている。 ⚠️ **既存エンドポイントのステータス変更はクライアントから見える契約の破壊である**。着手時は **FE が 409 で分岐していないかを実測**してから直すこと（`frontend/` の該当ハンドリングを grep）。 schedule ドメイン内の既定400側の兄弟: `SCHEDULE_021`(一括削除50件)・`SCHEDULE_063/064/066`(メディア枚数・サイズ)",
-          "state": "unknown"
-        }
-      ],
-      "prs": [
-        "**実測**: `GlobalExceptionHandler` の `ERROR_CODE_STATUS_MAP` に `SCHEDULE_019`(PERSONAL_REMINDER_LIMIT_EXCEEDED) と `SCHEDULE_020`(PERSONAL_SCHEDULE_LIMIT_EXCEEDED・上限1000件) が **CONFLICT(409)** で登録されている。規約 §3.2.1 は「件数/サイズの上限超過は **400（既定のまま）**」「**『上限超過は409』ではない**」と全数調査（154件中 400が113件・409が21件）付きで明記しており、409 は少数派の負債側である。 F03.19 Wave1 で新設した `SCHEDULE_104`（レイヤー設定の上限1000件）は検分指摘を受けて 400 に是正したが、**文言も上限値も最も近い兄弟である `SCHEDULE_020` が 409 のまま**であり、同一ドメイン内で 104=400 / 020=409 と割れている。 ⚠️ **既存エンドポイントのステータス変更はクライアントから見える契約の破壊である**。着手時は **FE が 409 で分岐していないかを実測**してから直すこと（`frontend/` の該当ハンドリングを grep）。 schedule ドメイン内の既定400側の兄弟: `SCHEDULE_021`(一括削除50件)・`SCHEDULE_063/064/066`(メディア枚数・サイズ)"
+        "§3を現行の `UserAnonymizedEvent` 18購読クラス・`AccountPurgedEvent` 14購読クラス（重複4、32組）へバックフィル。`WithdrawalPersonalDataListenerCoverageGuardTest` が引数型・`value`／`classes`属性・合成アノテーション階層から実装集合を列挙し、FQCN台帳と双方向完全一致・重複・空解析を検査する。初回green後に `WeatherLocationCleanupListener` 行を一時除去し、対象FQCNを不足として 1 test / 1 failed になるredを実測、復元後green。既存 `BackgroundEntryPolicyDeclarationGuardTest` との併走もgreen。保証範囲は「既に存在する2イベント購読者と台帳のドリフト」であり、リスナー自体を作り忘れた新規PII表までは検出しない旨を正本へ明記。削除DML・イベント配線・30日取消・認証情報は変更しない"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -16303,17 +17040,90 @@ window.BETA_INVENTORY_DATA = {
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
-        "F03",
-        "Wave1",
+        "UserAnonymizedEvent",
+        "AccountPurgedEvent"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        3329
+      ],
+      "github": [
+        {
+          "number": 3329,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 退会データ購読者台帳のドリフトを検出 (CMP-113)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3329",
+          "updatedAt": "2026-09-17T13:39:53Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-114",
+      "title": "個人予定・リマインダーの上限超過が規約に反して 409 を返す",
+      "status": "done",
+      "statusLabel": "**完了（PR #3345）**",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "SCHEDULE_019／020 が規約 `backend/.claudecode.md` §3.2.1 の本則どおり 400 を返すこと",
+      "acceptance": [
+        "SCHEDULE_019／020 が規約 `backend/.claudecode.md` §3.2.1 の本則どおり 400 を返すこと"
+      ],
+      "blocker": "CMP-111",
+      "issues": [
+        {
+          "label": "`ERROR_CODE_STATUS_MAP` から SCHEDULE_019／020 の409上書きを除去し、error codeを維持し、陳腐化していた文言を合計最大5件へ同期。FE に対象409依存なしを確認。GlobalExceptionHandler の400契約、状態競合6コードの409維持、リマインダー合計5／6件、個人予定1000／1001件の境界を回帰テストで固定。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "`ERROR_CODE_STATUS_MAP` から SCHEDULE_019／020 の409上書きを除去し、error codeを維持し、陳腐化していた文言を合計最大5件へ同期。FE に対象409依存なしを確認。GlobalExceptionHandler の400契約、状態競合6コードの409維持、リマインダー合計5／6件、個人予定1000／1001件の境界を回帰テストで固定。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "SCHEDULE_019",
         "backend",
         "claudecode",
         "md"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3345
+      ],
+      "github": [
+        {
+          "number": 3345,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 個人予定の上限超過を400へ統一",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3345",
+          "updatedAt": "2026-09-18T03:00:46Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-260820-1422",
@@ -16433,28 +17243,28 @@ window.BETA_INVENTORY_DATA = {
     },
     {
       "id": "CMP-260820-1011",
-      "title": "所属終了時にドメイン固有の管理ロールが後始末されない（`chat_channel_members.role`／`village_memberships.role`／`committee_members.role`／`corkboards.owner_id`）（優先: 高）",
-      "status": "unknown",
-      "statusLabel": "未着手",
+      "title": "所属終了時に対象スコープのチャット・委員会ロールが後始末されない（優先: 高）",
+      "status": "done",
+      "statusLabel": "完了（2026-09-18）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "`removeMember`／`leaveScope`／自動退会（F14.3）のいずれの経路でも、上記4表のロール・所有権がクリーンアップされること。除名・退会後に元組合員がチャンネル OWNER・委員会 CHAIR のまま残らないこと",
+      "nextAction": "①`removeMember`／`leaveScope`／将来の自動退会（F14.3）が発火する共通の所属終了イベントで、対象TEAM/ORGANIZATIONに属する`chat_channel_members`行だけを削除すること（DM・GROUP_DM・村等の独立チャンネルは不変）②ORGANIZATION離脱では配下委員会の対象`committee_members`を終了すること③対象が唯一のCHAIRなら、現役残存者からVICE_CHAIR→SECRETARY→MEMBER、同順位は参加が古い順で後任を自動選出し、残存者ゼロなら委員会をARCHIVEDにすること④独立した`village_memberships`とPERSONAL `corkboards.owner_id`は変更しないこと⑤後始末失敗時に所属終了だけを確定させないこと",
       "acceptance": [
-        "`removeMember`／`leaveScope`／自動退会（F14.3）のいずれの経路でも、上記4表のロール・所有権がクリーンアップされること。除名・退会後に元組合員がチャンネル OWNER・委員会 CHAIR のまま残らないこと"
+        "①`removeMember`／`leaveScope`／将来の自動退会（F14.3）が発火する共通の所属終了イベントで、対象TEAM/ORGANIZATIONに属する`chat_channel_members`行だけを削除すること（DM・GROUP_DM・村等の独立チャンネルは不変）②ORGANIZATION離脱では配下委員会の対象`committee_members`を終了すること③対象が唯一のCHAIRなら、現役残存者からVICE_CHAIR→SECRETARY→MEMBER、同順位は参加が古い順で後任を自動選出し、残存者ゼロなら委員会をARCHIVEDにすること④独立した`village_memberships`とPERSONAL `corkboards.owner_id`は変更しないこと⑤後始末失敗時に所属終了だけを確定させないこと"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "出典: F14.3設計書 `docs/features/F14.3_resident_life_events.md` §19.4・§20.2 U-10（§8.3.1・§3.6.1で棚卸し）。**F14.3固有の欠陥ではなく、通常の除名でも起きる既存の横断欠陥である**（`chatChannelMemberRepository.delete*` 系の呼出は `backend/src/main` にゼロ件・実測）。マスター裁可（2026-08-20）によりF14.3の対象外とし、代わりにF14.3 §3.6で保証範囲を「組合スコープの管理権限」に限定した。**とりわけ逝去による退会では遺族の心情・運営実務の観点で優先度が高い**",
+          "label": "出典: F14.3設計書 `docs/features/F14.3_resident_life_events.md` §19.4・§20.2 U-10（§8.3.1・§3.6.1で棚卸し）。**仕様決定（2026-09-18）**: 実装調査により、`village_memberships`はTEAM/ORGANIZATIONと対応キーを持たない独立した村所属、`corkboards.owner_id`はPERSONALボードの所有者であり、組合退会時の一律クリーンアップは無関係な権限・個人データを失わせると判明したため対象外とする。対象スコープへ安全に結び付くチャット所属とORGANIZATION配下の委員会所属だけを後始末する。唯一のCHAIRは上記ACの順で後任を自動選出し、後任不在なら委員会をARCHIVEDにする方針をマスター承認。**F14.3固有の欠陥ではなく、通常の除名でも起きる既存の横断欠陥である**。**とりわけ逝去による退会では遺族の心情・運営実務の観点で優先度が高い**。**完了確認（2026-09-18）**: 対象ユニット／統合／ArchUnitテストがgreen。隔離DB・専用ポートの実機E2Eで通常管理者による除名、Pixel 5表示、チャット再追加拒否、失効招待受諾拒否を確認し、DB実測で委員長承継・空委員会ARCHIVED・招待CANCELLED・DM／村所属／個人Corkboard不変を確認した。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "出典: F14.3設計書 `docs/features/F14.3_resident_life_events.md` §19.4・§20.2 U-10（§8.3.1・§3.6.1で棚卸し）。**F14.3固有の欠陥ではなく、通常の除名でも起きる既存の横断欠陥である**（`chatChannelMemberRepository.delete*` 系の呼出は `backend/src/main` にゼロ件・実測）。マスター裁可（2026-08-20）によりF14.3の対象外とし、代わりにF14.3 §3.6で保証範囲を「組合スコープの管理権限」に限定した。**とりわけ逝去による退会では遺族の心情・運営実務の観点で優先度が高い**"
+        "出典: F14.3設計書 `docs/features/F14.3_resident_life_events.md` §19.4・§20.2 U-10（§8.3.1・§3.6.1で棚卸し）。**仕様決定（2026-09-18）**: 実装調査により、`village_memberships`はTEAM/ORGANIZATIONと対応キーを持たない独立した村所属、`corkboards.owner_id`はPERSONALボードの所有者であり、組合退会時の一律クリーンアップは無関係な権限・個人データを失わせると判明したため対象外とする。対象スコープへ安全に結び付くチャット所属とORGANIZATION配下の委員会所属だけを後始末する。唯一のCHAIRは上記ACの順で後任を自動選出し、後任不在なら委員会をARCHIVEDにする方針をマスター承認。**F14.3固有の欠陥ではなく、通常の除名でも起きる既存の横断欠陥である**。**とりわけ逝去による退会では遺族の心情・運営実務の観点で優先度が高い**。**完了確認（2026-09-18）**: 対象ユニット／統合／ArchUnitテストがgreen。隔離DB・専用ポートの実機E2Eで通常管理者による除名、Pixel 5表示、チャット再追加拒否、失効招待受諾拒否を確認し、DB実測で委員長承継・空委員会ARCHIVED・招待CANCELLED・DM／村所属／個人Corkboard不変を確認した。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -16462,22 +17272,28 @@ window.BETA_INVENTORY_DATA = {
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
-        "chat_channel_members",
-        "role",
-        "village_memberships",
-        "role",
-        "committee_members",
-        "role",
-        "corkboards",
-        "owner_id",
         "removeMember",
         "leaveScope",
         "F14",
-        "OWNER",
-        "CHAIR"
+        "TEAM",
+        "ORGANIZATION",
+        "chat_channel_members",
+        "DM",
+        "GROUP_DM",
+        "ORGANIZATION",
+        "committee_members",
+        "CHAIR",
+        "VICE_CHAIR",
+        "SECRETARY",
+        "MEMBER",
+        "ARCHIVED",
+        "village_memberships",
+        "PERSONAL",
+        "corkboards",
+        "owner_id"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
       "githubRefs": [],
       "github": []
@@ -18788,6 +19604,686 @@ window.BETA_INVENTORY_DATA = {
       ]
     },
     {
+      "id": "CMP-260916-1042",
+      "title": "F02.9 お気に入りで TEAM と ORGANIZATION の同一IDが混線し、チームの「開く」が数値URLで404になる",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "同一数値IDのチーム・組織を同時にお気に入り登録しても、それぞれ正しい名前・種別・URLが出ること。チームの「開く」はslug URLに遷移し、実機で詳細が表示されること",
+      "acceptance": [
+        "同一数値IDのチーム・組織を同時にお気に入り登録しても、それぞれ正しい名前・種別・URLが出ること。チームの「開く」はslug URLに遷移し、実機で詳細が表示されること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "2026-09-16 CMP-033 のアリシゼーションで発見し、殿が隔離実機（FE:3001、BE:8082）で再現。FC東京U-15の「開く」で `/teams/2` に遷移し、`GET /api/v1/teams/2` と関連APIが404、画面は「情報を取得できませんでした」。原因1: `TeamFavoriteResolver` が `\"/teams/\" + team.getId()` を返し、現行slug URLと不一致。原因2: `FavoriteResolverService.resolveAll` が種別を含まない `entityId` だけをキーに `putAll` し、`FavoriteService` も同キーで取得するため、TEAM 1 と ORGANIZATION 1 のメタデータが衝突し、チームカードに組織名・組織URLが出る。CMP-033のセッション設計ACとは別戦役として扱う"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "F02",
+        "TEAM",
+        "ORGANIZATION",
+        "ID",
+        "URL",
+        "ID",
+        "URL",
+        "slug",
+        "URL"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260917-1206",
+      "title": "アンケート結果APIのobject応答をFEが配列として扱い、空の「件」カードを表示する",
+      "status": "done",
+      "statusLabel": "完了（PR #3315）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "実wireの `data.questionResults` が詳細パネルとウィジェットで設問単位に描画され、0件は空状態になること。`FREE_TEXT` / `SCALE` の型差も正規化され、実wire形状の回帰テストがあること",
+      "acceptance": [
+        "実wireの `data.questionResults` が詳細パネルとウィジェットで設問単位に描画され、0件は空状態になること。`FREE_TEXT` / `SCALE` の型差も正規化され、実wire形状の回帰テストがあること"
+      ],
+      "blocker": "Issue #3310",
+      "issues": [
+        {
+          "label": "PR #3315（UT 8件・typecheck・ESLint・実機E2E・CI合格）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3315（UT 8件・typecheck・ESLint・実機E2E・CI合格）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-041（PR #2880）の実機E2E／アリシゼーションで発見。BEのobject応答をadapterで正規化し、詳細パネルとウィジェットを `questionResults` 消費へ統一。実BE/DBで回答1件を保存し、集計応答と設問カードの設問名・件数表示を確認。権限境界役は一般メンバーの結果API 403を独立実測。他2住民の操作継続を阻害した既知ハーネス問題はCMP-260917-1209へ統合"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "API",
+        "object",
+        "FE",
+        "wire",
+        "data",
+        "questionResults",
+        "FREE_TEXT",
+        "SCALE",
+        "wire"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        2880,
+        3310,
+        3315
+      ],
+      "github": [
+        {
+          "number": 2880,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(認可): アンケートの ADMIN+ 判定を仕様どおり MANAGE_SURVEYS 委任へ揃える（CMP-041 / Issue #2804）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2880",
+          "updatedAt": "2026-09-16T16:34:30Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3310,
+          "kind": "issue",
+          "state": "closed",
+          "title": "修正(アンケート): 結果APIのobject応答を配列として扱い、空の「件」カードが表示される",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/3310",
+          "updatedAt": "2026-09-17T05:53:51Z",
+          "ci": null
+        },
+        {
+          "number": 3315,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: アンケート結果APIのobject応答を正しく描画する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3315",
+          "updatedAt": "2026-09-17T05:55:58Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260917-1207",
+      "title": "権限グループ削除が子テーブルFK制約に違反してHTTP 500になる",
+      "status": "done",
+      "statusLabel": "完了（PR #3324）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "権限・割当の子行が無い／片方のみ／両方ある各グループをAPIから500なく削除でき、同一トランザクションで親子整合性と他グループ不変を実DB統合テストが担保すること",
+      "acceptance": [
+        "権限・割当の子行が無い／片方のみ／両方ある各グループをAPIから500なく削除でき、同一トランザクションで親子整合性と他グループ不変を実DB統合テストが担保すること"
+      ],
+      "blocker": "Issue #3311 / PR #3324",
+      "issues": [
+        {
+          "label": "`PermissionGroupServiceTest`、`PermissionGroupDeleteFlywayIT`（Flyway実スキーマ、1件成功・失敗0）、実機API DELETE 204",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "`PermissionGroupServiceTest`、`PermissionGroupDeleteFlywayIT`（Flyway実スキーマ、1件成功・失敗0）、実機API DELETE 204"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "子関連をユーザー割当→権限紐付け→親の順に同一トランザクションで削除。実機では通常ADMINが検証用 `groupId=1` をAPI削除し、親・権限子・割当子が各0件になったことを確認"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FK",
+        "HTTP",
+        "API",
+        "DB"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        3311,
+        3324
+      ],
+      "github": [
+        {
+          "number": 3311,
+          "kind": "issue",
+          "state": "closed",
+          "title": "重大(権限): 権限グループ削除が子テーブルFK制約に違反してHTTP 500になる",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/3311",
+          "updatedAt": "2026-09-17T09:32:47Z",
+          "ci": null
+        },
+        {
+          "number": 3324,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 権限グループ削除時のFK制約違反を解消",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3324",
+          "updatedAt": "2026-09-17T09:34:02Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260917-1209",
+      "title": "アンケート実機E2Eが保存済み認証・回答状態・testid属性継承に追従せず開始前に失敗する",
+      "status": "done",
+      "statusLabel": "完了（PR #3332）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "保存済み認証とspecのログイン手順が一貫し、未回答／既回答状態が分離固定され、安定したtestidで手作業補正なしに実機ケースが合格すること",
+      "acceptance": [
+        "保存済み認証とspecのログイン手順が一貫し、未回答／既回答状態が分離固定され、安定したtestidで手作業補正なしに実機ケースが合格すること"
+      ],
+      "blocker": "Issue #3312 / PR #3332",
+      "issues": [
+        {
+          "label": "PR #3332（ESLint・typecheck・実機E2E 3件合格）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3332（ESLint・typecheck・実機E2E 3件合格）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-041の実機E2Eで発見。`chromium-real` のstorage stateをそのまま使い、未回答用／既回答用の使い捨てアンケートを別作成して、既回答用だけ同一保存済みユーザーのAPI回答を事前投入する形へ修正。表示モードのtestidをwrapperへ分離して、子rootの `survey-response-form` / `survey-already-responded` を属性fallthroughによる上書きから保護した。実機ではログインsetup、未回答→回答済み遷移、事前回答済み表示の3件が手作業補正なしで合格"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "E2E",
+        "testid",
+        "spec",
+        "testid"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        3312,
+        3332
+      ],
+      "github": [
+        {
+          "number": 3312,
+          "kind": "issue",
+          "state": "closed",
+          "title": "テスト(アンケート): 実機E2Eが保存済み認証・回答状態・testid属性継承に追従せず開始前に失敗する",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/3312",
+          "updatedAt": "2026-09-17T12:39:28Z",
+          "ci": null
+        },
+        {
+          "number": 3332,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "fix: アンケート実機E2Eの状態を固定する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3332",
+          "updatedAt": "2026-09-17T12:45:44Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260917-1210",
+      "title": "アンケート管理画面に対象チームと権限委任の文脈が表示されず複数スコープを識別できない",
+      "status": "done",
+      "statusLabel": "完了（PR #3339）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "画面内で現在のスコープ種別・名称と管理権限の文脈を識別でき、ADMIN／権限付きDEPUTY_ADMINで成立し、無権限利用者のfail-closedと直接URL遷移時の整合を維持すること",
+      "acceptance": [
+        "画面内で現在のスコープ種別・名称と管理権限の文脈を識別でき、ADMIN／権限付きDEPUTY_ADMINで成立し、無権限利用者のfail-closedと直接URL遷移時の整合を維持すること"
+      ],
+      "blocker": "Issue #3313 / PR #3339",
+      "issues": [
+        {
+          "label": "PR #3339（UT 13件・対象ESLint・実機E2E 1件合格、typecheckはCIで確認）",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3339（UT 13件・対象ESLint・実機E2E 1件合格、typecheckはCIで確認）"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-041のアリシゼーションで発見。詳細画面へAPI取得済みのスコープ種別・名称と管理権限の由来を表示し、`viewerCanManage` を唯一の表示ゲートとして無権限利用者をfail-closedに維持。route fullPathをpage keyにして直接URL／別スコープ遷移時の旧名称・旧権限残留を防止した。実機では使い捨て2チーム間をクライアント遷移し、新名称への更新と旧名称消失を確認"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ADMIN",
+        "DEPUTY_ADMIN",
+        "fail-closed",
+        "URL"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        3313,
+        3339
+      ],
+      "github": [
+        {
+          "number": 3313,
+          "kind": "issue",
+          "state": "closed",
+          "title": "改善(アンケート): 管理画面に対象チームと権限委任の文脈が表示されず複数スコープを識別できない",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/3313",
+          "updatedAt": "2026-09-17T19:47:37Z",
+          "ci": null
+        },
+        {
+          "number": 3339,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "fix: アンケート管理対象の文脈を表示する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3339",
+          "updatedAt": "2026-09-17T19:49:48Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260917-1350",
+      "title": "組織の管理者向けGET 6件が MEMBER で取得できる認可漏れの根治",
+      "status": "unknown",
+      "statusLabel": "対応中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "予算・領収書・ダイレクトメール・業者マスタ・サイネージ・分析の6件について、MEMBER が GET しても 403 で遮断されること（ADMIN では 200 が返ること／`/api/v1/my/receipts` などメンバー本人用の経路は 200 のまま壊れていないこと）",
+      "acceptance": [
+        "予算・領収書・ダイレクトメール・業者マスタ・サイネージ・分析の6件について、MEMBER が GET しても 403 で遮断されること（ADMIN では 200 が返ること／`/api/v1/my/receipts` などメンバー本人用の経路は 200 のまま壊れていないこと）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "サイドバーが ADMIN/DEPUTY_ADMIN 限定表示にしている機能のうち、BE の GET が `checkMembership` 止まりで MEMBER が管理者向けデータを取得できる。実機実測で確認済み（org_id=4 の MEMBER で 200。対照として非会員は 403、監査ログは 403 で正しく遮断）。殿の裁可により **予算・領収書・ダイレクトメール・業者マスタ・サイネージ・分析の6件を `checkAdminOrAbove` へ引き上げる**。翻訳は MEMBER 閲覧可が正と裁可されたためサイドバー側の requiredRole を下げて揃える（Phase 2 で対応）。予算のみ実データ（支出9,600円・費目名）の漏洩を実測、他6件は当該組織のデータが空のため空配列だったが**認可判定としては門が開いている**ことを確認済み"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "GET",
+        "MEMBER",
+        "MEMBER",
+        "GET",
+        "ADMIN",
+        "api",
+        "v1",
+        "my",
+        "receipts"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260917-1351",
+      "title": "組織ページの管理者レンズがサイドバーに伝わらない／管理者ページ16枚にFEガードが無い",
+      "status": "unknown",
+      "statusLabel": "対応中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "①管理者が「メンバー」プレビューに切り替えたときサイドバーが正しく追従すること ②MEMBER が管理者ページを直接URLで開いたときFEガードで弾かれること ③Webhookページの `scope-id` にslug文字列ではなく正しいIDが渡ること",
+      "acceptance": [
+        "①管理者が「メンバー」プレビューに切り替えたときサイドバーが正しく追従すること ②MEMBER が管理者ページを直接URLで開いたときFEガードで弾かれること ③Webhookページの `scope-id` にslug文字列ではなく正しいIDが渡ること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "①「メンバー/管理者」レンズ（`pages/organizations/[slug].vue:83-87`）が `ScopeDashboard` にしか渡っておらず、`ScopePageShell.vue:143` → `OrganizationSidebar` → `BaseSidebar.vue:15` へ伝搬しないため、管理者が「メンバー」プレビューに切り替えてもサイドバーが変わらない。②MEMBER が管理者ページを直接URLで開いても弾かれず、BEが403を返す中で空・エラー画面が出る（監査ログで実測）。二重防御があるのは招待・権限グループ・管理コンソールの3件のみ。③Webhookページが `scope-id` に slug 文字列を渡しており API が 400 を返す（実測済み）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FE",
+        "MEMBER",
+        "URL",
+        "FE",
+        "Webhook",
+        "scope-id",
+        "slug",
+        "ID"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260917-1352",
+      "title": "リフレッシュトークンの誤リプレイ判定で全デバイスが強制ログアウトされる",
+      "status": "unknown",
+      "statusLabel": "対応中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "同一端末（User-Agentハッシュ一致）からの再試行はリプレイ攻撃と見なさず後継トークンを維持すること／User-Agent不一致・nullは従来どおり全デバイス失効（fail closed）を維持すること",
+      "acceptance": [
+        "同一端末（User-Agentハッシュ一致）からの再試行はリプレイ攻撃と見なさず後継トークンを維持すること／User-Agent不一致・nullは従来どおり全デバイス失効（fail closed）を維持すること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "FE の `useApi.ts` が15秒でリフレッシュを abort するが、サーバー側ではローテーションが完了しているため `Set-Cookie` が届かず、ブラウザが古いトークンを握ったまま30秒後に再試行する。失効から60秒（grace）を超えると `AuthTokenRotationService` がリプレイ攻撃と誤判定し `logoutAllDevices` でトークン族を全滅させる。実機実測で、65秒後に旧トークンを再提示すると401になり**正当な後継トークンまで巻き添えで401**になることを確認。稼働中BEのログに「並行 refresh を grace window 内で正規化」が3回記録されており、この競合は日常的に発生している。殿の裁可により「同一端末（User-Agentハッシュ一致）からの再試行は盗難と見なさない／不一致・null は従来どおり全デバイス失効（fail closed）」の方針で根治する。なお `AuthLoginController.java:486` の `deviceFingerprint` は FE が送っておらず既存の照合コードは一度も実行されていない死んだコードであることも判明している"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "User-Agent",
+        "User-Agent",
+        "null",
+        "fail",
+        "closed"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260918-0841",
+      "title": "メンバー紹介（F06.2）のBEが未実装で導線が404になる",
+      "status": "unknown",
+      "statusLabel": "対応中（PR #3357）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`member-profiles` の一覧・作成・更新・削除に対応するBEを実装し、認可・異常系を備えたテストがあること。FEから実際にメンバー紹介を登録・表示・編集・削除でき、実機E2Eで確認できること",
+      "acceptance": [
+        "`member-profiles` の一覧・作成・更新・削除に対応するBEを実装し、認可・異常系を備えたテストがあること。FEから実際にメンバー紹介を登録・表示・編集・削除でき、実機E2Eで確認できること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "PR #3357",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3357"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "**訂正（2026-09-18）**: 「BEが未実装」は事実誤認だった。足軽4が実コードを突き合わせた結果、BE（`TeamPageController`/`MemberProfileController`/`MemberProfileFieldController`/`TeamPageSectionController`、`/api/v1/team/pages`・`/api/v1/team/members`・`/api/v1/team/member-fields`）は実装済みで、FEの `useMemberProfileApi.ts` が実在しない住所（`/api/v1/organizations/{slug}/pages` 等）を組み立てていたことが404の真因（FE/BE契約不一致）。PR #3357 で `useMemberProfileApi.ts` を実在エンドポイントへ一本化し、設計書のメインページ＋年度別ページの二段構えに合わせて `organizations/[slug]/member-profiles.vue`・`teams/[slug]/member-profiles.vue` を作り直した（ページ一覧→メンバー一覧、前年度コピー、一括登録、下書き/公開切替）。チーム側サイドバーに導線が丸ごと欠けていたことも判明し追加した。実機E2E・アリシゼーションは本PRでは未実施（環境セットアップが持ち時間内で完了せず）。以下は元の記録（参考）: アリシゼーションで発見し殿が実機で確定。組織の「メンバー紹介」はFEのみ実装済み（`frontend/app/composables/useMemberProfileApi.ts` に一覧/作成/更新/削除、ページ `frontend/app/pages/organizations/[slug]/member-profiles.vue` あり、導線も `OrganizationSidebar.vue:40` と `ScopeDashboard.vue:188` から到達可能）だが、`backend/src/main/java` に `member-profiles` 実装が0件で `GET /api/v1/organizations/{slug}/member-profiles` は 404 COMMON_005 ——という認識は誤りで、実際は上記のとおりFE側の住所誤りだった。**導線が実機で見えた理由の調査結果**: `member_intro` はDEFAULTモジュールで、既存欠陥 CMP-260917-0529（サイドバー27項目がSYSTEM_ADMIN以外に永久非表示になる件、対応中）の影響リストに含まれる。`BaseSidebar.vue:45` の `if (roleName.value === 'SYSTEM_ADMIN' ...) return true` がモジュール有効判定を丸ごとバイパスするため、SYSTEM_ADMINアカウントで見た殿には表示され、通常メンバーには表示されない（DEFAULTモジュールの行が `organization_enabled_modules` に0件のため）。新規の別欠陥ではなくCMP-260917-0529のBE是正で連動して直る見込み"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "F06",
+        "BE",
+        "member-profiles",
+        "BE",
+        "FE",
+        "E2E"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3357
+      ],
+      "github": [
+        {
+          "number": 3357,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー紹介を年度別ページの二段構えに作り直す（CMP-260918-0841）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3357",
+          "updatedAt": "2026-09-18T06:44:29Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260918-0508",
+      "title": "メンバー紹介 第2段 — 本人による自己編集許可設定と、退会時に本人へ「過去の紹介を残すか」を選ばせる仕組み",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "①ADMINが `team_pages.allow_self_edit` を画面から切り替えられ、`true` の場合のみ本人（`user_id`が自分の`member_profiles`）が `bio`・`photoS3Key`・`customFieldValues` を自分で編集でき、`display_name`・`position`・`sort_order`・`is_visible` は編集できないこと（BE権限は設計書 F06.2 §3 `member_profiles` 備考のとおり） ②退会処理の途中で、対象ユーザーの `member_profiles` レコードが1件以上存在する場合、本人に「過去の紹介を残すか」を選ばせる導線があり、「残す」を選ぶと `user_id` がNULL化されても `display_name`/`photoS3Key` で掲載が継続され、「残さない」を選ぶと該当レコードが削除（または非表示化）されること ③この選択を退会フローが強制せず、未選択のまま退会が完了しないこと",
+      "acceptance": [
+        "①ADMINが `team_pages.allow_self_edit` を画面から切り替えられ、`true` の場合のみ本人（`user_id`が自分の`member_profiles`）が `bio`・`photoS3Key`・`customFieldValues` を自分で編集でき、`display_name`・`position`・`sort_order`・`is_visible` は編集できないこと（BE権限は設計書 F06.2 §3 `member_profiles` 備考のとおり） ②退会処理の途中で、対象ユーザーの `member_profiles` レコードが1件以上存在する場合、本人に「過去の紹介を残すか」を選ばせる導線があり、「残す」を選ぶと `user_id` がNULL化されても `display_name`/`photoS3Key` で掲載が継続され、「残さない」を選ぶと該当レコードが削除（または非表示化）されること ③この選択を退会フローが強制せず、未選択のまま退会が完了しないこと"
+      ],
+      "blocker": "CMP-260918-0841（PR #3357でページの土台を作り直し済み）",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "マスターが「今回含める」「退会時に本人に選ばせる」と裁可した事項だが、CMP-260918-0841（PR #3357）では画面の土台作り（ページの二段構え・BEへの接続修正）に専念したため次段へ送った。自己編集の権限分岐自体はBEに実装済み（設計書 F06.2 §3 `member_profiles` 備考）だが、FEに `allow_self_edit` を切り替えるUIも本人編集用の画面も無い。退会時の選択導線は未調査・未設計（既存の退会フロー `docs/architecture/withdrawal_flow_immediate_anonymization_fix.md` の弱匿名化/強匿名化の二段モデルとの整合を取る必要がある）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ADMIN",
+        "team_pages",
+        "allow_self_edit",
+        "true",
+        "user_id",
+        "member_profiles",
+        "bio",
+        "photoS3Key",
+        "customFieldValues",
+        "display_name",
+        "position",
+        "sort_order",
+        "is_visible",
+        "BE",
+        "F06",
+        "member_profiles",
+        "member_profiles",
+        "user_id",
+        "NULL",
+        "display_name",
+        "photoS3Key"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3357
+      ],
+      "github": [
+        {
+          "number": 3357,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー紹介を年度別ページの二段構えに作り直す（CMP-260918-0841）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3357",
+          "updatedAt": "2026-09-18T06:44:29Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-034",
+      "title": "FE CI の Lint ゲートが恒常的に赤",
+      "status": "done",
+      "statusLabel": "完了（2026-09-16、既存修正と最新main CIを確認）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`frontend-ci.yml` の lint ジョブが手元の最新 main と同じ結果（exit 0 相当）でCI上も通ること。**対処療法（警告の握りつぶし・`\\",
+      "acceptance": [
+        "`frontend-ci.yml` の lint ジョブが手元の最新 main と同じ結果（exit 0 相当）でCI上も通ること。**対処療法（警告の握りつぶし・`\\"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "\\",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "\\"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "true`）は禁止**"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FE",
+        "CI",
+        "Lint",
+        "frontend-ci",
+        "yml",
+        "lint",
+        "main",
+        "exit",
+        "CI"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        2793
+      ],
+      "github": [
+        {
+          "number": 2793,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(CI): frontend-ci に main への push トリガを追加",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2793",
+          "updatedAt": "2026-08-14T05:33:21Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
       "id": "CMP-260821-1446",
       "title": "F02.11 帰省・滞在予定（本人の帰省/滞在予定の登録・チーム可視化・逝去/転出アーカイブ連動パージ）",
       "status": "done",
@@ -18905,16 +20401,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 §3.4 で `dashboard_widget_settings` / `dashboard_widget_folders` の 2 表のみ対処済み。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない",
+          "label": "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 はC案への変更で `dashboard_widget_folders` を不採用とし、`dashboard_widget_settings` の退会時削除も本戦役では未対処のため、引き続き本棚卸しの対象とする。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない",
           "state": "unknown"
         }
       ],
       "prs": [
-        "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 §3.4 で `dashboard_widget_settings` / `dashboard_widget_folders` の 2 表のみ対処済み。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない"
+        "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 はC案への変更で `dashboard_widget_folders` を不採用とし、`dashboard_widget_settings` の退会時削除も本戦役では未対処のため、引き続き本棚卸しの対象とする。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "本行（F02.2.2 PR #2919 §3.4 / U-08 から派生）"
+        "本行（F02.2.2 PR #2919 §3.4 / U-08 から派生、C案への変更で訂正）"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -21791,9 +23287,9 @@ window.BETA_INVENTORY_DATA = {
     },
     {
       "id": "CMP-260909-1141",
-      "title": "実装済みなのに画面から到達できないページ28枚",
+      "title": "実装済みなのに画面から到達できないページ30ルート",
       "status": "unknown",
-      "statusLabel": "進行中（Phase 1 完了・2026-09-12）",
+      "statusLabel": "進行中（Phase 1〜5 完了・2026-09-18）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -21816,7 +23312,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "2026-09-08〜09 のシフト機能アリシゼーションで `/my/shift-availability`（曜日別の既定シフト希望・255行・API呼出あり）がFE全体でリンク0件＝到達不能と判明したことを受け、FE全体を機械走査した結果。`frontend/app/pages/**/*.vue` 513ファイルからNuxtのファイルベースルーティング規則でルートを機械生成し、各ルートの静的プレフィクスで `NuxtLink to` / `navigateTo` / `router.push` / メニュー定義配列 / テンプレートリテラル組立を全走査。**機能実装済み（APIを呼んでいる）の孤立ページが28枚**。内訳: **運営管理21枚**（`/admin/vendors` 業者マスタ411行CRUD・`/admin/villages/creation-requests` 村作成申請472行・`/admin/campaigns` 296行・`/admin/promotions` 289行・`/admin/seasonal-wallpapers` 320行・`/admin/packages` 272行・`/admin/point-card-synonyms` 269行・`/admin/blog-management` 223行・`/admin/appeals` 218行・`/admin/module-pricing` 225行・equipment/org-billing/bulletin-categories/google-calendar/line-settings/member-permissions/member-profiles/reservation-settings/schedule-settings/sns-settings/tax-settings）、**自分向け5枚**（`/my/shift-availability`・`/my/shifts`・`/me/payments/receipts` 領収書一覧・`/me/guardianship/bulk-payment` 後見まとめ払い376行・`/me/tournament-fees` 大会参加費Connect決済）、**その他2枚**（`/profile/followers` `/profile/following`・`/settings/profile-visibility`・`/parental-consent/manage`）。別枠で `/my/files` 1枚が骨組み扱い。**方針の整理**: 運営管理21枚は「管理メニュー（設定画面の一覧）が存在せず `/admin/…` 直打ちしかない」既知課題（CMP-260827-2020 系）と同根であり、個別にリンクを足すより管理メニューを1つ作って束ねるのが筋。一方 `/me/payments/receipts`・`/me/guardianship/bulk-payment`・`/me/tournament-fees` の3枚は**金銭に関わり利用者本人が到達できないと実害が出る**ため優先度が高い。**誤検出の除外根拠**: `constants/featureGates.ts` は未公開機能のルート隔離ゲート表でありナビゲーション定義ではないため、ここにしか出現しないルート7件は孤立と判定した（実際 `/my/shift-availability` はこの型で到達不能だった）。`/reset-password`・`/help/projects`・`/provisioning/accept` 等はメール/直リンク前提と自ファイルのコメントで明示されており正常として除外 **【Phase 分け（マスター裁可済み 2026-09-12）】** 番人は Phase 5（最後）に置く（Phase 1〜4 の判定が出てから作らないと、許容リストが28件ぶん膨らんで番人が最初から沈黙するため）。**Phase 1（完了 2026-09-12・PR #3232）**: 金銭に関わり本人が到達できないと実害が出る3枚（`/me/payments/receipts`・`/me/guardianship/bulk-payment`・`/me/tournament-fees`）にマイページハブから導線を追加。3枚とも BE・テーブルの実在を事前実測し、実機で到達まで確認済み（`ALL_THREE_LINKS_VISIBLE` → 3枚ともクリック到達・`SPINNERS=0`・本文非空）。この作業でマイページハブ自身の既存欠陥2件も是正した: (a) 機能フラグを一切見ておらず、フラグを閉じると「カードは見えるのにクリックすると弾かれる」状態になる（既存 export の`matchGateKey()` を使い、対応表のページ側複製を回避。未取得時は route 層と同じ fail-closed）、(b) カードのラベル・説明が日本語直書きだった（`myPage` 名前空間へ6言語で i18n 化）。**Phase 2**: `/my/shift-availability`・`/my/shifts` の2枚（本件の発端）。**Phase 3**: 運営管理21枚 — 管理メニューを1つ作って束ねる（個別リンクは筋が悪く、CMP-260827-2020 系と同根）。**ただし着手の第一手は「21枚の生死確認」とする**: `/admin/module-pricing` は FE が揃っているのにBE のエンドポイントもテーブルも1行も存在しないことが判明済み（CMP-260911-0109）。中身の無いページに導線を付けると利用者には壊れて見えるだけになる。**Phase 4**: `/profile/followers`・`/profile/following`・`/settings/profile-visibility`・`/parental-consent/manage` の4枚を1枚ずつ3択判定。**Phase 5**: 孤立ページ検出の番人。**リンクの有無だけを見る実装では不十分**なことが実証済み — PR #3161 で組織サイドバーに足した領収書2項目は、リンク定義は存在するのに payment モジュールが組織レベルで有効化不可だったため恒久的に表示されなかった（PR #3227 で根治）。同じゲートで組織の支払いページ自体も死んでいた。番人は「リンクはあるが条件で永久に消える」型も拾える設計にすること"
+        "2026-09-08〜09 のシフト機能アリシゼーションで `/my/shift-availability`（曜日別の既定シフト希望・255行・API呼出あり）がFE全体でリンク0件＝到達不能と判明したことを受け、FE全体を機械走査した結果。`frontend/app/pages/**/*.vue` 513ファイルからNuxtのファイルベースルーティング規則でルートを機械生成し、各ルートの静的プレフィクスで `NuxtLink to` / `navigateTo` / `router.push` / メニュー定義配列 / テンプレートリテラル組立を全走査。**機能実装済み（APIを呼んでいる）の孤立ページが28枚**。内訳: **運営管理21枚**（`/admin/vendors` 業者マスタ411行CRUD・`/admin/villages/creation-requests` 村作成申請472行・`/admin/campaigns` 296行・`/admin/promotions` 289行・`/admin/seasonal-wallpapers` 320行・`/admin/packages` 272行・`/admin/point-card-synonyms` 269行・`/admin/blog-management` 223行・`/admin/appeals` 218行・`/admin/module-pricing` 225行・equipment/org-billing/bulletin-categories/google-calendar/line-settings/member-permissions/member-profiles/reservation-settings/schedule-settings/sns-settings/tax-settings）、**自分向け5枚**（`/my/shift-availability`・`/my/shifts`・`/me/payments/receipts` 領収書一覧・`/me/guardianship/bulk-payment` 後見まとめ払い376行・`/me/tournament-fees` 大会参加費Connect決済）、**その他2枚**（`/profile/followers` `/profile/following`・`/settings/profile-visibility`・`/parental-consent/manage`）。別枠で `/my/files` 1枚が骨組み扱い。**方針の整理**: 運営管理21枚は「管理メニュー（設定画面の一覧）が存在せず `/admin/…` 直打ちしかない」既知課題（CMP-260827-2020 系）と同根であり、個別にリンクを足すより管理メニューを1つ作って束ねるのが筋。一方 `/me/payments/receipts`・`/me/guardianship/bulk-payment`・`/me/tournament-fees` の3枚は**金銭に関わり利用者本人が到達できないと実害が出る**ため優先度が高い。**誤検出の除外根拠**: `constants/featureGates.ts` は未公開機能のルート隔離ゲート表でありナビゲーション定義ではないため、ここにしか出現しないルート7件は孤立と判定した（実際 `/my/shift-availability` はこの型で到達不能だった）。`/reset-password`・`/help/projects`・`/provisioning/accept` 等はメール/直リンク前提と自ファイルのコメントで明示されており正常として除外 **【Phase 分け（マスター裁可済み 2026-09-12）】** 番人は Phase 5（最後）に置く（Phase 1〜4 の判定が出てから作らないと、許容リストが28件ぶん膨らんで番人が最初から沈黙するため）。**Phase 1（完了 2026-09-12・PR #3232）**: 金銭に関わり本人が到達できないと実害が出る3枚（`/me/payments/receipts`・`/me/guardianship/bulk-payment`・`/me/tournament-fees`）にマイページハブから導線を追加。3枚とも BE・テーブルの実在を事前実測し、実機で到達まで確認済み（`ALL_THREE_LINKS_VISIBLE` → 3枚ともクリック到達・`SPINNERS=0`・本文非空）。この作業でマイページハブ自身の既存欠陥2件も是正した: (a) 機能フラグを一切見ておらず、フラグを閉じると「カードは見えるのにクリックすると弾かれる」状態になる（既存 export の`matchGateKey()` を使い、対応表のページ側複製を回避。未取得時は route 層と同じ fail-closed）、(b) カードのラベル・説明が日本語直書きだった（`myPage` 名前空間へ6言語で i18n 化）。**Phase 2**: `/my/shift-availability`・`/my/shifts` の2枚（本件の発端）。**Phase 3**: 運営管理21枚 — 管理メニューを1つ作って束ねる（個別リンクは筋が悪く、CMP-260827-2020 系と同根）。**ただし着手の第一手は「21枚の生死確認」とする**: `/admin/module-pricing` は FE が揃っているのにBE のエンドポイントもテーブルも1行も存在しないことが判明済み（CMP-260911-0109）。中身の無いページに導線を付けると利用者には壊れて見えるだけになる。**Phase 4**: `/profile/followers`・`/profile/following`・`/settings/profile-visibility`・`/parental-consent/manage` の4枚を1枚ずつ3択判定。**Phase 5**: 孤立ページ検出の番人。**リンクの有無だけを見る実装では不十分**なことが実証済み — PR #3161 で組織サイドバーに足した領収書2項目は、リンク定義は存在するのに payment モジュールが組織レベルで有効化不可だったため恒久的に表示されなかった（PR #3227 で根治）。同じゲートで組織の支払いページ自体も死んでいた。番人は「リンクはあるが条件で永久に消える」型も拾える設計にすること **【2026-09-17 是正・マスター裁可の反映】** ①**件数の訂正**: 題名の「28枚」は起票時からの算数不整合で、正しくは **30ルート**（運営管理21＋自分向け5＋その他4）。②**BE 不在7画面は削除せず BE を実装する**（裁可）。CMP-260912-0909 を親・傘タスクとして整理し、子タスクは campaigns+promotions / packages / module-pricing（既存 CMP-260911-0109 を再利用）/ org-billing+tax-settings / member-permissions（既存 CMP-260912-0910 を再利用）の単位で分割する。**BE 完成前に未完成 FE を正規ナビへ公開しない**。③**Google Calendar は個人設定配下の新 URL へ移し、旧 `/admin/google-calendar` は互換リダイレクトを残す**（裁可）。CMP-260912-0911 の処置をこれで確定。 **【Phase 2 完了 2026-09-17・PR #3300】** `/my/shifts`・`/my/shift-availability` をマイページハブへ。`/my/shift`（確定した割当）・`/my/shifts`（提出した希望と審査状況）・`/my/shift-availability`（曜日別の既定希望）の3枚が並ぶため、利用者が読み分けられるよう既存 `/my/shift` の説明も改めた。 **【重要な訂正】** Phase 2 の PR 本文は `/my/shift-availability` を「リンク0本・URL 直打ち以外に到達手段が無い」と記したが**誤り**。着手時点で既に `frontend/app/pages/teams/[slug]/shifts.vue:182` に `navigateTo('/my/shift-availability')` が存在していた（2026-09-09 の PR #3183・CMP-260908-2118 が追加）。偵察が見落とし、殿が裏取りせず受け入れた。マイページへ明示入口を足したこと自体は裁可済みで妥当だが、**「到達不能だった」という前提は事実誤認**である。 **【この誤認が示すこと】** 静的走査の「リンク0件」は、(a) 他セッションが並行で導線を足した、(b) 走査が拾えない書き方（`navigateTo` の動的組立等）で既に到達可能、(c) スコープ配下に同機能ページがある（CMP-260917-0041 の重複残骸4枚）、のいずれでも覆る。**残る各ルートは着手直前に最新 main で再確認すること**。 **【Phase 5 の分類マニフェスト】** 30ルートを `reachable` / `redirect` / `feature-gated` / `duplicate-remnant` / `BE-pending` 等の**意味で区別**した正本を作り、番人はその分類に対して検査する。単なるリンク数の検出では上記 (a)(b)(c) を区別できず、出力が信用されなくなる **【Phase 3 完了 2026-09-17・PR #3305】** 運営管理ページ9枚に導線を接続。権限が3系統に混在していたため導線を2つに分けた（1画面に混ぜると SYSTEM_ADMIN でない ADMIN に 403 だらけの項目が並ぶ）: テナント ADMIN 向け5枚（vendors・line-settings・sns-settings・schedule-settings・bulletin-categories）はスコープサイドバーへ `SidebarItem.absolutePath`（PR #3161 で新設した既存機構）で追加、SYSTEM_ADMIN 向け4枚（villages/creation-requests・seasonal-wallpapers・point-card-synonyms・appeals）は**新規メニューを作らず**既存の `SystemAdminQuickLinks.vue`（既に `/admin/xxx` が16件並ぶ器）へ追記。`/admin/vendors` だけはスコープを `useScopeStore` でなく `route.query` から読む実装のため、`absolutePath` にクエリを付与した（チームは `scope=teams`、組織は `scope=organizations`）。**実機確認済み**（クイックリンクから `/admin/villages/creation-requests` へクリック到達、サイドバーの5枚も出現。`moduleSlug` 付きの2枚はモジュール有効化時にのみ出ることも確認）。 **【Phase 4 完了 2026-09-17・PR #3330】** 残り4枚。`SocialProfileCard.vue` のフォロワー数・フォロー中数を`<span>` から `NuxtLink` にし、設定ハブ `settings/index.vue` に `/settings/profile-visibility` と`/parental-consent/manage` を追加、`parental-consent/pending.vue` が承認済みでも `navigateTo('/')` でホームへ逃がして `manage` に到達できなかったのを修正した。あわせて **`/profile` というルートが存在しないのに`back-to=\"/profile\"` を指していた壊れた戻るボタン**も直した。**副産物**: 設定ハブは22項目すべてが日本語直書きだったため、Phase 1 の `my/index.vue` と同じ処置でファイル全体を i18n 化した（24項目・6言語・既存キーの再利用・ロケール切替追従のための `computed` 化）。 **【Phase 4 の実機確認で踏めなかったもの（正直な記録）】** 設定ハブの2枚はクリック到達を実測したが、**フォロワー／フォロー中のリンク化は実機で踏めていない**。検証環境のアカウントにソーシャルプロフィールが1件も無く（「まだプロフィールがありません（0/3）」と表示）`SocialProfileCard` 自体が描画されないため。`parental-consent/pending.vue` の遷移も、実データで承認済み保護者を作る必要があり実機では踏んでいない。いずれもユニットテストでの担保にとどまる。 **【戦役中に発見した、より重い欠陥】** CMP-260917-0529（サイドバー27項目の永久非表示）。当初の静的走査が数えた30ルートより**枚数でも深刻さでも上回る**（掲示板・チャット・スケジュール・TODO・ファイル共有等の基本機能が団体サイドバーから消えていた）。PR #3322 で根治し実機で復活を実証済み **【Phase 5 完了 2026-09-18・PR #3347】** 孤立ページ検出の番人 `backend/src/test/java/com/mannschaft/app/common/architecture/OrphanPageGuardTest.java` と分類台帳 `docs/inventory/page-reachability.yaml`（29エントリ: reachable 18・duplicate-remnant 4・be-pending 7）を新設。 **番人が扱う型**: ①リンクが無い ③スコープ配下に同機能ページがある残骸 ④BE が無く到達しても動かない。**扱わない型**: ②リンクはあるが条件で永久に消える（別番人として CMP-260918-0404 に起票）、⑤走査後に他セッションが導線を足した（番人では原理的に防げないため、「着手直前に最新 main で再確認する」という運用ルールを台帳のコメントに明記）。 **設計判断とその理由**: **自動分類をさせず「人間が台帳に宣言し、番人は宣言が事実と食い違っていないかだけを検査する」**形にした。ページの同一性判定や API パスの自動抽出は脆く、**この戦役では認可や BE の有無の判定を実際に3回誤っている**（家老が2件＝`/admin/member-profiles` を team 固定と誤報・`bulletin-categories` に認可欠陥ありと誤報、殿が1件＝`/admin/promotions` の BE 不在。いずれも訂正済み）。番人に自動判定させると誤った判定を CI が主張し続ける。 **継承した既存の金型**: `FeatureGatePageCoverageGuardTest` の3仕組み（理由必須・陳腐化検出・走査経路の自己検証）。**ArchUnit の凍結ストアは使わない**（`ArchUnitFreezeStoreIntegrityTest` に「`--tests` 絞り込み実行で免責が静かに消える」事故が記録されているため、素の JUnit ソース走査にして罠自体を構造的に回避した）。 **番人が初回実行で自分の台帳の誤りを検出した**: `/admin/google-calendar` について「台帳にあるが該当ページが実在しない」で red。実測すると PR #3336 で削除済みで、台帳側の記載が陳腐化していた。陳腐化検出が機能している実例。 **リンク抽出の限界**: `` `${base.value}/reservations` `` のような先頭が変数のテンプレートリテラルは静的走査では原理的に拾えない。分類を偽らず、`link_detection_note` に理由を書いた1件だけ検出を抑制する方式にした（偽陽性でうるさい番人は無効化されるため）。 **網羅性検査の範囲**: ディレクトリ prefix（`/admin/` 配下すべて等）は採らず、`tracked_paths`（29パスの exact-match）に限定した。`/admin/` には未調査の20枚超が別に存在し、実測せず prefix に含めると「無審査の大量 red」か「baseline 化して黙る」のどちらかになるため。全 FE への拡大は将来課題として台帳に明記"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [],
@@ -21825,8 +23321,15 @@ window.BETA_INVENTORY_DATA = {
       ],
       "githubRefs": [
         3161,
+        3183,
         3227,
-        3232
+        3232,
+        3300,
+        3305,
+        3322,
+        3330,
+        3336,
+        3347
       ],
       "github": [
         {
@@ -21836,6 +23339,20 @@ window.BETA_INVENTORY_DATA = {
           "title": "修正: 領収書2画面と組織基本情報の編集への導線を追加（CMP-260907-0851 / CMP-260907-0852）",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3161",
           "updatedAt": "2026-09-07T12:48:47Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3183,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: シフト希望の導線整備と入力事故の防止（CMP-260908-2118）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3183",
+          "updatedAt": "2026-09-09T03:33:31Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -21864,6 +23381,90 @@ window.BETA_INVENTORY_DATA = {
           "title": "機能追加: 金銭に関わる未到達3画面への導線をマイページに追加（CMP-260909-1141 Phase 1）",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3232",
           "updatedAt": "2026-09-11T15:14:56Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3300,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: マイページから /my/shifts と /my/shift-availability へ到達させる（CMP-260909-1141 Phase 2）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3300",
+          "updatedAt": "2026-09-17T00:33:30Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3305,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 運営管理ページ9枚に導線を接続する（CMP-260909-1141 Phase 3）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3305",
+          "updatedAt": "2026-09-17T02:21:00Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3322,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: サイドバー27項目が永久非表示になる欠陥を根治（CMP-260917-0529）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3322",
+          "updatedAt": "2026-09-17T07:54:34Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3330,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 残り4枚に導線を接続し、設定ハブを i18n 化する（CMP-260909-1141 Phase 4）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3330",
+          "updatedAt": "2026-09-17T12:56:49Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3336,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 重複していた Google カレンダー設定ページを削除し一本化する（CMP-260912-0911）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3336",
+          "updatedAt": "2026-09-17T23:33:04Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3347,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "番人追加: 孤立ページ（到達不能ページ）の再発防止（CMP-260909-1141 Phase 5）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3347",
+          "updatedAt": "2026-09-18T03:56:59Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -24509,7 +26110,7 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "`/admin/module-pricing` が実際に動作すること（BEのエンドポイント・テーブル・料金の反映先を実装する）か、あるいは未実装ページとして削除されること。どちらを採るかを先に決める"
       ],
-      "blocker": "—",
+      "blocker": "`/admin/module-pricing` が実際に動作すること。FE が呼ぶ `/api/v1/system-admin/module-pricing`（一覧・更新・変更履歴）に対応する BE とテーブルを実装し、認可・異常系・契約テストを備えること",
       "issues": [
         {
           "label": "—",
@@ -24521,7 +26122,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "CMP-260909-1141（未到達28枚）の Phase 分けを検討する過程で、F08.4 戦役の殿が発見。FE には `pages/admin/module-pricing.vue`（225行）・`composables/useModulePricingApi.ts`（一覧・更新・履歴の3メソッド）・`types/module-pricing.ts`（`monthlyPrice`/`yearlyPrice`/`trialDays`/変更履歴）が揃っているが、`git grep -rn \"module-pricing\" origin/main -- backend/src` と `git grep -rn \"module_pricing\" origin/main -- backend/src` がいずれも **0件**。BE のエンドポイント `/api/v1/system-admin/module-pricing` もテーブルも存在しない。**含意**: CMP-260909-1141 の Phase 3（運営管理21枚を管理メニューで束ねる）に入る前に、21枚それぞれが「導線さえ付ければ動くのか」を確かめる必要がある。中身の無いページに導線を付けると、利用者には壊れて見えるだけになる"
+        "CMP-260909-1141（未到達28枚）の Phase 分けを検討する過程で、F08.4 戦役の殿が発見。FE には `pages/admin/module-pricing.vue`（225行）・`composables/useModulePricingApi.ts`（一覧・更新・履歴の3メソッド）・`types/module-pricing.ts`（`monthlyPrice`/`yearlyPrice`/`trialDays`/変更履歴）が揃っているが、`git grep -rn \"module-pricing\" origin/main -- backend/src` と `git grep -rn \"module_pricing\" origin/main -- backend/src` がいずれも **0件**。BE のエンドポイント `/api/v1/system-admin/module-pricing` もテーブルも存在しない。**含意**: CMP-260909-1141 の Phase 3（運営管理21枚を管理メニューで束ねる）に入る前に、21枚それぞれが「導線さえ付ければ動くのか」を確かめる必要がある。中身の無いページに導線を付けると、利用者には壊れて見えるだけになる **【2026-09-17 マスター裁可・親子関係の整理】本行は CMP-260912-0909（運営管理ページのBE不在・傘）の子タスク**。未完成FEを**削除せずBEを実装する**方針が確定した。実装前に個別の設計裁可を得ること。進め方は red test → 最小実装 → 認可・異常系・契約テスト → FE接続。**BE 完成まで正規ナビへ公開しない**（CMP-260909-1141 Phase 3 の導線追加対象から外してある）"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -24832,9 +26433,9 @@ window.BETA_INVENTORY_DATA = {
     },
     {
       "id": "CMP-260912-2258",
-      "title": "Flyway migration 62ファイルが接続タイムゾーン依存の `NOW()` を使っており、9時間ずれと同種の危険を抱えている",
-      "status": "unknown",
-      "statusLabel": "未着手",
+      "title": "Flyway migration 62ファイルが接続タイムゾーン依存の `NOW()` を使っており、9時間ずれと同種の危険を抱えている（→ 調査の結果**実害ゼロ**。真の欠陥は番人の射程外だったこと）",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -24857,7 +26458,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "CMP-260910-1556 の番人実走中に発見。既存 migration のうち**62ファイルが `NOW()` を使用**しており、`UTC_TIMESTAMP()` を使っているものは**0件**。`NOW()` は DB 接続のタイムゾーン設定に従うため、`spring.jpa.properties.hibernate.jdbc.time_zone: UTC`（`application.yml:85`）で UTC 前提に格納されている列へ JST の値を書くと**9時間ずれる**。これは CMP-260910-0041（通知が保持期間より9時間早く消える）および PR #3213 で根治した `NotificationBulkFanoutService` の生 JDBC と**同じ種類の欠陥**であり、そちらは `UTC_TIMESTAMP()` への置換で根治済み。**未検証の点**: 62ファイルそれぞれが書いている列が UTC 基準なのか JVM 既定ゾーン基準なのかは個別確認が要る（全部が誤りとは限らない）。**番人の射程外である点も重要**: `RawSqlTimeColumnGuardTest` / `DateTimeAndZoneGuardTest` はいずれも `src/main/java` の `.java` のみを走査対象としており、migration と test ソースは見ていない。したがって**この種の欠陥は migration 経由なら無検出で入り続ける**。1556 の PR だけ1ファイルを直すと62ファイルと不整合になるため、横断課題として分離した"
+        "**【2026-09-15 訂正】起票時の下記の理由付け（「`NOW()` は DB 接続の TZ に従うので JST が入り9時間ずれる」「PR #3213 と同じ種類の欠陥」）は**調査の結果**誤りだった**。`NOW()` が従うのは接続セッションの `time_zone` であり、本プロジェクトは全環境でそれを UTC に固定している。**置換による是正は行っていない（ずれているデータが存在しないため）**。真の欠陥は「番人の射程に migration が入っていなかった」ことであり、そちらを塞いで完了とした。経緯と実測値は末尾の【調査結論】を参照（PR #3283）。以下は起票時の記述をそのまま残したもの ↓<br>CMP-260910-1556 の番人実走中に発見。既存 migration のうち**62ファイルが `NOW()` を使用**しており、`UTC_TIMESTAMP()` を使っているものは**0件**。`NOW()` は DB 接続のタイムゾーン設定に従うため、`spring.jpa.properties.hibernate.jdbc.time_zone: UTC`（`application.yml:85`）で UTC 前提に格納されている列へ JST の値を書くと**9時間ずれる**。これは CMP-260910-0041（通知が保持期間より9時間早く消える）および PR #3213 で根治した `NotificationBulkFanoutService` の生 JDBC と**同じ種類の欠陥**であり、そちらは `UTC_TIMESTAMP()` への置換で根治済み。**未検証の点**: 62ファイルそれぞれが書いている列が UTC 基準なのか JVM 既定ゾーン基準なのかは個別確認が要る（全部が誤りとは限らない）。**番人の射程外である点も重要**: `RawSqlTimeColumnGuardTest` / `DateTimeAndZoneGuardTest` はいずれも `src/main/java` の `.java` のみを走査対象としており、migration と test ソースは見ていない。したがって**この種の欠陥は migration 経由なら無検出で入り続ける**。1556 の PR だけ1ファイルを直すと62ファイルと不整合になるため、横断課題として分離した<br>**【調査結論 2026-09-15】実害ゼロ・番人で塞いだ**。洗い出しの結果、DML の `NOW()` 系は **65ファイル・746箇所**（列 DEFAULT/ON UPDATE の `CURRENT_TIMESTAMP` は別枠で 598ファイル・1558箇所）。判定の基準は `TimeZoneStorageBasisGuardTest` が定める「DB 格納基準＝UTC 壁時計」。**MySQL の `NOW()` は接続セッションの `time_zone` に従い、本プロジェクトは全環境でそれを UTC に固定している**（local=docker-compose の `--default-time-zone=+00:00` / CI=ランナー UTC の SYSTEM / test=Testcontainers の SYSTEM=UTC / prod=RDS パラメータ `time_zone=UTC`）。JDBC の `serverTimezone=UTC` はドライバ側の解釈を決めるだけでセッション TZ を書き換えない（Connector/J の `forceConnectionTimeZoneToSession` 既定 false）。実測（dev MySQL）: `TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), NOW())` = **0**、`@@global.time_zone`/`@@session.time_zone` = `+00:00`。**3分類: 実際にずれている=0件 / ずれていない=746箇所（全件）/ 判定できない=0件**。PR #3213 の欠陥は `NOW()` ではなく **Java 側からの JST `LocalDateTime` 束縛**であり、前提として置かれた「`NOW()` は接続TZ＝JST」は成り立たなかった。したがって**是正用 migration は不要**（直すべきデータが無い）、**適用済み migration の書き換えもしない**（Flyway チェックサム不一致で全環境が起動不能になる）。再発防止として番人2本を新設: `FlywayMigrationTimeFunctionGuardTest`（migration をファイル単位件数で凍結・新規の `NOW()` を禁止）と `FlywayMigrationSessionTimeZoneUtcIT`（接続セッション TZ が UTC で `NOW()==UTC_TIMESTAMP()` であることを実 MySQL で実測）。規約は `docs/architecture/datetime_policy_utc_instant_vs_wallclock.md` 4.2節 と `backend/.claudecode.md` §18 に明文化"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -24870,10 +26471,11 @@ window.BETA_INVENTORY_DATA = {
         "migration"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
       "githubRefs": [
-        3213
+        3213,
+        3283
       ],
       "github": [
         {
@@ -24883,6 +26485,20 @@ window.BETA_INVENTORY_DATA = {
           "title": "修正: 通知の一括fanoutが created_at を JST で格納していた欠陥を根治（CMP-260909-1446）",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3213",
           "updatedAt": "2026-09-10T05:21:34Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3283,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "調査+番人: migration の NOW() は全環境で UTC と同値（実害ゼロ）— 射程外だった migration を番人で塞ぐ（CMP-260912-2258）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3283",
+          "updatedAt": "2026-09-16T01:58:20Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -24975,12 +26591,1632 @@ window.BETA_INVENTORY_DATA = {
       ],
       "githubRefs": [],
       "github": []
+    },
+    {
+      "id": "CMP-260916-0053",
+      "title": "通報管理のステータス絞り込みが BE 未対応のため機能せず、UI を削除した（復活には BE 対応が要る）",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`/admin/reports` でステータス（PENDING/REVIEWING/ESCALATED/RESOLVED/DISMISSED）による絞り込みができること。絞り込みが実際に結果へ反映されることがテストで担保されていること",
+      "acceptance": [
+        "`/admin/reports` でステータス（PENDING/REVIEWING/ESCALATED/RESOLVED/DISMISSED）による絞り込みができること。絞り込みが実際に結果へ反映されることがテストで担保されていること"
+      ],
+      "blocker": "CMP-260912-1526",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260912-1823 の作業中に発見。`/admin/reports` のステータス Select は、BE の `GET /api/v1/system-admin/reports` が `page`/`size` しか受け付けないため**何を選んでも結果が変わらなかった**（選べるのに効かない＝症状隠し）。利用者を欺く状態を解消するため PR #3285 で UI・状態・6言語のロケールキーを削除済み。**復活に必要なもの**: `SystemAdminReportController#getAllReports`（`backend/.../moderation/controller/SystemAdminReportController.java:54`）に `@RequestParam(required=false) ReportStatus status` を追加し、`ReportActionService#getAllReports`（同 `service/ReportActionService.java:251`、現在は `reportRepository.findAll(pageable)` のみ）で分岐させる。**絞り込み可能なカラムは既にある** — `ContentReportEntity:61` に `@Enumerated` な `ReportStatus status`（既定 PENDING）が永続化済みで、Repository にも `findByScopeTypeAndScopeIdAndStatus` 等の status 条件クエリが存在する。**不足しているのはスコープ非依存の `Page<ContentReportEntity> findByStatus(ReportStatus, Pageable)` 1本だけで DDL 変更は不要**。API 表面が変わるため `docs/openapi.json` の再生成が要る（CMP-260912-1526 の解決待ち）。再生成後は FE 側で Select と status パラメータを戻すだけで済む"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "UI",
+        "BE",
+        "admin",
+        "reports",
+        "PENDING",
+        "REVIEWING",
+        "ESCALATED",
+        "RESOLVED",
+        "DISMISSED"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3285
+      ],
+      "github": [
+        {
+          "number": 3285,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: PageMeta の幽霊フィールド totalElements を根治（CMP-260912-1823）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3285",
+          "updatedAt": "2026-09-15T16:21:38Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260916-0054",
+      "title": "`useCirculationApi` の単数形パスを叩く14関数が全て死んでいる（BE は複数形しか持たない）",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "死んだ単数形群が削除され、生きている複数形の実装と取り違えない形になっていること。削除後に FE のビルド・型検査が通ること",
+      "acceptance": [
+        "死んだ単数形群が削除され、生きている複数形の実装と取り違えない形になっていること。削除後に FE のビルド・型検査が通ること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260912-1823 の作業中に発見。`frontend/app/composables/useCirculationApi.ts` の `getCirculations` / `getCirculation` / `updateCirculation` / `deleteCirculation` / `startCirculation` / `cancelCirculation` / `forceCompleteCirculation` / `stampCirculation` / `correctStamp` / `skipRecipient` / `remindCirculation` / `getCirculationStatus` / `exportPdf` / `getMyCirculations` の**14関数すべて**が単数形 `/api/v1/circulation/*` を叩くが、**BE に単数形のコントローラは存在しない**（正しくは複数形 `/api/v1/circulations/{documentId}/...`、`/api/v1/teams/{teamId}/circulations`、`/api/v1/me/circulations`、`/api/v1/circulation-documents`）。**呼び出し元は14関数すべてゼロ**のため現時点で実害は無い。同じファイル内の「Scoped Circulation CRUD」節が複数形パスを使っており**そちらが生きている実装**。複数形 API への移行漏れと見られる。**削除時の注意**: 関数名ではなく**パスの単複で判定**すること（grep で当たる同名関数が `types/generated/index.ts` の operationId や `useTimetableApi` 等の別 composable に存在するため、名前で消すと生きているものを巻き込む）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "useCirculationApi",
+        "BE",
+        "FE"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260916-0055",
+      "title": "`PointCardRematchBatchService` のページング取りこぼし（チャンクをコミットすると対象集合が縮んで窓がずれる）",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "再マッチ対象のカードが取りこぼされずに全件処理されること。チャンク境界の挙動がテストで担保されていること",
+      "acceptance": [
+        "再マッチ対象のカードが取りこぼされずに全件処理されること。チャンク境界の挙動がテストで担保されていること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260912-1524（`@Transactional` 自己呼び出しの根治）の作業中に発見。`PointCardRematchBatchService` はチャンク単位でコミットするが、**コミットするとマッチ済みカードが対象集合（未マッチのカード）から抜ける**ため、次に `pageIndex++` して取得する窓が実際にはずれており、処理されないカードが残る。**是正前も同様に壊れていた別件**であり、CMP-260912-1524 の射程（自己呼び出しによる原子性の回復）とは別の欠陥。既存のチャンク境界ユニットテストの前提も変わるため PR #3286 では触っていない。**着手時の注意**: 「コミットすると対象集合が縮む」型のページングは、オフセットではなく**カーソル（最後に処理した ID より大きいもの）**か、**常に先頭ページを取り続ける**形にするのが定石"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "PointCardRematchBatchService"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3286
+      ],
+      "github": [
+        {
+          "number": 3286,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: REQUIRES_NEW の自己呼び出し3件を根治（CMP-260912-1524）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3286",
+          "updatedAt": "2026-09-15T17:26:11Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260916-0056",
+      "title": "番人テストの `assertTimeout` が非プリエンプティブで、ハング時こそ機能しない（既存2クラス）",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "走査がハングしたときに、番人が上限時間で実際に失敗すること。既存の番人2クラスについても同じ穴の有無が確認され、必要なら是正されていること",
+      "acceptance": [
+        "走査がハングしたときに、番人が上限時間で実際に失敗すること。既存の番人2クラスについても同じ穴の有無が確認され、必要なら是正されていること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260912-2258 の検分で発見。`RawSqlTimeColumnGuardTest` と `DateTimeAndZoneGuardTest` は走査全体を `assertTimeout`（**非プリエンプティブ**）で囲っているため、**走査が終わるまで制御が戻らず、ハングしたときこそ上限で落ちない**。CI のジョブ上限まで占有する。時間切れを検出するはずの番人が、時間切れのときだけ働かない構造。実際にこの環境では、2クラスとも走査が30秒上限を超えて「判定本体に到達する前に」落ちる事象が観測されている（2026-09-12・2026-09-15 に実測。所要は 89秒〜150秒）。**2026-09-16 に4クラス同時実走で走査時間を単独実測**: `RawSqlTimeColumnGuardTest` = **25.4秒**（上限30秒の85%・通過だが余裕4.6秒しかない）、`DateTimeAndZoneGuardTest` = **59.7秒**（上限を26.4秒超過して FAILED・判定本体に未到達）。**後者は開発機で既に成立していない**。なお CI では現に通っているため、是正には CI 環境での実測が要る。**プリエンプティブ化だけでは解決しない点に注意** — 後者は既に30秒超なので打ち切りに変えても「早く赤くなる」だけで、本体は走査コスト。CMP-260912-2258 の PR #3283 では同型の穴をプリエンプティブ化で解消済みなので、その実装が参考になる。**閾値とアルゴリズムの両方を疑うこと** — 30秒で終わらない走査があるなら、上限が短いのか走査が遅いのかを切り分ける必要がある（CMP-260912-2258 では行番号計算が O(ファイル長 × 一致件数) だったことが判明し 8787ms → 5200ms へ改善した前例がある）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "assertTimeout"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3283
+      ],
+      "github": [
+        {
+          "number": 3283,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "調査+番人: migration の NOW() は全環境で UTC と同値（実害ゼロ）— 射程外だった migration を番人で塞ぐ（CMP-260912-2258）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3283",
+          "updatedAt": "2026-09-16T01:58:20Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260916-1348",
+      "title": "springdoc は operationId が衝突すると既存側を黙って改名し、無関係な API の識別子が静かに変わる",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "operationId の衝突が機械的に検出されること。衝突したまま `docs/openapi.json` が再生成され、既存 API の識別子が変わってしまう事故が防がれていること",
+      "acceptance": [
+        "operationId の衝突が機械的に検出されること。衝突したまま `docs/openapi.json` が再生成され、既存 API の識別子が変わってしまう事故が防がれていること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260912-1525 の作業中に実地で発見。新しいエンドポイント `TeamController#getAllMembers` を追加して `docs/openapi.json` を再生成したところ、**既存の `OrganizationController#getAllMembers` と operationId が衝突し、springdoc が既存側を `getAllMembers_1` に改名する差分**が出た。新規側を `getAllTeamMembers` へ改名して再生成し直すことで回避したが、**気づかなければ無関係な既存 API の識別子が静かに変わり、生成型（`frontend/app/types/generated/`）を経由して FE の呼び出しが壊れうる**。**厄介な点**: エラーにならず差分として現れるだけなので、`docs/openapi.json` の差分を精査しない限り見逃す。しかも再生成の差分は大きくなりがちで埋もれやすい。**対処の方向**: 新規エンドポイント追加時に operationId の重複を検出する番人（メソッド名がクラスを跨いで衝突していないか）を置くのが素直。あるいは `@Operation(operationId = ...)` を明示する規約にする。**注意**: 既存の衝突が他にも潜んでいる可能性があるため、番人を入れる際は既存分の棚卸しが要る"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "springdoc",
+        "operationId",
+        "API",
+        "operationId",
+        "docs",
+        "openapi",
+        "json",
+        "API"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260912-0909",
+      "title": "【親タスク】運営管理ページ6枚がBE不在で動かない（FEだけ作られている）",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "6枚それぞれについて「BEを実装する」か「未実装ページとして削除する」かを決め、実装するものは実機で動作を確認する。削除するものはFE（ページ・composable・型）も併せて消す",
+      "acceptance": [
+        "6枚それぞれについて「BEを実装する」か「未実装ページとして削除する」かを決め、実装するものは実機で動作を確認する。削除するものはFE（ページ・composable・型）も併せて消す"
+      ],
+      "blocker": "子タスク（CMP-260917-0121/0122/0123 と既存 CMP-260911-0109・CMP-260912-0910）がすべて完了すること。FE の削除ではなく BE の実装で解消する",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260909-1141 の Phase 3（運営管理21枚を管理メニューで束ねる）の第一手として実施した「21枚の生死確認」で判明。**21枚のうち6枚は BE のエンドポイントが1行も存在しない**（各キーワードで `git grep <keyword> origin/main -- backend/src` が0件であることを殿が確認）。①`/admin/campaigns`（296行＋composable、`/api/v1/system-admin/discount-campaigns`）②`/admin/promotions`（289行＋composable、`/{scope}/{scopeId}/promotions`・`/coupons`・`/segment-presets`。なお BE に `PromotionController` は在るが `/organizations/{orgId}/tournaments/{tId}/promotions` で**大会限定の別物**）③`/admin/packages`（272行＋composable、`/api/v1/system-admin/packages`）④`/admin/module-pricing`（225行＋composable＋型。CMP-260911-0109 として既起票・本行と重複するため統合先はどちらか一方に寄せる）⑤`/admin/org-billing`（221行＋composable＋型、`/api/v1/system-admin/org-billing`）⑥`/admin/tax-settings`（250行＋composable＋型、`/api/v1/system-admin/tax-settings`）。**含意**: Phase 3 で管理メニューを作る際、これら6枚に導線を付けると利用者には壊れた画面が並ぶだけになる。導線の追加対象から外すか、BEを実装してから含めるかを先に決める必要がある。⑤⑥①②は `constants/featureGates.ts` の `GATE_ROUTE_MAP` にも登録されており、**機能フラグ制御の対象にBE不在のものが混じっている**点も併せて整理対象 **【2026-09-17 マスター裁可】未完成FEを削除せず、BEを実装する**方針が確定。本行は**親・傘タスク**として整理し、実装は以下の子タスクで進める: CMP-260917-0121（campaigns+promotions）・CMP-260917-0122（packages）・CMP-260911-0109（module-pricing・既存行を再利用）・CMP-260917-0123（org-billing+tax-settings）・CMP-260912-0910（member-permissions・既存行を再利用）。**BE 完成前に未完成 FE を正規ナビへ公開しないこと**（CMP-260909-1141 Phase 3 では導線追加の対象から外している）。各子タスクは新DBスキーマ・API契約・認可境界を伴うため、実装前に個別の設計裁可を得ること **【2026-09-18 訂正】** 本行の「6枚は BE のエンドポイントが1行も存在しない」という記載のうち、**`/admin/promotions` は誤り**。BE が実在する（詳細は子タスク CMP-260917-0121 の訂正記載を参照）。正しくは **BE 不在は5枚**（campaigns・packages・module-pricing・org-billing・tax-settings）＋member-permissions（CMP-260912-0910）。promotions は契約不一致の解消が必要な別種の作業"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "FE",
+        "BE",
+        "FE",
+        "composable"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260912-0910",
+      "title": "MEMBER権限設定画面がBE不在をエラー握りつぶしで隠し「全権限が有効」と嘘を表示する",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`/admin/member-permissions` が、権限の取得に失敗したときに実際の状態と異なる表示をしないこと。BEを実装するか、ページを削除するかを決める。いずれにせよ `catch` で既定値に倒す実装は残さない",
+      "acceptance": [
+        "`/admin/member-permissions` が、権限の取得に失敗したときに実際の状態と異なる表示をしないこと。BEを実装するか、ページを削除するかを決める。いずれにせよ `catch` で既定値に倒す実装は残さない"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260909-1141 Phase 3 の生死確認で発見。BE の `/{scopeType}s/{scopeId}/role-permissions/member` は**存在しない**（`git grep \"role-permissions/member\" origin/main -- backend/src` が0件）。ところが `frontend/app/pages/admin/member-permissions.vue:42-57` の `load()` は `catch { permissions.value = DEFAULT_PERMISSIONS.map((p) => ({ ...p, enabled: true })) }` と書かれており、**404 を握りつぶして「MEMBER に全権限が付与されている」かのような画面を出す**。保存側（`save()`）は `showError('更新に失敗しました')` を出すため、利用者からは「表示は正しいのに保存だけ失敗する」ように見える。CLAUDE.md が禁じるエラー握りつぶしであり、かつ**権限画面が嘘の権限状態を表示する**という性質のため、BE不在の他5枚（CMP-260912-0909）より危険度が高い。他5枚はエラー表示で「壊れている」と分かるが、この1枚だけは壊れていることが利用者に分からない **【2026-09-17 マスター裁可・親子関係の整理】本行は CMP-260912-0909（運営管理ページのBE不在・傘）の子タスク**。未完成FEを**削除せずBEを実装する**方針が確定した。実装前に個別の設計裁可を得ること。進め方は red test → 最小実装 → 認可・異常系・契約テスト → FE接続。**BE 完成まで正規ナビへ公開しない**（CMP-260909-1141 Phase 3 の導線追加対象から外してある） **本件は他の子タスクより危険度が高い**: BE 不在を `catch` で握りつぶして「MEMBER に全権限が付与されている」と嘘を表示するため、壊れていることが利用者に分からない。**BE 実装と同時に、この仮フォールバックを必ず除去すること**（認可上の危険であり、BE ができても `catch` が残れば同じ嘘を出し続ける）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "MEMBER",
+        "BE",
+        "admin",
+        "member-permissions",
+        "BE",
+        "catch"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260912-0911",
+      "title": "`/admin/google-calendar` は運営管理ではなく個人の連携設定で、置き場所が誤っている",
+      "status": "done",
+      "statusLabel": "完了（2026-09-18）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "このページの適切な置き場所（`/settings/*` や `/my/*` 配下など）を決めて移し、`/admin/` 配下から外す。移設に伴う既存リンク・機能フラグ登録の追従も行う",
+      "acceptance": [
+        "このページの適切な置き場所（`/settings/*` や `/my/*` 配下など）を決めて移し、`/admin/` 配下から外す。移設に伴う既存リンク・機能フラグ登録の追従も行う"
+      ],
+      "blocker": "`/admin/google-calendar` を削除し、`/settings/calendar-sync` に一本化すること。旧URLへのリダイレクトは置かない（それ自体が二重管理になるため）。E2E・ドキュメントの参照も追従させ、孤児 i18n キーを残さないこと",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260909-1141 Phase 3 の生死確認で発見。台帳 CMP-260909-1141 はこのページを「運営管理21枚」に分類しているが、実際に叩く API は `useGoogleCalendarApi` 経由で **全て `/api/v1/me/google-calendar/*`**（`status`・`connect`・`disconnect`・`personal-sync`・`sync`）＝本人の連携設定であり、運営管理でもテナント管理でもない。BE（`schedule/controller/GoogleCalendarController.java`）は実在するのでページ自体は生きている。`/admin/` 配下にあること自体が分類の誤り。**Phase 3 の21枚の数え方もこの1枚ぶん見直しが要る**（運営管理は実質20枚） **【2026-09-17 マスター裁可】** 単に移すのではなく、**旧 URL から新 URL への互換リダイレクトを残す**ことが確定。ブックマークや既存リンクを壊さないため。新URL名と設定画面内の配置で成果が変わる場合のみ、実装時にマスター確認を取る **【2026-09-17 方針を訂正・マスター裁可「二重管理しない」】** 上の「互換リダイレクトを残す」という裁可は、**移設先を新規に作る前提**で立てられたものだった。ところが実査の結果、**移設先は既に存在していた**: `frontend/app/pages/settings/calendar-sync.vue` が旧ページと**完全に同じ5操作**（`getConnectionStatus`・`connect`・`disconnect`・`toggleTeamSync`・`toggleOrgSync`）を持ち、`settings/index.vue` の個別設定一覧からリンク済みで、i18n も `settings.gcal.*` で対応済み。旧ページは日本語直書きで、どこからもリンクされていない。 **リダイレクトを置かない理由**: 旧 URL を生かす足場を残すこと自体が二重管理の一形態であり、かつ**守る対象が存在しない**。(a) OAuth のコールバック先は BE が `/settings/calendar-sync` をハードコードしている（`AuthOAuthLinkService.java:198,205`）ため旧ページには戻ってこない、(b) 本番に実データが無い（開発中）ためブックマークの考慮も不要。当初裁可の趣旨（利用者の経路を壊さない）は、新 URL が既に OAuth の着地点になっていることで満たされている **【完了 2026-09-18・PR #3336】** `/admin/google-calendar` を削除し `/settings/calendar-sync` に一本化した。リダイレクトは置いていない（「二重管理しない」というマスター方針に従った。旧 URL を生かす足場を残すこと自体が二重管理の一形態であり、かつ守る対象が存在しない＝OAuth のコールバック先は BE が `/settings/calendar-sync` をハードコードしており旧ページには戻ってこない）。E2E の ADMIN-028 は削除した（`/settings/calendar-sync` 側に同性質の SET-021 が既にあり、移設すればテストの二重管理になるため）。 **なお本行の「対応中」表記は 2026-09-18 まで陳腐化して残っており、Phase 5 の番人が初回実行で検出した**"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "admin",
+        "google-calendar",
+        "settings",
+        "my",
+        "admin"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        3336
+      ],
+      "github": [
+        {
+          "number": 3336,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 重複していた Google カレンダー設定ページを削除し一本化する（CMP-260912-0911）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3336",
+          "updatedAt": "2026-09-17T23:33:04Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260916-2328",
+      "title": "openapi 再生成の手順書で、★の主が `--dry-run` かどうかを利用者が判別できない（判定材料が表示されない）",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "手順1の出力から、★の主が `--dry-run` か本物の生成かを利用者が判別できること。判別に必要な情報がスクリプト側から提示されること",
+      "acceptance": [
+        "手順1の出力から、★の主が `--dry-run` か本物の生成かを利用者が判別できること。判別に必要な情報がスクリプト側から提示されること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260912-1526（PR #3291）の検分で指摘されたが、検分の巡回上限を超過していたため別戦役へ送った残件。`docs/development/openapi_json_regeneration.md` の停止規則には「★の主が `--dry-run` だと確認できた場合は待たずに進めてよい」という例外が書かれているが、**その確認方法が「表示された PID のコマンドラインに `--dry-run` があるか」**となっている。しかし**手順1の出力には PID と種別しか表示されず、コマンドラインは一時ファイルとともに削除される**ため、利用者は確認しようにも材料が無い。結果、`--dry-run` を回しただけの人が本物の生成と誤認して待つことになる。**安全性は損なわれていない**（危険な操作＝他セッションの停止は AND 判定で守られており、この件は「余計に待つ」方向の不便）。**対処の方向**: スクリプト側で★の行に種別（`--dry-run` か本物か）を出すのが素直。利用者にコマンドラインを目視させるより誤らない。worktree の一致は既に機械的に判定しているので、同じ経路に乗せられるはず。**検証の注意**: `--dry-run` はフォークを作らないため「Gradle 実行のみが存在する」状態を確実に作れる。本物の生成でも分類が逆にならないことを併せて確認すること"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "openapi",
+        "dry-run",
+        "dry-run"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3291
+      ],
+      "github": [
+        {
+          "number": 3291,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: openapi生成ポートを -PopenApiPort で上書き可能にする（CMP-260912-1526 AC-2/AC-3）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3291",
+          "updatedAt": "2026-09-16T14:27:27Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260917-0041",
+      "title": "運営管理ページ4枚がスコープ配下の同機能ページと重複した残骸になっている",
+      "status": "unknown",
+      "statusLabel": "対応中（2026-09-18）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "4枚それぞれについて「削除する」か「残す理由を明記して直打ち専用とする」かを決める。削除するものは ページ・未使用になる composable・型・i18n キー・機能フラグ登録を併せて消し、**削除で失われる機能が無いことを実測で確かめる**",
+      "acceptance": [
+        "4枚それぞれについて「削除する」か「残す理由を明記して直打ち専用とする」かを決める。削除するものは ページ・未使用になる composable・型・i18n キー・機能フラグ登録を併せて消し、**削除で失われる機能が無いことを実測で確かめる**"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260909-1141 Phase 3 の重複網羅確認で判明。静的走査は「リンクが無いページ」を数えたが、**リンクが無いことと機能が到達できないことは別**だった。4枚はスコープ配下に同機能ページがあり、そちらには導線もある。①`/admin/equipment` — `teams/[slug]/equipment.vue`・`organizations/[slug]/equipment.vue` が両方存在し、`TeamSidebar.vue:92`・`OrganizationSidebar.vue:73` に `path: 'equipment', moduleSlug: 'equipment'` で導線あり。②`/admin/member-profiles` — `organizations/[slug]/member-profiles.vue` が存在し `OrganizationSidebar.vue:38` に導線あり。両者とも `useMemberProfileApi().listFields(scopeType, scopeId)` を呼び同一 API を叩く（`buildBase` が team/organization 両対応）。**なお調査の第1巡では「`useTeamPageApi` の `/api/v1/team/member-fields` 固定で組織では嘘をつく」と報告されたが、ページが実際に使うのは `useMemberProfileApi` であり誤報だった**（殿が実コードで確認して撤回）。③`/admin/reservation-settings` — チームは `teams/[slug]/reservations.vue` の `LineManager.vue` が同じ `reservation-lines` API を叩き、管理コンソールカード（`teams/[slug]/admin/index.vue:74-78`）からも到達可能。**ただし `organizations/[slug]/` 配下に予約機能自体が無く、削除すると組織スコープで予約ラインを設定する手段が消える可能性がある**（要確認）。④`/admin/blog-management` — `teams/[slug]/blog.vue`・`organizations/[slug]/blog.vue` が `BlogPostList.vue` を描画し同じ `/api/v1/blog/posts` を叩く。`OrganizationSidebar.vue:17` に導線あり。**ただし admin 側はタグ CRUD・公開状態の一括変更・記事削除を持ち、`BlogPostList.vue` にはこれらが無い**ため、単純削除ではタグ管理の受け皿が消える（要確認）。**含意**: ③④は単純削除できない。CMP-260909-1141 Phase 3 では今回この4枚に一切手を付けず（導線も足さず削除もせず）、追加と削除を同じ PR に混ぜないことで万一の退行時に切り戻しやすくした。**Phase 5 の番人への申し送り**: 「リンクが無いページ」を検出するだけの番人では、削除すべき残骸と導線を足すべきページが同じ赤として出てきて出力が信用されなくなる。スコープ配下に同機能ページがあるかどうかを見分ける観点が要る **【2026-09-18 処置の確定（マスター裁可）】** ①`/admin/reservation-settings` → **削除**。予約は**組織スコープが設計上の対象外**であることを実測で確認したため、削除しても失われる機能は無い（設計書 `docs/features/F03.4_reservation.md:49` に「`- [ ] 組織 (Organization) — 対象外（予約枠はチーム単位で管理）`」と明記、`V2.027` のシードも `reservation / ORGANIZATION / 0`、BE も `TeamReservationLineController` のみ）。チーム側は `teams/[slug]/reservations.vue` の `LineManager.vue` が同じ `reservation-lines` API を叩いて完全にカバーしている。**この残骸は「組織でも開ける形なのに team 固定 API を叩いてエラーになる」状態**だった。 ②`/admin/blog-management` → **機能を共通部品へ移してから削除**。移植は PR #3350 で完了（`BlogPostList.vue` は team/organization 両方から使われる共通部品なので1箇所の改修で両スコープに行き渡る）。権限は **BE の粒度に合わせた**: タグ一覧・作成はメンバー（`checkMembership`）、タグ削除は ADMIN/DEPUTY_ADMIN（`checkAdminOrAbove`）、記事の公開切替・削除は投稿者本人または ADMIN/DEPUTY_ADMIN（`checkWriteAccess`）。**設計書の「ADMIN: タグ管理」より BE の粒度を採った理由**: タグは記事に属さず `blog_tags` が `team_id`/`organization_id` を持つ**スコープ単位の共有語彙**（`UNIQUE (team_id, name)`・作成者列なし・記事とは `blog_post_tags` で多対多）であり、その外部キーが **`ON DELETE CASCADE`** なので**タグを1つ削除すると他人の記事からも紐付けが消える**。だから「誰でも足せる／消せるのは管理者だけ」が理にかなう。 **移植時に既存バグも直した**: `useBlogApi.createTag` はシグネチャが `{ name: string }` のみで**スコープを送る手段が無く**、`getTags` はページ側が `{ scopeType, scopeId }` を渡すのにBE が受け取るのは `teamId`/`organizationId` で名前が一致していなかった（つまり現行のタグ機能は配線が壊れていた）。`getPosts` のマッピングを `mapScopeParams()` として共通化して適用した。 **残: `/admin/blog-management` の削除**（#3350 の実機確認後に別 PR）。③④（`/admin/equipment`・`/admin/member-profiles`）は単純削除で可"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "composable",
+        "i18n"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3350
+      ],
+      "github": [
+        {
+          "number": 3350,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能移植: ブログのタグ管理と記事操作を共通部品へ移す（CMP-260917-0041）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3350",
+          "updatedAt": "2026-09-18T05:35:18Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260917-0121",
+      "title": "【BE実装】割引キャンペーンと販促（campaigns・promotions）のバックエンドが存在しない",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`/admin/campaigns` と `/admin/promotions` が実際に動作すること。FE が呼ぶ `/api/v1/system-admin/discount-campaigns`、および `/{scope}/{scopeId}/promotions`・`/coupons`・`/segment-presets` に対応する BE を実装し、認可・異常系・契約テストを備えること",
+      "acceptance": [
+        "`/admin/campaigns` と `/admin/promotions` が実際に動作すること。FE が呼ぶ `/api/v1/system-admin/discount-campaigns`、および `/{scope}/{scopeId}/promotions`・`/coupons`・`/segment-presets` に対応する BE を実装し、認可・異常系・契約テストを備えること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "**親タスク**: CMP-260912-0909（運営管理ページのBE不在・傘）。**2026-09-17 マスター裁可により、未完成FEを削除せずBEを実装する**方針。FE は既に実装済みなので、**FE が期待する API 契約を正本として BE を起こす**（ただし FE の型が誤っている可能性もあるため、契約は設計時に精査すること）。**新DBスキーマ・API契約・認可境界を伴うため、実装前に個別の設計裁可を得ること。** 進め方は red test → 最小実装 → 認可・異常系・契約テスト → FE接続の順。**BE 完成まで正規ナビへ公開しない**（CMP-260909-1141 Phase 3 の導線追加対象から外してある）。SYSTEM_ADMIN 専用 API になる見込みのため `/api/v1/system-admin/**` は `SecurityConfig:542` の `.hasRole(\"SYSTEM_ADMIN\")` に包括的に載る点を前提にしてよい。 **本件固有の注意**: BE に `PromotionController` は存在するが `/organizations/{orgId}/tournaments/{tId}/promotions`（**大会限定の別物**）であり、FE が呼ぶスコープ単位のパスとは無関係。既存クラス名に引きずられて「実装済み」と誤判定しないこと。FE は `/admin/campaigns` が296行＋`useCampaignApi.ts`、`/admin/promotions` が289行＋`usePromotionApi.ts`。2枚は販促という共通ドメインのため1タスクにまとめた **【2026-09-18 重大な訂正・殿の誤判定】** 本行および CMP-260912-0909 に記した「`/admin/promotions` は BE 不在」は**誤り**。`promotion` パッケージ配下に BE が実在し、FE が叩くパスと一致する: `TeamPromotionController`（`/api/v1/teams/{teamId}/promotions` の一覧・作成・取得・更新・削除・publish・schedule・cancel・approve・stats・estimate-audience）、`OrgPromotionController`、`TeamCouponController`／`OrgCouponController`（`/coupons`）、`TeamSegmentPresetController`／`OrgSegmentPresetController`（`/segment-presets`）。テーブルも既存（`V9.021__create_promotions_table.sql`・`V9.024__create_coupons_table.sql` ほか `V9.022`〜`V9.029`）。 **誤判定の原因**: `promotions` で grep して大会限定の `/organizations/{orgId}/tournaments/{tId}/promotions` を見つけ「別物だ」と判定したところで**探索を止めた**。`promotion` パッケージ配下を見ていない。「別物が見つかった」ことを「本体は無い」の証拠と取り違えた。しかもこれを家老の報告を疑って自分で裏取りした結果として書いており、**裏取りしたつもりで確認範囲が足りていなかった**。 **実際に必要な作業**: promotions は「BE 新規実装」ではなく**既存 BE と FE の契約不一致の解消**。実測された不一致: BE `CouponResponse` は `isActive: Boolean`・`couponType: String` のみだが FE 型は `promotionId`・`status`（ACTIVE/REDEEMED/EXPIRED/CANCELLED）・`discountType`（PERCENTAGE/FIXED_AMOUNT）を期待。`promotions` の `status` enum は BE 側に SCHEDULED/PUBLISHING/FAILED があるが FE 型に無く、FE 型の `clickCount` に対応する列が DB に無い（`opened_count` はあるが click 系は無い）。**作業の性質が「新規実装」から「仕様差分の吸収」へ変わる**ため、軍議では既存仕様にどこまで合わせるかの裁可が要る。 一方 `/admin/campaigns`（`/api/v1/system-admin/discount-campaigns`）は BE・テーブルとも**本当に存在しない**（再確認済み）。したがって本子タスクは「campaigns の新規実装」と「promotions の契約不一致解消」という**性質の異なる2つの作業**を含む。分割を検討すること"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "campaigns",
+        "promotions",
+        "admin",
+        "campaigns",
+        "admin",
+        "promotions",
+        "FE",
+        "api",
+        "v1",
+        "system-admin",
+        "discount-campaigns",
+        "scope",
+        "scopeId",
+        "promotions",
+        "coupons",
+        "segment-presets",
+        "BE"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260917-0122",
+      "title": "【BE実装】パッケージ管理（packages）のバックエンドが存在しない",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`/admin/packages` が実際に動作すること。FE が呼ぶ `/api/v1/system-admin/packages` に対応する BE を実装し、認可・異常系・契約テストを備えること",
+      "acceptance": [
+        "`/admin/packages` が実際に動作すること。FE が呼ぶ `/api/v1/system-admin/packages` に対応する BE を実装し、認可・異常系・契約テストを備えること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "**親タスク**: CMP-260912-0909（運営管理ページのBE不在・傘）。**2026-09-17 マスター裁可により、未完成FEを削除せずBEを実装する**方針。FE は既に実装済みなので、**FE が期待する API 契約を正本として BE を起こす**（ただし FE の型が誤っている可能性もあるため、契約は設計時に精査すること）。**新DBスキーマ・API契約・認可境界を伴うため、実装前に個別の設計裁可を得ること。** 進め方は red test → 最小実装 → 認可・異常系・契約テスト → FE接続の順。**BE 完成まで正規ナビへ公開しない**（CMP-260909-1141 Phase 3 の導線追加対象から外してある）。SYSTEM_ADMIN 専用 API になる見込みのため `/api/v1/system-admin/**` は `SecurityConfig:542` の `.hasRole(\"SYSTEM_ADMIN\")` に包括的に載る点を前提にしてよい。 **本件固有の注意**: `git grep \"system-admin/packages\" origin/main -- backend/src` が0件。BE に `PropertyWorkPackageController` があるが物件工事のパッケージで**無関係**。FE は `/admin/packages` が272行＋`usePackageApi.ts`（`BASE='/api/v1/system-admin/packages'`）で、`useSystemAdminApi` のモジュール一覧取得と併用している"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "packages",
+        "admin",
+        "packages",
+        "FE",
+        "api",
+        "v1",
+        "system-admin",
+        "packages",
+        "BE"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260917-0123",
+      "title": "【BE実装】組織請求設定と税設定（org-billing・tax-settings）のバックエンドが存在しない",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`/admin/org-billing` と `/admin/tax-settings` が実際に動作すること。FE が呼ぶ `/api/v1/system-admin/org-billing`・`/api/v1/system-admin/tax-settings` に対応する BE を実装し、認可・異常系・契約テストを備えること",
+      "acceptance": [
+        "`/admin/org-billing` と `/admin/tax-settings` が実際に動作すること。FE が呼ぶ `/api/v1/system-admin/org-billing`・`/api/v1/system-admin/tax-settings` に対応する BE を実装し、認可・異常系・契約テストを備えること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "**親タスク**: CMP-260912-0909（運営管理ページのBE不在・傘）。**2026-09-17 マスター裁可により、未完成FEを削除せずBEを実装する**方針。FE は既に実装済みなので、**FE が期待する API 契約を正本として BE を起こす**（ただし FE の型が誤っている可能性もあるため、契約は設計時に精査すること）。**新DBスキーマ・API契約・認可境界を伴うため、実装前に個別の設計裁可を得ること。** 進め方は red test → 最小実装 → 認可・異常系・契約テスト → FE接続の順。**BE 完成まで正規ナビへ公開しない**（CMP-260909-1141 Phase 3 の導線追加対象から外してある）。SYSTEM_ADMIN 専用 API になる見込みのため `/api/v1/system-admin/**` は `SecurityConfig:542` の `.hasRole(\"SYSTEM_ADMIN\")` に包括的に載る点を前提にしてよい。 **本件固有の注意**: どちらも `git grep` で BE 0件。FE は org-billing が221行＋composable＋型、tax-settings が250行＋composable＋型。**課金・税に関わるため Stripe 公式スキル（`stripe-best-practices` の billing/tax 分野別資料）を引くこと**。特に税は `automatic_tax`・product tax code・登録地の扱いが設計を左右する。CMP-260901-1538 柱③-B で支払担当（payer）の明示という決着をした領域と隣接するため、既存の請求契約モデルとの整合を設計時に確認すること。2枚は金銭設定という共通ドメインのため1タスクにまとめた **【2026-09-18 着手前にマスター裁可が必要な設計矛盾を発見】** `docs/features/F20.1_entitlement_billing/README.md` は「**`org_type` は課金額を変えない**」と明記している（非営利優遇は信任 F20.2 で担保する設計であり、価格は機能の性質に付けるという確定方針）。ところが `/admin/org-billing` の FE は、まさに `orgType`（NONPROFIT/FORPROFIT）別に `freeTeams` と `overageUnitPrice` を変える設計（チーム数超過分の従量課金）であり、**この確定済み方針と正面から矛盾する**。さらにこの課金軸は F20.1 のプラン×feature_key 契約モデル（`billing_contracts`）とも F08.9 の会員決済（`payment_items`）とも異なる第三の軸である。**BE を実装すれば済む話ではなく、どちらの設計が正なのかをマスターに決めていただく必要がある。**CMP-260901-1538 柱③-B（支払担当 payer の明示）と同一の `billing_contracts` を触るなら、payer 変更時の請求整合にも影響し得る。 **tax-settings 側の別の問題**: `tax-settings.vue` の `load()` は `catch { taxSettings.value = [] }` でエラー通知を出さず静かに空リスト化する。「税率0件」と表示されるが、失敗なのか本当に0件なのか利用者が判別できない。member-permissions 型の「偽の成功」ではないが別種の握りつぶしであり、BE 実装と同時に除去すること。 なお `payment_items.tax_category`／`tax_rate`／`price_includes_tax`（`V80.20260610210000`）と `connect_accounts.tax_registration_number`／`tax_status`（`V80.20260610210100`）は「将来の国別 TaxPolicy 実装まで埋めない」前提で用意済みの受け皿列であり、`tax-settings` がその TaxPolicy の管理 UI に相当する可能性が高い。対応関係を軍議で整理すること"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "org-billing",
+        "tax-settings",
+        "admin",
+        "org-billing",
+        "admin",
+        "tax-settings",
+        "FE",
+        "api",
+        "v1",
+        "system-admin",
+        "org-billing",
+        "api",
+        "v1",
+        "system-admin",
+        "tax-settings",
+        "BE"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260917-1135",
+      "title": "`@SelfScopedEndpoint` の番人新設とB判定7件の是正",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "①`@SelfScopedEndpoint` が付いたハンドラがスコープID相当の外部入力（teamId/organizationId/scopeId/villageId 等を @RequestParam・@PathVariable・@RequestBody フィールドで）受け取ると CI が赤になる番人が存在する ②B判定7件（`VillageNewsletterController.optOut/optIn`、`VillagePinController.pin/unpin`、`DashboardController.resetWidgetSettings`、`VillageJoinRequestController.listMine`、`VillageSerendipityController.getMyScore`）が注釈を外し実効的な認可シグナルへ移行済み ③免除リストを持たない（`docs/security/README.md:108` の「免除リストは設けない」方針に従う） ④番人の検出条件の取りこぼしと誤検知の両方を固定するテストがある",
+      "acceptance": [
+        "①`@SelfScopedEndpoint` が付いたハンドラがスコープID相当の外部入力（teamId/organizationId/scopeId/villageId 等を @RequestParam・@PathVariable・@RequestBody フィールドで）受け取ると CI が赤になる番人が存在する ②B判定7件（`VillageNewsletterController.optOut/optIn`、`VillagePinController.pin/unpin`、`DashboardController.resetWidgetSettings`、`VillageJoinRequestController.listMine`、`VillageSerendipityController.getMyScore`）が注釈を外し実効的な認可シグナルへ移行済み ③免除リストを持たない（`docs/security/README.md:108` の「免除リストは設けない」方針に従う） ④番人の検出条件の取りこぼしと誤検知の両方を固定するテストがある"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "`@SelfScopedEndpoint` は「他人のデータへ構造的に到達できない」ことの監査済マーカーで、Javadoc（`backend/src/main/java/com/mannschaft/app/common/security/SelfScopedEndpoint.java`）は「リソースID・スコープIDを受け取り検索条件に用いる EP には付与してはならない」と明記する。しかし番人 `SelfScopedEndpointMarkerGuardTest` はこの条件を検査しておらず（value非空・文字列リテラル・メソッド専用・契約テスト実在の4つのみ強制）、実際に3箇所で違反が起きていた。走査の結果 `@SelfScopedEndpoint` 260〜271ハンドラ中スコープ入力を取るのは13件（根治対象4件・実質安全だが注釈が不適切なB判定7件・注釈妥当2件）。B7件は複合キーで他人に到達できず実害は無いが、番人新設とセットで是正しないと免除リスト無し方針の下でB7件が赤のままCIを止める。認可の穴3箇所の根治戦役（CMP-260916-1348 等シフト曜日既定・通知設定・個人成績の根治）の完了後に着手するのが望ましい"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "SelfScopedEndpoint",
+        "SelfScopedEndpoint",
+        "ID",
+        "teamId",
+        "organizationId",
+        "scopeId",
+        "villageId",
+        "RequestParam",
+        "PathVariable",
+        "RequestBody",
+        "CI",
+        "VillageNewsletterController",
+        "optOut",
+        "optIn",
+        "VillagePinController",
+        "pin",
+        "unpin",
+        "DashboardController",
+        "resetWidgetSettings",
+        "VillageJoinRequestController",
+        "listMine",
+        "VillageSerendipityController",
+        "getMyScore",
+        "docs",
+        "security",
+        "README",
+        "md"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260917-1136",
+      "title": "シフトスケジュールの論理削除が子データを置き去りにする",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "①親スケジュールが論理削除済みのとき配下の枠への更新系APIが 404 または 409 で拒否される ②`my/requests` 等の一覧が削除済みスケジュールの行をどう扱うか（除外するか、削除済みと明示するか）を決めて実装する ③行き止まりの導線が残らないことを実機で確認",
+      "acceptance": [
+        "①親スケジュールが論理削除済みのとき配下の枠への更新系APIが 404 または 409 で拒否される ②`my/requests` 等の一覧が削除済みスケジュールの行をどう扱うか（除外するか、削除済みと明示するか）を決めて実装する ③行き止まりの導線が残らないことを実機で確認"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "アリシゼーション（2026-09-16〜17、シフト機能 戦役A・B）で発見。手順: スケジュール作成→枠作成→希望提出→管理者がスケジュールを論理削除。`GET /api/v1/shifts/schedules/{id}` は `404 SHIFT_001` を返す（正しい）が、`GET /api/v1/shifts/my/requests`（自分のシフト希望履歴）に**削除済みスケジュールへの希望が残存**し、そこから辿る `scheduleId` は404になる（画面があれば「詳細を見る」が行き止まりになる）。さらに `PATCH /api/v1/shifts/slots/{slotId}` が**親スケジュールが削除済みでも 200 で成功**し、亡霊状態の枠を編集できる。`docs/architecture/domain_db_design_principles.md` の「CASCADE DELETE は同一ドメイン内のみ許可」「コアエンティティは deleted_at による論理削除」の原則はあるが、論理削除時の子データ整合が実装されていない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "API",
+        "my",
+        "requests"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260917-1137",
+      "title": "403と404の使い分けでスケジュールIDの存在が漏れる",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "①権限の無い利用者から見て、存在するIDと存在しないIDの応答が区別できない ②シフトドメイン以外にも同じ型があるかを走査し、方針を横断で揃えるか個別に留めるかを決める ③決めた方針を `docs/security/` に明文化する",
+      "acceptance": [
+        "①権限の無い利用者から見て、存在するIDと存在しないIDの応答が区別できない ②シフトドメイン以外にも同じ型があるかを走査し、方針を横断で揃えるか個別に留めるかを決める ③決めた方針を `docs/security/` に明文化する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "アリシゼーション（2026-09-16〜17、シフト機能 戦役A・B）で発見。他テナントの利用者が `GET /api/v1/shifts/schedules/{存在するID}` → `403 COMMON_002`、同じ利用者が `GET /api/v1/shifts/schedules/{存在しないID}` → `404 SHIFT_001` となり、応答が分かれるため無関係な第三者が総当たりでスケジュールIDの存在を推測できる。**注意**: `docs/security/01_authorization_baseline.md:160` の「404へ正規化」方針は `/api/v1/public/**` の未認証公開EP限定であり、認証必須のper-scope認可にそのまま持ち込んではならない。どちらに寄せるかは設計判断が要る"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ID",
+        "ID",
+        "ID",
+        "docs",
+        "security"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260917-0529",
+      "title": "チーム／組織サイドバーの27項目が SYSTEM_ADMIN 以外に永久非表示（DEFAULT モジュールを OPTIONAL と同じ仕組みで判定）",
+      "status": "unknown",
+      "statusLabel": "対応中（2026-09-17）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "チーム／組織のサイドバー（ハンバーガーで開く Drawer）で、DEFAULT モジュールを `moduleSlug` に指定した項目が通常のメンバー・ADMIN に表示されること。掲示板・チャット・スケジュール・TODO・アンケート・ファイル共有等の基本機能へサイドバーから到達できること",
+      "acceptance": [
+        "チーム／組織のサイドバー（ハンバーガーで開く Drawer）で、DEFAULT モジュールを `moduleSlug` に指定した項目が通常のメンバー・ADMIN に表示されること。掲示板・チャット・スケジュール・TODO・アンケート・ファイル共有等の基本機能へサイドバーから到達できること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260909-1141 Phase 3（PR #3305）の**実機検証中に発見**した既存欠陥。**Phase 3 で追加した2項目を除く25項目は既存**。**原因の連鎖（すべて実測）**: ①`module_definitions.module_type` には `DEFAULT`（常時有効な基本機能）と `OPTIONAL`（スコープごとに有効化）がある。②`organization_enabled_modules`／`team_enabled_modules` には **OPTIONAL の行しか存在しない**（開発DB全体で876行、DEFAULT は **0行**）。DEFAULT は常時有効なので有効化フラグを持たない設計。③`ModuleService.getOrganizationModules`（`ModuleService.java:442-462`）はその行だけを写して返すため **DEFAULT が応答に現れない**。④`BaseSidebar.vue:59-61` がその応答から `enabledSlugs` を作り、⑤`BaseSidebar.vue:35` の `isItemVisible` が `item.moduleSlug !== null && !enabledSlugs.has(item.moduleSlug)` で弾く。**影響**: 組織16項目・チーム11項目＝計27項目（timeline/chat/bulletin/circular/schedule/events/member_intro/todos/surveys/safety/files/analytics/auditLogs/directMail/advertiser/bulletinCategories 等）。**長く発覚しなかった理由**: (a) `isItemVisible` の先頭 `if (roleName === 'SYSTEM_ADMIN') return true` により**運営アカウントで見ると正常に見える**、(b) ユニットテストはモジュール一覧をモックするため「DEFAULT は行が無い」という実データの性質が再現されない、(c) 静的走査（本戦役の28枚調査）は「リンクが定義されているか」を見るので**定義がある以上ヒットしない**。**裁可済みの方針（2026-09-17）**: BE を直す。`getOrganizationModules`／`getTeamModules` が DEFAULT も `isEnabled: true` として返す。FE 側でサイドバー定義の `moduleSlug` を `null` にする案は、「この項目はどの機能に属するか」の情報が失われるため不採用。**影響範囲の確認済み**: これらAPIの FE 利用箇所は3つのみで、`WidgetMyTeams.vue:9` と `pages/teams/[slug].vue:64` は `reservation`（OPTIONAL）が有効かだけを見るため影響なし。機能設定画面は別API（`/catalog`）なので DEFAULT にトグルが並ぶ副作用も起きない。**CMP-260909-1141 Phase 5（番人）への申し送り**: 本件は「リンクは定義されているのに条件で永久に消える」型で、静的なリンク走査では原理的に検出できない。しかも影響は28枚より広く基本機能を含む。番人はモジュール条件・ロール条件が**実データで成立しうるか**まで見る必要がある"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "SYSTEM_ADMIN",
+        "DEFAULT",
+        "OPTIONAL",
+        "Drawer",
+        "DEFAULT",
+        "moduleSlug",
+        "ADMIN",
+        "TODO"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3305
+      ],
+      "github": [
+        {
+          "number": 3305,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 運営管理ページ9枚に導線を接続する（CMP-260909-1141 Phase 3）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3305",
+          "updatedAt": "2026-09-17T02:21:00Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260918-0023",
+      "title": "委員会一覧のステータス表示が壊れている（未再現・要追加調査）",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "再現条件が不明。委員会が実在するスコープで再確認が必要。再現した場合に、委員会一覧の各行に正しい日本語ステータス（設立準備中/活動中 等）が表示されること。生の翻訳キーが画面に出ないこと",
+      "acceptance": [
+        "再現条件が不明。委員会が実在するスコープで再確認が必要。再現した場合に、委員会一覧の各行に正しい日本語ステータス（設立準備中/活動中 等）が表示されること。生の翻訳キーが画面に出ないこと"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "アリシゼーション CMP-260917-2102 期の住民観測（組織の委員会一覧 `frontend/app/pages/organizations/[slug]/committees.vue:109` で、各行のステータスバッジが `committee.status.undefined` という生の翻訳キーのまま表示、11行すべてで観測との報告）。**殿が実機（localhost:3001 / BE 8080、main `8c49ed428`）で裏取りしたが未再現**: `/organizations/org-000009/committees` を開いたところ `GET /api/v1/organizations/9/committees` は **200** で `content: []`（委員会0件）、ブラウザ実測でも失敗した API は無かった。組織9に委員会が存在せず住民が別スコープを見ていた可能性がある。**存在するか分からぬ不具合として扱う**。なお調査済みの事実は有用なため残す: 翻訳キー `committee.status.{DRAFT,ACTIVE,CLOSED,ARCHIVED,CANCELLED_DRAFT}` は `frontend/app/locales/ja/committee.json` に5つとも定義済みで `nuxt.config.ts` にも登録済み。BE 側 `CommitteeSummaryResponse` にも `status` フィールドがあり `CommitteeController.java:77` が `.status(c.getStatus())` を設定している"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260918-0024",
+      "title": "組織スコープのゲーミフィケーションとタイムラインダイジェストで裏のAPIが失敗している",
+      "status": "unknown",
+      "statusLabel": "①ゲーミフィケーション: 完了（チーム固有機能と決定・PR待ち） ②タイムラインダイジェスト400: 残件（本戦役では未着手）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "組織スコープのゲーミフィケーションについて「BE を実装する」か「組織サイドバーから項目を外す」かを判断し、いずれかを行うこと。タイムラインダイジェストの 400 の原因を特定し是正すること",
+      "acceptance": [
+        "組織スコープのゲーミフィケーションについて「BE を実装する」か「組織サイドバーから項目を外す」かを判断し、いずれかを行うこと。タイムラインダイジェストの 400 の原因を特定し是正すること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "アリシゼーション期の住民観測を殿が実機（localhost:3001 / BE 8080、main `8c49ed428`）でブラウザから API 捕捉して裏取り。対象を2件に絞った（当初報告した順番待ち・委員会・広告主・予算は以下の理由で除外）: 順番待ち・委員会＝失敗APIなし（誤報。委員会は `CMP-260918-0023` として別途「未再現」で記録）。広告主＝ `GET /api/v1/advertiser/account?organizationId=org-000009` は404だが画面は「広告主登録してください」と正しい誘導を出しており未登録を表す正常な404。**①ゲーミフィケーション（組織スコープ）＝ 404、根本原因まで判明**: `GET /api/v1/organizations/org-000009/gamification/config` が404。BE の `backend/src/main/java/com/mannschaft/app/gamification/controller/GamificationBadgeController.java:32` は `@RequestMapping(\"/api/v1/teams/{teamId}/gamification/badges\")` でチームスコープ専用であり、組織スコープのゲーミフィケーション API は BE に存在しない（slug・数値IDいずれも404）。にもかかわらず `OrganizationSidebar` に組織のゲーミフィケーション項目があり、FE の `useGamificationApi.ts:12` が `${base}/gamification/config` を呼んでいる。**`CMP-260918-0841`（メンバー紹介のBE未実装）と同型の「導線はあるが機能が無い」欠陥であり、相互参照とする**（他にも同種が潜んでいる可能性を示唆）。**②タイムラインダイジェスト＝ 400（実証済み）**: `GET /api/v1/timeline-digest?limit=20` が400を返すことを殿が実機で確認。原因未特定。**【2026-09-18 足軽2・裁可済み方針で決着】** マスター裁可: ゲーミフィケーションは組織へ広げず「チーム固有機能」に確定。`ModuleService.getOrganizationModuleCatalog`／`getTeamModuleCatalog` は既に `module_level_availability` のレベル別可否を反映していた（`isLevelAvailable`）ため、正しい直し方は「gamification の ORGANIZATION レベルを利用不可にする」だけで済むと確認。Flyway `V216.20260918053554__disable_gamification_module_for_organization_level.sql` で ORGANIZATION 行を `is_available=0` に投入（V208 の payment 有効化と対称の書き方）。`OrganizationSidebar.vue:108` のゲーミフィケーション項目を削除し、`organizations/[slug]/gamification.vue` ページも削除（対応する組織スコープ BE が無いため案内文ではなく削除を選択。他ページからのリンク無しを grep で確認済み）。`useGamificationApi.ts` の `getConfig`/`updateConfig` にあった `scopeType: 'team'"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "API",
+        "BE"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260918-0025",
+      "title": "アフィリエイトのタグIDがプレースホルダのまま本番へ出る運用リスク",
+      "status": "done",
+      "statusLabel": "完了（PR #3352・CI待ち）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "本番で `PLACEHOLDER_` のままの `affiliate_configs` 行が存在しないことを保証する手立てがあること（起動時チェック・管理画面での警告表示・リリース手順への明記のいずれか）。あるいは「上書き不要な設計に変える」判断",
+      "acceptance": [
+        "本番で `PLACEHOLDER_` のままの `affiliate_configs` 行が存在しないことを保証する手立てがあること（起動時チェック・管理画面での警告表示・リリース手順への明記のいずれか）。あるいは「上書き不要な設計に変える」判断"
+      ],
+      "blocker": "#3352",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "殿の実機観測。ダッシュボードとインフィードの広告リンクに `PLACEHOLDER_AMAZON_TAG` / `PLACEHOLDER_RAKUTEN_TAG` がそのまま表示される。出所は Flyway マイグレーション `backend/src/main/resources/db/migration/V149.20260710004057__seed_affiliate_configs_dashboard_infeed.sql` で、同ファイルに「`tag_id` は SYSTEM_ADMIN が affiliate-settings 画面で上書きする前提のプレースホルダ」と明記されている。**したがって実装上は仕様どおりであり不具合ではない。** ただし上書きは人手の運用に委ねられており、忘れればアフィリエイト収益が一切計上されないまま本番が回り続ける。番人（自動検出）も無い。**裁可済みの方針「未設定なら広告を出さない＋管理画面で警告」で対応（PR #3352）**: `AffiliateConfigEntity.isPlaceholderTagId` を単一の判定点とし、`SpotlightServingService`（実配信経路）・`AffiliateConfigService`（公開API）・備品補充リンク生成の3経路すべてでプレースホルダ行を候補から除外。SYSTEM_ADMIN 向け一覧APIに `placeholderTagId` フラグを追加し、`affiliate-settings.vue` に警告表示（i18n 6言語）。実機E2E・アリシゼーション・openapi.json 再生成は未実施（PR本文に理由明記）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ID",
+        "PLACEHOLDER_",
+        "affiliate_configs"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        3352
+      ],
+      "github": [
+        {
+          "number": 3352,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "アフィリエイトのプレースホルダtag_idを広告候補から除外し警告表示",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3352",
+          "updatedAt": "2026-09-18T06:44:14Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260918-0404",
+      "title": "【番人】「リンクはあるが条件で永久に消える」型を検出する番人が無い",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "サイドバー等の項目に付けた `moduleSlug`／`requiredRole` の条件が、**実データで成立しうるか**を CI で検査すること。成立しえない条件（該当レベルで有効化できないモジュール、DEFAULT モジュールを OPTIONAL と同じ仕組みで判定している等）を付けた項目があれば red にする",
+      "acceptance": [
+        "サイドバー等の項目に付けた `moduleSlug`／`requiredRole` の条件が、**実データで成立しうるか**を CI で検査すること。成立しえない条件（該当レベルで有効化できないモジュール、DEFAULT モジュールを OPTIONAL と同じ仕組みで判定している等）を付けた項目があれば red にする"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260909-1141 Phase 5（PR #3347）で**意図的に扱わないと決めた型**（マスター裁可済み）。Phase 5 の番人は「①リンクが無い／③スコープ配下に同機能ページがある残骸／④BE が無い」を扱い、本件の②型は別番人に分けた。**なぜ必要か（実害2件）**: ①PR #3161 で組織サイドバーに足した領収書2項目は、リンク定義は存在するのに payment モジュールが組織レベルで有効化不可だったため恒久的に非表示だった（PR #3227 で根治）。②**DEFAULT モジュールを条件にしたサイドバー27項目**（組織16・チーム11）が SYSTEM_ADMIN 以外に永久非表示だった（CMP-260917-0529・PR #3322 で根治）。掲示板・チャット・スケジュール・TODO・アンケート・ファイル共有等の**基本機能が該当し、当初数えた30ルートより規模でも深刻さでも上回った**。**静的なリンク走査では原理的に検出できない**（定義は存在するため素通りする）。**実装上の論点**: `module_definitions`（`module_type` が DEFAULT / OPTIONAL）と `module_level_availability`（スコープレベル別の可否）を読む必要がある。ただし `V2.027__seed_module_level_availability.sql` は `module_id` を**採番順の整数値**で直接指定しており、slug との対応は `V2.024` の INSERT 順に依存する暗黙の結合である。**SQL シードを正規表現で読む方式は脆く**、複数マイグレーション（wave1/wave2・property_history 等）にまたがる累積状態を正しく再構成する必要がある。Testcontainers で実際に Flyway を流して DB の最終状態を読む方が正確だが、**このリポジトリには DB に接続する番人テストの前例が無い**ため新しい様式になる。`requiredRole` の妥当性を機械判定する根拠データ（ロールとスコープ種別の対応表）も見当たらず、追加調査が要る。**偽陰性への注意**: `BaseSidebar.isItemVisible` の先頭は `if (roleName === 'SYSTEM_ADMIN') return true` であり、**運営アカウントで見ると正常に見える**。ユニットテストはモジュール一覧をモックするため実データの性質が再現されない。この三重の沈黙が27項目を長年見逃した原因なので、番人自身が同じ構造で黙らないよう設計すること"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "moduleSlug",
+        "requiredRole",
+        "CI",
+        "DEFAULT",
+        "OPTIONAL",
+        "red"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3161,
+        3227,
+        3322,
+        3347
+      ],
+      "github": [
+        {
+          "number": 3161,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 領収書2画面と組織基本情報の編集への導線を追加（CMP-260907-0851 / CMP-260907-0852）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3161",
+          "updatedAt": "2026-09-07T12:48:47Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3227,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 決済モジュールを組織レベルでも有効化できるようにする（無料解放）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3227",
+          "updatedAt": "2026-09-11T13:35:48Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3322,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: サイドバー27項目が永久非表示になる欠陥を根治（CMP-260917-0529）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3322",
+          "updatedAt": "2026-09-17T07:54:34Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3347,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "番人追加: 孤立ページ（到達不能ページ）の再発防止（CMP-260909-1141 Phase 5）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3347",
+          "updatedAt": "2026-09-18T03:56:59Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260918-1359",
+      "title": "payment神クラスの段階分割とMoney値オブジェクト導入",
+      "status": "unknown",
+      "statusLabel": "対応中（第1段: 照会責務分割）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "第1段で `ConnectChargeService` から3照会APIの責務を分離し、レスポンス・認可・例外・DB呼出しを不変にすること。第2段でpayment内部のminor-unit `Money` を導入し、通貨正規化・同一通貨演算・overflow拒否を担保すること。DB/API/JPA型やStripe書込・webhook・冪等性を同時変更しないこと",
+      "acceptance": [
+        "第1段で `ConnectChargeService` から3照会APIの責務を分離し、レスポンス・認可・例外・DB呼出しを不変にすること。第2段でpayment内部のminor-unit `Money` を導入し、通貨正規化・同一通貨演算・overflow拒否を担保すること。DB/API/JPA型やStripe書込・webhook・冪等性を同時変更しないこと"
+      ],
+      "blocker": "CMP-011（月謝サブスク実装との競合回避）",
+      "issues": [
+        {
+          "label": "Issue #3353",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "Issue #3353"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "月謝サブスクの稼働中ファイルと競合させないため段階実施。billingのtax-awareな `BillingMoney` とは統合せず、payment内部VOとして導入する。第1段は `EscrowQueryService` 抽出で着手"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "payment",
+        "Money",
+        "ConnectChargeService",
+        "API",
+        "DB",
+        "payment",
+        "minor-unit",
+        "Money",
+        "overflow",
+        "DB",
+        "API",
+        "JPA",
+        "Stripe",
+        "webhook"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3353
+      ],
+      "github": [
+        {
+          "number": 3353,
+          "kind": "issue",
+          "state": "open",
+          "title": "refactor(payment): 神クラスを段階分割しMoney値オブジェクトを導入する",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/3353",
+          "updatedAt": "2026-09-18T23:46:30Z",
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-260918-1406",
+      "title": "D-5凍結ストアを段階返済する（初回: 地域マスタread窓口）",
+      "status": "unknown",
+      "statusLabel": "対応中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "matching所有の地域マスタread窓口を追加し、recruitmentの `MarketRegionValidator` / `MarketResponseEnricher` からCity/Prefecture Repository・Entity直接依存を除去すること。null/blank・無効code・都道府県市区町村不一致 `MARKET_001`・名称欠落の既存挙動とDB呼出回数を不変にし、D-5ストアを1967行から1955行へ減らすこと",
+      "acceptance": [
+        "matching所有の地域マスタread窓口を追加し、recruitmentの `MarketRegionValidator` / `MarketResponseEnricher` からCity/Prefecture Repository・Entity直接依存を除去すること。null/blank・無効code・都道府県市区町村不一致 `MARKET_001`・名称欠落の既存挙動とDB呼出回数を不変にし、D-5ストアを1967行から1955行へ減らすこと"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "Issue #3354",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "Issue #3354"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "初回ロットは12違反のみ。直近の匿名検索修正と近い `TeamRegionNormalizer` は次ロットへ分離"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "D-5",
+        "read",
+        "matching",
+        "read",
+        "recruitment",
+        "MarketRegionValidator",
+        "MarketResponseEnricher",
+        "City",
+        "Prefecture",
+        "Repository",
+        "Entity",
+        "null",
+        "blank",
+        "code",
+        "MARKET_001",
+        "DB",
+        "D-5"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3354
+      ],
+      "github": [
+        {
+          "number": 3354,
+          "kind": "issue",
+          "state": "open",
+          "title": "refactor(arch): D-5凍結ストアを段階的に返済する（初回: 地域マスタread窓口）",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/3354",
+          "updatedAt": "2026-09-18T23:46:31Z",
+          "ci": null
+        }
+      ]
+    },
+    {
+      "id": "CMP-260918-1913",
+      "title": "個人集約タイムラインと `/timeline` を所属チーム・組織・村で統一する",
+      "status": "done",
+      "statusLabel": "完了（PR #3369・CI通過）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`/dashboard` の集約タイムラインと `/timeline` が同じ `/api/v1/timeline/my` の投稿集合・順序を表示し、現役所属する TEAM / ORGANIZATION / VILLAGE の PUBLISHED 根投稿を含むこと。非所属・退村・BAN・削除／凍結村、PUBLIC／PERSONAL、返信、非公開状態を除外し、空所属・村のみ・複数村・カーソル境界でも重複・欠落・N+1がないこと。未認証401・別テナント／別村非表示を自動テストと実UI・実API・実DB（管理者1＋一般2の別BrowserContext）で確認すること",
+      "acceptance": [
+        "`/dashboard` の集約タイムラインと `/timeline` が同じ `/api/v1/timeline/my` の投稿集合・順序を表示し、現役所属する TEAM / ORGANIZATION / VILLAGE の PUBLISHED 根投稿を含むこと。非所属・退村・BAN・削除／凍結村、PUBLIC／PERSONAL、返信、非公開状態を除外し、空所属・村のみ・複数村・カーソル境界でも重複・欠落・N+1がないこと。未認証401・別テナント／別村非表示を自動テストと実UI・実API・実DB（管理者1＋一般2の別BrowserContext）で確認すること"
+      ],
+      "blocker": "#3369",
+      "issues": [
+        {
+          "label": "Issue #3358 / NOTE-260918-145441-001。試練 `e81cc9c`、実装 `608fa5e`、修正 `a96e848`・`eb6cc05`・D-1是正 `1a0657c`。BE単体・返信系・村Entity越境ArchUnit、FE9件 green。D-1是正後のB0-J7 runId `B0-2026-09-18T17-45-01.082Z` は実UI/実API/実DB、3認証主体・別BrowserContextで expected=1 / unexpected=0 / skipped=0 / results=1。PR #3369 CI run `35409546051` はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等 green",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "Issue #3358 / NOTE-260918-145441-001。試練 `e81cc9c`、実装 `608fa5e`、修正 `a96e848`・`eb6cc05`・D-1是正 `1a0657c`。BE単体・返信系・村Entity越境ArchUnit、FE9件 green。D-1是正後のB0-J7 runId `B0-2026-09-18T17-45-01.082Z` は実UI/実API/実DB、3認証主体・別BrowserContextで expected=1 / unexpected=0 / skipped=0 / results=1。PR #3369 CI run `35409546051` はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等 green"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "外部 feature_key `timeline-view` は棚卸し正本の `timeline` に対応。CMP-058／CMP-100 の個人フィード基盤を再利用するが、村集約と `/timeline` の結線は未包含。PR #2041 は当時の確定仕様として VILLAGE を除外しており、本件とは重複しない。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様であり、別CMP化しない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "timeline",
+        "dashboard",
+        "timeline",
+        "api",
+        "v1",
+        "timeline",
+        "my",
+        "TEAM",
+        "ORGANIZATION",
+        "VILLAGE",
+        "PUBLISHED",
+        "BAN",
+        "PUBLIC",
+        "PERSONAL",
+        "UI",
+        "API",
+        "DB",
+        "BrowserContext"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        2041,
+        3358,
+        3369
+      ],
+      "github": [
+        {
+          "number": 2041,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 個人ダッシュボード集約タイムライン（所属team/org横断・/api/v1/timeline/my 新設）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2041",
+          "updatedAt": "2026-06-30T23:13:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3358,
+          "kind": "issue",
+          "state": "closed",
+          "title": "不具合: 個人タイムラインに所属組織・村の投稿が揃わない",
+          "url": "https://github.com/kenta-0420/mannschaft/issues/3358",
+          "updatedAt": "2026-09-19T01:41:10Z",
+          "ci": null
+        },
+        {
+          "number": 3369,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "個人タイムラインを所属チーム・組織・村で統一",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3369",
+          "updatedAt": "2026-09-19T01:48:09Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260918-1357",
+      "title": "メンバー検索 lookup の teamPageId 未指定時、認可チェックが条件分岐の外側にしか無く分岐から素通りする構造だった",
+      "status": "done",
+      "statusLabel": "完了",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`teamPageId` を必須パラメータ化し（未指定は400）、認可チェック（`checkPageMembershipOrNotFound`）を条件分岐の外に出して全経路で必ず実行されること。member パッケージ全体（TeamPageService/MemberProfileFieldService/TeamPageSectionService）を走査し同型の穴が無いことを確認すること",
+      "acceptance": [
+        "`teamPageId` を必須パラメータ化し（未指定は400）、認可チェック（`checkPageMembershipOrNotFound`）を条件分岐の外に出して全経路で必ず実行されること。member パッケージ全体（TeamPageService/MemberProfileFieldService/TeamPageSectionService）を走査し同型の穴が無いことを確認すること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "PR #3355",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3355"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "足軽3（メンバー検索の認可穴を根治）が発見・是正。`MemberProfileService#lookupMembers` は `teamPageId` が null のとき認可チェックを一切通らずリポジトリへ抜けており、安全性は SQL の `WHERE teamPageId = NULL` が三値論理で常に偽になる副作用に依存していた（実害は低いが、正しく実装し直した瞬間に認可なき全件検索が成立し得る危険な構造）。設計書 `docs/features/F06.2_member_gallery.md` が定めていた「未指定時は最新 PUBLISHED ページから検索」も未実装だった上、FE 実装（`useMemberProfileApi.ts`）にも `teamPageId` を省略する呼び出し元が実在しなかったため、案A（`teamPageId` を必須パラメータ化・400化）を採用。設計書も実装に合わせて修正済み。兄弟3クラス（TeamPageService/MemberProfileFieldService/TeamPageSectionService）を走査したが同型の穴は他に無し（全 if/else 分岐が両方の枝で認可チェックを通る構造）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "lookup",
+        "teamPageId",
+        "teamPageId",
+        "checkPageMembershipOrNotFound",
+        "member",
+        "TeamPageService",
+        "MemberProfileFieldService",
+        "TeamPageSectionService"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        3355
+      ],
+      "github": [
+        {
+          "number": 3355,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: メンバー検索lookupのteamPageId未指定時の認可穴を根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3355",
+          "updatedAt": "2026-09-18T13:31:57Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260918-1344",
+      "title": "ゲーミフィケーションのポイント付与アクション4種が未実装",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`ActionType.ACTIVITY_PARTICIPATE`／`SCHEDULE_ATTEND`／`KNOWLEDGE_BASE_CREATE`／`SKILL_REGISTER` の4種について、それぞれ「実際にポイントを付与するリスナー／サービス直呼びを実装する」か「enum から削除しUIの説明文からも外す」かを決めて実装する。決着後、`ActionType` に定義された全アクションについて発火経路が最低1つ存在することを保証する何らかのテスト（列挙走査など）があること",
+      "acceptance": [
+        "`ActionType.ACTIVITY_PARTICIPATE`／`SCHEDULE_ATTEND`／`KNOWLEDGE_BASE_CREATE`／`SKILL_REGISTER` の4種について、それぞれ「実際にポイントを付与するリスナー／サービス直呼びを実装する」か「enum から削除しUIの説明文からも外す」かを決めて実装する。決着後、`ActionType` に定義された全アクションについて発火経路が最低1つ存在することを保証する何らかのテスト（列挙走査など）があること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "CMP-260918-0024（組織ゲーミフィケーション戦役）の副産物として `backend/src/main/java/com/mannschaft/app/gamification/ActionType.java` を確認した際に判明。`git grep` で実発火箇所を再確認済み: 実際にポイントが動くのは `TIMELINE_POST`（`GamificationPointListener.java:48`）・`DAILY_LOGIN`（同:76,86）・`ADMIN_ADJUST`（`GamificationPointService.java:257,297`、管理者による手動調整専用）の3種のみ。`ACTIVITY_PARTICIPATE`／`SCHEDULE_ATTEND`／`KNOWLEDGE_BASE_CREATE`／`SKILL_REGISTER` は enum 宣言（`ActionType.java:12,15,18,24`）があるのみで、リスナー・イベント発火元・サービス直呼びいずれにも参照が無い（`grep -rn` で `ActionType.ACTIVITY_PARTICIPATE` 等の使用箇所は宣言行以外ゼロ）。ユーザーから見ると「活動参加・出欠・ナレッジベース投稿・スキル登録でポイントが貰えるはず」という期待が生まれうるが実際には何も起きない、無言の未実装。番人（自動検出）は無い"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ActionType",
+        "ACTIVITY_PARTICIPATE",
+        "SCHEDULE_ATTEND",
+        "KNOWLEDGE_BASE_CREATE",
+        "SKILL_REGISTER",
+        "enum",
+        "UI",
+        "ActionType"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260919-1139",
+      "title": "i18n の `common.` 接頭辞の誤用が40種、FE 全体に残っている",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`t('common.◯◯')` のうちロケール JSON で解決できないものがゼロであること／同種の誤りを CI で機械的に検出する番人があること（`t()` の参照先とロケール JSON の実構造を突き合わせる）／6言語すべてで検証されること",
+      "acceptance": [
+        "`t('common.◯◯')` のうちロケール JSON で解決できないものがゼロであること／同種の誤りを CI で機械的に検出する番人があること（`t()` の参照先とロケール JSON の実構造を突き合わせる）／6言語すべてで検証されること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "アリシゼーションで判明。`frontend/app/locales/ja/common.json` は大半のキーを接頭辞なし（フラット）で公開しており、`t('common.xxx')` が正しいのは common.json 内の `common` サブオブジェクト配下 8 キー（`cancel`／`search`／`edit`／`save`／`resume`／`menu`／`scopeShell`／`unsavedChanges`）のみ。FE 全体（`frontend/app` 配下の `.vue`／`.ts`）を `t('common.` で走査すると 155 種の参照があり、うち 40 種が common.json では解決できない（殿が JSON を実際に引いて判定）。解決できない例: `common.back`, `common.close`, `common.create`, `common.delete`, `common.download`, `common.action`, `common.count_suffix`, `common.delete_failed`, `common.deleted`, `common.dialog.confirm_delete`, `common.dialog.confirm_title`, `common.dialog.error`, `common.dialog.success`, `common.end_date`, `common.error.loadFailed` など。画面に翻訳前の生キーがそのまま露出する。同種の誤りにより「メンバー紹介」機能一帯で生キーが露出していたことをアリシゼーションの住民が目撃し殿が実コードで裏取り済み（PR #3374 で修繕済み。本件はそれ以外の残り）。再発を防ぐ番人（`t()` の参照先がロケール JSON に実在するかを機械的に検証する lint ルール／テスト）は現状存在しない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "i18n",
+        "common",
+        "FE",
+        "common",
+        "JSON",
+        "CI",
+        "JSON"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3374
+      ],
+      "github": [
+        {
+          "number": 3374,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: メンバー紹介の翻訳キーに誤った common. 接頭辞が付き生キーが露出する不具合を修正",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3374",
+          "updatedAt": "2026-09-19T02:35:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260919-1140",
+      "title": "ダッシュボードの「メンバー」ウィジェットと上部タブ「メンバー」が別機能を指している",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "ダッシュボードのウィジェット名と遷移先が一致していること（名前を「メンバー紹介」に改めるか、遷移先を名簿に改めるか、いずれかを設計判断として決める）／一般利用者が「メンバー紹介を作りたい」と思って画面を辿ったとき、迷わず到達できること",
+      "acceptance": [
+        "ダッシュボードのウィジェット名と遷移先が一致していること（名前を「メンバー紹介」に改めるか、遷移先を名簿に改めるか、いずれかを設計判断として決める）／一般利用者が「メンバー紹介を作りたい」と思って画面を辿ったとき、迷わず到達できること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "アリシゼーションで判明・殿が実コードで裏取り。`frontend/app/components/ScopeDashboard.vue:188` に `members: \\`${base}/member-profiles\\`` とあり、`members` という名のウィジェットが「メンバー紹介」画面へ飛ぶ。一方、組織ページの上部タブ `members`（`frontend/app/pages/organizations/[slug].vue:147` 付近の `SEGMENT_TO_TAB`）は `/organizations/{slug}/members`（名簿管理）へ飛ぶ。両画面とも実在する（`frontend/app/pages/organizations/[slug]/members.vue` と `.../member-profiles.vue`）。サイドバーは正しく区別できている（`frontend/app/locales/ja/org_sidebar.json` で `memberProfiles = メンバー紹介`／`memberList = メンバー一覧`）が、ダッシュボードのウィジェットだけが区別できていない。アリシゼーションの住民（一般利用者・素直な導線追跡）が実際に迷い、「上部ナビの『メンバー』を素直に辿ると名簿に入ってしまい、メンバー紹介へは辿り着けない」と報告した。**どちらに寄せるかはマスターの設計判断を要する（ウィジェット名を変えるのか、遷移先を変えるのか）**"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260919-1141",
+      "title": "実機E2E の既存テスト1本に構文エラーがあり、一括実行が全滅する",
+      "status": "unknown",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`shift-request-entry-2118.spec.ts` の構文エラーが解消していること／`--grep` による一括実行が、ロード段階で落ちずに走ること／同種の「ロードできない spec」を CI で検出できること（検討でよい）",
+      "acceptance": [
+        "`shift-request-entry-2118.spec.ts` の構文エラーが解消していること／`--grep` による一括実行が、ロード段階で落ちずに走ること／同種の「ロードできない spec」を CI で検出できること（検討でよい）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "実機E2E 実行中に判明。`frontend/tests/e2e/real/shift-request-entry-2118.spec.ts` に TypeScript の構文エラーがある（`test.beforeEach((_, testInfo)` の destructuring 不備）。このため `npx playwright test --config=playwright-real.config.ts --grep <パターン>` のように複数ファイルをまとめて実行すると、ファイルのロード段階で全体が落ちる（個別にファイルパスを指定すれば他のテストは動く）。今回の戦役とは無関係の既存不具合だが、この状態では実機E2E の一括実行が機能しないため、実機E2E が形骸化する危険がある"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "E2E",
+        "shift-request-entry-2118",
+        "spec",
+        "ts",
+        "grep",
+        "spec",
+        "CI"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
     }
   ],
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-09-14T22:24:36+00:00",
+    "synchronizedAt": "2026-09-19T04:19:56+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -25015,12 +28251,42 @@ window.BETA_INVENTORY_DATA = {
         2718,
         2726
       ],
-      "CMP-007": [],
-      "CMP-008": [],
+      "CMP-007": [
+        1643,
+        1648,
+        1649,
+        1651,
+        1655,
+        1656,
+        1658,
+        1667,
+        1668,
+        1670,
+        1671,
+        1673,
+        1675,
+        1676,
+        1677,
+        1726,
+        1736
+      ],
+      "CMP-008": [
+        3280,
+        3331
+      ],
       "CMP-009": [],
       "CMP-010": [
+        2215,
+        2454,
+        2459,
+        2462,
+        2466,
+        2467,
+        2470,
         2482,
-        2486
+        2498,
+        2506,
+        2521
       ],
       "CMP-011": [],
       "CMP-012": [],
@@ -25096,8 +28362,10 @@ window.BETA_INVENTORY_DATA = {
         2736,
         2791
       ],
-      "CMP-033": [],
-      "CMP-034": [],
+      "CMP-033": [
+        2795,
+        3289
+      ],
       "CMP-035": [
         2655,
         2660,
@@ -25147,7 +28415,8 @@ window.BETA_INVENTORY_DATA = {
         2816
       ],
       "CMP-041": [
-        2804
+        2804,
+        2880
       ],
       "CMP-042": [
         2787
@@ -25258,7 +28527,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-106": [
         2850
       ],
-      "CMP-107": [],
+      "CMP-107": [
+        3279
+      ],
       "CMP-108": [
         3273
       ],
@@ -25269,11 +28540,21 @@ window.BETA_INVENTORY_DATA = {
         2749
       ],
       "CMP-111": [
-        2867
+        3046,
+        3051,
+        3052,
+        3057
       ],
-      "CMP-112": [],
-      "CMP-113": [],
-      "CMP-114": [],
+      "CMP-112": [
+        3298,
+        3307
+      ],
+      "CMP-113": [
+        3329
+      ],
+      "CMP-114": [
+        3345
+      ],
       "CMP-260820-1422": [],
       "CMP-260820-1423": [
         2887,
@@ -25384,6 +28665,36 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-260903-0701": [
         3086
+      ],
+      "CMP-260916-1042": [],
+      "CMP-260917-1206": [
+        2880,
+        3310,
+        3315
+      ],
+      "CMP-260917-1207": [
+        3311,
+        3324
+      ],
+      "CMP-260917-1209": [
+        3312,
+        3332
+      ],
+      "CMP-260917-1210": [
+        3313,
+        3339
+      ],
+      "CMP-260917-1350": [],
+      "CMP-260917-1351": [],
+      "CMP-260917-1352": [],
+      "CMP-260918-0841": [
+        3357
+      ],
+      "CMP-260918-0508": [
+        3357
+      ],
+      "CMP-034": [
+        2793
       ],
       "CMP-260821-1446": [
         2905
@@ -25519,8 +28830,15 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-260909-1141": [
         3161,
+        3183,
         3227,
-        3232
+        3232,
+        3300,
+        3305,
+        3322,
+        3330,
+        3336,
+        3347
       ],
       "CMP-260909-1142": [],
       "CMP-260909-1143": [],
@@ -25626,10 +28944,73 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-260912-1823": [],
       "CMP-260912-2258": [
-        3213
+        3213,
+        3283
       ],
       "CMP-260913-1416": [],
-      "CMP-260913-1251": []
+      "CMP-260913-1251": [],
+      "CMP-260916-0053": [
+        3285
+      ],
+      "CMP-260916-0054": [],
+      "CMP-260916-0055": [
+        3286
+      ],
+      "CMP-260916-0056": [
+        3283
+      ],
+      "CMP-260916-1348": [],
+      "CMP-260912-0909": [],
+      "CMP-260912-0910": [],
+      "CMP-260912-0911": [
+        3336
+      ],
+      "CMP-260916-2328": [
+        3291
+      ],
+      "CMP-260917-0041": [
+        3350
+      ],
+      "CMP-260917-0121": [],
+      "CMP-260917-0122": [],
+      "CMP-260917-0123": [],
+      "CMP-260917-1135": [],
+      "CMP-260917-1136": [],
+      "CMP-260917-1137": [],
+      "CMP-260917-0529": [
+        3305
+      ],
+      "CMP-260918-0023": [],
+      "CMP-260918-0024": [],
+      "CMP-260918-0025": [
+        3352
+      ],
+      "CMP-260918-0404": [
+        3161,
+        3227,
+        3322,
+        3347
+      ],
+      "CMP-260918-1359": [
+        3353
+      ],
+      "CMP-260918-1406": [
+        3354
+      ],
+      "CMP-260918-1913": [
+        2041,
+        3358,
+        3369
+      ],
+      "CMP-260918-1357": [
+        3355
+      ],
+      "CMP-260918-1344": [],
+      "CMP-260919-1139": [
+        3374
+      ],
+      "CMP-260919-1140": [],
+      "CMP-260919-1141": []
     },
     "items": {
       "902": {
@@ -25714,6 +29095,258 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "1643": {
+        "number": 1643,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: イベント更新の常時500(toBuilder id欠落)と可視性enum新値500を根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1643",
+        "updatedAt": "2026-06-18T15:51:30Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1648": {
+        "number": 1648,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: UserService の toBuilder 更新破壊(id欠落でINSERT化)を直接ミューテートで根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1648",
+        "updatedAt": "2026-06-19T00:35:03Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1649": {
+        "number": 1649,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: FeatureFlag/NotificationCredit の toBuilder 更新破壊を直接ミューテートで根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1649",
+        "updatedAt": "2026-06-19T01:16:27Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1651": {
+        "number": 1651,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: Team/Organization 系の toBuilder 更新破壊(id欠落でINSERT化)を直接ミューテートで根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1651",
+        "updatedAt": "2026-06-19T02:58:48Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1655": {
+        "number": 1655,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: school/attendance の toBuilder 更新破壊(id欠落で行重複INSERT)を直接ミューテートで根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1655",
+        "updatedAt": "2026-06-19T05:48:17Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1656": {
+        "number": 1656,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: timetable の toBuilder 更新破壊(id欠落で行重複INSERT)を直接ミューテートで根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1656",
+        "updatedAt": "2026-06-19T07:01:35Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1658": {
+        "number": 1658,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: shift の toBuilder 更新破壊(id欠落で行重複INSERT)を直接ミューテートで根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1658",
+        "updatedAt": "2026-06-19T05:48:22Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1667": {
+        "number": 1667,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: forms/onboarding の toBuilder 更新破壊(id欠落で行重複INSERT)を直接ミューテートで根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1667",
+        "updatedAt": "2026-06-19T09:25:20Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1668": {
+        "number": 1668,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: signage の toBuilder 更新破壊（id欠落で行重複INSERT）を根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1668",
+        "updatedAt": "2026-06-19T09:40:40Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1670": {
+        "number": 1670,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "fix(knowledgebase): toBuilder→UPDATE化バグを根治（KbPageService/KbRevisionService/KbTemplateService）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1670",
+        "updatedAt": "2026-06-19T09:49:39Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1671": {
+        "number": 1671,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: jobmatchingドメインのtoBuilder更新によるid欠落INSERT化バグを根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1671",
+        "updatedAt": "2026-06-19T09:49:44Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1673": {
+        "number": 1673,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: budgetドメインのtoBuilder更新によるINSERT化バグを根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1673",
+        "updatedAt": "2026-06-19T09:43:42Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1675": {
+        "number": 1675,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: templateドメイン toBuilder id欠落 INSERT化バグを根治（ModuleService・SystemAdminTemplateService）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1675",
+        "updatedAt": "2026-06-19T11:05:16Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1676": {
+        "number": 1676,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正(event): toBuilder更新破壊(id欠落でINSERT化)を直接ミューテートで根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1676",
+        "updatedAt": "2026-06-19T11:25:32Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1677": {
+        "number": 1677,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "fix(tobuilder): committee/skill/webhook/analytics/memberinfo/digest/circulation の toBuilder→save を直接ミューテートに根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1677",
+        "updatedAt": "2026-06-19T11:25:38Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1726": {
+        "number": 1726,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "test(arch): D-5 - BaseEntity継承Entityへの@Builder(toBuilder=true)禁止番人テスト",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1726",
+        "updatedAt": "2026-06-20T04:54:45Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1736": {
+        "number": 1736,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "ci(arch): D-5番人 grep ガード追加（@Builder(toBuilder=true)のBaseEntity継承禁止）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1736",
+        "updatedAt": "2026-06-20T09:46:51Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2041": {
+        "number": 2041,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: 個人ダッシュボード集約タイムライン（所属team/org横断・/api/v1/timeline/my 新設）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2041",
+        "updatedAt": "2026-06-30T23:13:07Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "2137": {
         "number": 2137,
         "kind": "pull_request",
@@ -25749,6 +29382,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "修正(TODO): 個人TODO削除・復元でTODO_NOT_FOUNDになるバグを根治",
         "url": "https://github.com/kenta-0420/mannschaft/pull/2170",
         "updatedAt": "2026-07-15T09:33:27Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2215": {
+        "number": 2215,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "ドキュメント(規約): ベータ特典条項（第27条）の条文案・6言語対訳を提案文書として起草（B-1）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2215",
+        "updatedAt": "2026-07-10T01:57:35Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -25868,6 +29515,34 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "2454": {
+        "number": 2454,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加(課金): F20.3ベータ特典 Phase1骨格 — beta_grantsテーブル・Entity/Repo・発行サービス抽出・ErrorCode",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2454",
+        "updatedAt": "2026-07-22T07:51:36Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2459": {
+        "number": 2459,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加(課金 F20.3 Phase1): ベータ特典の付与機構（付与/取消/延長/退会・シスアド運用API・本人/団体照会）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2459",
+        "updatedAt": "2026-07-23T03:02:34Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "2460": {
         "number": 2460,
         "kind": "pull_request",
@@ -25875,6 +29550,62 @@ window.BETA_INVENTORY_DATA = {
         "title": "品質: エラー握りつぶしcatchを禁止するESLintルール追加（既存はbulk suppressionsで凍結）",
         "url": "https://github.com/kenta-0420/mannschaft/pull/2460",
         "updatedAt": "2026-07-23T05:39:11Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2462": {
+        "number": 2462,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "テスト(F20.3 Phase1): ベータ特典 書込パスの実DB統合テスト（付与原子性・取消カスケード・延長append-only）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2462",
+        "updatedAt": "2026-07-23T05:39:10Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2466": {
+        "number": 2466,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加(課金 F20.3 Phase2 Wave2a): 個人ベータ特典の活動実績ゲート自動付与バッチ（本番無効・N+1回避）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2466",
+        "updatedAt": "2026-07-23T08:13:01Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2467": {
+        "number": 2467,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加(課金 F20.3 Phase2 Wave2b): ベータ特典の本人/団体照会FEセクション＋6言語＋使い方ガイド",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2467",
+        "updatedAt": "2026-07-23T07:32:23Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2470": {
+        "number": 2470,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加(課金 F20.3 Phase3): シスアド ベータ特典 審査運用画面＋付与一覧の表示名解決",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2470",
+        "updatedAt": "2026-07-23T11:07:46Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -25896,14 +29627,33 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
-      "2486": {
-        "number": 2486,
-        "kind": "issue",
-        "state": "open",
-        "title": "基盤: DB格納時刻の基準タイムゾーンをUTCに統一する（環境ごとに割れている・F20.3本番有効化ゲート⑤）",
-        "url": "https://github.com/kenta-0420/mannschaft/issues/2486",
-        "updatedAt": "2026-07-28T10:00:24Z",
-        "ci": null
+      "2498": {
+        "number": 2498,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正(法務): ベータ特典 第27条 条文案の起草段階是正（免責を第18条の上限へ委譲・最低2年保証の優先関係を確定）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2498",
+        "updatedAt": "2026-07-29T00:09:45Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2506": {
+        "number": 2506,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正(基盤): DB格納時刻の基準タイムゾーンを全プロファイルでUTCに統一（番人テスト新設・F20.3本番有効化ゲート⑤）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2506",
+        "updatedAt": "2026-07-29T04:38:20Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       },
       "2508": {
         "number": 2508,
@@ -25913,6 +29663,20 @@ window.BETA_INVENTORY_DATA = {
         "url": "https://github.com/kenta-0420/mannschaft/issues/2508",
         "updatedAt": "2026-08-11T12:40:50Z",
         "ci": null
+      },
+      "2521": {
+        "number": 2521,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "改善(#2487 F20.3後続): TZ/ロケールキャッシュの件数上限・timezone入口検証・走査上限WARN・特殊オフセットと非破壊migrationの番人",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2521",
+        "updatedAt": "2026-07-29T23:50:35Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       },
       "2525": {
         "number": 2525,
@@ -26841,6 +30605,34 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "2793": {
+        "number": 2793,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正(CI): frontend-ci に main への push トリガを追加",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2793",
+        "updatedAt": "2026-08-14T05:33:21Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2795": {
+        "number": 2795,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正(実機E2E): dashboard/favorites を単一セッション設計に是正",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2795",
+        "updatedAt": "2026-08-14T13:53:02Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "2796": {
         "number": 2796,
         "kind": "pull_request",
@@ -27235,20 +31027,6 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
-      "2867": {
-        "number": 2867,
-        "kind": "pull_request",
-        "state": "merged",
-        "title": "文書修正: F03.19 設計書の陳腐化した前提を是正し、着地済み設計書3本のステータスを同期",
-        "url": "https://github.com/kenta-0420/mannschaft/pull/2867",
-        "updatedAt": "2026-08-19T18:43:10Z",
-        "ci": {
-          "status": "unavailable",
-          "reason": "終了済みPRのCIは同期対象外",
-          "checks": [],
-          "source": "GraphQL statusCheckRollup"
-        }
-      },
       "2870": {
         "number": 2870,
         "kind": "pull_request",
@@ -27322,6 +31100,20 @@ window.BETA_INVENTORY_DATA = {
         "url": "https://github.com/kenta-0420/mannschaft/issues/2879",
         "updatedAt": "2026-08-20T06:29:04Z",
         "ci": null
+      },
+      "2880": {
+        "number": 2880,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正(認可): アンケートの ADMIN+ 判定を仕様どおり MANAGE_SURVEYS 委任へ揃える（CMP-041 / Issue #2804）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2880",
+        "updatedAt": "2026-09-16T16:34:30Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       },
       "2881": {
         "number": 2881,
@@ -27857,6 +31649,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "3046": {
+        "number": 3046,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "ドキュメント: F03.19 統合カレンダーの積み残し2件を台帳へ起票",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3046",
+        "updatedAt": "2026-09-01T13:09:31Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3051": {
         "number": 3051,
         "kind": "pull_request",
@@ -27934,6 +31740,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "test: 柱②販促プロビジョニングの試練（red・AC1〜AC15）を設置",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3056",
         "updatedAt": "2026-09-03T22:48:57Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3057": {
+        "number": 3057,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "ドキュメント: 実機E2Eが掘り当てた欠陥2件を台帳へ起票",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3057",
+        "updatedAt": "2026-09-02T01:49:53Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -28284,6 +32104,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "fix: 自分の確定シフトから未公開割当を除外",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3171",
         "updatedAt": "2026-09-08T13:03:45Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3183": {
+        "number": 3183,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: シフト希望の導線整備と入力事故の防止（CMP-260908-2118）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3183",
+        "updatedAt": "2026-09-09T03:33:31Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -28663,13 +32497,468 @@ window.BETA_INVENTORY_DATA = {
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
+      },
+      "3279": {
+        "number": 3279,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "fix: CMP107 繰り返し予定の編集範囲と影響件数を是正",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3279",
+        "updatedAt": "2026-09-16T06:40:32Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3280": {
+        "number": 3280,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-008: CSP報告主キーをUUIDv7へ移行",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3280",
+        "updatedAt": "2026-09-15T15:37:34Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3283": {
+        "number": 3283,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "調査+番人: migration の NOW() は全環境で UTC と同値（実害ゼロ）— 射程外だった migration を番人で塞ぐ（CMP-260912-2258）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3283",
+        "updatedAt": "2026-09-16T01:58:20Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3285": {
+        "number": 3285,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: PageMeta の幽霊フィールド totalElements を根治（CMP-260912-1823）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3285",
+        "updatedAt": "2026-09-15T16:21:38Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3286": {
+        "number": 3286,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: REQUIRES_NEW の自己呼び出し3件を根治（CMP-260912-1524）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3286",
+        "updatedAt": "2026-09-15T17:26:11Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3289": {
+        "number": 3289,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-033: 実機E2Eの隔離環境対応と台帳是正",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3289",
+        "updatedAt": "2026-09-16T04:36:54Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3291": {
+        "number": 3291,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: openapi生成ポートを -PopenApiPort で上書き可能にする（CMP-260912-1526 AC-2/AC-3）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3291",
+        "updatedAt": "2026-09-16T14:27:27Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3298": {
+        "number": 3298,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-112: Controllerのスコープ識別子を正準化",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3298",
+        "updatedAt": "2026-09-16T12:55:27Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3300": {
+        "number": 3300,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: マイページから /my/shifts と /my/shift-availability へ到達させる（CMP-260909-1141 Phase 2）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3300",
+        "updatedAt": "2026-09-17T00:33:30Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3305": {
+        "number": 3305,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: 運営管理ページ9枚に導線を接続する（CMP-260909-1141 Phase 3）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3305",
+        "updatedAt": "2026-09-17T02:21:00Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3307": {
+        "number": 3307,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "fix: CMP-112 スコープslug正準化の境界を補強",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3307",
+        "updatedAt": "2026-09-17T05:45:22Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3310": {
+        "number": 3310,
+        "kind": "issue",
+        "state": "closed",
+        "title": "修正(アンケート): 結果APIのobject応答を配列として扱い、空の「件」カードが表示される",
+        "url": "https://github.com/kenta-0420/mannschaft/issues/3310",
+        "updatedAt": "2026-09-17T05:53:51Z",
+        "ci": null
+      },
+      "3311": {
+        "number": 3311,
+        "kind": "issue",
+        "state": "closed",
+        "title": "重大(権限): 権限グループ削除が子テーブルFK制約に違反してHTTP 500になる",
+        "url": "https://github.com/kenta-0420/mannschaft/issues/3311",
+        "updatedAt": "2026-09-17T09:32:47Z",
+        "ci": null
+      },
+      "3312": {
+        "number": 3312,
+        "kind": "issue",
+        "state": "closed",
+        "title": "テスト(アンケート): 実機E2Eが保存済み認証・回答状態・testid属性継承に追従せず開始前に失敗する",
+        "url": "https://github.com/kenta-0420/mannschaft/issues/3312",
+        "updatedAt": "2026-09-17T12:39:28Z",
+        "ci": null
+      },
+      "3313": {
+        "number": 3313,
+        "kind": "issue",
+        "state": "closed",
+        "title": "改善(アンケート): 管理画面に対象チームと権限委任の文脈が表示されず複数スコープを識別できない",
+        "url": "https://github.com/kenta-0420/mannschaft/issues/3313",
+        "updatedAt": "2026-09-17T19:47:37Z",
+        "ci": null
+      },
+      "3315": {
+        "number": 3315,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: アンケート結果APIのobject応答を正しく描画する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3315",
+        "updatedAt": "2026-09-17T05:55:58Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3322": {
+        "number": 3322,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: サイドバー27項目が永久非表示になる欠陥を根治（CMP-260917-0529）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3322",
+        "updatedAt": "2026-09-17T07:54:34Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3324": {
+        "number": 3324,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 権限グループ削除時のFK制約違反を解消",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3324",
+        "updatedAt": "2026-09-17T09:34:02Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3329": {
+        "number": 3329,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 退会データ購読者台帳のドリフトを検出 (CMP-113)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3329",
+        "updatedAt": "2026-09-17T13:39:53Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3330": {
+        "number": 3330,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: 残り4枚に導線を接続し、設定ハブを i18n 化する（CMP-260909-1141 Phase 4）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3330",
+        "updatedAt": "2026-09-17T12:56:49Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3331": {
+        "number": 3331,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 共通UUID採番を真正UUIDv7へ統一",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3331",
+        "updatedAt": "2026-09-17T12:08:00Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3332": {
+        "number": 3332,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "fix: アンケート実機E2Eの状態を固定する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3332",
+        "updatedAt": "2026-09-17T12:45:44Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3336": {
+        "number": 3336,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 重複していた Google カレンダー設定ページを削除し一本化する（CMP-260912-0911）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3336",
+        "updatedAt": "2026-09-17T23:33:04Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3339": {
+        "number": 3339,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "fix: アンケート管理対象の文脈を表示する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3339",
+        "updatedAt": "2026-09-17T19:49:48Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3345": {
+        "number": 3345,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 個人予定の上限超過を400へ統一",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3345",
+        "updatedAt": "2026-09-18T03:00:46Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3347": {
+        "number": 3347,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "番人追加: 孤立ページ（到達不能ページ）の再発防止（CMP-260909-1141 Phase 5）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3347",
+        "updatedAt": "2026-09-18T03:56:59Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3350": {
+        "number": 3350,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能移植: ブログのタグ管理と記事操作を共通部品へ移す（CMP-260917-0041）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3350",
+        "updatedAt": "2026-09-18T05:35:18Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3352": {
+        "number": 3352,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "アフィリエイトのプレースホルダtag_idを広告候補から除外し警告表示",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3352",
+        "updatedAt": "2026-09-18T06:44:14Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3353": {
+        "number": 3353,
+        "kind": "issue",
+        "state": "open",
+        "title": "refactor(payment): 神クラスを段階分割しMoney値オブジェクトを導入する",
+        "url": "https://github.com/kenta-0420/mannschaft/issues/3353",
+        "updatedAt": "2026-09-18T23:46:30Z",
+        "ci": null
+      },
+      "3354": {
+        "number": 3354,
+        "kind": "issue",
+        "state": "open",
+        "title": "refactor(arch): D-5凍結ストアを段階的に返済する（初回: 地域マスタread窓口）",
+        "url": "https://github.com/kenta-0420/mannschaft/issues/3354",
+        "updatedAt": "2026-09-18T23:46:31Z",
+        "ci": null
+      },
+      "3355": {
+        "number": 3355,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: メンバー検索lookupのteamPageId未指定時の認可穴を根治",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3355",
+        "updatedAt": "2026-09-18T13:31:57Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3357": {
+        "number": 3357,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: メンバー紹介を年度別ページの二段構えに作り直す（CMP-260918-0841）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3357",
+        "updatedAt": "2026-09-18T06:44:29Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3358": {
+        "number": 3358,
+        "kind": "issue",
+        "state": "closed",
+        "title": "不具合: 個人タイムラインに所属組織・村の投稿が揃わない",
+        "url": "https://github.com/kenta-0420/mannschaft/issues/3358",
+        "updatedAt": "2026-09-19T01:41:10Z",
+        "ci": null
+      },
+      "3369": {
+        "number": 3369,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "個人タイムラインを所属チーム・組織・村で統一",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3369",
+        "updatedAt": "2026-09-19T01:48:09Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3374": {
+        "number": 3374,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: メンバー紹介の翻訳キーに誤った common. 接頭辞が付き生キーが露出する不具合を修正",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3374",
+        "updatedAt": "2026-09-19T02:35:22Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       }
     },
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-09-14T22:24:36+00:00",
-      "referenceCount": 231
+      "synchronizedAt": "2026-09-19T04:19:56+00:00",
+      "referenceCount": 298
     }
   }
 };

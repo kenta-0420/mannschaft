@@ -667,6 +667,40 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
+    public PaymentIntentInfo createDestinationPaymentIntent(long chargeAmountMinor, String currency,
+                                                            String payerCustomerId, long applicationFeeMinor,
+                                                            String destinationAccountId, CaptureMethod captureMethod,
+                                                            String idempotencyKey, Map<String, String> metadata) {
+        try {
+            PaymentIntentCreateParams.CaptureMethod stripeCaptureMethod =
+                    captureMethod == CaptureMethod.AUTOMATIC
+                            ? PaymentIntentCreateParams.CaptureMethod.AUTOMATIC
+                            : PaymentIntentCreateParams.CaptureMethod.MANUAL;
+            PaymentIntentCreateParams.Builder params = PaymentIntentCreateParams.builder()
+                    .setAmount(chargeAmountMinor)
+                    .setCurrency(currency.toLowerCase())
+                    .setCustomer(payerCustomerId)
+                    .setCaptureMethod(stripeCaptureMethod)
+                    .setApplicationFeeAmount(applicationFeeMinor)
+                    .setOnBehalfOf(destinationAccountId)
+                    .setTransferData(PaymentIntentCreateParams.TransferData.builder()
+                            .setDestination(destinationAccountId)
+                            .build());
+            if (metadata != null && !metadata.isEmpty()) {
+                params.putAllMetadata(metadata);
+            }
+            PaymentIntent intent = PaymentIntent.create(params.build(), RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build());
+            return new PaymentIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe Destination PaymentIntent の作成に失敗しました: destination={}, amount={}",
+                    destinationAccountId, chargeAmountMinor, e);
+            throw new BusinessException(ConnectPaymentErrorCode.AUTHORIZATION_FAILED, e);
+        }
+    }
+
+    @Override
     public PaymentIntentInfo createAndConfirmDestinationPaymentIntent(long chargeAmountMinor, String currency,
                                                                       String payerCustomerId, long applicationFeeMinor,
                                                                       String destinationAccountId,
@@ -1235,9 +1269,13 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         String refundId = null;
         Long refundedAmountMinor = null;
         Long chargeAmountMinor = null;
+        Map<String, String> metadata = Map.of();
         if (stripeObject instanceof PaymentIntent pi) {
             paymentIntentId = pi.getId();
             paymentIntentStatus = pi.getStatus();
+            if (pi.getMetadata() != null) {
+                metadata = Map.copyOf(pi.getMetadata());
+            }
         } else if (stripeObject instanceof Charge charge) {
             // charge.refunded（設計書 02 §6.1）: PI で対象 escrow を特定し、最新 Refund・返金累計・Charge 総額を渡す。
             paymentIntentId = charge.getPaymentIntent();
@@ -1253,7 +1291,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         log.info("Stripe Escrow Webhook 受信: id={}, type={}, piStatus={}, refundId={}",
                 event.getId(), eventType, paymentIntentStatus, refundId);
         return new EscrowWebhookEventInfo(event.getId(), eventType, livemode, paymentIntentId, paymentIntentStatus,
-                refundId, refundedAmountMinor, chargeAmountMinor);
+                refundId, refundedAmountMinor, chargeAmountMinor, metadata);
     }
 
     // ========================================

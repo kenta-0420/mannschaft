@@ -105,7 +105,14 @@ const categories: SidebarCategory[] = [
     labelKey: 'orgSidebar.category.other',
     icon: 'pi pi-ellipsis-h',
     items: [
-      { labelKey: 'orgSidebar.gamification', icon: 'pi pi-star', path: 'gamification', moduleSlug: null, requiredRole: 'MEMBER' },
+      // CMP-260918-0024: ゲーミフィケーションはチーム固有機能（マスター裁可）。BE が
+      // /api/v1/teams/{teamId}/gamification/... のチームスコープ専用実装であり、組織スコープの
+      // API が存在しないため、ここでは項目そのものを削除した（moduleSlug で弾く方式ではない）。
+      // 加えて BE 側でも組織での有効化自体を封じるため、module_level_availability の
+      // ORGANIZATION 行を is_available=0 で投入した（Flyway V216）。ModuleService.isLevelAvailable
+      // は行が無い場合「制約なし＝利用可」（orElse(true)、ModuleService.java:225-229）として扱う
+      // ため、行の追加そのものが必須だった。二段構え（導線を消す＋BEで有効化を封じる）にすることで、
+      // 万一サイドバーへ項目が復活しても組織 ADMIN が機能設定画面から有効化できない。
       { labelKey: 'orgSidebar.tournaments', icon: 'pi pi-trophy', path: 'tournaments', moduleSlug: 'tournament', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.leagueTransfers', icon: 'pi pi-arrow-right-arrow-left', path: 'league-transfers', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.queue', icon: 'pi pi-sort-numeric-up', path: 'queue', moduleSlug: null, requiredRole: 'MEMBER' },

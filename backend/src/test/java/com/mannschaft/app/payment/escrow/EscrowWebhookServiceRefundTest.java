@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.escrow;
 import com.mannschaft.app.payment.WebhookIdempotencyService;
 import com.mannschaft.app.payment.WebhookProcessStatus;
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.mannschaft.app.payment.service.PaymentRequestPaymentWebhookService;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,7 @@ class EscrowWebhookServiceRefundTest {
     @Mock private EscrowTransactionRepository escrowTransactionRepository;
     @Mock private LedgerEntryRepository ledgerEntryRepository;
     @Mock private RefundRepository refundRepository;
+    @Mock private PaymentRequestPaymentWebhookService paymentRequestPaymentWebhookService;
 
     @InjectMocks private EscrowWebhookService service;
 
@@ -47,7 +49,8 @@ class EscrowWebhookServiceRefundTest {
     private StripePaymentProvider.EscrowWebhookEventInfo refundEvent(String eventId, String refundId,
                                                                      long refundedMinor, long chargeMinor) {
         return new StripePaymentProvider.EscrowWebhookEventInfo(
-                eventId, "charge.refunded", false, "pi_abc", null, refundId, refundedMinor, chargeMinor);
+                eventId, "charge.refunded", false, "pi_abc", null, refundId, refundedMinor, chargeMinor,
+                java.util.Map.of());
     }
 
     private EscrowTransactionEntity escrow(EscrowStatus status) {

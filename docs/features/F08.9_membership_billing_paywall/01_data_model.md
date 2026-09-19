@@ -145,7 +145,8 @@ CREATE TABLE payment_requests (
     currency CHAR(3) NOT NULL DEFAULT 'JPY',
     tax_category VARCHAR(16) NULL,                   -- 税からくり（NULL=税なし）
     due_date DATE NOT NULL,                          -- 支払期限
-    status VARCHAR(12) NOT NULL DEFAULT 'DRAFT',     -- DRAFT/SENT/VIEWED/PAID/OVERDUE/CANCELLED
+    status VARCHAR(12) NOT NULL DEFAULT 'DRAFT',     -- DRAFT/SENT/VIEWED/PROCESSING/PAID/OVERDUE/CANCELLED
+    current_payment_attempt_id BINARY(16) NULL,      -- 実行中の決済試行（論理参照）
     escrow_transaction_id BINARY(16) NULL,           -- 支払い時に money rail へ連結
     confirmable_notification_id BIGINT UNSIGNED NULL,-- 配信した確認必須通知（論理参照）
     superseded_by_id BINARY(16) NULL,                -- CANCELLED 後の再請求で新請求を指す（再発行の追跡）
@@ -168,6 +169,12 @@ CREATE TABLE payment_requests (
 - `OVERDUE` 遷移は @Scheduled バッチ（ShedLock）が `status IN (SENT,VIEWED) AND due_date < CURDATE()` を更新。
 - **1請求＝1チームの全額支払い**を原則とする（部分支払いは扱わない＝単一 destination charge で全額）。協会側の「回収率」は**加盟チーム数に対する PAID 件数**で集計（請求ごとに status を数える）。
 - **再請求**：誤キャンセル後は**新しい `payment_requests` 行を発行**し、旧 CANCELLED 行の `superseded_by_id` に新行を指す。チーム側 UI は superseded 済みの旧請求を「無効（新請求あり）」と表示し二重支払いを防ぐ。
+
+### 2.2a `payment_request_payment_attempts`（協会請求の決済試行）
+
+`payment_requests.current_payment_attempt_id` は実行中の試行だけを参照する。`payment_request_payment_attempts` は UUIDv7 を主キーとして、request、organization、payer、client key hash、Stripe idempotency key、PaymentIntent、escrow、開始前 status、試行 status を保存する。生の Idempotency-Key と client secret は永続化しない。request/key hash、Stripe key、PaymentIntent、escrow はそれぞれ UNIQUE とし、webhook と再送を一意に収束させる。
+
+試行 status は `CREATING`、`REQUIRES_ACTION`、`SUCCEEDED`、`FAILED`。request status の `PROCESSING` は未収だが overdue バッチの対象外である。
 
 ### 2.3 `payment_proxy_grants`（第三者代理払い許可）
 

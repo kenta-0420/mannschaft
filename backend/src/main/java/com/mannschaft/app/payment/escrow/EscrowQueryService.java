@@ -7,6 +7,7 @@ import com.mannschaft.app.payment.connect.ConnectAccountRepository;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.PayeeScopeResolver;
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.mannschaft.app.payment.money.PaymentMoney;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -139,13 +140,13 @@ public class EscrowQueryService {
     }
 
     private ReceivedEscrow toReceivedEscrow(EscrowTransactionEntity escrow) {
-        long refundedAmount = refundRepository.findByEscrowTransactionId(escrow.getId()).stream()
+        PaymentMoney refundedAmount = refundRepository.findByEscrowTransactionId(escrow.getId()).stream()
                 .filter(refund -> refund.getStatus() != RefundStatus.FAILED)
-                .mapToLong(RefundEntity::getAmount)
-                .sum();
+                .map(refund -> new PaymentMoney(refund.getAmount(), refund.getCurrency()))
+                .reduce(PaymentMoney.zero(escrow.getCurrency()), PaymentMoney::add);
         return new ReceivedEscrow(escrow.getId(), escrow.getSourceKind(), escrow.getSourceId(),
                 escrow.getSourceParticipantId(), escrow.getCaptureMode(), escrow.getStatus(), escrow.getFaceAmount(),
-                escrow.getAmount(), escrow.getApplicationFeeAmount(), refundedAmount, escrow.getCreatedAt());
+                escrow.getAmount(), escrow.getApplicationFeeAmount(), refundedAmount.minorUnits(), escrow.getCreatedAt());
     }
 
     /**
