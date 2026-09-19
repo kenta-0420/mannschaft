@@ -30,7 +30,7 @@ public enum MembershipBillingErrorCode implements ErrorCode {
     /**
      * 払い手が受益者の会費を払う権原を持たない（払い手 ≠ 受益者の核心 IDOR 対策）。403。
      *
-     * <p>SELF（本人）/ GUARDIAN（保護者リンク）/ PROXY_GRANT（payment_proxy_grants）/
+     * <p>SELF（本人）/ GUARDIAN（保護者リンク）/ GUARDIAN_PROXY（後見切替中の保護者）/
      * ADMIN_MANUAL（scope ADMIN の手動記録）のいずれの権原も成立しない場合に投げる。</p>
      */
     MEMBERSHIP_PAYER_NOT_AUTHORIZED(

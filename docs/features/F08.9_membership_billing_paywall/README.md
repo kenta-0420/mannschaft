@@ -14,7 +14,7 @@
 | ファイル | 内容 |
 |---|---|
 | `README.md`（本書） | 概要・中核モデル（払い手≠受益者／年齢段階つき後見切替／既存機構再利用）・継続/期別課金方式・ペイウォール・協会→チーム請求・可視化・領収書/税からくり・F08.2/F22.1 統合・段階ロードマップ・未解決→確定・変更履歴 |
-| [`01_data_model.md`](01_data_model.md) | DB設計（`member_payments` 拡張＝払い手分離／`membership_subscriptions` 新規／`payment_requests`（協会請求）新規／`payment_items` 税・継続列追加／`connect_accounts` 税登録番号追加／`payment_proxy_grants`（代理払い許可）新規・ER図・Flyway 計画） |
+| [`01_data_model.md`](01_data_model.md) | DB設計（`member_payments` 拡張＝払い手分離／`membership_subscriptions` 新規／`payment_requests`（協会請求）新規／`payment_items` 税・継続列追加／`connect_accounts` 税登録番号追加・ER図・Flyway 計画） |
 | [`02_api_design.md`](02_api_design.md) | API設計（代理払い・後見切替セッション・継続課金(Subscription+invoice上書き)・期別単発・協会請求発行/支払・ペイウォール判定・集計/CSV/領収書・Webhook フロー・DTO・エラーコード・冪等性） |
 | [`03_security.md`](03_security.md) | セキュリティ（認可マトリクス・年齢段階ゲート・代理払い認可・ペイウォールIDOR・受益者キー判定・PCI(SAQ-A)・Webhook署名/冪等・GDPR/退会・税務別建て論点・レート制限・未解決→確定） |
 | [`04_ui_i18n.md`](04_ui_i18n.md) | 画面設計（後見まとめ支払い・子アカウント切替・ペイウォール施錠UI・継続課金管理・協会請求受信/支払・領収書ダウンロード）・i18n 6言語キー骨子 |
@@ -125,7 +125,7 @@ member_payments
 「払い手が受益者の会費を払ってよいか」の認可は、用途で2系統を使い分ける。
 
 1. **日常の後見代理払い（軽量・主経路）**：払い手が受益者の**有効な保護者/見守り者**（`parental_consent_links.status=APPROVED` または `user_care_links.status=ACTIVE` かつ relationship=PARENT）であれば、**追加同意なしに**代理払い可。子の年齢段階に依存しない（中学生の子の会費も親は払える＝切替できないだけ）。
-2. **非後見の代理払い（明示許諾）**：保護者でない第三者（祖父母・スポンサー等）が払う場合は、受益者側が発行する **`payment_proxy_grants`**（代理払い許可・有効期限つき・上限額つき）を要する。**これが第三者払いの正規経路**。F14.1 の代理権スコープ `PAYMENT` は紙同意書ベースの**組織代理の重い経路**として温存し、日常の代理払い認可（03_security §2 `authorizePayment`）には含めない。
+2. **非後見第三者への直接払いは不提供**：第三者へのgrant・招待は、金銭的圧力、いじめ、招待スパム、関係性の露出を生むため提供しない。援助は将来の組織管理による補助・免除・クレジットとして、個人間の権原付与とは分離する。F14.1 の代理権スコープ `PAYMENT` は紙同意書ベースの**組織代理の重い経路**として維持し、日常の代理払い認可（03_security §2 `authorizePayment`）には含めない。
 
 > ⚠️ **proxy scope `PAYMENT` は実在の枠組みに値を1つ足すだけ（マスター確定 2026-06-04・是正）**: 代理権スコープは実在の `proxy_input_consent_scopes.feature_scope`（VARCHAR(64)・V18.011・実機確認済）に格納され、enum `ProxyInputConsentScopeEntity.FeatureScope`（SURVEY/SCHEDULE_ATTENDANCE/SHIFT_REQUEST/ANNOUNCEMENT_READ/PARKING_APPLICATION/CIRCULAR/SUPPORTER_VIEW）で表現される。**代理払いの組織代理経路は、この enum に値 `PAYMENT` を1つ追加するだけ**（`feature_scope` は VARCHAR ゆえ**列追加・DDL 不要**・CHECK 制約なし）。`proxy_input_consents` 本体に新規列を作るのではなく、**既存のスコープ行に `PAYMENT` を1つ足す**だけで代理払い認可・退会失効（F14.1 の scope 行失効）はこの scope 行で判定できる。
 3. **本人払い**：`payer_user_id == beneficiaryUserId` は常に可。
@@ -342,7 +342,7 @@ payment_requests（新規・UUIDv7）
 | 段 | 名称 | 規模 | 依存 | 主要成果 |
 |---|---|---|---|---|
 | **P1** | 払い手分離＋会費Connect化（即時） | **M** | F22.1 P2-b（`ConnectChargeService`/`PaymentFeeCalculator`/`face_amount`/`capture_mode`）| `member_payments.payer_user_id`＋`escrow_transaction_id`／`source_kind=MEMBERSHIP` 即時 capture／本人払い・管理者手動記録の Connect 化／受益者キー判定の維持 |
-| **P2** | 後見まとめ支払い＋代理払い認可 | **M** | P1・F01.9・F03.12・F14.1 | 保護者リンク経由の代理払い／`payment_proxy_grants`／後見まとめ支払い画面（複数子の会費一括） |
+| **P2** | 後見まとめ支払い＋代理払い認可 | **M** | P1・F01.9・F03.12・F14.1 | 保護者リンク経由の代理払い／後見まとめ支払い画面（複数子の会費一括） |
 | **P3** | 年齢段階つき後見切替 | **M** | P2・`users.birthDate` | `X-Proxy-For-User-Id` 後見切替セッション／年齢ゲート（小学生まで強権・中学生以降封印）／監査連結 |
 | **P4** | ペイウォール（受益者キー） | **S** | P1・F00 | `content_payment_gates` の受益者キー判定／`evaluateCustom` 連結／blog・お知らせ施錠UI |
 | **P5** | 継続課金（Subscription＋invoice上書き） | **L** | P1・**PoC 成立済（2026-06-05・§11-3）** | `MembershipSubscriptionService`／Subscription 作成・`invoice.created` 上書き・`invoice.paid` 起票／dunning 状態反映。**初回=単発 destination charge＋次サイクル開始（案 b）／API バージョン acacia 固定**。自前バッチ退避は不要 |
@@ -366,7 +366,7 @@ payment_requests（新規・UUIDv7）
 | **11-8** | サブスク解約/今月スキップ/再開 | **確定（マスター御裁可済 2026-06-04）** | 解約＝`cancel_at_period_end`（期末まで利用可・日割り返金なし）／今月スキップ＝`pause_collection(void)`＋`skip_until` 列（invoice void で valid_until 不延長＝ペイウォール無改修で整合）／再開＝pause 解除（§4.5 / 01 §2.1 / 02 §4.3 / 04 §2） |
 | **11-9** | payer=TEAM の決済表現（立替モデル） | **確定（マスター御裁可済 2026-06-04・案3）** | 操作 ADMIN 個人 Customer で課金・escrow payer_scope=TEAM・領収書チーム名義・`team_payment_advances` で立替/精算（F04.9 確認）。チーム残高直接払い（案2）は将来候補・家老偵察（§6.3 / §6.4 / 01 §2.5 / 02 §7） |
 | **11-4** | 協会→チーム請求の手数料負担（2.5%折半を会費と同じくするか・協会間B2Bで上乗せ表示が妥当か） | **確定（御裁可済 2026-06-03）** | 提案採用＝**会費と同折半**（チーム2.5%上乗せ・協会97.5%着金） |
-| **11-5** | 非後見の代理払い（祖父母・スポンサー）の許諾UX（`payment_proxy_grants` 軽量 grant か F14.1 同意書か） | 設計内確定 | 日常は保護者リンク自動許可、第三者は軽量 grant（有効期限つき）。F14.1 は組織代理の重い経路として温存（§3.3） |
+| **11-5** | 非後見第三者への直接代理払い | 設計内確定 | grant・招待は提供しない。援助は将来の組織管理補助・免除・クレジットとして分離する。F14.1 `PAYMENT` は組織代理用に維持（§3.3） |
 | **11-6** | 既存会員データ移行 | 解決済 | **不要**（開発中・本番データ無し・マスター確認済 2026-06-03） |
 | **11-7** | 無ログイン管理子アカウント | 解決済 | **不採用**（子は自前アカウントでITリテラシー育成・マスター確認済 2026-06-03） |
 

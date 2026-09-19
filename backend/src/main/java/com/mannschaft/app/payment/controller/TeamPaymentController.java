@@ -61,7 +61,7 @@ import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
  * <p><b>認可根治戦役 Wave6（B3・2026-07-21）:</b> 手動入金記録（createManualPayment /
  * createBulkPayments）を双子の {@link OrganizationPaymentController} と同水準へ揃える。
  * {@code MemberPaymentService} 内部の {@code PaymentAuthorizationService} による払い手権原評価
- * （SELF / GUARDIAN / PROXY_GRANT / ADMIN_MANUAL）に加え、入口で
+ * （SELF / GUARDIAN / GUARDIAN_PROXY / ADMIN_MANUAL）に加え、入口で
  * {@link AccessControlService#checkAdminOrAbove}（"TEAM"）と {@code itemId} のチーム帰属検証
  * （{@link PaymentItemService#findByIdAndTeamIdOrThrow}・不一致は 404・存在秘匿）を要求する。
  * これにより「手動での入金記録はスコープ ADMIN の操作である」という不変条件を入口で保証する。

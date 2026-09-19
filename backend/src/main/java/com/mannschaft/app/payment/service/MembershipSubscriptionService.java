@@ -232,7 +232,7 @@ public class MembershipSubscriptionService {
      * <ol>
      *   <li>項目検証: {@code is_recurring=true} でなければ {@code SUBSCRIPTION_ITEM_NOT_RECURRING}（409）。</li>
      *   <li>権原検証: {@link PaymentAuthorizationService#authorizePayment}（{@code manualRecordByAdmin=false}）で
-     *       払い手→受益者の代理払い権原を実評価（SELF/GUARDIAN/GUARDIAN_PROXY/PROXY_GRANT）。無権原は 403。</li>
+     *       払い手→受益者の代理払い権原を実評価（SELF/GUARDIAN/GUARDIAN_PROXY）。無権原は 403。</li>
      *   <li>二重加入防止: 受益者×項目に終端でないサブスクがあれば {@code SUBSCRIPTION_ALREADY_EXISTS}（409）。</li>
      *   <li>受領 Connect 口座解決＋READY 検証（非 READY は {@code ONBOARDING_NOT_READY} 409・即時モードゆえ HELD にしない）。</li>
      *   <li>払い手 default PM 検証: 未保存なら {@code SUBSCRIPTION_PAYMENT_METHOD_NOT_SAVED}（409・SetupIntent 導線へ）。</li>
@@ -344,7 +344,6 @@ public class MembershipSubscriptionService {
                     .paymentItemId(itemId)
                     .beneficiaryUserId(beneficiaryUserId)
                     .payerUserId(payerUserId)
-                    .paymentProxyGrantId(null)
                     .scopeKind(scopeAndAccount.scopeKind())
                     .scopeId(scopeAndAccount.scopeId())
                     .payeeConnectAccountId(payee.getId())
