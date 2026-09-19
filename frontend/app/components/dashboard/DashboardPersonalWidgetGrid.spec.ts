@@ -41,7 +41,7 @@ describe('DashboardPersonalWidgetGrid', () => {
     const wrapper = await mountGrid([widget('my-calendar')])
 
     expect(wrapper.element.children).toHaveLength(1)
-    expect(wrapper.get('[data-testid="calendar-card"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="calendar-card"]').exists()).toBe(true)
     expect(wrapper.element.firstElementChild?.classList).toContain('md:col-span-2')
   })
 
