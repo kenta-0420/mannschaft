@@ -73,8 +73,8 @@ public class TimelineFeedController {
     /**
      * 個人ダッシュボード集約タイムライン（マイフィード）を取得する。
      *
-     * <p>ログインユーザーが所属する全チーム/組織（MEMBER / SUPPORTER 両方）の投稿を
-     * 横断集約し、新しい順で返す。VILLAGE は集約対象外。自分の投稿も含む。</p>
+     * <p>ログインユーザーが現役所属する TEAM / ORGANIZATION / VILLAGE の投稿を
+     * 横断集約し、新しい順で返す。自分の投稿も含む。</p>
      *
      * <p>認証必須: 本 EP は SecurityConfig の permitAll に含めない（deny-by-default で
      * 未認証は 401）。{@link SecurityUtils#getCurrentUserId()} がトークンからユーザー ID を取得する。</p>
@@ -98,7 +98,7 @@ public class TimelineFeedController {
             "postService.getMyFeed(userId, ...) は SecurityUtils.getCurrentUserId() のみを"
                     + "検索条件に渡す（TimelineFeedController#getMyFeed）")
     @GetMapping("/my")
-    @Operation(summary = "個人集約タイムライン取得（所属team/org横断）")
+    @Operation(summary = "個人集約タイムライン取得（所属team/org/village横断）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<TimelineFeedResponse> getMyFeed(
             @RequestParam(required = false) Long cursor,

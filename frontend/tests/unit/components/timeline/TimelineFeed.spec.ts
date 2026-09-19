@@ -143,6 +143,13 @@ describe('TimelineFeed.vue — ミュート導線', () => {
     removeMute.mockResolvedValue(undefined)
   })
 
+  it('個人集約モードは scope フィードでなく /timeline/my を取得する', async () => {
+    await mountSuspended(TimelineFeed, { props: { myFeed: true } })
+
+    expect(getMyTimeline).toHaveBeenCalledTimes(1)
+    expect(getFeed).not.toHaveBeenCalled()
+  })
+
   it('UNIT-TL-MUTE-001: ミュート0件のときは「非表示中」チップを出さない', async () => {
     const wrapper = await mountSuspended(TimelineFeed, { props: { myFeed: true } })
     expect(getMutes).toHaveBeenCalledTimes(1)

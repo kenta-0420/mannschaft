@@ -45,6 +45,7 @@ import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
+import com.mannschaft.app.village.service.VillageAccessGate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -56,6 +57,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -63,6 +65,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * タイムライン投稿サービス。投稿のCRUD・フィード取得・検索を担当する。
@@ -106,6 +109,7 @@ public class TimelinePostService {
     private final StorageQuotaService storageQuotaService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。 */
     private final PostingIdentityService postingIdentityService;
+    private final VillageAccessGate villageAccessGate;
     /** TEAM/ORGANIZATION スコープへの投稿時のメンバーシップ検証。 */
     private final AccessControlService accessControlService;
     /**
@@ -888,10 +892,11 @@ public class TimelinePostService {
     /**
      * 個人ダッシュボード集約タイムライン（マイフィード）を取得する。
      *
-     * <p>ログインユーザーが所属する全チーム/組織（MEMBER / SUPPORTER 両方）の
+     * <p>ログインユーザーが現役所属する TEAM / ORGANIZATION / VILLAGE の
      * タイムライン投稿を横断集約し、新しい順（id 降順）で返す。timeline 投稿に
      * 可視性列は無く所属スコープ一致＝可視のため、サポーターもメンバーと完全同一の
-     * 投稿が見える。VILLAGE は集約対象外（殿の確定仕様 b）。自分の投稿も含む（仕様 a）。</p>
+     * 投稿が見える。VILLAGE は VillageAccessGate が一括解決した現役所属かつ可視の村に限定する。
+     * 自分の投稿も含む（仕様 a）。</p>
      *
      * <p>所属スコープ ID は {@link com.mannschaft.app.membership.service.MembershipService}
      * 経由で解決する（ドメイン境界原則）。両メソッドは MEMBER / SUPPORTER 両方を含む。</p>
@@ -909,16 +914,22 @@ public class TimelinePostService {
         int feedSize = limit > 0 ? limit : DEFAULT_FEED_SIZE;
         List<Long> teamIds = membershipService.getActiveTeamIdsByUser(userId);
         List<Long> orgIds = membershipService.getActiveOrgIdsByUser(userId);
+        List<UUID> activeVillageIds = postingIdentityService.getActiveVillageIdsByUser(userId);
+        List<VillageAccessGate.VisibleVillage> activeVisibleVillages =
+                villageAccessGate.findActiveVisibleVillages(activeVillageIds, userId);
+        List<UUID> villageIds = activeVisibleVillages.stream().map(VillageAccessGate.VisibleVillage::id).toList();
 
         // 空ガード: 所属がゼロなら DB を叩かず空（JPQL IN () エラー回避）。
-        if (teamIds.isEmpty() && orgIds.isEmpty()) {
+        if (teamIds.isEmpty() && orgIds.isEmpty() && villageIds.isEmpty()) {
             return List.of();
         }
 
         // 片方だけ空でも JPQL IN :emptyList が DB で問題になりうるため、
         // 実 scopeId（常に正の値）と衝突しないダミー -1L を入れて当該 OR 条件を無効化する。
-        List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
-        List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
+        List<TimelinePostEntity> posts = new ArrayList<>();
+        if (!teamIds.isEmpty() || !orgIds.isEmpty()) {
+            List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
+            List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
 
         // 配下配信: 上位組織が CHILDREN/DESCENDANTS で出した投稿の到達範囲（距離別）。
         TimelineDeliveryScopeResolver.Reach reach = deliveryScopeResolver.resolve(teamIds, orgIds);
@@ -930,12 +941,23 @@ public class TimelinePostService {
         List<Long> safeMutedOrgIds = safeNotInList(
                 muteRepository.findMutedIdsByUserIdAndMutedType(userId, MUTED_TYPE_ORGANIZATION));
 
-        List<TimelinePostEntity> posts = postRepository.findMyFeed(
+        posts.addAll(postRepository.findMyFeed(
                 safeTeamIds, safeOrgIds,
                 reach.safeNearOrgIds(), reach.safeFarOrgIds(),
                 safeMutedTeamIds, safeMutedOrgIds,
-                cursor, PageRequest.of(0, feedSize));
-        return enrichPosts(timelineMapper.toPostResponseList(posts));
+                cursor, PageRequest.of(0, feedSize + 1)));
+        }
+        if (!villageIds.isEmpty()) {
+            posts.addAll(postRepository.findMyVillageFeed(
+                    villageIds, cursor, PageRequest.of(0, feedSize + 1)));
+        }
+        posts = posts.stream()
+                .sorted(Comparator.comparing(TimelinePostEntity::getId).reversed())
+                .limit(feedSize + 1L)
+                .toList();
+        Map<UUID, VillageAccessGate.VisibleVillage> villagesById = activeVisibleVillages.stream()
+                .collect(Collectors.toMap(VillageAccessGate.VisibleVillage::id, village -> village));
+        return enrichPosts(timelineMapper.toPostResponseList(posts), villagesById);
     }
 
     /**
@@ -961,6 +983,12 @@ public class TimelinePostService {
      * @return enrich 済みの投稿レスポンス（順序保持）
      */
     private List<PostResponse> enrichPosts(List<PostResponse> posts) {
+        return enrichPosts(posts, Map.of());
+    }
+
+    /** 個人集約フィードの一括解決済み村を投稿元表示に利用する。 */
+    private List<PostResponse> enrichPosts(
+            List<PostResponse> posts, Map<UUID, VillageAccessGate.VisibleVillage> villagesById) {
         if (posts == null || posts.isEmpty()) {
             return posts;
         }
@@ -972,10 +1000,12 @@ public class TimelinePostService {
         Set<Long> postedAsTeamIds = new HashSet<>();
         Set<Long> postedAsOrgIds = new HashSet<>();
         for (PostResponse p : posts) {
-            if (p.getScope() != null && p.getScope().scopeId() != null) {
-                if (PostScopeType.TEAM.name().equals(p.getScope().scopeType())) {
+            if (p.getScope() != null) {
+                if (PostScopeType.TEAM.name().equals(p.getScope().scopeType())
+                        && p.getScope().scopeId() != null) {
                     scopeTeamIds.add(p.getScope().scopeId());
-                } else if (PostScopeType.ORGANIZATION.name().equals(p.getScope().scopeType())) {
+                } else if (PostScopeType.ORGANIZATION.name().equals(p.getScope().scopeType())
+                        && p.getScope().scopeId() != null) {
                     scopeOrgIds.add(p.getScope().scopeId());
                 }
             }
@@ -1016,7 +1046,7 @@ public class TimelinePostService {
         // user_id も NULL なので enrichUser も自然に null を返す。
         List<PostResponse> enriched = posts.stream()
                 .map(p -> p.toBuilder()
-                        .scope(enrichScope(p.getScope(), teamNames, orgNames, teamSlugs, orgSlugs))
+                        .scope(enrichScope(p.getScope(), teamNames, orgNames, teamSlugs, orgSlugs, villagesById))
                         .user(enrichUser(p.getAuthor(), authorNames, authorAvatars))
                         .postedAs(p.getSystemPostType() != null
                                 ? null
@@ -1171,19 +1201,27 @@ public class TimelinePostService {
     /** 投稿元スコープに team/org 名・slug を付与する（TEAM/ORGANIZATION のみ。それ以外は素通し）。 */
     private PostResponse.PostScopeDto enrichScope(PostResponse.PostScopeDto scope,
                                                   Map<Long, String> teamNames, Map<Long, String> orgNames,
-                                                  Map<Long, String> teamSlugs, Map<Long, String> orgSlugs) {
-        if (scope == null || scope.scopeId() == null) {
+                                                  Map<Long, String> teamSlugs, Map<Long, String> orgSlugs,
+                                                  Map<UUID, VillageAccessGate.VisibleVillage> villagesById) {
+        if (scope == null) {
             return scope;
         }
-        if (PostScopeType.TEAM.name().equals(scope.scopeType())) {
+        if (PostScopeType.TEAM.name().equals(scope.scopeType()) && scope.scopeId() != null) {
             return new PostResponse.PostScopeDto(scope.scopeType(), scope.scopeId(),
                     teamNames.getOrDefault(scope.scopeId(), UNKNOWN_TEAM_NAME),
                     teamSlugs.get(scope.scopeId()));
         }
-        if (PostScopeType.ORGANIZATION.name().equals(scope.scopeType())) {
+        if (PostScopeType.ORGANIZATION.name().equals(scope.scopeType()) && scope.scopeId() != null) {
             return new PostResponse.PostScopeDto(scope.scopeType(), scope.scopeId(),
                     orgNames.getOrDefault(scope.scopeId(), UNKNOWN_ORG_NAME),
                     orgSlugs.get(scope.scopeId()));
+        }
+        if (PostScopeType.VILLAGE.name().equals(scope.scopeType()) && scope.scopeVillageId() != null) {
+            VillageAccessGate.VisibleVillage village = villagesById.get(scope.scopeVillageId());
+            if (village != null) {
+                return new PostResponse.PostScopeDto(scope.scopeType(), scope.scopeId(),
+                        scope.scopeVillageId(), village.name(), village.slug());
+            }
         }
         return scope;
     }
@@ -1266,7 +1304,7 @@ public class TimelinePostService {
      * @param cursor 起点カーソル（この投稿 ID より後を取得）。null なら先頭から
      * @param size   取得件数（1 件以上・0 以下は既定 20）
      * @param userId 呼び出し元ユーザー ID（親投稿の可視性検証用）
-     * @return enrich 済みリプライ一覧（ID 昇順）
+     * @return enrich 済みリプライ一覧（ID 昇順・ページング判定用の最大 {@code size + 1} 件）
      */
     public List<PostResponse> getReplies(Long postId, Long cursor, int size, Long userId) {
         TimelinePostEntity parent = findPostOrThrow(postId);
@@ -1275,7 +1313,7 @@ public class TimelinePostService {
         }
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
         List<TimelinePostEntity> replies = postRepository.findRepliesByParentIdAfterCursor(
-                postId, cursor, PageRequest.of(0, feedSize));
+                postId, cursor, PageRequest.of(0, feedSize + 1));
         return enrichPosts(timelineMapper.toPostResponseList(replies));
     }
 

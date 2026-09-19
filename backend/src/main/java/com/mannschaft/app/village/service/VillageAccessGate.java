@@ -14,8 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,6 +66,12 @@ public class VillageAccessGate {
     private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final AccessControlService accessControlService;
+
+    /**
+     * 可視な村の表示に必要な値だけを表す、他ドメインへ返却可能な値型。
+     */
+    public record VisibleVillage(UUID id, String name, String slug) {
+    }
 
     /**
      * write / member-scoped 操作用に、稼働中の村をロードする。
@@ -311,6 +319,45 @@ public class VillageAccessGate {
                 .filter(v -> v.getVisibility() == VillageVisibility.PUBLIC
                         || members.contains(v.getId())
                         || admin)
+                .toList();
+    }
+
+    /**
+     * 複数村を一括で読み、削除済み・凍結済み・不可視の村を除外する。
+     *
+     * <p>個人集約フィードのように、すでに所属 ID を持つ呼び出し元でも村の生存状態は別に
+     * 確認しなければならない。村ごとの {@code findById} は行わず、ID 群を一度だけ取得してから
+     * {@link #filterVisible(Collection, Long)} に渡す。</p>
+     *
+     * @param villageIds 対象村 ID（null・重複可）
+     * @param actorUserId 可視性を判定する操作者
+     * @return 生存かつ可視な村。入力 ID の重複は除く
+     */
+    @Transactional(readOnly = true)
+    public List<VisibleVillage> findActiveVisibleVillages(
+            Collection<UUID> villageIds, @Nullable Long actorUserId) {
+        if (villageIds == null || villageIds.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> ids = new LinkedHashSet<>();
+        for (UUID villageId : villageIds) {
+            if (villageId != null) {
+                ids.add(villageId);
+            }
+        }
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+
+        List<VillageEntity> active = new ArrayList<>();
+        for (VillageEntity village : villageRepository.findAllById(ids)) {
+            if (village != null && village.getDeletedAt() == null && village.getArchivedAt() == null) {
+                active.add(village);
+            }
+        }
+        return filterVisible(active, actorUserId).stream()
+                .map(village -> new VisibleVillage(village.getId(), village.getName(), village.getSlug()))
                 .toList();
     }
 

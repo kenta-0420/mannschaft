@@ -34,6 +34,7 @@
     "tournament": {"stage":"B1","audience":"soccer","priority":"must","reason":"サッカー固有の試合・大会記録で初期利用の明確な差別化になる。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
     "safetycheck": {"stage":"B2","audience":"both","priority":"should","reason":"成人コミュニティの緊急連絡価値は高いが、B1の基本連絡検証後に導入する。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
     "shift": {"stage":"B4","audience":"both","priority":"defer","reason":"勤務シフトはサッカー・同窓会の初期対象外で、正本でも停止扱い。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
+    "shift-auto-assign": {"stage":"B4","audience":"both","priority":"defer","reason":"シフト自動割当は正本で停止中であり、初期対象へ導入しない。","sourceRefs":["docs/inventory/feature-inventory.yaml","docs/features/F03.5_shift/06_manual_authoring.md"],"decisionStatus":"proposed"},
     "matching": {"stage":"B4","audience":"both","priority":"defer","reason":"求人・マッチングは主対象外で、停止機能を広げない。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
     "billing-payment": {"stage":"B3","audience":"both","priority":"defer","reason":"会費決済は規模拡大後の運営課題であり、初期のLINE置換から分離する。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
     "promotion": {"stage":"B4","audience":"both","priority":"defer","reason":"広告・販促は知人中心のB0〜B3では不要。","sourceRefs":["docs/inventory/feature-inventory.yaml"]},
@@ -84,7 +85,7 @@
     "webhook-sync-external-sync": {"stage":"B3","audience":"both","priority":"could","reason":"外部同期はWebhookと独立したB3候補。","sourceRefs":["docs/inventory/feature-inventory.yaml"],"decisionStatus":"proposed"},
     "billing-payment-membership-fee": {"stage":"B3","audience":"both","priority":"defer","reason":"会費は請求・決済と独立した継続課金能力。B3以降で判断する。","sourceRefs":["docs/inventory/feature-inventory.yaml"],"decisionStatus":"proposed"}
   ,"timeline-post": {"stage":"B0","audience":"both","priority":"must","reason":"タイムライン投稿を実UIと実DBで実測する。","sourceRefs":["docs/features/F04.1_timeline.md"],"decisionStatus":"proposed"},
-  "timeline-view": {"stage":"B0","audience":"both","priority":"must","reason":"タイムライン閲覧を別ログインで実測する。","sourceRefs":["docs/features/F04.1_timeline.md"],"decisionStatus":"proposed"},
+  "timeline-view": {"stage":"B0","audience":"both","priority":"should","reason":"チーム・組織・村を横断する個人タイムライン閲覧をB0で実測する。","sourceRefs":["docs/inventory/feature-inventory.yaml","docs/features/F04.1_timeline.md","docs/task-list.md"],"decisionStatus":"confirmed","confirmedBy":"user","confirmedAt":"2026-09-18T22:30:55+09:00","confirmationNote":"ユーザー明示指定: 区分 Core、最早導入段階 B0、優先度 should、対象ユースケース soccer / alumni、公開状態 未設定、Gate適用状態 未設定。"},
   "timeline-sharing": {"stage":"B0","audience":"both","priority":"must","reason":"タイムライン共有範囲と権限境界を実測する。","sourceRefs":["docs/features/F04.1_timeline.md"],"decisionStatus":"proposed"},
   "todo-memo-todo-create": {"stage":"B0","audience":"both","priority":"must","reason":"TODO作成を実UIと実DBで実測する。","sourceRefs":["docs/features/F02.3_todo_project.md"],"decisionStatus":"proposed"},
   "todo-memo-todo-share": {"stage":"B0","audience":"both","priority":"must","reason":"TODO共有先と担当権限を実測する。","sourceRefs":["docs/features/F02.3_todo_project.md","docs/features/F02.3.1_todo_status_labels_and_handoff.md"],"decisionStatus":"proposed"},
