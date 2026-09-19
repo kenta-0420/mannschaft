@@ -52,7 +52,7 @@ const customFieldsError = computed(() => customFieldsResult.value.error)
           <p v-if="profile.position" class="text-sm text-surface-500">{{ profile.position }}</p>
           <p v-if="profile.bio" class="mt-1 text-sm text-surface-600 dark:text-surface-400">{{ profile.bio }}</p>
           <p v-if="customFieldsError" class="mt-2 text-xs text-red-500">
-            {{ t('common.memberProfile.members.customFieldsError') }}
+            {{ t('memberProfile.members.customFieldsError') }}
           </p>
           <div v-else-if="Object.keys(customFields).length > 0" class="mt-2 flex flex-wrap gap-2">
             <span
