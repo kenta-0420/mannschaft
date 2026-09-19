@@ -1,6 +1,7 @@
 package com.mannschaft.app.billing.api;
 
 import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
 import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
@@ -248,6 +249,12 @@ class BillingPlanChangeAuthzRedIT extends AbstractBillingPlanChangeApiIT {
 
     private RoleFixture teamContractWithRole(String roleName) throws Exception {
         Long actor = insertUser("authz-role-" + roleName.toLowerCase() + "-" + SEQ.incrementAndGet());
+        // 【付随是正は見送り】MEMBER を memberships へ寄せる案は実測で却下した: BillingAccessGuard
+        // .isScopeMember（実体は BillingAccessRepository.existsScopeRole）は TEAM/ORG のスコープ内
+        // 構成員判定を user_roles のみで行っており memberships-only の所属を見ない（billing 側が
+        // F00.5 の memberships 移行に未追従）。ここを insertMembership に差し替えると、AC-123 が期待する
+        // 「scope 内・権限不足 → 403」が「scope 外扱い → 404」に化けて回帰する（実測で確認済み）。
+        // billing 側の isScopeMember を直すのは cms 汚染の根治とは無関係で本タスクの射程外。
         grantRole(actor, roleName, TEAM_ID);
         // 【根治】以前はここで insertBand(TO_STRIPE_PRICE_REF) をもう一本作っていたが、
         // 戻り値の teamBand はどこからも参照されず（下の契約は fromBandId を使う）完全な死コードで、
@@ -293,8 +300,12 @@ class BillingPlanChangeAuthzRedIT extends AbstractBillingPlanChangeApiIT {
         if (!ids.isEmpty()) {
             return ((Number) ids.get(0)).longValue();
         }
+        // priority は正準表 RolePriority（V2.014__seed_roles.sql の seed と一致）から採る。
+        // ハードコード値（旧: 全ロール priority=1）は、本クラスが @Transactional 非付与のため
+        // roles 行がコミットされ後始末対象外で DB に残り、後続 IT の priority 比較を汚染する
+        // （MEMBER が priority=1 のまま残ると ADMIN(2) より「強い」と誤判定される）。
         RoleEntity entity = RoleEntity.builder().name(name).displayName(name)
-                .priority(1).isSystem(true).build();
+                .priority(RolePriority.priority(name)).isSystem(true).build();
         return transactionTemplate.execute(tx -> {
             entityManager.persist(entity);
             entityManager.flush();

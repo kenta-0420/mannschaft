@@ -8,6 +8,7 @@ import com.mannschaft.app.billing.BillingContractOperationRepository;
 import com.mannschaft.app.billing.ContractKind;
 import com.mannschaft.app.billing.ContractStatus;
 import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
 import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
@@ -325,6 +326,12 @@ class BillingCancelResumeAuthzRedIT extends AbstractBillingCancelResumeApiIT {
     }
 
     private void grantRole(Long userId, String roleName, long teamId) {
+        // 【付随是正は見送り】MEMBER を memberships へ寄せる案は実測で却下した（PR6b-1側の
+        // BillingPlanChangeAuthzRedIT と同じ理由）: BillingAccessGuard.isScopeMember
+        // （実体は BillingAccessRepository.existsScopeRole）は TEAM/ORG のスコープ内構成員判定を
+        // user_roles のみで行っており memberships-only の所属を見ない（billing 側が F00.5 の
+        // memberships 移行に未追従）。ここを insertMembership に差し替えると AC-52 が期待する
+        // 「scope 内・権限不足 → 403」が「scope 外扱い → 404」に化けて回帰する（実測で確認済み）。
         transactionTemplate.executeWithoutResult(tx -> {
             entityManager.persist(UserRoleEntity.builder().userId(userId).roleId(role(roleName)).teamId(teamId).build());
             entityManager.flush();
@@ -337,8 +344,9 @@ class BillingCancelResumeAuthzRedIT extends AbstractBillingCancelResumeApiIT {
         if (!ids.isEmpty()) {
             return ((Number) ids.get(0)).longValue();
         }
+        // priority は正準表 RolePriority（V2.014__seed_roles.sql の seed と一致）から採る（PR6b-1側と同じ根治）。
         RoleEntity entity = RoleEntity.builder().name(name).displayName(name)
-                .priority(1).isSystem(true).build();
+                .priority(RolePriority.priority(name)).isSystem(true).build();
         return transactionTemplate.execute(tx -> {
             entityManager.persist(entity);
             entityManager.flush();
