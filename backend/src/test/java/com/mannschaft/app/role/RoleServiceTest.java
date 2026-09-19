@@ -633,6 +633,38 @@ class RoleServiceTest {
             verify(userRoleRepository).delete(current);
             verify(userRowLockService).lockAll(USER_ID);
             verify(roleRepository, never()).findByNameForUpdate("ADMIN");
+            verify(membershipService, never()).leaveMemberByUserAndScope(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("user_roles無し_MEMBERメンバーシップなら自主退会できる")
+        void userRoles無し_MEMBERメンバーシップなら自主退会できる() {
+            given(userRoleRepository.findByUserIdAndTeamId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.empty());
+            given(membershipService.leaveMemberByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(true);
+
+            roleService.leaveScope(USER_ID, SCOPE_ID, "TEAM");
+
+            verify(membershipService).leaveMemberByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            verify(userRoleRepository, never()).delete(any(UserRoleEntity.class));
+            verify(rolePermissionCleanupService, never()).removeMismatched(any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("user_roles無し_MEMBERメンバーシップも無ければROLE_001例外")
+        void userRoles無し_MEMBERメンバーシップも無ければROLE_001例外() {
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.empty());
+            given(membershipService.leaveMemberByUserAndScope(
+                    USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> roleService.leaveScope(USER_ID, SCOPE_ID, "ORGANIZATION"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ROLE_001"));
+
+            verify(userRoleRepository, never()).delete(any(UserRoleEntity.class));
         }
 
         @Test

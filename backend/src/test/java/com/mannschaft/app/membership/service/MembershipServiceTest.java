@@ -323,6 +323,62 @@ class MembershipServiceTest {
     }
 
     @Nested
+    @DisplayName("leaveMemberByUserAndScope() — user_roles無し会員の自主退会")
+    class LeaveMemberByUserAndScopeTest {
+
+        @Test
+        @DisplayName("MEMBERなら行ロック後にSELF退会する")
+        void memberLeavesWithSelfReasonAfterLock() {
+            MembershipEntity entity = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
+            given(membershipRepository.findActiveByUserAndScopeForUpdate(
+                    99L, ScopeType.TEAM, 100L)).willReturn(Optional.of(entity));
+            given(membershipRepository.findUserIdById(11L)).willReturn(Optional.of(99L));
+            given(membershipRepository.findByIdForUpdate(11L)).willReturn(Optional.of(entity));
+            given(memberPositionRepository.findCurrentByMembership(11L)).willReturn(List.of());
+            given(adminRoleMutationLockService.lockScopeAdminRows(100L, "TEAM", 99L))
+                    .willReturn(List.of());
+
+            boolean left = service.leaveMemberByUserAndScope(99L, ScopeType.TEAM, 100L);
+
+            assertThat(left).isTrue();
+            assertThat(entity.getLeaveReason()).isEqualTo(LeaveReason.SELF);
+            assertThat(entity.getLeftAt()).isNotNull();
+            var order = inOrder(userRowLockService, membershipRepository);
+            order.verify(userRowLockService).lock(99L);
+            order.verify(membershipRepository).findActiveByUserAndScopeForUpdate(
+                    99L, ScopeType.TEAM, 100L);
+        }
+
+        @Test
+        @DisplayName("SUPPORTERなら退会せずfalseを返す")
+        void supporterDoesNotLeave() {
+            MembershipEntity entity = activeMembership(
+                    11L, 99L, ScopeType.ORGANIZATION, 100L, RoleKind.SUPPORTER);
+            given(membershipRepository.findActiveByUserAndScopeForUpdate(
+                    99L, ScopeType.ORGANIZATION, 100L)).willReturn(Optional.of(entity));
+
+            boolean left = service.leaveMemberByUserAndScope(99L, ScopeType.ORGANIZATION, 100L);
+
+            assertThat(left).isFalse();
+            assertThat(entity.getLeftAt()).isNull();
+            verify(membershipRepository, never()).findUserIdById(any());
+            verify(membershipRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("アクティブメンバーシップが無ければfalseを返す")
+        void missingMembershipReturnsFalse() {
+            given(membershipRepository.findActiveByUserAndScopeForUpdate(
+                    99L, ScopeType.TEAM, 100L)).willReturn(Optional.empty());
+
+            boolean left = service.leaveMemberByUserAndScope(99L, ScopeType.TEAM, 100L);
+
+            assertThat(left).isFalse();
+            verify(membershipRepository, never()).findUserIdById(any());
+        }
+    }
+
+    @Nested
     @DisplayName("assignPosition() — 役職割当")
     class AssignPositionTest {
 
