@@ -60,7 +60,10 @@ test('組織サイドバーにゲーミフィケーション項目が表示さ�
 test('組織スコープの /gamification へURL直打ちしても到達できない', async ({ page }) => {
   test.setTimeout(240_000)
   const res = await page.goto('/organizations/org-000009/gamification', { waitUntil: 'domcontentloaded' })
-  await waitForHydration(page).catch(() => {})
+  // 404ページであっても Nuxt の SPA フォールバックとして #__nuxt はマウントされる想定のため、
+  // ここで握りつぶさず素直に待つ（失敗するなら「到達できてしまっている」以前にページ自体が
+  // 壊れている根治すべき欠陥である）。
+  await waitForHydration(page)
 
   // ページ自体が削除されているため Nuxt のフォールバック(404ページ)に落ちる、
   // もしくはサーバーが404を返す。いずれかで「到達できない」ことを確認する。

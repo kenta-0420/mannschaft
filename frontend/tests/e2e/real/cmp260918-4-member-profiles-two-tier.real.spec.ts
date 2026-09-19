@@ -71,11 +71,15 @@ test.afterAll(async () => {
   // 後始末: 作成したページが残っていれば削除する（メンバーはページのCASCADE DELETEに委ねず明示削除は不要 - ページ削除で足りる想定だが、
   // 念のためページが取れなければ何もしない）。
   if (createdPageId != null) {
-    await api
-      .delete(`/api/v1/team/pages/${createdPageId}`, {
+    // 画面操作(③)で既に削除済みのはずの保険的な後始末。既に無い(404)ことは正常なので
+    // 握りつぶさず、想定外の失敗だけログに残して表面化させる。
+    try {
+      await api.delete(`/api/v1/team/pages/${createdPageId}`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       })
-      .catch(() => {})
+    } catch (error) {
+      console.error('CMP-260918-1357: 後始末のページ削除に失敗', error)
+    }
   }
   await api.dispose()
 })
