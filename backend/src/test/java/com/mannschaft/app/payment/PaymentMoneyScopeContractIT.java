@@ -284,6 +284,7 @@ class PaymentMoneyScopeContractIT extends AbstractMySqlIntegrationTest {
         void 権原なき受益者へのチェックアウトは拒否される() throws Exception {
             setAuthentication(payerId);
             mockMvc.perform(post("/api/v1/payment-items/{itemId}/checkout", oneTimeItemId)
+                            .header("Idempotency-Key", "payment-money-scope-forbidden-checkout")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(checkoutRequest(outsiderId))))
                     .andExpect(status().isForbidden())
@@ -299,6 +300,7 @@ class PaymentMoneyScopeContractIT extends AbstractMySqlIntegrationTest {
         void 本人払いのチェックアウトは認可を通過する() throws Exception {
             setAuthentication(payerId);
             mockMvc.perform(post("/api/v1/payment-items/{itemId}/checkout", oneTimeItemId)
+                            .header("Idempotency-Key", "payment-money-scope-own-checkout")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(checkoutRequest(payerId))))
                     .andExpect(status().isConflict())

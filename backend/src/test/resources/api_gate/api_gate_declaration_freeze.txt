@@ -376,7 +376,7 @@ HTTP|com.mannschaft.app.payment.controller.OrganizationPaymentController|6|8
 HTTP|com.mannschaft.app.payment.controller.OrganizationPaymentItemController|4|4
 HTTP|com.mannschaft.app.payment.controller.OrganizationPaymentSummaryController|1|1
 HTTP|com.mannschaft.app.payment.controller.PayableDuesController|2|2
-HTTP|com.mannschaft.app.payment.controller.PaymentCheckoutController|2|2
+HTTP|com.mannschaft.app.payment.controller.PaymentCheckoutController|3|3
 HTTP|com.mannschaft.app.payment.controller.PaymentMethodController|2|2
 HTTP|com.mannschaft.app.payment.controller.PaymentRequestOrgController|4|4
 HTTP|com.mannschaft.app.payment.controller.ReceiptController|1|1

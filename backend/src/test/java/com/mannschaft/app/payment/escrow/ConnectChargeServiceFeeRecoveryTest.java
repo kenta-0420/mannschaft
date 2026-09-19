@@ -12,6 +12,7 @@ import com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity;
 import com.mannschaft.app.payment.recovery.FeeRecoveryBalanceRepository;
 import com.mannschaft.app.payment.stripe.CaptureMethod;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,6 +57,7 @@ class ConnectChargeServiceFeeRecoveryTest {
     @Mock private RefundRepository refundRepository;
     @Mock private FeePolicyResolver feePolicyResolver;
     @Mock private FeeRecoveryBalanceRepository feeRecoveryBalanceRepository;
+    @Mock private PaymentRequestEscrowPersistenceService paymentRequestEscrowPersistenceService;
 
     private final PaymentFeeCalculator feeCalculator = new PaymentFeeCalculator();
 
@@ -74,7 +76,13 @@ class ConnectChargeServiceFeeRecoveryTest {
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
                 feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new PayeeScopeResolver(), feePolicyResolver, feeRecoveryBalanceRepository);
+                refundRepository, new PayeeScopeResolver(), feePolicyResolver, feeRecoveryBalanceRepository,
+                paymentRequestEscrowPersistenceService);
+    }
+
+    @BeforeEach
+    void setUp() {
+        given(paymentRequestEscrowPersistenceService.persist(any())).willAnswer(inv -> inv.getArgument(0));
     }
 
     private ConnectAccountEntity payeeAccount() {
