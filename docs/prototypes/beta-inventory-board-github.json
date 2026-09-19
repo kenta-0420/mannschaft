@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-09-18T18:32:30+00:00",
+  "synchronizedAt": "2026-09-19T01:25:34+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -784,7 +784,8 @@
     ],
     "CMP-260918-1913": [
       2041,
-      3358
+      3358,
+      3369
     ],
     "CMP-260918-1357": [
       3355
@@ -4655,7 +4656,7 @@
       "state": "open",
       "title": "refactor(payment): 神クラスを段階分割しMoney値オブジェクトを導入する",
       "url": "https://github.com/kenta-0420/mannschaft/issues/3353",
-      "updatedAt": "2026-09-18T09:07:05Z",
+      "updatedAt": "2026-09-18T23:46:30Z",
       "ci": null
     },
     "3354": {
@@ -4664,7 +4665,7 @@
       "state": "open",
       "title": "refactor(arch): D-5凍結ストアを段階的に返済する（初回: 地域マスタread窓口）",
       "url": "https://github.com/kenta-0420/mannschaft/issues/3354",
-      "updatedAt": "2026-09-18T09:07:08Z",
+      "updatedAt": "2026-09-18T23:46:31Z",
       "ci": null
     },
     "3355": {
@@ -4703,6 +4704,19 @@
       "url": "https://github.com/kenta-0420/mannschaft/issues/3358",
       "updatedAt": "2026-09-18T06:17:16Z",
       "ci": null
+    },
+    "3369": {
+      "number": 3369,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "個人タイムラインを所属チーム・組織・村で統一",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3369",
+      "updatedAt": "2026-09-19T00:30:12Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
     }
   }
 }

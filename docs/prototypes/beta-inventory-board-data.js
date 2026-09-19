@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-09-18T18:33:21+00:00",
+  "generatedAt": "2026-09-19T01:27:06+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -9,12 +9,12 @@ window.BETA_INVENTORY_DATA = {
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "d5887cc325e481e2cfe5c521267bf9f4bcc83034",
     "taskListCommit": "c71da5601d0aac15622d193a4a7f67228b9a837a",
-    "inventorySha256": "83a1b5fba7151b5785f85c8f54f8e9e13913ae7136a281d36e3b01d11685216f",
-    "taskListSha256": "1429b9220555fa2bbf15042c8fae66cba1e874da7b03412c4de11ccd7eadc8a3",
+    "inventorySha256": "f6b935b5d7d7400cb5bb2a673aa5f765c5ea8b7fd2dcc5d2041b4213c2677fdf",
+    "taskListSha256": "ddec928017ecb243464c65356ad64bcd036427d63f0c21e3cd47e6be8f4b6f7a",
     "decisionsSha256": "b9f1cb383aecd684a026dcd486aad6474c6d48bea1bf0342b78a30a7351799e8",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "81bd74c89b53b1c2881e7a909f0589f7d004354023d0c50ad32c550f9bfcabd7"
+    "githubSnapshotSha256": "94b140f41b4ccb74fc8fafbd9b719163197aa4fb95bc52a6d364134097296a48"
   },
   "sourceCounts": {
     "features": 44,
@@ -25,13 +25,13 @@ window.BETA_INVENTORY_DATA = {
       "能力": 26,
       "ドメイン": 18
     },
-    "blockers": 23,
+    "blockers": 22,
     "coreStatus": {
-      "blocked": 5,
+      "blocked": 4,
       "unknown": 0,
       "incomplete": 0,
       "verifying": 20,
-      "ready": 0
+      "ready": 1
     }
   },
   "verification": {
@@ -44,13 +44,13 @@ window.BETA_INVENTORY_DATA = {
       "campaigns": 251,
       "core": 25,
       "noncore": 19,
-      "blockers": 23,
+      "blockers": 22,
       "coreStatus": {
-        "blocked": 5,
+        "blocked": 4,
         "unknown": 0,
         "incomplete": 0,
         "verifying": 20,
-        "ready": 0
+        "ready": 1
       }
     },
     "passed": true
@@ -995,15 +995,15 @@ window.BETA_INVENTORY_DATA = {
       "title": "タイムライン",
       "stage": "未設定",
       "phase": "コア",
-      "status": "blocked",
-      "statusLabel": "不備あり",
+      "status": "ready",
+      "statusLabel": "β準備完了",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / PR #3369 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。PR #3369 CI run 35409546051 はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等が通過。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
-      "blocker": "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定",
+      "blocker": "未設定",
       "refs": [
         "docs/features/F04.1_timeline.md",
         "docs/features/F17.1_village_community.md"
@@ -1028,9 +1028,10 @@ window.BETA_INVENTORY_DATA = {
           ]
         },
         "integration": {
-          "status": "未実行",
+          "status": "通過",
           "evidence": [
-            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java"
+            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java",
+            "PR #3369 Backend CI run 35409546051（6/6 shards + Compile & Test）"
           ]
         },
         "real_e2e": {
@@ -1046,9 +1047,7 @@ window.BETA_INVENTORY_DATA = {
         "deploy_safety": "不明",
         "gate_key": null
       },
-      "blockers": [
-        "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定"
-      ],
+      "blockers": [],
       "classification": "core",
       "publication": "未設定",
       "gate": "未設定",
@@ -4564,15 +4563,15 @@ window.BETA_INVENTORY_DATA = {
       "title": "タイムライン投稿",
       "stage": "未設定",
       "phase": "コア",
-      "status": "blocked",
-      "statusLabel": "不備あり",
+      "status": "ready",
+      "statusLabel": "β準備完了",
       "statusSource": "timeline由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / PR #3369 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。PR #3369 CI run 35409546051 はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等が通過。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
-      "blocker": "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定",
+      "blocker": "未設定",
       "refs": [
         "docs/features/F04.1_timeline.md",
         "docs/features/F17.1_village_community.md"
@@ -4597,9 +4596,10 @@ window.BETA_INVENTORY_DATA = {
           ]
         },
         "integration": {
-          "status": "未実行",
+          "status": "通過",
           "evidence": [
-            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java"
+            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java",
+            "PR #3369 Backend CI run 35409546051（6/6 shards + Compile & Test）"
           ]
         },
         "real_e2e": {
@@ -4615,9 +4615,7 @@ window.BETA_INVENTORY_DATA = {
         "deploy_safety": "不明",
         "gate_key": null
       },
-      "blockers": [
-        "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定"
-      ],
+      "blockers": [],
       "classification": "core",
       "publication": "未設定",
       "gate": "未設定",
@@ -4632,15 +4630,15 @@ window.BETA_INVENTORY_DATA = {
       "title": "タイムライン閲覧",
       "stage": "未設定",
       "phase": "コア",
-      "status": "blocked",
-      "statusLabel": "不備あり",
+      "status": "ready",
+      "statusLabel": "β準備完了",
       "statusSource": "timeline由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / PR #3369 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。PR #3369 CI run 35409546051 はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等が通過。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
-      "blocker": "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定",
+      "blocker": "未設定",
       "refs": [
         "docs/features/F04.1_timeline.md",
         "docs/features/F17.1_village_community.md"
@@ -4665,9 +4663,10 @@ window.BETA_INVENTORY_DATA = {
           ]
         },
         "integration": {
-          "status": "未実行",
+          "status": "通過",
           "evidence": [
-            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java"
+            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java",
+            "PR #3369 Backend CI run 35409546051（6/6 shards + Compile & Test）"
           ]
         },
         "real_e2e": {
@@ -4683,9 +4682,7 @@ window.BETA_INVENTORY_DATA = {
         "deploy_safety": "不明",
         "gate_key": null
       },
-      "blockers": [
-        "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定"
-      ],
+      "blockers": [],
       "classification": "core",
       "publication": "未設定",
       "gate": "未設定",
@@ -4700,15 +4697,15 @@ window.BETA_INVENTORY_DATA = {
       "title": "タイムライン共有範囲",
       "stage": "未設定",
       "phase": "コア",
-      "status": "blocked",
-      "statusLabel": "不備あり",
+      "status": "ready",
+      "statusLabel": "β準備完了",
       "statusSource": "timeline由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。統合IT・PR・CIは未完のため、それらを通過扱いにしない。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
+      "why": "外部feature_key timeline-viewは正本timelineへ統合。CMP-260918-1913（Issue #3358 / PR #3369 / NOTE-260918-145441-001）で実装。ローカル実測はBE単体・返信ページング回帰・村Entity越境ArchUnit・FE9件が通過。D-1是正後のB0-J7 runId B0-2026-09-18T17-45-01.082Z は実UI/実API/実DB、管理者1＋一般2の別BrowserContextで expected=1・unexpected=0・skipped=0・results=1。PR #3369 CI run 35409546051 はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等が通過。ダッシュボードのタイムライン折りたたみはユーザー確認済みの仕様。beta=コアは分類であり準備完了判定ではない。Gate適用状態は未設定（gate_key=null）で、適用完了扱いにしない。deploy_safety=不明かつ公開状態未設定のためシスアド公開可能とは未判定。",
       "acceptance": [],
-      "blocker": "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定",
+      "blocker": "未設定",
       "refs": [
         "docs/features/F04.1_timeline.md",
         "docs/features/F17.1_village_community.md"
@@ -4733,9 +4730,10 @@ window.BETA_INVENTORY_DATA = {
           ]
         },
         "integration": {
-          "status": "未実行",
+          "status": "通過",
           "evidence": [
-            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java"
+            "backend/src/test/java/com/mannschaft/app/timeline/controller/TimelineMyFeedControllerIntegrationTest.java",
+            "PR #3369 Backend CI run 35409546051（6/6 shards + Compile & Test）"
           ]
         },
         "real_e2e": {
@@ -4751,9 +4749,7 @@ window.BETA_INVENTORY_DATA = {
         "deploy_safety": "不明",
         "gate_key": null
       },
-      "blockers": [
-        "CMP-260918-1913: 個人集約タイムラインの所属 TEAM / ORGANIZATION / VILLAGE 統一（Issue #3358 / NOTE-260918-145441-001）。PR・CIは未確定"
-      ],
+      "blockers": [],
       "classification": "core",
       "publication": "未設定",
       "gate": "未設定",
@@ -27834,7 +27830,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "refactor(payment): 神クラスを段階分割しMoney値オブジェクトを導入する",
           "url": "https://github.com/kenta-0420/mannschaft/issues/3353",
-          "updatedAt": "2026-09-18T09:07:05Z",
+          "updatedAt": "2026-09-18T23:46:30Z",
           "ci": null
         }
       ]
@@ -27901,7 +27897,7 @@ window.BETA_INVENTORY_DATA = {
           "state": "open",
           "title": "refactor(arch): D-5凍結ストアを段階的に返済する（初回: 地域マスタread窓口）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/3354",
-          "updatedAt": "2026-09-18T09:07:08Z",
+          "updatedAt": "2026-09-18T23:46:31Z",
           "ci": null
         }
       ]
@@ -27909,8 +27905,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260918-1913",
       "title": "個人集約タイムラインと `/timeline` を所属チーム・組織・村で統一する",
-      "status": "unknown",
-      "statusLabel": "実機検証完了・PR/CI待ち",
+      "status": "done",
+      "statusLabel": "完了（PR #3369・CI通過）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -27921,15 +27917,15 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "`/dashboard` の集約タイムラインと `/timeline` が同じ `/api/v1/timeline/my` の投稿集合・順序を表示し、現役所属する TEAM / ORGANIZATION / VILLAGE の PUBLISHED 根投稿を含むこと。非所属・退村・BAN・削除／凍結村、PUBLIC／PERSONAL、返信、非公開状態を除外し、空所属・村のみ・複数村・カーソル境界でも重複・欠落・N+1がないこと。未認証401・別テナント／別村非表示を自動テストと実UI・実API・実DB（管理者1＋一般2の別BrowserContext）で確認すること"
       ],
-      "blocker": "—",
+      "blocker": "#3369",
       "issues": [
         {
-          "label": "Issue #3358 / NOTE-260918-145441-001。試練 `e81cc9c`、実装 `608fa5e`、修正 `a96e848`・`eb6cc05`・D-1是正 `1a0657c`。BE単体・返信系・村Entity越境ArchUnit、FE9件 green。D-1是正後のB0-J7 runId `B0-2026-09-18T17-45-01.082Z` は実UI/実API/実DB、3認証主体・別BrowserContextで expected=1 / unexpected=0 / skipped=0 / results=1。統合IT・PR・CIは未完",
+          "label": "Issue #3358 / NOTE-260918-145441-001。試練 `e81cc9c`、実装 `608fa5e`、修正 `a96e848`・`eb6cc05`・D-1是正 `1a0657c`。BE単体・返信系・村Entity越境ArchUnit、FE9件 green。D-1是正後のB0-J7 runId `B0-2026-09-18T17-45-01.082Z` は実UI/実API/実DB、3認証主体・別BrowserContextで expected=1 / unexpected=0 / skipped=0 / results=1。PR #3369 CI run `35409546051` はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等 green",
           "state": "unknown"
         }
       ],
       "prs": [
-        "Issue #3358 / NOTE-260918-145441-001。試練 `e81cc9c`、実装 `608fa5e`、修正 `a96e848`・`eb6cc05`・D-1是正 `1a0657c`。BE単体・返信系・村Entity越境ArchUnit、FE9件 green。D-1是正後のB0-J7 runId `B0-2026-09-18T17-45-01.082Z` は実UI/実API/実DB、3認証主体・別BrowserContextで expected=1 / unexpected=0 / skipped=0 / results=1。統合IT・PR・CIは未完"
+        "Issue #3358 / NOTE-260918-145441-001。試練 `e81cc9c`、実装 `608fa5e`、修正 `a96e848`・`eb6cc05`・D-1是正 `1a0657c`。BE単体・返信系・村Entity越境ArchUnit、FE9件 green。D-1是正後のB0-J7 runId `B0-2026-09-18T17-45-01.082Z` は実UI/実API/実DB、3認証主体・別BrowserContextで expected=1 / unexpected=0 / skipped=0 / results=1。PR #3369 CI run `35409546051` はBackend 6/6 shards・Compile & Test、Frontend、OpenAPI、Smoke E2E、Lighthouse等 green"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -27957,11 +27953,12 @@ window.BETA_INVENTORY_DATA = {
         "BrowserContext"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
       "githubRefs": [
         2041,
-        3358
+        3358,
+        3369
       ],
       "github": [
         {
@@ -27986,6 +27983,19 @@ window.BETA_INVENTORY_DATA = {
           "url": "https://github.com/kenta-0420/mannschaft/issues/3358",
           "updatedAt": "2026-09-18T06:17:16Z",
           "ci": null
+        },
+        {
+          "number": 3369,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "個人タイムラインを所属チーム・組織・村で統一",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3369",
+          "updatedAt": "2026-09-19T00:30:12Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -28102,7 +28112,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-09-18T18:32:30+00:00",
+    "synchronizedAt": "2026-09-19T01:25:34+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -28885,7 +28895,8 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-260918-1913": [
         2041,
-        3358
+        3358,
+        3369
       ],
       "CMP-260918-1357": [
         3355
@@ -32756,7 +32767,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "refactor(payment): 神クラスを段階分割しMoney値オブジェクトを導入する",
         "url": "https://github.com/kenta-0420/mannschaft/issues/3353",
-        "updatedAt": "2026-09-18T09:07:05Z",
+        "updatedAt": "2026-09-18T23:46:30Z",
         "ci": null
       },
       "3354": {
@@ -32765,7 +32776,7 @@ window.BETA_INVENTORY_DATA = {
         "state": "open",
         "title": "refactor(arch): D-5凍結ストアを段階的に返済する（初回: 地域マスタread窓口）",
         "url": "https://github.com/kenta-0420/mannschaft/issues/3354",
-        "updatedAt": "2026-09-18T09:07:08Z",
+        "updatedAt": "2026-09-18T23:46:31Z",
         "ci": null
       },
       "3355": {
@@ -32804,13 +32815,26 @@ window.BETA_INVENTORY_DATA = {
         "url": "https://github.com/kenta-0420/mannschaft/issues/3358",
         "updatedAt": "2026-09-18T06:17:16Z",
         "ci": null
+      },
+      "3369": {
+        "number": 3369,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "個人タイムラインを所属チーム・組織・村で統一",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3369",
+        "updatedAt": "2026-09-19T00:30:12Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       }
     },
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-09-18T18:32:30+00:00",
-      "referenceCount": 296
+      "synchronizedAt": "2026-09-19T01:25:34+00:00",
+      "referenceCount": 297
     }
   }
 };
