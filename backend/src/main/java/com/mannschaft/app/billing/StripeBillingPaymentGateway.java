@@ -181,7 +181,12 @@ public class StripeBillingPaymentGateway implements BillingPaymentGateway {
                 detail.cancelAtPeriodEnd(),
                 toInstant(detail.currentPeriodStart()),
                 toInstant(detail.currentPeriodEnd()),
-                detail.pendingSetupIntentId());
+                detail.pendingSetupIntentId(),
+                detail.items().stream()
+                        .map(item -> new SubscriptionItemSnapshot(
+                                item.itemId(), item.priceRef(), item.quantity()))
+                        .toList(),
+                toInstant(detail.pendingUpdateExpiresAtEpochSec()));
     }
 
     @Override

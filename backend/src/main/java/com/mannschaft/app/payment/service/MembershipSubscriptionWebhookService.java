@@ -96,6 +96,20 @@ public class MembershipSubscriptionWebhookService {
      * dispatcher の subscription 分岐を通さないと billing の受け口へ届かないためである。</p>
      */
     static final String SUBSCRIPTION_UPDATED_EVENT = "customer.subscription.updated";
+    /**
+     * PR6b-1 AC-40: {@code customer.subscription.pending_update_expired} も billing の受け口
+     * （upgrade の失敗確定の入口）へ届ける必要があるため、この分岐に含める。会費側（F08.9）は
+     * この種別を処理しない（{@link #SUBSCRIPTION_UPDATED_EVENT} と同型）。
+     */
+    static final String SUBSCRIPTION_PENDING_UPDATE_EXPIRED_EVENT =
+            "customer.subscription.pending_update_expired";
+    /**
+     * PR6b-1 第9隊 AC-75: {@code customer.subscription.pending_update_applied} も billing の受け口
+     * （upgrade の適用確定の入口）へ届ける必要があるため、この分岐に含める。会費側（F08.9）は
+     * この種別を処理しない（{@link #SUBSCRIPTION_PENDING_UPDATE_EXPIRED_EVENT} と同型）。
+     */
+    static final String SUBSCRIPTION_PENDING_UPDATE_APPLIED_EVENT =
+            "customer.subscription.pending_update_applied";
 
     /** 固定手数料上書きの対象とする課金理由（更新サイクルのみ・初回 subscription_create は案b で発生しない＝防御）。 */
     private static final String BILLING_REASON_SUBSCRIPTION_CYCLE = "subscription_cycle";
@@ -124,7 +138,9 @@ public class MembershipSubscriptionWebhookService {
         return type != null
                 && (type.startsWith(INVOICE_EVENT_PREFIX)
                     || SUBSCRIPTION_DELETED_EVENT.equals(type)
-                    || SUBSCRIPTION_UPDATED_EVENT.equals(type));
+                    || SUBSCRIPTION_UPDATED_EVENT.equals(type)
+                    || SUBSCRIPTION_PENDING_UPDATE_EXPIRED_EVENT.equals(type)
+                    || SUBSCRIPTION_PENDING_UPDATE_APPLIED_EVENT.equals(type));
     }
 
     /**

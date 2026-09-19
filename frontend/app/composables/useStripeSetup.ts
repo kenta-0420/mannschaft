@@ -52,6 +52,15 @@ export type StripePaymentResult =
   | { status: 'succeeded'; paymentIntentStatus: PaymentIntent['status'] }
   | { status: 'error'; message: string }
 
+/**
+ * Billing Center PR6b-1 AC-73: `confirmPaymentAction` の戻り値。
+ * `confirmPayment`（{@link StripePaymentResult}）と同じ 2 分岐（succeeded / error）だが、
+ * `handleNextAction` はマウント済み `elements` を要求しないため専用の関数として分離する。
+ */
+export type StripePaymentActionResult =
+  | { status: 'succeeded'; paymentIntentStatus: PaymentIntent['status'] }
+  | { status: 'error'; message: string }
+
 export function useStripeSetup() {
   const config = useRuntimeConfig()
   const { t } = useI18n()
@@ -206,11 +215,47 @@ export function useStripeSetup() {
     return { status: 'succeeded', paymentIntentStatus: result.paymentIntent.status }
   }
 
+  /**
+   * Billing Center PR6b-1 AC-73: プラン変更の 3DS を **clientSecret だけ**で発火する。
+   *
+   * <p>既存 {@link confirmPayment} はマウント済み `elements`（PaymentElement を出す画面）を
+   * 要求するため、プラン変更ダイアログのように PaymentElement を表示しない画面では使えない。
+   * `stripe.handleNextAction({ clientSecret })` は Stripe が自前で 3DS のモーダル/リダイレクトを
+   * 処理するため、呼び出し側は clientSecret を渡すだけでよい。</p>
+   *
+   * <p>`returnUrl` は現状 `handleNextAction` には渡さない（AC-72: in-page 解決が主系であり
+   * リダイレクトを要しない）。将来リダイレクト系の 3DS 経路が必要になった場合の呼び出し規約を
+   * 固定するためシグネチャに残す。</p>
+   *
+   * <p>AC-59: clientSecret を localStorage/sessionStorage へ書かない（Stripe.js に一度渡すだけで
+   * 本 composable 側では一切保持しない）。</p>
+   */
+  async function confirmPaymentAction(params: {
+    clientSecret: string
+    returnUrl: string
+  }): Promise<StripePaymentActionResult> {
+    const stripe = await getStripe()
+    const result = await stripe.handleNextAction({ clientSecret: params.clientSecret })
+
+    if (result.error) {
+      return {
+        status: 'error',
+        message: result.error.message ?? t('payment.membership.subscribe.genericError'),
+      }
+    }
+
+    if (!result.paymentIntent) {
+      return { status: 'error', message: t('payment.membership.subscribe.genericError') }
+    }
+    return { status: 'succeeded', paymentIntentStatus: result.paymentIntent.status }
+  }
+
   return {
     getStripe,
     mountPaymentElement,
     confirmSetup,
     confirmPayment,
+    confirmPaymentAction,
     retrieveSetupIntent,
     retrievePaymentIntent,
   }

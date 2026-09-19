@@ -33,9 +33,22 @@ import java.time.Duration;
 @RequestMapping("/billing")
 @RequiredArgsConstructor
 public class BillingReturnController {
-    /** 未認証時に state を退避する HttpOnly Cookie 名。 */
+    /** 未認証時に state を退避する HttpOnly Cookie 名（Checkout/Portal 系）。 */
     static final String RETURN_STATE_COOKIE = "billing_return_state";
     private static final String COOKIE_PATH = "/billing";
+
+    /**
+     * PR6b-1 E3'（AC-60）: payment-action（3DS）専用の<b>別名</b> Cookie。
+     *
+     * <p>既存 {@link #RETURN_STATE_COOKIE} と同名で path だけ狭めると (1) 失効が効かない
+     * (2) 両方が同時に送られてどちらを読むかヘッダ順依存になる (3) 未認証の往復で path が
+     * 広い側（{@code /billing}）へ戻ってしまう、の3つが起きるため、発行・退避・失効の
+     * すべてで別名・別 path を用いる（{@code BillingPlanChangePaymentActionController} が発行する）。</p>
+     */
+    static final String PAYMENT_ACTION_STATE_COOKIE = "billing_payment_action_state";
+    /** E3'（AC-60）: payment-action cookie の path は戻り口そのものに限定する。 */
+    static final String PAYMENT_ACTION_COOKIE_PATH = "/billing/payment-action/return";
+
     private static final String SAME_SITE_LAX = "Lax";
     private static final Duration COOKIE_MAX_AGE = Duration.ofMinutes(30);
     private static final String GENERIC_ERROR_REDIRECT = "/billing?scopeKind=USER&tab=plan&error=return";
@@ -121,9 +134,9 @@ public class BillingReturnController {
             reason = "3DS など payment action 完了後の top-level GET 復帰。認証済み決済の完了導線であり遮断できないため常時到達とする")
     @GetMapping("/payment-action/return")
     public ResponseEntity<Void> paymentActionReturn(
-            @CookieValue(name = RETURN_STATE_COOKIE, required = false) String state,
+            @CookieValue(name = PAYMENT_ACTION_STATE_COOKIE, required = false) String state,
             Principal principal, HttpServletRequest request, HttpServletResponse response) {
-        // URL 由来の state は受け取らない（Cookie 専用入口）。
+        // URL 由来の state は受け取らない（Cookie 専用入口）。E3': 別名・別 path の cookie を読む。
         return handle(null, state, principal,
                 BillingReturnStateService.Purpose.PAYMENT_ACTION_RETURN, "/billing/payment-action/return");
     }
@@ -147,28 +160,43 @@ public class BillingReturnController {
     private ResponseEntity<Void> handle(String paramState, String cookieState, Principal principal,
                                         BillingReturnStateService.Purpose purpose,
                                         String callbackPath) {
+        String cookieName = cookieNameFor(purpose);
+        String cookiePath = cookiePathFor(purpose);
         boolean cookiePresent = cookieState != null && !cookieState.isBlank();
         String state = (paramState != null && !paramState.isBlank()) ? paramState : cookieState;
         boolean clearCookie = cookiePresent
                 || purpose == BillingReturnStateService.Purpose.PAYMENT_ACTION_RETURN;
         if (state == null || state.isBlank()) {
-            return redirect(GENERIC_ERROR_REDIRECT, clearCookie ? expiredCookie() : null);
+            return redirect(GENERIC_ERROR_REDIRECT,
+                    clearCookie ? expiredCookie(cookieName, cookiePath) : null);
         }
         if (principal == null) {
             // 未認証: nonce は消費せず state を HttpOnly Cookie へ退避し、
             // 再ログイン後に「この callback 自身」へ戻して消費させる。
-            return redirect(loginRedirect(callbackPath), stateCookie(state));
+            return redirect(loginRedirect(callbackPath), stateCookie(cookieName, cookiePath, state));
         }
         try {
             BillingReturnStateService.ReturnState verified = returnStateService.verify(state, purpose);
             long actorId = Long.parseLong(principal.getName());
             scopeGuard.check(actorId, verified.scopeKind(), verified.scopeId());
             returnStateService.consumeNonce(verified, actorId);
-            return redirect(cleanRedirect(verified), clearCookie ? expiredCookie() : null);
+            return redirect(cleanRedirect(verified), clearCookie ? expiredCookie(cookieName, cookiePath) : null);
         } catch (RuntimeException e) {
             // 改竄・期限切れ・再利用・権限不足はすべて同一の generic 遷移に畳む（詳細は返さない）。
-            return redirect(GENERIC_ERROR_REDIRECT, clearCookie ? expiredCookie() : null);
+            return redirect(GENERIC_ERROR_REDIRECT, clearCookie ? expiredCookie(cookieName, cookiePath) : null);
         }
+    }
+
+    /** E3': purpose ごとに cookie 名を分ける（PAYMENT_ACTION_RETURN だけ別名）。 */
+    private static String cookieNameFor(BillingReturnStateService.Purpose purpose) {
+        return purpose == BillingReturnStateService.Purpose.PAYMENT_ACTION_RETURN
+                ? PAYMENT_ACTION_STATE_COOKIE : RETURN_STATE_COOKIE;
+    }
+
+    /** E3': purpose ごとに cookie path を分ける（PAYMENT_ACTION_RETURN だけ戻り口へ限定）。 */
+    private static String cookiePathFor(BillingReturnStateService.Purpose purpose) {
+        return purpose == BillingReturnStateService.Purpose.PAYMENT_ACTION_RETURN
+                ? PAYMENT_ACTION_COOKIE_PATH : COOKIE_PATH;
     }
 
     private String cleanRedirect(BillingReturnStateService.ReturnState state) {
@@ -190,23 +218,40 @@ public class BillingReturnController {
         return builder.build();
     }
 
-    private ResponseCookie stateCookie(String state) {
-        return ResponseCookie.from(RETURN_STATE_COOKIE, state)
+    private ResponseCookie stateCookie(String cookieName, String cookiePath, String state) {
+        return ResponseCookie.from(cookieName, state)
                 .httpOnly(true)
                 .secure(true)
                 .sameSite(SAME_SITE_LAX)
-                .path(COOKIE_PATH)
+                .path(cookiePath)
                 .maxAge(COOKIE_MAX_AGE)
                 .build();
     }
 
-    private ResponseCookie expiredCookie() {
-        return ResponseCookie.from(RETURN_STATE_COOKIE, "")
+    private ResponseCookie expiredCookie(String cookieName, String cookiePath) {
+        return ResponseCookie.from(cookieName, "")
                 .httpOnly(true)
                 .secure(true)
                 .sameSite(SAME_SITE_LAX)
-                .path(COOKIE_PATH)
+                .path(cookiePath)
                 .maxAge(0)
+                .build();
+    }
+
+    /**
+     * PR6b-1 第8隊: payment-action の<b>初回発行</b>用 cookie を組み立てる
+     * （{@code BillingPlanChangePaymentActionController} から呼ぶ。AC-60〜62）。
+     *
+     * @param token   {@link BillingReturnStateService#issue} が返した return state token
+     * @param maxAge  AC-61: {@code min(pending_update.expires_at, now+15分)} を呼び側で計算済みの値
+     */
+    static ResponseCookie paymentActionCookie(String token, Duration maxAge) {
+        return ResponseCookie.from(PAYMENT_ACTION_STATE_COOKIE, token)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite(SAME_SITE_LAX)
+                .path(PAYMENT_ACTION_COOKIE_PATH)
+                .maxAge(maxAge)
                 .build();
     }
 }

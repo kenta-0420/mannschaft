@@ -39,8 +39,13 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "billing_contracts",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_bc_checkout_session", columnNames = "stripe_checkout_session_ref"))
+        // uk_bc_psp_subscription は V151 の ADD UNIQUE KEY と同一（uk_bcc_invoice と同型の宣言漏れ）。
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_bc_checkout_session", columnNames = "stripe_checkout_session_ref"),
+                @UniqueConstraint(
+                        name = "uk_bc_psp_subscription", columnNames = "psp_subscription_ref")
+        })
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

@@ -92,6 +92,8 @@ HTTP|com.mannschaft.app.billing.api.BillingCustomerPortalController|1|1
 HTTP|com.mannschaft.app.billing.api.BillingEntitlementSummaryController|2|3
 HTTP|com.mannschaft.app.billing.api.BillingInvoiceHistoryController|3|3
 HTTP|com.mannschaft.app.billing.api.BillingPayerHandoverController|2|6
+HTTP|com.mannschaft.app.billing.api.BillingPlanChangeController|0|2
+HTTP|com.mannschaft.app.billing.api.BillingPlanChangePaymentActionController|0|1
 HTTP|com.mannschaft.app.billing.api.BillingPlanController|2|2
 HTTP|com.mannschaft.app.billing.api.BillingReturnController|0|4
 HTTP|com.mannschaft.app.billing.api.PublicBillingCatalogController|0|1

@@ -20488,6 +20488,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/billing/contracts/{contractId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * PLAN 変更（upgrade）の実行
+         * @description 事前見積りを一回だけ消費して upgrade を予約する。Idempotency-Key 必須。 clientSecret は返さない。
+         */
+        post: operations["change"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/billing/contracts/{contractId}/change-previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * PLAN 変更の事前見積り
+         * @description upgrade 対象の金額・期間を Stripe から取得する。Idempotency-Key 必須。
+         */
+        post: operations["preview_6"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/billing/contracts/{contractId}/cancel": {
         parameters: {
             query?: never;
@@ -42737,6 +42777,26 @@ export interface paths {
          * @description 明細行・調整・税内訳を返す。他スコープの ID は存在秘匿のため 404。
          */
         get: operations["detail_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/billing/contracts/{contractId}/changes/{changeId}/payment-action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 3DS payment-action の取得
+         * @description change が REQUIRES_ACTION のときだけ、Stripe から都度 clientSecret を取得して返す。DB には保存しない。
+         */
+        get: operations["paymentAction"];
         put?: never;
         post?: never;
         delete?: never;
@@ -65474,6 +65534,44 @@ export interface components {
             /** @description Stripe Customer Portal の短命 URL */
             url?: string;
         };
+        BillingPlanChangeRequest: {
+            /** Format: uuid */
+            previewId: string;
+            /** Format: int64 */
+            version: number;
+        };
+        ApiResponseBillingContractChangeResponse: {
+            data?: components["schemas"]["BillingContractChangeResponse"];
+        };
+        BillingContractChangeResponse: {
+            /** Format: uuid */
+            changeId?: string;
+            /** Format: date-time */
+            effectiveAt?: string;
+            /** @enum {string} */
+            status?: "PENDING_PAYMENT" | "REQUIRES_ACTION" | "CREATING_SCHEDULE" | "SCHEDULED" | "APPLIED" | "FAILED" | "CANCELLED";
+        };
+        BillingChangePreviewRequest: {
+            toProductKey?: string;
+            /** @enum {string} */
+            toProductKind: "PLAN" | "ADDON";
+            /** Format: int64 */
+            version: number;
+        };
+        ApiResponseBillingChangePreviewResponse: {
+            data?: components["schemas"]["BillingChangePreviewResponse"];
+        };
+        BillingChangePreviewResponse: {
+            amountDueNow?: components["schemas"]["Money"];
+            /** Format: date-time */
+            effectiveAt?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** @enum {string} */
+            kind?: "UPGRADE" | "DOWNGRADE";
+            /** Format: uuid */
+            previewId?: string;
+        };
         /** @description 解約・解約撤回リクエスト */
         BillingCancelRequest: {
             /**
@@ -73307,6 +73405,8 @@ export interface components {
             canResume?: boolean;
             /** @description 解約予約の内容。予約が無ければ null */
             cancel?: components["schemas"]["BillingScheduledCancel"];
+            /** @description 変更先として選べる PLAN の plan_key 一覧（ADDON 契約や候補が無ければ空配列） */
+            changeablePlanKeys?: string[];
             /**
              * @description 契約 ID（UUID）
              * @example 0198aaaa-bbbb-cccc-dddd-eeeeeeeeeeee
@@ -73327,6 +73427,8 @@ export interface components {
              * @example ads.hide
              */
             featureKey?: string;
+            /** @description 進行中のプラン変更（upgrade）の内容。進行中の変更が無ければ null */
+            pendingChange?: components["schemas"]["BillingPendingChange"];
             /**
              * @description プランキー（PLAN 契約時）。ADDON 時は null
              * @example FULL
@@ -73386,6 +73488,31 @@ export interface components {
              * @example TEAM
              */
             scopeKind?: string;
+        };
+        /** @description F20.1 進行中のプラン変更（upgrade）の内容 */
+        BillingPendingChange: {
+            /**
+             * @description 変更 ID（UUID）。GET …/changes/{changeId}/payment-action に使う
+             * @example 0198aaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+             */
+            changeId?: string;
+            /**
+             * Format: date-time
+             * @description 変更の効力発生予定の瞬間（ISO-8601 Instant）
+             */
+            effectiveAt?: string;
+            /** @description 3DS等の追加認証待ちか（true なら GET …/payment-action を叩ける） */
+            paymentActionRequired?: boolean;
+            /**
+             * Format: date-time
+             * @description 支払い（3DS）の期限。pending_update が無ければ null
+             */
+            pendingUpdateExpiresAt?: string;
+            /**
+             * @description 変更の状態（PENDING_PAYMENT または REQUIRES_ACTION）
+             * @example REQUIRES_ACTION
+             */
+            status?: string;
         };
         /** @description F20.1 解約予約の内容 */
         BillingScheduledCancel: {
@@ -79556,6 +79683,18 @@ export interface components {
              * @example 1000
              */
             taxRateBasisPoints?: number;
+        };
+        ApiResponseBillingPaymentActionResponse: {
+            data?: components["schemas"]["BillingPaymentActionResponse"];
+        };
+        BillingPaymentActionResponse: {
+            paymentAction?: components["schemas"]["PaymentActionDto"];
+        };
+        PaymentActionDto: {
+            clientSecret?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            type?: string;
         };
         ApiResponseBetaPerkMyPerksResponse: {
             data?: components["schemas"]["BetaPerkMyPerksResponse"];
@@ -125921,6 +126060,62 @@ export interface operations {
             };
         };
     };
+    change: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingPlanChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingContractChangeResponse"];
+                };
+            };
+        };
+    };
+    preview_6: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingChangePreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingChangePreviewResponse"];
+                };
+            };
+        };
+    };
     cancel_12: {
         parameters: {
             query?: never;
@@ -145957,7 +146152,7 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: {
-                billing_return_state?: string;
+                billing_payment_action_state?: string;
             };
         };
         requestBody?: never;
@@ -162207,6 +162402,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBillingInvoiceDetail"];
+                };
+            };
+        };
+    };
+    paymentAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contractId: string;
+                changeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPaymentActionResponse"];
                 };
             };
         };

@@ -65,6 +65,11 @@ class BillingSubscriptionWebhookServiceTest {
     @Mock private BillingPayerHandoverService payerHandoverService;
     /** PR6a AC-83: customer.subscription.updated の受け口（本テストは deleted/invoice 系のみを測る）。 */
     @Mock private BillingContractOperationRecoveryService operationRecoveryService;
+    /**
+     * PR6b-1 第7隊: upgrade 確定（E8）。本テストの invoice は upgrade の change を持たないため、
+     * 未スタブ（{@code resolveByInvoice} は空 Optional）のまま従来の契約遷移経路を測る。
+     */
+    @Mock private BillingPlanChangeConfirmationService planChangeConfirmationService;
 
     private BillingSubscriptionWebhookService service;
 
@@ -76,13 +81,13 @@ class BillingSubscriptionWebhookServiceTest {
         service = new BillingSubscriptionWebhookService(
                 stripePaymentProvider, idempotencyService, billingContractService,
                 billingContractRepository, invoiceProjectionService, gate, parser,
-                payerHandoverService, operationRecoveryService, FIXED_CLOCK);
+                payerHandoverService, operationRecoveryService, planChangeConfirmationService, FIXED_CLOCK);
     }
 
     private BillingSubscriptionWebhookEventInfo event(
             String type, String billingContractId, String subscriptionId, Long periodEnd) {
         return new BillingSubscriptionWebhookEventInfo(
-                "evt_1", type, false, "cs_1", billingContractId, subscriptionId, "cus_1", periodEnd);
+                "evt_1", type, false, "cs_1", billingContractId, subscriptionId, "cus_1", periodEnd, null);
     }
 
     private BillingContractEntity billingContract() {

@@ -6,6 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
@@ -66,6 +69,34 @@ class BillingDomainStartupSmokeTest extends AbstractMySqlIntegrationTest {
                     EntitlementScopeKind.TEAM, 1L, ContractStatus.ACTIVE);
             activeContractPointerRepository.findByScopeKindAndScopeIdAndContractKindAndAddonFeatureKey(
                     EntitlementScopeKind.TEAM, 1L, ContractKind.PLAN, "");
+        }).doesNotThrowAnyException();
+
+        // AC: plan_price_bands の実在行を「保存→再読込」できること（PlanPriceBandId 型不整合の再発防止）。
+        //
+        // <p>注記: test プロファイルは {@code flyway.enabled=false} かつ {@code ddl-auto=create}
+        // （application-test.yml）であり、Flyway seed（本番の plan_price_bands 初期データ）は
+        // テスト DB に一切投入されない。そのため既存の派生クエリ呼び出しだけでは実データの 0 件
+        // クエリにしかならず、Hibernate が複合 ID を組み立てる経路（{@code @IdClass} のフィールド型
+        // 不一致で {@code InstantiationException} を起こす経路）を一度も通らずに素通りしていた
+        // （本番 500 が CI で捕まらなかった真因）。ここでは行を自前で 1 件 persist してから
+        // 同じ派生クエリで再読込し、実際にエンティティを hydrate させて経路を通す。</p>
+        PlanPriceBandEntity fixture = PlanPriceBandEntity.builder()
+                .planKey("FULL")
+                .scopeKind(PlanPriceBandScopeKind.TEAM)
+                .bandNo((short) 90)
+                .minMembers(1)
+                .maxMembers(null)
+                .monthlyPriceJpy(null)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        assertThatCode(() -> {
+            planPriceBandRepository.saveAndFlush(fixture);
+            List<PlanPriceBandEntity> reloaded =
+                    planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("FULL", PlanPriceBandScopeKind.TEAM);
+            assertThat(reloaded)
+                    .extracting(PlanPriceBandEntity::getScopeKind)
+                    .contains(PlanPriceBandScopeKind.TEAM);
         }).doesNotThrowAnyException();
 
         // 注記: {@code entitlementQueryService.isEntitled} は {@code @Cacheable("entitlement:check")} ゆえ

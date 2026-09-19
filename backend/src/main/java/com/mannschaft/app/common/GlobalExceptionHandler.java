@@ -1,7 +1,9 @@
 package com.mannschaft.app.common;
 
 import com.mannschaft.app.billing.FeatureNotEntitledException;
+import com.mannschaft.app.billing.api.BillingConflictException;
 import com.mannschaft.app.billing.api.BillingIdempotencyProcessingException;
+import com.mannschaft.app.billing.api.dto.BillingConflictErrorResponse;
 import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
 import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationErrorResponse;
 import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequiredException;
@@ -2593,6 +2595,25 @@ public class GlobalExceptionHandler {
         FeatureNotEntitledErrorResponse body =
                 new FeatureNotEntitledErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+    }
+
+    /**
+     * Billing Center PR6b-1 A群追補: {@link BillingConflictException} 専用ハンドラ（金型:
+     * {@link #handleFeatureNotEntitled}）。
+     *
+     * <p>月境界（{@code ENTITLEMENT_022}）・preview/quote 競合（{@code ENTITLEMENT_020/021/023}）で
+     * {@code $.error.details.reason} / {@code $.error.details.availableAt} を返す
+     * （AC-18/AC-19b/AC-20/AC-21）。HTTP ステータスは {@link #resolveHttpStatus} に委ねる
+     * （全て 4xx のため error_reports への記録はしない）。</p>
+     */
+    @ExceptionHandler(BillingConflictException.class)
+    public ResponseEntity<BillingConflictErrorResponse> handleBillingConflict(BillingConflictException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("BillingConflictException: code={}, reason={}",
+                ex.getErrorCode().getCode(), ex.getDetails().reason());
+        BillingConflictErrorResponse body =
+                new BillingConflictErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
+        return ResponseEntity.status(resolveHttpStatus(ex.getErrorCode())).body(body);
     }
 
     /**
