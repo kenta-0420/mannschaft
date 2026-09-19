@@ -199,9 +199,9 @@ async function resolveAdminTeamSlug(api: APIRequestContext, token: string): Prom
   expect(res.status(), '/me/teams は 200').toBe(200)
   const data = (await res.json()).data as Array<{ slug: string; name: string; role: string }>
   const hasAdminRole = (role: string) => role === 'ADMIN' || role === 'SYSTEM_ADMIN'
-  const team =
-    data.find((t) => hasAdminRole(t.role) && t.name.includes('FC東京U-18')) ??
-    data.find((t) => hasAdminRole(t.role))
+  // scope-tabs は参加日時の新しい順に表示されるため、API末尾の最新管理チームを使う。
+  // 古い固定seedを選ぶと、長期運用DBではページ探索上限より後ろへ押し出される。
+  const team = data.filter((t) => hasAdminRole(t.role)).at(-1)
   expect(team, 'ADMIN ロールのチームが存在すること').toBeTruthy()
   return team!.slug
 }
