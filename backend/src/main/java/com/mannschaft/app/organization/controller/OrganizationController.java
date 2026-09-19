@@ -9,6 +9,9 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.dashboard.ScopeType;
+import com.mannschaft.app.member.MemberSubtabKey;
+import com.mannschaft.app.member.service.MemberSubtabVisibilityService;
 import com.mannschaft.app.organization.dto.AncestorsResponse;
 import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
@@ -83,6 +86,7 @@ public class OrganizationController {
     private final BlockService blockService;
     private final SupporterService supporterService;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final MemberSubtabVisibilityService memberSubtabVisibilityService;
 
 
     // ========================================
@@ -231,6 +235,10 @@ public class OrganizationController {
         // 非メンバーがメンバー情報を列挙する漏洩を塞ぐ。
         contentVisibilityChecker.assertCanView(
                 ReferenceType.ORGANIZATION, id, SecurityUtils.getCurrentUserIdOrNull());
+        // CMP-260919-1140 Phase 1: メンバー統合画面「一覧」サブタブの外側の門（管理者が設定した min_role）。
+        // 既定値（MEMBER）の場合は非メンバーが 403 になる現状挙動と等価。
+        memberSubtabVisibilityService.assertViewable(
+                SecurityUtils.getCurrentUserIdOrNull(), ScopeType.ORGANIZATION, id, MemberSubtabKey.MEMBER_LIST);
         return ResponseEntity.ok(organizationService.getMembers(id, pageable));
     }
 

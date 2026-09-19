@@ -3,7 +3,9 @@ package com.mannschaft.app.member.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.member.MemberErrorCode;
+import com.mannschaft.app.member.MemberSubtabKey;
 import com.mannschaft.app.member.MemberMapper;
 import com.mannschaft.app.member.PageStatus;
 import com.mannschaft.app.member.PageType;
@@ -47,6 +49,7 @@ public class TeamPageService {
     private final MemberProfileRepository profileRepository;
     private final MemberMapper memberMapper;
     private final AccessControlService accessControlService;
+    private final MemberSubtabVisibilityService memberSubtabVisibilityService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String SCOPE_TEAM = "TEAM";
@@ -55,18 +58,32 @@ public class TeamPageService {
     /**
      * ページ一覧をページング取得する。teamId/organizationId は呼び出し元が明示的に指定するスコープの
      * ため、非所属者は 403（COMMON_002）で拒否する（Wave3-B2 member 認可根治）。
+     *
+     * <p>CMP-260919-1140 Phase 1: 組織スコープは「紹介」サブタブの外側の門
+     * （{@link MemberSubtabVisibilityService#assertViewable}）で判定する。既定値（MEMBER）は
+     * 従来の {@code checkMembership} と等価。チームスコープは Phase 1 対象外のため従来どおり
+     * {@code checkMembership} を維持する。下書き（DRAFT）ページは ADMIN 以外には一覧に出さない
+     * （内側の扉。設計書 §5 合成ルール）。</p>
      */
     public Page<TeamPageResponse> listPages(Long actorUserId, Long teamId, Long organizationId, Pageable pageable) {
+        boolean isAdmin;
         if (teamId != null) {
             accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+            isAdmin = accessControlService.isAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
         } else {
-            accessControlService.checkMembership(actorUserId, organizationId, SCOPE_ORGANIZATION);
+            memberSubtabVisibilityService.assertViewable(
+                    actorUserId, ScopeType.ORGANIZATION, organizationId, MemberSubtabKey.MEMBER_PROFILES);
+            isAdmin = accessControlService.isAdminOrAbove(actorUserId, organizationId, SCOPE_ORGANIZATION);
         }
         Page<TeamPageEntity> page;
         if (teamId != null) {
             page = pageRepository.findByTeamIdOrderBySortOrder(teamId, pageable);
-        } else {
+        } else if (isAdmin) {
             page = pageRepository.findByOrganizationIdOrderBySortOrder(organizationId, pageable);
+        } else {
+            // 内側の扉: DRAFT ページは非管理者の一覧から除外（組織スコープのみ・Phase 1）
+            page = pageRepository.findByOrganizationIdAndStatusOrderBySortOrder(
+                    organizationId, PageStatus.PUBLISHED, pageable);
         }
         return page.map(memberMapper::toTeamPageResponse);
     }
@@ -256,8 +273,32 @@ public class TeamPageService {
     void checkPageMembershipOrNotFound(Long actorUserId, TeamPageEntity page) {
         Long scopeId = resolveScopeId(page);
         String scopeType = resolveScopeType(page);
-        if (!accessControlService.isMember(actorUserId, scopeId, scopeType)
-                && !accessControlService.isAdminOrAbove(actorUserId, scopeId, scopeType)) {
+
+        // ADMIN/DEPUTY_ADMIN 以上は常に全ページ閲覧可（下書き含む）
+        if (accessControlService.isAdminOrAbove(actorUserId, scopeId, scopeType)) {
+            return;
+        }
+
+        // 内側の扉: 下書き（DRAFT）ページは ADMIN 以外の誰にも見せない（設計書 §5 合成ルール）
+        if (page.getStatus() == PageStatus.DRAFT) {
+            throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+        }
+
+        // CMP-260919-1140 Phase 1: 組織スコープは「紹介」サブタブの外側の門（min_role）で判定する。
+        // 既定値（MEMBER）は従来の isMember 判定と等価。両方（外側の門＋内側の扉）を通った人だけ見える。
+        // チームスコープは Phase 1 対象外のため従来どおり isMember を維持する。
+        if (SCOPE_ORGANIZATION.equals(scopeType)) {
+            try {
+                memberSubtabVisibilityService.assertViewable(
+                        actorUserId, ScopeType.ORGANIZATION, scopeId, MemberSubtabKey.MEMBER_PROFILES);
+            } catch (BusinessException ex) {
+                // Wave3-B2 member BOLA対策の 404 秘匿パターンを維持（403 ではなく 404 を返す）
+                throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+            }
+            return;
+        }
+
+        if (!accessControlService.isMember(actorUserId, scopeId, scopeType)) {
             throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
         }
     }
