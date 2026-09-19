@@ -65,12 +65,10 @@ tracked_paths:
   - /parental-consent/manage
   - /admin/equipment
   - /admin/member-profiles
-  - /admin/reservation-settings
   - /admin/campaigns
   - /admin/promotions
   - /admin/packages
   - /admin/module-pricing
-  - /admin/org-billing
   - /admin/tax-settings
   - /admin/member-permissions
   - /teams/[slug]/settings/confirmable-notifications
@@ -148,15 +146,13 @@ pages:
     classification: duplicate-remnant
     replacement: /organizations/[slug]/member-profiles
     reason: "CMP-260917-0041②。organizations/[slug]/member-profiles.vue が同一のuseMemberProfileApi().listFields(scopeType, scopeId)を叩き、OrganizationSidebar.vueに導線あり。削除は未着手"
-  - path: /admin/reservation-settings
-    classification: duplicate-remnant
-    replacement: /teams/[slug]/reservations
-    link_detection_note: "teams/[slug]/admin/index.vue の AdminConsoleCard は to: `${base.value}/reservations` という動的テンプレートリテラルで導線を持つが、base.value（スコープ基底パス）が実行時にしか決まらないため静的走査では抽出できない（先頭が${で始まり切り落とし後に空文字列になる）。番人の偽陰性を避けるためここで抑制する"
-    reason: "CMP-260917-0041③。teams/[slug]/reservations.vue のLineManager.vueが同じreservation-lines APIを叩き、管理コンソールカード（teams/[slug]/admin/index.vue:78）から到達可能。ただしorganizations配下に予約機能自体が無く単純削除できない可能性があるため要確認（未着手）。
-      【2026-09-18 追加調査（マスター裁可は予約ライン重複の削除のみを対象としており、これは未確認だった）】
-      本ページは reservation-lines の他に ConfirmableNotificationSettings/Sender/History（確認通知設定・手動送信・履歴）セクションも埋め込んでいる（frontend/app/pages/admin/reservation-settings.vue:151-178）。
-      これら3コンポーネントは frontend/app 全体でこのページからしか描画されておらず（grep実測）、単純削除すると確認通知機能（TEAM/ORGANIZATION両スコープ）が導線ごと消える。
-      予約ライン部分は teams/[slug]/reservations.vue でカバーされるが、確認通知セクションの受け皿が無いため、このページはまだ削除できない。削除するには確認通知セクションの移設先を別途設計する必要がある（未着手）。"
+# /admin/reservation-settings は CMP-260909-1141 で削除済み。
+# 予約ライン CRUD は components/reservation/LineManager.vue と重複しており、そちらは
+# teams/[slug]/reservations.vue から健在（管理コンソールカード経由で到達可能）。
+# 確認通知（F04.9）の3コンポーネント（ConfirmableNotificationSettings/Sender/History）は
+# teams/[slug]/settings/confirmable-notifications.vue・organizations/[slug]/settings/confirmable-notifications.vue
+# へ移設済み（PR #3365）。BE の認可も SEND_NOTIFICATION 権限判定へ修正済み（PR #3366）。
+# 移設先が生きたことを確認したうえで、移設元ページ自体を本PRで削除した。
 # /admin/blog-management は CMP-260917-0041（マスター裁可 2026-09-18）で削除済み。
 # 機能移植は PR #3350（BlogPostList.vue へタグCRUD・公開切替・記事削除を移植）、ページ削除は本PRで実施。
 # teams/[slug]/blog.vue・organizations/[slug]/blog.vue が同一のBlogPostList.vueを描画し、
@@ -179,10 +175,15 @@ pages:
     classification: be-pending
     cmp: CMP-260911-0109
     reason: "モジュール価格設定APIがBEに存在しない。BE実装後に正規ナビへ公開する方針"
-  - path: /admin/org-billing
-    classification: be-pending
-    cmp: CMP-260917-0123
-    reason: "/api/v1/system-admin/org-billing がBEに存在しない。BE実装後に正規ナビへ公開する方針"
+# /admin/org-billing は CMP-260909-1141（マスター裁可）でお蔵入り（ページごと削除）。
+# マスターの意向: 「営利/非営利はいったん開発から外そう。アプリ運用していくどこかの段階で
+# その運用は取り入れたいから、いったんお蔵入り」。
+# 確定設計 F20.1（docs/features/F20.1_entitlement_billing/02_api_design.md:327）が
+# 「価格は機能の性質に付く設計ゆえ org_type は課金額を変えない」と明示的に否定しており、
+# BE の /api/v1/system-admin/org-billing も未実装（作り忘れではなく F20.1 がこの概念を
+# 採らなかったため）。将来これを実現するには plan_price_bands の軸に org_type を足す
+# DB変更が要る（F20.1の確定方針を覆す設計変更になる）。削除コードは本PRの親コミットの
+# git 履歴から復元可能。詳細は docs/task-list.md CMP-260909-1141 の項を参照。
   - path: /admin/tax-settings
     classification: be-pending
     cmp: CMP-260917-0123
@@ -192,9 +193,9 @@ pages:
     cmp: CMP-260912-0910
     reason: "/{scopeType}s/{scopeId}/role-permissions/member がBEに存在しない。かつ現状はcatchで404を握りつぶし「全権限有効」と嘘表示する危険度の高い欠陥がある（BE実装と同時に必ず除去すること）。BE実装後に正規ナビへ公開する方針"
 
-  # --- CMP-260909-1141 続報: /admin/reservation-settings（型③ duplicate-remnant 内、予約ライン CRUD と
+  # --- CMP-260909-1141 続報: 旧 /admin/reservation-settings（型③ duplicate-remnant 内、予約ライン CRUD と
   # 確認通知F04.9が無関係に同居する到達不能ページ）のうち、確認通知3コンポーネントの新設移設先。
-  # 移設元ページ自体は本PRでは削除しない（新導線が生きたことを確認してから別PRで削除する）。
+  # 移設元ページ自体は上記のとおり本PRで削除済み。
   - path: /teams/[slug]/settings/confirmable-notifications
     classification: reachable
     reason: "CMP-260909-1141。旧 /admin/reservation-settings.vue（サイドバー導線が無く URL 直打ちでしか開けなかった）から確認通知3コンポーネント（ConfirmableNotificationSettings/Sender/History）を移設。TeamSidebar.vue の settings カテゴリへ path: 'settings/confirmable-notifications' で追加"

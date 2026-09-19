@@ -161,9 +161,7 @@
     },
     "page": {
       "my_title": "Mis reservas",
-      "team_title": "Gestión de reservas",
-      "settings_title": "Configuración de reservas",
-      "settings_subtitle": "Gestione los elementos reservables (personal / mostradores)"
+      "team_title": "Gestión de reservas"
     },
     "tab": {
       "book": "Reservar",
@@ -223,7 +221,6 @@
     },
     "button": {
       "add_line": "Agregar {resourceName}",
-      "add_line_long": "Agregar {resourceName}",
       "save": "Guardar",
       "cancel": "Cancelar",
       "reserve": "Reservar",
@@ -237,12 +234,9 @@
       "title": "Confirmar",
       "line_create": "Crear elemento reservable",
       "line_edit": "Editar elemento reservable",
-      "line_create_long": "Agregar {resourceName}",
-      "line_edit_long": "Editar {resourceName}",
       "reserve_confirm": "Confirmar reserva",
       "cancel_confirm": "¿Cancelar esta reserva?",
-      "line_delete_confirm": "¿Eliminar este elemento reservable?",
-      "line_delete_named_confirm": "¿Eliminar \"{name}\"?"
+      "line_delete_confirm": "¿Eliminar este elemento reservable?"
     },
     "message": {
       "confirm_success": "Reserva confirmada",
@@ -254,9 +248,6 @@
       "line_update_success": "Elemento reservable actualizado",
       "line_delete_success": "Elemento reservable eliminado",
       "line_save_failed": "No se pudo guardar",
-      "line_create_success_long": "Elemento reservable creado",
-      "line_update_success_long": "Elemento reservable actualizado",
-      "line_delete_success_long": "Elemento reservable eliminado",
       "line_load_failed": "No se pudieron cargar los elementos reservables",
       "save_failed": "No se pudo guardar",
       "delete_failed": "No se pudo eliminar",

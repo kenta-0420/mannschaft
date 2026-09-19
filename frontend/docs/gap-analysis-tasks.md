@@ -287,7 +287,7 @@
 | 6-5 | 掲示板カテゴリ管理 | `admin/bulletin-categories.vue` | カテゴリCRUD・権限設定 |
 | 6-6 | 備品管理（admin） | `admin/equipment.vue` | 備品カタログ・在庫・貸出 |
 | 6-7 | メンバー紹介管理 | `admin/member-profiles.vue` | プロフィール項目カスタマイズ |
-| 6-8 | 予約管理設定 | `admin/reservation-settings.vue` | 枠設定・ルール・リマインド |
+| 6-8 | 予約管理設定 | ~~`admin/reservation-settings.vue`~~（CMP-260909-1141で削除。予約ラインCRUDは`LineManager.vue`へ、確認通知は`teams/organizations`配下の`settings/confirmable-notifications.vue`へ移設済み） | 枠設定・ルール・リマインド |
 | 6-10 | LINE設定 | `admin/line-settings.vue` | Messaging API・通知テンプレート |
 | 6-11 | SNS設定 | `admin/sns-settings.vue` | Instagram/X API・フィードキャッシュ |
 
@@ -374,14 +374,19 @@
 
 ---
 
-### Task 7-6: 組織数課金設定UI
+### Task 7-6: 組織数課金設定UI（CMP-260909-1141でお蔵入り）
 
 **README仕様** (L757):
 > 組織種別（非営利/営利）ごとの無料枠チーム数・超過課金単価を設定。各組織の現在のチーム数・課金状況の一覧確認
 
-**作成すべきファイル**: `app/pages/admin/org-billing.vue`
+**作成すべきファイル**: ~~`app/pages/admin/org-billing.vue`~~（作成済みだったが CMP-260909-1141・マスター裁可で削除。
+確定設計 F20.1（`docs/features/F20.1_entitlement_billing/02_api_design.md:327`）は「価格は機能の性質に付く設計ゆえ
+org_type は課金額を変えない」と明示的に否定しており、BE の `/api/v1/system-admin/org-billing` も未実装（作り忘れではなく
+F20.1 がこの概念を採らなかったため）。マスターの意向で将来的に取り入れたい運用ではあるため、削除コードは本PRの親コミットの
+git 履歴から復元可能。将来実現するには `plan_price_bands` の軸に org_type を足す DB 変更が必要（詳細は `docs/task-list.md`
+CMP-260909-1141 の項を参照）。）
 
-**機能要件**:
+**機能要件**（お蔵入り時点の要件。将来再着手時の参考）:
 - 組織種別ごとの設定（NONPROFIT: 無料枠・超過単価、FORPROFIT: 無料枠・超過単価）
 - 各組織のチーム数・課金状況一覧テーブル
 - 変更は翌月反映のアラート表示
