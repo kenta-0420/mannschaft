@@ -131,6 +131,11 @@ public class BillingContractOperationRecoveryService {
     static final String ERROR_STRIPE_MISMATCH = "RECOVERED_STRIPE_MISMATCH";
     /** 期末を解決できず APPLIED にできなかったときの {@code error_code}（Codex 検分 P2）。 */
     static final String ERROR_PERIOD_END_UNRESOLVED = "RECOVERED_PERIOD_END_UNRESOLVED";
+    /**
+     * PR6b-1 AC-92: upgrade の {@code pending_update} が失効し items も切り替わらなかったときの
+     * {@code error_code}（検疫ではなく通常の失敗確定である）。
+     */
+    static final String ERROR_PLAN_CHANGE_PENDING_UPDATE_EXPIRED = "RECOVERED_PLAN_CHANGE_EXPIRED";
 
     /**
      * トランザクション境界。
@@ -155,6 +160,21 @@ public class BillingContractOperationRecoveryService {
     private BillingContractCancelService cancelService;
 
     /**
+     * PR6b-1（E1F）: upgrade の「待つ／失敗確定」を分けるために change 行を引く先。
+     *
+     * <p>フィールド注入の理由は {@link #transactionTemplate} と同じである（コンストラクタ引数は
+     * 試練Dの発注書で6個に固定されている）。純 UT はしきい値判定しか呼ばないため null でよい。</p>
+     */
+    @Autowired(required = false)
+    private BillingContractChangeRepository changeRepository;
+
+    /**
+     * PR6b-1（E2&#39;）: 保存した {@code pending_update_target_snapshot} から target の Price ref を読む。
+     */
+    @Autowired(required = false)
+    private com.mannschaft.app.billing.invoice.StripeBillingPayloadParser payloadParser;
+
+    /**
      * 回収1周の結果（成果物で測るための内訳）。
      *
      * @param scanned          走査対象として拾った stale な operation 件数
@@ -163,11 +183,25 @@ public class BillingContractOperationRecoveryService {
      * @param quarantined      停止窓(c) として {@code RECONCILIATION_REQUIRED} へ倒した件数（AC-80）
      */
     public record RecoveryOutcome(
-            int scanned, int cancelledStale, int appliedFromStripe, int quarantined) {
+            int scanned, int cancelledStale, int appliedFromStripe, int quarantined,
+            int failedPlanChanges) {
+
+        /**
+         * Billing Center PR6b-1（AC-92）: 失敗確定を数えない従来の4項目版。
+         *
+         * @param scanned           走査件数
+         * @param cancelledStale    停止窓(a) の件数
+         * @param appliedFromStripe 停止窓(b) の件数
+         * @param quarantined       停止窓(c) の件数
+         */
+        public RecoveryOutcome(
+                int scanned, int cancelledStale, int appliedFromStripe, int quarantined) {
+            this(scanned, cancelledStale, appliedFromStripe, quarantined, 0);
+        }
 
         /** 何かしら回収したか。 */
         public int recovered() {
-            return cancelledStale + appliedFromStripe + quarantined;
+            return cancelledStale + appliedFromStripe + quarantined + failedPlanChanges;
         }
     }
 
@@ -191,6 +225,7 @@ public class BillingContractOperationRecoveryService {
         int cancelledStale = 0;
         int appliedFromStripe = 0;
         int quarantined = 0;
+        int failedPlanChanges = 0;
         for (BillingContractOperationEntity operation : stale) {
             Optional<RecoveryWindow> window = recoverInternal(operation.getId());
             if (window.isEmpty()) {
@@ -200,13 +235,16 @@ public class BillingContractOperationRecoveryService {
                 case A_CANCELLED -> cancelledStale++;
                 case B_APPLIED -> appliedFromStripe++;
                 case C_QUARANTINED -> quarantined++;
+                case D_PLAN_CHANGE_FAILED -> failedPlanChanges++;
             }
         }
-        if (cancelledStale + appliedFromStripe + quarantined > 0) {
-            log.info("PR6a 停止窓の回収: scanned={}, cancelled={}, applied={}, quarantined={}",
-                    stale.size(), cancelledStale, appliedFromStripe, quarantined);
+        if (cancelledStale + appliedFromStripe + quarantined + failedPlanChanges > 0) {
+            log.info("PR6a 停止窓の回収: scanned={}, cancelled={}, applied={}, quarantined={}, "
+                            + "planChangeFailed={}",
+                    stale.size(), cancelledStale, appliedFromStripe, quarantined, failedPlanChanges);
         }
-        return new RecoveryOutcome(stale.size(), cancelledStale, appliedFromStripe, quarantined);
+        return new RecoveryOutcome(stale.size(), cancelledStale, appliedFromStripe, quarantined,
+                failedPlanChanges);
     }
 
     /**
@@ -294,7 +332,14 @@ public class BillingContractOperationRecoveryService {
         /** (b) Stripe は反映済み → APPLIED（tx2 相当）＋ pointer 解放。 */
         B_APPLIED,
         /** (c) Stripe と DB が食い違う → RECONCILIATION_REQUIRED（pointer 保持）。 */
-        C_QUARANTINED
+        C_QUARANTINED,
+        /**
+         * PR6b-1 E1F: upgrade の<b>失敗確定</b> → FAILED ＋ pointer 解放。
+         *
+         * <p>pending_update が失効し items も切り替わっていない＝Stripe 側でも何も起きていない
+         * ことが確定した場合だけ。検疫（人手の reconcile 待ち）ではなく通常の失敗である。</p>
+         */
+        D_PLAN_CHANGE_FAILED
     }
 
     /**
@@ -321,7 +366,12 @@ public class BillingContractOperationRecoveryService {
             return Optional.empty();
         }
 
-        return switch (decide(operation, trace)) {
+        Optional<RecoveryWindow> verdict = decide(operation, trace);
+        if (verdict.isEmpty()) {
+            // 「待つ」判定。状態も pointer も一切変えない（AC-89・AC-91）。
+            return Optional.empty();
+        }
+        return switch (verdict.get()) {
             case A_CANCELLED -> inTransaction(() -> casAndRelease(
                     operation, BillingOperationStatus.CANCELLED,
                     ERROR_STALE_BEFORE_STRIPE, true, null));
@@ -341,6 +391,11 @@ public class BillingContractOperationRecoveryService {
             case C_QUARANTINED -> inTransaction(() -> casAndRelease(
                     operation, BillingOperationStatus.RECONCILIATION_REQUIRED,
                     ERROR_STRIPE_MISMATCH, false, null));
+            // AC-92: 失敗確定。applyEndAt が null なので applyRecoveredReflection は呼ばれない
+            // （回収が権利を切り替えることはない・AC-94）。change 行の確定は webhook の専管。
+            case D_PLAN_CHANGE_FAILED -> inTransaction(() -> casAndRelease(
+                    operation, BillingOperationStatus.FAILED,
+                    ERROR_PLAN_CHANGE_PENDING_UPDATE_EXPIRED, true, null));
         };
     }
 
@@ -355,15 +410,108 @@ public class BillingContractOperationRecoveryService {
      * @param trace     Stripe 実物から読んだ判定材料
      * @return 回収先
      */
-    private RecoveryWindow decide(BillingContractOperationEntity operation, StripeTrace trace) {
+    private Optional<RecoveryWindow> decide(
+            BillingContractOperationEntity operation, StripeTrace trace) {
         if (operation.getStatus() == BillingOperationStatus.CREATED) {
-            return trace.traceMatches() ? RecoveryWindow.C_QUARANTINED : RecoveryWindow.A_CANCELLED;
+            // Stripe をまだ呼べていない CREATED は kind を問わず従来どおり。痕跡があるのに CREATED は
+            // 食い違いであり検疫（PLAN_CHANGE も同じ。まだ何も待っていないため凍結にはならない）。
+            return Optional.of(trace.traceMatches()
+                    ? RecoveryWindow.C_QUARANTINED : RecoveryWindow.A_CANCELLED);
+        }
+        if (operation.getKind() == BillingOperationKind.PLAN_CHANGE) {
+            // PR6b-1 E1F: 判定は「待つ」か「失敗確定」かの2つだけ。検疫も APPLIED も選ばない。
+            return decidePlanChange(operation, trace);
         }
         // CALLING_STRIPE。痕跡があり、かつ Stripe 実物が意図どおり反映されているときだけ (b)。
         if (trace.traceMatches() && isEffectApplied(operation.getKind(), trace)) {
-            return RecoveryWindow.B_APPLIED;
+            return Optional.of(RecoveryWindow.B_APPLIED);
         }
-        return RecoveryWindow.C_QUARANTINED;
+        return Optional.of(RecoveryWindow.C_QUARANTINED);
+    }
+
+    /**
+     * upgrade（{@code PLAN_CHANGE}）の回収判定（正本 E1F・AC-88〜AC-94）。
+     *
+     * <p><b>回収は支払いを確定しない</b>（AC-93）。確定は {@code invoice.paid} だけである。
+     * したがってここが返しうるのは「見送る（待つ）」と「失敗確定」の2つに限られ、
+     * {@code B_APPLIED} も {@code C_QUARANTINED} も返さない。</p>
+     *
+     * <table border="1">
+     *   <caption>判定表</caption>
+     *   <tr><th>pending_update</th><th>現在 items</th><th>判定</th></tr>
+     *   <tr><td>存続</td><td>—</td><td>待つ（AC-89）</td></tr>
+     *   <tr><td>失効</td><td>target へ切替済み</td><td>待つ。webhook の確定待ち（AC-88b）</td></tr>
+     *   <tr><td>失効</td><td>未切替</td><td>失敗確定 → FAILED ＋ pointer 解放（AC-92）</td></tr>
+     * </table>
+     *
+     * <p>判定材料（change 行・現在 items）が揃わない周は<b>見送る</b>（AC-88c・AC-95）。
+     * 推測で失敗確定にすると、支払い待ちの利用者の upgrade を勝手に殺すことになる。</p>
+     *
+     * @param operation 対象 operation
+     * @param trace     Stripe 実物から読んだ判定材料
+     * @return 失敗確定なら {@code D_PLAN_CHANGE_FAILED}、待つなら空
+     */
+    private Optional<RecoveryWindow> decidePlanChange(
+            BillingContractOperationEntity operation, StripeTrace trace) {
+        BillingContractChangeEntity change = changeRepository == null ? null
+                : changeRepository.findByOperationIdAndDeletedAtIsNull(operation.getId())
+                        .orElse(null);
+        if (change == null || trace.snapshot() == null) {
+            // 対応する change 行が読めない／Stripe 実物が無い。材料が無いので待つ（凍結させない）。
+            return Optional.empty();
+        }
+        if (isPendingUpdateAlive(change, trace)) {
+            return Optional.empty();
+        }
+        if (isTargetItemsSwitched(change, trace)) {
+            // Stripe 側は target へ切り替わっている。確定（権利発行）は invoice.paid の専管であり、
+            // 回収は待つだけである（AC-88b・AC-93・AC-94）。
+            return Optional.empty();
+        }
+        if (!trace.snapshot().hasItems()) {
+            // items を運べていない周は「切り替わっていない」と断定できない。見送る（AC-95）。
+            return Optional.empty();
+        }
+        log.info("PR6b-1: upgrade の pending_update 失効かつ items 未切替のため失敗確定する（AC-92）: "
+                + "operationId={}, changeId={}", operation.getId(), change.getId());
+        return Optional.of(RecoveryWindow.D_PLAN_CHANGE_FAILED);
+    }
+
+    /**
+     * {@code pending_update} が存続しているか（E2&#39;・保存値と Stripe 実物の両方を見る）。
+     *
+     * <p>Stripe 実物が live な {@code pending_update} を持っていればそれが最優先の真であり、
+     * 持っていなくても change 行に保存した失効時刻が未来ならまだ待ってよい
+     * （適用後の Subscription からは live な {@code pending_update} を取得できないため）。</p>
+     *
+     * @param change 対象 change 行
+     * @param trace  Stripe 実物から読んだ判定材料
+     * @return 存続しているなら true
+     */
+    private boolean isPendingUpdateAlive(BillingContractChangeEntity change, StripeTrace trace) {
+        Instant now = Instant.now(clock);
+        if (trace.snapshot().hasLivePendingUpdate(now)) {
+            return true;
+        }
+        Instant savedExpiresAt = change.getPendingUpdateExpiresAt();
+        // 半開区間: 失効時刻ちょうどは存続していない（AC-90 と同じ流儀）。
+        return savedExpiresAt != null && savedExpiresAt.isAfter(now);
+    }
+
+    /**
+     * 現在の items が、change 行に保存した target の Price へ切り替わっているか（E2&#39;・AC-79）。
+     *
+     * @param change 対象 change 行
+     * @param trace  Stripe 実物から読んだ判定材料
+     * @return 切り替わっているなら true
+     */
+    private boolean isTargetItemsSwitched(BillingContractChangeEntity change, StripeTrace trace) {
+        if (payloadParser == null) {
+            return false;
+        }
+        String targetPriceRef =
+                payloadParser.targetPriceRefFromSnapshot(change.getPendingUpdateTargetSnapshot());
+        return targetPriceRef != null && trace.snapshot().containsPriceRef(targetPriceRef);
     }
 
     /**
@@ -421,6 +569,7 @@ public class BillingContractOperationRecoveryService {
         return Optional.of(switch (to) {
             case CANCELLED -> RecoveryWindow.A_CANCELLED;
             case APPLIED -> RecoveryWindow.B_APPLIED;
+            case FAILED -> RecoveryWindow.D_PLAN_CHANGE_FAILED;
             default -> RecoveryWindow.C_QUARANTINED;
         });
     }
@@ -478,7 +627,8 @@ public class BillingContractOperationRecoveryService {
      *                          {@link #applyRecoveredReflection} の1箇所に閉じる）
      */
     private record StripeTrace(
-            boolean traceMatches, boolean cancelAtPeriodEnd, Instant periodEnd) {}
+            boolean traceMatches, boolean cancelAtPeriodEnd, Instant periodEnd,
+            BillingPaymentGateway.SubscriptionSnapshot snapshot) {}
 
     /**
      * Stripe 実物を<b>読み取り専用</b>で引く（変更系は呼ばない）。
@@ -494,7 +644,7 @@ public class BillingContractOperationRecoveryService {
         if (subscriptionRef == null || subscriptionRef.isBlank()) {
             // Stripe を一度も呼べていないことが確実な CREATED だけ、痕跡なしとして扱う。
             return operation.getStatus() == BillingOperationStatus.CREATED
-                    ? new StripeTrace(false, false, null) : null;
+                    ? new StripeTrace(false, false, null, null) : null;
         }
         try {
             boolean traceMatches = billingPaymentGateway
@@ -507,7 +657,7 @@ public class BillingContractOperationRecoveryService {
                 return null;
             }
             return new StripeTrace(traceMatches, snapshot.cancelAtPeriodEnd(),
-                    snapshot.currentPeriodEnd());
+                    snapshot.currentPeriodEnd(), snapshot);
         } catch (RuntimeException e) {
             log.warn("PR6a 停止窓の回収: Stripe 参照に失敗したため次周へ見送る（operationId={}）",
                     operation.getId(), e);

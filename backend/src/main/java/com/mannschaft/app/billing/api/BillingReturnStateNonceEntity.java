@@ -8,6 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -24,7 +25,9 @@ import java.util.UUID;
  * <p>保存するのは nonce の <b>ハッシュ</b> だけであり、token 平文・復帰 URL・メール等の PII は持たない。</p>
  */
 @Entity
-@Table(name = "billing_return_state_nonces")
+@Table(name = "billing_return_state_nonces",
+        // V196 の uk_brsn_nonce と同一（uk_bcc_invoice と同型の宣言漏れ）。
+        uniqueConstraints = @UniqueConstraint(name = "uk_brsn_nonce", columnNames = {"nonce_hash"}))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

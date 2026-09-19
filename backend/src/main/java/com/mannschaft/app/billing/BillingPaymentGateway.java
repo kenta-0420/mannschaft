@@ -235,6 +235,18 @@ public interface BillingPaymentGateway {
     record CheckoutSessionInfo(String sessionId, String url) {}
 
     /**
+     * Billing Center PR6b-1（AC-99）: Stripe Subscription の items 1件。
+     *
+     * <p>upgrade の回収は「現在の items が target の Price へ切り替わっているか」で
+     * 「待つ／失敗確定」を分けるため、Price ref を運べなければ判定が成立しない。</p>
+     *
+     * @param itemId   Stripe Subscription Item ID（{@code si_xxx}）
+     * @param priceRef Stripe Price ID（{@code price_xxx}）
+     * @param quantity 数量（null 可）
+     */
+    record SubscriptionItemSnapshot(String itemId, String priceRef, Long quantity) {}
+
+    /**
      * Stripe Subscription 実物のスナップショット（設計書 §3.6.1）。
      *
      * @param subscriptionRef      Stripe Subscription ID
@@ -246,7 +258,68 @@ public interface BillingPaymentGateway {
      */
     record SubscriptionSnapshot(String subscriptionRef, String status, boolean cancelAtPeriodEnd,
                                 Instant currentPeriodStart, Instant currentPeriodEnd,
-                                String pendingSetupIntentId) {
+                                String pendingSetupIntentId,
+                                java.util.List<SubscriptionItemSnapshot> items,
+                                Instant pendingUpdateExpiresAt) {
+
+        /**
+         * Billing Center PR6b-1（AC-99）: items / pending_update を持たない従来の6項目で組み立てる。
+         *
+         * <p>PR6a までの呼び出し元（引継・解約）は items を必要としないため、この互換
+         * コンストラクタで従来どおり組める。items は<b>空リスト</b>であり、
+         * 「参照したが1件も無かった」と「そもそも運んでいない」を区別しない。
+         * 区別が要る判定（回収の PLAN_CHANGE 判定）は {@link #hasItems()} で先に確かめること。</p>
+         *
+         * @param subscriptionRef      Stripe Subscription ID
+         * @param status               Stripe ステータス
+         * @param cancelAtPeriodEnd    期末解約が予約済みか
+         * @param currentPeriodStart   現サイクル開始（null 可）
+         * @param currentPeriodEnd     現サイクル終了（null 可）
+         * @param pendingSetupIntentId 未解決 SetupIntent（null 可）
+         */
+        public SubscriptionSnapshot(String subscriptionRef, String status, boolean cancelAtPeriodEnd,
+                                    Instant currentPeriodStart, Instant currentPeriodEnd,
+                                    String pendingSetupIntentId) {
+            this(subscriptionRef, status, cancelAtPeriodEnd, currentPeriodStart, currentPeriodEnd,
+                    pendingSetupIntentId, java.util.List.of(), null);
+        }
+
+        /** null を運ばせない（呼び出し側が毎回 null 検査をしなくてよいようにする）。 */
+        public SubscriptionSnapshot {
+            items = items == null ? java.util.List.of() : java.util.List.copyOf(items);
+        }
+
+        /**
+         * items を1件でも運んでいるか（AC-99）。
+         *
+         * @return 運んでいれば true
+         */
+        public boolean hasItems() {
+            return !items.isEmpty();
+        }
+
+        /**
+         * 現在の items に指定の Stripe Price ref が含まれるか（E2' の現在 items 側）。
+         *
+         * @param priceRef 探す Price ref
+         * @return 含まれていれば true
+         */
+        public boolean containsPriceRef(String priceRef) {
+            if (priceRef == null || priceRef.isBlank()) {
+                return false;
+            }
+            return items.stream().anyMatch(item -> priceRef.equals(item.priceRef()));
+        }
+
+        /**
+         * live な {@code pending_update} が存続しているか（AC-88b の「待つ」の一方）。
+         *
+         * @param now 判定時刻
+         * @return 失効時刻が {@code now} より未来なら true（半開区間: ちょうどは失効）
+         */
+        public boolean hasLivePendingUpdate(Instant now) {
+            return pendingUpdateExpiresAt != null && pendingUpdateExpiresAt.isAfter(now);
+        }
 
         /**
          * SCA/3DS の事前認証が未解決か（設計書 §3.6・二段検証の判定）。

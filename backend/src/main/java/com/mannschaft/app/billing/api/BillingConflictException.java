@@ -19,7 +19,17 @@ public class BillingConflictException extends BusinessException {
         return details;
     }
 
-    public record BillingConflictDetails(Reason reason, Instant availableAt, UUID quoteId) { }
+    public record BillingConflictDetails(
+            Reason reason, Instant availableAt, UUID quoteId, String pendingChangeStatus) {
+
+        /**
+         * 既存呼び出し元（月境界・quote/preview 競合）向けの後方互換コンストラクタ。
+         * {@code pendingChangeStatus} を持たない検体は {@code null}（PR6b-1 AC-101 以前と同じ形）。
+         */
+        public BillingConflictDetails(Reason reason, Instant availableAt, UUID quoteId) {
+            this(reason, availableAt, quoteId, null);
+        }
+    }
 
     public enum Reason {
         MONTH_BOUNDARY,
