@@ -12,4 +12,4 @@ CREATE TABLE role_permission_cache_generations (
         CHECK (scope_type IN ('TEAM', 'ORGANIZATION')),
     CONSTRAINT chk_role_permission_cache_generations_generation
         CHECK (generation >= 0)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

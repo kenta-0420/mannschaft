@@ -9,7 +9,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * スコープごとの role-permissions キャッシュ世代。
@@ -34,5 +34,5 @@ public class RolePermissionCacheGenerationEntity extends UuidV7Entity {
     private Long generation;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }
