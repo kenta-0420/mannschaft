@@ -77,7 +77,13 @@ test('teamPageId を指定すればADMINは200で検索できる', async () => {
     return
   }
 
-  const res = await api.get(`/api/v1/team/members/lookup?q=&teamPageId=${pageList[0].id}`, {
+  const first = pageList[0]
+  if (!first) {
+    test.skip()
+    return
+  }
+
+  const res = await api.get(`/api/v1/team/members/lookup?q=&teamPageId=${first.id}`, {
     headers: { Authorization: `Bearer ${adminToken}` },
   })
   expect(res.status()).toBe(200)
@@ -93,7 +99,13 @@ test('他テナント(non-member)は同一パラメータでも404で弾かれ�
     return
   }
 
-  const res = await api.get(`/api/v1/team/members/lookup?q=&teamPageId=${pageList[0].id}`, {
+  const first = pageList[0]
+  if (!first) {
+    test.skip()
+    return
+  }
+
+  const res = await api.get(`/api/v1/team/members/lookup?q=&teamPageId=${first.id}`, {
     headers: { Authorization: `Bearer ${outsiderToken}` },
   })
   expect([403, 404]).toContain(res.status())

@@ -186,8 +186,10 @@ test('③ ADMIN: ページ作成→メンバー追加→編集→削除→ペー
   const created = ((await listRes.json()).data as Array<{ id: number; slug: string }>).find(
     (p) => p.slug === PAGE_SLUG,
   )
-  expect(created, '作成したページがAPI一覧から見つからない').toBeTruthy()
-  createdPageId = created!.id
+  if (!created) {
+    throw new Error('作成したページがAPI一覧から見つからない')
+  }
+  createdPageId = created.id
 
   // --- ページを開いてメンバー追加 ---
   await pageCard.getByRole('button', { name: 'メンバーを見る' }).click()
