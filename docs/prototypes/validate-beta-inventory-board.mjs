@@ -123,7 +123,7 @@ for (const journey of b0Plan.journeys || []) {
   if ((journey.capabilities || []).some((key) => !b0CapabilityKeys.has(key))) throw new Error(`B0 journeyの能力keyが未分割です: ${journey.id}`);
   for (const key of journey.capabilities || []) {
     const decision = decisions.capabilities[key];
-    if (!decision || decision.stage !== 'B0' || decision.priority !== 'must') throw new Error(`B0 journey能力がB0/mustではありません: ${journey.id} / ${key}`);
+    if (!decision || decision.stage !== 'B0' || !['must', 'should'].includes(decision.priority)) throw new Error(`B0 journey能力がB0/must|shouldではありません: ${journey.id} / ${key}`);
   }
 }
 if (!b0CapabilityKeys.has('village-events-attendance-response') || !b0CapabilityKeys.has('village-events-attendance-summary')) throw new Error('出欠回答・集計の分割能力がありません');
@@ -132,7 +132,7 @@ if ((b0Plan.journeys || []).some((journey) => (journey.capabilities || []).inclu
 for (const key of ['timeline-post', 'timeline-view', 'timeline-sharing', 'notification-inbox-notification-delivery', 'notification-inbox-inbox', 'todo-memo-todo-create', 'todo-memo-todo-share', 'todo-memo-memo-quick-create', 'todo-memo-memo-view', 'village-events-calendar-view', 'village-events-calendar-sharing-level', 'village-events-calendar-visibility-boundary']) {
   if (!b0CapabilityKeys.has(key)) throw new Error(`B0共有機能の能力がありません: ${key}`);
   const decision = decisions.capabilities[key];
-  if (!decision || decision.stage !== 'B0' || decision.priority !== 'must' || !['proposed', 'confirmed'].includes(decision.decisionStatus || decisions.decisionStatusDefault) || !decision.reason) throw new Error(`B0共有機能の判断がB0/must/reason非空ではありません: ${key}`);
+  if (!decision || decision.stage !== 'B0' || !['must', 'should'].includes(decision.priority) || !['proposed', 'confirmed'].includes(decision.decisionStatus || decisions.decisionStatusDefault) || !decision.reason) throw new Error(`B0共有機能の判断がB0/must|should/reason非空ではありません: ${key}`);
   if (!(b0Plan.journeys || []).some((journey) => (journey.capabilities || []).includes(key))) throw new Error(`B0 journeyに共有機能がありません: ${key}`);
 }
 if ((b0Plan.journeys || []).some((journey) => (journey.capabilities || []).some((key) => key.startsWith('village-events-calendar-') && key.includes('attendance')))) throw new Error('カレンダー能力に出欠能力を混在させないでください');

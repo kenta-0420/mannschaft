@@ -46,6 +46,9 @@ public enum AnnouncementErrorCode implements ErrorCode {
     /** 指定されたチャネルアダプターが登録されていません（500） */
     BROADCAST_004("BROADCAST_004", "指定されたチャネルアダプターが登録されていません", Severity.ERROR),
 
+    /** MEMBER は target_role=MEMBERS_AND_ABOVE 以外を指定できません（400） */
+    BROADCAST_005("BROADCAST_005", "MEMBERはメンバー以上（内輪）以外の対象範囲を指定できません", Severity.WARN),
+
     // ── F02.8 範囲テンプレート管理エラーコード ──
 
     /** テンプレートが見つからない（404） */

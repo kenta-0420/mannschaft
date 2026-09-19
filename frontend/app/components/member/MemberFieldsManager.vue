@@ -93,11 +93,11 @@ function parseOptions(options: string | null): string[] | null {
   try {
     const parsed = JSON.parse(options)
     if (Array.isArray(parsed)) return parsed
-    notification.error(t('common.memberProfile.members.optionsInvalidFormat'))
+    notification.error(t('memberProfile.members.optionsInvalidFormat'))
     return null
   } catch (e) {
     console.error('field.options JSON parse failed', options, e)
-    notification.error(t('common.memberProfile.members.optionsLoadFailed'))
+    notification.error(t('memberProfile.members.optionsLoadFailed'))
     return null
   }
 }

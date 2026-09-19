@@ -2,39 +2,32 @@ package com.mannschaft.app.role.event;
 
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.interceptor.CacheErrorHandler;
+import com.mannschaft.app.role.service.RolePermissionCacheGenerationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-/** MembershipChangedEvent後にrole-permissionsをcommit後失効させる。 */
+/** 所属・ロール変更と同じトランザクションで認可キャッシュ世代を進める。 */
 @Component
+@RequiredArgsConstructor
 public class RolePermissionCacheMembershipListener {
 
-    private final CacheManager cacheManager;
-    private final CacheErrorHandler cacheErrorHandler;
-
-    public RolePermissionCacheMembershipListener(CacheManager cacheManager,
-                                                 CacheErrorHandler cacheErrorHandler) {
-        this.cacheManager = cacheManager;
-        this.cacheErrorHandler = cacheErrorHandler;
-    }
+    private final RolePermissionCacheGenerationService generationService;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "所属変更後の権限キャッシュ失効を止めると、剥奪済み権限がTTLまで残り認可境界を破るため")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+            reason = "所属・ロール変更と認可キャッシュ世代更新の原子性を維持するため停止不可")
+    @EventListener
+    @Transactional(propagation = Propagation.MANDATORY)
     public void onMembershipChanged(MembershipChangedEvent event) {
-        String key = event.userId() + ":" + event.scopeType() + ":" + event.scopeId();
-        Cache cache = null;
-        try {
-            cache = cacheManager.getCache("role-permissions");
-            if (cache != null) {
-                cache.evict(key);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void beforeCommit(boolean readOnly) {
+                generationService.incrementGeneration(event.scopeType(), event.scopeId());
             }
-        } catch (RuntimeException ex) {
-            cacheErrorHandler.handleCacheEvictError(ex, cache, key);
-        }
+        });
     }
 }

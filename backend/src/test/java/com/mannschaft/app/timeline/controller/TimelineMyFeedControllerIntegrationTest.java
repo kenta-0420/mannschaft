@@ -19,6 +19,15 @@ import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.entity.UserMuteEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.timeline.repository.UserMuteRepository;
+import com.mannschaft.app.village.entity.VillageEntity;
+import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
+import com.mannschaft.app.village.entity.enums.VillageRole;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.entity.enums.VillageType;
+import com.mannschaft.app.village.entity.enums.VillageVisibility;
+import com.mannschaft.app.village.repository.VillageMembershipRepository;
+import com.mannschaft.app.village.repository.VillageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -83,6 +92,12 @@ class TimelineMyFeedControllerIntegrationTest extends AbstractMySqlIntegrationTe
 
     @Autowired
     private UserMuteRepository muteRepository;
+
+    @Autowired
+    private VillageRepository villageRepository;
+
+    @Autowired
+    private VillageMembershipRepository villageMembershipRepository;
 
     /** 組織 slug の一意性確保用の連番（slug は 30 文字・UNIQUE）。 */
     private int orgSeq = 0;
@@ -327,26 +342,101 @@ class TimelineMyFeedControllerIntegrationTest extends AbstractMySqlIntegrationTe
     // ─────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("AC-12 VILLAGE: 村スコープ投稿は集約対象外")
-    void villagePosts_excluded() {
+    @DisplayName("AC-12 VILLAGE: 現役所属村の PUBLISHED 根投稿を TEAM/ORG と集約する")
+    void villagePosts_areIncludedForActiveVillageMembership() {
         Long teamPost = savePost(PostScopeType.TEAM, TEAM_JOINED, OTHER_AUTHOR, PostStatus.PUBLISHED, null).getId();
-        // VILLAGE 投稿（scopeId=0・scope_village_id を保持）
-        TimelinePostEntity village = TimelinePostEntity.builder()
-                .scopeType(PostScopeType.VILLAGE)
-                .scopeId(0L)
-                .scopeVillageId(UUID.randomUUID())
-                .userId(OTHER_AUTHOR)
-                .content("village post")
-                .status(PostStatus.PUBLISHED)
-                .build();
-        Long villageId = postRepository.save(village).getId();
+        // VILLAGE 投稿は scopeId=0 と scope_village_id の組合せで識別する。
+        UUID joinedVillageId = saveVillage("joined");
+        UUID otherVillageId = saveVillage("other");
+        saveVillageMembership(USER_MEMBER, joinedVillageId, null, null);
+
+        Long joinedVillagePost = saveVillagePost(joinedVillageId, PostStatus.PUBLISHED, null).getId();
+        Long otherVillagePost = saveVillagePost(otherVillageId, PostStatus.PUBLISHED, null).getId();
+        Long draftVillagePost = saveVillagePost(joinedVillageId, PostStatus.DRAFT, null).getId();
+        Long replyVillagePost = saveVillagePost(joinedVillageId, PostStatus.PUBLISHED, joinedVillagePost).getId();
 
         setAuthentication(USER_MEMBER);
-        List<Long> ids = body(controller.getMyFeed(null, 50)).getData().getPosts()
+        List<PostResponse> posts = body(controller.getMyFeed(null, 50)).getData().getPosts();
+        List<Long> ids = posts.stream().map(PostResponse::getId).toList();
+
+        assertThat(ids).contains(teamPost, joinedVillagePost);
+        assertThat(ids).doesNotContain(otherVillagePost, draftVillagePost, replyVillagePost);
+        assertThat(posts.stream().filter(post -> post.getId().equals(joinedVillagePost)).findFirst())
+                .hasValueSatisfying(post -> assertThat(post.getScope().scopeType()).isEqualTo("VILLAGE"));
+    }
+
+    @Test
+    @DisplayName("AC-12 VILLAGE: village-only で limit と同数の場合は hasNext=false")
+    void villageOnlyFeed_atLimit_hasNoNextPage() {
+        Long villageOnlyUser = 92_004L;
+        UUID villageId = saveVillage("at-limit");
+        saveVillageMembership(villageOnlyUser, villageId, null, null);
+        Long first = saveVillagePost(villageId, PostStatus.PUBLISHED, null).getId();
+        Long second = saveVillagePost(villageId, PostStatus.PUBLISHED, null).getId();
+
+        setAuthentication(villageOnlyUser);
+        TimelineFeedResponse response = body(controller.getMyFeed(null, 2));
+
+        assertThat(response.getData().getPosts()).extracting(PostResponse::getId)
+                .containsExactly(second, first);
+        assertThat(response.getMeta().isHasNext()).isFalse();
+        assertThat(response.getMeta().getNextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("AC-12 VILLAGE: village-only で limit+1 は次ページと重複・欠落なしで返す")
+    void villageOnlyFeed_overLimit_paginatesWithoutDuplicatesOrGaps() {
+        Long villageOnlyUser = 92_005L;
+        UUID villageId = saveVillage("over-limit");
+        saveVillageMembership(villageOnlyUser, villageId, null, null);
+        Long first = saveVillagePost(villageId, PostStatus.PUBLISHED, null).getId();
+        Long second = saveVillagePost(villageId, PostStatus.PUBLISHED, null).getId();
+        Long third = saveVillagePost(villageId, PostStatus.PUBLISHED, null).getId();
+
+        setAuthentication(villageOnlyUser);
+        TimelineFeedResponse page1 = body(controller.getMyFeed(null, 2));
+        List<Long> page1Ids = page1.getData().getPosts().stream().map(PostResponse::getId).toList();
+        assertThat(page1Ids).containsExactly(third, second);
+        assertThat(page1.getMeta().isHasNext()).isTrue();
+        assertThat(page1.getMeta().getNextCursor()).isEqualTo(second);
+
+        TimelineFeedResponse page2 = body(controller.getMyFeed(page1.getMeta().getNextCursor(), 2));
+        List<Long> page2Ids = page2.getData().getPosts().stream().map(PostResponse::getId).toList();
+        assertThat(page2Ids).containsExactly(first);
+        assertThat(page2Ids).doesNotContainAnyElementsOf(page1Ids);
+        assertThat(page2.getMeta().isHasNext()).isFalse();
+        assertThat(page2.getMeta().getNextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("AC-12 VILLAGE: 退村・BAN・削除・凍結村の投稿を現役村と混合しない")
+    void villageOnlyFeed_excludesLeftBannedDeletedAndFrozenVillagePosts() {
+        Long villageOnlyUser = 92_006L;
+        UUID activeVillageId = saveVillage("active");
+        UUID leftVillageId = saveVillage("left");
+        UUID bannedVillageId = saveVillage("banned");
+        UUID deletedVillageId = saveVillage("deleted");
+        UUID frozenVillageId = saveVillage("frozen");
+        saveVillageMembership(villageOnlyUser, activeVillageId, null, null);
+        saveVillageMembership(villageOnlyUser, leftVillageId, LocalDateTime.now(), null);
+        saveVillageMembership(villageOnlyUser, bannedVillageId, null, LocalDateTime.now());
+        saveVillageMembership(villageOnlyUser, deletedVillageId, null, null);
+        saveVillageMembership(villageOnlyUser, frozenVillageId, null, null);
+        deleteVillage(deletedVillageId);
+        freezeVillage(frozenVillageId);
+
+        Long activePost = saveVillagePost(activeVillageId, PostStatus.PUBLISHED, null).getId();
+        Long leftPost = saveVillagePost(leftVillageId, PostStatus.PUBLISHED, null).getId();
+        Long bannedPost = saveVillagePost(bannedVillageId, PostStatus.PUBLISHED, null).getId();
+        Long deletedPost = saveVillagePost(deletedVillageId, PostStatus.PUBLISHED, null).getId();
+        Long frozenPost = saveVillagePost(frozenVillageId, PostStatus.PUBLISHED, null).getId();
+
+        setAuthentication(villageOnlyUser);
+        List<Long> ids = body(controller.getMyFeed(null, 20)).getData().getPosts()
                 .stream().map(PostResponse::getId).toList();
 
-        assertThat(ids).contains(teamPost);
-        assertThat(ids).doesNotContain(villageId);
+        assertThat(ids).containsExactly(activePost);
+        assertThat(ids).doesNotContain(leftPost, bannedPost, deletedPost, frozenPost);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -765,6 +855,53 @@ class TimelineMyFeedControllerIntegrationTest extends AbstractMySqlIntegrationTe
                 .parentId(parentId)
                 .build();
         return postRepository.save(post);
+    }
+
+    private UUID saveVillage(String suffix) {
+        return villageRepository.save(VillageEntity.builder()
+                .slug("tmf-" + Long.toUnsignedString(System.nanoTime(), 36))
+                .name("集約タイムライン村-" + suffix)
+                .type(VillageType.COMMUNITY)
+                .joinPolicy(VillageJoinPolicy.FREE)
+                .visibility(VillageVisibility.PUBLIC)
+                .build()).getId();
+    }
+
+    private void saveVillageMembership(Long userId, UUID villageId,
+                                       LocalDateTime leftAt, LocalDateTime bannedAt) {
+        villageMembershipRepository.save(VillageMembershipEntity.builder()
+                .villageId(villageId)
+                .subjectType(VillageSubjectType.USER)
+                .subjectId(userId)
+                .role(VillageRole.VILLAGER)
+                .joinedAt(LocalDateTime.now())
+                .leftAt(leftAt)
+                .bannedAt(bannedAt)
+                .build());
+    }
+
+    private void deleteVillage(UUID villageId) {
+        VillageEntity village = villageRepository.findById(villageId).orElseThrow();
+        village.setDeletedAt(LocalDateTime.now());
+        villageRepository.save(village);
+    }
+
+    private void freezeVillage(UUID villageId) {
+        VillageEntity village = villageRepository.findById(villageId).orElseThrow();
+        village.setArchivedAt(LocalDateTime.now());
+        villageRepository.save(village);
+    }
+
+    private TimelinePostEntity saveVillagePost(UUID villageId, PostStatus status, Long parentId) {
+        return postRepository.save(TimelinePostEntity.builder()
+                .scopeType(PostScopeType.VILLAGE)
+                .scopeId(0L)
+                .scopeVillageId(villageId)
+                .userId(OTHER_AUTHOR)
+                .content("village-post-" + villageId)
+                .status(status)
+                .parentId(parentId)
+                .build());
     }
 
     private void saveMembership(Long userId, ScopeType scopeType, Long scopeId, RoleKind roleKind) {

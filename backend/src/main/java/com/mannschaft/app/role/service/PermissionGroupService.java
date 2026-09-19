@@ -23,10 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.interceptor.CacheErrorHandler;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Map;
@@ -45,8 +41,7 @@ public class PermissionGroupService {
     private final PermissionRepository permissionRepository;
     private final UserPermissionGroupRepository userPermissionGroupRepository;
     private final AccessControlService accessControlService;
-    private final CacheManager cacheManager;
-    private final CacheErrorHandler cacheErrorHandler;
+    private final RolePermissionCacheGenerationService cacheGenerationService;
     private final UserRowLockService userRowLockService;
     private final BillingPermissionGroupGuard billingPermissionGroupGuard;
 
@@ -106,7 +101,6 @@ public class PermissionGroupService {
 
         // 束1 BOLA 根治: グループが属するスコープの ADMIN/DEPUTY_ADMIN のみ更新できる（別スコープ ADMIN の越境改変を遮断）。
         List<Long> oldPermissionIds = permissionIdsForGroup(groupId);
-        List<Long> affectedUsers = userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(groupId));
         Long scopeId = scopeId(group);
         String scopeType = scopeType(group);
         boolean billingProtected = billingPermissionGroupGuard.authorizeMutation(
@@ -128,7 +122,7 @@ public class PermissionGroupService {
         // パーミッション紐付けを差し替え
         permissionGroupPermissionRepository.deleteByGroupId(groupId);
         savePermissionGroupPermissions(groupId, req.getPermissionIds());
-        evictAfterCommit(affectedUsers, group);
+        cacheGenerationService.incrementGeneration(scopeType(group), scopeId(group));
         if (billingProtected) {
             billingPermissionGroupGuard.recordSuccess(
                     BillingPermissionGroupGuard.Operation.UPDATE,
@@ -194,7 +188,6 @@ public class PermissionGroupService {
         // 束1 BOLA 根治: グループが属するスコープの ADMIN/DEPUTY_ADMIN のみ削除できる。
         List<Long> permissionIds = permissionGroupPermissionRepository.findByGroupId(groupId).stream()
                 .map(PermissionGroupPermissionEntity::getPermissionId).toList();
-        List<Long> affectedUsers = userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(groupId));
         Long scopeId = scopeId(group);
         String scopeType = scopeType(group);
         boolean billingProtected = billingPermissionGroupGuard.authorizeMutation(
@@ -204,7 +197,7 @@ public class PermissionGroupService {
         userPermissionGroupRepository.deleteByGroupId(groupId);
         permissionGroupPermissionRepository.deleteByGroupId(groupId);
         permissionGroupRepository.delete(group);
-        evictAfterCommit(affectedUsers, group);
+        cacheGenerationService.incrementGeneration(scopeType(group), scopeId(group));
         if (billingProtected) {
             billingPermissionGroupGuard.recordSuccess(
                     BillingPermissionGroupGuard.Operation.DELETE,
@@ -384,7 +377,7 @@ public class PermissionGroupService {
 
         log.info("ユーザー権限グループ割当完了: userId={}, scopeType={}, scopeId={}, groupCount={}",
                 userId, scopeType, scopeId, req.getGroupIds().size());
-        evictAfterCommit(List.of(userId), scopeType, scopeId);
+        cacheGenerationService.incrementGeneration(scopeType, scopeId);
         if (billingProtected) {
             billingPermissionGroupGuard.recordSuccess(
                     BillingPermissionGroupGuard.Operation.ASSIGN,
@@ -469,41 +462,6 @@ public class PermissionGroupService {
                 throw new BusinessException(RoleErrorCode.ROLE_006);
             }
         }
-    }
-
-    private void evictAfterCommit(List<Long> userIds, PermissionGroupEntity group) {
-        evictAfterCommit(userIds, group.getTeamId() != null ? "TEAM" : "ORGANIZATION",
-                group.getTeamId() != null ? group.getTeamId() : group.getOrganizationId());
-    }
-
-    private void evictAfterCommit(List<Long> userIds, String scopeType, Long scopeId) {
-        Runnable eviction = () -> evictRolePermissions(userIds, scopeType, scopeId);
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() { eviction.run(); }
-            });
-        } else {
-            eviction.run();
-        }
-    }
-
-    private void evictRolePermissions(List<Long> userIds, String scopeType, Long scopeId) {
-        /* cache manager failure is handled per key so later users are still attempted. */
-        userIds.stream().distinct().forEach(userId -> {
-            String key = userId + ":" + scopeType + ":" + scopeId;
-            org.springframework.cache.Cache cache = null;
-            try {
-                cache = cacheManager.getCache("role-permissions");
-                if (cache != null) {
-                    cache.evict(key);
-                }
-            } catch (RuntimeException ex) {
-                if (cacheErrorHandler != null) {
-                    cacheErrorHandler.handleCacheEvictError(ex, cache, key);
-                }
-            }
-        });
     }
 
     private void validatePermissionIds(List<Long> permissionIds) {
