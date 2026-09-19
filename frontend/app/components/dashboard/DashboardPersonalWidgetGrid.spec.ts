@@ -33,8 +33,12 @@ describe('DashboardPersonalWidgetGrid', () => {
 
     expect(wrapper.classes()).toEqual(expect.arrayContaining(['grid', 'gap-4']))
     expect(wrapper.element.children).toHaveLength(2)
-    expect(wrapper.get('[data-testid="calendar-card"]').element.parentElement).toBe(wrapper.element)
-    expect(wrapper.get('[data-testid="notices-card"]').element.parentElement).toBe(wrapper.element)
+    expect(wrapper.get('[data-testid="calendar-card"]').element.parentElement?.parentElement).toBe(
+      wrapper.element,
+    )
+    expect(wrapper.get('[data-testid="notices-card"]').element.parentElement?.parentElement).toBe(
+      wrapper.element,
+    )
   })
 
   it('1件でも単一ルートグリッドとカードを表示し、今すぐ用のspan指定を維持する', async () => {
