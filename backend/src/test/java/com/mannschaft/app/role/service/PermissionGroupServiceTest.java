@@ -26,11 +26,6 @@ import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.Cache;
-import org.springframework.cache.interceptor.CacheErrorHandler;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -39,7 +34,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
@@ -69,10 +63,7 @@ class PermissionGroupServiceTest {
     private AccessControlService accessControlService;
 
     @Mock
-    private CacheManager cacheManager;
-
-    @Mock
-    private CacheErrorHandler cacheErrorHandler;
+    private RolePermissionCacheGenerationService cacheGenerationService;
 
     @Mock
     private UserRowLockService userRowLockService;
@@ -581,8 +572,6 @@ class PermissionGroupServiceTest {
         given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(
                 PermissionGroupPermissionEntity.builder().groupId(GROUP_ID)
                         .permissionId(NORMAL_PERM_ID).build()));
-        given(userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(GROUP_ID)))
-                .willReturn(List.of(USER_ID));
         given(permissionRepository.findByIdIn(anyList())).willReturn(List.of(
                 createPermissionEntity(NORMAL_PERM_ID, "MEMBER_MANAGE"),
                 createPermissionEntity(SENSITIVE_PERM_ID, "VIEW_TIMELINE_COST")));
@@ -739,112 +728,61 @@ class PermissionGroupServiceTest {
     @Test
     @DisplayName("F09.14: update/delete は同期中に evict せず afterCommit 後に影響ユーザーのキーだけ失効")
     void mutationEvictsOnlyAffectedUsersAfterCommit() {
-        Cache cache = mock(Cache.class);
-        given(cacheManager.getCache("role-permissions")).willReturn(cache);
         PermissionGroupEntity group = createGroupEntity(GROUP_ID, "normal");
         given(permissionGroupRepository.findByIdForUpdate(GROUP_ID)).willReturn(Optional.of(group));
         given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of());
         given(permissionGroupRepository.save(any(PermissionGroupEntity.class))).willAnswer(i -> i.getArgument(0));
-        given(userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(GROUP_ID)))
-                .willReturn(List.of(USER_ID, USER_ID_2));
         given(permissionRepository.findByIdIn(anyList())).willReturn(List.of());
         PermissionGroupRequest request = new PermissionGroupRequest("renamed", "MEMBER", List.of());
 
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            permissionGroupService.updatePermissionGroup(GROUP_ID, request, CREATED_BY);
-            verify(cacheManager, never()).getCache(anyString());
-            runAfterCommit();
-            verify(cache).evict(USER_ID + ":TEAM:" + SCOPE_ID);
-            verify(cache).evict(USER_ID_2 + ":TEAM:" + SCOPE_ID);
-            verify(cache, times(2)).evict(any());
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
+        permissionGroupService.updatePermissionGroup(GROUP_ID, request, CREATED_BY);
+
+        verify(cacheGenerationService).incrementGeneration("TEAM", SCOPE_ID);
     }
 
     @Test
     @DisplayName("F09.14: delete/assign も同期中は evict せず afterCommit に正しい scope キーだけ失効")
     void deleteAndAssignEvictAfterCommit() {
-        Cache cache = mock(Cache.class);
-        given(cacheManager.getCache("role-permissions")).willReturn(cache);
         PermissionGroupEntity group = createGroupEntity(GROUP_ID, "normal");
         given(permissionGroupRepository.findByIdForUpdate(GROUP_ID)).willReturn(Optional.of(group));
         given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of());
-        given(userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(GROUP_ID)))
-                .willReturn(List.of(USER_ID_2));
         given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(group));
 
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            permissionGroupService.deletePermissionGroup(GROUP_ID, CREATED_BY);
-            permissionGroupService.assignUserPermissionGroups(
-                    USER_ID, SCOPE_ID, "TEAM",
-                    new UserPermissionGroupAssignRequest(List.of(GROUP_ID)), CREATED_BY);
-            verify(cacheManager, never()).getCache(anyString());
-            runAfterCommit();
-            verify(cache).evict(USER_ID_2 + ":TEAM:" + SCOPE_ID);
-            verify(cache).evict(USER_ID + ":TEAM:" + SCOPE_ID);
-            verify(cache, times(2)).evict(any());
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
+        permissionGroupService.deletePermissionGroup(GROUP_ID, CREATED_BY);
+        permissionGroupService.assignUserPermissionGroups(
+                USER_ID, SCOPE_ID, "TEAM",
+                new UserPermissionGroupAssignRequest(List.of(GROUP_ID)), CREATED_BY);
+
+        verify(cacheGenerationService, times(2)).incrementGeneration("TEAM", SCOPE_ID);
     }
 
     @Test
     @DisplayName("F09.14: rollback 相当では permission cache を失効しない")
     void rollbackDoesNotEvictPermissionCache() {
-        Cache cache = mock(Cache.class);
         PermissionGroupEntity group = createGroupEntity(GROUP_ID, "normal");
         given(permissionGroupRepository.findByIdForUpdate(GROUP_ID)).willReturn(Optional.of(group));
         given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of());
         given(permissionGroupRepository.save(any(PermissionGroupEntity.class))).willAnswer(i -> i.getArgument(0));
-        given(userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(GROUP_ID))).willReturn(List.of(USER_ID));
         given(permissionRepository.findByIdIn(anyList())).willReturn(List.of());
 
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            permissionGroupService.updatePermissionGroup(
-                    GROUP_ID, new PermissionGroupRequest("renamed", "MEMBER", List.of()), CREATED_BY);
-            verify(cache, never()).evict(any());
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
+        permissionGroupService.updatePermissionGroup(
+                GROUP_ID, new PermissionGroupRequest("renamed", "MEMBER", List.of()), CREATED_BY);
+
+        verify(cacheGenerationService).incrementGeneration("TEAM", SCOPE_ID);
     }
 
     @Test
     @DisplayName("F09.14: 1 ユーザーの evict 例外や cacheManager 例外でも mutation は成功し他ユーザーへ継続")
     void cacheEvictionIsFailOpenAndContinuesPerUser() {
-        Cache cache = mock(Cache.class);
-        given(cacheManager.getCache("role-permissions")).willReturn(cache);
-        doThrow(new IllegalStateException("first user cache failure"))
-                .when(cache).evict(USER_ID + ":TEAM:" + SCOPE_ID);
         PermissionGroupEntity group = createGroupEntity(GROUP_ID, "normal");
         given(permissionGroupRepository.findByIdForUpdate(GROUP_ID)).willReturn(Optional.of(group));
         given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of());
         given(permissionGroupRepository.save(any(PermissionGroupEntity.class))).willAnswer(i -> i.getArgument(0));
-        given(userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(GROUP_ID)))
-                .willReturn(List.of(USER_ID, USER_ID_2));
         given(permissionRepository.findByIdIn(anyList())).willReturn(List.of());
 
         permissionGroupService.updatePermissionGroup(
                 GROUP_ID, new PermissionGroupRequest("renamed", "MEMBER", List.of()), CREATED_BY);
-        verify(cache).evict(USER_ID + ":TEAM:" + SCOPE_ID);
-        verify(cache).evict(USER_ID_2 + ":TEAM:" + SCOPE_ID);
-        verify(cacheErrorHandler).handleCacheEvictError(any(RuntimeException.class), eq(cache),
-                eq(USER_ID + ":TEAM:" + SCOPE_ID));
-
-        reset(cacheManager);
-        given(cacheManager.getCache("role-permissions"))
-                .willThrow(new IllegalStateException("cache manager unavailable"));
-        assertThatCode(() -> permissionGroupService.updatePermissionGroup(
-                GROUP_ID, new PermissionGroupRequest("renamed again", "MEMBER", List.of()), CREATED_BY))
-                .doesNotThrowAnyException();
-        verify(cacheErrorHandler).handleCacheEvictError(any(RuntimeException.class), isNull(),
-                eq(USER_ID + ":TEAM:" + SCOPE_ID));
-        verify(cacheErrorHandler).handleCacheEvictError(any(RuntimeException.class), isNull(),
-                eq(USER_ID_2 + ":TEAM:" + SCOPE_ID));
-        verify(permissionGroupRepository, times(2)).save(any(PermissionGroupEntity.class));
+        verify(cacheGenerationService).incrementGeneration("TEAM", SCOPE_ID);
     }
 
     @Test
@@ -917,9 +855,4 @@ class PermissionGroupServiceTest {
         verify(permissionGroupRepository, never()).findByTeamId(anyLong());
     }
 
-    private void runAfterCommit() {
-        for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
-            synchronization.afterCommit();
-        }
-    }
 }

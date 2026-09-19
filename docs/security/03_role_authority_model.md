@@ -343,8 +343,11 @@ method-security が無効な現状、以下は **認可が事実上ゼロ**で�
 | **SYSTEM_ADMIN 剥奪（無効化発火を忘れた場合のフェイルセーフ）** | access token 15 分寿命 → リフレッシュ時 `AuthTokenRotationService` が `isSystemAdmin` を再判定し SYSTEM_ADMIN を外す | 最大 15 分 |
 | **SYSTEM_ADMIN 付与** | 次回リフレッシュ（最長 15 分）で roles に SYSTEM_ADMIN 追加。即時付与が必要なら再ログインを促す | 最大 15 分（再ログインで即時） |
 | **per-scope ADMIN 変更** | JWT に載せないため **常に最新**（リクエスト毎に `user_roles` を都度参照） | 即時 |
+| **per-scope 権限キャッシュ (`role-permissions`)** | スコープ単位の世代を MySQL に保持し、`v2:{scopeType}:{scopeId}:g{generation}:{userId}` をキーにする。ロール・所属・権限グループ変更と同じトランザクションで世代を進めるため、Valkey 障害中でも旧世代キーは commit 後の新しい判定から到達不能になる | 即時（TTL 待ちなし） |
 
 **設計判断:** SYSTEM_ADMIN の剥奪は権限縮小（安全側）であり、**剥奪処理に `setUserInvalidationTimestamp` 発火を必須化**することで即時失効を保証する。これを Phase 1 のロール剥奪経路に組み込む。既存の全デバイス無効化基盤（§2.7）をそのまま流用するため新規機構は不要。
+
+`RedisCacheManager` は transaction-aware とし、通常の `put` / `evict` / `clear` は業務トランザクションの commit 後だけ実行する。rollback 時は実行しない。commit 後の Valkey 接続・シリアライズ失敗はキャッシュ層で fail-open とし、DB が確定した後に API だけ失敗する状態を作らない。手動 `afterCommit` から削除する billing キャッシュは、二重遅延を避けるため `evictIfPresent` で即時削除する。
 
 ---
 
