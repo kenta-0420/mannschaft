@@ -198,9 +198,10 @@ async function resolveAdminTeamSlug(api: APIRequestContext, token: string): Prom
   const res = await api.get(`${BE_API}/me/teams`, { headers: authHeaders(token) })
   expect(res.status(), '/me/teams は 200').toBe(200)
   const data = (await res.json()).data as Array<{ slug: string; name: string; role: string }>
+  const hasAdminRole = (role: string) => role === 'ADMIN' || role === 'SYSTEM_ADMIN'
   const team =
-    data.find((t) => t.role === 'ADMIN' && t.name.includes('FC東京U-18')) ??
-    data.find((t) => t.role === 'ADMIN')
+    data.find((t) => hasAdminRole(t.role) && t.name.includes('FC東京U-18')) ??
+    data.find((t) => hasAdminRole(t.role))
   expect(team, 'ADMIN ロールのチームが存在すること').toBeTruthy()
   return team!.slug
 }
@@ -343,7 +344,7 @@ test.beforeAll(async () => {
 
   const orgRes = await sharedApi.get(`${BE_API}/me/organizations`, { headers: authHeaders(adminToken) })
   const orgs = (await orgRes.json()).data as Array<{ slug: string | null; role: string }>
-  const adminOrg = orgs.find((o) => o.role === 'ADMIN')
+  const adminOrg = orgs.find((o) => o.role === 'ADMIN' || o.role === 'SYSTEM_ADMIN')
   expect(adminOrg, 'ADMIN ロールの組織が存在すること').toBeTruthy()
   orgSlug = adminOrg!.slug!
 
