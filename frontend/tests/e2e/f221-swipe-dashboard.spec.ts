@@ -612,7 +612,7 @@ test('F22.1-9: selected scope chips open their scope pages by keyboard', async (
   await page.getByTestId('scope-segment-TEAM').click()
   await expect(page.getByTestId('scope-tab-go-to-page-TEAM')).toHaveCount(0)
   await expect(teamChip).toHaveAttribute('aria-pressed', 'true')
-  await expect(teamChip).toHaveAttribute('aria-label', 'E2E チームのページを開く')
+  await expect(teamChip).toHaveAttribute('aria-label', 'E2E チームAのページを開く')
   await teamChip.press('Enter')
   await page.waitForURL(`**/teams/${TEAM_SLUG}`)
 
@@ -622,7 +622,7 @@ test('F22.1-9: selected scope chips open their scope pages by keyboard', async (
   await page.getByTestId('scope-segment-ORGANIZATION').click()
   await expect(page.getByTestId('scope-tab-go-to-page-ORGANIZATION')).toHaveCount(0)
   await expect(orgChip).toHaveAttribute('aria-pressed', 'true')
-  await expect(orgChip).toHaveAttribute('aria-label', 'E2E 組織のページを開く')
+  await expect(orgChip).toHaveAttribute('aria-label', 'E2E 組織Aのページを開く')
   await orgChip.press('Space')
   await page.waitForURL(`**/organizations/${ORG_SLUG}`)
 })
