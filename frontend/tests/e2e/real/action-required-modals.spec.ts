@@ -238,7 +238,6 @@ test.describe('AR-003〜010: ダッシュボード要対応ウィジェット実
       const wasSelected = await selectedChip.getAttribute('aria-pressed') === 'true'
       let actionRequiredPromise: Promise<Response | null> | null = null
       if (!wasSelected) {
-
         // action-required API レスポンスを待機するプロミスを先に作成する（クリック前に登録）
         const actionRequiredApiPattern = /\/api\/v1\/dashboard\/team\/[^/]+\/action-required/
         actionRequiredPromise = page

@@ -200,7 +200,6 @@ async function onFolderChange(folderId: number | null) {
         />
       </div>
 
-      <!-- 選択中スコープページへ -->
       <!-- 表示順設定 -->
       <Button
         v-if="!isEmpty"
