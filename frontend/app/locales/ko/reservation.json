@@ -161,9 +161,7 @@
     },
     "page": {
       "my_title": "내 예약",
-      "team_title": "예약 관리",
-      "settings_title": "예약 관리 설정",
-      "settings_subtitle": "예약 대상(직원 / 창구)을 관리합니다"
+      "team_title": "예약 관리"
     },
     "tab": {
       "book": "예약하기",
@@ -223,7 +221,6 @@
     },
     "button": {
       "add_line": "{resourceName} 추가",
-      "add_line_long": "{resourceName} 추가",
       "save": "저장",
       "cancel": "취소",
       "reserve": "예약하기",
@@ -237,12 +234,9 @@
       "title": "확인",
       "line_create": "예약 대상 생성",
       "line_edit": "예약 대상 편집",
-      "line_create_long": "{resourceName} 추가",
-      "line_edit_long": "{resourceName} 편집",
       "reserve_confirm": "예약 확인",
       "cancel_confirm": "이 예약을 취소하시겠습니까?",
-      "line_delete_confirm": "이 예약 대상을 삭제하시겠습니까?",
-      "line_delete_named_confirm": "「{name}」을(를) 삭제하시겠습니까?"
+      "line_delete_confirm": "이 예약 대상을 삭제하시겠습니까?"
     },
     "message": {
       "confirm_success": "예약을 승인했습니다",
@@ -254,9 +248,6 @@
       "line_update_success": "예약 대상을 수정했습니다",
       "line_delete_success": "예약 대상을 삭제했습니다",
       "line_save_failed": "저장에 실패했습니다",
-      "line_create_success_long": "예약 대상을 생성했습니다",
-      "line_update_success_long": "예약 대상을 수정했습니다",
-      "line_delete_success_long": "예약 대상을 삭제했습니다",
       "line_load_failed": "예약 대상 조회에 실패했습니다",
       "save_failed": "저장에 실패했습니다",
       "delete_failed": "삭제에 실패했습니다",
