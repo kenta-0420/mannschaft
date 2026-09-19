@@ -146,38 +146,46 @@ function badgeLabel(count: number): string {
             >{{ badgeLabel(sectionWidgets.get(section.key)?.length ?? 0) }}</span
           >
           <i
-            class="pi pi-chevron-right text-xs text-surface-500 transition-transform"
+            class="pi pi-chevron-right text-xs text-surface-500 transition-transform motion-reduce:transition-none"
             :class="{ 'rotate-90': isExpanded(section.key) }"
             aria-hidden="true"
           />
         </button>
         <div
-          v-show="isExpanded(section.key)"
           :id="`personal-dashboard-section-${section.key}`"
           role="region"
           :aria-labelledby="`personal-dashboard-section-button-${section.key}`"
-          class="border-t border-surface-200 p-4 dark:border-surface-700"
+          :aria-hidden="!isExpanded(section.key)"
+          :inert="!isExpanded(section.key)"
+          class="grid transition-[grid-template-rows,opacity] duration-300 motion-reduce:transition-none"
+          :class="
+            isExpanded(section.key) ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+          "
         >
-          <template v-if="mountedKeys.has(section.key)">
-            <DashboardPersonalWidgetGrid
-              v-if="(sectionWidgets.get(section.key)?.length ?? 0) > 0"
-              :widgets="sectionWidgets.get(section.key) ?? []"
-              :collapsed-keys="collapsedKeys"
-              class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4"
-              @toggle-collapse="emit('toggle-collapse', $event)"
-            />
-            <div v-else class="py-4 text-center text-sm text-surface-500">
-              <p>{{ t('dashboard.widget_settings.no_widgets_message') }}</p>
-              <Button
-                :label="t('dashboard.widget_settings.add_widget_button')"
-                icon="pi pi-plus"
-                text
-                size="small"
-                class="mt-2"
-                @click="emit('configure')"
-              />
+          <div class="min-h-0 overflow-hidden">
+            <div class="border-t border-surface-200 p-4 dark:border-surface-700">
+              <template v-if="mountedKeys.has(section.key)">
+                <DashboardPersonalWidgetGrid
+                  v-if="(sectionWidgets.get(section.key)?.length ?? 0) > 0"
+                  :widgets="sectionWidgets.get(section.key) ?? []"
+                  :collapsed-keys="collapsedKeys"
+                  class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4"
+                  @toggle-collapse="emit('toggle-collapse', $event)"
+                />
+                <div v-else class="py-4 text-center text-sm text-surface-500">
+                  <p>{{ t('dashboard.widget_settings.no_widgets_message') }}</p>
+                  <Button
+                    :label="t('dashboard.widget_settings.add_widget_button')"
+                    icon="pi pi-plus"
+                    text
+                    size="small"
+                    class="mt-2"
+                    @click="emit('configure')"
+                  />
+                </div>
+              </template>
             </div>
-          </template>
+          </div>
         </div>
       </section>
     </div>
