@@ -34,7 +34,6 @@ import com.mannschaft.app.organization.event.OrganizationMemberAuditEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
@@ -119,7 +118,6 @@ public class RoleService {
      * ユーザーにロールを割り当てる。
      */
     @Transactional
-    @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void assignRole(Long scopeId, String scopeType, Long targetUserId, Long roleId, Long grantedBy) {
         lockUsers(grantedBy, targetUserId);
         // ロール存在確認
@@ -229,7 +227,6 @@ public class RoleService {
      * ユーザーのロールを変更する。最後のADMIN保護チェック付き。
      */
     @Transactional
-    @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void changeRole(Long scopeId, String scopeType, Long targetUserId,
                            RoleChangeRequest req, Long changedBy) {
         lockUsers(changedBy, targetUserId);
@@ -306,7 +303,6 @@ public class RoleService {
      * メンバーを除名する。最後のADMIN保護チェック付き。
      */
     @Transactional
-    @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void removeMember(Long scopeId, String scopeType, Long targetUserId, Long operatorUserId) {
         lockUsers(operatorUserId, targetUserId);
         // 束1 権限昇格根治（Service 層二重防御）: 操作者が当該スコープの ADMIN/DEPUTY_ADMIN であることを要求。
@@ -350,7 +346,6 @@ public class RoleService {
      * @throws BusinessException 対象ユーザーが当該スコープに所属していない場合（{@link RoleErrorCode#ROLE_001}）
      */
     @Transactional
-    @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void removeMemberWithoutAdminCheck(Long scopeId, String scopeType, Long targetUserId) {
         lockUsers(targetUserId);
         adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
@@ -375,7 +370,6 @@ public class RoleService {
      * ユーザーが自主退会する。最後のADMIN保護チェック付き。
      */
     @Transactional
-    @CacheEvict(value = "role-permissions", key = "#userId + ':' + #scopeType + ':' + #scopeId")
     public void leaveScope(Long userId, Long scopeId, String scopeType) {
         lockUsers(userId);
         UserRoleEntity current = findUserRole(userId, scopeId, scopeType)
@@ -566,7 +560,7 @@ public class RoleService {
      * 症状が出ず、<b>テストと本番で挙動が食い違う</b>厄介な形になる）。
      * 加工が要る場合は必ずコピーしてから行うこと。</p>
      */
-    @Cacheable(value = "role-permissions", key = "#userId + ':' + #scopeType + ':' + #scopeId")
+    @Cacheable(value = "role-permissions", keyGenerator = "rolePermissionCacheKeyGenerator")
     public List<String> resolveEffectivePermissions(Long userId, Long scopeId, String scopeType) {
         // 非アクティブ利用者は fail-closed。membership 未移行の既存 user_roles は引き続き有効な
         // 認可情報源なので、ここで direct membership を一律必須にしない。
@@ -663,7 +657,7 @@ public class RoleService {
      * <p>キャッシュキーは {@code userId} / {@code scopeType} / {@code scopeId} を完全に含むため、
      * 別ユーザー・別スコープのエントリへヒットすることはない
      * （キャッシュの内側に認可ゲートを持ち込んでいない＝issue #2496 の「第三の型」に該当しない）。
-     * ロール変更・除名・退会時は {@code @CacheEvict} が同一キー書式で失効させる。</p>
+     * ロール変更・除名・退会時はスコープ世代を進め、旧キーを論理的に到達不能にする。</p>
      */
     public boolean hasPermission(Long userId, Long scopeId, String scopeType, String permissionName) {
         return self.resolveEffectivePermissions(userId, scopeId, scopeType).contains(permissionName);
@@ -673,7 +667,7 @@ public class RoleService {
      * オーナー（ADMIN）権限を譲渡する。
      * 現オーナーは MEMBER にダウングレードされ、対象ユーザーが ADMIN に昇格する。
      *
-     * <p>2ユーザー分のキャッシュを一括無効化するため allEntries = true を使用する。</p>
+     * <p>変更イベントによりスコープ世代を進め、両ユーザーを含む旧世代キャッシュを無効化する。</p>
      *
      * @param scopeId      スコープID（チームID or 組織ID）
      * @param scopeType    スコープ種別（TEAM or ORGANIZATION）
@@ -681,7 +675,6 @@ public class RoleService {
      * @param targetUserId  譲渡先ユーザーID
      */
     @Transactional
-    @CacheEvict(value = "role-permissions", allEntries = true)
     public void transferOwnership(Long scopeId, String scopeType, Long currentUserId, Long targetUserId) {
         Map<Long, UserState> lockedUserStates = userRowLockService.lockAll(currentUserId, targetUserId);
         if (currentUserId.equals(targetUserId)) {

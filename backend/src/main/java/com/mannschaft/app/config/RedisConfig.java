@@ -10,17 +10,21 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Valkey(Redis) キャッシュ設定。
@@ -106,7 +110,8 @@ public class RedisConfig {
      */
     @Bean
     @Profile("!test")
-    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory,
+                                          CacheErrorHandler cacheErrorHandler) {
         // デフォルト設定（30分TTL）
         RedisCacheConfiguration defaultConfig = redisCacheConfiguration();
 
@@ -122,47 +127,49 @@ public class RedisConfig {
         RedisCacheConfiguration dashboardWidgetVisibilityConfig = redisCacheConfiguration()
                 .entryTtl(Duration.ofSeconds(300));
 
-        return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(defaultConfig)
-                .withCacheConfiguration("careLinks", careLinksConfig)
-                .withCacheConfiguration("careCategory", careLinksConfig)
-                .withCacheConfiguration("dashboard:viewer-role", dashboardViewerRoleConfig)
-                .withCacheConfiguration("dashboard:widget-visibility", dashboardWidgetVisibilityConfig)
-                .withCacheConfiguration("public-stats", redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)))
+        RedisCacheWriter cacheWriter = new FailOpenRedisCacheWriter(
+                RedisCacheWriter.nonLockingRedisCacheWriter(connectionFactory), cacheErrorHandler);
+        Map<String, RedisCacheConfiguration> cacheConfigurations = new LinkedHashMap<>();
+        cacheConfigurations.put("careLinks", careLinksConfig);
+        cacheConfigurations.put("careCategory", careLinksConfig);
+        cacheConfigurations.put("dashboard:viewer-role", dashboardViewerRoleConfig);
+        cacheConfigurations.put("dashboard:widget-visibility", dashboardWidgetVisibilityConfig);
+        cacheConfigurations.put("public-stats",
+                redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)));
                 // Phase 4-E: コア読み取りキャッシュ
-                .withCacheConfiguration("role-permissions",
-                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)))
-                .withCacheConfiguration("team-detail",
-                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(10)))
-                .withCacheConfiguration("org-detail",
-                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(10)))
+        cacheConfigurations.put("role-permissions",
+                redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put("team-detail",
+                redisCacheConfiguration().entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put("org-detail",
+                redisCacheConfiguration().entryTtl(Duration.ofMinutes(10)));
                 // F15.4 Phase 3: 組織内チーム（店舗）検索結果キャッシュ。
                 // TTL は短め（60 秒）— チーム更新時の SCAN+DEL を実装しない代わりに
                 // 反映遅延を最大 60 秒で許容する（設計書 §6.5）。
                 // 権限スコープ（未ログイン / 組織メンバー）はキーに含めるため別キャッシュとなる。
-                .withCacheConfiguration("team-search",
-                        redisCacheConfiguration().entryTtl(Duration.ofSeconds(60)))
+        cacheConfigurations.put("team-search",
+                redisCacheConfiguration().entryTtl(Duration.ofSeconds(60)));
                 // F12.5 障害告知バナー: 公開バナーは @CacheEvict で即時無効化されるが、
                 // 取りこぼし対策として短め（1分）の TTL を設定する（設計書 F12.5 §5.4）。
-                .withCacheConfiguration("active-incidents",
-                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(1)))
+        cacheConfigurations.put("active-incidents",
+                redisCacheConfiguration().entryTtl(Duration.ofMinutes(1)));
                 // F20.1 課金・エンタイトルメント: 権利判定キャッシュ（60秒TTL）。
                 // 契約/付与/取消時は EntitlementCacheEvictor が発行/取消 feature_key 集合を個別 evict する。
                 // 既定30分では取消反映が遅すぎるため短TTL。取りこぼしは60秒で自然収束（設計書 02 §8 / 01 §8）。
-                .withCacheConfiguration("entitlement:check",
-                        redisCacheConfiguration().entryTtl(Duration.ofSeconds(60)))
+        cacheConfigurations.put("entitlement:check",
+                redisCacheConfiguration().entryTtl(Duration.ofSeconds(60)));
                 // F20.3 ベータ特典: 付与条件（活動実績）評価キャッシュ（10分TTL）。
                 // 活動日数・在籍日数は分刻みで変動しないため、entitlement:check（60秒）より長め。
                 // enum キーは name() で String 化する（BetaPerkEligibilityService の @Cacheable キー式）。
-                .withCacheConfiguration("betaPerk:eligibility",
-                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(10)))
+        cacheConfigurations.put("betaPerk:eligibility",
+                redisCacheConfiguration().entryTtl(Duration.ofMinutes(10)));
                 // F00 可視性テンプレート: コンテンツ可視性の判定に使う「閲覧認可の中核」キャッシュ。
                 // VisibilityTemplateEvaluator#getTemplateRules の Javadoc は「TTL=5分」と宣言しているが
                 // 個別設定が無く既定 30 分に落ちていた（ドリフト是正）。
                 // 認可に効くキャッシュは role-permissions と同水準（5分）まで短縮し、
                 // evict 取りこぼし時の窓を最小化する。
-                .withCacheConfiguration("visibilityTemplate",
-                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)))
+        cacheConfigurations.put("visibilityTemplate",
+                redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)));
                 // F09.17 広告 NG 辞書（issue #2544）。
                 //
                 // 【なぜ @CacheEvict ではなく短 TTL なのか】
@@ -186,9 +193,10 @@ public class RedisConfig {
                 // 広告 submit は低頻度であり、5 分でも DB 負荷削減の目的は十分果たせる。
                 // 将来 SYSTEM_ADMIN 向けの辞書編集 UI を作る際は、その更新メソッドに
                 // @CacheEvict(value = "adNgWords", allEntries = true) を貼ること。
-                .withCacheConfiguration("adNgWords",
-                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)))
-                .build();
+        cacheConfigurations.put("adNgWords",
+                redisCacheConfiguration().entryTtl(Duration.ofMinutes(5)));
+        return new TransactionAwareRedisCacheManager(
+                cacheWriter, defaultConfig, cacheConfigurations, cacheErrorHandler);
     }
 
     /**

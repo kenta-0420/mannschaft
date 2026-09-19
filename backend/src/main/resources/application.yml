@@ -111,6 +111,11 @@ spring:
   # Pageable — ページサイズ上限設定（F19.1 Phase 4: 公開検索APIの巨大リクエスト防止）
   # size=100000 などのリクエストを自動的に max-page-size の 100 件に丸める
   data:
+    # Valkey 障害時はキャッシュ例外ハンドラへ速やかに移り、DB を正本として業務処理を継続する。
+    # 環境固有のネットワーク遅延がある場合は環境変数で上書きする。
+    redis:
+      connect-timeout: ${SPRING_DATA_REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${SPRING_DATA_REDIS_TIMEOUT:2s}
     web:
       pageable:
         max-page-size: 100

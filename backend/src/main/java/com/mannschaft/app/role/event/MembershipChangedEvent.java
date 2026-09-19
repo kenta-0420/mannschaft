@@ -5,8 +5,8 @@ package com.mannschaft.app.role.event;
  *
  * <p>RoleService の {@code assignRole} / {@code changeRole} / {@code removeMember} /
  * {@code leaveScope} / {@code transferOwnership} で発火される。
- * ダッシュボード機能は本イベントを {@code @TransactionalEventListener(AFTER_COMMIT)} で受信し、
- * 当該ユーザー向けの閲覧者ロールキャッシュを無効化する。</p>
+ * 認可キャッシュ世代は同一トランザクションの commit 前に更新し、ダッシュボード機能は
+ * {@code @TransactionalEventListener(AFTER_COMMIT)} で当該ユーザーの表示キャッシュを無効化する。</p>
  *
  * <p>本クラスは「定義のみ」で外部 API 互換性は持たない。アプリケーション内部のみで利用される。</p>
  *
