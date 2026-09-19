@@ -43,9 +43,9 @@ import { GATE_FALLBACK_PATH, decideGate } from '~/constants/featureGates'
  *
  * <b>ただし SSR 出力の抑止は全域には掛かっていない。</b>
  * `buildGateRouteRules()` が `ssr: false` を出せるのは<b>動的セグメントを含まない
- * 静的プレフィクスのみ</b>（実測 91 中 47 件）。残る 44 件（`/teams/{slug}/…`・
+ * 静的プレフィクスのみ</b>（実測 95 中 48 件）。残る 47 件（`/teams/{slug}/…`・
  * `/organizations/{slug}/…` 系）は Nitro が `[slug]` を解さないため routeRules に出しておらず、
- * <b>SSR 抑止の対象外</b>である。この 44 経路は
+ * <b>SSR 抑止の対象外</b>である。この 47 経路は
  * <b>routeRules による SSR 抑止も middleware 判定も掛からず、
  * ハイドレーション後のクライアント側判定だけに依存する。</b>
  *

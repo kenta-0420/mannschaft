@@ -6,7 +6,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 他ドメインへ地域マスタを参照させるための読み取り窓口。
@@ -36,6 +39,31 @@ public class RegionMasterLookupService {
     public Optional<City> findCityByCode(String code) {
         return cityRepository.findById(code)
                 .map(city -> new City(city.getCode(), city.getPrefectureCode(), city.getName()));
+    }
+
+    /** 都道府県名をコードへ引くための不変マップを返す。 */
+    public Map<String, String> findPrefectureCodesByName() {
+        return prefectureRepository.findAllByOrderByCodeAsc().stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        prefecture -> prefecture.getName(),
+                        prefecture -> prefecture.getCode(),
+                        (ignored, replacement) -> replacement));
+    }
+
+    /** 都道府県内で名称が完全一致する市区町村を、Entity を漏らさず参照する。 */
+    public List<City> findCitiesByPrefectureCodeAndName(String prefectureCode, String name) {
+        return cityRepository.findByPrefectureCodeAndNameOrderByCodeAsc(prefectureCode, name).stream()
+                .map(city -> new City(city.getCode(), city.getPrefectureCode(), city.getName()))
+                .toList();
+    }
+
+    /** 都道府県内で名称が接頭辞一致する市区町村を、Entity を漏らさず参照する。 */
+    public List<City> findCitiesByPrefectureCodeAndNameStartingWith(
+            String prefectureCode, String name) {
+        return cityRepository.findByPrefectureCodeAndNameStartingWithOrderByCodeAsc(prefectureCode, name)
+                .stream()
+                .map(city -> new City(city.getCode(), city.getPrefectureCode(), city.getName()))
+                .toList();
     }
 
     /** Entityを漏らさない都道府県の読み取り値。 */
