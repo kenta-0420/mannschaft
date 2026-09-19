@@ -648,4 +648,15 @@ test.describe('F10.1.1 管理者レンズ — 2ボタン表示＋スコープ導
     await page.waitForURL(`**/teams/${teamSlug}`, { timeout: 15_000 })
     expect(page.url(), 'URL に /teams/{slug} を含む').toContain(`/teams/${teamSlug}`)
   })
+
+  test('SCOPELINK-ORG-001: 選択済み組織チップの再押下で組織ページへ遷移', async ({ page }) => {
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await gotoDashboardScope(page, 'ORGANIZATION', orgSlug)
+
+    const chip = page.getByTestId(`scope-tab-chip-ORGANIZATION-${orgSlug}`)
+    await expect(chip).toHaveAttribute('aria-pressed', 'true', { timeout: 15_000 })
+    await chip.click()
+    await page.waitForURL(`**/organizations/${orgSlug}`, { timeout: 15_000 })
+    expect(page.url(), 'URL に /organizations/{slug} を含む').toContain(`/organizations/${orgSlug}`)
+  })
 })
