@@ -110,13 +110,9 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
     })
   })
 
-  test('ADMIN-033: 組織数課金設定ページが表示される', async ({ page }) => {
-    await page.goto('/admin/org-billing')
-    await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: '組織数課金設定' })).toBeVisible({
-      timeout: 10_000,
-    })
-  })
+  // ADMIN-033（旧: 組織数課金設定ページが表示される）は CMP-260909-1141・マスター裁可で
+  // ページごと削除（お蔵入り）。確定設計 F20.1 は org_type による課金額変更を採用しておらず、
+  // BE も未実装のため復活の予定は無い（将来取り入れる場合は docs/task-list.md 参照）。
 
   test('ADMIN-034: パッケージ管理ページが表示される', async ({ page }) => {
     await page.goto('/admin/packages')
@@ -150,13 +146,10 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
     })
   })
 
-  test('ADMIN-038: 予約管理設定ページが表示される', async ({ page }) => {
-    await page.goto('/admin/reservation-settings')
-    await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: '予約管理設定' })).toBeVisible({
-      timeout: 10_000,
-    })
-  })
+  // ADMIN-038（旧: 予約管理設定ページが表示される）は CMP-260909-1141 でページごと削除。
+  // 予約ラインCRUDはLineManager.vue経由でteams/[slug]/reservationsから、確認通知は
+  // teams/organizations配下のsettings/confirmable-notificationsから到達可能（テストは
+  // frontend/tests/e2e/admin/confirmable-notification.spec.ts の ADMIN-018〜020 へ移設済み）。
 
   test('ADMIN-039: スケジュール設定ページが表示される', async ({ page }) => {
     await page.goto('/admin/schedule-settings')
