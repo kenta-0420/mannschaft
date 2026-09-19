@@ -2,6 +2,7 @@ package com.mannschaft.app.role.event;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.role.service.RolePermissionCacheGenerationService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -9,8 +10,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,8 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RoleMutationConcurrencyAndCacheIT extends AbstractMySqlIntegrationTest {
 
     private static final long AWAIT_SECONDS = 5;
-    private static final String CACHE_NAME = "role-permissions";
-    private static final String CACHE_KEY = "900001:TEAM:900002";
+    private static final long GENERATION_SCOPE_ID = 900002L;
 
     @Autowired
     private UserRowLockService userRowLockService;
@@ -49,7 +47,7 @@ class RoleMutationConcurrencyAndCacheIT extends AbstractMySqlIntegrationTest {
     private ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    private CacheManager cacheManager;
+    private RolePermissionCacheGenerationService cacheGenerationService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -58,10 +56,11 @@ class RoleMutationConcurrencyAndCacheIT extends AbstractMySqlIntegrationTest {
 
     @AfterEach
     void cleanUp() {
-        Cache cache = cacheManager.getCache(CACHE_NAME);
-        if (cache != null) {
-            cache.evict(CACHE_KEY);
-        }
+        transactionTemplate.executeWithoutResult(tx -> entityManager
+                .createNativeQuery("DELETE FROM role_permission_cache_generations "
+                        + "WHERE scope_type = 'TEAM' AND scope_id = :scopeId")
+                .setParameter("scopeId", GENERATION_SCOPE_ID)
+                .executeUpdate());
         if (userId != null) {
             transactionTemplate.executeWithoutResult(tx -> entityManager
                     .createNativeQuery("DELETE FROM users WHERE id = :id")
@@ -109,41 +108,51 @@ class RoleMutationConcurrencyAndCacheIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @Transactional
-    void rollback_doesNotEvictRolePermissionCache() {
-        Cache cache = rolePermissionCache();
-        cache.put(CACHE_KEY, "cached-before-mutation");
+    void concurrentGenerationUpdates_areAtomicForTheSameScope() throws Exception {
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = executor.submit(() -> incrementGenerationAfterBarrier(ready, start));
+            Future<?> second = executor.submit(() -> incrementGenerationAfterBarrier(ready, start));
+            assertThat(ready.await(AWAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
 
-        eventPublisher.publishEvent(new MembershipChangedEvent(
-                900001L, "TEAM", 900002L, MembershipChangedEvent.ChangeType.CHANGED));
-        assertThat(cache.get(CACHE_KEY)).isNotNull();
-
-        TestTransaction.flagForRollback();
-        TestTransaction.end();
-
-        assertThat(cache.get(CACHE_KEY)).isNotNull();
+            first.get(AWAIT_SECONDS, TimeUnit.SECONDS);
+            second.get(AWAIT_SECONDS, TimeUnit.SECONDS);
+            assertThat(cacheGenerationService.currentGeneration("TEAM", GENERATION_SCOPE_ID))
+                    .isEqualTo(2L);
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(AWAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+        }
     }
 
     @Test
     @Transactional
-    void commit_evictsRolePermissionCacheAfterCommit() {
-        Cache cache = rolePermissionCache();
-        cache.put(CACHE_KEY, "cached-before-mutation");
-
+    void rollback_doesNotAdvanceRolePermissionCacheGeneration() {
         eventPublisher.publishEvent(new MembershipChangedEvent(
-                900001L, "TEAM", 900002L, MembershipChangedEvent.ChangeType.CHANGED));
-        assertThat(cache.get(CACHE_KEY)).isNotNull();
+                900001L, "TEAM", GENERATION_SCOPE_ID, MembershipChangedEvent.ChangeType.CHANGED));
+        assertThat(cacheGenerationService.currentGeneration("TEAM", GENERATION_SCOPE_ID)).isZero();
+
+        TestTransaction.flagForRollback();
+        TestTransaction.end();
+
+        assertThat(cacheGenerationService.currentGeneration("TEAM", GENERATION_SCOPE_ID)).isZero();
+    }
+
+    @Test
+    @Transactional
+    void commit_advancesRolePermissionCacheGeneration() {
+        eventPublisher.publishEvent(new MembershipChangedEvent(
+                900001L, "TEAM", GENERATION_SCOPE_ID, MembershipChangedEvent.ChangeType.CHANGED));
+        assertThat(cacheGenerationService.currentGeneration("TEAM", GENERATION_SCOPE_ID)).isZero();
 
         TestTransaction.flagForCommit();
         TestTransaction.end();
 
-        assertThat(cache.get(CACHE_KEY)).isNull();
-    }
-
-    private Cache rolePermissionCache() {
-        Cache cache = cacheManager.getCache(CACHE_NAME);
-        assertThat(cache).as("role-permissions cache").isNotNull();
-        return cache;
+        assertThat(cacheGenerationService.currentGeneration("TEAM", GENERATION_SCOPE_ID)).isEqualTo(1L);
     }
 
     private Long insertActiveUser() {
@@ -160,6 +169,13 @@ class RoleMutationConcurrencyAndCacheIT extends AbstractMySqlIntegrationTest {
         entityManager.persist(user);
         entityManager.flush();
         return user.getId();
+    }
+
+    private void incrementGenerationAfterBarrier(CountDownLatch ready, CountDownLatch start) {
+        ready.countDown();
+        await(start);
+        transactionTemplate.executeWithoutResult(tx ->
+                cacheGenerationService.incrementGeneration("TEAM", GENERATION_SCOPE_ID));
     }
 
     private static void await(CountDownLatch latch) {

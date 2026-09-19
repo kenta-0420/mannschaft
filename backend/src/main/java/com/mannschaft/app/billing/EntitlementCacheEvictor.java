@@ -60,7 +60,7 @@ public class EntitlementCacheEvictor {
                     continue;
                 }
                 try {
-                    cache.evict(scopeKind.name() + ":" + scopeId + ":" + featureKey);
+                    cache.evictIfPresent(scopeKind.name() + ":" + scopeId + ":" + featureKey);
                 } catch (RuntimeException ex) {
                     log.warn("EntitlementCacheEvictor: 判定キャッシュ evict 失敗 (scope={}:{}, feature={})",
                             scopeKind, scopeId, featureKey, ex);
@@ -82,7 +82,7 @@ public class EntitlementCacheEvictor {
             return;
         }
         try {
-            cache.evict(teamId);
+            cache.evictIfPresent(teamId);
         } catch (RuntimeException ex) {
             log.warn("EntitlementCacheEvictor: teamPlan キャッシュ evict 失敗 (teamId={})", teamId, ex);
         }
