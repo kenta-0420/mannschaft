@@ -71,6 +71,7 @@ public class WithdrawalStripeHandler {
     public void handleWithdrawal(WithdrawalRequestedEvent event) {
         Long userId = event.getUserId();
 
+        cancelBeneficiaryMembershipSubscriptions(userId);
         cancelMembershipSubscriptions(userId);
         requestPayerHandovers(userId);
     }
@@ -118,6 +119,15 @@ public class WithdrawalStripeHandler {
             log.info("退会時の決済連携: 継続課金の期末解約を予約しました userId={}, 件数={}", userId, scheduled.size());
         } catch (Exception e) {
             log.error("退会時の決済連携: 継続課金の期末解約に失敗しました userId={}", userId, e);
+        }
+    }
+
+    private void cancelBeneficiaryMembershipSubscriptions(Long userId) {
+        try {
+            List<UUID> cancelled = membershipSubscriptionService.cancelAllForBeneficiaryOnWithdrawal(userId);
+            log.info("退会時の受益者継続契約即時取消し: userId={}, cancelled={}", userId, cancelled.size());
+        } catch (Exception e) {
+            log.error("退会時の受益者継続契約即時取消しに失敗: userId={}", userId, e);
         }
     }
 

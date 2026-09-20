@@ -275,9 +275,11 @@ GET /api/v1/teams/{id}/payment-items/{itemId}/payments/export  # CSV（BOM付UTF
 ### 8.2 領収書（受領者名義）
 ```
 GET /api/v1/member-payments/{id}/receipt        # 受益者/払い手向け：会費領収書（受領者名義・金額のみ）
+GET /api/v1/member-payments/{id}/receipt/pdf    # Stripe URL が無い場合の自前 PDF fallback
 GET /api/v1/teams/{id}/fee-statements?period=YYYY-MM   # 受領者向け：Mannschaft 名義の月次手数料明細
+GET /api/v1/teams/{id}/fee-statements/pdf?period=YYYY-MM # TEAM ADMIN向け月次手数料明細PDF
 ```
-- 会費領収書：`stripe_receipt_url`（受領者ブランド）優先、無ければ自前 PDF（F12.1）。税内訳/登録番号は**拡張枠**（既定非表示・`NoOpTaxPolicy`）。
+- 会費領収書：`PAID` かつ正金額のみ。`stripe_receipt_url`（受領者ブランド）優先、無ければ自前 PDF（F12.1）。取得者は払い手/受益者本人に限定し、不在・第三者・不適格状態はいずれも404で存在を秘匿する。税内訳/登録番号は**拡張枠**（既定非表示・`NoOpTaxPolicy`）。
 - **名義の出所**：`stripe_receipt_url` の表示名は Stripe Connect onboarding 登録情報に依存し**Mannschaft からは制御不可**。自前 PDF を出す場合の名義は `organizations.name` / `teams.name`（個人運営チームは onboarding 時の屋号/法人名＝Connect 登録名に揃える）を用い、Stripe 表示名との不一致を避ける。
 - 手数料明細：当月の `application_fee_amount` 合計を Mannschaft 名義で（仕入税額控除の枠・税からくり）。
 

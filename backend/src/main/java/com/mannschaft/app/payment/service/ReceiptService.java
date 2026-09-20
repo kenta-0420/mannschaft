@@ -6,10 +6,14 @@ import com.mannschaft.app.payment.PaymentStatus;
 import com.mannschaft.app.payment.dto.ReceiptResponse;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
+import com.mannschaft.app.payment.repository.PaymentItemRepository;
+import com.mannschaft.app.receipt.service.MemberPaymentReceiptDocumentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 /**
@@ -25,6 +29,10 @@ import java.time.LocalDate;
 public class ReceiptService {
 
     private final MemberPaymentRepository memberPaymentRepository;
+    private final PaymentItemRepository paymentItemRepository;
+    private final MemberPaymentReceiptDocumentService receiptDocumentService;
+    @Qualifier("wallClock")
+    private final Clock clock;
 
     /**
      * 会費領収書を取得する。
@@ -35,10 +43,7 @@ public class ReceiptService {
      * 403 と 404 で割れていると、応答の差だけで「その支払い記録 ID は実在する」と判別できる
      * 存在オラクルになるため、PARKING_020 起点の「越境は存在秘匿で404」の流儀に揃えている。</p>
      *
-     * <p>領収書発行は支払い済み（PAID）のみ許可。
-     * PENDING / CANCELLED / REFUNDED は {@link PaymentErrorCode#ALREADY_REFUNDED} ではなく
-     * 専用のチェックなしで返却するため、未完了なら issuedDate = now() でそのまま返す設計とした
-     * （将来の仕様変更でステータスチェックを追加できるよう構造は残す）。</p>
+     * <p>領収書発行は正の金額を持つ支払い済み（PAID）のみに限定し、それ以外は存在を秘匿する。</p>
      *
      * @param memberPaymentId 会費支払い記録ID
      * @param requestUserId   リクエストユーザーID
@@ -56,19 +61,49 @@ public class ReceiptService {
         if (!isPayer && !isBeneficiary) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_ACCESS_DENIED);
         }
+        if (payment.getStatus() != PaymentStatus.PAID
+                || payment.getAmountPaid() == null
+                || payment.getAmountPaid().signum() <= 0) {
+            throw new BusinessException(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND);
+        }
 
         LocalDate issuedDate = (payment.getPaidAt() != null)
                 ? payment.getPaidAt().toLocalDate()
-                : LocalDate.now();
+                : LocalDate.now(clock);
 
         return new ReceiptResponse(
                 payment.getId(),
-                null,   // issuedBy: チーム/組織名は将来の拡張（ConnectAccount 参照）
+                resolveIssuerName(payment),
                 payment.getAmountPaid(),
                 payment.getCurrency(),
                 issuedDate,
-                payment.getStripeReceiptUrl(),
+                resolveReceiptUrl(payment),
                 null    // 税内訳: TaxPolicy 確定まで null
         );
+    }
+
+    private String resolveReceiptUrl(MemberPaymentEntity payment) {
+        if (payment.getStripeReceiptUrl() != null && !payment.getStripeReceiptUrl().isBlank()) {
+            return payment.getStripeReceiptUrl();
+        }
+        if (payment.getStatus() == PaymentStatus.PAID
+                && payment.getAmountPaid() != null
+                && payment.getAmountPaid().signum() > 0) {
+            return "/api/v1/member-payments/" + payment.getId() + "/receipt/pdf";
+        }
+        return null;
+    }
+
+    private String resolveIssuerName(MemberPaymentEntity payment) {
+        return paymentItemRepository.findReceiptContextById(payment.getPaymentItemId())
+                .map(item -> {
+                    if ((item.getTeamId() == null) == (item.getOrganizationId() == null)) {
+                        return null;
+                    }
+                    String scopeType = item.getTeamId() != null ? "TEAM" : "ORGANIZATION";
+                    Long scopeId = item.getTeamId() != null ? item.getTeamId() : item.getOrganizationId();
+                    return receiptDocumentService.resolveIssuerName(scopeType, scopeId);
+                })
+                .orElse(null);
     }
 }

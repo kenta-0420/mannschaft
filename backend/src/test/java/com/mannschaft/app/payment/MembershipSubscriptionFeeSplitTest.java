@@ -78,6 +78,9 @@ class MembershipSubscriptionFeeSplitTest {
     @Mock private MemberPaymentService memberPaymentService;
     @Mock private com.mannschaft.app.auth.repository.UserRepository userRepository;
     @Mock private com.mannschaft.app.payment.service.MembershipPayerWithdrawalRunner payerWithdrawalRunner;
+    @Mock private com.mannschaft.app.payment.service.MembershipBeneficiaryWithdrawalRunner beneficiaryWithdrawalRunner;
+    @Mock private com.mannschaft.app.payment.repository.MembershipBeneficiaryWithdrawalCancellationRepository
+            beneficiaryWithdrawalCancellationRepository;
     @Mock private com.mannschaft.app.payment.repository.MembershipPayerWithdrawalCancellationRepository
             payerWithdrawalCancellationRepository;
     @Mock private com.mannschaft.app.auth.service.WithdrawalStateQueryService withdrawalStateQueryService;
@@ -110,7 +113,8 @@ class MembershipSubscriptionFeeSplitTest {
                 paymentAuthorizationService, connectAccountRepository, connectChargeService,
                 feePolicyResolver, stripeCustomerRepository, stripePaymentProvider,
                 memberPaymentService, userRepository, paymentFeeCalculator,
-                payerWithdrawalRunner, payerWithdrawalCancellationRepository,
+                payerWithdrawalRunner, beneficiaryWithdrawalRunner, beneficiaryWithdrawalCancellationRepository,
+                payerWithdrawalCancellationRepository,
                 withdrawalStateQueryService);
     }
 
