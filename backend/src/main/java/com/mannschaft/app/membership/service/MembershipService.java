@@ -263,6 +263,33 @@ public class MembershipService {
         return true;
     }
 
+    /**
+     * {@code user_roles} を持たない一般会員が、自分の membership だけを根拠に自主退会する。
+     *
+     * <p>MEMBER と SUPPORTER は同じ memberships テーブルに格納されるため、この窓口は
+     * {@link RoleKind#MEMBER} に限定する。SUPPORTER の解除は支援者専用経路へ残し、
+     * 会員退会 API から迂回できないようにする。対象行は user 行ロック後に悲観ロックで取得し、
+     * 退会本体は {@link #leave(Long, MembershipLeaveRequest)} に委譲する。</p>
+     *
+     * @param userId    対象ユーザー ID
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @return MEMBER membership を退会させた場合 true、対象が無いか SUPPORTER の場合 false
+     */
+    @Transactional
+    public boolean leaveMemberByUserAndScope(Long userId, ScopeType scopeType, Long scopeId) {
+        lockUser(userId);
+        Optional<MembershipEntity> active =
+                membershipRepository.findActiveByUserAndScopeForUpdate(userId, scopeType, scopeId);
+        if (active.isEmpty() || active.get().getRoleKind() != RoleKind.MEMBER) {
+            return false;
+        }
+        MembershipLeaveRequest req = new MembershipLeaveRequest();
+        req.setLeaveReason(LeaveReason.SELF);
+        leave(active.get().getId(), req);
+        return true;
+    }
+
     private void lockUser(Long userId) {
         userRowLockService.lock(userId);
     }

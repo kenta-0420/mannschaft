@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Route } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
+import { TEAM_ID, mockTeam } from '../teams/helpers'
 
 /**
  * F04.9 §13「未確認者一覧の可視化」E2E テスト
@@ -16,11 +17,15 @@ import { waitForHydration } from '../helpers/wait'
  * MEMBER(HIDDEN|CREATOR_AND_ADMIN): 403）。
  * ここでは API モックを通じてフロントエンドの表示・送信挙動・ストレージ復元を検証する。
  *
- * PR #136 で ConfirmableNotificationSender が /admin/reservation-settings ページに
- * 配置されたため、UI フォーム操作方式で検証する。
+ * CMP-260909-1141: ConfirmableNotificationSender の配置先が
+ * /admin/reservation-settings（到達不能ページ・削除済み）から
+ * /teams/[slug]/settings/confirmable-notifications へ移設されたため、
+ * このテストも移設先を見るように張り替える。あわせて実バックエンドへの
+ * API ログイン（storageState: admin.json）はこの画面の検証には不要
+ * （MEMBER 視点も fetch の再モックのみで切り替えていて実ログインに依存しない）ため、
+ * 他の mock 系 E2E（例: equipment.spec.ts）と同じ token 注入 + mockTeam() 方式に揃え、
+ * 実バックエンドの team 所属状態に依存しないようにする。
  */
-
-test.use({ storageState: 'tests/e2e/.auth/admin.json' })
 
 type UnconfirmedVisibility = 'HIDDEN' | 'CREATOR_AND_ADMIN' | 'ALL_MEMBERS'
 
@@ -97,24 +102,6 @@ function buildNotificationDetail(id: number, visibility: UnconfirmedVisibility) 
   }
 }
 
-/** reservation-settings ページが叩く周辺 API を空レスポンスで一括モック */
-async function mockReservationSettingsSideApis(page: Page): Promise<void> {
-  await page.route('**/api/v1/teams/*/reservation-lines', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: [] }),
-    })
-  })
-  await page.route('**/api/v1/organizations/*/reservation-lines', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: [] }),
-    })
-  })
-}
-
 /** 設定 API モック（GET のみ） */
 async function mockSettingsGet(page: Page, visibility: UnconfirmedVisibility): Promise<void> {
   const handler = async (route: Route): Promise<void> => {
@@ -144,16 +131,42 @@ async function mockSettingsGet(page: Page, visibility: UnconfirmedVisibility): P
 
 test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13）', () => {
   test.beforeEach(async ({ page }) => {
-    // reservation-settings は useScopeStore の currentScope が truthy でないと
+    // confirmable-notifications ページは useScopeStore の currentScope が truthy でないと
     // onMounted の load() が発火しない。addInitScript でページ初期化前にセットする
+    // （scope.client.ts の syncFromPath は /api/v1/me/teams に slug 一致する team が
+    // 無ければ上書きしないため、この値がそのまま使われる）
     await page.addInitScript(() => {
       localStorage.setItem(
         'currentScope',
         JSON.stringify({ type: 'team', id: 1, name: 'テストチーム' }),
       )
+      localStorage.setItem(
+        'accessToken',
+        'eyJhbGciOiJIUzM4NCJ9.e2UyZV90ZXN0X3VzZXJ9.placeholder_for_e2e',
+      )
+      localStorage.setItem('refreshToken', 'e2e-refresh-token-placeholder')
+      localStorage.setItem(
+        'currentUser',
+        JSON.stringify({
+          id: 1,
+          email: 'e2e-user@example.com',
+          displayName: 'e2e_user',
+          profileImageUrl: null,
+        }),
+      )
     })
 
-    await mockReservationSettingsSideApis(page)
+    await mockTeam(page)
+    // /api/v1/me/teams は scope.client.ts の syncFromPath が呼ぶ。
+    // このテストチーム（slug は数値 TEAM_ID をそのまま使う）を所属一覧に含ませない
+    // ことで、addInitScript で seed した currentScope を上書きさせない
+    await page.route('**/api/v1/me/teams', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [] }),
+      })
+    })
     // History コンポーネントが自動ロードする通知一覧
     await page.route('**/api/v1/teams/*/confirmable-notifications', async (route) => {
       if (route.request().method() === 'GET') {
@@ -234,7 +247,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
       await route.continue()
     })
 
-    await page.goto('/admin/reservation-settings')
+    await page.goto(`/teams/${TEAM_ID}/settings/confirmable-notifications`)
     await waitForHydration(page)
 
     // 「確認通知を送信」セクション見出しを確認
@@ -353,7 +366,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
       await route.continue()
     })
 
-    await page.goto('/admin/reservation-settings')
+    await page.goto(`/teams/${TEAM_ID}/settings/confirmable-notifications`)
     await waitForHydration(page)
 
     // 「確認通知を送信」セクション見出しを確認
@@ -484,7 +497,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
       await route.continue()
     })
 
-    await page.goto('/admin/reservation-settings')
+    await page.goto(`/teams/${TEAM_ID}/settings/confirmable-notifications`)
     await waitForHydration(page)
 
     // 「確認通知を送信」セクション見出しを確認
@@ -575,7 +588,7 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await mockSettingsGet(page, 'CREATOR_AND_ADMIN')
 
     // 1) localStorage に前回値をセット
-    await page.goto('/admin/reservation-settings')
+    await page.goto(`/teams/${TEAM_ID}/settings/confirmable-notifications`)
     await waitForHydration(page)
     await page.evaluate(() => {
       window.localStorage.setItem('confirmable.lastUnconfirmedVisibility', 'ALL_MEMBERS')

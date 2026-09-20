@@ -104,4 +104,32 @@ describe('DashboardWidgetCard.vue', () => {
     expect(style).toContain('max-height')
     expect(style).toContain('12rem')
   })
+
+  it('updates collapse state with Grid rows, ARIA, and inert while preserving content', async () => {
+    const wrapper = await mountSuspended(DashboardWidgetCard, {
+      props: { title: 'Collapse' },
+      slots: { default: slotContent },
+    })
+    const toggle = wrapper.findAll('button').at(-1)!
+    const contentGrid = wrapper.get('[data-testid="dashboard-widget-card-content"]')
+
+    expect(wrapper.attributes('data-widget-collapsed')).toBe('false')
+    expect(contentGrid.classes()).toContain('grid-rows-[1fr]')
+    expect(contentGrid.attributes('aria-hidden')).toBe('false')
+    expect(contentGrid.attributes()).not.toHaveProperty('inert')
+
+    await toggle.trigger('click')
+    expect(wrapper.attributes('data-widget-collapsed')).toBe('true')
+    expect(contentGrid.classes()).toEqual(
+      expect.arrayContaining(['grid-rows-[0fr]', 'opacity-0']),
+    )
+    expect(contentGrid.attributes('aria-hidden')).toBe('true')
+    expect(contentGrid.attributes()).toHaveProperty('inert')
+    expect(wrapper.find('[data-testid="content"]').exists()).toBe(true)
+
+    await toggle.trigger('click')
+    expect(wrapper.attributes('data-widget-collapsed')).toBe('false')
+    expect(contentGrid.classes()).toContain('grid-rows-[1fr]')
+    expect(wrapper.find('[data-testid="content"]').exists()).toBe(true)
+  })
 })

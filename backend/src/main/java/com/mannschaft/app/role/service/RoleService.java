@@ -372,8 +372,19 @@ public class RoleService {
     @Transactional
     public void leaveScope(Long userId, Long scopeId, String scopeType) {
         lockUsers(userId);
-        UserRoleEntity current = findUserRole(userId, scopeId, scopeType)
-                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+        Optional<UserRoleEntity> currentRole = findUserRole(userId, scopeId, scopeType);
+        if (currentRole.isEmpty()) {
+            ScopeType membershipScope = "TEAM".equals(scopeType)
+                    ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+            boolean left = membershipService.leaveMemberByUserAndScope(userId, membershipScope, scopeId);
+            if (!left) {
+                throw new BusinessException(RoleErrorCode.ROLE_001);
+            }
+            log.info("スコープ退会完了（membershipのみ）: scopeType={}, scopeId={}, userId={}",
+                    scopeType, scopeId, userId);
+            return;
+        }
+        UserRoleEntity current = currentRole.get();
 
         // 最後のADMIN保護
         checkLastAdmin(scopeId, scopeType, current);
