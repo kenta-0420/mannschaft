@@ -670,7 +670,6 @@ LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.MembershipSubscriptionEn
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.OrganizationAccessRequirementEntity|1
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.PaymentBeneficiarySettingEntity|2
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.PaymentItemEntity|1
-LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.PaymentProxyGrantEntity|6
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.PaymentRequestEntity|6
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.StripeCustomerEntity|1
 LOCAL_DATE_TIME_FIELD|com.mannschaft.app.payment.entity.TeamAccessRequirementEntity|1

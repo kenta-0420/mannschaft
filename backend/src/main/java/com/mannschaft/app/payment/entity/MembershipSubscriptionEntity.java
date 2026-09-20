@@ -83,10 +83,6 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
     @Column(name = "payer_user_id", nullable = false)
     private Long payerUserId;
 
-    /** 第三者代理払いの権原 payment_proxy_grants.id。論理参照・FK なし。 */
-    @Column(name = "payment_proxy_grant_id")
-    private UUID paymentProxyGrantId;
-
     /** 受領主体の種別（TEAM/ORG）。 */
     @Enumerated(EnumType.STRING)
     @Column(name = "scope_kind", nullable = false, length = 8)

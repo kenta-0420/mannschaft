@@ -236,8 +236,7 @@
       "via": {
         "SELF": "Propio",
         "GUARDIAN": "Tutor",
-        "GUARDIAN_PROXY": "Tutor delegado",
-        "PROXY_GRANT": "Delegación"
+        "GUARDIAN_PROXY": "Tutor delegado"
       },
       "selectAll": "Seleccionar todo",
       "deselectAll": "Deseleccionar todo",
