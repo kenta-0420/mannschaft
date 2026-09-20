@@ -13,10 +13,9 @@
 
 | 操作 | 許可される主体 | 検証 |
 |---|---|---|
-| 会費決済（受益者指定） | 払い手＝本人 / 後見保護者 / 有効 grant 保有者 / チーム・組織 ADMIN(手動記録) | §2 代理払い認可 |
+| 会費決済（受益者指定） | 払い手＝本人 / 後見保護者 / チーム・組織 ADMIN(手動記録) | §2 代理払い認可 |
 | 後見まとめ支払い | 本人（払い手） | `payable-dues` は自分が払える対象のみ返す |
 | 後見切替開始 | 子の有効保護者 **かつ** 国別ポリシーが切替可（`switchAllowed`） | §3 年齢ゲート |
-| 代理払い grant 発行 | 受益者本人（または切替可能な段階の子に代わり保護者） | 受益者所有権 |
 | 継続課金 加入/解約/今月スキップ/再開 | 払い手本人 / 後見保護者 | サブスク所有権（payer_user_id）。skip/resume も同所有権（02 §4.3） |
 | 協会請求の立替/精算確認 | 当該チーム ADMIN | `team_payment_advances.team_id` の team ADMIN（案3・02 §7） |
 | ペイウォール設定 | チーム/組織 ADMIN | scope 所有権（既存 ContentPaymentGateController） |
@@ -135,7 +134,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 ## 6. GDPR・退会・データ保持
 
 - 金銭記録（`member_payments`/`membership_subscriptions`/`payment_requests`/`escrow_transactions`）は**物理削除せず**、退会時はユーザー PII を匿名化し記録は保持（会計・税務保持義務）。F12.3／F09.18 の保持期間方針に整合。
-- 退会・年齢到達（中学進学）で **後見切替権原・代理払い grant を自動失効**（F14.1 の自動失効と同型）。
+- 退会・年齢到達（中学進学）で **後見切替権原を自動失効**（F14.1 の自動失効と同型）。保護者リンクに基づく代理払い権原は、リンク取消・受益者退会で失効する。
 - 領収書の会員 PII（氏名）は生成時に暗号化済み `users` から都度復号し、ファイルに残さない（ダウンロード都度生成 or 短期署名URL）。
 - `tax_registration_number` は公開情報・非 PII。
 
@@ -156,7 +155,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 
 ## 8. レート制限・濫用対策
 
-- 代理払い grant 招待・後見切替開始は受益者単位でレート制限（招待スパム防止・既存 ParentalConsent のレートリミットに倣う）。
+- 後見切替開始は受益者単位でレート制限（既存 ParentalConsent のレートリミットに倣う）。
 - まとめ支払いの明細数に上限（一度の決済対象数）。
 - 協会請求の一斉配信は配信先数・頻度に上限（通知スパム防止）。
 

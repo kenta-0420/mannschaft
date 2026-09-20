@@ -38,7 +38,7 @@ Headers: Idempotency-Key（必須）
 ```
 GET  /api/v1/me/payable-dues
 ```
-- 認証ユーザーが**払える対象だけ**（本人＋後見下の子＋有効 grant のある受益者）を返す。**権原のない受益者は一切含めない**（他人の未払いを列挙させない＝IDOR 防止・03_security §2）。受益者・チーム/組織・項目・金額・期限・継続/期別区分に加え、**既に他の払い手（別の保護者/本人）が支払い済みの項目は `alreadyPaid` で示す**（共同親権の二重払い・取り違えを防ぐ）。
+- 認証ユーザーが**払える対象だけ**（本人＋後見下の子）を返す。**権原のない受益者は一切含めない**（他人の未払いを列挙させない＝IDOR 防止・03_security §2）。受益者・チーム/組織・項目・金額・期限・継続/期別区分に加え、**既に他の払い手（別の保護者/本人）が支払い済みの項目は `alreadyPaid` で示す**（共同親権の二重払い・取り違えを防ぐ）。
 - レスポンス：`PayableDuesResponse { items: [{ beneficiaryUserId, beneficiaryDisplayName, scope, paymentItemId, name, faceAmount, payerSurcharge, totalCharge, dueDate, kind(ONE_TIME|RECURRING|TERM), authorizationVia, alreadyPaid: boolean, paidBy?: { userId, displayName }, paidAt? }] }`
 
 ```

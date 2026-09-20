@@ -133,7 +133,7 @@ member_payments
 
 > 後見切替セッション中の決済も本節1（保護者リンク）で権原が立つが、記録上は `payer_relationship=GUARDIAN_PROXY` と区別する（02_api §1.1）。中学進学で切替は封じられるが、**保護者の代理払い自体は本節1で継続可**（自立移行フロー＝02_api §2.3）。
 
-> いずれの経路でも、決済確定時に「払い手・受益者・権原（保護者リンクID or grant ID）」を記録し、IDOR を封じる（03_security §2）。
+> いずれの経路でも、決済確定時に「払い手・受益者・権原（保護者リンクまたは管理者手動）」を記録し、IDOR を封じる（03_security §2）。
 
 ### 3.4 統一レール統合（source_kind=MEMBERSHIP）
 
@@ -352,7 +352,7 @@ payment_requests（新規・UUIDv7）
 
 > **依存ハードライン**：P1〜P8 は F22.1 **P2-b**（`ConnectChargeService`/`PaymentFeeCalculator`/`face_amount`/`capture_mode`）と **P2-e**（`EscrowSourceKind.MEMBERSHIP`）の完了を前提とする。F22.1 P2-b/e のマイルストーンを固定し、その完了後に本機能 P1 着手（並行着手で blocked にしない）。
 >
-> 新規ドメイン/改修：`payment`（payer分離・subscription・payment_request・proxy grant・tax からくり）／`membership`（受益者×支払いの結線）／`notification`・`inbox`（協会請求配信）／`cms`・`social.announcement`（ペイウォール連結）。F22.1 `payment.escrow`/`payment.connect` は**再利用のみ**。
+> 新規ドメイン/改修：`payment`（payer分離・subscription・payment_request・tax からくり）／`membership`（受益者×支払いの結線）／`notification`・`inbox`（協会請求配信）／`cms`・`social.announcement`（ペイウォール連結）。F22.1 `payment.escrow`/`payment.connect` は**再利用のみ**。
 
 ---
 
@@ -383,9 +383,9 @@ payment_requests（新規・UUIDv7）
 | 会費**値上げ時の既存サブスク** | 02_api §4.1 | 加入時 price で固定。改定は新規のみ・既存者は確認必須通知で乗換選択 |
 | 共同親権の**二重払い可視化** | 02_api §1.2 | `payable-dues` が `alreadyPaid`/`paidBy` を返す・bulk は起票直前に再認可 |
 | **後見切替中の払い手記録** | 02_api §1.1 / 03_security §2 | 払い手は保護者のまま・`payer_relationship=GUARDIAN_PROXY` で区別 |
-| 退会時の**サブスク/grant 失効** | 01_data_model §6 | `UserWithdrawalService` トランザクション内でアトミック失効・バッチは掃き取りの二重防御 |
+| 退会時の**サブスク・代理権失効** | 01_data_model §6 | `UserWithdrawalService` トランザクション内でアトミック失効・バッチは掃き取りの二重防御 |
 | Connect 口座**無効化**時の払い手体験 | 02_api §1.1 / 04 §3 | 払い手へ「受け取り準備中」表示・恒久/一時を `onboarding_status` で判定 |
-| 第三者 grant の**過大権限** | 01_data_model §2.3 | 包括 grant は `effective_until` 必須(CHECK)＋`max_amount` |
+| 第三者からの**金銭的圧力・招待スパム** | 01_data_model §2.3 | 非後見第三者への直接grant・招待を提供せず、援助は組織管理制度へ分離 |
 | 協会請求の**再請求** | 01_data_model §2.2 | `superseded_by_id` で旧 CANCELLED を新請求へ連結・回収率は PAID 件数集計 |
 | 税列の**後方互換** | 01_data_model §1.2 | NULL の間は現挙動と完全一致・既存集計に影響なし |
 | escrow の**組み合わせ整合** | 01_data_model §3.1 | source_kind×scope マッピング表＋防御的複合 CHECK 案 |

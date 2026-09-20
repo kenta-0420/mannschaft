@@ -343,7 +343,7 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
   1. 当該ユーザーが受益者の `membership_subscriptions` を `CANCELLED`（＋ Stripe Subscription を cancel）
   3. 当該ユーザー関連の代理権スコープ `PAYMENT`（`proxy_input_consent_scopes.feature_scope='PAYMENT'` の同意行）を失効（F14.1 の scope 行失効と同型。**scope は VARCHAR に値1つ追加で実現＝専用テーブル/列なし**・§3.3 是正）
   4. 払い手が抜けた継続課金は受益者へ「支払者不在」を通知（別の払い手に切替を促す）
-  - バッチ（日次）は**取りこぼしの掃き取り**（二重防御）であって主経路ではない。順序は user 失効より先に下流（grant/subscription）を倒し、不整合を残さない。
+  - バッチ（日次）は**取りこぼしの掃き取り**（二重防御）であって主経路ではない。順序は user 失効より先に下流（subscription・代理権スコープ）を倒し、不整合を残さない。
 - `connect_accounts.tax_registration_number` は公開情報ゆえ暗号化不要。会員 PII（氏名等）は領収書生成時に既存の暗号化済み `users` から都度復号（保存しない）。
 
 ---
@@ -377,4 +377,4 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 2. `member_payments` の受益者×項目の有効重複は `existsValidPaidPayment` で防止（既存）。
 3. `membership_subscriptions.payee_connect_account_id` は `onboarding_status=READY` を起票前に確認。
 4. `payment_requests` の payer(TEAM)/payee(ORG) は加盟関係（`memberships` or 組織-チーム関係）を発行時に検証。
-5. 代理払いは §3.3 の権原（保護者リンク／grant／本人／ADMIN）のいずれかを決済時に必須検証（03_security §2）。
+5. 代理払いは §3.3 の権原（保護者リンク／本人／ADMIN手動）のいずれかを決済時に必須検証（03_security §2）。
