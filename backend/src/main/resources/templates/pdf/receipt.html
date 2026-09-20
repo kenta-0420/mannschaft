@@ -58,6 +58,9 @@
         </div>
 
         <div class="mt-20" style="text-align: right;">
+            <p th:text="${receipt.issuerName}">発行者名</p>
+            <p th:if="${receipt.issuerAddress}" th:text="${receipt.issuerAddress}">発行者住所</p>
+            <p th:if="${receipt.issuerPhone}" th:text="${receipt.issuerPhone}">電話番号</p>
             <img th:if="${sealBase64}" th:src="'data:image/png;base64,' + ${sealBase64}" class="seal-image"/>
         </div>
     </div>

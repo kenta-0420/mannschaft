@@ -34456,6 +34456,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/fee-statements/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 月次手数料明細PDF */
+        get: operations["downloadFeeStatementPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/facilities/{facilityId}/availability": {
         parameters: {
             query?: never;
@@ -41537,6 +41554,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getReceipt_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/member-payments/{memberPaymentId}/receipt/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["downloadReceiptPdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -150984,6 +151017,30 @@ export interface operations {
             };
         };
     };
+    downloadFeeStatementPdf: {
+        parameters: {
+            query?: {
+                period?: string;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
     getAvailability_1: {
         parameters: {
             query: {
@@ -160744,6 +160801,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseReceiptResponse"];
+                };
+            };
+        };
+    };
+    downloadReceiptPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberPaymentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
         };

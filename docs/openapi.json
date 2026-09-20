@@ -117481,6 +117481,47 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/fee-statements/pdf": {
+      "get": {
+        "tags": [
+          "月次手数料明細"
+        ],
+        "summary": "月次手数料明細PDF",
+        "operationId": "downloadFeeStatementPdf",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/facilities/{facilityId}/availability": {
       "get": {
         "tags": [
@@ -135302,6 +135343,38 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseReceiptResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/member-payments/{memberPaymentId}/receipt/pdf": {
+      "get": {
+        "tags": [
+          "receipt-controller"
+        ],
+        "operationId": "downloadReceiptPdf",
+        "parameters": [
+          {
+            "name": "memberPaymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
                 }
               }
             }

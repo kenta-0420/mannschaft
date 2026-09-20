@@ -63,8 +63,17 @@ public class MembershipPayerWithdrawalRetryBatchService {
     @SchedulerLock(name = "membership_payer_withdrawal_retry",
             lockAtMostFor = "PT60M", lockAtLeastFor = "PT1M")
     public void runWithdrawalCancelRetry() {
+        retryBeneficiaryCancels();
         retryCancels();
         retryRestores();
+    }
+
+    private void retryBeneficiaryCancels() {
+        try {
+            membershipSubscriptionService.retryBeneficiaryWithdrawalCancellations();
+        } catch (Exception e) {
+            log.error("受益者退会時の継続契約即時取消し再試行に失敗", e);
+        }
     }
 
     /** 解約側: 非終端の作業行（PENDING/FAILED）と backlog の union（払い手単位で dedup 済み）。 */

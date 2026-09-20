@@ -61,6 +61,26 @@ class WithdrawalStripeHandlerTest {
         return new WithdrawalRequestedEvent(USER_ID, "user@example.com");
     }
 
+    @Test
+    void 受益者契約の即時取消しを払い手契約の期末取消しより先に呼ぶ() {
+        handler.handleWithdrawal(event());
+
+        var order = org.mockito.Mockito.inOrder(membershipSubscriptionService);
+        order.verify(membershipSubscriptionService).cancelAllForBeneficiaryOnWithdrawal(USER_ID);
+        order.verify(membershipSubscriptionService).cancelAllForPayerOnWithdrawal(USER_ID);
+    }
+
+    @Test
+    void 受益者の取消し失敗でも払い手契約と引継検出を続行する() {
+        given(membershipSubscriptionService.cancelAllForBeneficiaryOnWithdrawal(USER_ID))
+                .willThrow(new IllegalStateException("受益者の DB 障害"));
+
+        assertThatCode(() -> handler.handleWithdrawal(event())).doesNotThrowAnyException();
+
+        verify(membershipSubscriptionService).cancelAllForPayerOnWithdrawal(USER_ID);
+        verify(billingContractService).findHandoverTargetContractsForPayer(USER_ID);
+    }
+
     private static HandoverTargetContract target(UUID contractId, Long scopeId) {
         return new HandoverTargetContract(
                 contractId, EntitlementScopeKind.TEAM, scopeId, ContractStatus.ACTIVE, "sub_" + scopeId);

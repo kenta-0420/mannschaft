@@ -20,6 +20,7 @@ import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.dto.MembershipSubscriptionListItemResponse;
 import com.mannschaft.app.payment.entity.MembershipPayerWithdrawalCancellationEntity;
 import com.mannschaft.app.payment.entity.MembershipPayerWithdrawalCancellationStatus;
+import com.mannschaft.app.payment.entity.MembershipBeneficiaryWithdrawalCancellationStatus;
 import com.mannschaft.app.payment.entity.MembershipSubscriptionEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
@@ -28,6 +29,7 @@ import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.MembershipChargeCommand;
 import com.mannschaft.app.payment.escrow.MembershipChargeResult;
 import com.mannschaft.app.payment.repository.MembershipPayerWithdrawalCancellationRepository;
+import com.mannschaft.app.payment.repository.MembershipBeneficiaryWithdrawalCancellationRepository;
 import com.mannschaft.app.payment.repository.MembershipSubscriptionRepository;
 import com.mannschaft.app.payment.repository.PaymentItemRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
@@ -111,6 +113,8 @@ public class MembershipSubscriptionService {
     private final PaymentFeeCalculator paymentFeeCalculator;
     /** 柱③-B PR-3: 退会/退会取消の1契約ぶんを独立トランザクションで処理するオーケストレータ。 */
     private final MembershipPayerWithdrawalRunner payerWithdrawalRunner;
+    private final MembershipBeneficiaryWithdrawalRunner beneficiaryWithdrawalRunner;
+    private final MembershipBeneficiaryWithdrawalCancellationRepository beneficiaryWithdrawalCancellationRepository;
     /** 柱③-B PR-3: 「退会処理由来で予約したか」の正本（退会取消時の復旧対象判定・再試行の拾い直し）。 */
     private final MembershipPayerWithdrawalCancellationRepository payerWithdrawalCancellationRepository;
     /** 柱③-B PR-3: 退会申請の現在状態（auth ドメインへは Service 経由でのみ触れる）。 */
@@ -611,6 +615,39 @@ public class MembershipSubscriptionService {
         return List.copyOf(scheduled);
     }
 
+    /** 受益者退会では対象者の ACTIVE/PAST_DUE 契約だけを DB 先行で即時取消しする。 */
+    public List<UUID> cancelAllForBeneficiaryOnWithdrawal(Long beneficiaryUserId) {
+        if (beneficiaryUserId == null) {
+            return List.of();
+        }
+        List<UUID> ids = membershipSubscriptionRepository.findIdsByBeneficiaryUserIdAndStatusIn(
+                beneficiaryUserId, List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
+        List<UUID> cancelled = new ArrayList<>();
+        for (UUID id : ids) {
+            if (beneficiaryWithdrawalRunner.cancelInitial(id, beneficiaryUserId)) {
+                cancelled.add(id);
+            }
+        }
+        return List.copyOf(cancelled);
+    }
+
+    /** Stripe 同期が未完了の受益者退会取消しを再試行する。 */
+    public void retryBeneficiaryWithdrawalCancellations() {
+        beneficiaryWithdrawalCancellationRepository.findByStatusInOrderByUpdatedAtAsc(
+                        List.of(MembershipBeneficiaryWithdrawalCancellationStatus.PENDING,
+                                MembershipBeneficiaryWithdrawalCancellationStatus.FAILED))
+                .forEach(row -> beneficiaryWithdrawalRunner.retry(row.getSubscriptionId()));
+        // イベント投入前／作業行作成前／複数契約処理の途中で停止した場合も、退会の正本から拾い直す。
+        for (Long beneficiaryUserId : withdrawalStateQueryService.findUserIdsWithPendingWithdrawal()) {
+            try {
+                cancelAllForBeneficiaryOnWithdrawal(beneficiaryUserId);
+            } catch (Exception e) {
+                log.error("受益者退会取消しの未着手契約の照合に失敗: beneficiaryUserId={}", beneficiaryUserId, e);
+            }
+        }
+    }
+
+
     /**
      * 柱③-B PR-3: 退会申請中の払い手のうち<b>まだ期末解約が予約されていない</b>継続課金 ID を返す
      * （PR-4 の照合バッチの起点・Codex 検分2巡目 P1-2）。
@@ -650,6 +687,7 @@ public class MembershipSubscriptionService {
                 .collect(java.util.stream.Collectors.toSet());
         return unscheduled.stream().filter(id -> !handledByWorkRow.contains(id)).toList();
     }
+
 
     /**
      * 柱③-B PR-4: 期末解約を<b>再試行すべき払い手</b>の ID を返す（夜次再試行バッチの抽出）。

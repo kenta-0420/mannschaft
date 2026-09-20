@@ -1,7 +1,7 @@
 # F08.9 会員決済・後見つきマルチ受益者・ペイウォール・継続課金
 
-> **ステータス**: 🟢 設計確定（御裁可反映済・二度の敵対的精査反映済・**2026-06-04 統一決済アーキ正典化反映**［サブスク解約/今月スキップ・立替記録案3・F22.1依存是正・3層結合・手数料ランク化連動］。設計内の論点は全クローズ。残る外部関門は税理士[§11-2]＋実装前 PoC[§11-3] のみ。実装＝P1 main 済・P2 以降未着手）
-> **最終更新**: 2026-06-04
+> **ステータス**: 🟢 実装完了（P1〜P8、Stripeテスト環境PoC、実機E2Eを完了。税務判断はスコープ外で `NoOpTaxPolicy` を維持）
+> **最終更新**: 2026-09-20
 > **親機能**: [F08.2 支払い・コンテンツアクセス制御](../F08.2_payments_access_control.md) を上位拡張 ／ 決済レールは [F22.1 統一決済プラットフォーム](../F22.1_market/payment/README.md) を再利用
 > **関連**: [F01.9 年齢確認・保護者同意](../F01.9_age_verification_parental_consent.md) ／ [F03.12 見守り通知](../F03.12_care_recipient_event_watch_notification.md) ／ [F14.1 代理入力](../F14.1_proxy_input_for_offline_residents.md) ／ [F00 可視性基盤](../F00_content_visibility_resolver.md) ／ [F04.9 確認必須通知](../F04.9_confirmable_notification.md) ／ [F04.11 統合通知インボックス](../F04.11_notification_inbox/README.md)
 
@@ -50,8 +50,8 @@
 | F03.12 見守り `user_care_links`（relationship=PARENT/CHILD） | ✅実装済 | ○ 親子＋見守り関係の確立に流用。**通知設定のみ**で操作権は無し |
 | F14.1 代理入力 `proxy_input_consents` ＋ `ProxyInputContext`（`X-Proxy-For-User-Id`） | ✅実装済・**汎用代理権枠組み** | ◎ 「後見切替セッション」「代理払い」の認可基盤に流用 |
 | 無ログイン管理アカウント `users.accountCreatedByWatcherUserId` | ❌フィールドのみ・未実装 | ✗ **採用しない**（子は自前アカウントを持つ方針） |
-| 代理払い（`MemberPaymentService.createCheckout` は払い手＝受益者で固定） | ❌未実装 | — 払い手分離が本機能の新規実装 |
-| Subscription（`SubscriptionController`/`TeamSubscriptionEntity`/`TeamPlanService`） | ⚠️ガワのみ（"Phase 4 実装予定" を返すだけ・Stripe Subscription API 未呼出） | △ ガワを本機能の継続課金で本実装 |
+| 代理払い | ✅実装済 | ◎ 本人または承認済み保護者に限定して払い手/受益者を分離。第三者grant・招待は不提供 |
+| Subscription | ✅実装済 | ◎ Stripe Subscription、invoice固定手数料上書き、失敗/復帰、解約/スキップを実装 |
 | 通知（`NotificationEntity.actionUrl`／`ConfirmableNotificationService.send(List<userId>)`／`InboxSourceAdapter`） | ✅実装済 | ◎ 協会請求の一斉配信・inbox 集約に流用 |
 | F00 可視性（`AbstractContentVisibilityResolver.evaluateCustom()`） | ✅実装済・拡張点あり | ◎ ペイウォール判定の差し込み口 |
 
@@ -60,18 +60,18 @@
 ## 2. スコープ
 
 ### 2.1 対象（in）
-- [ ] 払い手≠受益者の決済記録（`member_payments.payer_user_id` 分離）
-- [ ] 後見まとめ支払い（保護者が複数の子の会費を1画面で一括決済）
-- [ ] 年齢段階つき後見切替セッション（小学生まで強権・中学生以降封印）
-- [ ] 代理払い認可（保護者リンク or F14.1 代理権スコープ `PAYMENT`）
-- [ ] 会費の F22.1 統一 Connect レール化（`source_kind=MEMBERSHIP`・即時 capture）
-- [ ] 継続課金（月額/年額）＝ Stripe Subscription ＋ invoice 固定手数料上書き
-- [ ] 期別課金（夏期講習等）＝ 単発 destination charge
-- [ ] ペイウォール（受益者キー判定・blog/お知らせ・F00 evaluateCustom 連結）
-- [ ] 協会→加盟チーム請求（`payment_requests`・通知配信・payer=TEAM/payee=ORG）
-- [ ] 支払いユーザ可視化（払い手/受益者・未払/支払済/期限切れ・期別集計・CSV）
-- [ ] 領収書（受領者名義・金額のみ）＋ 月次手数料明細（Mannschaft 名義）
-- [ ] 税からくり（nullable 税列・`TaxPolicy` 戦略 NoOp 既定・領収書拡張点）
+- [x] 払い手≠受益者の決済記録（`member_payments.payer_user_id` 分離）
+- [x] 後見まとめ支払い（保護者が複数の子の会費を1画面で一括決済）
+- [x] 年齢段階つき後見切替セッション（小学生まで強権・中学生以降封印）
+- [x] 代理払い認可（本人または承認済み保護者。非後見第三者は不提供）
+- [x] 会費の F22.1 統一 Connect レール化（`source_kind=MEMBERSHIP`・即時 capture）
+- [x] 継続課金（月額/年額）＝ Stripe Subscription ＋ invoice 固定手数料上書き
+- [x] 期別課金（夏期講習等）＝ 単発 destination charge
+- [x] ペイウォール（受益者キー判定・blog/お知らせ・F00 evaluateCustom 連結）
+- [x] 協会→加盟チーム請求（`payment_requests`・通知配信・payer=TEAM/payee=ORG）
+- [x] 支払いユーザ可視化（払い手/受益者・未払/支払済/期限切れ・期別集計・CSV/PDF）
+- [x] 領収書（受領者名義・金額のみ）＋ 月次手数料明細（Mannschaft 名義）
+- [x] 税からくり（nullable 税列・`TaxPolicy` 戦略 NoOp 既定・領収書拡張点）
 
 ### 2.2 対象外（out）
 - [ ] 税計算・適格請求書の税内訳/登録番号レンダリングの**実装**（からくりのみ。実装は将来・国別）
@@ -338,6 +338,8 @@ payment_requests（新規・UUIDv7）
 ## 10. 段階ロードマップ（G）
 
 依存と規模(S/M/L)を明示。各段は test-first（BEドメインUT＋API契約テスト先行）。
+
+> **完了確認（2026-09-20）**: P1〜P8 はすべて実装済み。今回の完了戦役で、受益者退会時の即時解約（DB先行・Stripe再試行）、領収書PDF fallback、月次手数料明細PDF、実機E2Eのデータ不足 `skip` を回収した。通常の払い手退会は期末解約、受益者退会は当該受益者の契約だけを即時解約し、退会取消後も自動再加入させない。
 
 | 段 | 名称 | 規模 | 依存 | 主要成果 |
 |---|---|---|---|---|

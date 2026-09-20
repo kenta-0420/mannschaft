@@ -20,7 +20,7 @@
 | 協会請求の立替/精算確認 | 当該チーム ADMIN | `team_payment_advances.team_id` の team ADMIN（案3・02 §7） |
 | ペイウォール設定 | チーム/組織 ADMIN | scope 所有権（既存 ContentPaymentGateController） |
 | 集計・CSV・手数料明細 | チーム/組織 ADMIN | scope ADMIN（既存 PaymentSummary） |
-| 領収書取得 | 受益者本人 / 払い手 / scope ADMIN | 当該支払いの関係者のみ |
+| 領収書取得 | 受益者本人 / 払い手 | 当該支払いの直接関係者のみ。scope ADMIN による個人領収書の閲覧は許可しない |
 | 協会請求 発行/取消/集計 | 組織(協会) ADMIN | org scope ADMIN |
 | 協会請求 支払い | 請求先チームの ADMIN | `payment_requests.payer_scope_id == teamId` かつ team ADMIN |
 | 返金 | 受領側 scope ADMIN（チーム/組織） | F22.1 返金規約（reverse_transfer:true / refund_application_fee:false） |
@@ -169,10 +169,10 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 |---|---|---|
 | 11-1 | 後見切替の年齢しきい値 | **御裁可済**（国別 `GuardianshipAgePolicy` のからくり・JP既定＝満12歳年度末・未対応国は満13歳） |
 | 11-2 | 税務6論点 | 税理士確認（実装はからくりのみで先行可・NoOp 既定） |
-| 11-3 | invoice 固定手数料上書き × destination charge | Stripe テスト環境 PoC 成立（不成立時は自前バッチ退避） |
+| 11-3 | invoice 固定手数料上書き × destination charge | **成立済**（2026-06-05、`scripts/poc/README_f089_p5_poc.md`。API `2025-02-24.acacia` / stripe-java 28.2.0 固定） |
 | 11-4 | 協会請求の手数料負担 | **御裁可済**（会費と同折半） |
 | 11-5 | 非後見第三者への直接代理払い | 不提供（援助は組織管理の補助・免除・クレジットへ分離） |
 | 11-6 | 既存データ移行 | 解決済（不要・データ無し） |
 | 11-7 | 無ログイン管理子アカウント | 解決済（不採用） |
 
-> 11-1/11-4 は御裁可済（提案採用）。11-2/11-3 は**実装をブロックしない**（からくり先行＋PoC は P5 着手前）。設計の論理的整合は全点クローズ済み＝**設計ステータス 🟢 確定**。
+> 11-1/11-4 は御裁可済（提案採用）、11-3 はStripeテスト環境PoC成立済み。11-2は実装スコープ外として `NoOpTaxPolicy` を維持する。設計の論理的整合は全点クローズ済み＝**設計ステータス 🟢 確定**。
