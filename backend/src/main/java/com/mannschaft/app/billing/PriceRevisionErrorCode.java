@@ -61,7 +61,28 @@ public enum PriceRevisionErrorCode implements ErrorCode {
     REVISION_OVERLAP("PRICE_REVISION_014", "有効期間が既存の価格改定と重複しています", Severity.WARN),
 
     /** taxBehavior が INCLUSIVE/EXCLUSIVE 以外 → 400。AC-39。 */
-    INVALID_TAX_BEHAVIOR("PRICE_REVISION_015", "税表示方式の指定が不正です", Severity.WARN);
+    INVALID_TAX_BEHAVIOR("PRICE_REVISION_015", "税表示方式の指定が不正です", Severity.WARN),
+
+    // ───────── 試練隊（第2陣）D群〜G群（取得・一覧・Provision・retry・reconcile・activate）追加分 ─────────
+    // 殿の申し送りにより、当初は別 enum (PriceRevisionProvisionErrorCode) として起票したが、
+    // 1ドメイン1 enum の既存流儀（EntitlementErrorCode 等）に合わせてこちらへ統合した。
+
+    /** 存在しない・論理削除済みの revision id → 404。AC-55/AC-56/AC-102。 */
+    REVISION_NOT_FOUND("PRICE_REVISION_016", "指定された価格改定が見つかりません", Severity.WARN),
+
+    /** {@code lockVersion} CAS 不一致 → 409。AC-76/AC-103/AC-115。 */
+    LOCK_VERSION_CONFLICT("PRICE_REVISION_017", "他の操作により価格改定が更新されています", Severity.WARN),
+
+    /** provision/retry-provision/activate の状態遷移前提を満たさない → 409。
+     *  AC-77/AC-78/AC-94/AC-95/AC-105/AC-106/AC-116。 */
+    STATE_CONFLICT("PRICE_REVISION_018", "現在の状態ではこの操作を実行できません", Severity.WARN),
+
+    /** reconcile 時、Stripe 側 Price/Product の属性が DB snapshot と不一致 → band を
+     *  {@code PROVISION_FAILED} へ隔離する専用コード。決定3改訂・AC-97/AC-97a。 */
+    RECONCILE_ATTRIBUTE_MISMATCH("PRICE_REVISION_019", "Stripe側の価格情報がDBの記録と一致しません", Severity.ERROR),
+
+    /** 冪等 lease 保持中の同時要求 → 409（{@code Retry-After} 付き）。AC-104/AC-131。 */
+    PROVISION_IN_PROGRESS("PRICE_REVISION_020", "同一操作が処理中です。しばらくしてから再試行してください", Severity.WARN);
 
     private final String code;
     private final String message;
