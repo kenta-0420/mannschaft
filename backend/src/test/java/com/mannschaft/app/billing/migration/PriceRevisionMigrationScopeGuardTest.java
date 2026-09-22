@@ -68,7 +68,19 @@ class PriceRevisionMigrationScopeGuardTest {
     @DisplayName("AC-169: 新規 Flyway migration は決定5の3本のみ（税コード・provision列・stripe_products）")
     void exactlyThreeNewMigrationsExist() {
         List<Path> taxCode = matching("create table billing_tax_codes");
-        List<Path> provisionColumns = matching("provision_attempts");
+        // "provision_attempts" 単独は V196（billing_price_versions への既存列）にも出現するため、
+        // 本戦役の2本目（billing_price_band_versions への ALTER）を一意に特定する複合条件で絞る。
+        List<Path> provisionColumns = allMigrations().stream()
+                .filter(p -> {
+                    try {
+                        String sql = Files.readString(p).toLowerCase();
+                        return sql.contains("provision_attempts")
+                                && sql.contains("alter table billing_price_band_versions");
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                })
+                .toList();
         List<Path> stripeProducts = matching("create table billing_stripe_products");
 
         assertThat(taxCode).as("1本目: billing_tax_codes 作成").hasSize(1);

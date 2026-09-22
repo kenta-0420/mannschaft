@@ -19,8 +19,8 @@ public class BillingTaxDerivationService {
     /** AC-28: inputAmount の上限（この値を超えると400相当）。 */
     public static final long MAX_INPUT_AMOUNT = 9_999_999L;
 
-    public BillingTaxDerivationResult derive(long inputAmount, BillingTaxBehavior taxBehavior, BillingTaxCodeEntity taxCode) {
-        if (inputAmount <= 0) {
+    public BillingTaxDerivationResult derive(Long inputAmount, BillingTaxBehavior taxBehavior, BillingTaxCodeEntity taxCode) {
+        if (inputAmount == null || inputAmount <= 0) {
             throw new IllegalArgumentException("inputAmount は正の値である必要があります: " + inputAmount);
         }
         if (inputAmount > MAX_INPUT_AMOUNT) {

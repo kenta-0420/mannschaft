@@ -333,7 +333,7 @@ class PriceRevisionCreateServiceTest {
     @DisplayName("AC-36: productKey が65文字（64文字超）は400")
     void ac36_tooLongProductKey_400() {
         String tooLong = "A".repeat(65);
-        given(planRepository.existsById(tooLong)).willReturn(true);
+        lenient().when(planRepository.existsById(tooLong)).thenReturn(true);
         PriceRevisionCreateRequest req = new PriceRevisionCreateRequest(BillingProductKind.PLAN, tooLong,
                 EntitlementScopeKind.TEAM, Instant.parse("2027-06-01T00:00:00Z"), null,
                 List.of(band(1, 1, null, 1000)));
@@ -379,10 +379,11 @@ class PriceRevisionCreateServiceTest {
     void ac39_invalidTaxBehaviorRejectedAtDtoLevel() {
         // Enum フィールドである PriceBandInput.taxBehavior に不正な文字列は代入できない
         // （型自体が BillingTaxBehavior のため、コンパイル時に保証される契約であることを確認する）。
-        assertThat(PriceBandInput.class.getRecordComponents())
-                .filteredOn(c -> c.getName().equals("taxBehavior"))
-                .extracting(c -> c.getType())
-                .containsExactly((Object) BillingTaxBehavior.class);
+        List<String> taxBehaviorTypeNames = java.util.Arrays.stream(PriceBandInput.class.getRecordComponents())
+                .filter(c -> c.getName().equals("taxBehavior"))
+                .map(c -> c.getType().getName())
+                .toList();
+        assertThat(taxBehaviorTypeNames).containsExactly(BillingTaxBehavior.class.getName());
     }
 
     @Test

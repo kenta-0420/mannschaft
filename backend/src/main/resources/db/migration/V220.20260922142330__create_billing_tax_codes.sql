@@ -5,7 +5,7 @@
 --
 -- 税コードは同一 code で複数の有効期間（税率改定履歴）を持てる。uk_btc_code_from で
 -- (code, valid_from) の重複登録を防ぎ、有効期間の重なり判定はアプリ層（BillingTaxCodeService）が
--- 専用ロック行 __TAX_CODE_LOCK__ を FOR UPDATE してから直列に行う。
+-- 専用ロック行（末尾の seed 参照）を FOR UPDATE してから直列に行う。
 -- =====================================================================
 
 CREATE TABLE billing_tax_codes (

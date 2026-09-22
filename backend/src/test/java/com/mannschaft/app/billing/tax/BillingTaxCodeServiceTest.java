@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -57,7 +58,7 @@ class BillingTaxCodeServiceTest {
                 .rateBasisPoints(0)
                 .displayName("lock")
                 .build();
-        given(repository.lockTaxCodeLockRowForUpdate()).willReturn(lockRow);
+        lenient().when(repository.lockTaxCodeLockRowForUpdate()).thenReturn(lockRow);
     }
 
     private BillingTaxCodeEntity taxCode(String code, Instant from, Instant until, boolean enabled) {
@@ -240,10 +241,11 @@ class BillingTaxCodeServiceTest {
     @Test
     @DisplayName("決定6: __TAX_CODE_LOCK__ 自体は一覧・解決 API の対象から常に除外される")
     void lockRowNeverResolvable() {
-        given(repository.findEffectiveAt("__TAX_CODE_LOCK__", Instant.now())).willReturn(
-                Optional.of(repository.lockTaxCodeLockRowForUpdate()));
+        BillingTaxCodeEntity lockRow = repository.lockTaxCodeLockRowForUpdate();
+        Instant at = Instant.now();
+        given(repository.findEffectiveAt("__TAX_CODE_LOCK__", at)).willReturn(Optional.of(lockRow));
 
-        assertThatThrownBy(() -> service.resolveEffective("__TAX_CODE_LOCK__", Instant.now()))
+        assertThatThrownBy(() -> service.resolveEffective("__TAX_CODE_LOCK__", at))
                 .as("ロック行は enabled=false なので通常解決からは常に拒否される")
                 .isInstanceOf(BusinessException.class);
     }
