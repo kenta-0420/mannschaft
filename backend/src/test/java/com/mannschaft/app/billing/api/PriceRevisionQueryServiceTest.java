@@ -235,6 +235,15 @@ class PriceRevisionQueryServiceTest {
                 .priceVersionId(version.getId())
                 .bandNo(1)
                 .minMembers(1)
+                // 以下4フィールドは BillingPriceBandVersionEntity では NOT NULL 列（Long/Integer）だが、
+                // PriceRevisionBandResponse 側は primitive（long/int）で受けるため、未設定のまま
+                // （null）だと auto-unboxing で必ず NPE になる（出陣隊第4陣が実測で発見・修正。
+                // AC-54/AC-57 が実際には一度も green で走っていなかったことを示す）。
+                .inputAmount(1_000L)
+                .amountExcludingTax(1_000L)
+                .taxAmount(100L)
+                .amountIncludingTax(1_100L)
+                .taxRateBasisPoints(1000)
                 .effectiveFrom(version.getEffectiveFrom())
                 .status(status)
                 .build();

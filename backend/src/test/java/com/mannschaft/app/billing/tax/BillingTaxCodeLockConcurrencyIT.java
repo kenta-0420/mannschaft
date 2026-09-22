@@ -33,10 +33,20 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private BillingTaxCodeRepository repository;
 
+    /**
+     * 根治治療（出陣隊第4陣・実測で発見）: {@code new BillingTaxCodeService(repository)} で
+     * 手動生成すると Spring AOP のトランザクションプロキシを経由しないため、
+     * {@code @Transactional} が一切効かず {@code repository.lockTaxCodeLockRowForUpdate()}
+     * （FOR UPDATE クエリ）が「トランザクションが無い」で必ず失敗する
+     * （並行性検証IT自体が本コミットまで一度も実行に成功していなかったことを示す）。
+     * 本番と同じ Spring 管理 Bean を {@code @Autowired} して初めて、本ITが検証したい
+     * ロック行直列化の実際の挙動を確かめられる。
+     */
+    @Autowired
     private BillingTaxCodeService service;
 
     private void init() {
-        service = new BillingTaxCodeService(repository);
+        // no-op（互換のため残す。service は @Autowired 済みの本番 Bean を直接使う）。
     }
 
     @Test

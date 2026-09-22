@@ -11,8 +11,6 @@ import com.mannschaft.app.billing.api.dto.PriceBandInput;
 import com.mannschaft.app.billing.api.dto.PriceRevisionCreateRequest;
 import com.mannschaft.app.billing.tax.BillingTaxCodeEntity;
 import com.mannschaft.app.billing.tax.BillingTaxCodeRepository;
-import com.mannschaft.app.billing.tax.BillingTaxCodeService;
-import com.mannschaft.app.billing.tax.BillingTaxDerivationService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.billing.BillingTaxBehavior;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -57,6 +54,14 @@ class PriceRevisionOverlapConcurrencyIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private BillingTaxCodeRepository taxCodeRepository;
 
+    /**
+     * 根治治療（出陣隊第4陣・実測で発見）: {@code new PriceRevisionCreateService(...)} で
+     * 手動生成すると Spring AOP のトランザクションプロキシを経由しないため、
+     * {@code @Transactional}（行ロックによる直列化を含む）が一切効かない。
+     * 本ITが検証したいのはまさにその直列化の実際の挙動なので、本番と同じ Spring 管理 Bean を
+     * {@code @Autowired} する（{@code BillingTaxCodeLockConcurrencyIT} と同じ欠陥・同じ対応）。
+     */
+    @Autowired
     private PriceRevisionCreateService service;
 
     @BeforeEach
@@ -70,9 +75,6 @@ class PriceRevisionOverlapConcurrencyIT extends AbstractMySqlIntegrationTest {
                     .code("JP_STANDARD_10").displayName("標準税率10%").rateBasisPoints(1000)
                     .validFrom(Instant.EPOCH).enabled(true).build());
         }
-        BillingTaxCodeService taxCodeService = new BillingTaxCodeService(taxCodeRepository);
-        service = new PriceRevisionCreateService(priceVersionRepository, bandVersionRepository, planRepository,
-                featureCatalogRepository, taxCodeService, new BillingTaxDerivationService(), Clock.systemUTC());
     }
 
     private PriceRevisionCreateRequest requestAt(Instant effectiveFrom) {
