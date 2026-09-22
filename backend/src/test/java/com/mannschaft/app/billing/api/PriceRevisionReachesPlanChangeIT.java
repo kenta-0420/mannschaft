@@ -56,10 +56,10 @@ class PriceRevisionReachesPlanChangeIT extends AbstractBillingPlanChangeApiIT {
     @DisplayName("AC-127: create→provision→activateした新価格がPR6b-1の見積り・確定に反映される")
     void newPriceRevisionFlowsIntoPlanChangePreviewAndConfirm() throws Exception {
         // ① 税コード登録
-        String taxCodeId = registerTaxCode();
+        registerTaxCode();
 
         // ② POST /price-revisions で新価格 revision 作成（TO_PLAN_KEYの新価格帯）
-        String revisionId = createPriceRevision(taxCodeId);
+        String revisionId = createPriceRevision();
 
         // ③ provision
         adminPost("/api/v1/system-admin/billing/price-revisions/" + revisionId + "/provision", "{}")
@@ -89,7 +89,12 @@ class PriceRevisionReachesPlanChangeIT extends AbstractBillingPlanChangeApiIT {
         assertThat(changesOf()).isNotEmpty();
     }
 
-    private String registerTaxCode() throws Exception {
+    /**
+     * 税コードを登録する。{@code code} 自身が {@code PriceBandInput.taxCode} で参照するキーであり、
+     * 生成された id ではない（実 DTO: {@code PriceRevisionCreateRequest} は taxCodeId を持たず、
+     * band ごとに {@code taxCode}（code 文字列）と {@code taxBehavior} を持つ）。
+     */
+    private void registerTaxCode() throws Exception {
         MvcResult result = adminPost("/api/v1/system-admin/billing/tax-codes",
                 "{\"code\":\"AC127_TAX\",\"displayName\":\"AC-127検体税\",\"stripeTaxCode\":\"txcd_ac127\","
                         + "\"rateBasisPoints\":1000,\"validFrom\":\"2020-01-01T00:00:00Z\"}")
@@ -97,17 +102,19 @@ class PriceRevisionReachesPlanChangeIT extends AbstractBillingPlanChangeApiIT {
         assertThat(result.getResponse().getStatus())
                 .as("税コード登録が失敗している(body=%s)", result.getResponse().getContentAsString())
                 .isEqualTo(201);
-        return body(result).path("data").path("id").asText();
     }
 
-    private String createPriceRevision(String taxCodeId) throws Exception {
+    private String createPriceRevision() throws Exception {
         String requestBody = "{"
                 + "\"productKind\":\"PLAN\",\"productKey\":\"" + TO_PLAN_KEY + "\","
-                + "\"scopeKind\":\"USER\",\"taxCodeId\":\"" + taxCodeId + "\","
-                + "\"taxBehavior\":\"EXCLUSIVE\","
-                + "\"effectiveFrom\":\"2020-01-01T00:00:00Z\","
+                + "\"scopeKind\":\"USER\","
+                // 実 DTO の validateEffectivePeriod は effectiveFrom > now を要求する（過去日時は400）。
+                // activate は即時 ACTIVE 化するため、未来日時で作成しても本テストの検証には影響しない。
+                + "\"effectiveFrom\":\"2099-01-01T00:00:00Z\","
+                + "\"effectiveUntil\":null,"
                 + "\"bands\":[{\"bandNo\":1,\"minMembers\":1,\"maxMembers\":null,"
-                + "\"amountExcludingTax\":" + NEW_TO_AMOUNT + "}]"
+                + "\"inputAmount\":" + NEW_TO_AMOUNT + ","
+                + "\"taxBehavior\":\"EXCLUSIVE\",\"taxCode\":\"AC127_TAX\"}]"
                 + "}";
         MvcResult result = adminPost("/api/v1/system-admin/billing/price-revisions", requestBody).andReturn();
         assertThat(result.getResponse().getStatus())

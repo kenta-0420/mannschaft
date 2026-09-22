@@ -470,6 +470,10 @@
       "loadFailed": "Failed to load",
       "noData": "No data",
       "taxCodeCreateSuccess": "Tax code created",
+      "attemptCount": "Attempts",
+      "provisionErrorLabel": "Error detail",
+      "backToList": "Back to list",
+      "activateDisabledReason": "Activate is unavailable until every band is READY",
       "notice": {
         "nextCycle": "Existing contracts keep their current price until the next billing cycle (no immediate change)",
         "noSaleOnPartialFailure": "While any band's provisioning has failed, that price cannot be sold or used for plan changes"

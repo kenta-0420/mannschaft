@@ -14,9 +14,6 @@ import com.mannschaft.app.billing.FeatureCategory;
 import com.mannschaft.app.billing.PlanEntity;
 import com.mannschaft.app.billing.PlanFeatureEntity;
 import com.mannschaft.app.billing.PlanFeatureRepository;
-import com.mannschaft.app.billing.PlanPriceBandEntity;
-import com.mannschaft.app.billing.PlanPriceBandRepository;
-import com.mannschaft.app.billing.PlanPriceBandScopeKind;
 import com.mannschaft.app.billing.PlanRepository;
 import com.mannschaft.app.billing.api.dto.ContractResponse;
 import com.mannschaft.app.billing.api.dto.FeatureAdminResponse;
@@ -55,7 +52,6 @@ public class SystemAdminBillingService {
     private final PlanRepository planRepository;
     private final FeatureCatalogRepository featureCatalogRepository;
     private final PlanFeatureRepository planFeatureRepository;
-    private final PlanPriceBandRepository planPriceBandRepository;
     private final BillingContractRepository billingContractRepository;
     private final BillingContractService billingContractService;
     private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
@@ -291,15 +287,6 @@ public class SystemAdminBillingService {
         } catch (IllegalArgumentException ex) {
             throw new BusinessException(EntitlementErrorCode.PLAN_MASTER_VALIDATION_FAILED);
         }
-    }
-
-    private static PlanPriceBandScopeKind toBandScope(String raw) {
-        PlanPriceBandScopeKind scope = BillingApiSupport.toBandScope(BillingApiSupport.parseScopeKind(raw));
-        if (scope == null) {
-            // USER はバンドを持てない。
-            throw new BusinessException(EntitlementErrorCode.PLAN_MASTER_VALIDATION_FAILED);
-        }
-        return scope;
     }
 
     private void validateRevenueNonprofit(FeatureCategory category, boolean freeForNonprofit) {

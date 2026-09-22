@@ -470,6 +470,10 @@
       "loadFailed": "読み込みに失敗しました",
       "noData": "データがありません",
       "taxCodeCreateSuccess": "税コードを登録しました",
+      "attemptCount": "試行回数",
+      "provisionErrorLabel": "エラー内容",
+      "backToList": "一覧に戻る",
+      "activateDisabledReason": "全バンドがREADYになるまでActivateは実行できません",
       "notice": {
         "nextCycle": "既存契約は次の請求周期まで現在の価格のままです（即時には変わりません）",
         "noSaleOnPartialFailure": "一部バンドのProvisionに失敗している間は、その価格帯での新規販売・プラン変更はできません"
