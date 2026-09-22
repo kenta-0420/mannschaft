@@ -193,6 +193,7 @@ public class PriceRevisionCreateService {
                 .effectiveFrom(request.effectiveFrom())
                 .effectiveUntil(request.effectiveUntil())
                 .bands(bandResponses)
+                .lockVersion(revision.getLockVersion())
                 .build();
     }
 

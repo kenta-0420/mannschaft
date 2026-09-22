@@ -1,17 +1,27 @@
 package com.mannschaft.app.billing.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.mannschaft.app.billing.BillingPriceProvisionGateway;
+import com.mannschaft.app.billing.PlanEntity;
+import com.mannschaft.app.billing.PlanRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -24,10 +34,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * を、①税コード登録 → ②{@code POST /price-revisions} → ③provision → ④activate → ⑤見積り → ⑥確定
  * の順に実機に近い形で通す。</p>
  *
- * <p><b>本テストが red になる理由</b>: {@code POST /api/v1/system-admin/billing/tax-codes} /
- * {@code POST /api/v1/system-admin/billing/price-revisions} / {@code .../provision} /
- * {@code .../activate} のいずれも本コミット時点で未実装（404）であるため。URL 文字列と JSON 構造だけを
- * 参照し、未実装の Java 型は直接 import しない（{@code AbstractBillingPlanChangeApiIT} と同じ流儀）。
+ * <p>URL 文字列と JSON 構造だけを参照し、Java 型は {@code PlanRepository}/{@code PlanEntity}
+ * 以外は直接 import しない（{@code AbstractBillingPlanChangeApiIT} と同じ流儀）。
  * {@code BillingPlanChangeGateway} は {@code @MockitoBean}（Stripe 通信はしない）。</p>
  *
  * <p>正本: `.claude/campaigns/price-rev-plan-v3.md` H群 AC-127。</p>
@@ -38,8 +46,48 @@ class PriceRevisionReachesPlanChangeIT extends AbstractBillingPlanChangeApiIT {
     private static final long SYSTEM_ADMIN_ID = 700_901L;
     private static final long NEW_TO_AMOUNT = 4_400L;
 
+    /**
+     * create 時点の {@code validateEffectivePeriod}（effectiveFrom が過去だと400）を満たしつつ、
+     * activate 時点では確実に過ぎているようにするための実行バッファ。短すぎると
+     * create→provision→activate の実処理時間だけで使い切ってしまいflakyになるため、
+     * 実測（本IT実測: 3ステップで概ね数十〜数百ms）に対し十分な余裕を持たせる。
+     */
+    private static final Duration EFFECTIVE_FROM_BUFFER = Duration.ofMillis(800);
+
+    @Autowired
+    private PlanRepository planRepository;
+
+    /**
+     * {@code StripeBillingPriceProvisionGateway} は本コミット時点で {@code TEMP_STUB}
+     * （全メソッドが {@link UnsupportedOperationException} を投げるだけの未実装実体）であり、
+     * モックしないと provision が必ず PROVISION_FAILED になり、以降 activate も
+     * STATE_CONFLICT（409）で必ず失敗する。{@code BillingPlanChangeGateway} と同じ流儀で
+     * Stripe 通信をしない {@code @MockitoBean} に差し替える
+     * （{@code BillingPriceProvisionGateway} の Javadoc が名指しする既存の単体テストと同じ対応）。
+     */
+    @MockitoBean
+    private BillingPriceProvisionGateway priceProvisionGateway;
+
     @BeforeEach
     void setUp() {
+        given(priceProvisionGateway.findPriceByMetadata(any(), any())).willReturn(Optional.empty());
+        given(priceProvisionGateway.resolveOrCreateProduct(any())).willReturn(
+                new BillingPriceProvisionGateway.ProductResolution("prod_ac127_full", true));
+        given(priceProvisionGateway.createPrice(any())).willReturn(
+                new BillingPriceProvisionGateway.PriceCreationResult("price_ac127_full"));
+
+        // AbstractMySqlIntegrationTest は application-test.yml で flyway.enabled=false・
+        // ddl-auto=create のため、V150 seed migration の plans マスタ行（FREE/BASIC/FULL）は
+        // テスト DB に一切投入されない（スキーマのみ Hibernate が作る）。
+        // price-revisions 作成 API は productKind=PLAN の場合 planRepository.existsById() で
+        // 実在チェックをするため、band を直接 insertBand() する既存フィクスチャとは別に、
+        // plans 行自体を明示的に用意する必要がある
+        // （同型の対応: PriceRevisionOverlapConcurrencyIT が "FULL_IT" で同じことをしている）。
+        if (planRepository.findById(TO_PLAN_KEY).isEmpty()) {
+            planRepository.save(PlanEntity.builder().planKey(TO_PLAN_KEY).enabled(true)
+                    .displayNameKey("k").descriptionKey("d").sortOrder(1).build());
+        }
+
         // TO band は price-revisions API 経由で作る（insertBand による直接投入はしない）ため、
         // ここでは FROM 側の契約フィクスチャだけを親クラスの部品で組み立てる。
         userId = insertUser("ac127");
@@ -59,15 +107,37 @@ class PriceRevisionReachesPlanChangeIT extends AbstractBillingPlanChangeApiIT {
         registerTaxCode();
 
         // ② POST /price-revisions で新価格 revision 作成（TO_PLAN_KEYの新価格帯）
-        String revisionId = createPriceRevision();
+        MvcResult createResult = createPriceRevision();
+        JsonNode createData = body(createResult).path("data");
+        String revisionId = createData.path("id").asText();
 
-        // ③ provision
-        adminPost("/api/v1/system-admin/billing/price-revisions/" + revisionId + "/provision", "{}")
+        // ③ provision。lockVersion は「直前のレスポンスが返した現在値」を必ず使う
+        // （固定0を送り続けると2回目以降のCAS呼び出しが必ず409 LOCK_VERSION_CONFLICTになる。
+        // 根治治療として PriceRevisionResponse に lockVersion フィールドを追加したので、
+        // それをそのまま使い回す）。
+        long lockVersionAfterCreate = createData.path("lockVersion").asLong();
+        MvcResult provisionResult = adminPost(
+                "/api/v1/system-admin/billing/price-revisions/" + revisionId + "/provision",
+                "{\"lockVersion\":" + lockVersionAfterCreate + "}")
                 .andReturn();
+        assertThat(provisionResult.getResponse().getStatus())
+                .as("provisionが失敗している(body=%s)", provisionResult.getResponse().getContentAsString())
+                .isEqualTo(200);
+        long lockVersionAfterProvision = body(provisionResult).path("data").path("lockVersion").asLong();
 
-        // ④ activate（即時 ACTIVE）
-        adminPost("/api/v1/system-admin/billing/price-revisions/" + revisionId + "/activate", "{}")
+        // ④ activate（即時 ACTIVE）。PriceRevisionActivationService#activate は
+        // 「effectiveFrom が activate 実行時点の実時刻を超えていない」ときのみ ACTIVE に直接遷移させ、
+        // 超えていれば SCHEDULED に留める（決定4・AC-105〜110）。createPriceRevision() で
+        // effectiveFrom に与えた「作成時刻+実行バッファ」を使い切るため、activate 呼び出し前に
+        // バッファ分だけ待ち、確実に「今は effectiveFrom を過ぎている」状態にしてから叩く。
+        Thread.sleep(EFFECTIVE_FROM_BUFFER.plusMillis(200).toMillis());
+        MvcResult activateResult = adminPost(
+                "/api/v1/system-admin/billing/price-revisions/" + revisionId + "/activate",
+                "{\"lockVersion\":" + lockVersionAfterProvision + "}")
                 .andReturn();
+        assertThat(activateResult.getResponse().getStatus())
+                .as("activateが失敗している(body=%s)", activateResult.getResponse().getContentAsString())
+                .isEqualTo(200);
 
         // ⑤ PR6b-1の見積りAPIが新しいinputAmount/taxAmountを返す
         MvcResult previewResult = preview(userId, contractId, TO_PLAN_KEY, contractVersion(), newKey())
@@ -95,22 +165,30 @@ class PriceRevisionReachesPlanChangeIT extends AbstractBillingPlanChangeApiIT {
      * band ごとに {@code taxCode}（code 文字列）と {@code taxBehavior} を持つ）。
      */
     private void registerTaxCode() throws Exception {
+        // enabled は BillingTaxCodeCreateRequest ではプリミティブ boolean のため、
+        // JSON で省略すると欠損値として false にデシリアライズされ、resolveEffective の
+        // isEnabled() フィルタで無効扱いになる（TAX_CODE_NOT_FOUND）。明示的に true を渡す。
         MvcResult result = adminPost("/api/v1/system-admin/billing/tax-codes",
                 "{\"code\":\"AC127_TAX\",\"displayName\":\"AC-127検体税\",\"stripeTaxCode\":\"txcd_ac127\","
-                        + "\"rateBasisPoints\":1000,\"validFrom\":\"2020-01-01T00:00:00Z\"}")
+                        + "\"rateBasisPoints\":1000,\"validFrom\":\"2020-01-01T00:00:00Z\",\"enabled\":true}")
                 .andReturn();
         assertThat(result.getResponse().getStatus())
                 .as("税コード登録が失敗している(body=%s)", result.getResponse().getContentAsString())
                 .isEqualTo(201);
     }
 
-    private String createPriceRevision() throws Exception {
+    private MvcResult createPriceRevision() throws Exception {
+        // 実 DTO の validateEffectivePeriod は effectiveFrom.isBefore(now) を 400 で拒否するため、
+        // 過去日時は使えない。一方 PriceRevisionActivationService#activate は
+        // effectiveFrom が「activate 実行時点の実時刻」を超えていれば即時 ACTIVE にせず SCHEDULED に
+        // 留める。2099年のような遠い未来を使うと恒久的に SCHEDULED のままになり見積り/確定 API から
+        // 読めなくなる（実測で確認済み）ため、「create 時点ではわずかに未来・activate 時点では
+        // 既に過去」になる実時刻ベースの値を使う（EFFECTIVE_FROM_BUFFER 分だけ待ってから activate する）。
+        Instant effectiveFrom = Instant.now(clock).plus(EFFECTIVE_FROM_BUFFER);
         String requestBody = "{"
                 + "\"productKind\":\"PLAN\",\"productKey\":\"" + TO_PLAN_KEY + "\","
                 + "\"scopeKind\":\"USER\","
-                // 実 DTO の validateEffectivePeriod は effectiveFrom > now を要求する（過去日時は400）。
-                // activate は即時 ACTIVE 化するため、未来日時で作成しても本テストの検証には影響しない。
-                + "\"effectiveFrom\":\"2099-01-01T00:00:00Z\","
+                + "\"effectiveFrom\":\"" + effectiveFrom + "\","
                 + "\"effectiveUntil\":null,"
                 + "\"bands\":[{\"bandNo\":1,\"minMembers\":1,\"maxMembers\":null,"
                 + "\"inputAmount\":" + NEW_TO_AMOUNT + ","
@@ -120,7 +198,7 @@ class PriceRevisionReachesPlanChangeIT extends AbstractBillingPlanChangeApiIT {
         assertThat(result.getResponse().getStatus())
                 .as("price-revisions 作成が失敗している(body=%s)", result.getResponse().getContentAsString())
                 .isEqualTo(201);
-        return body(result).path("data").path("id").asText();
+        return result;
     }
 
     private ResultActions adminPost(String path, String jsonBody) throws Exception {

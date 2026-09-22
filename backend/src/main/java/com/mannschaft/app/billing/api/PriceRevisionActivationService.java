@@ -104,6 +104,12 @@ public class PriceRevisionActivationService {
         }
         bandRepository.saveAll(bands);
         versionRepository.save(revision);
+        // 根治治療（2026-09-23）: lockVersion は @Version（JPA optimistic lock）で Hibernate が
+        // flush 時にのみインクリメントする。save() 直後に revision.getLockVersion() を読んでも
+        // flush 前は旧値のままのことがあり、レスポンスの lockVersion が実際に永続化された値と
+        // 食い違う（クライアントが次のCAS呼び出しで確実に409になる）。明示的に flush して
+        // レスポンス構築前に確定させる。
+        versionRepository.flush();
 
         return toResponse(revision, bands);
     }
@@ -138,6 +144,7 @@ public class PriceRevisionActivationService {
                 .revisionNo(revision.getRevisionNo())
                 .catalogRevision(revision.getCatalogRevision())
                 .status(revision.getStatus())
+                .lockVersion(revision.getLockVersion())
                 .effectiveFrom(revision.getEffectiveFrom())
                 .effectiveUntil(revision.getEffectiveUntil())
                 .bands(bandResponses)

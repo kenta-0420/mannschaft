@@ -100,6 +100,7 @@ public class PriceRevisionQueryService {
                 .revisionNo(revision.getRevisionNo())
                 .catalogRevision(revision.getCatalogRevision())
                 .status(revision.getStatus())
+                .lockVersion(revision.getLockVersion())
                 .effectiveFrom(revision.getEffectiveFrom())
                 .effectiveUntil(revision.getEffectiveUntil())
                 .bands(bandResponses)
