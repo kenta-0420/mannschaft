@@ -1105,4 +1105,81 @@ public interface StripePaymentProvider {
      * @param quantity 数量（null 可）
      */
     record SubscriptionItemDetail(String itemId, String priceRef, Long quantity) {}
+
+    /**
+     * 価格改定戦役（price-revisions）決定9改訂・決定10: 決定的 Stripe Product ID で Product を
+     * 解決または新規作成する。
+     *
+     * <p>{@code deterministicProductId} を Stripe Product の {@code id} にそのまま指定して
+     * {@code create} する。既に同一 ID の Product が存在する場合（同時作成競合）は
+     * {@code resource_already_exists} を捕捉して {@code retrieve} へ収束する。</p>
+     *
+     * @param deterministicProductId 決定的 Stripe Product ID（決定10）
+     * @param productName            Product 名（表示用）
+     * @param metadata               Product の metadata（productKind/productKey を含む）
+     * @param taxCode                Stripe 側税コード（null 可）。既存 Product には上書きしない
+     * @param idempotencyKey         {@code price-product-create:{deterministicProductId}}
+     * @return 解決結果
+     */
+    ProductResolutionInfo resolveOrCreateProduct(String deterministicProductId, String productName,
+            Map<String, String> metadata, String taxCode, String idempotencyKey);
+
+    /**
+     * 価格改定戦役 E群・F群: band snapshot から Stripe Price を作成する。
+     *
+     * @param stripeProductId        紐づける Stripe Product
+     * @param unitAmount             band の {@code inputAmount}
+     * @param currency               通貨コード（{@code jpy} 想定）
+     * @param recurringInterval      {@code month}/{@code year}
+     * @param recurringIntervalCount 周期回数
+     * @param taxBehavior            {@code INCLUSIVE}/{@code EXCLUSIVE}
+     * @param metadata               {@code revisionId}/{@code bandId} を含む metadata
+     * @param idempotencyKey         {@code price-band-create:{bandId}}
+     * @return 作成された Stripe Price ID
+     */
+    String createPriceForRevision(String stripeProductId, long unitAmount, String currency,
+            String recurringInterval, int recurringIntervalCount, String taxBehavior,
+            Map<String, String> metadata, String idempotencyKey);
+
+    /**
+     * 価格改定戦役 F群: {@code revisionId}/{@code bandId} の metadata で既存 Stripe Price を検索する。
+     *
+     * <p>Stripe Search API（{@code Price.search}）を用いる。見つかった Price の Product を retrieve し、
+     * {@code tax_code} も含めて snapshot へ写す（決定3改訂・reconcile の全属性再照合に用いる）。</p>
+     *
+     * @param revisionId metadata の {@code revisionId}
+     * @param bandId     metadata の {@code bandId}
+     * @return 見つかった Price の snapshot（無ければ empty）
+     */
+    java.util.Optional<PriceMetadataSnapshot> findPriceByRevisionAndBandMetadata(String revisionId, String bandId);
+
+    /**
+     * 価格改定戦役: 決定的 Product ID の解決結果。
+     *
+     * @param stripeProductId 解決された Stripe Product ID
+     * @param newlyCreated    true: この呼び出しで新規作成された。false: 同時作成競合により retrieve へ収束した
+     */
+    record ProductResolutionInfo(String stripeProductId, boolean newlyCreated) {}
+
+    /**
+     * 価格改定戦役: metadata 検索で見つかった Price + その Product の snapshot。
+     *
+     * @param stripePriceId          Stripe Price ID
+     * @param unitAmount             unit_amount
+     * @param currency               currency
+     * @param recurringInterval      recurring.interval
+     * @param recurringIntervalCount recurring.interval_count
+     * @param productTaxCode         Product 実体の tax_code
+     * @param taxBehavior            tax_behavior
+     * @param productMetadata        Product の metadata（productKind/productKey を含む）
+     */
+    record PriceMetadataSnapshot(String stripePriceId, long unitAmount, String currency,
+            String recurringInterval, int recurringIntervalCount, String productTaxCode,
+            String taxBehavior, Map<String, String> productMetadata) {
+
+        /** null を運ばせない。 */
+        public PriceMetadataSnapshot {
+            productMetadata = productMetadata == null ? Map.of() : Map.copyOf(productMetadata);
+        }
+    }
 }

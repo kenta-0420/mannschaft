@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -97,9 +98,17 @@ public class BillingPriceVersionEntity extends UuidV7Entity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /**
+     * 試練隊（第2陣）出陣時の申し送り: {@code @Builder.Default} が無いと、テストがビルダー経由で
+     * 作った Entity の {@code lockVersion} が null のままとなり、E群/F群/G群の CAS 系試練が
+     * 「{@code revision.getLockVersion() + 1}」等の unboxing で {@link NullPointerException} を
+     * 送出して意図した {@code BusinessException} の検証を隠してしまう（永続化前の Hibernate 既定値 0 を
+     * ビルダーにも反映する）。
+     */
     @Version
+    @Builder.Default
     @Column(name = "lock_version", nullable = false)
-    private Long lockVersion;
+    private Long lockVersion = 0L;
 
     @Column(name = "created_by")
     private Long createdBy;
