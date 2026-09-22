@@ -33,7 +33,7 @@ import static org.mockito.Mockito.verify;
  * （`.claude/campaigns/price-rev-plan-v3.md` 決定6・AC-4〜AC-16）。</p>
  *
  * <p>ロック行 {@code __TAX_CODE_LOCK__} を介した直列化（AC-5/AC-6）は、Service が
- * create/update のたびに {@code BillingTaxCodeRepository#lockTaxCodeLockRowForUpdate()} を
+ * create/update のたびに {@code BillingTaxCodeRepository#lockTaxCodeLockRowForUpdate(Instant)} を
  * 呼び出していることをモック検証で担保する（実際の DB 直列化効果は
  * {@link BillingTaxCodeLockConcurrencyIT} が IT で検証する＝AC-11）。</p>
  */
@@ -58,7 +58,7 @@ class BillingTaxCodeServiceTest {
                 .rateBasisPoints(0)
                 .displayName("lock")
                 .build();
-        lenient().when(repository.lockTaxCodeLockRowForUpdate()).thenReturn(lockRow);
+        lenient().when(repository.lockTaxCodeLockRowForUpdate(any())).thenReturn(lockRow);
     }
 
     private BillingTaxCodeEntity taxCode(String code, Instant from, Instant until, boolean enabled) {
@@ -85,7 +85,7 @@ class BillingTaxCodeServiceTest {
         assertThat(result).extracting(BillingTaxCodeEntity::getCode)
                 .doesNotContain("__TAX_CODE_LOCK__")
                 .containsExactlyInAnyOrder("JP_STANDARD_10", "JP_REDUCED_8");
-        verify(repository, never()).lockTaxCodeLockRowForUpdate();
+        verify(repository, never()).lockTaxCodeLockRowForUpdate(any());
     }
 
     @Test
@@ -100,7 +100,7 @@ class BillingTaxCodeServiceTest {
                 "JP_STANDARD_10", "標準税率", 1000, null, Instant.EPOCH, null, true));
 
         assertThat(created.getCode()).isEqualTo("JP_STANDARD_10");
-        verify(repository, times(1)).lockTaxCodeLockRowForUpdate();
+        verify(repository, times(1)).lockTaxCodeLockRowForUpdate(any());
     }
 
     @Test
@@ -119,7 +119,7 @@ class BillingTaxCodeServiceTest {
         assertThat(updated.getDisplayName()).isEqualTo("標準税率(改)");
         assertThat(updated.getStripeTaxCode()).isEqualTo("txcd_new");
         assertThat(updated.isEnabled()).isFalse();
-        verify(repository, times(1)).lockTaxCodeLockRowForUpdate();
+        verify(repository, times(1)).lockTaxCodeLockRowForUpdate(any());
 
         // rateBasisPoints/code/validFrom はリクエスト DTO に存在しない＝コンパイル時点で変更不可を強制する
         // 設計であること自体を、DTO が rateBasisPoints/code/validFrom の setter 相当を持たないことで確認する。
@@ -241,7 +241,7 @@ class BillingTaxCodeServiceTest {
     @Test
     @DisplayName("決定6: __TAX_CODE_LOCK__ 自体は一覧・解決 API の対象から常に除外される")
     void lockRowNeverResolvable() {
-        BillingTaxCodeEntity lockRow = repository.lockTaxCodeLockRowForUpdate();
+        BillingTaxCodeEntity lockRow = repository.lockTaxCodeLockRowForUpdate(Instant.EPOCH);
         Instant at = Instant.now();
         given(repository.findEffectiveAt("__TAX_CODE_LOCK__", at)).willReturn(Optional.of(lockRow));
 

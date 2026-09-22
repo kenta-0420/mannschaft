@@ -27,6 +27,13 @@ public class BillingTaxCodeService {
 
     private static final String LOCK_ROW_CODE = "__TAX_CODE_LOCK__";
 
+    /**
+     * ロック行（{@code __TAX_CODE_LOCK__}）の {@code valid_from}。V220 migration の投入値
+     * {@code 1970-01-01 00:00:00.000000} と完全一致する固定値（根治治療の詳細は
+     * {@link BillingTaxCodeRepository#lockTaxCodeLockRowForUpdate} の Javadoc 参照）。
+     */
+    private static final Instant LOCK_ROW_VALID_FROM = Instant.EPOCH;
+
     private final BillingTaxCodeRepository repository;
 
     /** AC-4: ロック行を除く有効な税コード一覧。 */
@@ -40,7 +47,7 @@ public class BillingTaxCodeService {
     /** AC-5/AC-8/AC-9/AC-10: 新規税コード登録。 */
     @Transactional
     public BillingTaxCodeEntity create(BillingTaxCodeCreateRequest request) {
-        repository.lockTaxCodeLockRowForUpdate();
+        repository.lockTaxCodeLockRowForUpdate(LOCK_ROW_VALID_FROM);
 
         repository.findByCodeAndValidFromAndDeletedAtIsNull(request.code(), request.validFrom())
                 .ifPresent(existing -> {
@@ -68,7 +75,7 @@ public class BillingTaxCodeService {
     /** AC-6/AC-10: 表示名・stripeTaxCode・validUntil・enabled のみ更新可能。 */
     @Transactional
     public BillingTaxCodeEntity update(UUID id, BillingTaxCodeUpdateRequest request) {
-        repository.lockTaxCodeLockRowForUpdate();
+        repository.lockTaxCodeLockRowForUpdate(LOCK_ROW_VALID_FROM);
 
         BillingTaxCodeEntity existing = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(PriceRevisionErrorCode.TAX_CODE_NOT_FOUND));
