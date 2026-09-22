@@ -20,6 +20,7 @@ import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.dto.MembershipSubscriptionListItemResponse;
 import com.mannschaft.app.payment.entity.MembershipPayerWithdrawalCancellationEntity;
 import com.mannschaft.app.payment.entity.MembershipPayerWithdrawalCancellationStatus;
+import com.mannschaft.app.payment.entity.MembershipBeneficiaryWithdrawalCancellationStatus;
 import com.mannschaft.app.payment.entity.MembershipSubscriptionEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
@@ -28,6 +29,7 @@ import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.MembershipChargeCommand;
 import com.mannschaft.app.payment.escrow.MembershipChargeResult;
 import com.mannschaft.app.payment.repository.MembershipPayerWithdrawalCancellationRepository;
+import com.mannschaft.app.payment.repository.MembershipBeneficiaryWithdrawalCancellationRepository;
 import com.mannschaft.app.payment.repository.MembershipSubscriptionRepository;
 import com.mannschaft.app.payment.repository.PaymentItemRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
@@ -111,6 +113,8 @@ public class MembershipSubscriptionService {
     private final PaymentFeeCalculator paymentFeeCalculator;
     /** 柱③-B PR-3: 退会/退会取消の1契約ぶんを独立トランザクションで処理するオーケストレータ。 */
     private final MembershipPayerWithdrawalRunner payerWithdrawalRunner;
+    private final MembershipBeneficiaryWithdrawalRunner beneficiaryWithdrawalRunner;
+    private final MembershipBeneficiaryWithdrawalCancellationRepository beneficiaryWithdrawalCancellationRepository;
     /** 柱③-B PR-3: 「退会処理由来で予約したか」の正本（退会取消時の復旧対象判定・再試行の拾い直し）。 */
     private final MembershipPayerWithdrawalCancellationRepository payerWithdrawalCancellationRepository;
     /** 柱③-B PR-3: 退会申請の現在状態（auth ドメインへは Service 経由でのみ触れる）。 */
@@ -232,7 +236,7 @@ public class MembershipSubscriptionService {
      * <ol>
      *   <li>項目検証: {@code is_recurring=true} でなければ {@code SUBSCRIPTION_ITEM_NOT_RECURRING}（409）。</li>
      *   <li>権原検証: {@link PaymentAuthorizationService#authorizePayment}（{@code manualRecordByAdmin=false}）で
-     *       払い手→受益者の代理払い権原を実評価（SELF/GUARDIAN/GUARDIAN_PROXY/PROXY_GRANT）。無権原は 403。</li>
+     *       払い手→受益者の代理払い権原を実評価（SELF/GUARDIAN/GUARDIAN_PROXY）。無権原は 403。</li>
      *   <li>二重加入防止: 受益者×項目に終端でないサブスクがあれば {@code SUBSCRIPTION_ALREADY_EXISTS}（409）。</li>
      *   <li>受領 Connect 口座解決＋READY 検証（非 READY は {@code ONBOARDING_NOT_READY} 409・即時モードゆえ HELD にしない）。</li>
      *   <li>払い手 default PM 検証: 未保存なら {@code SUBSCRIPTION_PAYMENT_METHOD_NOT_SAVED}（409・SetupIntent 導線へ）。</li>
@@ -344,7 +348,6 @@ public class MembershipSubscriptionService {
                     .paymentItemId(itemId)
                     .beneficiaryUserId(beneficiaryUserId)
                     .payerUserId(payerUserId)
-                    .paymentProxyGrantId(null)
                     .scopeKind(scopeAndAccount.scopeKind())
                     .scopeId(scopeAndAccount.scopeId())
                     .payeeConnectAccountId(payee.getId())
@@ -612,6 +615,39 @@ public class MembershipSubscriptionService {
         return List.copyOf(scheduled);
     }
 
+    /** 受益者退会では対象者の ACTIVE/PAST_DUE 契約だけを DB 先行で即時取消しする。 */
+    public List<UUID> cancelAllForBeneficiaryOnWithdrawal(Long beneficiaryUserId) {
+        if (beneficiaryUserId == null) {
+            return List.of();
+        }
+        List<UUID> ids = membershipSubscriptionRepository.findIdsByBeneficiaryUserIdAndStatusIn(
+                beneficiaryUserId, List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
+        List<UUID> cancelled = new ArrayList<>();
+        for (UUID id : ids) {
+            if (beneficiaryWithdrawalRunner.cancelInitial(id, beneficiaryUserId)) {
+                cancelled.add(id);
+            }
+        }
+        return List.copyOf(cancelled);
+    }
+
+    /** Stripe 同期が未完了の受益者退会取消しを再試行する。 */
+    public void retryBeneficiaryWithdrawalCancellations() {
+        beneficiaryWithdrawalCancellationRepository.findByStatusInOrderByUpdatedAtAsc(
+                        List.of(MembershipBeneficiaryWithdrawalCancellationStatus.PENDING,
+                                MembershipBeneficiaryWithdrawalCancellationStatus.FAILED))
+                .forEach(row -> beneficiaryWithdrawalRunner.retry(row.getSubscriptionId()));
+        // イベント投入前／作業行作成前／複数契約処理の途中で停止した場合も、退会の正本から拾い直す。
+        for (Long beneficiaryUserId : withdrawalStateQueryService.findUserIdsWithPendingWithdrawal()) {
+            try {
+                cancelAllForBeneficiaryOnWithdrawal(beneficiaryUserId);
+            } catch (Exception e) {
+                log.error("受益者退会取消しの未着手契約の照合に失敗: beneficiaryUserId={}", beneficiaryUserId, e);
+            }
+        }
+    }
+
+
     /**
      * 柱③-B PR-3: 退会申請中の払い手のうち<b>まだ期末解約が予約されていない</b>継続課金 ID を返す
      * （PR-4 の照合バッチの起点・Codex 検分2巡目 P1-2）。
@@ -651,6 +687,7 @@ public class MembershipSubscriptionService {
                 .collect(java.util.stream.Collectors.toSet());
         return unscheduled.stream().filter(id -> !handledByWorkRow.contains(id)).toList();
     }
+
 
     /**
      * 柱③-B PR-4: 期末解約を<b>再試行すべき払い手</b>の ID を返す（夜次再試行バッチの抽出）。

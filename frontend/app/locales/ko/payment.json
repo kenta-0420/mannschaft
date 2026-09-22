@@ -236,8 +236,7 @@
       "via": {
         "SELF": "본인",
         "GUARDIAN": "보호자",
-        "GUARDIAN_PROXY": "보호자 대리",
-        "PROXY_GRANT": "대리권"
+        "GUARDIAN_PROXY": "보호자 대리"
       },
       "selectAll": "전체 선택",
       "deselectAll": "전체 해제",

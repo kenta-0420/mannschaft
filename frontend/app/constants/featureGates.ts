@@ -63,7 +63,6 @@ export const GATE_ROUTE_MAP: Record<string, string[]> = {
     '/contracts',
     '/wallet',
     '/settings/billing',
-    '/admin/org-billing',
     '/system-admin/billing',
     '/me/payments',
     '/organizations/*/payments',

@@ -330,6 +330,23 @@ class AuthTokenServiceTest {
             // Then
             verify(redisTemplate).expire(key, 60L, TimeUnit.SECONDS);
         }
+
+        @Test
+        @DisplayName("異常系: TTLなしで残留したカウンタは制限超過でもTTLを復旧する")
+        void checkRateLimit_TTLなし残留_自己修復() {
+            // Given: INCR と EXPIRE の間で停止し、無期限のカウンタが残った状態
+            String key = "mannschaft:auth:test_rate_limit:orphaned";
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.increment(key)).willReturn(12L);
+            given(redisTemplate.getExpire(key, TimeUnit.SECONDS)).willReturn(-1L);
+
+            // When / Then: 今回は制限超過だが、次のウィンドウで必ず回復できる
+            assertThatThrownBy(() -> authTokenService.checkRateLimit(key, 5, Duration.ofMinutes(1)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_044"));
+            verify(redisTemplate).expire(key, 60L, TimeUnit.SECONDS);
+        }
     }
 
     // ========================================

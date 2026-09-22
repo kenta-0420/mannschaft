@@ -4,9 +4,12 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.payment.dto.ReceiptResponse;
+import com.mannschaft.app.payment.service.MemberPaymentReceiptPdfService;
 import com.mannschaft.app.payment.service.ReceiptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,9 +27,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReceiptController {
 
     private final ReceiptService receiptService;
+    private final MemberPaymentReceiptPdfService memberPaymentReceiptPdfService;
 
-    public ReceiptController(@Qualifier("memberPaymentReceiptService") ReceiptService receiptService) {
+    public ReceiptController(@Qualifier("memberPaymentReceiptService") ReceiptService receiptService,
+                             MemberPaymentReceiptPdfService memberPaymentReceiptPdfService) {
         this.receiptService = receiptService;
+        this.memberPaymentReceiptPdfService = memberPaymentReceiptPdfService;
     }
 
     /**
@@ -50,5 +56,17 @@ public class ReceiptController {
             @PathVariable Long memberPaymentId) {
         return ResponseEntity.ok(ApiResponse.of(
                 receiptService.getReceipt(memberPaymentId, SecurityUtils.getCurrentUserId())));
+    }
+
+    /** Stripe hosted receipt が使えない場合の、受領者名義 PDF fallback。 */
+    @AuthorizedInService
+    @GetMapping("/{memberPaymentId}/receipt/pdf")
+    public ResponseEntity<byte[]> downloadReceiptPdf(@PathVariable Long memberPaymentId) {
+        byte[] pdf = memberPaymentReceiptPdfService.generate(memberPaymentId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"member-payment-" + memberPaymentId + "-receipt.pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

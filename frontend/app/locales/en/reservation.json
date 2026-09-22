@@ -161,9 +161,7 @@
     },
     "page": {
       "my_title": "My Reservations",
-      "team_title": "Reservation Management",
-      "settings_title": "Reservation Settings",
-      "settings_subtitle": "Manage bookable items (staff / counters)"
+      "team_title": "Reservation Management"
     },
     "tab": {
       "book": "Book",
@@ -223,7 +221,6 @@
     },
     "button": {
       "add_line": "Add {resourceName}",
-      "add_line_long": "Add {resourceName}",
       "save": "Save",
       "cancel": "Cancel",
       "reserve": "Reserve",
@@ -237,12 +234,9 @@
       "title": "Confirm",
       "line_create": "Create Bookable Item",
       "line_edit": "Edit Bookable Item",
-      "line_create_long": "Add {resourceName}",
-      "line_edit_long": "Edit {resourceName}",
       "reserve_confirm": "Confirm Reservation",
       "cancel_confirm": "Cancel this reservation?",
-      "line_delete_confirm": "Delete this bookable item?",
-      "line_delete_named_confirm": "Delete \"{name}\"?"
+      "line_delete_confirm": "Delete this bookable item?"
     },
     "message": {
       "confirm_success": "Reservation confirmed",
@@ -254,9 +248,6 @@
       "line_update_success": "Bookable item updated",
       "line_delete_success": "Bookable item deleted",
       "line_save_failed": "Failed to save",
-      "line_create_success_long": "Bookable item created",
-      "line_update_success_long": "Bookable item updated",
-      "line_delete_success_long": "Bookable item deleted",
       "line_load_failed": "Failed to load bookable items",
       "save_failed": "Failed to save",
       "delete_failed": "Failed to delete",
