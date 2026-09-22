@@ -3,9 +3,18 @@
     "plans": {
       "title": "Pricing plans",
       "subtitle": "Choose only the features you need. Everything is free during the beta period.",
-      "free": { "name": "Free", "description": "Use the core features for free" },
-      "basic": { "name": "Basic", "description": "A plan bundling the most commonly used features" },
-      "full": { "name": "Full", "description": "Access every feature" },
+      "free": {
+        "name": "Free",
+        "description": "Use the core features for free"
+      },
+      "basic": {
+        "name": "Basic",
+        "description": "A plan bundling the most commonly used features"
+      },
+      "full": {
+        "name": "Full",
+        "description": "Access every feature"
+      },
       "currentPlan": "Current plan",
       "priceUndecided": "Price to be decided after the beta ends",
       "betaFree": "Free to try during the beta period",
@@ -61,11 +70,26 @@
       }
     },
     "features": {
-      "template_premium_modules": { "name": "Premium modules", "description": "Enable paid modules" },
-      "reservation_notification_recipients_extended": { "name": "Extended notification recipients", "description": "Register 4 or more recipients for reservation notification emails" },
-      "ads_hide": { "name": "Hide ads", "description": "Hide ads throughout the app" },
-      "monetization_paywall": { "name": "Paywall", "description": "Open paid content" },
-      "monetization_membership_fee": { "name": "Membership fees", "description": "Collect membership fees from members" }
+      "template_premium_modules": {
+        "name": "Premium modules",
+        "description": "Enable paid modules"
+      },
+      "reservation_notification_recipients_extended": {
+        "name": "Extended notification recipients",
+        "description": "Register 4 or more recipients for reservation notification emails"
+      },
+      "ads_hide": {
+        "name": "Hide ads",
+        "description": "Hide ads throughout the app"
+      },
+      "monetization_paywall": {
+        "name": "Paywall",
+        "description": "Open paid content"
+      },
+      "monetization_membership_fee": {
+        "name": "Membership fees",
+        "description": "Collect membership fees from members"
+      }
     },
     "paywall": {
       "title": "This feature requires a paid plan",
@@ -106,7 +130,13 @@
       "cancelReservationBody": "You can keep using it until {endDate}. You will not be billed from {nextBillingDate} onward.",
       "resumeCancelCta": "Undo scheduled cancellation",
       "resumeSuccess": "Cancellation withdrawn. You can keep using the service",
-      "sourceBadge": { "plan": "Plan", "addon": "Add-on", "betaGrant": "Beta perk", "free": "Free", "nonprofitFree": "Nonprofit free tier" },
+      "sourceBadge": {
+        "plan": "Plan",
+        "addon": "Add-on",
+        "betaGrant": "Beta perk",
+        "free": "Free",
+        "nonprofitFree": "Nonprofit free tier"
+      },
       "validUntil": "Valid until {date}",
       "noExpiry": "Free for the duration of the service",
       "periodEndNotice": "Available until {date}",
@@ -295,7 +325,13 @@
     },
     "admin": {
       "title": "Billing master data management",
-      "tabs": { "plans": "Plans", "features": "Feature catalog", "priceBands": "Member bands", "grants": "Manual grant", "contracts": "Contract search" },
+      "tabs": {
+        "plans": "Plans",
+        "features": "Feature catalog",
+        "priceBands": "Member bands",
+        "grants": "Manual grant",
+        "contracts": "Contract search"
+      },
       "priceWarning": "Setting a price will make payment mandatory for new contracts going forward",
       "plansTab": {
         "planKey": "Plan key",
@@ -339,7 +375,8 @@
         "addBand": "Add band",
         "removeBand": "Remove",
         "saveSuccess": "Member bands saved",
-        "validationNote": "Bands must be ordered, with each min = previous max + 1 (only the last band may be unlimited)"
+        "validationNote": "Bands must be ordered, with each min = previous max + 1 (only the last band may be unlimited)",
+        "movedToPriceRevisions": "Please manage price changes from the new Price Revisions screen (/system-admin/price-revisions)"
       },
       "planFeaturesTab": {
         "title": "Features included in the plan",
@@ -388,6 +425,55 @@
       "addonNotAvailable": "This feature can't be added individually",
       "changeRequiresPayment": "Changes involving a paid plan aren't allowed. Please cancel first, then contract the new plan",
       "generic": "The request failed. Please try again later"
+    },
+    "priceRevisions": {
+      "createTitle": "Create price revision",
+      "listTitle": "Price revisions",
+      "detailTitle": "Price revision detail",
+      "productKind": "Product kind",
+      "productKey": "Product key",
+      "scopeKind": "Scope",
+      "effectiveFrom": "Effective from",
+      "effectiveUntil": "Effective until",
+      "status": "Status",
+      "bandNo": "Band no.",
+      "minMembers": "Min members",
+      "maxMembers": "Max members",
+      "inputAmount": "Input amount",
+      "taxBehavior": "Tax behavior",
+      "taxCode": "Tax code",
+      "amountExcludingTax": "Amount excluding tax",
+      "taxAmount": "Tax amount",
+      "amountIncludingTax": "Amount including tax",
+      "createAction": "Create",
+      "provisionAction": "Provision",
+      "retryProvisionAction": "Retry provision",
+      "reconcileProvisionAction": "Reconcile provision",
+      "activateAction": "Activate",
+      "createSuccess": "Price revision created (DRAFT)",
+      "provisionSuccess": "Provisioned",
+      "retryProvisionSuccess": "Provision retried",
+      "reconcileProvisionSuccess": "Provision reconciled",
+      "activateSuccess": "Price revision activated",
+      "confirmActivate": "Activate this price revision? (only possible when all bands are READY)",
+      "taxPreviewTitle": "Tax preview (confirm before submitting)",
+      "errorOverlap": "The effective period overlaps with an existing price revision",
+      "errorFutureExists": "A future price revision already exists (only one at a time is allowed)",
+      "errorLockVersionConflict": "This was updated by another operation. Please reload the page",
+      "errorStateConflict": "This operation cannot be performed in the current state",
+      "errorInvalidTaxCode": "The specified tax code is not available",
+      "errorReconcileMismatch": "The Stripe-side price information does not match the DB record",
+      "errorProvisionInProgress": "The same operation is already in progress. Please retry shortly",
+      "taxCodesTitle": "Tax code master",
+      "taxCodeCreateAction": "Add tax code",
+      "noPermission": "You do not have permission to view this screen",
+      "loadFailed": "Failed to load",
+      "noData": "No data",
+      "taxCodeCreateSuccess": "Tax code created",
+      "notice": {
+        "nextCycle": "Existing contracts keep their current price until the next billing cycle (no immediate change)",
+        "noSaleOnPartialFailure": "While any band's provisioning has failed, that price cannot be sold or used for plan changes"
+      }
     }
   }
 }

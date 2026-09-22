@@ -37,6 +37,106 @@ export type BillingContractCancelResponse = components['schemas']['BillingContra
 /** API 表現のスコープ種別（設計書 02 §0）。 */
 export type BillingScopeKind = 'USER' | 'TEAM' | 'ORG'
 
+// === 価格改定（price-revisions）: openapi.json 未再生成のため手動定義（段階的に生成型へ移行） ===
+export type PriceRevisionProductKind = 'PLAN' | 'ADDON'
+export type PriceRevisionTaxBehavior = 'INCLUSIVE' | 'EXCLUSIVE'
+export type PriceRevisionStatus =
+  | 'DRAFT' | 'PROVISIONING' | 'PROVISION_FAILED' | 'READY' | 'SCHEDULED' | 'ACTIVE' | 'RETIRED'
+
+export interface PriceRevisionBandInput {
+  bandNo: number
+  minMembers: number
+  maxMembers?: number | null
+  inputAmount: number
+  taxBehavior: PriceRevisionTaxBehavior
+  taxCode: string
+}
+
+export interface PriceRevisionCreateRequest {
+  productKind: PriceRevisionProductKind
+  productKey: string
+  scopeKind: BillingScopeKind
+  effectiveFrom: string
+  effectiveUntil?: string | null
+  bands: PriceRevisionBandInput[]
+}
+
+export interface PriceRevisionBandResponse {
+  id: string
+  bandNo: number
+  minMembers: number
+  maxMembers?: number | null
+  inputAmount: number
+  taxBehavior: PriceRevisionTaxBehavior
+  taxCode: string
+  amountExcludingTax: number
+  taxAmount: number
+  amountIncludingTax: number
+  taxRateBasisPoints: number
+  status: PriceRevisionStatus
+  stripePriceRef?: string | null
+  provisionErrorCode?: string | null
+  provisionAttempts: number
+}
+
+export interface PriceRevisionResponse {
+  id: string
+  productKind: PriceRevisionProductKind
+  productKey: string
+  scopeKind: BillingScopeKind
+  revisionNo: number
+  catalogRevision: string
+  status: PriceRevisionStatus
+  effectiveFrom: string
+  effectiveUntil?: string | null
+  bands: PriceRevisionBandResponse[]
+  lockVersion?: number
+}
+
+export interface PriceRevisionSummaryResponse {
+  id: string
+  productKind: PriceRevisionProductKind
+  productKey: string
+  scopeKind: BillingScopeKind
+  revisionNo: number
+  status: PriceRevisionStatus
+  effectiveFrom: string
+  effectiveUntil?: string | null
+}
+
+export interface PriceRevisionPageResponse {
+  items: PriceRevisionSummaryResponse[]
+  totalElements: number
+}
+
+export interface BillingTaxCodeResponse {
+  id: string
+  code: string
+  displayName: string
+  stripeTaxCode: string
+  rateBasisPoints: number
+  validFrom: string
+  validUntil?: string | null
+  enabled: boolean
+}
+
+export interface BillingTaxCodeCreateRequest {
+  code: string
+  displayName: string
+  rateBasisPoints: number
+  stripeTaxCode: string
+  validFrom: string
+  validUntil?: string | null
+  enabled: boolean
+}
+
+export interface BillingTaxCodeUpdateRequest {
+  displayName: string
+  stripeTaxCode: string
+  validUntil?: string | null
+  enabled: boolean
+}
+
 /**
  * Billing Center PR6b-1 AC-133: `BillingActiveContract` 投影に載る保留中のプラン変更。
  *
@@ -85,8 +185,8 @@ export type BillingContractChangeResponse = components['schemas']['BillingContra
 export type BillingPaymentActionResponse = components['schemas']['BillingPaymentActionResponse']
 
 /** 契約作成に必須の Idempotency-Key ヘッダを生成する（連打・再送の二重発行防止・設計書 02 §0 M-1）。 */
-function idempotencyHeaders(): Record<string, string> {
-  return { 'Idempotency-Key': crypto.randomUUID() }
+function idempotencyHeaders(key?: string): Record<string, string> {
+  return { 'Idempotency-Key': key ?? crypto.randomUUID() }
 }
 
 export function useBillingApi() {
@@ -305,10 +405,6 @@ export function useBillingApi() {
     return api<unknown>(`${ADMIN_BASE}/plans/${planKey}`, { method: 'DELETE' })
   }
 
-  async function replacePriceBandsAdmin(planKey: string, body: BillingPriceBandsReplaceRequest) {
-    return api<unknown>(`${ADMIN_BASE}/plans/${planKey}/price-bands`, { method: 'PUT', body })
-  }
-
   async function replacePlanFeaturesAdmin(planKey: string, body: BillingPlanFeaturesReplaceRequest) {
     return api<unknown>(`${ADMIN_BASE}/plans/${planKey}/features`, { method: 'PUT', body })
   }
@@ -347,6 +443,98 @@ export function useBillingApi() {
     return api<{ data: BillingPagedContractResponse }>(`${ADMIN_BASE}/contracts?${query.toString()}`)
   }
 
+  // ============================================================
+  // 価格改定（price-revisions・SYSTEM_ADMIN専用）
+  // ============================================================
+
+  const PRICE_REVISIONS_BASE = `${ADMIN_BASE}/price-revisions`
+  const TAX_CODES_BASE = `${ADMIN_BASE}/tax-codes`
+
+  async function createPriceRevision(body: PriceRevisionCreateRequest, idempotencyKey?: string) {
+    return api<{ data: PriceRevisionResponse }>(PRICE_REVISIONS_BASE, {
+      method: 'POST',
+      body,
+      headers: idempotencyHeaders(idempotencyKey),
+    })
+  }
+
+  async function getPriceRevision(id: string) {
+    return api<{ data: PriceRevisionResponse }>(`${PRICE_REVISIONS_BASE}/${id}`)
+  }
+
+  async function listPriceRevisions(params?: {
+    productKind?: PriceRevisionProductKind
+    productKey?: string
+    scopeKind?: BillingScopeKind
+    status?: string
+    page?: number
+    size?: number
+  }) {
+    const query = new URLSearchParams()
+    if (params?.productKind) query.set('productKind', params.productKind)
+    if (params?.productKey) query.set('productKey', params.productKey)
+    if (params?.scopeKind) query.set('scopeKind', params.scopeKind)
+    if (params?.status) query.set('status', params.status)
+    query.set('page', String(params?.page ?? 0))
+    query.set('size', String(params?.size ?? 20))
+    return api<{ data: PriceRevisionPageResponse }>(`${PRICE_REVISIONS_BASE}?${query.toString()}`)
+  }
+
+  async function provisionPriceRevision(id: string, lockVersion: number, idempotencyKey?: string) {
+    return api<{ data: PriceRevisionResponse }>(`${PRICE_REVISIONS_BASE}/${id}/provision`, {
+      method: 'POST',
+      body: { lockVersion },
+      headers: idempotencyHeaders(idempotencyKey),
+    })
+  }
+
+  async function retryProvisionPriceRevision(id: string, lockVersion: number, idempotencyKey?: string) {
+    return api<{ data: PriceRevisionResponse }>(`${PRICE_REVISIONS_BASE}/${id}/retry-provision`, {
+      method: 'POST',
+      body: { lockVersion },
+      headers: idempotencyHeaders(idempotencyKey),
+    })
+  }
+
+  async function reconcileProvisionPriceRevision(id: string, lockVersion: number, idempotencyKey?: string) {
+    return api<{ data: PriceRevisionResponse }>(`${PRICE_REVISIONS_BASE}/${id}/reconcile-provision`, {
+      method: 'POST',
+      body: { lockVersion },
+      headers: idempotencyHeaders(idempotencyKey),
+    })
+  }
+
+  async function activatePriceRevision(id: string, lockVersion: number, idempotencyKey?: string) {
+    return api<{ data: PriceRevisionResponse }>(`${PRICE_REVISIONS_BASE}/${id}/activate`, {
+      method: 'POST',
+      body: { lockVersion },
+      headers: idempotencyHeaders(idempotencyKey),
+    })
+  }
+
+  // ============================================================
+  // 税コードマスタ（tax-codes・SYSTEM_ADMIN専用）
+  // ============================================================
+
+  // 税コード CRUD の応答は ApiResponse 包装なし（SystemAdminTaxCodeController が生 entity/list を返す）。
+
+  async function listTaxCodes() {
+    return api<BillingTaxCodeResponse[]>(TAX_CODES_BASE)
+  }
+
+  async function createTaxCode(body: BillingTaxCodeCreateRequest) {
+    return api<BillingTaxCodeResponse>(TAX_CODES_BASE, { method: 'POST', body })
+  }
+
+  async function updateTaxCode(id: string, body: BillingTaxCodeUpdateRequest) {
+    return api<BillingTaxCodeResponse>(`${TAX_CODES_BASE}/${id}`, { method: 'PUT', body })
+  }
+
+  /** 税コードの論理削除（無効化）。DELETE /tax-codes/{id}。 */
+  async function deactivateTaxCode(id: string) {
+    return api<unknown>(`${TAX_CODES_BASE}/${id}`, { method: 'DELETE' })
+  }
+
   return {
     getPlanCatalog,
     checkEntitlement,
@@ -372,7 +560,6 @@ export function useBillingApi() {
     createPlanAdmin,
     updatePlanAdmin,
     deletePlanAdmin,
-    replacePriceBandsAdmin,
     replacePlanFeaturesAdmin,
     listFeaturesAdmin,
     getFeatureAdmin,
@@ -381,5 +568,16 @@ export function useBillingApi() {
     deleteFeatureAdmin,
     grantAdmin,
     searchContractsAdmin,
+    createPriceRevision,
+    getPriceRevision,
+    listPriceRevisions,
+    provisionPriceRevision,
+    retryProvisionPriceRevision,
+    reconcileProvisionPriceRevision,
+    activatePriceRevision,
+    listTaxCodes,
+    createTaxCode,
+    updateTaxCode,
+    deactivateTaxCode,
   }
 }

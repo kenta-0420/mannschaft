@@ -146,13 +146,19 @@ public class SystemAdminBillingController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * 廃止（価格改定戦役 J群・AC-140〜AC-142）: {@code plan_price_bands} への
+     * delete/saveAll による一括置換は 410 で封鎖する。新 API {@code POST /price-revisions}
+     * へ誘導し、{@link SystemAdminBillingService} 側の旧置換メソッドは一切呼ばない
+     * （書き込み経路自体を除去済み）。
+     */
     @PutMapping("/plans/{planKey}/price-bands")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    @Operation(summary = "人数バンド一括置換", description = "band_no 昇順・min=前 max+1・最終のみ max=null 違反は 400。")
-    public ResponseEntity<Void> replacePriceBands(
+    @Operation(summary = "【廃止】人数バンド一括置換", description = "410 Gone。POST /api/v1/price-revisions を使用すること。")
+    public ResponseEntity<String> replacePriceBands(
             @PathVariable String planKey, @Valid @RequestBody PriceBandsReplaceRequest request) {
-        service.replacePriceBands(planKey, request);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body("このAPIは廃止されました。新しい価格改定 API POST /api/v1/price-revisions を使用してください。");
     }
 
     // ============================================================

@@ -200,57 +200,12 @@ public class SystemAdminBillingService {
     }
 
     // ============================================================
-    // price-bands 一括置換
+    // price-bands 一括置換（廃止・AC-140〜AC-142）
     // ============================================================
-
-    public void replacePriceBands(String planKey, PriceBandsReplaceRequest req) {
-        loadPlan(planKey); // 存在検証（404）。
-        List<PriceBandsReplaceRequest.PriceBandInput> bands =
-                req.bands() == null ? List.of() : req.bands();
-
-        // scopeKind ごとに band_no 昇順・min = 前 max+1・最終のみ max=null を検証する。
-        for (PlanPriceBandScopeKind scope : PlanPriceBandScopeKind.values()) {
-            List<PriceBandsReplaceRequest.PriceBandInput> group = bands.stream()
-                    .filter(b -> scope == BillingApiSupport.toBandScope(
-                            BillingApiSupport.parseScopeKind(b.scopeKind())))
-                    .sorted(Comparator.comparingInt(b -> b.bandNo()))
-                    .toList();
-            validateBandGroup(group);
-        }
-
-        planPriceBandRepository.deleteAll(planPriceBandRepository.findByPlanKey(planKey));
-        planPriceBandRepository.flush();
-        List<PlanPriceBandEntity> rows = new ArrayList<>();
-        for (PriceBandsReplaceRequest.PriceBandInput b : bands) {
-            PlanPriceBandScopeKind scope = toBandScope(b.scopeKind());
-            rows.add(PlanPriceBandEntity.builder()
-                    .planKey(planKey)
-                    .scopeKind(scope)
-                    .bandNo(b.bandNo())
-                    .minMembers(b.minMembers())
-                    .maxMembers(b.maxMembers())
-                    .monthlyPriceJpy(b.monthlyPriceJpy())
-                    .build());
-        }
-        planPriceBandRepository.saveAll(rows);
-    }
-
-    private void validateBandGroup(List<PriceBandsReplaceRequest.PriceBandInput> group) {
-        for (int i = 0; i < group.size(); i++) {
-            PriceBandsReplaceRequest.PriceBandInput b = group.get(i);
-            boolean isLast = i == group.size() - 1;
-            if (!isLast && b.maxMembers() == null) {
-                // 最終バンド以外で上限 null は不可。
-                throw new BusinessException(EntitlementErrorCode.PLAN_MASTER_VALIDATION_FAILED);
-            }
-            if (i > 0) {
-                Integer prevMax = group.get(i - 1).maxMembers();
-                if (prevMax == null || b.minMembers() != prevMax + 1) {
-                    throw new BusinessException(EntitlementErrorCode.PLAN_MASTER_VALIDATION_FAILED);
-                }
-            }
-        }
-    }
+    // 旧 PUT /plans/{planKey}/price-bands は 410 で封鎖済み（SystemAdminBillingController）。
+    // plan_price_bands への delete/saveAll 書き込み経路はここに存在したが、価格改定戦役
+    // （price-revisions）出陣隊（第3陣）J群により根治（対症療法での握りつぶしではなく、
+    // 呼び出し元ごと除去）した。読み取り経路（BillingCurrentBandResolver 等）は今回の射程外。
 
     // ============================================================
     // 手動付与

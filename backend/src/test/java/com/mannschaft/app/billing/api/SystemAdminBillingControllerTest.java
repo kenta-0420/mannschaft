@@ -179,13 +179,13 @@ class SystemAdminBillingControllerTest {
     }
 
     @Test
-    @DisplayName("AC: price-bands 置換 200(204)")
-    void replacePriceBands_204() throws Exception {
+    @DisplayName("AC-140: 旧 price-bands 置換は410（新API誘導は SystemAdminBillingLegacyPriceBandsGoneTest で固定）")
+    void replacePriceBands_410() throws Exception {
         String body = objectMapper.writeValueAsString(Map.of("bands", List.of(
                 Map.of("scopeKind", "TEAM", "bandNo", 1, "minMembers", 1, "maxMembers", 20, "monthlyPriceJpy", 3000))));
         mockMvc.perform(put("/api/v1/system-admin/billing/plans/{k}/price-bands", "FULL")
                         .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isGone());
     }
 
     // ---- 手動付与・契約検索 ----
