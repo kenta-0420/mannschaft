@@ -2,7 +2,6 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.VillageSerendipityRankingResponse;
 import com.mannschaft.app.village.dto.VillageSerendipityScoreResponse;
 import com.mannschaft.app.village.service.VillageSerendipityService;
@@ -48,10 +47,6 @@ public class VillageSerendipityController {
      * UI 側で「まだスコアがありません」と案内する想定。</p>
      *
      */
-    @SelfScopedEndpoint("スコア行の検索条件が (villageId, SecurityUtils.getCurrentUserId()) で、"
-            + "リクエストは他ユーザーの識別子を受け取らない"
-            + "（VillageSerendipityService#getMyScore の findByVillageIdAndUserId が認証主体に束縛され、"
-            + "返すのは自分のスコアと自分の順位のみ）")
     @GetMapping("/me")
     @Operation(summary = "自分のご縁スコアを取得する")
     public ApiResponse<VillageSerendipityScoreResponse> getMyScore(
