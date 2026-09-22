@@ -113,6 +113,9 @@ public class BillingPriceBandVersionEntity extends UuidV7Entity {
     @Column(name = "provision_error_code", length = 64)
     private String provisionErrorCode;
 
+    @Column(name = "provision_attempts", nullable = false)
+    private Integer provisionAttempts;
+
     @Version
     @Column(name = "lock_version", nullable = false)
     private Long lockVersion;
@@ -127,19 +130,32 @@ public class BillingPriceBandVersionEntity extends UuidV7Entity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
     @PrePersist
     protected void onCreate() {
+        Instant now = Instant.now();
         if (createdAt == null) {
-            createdAt = Instant.now();
+            createdAt = now;
         }
+        updatedAt = now;
         if (currency == null) {
             currency = "JPY";
         }
         if (status == null) {
             status = BillingPriceVersionStatus.DRAFT;
         }
+        if (provisionAttempts == null) {
+            provisionAttempts = 0;
+        }
+    }
+
+    @jakarta.persistence.PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
     }
 }

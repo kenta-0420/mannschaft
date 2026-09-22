@@ -50,6 +50,16 @@ public class BillingStripeProductEntity extends UuidV7Entity {
     @Column(name = "stripe_tax_code", length = 64)
     private String stripeTaxCode;
 
+    /**
+     * {@code stripeTaxCode} が null の組を一意制約で扱うための正規化生成列。Hibernate の
+     * {@code ddl-auto=create}（test profile）でも実 DB（Flyway migration）でも同じ
+     * {@code GENERATED ALWAYS AS (...) STORED} 定義を columnDefinition にそのまま渡すことで
+     * 両方の schema 生成経路に同一の生成列を持たせる。アプリからは読み取り専用。
+     */
+    @Column(name = "stripe_tax_code_norm", insertable = false, updatable = false,
+            columnDefinition = "VARCHAR(64) GENERATED ALWAYS AS (COALESCE(stripe_tax_code, '')) STORED")
+    private String stripeTaxCodeNorm;
+
     @Column(name = "stripe_product_id", nullable = false, length = 255)
     private String stripeProductId;
 

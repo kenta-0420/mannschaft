@@ -35,7 +35,9 @@ import java.time.Instant;
                 @UniqueConstraint(name = "uk_bpv_revision_no",
                         columnNames = {"product_kind", "product_key", "scope_kind", "revision_no"}),
                 @UniqueConstraint(name = "uk_bpv_catalog_revision",
-                        columnNames = {"product_kind", "product_key", "scope_kind", "catalog_revision"})
+                        columnNames = {"product_kind", "product_key", "scope_kind", "catalog_revision"}),
+                @UniqueConstraint(name = "uk_bpv_single_future",
+                        columnNames = {"future_reservation_key"})
         })
 @Getter
 @Setter
@@ -80,6 +82,21 @@ public class BillingPriceVersionEntity extends UuidV7Entity {
     @Column(name = "effective_until")
     private Instant effectiveUntil;
 
+    /**
+     * 単一 future 予約制限（マスター裁可・第6版）を DB 側で強制するための生成列。
+     * {@code status} が DRAFT/READY/SCHEDULED のときのみ非 null になり、
+     * {@code uk_bpv_single_future} が同一 (product_kind, product_key, scope_kind) の
+     * 同時 future を1本に制限する。アプリからは読み取り専用。
+     */
+    @Column(name = "future_reservation_key", insertable = false, updatable = false,
+            columnDefinition = "VARCHAR(200) GENERATED ALWAYS AS "
+                    + "(CASE WHEN status IN ('DRAFT','READY','SCHEDULED') "
+                    + "THEN CONCAT(product_kind, '|', product_key, '|', scope_kind) ELSE NULL END) STORED")
+    private String futureReservationKey;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
     @Version
     @Column(name = "lock_version", nullable = false)
     private Long lockVersion;
@@ -99,14 +116,21 @@ public class BillingPriceVersionEntity extends UuidV7Entity {
 
     @PrePersist
     protected void onCreate() {
+        Instant now = Instant.now();
         if (createdAt == null) {
-            createdAt = Instant.now();
+            createdAt = now;
         }
+        updatedAt = now;
         if (status == null) {
             status = BillingPriceVersionStatus.DRAFT;
         }
         if (provisionAttempts == null) {
             provisionAttempts = 0;
         }
+    }
+
+    @jakarta.persistence.PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
     }
 }
