@@ -151895,6 +151895,9 @@
           "priority": {
             "type": "string"
           },
+          "publicVisible": {
+            "type": "boolean"
+          },
           "status": {
             "type": "string"
           },

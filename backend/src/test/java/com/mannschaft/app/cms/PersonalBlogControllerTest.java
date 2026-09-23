@@ -82,7 +82,7 @@ class PersonalBlogControllerTest {
                 .id(POST_ID)
                 .scope(new BlogPostResponse.BlogPostScopeDto(null, null, USER_ID, USER_ID))
                 .content(new BlogPostResponse.BlogPostContentDto("個人記事", "my-post", "本文", null, null))
-                .meta(new BlogPostResponse.BlogPostMetaDto("BLOG", "PUBLIC", "NORMAL", "PUBLISHED", false, false))
+                .meta(new BlogPostResponse.BlogPostMetaDto("BLOG", "PUBLIC", "NORMAL", "PUBLISHED", false, false, true))
                 .stats(new BlogPostResponse.BlogPostStatisticsDto(0, (short) 1, false, 0))
                 .audit(new BlogPostResponse.BlogPostAuditDto(null, 1, null, null))
                 .tags(List.of())
