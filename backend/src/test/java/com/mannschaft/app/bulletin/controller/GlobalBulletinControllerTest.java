@@ -290,24 +290,6 @@ class GlobalBulletinControllerTest {
         }
 
         @Test
-        @DisplayName("TOURNAMENT and TOURNAMENT_DIVISION numeric scope IDs return 201")
-        void tournamentNumericJsonCreate_201() throws Exception {
-            MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
-            for (ScopeType type : List.of(ScopeType.TOURNAMENT, ScopeType.TOURNAMENT_DIVISION)) {
-                String dataJson = "{\"scopeType\":\"" + type + "\",\"scopeId\":10,\"title\":\"title\",\"body\":\"body\"}";
-                given(threadService.createThreadGlobal(eq(type), eq(SCOPE_ID), eq(USER_ID), any()))
-                        .willReturn(threadResponse());
-
-                mockMvc.perform(post("/api/v1/bulletin/threads")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(dataJson))
-                        .andExpect(status().isCreated());
-                verify(threadService).createThreadGlobal(eq(type), eq(SCOPE_ID), eq(USER_ID), any());
-            }
-            verify(scopeIdResolver, never()).resolve(any(), any());
-        }
-
-        @Test
         @DisplayName("VILLAGE一覧_scope_village_id欠落_COMMON_001（400相当）")
         void village一覧_village_id欠落_400() {
             assertThatThrownBy(() -> controller.listThreads("VILLAGE", VILLAGE_SCOPE_ID_STR, null, null, 0, 20))

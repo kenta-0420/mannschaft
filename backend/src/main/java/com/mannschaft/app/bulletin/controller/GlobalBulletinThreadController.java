@@ -218,15 +218,7 @@ public class GlobalBulletinThreadController {
             if (request.getScopeId() == null) {
                 throw new BusinessException(CommonErrorCode.COMMON_001);
             }
-            if (type == ScopeType.TOURNAMENT || type == ScopeType.TOURNAMENT_DIVISION) {
-                try {
-                    scopeId = Long.valueOf(request.getScopeId());
-                } catch (NumberFormatException e) {
-                    throw new BusinessException(CommonErrorCode.COMMON_001);
-                }
-            } else {
-                scopeId = scopeIdResolver.resolve(type, request.getScopeId());
-            }
+            scopeId = scopeIdResolver.resolve(type, request.getScopeId());
         }
         ThreadResponse response = threadService.createThreadGlobal(
                 type, scopeId, currentUserId, request.toCreateThreadRequest());
