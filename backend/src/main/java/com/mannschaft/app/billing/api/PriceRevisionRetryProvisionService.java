@@ -11,6 +11,7 @@ import com.mannschaft.app.billing.PriceRevisionErrorCode;
 import com.mannschaft.app.billing.api.dto.PriceRevisionBandResponse;
 import com.mannschaft.app.billing.api.dto.PriceRevisionResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,18 +42,21 @@ public class PriceRevisionRetryProvisionService {
     private final BillingStripeProductRepository stripeProductRepository;
     private final BillingPriceProvisionGateway gateway;
     private final Clock clock;
+    private final StripeEnvironmentIdentifier environmentIdentifier;
 
     public PriceRevisionRetryProvisionService(
             BillingPriceVersionRepository versionRepository,
             BillingPriceBandVersionRepository bandRepository,
             BillingStripeProductRepository stripeProductRepository,
             BillingPriceProvisionGateway gateway,
-            Clock clock) {
+            Clock clock,
+            StripeEnvironmentIdentifier environmentIdentifier) {
         this.versionRepository = versionRepository;
         this.bandRepository = bandRepository;
         this.stripeProductRepository = stripeProductRepository;
         this.gateway = gateway;
         this.clock = clock;
+        this.environmentIdentifier = environmentIdentifier;
     }
 
     @Transactional
@@ -86,7 +90,8 @@ public class PriceRevisionRetryProvisionService {
 
             PriceRevisionProvisionSupport.attemptProvisionBand(
                     stripeProductRepository, gateway, revision.getId(),
-                    revision.getProductKind(), revision.getProductKey(), band);
+                    revision.getProductKind(), revision.getProductKey(), band,
+                    environmentIdentifier.environmentId());
 
             if (band.getStatus() != BillingPriceVersionStatus.READY) {
                 allReady = false;

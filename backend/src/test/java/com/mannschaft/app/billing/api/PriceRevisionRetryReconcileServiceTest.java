@@ -66,11 +66,13 @@ class PriceRevisionRetryReconcileServiceTest {
 
     private PriceRevisionRetryProvisionService retryService() {
         return new PriceRevisionRetryProvisionService(
-                versionRepository, bandRepository, stripeProductRepository, gateway, FIXED_CLOCK);
+                versionRepository, bandRepository, stripeProductRepository, gateway, FIXED_CLOCK,
+                com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"));
     }
 
     private BillingPriceProvisionRecoveryService recoveryService() {
-        return new BillingPriceProvisionRecoveryService(versionRepository, bandRepository, gateway, FIXED_CLOCK);
+        return new BillingPriceProvisionRecoveryService(versionRepository, bandRepository, gateway, FIXED_CLOCK,
+                com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"));
     }
 
     // ═════════ retry-provision ═════════
@@ -228,6 +230,31 @@ class PriceRevisionRetryReconcileServiceTest {
 
         assertThat(stuckBand.getStatus())
                 .as("Productのtax_codeだけがズレたPriceを誤って回収してはならない（第4版検分の重大3の直接反証）")
+                .isEqualTo(BillingPriceVersionStatus.PROVISION_FAILED);
+        assertThat(stuckBand.getProvisionErrorCode()).isEqualTo("RECONCILE_ATTRIBUTE_MISMATCH");
+    }
+
+    @Test
+    @DisplayName("AC-79: 環境識別子が異なるPrice（test環境がlive環境のPriceを回収しようとする）はREADY化せず隔離する")
+    void reconcileRejectsWhenEnvironmentIdMismatches() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISIONING);
+        BillingPriceBandVersionEntity stuckBand = band(revision, 1, BillingPriceVersionStatus.PROVISIONING);
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(stuckBand));
+        // recoveryService() は environmentIdentifier を "test" で構成している。
+        // ここでは全属性（金額・通貨・周期・商品・税）は一致するが environmentId だけ "live" の
+        // Priceを発見したケースを再現する（本番のPriceをtest環境が誤って回収する事故の模擬）。
+        BillingPriceProvisionGateway.PriceSnapshot liveEnvironmentSnapshot = new BillingPriceProvisionGateway.PriceSnapshot(
+                "price_live", stuckBand.getInputAmount(), "jpy", "month", 1,
+                revision.getProductKind().name(), revision.getProductKey(), stuckBand.getTaxCodeSnapshot(),
+                stuckBand.getTaxBehavior().name(), "live");
+        given(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId()))
+                .willReturn(Optional.of(liveEnvironmentSnapshot));
+
+        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion());
+
+        assertThat(stuckBand.getStatus())
+                .as("環境識別子が食い違うPriceを誤って回収してはならない（AC-79・test/live Price分離）")
                 .isEqualTo(BillingPriceVersionStatus.PROVISION_FAILED);
         assertThat(stuckBand.getProvisionErrorCode()).isEqualTo("RECONCILE_ATTRIBUTE_MISMATCH");
     }

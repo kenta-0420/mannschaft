@@ -134,7 +134,9 @@ class StripeBillingPriceProvisionGatewayTest {
                 REVISION_ID.toString(), BAND_ID.toString()))
                 .willReturn(Optional.of(new StripePaymentProvider.PriceMetadataSnapshot(
                         "price_found_1", 4_400L, "jpy", "month", 1, "txcd_standard", "EXCLUSIVE",
-                        Map.of("productKind", "PLAN", "productKey", "FULL"))));
+                        Map.of("productKind", "PLAN", "productKey", "FULL"),
+                        Map.of("revisionId", REVISION_ID.toString(), "bandId", BAND_ID.toString(),
+                                "environmentId", "test"))));
 
         Optional<BillingPriceProvisionGateway.PriceSnapshot> result =
                 gateway.findPriceByMetadata(REVISION_ID, BAND_ID);
@@ -150,6 +152,9 @@ class StripeBillingPriceProvisionGatewayTest {
         assertThat(snapshot.productKey()).isEqualTo("FULL");
         assertThat(snapshot.productTaxCode()).isEqualTo("txcd_standard");
         assertThat(snapshot.taxBehavior()).isEqualTo("EXCLUSIVE");
+        assertThat(snapshot.environmentId())
+                .as("AC-79: 環境識別子は Price 自身の metadata（Product ではない）から読み戻す")
+                .isEqualTo("test");
     }
 
     @Test
@@ -171,12 +176,13 @@ class StripeBillingPriceProvisionGatewayTest {
         given(stripePaymentProvider.findPriceByRevisionAndBandMetadata(
                 REVISION_ID.toString(), BAND_ID.toString()))
                 .willReturn(Optional.of(new StripePaymentProvider.PriceMetadataSnapshot(
-                        "price_found_2", 1_000L, "jpy", "month", 1, null, "INCLUSIVE", Map.of())));
+                        "price_found_2", 1_000L, "jpy", "month", 1, null, "INCLUSIVE", Map.of(), Map.of())));
 
         BillingPriceProvisionGateway.PriceSnapshot snapshot =
                 gateway.findPriceByMetadata(REVISION_ID, BAND_ID).orElseThrow();
 
         assertThat(snapshot.productKind()).isNull();
+        assertThat(snapshot.environmentId()).isNull();
         assertThat(snapshot.productKey()).isNull();
     }
 }

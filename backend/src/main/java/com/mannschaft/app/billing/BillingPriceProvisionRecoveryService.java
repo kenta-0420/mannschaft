@@ -3,6 +3,7 @@ package com.mannschaft.app.billing;
 import com.mannschaft.app.billing.api.dto.PriceRevisionBandResponse;
 import com.mannschaft.app.billing.api.dto.PriceRevisionResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,16 +35,19 @@ public class BillingPriceProvisionRecoveryService {
     private final BillingPriceBandVersionRepository bandRepository;
     private final BillingPriceProvisionGateway gateway;
     private final Clock clock;
+    private final StripeEnvironmentIdentifier environmentIdentifier;
 
     public BillingPriceProvisionRecoveryService(
             BillingPriceVersionRepository versionRepository,
             BillingPriceBandVersionRepository bandRepository,
             BillingPriceProvisionGateway gateway,
-            Clock clock) {
+            Clock clock,
+            StripeEnvironmentIdentifier environmentIdentifier) {
         this.versionRepository = versionRepository;
         this.bandRepository = bandRepository;
         this.gateway = gateway;
         this.clock = clock;
+        this.environmentIdentifier = environmentIdentifier;
     }
 
     /** AC-99/AC-100: provision系3EPと同一の9分lease猶予。 */
@@ -119,7 +123,12 @@ public class BillingPriceProvisionRecoveryService {
                 && band.getProductKey().equals(snapshot.productKey())
                 && band.getTaxBehavior().name().equalsIgnoreCase(snapshot.taxBehavior())
                 // AC-97a（第5版・重大3の直接反証）: Product 実体の tax_code まで一致しなければ回収しない。
-                && Objects.equals(band.getTaxCodeSnapshot(), snapshot.productTaxCode());
+                && Objects.equals(band.getTaxCodeSnapshot(), snapshot.productTaxCode())
+                // AC-79: test/live Price 分離。作成時に焼いた環境識別子と現在の実行環境の識別子が
+                // 一致しなければ回収しない（test 環境で作られた Price を live 環境が拾う事故を防ぐ）。
+                // "unknown" 同士は素直な等値比較で一致扱いになる（ローカル開発は両側とも
+                // unknown になるため自然に通る。特別扱いのコードは書かない）。
+                && Objects.equals(environmentIdentifier.environmentId(), snapshot.environmentId());
 
         if (!matches) {
             band.setStatus(BillingPriceVersionStatus.PROVISION_FAILED);

@@ -42,6 +42,7 @@ public class StripeBillingPriceProvisionGateway implements BillingPriceProvision
 
     private static final String METADATA_PRODUCT_KIND = "productKind";
     private static final String METADATA_PRODUCT_KEY = "productKey";
+    private static final String METADATA_ENVIRONMENT_ID = "environmentId";
 
     private final StripePaymentProvider stripePaymentProvider;
 
@@ -111,6 +112,6 @@ public class StripeBillingPriceProvisionGateway implements BillingPriceProvision
                         snapshot.productMetadata().get(METADATA_PRODUCT_KEY),
                         snapshot.productTaxCode(),
                         snapshot.taxBehavior(),
-                        null));
+                        snapshot.priceMetadata().get(METADATA_ENVIRONMENT_ID)));
     }
 }

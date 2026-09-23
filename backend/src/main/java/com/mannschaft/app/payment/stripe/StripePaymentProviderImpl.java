@@ -315,10 +315,11 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             int intervalCount = recurring == null || recurring.getIntervalCount() == null
                     ? 1 : recurring.getIntervalCount().intValue();
             Map<String, String> productMetadata = product.getMetadata() == null ? Map.of() : product.getMetadata();
+            Map<String, String> priceMetadata = price.getMetadata() == null ? Map.of() : price.getMetadata();
             return java.util.Optional.of(new PriceMetadataSnapshot(
                     price.getId(), unitAmount, price.getCurrency(),
                     recurring == null ? null : recurring.getInterval(), intervalCount,
-                    product.getTaxCode(), price.getTaxBehavior(), productMetadata));
+                    product.getTaxCode(), price.getTaxBehavior(), productMetadata, priceMetadata));
         } catch (StripeException e) {
             log.error("価格改定 Stripe Price metadata検索失敗: revisionId={}, bandId={}", revisionId, bandId, e);
             throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);

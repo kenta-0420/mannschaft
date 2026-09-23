@@ -45,7 +45,7 @@ final class PriceRevisionProvisionSupport {
             BillingStripeProductRepository stripeProductRepository,
             BillingPriceProvisionGateway gateway,
             UUID revisionId, BillingProductKind productKind, String productKey,
-            BillingPriceBandVersionEntity band) {
+            BillingPriceBandVersionEntity band, String environmentId) {
         band.setProvisionAttempts(nz(band.getProvisionAttempts()) + 1);
         try {
             Optional<BillingPriceProvisionGateway.PriceSnapshot> recovered =
@@ -63,6 +63,10 @@ final class PriceRevisionProvisionSupport {
             Map<String, String> metadata = new LinkedHashMap<>();
             metadata.put("revisionId", revisionId.toString());
             metadata.put("bandId", band.getId().toString());
+            // AC-79: Stripe の test/live Price 分離。誤って test 環境の Price を live 環境が
+            // reconcile で回収してしまう事故を防ぐため、作成時の環境識別子を Price 自身の
+            // metadata に焼く（読み戻しは BillingPriceProvisionRecoveryService#reconcileBand）。
+            metadata.put("environmentId", environmentId);
             BillingPriceProvisionGateway.PriceCreationCommand command =
                     new BillingPriceProvisionGateway.PriceCreationCommand(
                             revisionId, band.getId(), stripeProductId, band.getInputAmount(), "jpy", "month", 1,

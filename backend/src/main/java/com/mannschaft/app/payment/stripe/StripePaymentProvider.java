@@ -1175,11 +1175,12 @@ public interface StripePaymentProvider {
      */
     record PriceMetadataSnapshot(String stripePriceId, long unitAmount, String currency,
             String recurringInterval, int recurringIntervalCount, String productTaxCode,
-            String taxBehavior, Map<String, String> productMetadata) {
+            String taxBehavior, Map<String, String> productMetadata, Map<String, String> priceMetadata) {
 
         /** null を運ばせない。 */
         public PriceMetadataSnapshot {
             productMetadata = productMetadata == null ? Map.of() : Map.copyOf(productMetadata);
+            priceMetadata = priceMetadata == null ? Map.of() : Map.copyOf(priceMetadata);
         }
     }
 }

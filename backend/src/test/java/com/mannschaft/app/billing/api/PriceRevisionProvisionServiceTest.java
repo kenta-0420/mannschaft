@@ -68,7 +68,7 @@ class PriceRevisionProvisionServiceTest {
     private PriceRevisionProvisionService service() {
         return new PriceRevisionProvisionService(
                 versionRepository, bandRepository, stripeProductRepository, gateway,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC), new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier());
     }
 
     @Test
@@ -356,7 +356,7 @@ class PriceRevisionProvisionServiceTest {
 
         new PriceRevisionRetryProvisionService(
                 versionRepository, bandRepository, stripeProductRepository, gateway,
-                Clock.fixed(NOW, ZoneOffset.UTC))
+                Clock.fixed(NOW, ZoneOffset.UTC), new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier())
                 .retryProvision(revision.getId(), revision.getLockVersion());
 
         verify(gateway, never()).resolveOrCreateProduct(any());
