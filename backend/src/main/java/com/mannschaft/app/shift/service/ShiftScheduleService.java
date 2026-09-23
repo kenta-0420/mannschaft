@@ -538,6 +538,24 @@ public class ShiftScheduleService {
     }
 
     /**
+     * 与えた ID 集合のうち、現に生存している（論理削除されていない）スケジュール ID を返す
+     *（案C / CMP-260917-1136）。{@code GET /shifts/my/requests} が親の生死を判定するための
+     * バッチ問い合わせ。{@code findAllById} は {@code @SQLRestriction} を尊重するため、
+     * 論理削除済みの ID は戻り値に含まれない。
+     *
+     * @param scheduleIds 判定対象のスケジュール ID 集合
+     * @return 生存しているスケジュール ID 集合
+     */
+    java.util.Set<Long> findExistingScheduleIds(java.util.Collection<Long> scheduleIds) {
+        if (scheduleIds.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return scheduleRepository.findAllById(scheduleIds).stream()
+                .map(ShiftScheduleEntity::getId)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    /**
      * シフトスケジュールに対する管理操作の per-scope 認可を強制する。
      *
      * <p>SYSTEM_ADMIN は短絡的に許可する。それ以外は、当該スケジュールが属するチームの

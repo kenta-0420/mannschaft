@@ -76,6 +76,9 @@ public abstract class ShiftMapper {
     public abstract List<ShiftPositionResponse> toPositionResponseList(List<ShiftPositionEntity> entities);
 
     @Mapping(target = "preference", expression = "java(entity.getPreference().name())")
+    // scheduleDeleted は Entity に無い派生フィールド（案C / CMP-260917-1136）。
+    // 既定 false（@Builder.Default）のまま生成し、listMyRequests が toBuilder で上書きする。
+    @Mapping(target = "scheduleDeleted", ignore = true)
     public abstract ShiftRequestResponse toRequestResponse(ShiftRequestEntity entity);
 
     public abstract List<ShiftRequestResponse> toRequestResponseList(List<ShiftRequestEntity> entities);
