@@ -411,6 +411,71 @@ class PriceRevisionProvisionServiceTest {
         assertThat(b1.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
     }
 
+    @Test
+    @DisplayName("AC-135: 同一revisionへprovisionを2回実行してもcreatePriceは1回だけ"
+            + "（2回目は状態が既にREADYのため409で本処理へ到達しない＝Stripe Price二重作成を防止）")
+    void provisioningTwiceDoesNotCreatePriceTwice() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "TAX10");
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
+        given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(any(), any(), any()))
+                .willReturn(Optional.empty());
+        given(gateway.resolveOrCreateProduct(any())).willReturn(
+                new BillingPriceProvisionGateway.ProductResolution("prod_1", true));
+        given(gateway.createPrice(any())).willReturn(
+                new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
+
+        PriceRevisionProvisionService service = service();
+        PriceRevisionResponse first = service.provision(revision.getId(), revision.getLockVersion(), 700_001L);
+        assertThat(first.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
+
+        // 実運用ではIdempotency-Keyの再送で同じ操作が2回来るが、1回目でrevisionはREADYへ遷移済みのため
+        // 2回目は状態競合(409)で弾かれ、gateway.createPriceへは一度も到達しない。
+        assertThatThrownBy(() -> service.provision(revision.getId(), revision.getLockVersion(), 700_001L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(PriceRevisionErrorCode.STATE_CONFLICT);
+
+        verify(gateway, times(1)).createPrice(any());
+    }
+
+    @Test
+    @DisplayName("AC-135: retry-provisionを2回実行してもcreatePriceは1回だけ"
+            + "（1回目でrevisionはREADYへ遷移し、2回目はrevision状態がPROVISION_FAILEDでないため"
+            + "409で本処理へ到達しない＝Stripe Price二重作成を防止）")
+    void retryProvisionTwiceDoesNotRecreatePriceForAlreadyReadyBand() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISION_FAILED);
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "TAX10");
+        b1.setStatus(BillingPriceVersionStatus.PROVISION_FAILED);
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
+        given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(any(), any(), any()))
+                .willReturn(Optional.empty());
+        given(gateway.resolveOrCreateProduct(any())).willReturn(
+                new BillingPriceProvisionGateway.ProductResolution("prod_1", true));
+        given(gateway.createPrice(any())).willReturn(
+                new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
+
+        PriceRevisionRetryProvisionService retryService = new PriceRevisionRetryProvisionService(
+                versionRepository, bandRepository, stripeProductRepository, gateway,
+                Clock.fixed(NOW, ZoneOffset.UTC), new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier(),
+                org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class));
+
+        PriceRevisionResponse first = retryService.retryProvision(revision.getId(), revision.getLockVersion(), 700_001L);
+        assertThat(first.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
+        assertThat(b1.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
+
+        // 2回目のretry: revisionは既にREADY（PROVISION_FAILEDでない）ため状態競合(409)で弾かれ、
+        // gateway.createPriceへは一度も到達しない。
+        assertThatThrownBy(() -> retryService.retryProvision(revision.getId(), revision.getLockVersion(), 700_001L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(PriceRevisionErrorCode.STATE_CONFLICT);
+
+        verify(gateway, times(1)).createPrice(any());
+    }
+
     static BillingPriceVersionEntity revision(BillingPriceVersionStatus status) {
         BillingPriceVersionEntity entity = BillingPriceVersionEntity.builder()
                 .productKind(BillingProductKind.PLAN)

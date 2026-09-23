@@ -59,4 +59,35 @@ describe('billing.json — 価格改定管理画面の文言(priceRevisions名�
     const keys = Object.keys(messages)
     expect(keys.some(k => /502|badGateway|gatewayTimeout/i.test(k))).toBe(false)
   })
+
+  // AC-160: UI 文言は直書きせず billing.json に追加し、6言語(ja/en/zh/ko/es/de)で同一キー集合になる。
+  // 上記の it.each は7キーの個別存在チェックに過ぎず、キー集合の完全一致(余剰キー・不足キーの両方)は
+  // 一度も検証していなかった（検分で指摘された検体漏れ）。ネストされた notice 等も含め、
+  // 全リーフキーをドット区切りにフラット化してから ja を基準に集合比較する。
+  function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
+    const keys: string[] = []
+    for (const [key, value] of Object.entries(obj)) {
+      const path = prefix ? `${prefix}.${key}` : key
+      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        keys.push(...flattenKeys(value as Record<string, unknown>, path))
+      } else {
+        keys.push(path)
+      }
+    }
+    return keys
+  }
+
+  it('AC-160: priceRevisions名前空間のキー集合が6言語すべてで完全一致する(余剰・不足の両方を検出)', () => {
+    const baseline = new Set(flattenKeys(loadBilling('ja').billing?.priceRevisions ?? {}))
+    expect(baseline.size, 'ja: priceRevisions が空').toBeGreaterThan(0)
+
+    for (const locale of LOCALES) {
+      if (locale === 'ja') continue
+      const keys = new Set(flattenKeys(loadBilling(locale).billing?.priceRevisions ?? {}))
+      const missing = [...baseline].filter(k => !keys.has(k))
+      const extra = [...keys].filter(k => !baseline.has(k))
+      expect(missing, `${locale}: ja に対して不足しているキー`).toEqual([])
+      expect(extra, `${locale}: ja に対して余分なキー`).toEqual([])
+    }
+  })
 })
