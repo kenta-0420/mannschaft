@@ -148,6 +148,74 @@ class ShiftAvailabilityValidationContractIT extends AbstractMySqlIntegrationTest
                 .andExpect(status().isOk());
     }
 
+    @Test
+    @DisplayName("AC-6: 同一内容のPUTを2回連続しても2回とも200（冪等性・CMP-260923）")
+    void 同一内容のPUTを2回連続しても200() throws Exception {
+        Map<String, Object> body = Map.of("availabilities", List.of(
+                availability(5, LocalTime.of(9, 0), LocalTime.of(17, 0), "PREFERRED")));
+        String json = objectMapper.writeValueAsString(body);
+
+        mockMvc.perform(put(BASE).param("teamId", teamId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(BASE).param("teamId", teamId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk());
+
+        em.clear();
+        Number count = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM member_availability_defaults WHERE user_id = :userId AND team_id = :teamId")
+                .setParameter("userId", memberId)
+                .setParameter("teamId", teamId)
+                .getSingleResult();
+        org.assertj.core.api.Assertions.assertThat(count.longValue()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("AC-7: 同一内容のPUTを3回以上連続しても常に200（冪等性）")
+    void 同一内容のPUTを3回以上連続しても200() throws Exception {
+        Map<String, Object> body = Map.of("availabilities", List.of(
+                availability(3, LocalTime.of(10, 0), LocalTime.of(15, 0), "AVAILABLE")));
+        String json = objectMapper.writeValueAsString(body);
+
+        for (int i = 0; i < 4; i++) {
+            mockMvc.perform(put(BASE).param("teamId", teamId.toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    @DisplayName("AC-8: 内容を変えてPUTすると正しく置き換わる（退行なし）")
+    void 内容を変えてPUTすると置き換わる() throws Exception {
+        Map<String, Object> first = Map.of("availabilities", List.of(
+                availability(2, LocalTime.of(9, 0), LocalTime.of(12, 0), "AVAILABLE")));
+        mockMvc.perform(put(BASE).param("teamId", teamId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(first)))
+                .andExpect(status().isOk());
+
+        Map<String, Object> second = Map.of("availabilities", List.of(
+                availability(2, LocalTime.of(13, 0), LocalTime.of(18, 0), "PREFERRED")));
+        mockMvc.perform(put(BASE).param("teamId", teamId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(second)))
+                .andExpect(status().isOk());
+
+        em.clear();
+        List<?> rows = em.createNativeQuery(
+                        "SELECT start_time, end_time FROM member_availability_defaults "
+                                + "WHERE user_id = :userId AND team_id = :teamId AND day_of_week = 2")
+                .setParameter("userId", memberId)
+                .setParameter("teamId", teamId)
+                .getResultList();
+        org.assertj.core.api.Assertions.assertThat(rows).hasSize(1);
+    }
+
     private Map<String, Object> bulkBodyOf(Map<String, Object> availability) {
         return Map.of("availabilities", List.of(availability));
     }
