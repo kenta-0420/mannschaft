@@ -49,9 +49,14 @@ import java.util.Set;
  *       （SYSTEM_ADMIN 短絡）。{@code ShiftScheduleService#checkScheduleAdminAccess} と同一方針。</li>
  * </ul>
  *
- * <p>認可失敗は参照・更新とも {@code COMMON_002}（403）とする。越境を 404 に寄せず 403 とするのは
- * 同ドメインの既存契約テスト {@code ShiftScheduleScopeContractIT}（Wave3-B6）が別 scope ADMIN に
- * 403 を期待しており、そちらへ揃えるため。</p>
+ * <p><b>存在オラクル対策（CMP-260917-1137）:</b> scheduleId は連番で総当りが容易なため、
+ * 参照系（{@link #checkScheduleReadAccess}）は越境（当該チームに所属すらしていない）を
+ * 不在時と同一の {@code SHIFT_001}（404）へ畳む。兄弟エンドポイントである
+ * {@code ShiftScheduleService#getSchedule} と同じ穴（scheduleId の総当りで存在が判別できる）を
+ * 本サービス（{@code /slots}）も抱えていたため揃える。同一チーム内の権限不足（SUPPORTER）は
+ * 隠す必要が無いため 403 のまま残す。更新系（{@link #checkScheduleAdminAccess}）は
+ * 引き続き {@code COMMON_002}（403）とする（Wave3-B6 時点の判断を維持。書込系は
+ * {@code ShiftScheduleService#checkScheduleAdminAccess} 側で先行是正済み）。</p>
  */
 @Slf4j
 @Service
@@ -366,9 +371,15 @@ public class ShiftSlotService {
     /**
      * シフト枠の参照認可（当該チームのメンバー、ただし SUPPORTER は不可）。
      *
+     * <p>CMP-260917-1137: 越境（当該チームに所属すらしていない）は、scheduleId 総当りでの
+     * 存在オラクル対策として不在時と同一の {@link ShiftErrorCode#SHIFT_SCHEDULE_NOT_FOUND}（404）
+     * へ畳む（{@code ShiftScheduleService#checkScheduleReadAccess} と同一方針）。
+     * SUPPORTER（同一チーム内の権限不足）は隠す必要が無いため 403 のまま残す。</p>
+     *
      * @param scheduleId スケジュール ID
      * @param userId     操作者ユーザー ID
-     * @throws BusinessException メンバーでない場合、または SUPPORTER の場合（COMMON_002 / 403）
+     * @throws BusinessException 越境の場合（{@code SHIFT_001}／404）、
+     *                           同一チーム内で SUPPORTER の場合（{@code COMMON_002}／403）
      */
     private void checkScheduleReadAccess(Long scheduleId, Long userId) {
         if (accessControlService.isSystemAdmin(userId)) {
@@ -376,7 +387,7 @@ public class ShiftSlotService {
         }
         Long teamId = resolveTeamId(scheduleId);
         if (!accessControlService.isMember(userId, teamId, "TEAM")) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
+            throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
         }
         if (accessControlService.isSupporter(userId, teamId, "TEAM")) {
             throw new BusinessException(CommonErrorCode.COMMON_002);

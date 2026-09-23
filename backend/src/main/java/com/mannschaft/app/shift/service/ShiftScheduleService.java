@@ -59,9 +59,17 @@ import java.util.stream.Collectors;
  *       {@link #checkScheduleAdminAccess}）。</li>
  * </ul>
  *
- * <p>認可失敗は参照・更新とも {@code COMMON_002}（403）とする。越境を 404 に寄せず 403 とするのは
- * 同ドメインの既存契約テスト {@code ShiftScheduleScopeContractIT} が別 scope ADMIN に 403 を
- * 期待しており、そちらへ揃えるため。</p>
+ * <p><b>存在オラクル対策（CMP-260917-1137）:</b> scheduleId は連番で総当りが容易なため、
+ * 「越境（他チーム/他テナント＝当該チームに所属すらしていない）」場合は
+ * {@link #findScheduleOrThrow} の不在応答と<b>完全に同一</b>の {@code SHIFT_001}（404）へ畳む。
+ * 403 のまま残すのは「同一チーム内で権限が足りないだけ」の場合のみ
+ *（例: 一般メンバーが管理操作を叩く／SUPPORTER が参照する）。この区別は
+ * {@link #checkScheduleAdminAccess} / {@link #checkScheduleReadAccess} が
+ * {@code isMember} で所属の有無を先に見てから判定することで実現する
+ * （村ドメインの {@code VillageAccessGate} と同じ作法。詳しい理由は各メソッドの Javadoc を参照）。
+ * {@link #checkTeamReadAccess} / {@link #checkTeamAdminAccess}
+ *（{@code listSchedules} 系・{@code createSchedule} の teamId 直接指定経路）は、
+ * scheduleId を推測する攻撃の対象にならないため対象外とし、従来どおり 403 のままとする。</p>
  */
 @Slf4j
 @Service
@@ -146,7 +154,9 @@ public class ShiftScheduleService {
         // 未公開は認可結果より先に 404 へ正規化する。認可を先にすると、非メンバーが
         // 実在 ID の 403 と非存在 ID の 404 を比較でき、未公開シフト表の存在オラクルになる。
         checkScheduleVisible(entity, userId);
-        checkTeamReadAccess(entity.getTeamId(), userId);
+        // CMP-260917-1137: teamId 直接指定の checkTeamReadAccess ではなく、越境を 404 に畳む
+        // checkScheduleReadAccess を使う（scheduleId 総当りでの存在オラクル対策）。
+        checkScheduleReadAccess(entity, userId);
         return shiftMapper.toScheduleResponse(entity);
     }
 
@@ -540,13 +550,26 @@ public class ShiftScheduleService {
     /**
      * シフトスケジュールに対する管理操作の per-scope 認可を強制する。
      *
-     * <p>SYSTEM_ADMIN は短絡的に許可する。それ以外は、当該スケジュールが属するチームの
-     * ADMIN/DEPUTY_ADMIN でなければ {@code COMMON_002}（403）をスローする。
+     * <p>SYSTEM_ADMIN は短絡的に許可する。それ以外は、まず<b>当該スケジュールが属するチームの
+     * メンバーかどうか</b>を見る。所属すらしていない（越境／他テナント）場合は、
+     * scheduleId 総当りでの存在オラクル（CMP-260917-1137）を塞ぐため
+     * {@link #findScheduleOrThrow} の不在応答と同一の {@link ShiftErrorCode#SHIFT_SCHEDULE_NOT_FOUND}
+     * （404）へ畳む。所属した上で ADMIN/DEPUTY_ADMIN でないだけ（同一チーム内の権限不足）の場合は、
+     * 「権限が足りない」と気づけるよう従来どおり {@code COMMON_002}（403）を投げる。
      * circulation ドメインの {@code CirculationService#checkScopeAdminAccess}（#1183）と同一の方針。</p>
+     *
+     * <h3>なぜ 404 と 403 を作り分けるのか（村ドメインの前例に倣う）</h3>
+     * <p>{@code VillageAccessGate} が既に「非村人が任意の村 ID を叩くと応答の違いそのものが
+     * 存在を漏らす」問題を解決済みであり、本ドメインでも同じ理屈が越境にだけ未適用だった
+     * （未公開シフト表は {@link #checkScheduleVisible} で既に 404 化済み）。今回それを揃える。
+     * 新しい専用エラーコードは作らない。専用コードを作ること自体が
+     * 「非公開です／越境です」という別の存在の手掛かりになるため、
+     * <b>不在時と文字列まで完全一致するコード</b>を再利用する。</p>
      *
      * @param schedule 対象スケジュール
      * @param userId   操作ユーザー ID
-     * @throws BusinessException 権限がない場合（COMMON_002）
+     * @throws BusinessException 越境の場合（{@code SHIFT_001}／404）、
+     *                           同一チーム内で権限が足りない場合（{@code COMMON_002}／403）
      */
     void checkScheduleAdminAccess(ShiftScheduleEntity schedule, Long userId) {
         // 認可根治 Wave6: 判定内容は checkTeamAdminAccess と同一だが、ArchUnit 認可番人の
@@ -555,7 +578,43 @@ public class ShiftScheduleService {
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
-        accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
+        Long teamId = schedule.getTeamId();
+        if (!accessControlService.isMember(userId, teamId, "TEAM")) {
+            // 越境（他チーム／無所属）: 存在自体を隠すべき側。不在時と完全同一のコードを投げる。
+            throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+        }
+        if (!accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
+            // 同一チーム内の権限不足: 隠す必要が無い側。従来どおり 403。
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * シフトスケジュール単体参照の per-scope 認可を強制する（{@link #getSchedule} 専用）。
+     *
+     * <p>{@link #checkTeamReadAccess}（{@code listSchedules} 系の teamId 直接指定用）とは異なり、
+     * <b>越境（当該チームに所属すらしていない）を 404 へ畳む</b>。scheduleId は連番で総当りが容易な
+     * ため、{@code listSchedules} のように呼び出し元が明示した teamId への 403 とは異なり、
+     * scheduleId から teamId を逆引きする本経路では 403/404 の違いがそのまま
+     * 「この scheduleId は実在する」という答えになってしまう（CMP-260917-1137）。
+     * SUPPORTER（同一チーム内の権限不足）は隠す必要が無いため 403 のまま残す。</p>
+     *
+     * @param entity 対象スケジュール
+     * @param userId 閲覧者ユーザー ID
+     * @throws BusinessException 越境の場合（{@code SHIFT_001}／404）、
+     *                           同一チーム内で SUPPORTER の場合（{@code COMMON_002}／403）
+     */
+    private void checkScheduleReadAccess(ShiftScheduleEntity entity, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        Long teamId = entity.getTeamId();
+        if (!accessControlService.isMember(userId, teamId, "TEAM")) {
+            throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+        }
+        if (accessControlService.isSupporter(userId, teamId, "TEAM")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**
