@@ -290,8 +290,8 @@ class GlobalBulletinControllerTest {
         }
 
         @Test
-        @DisplayName("?????????ID???JSON????????201")
-        void ????????Json??_201() throws Exception {
+        @DisplayName("TOURNAMENT and TOURNAMENT_DIVISION numeric scope IDs return 201")
+        void tournamentNumericJsonCreate_201() throws Exception {
             MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
             for (ScopeType type : List.of(ScopeType.TOURNAMENT, ScopeType.TOURNAMENT_DIVISION)) {
                 String dataJson = "{\"scopeType\":\"" + type + "\",\"scopeId\":10,\"title\":\"title\",\"body\":\"body\"}";
