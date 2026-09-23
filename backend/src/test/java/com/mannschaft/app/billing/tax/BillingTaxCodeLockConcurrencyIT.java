@@ -5,8 +5,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -46,9 +44,6 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private BillingTaxCodeService service;
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-
     /**
      * 殿の指示（実測なしに前例を当てるな）による診断ヘルパー: {@code SHOW ENGINE INNODB STATUS}
      * を取得し、{@code LATEST DETECTED DEADLOCK} 節をテスト失敗メッセージに含める。
@@ -56,11 +51,21 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
      * （gap / insert intention 等）が競合したかは InnoDB の内部状態からしか読めないため。
      */
     private String captureInnodbDeadlockStatus() {
-        try {
-            List<java.util.Map<String, Object>> rows = jdbcTemplate.queryForList("SHOW ENGINE INNODB STATUS");
-            String fullStatus = rows.isEmpty() ? null : String.valueOf(rows.get(0).get("Status"));
+        // アプリの test ユーザーには PROCESS 権限が無く SHOW ENGINE INNODB STATUS が
+        // bad SQL grammar（実体は権限不足）になる（実測済み）。本番と乖離した権限を
+        // アプリ側のテストユーザーに足すのは避け、診断専用に root で直接接続する
+        // （MySQLContainer は root の資格情報も持つ）。
+        String rootJdbcUrl = MYSQL.getJdbcUrl();
+        try (java.sql.Connection rootConnection = java.sql.DriverManager.getConnection(
+                rootJdbcUrl, "root", MYSQL.getPassword());
+                java.sql.Statement statement = rootConnection.createStatement();
+                java.sql.ResultSet resultSet = statement.executeQuery("SHOW ENGINE INNODB STATUS")) {
+            if (!resultSet.next()) {
+                return "(SHOW ENGINE INNODB STATUS が1行も返さなかった)";
+            }
+            String fullStatus = resultSet.getString("Status");
             if (fullStatus == null) {
-                return "(SHOW ENGINE INNODB STATUS が null を返した)";
+                return "(Status列がnull)";
             }
             int idx = fullStatus.indexOf("LATEST DETECTED DEADLOCK");
             if (idx < 0) {
@@ -69,19 +74,59 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
             }
             int endIdx = fullStatus.indexOf("------------\nTRANSACTIONS", idx);
             return fullStatus.substring(idx, endIdx < 0 ? fullStatus.length() : endIdx);
-        } catch (RuntimeException e) {
-            return "(SHOW ENGINE INNODB STATUS の取得自体に失敗: " + e + ")";
+        } catch (java.sql.SQLException e) {
+            return "(root接続でのSHOW ENGINE INNODB STATUS取得に失敗: " + e + ")";
         }
     }
 
     private void init() {
-        // no-op（互換のため残す。service は @Autowired 済みの本番 Bean を直接使う）。
+        // 根治治療（出陣隊第4陣・実測で確定): __TAX_CODE_LOCK__ 行は V220 migration の seed
+        // INSERT でのみ投入されるが、application-test.yml は flyway.enabled=false・
+        // ddl-auto=create のため、本ITのDBには一切適用されない。ロック行が実在しないと
+        // lockTaxCodeLockRowForUpdate() は0件を返し、FOR UPDATEは何も掴まず完全に空振りする
+        // （SHOW ENGINE INNODB STATUSのスタックトレースにFOR UPDATEが一切登場しなかったのは
+        // これが原因。単なる二次症状ではなく、排他そのものが最初から効いていなかった）。
+        // PriceRevisionOverlapConcurrencyIT が plans 行を自前で用意しているのと同じ流儀で、
+        // 本ITもロック行を明示的に用意する。
+        if (repository.findByCodeAndValidFromAndDeletedAtIsNull("__TAX_CODE_LOCK__", Instant.EPOCH).isEmpty()) {
+            repository.save(BillingTaxCodeEntity.builder()
+                    .code("__TAX_CODE_LOCK__")
+                    .displayName("lock row")
+                    .rateBasisPoints(0)
+                    .validFrom(Instant.EPOCH)
+                    .enabled(false)
+                    .build());
+        }
+    }
+
+    /**
+     * 殿の指摘（FOR UPDATE がスタックトレースに一切登場しない＝排他が空振りしている可能性）を
+     * 実測で切り分けるための診断: ロック行 {@code __TAX_CODE_LOCK__} が本 IT の DB に
+     * 実在するかを直接数える。AC-127 の切り分けで判明済みのとおり、
+     * {@code application-test.yml} は {@code flyway.enabled=false}・{@code ddl-auto=create}
+     * であり、V220 migration の seed INSERT（ロック行を含む）はテストDBに一切適用されない。
+     */
+    private long countLockRows() {
+        try (java.sql.Connection rootConnection = java.sql.DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), "root", MYSQL.getPassword());
+                java.sql.Statement statement = rootConnection.createStatement();
+                java.sql.ResultSet resultSet = statement.executeQuery(
+                        "SELECT COUNT(*) AS c FROM billing_tax_codes WHERE code = '__TAX_CODE_LOCK__'")) {
+            resultSet.next();
+            return resultSet.getLong("c");
+        } catch (java.sql.SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
     @DisplayName("AC-11: 異なる2つの新規 code を同時 POST しても __TAX_CODE_LOCK__ 行を介して直列化され両方成功する")
     void ac11_twoDifferentNewCodesBothSucceedSerialized() throws Exception {
         init();
+        long lockRowCount = countLockRows();
+        assertThat(lockRowCount)
+                .as("ロック行 __TAX_CODE_LOCK__ が本ITのDBに実在するか（0件ならFOR UPDATEは空振りする）")
+                .isEqualTo(1L);
         ExecutorService pool = Executors.newFixedThreadPool(2);
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch go = new CountDownLatch(1);

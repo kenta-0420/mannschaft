@@ -44,7 +44,25 @@ public class BillingTaxCodeService {
                 .toList();
     }
 
-    /** AC-5/AC-8/AC-9/AC-10: 新規税コード登録。 */
+    /**
+     * AC-5/AC-8/AC-9/AC-10: 新規税コード登録。
+     *
+     * <p><b>実装は分離レベル変更なしで正しい（出陣隊第4陣・実測で確定）:</b>
+     * 当初 {@code BillingTaxCodeLockConcurrencyIT} AC-11（異なる2つの新規codeの同時POST）が
+     * InnoDBデッドロック（{@code uk_btc_code_from} 索引の supremum 疑似レコードに対する
+     * insert intention ロックの交差）で失敗していたが、{@code SHOW ENGINE INNODB STATUS}
+     * の実測で「{@code __TAX_CODE_LOCK__} 行への {@code FOR UPDATE} がスタックトレースに
+     * 一切登場しない」ことが判明し、真因を辿ったところ<b>ロック行自体がテストDBに
+     * 実在しなかった</b>（{@code application-test.yml} の {@code flyway.enabled=false}・
+     * {@code ddl-auto=create} により、V220 migration の seed INSERT がテストに一切適用されない
+     * ため）。{@code lockTaxCodeLockRowForUpdate()} は0件を返し、{@code FOR UPDATE} は
+     * 何も掴まず完全に空振りしていた＝排他は最初から機能していなかった。
+     * ギャップロックの交差はその<b>二次症状</b>に過ぎなかった。
+     * IT側でロック行を用意すれば（{@code PriceRevisionOverlapConcurrencyIT} が
+     * plans 行を自前で用意しているのと同じ既存の流儀）本番同様に直列化され、
+     * 分離レベルを変えずに green化することを実測確認済み。本番コード側の実装は無罪であり、
+     * 変更していない。</p>
+     */
     @Transactional
     public BillingTaxCodeEntity create(BillingTaxCodeCreateRequest request) {
         repository.lockTaxCodeLockRowForUpdate(LOCK_ROW_VALID_FROM);
