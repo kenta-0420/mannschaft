@@ -161322,7 +161322,9 @@
         "properties": {
           "dayOfWeek": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 6,
+            "minimum": 0
           },
           "endTime": {
             "type": "string",
@@ -188741,6 +188743,9 @@
           "preference": {
             "type": "string"
           },
+          "scheduleDeleted": {
+            "type": "boolean"
+          },
           "scheduleId": {
             "type": "integer",
             "format": "int64"
@@ -200802,8 +200807,7 @@
             "minLength": 0
           },
           "scopeId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "scopeType": {
             "type": "string",

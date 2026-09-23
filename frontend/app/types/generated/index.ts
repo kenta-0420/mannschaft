@@ -62719,6 +62719,7 @@ export interface components {
             id?: number;
             note?: string;
             preference?: string;
+            scheduleDeleted?: boolean;
             /** Format: int64 */
             scheduleId?: number;
             /** Format: date */
@@ -67070,8 +67071,7 @@ export interface components {
             postedAsSubjectType?: "USER" | "TEAM" | "ORGANIZATION";
             priority?: string;
             readTrackingMode?: string;
-            /** Format: int64 */
-            scopeId?: number;
+            scopeId?: string;
             scopeType?: string;
             /** Format: uuid */
             scopeVillageId?: string;
