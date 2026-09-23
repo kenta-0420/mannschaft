@@ -3,7 +3,6 @@ package com.mannschaft.app.village.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
-import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.JoinRequestCreateRequest;
 import com.mannschaft.app.village.dto.JoinRequestResponse;
 import com.mannschaft.app.village.dto.JoinRequestReviewRequest;
@@ -77,11 +76,6 @@ public class VillageJoinRequestController {
      * {@link SecurityUtils#getCurrentUserId()} だけで解決する。したがって他人の申請を
      * 要求する余地が構造的に存在しない（403/404 の判定自体が不要）。</p>
      */
-    @SelfScopedEndpoint(
-            "パス・クエリで対象ユーザーを一切受け取らず、SecurityUtils.getCurrentUserId() が解決した"
-            + "認証済みユーザーIDのみを検索条件に使う（VillageJoinRequestService#listMine が"
-            + "requesterUserId で絞り込む）。他人の識別子を指定する余地が構造的に無い"
-            + "（設計書 F17.1_village_community.md §4.4.4 表）。")
     @GetMapping("/api/v1/villages/{villageId}/join-requests/me")
     @Operation(summary = "自分の村参加申請一覧（申請者本人）")
     public ResponseEntity<ApiResponse<List<JoinRequestResponse>>> listMine(
