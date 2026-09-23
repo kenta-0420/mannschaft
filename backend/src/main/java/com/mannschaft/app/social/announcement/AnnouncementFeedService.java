@@ -3,10 +3,17 @@ package com.mannschaft.app.social.announcement;
 import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -77,6 +84,85 @@ public class AnnouncementFeedService {
 
     // ── 委員会関連リポジトリ（COMMITTEE スコープサポート用） ──
     private final CommitteeMemberRepository committeeMemberRepository;
+    private final MembershipRepository membershipRepository;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
+
+    /** 個人横断で対象にする所属スコープの上限。 */
+    private static final int PERSONAL_SCOPE_LIMIT = 20;
+
+    /** 課金ゲートで非表示になる行を補充取得する際の最大走査件数。 */
+    private static final int PERSONAL_FEED_SCAN_LIMIT = 200;
+
+    /** 個人横断フィードを取得する。 */
+    public AnnouncementFeedResult getPersonalFeed(Long userId, int limit, boolean includeRead) {
+        int effectiveLimit = Math.max(1, Math.min(limit <= 0 ? 15 : limit, MAX_LIMIT));
+        List<MembershipEntity> memberships = membershipRepository.findRecentActiveByUser(
+                userId, Set.of(ScopeType.TEAM, ScopeType.ORGANIZATION),
+                PageRequest.of(0, PERSONAL_SCOPE_LIMIT));
+        if (memberships.isEmpty()) {
+            return new AnnouncementFeedResult(List.of(), null, false, 0);
+        }
+
+        List<AnnouncementFeedQueryRepository.PersonalScopeAccess> scopes = memberships.stream()
+                .map(membership -> new AnnouncementFeedQueryRepository.PersonalScopeAccess(
+                        AnnouncementScopeType.valueOf(membership.getScopeType().name()),
+                        membership.getScopeId(),
+                        AnnouncementVisibility.allowedFor(
+                                membership.getRoleKind() == RoleKind.SUPPORTER ? "SUPPORTER" : "MEMBER")))
+                .toList();
+        List<AnnouncementFeedEntity> visibleRows = new ArrayList<>();
+        int offset = 0;
+        boolean sourceHasNext = true;
+        while (visibleRows.size() < effectiveLimit + 1
+                && offset < PERSONAL_FEED_SCAN_LIMIT && sourceHasNext) {
+            int fetchSize = Math.min(effectiveLimit + 1, PERSONAL_FEED_SCAN_LIMIT - offset);
+            List<AnnouncementFeedEntity> batch = feedQueryRepository.findPersonalFeed(
+                    scopes, userId, includeRead, offset, fetchSize);
+            sourceHasNext = batch.size() == fetchSize;
+            offset += batch.size();
+            if (batch.isEmpty()) {
+                break;
+            }
+            Map<Long, GateCheckResponse> gates = paymentGateService.checkAccessBatch(
+                    ContentGateType.ANNOUNCEMENT,
+                    batch.stream().map(AnnouncementFeedEntity::getId).toList(), userId,
+                    batch.stream().filter(feed -> targetOf(feed) != null)
+                            .collect(java.util.stream.Collectors.toMap(
+                                    AnnouncementFeedEntity::getId, AnnouncementFeedService::targetOf)));
+            if (gates == null) {
+                continue;
+            }
+            batch.stream()
+                    .filter(feed -> {
+                        GateCheckResponse gate = gates.get(feed.getId());
+                        return gate != null && !gate.isTitleHidden();
+                    })
+                    .forEach(visibleRows::add);
+        }
+        List<AnnouncementFeedEntity> page = visibleRows.stream().limit(effectiveLimit).toList();
+
+        Set<Long> readIds = readService.fetchReadFeedIds(
+                userId, page.stream().map(AnnouncementFeedEntity::getId).toList());
+        Set<Long> teamIds = memberships.stream()
+                .filter(m -> m.getScopeType() == ScopeType.TEAM)
+                .map(MembershipEntity::getScopeId).collect(java.util.stream.Collectors.toSet());
+        Set<Long> organizationIds = memberships.stream()
+                .filter(m -> m.getScopeType() == ScopeType.ORGANIZATION)
+                .map(MembershipEntity::getScopeId).collect(java.util.stream.Collectors.toSet());
+        Map<Long, String> teamNames = teamService.getNamesByIds(teamIds);
+        Map<Long, String> organizationNames = organizationService.getNamesByIds(organizationIds);
+
+        List<AnnouncementFeedItem> items = page.stream().map(feed -> {
+            String scopeName = feed.getScopeType() == AnnouncementScopeType.TEAM
+                    ? teamNames.get(feed.getScopeId()) : organizationNames.get(feed.getScopeId());
+            return new AnnouncementFeedItem(feed, readIds.contains(feed.getId()),
+                    ContentAccessState.FULL.name(), scopeName);
+        }).toList();
+        long unreadCount = includeRead ? items.stream().filter(item -> !item.isRead()).count() : items.size();
+        // F02.6 の個人横断 API は cursor 入力を持たない。継続不能なページ情報を返さない。
+        return new AnnouncementFeedResult(items, null, false, unreadCount);
+    }
 
     // ═════════════════════════════════════════════════════════════
     // 委譲: お知らせ作成（AnnouncementCreationService へ委譲）
@@ -467,9 +553,13 @@ public class AnnouncementFeedService {
     public record AnnouncementFeedItem(
             AnnouncementFeedEntity feed,
             boolean isRead,
-            String accessState) {
+            String accessState,
+            String scopeName) {
         public AnnouncementFeedItem(AnnouncementFeedEntity feed, boolean isRead) {
-            this(feed, isRead, ContentAccessState.FULL.name());
+            this(feed, isRead, ContentAccessState.FULL.name(), null);
+        }
+        public AnnouncementFeedItem(AnnouncementFeedEntity feed, boolean isRead, String accessState) {
+            this(feed, isRead, accessState, null);
         }
     }
 

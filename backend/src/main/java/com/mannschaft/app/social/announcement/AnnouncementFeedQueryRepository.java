@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Set;
+import java.util.ArrayList;
 
 /**
  * お知らせフィードのカーソルページングクエリリポジトリ（F02.6）。
@@ -42,6 +43,13 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AnnouncementFeedQueryRepository {
 
+    /** 個人横断フィード取得時のスコープと閲覧可能範囲。 */
+    public record PersonalScopeAccess(
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            Set<String> allowedVisibilities) {
+    }
+
     /**
      * 「そのスコープでその閲覧者に<b>可視な</b>お知らせ」を表す正準 WHERE 句（#2494）。
      *
@@ -70,6 +78,62 @@ public class AnnouncementFeedQueryRepository {
             """;
 
     private final EntityManager em;
+
+    /**
+     * 現役所属スコープを横断してフィードを有界取得する。
+     * スコープ条件は最大20個であり、各条件に可視性集合を結び付けて別テナント露出を防ぐ。
+     */
+    public List<AnnouncementFeedEntity> findPersonalFeed(
+            List<PersonalScopeAccess> scopes,
+            Long userId,
+            boolean includeRead,
+            int offset,
+            int limit) {
+        if (scopes == null || scopes.isEmpty()) {
+            return List.of();
+        }
+
+        StringBuilder jpql = new StringBuilder("SELECT a FROM AnnouncementFeedEntity a WHERE (");
+        List<PersonalScopeAccess> usableScopes = new ArrayList<>();
+        for (PersonalScopeAccess scope : scopes) {
+            if (scope == null || scope.scopeType() == null || scope.scopeId() == null
+                    || scope.allowedVisibilities() == null || scope.allowedVisibilities().isEmpty()) {
+                continue;
+            }
+            int index = usableScopes.size();
+            if (index > 0) {
+                jpql.append(" OR ");
+            }
+            jpql.append("(a.scopeType = :scopeType").append(index)
+                    .append(" AND a.scopeId = :scopeId").append(index)
+                    .append(" AND a.visibility IN :visibilities").append(index).append(")");
+            usableScopes.add(scope);
+        }
+        if (usableScopes.isEmpty()) {
+            return List.of();
+        }
+        jpql.append(") AND (a.expiresAt IS NULL OR a.expiresAt > CURRENT_TIMESTAMP)")
+                .append(" AND a.sourceDeletedAt IS NULL");
+        if (!includeRead) {
+            jpql.append(" AND NOT EXISTS (SELECT r.id FROM AnnouncementReadStatusEntity r")
+                    .append(" WHERE r.announcementFeedId = a.id AND r.userId = :userId)");
+        }
+        jpql.append(" ORDER BY a.isPinned DESC, a.createdAt DESC, a.id DESC");
+
+        TypedQuery<AnnouncementFeedEntity> query = em.createQuery(jpql.toString(), AnnouncementFeedEntity.class);
+        for (int i = 0; i < usableScopes.size(); i++) {
+            PersonalScopeAccess scope = usableScopes.get(i);
+            query.setParameter("scopeType" + i, scope.scopeType());
+            query.setParameter("scopeId" + i, scope.scopeId());
+            query.setParameter("visibilities" + i, scope.allowedVisibilities());
+        }
+        if (!includeRead) {
+            query.setParameter("userId", userId);
+        }
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+        return query.getResultList();
+    }
 
     /**
      * スコープ内のお知らせフィードをカーソルページングで取得する。
