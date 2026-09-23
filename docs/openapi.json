@@ -155044,7 +155044,9 @@
           },
           "dayOfWeek": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 6,
+            "minimum": 0
           },
           "purpose": {
             "type": "string",
@@ -188700,6 +188702,9 @@
           },
           "preference": {
             "type": "string"
+          },
+          "scheduleDeleted": {
+            "type": "boolean"
           },
           "scheduleId": {
             "type": "integer",
