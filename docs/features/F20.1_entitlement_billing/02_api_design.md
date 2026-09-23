@@ -265,12 +265,15 @@ POST /api/v1/organizations/{orgId}/billing/contracts     # ORG スコープ
 GET/POST/PUT/DELETE /api/v1/system-admin/billing/plans            # plans CRUD（{planKey} 自然キー）
 GET/POST/PUT/DELETE /api/v1/system-admin/billing/features         # feature_catalog CRUD（{featureKey}）
 PUT                 /api/v1/system-admin/billing/plans/{planKey}/features    # plan_features 一括置換
+GET/POST/PUT/DELETE /api/v1/system-admin/billing/tax-codes        # 税コードマスタCRUD（決定6。billing_tax_codes）
 POST                /api/v1/system-admin/billing/price-revisions  # DRAFT revision+bands作成
 GET                 /api/v1/system-admin/billing/price-revisions/{id}
+GET                 /api/v1/system-admin/billing/price-revisions  # 一覧（productKind/productKey/scopeKind/status絞込・page/size）
 POST                /api/v1/system-admin/billing/price-revisions/{id}/provision
 POST                /api/v1/system-admin/billing/price-revisions/{id}/retry-provision
+POST                /api/v1/system-admin/billing/price-revisions/{id}/reconcile-provision  # PROVISIONING停滞の全属性照合回収
 POST                /api/v1/system-admin/billing/price-revisions/{id}/activate
-PUT                 /api/v1/system-admin/billing/plans/{planKey}/price-bands # 互換入力。revision Sagaへ委譲し直接更新しない
+PUT                 /api/v1/system-admin/billing/plans/{planKey}/price-bands # 【410封鎖済・出陣隊第4陣】旧API。エンドポイント自体は残すが常に410を返す
 POST                /api/v1/system-admin/billing/grants           # 手動付与（契約行を作って発行）
 GET                 /api/v1/system-admin/billing/contracts?scopeKind=&scopeId=&status=&page=  # 横断検索
 認可: @PreAuthorize("hasRole('SYSTEM_ADMIN')")（全 EP・03 §1）
@@ -280,14 +283,24 @@ GET                 /api/v1/system-admin/billing/contracts?scopeKind=&scopeId=&s
 
 | price revision API | request | response | status |
 |---|---|---|---|
-| `POST /price-revisions` | `Idempotency-Key` + `PriceRevisionCreateRequest` | `PriceRevisionResponse(status='DRAFT')` | 201/400/409 |
+| `POST /price-revisions` | `Idempotency-Key` + `PriceRevisionCreateRequest` | `PriceRevisionResponse(status='DRAFT', lockVersion)` | 201/400/409 |
 | `GET /price-revisions/{id}` | UUIDv7 | `PriceRevisionResponse`（band別Provision state/errorを含む） | 200/404 |
-| `POST /price-revisions/{id}/provision` | `Idempotency-Key` + `{lockVersion:int64}` | `PriceRevisionResponse(status='PROVISIONING')` | 202/404/409/502 |
-| `POST /price-revisions/{id}/retry-provision` | `Idempotency-Key` + `{lockVersion:int64}` | `PriceRevisionResponse(status='PROVISIONING')` | 202/404/409/502 |
-| `POST /price-revisions/{id}/activate` | `Idempotency-Key` + `{lockVersion:int64}` | futureは`SCHEDULED`、即時は`ACTIVE`の`PriceRevisionResponse` | 200/404/409 |
-| 旧 `PUT /plans/{planKey}/price-bands` | legacy `PriceBandsReplaceRequest` | 201 revision Saga委譲結果（直接更新なし） | 201/400/409/410 |
+| `GET /price-revisions` | query params | `PriceRevisionPageResponse`（band明細を含まない要約一覧） | 200 |
+| `POST /price-revisions/{id}/provision` | `Idempotency-Key` + `{lockVersion:int64}` | 同期実行。終局状態（`READY`/`PROVISION_FAILED`）の`PriceRevisionResponse(lockVersion)` | **200**/404/409 |
+| `POST /price-revisions/{id}/retry-provision` | `Idempotency-Key` + `{lockVersion:int64}` | 同上（`PROVISION_FAILED`のbandのみ作り直す。`READY`は変更しない） | 200/404/409 |
+| `POST /price-revisions/{id}/reconcile-provision` | `Idempotency-Key` + `{lockVersion:int64}` | `PROVISIONING`のまま停止したbandをStripe側属性と全照合しREADYへ回収するか隔離 | 200/404/409 |
+| `POST /price-revisions/{id}/activate` | `Idempotency-Key` + `{lockVersion:int64}` | futureは`SCHEDULED`、即時は`ACTIVE`の`PriceRevisionResponse(lockVersion)` | 200/404/409 |
+| 旧 `PUT /plans/{planKey}/price-bands` | — | **常に410**（本文なし。revision Sagaへの委譲自体を廃止し、`POST /price-revisions`系列に一本化） | 410 |
 
-すべてSYSTEM_ADMIN限定で、idempotency/`lockVersion`/row lockを必須とする。`catalogRevision`とサーバー採番`revisionNo`は不変で、CAS対象ではない。Provisionの外部Stripe呼出はDBの`PROVISIONING` reservation commit後にのみ行い、Stripe成功後DB失敗はPrice metadataのrevisionId/bandIdで照合して回収する。activateは全band READY以外を409とし、future revisionはSCHEDULED、開始時に旧ACTIVEをRETIRED、新版をACTIVEへ遷移する。旧版を物理更新・削除しない。
+すべてSYSTEM_ADMIN限定で、idempotency/`lockVersion`/row lockを必須とする。`catalogRevision`とサーバー採番`revisionNo`は不変で、CAS対象ではない。
+
+**【出陣隊第4陣・実装から学んだ事実】**
+
+- **`PriceRevisionResponse` は必ず `lockVersion`（`BillingPriceVersionEntity#lockVersion`＝JPA `@Version`）を含む。** create/get/provision/retry-provision/reconcile-provision/activateのいずれのレスポンスも次のCAS呼び出しに使う現在値を返す。呼び出し側（FE・外部クライアント）はこの値をそのまま次のリクエストボディの`lockVersion`に渡す。**当初この項目が欠落しており、1回でも操作した後の後続呼び出しが常に409 LOCK_VERSION_CONFLICTになる欠陥があった**ため、実装時は必ずこのフィールドをレスポンス構築に含めること。またJPA `@Version`はHibernateがflush時にしかインクリメントしないため、`save()`直後に`getLockVersion()`を読んでレスポンスへ渡す実装は、明示的に`flush()`してから読むこと（さもなくば旧値を返す）。
+- **provision/retry-provision/reconcile-provisionはいずれも同期実行で常に200＋終局状態を返す。202は返さない。** DBへband単位で`PROVISIONING`をcommitした後にのみStripeを呼ぶ（fail-forward。1 bandの失敗で以降を中断しない）。外部Stripe呼出後のDB側失敗は、作成したPriceのmetadata（`revisionId`/`bandId`/`environmentId`）で照合して回収する（reconcile-provisionの責務）。
+- **Stripeのtest/live Price分離（環境識別子）**: `createPrice`が焼くPrice metadataには`revisionId`/`bandId`に加えて`environmentId`（`test`/`live`/`unknown`）を含める。値は`mannschaft.stripe.secret-key`のプレフィックス（`sk_test_`/`rk_test_`/`sk_live_`/`rk_live_`の前方一致）から起動時に一度だけ導出する（新しい設定項目は増やさない）。reconcile-provisionの全属性照合は、この`environmentId`が現在の実行環境の識別子と一致しない場合も`RECONCILE_ATTRIBUTE_MISMATCH`で隔離する（test環境で作られたPriceをlive環境が誤って回収する事故を防ぐ）。
+- **監査記録（AC-171）**: create/provision/retry-provision/reconcile-provision/activateの5経路すべてで`AuditEventType.PRICE_REVISION_CREATED`/`PROVISIONED`/`RETRY_PROVISIONED`/`RECONCILED`/`ACTIVATED`のいずれかを`AuditLogService`経由で記録する。metadataは`revisionId`/`productKind`/`productKey`/`scopeKind`/`status`のみとし、Stripe Price ID・Product ID・clientSecret・raw payload等は一切含めない（秘密かどうか迷うものは載せない側に倒す）。
+- activateは全band READY以外を409とし、future revisionはSCHEDULED、開始時に旧ACTIVEをRETIRED、新版をACTIVEへ遷移する。旧版を物理更新・削除しない。
 
 - **バリデーション（マスタ整合の一次防御・01 §7）**:
   - `plan_features` 置換: 各 featureKey が `feature_catalog` に実在しなければ 400。
