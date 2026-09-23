@@ -371,10 +371,13 @@ public class ShiftSlotService {
      * @throws BusinessException メンバーでない場合、または SUPPORTER の場合（COMMON_002 / 403）
      */
     private void checkScheduleReadAccess(Long scheduleId, Long userId) {
+        // 親スケジュールの生存確認（resolveTeamId が論理削除済みなら404を投げる）を
+        // SYSTEM_ADMIN 短絡より必ず先に行う。CMP-260917-1136: 短絡を先に置くと
+        // SYSTEM_ADMIN だけが親削除済みでも通過してしまう（一般メンバーは resolveTeamId で404）。
+        Long teamId = resolveTeamId(scheduleId);
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
-        Long teamId = resolveTeamId(scheduleId);
         if (!accessControlService.isMember(userId, teamId, "TEAM")) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
@@ -391,10 +394,15 @@ public class ShiftSlotService {
      * @throws BusinessException 権限が無い場合（COMMON_002 / 403）
      */
     private void checkScheduleAdminAccess(Long scheduleId, Long userId) {
+        // 親スケジュールの生存確認を SYSTEM_ADMIN 短絡より必ず先に行う（CMP-260917-1136）。
+        // resolveTeamId は論理削除済みスケジュールに対して SHIFT_SCHEDULE_NOT_FOUND を投げる。
+        // 短絡を先に置くと SYSTEM_ADMIN だけが亡霊枠（親削除済み）を編集・削除できてしまい、
+        // 一般 ADMIN（resolveTeamId で 404 になる）と挙動が食い違う。
+        Long teamId = resolveTeamId(scheduleId);
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
-        accessControlService.checkAdminOrAbove(userId, resolveTeamId(scheduleId), "TEAM");
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
     }
 
     /**
@@ -414,12 +422,13 @@ public class ShiftSlotService {
      * @throws BusinessException 未公開の場合（SHIFT_SCHEDULE_NOT_FOUND / 404）
      */
     private boolean resolveAssignmentMasked(Long scheduleId, Long userId) {
-        // SYSTEM_ADMIN 短絡は schedule の取得より前に置く（checkScheduleReadAccess と同じ順序）。
+        // 親スケジュールの生存確認（@SQLRestriction による論理削除フィルタ）を
+        // SYSTEM_ADMIN 短絡より必ず先に行う（CMP-260917-1136。checkScheduleReadAccess と同じ順序）。
+        ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
         if (accessControlService.isSystemAdmin(userId)) {
             return false;
         }
-        ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
         if (accessControlService.isAdminOrAbove(userId, schedule.getTeamId(), "TEAM")) {
             return false;
         }
