@@ -4,6 +4,8 @@ import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -47,4 +49,15 @@ public interface PaymentItemRepository extends JpaRepository<PaymentItemEntity, 
      * Stripe Price ID で支払い項目を取得する（Webhook 受信時の逆引き用）。
      */
     Optional<PaymentItemEntity> findByStripePriceId(String stripePriceId);
+
+    /** 論理削除後も過去の支払い証憑を生成できる、領収書専用の不変項目射影。 */
+    @Query(value = "SELECT name, team_id AS teamId, organization_id AS organizationId "
+            + "FROM payment_items WHERE id = :id", nativeQuery = true)
+    Optional<PaymentItemReceiptContext> findReceiptContextById(@Param("id") Long id);
+
+    interface PaymentItemReceiptContext {
+        String getName();
+        Long getTeamId();
+        Long getOrganizationId();
+    }
 }

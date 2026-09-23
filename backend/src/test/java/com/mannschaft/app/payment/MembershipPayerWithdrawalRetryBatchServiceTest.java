@@ -45,6 +45,26 @@ class MembershipPayerWithdrawalRetryBatchServiceTest {
     @InjectMocks private MembershipPayerWithdrawalRetryBatchService batchService;
 
     @Test
+    void 受益者退会の未同期取消しもバッチから再試行する() {
+        batchService.runWithdrawalCancelRetry();
+
+        verify(membershipSubscriptionService).retryBeneficiaryWithdrawalCancellations();
+    }
+
+    @Test
+    void 受益者再試行が失敗しても払い手の解約と復旧を続行する() {
+        willThrow(new IllegalStateException("受益者の DB 照会障害"))
+                .given(membershipSubscriptionService).retryBeneficiaryWithdrawalCancellations();
+        given(membershipSubscriptionService.findWithdrawalCancelRetryPayerUserIds()).willReturn(List.of(1L));
+        given(membershipSubscriptionService.findWithdrawalRestoreRetryPayerUserIds()).willReturn(List.of(2L));
+
+        batchService.runWithdrawalCancelRetry();
+
+        verify(membershipSubscriptionService).cancelAllForPayerOnWithdrawal(1L);
+        verify(membershipSubscriptionService).restoreAllForPayerOnWithdrawalCancelled(2L);
+    }
+
+    @Test
     @DisplayName("非終端の作業行と backlog の両経路から拾い、払い手単位で解約を再試行する")
     void retriesBothWorkRowAndBacklogPayers() {
         given(membershipSubscriptionService.findWithdrawalCancelRetryPayerUserIds())

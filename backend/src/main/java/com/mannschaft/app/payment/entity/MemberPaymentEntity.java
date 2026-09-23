@@ -91,14 +91,6 @@ public class MemberPaymentEntity extends BaseEntity {
     private Long payerUserId;
 
     /**
-     * 第三者代理払いの権原 payment_proxy_grants.id（BINARY(16) = UUID）。
-     * 保護者経由の代理払いは NULL（権原は parental_consent_links 参照）。
-     * PayerRelationship=PROXY_GRANT の場合のみ設定される。
-     */
-    @Column(columnDefinition = "BINARY(16)")
-    private UUID paymentProxyGrantId;
-
-    /**
      * 払い手と受益者の関係スナップショット。
      * 監査・表示用。支払い後に関係が変わっても記録は変更しない。
      */

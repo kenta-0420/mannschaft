@@ -204,10 +204,16 @@ export function usePaymentApi() {
    * F08.9 P8: チーム月次手数料明細を取得する。
    * BE: GET /api/v1/teams/{teamId}/fee-statements?period=YYYY-MM
    */
-  async function getFeeStatement(teamId: string, period: string) {
+  async function getFeeStatement(teamId: number, period: string) {
     return api<{ data: FeeStatementResponse }>(`/api/v1/teams/${teamId}/fee-statements`, {
       query: { period },
     })
+  }
+
+  async function exportFeeStatementPdf(teamId: number, period: string) {
+    return api(`/api/v1/teams/${teamId}/fee-statements/pdf`, {
+      query: { period }, responseType: 'blob' as const,
+    }) as Promise<Blob>
   }
 
   // === Subscriptions ===
@@ -275,6 +281,7 @@ export function usePaymentApi() {
     resumeSubscription,
     getReceipt,
     getFeeStatement,
+    exportFeeStatementPdf,
     getBeneficiarySetting,
     updateBeneficiarySetting,
   }

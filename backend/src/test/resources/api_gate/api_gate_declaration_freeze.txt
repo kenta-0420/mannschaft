@@ -381,12 +381,12 @@ HTTP|com.mannschaft.app.payment.controller.PayableDuesController|2|2
 HTTP|com.mannschaft.app.payment.controller.PaymentCheckoutController|3|3
 HTTP|com.mannschaft.app.payment.controller.PaymentMethodController|2|2
 HTTP|com.mannschaft.app.payment.controller.PaymentRequestOrgController|4|4
-HTTP|com.mannschaft.app.payment.controller.ReceiptController|1|1
+HTTP|com.mannschaft.app.payment.controller.ReceiptController|2|2
 HTTP|com.mannschaft.app.payment.controller.StripeWebhookController|0|2
 HTTP|com.mannschaft.app.payment.controller.SubscriptionController|2|2
 HTTP|com.mannschaft.app.payment.controller.TeamAccessRequirementController|2|2
 HTTP|com.mannschaft.app.payment.controller.TeamContentPaymentGateController|2|2
-HTTP|com.mannschaft.app.payment.controller.TeamFeeStatementController|1|1
+HTTP|com.mannschaft.app.payment.controller.TeamFeeStatementController|2|2
 HTTP|com.mannschaft.app.payment.controller.TeamMembershipSubscriptionController|1|1
 HTTP|com.mannschaft.app.payment.controller.TeamPaymentAdvanceController|2|2
 HTTP|com.mannschaft.app.payment.controller.TeamPaymentBeneficiarySettingController|2|2

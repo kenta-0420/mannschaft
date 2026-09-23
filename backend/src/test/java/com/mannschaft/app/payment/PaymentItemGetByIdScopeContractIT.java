@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -166,6 +167,22 @@ class PaymentItemGetByIdScopeContractIT extends AbstractMySqlIntegrationTest {
         mockMvc.perform(get("/api/v1/payment-items/{itemId}", 999_999_999L))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PAYMENT_001"));
+    }
+
+    @Test
+    @DisplayName("領収書射影は論理削除済み項目の不変情報を取得できる")
+    void 領収書射影は論理削除済み項目を取得できる() {
+        PaymentItemEntity item = paymentItemRepository.findById(termItemInTeamAId).orElseThrow();
+        item.softDelete();
+        paymentItemRepository.saveAndFlush(item);
+        em.clear();
+
+        assertThat(paymentItemRepository.findById(termItemInTeamAId)).isEmpty();
+        PaymentItemRepository.PaymentItemReceiptContext context = paymentItemRepository
+                .findReceiptContextById(termItemInTeamAId).orElseThrow();
+        assertThat(context.getName()).isEqualTo("PIGBI 期別会費");
+        assertThat(context.getTeamId()).isEqualTo(teamAId);
+        assertThat(context.getOrganizationId()).isNull();
     }
 
     // ═════════════════════════════════════════════════════════════════════

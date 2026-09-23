@@ -154,7 +154,7 @@ class ShiftRequestProxyInputTest {
             ShiftRequestEntity savedEntity = createSavedEntityWithId(REQUEST_ID);
             ShiftRequestResponse response = new ShiftRequestResponse(
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
-                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now());
+                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now(), false);
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
@@ -182,7 +182,7 @@ class ShiftRequestProxyInputTest {
             ShiftRequestEntity savedEntity = createSavedEntityWithId(REQUEST_ID);
             ShiftRequestResponse response = new ShiftRequestResponse(
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
-                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now());
+                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now(), false);
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
@@ -257,7 +257,7 @@ class ShiftRequestProxyInputTest {
 
             ShiftRequestResponse response = new ShiftRequestResponse(
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
-                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now());
+                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now(), false);
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
@@ -321,7 +321,7 @@ class ShiftRequestProxyInputTest {
 
             ShiftRequestResponse response = new ShiftRequestResponse(
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
-                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now());
+                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now(), false);
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(

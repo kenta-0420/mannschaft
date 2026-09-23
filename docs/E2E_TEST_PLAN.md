@@ -193,12 +193,12 @@ tests/e2e/
 | 11 | `/admin/member-permissions` | ADMIN-030 |
 | 12 | `/admin/member-profiles` | ADMIN-031 |
 | 13 | `/admin/module-pricing` | ADMIN-032 |
-| 14 | `/admin/org-billing` | ADMIN-033 |
+| 14 | ~~`/admin/org-billing`~~ | ~~ADMIN-033~~（CMP-260909-1141・マスター裁可でページごと削除。お蔵入り。確定設計F20.1がorg_type別課金を採用しておらず、BEも未実装だったため） |
 | 15 | `/admin/packages` | ADMIN-034 |
 | 16 | `/admin/permission-groups` | ADMIN-035 |
 | 17 | `/admin/promotions` | ADMIN-036 |
 | 18 | `/admin/receipts` | ADMIN-037 |
-| 19 | `/admin/reservation-settings` | ADMIN-038 |
+| 19 | ~~`/admin/reservation-settings`~~ | ~~ADMIN-038~~（CMP-260909-1141でページごと削除。予約ラインCRUDはLineManager.vue経由でteams/[slug]/reservationsから、確認通知はteams/organizations配下のsettings/confirmable-notificationsから到達可能） |
 | 20 | `/admin/schedule-settings` | ADMIN-039 |
 | 21 | `/admin/seasonal-wallpapers` | ADMIN-040 |
 | 22 | `/admin/sns-settings` | ADMIN-041 |

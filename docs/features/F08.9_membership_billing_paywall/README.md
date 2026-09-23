@@ -1,7 +1,7 @@
 # F08.9 会員決済・後見つきマルチ受益者・ペイウォール・継続課金
 
-> **ステータス**: 🟢 設計確定（御裁可反映済・二度の敵対的精査反映済・**2026-06-04 統一決済アーキ正典化反映**［サブスク解約/今月スキップ・立替記録案3・F22.1依存是正・3層結合・手数料ランク化連動］。設計内の論点は全クローズ。残る外部関門は税理士[§11-2]＋実装前 PoC[§11-3] のみ。実装＝P1 main 済・P2 以降未着手）
-> **最終更新**: 2026-06-04
+> **ステータス**: 🟢 実装完了（P1〜P8、Stripeテスト環境PoC、実機E2Eを完了。税務判断はスコープ外で `NoOpTaxPolicy` を維持）
+> **最終更新**: 2026-09-20
 > **親機能**: [F08.2 支払い・コンテンツアクセス制御](../F08.2_payments_access_control.md) を上位拡張 ／ 決済レールは [F22.1 統一決済プラットフォーム](../F22.1_market/payment/README.md) を再利用
 > **関連**: [F01.9 年齢確認・保護者同意](../F01.9_age_verification_parental_consent.md) ／ [F03.12 見守り通知](../F03.12_care_recipient_event_watch_notification.md) ／ [F14.1 代理入力](../F14.1_proxy_input_for_offline_residents.md) ／ [F00 可視性基盤](../F00_content_visibility_resolver.md) ／ [F04.9 確認必須通知](../F04.9_confirmable_notification.md) ／ [F04.11 統合通知インボックス](../F04.11_notification_inbox/README.md)
 
@@ -14,7 +14,7 @@
 | ファイル | 内容 |
 |---|---|
 | `README.md`（本書） | 概要・中核モデル（払い手≠受益者／年齢段階つき後見切替／既存機構再利用）・継続/期別課金方式・ペイウォール・協会→チーム請求・可視化・領収書/税からくり・F08.2/F22.1 統合・段階ロードマップ・未解決→確定・変更履歴 |
-| [`01_data_model.md`](01_data_model.md) | DB設計（`member_payments` 拡張＝払い手分離／`membership_subscriptions` 新規／`payment_requests`（協会請求）新規／`payment_items` 税・継続列追加／`connect_accounts` 税登録番号追加／`payment_proxy_grants`（代理払い許可）新規・ER図・Flyway 計画） |
+| [`01_data_model.md`](01_data_model.md) | DB設計（`member_payments` 拡張＝払い手分離／`membership_subscriptions` 新規／`payment_requests`（協会請求）新規／`payment_items` 税・継続列追加／`connect_accounts` 税登録番号追加・ER図・Flyway 計画） |
 | [`02_api_design.md`](02_api_design.md) | API設計（代理払い・後見切替セッション・継続課金(Subscription+invoice上書き)・期別単発・協会請求発行/支払・ペイウォール判定・集計/CSV/領収書・Webhook フロー・DTO・エラーコード・冪等性） |
 | [`03_security.md`](03_security.md) | セキュリティ（認可マトリクス・年齢段階ゲート・代理払い認可・ペイウォールIDOR・受益者キー判定・PCI(SAQ-A)・Webhook署名/冪等・GDPR/退会・税務別建て論点・レート制限・未解決→確定） |
 | [`04_ui_i18n.md`](04_ui_i18n.md) | 画面設計（後見まとめ支払い・子アカウント切替・ペイウォール施錠UI・継続課金管理・協会請求受信/支払・領収書ダウンロード）・i18n 6言語キー骨子 |
@@ -50,8 +50,8 @@
 | F03.12 見守り `user_care_links`（relationship=PARENT/CHILD） | ✅実装済 | ○ 親子＋見守り関係の確立に流用。**通知設定のみ**で操作権は無し |
 | F14.1 代理入力 `proxy_input_consents` ＋ `ProxyInputContext`（`X-Proxy-For-User-Id`） | ✅実装済・**汎用代理権枠組み** | ◎ 「後見切替セッション」「代理払い」の認可基盤に流用 |
 | 無ログイン管理アカウント `users.accountCreatedByWatcherUserId` | ❌フィールドのみ・未実装 | ✗ **採用しない**（子は自前アカウントを持つ方針） |
-| 代理払い（`MemberPaymentService.createCheckout` は払い手＝受益者で固定） | ❌未実装 | — 払い手分離が本機能の新規実装 |
-| Subscription（`SubscriptionController`/`TeamSubscriptionEntity`/`TeamPlanService`） | ⚠️ガワのみ（"Phase 4 実装予定" を返すだけ・Stripe Subscription API 未呼出） | △ ガワを本機能の継続課金で本実装 |
+| 代理払い | ✅実装済 | ◎ 本人または承認済み保護者に限定して払い手/受益者を分離。第三者grant・招待は不提供 |
+| Subscription | ✅実装済 | ◎ Stripe Subscription、invoice固定手数料上書き、失敗/復帰、解約/スキップを実装 |
 | 通知（`NotificationEntity.actionUrl`／`ConfirmableNotificationService.send(List<userId>)`／`InboxSourceAdapter`） | ✅実装済 | ◎ 協会請求の一斉配信・inbox 集約に流用 |
 | F00 可視性（`AbstractContentVisibilityResolver.evaluateCustom()`） | ✅実装済・拡張点あり | ◎ ペイウォール判定の差し込み口 |
 
@@ -60,18 +60,18 @@
 ## 2. スコープ
 
 ### 2.1 対象（in）
-- [ ] 払い手≠受益者の決済記録（`member_payments.payer_user_id` 分離）
-- [ ] 後見まとめ支払い（保護者が複数の子の会費を1画面で一括決済）
-- [ ] 年齢段階つき後見切替セッション（小学生まで強権・中学生以降封印）
-- [ ] 代理払い認可（保護者リンク or F14.1 代理権スコープ `PAYMENT`）
-- [ ] 会費の F22.1 統一 Connect レール化（`source_kind=MEMBERSHIP`・即時 capture）
-- [ ] 継続課金（月額/年額）＝ Stripe Subscription ＋ invoice 固定手数料上書き
-- [ ] 期別課金（夏期講習等）＝ 単発 destination charge
-- [ ] ペイウォール（受益者キー判定・blog/お知らせ・F00 evaluateCustom 連結）
-- [ ] 協会→加盟チーム請求（`payment_requests`・通知配信・payer=TEAM/payee=ORG）
-- [ ] 支払いユーザ可視化（払い手/受益者・未払/支払済/期限切れ・期別集計・CSV）
-- [ ] 領収書（受領者名義・金額のみ）＋ 月次手数料明細（Mannschaft 名義）
-- [ ] 税からくり（nullable 税列・`TaxPolicy` 戦略 NoOp 既定・領収書拡張点）
+- [x] 払い手≠受益者の決済記録（`member_payments.payer_user_id` 分離）
+- [x] 後見まとめ支払い（保護者が複数の子の会費を1画面で一括決済）
+- [x] 年齢段階つき後見切替セッション（小学生まで強権・中学生以降封印）
+- [x] 代理払い認可（本人または承認済み保護者。非後見第三者は不提供）
+- [x] 会費の F22.1 統一 Connect レール化（`source_kind=MEMBERSHIP`・即時 capture）
+- [x] 継続課金（月額/年額）＝ Stripe Subscription ＋ invoice 固定手数料上書き
+- [x] 期別課金（夏期講習等）＝ 単発 destination charge
+- [x] ペイウォール（受益者キー判定・blog/お知らせ・F00 evaluateCustom 連結）
+- [x] 協会→加盟チーム請求（`payment_requests`・通知配信・payer=TEAM/payee=ORG）
+- [x] 支払いユーザ可視化（払い手/受益者・未払/支払済/期限切れ・期別集計・CSV/PDF）
+- [x] 領収書（受領者名義・金額のみ）＋ 月次手数料明細（Mannschaft 名義）
+- [x] 税からくり（nullable 税列・`TaxPolicy` 戦略 NoOp 既定・領収書拡張点）
 
 ### 2.2 対象外（out）
 - [ ] 税計算・適格請求書の税内訳/登録番号レンダリングの**実装**（からくりのみ。実装は将来・国別）
@@ -125,7 +125,7 @@ member_payments
 「払い手が受益者の会費を払ってよいか」の認可は、用途で2系統を使い分ける。
 
 1. **日常の後見代理払い（軽量・主経路）**：払い手が受益者の**有効な保護者/見守り者**（`parental_consent_links.status=APPROVED` または `user_care_links.status=ACTIVE` かつ relationship=PARENT）であれば、**追加同意なしに**代理払い可。子の年齢段階に依存しない（中学生の子の会費も親は払える＝切替できないだけ）。
-2. **非後見の代理払い（明示許諾）**：保護者でない第三者（祖父母・スポンサー等）が払う場合は、受益者側が発行する **`payment_proxy_grants`**（代理払い許可・有効期限つき・上限額つき）を要する。**これが第三者払いの正規経路**。F14.1 の代理権スコープ `PAYMENT` は紙同意書ベースの**組織代理の重い経路**として温存し、日常の代理払い認可（03_security §2 `authorizePayment`）には含めない。
+2. **非後見第三者への直接払いは不提供**：第三者へのgrant・招待は、金銭的圧力、いじめ、招待スパム、関係性の露出を生むため提供しない。援助は将来の組織管理による補助・免除・クレジットとして、個人間の権原付与とは分離する。F14.1 の代理権スコープ `PAYMENT` は紙同意書ベースの**組織代理の重い経路**として維持し、日常の代理払い認可（03_security §2 `authorizePayment`）には含めない。
 
 > ⚠️ **proxy scope `PAYMENT` は実在の枠組みに値を1つ足すだけ（マスター確定 2026-06-04・是正）**: 代理権スコープは実在の `proxy_input_consent_scopes.feature_scope`（VARCHAR(64)・V18.011・実機確認済）に格納され、enum `ProxyInputConsentScopeEntity.FeatureScope`（SURVEY/SCHEDULE_ATTENDANCE/SHIFT_REQUEST/ANNOUNCEMENT_READ/PARKING_APPLICATION/CIRCULAR/SUPPORTER_VIEW）で表現される。**代理払いの組織代理経路は、この enum に値 `PAYMENT` を1つ追加するだけ**（`feature_scope` は VARCHAR ゆえ**列追加・DDL 不要**・CHECK 制約なし）。`proxy_input_consents` 本体に新規列を作るのではなく、**既存のスコープ行に `PAYMENT` を1つ足す**だけで代理払い認可・退会失効（F14.1 の scope 行失効）はこの scope 行で判定できる。
 3. **本人払い**：`payer_user_id == beneficiaryUserId` は常に可。
@@ -133,7 +133,7 @@ member_payments
 
 > 後見切替セッション中の決済も本節1（保護者リンク）で権原が立つが、記録上は `payer_relationship=GUARDIAN_PROXY` と区別する（02_api §1.1）。中学進学で切替は封じられるが、**保護者の代理払い自体は本節1で継続可**（自立移行フロー＝02_api §2.3）。
 
-> いずれの経路でも、決済確定時に「払い手・受益者・権原（保護者リンクID or grant ID）」を記録し、IDOR を封じる（03_security §2）。
+> いずれの経路でも、決済確定時に「払い手・受益者・権原（保護者リンクまたは管理者手動）」を記録し、IDOR を封じる（03_security §2）。
 
 ### 3.4 統一レール統合（source_kind=MEMBERSHIP）
 
@@ -339,10 +339,12 @@ payment_requests（新規・UUIDv7）
 
 依存と規模(S/M/L)を明示。各段は test-first（BEドメインUT＋API契約テスト先行）。
 
+> **完了確認（2026-09-20）**: P1〜P8 はすべて実装済み。今回の完了戦役で、受益者退会時の即時解約（DB先行・Stripe再試行）、領収書PDF fallback、月次手数料明細PDF、実機E2Eのデータ不足 `skip` を回収した。通常の払い手退会は期末解約、受益者退会は当該受益者の契約だけを即時解約し、退会取消後も自動再加入させない。
+
 | 段 | 名称 | 規模 | 依存 | 主要成果 |
 |---|---|---|---|---|
 | **P1** | 払い手分離＋会費Connect化（即時） | **M** | F22.1 P2-b（`ConnectChargeService`/`PaymentFeeCalculator`/`face_amount`/`capture_mode`）| `member_payments.payer_user_id`＋`escrow_transaction_id`／`source_kind=MEMBERSHIP` 即時 capture／本人払い・管理者手動記録の Connect 化／受益者キー判定の維持 |
-| **P2** | 後見まとめ支払い＋代理払い認可 | **M** | P1・F01.9・F03.12・F14.1 | 保護者リンク経由の代理払い／`payment_proxy_grants`／後見まとめ支払い画面（複数子の会費一括） |
+| **P2** | 後見まとめ支払い＋代理払い認可 | **M** | P1・F01.9・F03.12・F14.1 | 保護者リンク経由の代理払い／後見まとめ支払い画面（複数子の会費一括） |
 | **P3** | 年齢段階つき後見切替 | **M** | P2・`users.birthDate` | `X-Proxy-For-User-Id` 後見切替セッション／年齢ゲート（小学生まで強権・中学生以降封印）／監査連結 |
 | **P4** | ペイウォール（受益者キー） | **S** | P1・F00 | `content_payment_gates` の受益者キー判定／`evaluateCustom` 連結／blog・お知らせ施錠UI |
 | **P5** | 継続課金（Subscription＋invoice上書き） | **L** | P1・**PoC 成立済（2026-06-05・§11-3）** | `MembershipSubscriptionService`／Subscription 作成・`invoice.created` 上書き・`invoice.paid` 起票／dunning 状態反映。**初回=単発 destination charge＋次サイクル開始（案 b）／API バージョン acacia 固定**。自前バッチ退避は不要 |
@@ -352,7 +354,7 @@ payment_requests（新規・UUIDv7）
 
 > **依存ハードライン**：P1〜P8 は F22.1 **P2-b**（`ConnectChargeService`/`PaymentFeeCalculator`/`face_amount`/`capture_mode`）と **P2-e**（`EscrowSourceKind.MEMBERSHIP`）の完了を前提とする。F22.1 P2-b/e のマイルストーンを固定し、その完了後に本機能 P1 着手（並行着手で blocked にしない）。
 >
-> 新規ドメイン/改修：`payment`（payer分離・subscription・payment_request・proxy grant・tax からくり）／`membership`（受益者×支払いの結線）／`notification`・`inbox`（協会請求配信）／`cms`・`social.announcement`（ペイウォール連結）。F22.1 `payment.escrow`/`payment.connect` は**再利用のみ**。
+> 新規ドメイン/改修：`payment`（payer分離・subscription・payment_request・tax からくり）／`membership`（受益者×支払いの結線）／`notification`・`inbox`（協会請求配信）／`cms`・`social.announcement`（ペイウォール連結）。F22.1 `payment.escrow`/`payment.connect` は**再利用のみ**。
 
 ---
 
@@ -366,7 +368,7 @@ payment_requests（新規・UUIDv7）
 | **11-8** | サブスク解約/今月スキップ/再開 | **確定（マスター御裁可済 2026-06-04）** | 解約＝`cancel_at_period_end`（期末まで利用可・日割り返金なし）／今月スキップ＝`pause_collection(void)`＋`skip_until` 列（invoice void で valid_until 不延長＝ペイウォール無改修で整合）／再開＝pause 解除（§4.5 / 01 §2.1 / 02 §4.3 / 04 §2） |
 | **11-9** | payer=TEAM の決済表現（立替モデル） | **確定（マスター御裁可済 2026-06-04・案3）** | 操作 ADMIN 個人 Customer で課金・escrow payer_scope=TEAM・領収書チーム名義・`team_payment_advances` で立替/精算（F04.9 確認）。チーム残高直接払い（案2）は将来候補・家老偵察（§6.3 / §6.4 / 01 §2.5 / 02 §7） |
 | **11-4** | 協会→チーム請求の手数料負担（2.5%折半を会費と同じくするか・協会間B2Bで上乗せ表示が妥当か） | **確定（御裁可済 2026-06-03）** | 提案採用＝**会費と同折半**（チーム2.5%上乗せ・協会97.5%着金） |
-| **11-5** | 非後見の代理払い（祖父母・スポンサー）の許諾UX（`payment_proxy_grants` 軽量 grant か F14.1 同意書か） | 設計内確定 | 日常は保護者リンク自動許可、第三者は軽量 grant（有効期限つき）。F14.1 は組織代理の重い経路として温存（§3.3） |
+| **11-5** | 非後見第三者への直接代理払い | 設計内確定 | grant・招待は提供しない。援助は将来の組織管理補助・免除・クレジットとして分離する。F14.1 `PAYMENT` は組織代理用に維持（§3.3） |
 | **11-6** | 既存会員データ移行 | 解決済 | **不要**（開発中・本番データ無し・マスター確認済 2026-06-03） |
 | **11-7** | 無ログイン管理子アカウント | 解決済 | **不採用**（子は自前アカウントでITリテラシー育成・マスター確認済 2026-06-03） |
 
@@ -383,9 +385,9 @@ payment_requests（新規・UUIDv7）
 | 会費**値上げ時の既存サブスク** | 02_api §4.1 | 加入時 price で固定。改定は新規のみ・既存者は確認必須通知で乗換選択 |
 | 共同親権の**二重払い可視化** | 02_api §1.2 | `payable-dues` が `alreadyPaid`/`paidBy` を返す・bulk は起票直前に再認可 |
 | **後見切替中の払い手記録** | 02_api §1.1 / 03_security §2 | 払い手は保護者のまま・`payer_relationship=GUARDIAN_PROXY` で区別 |
-| 退会時の**サブスク/grant 失効** | 01_data_model §6 | `UserWithdrawalService` トランザクション内でアトミック失効・バッチは掃き取りの二重防御 |
+| 退会時の**サブスク・代理権失効** | 01_data_model §6 | `UserWithdrawalService` トランザクション内でアトミック失効・バッチは掃き取りの二重防御 |
 | Connect 口座**無効化**時の払い手体験 | 02_api §1.1 / 04 §3 | 払い手へ「受け取り準備中」表示・恒久/一時を `onboarding_status` で判定 |
-| 第三者 grant の**過大権限** | 01_data_model §2.3 | 包括 grant は `effective_until` 必須(CHECK)＋`max_amount` |
+| 第三者からの**金銭的圧力・招待スパム** | 01_data_model §2.3 | 非後見第三者への直接grant・招待を提供せず、援助は組織管理制度へ分離 |
 | 協会請求の**再請求** | 01_data_model §2.2 | `superseded_by_id` で旧 CANCELLED を新請求へ連結・回収率は PAID 件数集計 |
 | 税列の**後方互換** | 01_data_model §1.2 | NULL の間は現挙動と完全一致・既存集計に影響なし |
 | escrow の**組み合わせ整合** | 01_data_model §3.1 | source_kind×scope マッピング表＋防御的複合 CHECK 案 |

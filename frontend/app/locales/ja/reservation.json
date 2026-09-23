@@ -161,9 +161,7 @@
     },
     "page": {
       "my_title": "マイ予約",
-      "team_title": "予約管理",
-      "settings_title": "予約管理設定",
-      "settings_subtitle": "予約対象（スタッフ・窓口）を管理します"
+      "team_title": "予約管理"
     },
     "tab": {
       "book": "予約する",
@@ -223,7 +221,6 @@
     },
     "button": {
       "add_line": "{resourceName}を追加",
-      "add_line_long": "{resourceName}を追加",
       "save": "保存",
       "cancel": "キャンセル",
       "reserve": "予約する",
@@ -237,12 +234,9 @@
       "title": "確認",
       "line_create": "予約対象を作成",
       "line_edit": "予約対象を編集",
-      "line_create_long": "{resourceName}を追加",
-      "line_edit_long": "{resourceName}を編集",
       "reserve_confirm": "予約確認",
       "cancel_confirm": "この予約をキャンセルしますか？",
-      "line_delete_confirm": "この予約対象を削除しますか？",
-      "line_delete_named_confirm": "「{name}」を削除しますか？"
+      "line_delete_confirm": "この予約対象を削除しますか？"
     },
     "message": {
       "confirm_success": "予約を承認しました",
@@ -254,9 +248,6 @@
       "line_update_success": "予約対象を更新しました",
       "line_delete_success": "予約対象を削除しました",
       "line_save_failed": "保存に失敗しました",
-      "line_create_success_long": "予約対象を作成しました",
-      "line_update_success_long": "予約対象を更新しました",
-      "line_delete_success_long": "予約対象を削除しました",
       "line_load_failed": "予約対象の取得に失敗しました",
       "save_failed": "保存に失敗しました",
       "delete_failed": "削除に失敗しました",

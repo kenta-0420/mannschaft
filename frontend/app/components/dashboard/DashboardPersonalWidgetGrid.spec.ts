@@ -14,14 +14,17 @@ const widget = (key: string): WidgetDefinition => ({
 })
 
 const stubs = {
+  DashboardWidgetCard: {
+    template: '<article data-widget-collapsed="true"><slot /></article>',
+  },
   SectionCard: { template: '<section data-testid="calendar-card"><slot /></section>' },
   WidgetMyCalendar: { template: '<div>calendar</div>' },
   WidgetNotices: { template: '<section data-testid="notices-card">notices</section>' },
 }
 
-async function mountGrid(widgets: WidgetDefinition[]) {
+async function mountGrid(widgets: WidgetDefinition[], collapsedKeys = new Set<string>()) {
   return mountSuspended(DashboardPersonalWidgetGrid, {
-    props: { widgets, collapsedKeys: new Set<string>() },
+    props: { widgets, collapsedKeys },
     attrs: { class: 'grid gap-4' },
     global: { stubs },
   })
@@ -53,5 +56,28 @@ describe('DashboardPersonalWidgetGrid', () => {
     const wrapper = await mountGrid([widget('notices')])
 
     expect(wrapper.element.firstElementChild?.classList).toContain('md:col-span-2')
+  })
+
+  it('折りたたんだカードをモバイルでは1行全幅にし、説明文をGridで開閉する', async () => {
+    const wrapper = await mountGrid(
+      [widget('compact-a'), widget('compact-b')],
+      new Set(['compact-a']),
+    )
+    const [collapsedCard, expandedCard] = Array.from(wrapper.element.children) as HTMLElement[]
+
+    expect(collapsedCard?.classList).toContain('max-md:col-span-full')
+    expect(expandedCard?.classList).not.toContain('max-md:col-span-full')
+    expect(collapsedCard?.querySelector('.grid')?.className).toContain('grid-rows-[0fr]')
+    expect(collapsedCard?.querySelector('.grid')?.className).toContain('opacity-0')
+    expect(expandedCard?.querySelector('.grid')?.className).toContain('md:grid-rows-[1fr]')
+    expect(expandedCard?.querySelector('.grid')?.className).toContain('md:opacity-100')
+  })
+
+  it('実際に折りたたまれた子カードを全幅化する項目クラスを付与する', async () => {
+    const wrapper = await mountGrid([widget('compact-a')])
+    const item = wrapper.element.firstElementChild
+
+    expect(item?.classList).toContain('personal-widget-grid-item')
+    expect(item?.querySelector('[data-widget-collapsed="true"]')).not.toBeNull()
   })
 })

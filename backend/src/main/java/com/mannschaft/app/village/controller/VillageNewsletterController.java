@@ -3,7 +3,6 @@ package com.mannschaft.app.village.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
-import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.NewsletterCommentUpdateRequest;
 import com.mannschaft.app.village.dto.NewsletterIssueDetailResponse;
 import com.mannschaft.app.village.dto.NewsletterIssuePageResponse;
@@ -89,9 +88,6 @@ public class VillageNewsletterController {
         return ApiResponse.of(newsletterService.updateNewsletterSettings(villageId, request, actorUserId));
     }
 
-    @SelfScopedEndpoint("opt-out レコードの主体は常に SecurityUtils.getCurrentUserId() で、"
-            + "リクエストは他ユーザーの識別子を受け取らない"
-            + "（VillageNewsletterService#optOut が (villageId, 認証主体) の 1 行のみを作成する）")
     @PostMapping("/opt-out")
     @Operation(summary = "当該ユーザーをニュースレターから opt-out する")
     public ResponseEntity<Void> optOut(@PathVariable("villageId") UUID villageId) {
@@ -100,9 +96,6 @@ public class VillageNewsletterController {
         return ResponseEntity.noContent().build();
     }
 
-    @SelfScopedEndpoint("削除対象の opt-out レコードは (villageId, SecurityUtils.getCurrentUserId()) で"
-            + "一意に解決され、リクエストは他ユーザーの識別子を受け取らない"
-            + "（VillageNewsletterService#optIn の findByVillageIdAndUserId が認証主体に束縛される）")
     @DeleteMapping("/opt-out")
     @Operation(summary = "当該ユーザーの opt-out を解除する（= opt-in に戻す）")
     public ResponseEntity<Void> optIn(@PathVariable("villageId") UUID villageId) {
