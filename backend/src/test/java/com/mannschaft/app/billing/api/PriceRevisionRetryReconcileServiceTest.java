@@ -67,12 +67,14 @@ class PriceRevisionRetryReconcileServiceTest {
     private PriceRevisionRetryProvisionService retryService() {
         return new PriceRevisionRetryProvisionService(
                 versionRepository, bandRepository, stripeProductRepository, gateway, FIXED_CLOCK,
-                com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"));
+                com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"),
+                org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class));
     }
 
     private BillingPriceProvisionRecoveryService recoveryService() {
         return new BillingPriceProvisionRecoveryService(versionRepository, bandRepository, gateway, FIXED_CLOCK,
-                com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"));
+                com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"),
+                org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class));
     }
 
     // ═════════ retry-provision ═════════
@@ -90,7 +92,7 @@ class PriceRevisionRetryReconcileServiceTest {
                 new BillingPriceProvisionGateway.ProductResolution("prod_1", true));
         given(gateway.createPrice(any())).willReturn(new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
 
-        PriceRevisionResponse response = retryService().retryProvision(revision.getId(), revision.getLockVersion());
+        PriceRevisionResponse response = retryService().retryProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(response.getStatus())
                 .isIn(BillingPriceVersionStatus.READY, BillingPriceVersionStatus.PROVISION_FAILED);
@@ -112,7 +114,7 @@ class PriceRevisionRetryReconcileServiceTest {
                 new BillingPriceProvisionGateway.ProductResolution("prod_1", true));
         given(gateway.createPrice(any())).willReturn(new BillingPriceProvisionGateway.PriceCreationResult("price_new"));
 
-        retryService().retryProvision(revision.getId(), revision.getLockVersion());
+        retryService().retryProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(readyBand.getStripePriceRef()).isEqualTo("price_already_ready");
         verify(gateway, times(1)).createPrice(any());
@@ -128,7 +130,7 @@ class PriceRevisionRetryReconcileServiceTest {
         given(gateway.findPriceByMetadata(revision.getId(), failedBand.getId()))
                 .willReturn(Optional.of(matchingSnapshot(revision, failedBand, "price_recovered")));
 
-        retryService().retryProvision(revision.getId(), revision.getLockVersion());
+        retryService().retryProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(failedBand.getStripePriceRef()).isEqualTo("price_recovered");
         assertThat(failedBand.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
@@ -147,7 +149,7 @@ class PriceRevisionRetryReconcileServiceTest {
                 .willReturn(Optional.empty());
         given(gateway.resolveOrCreateProduct(any())).willThrow(new RuntimeException("still failing"));
 
-        retryService().retryProvision(revision.getId(), revision.getLockVersion());
+        retryService().retryProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(failedBand.getProvisionAttempts()).isEqualTo(before + 1);
     }
@@ -158,7 +160,7 @@ class PriceRevisionRetryReconcileServiceTest {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.ACTIVE);
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
 
-        assertThatThrownBy(() -> retryService().retryProvision(revision.getId(), revision.getLockVersion()))
+        assertThatThrownBy(() -> retryService().retryProvision(revision.getId(), revision.getLockVersion(), 700_001L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(PriceRevisionErrorCode.STATE_CONFLICT);
@@ -170,7 +172,7 @@ class PriceRevisionRetryReconcileServiceTest {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISIONING);
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
 
-        assertThatThrownBy(() -> retryService().retryProvision(revision.getId(), revision.getLockVersion()))
+        assertThatThrownBy(() -> retryService().retryProvision(revision.getId(), revision.getLockVersion(), 700_001L))
                 .isInstanceOf(BusinessException.class);
         verify(bandRepository, never()).findAllByPriceVersionIdForUpdate(any());
     }
@@ -187,7 +189,7 @@ class PriceRevisionRetryReconcileServiceTest {
         given(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId()))
                 .willReturn(Optional.of(matchingSnapshot(revision, stuckBand, "price_reconciled")));
 
-        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion());
+        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(stuckBand.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
         assertThat(stuckBand.getStripePriceRef()).isEqualTo("price_reconciled");
@@ -206,7 +208,7 @@ class PriceRevisionRetryReconcileServiceTest {
                 stuckBand.getTaxBehavior().name(), "test");
         given(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId())).willReturn(Optional.of(mismatched));
 
-        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion());
+        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(stuckBand.getStatus()).isEqualTo(BillingPriceVersionStatus.PROVISION_FAILED);
         assertThat(stuckBand.getProvisionErrorCode()).isEqualTo("RECONCILE_ATTRIBUTE_MISMATCH");
@@ -226,7 +228,7 @@ class PriceRevisionRetryReconcileServiceTest {
                 stuckBand.getTaxBehavior().name(), "test");
         given(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId())).willReturn(Optional.of(taxCodeMismatch));
 
-        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion());
+        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(stuckBand.getStatus())
                 .as("Productのtax_codeだけがズレたPriceを誤って回収してはならない（第4版検分の重大3の直接反証）")
@@ -251,7 +253,7 @@ class PriceRevisionRetryReconcileServiceTest {
         given(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId()))
                 .willReturn(Optional.of(liveEnvironmentSnapshot));
 
-        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion());
+        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(stuckBand.getStatus())
                 .as("環境識別子が食い違うPriceを誤って回収してはならない（AC-79・test/live Price分離）")
@@ -268,7 +270,7 @@ class PriceRevisionRetryReconcileServiceTest {
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(stuckBand));
         given(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId())).willReturn(Optional.empty());
 
-        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion());
+        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(stuckBand.getStatus()).isEqualTo(BillingPriceVersionStatus.PROVISION_FAILED);
     }
@@ -285,7 +287,7 @@ class PriceRevisionRetryReconcileServiceTest {
         UUID missing = UUID.randomUUID();
         given(versionRepository.findByIdAndDeletedAtIsNull(missing)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> recoveryService().reconcileProvision(missing, 0L))
+        assertThatThrownBy(() -> recoveryService().reconcileProvision(missing, 0L, 700_001L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(PriceRevisionErrorCode.REVISION_NOT_FOUND);
@@ -297,7 +299,7 @@ class PriceRevisionRetryReconcileServiceTest {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISIONING);
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
 
-        assertThatThrownBy(() -> recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion() + 1))
+        assertThatThrownBy(() -> recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion() + 1, 700_001L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(PriceRevisionErrorCode.LOCK_VERSION_CONFLICT);

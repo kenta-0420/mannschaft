@@ -123,7 +123,7 @@ public class PriceRevisionController {
         PriceRevisionLockVersionRequest body = requestOrDefault(request);
         String path = BASE_PATH + "/" + id + "/provision";
         return idempotent(actorId, "POST", path, idempotencyKey, body, HttpStatus.OK, PROVISION_LEASE_DURATION,
-                () -> provisionService.provision(id, body.lockVersion()));
+                () -> provisionService.provision(id, body.lockVersion(), actorId));
     }
 
     @PostMapping("/{id}/retry-provision")
@@ -137,7 +137,7 @@ public class PriceRevisionController {
         PriceRevisionLockVersionRequest body = requestOrDefault(request);
         String path = BASE_PATH + "/" + id + "/retry-provision";
         return idempotent(actorId, "POST", path, idempotencyKey, body, HttpStatus.OK, PROVISION_LEASE_DURATION,
-                () -> retryProvisionService.retryProvision(id, body.lockVersion()));
+                () -> retryProvisionService.retryProvision(id, body.lockVersion(), actorId));
     }
 
     @PostMapping("/{id}/reconcile-provision")
@@ -151,7 +151,7 @@ public class PriceRevisionController {
         PriceRevisionLockVersionRequest body = requestOrDefault(request);
         String path = BASE_PATH + "/" + id + "/reconcile-provision";
         return idempotent(actorId, "POST", path, idempotencyKey, body, HttpStatus.OK, PROVISION_LEASE_DURATION,
-                () -> reconcileService.reconcileProvision(id, body.lockVersion()));
+                () -> reconcileService.reconcileProvision(id, body.lockVersion(), actorId));
     }
 
     @PostMapping("/{id}/activate")
@@ -165,7 +165,7 @@ public class PriceRevisionController {
         PriceRevisionLockVersionRequest body = requestOrDefault(request);
         String path = BASE_PATH + "/" + id + "/activate";
         return idempotent(actorId, "POST", path, idempotencyKey, body, HttpStatus.OK, null,
-                () -> activationService.activate(id, body.lockVersion()));
+                () -> activationService.activate(id, body.lockVersion(), actorId));
     }
 
     private PriceRevisionLockVersionRequest requestOrDefault(PriceRevisionLockVersionRequest request) {

@@ -68,7 +68,8 @@ class PriceRevisionProvisionServiceTest {
     private PriceRevisionProvisionService service() {
         return new PriceRevisionProvisionService(
                 versionRepository, bandRepository, stripeProductRepository, gateway,
-                Clock.fixed(NOW, ZoneOffset.UTC), new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier());
+                Clock.fixed(NOW, ZoneOffset.UTC), new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier(),
+                org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class));
     }
 
     @Test
@@ -85,7 +86,7 @@ class PriceRevisionProvisionServiceTest {
         given(gateway.createPrice(any())).willReturn(
                 new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
 
-        PriceRevisionResponse response = service().provision(revision.getId(), revision.getLockVersion());
+        PriceRevisionResponse response = service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(response.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
         assertThat(revision.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
@@ -102,7 +103,7 @@ class PriceRevisionProvisionServiceTest {
                 revision.getProductKind(), revision.getProductKey(), "TAX10")).willReturn(Optional.empty());
         given(gateway.resolveOrCreateProduct(any())).willThrow(new RuntimeException("stripe unreachable"));
 
-        PriceRevisionResponse response = service().provision(revision.getId(), revision.getLockVersion());
+        PriceRevisionResponse response = service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(response.getStatus()).isEqualTo(BillingPriceVersionStatus.PROVISION_FAILED);
     }
@@ -125,7 +126,7 @@ class PriceRevisionProvisionServiceTest {
         given(gateway.createPrice(any())).willReturn(
                 new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
 
-        service().provision(revision.getId(), revision.getLockVersion());
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
     }
 
     @Test
@@ -148,7 +149,7 @@ class PriceRevisionProvisionServiceTest {
                 .willReturn(new BillingPriceProvisionGateway.PriceCreationResult("price_4"))
                 .willReturn(new BillingPriceProvisionGateway.PriceCreationResult("price_5"));
 
-        service().provision(revision.getId(), revision.getLockVersion());
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(bands.get(0).getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
         assertThat(bands.get(1).getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
@@ -170,7 +171,7 @@ class PriceRevisionProvisionServiceTest {
                 .willReturn(Optional.empty());
         given(gateway.resolveOrCreateProduct(any())).willThrow(new RuntimeException("boom"));
 
-        service().provision(revision.getId(), revision.getLockVersion());
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(b1.getProvisionErrorCode()).isNotBlank();
         assertThat(revision.getLastProvisionErrorCode()).isNotBlank();
@@ -201,7 +202,7 @@ class PriceRevisionProvisionServiceTest {
         ArgumentCaptor<BillingPriceProvisionGateway.ProductResolutionCommand> captor =
                 ArgumentCaptor.forClass(BillingPriceProvisionGateway.ProductResolutionCommand.class);
 
-        service().provision(revision.getId(), revision.getLockVersion());
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         verify(gateway, times(2)).resolveOrCreateProduct(captor.capture());
         assertThat(captor.getAllValues())
@@ -215,7 +216,7 @@ class PriceRevisionProvisionServiceTest {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
 
-        assertThatThrownBy(() -> service().provision(revision.getId(), revision.getLockVersion() + 999))
+        assertThatThrownBy(() -> service().provision(revision.getId(), revision.getLockVersion() + 999, 700_001L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(PriceRevisionErrorCode.LOCK_VERSION_CONFLICT);
@@ -228,7 +229,7 @@ class PriceRevisionProvisionServiceTest {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.READY);
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
 
-        assertThatThrownBy(() -> service().provision(revision.getId(), revision.getLockVersion()))
+        assertThatThrownBy(() -> service().provision(revision.getId(), revision.getLockVersion(), 700_001L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(PriceRevisionErrorCode.STATE_CONFLICT);
@@ -240,7 +241,7 @@ class PriceRevisionProvisionServiceTest {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISIONING);
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
 
-        assertThatThrownBy(() -> service().provision(revision.getId(), revision.getLockVersion()))
+        assertThatThrownBy(() -> service().provision(revision.getId(), revision.getLockVersion(), 700_001L))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -262,7 +263,7 @@ class PriceRevisionProvisionServiceTest {
         ArgumentCaptor<BillingPriceProvisionGateway.PriceCreationCommand> captor =
                 ArgumentCaptor.forClass(BillingPriceProvisionGateway.PriceCreationCommand.class);
 
-        service().provision(revision.getId(), revision.getLockVersion());
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         verify(gateway).createPrice(captor.capture());
         BillingPriceProvisionGateway.PriceCreationCommand command = captor.getValue();
@@ -290,7 +291,7 @@ class PriceRevisionProvisionServiceTest {
         given(gateway.createPrice(any())).willReturn(
                 new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
 
-        service().provision(revision.getId(), revision.getLockVersion());
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         verify(gateway, never()).resolveOrCreateProduct(any());
     }
@@ -311,7 +312,7 @@ class PriceRevisionProvisionServiceTest {
         ArgumentCaptor<BillingPriceProvisionGateway.PriceCreationCommand> priceCaptor =
                 ArgumentCaptor.forClass(BillingPriceProvisionGateway.PriceCreationCommand.class);
 
-        service().provision(revision.getId(), revision.getLockVersion());
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         verify(gateway).createPrice(priceCaptor.capture());
         assertThat(priceCaptor.getValue().idempotencyKey()).isEqualTo("price-band-create:" + b1.getId());
@@ -332,7 +333,7 @@ class PriceRevisionProvisionServiceTest {
                 new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
         ArgumentCaptor<BillingStripeProductEntity> mappingCaptor = ArgumentCaptor.forClass(BillingStripeProductEntity.class);
 
-        service().provision(revision.getId(), revision.getLockVersion());
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         verify(stripeProductRepository).save(mappingCaptor.capture());
         assertThat(mappingCaptor.getValue().getStripeProductId()).isEqualTo("prod_new");
@@ -356,8 +357,9 @@ class PriceRevisionProvisionServiceTest {
 
         new PriceRevisionRetryProvisionService(
                 versionRepository, bandRepository, stripeProductRepository, gateway,
-                Clock.fixed(NOW, ZoneOffset.UTC), new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier())
-                .retryProvision(revision.getId(), revision.getLockVersion());
+                Clock.fixed(NOW, ZoneOffset.UTC), new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier(),
+                org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class))
+                .retryProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         verify(gateway, never()).resolveOrCreateProduct(any());
         verify(gateway, times(1)).createPrice(any());
@@ -380,7 +382,7 @@ class PriceRevisionProvisionServiceTest {
         given(gateway.createPrice(any())).willReturn(new BillingPriceProvisionGateway.PriceCreationResult("price_x"));
 
         long startNanos = System.nanoTime();
-        service().provision(revision.getId(), revision.getLockVersion());
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
         long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000L;
 
         verify(gateway, times(10)).resolveOrCreateProduct(any());
@@ -403,7 +405,7 @@ class PriceRevisionProvisionServiceTest {
                 new BillingPriceProvisionGateway.ProductResolution("prod_won_by_other", false));
         given(gateway.createPrice(any())).willReturn(new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
 
-        service().provision(revision.getId(), revision.getLockVersion());
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         verify(stripeProductRepository).save(any());
         assertThat(b1.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);

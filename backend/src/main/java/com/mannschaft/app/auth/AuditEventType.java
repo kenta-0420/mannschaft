@@ -600,7 +600,42 @@ public enum AuditEventType {
      * metadata に errorCode（アプリのエラーコード）を含める。
      * <b>例外メッセージ本文は含めない</b>（AC-139）。
      */
-    BILLING_PLAN_CHANGE_FAILED(AuditEventCategory.BILLING);
+    BILLING_PLAN_CHANGE_FAILED(AuditEventCategory.BILLING),
+
+    // ─── BILLING (価格改定 price-revisions・L群) ──────────────────────────────
+    /**
+     * 価格改定 revision を新規作成した（決定4・L群 AC-171）。SYSTEM_ADMIN 専用操作のため
+     * teamId/organizationId は持たない（userId=操作者のみ）。
+     * metadata に revisionId・productKind・productKey・scopeKind・effectiveFrom を含める。
+     * <b>Stripe Price ref・税額計算の途中値は含めない</b>（AC-168。秘密ではないが載せない側に倒す）。
+     */
+    PRICE_REVISION_CREATED(AuditEventCategory.BILLING),
+
+    /**
+     * 価格改定の Provision を実行した（決定2・L群 AC-171）。fail-forward のため
+     * band ごとの成否は分からないが、revision 全体の結果（READY/PROVISION_FAILED）を記録する。
+     * metadata に revisionId・status を含める。
+     * <b>Stripe Price/Product ID・clientSecret・raw payload は含めない</b>（AC-168）。
+     */
+    PRICE_REVISION_PROVISIONED(AuditEventCategory.BILLING),
+
+    /**
+     * 価格改定の Provision 再試行を実行した（決定3・L群 AC-171）。metadata は
+     * {@link #PRICE_REVISION_PROVISIONED} と同じ。
+     */
+    PRICE_REVISION_RETRY_PROVISIONED(AuditEventCategory.BILLING),
+
+    /**
+     * 価格改定の Provision 回収（reconcile）を実行した（決定3・L群 AC-171）。metadata は
+     * {@link #PRICE_REVISION_PROVISIONED} と同じ。
+     */
+    PRICE_REVISION_RECONCILED(AuditEventCategory.BILLING),
+
+    /**
+     * 価格改定を Activate した（決定4・L群 AC-171）。即時なら ACTIVE・未来予約なら SCHEDULED。
+     * metadata に revisionId・status（ACTIVE/SCHEDULED）を含める。
+     */
+    PRICE_REVISION_ACTIVATED(AuditEventCategory.BILLING);
 
     private final AuditEventCategory category;
 }

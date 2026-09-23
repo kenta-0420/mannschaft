@@ -79,7 +79,8 @@ class PriceRevisionCreateServiceTest {
         Clock clock = Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
         service = new PriceRevisionCreateService(
                 priceVersionRepository, bandVersionRepository, planRepository,
-                featureCatalogRepository, taxCodeService, taxDerivationService, clock);
+                featureCatalogRepository, taxCodeService, taxDerivationService, clock,
+                org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class));
 
         lenient().when(planRepository.existsById("FULL")).thenReturn(true);
         lenient().when(planRepository.findById("FULL")).thenReturn(Optional.of(

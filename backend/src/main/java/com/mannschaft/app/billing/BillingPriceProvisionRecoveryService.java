@@ -1,5 +1,7 @@
 package com.mannschaft.app.billing;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.billing.api.dto.PriceRevisionBandResponse;
 import com.mannschaft.app.billing.api.dto.PriceRevisionResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -36,18 +38,21 @@ public class BillingPriceProvisionRecoveryService {
     private final BillingPriceProvisionGateway gateway;
     private final Clock clock;
     private final StripeEnvironmentIdentifier environmentIdentifier;
+    private final AuditLogService auditLogService;
 
     public BillingPriceProvisionRecoveryService(
             BillingPriceVersionRepository versionRepository,
             BillingPriceBandVersionRepository bandRepository,
             BillingPriceProvisionGateway gateway,
             Clock clock,
-            StripeEnvironmentIdentifier environmentIdentifier) {
+            StripeEnvironmentIdentifier environmentIdentifier,
+            AuditLogService auditLogService) {
         this.versionRepository = versionRepository;
         this.bandRepository = bandRepository;
         this.gateway = gateway;
         this.clock = clock;
         this.environmentIdentifier = environmentIdentifier;
+        this.auditLogService = auditLogService;
     }
 
     /** AC-99/AC-100: provision系3EPと同一の9分lease猶予。 */
@@ -56,7 +61,7 @@ public class BillingPriceProvisionRecoveryService {
     }
 
     @Transactional
-    public PriceRevisionResponse reconcileProvision(UUID id, long lockVersion) {
+    public PriceRevisionResponse reconcileProvision(UUID id, long lockVersion, Long actorId) {
         BillingPriceVersionEntity revision = versionRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(PriceRevisionErrorCode.REVISION_NOT_FOUND));
 
@@ -96,6 +101,11 @@ public class BillingPriceProvisionRecoveryService {
         // 食い違う（クライアントが次のCAS呼び出しで確実に409になる）。明示的に flush して
         // レスポンス構築前に確定させる。
         versionRepository.flush();
+
+        // L群AC-171: 監査記録。band成否の詳細・Stripe Price/Product IDは載せない（AC-168）。
+        auditLogService.record(AuditEventType.PRICE_REVISION_RECONCILED.name(), actorId, null, null, null,
+                null, null, null,
+                "{\"revisionId\":\"" + revision.getId() + "\",\"status\":\"" + revision.getStatus() + "\"}");
 
         return toResponse(revision, bands);
     }

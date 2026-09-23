@@ -58,7 +58,7 @@ class PriceRevisionActivationServiceTest {
     @Mock private BillingPriceBandVersionRepository bandRepository;
 
     private PriceRevisionActivationService service() {
-        return new PriceRevisionActivationService(versionRepository, bandRepository, FIXED_CLOCK);
+        return new PriceRevisionActivationService(versionRepository, bandRepository, FIXED_CLOCK, org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class));
     }
 
     @Test
@@ -71,7 +71,7 @@ class PriceRevisionActivationServiceTest {
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId()))
                 .willReturn(List.of(ready, notReady));
 
-        assertThatThrownBy(() -> service().activate(revision.getId(), revision.getLockVersion()))
+        assertThatThrownBy(() -> service().activate(revision.getId(), revision.getLockVersion(), 700_001L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(PriceRevisionErrorCode.STATE_CONFLICT);
@@ -87,7 +87,7 @@ class PriceRevisionActivationServiceTest {
             BillingPriceVersionEntity revision = revision(status);
             given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
 
-            assertThatThrownBy(() -> service().activate(revision.getId(), revision.getLockVersion()))
+            assertThatThrownBy(() -> service().activate(revision.getId(), revision.getLockVersion(), 700_001L))
                     .as("status=" + status)
                     .isInstanceOf(BusinessException.class);
         }
@@ -105,7 +105,7 @@ class PriceRevisionActivationServiceTest {
                 revision.getProductKind(), revision.getProductKey(), revision.getScopeKind()))
                 .willReturn(List.of(revision));
 
-        service().activate(revision.getId(), revision.getLockVersion());
+        service().activate(revision.getId(), revision.getLockVersion(), 700_001L);
 
         assertThat(revision.getStatus()).isEqualTo(BillingPriceVersionStatus.SCHEDULED);
         assertThat(readyBand.getStatus()).isEqualTo(BillingPriceVersionStatus.SCHEDULED);
@@ -127,7 +127,7 @@ class PriceRevisionActivationServiceTest {
                 .willReturn(List.of(oldActive, newRevision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(oldActive.getId())).willReturn(List.of(oldActiveBand));
 
-        service().activate(newRevision.getId(), newRevision.getLockVersion());
+        service().activate(newRevision.getId(), newRevision.getLockVersion(), 700_001L);
 
         assertThat(newRevision.getStatus()).isEqualTo(BillingPriceVersionStatus.ACTIVE);
         assertThat(newReadyBand.getStatus()).isEqualTo(BillingPriceVersionStatus.ACTIVE);
@@ -155,7 +155,7 @@ class PriceRevisionActivationServiceTest {
                 .willReturn(List.of(activeA, futureB));
         given(bandRepository.findAllByPriceVersionIdForUpdate(activeA.getId())).willReturn(List.of(activeABand));
 
-        service().activate(futureB.getId(), futureB.getLockVersion());
+        service().activate(futureB.getId(), futureB.getLockVersion(), 700_001L);
 
         assertThat(activeA.getEffectiveUntil()).isEqualTo(futureB.getEffectiveFrom());
         assertThat(activeABand.getEffectiveUntil()).isEqualTo(futureB.getEffectiveFrom());
@@ -173,7 +173,7 @@ class PriceRevisionActivationServiceTest {
                 onlyRevision.getProductKind(), onlyRevision.getProductKey(), onlyRevision.getScopeKind()))
                 .willReturn(List.of(onlyRevision));
 
-        service().activate(onlyRevision.getId(), onlyRevision.getLockVersion());
+        service().activate(onlyRevision.getId(), onlyRevision.getLockVersion(), 700_001L);
 
         assertThat(onlyRevision.getEffectiveUntil()).isNull();
     }
@@ -185,7 +185,7 @@ class PriceRevisionActivationServiceTest {
         revision.setEffectiveFrom(NOW.plusSeconds(86_400));
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
 
-        assertThatThrownBy(() -> service().activate(revision.getId(), revision.getLockVersion() + 1))
+        assertThatThrownBy(() -> service().activate(revision.getId(), revision.getLockVersion() + 1, 700_001L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(PriceRevisionErrorCode.LOCK_VERSION_CONFLICT);
@@ -197,7 +197,7 @@ class PriceRevisionActivationServiceTest {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.ACTIVE);
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
 
-        assertThatThrownBy(() -> service().activate(revision.getId(), revision.getLockVersion()))
+        assertThatThrownBy(() -> service().activate(revision.getId(), revision.getLockVersion(), 700_001L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(PriceRevisionErrorCode.STATE_CONFLICT);
@@ -206,7 +206,7 @@ class PriceRevisionActivationServiceTest {
     @Test
     @DisplayName("AC-117: activate専用サービスはBillingPricePromotionServiceに依存しない（promoteDueを呼びようがない設計）")
     void activateNeverDependsOnPromotionService() throws NoSuchMethodException {
-        Method activate = PriceRevisionActivationService.class.getMethod("activate", UUID.class, long.class);
+        Method activate = PriceRevisionActivationService.class.getMethod("activate", UUID.class, long.class, Long.class);
         assertThat(activate).isNotNull();
         assertThat(PriceRevisionActivationService.class.getDeclaredConstructors())
                 .noneMatch(constructor -> Arrays.stream(constructor.getParameterTypes())

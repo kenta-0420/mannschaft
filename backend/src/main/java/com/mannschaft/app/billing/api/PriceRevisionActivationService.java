@@ -8,6 +8,8 @@ import com.mannschaft.app.billing.BillingPriceVersionStatus;
 import com.mannschaft.app.billing.PriceRevisionErrorCode;
 import com.mannschaft.app.billing.api.dto.PriceRevisionBandResponse;
 import com.mannschaft.app.billing.api.dto.PriceRevisionResponse;
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,18 +36,21 @@ public class PriceRevisionActivationService {
     private final BillingPriceVersionRepository versionRepository;
     private final BillingPriceBandVersionRepository bandRepository;
     private final Clock clock;
+    private final AuditLogService auditLogService;
 
     public PriceRevisionActivationService(
             BillingPriceVersionRepository versionRepository,
             BillingPriceBandVersionRepository bandRepository,
-            Clock clock) {
+            Clock clock,
+            AuditLogService auditLogService) {
         this.versionRepository = versionRepository;
         this.bandRepository = bandRepository;
         this.clock = clock;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
-    public PriceRevisionResponse activate(UUID id, long lockVersion) {
+    public PriceRevisionResponse activate(UUID id, long lockVersion, Long actorId) {
         BillingPriceVersionEntity revision = versionRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(PriceRevisionErrorCode.REVISION_NOT_FOUND));
 
@@ -110,6 +115,11 @@ public class PriceRevisionActivationService {
         // 食い違う（クライアントが次のCAS呼び出しで確実に409になる）。明示的に flush して
         // レスポンス構築前に確定させる。
         versionRepository.flush();
+
+        // L群AC-171: 監査記録。status（ACTIVE/SCHEDULED）のみ。秘密は載せない（AC-168）。
+        auditLogService.record(AuditEventType.PRICE_REVISION_ACTIVATED.name(), actorId, null, null, null,
+                null, null, null,
+                "{\"revisionId\":\"" + revision.getId() + "\",\"status\":\"" + revision.getStatus() + "\"}");
 
         return toResponse(revision, bands);
     }

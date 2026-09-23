@@ -20,6 +20,8 @@ import com.mannschaft.app.billing.tax.BillingTaxCodeEntity;
 import com.mannschaft.app.billing.tax.BillingTaxCodeService;
 import com.mannschaft.app.billing.tax.BillingTaxDerivationResult;
 import com.mannschaft.app.billing.tax.BillingTaxDerivationService;
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.UuidV7;
 import org.springframework.stereotype.Service;
@@ -62,6 +64,7 @@ public class PriceRevisionCreateService {
     private final BillingTaxCodeService taxCodeService;
     private final BillingTaxDerivationService taxDerivationService;
     private final Clock clock;
+    private final AuditLogService auditLogService;
 
     public PriceRevisionCreateService(
             BillingPriceVersionRepository priceVersionRepository,
@@ -70,7 +73,8 @@ public class PriceRevisionCreateService {
             FeatureCatalogRepository featureCatalogRepository,
             BillingTaxCodeService taxCodeService,
             BillingTaxDerivationService taxDerivationService,
-            Clock clock) {
+            Clock clock,
+            AuditLogService auditLogService) {
         this.priceVersionRepository = priceVersionRepository;
         this.bandVersionRepository = bandVersionRepository;
         this.planRepository = planRepository;
@@ -78,6 +82,7 @@ public class PriceRevisionCreateService {
         this.taxCodeService = taxCodeService;
         this.taxDerivationService = taxDerivationService;
         this.clock = clock;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -181,6 +186,13 @@ public class PriceRevisionCreateService {
                     .status(bandEntity.getStatus())
                     .build());
         }
+
+        // L群AC-171: 監査記録。Stripe Price ref・税額の途中値は載せない
+        // （AC-168。未provisionのDRAFT時点ではまだ存在しないが、迷うものは載せない側に倒す）。
+        auditLogService.record(AuditEventType.PRICE_REVISION_CREATED.name(), adminId, null, null, null,
+                null, null, null,
+                "{\"revisionId\":\"" + revisionId + "\",\"productKind\":\"" + productKind
+                        + "\",\"productKey\":\"" + productKey + "\",\"scopeKind\":\"" + scopeKind + "\"}");
 
         return PriceRevisionResponse.builder()
                 .id(revisionId)
