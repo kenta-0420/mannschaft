@@ -5,7 +5,6 @@ import com.mannschaft.app.family.repository.UserCareLinkRepository;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.entity.RoleEntity;
@@ -46,6 +45,7 @@ public class AccessControlService {
     private final RoleService roleService;
     private final UserCareLinkRepository userCareLinkRepository;
     private final MembershipRepository membershipRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
 
     /**
      * 欠陥Z 根治: 組織発コンテンツの応答・要対応集計の認可で「配下チーム所属」を含めるための越境窓口。
@@ -718,8 +718,9 @@ public class AccessControlService {
     public Map<Long, LocalDateTime> findActiveMembershipJoinedAtByScope(Long userId, String scopeType) {
         ScopeType scope = ScopeType.valueOf(scopeType);
         Map<Long, LocalDateTime> result = new LinkedHashMap<>();
-        for (MembershipEntity m : membershipRepository.findActiveByUserAndScopeType(userId, scope)) {
-            result.putIfAbsent(m.getScopeId(), m.getJoinedAt());
+        for (MembershipScopeQueryService.CurrentMembershipScope membership
+                : membershipScopeQueryService.findCurrentMemberships(userId, scope)) {
+            result.putIfAbsent(membership.scopeId(), membership.joinedAt());
         }
         return result;
     }

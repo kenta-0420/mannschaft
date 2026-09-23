@@ -2,8 +2,8 @@ package com.mannschaft.app.tournament.fee;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.payment.FeeBreakdown;
 import com.mannschaft.app.payment.FeePolicy;
 import com.mannschaft.app.payment.FeePolicyResolver;
@@ -55,6 +55,7 @@ public class TournamentFeePaymentService {
     private final PaymentItemService paymentItemService;
     private final MemberPaymentRepository memberPaymentRepository;
     private final MembershipRepository membershipRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final TournamentRepository tournamentRepository;
     private final PaymentFeeCalculator paymentFeeCalculator;
     private final FeePolicyResolver feePolicyResolver;
@@ -70,10 +71,9 @@ public class TournamentFeePaymentService {
      */
     public MyTournamentFeesResponse getMyTournamentFees(Long userId) {
         // 1. ユーザーが所属する組織 ID 一覧を取得（アクティブな ORGANIZATION スコープのメンバーシップ）
-        List<Long> orgIds = membershipRepository
-                .findActiveByUserAndScopeType(userId, ScopeType.ORGANIZATION)
+        List<Long> orgIds = membershipScopeQueryService
+                .findCurrentMembershipOrganizationIds(userId)
                 .stream()
-                .map(MembershipEntity::getScopeId)
                 .distinct()
                 .toList();
 
@@ -82,10 +82,9 @@ public class TournamentFeePaymentService {
         }
 
         // 2. ユーザーが所属するチーム ID 一覧を取得（SPECIFIC_TEAMS の eligibility チェック用）
-        List<Long> teamIds = membershipRepository
-                .findActiveByUserAndScopeType(userId, ScopeType.TEAM)
+        List<Long> teamIds = membershipScopeQueryService
+                .findCurrentMembershipTeamIds(userId)
                 .stream()
-                .map(MembershipEntity::getScopeId)
                 .distinct()
                 .toList();
 
@@ -241,10 +240,9 @@ public class TournamentFeePaymentService {
         }
 
         if (fee.getTargetScope() == TournamentFeeTargetScope.SPECIFIC_TEAMS) {
-            List<Long> teamIds = membershipRepository
-                    .findActiveByUserAndScopeType(userId, ScopeType.TEAM)
+            List<Long> teamIds = membershipScopeQueryService
+                    .findCurrentMembershipTeamIds(userId)
                     .stream()
-                    .map(MembershipEntity::getScopeId)
                     .distinct()
                     .toList();
             boolean eligible = teamIds.stream()

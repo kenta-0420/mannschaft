@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <h2>主眼: teamId 省略（null）が主経路であり、これを壊してはならない</h2>
  * <p>{@code teamId} は {@code @RequestParam(required = false)} であり、null のときは
- * {@code userRoleRepository.findTeamIdsByUserId(currentUserId)} で本人の全所属チームを横断集計する
+ * {@code membershipScopeQueryService.findActiveTeamIds(currentUserId)} で本人の全所属チームを横断集計する
  * （メソッドの説明どおり「自分のパフォーマンスを全チーム横断で取得する」）。ここへ無条件の認可検証を
  * 足すと null が 403 になり主機能が壊れるため、AC-31 で退行を固定する。</p>
  *
