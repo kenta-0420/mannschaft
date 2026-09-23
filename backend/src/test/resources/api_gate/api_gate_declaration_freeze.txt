@@ -96,10 +96,12 @@ HTTP|com.mannschaft.app.billing.api.BillingPlanChangeController|0|2
 HTTP|com.mannschaft.app.billing.api.BillingPlanChangePaymentActionController|0|1
 HTTP|com.mannschaft.app.billing.api.BillingPlanController|2|2
 HTTP|com.mannschaft.app.billing.api.BillingReturnController|0|4
+HTTP|com.mannschaft.app.billing.api.PriceRevisionController|7|7
 HTTP|com.mannschaft.app.billing.api.PublicBillingCatalogController|0|1
 HTTP|com.mannschaft.app.billing.api.SystemAdminBillingController|14|14
 HTTP|com.mannschaft.app.billing.beta.api.BetaPerkController|3|3
 HTTP|com.mannschaft.app.billing.beta.api.SystemAdminBetaPerkController|9|9
+HTTP|com.mannschaft.app.billing.tax.SystemAdminTaxCodeController|4|4
 HTTP|com.mannschaft.app.budget.controller.BudgetAllocationController|2|2
 HTTP|com.mannschaft.app.budget.controller.BudgetCategoryController|5|5
 HTTP|com.mannschaft.app.budget.controller.BudgetCsvController|3|3
@@ -277,6 +279,7 @@ HTTP|com.mannschaft.app.jobmatching.controller.JobCheckInController|1|1
 HTTP|com.mannschaft.app.jobmatching.controller.JobContractController|6|6
 HTTP|com.mannschaft.app.jobmatching.controller.JobPostingController|9|9
 HTTP|com.mannschaft.app.jobmatching.controller.JobQrTokenController|2|2
+HTTP|com.mannschaft.app.joinrequest.controller.JoinRequestController|10|10
 HTTP|com.mannschaft.app.knowledgebase.controller.KbFavoriteController|3|3
 HTTP|com.mannschaft.app.knowledgebase.controller.KbPageController|12|12
 HTTP|com.mannschaft.app.knowledgebase.controller.KbRevisionController|3|3
@@ -748,4 +751,3 @@ HTTP|com.mannschaft.app.workflow.controller.WorkflowTemplateStatusController|2|2
 STOMP|com.mannschaft.app.chat.controller.ChatTypingController|1|1
 STOMP|com.mannschaft.app.chat.controller.ChatWebSocketController|1|1
 STOMP|com.mannschaft.app.village.controller.VillageLobbyPresenceController|3|3
-HTTP|com.mannschaft.app.joinrequest.controller.JoinRequestController|10|10
