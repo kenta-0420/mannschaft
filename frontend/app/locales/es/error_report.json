@@ -145,6 +145,10 @@
       "invalid_transition": "Esta transición de estado no está permitida",
       "comment_required": "El contenido del comentario es obligatorio"
     },
+    "widget": {
+      "badge_aria_label": "Abrir informe de error",
+      "badge_tooltip": "Se produjo un error. Haga clic para ver los detalles"
+    },
     "kanban": {
       "title": "Vista Kanban",
       "load_more": "Cargar más...",
