@@ -50,10 +50,11 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
  *       {@code BulletinAccessGuard}, {@code ReservationViewAccessGuard},
  *       {@code QuickMemoAccessGuard}, {@code FolderScopeAccessGuard} 等）・
  *       {@code *AccessService}（例: {@code MatchAccessService},
- *       {@code VillageBulletinAccessService} 等）で終わるクラスへのメソッド呼び出し。
+ *       {@code VillageBulletinAccessService} 等）・{@code *AccessGate}
+ *       （例: {@code VillageAccessGate}）で終わるクラスへのメソッド呼び出し。
  *       ホワイトリストは「命名規約に基づく suffix 判定」とし、個別クラスの
- *       ハードコード列挙にしない（新規 AccessGuard/AccessService が追加された瞬間に
- *       自動で認可シグナルとして認識されるようにするため）。</li>
+ *       ハードコード列挙にしない（新規 AccessGuard/AccessService/AccessGate が
+ *       追加された瞬間に自動で認可シグナルとして認識されるようにするため）。</li>
  *   <li>(C) メソッド または宣言クラスに<b>監査済マーカー 4 種のいずれか</b>。認可の所在ごとに
  *       分離されており、実態と異なるマーカーを貼ることは誤った証跡として禁じられる:
  *       <ul>
@@ -94,6 +95,16 @@ class AuthzControllerGuardArchTest {
         "com.mannschaft.app.common.visibility.ContentVisibilityChecker";
     private static final String ACCESS_GUARD_SUFFIX = "AccessGuard";
     private static final String ACCESS_SERVICE_SUFFIX = "AccessService";
+    /**
+     * 番人本体(2026-07-17新設)より後に生まれた命名規約
+     * （{@code VillageAccessGate}、2026-08-21新設）に、
+     * 命名規約ベースの自動追従が及んでいなかったため追加。
+     * 番人の設計指針は「個別クラスのハードコード列挙にせず suffix 判定で
+     * 新規 AccessGuard/AccessService 追加時に自動追従する」ことを謳っているが、
+     * *AccessGate という新しい語尾自体がホワイトリストに存在しなかった
+     * （意図的な除外ではなく、番人誕生後に生まれた命名規約への追従漏れ）。
+     */
+    private static final String ACCESS_GATE_SUFFIX = "AccessGate";
 
     /** 委譲探索の起点パッケージ（外部ライブラリへ潜らないための境界）。 */
     private static final String APP_ROOT_PACKAGE = "com.mannschaft.app";
@@ -107,7 +118,7 @@ class AuthzControllerGuardArchTest {
                 .should(haveAnAuthorizationSignal())
                 .because("認可根治戦役 Wave4 — 公開Controllerエンドポイント（Mappingメソッド）は "
                     + "@PreAuthorize か、AccessControlService/ContentVisibilityChecker/"
-                    + "*AccessGuard/*AccessService への認可呼び出しのいずれかを持つべき。"
+                    + "*AccessGuard/*AccessService/*AccessGate への認可呼び出しのいずれかを持つべき。"
                     + "既存の「Service層で認可・Controllerは素通し」EPは凍結し、"
                     + "新規に認可シグナルを持たないEPが追加された場合のみ fail させる")
                 // 凍結ストアの照合キー（rule description）を固定する。
@@ -301,6 +312,7 @@ class AuthzControllerGuardArchTest {
             return true;
         }
         String simpleName = clazz.getSimpleName();
-        return simpleName.endsWith(ACCESS_GUARD_SUFFIX) || simpleName.endsWith(ACCESS_SERVICE_SUFFIX);
+        return simpleName.endsWith(ACCESS_GUARD_SUFFIX) || simpleName.endsWith(ACCESS_SERVICE_SUFFIX)
+            || simpleName.endsWith(ACCESS_GATE_SUFFIX);
     }
 }
