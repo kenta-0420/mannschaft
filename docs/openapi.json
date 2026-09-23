@@ -188703,6 +188703,9 @@
           "preference": {
             "type": "string"
           },
+          "scheduleDeleted": {
+            "type": "boolean"
+          },
           "scheduleId": {
             "type": "integer",
             "format": "int64"

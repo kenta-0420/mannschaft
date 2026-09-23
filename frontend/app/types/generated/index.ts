@@ -62704,6 +62704,7 @@ export interface components {
         CreateShiftRequestRequest: {
             note?: string;
             preference: string;
+            scheduleDeleted?: boolean;
             /** Format: int64 */
             scheduleId: number;
             /** Format: date */
