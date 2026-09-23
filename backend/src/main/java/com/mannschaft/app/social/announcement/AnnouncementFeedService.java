@@ -5,15 +5,13 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
-import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.RecentMembershipScopeQueryService;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.domain.PageRequest;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -84,7 +82,7 @@ public class AnnouncementFeedService {
 
     // ── 委員会関連リポジトリ（COMMITTEE スコープサポート用） ──
     private final CommitteeMemberRepository committeeMemberRepository;
-    private final MembershipRepository membershipRepository;
+    private final RecentMembershipScopeQueryService recentMembershipScopeQueryService;
     private final TeamService teamService;
     private final OrganizationService organizationService;
 
@@ -97,19 +95,18 @@ public class AnnouncementFeedService {
     /** 個人横断フィードを取得する。 */
     public AnnouncementFeedResult getPersonalFeed(Long userId, int limit, boolean includeRead) {
         int effectiveLimit = Math.max(1, Math.min(limit <= 0 ? 15 : limit, MAX_LIMIT));
-        List<MembershipEntity> memberships = membershipRepository.findRecentActiveByUser(
-                userId, Set.of(ScopeType.TEAM, ScopeType.ORGANIZATION),
-                PageRequest.of(0, PERSONAL_SCOPE_LIMIT));
+        List<RecentMembershipScopeQueryService.RecentScope> memberships = recentMembershipScopeQueryService
+                .findRecentTeamAndOrganizationScopes(userId, PERSONAL_SCOPE_LIMIT);
         if (memberships.isEmpty()) {
             return new AnnouncementFeedResult(List.of(), null, false, 0);
         }
 
         List<AnnouncementFeedQueryRepository.PersonalScopeAccess> scopes = memberships.stream()
                 .map(membership -> new AnnouncementFeedQueryRepository.PersonalScopeAccess(
-                        AnnouncementScopeType.valueOf(membership.getScopeType().name()),
-                        membership.getScopeId(),
+                        AnnouncementScopeType.valueOf(membership.scopeType().name()),
+                        membership.scopeId(),
                         AnnouncementVisibility.allowedFor(
-                                membership.getRoleKind() == RoleKind.SUPPORTER ? "SUPPORTER" : "MEMBER")))
+                                membership.roleKind() == RoleKind.SUPPORTER ? "SUPPORTER" : "MEMBER")))
                 .toList();
         List<AnnouncementFeedEntity> visibleRows = new ArrayList<>();
         int offset = 0;
@@ -145,11 +142,13 @@ public class AnnouncementFeedService {
         Set<Long> readIds = readService.fetchReadFeedIds(
                 userId, page.stream().map(AnnouncementFeedEntity::getId).toList());
         Set<Long> teamIds = memberships.stream()
-                .filter(m -> m.getScopeType() == ScopeType.TEAM)
-                .map(MembershipEntity::getScopeId).collect(java.util.stream.Collectors.toSet());
+                .filter(m -> m.scopeType() == ScopeType.TEAM)
+                .map(RecentMembershipScopeQueryService.RecentScope::scopeId)
+                .collect(java.util.stream.Collectors.toSet());
         Set<Long> organizationIds = memberships.stream()
-                .filter(m -> m.getScopeType() == ScopeType.ORGANIZATION)
-                .map(MembershipEntity::getScopeId).collect(java.util.stream.Collectors.toSet());
+                .filter(m -> m.scopeType() == ScopeType.ORGANIZATION)
+                .map(RecentMembershipScopeQueryService.RecentScope::scopeId)
+                .collect(java.util.stream.Collectors.toSet());
         Map<Long, String> teamNames = teamService.getNamesByIds(teamIds);
         Map<Long, String> organizationNames = organizationService.getNamesByIds(organizationIds);
 

@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Set;
 import java.util.ArrayList;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * お知らせフィードのカーソルページングクエリリポジトリ（F02.6）。
@@ -112,7 +114,7 @@ public class AnnouncementFeedQueryRepository {
         if (usableScopes.isEmpty()) {
             return List.of();
         }
-        jpql.append(") AND (a.expiresAt IS NULL OR a.expiresAt > CURRENT_TIMESTAMP)")
+        jpql.append(") AND (a.expiresAt IS NULL OR a.expiresAt > :now)")
                 .append(" AND a.sourceDeletedAt IS NULL");
         if (!includeRead) {
             jpql.append(" AND NOT EXISTS (SELECT r.id FROM AnnouncementReadStatusEntity r")
@@ -121,6 +123,7 @@ public class AnnouncementFeedQueryRepository {
         jpql.append(" ORDER BY a.isPinned DESC, a.createdAt DESC, a.id DESC");
 
         TypedQuery<AnnouncementFeedEntity> query = em.createQuery(jpql.toString(), AnnouncementFeedEntity.class);
+        query.setParameter("now", LocalDateTime.now(ZoneOffset.UTC));
         for (int i = 0; i < usableScopes.size(); i++) {
             PersonalScopeAccess scope = usableScopes.get(i);
             query.setParameter("scopeType" + i, scope.scopeType());

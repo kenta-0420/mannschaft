@@ -26,8 +26,7 @@ import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
-import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.RecentMembershipScopeQueryService;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
@@ -134,7 +133,7 @@ class AnnouncementFeedServiceTest {
     private PaymentGateService paymentGateService;
 
     @Mock
-    private MembershipRepository membershipRepository;
+    private RecentMembershipScopeQueryService recentMembershipScopeQueryService;
 
     @Mock
     private TeamService teamService;
@@ -774,8 +773,8 @@ class AnnouncementFeedServiceTest {
         @DisplayName("DB障害を空配列へ変換せず呼び出し元へ伝播する")
         void databaseFailureIsPropagated() {
             RuntimeException failure = new RuntimeException("database unavailable");
-            given(membershipRepository.findRecentActiveByUser(
-                    eq(OTHER_USER_ID), any(), any())).willThrow(failure);
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(
+                    OTHER_USER_ID, 20)).willThrow(failure);
 
             assertThatThrownBy(() -> announcementFeedService.getPersonalFeed(OTHER_USER_ID, 15, false))
                     .isSameAs(failure);
@@ -784,29 +783,21 @@ class AnnouncementFeedServiceTest {
         @Test
         @DisplayName("所属取得は現役TEAM/ORGANIZATIONを上位20件に限定する")
         void membershipScopeIsBoundedToTwenty() {
-            given(membershipRepository.findRecentActiveByUser(eq(OTHER_USER_ID), any(), any()))
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(OTHER_USER_ID, 20))
                     .willReturn(List.of());
 
             announcementFeedService.getPersonalFeed(OTHER_USER_ID, 15, false);
 
-            @SuppressWarnings("unchecked")
-            org.mockito.ArgumentCaptor<Set<ScopeType>> types =
-                    org.mockito.ArgumentCaptor.forClass(Set.class);
-            org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> pageable =
-                    org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
-            verify(membershipRepository).findRecentActiveByUser(
-                    eq(OTHER_USER_ID), types.capture(), pageable.capture());
-            assertThat(types.getValue()).containsExactlyInAnyOrder(ScopeType.TEAM, ScopeType.ORGANIZATION);
-            assertThat(pageable.getValue().getPageSize()).isEqualTo(20);
+            verify(recentMembershipScopeQueryService)
+                    .findRecentTeamAndOrganizationScopes(OTHER_USER_ID, 20);
         }
 
         @Test
         @DisplayName("limitは1以上50以下へ補正しinclude_readを検索へ渡す")
         void limitAndIncludeReadAreApplied() {
-            MembershipEntity membership = MembershipEntity.builder()
-                    .userId(OTHER_USER_ID).scopeType(ScopeType.TEAM).scopeId(TEAM_ID)
-                    .roleKind(RoleKind.MEMBER).build();
-            given(membershipRepository.findRecentActiveByUser(eq(OTHER_USER_ID), any(), any()))
+            RecentMembershipScopeQueryService.RecentScope membership =
+                    new RecentMembershipScopeQueryService.RecentScope(ScopeType.TEAM, TEAM_ID, RoleKind.MEMBER);
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(OTHER_USER_ID, 20))
                     .willReturn(List.of(membership));
             given(feedQueryRepository.findPersonalFeed(any(), eq(OTHER_USER_ID), eq(true), eq(0), eq(51)))
                     .willReturn(List.of());
@@ -824,13 +815,11 @@ class AnnouncementFeedServiceTest {
         @Test
         @DisplayName("検索対象はrepositoryが返した現役所属だけでロール別visibilityを適用する")
         void onlyReturnedMembershipsBecomeQueryScopes() {
-            MembershipEntity teamSupporter = MembershipEntity.builder()
-                    .userId(OTHER_USER_ID).scopeType(ScopeType.TEAM).scopeId(TEAM_ID)
-                    .roleKind(RoleKind.SUPPORTER).build();
-            MembershipEntity organizationMember = MembershipEntity.builder()
-                    .userId(OTHER_USER_ID).scopeType(ScopeType.ORGANIZATION).scopeId(20L)
-                    .roleKind(RoleKind.MEMBER).build();
-            given(membershipRepository.findRecentActiveByUser(eq(OTHER_USER_ID), any(), any()))
+            RecentMembershipScopeQueryService.RecentScope teamSupporter =
+                    new RecentMembershipScopeQueryService.RecentScope(ScopeType.TEAM, TEAM_ID, RoleKind.SUPPORTER);
+            RecentMembershipScopeQueryService.RecentScope organizationMember =
+                    new RecentMembershipScopeQueryService.RecentScope(ScopeType.ORGANIZATION, 20L, RoleKind.MEMBER);
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(OTHER_USER_ID, 20))
                     .willReturn(List.of(teamSupporter, organizationMember));
             given(feedQueryRepository.findPersonalFeed(any(), eq(OTHER_USER_ID), eq(false), eq(0), eq(16)))
                     .willReturn(List.of());
@@ -854,8 +843,8 @@ class AnnouncementFeedServiceTest {
         @Test
         @DisplayName("所属が無い場合はDBフィード検索を行わず空結果を返す")
         void noMembershipReturnsEmpty() {
-            given(membershipRepository.findRecentActiveByUser(
-                    eq(OTHER_USER_ID), any(), any())).willReturn(List.of());
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(
+                    OTHER_USER_ID, 20)).willReturn(List.of());
 
             AnnouncementFeedService.AnnouncementFeedResult result =
                     announcementFeedService.getPersonalFeed(OTHER_USER_ID, 15, false);
@@ -869,13 +858,12 @@ class AnnouncementFeedServiceTest {
         @Test
         @DisplayName("SUPPORTERの内輪向け非表示と課金HIDDENを除外し次chunkから補充する")
         void supporterAndGateVisibilityAreAppliedWithBoundedReplenishment() {
-            MembershipEntity membership = MembershipEntity.builder()
-                    .userId(OTHER_USER_ID).scopeType(ScopeType.TEAM).scopeId(TEAM_ID)
-                    .roleKind(RoleKind.SUPPORTER).build();
+            RecentMembershipScopeQueryService.RecentScope membership =
+                    new RecentMembershipScopeQueryService.RecentScope(ScopeType.TEAM, TEAM_ID, RoleKind.SUPPORTER);
             AnnouncementFeedEntity hidden = personalFeed(3L);
             AnnouncementFeedEntity visible2 = personalFeed(2L);
             AnnouncementFeedEntity visible1 = personalFeed(1L);
-            given(membershipRepository.findRecentActiveByUser(eq(OTHER_USER_ID), any(), any()))
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(OTHER_USER_ID, 20))
                     .willReturn(List.of(membership));
             given(feedQueryRepository.findPersonalFeed(any(), eq(OTHER_USER_ID), eq(false), eq(0), eq(3)))
                     .willReturn(List.of(hidden, visible2, visible1));
