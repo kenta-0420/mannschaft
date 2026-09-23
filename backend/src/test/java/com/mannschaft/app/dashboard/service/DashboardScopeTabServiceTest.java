@@ -89,7 +89,7 @@ class DashboardScopeTabServiceTest {
             Long scopeId,
             com.mannschaft.app.membership.domain.ScopeType type,
             LocalDateTime joinedAt) {
-        return new MembershipScopeQueryService.CurrentMembershipScope(scopeId, joinedAt);
+        return new MembershipScopeQueryService.CurrentMembershipScope(scopeId);
     }
 
     private DashboardScopeTabOrderEntity savedOrder(Long scopeId, String scopeType, int sortOrder) {

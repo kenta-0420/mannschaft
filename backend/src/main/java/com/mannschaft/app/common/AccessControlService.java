@@ -717,12 +717,7 @@ public class AccessControlService {
      */
     public Map<Long, LocalDateTime> findActiveMembershipJoinedAtByScope(Long userId, String scopeType) {
         ScopeType scope = ScopeType.valueOf(scopeType);
-        Map<Long, LocalDateTime> result = new LinkedHashMap<>();
-        for (MembershipScopeQueryService.CurrentMembershipScope membership
-                : membershipScopeQueryService.findCurrentMemberships(userId, scope)) {
-            result.putIfAbsent(membership.scopeId(), membership.joinedAt());
-        }
-        return result;
+        return membershipScopeQueryService.findCurrentMembershipJoinedAtByScope(userId, scope);
     }
 
     /** 指定スコープの ACTIVE な distinct ユーザー数を返す（membership 基準）。 */

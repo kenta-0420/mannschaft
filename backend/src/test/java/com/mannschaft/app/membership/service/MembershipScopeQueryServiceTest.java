@@ -79,14 +79,31 @@ class MembershipScopeQueryServiceTest {
         }
 
         @Test
-        @DisplayName("表示用DTOはscopeIdとjoinedAtだけを返しEntityを漏らさない")
+        @DisplayName("表示用DTOはscopeIdだけを返しEntityを漏らさない")
         void returnsMinimalDisplayProjection() {
             LocalDateTime joinedAt = LocalDateTime.parse("2026-08-20T12:00:00");
             given(membershipRepository.findActiveByUserAndScopeType(7L, ScopeType.ORGANIZATION))
                     .willReturn(List.of(membership(30L, joinedAt, RoleKind.MEMBER)));
 
             assertThat(service.findCurrentMemberships(7L, ScopeType.ORGANIZATION))
-                    .containsExactly(new MembershipScopeQueryService.CurrentMembershipScope(30L, joinedAt));
+                    .containsExactly(new MembershipScopeQueryService.CurrentMembershipScope(30L));
+        }
+
+        @Test
+        @DisplayName("加入日時MapはRepository順を保ち同一scopeの先頭行を採用する")
+        void joinedAtMapPreservesOrderAndDeduplicates() {
+            LocalDateTime newer = LocalDateTime.parse("2026-08-20T12:00:00");
+            LocalDateTime older = LocalDateTime.parse("2026-08-19T12:00:00");
+            given(membershipRepository.findActiveByUserAndScopeType(7L, ScopeType.TEAM))
+                    .willReturn(List.of(
+                            membership(10L, newer, RoleKind.MEMBER),
+                            membership(10L, older, RoleKind.SUPPORTER),
+                            membership(20L, older, RoleKind.MEMBER)));
+
+            assertThat(service.findCurrentMembershipJoinedAtByScope(7L, ScopeType.TEAM))
+                    .containsExactly(
+                            org.assertj.core.api.Assertions.entry(10L, newer),
+                            org.assertj.core.api.Assertions.entry(20L, older));
         }
     }
 

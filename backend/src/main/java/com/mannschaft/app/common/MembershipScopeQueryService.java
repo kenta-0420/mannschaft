@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * ユーザーを起点とする所属スコープ列挙の正本窓口。
@@ -71,15 +73,25 @@ public class MembershipScopeQueryService {
         return findCurrentMembershipOrganizationIds(childUserId);
     }
 
-    /** ユーザー状態を問わず、離脱していない membership を joined_at 降順で返す。 */
+    /** ユーザー状態を問わず、離脱していない membership のスコープを joined_at 降順で返す。 */
     public List<CurrentMembershipScope> findCurrentMemberships(Long userId, ScopeType scopeType) {
         return membershipRepository.findActiveByUserAndScopeType(userId, scopeType).stream()
-                .map(membership -> new CurrentMembershipScope(
-                        membership.getScopeId(), membership.getJoinedAt()))
+                .map(membership -> new CurrentMembershipScope(membership.getScopeId()))
                 .toList();
     }
 
+    /** ユーザー状態を問わず、離脱していない membership の加入日時をスコープ別に返す。 */
+    public Map<Long, LocalDateTime> findCurrentMembershipJoinedAtByScope(
+            Long userId, ScopeType scopeType) {
+        Map<Long, LocalDateTime> result = new LinkedHashMap<>();
+        for (MembershipEntity membership
+                : membershipRepository.findActiveByUserAndScopeType(userId, scopeType)) {
+            result.putIfAbsent(membership.getScopeId(), membership.getJoinedAt());
+        }
+        return result;
+    }
+
     /** current membership の表示用最小情報。Entity をドメイン外へ漏らさない。 */
-    public record CurrentMembershipScope(Long scopeId, LocalDateTime joinedAt) {
+    public record CurrentMembershipScope(Long scopeId) {
     }
 }
