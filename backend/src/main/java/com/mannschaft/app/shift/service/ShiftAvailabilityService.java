@@ -4,8 +4,10 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPreference;
+import com.mannschaft.app.shift.dto.AvailabilityDefaultRequest;
 import com.mannschaft.app.shift.dto.AvailabilityDefaultResponse;
 import com.mannschaft.app.shift.dto.BulkAvailabilityDefaultRequest;
 import com.mannschaft.app.shift.entity.MemberAvailabilityDefaultEntity;
@@ -15,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -64,6 +67,9 @@ public class ShiftAvailabilityService {
         // 認可検証は delete より前に行う（拒否経路で既存行を破壊的に消さないため）
         checkTeamAccess(userId, teamId);
 
+        // 入力検証も delete より前に行う（拒否経路で既存行を破壊的に消さないため。CMP-260912-1758）
+        validateAvailabilities(req.getAvailabilities());
+
         // 既存データを全削除
         availabilityRepository.deleteByUserIdAndTeamId(userId, teamId);
 
@@ -96,6 +102,40 @@ public class ShiftAvailabilityService {
         checkTeamAccess(userId, teamId);
         availabilityRepository.deleteByUserIdAndTeamId(userId, teamId);
         log.info("デフォルト勤務可能時間削除: userId={}, teamId={}", userId, teamId);
+    }
+
+    /**
+     * デフォルト勤務可能時間一括設定の入力を検証する（CMP-260912-1758）。
+     *
+     * <p>{@code dayOfWeek} の範囲（0〜6）は {@link AvailabilityDefaultRequest} の Bean Validation で
+     * 検証済み（{@code @Min}/{@code @Max}）。ここではリスト全体を見なければ判定できない検証のみ行う。</p>
+     *
+     * <p><b>15分グリッドに揃えない理由（設計判断・決定済み）:</b> 枠側の
+     * {@code ShiftSlotTimeValidator}（戦役A-1）は15分刻みを要求するが、曜日既定はこれに揃えない。
+     * 既存データが全件 {@code 00:00}-{@code 23:59} であり、{@code 23:59} は15分グリッドに乗らないため、
+     * 揃えると既存データが全件不正になる。ここでは前後関係のみ検証する。</p>
+     *
+     * @throws BusinessException {@code startTime >= endTime} なら {@link ShiftErrorCode#INVALID_TIME_RANGE}、
+     *                           同一 {@code dayOfWeek} の重複行があれば
+     *                           {@link ShiftErrorCode#DUPLICATE_AVAILABILITY_DAY_OF_WEEK}、
+     *                           {@code preference} が {@link ShiftPreference} の有効値でなければ
+     *                           {@link ShiftErrorCode#INVALID_AVAILABILITY_PREFERENCE}
+     */
+    private void validateAvailabilities(List<AvailabilityDefaultRequest> availabilities) {
+        Set<Integer> seenDaysOfWeek = new HashSet<>();
+        for (AvailabilityDefaultRequest avail : availabilities) {
+            if (!avail.getStartTime().isBefore(avail.getEndTime())) {
+                throw new BusinessException(ShiftErrorCode.INVALID_TIME_RANGE);
+            }
+            if (!seenDaysOfWeek.add(avail.getDayOfWeek())) {
+                throw new BusinessException(ShiftErrorCode.DUPLICATE_AVAILABILITY_DAY_OF_WEEK);
+            }
+            try {
+                ShiftPreference.valueOf(avail.getPreference());
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(ShiftErrorCode.INVALID_AVAILABILITY_PREFERENCE);
+            }
+        }
     }
 
     /**

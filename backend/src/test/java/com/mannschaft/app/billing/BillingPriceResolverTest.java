@@ -1,5 +1,6 @@
 package com.mannschaft.app.billing;
 
+import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -49,11 +51,46 @@ class BillingPriceResolverTest {
     }
 
     @Test
-    @DisplayName("AC-40 PLAN・USER: base_monthly_price_jpy が NULL なら無償（null）")
-    void plan_user_baseNull_returnsNull() {
-        given(planRepository.findById("FREE")).willReturn(Optional.of(plan("FREE", null)));
+    @DisplayName("早馬（課金事故対応）: base_monthly_price_jpy が NULL（未設定）は無償扱いにせず PLAN_PRICE_NOT_CONFIGURED を投げる")
+    void plan_user_basePriceUnconfigured_throws() {
+        // 実測: BASIC プランは base_monthly_price_jpy が NULL（マスタ未整備）。
+        // 従来はこれを「無償フロー」に畳み、Checkout を経ずに即 ACTIVE 契約を発行していた（課金事故）。
+        given(planRepository.findById("BASIC")).willReturn(Optional.of(plan("BASIC", null)));
+        assertThatThrownBy(() -> resolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "BASIC", null))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(EntitlementErrorCode.PLAN_PRICE_NOT_CONFIGURED);
+    }
+
+    @Test
+    @DisplayName("AC-40 PLAN・USER: base=0 と明示された無償プランは従来どおり 0 を返す（回帰）")
+    void plan_user_baseZero_isFreeAndAllowed() {
+        given(planRepository.findById("FREE")).willReturn(Optional.of(plan("FREE", 0)));
         assertThat(resolver.resolveMonthlyPriceJpy(
-                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "FREE", null)).isNull();
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "FREE", null)).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("PLAN・USER: planKey 自体がマスタに存在しない場合は null（呼び出し元の PLAN_NOT_FOUND 検証に委ねる）")
+    void plan_user_planNotFound_returnsNull() {
+        given(planRepository.findById("NOT_EXIST")).willReturn(Optional.empty());
+        assertThat(resolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "NOT_EXIST", null)).isNull();
+    }
+
+    @Test
+    @DisplayName("早馬（課金事故対応）: PLAN・ORG バンド価格・base とも NULL は PLAN_PRICE_NOT_CONFIGURED を投げる")
+    void plan_org_bandAndBaseBothNull_throws() {
+        given(planRepository.findById("BASIC")).willReturn(Optional.of(plan("BASIC", null)));
+        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.ORG, 7L)).willReturn(10);
+        given(planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("BASIC", PlanPriceBandScopeKind.ORG))
+                .willReturn(List.of(band("BASIC", PlanPriceBandScopeKind.ORG, (short) 1, 1, null, null)));
+        assertThatThrownBy(() -> resolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.ORG, 7L, ContractKind.PLAN, "BASIC", null))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(EntitlementErrorCode.PLAN_PRICE_NOT_CONFIGURED);
     }
 
     @Test

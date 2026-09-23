@@ -74,6 +74,14 @@ class ShiftSlotTimeValidationServiceTest {
     @BeforeEach
     void setUpAuthz() {
         lenient().when(accessControlService.isSystemAdmin(ACTOR)).thenReturn(true);
+        // CMP-260917-1136: checkScheduleAdminAccess は親スケジュールの生存確認
+        // （resolveTeamId）を SYSTEM_ADMIN 短絡より必ず先に行うようになったため、
+        // 本テストのように SYSTEM_ADMIN で短絡させる場合でもスケジュールが実在する体で
+        // 応答する必要がある（さもないと本題の時刻検証に辿り着く前に404で落ちる）。
+        lenient().when(scheduleRepository.findById(SCHEDULE_ID)).thenReturn(Optional.of(
+                com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder()
+                        .teamId(1L)
+                        .build()));
     }
 
     private ShiftSlotEntity slotEntity(LocalTime start, LocalTime end) {

@@ -319,6 +319,13 @@ public class AuthTokenService {
         // 初回インクリメント時のみTTLを設定
         if (count == 1L) {
             redisTemplate.expire(key, window.getSeconds(), TimeUnit.SECONDS);
+        } else {
+            // INCR と EXPIRE の間でプロセスが停止すると TTL なしのキーが残り、
+            // 以後すべてのログインが永久に 429 になる。次回アクセスで自己修復する。
+            Long ttlSeconds = redisTemplate.getExpire(key, TimeUnit.SECONDS);
+            if (ttlSeconds != null && ttlSeconds < 0L) {
+                redisTemplate.expire(key, window.getSeconds(), TimeUnit.SECONDS);
+            }
         }
         return count;
     }

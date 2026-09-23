@@ -215,7 +215,20 @@ public enum EntitlementErrorCode implements ErrorCode {
      * 往復で無制限に打てるため。バケットキーは契約の所属 scope（{@code scopeKind:scopeId}）である。</p>
      */
     CANCEL_RATE_LIMITED("ENTITLEMENT_039",
-            "解約・解約取り消しの回数が上限に達しました。しばらく待って再度お試しください", Severity.WARN);
+            "解約・解約取り消しの回数が上限に達しました。しばらく待って再度お試しください", Severity.WARN),
+
+    /**
+     * プランは存在するが月額（{@code plans.base_monthly_price_jpy} / {@code plan_price_bands}）が
+     * マスタ未設定（NULL）→ 409（早馬・課金事故対応）。
+     *
+     * <p>「0 円と明示された無償プラン」と「価格が未確定（NULL）のプラン」は意味が異なる。
+     * 従来の {@link com.mannschaft.app.billing.BillingPriceResolver} は両者を
+     * {@code priceJpy == null || priceJpy <= 0} で同一視しており、マスタ未整備（NULL）を
+     * 無償として受け入れ、Checkout を経ずに即 ACTIVE 契約を発行してしまっていた
+     * （防御すべき状況で無償に倒れる欠陥）。本コードは「未設定」を明示的に契約拒否するために追補採番した。</p>
+     */
+    PLAN_PRICE_NOT_CONFIGURED("ENTITLEMENT_040",
+            "このプランは現在価格が未設定のため契約できません。しばらくしてから再度お試しください", Severity.WARN);
 
     private final String code;
     private final String message;

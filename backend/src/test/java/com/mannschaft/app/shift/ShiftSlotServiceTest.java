@@ -81,10 +81,20 @@ class ShiftSlotServiceTest {
      *
      * <p>{@code lenient()} なのは、存在しない ID のケースでは {@code findSlotOrThrow} が
      * 認可判定より先に例外を投げ、本スタブが未使用になるため。</p>
+     *
+     * <p>{@code scheduleRepository} のスタブ（CMP-260917-1136）: {@code checkScheduleAdminAccess} /
+     * {@code checkScheduleReadAccess} は親スケジュールの生存確認（{@code resolveTeamId}）を
+     * SYSTEM_ADMIN 短絡より必ず先に行うようになったため、SYSTEM_ADMIN で短絡させる本テストでも
+     * スケジュールが実在する体で応答する必要がある（さもないと全ケースが
+     * SHIFT_SCHEDULE_NOT_FOUND で落ちる）。</p>
      */
     @BeforeEach
     void setUpAuthz() {
         lenient().when(accessControlService.isSystemAdmin(ACTOR)).thenReturn(true);
+        lenient().when(scheduleRepository.findById(SCHEDULE_ID)).thenReturn(Optional.of(
+                com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder()
+                        .teamId(1L)
+                        .build()));
     }
 
     private ShiftSlotEntity createSlotEntity() {

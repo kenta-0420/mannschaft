@@ -24,7 +24,7 @@ import java.time.LocalDate;
  * @param totalCharge            合計請求額（faceAmount + payerSurcharge）
  * @param dueDate                支払期限（解決できなければ null）
  * @param kind                   会費種別（ONE_TIME / RECURRING / TERM）
- * @param authorizationVia       権原経路（SELF / GUARDIAN / GUARDIAN_PROXY / PROXY_GRANT / ADMIN_MANUAL）
+ * @param authorizationVia       権原経路（SELF / GUARDIAN / GUARDIAN_PROXY）。支払可能一覧は手動記録を含まない。
  * @param alreadyPaid            既に有効な支払い済みか（通常 false・整合性確認用に含める）
  * @param paidByUserId           支払い済みの場合の払い手ユーザーID（null 可）
  * @param paidByDisplayName      支払い済みの場合の払い手表示名（null 可）

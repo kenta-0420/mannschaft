@@ -96,22 +96,19 @@ class MemberPaymentPayerFieldsIntegrationTest extends AbstractMySqlIntegrationTe
             MemberPaymentEntity found = memberPaymentRepository.findById(entity.getId()).orElseThrow();
             assertThat(found.getPayerUserId()).isEqualTo(100L);
             assertThat(found.getPayerRelationship()).isEqualTo(PayerRelationship.SELF);
-            assertThat(found.getPaymentProxyGrantId()).isNull();
             assertThat(found.getEscrowTransactionId()).isNull();
             assertThat(found.getMembershipSubscriptionId()).isNull();
         }
 
         @Test
-        @DisplayName("UUID 列（paymentProxyGrantId/escrowTransactionId/membershipSubscriptionId）の BINARY(16) 往復が正しい")
+        @DisplayName("UUID 列（escrowTransactionId/membershipSubscriptionId）の BINARY(16) 往復が正しい")
         void persist_uuidFields_roundTrip() {
-            UUID proxyGrantId = UUID.randomUUID();
             UUID escrowTxId = UUID.randomUUID();
             UUID subscriptionId = UUID.randomUUID();
 
             MemberPaymentEntity entity = buildBase(200L, 2L).toBuilder()
                     .payerUserId(300L)
-                    .payerRelationship(PayerRelationship.PROXY_GRANT)
-                    .paymentProxyGrantId(proxyGrantId)
+                    .payerRelationship(PayerRelationship.GUARDIAN)
                     .escrowTransactionId(escrowTxId)
                     .membershipSubscriptionId(subscriptionId)
                     .build();
@@ -122,8 +119,7 @@ class MemberPaymentPayerFieldsIntegrationTest extends AbstractMySqlIntegrationTe
 
             MemberPaymentEntity found = memberPaymentRepository.findById(entity.getId()).orElseThrow();
             assertThat(found.getPayerUserId()).isEqualTo(300L);
-            assertThat(found.getPayerRelationship()).isEqualTo(PayerRelationship.PROXY_GRANT);
-            assertThat(found.getPaymentProxyGrantId()).isEqualTo(proxyGrantId);
+            assertThat(found.getPayerRelationship()).isEqualTo(PayerRelationship.GUARDIAN);
             assertThat(found.getEscrowTransactionId()).isEqualTo(escrowTxId);
             assertThat(found.getMembershipSubscriptionId()).isEqualTo(subscriptionId);
         }

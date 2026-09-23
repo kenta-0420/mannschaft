@@ -142,7 +142,7 @@ class ShiftRequestServiceTest {
         return new ShiftRequestResponse(
                 REQUEST_ID, SCHEDULE_ID, USER_ID, null,
                 LocalDate.of(2026, 3, 2), "PREFERRED", "希望します",
-                LocalDateTime.now());
+                LocalDateTime.now(), false);
     }
 
     private void callOnCreate(ShiftRequestEntity entity) {
