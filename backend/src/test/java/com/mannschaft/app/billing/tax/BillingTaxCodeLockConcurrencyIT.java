@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -45,6 +46,34 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private BillingTaxCodeService service;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    /**
+     * 殿の指示（実測なしに前例を当てるな）による診断ヘルパー: {@code SHOW ENGINE INNODB STATUS}
+     * を取得し、{@code LATEST DETECTED DEADLOCK} 節をテスト失敗メッセージに含める。
+     * JDBC 例外は「デッドロックが起きた」ことしか教えず、具体的にどの索引・どのロック種別
+     * （gap / insert intention 等）が競合したかは InnoDB の内部状態からしか読めないため。
+     */
+    private String captureInnodbDeadlockStatus() {
+        try {
+            List<java.util.Map<String, Object>> rows = jdbcTemplate.queryForList("SHOW ENGINE INNODB STATUS");
+            String fullStatus = rows.isEmpty() ? null : String.valueOf(rows.get(0).get("Status"));
+            if (fullStatus == null) {
+                return "(SHOW ENGINE INNODB STATUS が null を返した)";
+            }
+            int idx = fullStatus.indexOf("LATEST DETECTED DEADLOCK");
+            if (idx < 0) {
+                return "(LATEST DETECTED DEADLOCK 節が見つからない。既に他のデッドロックで上書きされたか、"
+                        + "InnoDB がまだ検出情報を保持していない可能性がある)";
+            }
+            int endIdx = fullStatus.indexOf("------------\nTRANSACTIONS", idx);
+            return fullStatus.substring(idx, endIdx < 0 ? fullStatus.length() : endIdx);
+        } catch (RuntimeException e) {
+            return "(SHOW ENGINE INNODB STATUS の取得自体に失敗: " + e + ")";
+        }
+    }
+
     private void init() {
         // no-op（互換のため残す。service は @Autowired 済みの本番 Bean を直接使う）。
     }
@@ -73,8 +102,20 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
         ready.await(5, TimeUnit.SECONDS);
         go.countDown();
 
-        BillingTaxCodeEntity r1 = f1.get(10, TimeUnit.SECONDS);
-        BillingTaxCodeEntity r2 = f2.get(10, TimeUnit.SECONDS);
+        BillingTaxCodeEntity r1;
+        BillingTaxCodeEntity r2;
+        try {
+            r1 = f1.get(10, TimeUnit.SECONDS);
+            r2 = f2.get(10, TimeUnit.SECONDS);
+        } catch (java.util.concurrent.ExecutionException e) {
+            // デッドロックはInnoDB側で即座に検出されるため、Java側の例外を握った直後でも
+            // LATEST DETECTED DEADLOCK 節はまだ残っている（実測: 例外検出からここまで数ms）。
+            String deadlockStatus = captureInnodbDeadlockStatus();
+            pool.shutdown();
+            throw new AssertionError(
+                    "AC-11実行中に例外（デッドロック等）。SHOW ENGINE INNODB STATUSのLATEST DETECTED "
+                            + "DEADLOCK節:\n" + deadlockStatus, e);
+        }
         pool.shutdown();
 
         assertThat(r1.getId()).isNotNull();
