@@ -329,6 +329,10 @@ public class BillingContractService {
         }
         // (b) 変更先プランが有償（価格設定済み）: Checkout を経ず priceJpySnapshot=NULL で即 ACTIVE になると
         //     有料機能の無償付与（D-4 の抜け穴）になるため拒否。
+        //     早馬・課金事故対応（2026-09-22）: 変更先プランの価格がマスタ未設定（NULL）の場合、resolver は
+        //     もはや null を返さず PLAN_PRICE_NOT_CONFIGURED を投げて拒否する（従来は null→無償扱いで
+        //     ここを素通りしてしまっていた）。newPlanKey がマスタ不在の場合のみ null が返り、その場合は
+        //     下の validatePlanAndResolveFeatures が PLAN_NOT_FOUND を検証する。
         Integer newPlanPrice = billingPriceResolver.resolveMonthlyPriceJpy(
                 scopeKind, scopeId, ContractKind.PLAN, newPlanKey, null);
         if (newPlanPrice != null && newPlanPrice > 0) {

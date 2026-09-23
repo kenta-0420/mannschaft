@@ -76,7 +76,10 @@ public class BillingContractApplicationService {
 
         // D-4: 価格をマスタから解決。NULL=無償ワンクリック（即 ACTIVE＋発行）／非 NULL=Checkout 決済フロー
         // （PENDING＋entitlements 未発行・入金 webhook で ACTIVE 化）。既存無償契約には遡及しない。
-        // 0 円以下は無償扱い（0 円サブスクの Checkout は成立しない・マスタ誤設定の防御）。
+        // 0 円は「0 円と明示された無償プラン」として無償扱い（0 円サブスクの Checkout は成立しない）。
+        // 価格が未設定（NULL）のプランは無償扱いにせず PLAN_PRICE_NOT_CONFIGURED を投げて契約自体を拒否する
+        // （resolver 側の requireConfigured。早馬・課金事故対応 2026-09-22。null が返るのは planKey 自体が
+        // マスタに存在しない場合のみで、その場合は下の createContract 側で PLAN_NOT_FOUND を検証する）。
         Integer priceJpy = priceResolver.resolveMonthlyPriceJpy(
                 scopeKind, scopeId, contractKind, request.planKey(), request.featureKey());
 
