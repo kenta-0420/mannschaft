@@ -9,6 +9,8 @@ const { formatDate } = useDatetime()
 
 const taxSettings = ref<TaxSettingResponse[]>([])
 const loading = ref(true)
+/** 取得失敗は「税率なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 // ダイアログ制御
 const showDialog = ref(false)
@@ -29,11 +31,16 @@ const dialogHeader = computed(() => editingId.value ? '税率を編集' : '税�
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await getTaxSettings()
     taxSettings.value = res.data
   }
-  catch { taxSettings.value = [] }
+  catch {
+    taxSettings.value = []
+    loadFailed.value = true
+    showError('税率設定の取得に失敗しました')
+  }
   finally { loading.value = false }
 }
 
@@ -104,6 +111,12 @@ onMounted(load)
     </div>
 
     <PageLoading v-if="loading" />
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="tax-settings-error-state"
+      @retry="load"
+    />
 
     <DataTable
       v-else

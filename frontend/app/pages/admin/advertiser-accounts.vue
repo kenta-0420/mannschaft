@@ -7,6 +7,8 @@ const { success, error: showError } = useNotification()
 
 const accounts = ref<AdvertiserAccountDetailResponse[]>([])
 const loading = ref(true)
+/** 取得失敗は「アカウントなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 const statusFilter = ref<AdvertiserAccountStatus | null>(null)
 const showCreditDialog = ref(false)
 const selectedAccountId = ref<number>(0)
@@ -23,13 +25,18 @@ const statusOptions = [
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const params: Record<string, string> = {}
     if (statusFilter.value) params.status = statusFilter.value
     const res = await advertiserApi.adminGetAdvertiserAccounts(params)
     accounts.value = res.data
   }
-  catch { accounts.value = [] }
+  catch {
+    accounts.value = []
+    loadFailed.value = true
+    showError('広告主アカウントの取得に失敗しました')
+  }
   finally { loading.value = false }
 }
 
@@ -90,6 +97,12 @@ onMounted(load)
     </div>
 
     <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="advertiser-accounts-error-state"
+      @retry="load"
+    />
 
     <DataTable v-else :value="accounts" striped-rows>
       <Column field="companyName" header="会社名" />

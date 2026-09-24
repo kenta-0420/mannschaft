@@ -7,6 +7,8 @@ const { success, error: showError } = useNotification()
 
 const requests = ref<CreditLimitRequestDetailResponse[]>([])
 const loading = ref(true)
+/** 取得失敗は「申請なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 const statusFilter = ref<CreditLimitRequestStatus | null>(null)
 const showRejectDialog = ref(false)
 const selectedRequestId = ref<number>(0)
@@ -21,13 +23,18 @@ const statusOptions = [
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const params: Record<string, string> = {}
     if (statusFilter.value) params.status = statusFilter.value
     const res = await advertiserApi.adminGetCreditLimitRequests(params)
     requests.value = res.data
   }
-  catch { requests.value = [] }
+  catch {
+    requests.value = []
+    loadFailed.value = true
+    showError('与信枠増額申請の取得に失敗しました')
+  }
   finally { loading.value = false }
 }
 
@@ -74,6 +81,12 @@ onMounted(load)
     </div>
 
     <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="ad-credit-limit-requests-error-state"
+      @retry="load"
+    />
 
     <DataTable v-else :value="requests" striped-rows>
       <Column field="companyName" header="広告主" />

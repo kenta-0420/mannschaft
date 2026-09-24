@@ -7,6 +7,8 @@ const { success, error: showError } = useNotification()
 
 const rateCards = ref<AdRateCardResponse[]>([])
 const loading = ref(true)
+/** 取得失敗は「料金カードなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 const showCreate = ref(false)
 const creating = ref(false)
 
@@ -26,11 +28,16 @@ const pricingOptions = [
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await advertiserApi.adminGetRateCards()
     rateCards.value = res.data
   }
-  catch { rateCards.value = [] }
+  catch {
+    rateCards.value = []
+    loadFailed.value = true
+    showError('広告料金カードの取得に失敗しました')
+  }
   finally { loading.value = false }
 }
 
@@ -74,6 +81,12 @@ onMounted(load)
     </div>
 
     <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="ad-rate-cards-error-state"
+      @retry="load"
+    />
 
     <DataTable v-else :value="rateCards" striped-rows>
       <Column field="targetPrefecture" header="都道府県">
