@@ -124,18 +124,35 @@ function translateError(code: string | null, fallback: string): string {
 
 const categories = ref<VillageRecruitCategory[]>([])
 const loading = ref(false)
+/** 取得失敗は「カテゴリなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
+
+/**
+ * onMounted の初回取得と watch(village) の再取得が重なりうるための世代番号。
+ *
+ * 新しい取得が成功した直後に古い取得が失敗で返ると、catch がその古い応答で
+ * `categories`/`loadFailed` を上書きし、最新の一覧がエラー状態に隠れてしまう
+ * （CMP-260922-2045 第2陣 G2 差し戻し・match-recruits.vue と同型）。
+ */
+let loadRequestSeq = 0
 
 async function load() {
+  const seq = ++loadRequestSeq
   loading.value = true
+  loadFailed.value = false
   try {
-    categories.value = await listCategories(villageId.value)
+    const fetched = await listCategories(villageId.value)
+    if (seq !== loadRequestSeq) return
+    categories.value = fetched
   }
   catch (err) {
+    if (seq !== loadRequestSeq) return
     categories.value = []
+    loadFailed.value = true
     showError(translateError(extractErrorCode(err), t('village.recruitCategory.error.loadFailed')))
   }
   finally {
-    loading.value = false
+    if (seq === loadRequestSeq) loading.value = false
   }
 }
 
@@ -388,6 +405,12 @@ const showGuide = ref(false)
         <div v-if="loading" class="py-12 text-center text-surface-500">
           <i class="pi pi-spin pi-spinner text-2xl" aria-hidden="true" />
         </div>
+
+        <DashboardErrorState
+          v-else-if="loadFailed"
+          testid="recruit-category-error-state"
+          @retry="load"
+        />
 
         <DataTable
           v-else
