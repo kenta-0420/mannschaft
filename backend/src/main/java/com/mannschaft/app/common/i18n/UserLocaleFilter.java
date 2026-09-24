@@ -34,6 +34,17 @@ import java.util.Set;
  *    → Accept-Language ヘッダーを Locale.LanguageRange.parse() で解析
  *    → 不正ヘッダーは IllegalArgumentException → DEFAULT_LOCALE にフォールバック
  * 3. いずれも SUPPORTED_LOCALES に含まれない場合 → DEFAULT_LOCALE
+ *
+ * <p><b>CMP-260923-1640 根治</b>: 本フィルターが {@link org.springframework.context.i18n.LocaleContextHolder}
+ * にセットした値は、Spring MVC の {@code DispatcherServlet}（{@code FrameworkServlet#processRequest}）が
+ * リクエストごとに {@code LocaleResolver} の解決結果で<b>上書き</b>してしまう。main には {@code LocaleResolver}
+ * Bean が1つも登録されておらず、既定の {@code AcceptHeaderLocaleResolver} が使われていたため、
+ * 「ログイン済みユーザーの DB locale」より「(なければサーバー既定 / あれば) Accept-Language」が
+ * 常に最終的に勝ってしまっていた（ログイン済み・ヘッダー無しで英語になる等）。
+ * 根治として {@link UserLocaleResolver}（Bean名 {@code localeResolver}）を追加し、
+ * 本フィルターが解決した結果を {@link #RESOLVED_LOCALE_ATTRIBUTE} 経由で Resolver に渡して
+ * DispatcherServlet 側の上書きでも同じ値が使われるようにした（判定ロジックの二重化を避けるため、
+ * Resolver 自身は独自の解決を行わずこのフィルターの結果を尊重する）。</p>
  */
 @Slf4j
 @Component
@@ -44,6 +55,13 @@ public class UserLocaleFilter extends OncePerRequestFilter {
     private static final Set<String> SUPPORTED_LOCALES = Set.of("ja", "en", "zh", "ko", "es", "de");
     private static final Locale DEFAULT_LOCALE = Locale.JAPANESE;
 
+    /**
+     * 本フィルターが解決した {@link Locale} を保持するリクエスト属性名。
+     * {@link UserLocaleResolver} が DispatcherServlet からの問い合わせ時にこれを読み、
+     * フィルターと Resolver の判定が食い違わないようにする。
+     */
+    static final String RESOLVED_LOCALE_ATTRIBUTE = UserLocaleFilter.class.getName() + ".RESOLVED_LOCALE";
+
     private final UserLocaleCache userLocaleCache;
 
     @Override
@@ -52,6 +70,8 @@ public class UserLocaleFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
             Locale locale = resolveLocale(request);
+            // DispatcherServlet の LocaleResolver 問い合わせ（UserLocaleResolver）へこの解決結果を渡す。
+            request.setAttribute(RESOLVED_LOCALE_ATTRIBUTE, locale);
             // inheritable=false 固定: Virtual Threads 環境で InheritableThreadLocal への伝搬を防ぐ
             org.springframework.context.i18n.LocaleContextHolder
                     .setLocale(locale, false);
