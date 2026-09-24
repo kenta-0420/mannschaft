@@ -32,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class TimelinePostAccessGuard {
 
+    private static final String MANAGE_POSTS = "MANAGE_POSTS";
+
     private final AccessControlService accessControlService;
 
     /**
@@ -48,6 +50,23 @@ public class TimelinePostAccessGuard {
         }
         if (isTeamOrOrganizationScope(post.getScopeType())
                 && accessControlService.isAdminOrAbove(userId, post.getScopeId(), post.getScopeType().name())) {
+            return;
+        }
+        throw new BusinessException(TimelineErrorCode.NOT_POST_OWNER);
+    }
+
+    /** 投稿本人の編集権限。TEAM/ORGANIZATION の MEMBER は MANAGE_POSTS を要する。 */
+    public void checkCanEdit(Long userId, TimelinePostEntity post) {
+        if (userId == null || !userId.equals(post.getUserId())) {
+            checkCanManage(userId, post);
+            return;
+        }
+        if (!isTeamOrOrganizationScope(post.getScopeType())
+                || accessControlService.isAdminOrAbove(userId, post.getScopeId(), post.getScopeType().name())
+                || !"MEMBER".equals(accessControlService.resolveEffectiveRoleName(
+                userId, post.getScopeId(), post.getScopeType().name()))
+                || accessControlService.hasPermission(
+                userId, post.getScopeId(), post.getScopeType().name(), MANAGE_POSTS)) {
             return;
         }
         throw new BusinessException(TimelineErrorCode.NOT_POST_OWNER);

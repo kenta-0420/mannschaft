@@ -395,7 +395,9 @@
 6. ロールが MEMBER →
    a. user_permission_groups（当該ユーザー・スコープ）に割り当てグループが存在するか確認
    b. 割り当てグループなし →
-        role_permissions WHERE role_id = MEMBER AND is_default = TRUE（基本3件）を実効パーミッションとして取得
+        role_permissions WHERE role_id = MEMBER AND is_default = TRUE を基準値として取得し、
+        team_role_permissions WHERE scope_type / scope_id / role_id = MEMBER の ON/OFF を上書きする
+        （スコープ上書き行が無い基本3件はグローバル既定値を継承）
    c. 割り当てグループあり（1件以上）→
         is_default を完全に無視し、user_permission_groups
           → permission_groups WHERE target_role = 'MEMBER'（AND team_id/organization_id でスコープ絞り込み）
@@ -418,6 +420,9 @@
 | 値 | パーミッション名の Set（JSON 配列）|
 | TTL | 5分（`app.permission-cache.ttl`）|
 | ストア | Valkey（Spring Cache + `@Cacheable`）|
+
+スコープ既定権限を更新したトランザクション内で `role_permission_cache_generations` の世代を進める。
+キャッシュキーに世代を含めるため、更新前の値は TTL を待たず次の認可判定から到達不能になる。
 
 **キャッシュ無効化タイミング**
 

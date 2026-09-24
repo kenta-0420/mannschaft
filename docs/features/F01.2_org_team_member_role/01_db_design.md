@@ -266,11 +266,30 @@ Phase 3 追加（MANAGE_PAYMENTS）: SYSTEM_ADMIN ✓ + ADMIN ✓ + DEPUTY_ADMIN
 - **SYSTEM_ADMIN**: Phase 3 以降 全12件（is_default = TRUE）。権限チェックは JWT 判定に統一（runtime で DB 参照しない）。シードは監査・将来対応のため投入する
 - **ADMIN**: Phase 3 以降 全12件（is_default = TRUE）。`DELETE_OTHERS_CONTENT` / `MANAGE_PAYMENTS` を含む全パーミッションを行使可能
 - **DEPUTY_ADMIN**: Phase 3 以降 全12件（is_default = FALSE）。**天井（ceiling）定義**として機能する。runtime での権限解決は role_permissions を参照せず `user_permission_groups` のみを使用する（権限グループ未割り当ての DEPUTY_ADMIN は実効パーミッション 0）
-- **MEMBER（is_default = TRUE）**: `MANAGE_SCHEDULES` / `MANAGE_FILES` / `MANAGE_POSTS` の3件。チーム参加と同時に全 MEMBER へ自動付与
+- **MEMBER（is_default = TRUE）**: `MANAGE_SCHEDULES` / `MANAGE_FILES` / `MANAGE_POSTS` の3件。`team_role_permissions` にスコープ上書きが無い場合の基準値
 - **MEMBER（is_default = FALSE）**: `DELETE_OTHERS_CONTENT` / `MANAGE_ANNOUNCEMENTS` / `SEND_SAFETY_CONFIRMATION` の3件。天井のみ（自動付与なし）。ADMIN が MEMBER 用権限グループを作成し特定ユーザーへ割り当てた場合のみ有効
 - **`MANAGE_PAYMENTS`**: MEMBER の role_permissions に含めない（天井エントリなし）。MEMBER は支払い管理権限を付与不可
 - **`DELETE_OTHERS_CONTENT`**: DEPUTY_ADMIN / MEMBER いずれの天井にも含める。ただしいかなるデフォルト権限グループにも含めない。ADMIN が意図的に付与した場合のみ有効
 - **SUPPORTER / GUEST**: role_permissions なし。閲覧権限はロールチェックで制御し、パーミッションテーブルは参照しない
+
+#### `team_role_permissions`
+
+TEAM / ORGANIZATION ごとに MEMBER の既定権限を上書きする。行が無い権限は
+`role_permissions.is_default` を継承するため、既存スコープの一括バックフィルは行わない。
+
+| カラム名 | 型 | NULL | 説明 |
+|---------|---|------|------|
+| `id` | BINARY(16) | NO | UUIDv7 主キー |
+| `scope_type` | VARCHAR(20) | NO | `TEAM` / `ORGANIZATION` |
+| `scope_id` | BIGINT UNSIGNED | NO | 対象スコープID |
+| `role_id` | BIGINT UNSIGNED | NO | `roles.id`（本APIは MEMBER のみ） |
+| `permission_id` | BIGINT UNSIGNED | NO | `permissions.id` |
+| `is_enabled` | TINYINT(1) | NO | 当該スコープでの ON/OFF |
+| `created_at` / `updated_at` | DATETIME(3) | NO | 作成・更新日時 |
+
+`UNIQUE(scope_type, scope_id, role_id, permission_id)` で同一設定の重複を防ぐ。
+MEMBER に一致する権限グループが1件以上割り当てられている場合は、従来どおりグループ集合が
+完全上書きとなり、このスコープ既定値は参照しない。
 
 ---
 

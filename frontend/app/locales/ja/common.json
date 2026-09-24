@@ -2558,6 +2558,22 @@
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
   },
+  "memberPermissions": {
+    "title": "MEMBER既定権限",
+    "description": "このチーム・組織に参加するMEMBERの既定権限を設定します。",
+    "sectionTitle": "既定権限",
+    "invalidScope": "チームまたは組織を選択してから開いてください。",
+    "loadFailed": "MEMBER既定権限の取得に失敗しました。",
+    "saveSuccess": "MEMBER既定権限を更新しました。",
+    "saveFailed": "MEMBER既定権限の更新に失敗しました。",
+    "inherited": "上位設定から継承",
+    "accessDenied": "この操作は管理者だけが行えます。",
+    "permissions": {
+      "MANAGE_SCHEDULES": "スケジュール管理",
+      "MANAGE_FILES": "ファイル管理",
+      "MANAGE_POSTS": "投稿管理"
+    }
+  },
   "loadErrorState": {
     "message": "データの取得に失敗しました",
     "retry": "再試行"
