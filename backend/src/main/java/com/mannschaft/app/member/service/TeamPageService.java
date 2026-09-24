@@ -279,15 +279,16 @@ public class TeamPageService {
             return;
         }
 
-        // 内側の扉: 下書き（DRAFT）ページは ADMIN 以外の誰にも見せない（設計書 §5 合成ルール）
-        if (page.getStatus() == PageStatus.DRAFT) {
-            throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
-        }
-
         // CMP-260919-1140 Phase 1: 組織スコープは「紹介」サブタブの外側の門（min_role）で判定する。
         // 既定値（MEMBER）は従来の isMember 判定と等価。両方（外側の門＋内側の扉）を通った人だけ見える。
-        // チームスコープは Phase 1 対象外のため従来どおり isMember を維持する。
+        // チームスコープは Phase 1 対象外のため従来どおり isMember のみを維持する（下書き判定も対象外。
+        // DRAFT ブロックを全スコープに広げると Wave3-B2 の既存 TEAM スコープ挙動を壊すため、
+        // 内側の扉（DRAFT 非表示）は組織スコープ限定で適用する）。
         if (SCOPE_ORGANIZATION.equals(scopeType)) {
+            // 内側の扉: 下書き（DRAFT）ページは ADMIN 以外の誰にも見せない（設計書 §5 合成ルール）
+            if (page.getStatus() == PageStatus.DRAFT) {
+                throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+            }
             try {
                 memberSubtabVisibilityService.assertViewable(
                         actorUserId, ScopeType.ORGANIZATION, scopeId, MemberSubtabKey.MEMBER_PROFILES);

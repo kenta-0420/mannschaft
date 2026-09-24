@@ -23,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -226,8 +225,7 @@ public class MemberSubtabVisibilityService {
                         .minRole(dbEntity.getMinRole())
                         .isDefault(false)
                         .updatedBy(updatedBy)
-                        .updatedAt(dbEntity.getUpdatedAt() != null
-                                ? dbEntity.getUpdatedAt().toInstant(ZoneOffset.UTC) : null)
+                        .updatedAt(dbEntity.getUpdatedAt())
                         .build());
             } else {
                 subtabs.add(MemberSubtabVisibilityItemDto.builder()

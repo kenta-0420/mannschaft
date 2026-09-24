@@ -6,16 +6,16 @@
 -- 設計書: docs/features/F06.6_member_subtab_visibility.md §4
 
 INSERT INTO permissions (name, display_name, scope, created_at, updated_at)
-VALUES ('MEMBER_SUBTAB_VISIBILITY_MANAGE', 'メンバーサブタブ可視性管理', 'ORGANIZATION', NOW(), NOW());
+VALUES ('MEMBER_SUBTAB_VISIBILITY_MANAGE', 'メンバーサブタブ可視性管理', 'ORGANIZATION', UTC_TIMESTAMP(), UTC_TIMESTAMP());
 
 INSERT INTO role_permissions (role_id, permission_id, is_default, created_at)
-SELECT r.id, p.id, 1, NOW()
+SELECT r.id, p.id, 1, UTC_TIMESTAMP()
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'ADMIN' AND p.name = 'MEMBER_SUBTAB_VISIBILITY_MANAGE';
 
 INSERT INTO role_permissions (role_id, permission_id, is_default, created_at)
-SELECT r.id, p.id, 0, NOW()
+SELECT r.id, p.id, 0, UTC_TIMESTAMP()
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'DEPUTY_ADMIN' AND p.name = 'MEMBER_SUBTAB_VISIBILITY_MANAGE';
