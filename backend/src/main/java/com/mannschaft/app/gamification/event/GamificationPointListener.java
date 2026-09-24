@@ -1,11 +1,11 @@
 package com.mannschaft.app.gamification.event;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.event.LoginSuccessEvent;
 import com.mannschaft.app.gamification.ActionType;
 import com.mannschaft.app.gamification.service.GamificationPointService;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.timeline.event.TimelinePostCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ import java.util.List;
 public class GamificationPointListener {
 
     private final GamificationPointService gamificationPointService;
-    private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
 
     /**
      * タイムライン投稿作成イベントを受信し、TIMELINE_POSTポイントを付与する。
@@ -68,7 +68,7 @@ public class GamificationPointListener {
         log.debug("デイリーログインイベント受信: userId={}", userId);
 
         // ユーザーが所属する全チームにポイント付与（CMP-027: user_roles ∪ memberships の在籍チーム）
-        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        List<Long> teamIds = membershipScopeQueryService.findActiveTeamIds(userId);
 
         for (Long teamId : teamIds) {
             gamificationPointService.addPoint(
@@ -78,7 +78,7 @@ public class GamificationPointListener {
         }
 
         // ユーザーが所属する全組織にポイント付与（CMP-027: user_roles ∪ memberships の在籍組織）
-        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        List<Long> orgIds = membershipScopeQueryService.findActiveOrganizationIds(userId);
 
         for (Long orgId : orgIds) {
             gamificationPointService.addPoint(

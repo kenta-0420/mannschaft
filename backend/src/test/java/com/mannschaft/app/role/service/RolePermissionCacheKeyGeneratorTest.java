@@ -22,7 +22,7 @@ class RolePermissionCacheKeyGeneratorTest {
 
         Object key = generator.generate(this, null, 10L, 20L, "TEAM");
 
-        assertThat(key).isEqualTo("v2:TEAM:20:g3:10");
+        assertThat(key).isEqualTo("v3:TEAM:20:g3:10");
         verify(generationService).currentGeneration("TEAM", 20L);
     }
 

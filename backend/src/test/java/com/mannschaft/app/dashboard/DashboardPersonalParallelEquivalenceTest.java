@@ -6,6 +6,7 @@ import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
 import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
@@ -79,6 +80,7 @@ class DashboardPersonalParallelEquivalenceTest {
     @Mock private ChatChannelMemberRepository chatChannelMemberRepository;
     @Mock private PlatformAnnouncementRepository platformAnnouncementRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     @Mock private com.mannschaft.app.dashboard.service.RoleResolver roleResolver;
     @Mock private com.mannschaft.app.dashboard.service.WidgetVisibilityResolver widgetVisibilityResolver;
@@ -120,7 +122,7 @@ class DashboardPersonalParallelEquivalenceTest {
     @DisplayName("AC-B1/B2: 全第2段階ウィジェットが並列化後も期待値どおり充填され破壊されない")
     void 並列化後も全ウィジェット同値() {
         // チーム所属（掲示板・カレンダー集計に使う）。
-        given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                 .willReturn(List.of(TEAM_A, TEAM_B));
 
         // 投稿 2 件。
@@ -168,7 +170,7 @@ class DashboardPersonalParallelEquivalenceTest {
     @Test
     @DisplayName("CRITICAL 優先度では第2段階を実行しない（並列化対象外）")
     void CRITICAL優先度_第2段階なし() {
-        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
         PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "CRITICAL");
 
@@ -192,7 +194,7 @@ class DashboardPersonalParallelEquivalenceTest {
                 .willReturn(List.of());
         given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any()))

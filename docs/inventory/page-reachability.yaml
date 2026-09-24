@@ -181,9 +181,9 @@ pages:
 # DB変更が要る（F20.1の確定方針を覆す設計変更になる）。削除コードは本PRの親コミットの
 # git 履歴から復元可能。詳細は docs/task-list.md CMP-260909-1141 の項を参照。
   - path: /admin/member-permissions
-    classification: be-pending
+    classification: reachable
     cmp: CMP-260912-0910
-    reason: "2026-09-20 訂正: /{scopeType}s/{scopeId}/role-permissions/member 専用APIがBEに存在しないこと自体は確定（再確認済み）だが、その『実装待ち』という方針自体を見直す必要がある。F01.2設計（docs/features/F01.2_org_team_member_role/README.md L13）は『DEPUTY_ADMIN の細粒度な権限制御は、ADMIN が名前付き「権限グループ」を作成してユーザーへ割り当てる方式で実現する』と明記しており、メンバー個々に権限キーを直接ON/OFFする本ページの方式を設計は採っていない。この権限グループ方式は既に frontend/app/pages/admin/permission-groups.vue と backend の AdminPermissionGroupController（@RequestMapping(\"/api/v1/admin/permission-groups\")）として実装・稼働している。したがって本来の対処は role-permissions/member APIの新規実装ではなく、本ページを権限グループ方式へ統合するか削除するかという設計判断のはず（duplicate-remnant相当）。**ただし /admin/permission-groups 自体も現時点でアプリ内のどこからもリンクされていないことを実査で確認した**（SystemAdminQuickLinks.vue・TeamSidebar.vue・OrganizationSidebar.vue のいずれにも導線が無い）。番人 OrphanPageGuardTest の duplicate-remnant 判定は replacement ページへの実リンクを機械検査するため、導線が無いまま duplicate-remnant へ分類変更するとCIが赤化する。よって本PRでは分類をbe-pendingのまま据え置き、reasonのみ訂正した。導線整備（別戦役）の後にduplicate-remnantへ再分類すること。**現状はcatchで404を握りつぶし「全権限有効」と嘘表示する危険度の高い欠陥が残っている点は変わらず、いずれの対処（実装/統合/削除）を選ぶ場合も必ず除去すること**"
+    reason: "既存画面をチーム・組織の MEMBER 既定権限設定として実装。対象スコープ ADMIN のサイドバーから到達でき、予定・ファイル・投稿の初期 OFF を必要な項目のみ ON にできる。個人別設定は対象外。"
 
   # --- CMP-260909-1141 続報: 旧 /admin/reservation-settings（型③ duplicate-remnant 内、予約ライン CRUD と
   # 確認通知F04.9が無関係に同居する到達不能ページ）のうち、確認通知3コンポーネントの新設移設先。

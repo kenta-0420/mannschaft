@@ -16,6 +16,7 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.RolePermissionEntity;
 import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.entity.TeamRolePermissionEntity;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.PermissionGroupPermissionRepository;
 import com.mannschaft.app.role.repository.PermissionGroupRepository;
@@ -24,6 +25,7 @@ import com.mannschaft.app.role.repository.RolePermissionRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.repository.TeamRolePermissionRepository;
 import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.role.service.RolePermissionCleanupService;
 import com.mannschaft.app.role.service.AdminRoleMutationLockService;
@@ -73,6 +75,7 @@ class RoleServiceTest {
     @Mock private PermissionGroupRepository permissionGroupRepository;
     @Mock private PermissionGroupPermissionRepository permissionGroupPermissionRepository;
     @Mock private UserPermissionGroupRepository userPermissionGroupRepository;
+    @Mock private TeamRolePermissionRepository teamRolePermissionRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private MembershipService membershipService;
     @Mock private UserRowLockService userRowLockService;
@@ -785,6 +788,83 @@ class RoleServiceTest {
                     UserPermissionGroupEntity.builder().userId(USER_ID).groupId(99L).build()));
             assertThat(roleService.resolveEffectivePermissions(USER_ID, SCOPE_ID, "ORGANIZATION"))
                     .doesNotContain("DEPUTY_ONLY");
+        }
+
+        @Test
+        @DisplayName("MEMBER未割当ではスコープ既定の無効化がロール既定を上書きする")
+        void memberScopeDefaultOverridesRoleDefault() {
+            given(userRoleRepository.isActiveUser(USER_ID)).willReturn(true);
+            given(membershipService.findActiveRoleKind(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(Optional.of(RoleKind.MEMBER));
+            RoleEntity member = RoleEntity.builder().id(MEMBER_ROLE_ID).name("MEMBER").priority(4).build();
+            given(roleRepository.findByName("MEMBER")).willReturn(Optional.of(member));
+            given(rolePermissionRepository.findByRoleId(MEMBER_ROLE_ID)).willReturn(List.of(
+                    RolePermissionEntity.builder().roleId(MEMBER_ROLE_ID).permissionId(1L)
+                            .isDefault(true).build()));
+            PermissionEntity schedule = PermissionEntity.builder().id(1L).name("MANAGE_SCHEDULES")
+                    .displayName("スケジュール管理").scope(PermissionEntity.Scope.TEAM).build();
+            given(permissionRepository.findByIdIn(List.of(1L))).willReturn(List.of(schedule));
+            given(permissionGroupRepository.findByOrganizationId(SCOPE_ID)).willReturn(List.of());
+            given(teamRolePermissionRepository.findByScopeTypeAndScopeIdAndRoleId(
+                    "ORGANIZATION", SCOPE_ID, MEMBER_ROLE_ID)).willReturn(List.of(
+                    TeamRolePermissionEntity.builder().scopeType("ORGANIZATION").scopeId(SCOPE_ID)
+                            .roleId(MEMBER_ROLE_ID).permissionId(1L).isEnabled(false).build()));
+
+            assertThat(roleService.resolveEffectivePermissions(USER_ID, SCOPE_ID, "ORGANIZATION"))
+                    .doesNotContain("MANAGE_SCHEDULES");
+        }
+
+        @Test
+        @DisplayName("MEMBER権限グループはスコープ既定より優先される")
+        void memberPermissionGroupOverridesScopeDefault() {
+            given(userRoleRepository.isActiveUser(USER_ID)).willReturn(true);
+            given(membershipService.findActiveRoleKind(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(Optional.of(RoleKind.MEMBER));
+            RoleEntity member = RoleEntity.builder().id(MEMBER_ROLE_ID).name("MEMBER").priority(4).build();
+            given(roleRepository.findByName("MEMBER")).willReturn(Optional.of(member));
+            given(rolePermissionRepository.findByRoleId(MEMBER_ROLE_ID)).willReturn(List.of());
+            PermissionGroupEntity group = PermissionGroupEntity.builder()
+                    .id(90L).organizationId(SCOPE_ID).name("schedule")
+                    .targetRole(PermissionGroupEntity.TargetRole.MEMBER).build();
+            given(permissionGroupRepository.findByOrganizationId(SCOPE_ID)).willReturn(List.of(group));
+            given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(
+                    UserPermissionGroupEntity.builder().userId(USER_ID).groupId(90L).build()));
+            given(permissionGroupPermissionRepository.findByGroupId(90L)).willReturn(List.of(
+                    PermissionGroupPermissionEntity.builder().groupId(90L).permissionId(1L).build()));
+            PermissionEntity schedule = PermissionEntity.builder().id(1L).name("MANAGE_SCHEDULES")
+                    .displayName("スケジュール管理").scope(PermissionEntity.Scope.TEAM).build();
+            given(permissionRepository.findByIdIn(List.of(1L))).willReturn(List.of(schedule));
+
+            assertThat(roleService.resolveEffectivePermissions(USER_ID, SCOPE_ID, "ORGANIZATION"))
+                    .containsExactly("MANAGE_SCHEDULES");
+            verify(teamRolePermissionRepository, never())
+                    .findByScopeTypeAndScopeIdAndRoleId(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("MEMBER天井の非既定権限は同一スコープ上書きで有効化できる")
+        void memberScopeOverrideCanEnableCeilingPermission() {
+            given(userRoleRepository.isActiveUser(USER_ID)).willReturn(true);
+            given(membershipService.findActiveRoleKind(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(Optional.of(RoleKind.MEMBER));
+            RoleEntity member = RoleEntity.builder().id(MEMBER_ROLE_ID).name("MEMBER").priority(4).build();
+            given(roleRepository.findByName("MEMBER")).willReturn(Optional.of(member));
+            given(rolePermissionRepository.findByRoleId(MEMBER_ROLE_ID)).willReturn(List.of(
+                    RolePermissionEntity.builder().roleId(MEMBER_ROLE_ID).permissionId(1L)
+                            .isDefault(false).build()));
+            given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of());
+            given(teamRolePermissionRepository.findByScopeTypeAndScopeIdAndRoleId(
+                    "TEAM", SCOPE_ID, MEMBER_ROLE_ID)).willReturn(List.of(
+                    TeamRolePermissionEntity.builder().scopeType("TEAM").scopeId(SCOPE_ID)
+                            .roleId(MEMBER_ROLE_ID).permissionId(1L).isEnabled(true).build()));
+            PermissionEntity schedule = PermissionEntity.builder().id(1L).name("MANAGE_SCHEDULES")
+                    .displayName("スケジュール管理").scope(PermissionEntity.Scope.TEAM).build();
+            given(permissionRepository.findByIdIn(List.of(1L))).willReturn(List.of(schedule));
+
+            assertThat(roleService.resolveEffectivePermissions(USER_ID, SCOPE_ID, "TEAM"))
+                    .containsExactly("MANAGE_SCHEDULES");
+            verify(teamRolePermissionRepository).findByScopeTypeAndScopeIdAndRoleId(
+                    "TEAM", SCOPE_ID, MEMBER_ROLE_ID);
         }
     }
 

@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <p>失敗の注入は<b>DB 側の手段</b>で行う（モックで Service を差し替えない）: {@code target_id} 列は
  * {@code BIGINT UNSIGNED NOT NULL} のため、負数を渡すと MySQL の範囲外エラーで targets の INSERT が
- * 失敗する（{@code V222.20260924054214__create_confirmable_notification_targets.sql}）。</p>
+ * 失敗する（{@code V224.20260924203536__create_confirmable_notification_targets.sql}）。</p>
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("送信の原子性 試練（AC-22）")

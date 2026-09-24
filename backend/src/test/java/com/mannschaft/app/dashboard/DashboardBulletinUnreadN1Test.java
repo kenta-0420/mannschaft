@@ -5,6 +5,7 @@ import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.service.ActivityFeedService;
@@ -81,6 +82,7 @@ class DashboardBulletinUnreadN1Test {
     @Mock private ChatChannelMemberRepository chatChannelMemberRepository;
     @Mock private PlatformAnnouncementRepository platformAnnouncementRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     @Mock private com.mannschaft.app.dashboard.service.RoleResolver roleResolver;
     @Mock private com.mannschaft.app.dashboard.service.WidgetVisibilityResolver widgetVisibilityResolver;
@@ -123,7 +125,7 @@ class DashboardBulletinUnreadN1Test {
         @Test
         @DisplayName("2チーム×複数スレッドでも existsByThreadIdAndUserId は呼ばれず、ID一括取得1回＋既読一括取得≦1回")
         void 掲示板未読_existsを呼ばず一括取得() {
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_A, TEAM_B));
             // チーム横断のスレッド ID を 1 クエリで取得（TEAM スコープ × teamIds IN）。
             given(bulletinThreadRepository.findIdsByScopeTypeAndScopeIdIn(
@@ -158,7 +160,7 @@ class DashboardBulletinUnreadN1Test {
         @Test
         @DisplayName("スレッド4件中2件既読 → total_unread_bulletin=2")
         void 未読カウント_一部既読() {
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_A, TEAM_B));
             given(bulletinThreadRepository.findIdsByScopeTypeAndScopeIdIn(
                     eq(com.mannschaft.app.bulletin.ScopeType.TEAM), anyCollection()))
@@ -174,7 +176,7 @@ class DashboardBulletinUnreadN1Test {
         @Test
         @DisplayName("全件未読 → total_unread_bulletin=スレッド数")
         void 未読カウント_全件未読() {
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_A));
             given(bulletinThreadRepository.findIdsByScopeTypeAndScopeIdIn(
                     eq(com.mannschaft.app.bulletin.ScopeType.TEAM), anyCollection()))
@@ -190,7 +192,7 @@ class DashboardBulletinUnreadN1Test {
         @Test
         @DisplayName("全件既読 → total_unread_bulletin=0")
         void 未読カウント_全件既読() {
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_A));
             given(bulletinThreadRepository.findIdsByScopeTypeAndScopeIdIn(
                     eq(com.mannschaft.app.bulletin.ScopeType.TEAM), anyCollection()))
@@ -215,7 +217,7 @@ class DashboardBulletinUnreadN1Test {
         @Test
         @DisplayName("所属チーム無し → スレッドID取得は空、既読バッチは未呼出、未読0")
         void 所属チーム無し_バッチ未呼出() {
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");
 
@@ -239,7 +241,7 @@ class DashboardBulletinUnreadN1Test {
                 .willReturn(List.of());
         given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any()))
