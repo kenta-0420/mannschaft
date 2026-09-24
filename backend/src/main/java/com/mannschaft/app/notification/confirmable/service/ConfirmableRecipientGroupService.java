@@ -10,10 +10,11 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableRecipientGr
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableRecipientGroupRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableRecipientGroupTargetRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -26,13 +27,28 @@ import java.util.stream.Collectors;
  * {@link ConfirmableTargetAuthorizationValidator} と同じ認可検証を掛ける（AC-12〜14 と同じ・AC-31）。</p>
  */
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ConfirmableRecipientGroupService {
 
     private final ConfirmableRecipientGroupRepository groupRepository;
     private final ConfirmableRecipientGroupTargetRepository groupTargetRepository;
     private final ConfirmableTargetAuthorizationValidator authorizationValidator;
+    /**
+     * CI是正（CMP-260920-1040）: {@link ConfirmableRecipientGroupEntity#softDelete(Clock)} へ渡す
+     * 壁時計クロック（引数なし {@code LocalDateTime.now()} は番人違反のため注入する）。
+     */
+    private final Clock clock;
+
+    public ConfirmableRecipientGroupService(
+            ConfirmableRecipientGroupRepository groupRepository,
+            ConfirmableRecipientGroupTargetRepository groupTargetRepository,
+            ConfirmableTargetAuthorizationValidator authorizationValidator,
+            @Qualifier("wallClock") Clock clock) {
+        this.groupRepository = groupRepository;
+        this.groupTargetRepository = groupTargetRepository;
+        this.authorizationValidator = authorizationValidator;
+        this.clock = clock;
+    }
 
     @Transactional
     public ConfirmableRecipientGroupResponse create(
@@ -83,7 +99,7 @@ public class ConfirmableRecipientGroupService {
         ConfirmableRecipientGroupEntity group = groupRepository.findByIdAndDeletedAtIsNull(groupId)
                 .filter(g -> g.getScopeType() == scopeType && Objects.equals(g.getScopeId(), scopeId))
                 .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_GROUP_NOT_FOUND));
-        group.softDelete();
+        group.softDelete(clock);
     }
 
     /**

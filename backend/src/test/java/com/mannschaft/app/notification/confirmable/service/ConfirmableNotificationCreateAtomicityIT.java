@@ -75,9 +75,13 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
     @DisplayName("AC-22: targetsのINSERTが失敗すると、本体もfanoutジョブも1件も残らない（同一トランザクション）")
     void ac22_targetsInsert失敗で本体もジョブも残らない() {
         String title = "AC-22試練-" + SEQ.incrementAndGet();
-        // target_id に負数（BIGINT UNSIGNED の範囲外）を与え、DB側の制約違反でtargetsのINSERTを失敗させる。
+        // 是正: target_id に負数を与える方式は、JDBCのバイナリプロトコルでは-1が
+        // BIGINT UNSIGNEDの最大値（2^64-1）としてそのまま有効値になり、範囲外エラーにならない
+        // （PreparedStatementの2の補数再解釈。実測でINSERTが成功しAC-22がredにならなかった）。
+        // target_id は NOT NULL のため、null を与えて確実にDB側の制約違反（DataIntegrityViolationException）
+        // でtargetsのINSERTを失敗させる。
         List<ConfirmableTargetSpec> invalidTargets =
-                List.of(new ConfirmableTargetSpec(ConfirmableTargetType.ORGANIZATION, -1L));
+                List.of(new ConfirmableTargetSpec(ConfirmableTargetType.ORGANIZATION, null));
 
         assertThatThrownBy(() -> txTemplate.executeWithoutResult(status ->
                 notificationService.createQueuedNotificationWithTargetsAndJob(

@@ -30,11 +30,13 @@ import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -109,6 +111,12 @@ public class ConfirmableNotificationService {
     private final ConfirmableRecipientPreviewService recipientPreviewService;
     /** チャンク処理は乙隊担当（ワーカー隊）。enqueue のみ本サービス（送信API側）が同一TXで行う（AC-22）。 */
     private final NotificationFanoutJobService fanoutJobService;
+    /**
+     * CI是正（CMP-260920-1040）: 引数なし {@code LocalDateTime.now()} は番人違反のため注入する
+     * （docs/architecture/datetime_policy_utc_instant_vs_wallclock.md。既存 now() 群と同じゾーン基準）。
+     */
+    @Qualifier("wallClock")
+    private final Clock clock;
 
     /** {@link com.mannschaft.app.notification.confirmable.service.ConfirmableFanoutChunkSink#NOTIFICATION_TYPE}
      * と一致させる文字列（クラス参照はワーカー隊の担当パッケージに置かれるため、循環依存を避けここでは
@@ -138,7 +146,7 @@ public class ConfirmableNotificationService {
 
         // AC-52: 確認期限が受付の時点で既に過去なら400（何も作らない）。
         LocalDateTime deadlineAt = request.getDeadlineAtAsJst();
-        if (deadlineAt != null && deadlineAt.isBefore(LocalDateTime.now())) {
+        if (deadlineAt != null && deadlineAt.isBefore(LocalDateTime.now(clock))) {
             throw new BusinessException(ConfirmableNotificationErrorCode.DEADLINE_IN_PAST);
         }
 
@@ -164,12 +172,11 @@ public class ConfirmableNotificationService {
             effectiveTargets = List.of(new ConfirmableTargetSpec(defaultType, scopeId));
         }
 
-        // AC-26: 受付の時点で既に猶予超過なら CREDIT_INSUFFICIENT を返し、何も作らない（消費はしない）。
-        if (scopeType == ScopeType.ORGANIZATION) {
-            checkCreditNotAlreadyExceeded(scopeId);
-        }
-
         // AC-20: 見込みが0件なら RECIPIENTS_EMPTY（409）で何も作らない。
+        // AC-36: 判定順序は 400（宛先入力）→403（越境）→404（グループ不在）→409（RECIPIENTS_EMPTY）
+        // →CREDIT_INSUFFICIENT の順で固定する（是正: 課金チェックを宛先0件チェックより後に回す。
+        // 従来は課金チェックが先に走り、猶予超過スコープではRECIPIENTS_EMPTYシナリオも
+        // CREDIT_INSUFFICIENTに化けてAC-36のstatus:errorCode相互差異が壊れていた）。
         ConfirmableRecipientPreviewRequest previewRequest = new ConfirmableRecipientPreviewRequest(
                 resolution.isGroup() ? null : effectiveTargets,
                 resolution.recipientGroupId());
@@ -177,6 +184,11 @@ public class ConfirmableNotificationService {
                 recipientPreviewService.preview(scopeType, scopeId, createdByUserId, previewRequest);
         if (preview.getEstimatedRecipientCount() <= 0) {
             throw new BusinessException(ConfirmableNotificationErrorCode.RECIPIENTS_EMPTY);
+        }
+
+        // AC-26: 受付の時点で既に猶予超過なら CREDIT_INSUFFICIENT を返し、何も作らない（消費はしない）。
+        if (scopeType == ScopeType.ORGANIZATION) {
+            checkCreditNotAlreadyExceeded(scopeId);
         }
 
         ConfirmableNotificationSettingsEntity settings = settingsService.getOrCreate(scopeType, scopeId);

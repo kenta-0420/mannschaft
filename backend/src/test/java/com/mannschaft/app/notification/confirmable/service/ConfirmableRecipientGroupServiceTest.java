@@ -50,7 +50,7 @@ class ConfirmableRecipientGroupServiceTest extends AbstractMySqlIntegrationTest 
 
     private long createOrg() {
         OrganizationEntity org = organizationRepository.save(OrganizationEntity.builder()
-                .slug("confirmable-recipient-group-it-" + SLUG_SEQ.incrementAndGet() + "-" + System.nanoTime())
+                .slug("crg-it-" + SLUG_SEQ.incrementAndGet() + "-" + (System.nanoTime() % 1_000_000L))
                 .name("confirmable recipient group IT org")
                 .orgType(OrganizationEntity.OrgType.COMMUNITY)
                 .visibility(OrganizationEntity.Visibility.PUBLIC)

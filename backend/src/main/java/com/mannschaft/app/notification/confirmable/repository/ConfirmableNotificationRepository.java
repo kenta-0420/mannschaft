@@ -6,8 +6,10 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.QueryHint;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -72,10 +74,18 @@ public interface ConfirmableNotificationRepository
      * リマインド）は、そのトランザクションで最初に親を読む操作を本メソッドにすること
      * （通常の {@code findById} で先に読み込永続化コンテキストへ載せてはならない）。</p>
      *
+     * <p>CMP-260920-1040是正（AC-68）: {@code jakarta.persistence.lock.timeout}（ミリ秒）を明示する。
+     * 未指定だとMySQLの {@code innodb_lock_wait_timeout} 既定値（通常50秒）に張り付き、期限切れバッチの
+     * 1件が長時間ロック待ちしている間ほかのIDの処理が事実上止まる（§11.1の「1件ごと独立トランザクション」
+     * の意図に反する）。本番でも意味のある設定であり、CIのDBユーザーには無い {@code SUPER} 権限が要る
+     * {@code SET GLOBAL} をテスト側から叩く必要も無くなる（Hibernateがこのヒントをセッション変数の
+     * 一時的な {@code SET} として発行する）。</p>
+     *
      * @param id 確認通知 ID
      * @return ロック済みの確認通知（存在しなければ empty）
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "5000"))
     @Query("SELECT n FROM ConfirmableNotificationEntity n WHERE n.id = :id")
     Optional<ConfirmableNotificationEntity> findByIdForUpdate(@Param("id") Long id);
 

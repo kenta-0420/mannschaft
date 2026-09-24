@@ -6,8 +6,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -15,7 +13,10 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 /**
@@ -50,32 +51,33 @@ public class ConfirmableRecipientGroupEntity extends UuidV7Entity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @Column(name = "created_at", nullable = false)
+    /**
+     * CI是正（CMP-260920-1040）: 引数なし {@code LocalDateTime.now()} を使う {@code @PrePersist}/
+     * {@code @PreUpdate} の代わりに Hibernate の {@link CreationTimestamp}/{@link UpdateTimestamp}
+     * （JVM既定ゾーン基準）を使う（docs/architecture/datetime_policy_utc_instant_vs_wallclock.md
+     * 是正・番人 datetime_guard の新規クラス違反の根治。他の新規エンティティに倣う）。
+     */
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 
     /**
      * グループを論理削除する。
      *
      * <p>削除後、テンプレートの既定グループとして参照されていても無視され、
      * 「既定＝配下すべて」に戻す（§3.1・AC-32）。</p>
+     *
+     * <p>CI是正（CMP-260920-1040）: 引数なし {@code LocalDateTime.now()} は番人違反のため、
+     * 呼び出し側が {@code @Qualifier("wallClock")} の {@link Clock} を渡す（既存 now() 群と同じゾーン基準）。</p>
+     *
+     * @param clock 壁時計クロック（{@code @Qualifier("wallClock")}）
      */
-    public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
+    public void softDelete(Clock clock) {
+        this.deletedAt = LocalDateTime.now(clock);
     }
 
     public boolean isDeleted() {

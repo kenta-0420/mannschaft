@@ -128,6 +128,12 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
         return notification.getId();
     }
 
+    /** 是正: expireOneWithLock を実際に発火させるため、期限を過去に更新する（DB直更新）。 */
+    private void markDeadlineInPast(Long notificationId) {
+        jdbc.update("UPDATE confirmable_notifications SET deadline_at = ? WHERE id = ?",
+                java.time.LocalDateTime.now().minusMinutes(10), notificationId);
+    }
+
     // =====================================================================
     // AC-45 / AC-66: cancel と chunk の競合（順序を固定した逐次コミット版）
     // =====================================================================
@@ -268,6 +274,10 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
         emailPrefix = EMAIL_PREFIX_BASE + "-65a-" + UUID.randomUUID();
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE,
                 ConfirmableNotificationDeliveryStatus.DELIVERING, 0, 0);
+        // 是正: createNotification() は deadlineAt を設定しないため、expireOneWithLock の
+        // 「deadlineAt == null なら何もしない」判定に常に false で落ちていた（AC-65aがredにすら
+        // ならず常にfalseを返す実測）。expireOneWithLockを実際に発火させるため、既に過ぎた期限を設定する。
+        markDeadlineInPast(notificationId);
 
         boolean expired = expiryBatchService.expireOneWithLock(notificationId, java.time.LocalDateTime.now());
         // 骨格段階ではUOEでredになる。
@@ -325,6 +335,9 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
         assertThat(afterFinish.getDeliveryStatus()).isEqualTo(ConfirmableNotificationDeliveryStatus.DELIVERED);
         assertThat(afterFinish.getStatus()).isEqualTo(ConfirmableNotificationStatus.ACTIVE);
 
+        // 是正: 期限を過ぎたあとに期限切れバッチを走らせる、というテスト意図どおり、ここで初めて
+        // 期限を過去に設定する（createNotification() は deadlineAt を設定しないため）。
+        markDeadlineInPast(notificationId);
         boolean expired = expiryBatchService.expireOneWithLock(notificationId, java.time.LocalDateTime.now());
         assertThat(expired).isTrue();
 
@@ -411,24 +424,20 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
     @DisplayName("AC-68: 期限切れバッチで1件がロック待ちタイムアウトで失敗しても、"
             + "同じ回のほかの通知はEXPIREDになる（1件ごと独立トランザクションの契約）")
     void oneFailureDuringBatchDoesNotBlockOtherExpirations() throws Exception {
-        // このテストのみ、ロック待ちを実測できる短さへ絞る（Testcontainersの使い捨てMySQLなので
-        // GLOBAL変更が他テストへ波及する心配はない。cleanUpの後に既定値へ戻す）。
-        jdbc.execute("SET GLOBAL innodb_lock_wait_timeout = 2");
+        // 是正（CI DBユーザーにSUPER権限が無くSET GLOBALがBadSqlGrammarExceptionで失敗するため）:
+        // ロック待ちタイムアウトは ConfirmableNotificationRepository#findByIdForUpdate に付けた
+        // jakarta.persistence.lock.timeout ヒント（5秒・本番設定）で実現する。GLOBAL変更は不要。
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime pastDeadline = now.minusMinutes(10);
+        Long n1 = createExpiredActiveNotification(pastDeadline);
+        Long nLocked = createExpiredActiveNotification(pastDeadline);
+        Long n3 = createExpiredActiveNotification(pastDeadline);
         try {
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime pastDeadline = now.minusMinutes(10);
-            Long n1 = createExpiredActiveNotification(pastDeadline);
-            Long nLocked = createExpiredActiveNotification(pastDeadline);
-            Long n3 = createExpiredActiveNotification(pastDeadline);
-            try {
-                ac68Body(n1, nLocked, n3, now);
-            } finally {
-                notificationRepository.deleteById(n1);
-                notificationRepository.deleteById(nLocked);
-                notificationRepository.deleteById(n3);
-            }
+            ac68Body(n1, nLocked, n3, now);
         } finally {
-            jdbc.execute("SET GLOBAL innodb_lock_wait_timeout = 50");
+            notificationRepository.deleteById(n1);
+            notificationRepository.deleteById(nLocked);
+            notificationRepository.deleteById(n3);
         }
     }
 

@@ -93,8 +93,8 @@ class TeamConfirmableNotificationControllerTest {
     private ConfirmableNotificationCreateRequest createValidRequest() {
         ConfirmableNotificationCreateRequest request =
                 mock(ConfirmableNotificationCreateRequest.class);
-        given(request.getTitle()).willReturn("テスト確認通知");
-        given(request.getBody()).willReturn(null);
+        // CMP-260920-1040: send は sendAsync(...) を any() で丸ごとモック化するため、
+        // title/body は Controller から個別参照されない（UnnecessaryStubbingException回避のため削除）
         given(request.getPriority()).willReturn(ConfirmableNotificationPriority.NORMAL);
         // deadlineAt は OffsetDateTime へ変更済み。Controller は getDeadlineAtAsJst() を呼ぶ
         given(request.getDeadlineAtAsJst()).willReturn(null);

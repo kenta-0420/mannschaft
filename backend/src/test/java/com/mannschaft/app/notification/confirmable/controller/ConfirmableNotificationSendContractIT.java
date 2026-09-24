@@ -80,6 +80,7 @@ class ConfirmableNotificationSendContractIT extends AbstractMySqlIntegrationTest
     private Long orgId;
     private Long otherOrgId;
     private Long adminUserId;
+    private Long memberUserId;
 
     @BeforeEach
     void setUp() {
@@ -88,6 +89,12 @@ class ConfirmableNotificationSendContractIT extends AbstractMySqlIntegrationTest
         otherOrgId = insertOrganization();
         adminUserId = insertUser();
         grantRole(adminUserId, "ADMIN", orgId);
+        // CMP-260920-1040是正: AC-3（送信者本人は展開結果から除外される）のため、
+        // adminUserId（送信者）だけでは見込み件数が常に0になりRECIPIENTS_EMPTYと競合する。
+        // 送信者以外のMEMBERをorgIdに1名加え、AC-19が本来検証したい「202/QUEUED応答契約」を
+        // RECIPIENTS_EMPTY（409）と混同しないようにする。
+        memberUserId = insertUser();
+        grantRole(memberUserId, "MEMBER", orgId);
         em.flush();
         em.clear();
         setAuth(adminUserId);

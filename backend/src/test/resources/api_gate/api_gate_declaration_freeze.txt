@@ -327,13 +327,15 @@ HTTP|com.mannschaft.app.moderation.controller.YabaiController|2|2
 HTTP|com.mannschaft.app.navsettings.controller.NavSettingsController|2|2
 HTTP|com.mannschaft.app.navsettings.controller.SystemAdminNavFeaturesController|4|4
 HTTP|com.mannschaft.app.notification.confirmable.controller.ConfirmableNotificationRecipientController|2|2
-HTTP|com.mannschaft.app.notification.confirmable.controller.OrgConfirmableNotificationController|7|7
+HTTP|com.mannschaft.app.notification.confirmable.controller.OrgConfirmableNotificationController|8|8
 HTTP|com.mannschaft.app.notification.confirmable.controller.OrgConfirmableNotificationSettingsController|2|2
 HTTP|com.mannschaft.app.notification.confirmable.controller.OrgConfirmableNotificationTemplateController|4|4
+HTTP|com.mannschaft.app.notification.confirmable.controller.OrgConfirmableRecipientGroupController|4|4
 HTTP|com.mannschaft.app.notification.confirmable.controller.PublicConfirmationController|1|1
-HTTP|com.mannschaft.app.notification.confirmable.controller.TeamConfirmableNotificationController|7|7
+HTTP|com.mannschaft.app.notification.confirmable.controller.TeamConfirmableNotificationController|8|8
 HTTP|com.mannschaft.app.notification.confirmable.controller.TeamConfirmableNotificationSettingsController|2|2
 HTTP|com.mannschaft.app.notification.confirmable.controller.TeamConfirmableNotificationTemplateController|4|4
+HTTP|com.mannschaft.app.notification.confirmable.controller.TeamConfirmableRecipientGroupController|4|4
 HTTP|com.mannschaft.app.notification.controller.NotificationAdminController|1|1
 HTTP|com.mannschaft.app.notification.controller.NotificationController|6|6
 HTTP|com.mannschaft.app.notification.controller.NotificationPreferenceController|6|6

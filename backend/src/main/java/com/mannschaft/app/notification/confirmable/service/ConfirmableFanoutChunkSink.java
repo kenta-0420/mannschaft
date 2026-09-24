@@ -88,6 +88,18 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
     private final NotificationFanoutJobService fanoutJobService;
     /** {@code consume} を別物理トランザクションで呼ぶためのテンプレート（クラス javadoc 参照）。 */
     private final TransactionTemplate requiresNewTxTemplate;
+    /**
+     * CMP-260920-1040是正: processChunk本体を明示的な TransactionTemplate（PROPAGATION_REQUIRED）で
+     * 包む。{@code @Transactional} を processChunk に付けたまま
+     * {@link #requiresNewTxTemplate}（REQUIRES_NEW）を呼ぶと、外側トランザクションがまだ
+     * commit/rollback しておらず（{@code notification} 行の FOR UPDATE ロックを保持したまま）
+     * 物理的に「一時退避」されるだけなので、同じ行を別コネクションで再ロックしようとする内側の
+     * REQUIRES_NEW が自分自身のロック待ちで PessimisticLockingFailureException になる
+     * （実測: secondChunkExceedsGraceButFirstChunkStays が本ロック待ちタイムアウトで failed）。
+     * 本体を先に完全に終わらせて行ロックを解放してから、猶予超過マーキングを別トランザクションで
+     * 行うよう2段に分離する。
+     */
+    private final TransactionTemplate requiredTxTemplate;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -107,6 +119,8 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
         this.fanoutJobService = fanoutJobService;
         this.requiresNewTxTemplate = new TransactionTemplate(transactionManager);
         this.requiresNewTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.requiredTxTemplate = new TransactionTemplate(transactionManager);
+        this.requiredTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
     }
 
     @Override
@@ -115,81 +129,96 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
     }
 
     @Override
-    @Transactional
     public ChunkResult processChunk(UUID jobId, Long notificationId, List<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             return new ChunkResult(0, false);
         }
 
-        // §9.2/§11.1: 親の行を最初の読み取りで FOR UPDATE ロックする。
-        ConfirmableNotificationEntity notification = notificationRepository.findByIdForUpdate(notificationId)
-                .orElseThrow(() -> new IllegalStateException("確認通知が見つかりません: id=" + notificationId));
+        // CMP-260920-1040是正: 本体はここでは @Transactional を使わず、明示的な
+        // requiredTxTemplate（PROPAGATION_REQUIRED）で1本の物理トランザクションとして完結させる。
+        // これにより、猶予超過（CREDIT_INSUFFICIENT）時の「本体トランザクションのロールバック」が
+        // このブロックを抜けた時点で確実に完了し、notification 行の FOR UPDATE ロックが解放される。
+        // 続く PARTIALLY_FAILED マーキング（別の独立トランザクション）は、その解放後に行うため
+        // 自分自身のロック待ちタイムアウト（実測: PessimisticLockingFailureException）を起こさない。
+        java.util.concurrent.atomic.AtomicReference<BusinessException> creditFailure =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        ChunkResult result = requiredTxTemplate.execute(status -> {
+            // §9.2/§11.1: 親の行を最初の読み取りで FOR UPDATE ロックする。
+            ConfirmableNotificationEntity notification = notificationRepository.findByIdForUpdate(notificationId)
+                    .orElseThrow(() -> new IllegalStateException("確認通知が見つかりません: id=" + notificationId));
 
-        // §8.3: CANCELLED/EXPIRED ならこのチャンクを打ち切る（新規受信者は作らない）。
-        if (notification.getStatus() == ConfirmableNotificationStatus.CANCELLED
-                || notification.getStatus() == ConfirmableNotificationStatus.EXPIRED) {
-            return new ChunkResult(0, true);
-        }
-
-        // 既に受信者行がある user_id を除く（AC-23 再開時の冪等性）。多重INSERTで壊れる重複はここでは
-        // 除去しない（AC-24: チャンク内の重複は実処理由来の一意制約違反として現れる契約）。
-        Set<Long> existing = findExistingRecipientUserIds(notificationId, userIds);
-        List<Long> newUserIds = new ArrayList<>();
-        for (Long userId : userIds) {
-            if (!existing.contains(userId)) {
-                newUserIds.add(userId);
+            // §8.3: CANCELLED/EXPIRED ならこのチャンクを打ち切る（新規受信者は作らない）。
+            if (notification.getStatus() == ConfirmableNotificationStatus.CANCELLED
+                    || notification.getStatus() == ConfirmableNotificationStatus.EXPIRED) {
+                return new ChunkResult(0, true);
             }
-        }
-        if (newUserIds.isEmpty()) {
-            return new ChunkResult(0, false);
-        }
 
-        // 受信者行の多値 INSERT（確認トークン付き）。重複があればここで一意制約違反として例外になる（AC-24。
-        // この例外はこのメソッド自身のトランザクションをそのままロールバックさせて呼び出し元へ伝播する。
-        // consume はまだ呼んでいないため課金は最初から発生しない＝AC-24/AC-27 の「課金も作られない」を満たす）。
-        Map<Long, String> tokensByUserId = insertRecipients(notification, newUserIds);
-
-        // notifications への多値 INSERT。
-        insertAppNotifications(notification, newUserIds);
-
-        // 課金の消費（AC-24・AC-25・AC-27）。ここでは意図的に consume を REQUIRED のまま呼び、
-        // このメソッド自身の物理トランザクションに参加させる。猶予超過（CREDIT_INSUFFICIENT）で
-        // 失敗した場合、直前の受信者行・notifications の INSERT も含めてこのチャンクの
-        // トランザクション全体をロールバックさせたいため（AC-24 と同じ「丸ごとロールバック」の形）。
-        //
-        // 試練（ConfirmableFanoutChunkSinkCreditRollbackIT#secondChunkExceedsGraceButFirstChunkStays）は
-        // processChunk が BusinessException(CREDIT_INSUFFICIENT) を<b>呼び出し元へそのまま投げる</b>ことを
-        // 要求している（catch して ChunkResult(stopped=true) を返す設計は red になる）。
-        // delivery_status=PARTIALLY_FAILED（AC-25）は、例外を投げる前に<b>別の独立トランザクション</b>
-        // （{@link #requiresNewTxTemplate}）で確定させる。参加トランザクション（このメソッド自身）は
-        // consume の例外で rollback-only になっており、そのまま例外を伝播させれば通常どおり
-        // ロールバックされる（受信者行・notifications・課金のすべてが無かったことになる）。
-        if (notification.getScopeType() == ScopeType.ORGANIZATION) {
-            try {
-                creditService.consume(notification.getScopeId(), newUserIds.size(), NotificationSourceType.CONFIRMABLE);
-            } catch (BusinessException ex) {
-                if (ex.getErrorCode() == NotificationCreditErrorCode.CREDIT_INSUFFICIENT) {
-                    requiresNewTxTemplate.executeWithoutResult(status -> {
-                        ConfirmableNotificationEntity locked = notificationRepository.findByIdForUpdate(notificationId)
-                                .orElseThrow();
-                        locked.markPartiallyFailed();
-                        notificationRepository.save(locked);
-                    });
+            // 既に受信者行がある user_id を除く（AC-23 再開時の冪等性）。多重INSERTで壊れる重複はここでは
+            // 除去しない（AC-24: チャンク内の重複は実処理由来の一意制約違反として現れる契約）。
+            Set<Long> existing = findExistingRecipientUserIds(notificationId, userIds);
+            List<Long> newUserIds = new ArrayList<>();
+            for (Long userId : userIds) {
+                if (!existing.contains(userId)) {
+                    newUserIds.add(userId);
                 }
-                throw ex;
             }
+            if (newUserIds.isEmpty()) {
+                return new ChunkResult(0, false);
+            }
+
+            // 受信者行の多値 INSERT（確認トークン付き）。重複があればここで一意制約違反として例外になる（AC-24。
+            // この例外はこのトランザクションをそのままロールバックさせて呼び出し元へ伝播する。
+            // consume はまだ呼んでいないため課金は最初から発生しない＝AC-24/AC-27 の「課金も作られない」を満たす）。
+            Map<Long, String> tokensByUserId = insertRecipients(notification, newUserIds);
+
+            // notifications への多値 INSERT。
+            insertAppNotifications(notification, newUserIds);
+
+            // 課金の消費（AC-24・AC-25・AC-27）。猶予超過（CREDIT_INSUFFICIENT）で失敗した場合、
+            // 直前の受信者行・notifications の INSERT も含めてこのチャンクのトランザクション全体を
+            // ロールバックさせたいため、rollback-only にしたうえで例外は AtomicReference に退避し、
+            // このトランザクションブロックを抜けてから（＝行ロック解放後に）呼び出し元へ投げる。
+            if (notification.getScopeType() == ScopeType.ORGANIZATION) {
+                try {
+                    creditService.consume(
+                            notification.getScopeId(), newUserIds.size(), NotificationSourceType.CONFIRMABLE);
+                } catch (BusinessException ex) {
+                    creditFailure.set(ex);
+                    status.setRollbackOnly();
+                    return null;
+                }
+            }
+
+            // カウンタ更新・状態遷移（同じロック済み行にドメインメソッドで反映）。
+            notification.addDeliveredCount(newUserIds.size());
+            notification.addUnconfirmedCount(newUserIds.size());
+            notification.markDelivering();
+            notificationRepository.save(notification);
+
+            // メール outbox 登録（新規分だけ）。
+            enqueueEmails(notification, newUserIds, tokensByUserId);
+
+            return new ChunkResult(newUserIds.size(), false);
+        });
+
+        BusinessException ex = creditFailure.get();
+        if (ex != null) {
+            // 試練（ConfirmableFanoutChunkSinkCreditRollbackIT#secondChunkExceedsGraceButFirstChunkStays）は
+            // processChunk が BusinessException(CREDIT_INSUFFICIENT) を呼び出し元へそのまま投げることを
+            // 要求している。delivery_status=PARTIALLY_FAILED（AC-25）は、本体トランザクションが完全に
+            // 終わって行ロックが解放された後、別の独立トランザクション（requiresNewTxTemplate）で確定させる。
+            if (ex.getErrorCode() == NotificationCreditErrorCode.CREDIT_INSUFFICIENT) {
+                requiresNewTxTemplate.executeWithoutResult(status -> {
+                    ConfirmableNotificationEntity locked = notificationRepository.findByIdForUpdate(notificationId)
+                            .orElseThrow();
+                    locked.markPartiallyFailed();
+                    notificationRepository.save(locked);
+                });
+            }
+            throw ex;
         }
 
-        // カウンタ更新・状態遷移（同じロック済み行にドメインメソッドで反映）。
-        notification.addDeliveredCount(newUserIds.size());
-        notification.addUnconfirmedCount(newUserIds.size());
-        notification.markDelivering();
-        notificationRepository.save(notification);
-
-        // メール outbox 登録（新規分だけ）。
-        enqueueEmails(notification, newUserIds, tokensByUserId);
-
-        return new ChunkResult(newUserIds.size(), false);
+        return result;
     }
 
     @Override
