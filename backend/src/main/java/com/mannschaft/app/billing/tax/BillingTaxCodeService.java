@@ -38,9 +38,10 @@ public class BillingTaxCodeService {
 
     /** AC-4: ロック行を除く有効な税コード一覧。 */
     @Transactional(readOnly = true)
-    public List<BillingTaxCodeEntity> list() {
+    public List<BillingTaxCodeView> list() {
         return repository.findAllVisible().stream()
                 .filter(e -> !LOCK_ROW_CODE.equals(e.getCode()))
+                .map(BillingTaxCodeView::from)
                 .toList();
     }
 
@@ -64,7 +65,7 @@ public class BillingTaxCodeService {
      * 変更していない。</p>
      */
     @Transactional
-    public BillingTaxCodeEntity create(BillingTaxCodeCreateRequest request) {
+    public BillingTaxCodeView create(BillingTaxCodeCreateRequest request) {
         repository.lockTaxCodeLockRowForUpdate(LOCK_ROW_VALID_FROM);
 
         repository.findByCodeAndValidFromAndDeletedAtIsNull(request.code(), request.validFrom())
@@ -87,12 +88,12 @@ public class BillingTaxCodeService {
                 .validUntil(request.validUntil())
                 .enabled(request.enabled())
                 .build();
-        return repository.save(entity);
+        return BillingTaxCodeView.from(repository.save(entity));
     }
 
     /** AC-6/AC-10: 表示名・stripeTaxCode・validUntil・enabled のみ更新可能。 */
     @Transactional
-    public BillingTaxCodeEntity update(UUID id, BillingTaxCodeUpdateRequest request) {
+    public BillingTaxCodeView update(UUID id, BillingTaxCodeUpdateRequest request) {
         repository.lockTaxCodeLockRowForUpdate(LOCK_ROW_VALID_FROM);
 
         BillingTaxCodeEntity existing = repository.findByIdAndDeletedAtIsNull(id)
@@ -111,7 +112,7 @@ public class BillingTaxCodeService {
         existing.setStripeTaxCode(request.stripeTaxCode());
         existing.setValidUntil(request.validUntil());
         existing.setEnabled(request.enabled());
-        return repository.save(existing);
+        return BillingTaxCodeView.from(repository.save(existing));
     }
 
     /** AC-7: 論理削除。 */
@@ -128,9 +129,10 @@ public class BillingTaxCodeService {
      * 存在しない・無効・有効期間外・ロック行はすべて {@link PriceRevisionErrorCode#TAX_CODE_NOT_FOUND} とする。
      */
     @Transactional(readOnly = true)
-    public BillingTaxCodeEntity resolveEffective(String code, Instant at) {
+    public BillingTaxCodeView resolveEffective(String code, Instant at) {
         return repository.findEffectiveAt(code, at)
                 .filter(BillingTaxCodeEntity::isEnabled)
+                .map(BillingTaxCodeView::from)
                 .orElseThrow(() -> new BusinessException(PriceRevisionErrorCode.TAX_CODE_NOT_FOUND));
     }
 }

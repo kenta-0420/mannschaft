@@ -80,9 +80,9 @@ class BillingTaxCodeServiceTest {
                 taxCode("JP_STANDARD_10", Instant.EPOCH, null, true),
                 taxCode("JP_REDUCED_8", Instant.EPOCH, null, true)));
 
-        List<BillingTaxCodeEntity> result = service.list();
+        List<BillingTaxCodeView> result = service.list();
 
-        assertThat(result).extracting(BillingTaxCodeEntity::getCode)
+        assertThat(result).extracting(BillingTaxCodeView::code)
                 .doesNotContain("__TAX_CODE_LOCK__")
                 .containsExactlyInAnyOrder("JP_STANDARD_10", "JP_REDUCED_8");
         verify(repository, never()).lockTaxCodeLockRowForUpdate(any());
@@ -96,10 +96,10 @@ class BillingTaxCodeServiceTest {
         given(repository.findOverlapping(anyString(), any(), any())).willReturn(List.of());
         given(repository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-        BillingTaxCodeEntity created = service.create(new BillingTaxCodeCreateRequest(
+        BillingTaxCodeView created = service.create(new BillingTaxCodeCreateRequest(
                 "JP_STANDARD_10", "標準税率", 1000, null, Instant.EPOCH, null, true));
 
-        assertThat(created.getCode()).isEqualTo("JP_STANDARD_10");
+        assertThat(created.code()).isEqualTo("JP_STANDARD_10");
         verify(repository, times(1)).lockTaxCodeLockRowForUpdate(any());
     }
 
@@ -113,12 +113,12 @@ class BillingTaxCodeServiceTest {
         given(repository.findOverlapping(anyString(), any(), any())).willReturn(List.of());
         given(repository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-        BillingTaxCodeEntity updated = service.update(id, new BillingTaxCodeUpdateRequest(
+        BillingTaxCodeView updated = service.update(id, new BillingTaxCodeUpdateRequest(
                 "標準税率(改)", "txcd_new", Instant.parse("2027-01-01T00:00:00Z"), false));
 
-        assertThat(updated.getDisplayName()).isEqualTo("標準税率(改)");
-        assertThat(updated.getStripeTaxCode()).isEqualTo("txcd_new");
-        assertThat(updated.isEnabled()).isFalse();
+        assertThat(updated.displayName()).isEqualTo("標準税率(改)");
+        assertThat(updated.stripeTaxCode()).isEqualTo("txcd_new");
+        assertThat(updated.enabled()).isFalse();
         verify(repository, times(1)).lockTaxCodeLockRowForUpdate(any());
 
         // rateBasisPoints/code/validFrom はリクエスト DTO に存在しない＝コンパイル時点で変更不可を強制する
@@ -152,12 +152,12 @@ class BillingTaxCodeServiceTest {
         given(repository.findOverlapping(anyString(), any(), any())).willReturn(List.of());
         given(repository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-        BillingTaxCodeEntity revised = service.create(new BillingTaxCodeCreateRequest(
+        BillingTaxCodeView revised = service.create(new BillingTaxCodeCreateRequest(
                 "JP_STANDARD_10", "標準税率(改定)", 1100, null,
                 Instant.parse("2027-04-01T00:00:00Z"), null, true));
 
-        assertThat(revised.getCode()).isEqualTo("JP_STANDARD_10");
-        assertThat(revised.getRateBasisPoints()).isEqualTo(1100);
+        assertThat(revised.code()).isEqualTo("JP_STANDARD_10");
+        assertThat(revised.rateBasisPoints()).isEqualTo(1100);
     }
 
     @Test
@@ -198,7 +198,7 @@ class BillingTaxCodeServiceTest {
         given(repository.findEffectiveAt("JP_STANDARD_10", from)).willReturn(Optional.of(row));
         given(repository.findEffectiveAt("JP_STANDARD_10", until)).willReturn(Optional.empty());
 
-        assertThat(service.resolveEffective("JP_STANDARD_10", from)).isEqualTo(row);
+        assertThat(service.resolveEffective("JP_STANDARD_10", from)).isEqualTo(BillingTaxCodeView.from(row));
         assertThatThrownBy(() -> service.resolveEffective("JP_STANDARD_10", until))
                 .isInstanceOf(BusinessException.class);
     }

@@ -16,8 +16,8 @@ import com.mannschaft.app.billing.api.dto.PriceBandInput;
 import com.mannschaft.app.billing.api.dto.PriceRevisionBandResponse;
 import com.mannschaft.app.billing.api.dto.PriceRevisionCreateRequest;
 import com.mannschaft.app.billing.api.dto.PriceRevisionResponse;
-import com.mannschaft.app.billing.tax.BillingTaxCodeEntity;
 import com.mannschaft.app.billing.tax.BillingTaxCodeService;
+import com.mannschaft.app.billing.tax.BillingTaxCodeView;
 import com.mannschaft.app.billing.tax.BillingTaxDerivationResult;
 import com.mannschaft.app.billing.tax.BillingTaxDerivationService;
 import com.mannschaft.app.auth.AuditEventType;
@@ -138,7 +138,7 @@ public class PriceRevisionCreateService {
         List<BillingPriceBandVersionEntity> bandEntities = new ArrayList<>();
         List<PriceRevisionBandResponse> bandResponses = new ArrayList<>();
         for (PriceBandInput input : bands) {
-            BillingTaxCodeEntity taxCode = taxCodeService.resolveEffective(input.taxCode(), request.effectiveFrom());
+            BillingTaxCodeView taxCode = taxCodeService.resolveEffective(input.taxCode(), request.effectiveFrom());
             BillingTaxDerivationResult tax = taxDerivationService.derive(
                     input.inputAmount(), input.taxBehavior(), taxCode);
 

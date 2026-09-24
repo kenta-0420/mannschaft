@@ -58,6 +58,8 @@ class BillingCurrentBandResolverExistingContractTest {
     @DisplayName("AC-124: 契約は人数がbandを跨いでも当期のsnapshot bandを維持し、"
             + "新bandはresolveCurrentBand（次の見積り）でのみ選ばれる")
     void existingContractKeepsSnapshotBandAcrossBoundaryCrossing() {
+        given(bandRepository.findByIdAndDeletedAtIsNull(oldBand.getId()))
+                .willReturn(java.util.Optional.of(oldBand));
         BillingContractEntity contract = contract(oldBand.getId());
 
         var contractBand = resolver.resolveContractBand(contract, 21, NOW);

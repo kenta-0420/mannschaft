@@ -15,8 +15,8 @@ import com.mannschaft.app.billing.PriceRevisionErrorCode;
 import com.mannschaft.app.billing.api.dto.PriceBandInput;
 import com.mannschaft.app.billing.api.dto.PriceRevisionCreateRequest;
 import com.mannschaft.app.billing.api.dto.PriceRevisionResponse;
-import com.mannschaft.app.billing.tax.BillingTaxCodeEntity;
 import com.mannschaft.app.billing.tax.BillingTaxCodeService;
+import com.mannschaft.app.billing.tax.BillingTaxCodeView;
 import com.mannschaft.app.billing.tax.BillingTaxDerivationResult;
 import com.mannschaft.app.billing.tax.BillingTaxDerivationService;
 import com.mannschaft.app.common.BusinessException;
@@ -88,20 +88,21 @@ class PriceRevisionCreateServiceTest {
         lenient().when(featureCatalogRepository.findById(anyString())).thenReturn(Optional.empty());
         lenient().when(priceVersionRepository.findAllForUpdate(any(), anyString(), any())).thenReturn(List.of());
 
-        BillingTaxCodeEntity taxCode = BillingTaxCodeEntity.builder()
-                .code("JP_STANDARD_10").displayName("標準税率10%")
-                .rateBasisPoints(1000).validFrom(Instant.EPOCH).enabled(true).build();
+        BillingTaxCodeView taxCode = BillingTaxCodeView.from(
+                com.mannschaft.app.billing.tax.BillingTaxCodeEntity.builder()
+                        .code("JP_STANDARD_10").displayName("標準税率10%")
+                        .rateBasisPoints(1000).validFrom(Instant.EPOCH).enabled(true).build());
         lenient().when(taxCodeService.resolveEffective(anyString(), any())).thenReturn(taxCode);
 
         lenient().when(taxDerivationService.derive(any(), any(), any())).thenAnswer(inv -> {
             long amount = inv.getArgument(0);
             BillingTaxBehavior behavior = inv.getArgument(1);
-            BillingTaxCodeEntity code = inv.getArgument(2);
-            long tax = amount * code.getRateBasisPoints() / 10000;
+            BillingTaxCodeView code = inv.getArgument(2);
+            long tax = amount * code.rateBasisPoints() / 10000;
             return BillingTaxDerivationResult.builder()
                     .amountExcludingTax(amount).taxAmount(tax).amountIncludingTax(amount + tax)
-                    .taxRateBasisPoints(code.getRateBasisPoints())
-                    .taxCodeSnapshot(code.getCode()).taxNameSnapshot(code.getDisplayName())
+                    .taxRateBasisPoints(code.rateBasisPoints())
+                    .taxCodeSnapshot(code.code()).taxNameSnapshot(code.displayName())
                     .taxMasterSnapshot("{}")
                     .includedInPrice(behavior == BillingTaxBehavior.INCLUSIVE)
                     .build();

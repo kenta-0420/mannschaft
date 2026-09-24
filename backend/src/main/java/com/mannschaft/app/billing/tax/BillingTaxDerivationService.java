@@ -19,7 +19,7 @@ public class BillingTaxDerivationService {
     /** AC-28: inputAmount の上限（この値を超えると400相当）。 */
     public static final long MAX_INPUT_AMOUNT = 9_999_999L;
 
-    public BillingTaxDerivationResult derive(Long inputAmount, BillingTaxBehavior taxBehavior, BillingTaxCodeEntity taxCode) {
+    public BillingTaxDerivationResult derive(Long inputAmount, BillingTaxBehavior taxBehavior, BillingTaxCodeView taxCode) {
         if (inputAmount == null || inputAmount <= 0) {
             throw new IllegalArgumentException("inputAmount は正の値である必要があります: " + inputAmount);
         }
@@ -27,7 +27,7 @@ public class BillingTaxDerivationService {
             throw new IllegalArgumentException("inputAmount は上限 " + MAX_INPUT_AMOUNT + " を超えられません: " + inputAmount);
         }
 
-        int rateBasisPoints = taxCode.getRateBasisPoints();
+        int rateBasisPoints = taxCode.rateBasisPoints();
         long amountExcludingTax;
         long taxAmount;
         long amountIncludingTax;
@@ -44,15 +44,15 @@ public class BillingTaxDerivationService {
 
         String taxMasterSnapshot = String.format(
                 "{\"code\":\"%s\",\"displayName\":\"%s\",\"rateBasisPoints\":%d}",
-                taxCode.getCode(), taxCode.getDisplayName(), rateBasisPoints);
+                taxCode.code(), taxCode.displayName(), rateBasisPoints);
 
         return BillingTaxDerivationResult.builder()
                 .amountExcludingTax(amountExcludingTax)
                 .taxAmount(taxAmount)
                 .amountIncludingTax(amountIncludingTax)
                 .taxRateBasisPoints(rateBasisPoints)
-                .taxCodeSnapshot(taxCode.getCode())
-                .taxNameSnapshot(taxCode.getDisplayName())
+                .taxCodeSnapshot(taxCode.code())
+                .taxNameSnapshot(taxCode.displayName())
                 .taxMasterSnapshot(taxMasterSnapshot)
                 .includedInPrice(taxBehavior == BillingTaxBehavior.INCLUSIVE)
                 .build();

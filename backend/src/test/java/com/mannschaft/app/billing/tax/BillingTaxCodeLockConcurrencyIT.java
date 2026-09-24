@@ -131,13 +131,13 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch go = new CountDownLatch(1);
 
-        Future<BillingTaxCodeEntity> f1 = pool.submit(() -> {
+        Future<BillingTaxCodeView> f1 = pool.submit(() -> {
             ready.countDown();
             go.await(5, TimeUnit.SECONDS);
             return service.create(new BillingTaxCodeCreateRequest(
                     "IT_NEW_CODE_A", "新規税コードA", 900, null, Instant.EPOCH, null, true));
         });
-        Future<BillingTaxCodeEntity> f2 = pool.submit(() -> {
+        Future<BillingTaxCodeView> f2 = pool.submit(() -> {
             ready.countDown();
             go.await(5, TimeUnit.SECONDS);
             return service.create(new BillingTaxCodeCreateRequest(
@@ -147,8 +147,8 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
         ready.await(5, TimeUnit.SECONDS);
         go.countDown();
 
-        BillingTaxCodeEntity r1;
-        BillingTaxCodeEntity r2;
+        BillingTaxCodeView r1;
+        BillingTaxCodeView r2;
         try {
             r1 = f1.get(10, TimeUnit.SECONDS);
             r2 = f2.get(10, TimeUnit.SECONDS);
@@ -163,8 +163,8 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
         }
         pool.shutdown();
 
-        assertThat(r1.getId()).isNotNull();
-        assertThat(r2.getId()).isNotNull();
+        assertThat(r1.id()).isNotNull();
+        assertThat(r2.id()).isNotNull();
         List<BillingTaxCodeEntity> all = repository.findAllVisible();
         assertThat(all).extracting(BillingTaxCodeEntity::getCode)
                 .contains("IT_NEW_CODE_A", "IT_NEW_CODE_B");

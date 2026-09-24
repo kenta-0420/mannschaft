@@ -39,21 +39,21 @@ public class SystemAdminTaxCodeController {
     @GetMapping
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @Operation(summary = "税コード一覧")
-    public ResponseEntity<List<BillingTaxCodeEntity>> list() {
+    public ResponseEntity<List<BillingTaxCodeView>> list() {
         return ResponseEntity.ok(service.list());
     }
 
     @PostMapping
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @Operation(summary = "税コード新規登録")
-    public ResponseEntity<BillingTaxCodeEntity> create(@Valid @RequestBody BillingTaxCodeCreateRequest request) {
+    public ResponseEntity<BillingTaxCodeView> create(@Valid @RequestBody BillingTaxCodeCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @Operation(summary = "税コード更新（表示名・stripeTaxCode・validUntil・enabledのみ）")
-    public ResponseEntity<BillingTaxCodeEntity> update(
+    public ResponseEntity<BillingTaxCodeView> update(
             @PathVariable UUID id, @Valid @RequestBody BillingTaxCodeUpdateRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }

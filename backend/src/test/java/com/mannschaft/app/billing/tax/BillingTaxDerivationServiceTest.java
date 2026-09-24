@@ -24,14 +24,14 @@ class BillingTaxDerivationServiceTest {
 
     private final BillingTaxDerivationService service = new BillingTaxDerivationService();
 
-    private BillingTaxCodeEntity taxCode(int rateBasisPoints) {
-        return BillingTaxCodeEntity.builder()
+    private BillingTaxCodeView taxCode(int rateBasisPoints) {
+        return BillingTaxCodeView.from(BillingTaxCodeEntity.builder()
                 .code("JP_STANDARD_10")
                 .displayName("標準税率10%")
                 .rateBasisPoints(rateBasisPoints)
                 .validFrom(Instant.EPOCH)
                 .enabled(true)
-                .build();
+                .build());
     }
 
     @Test
@@ -107,15 +107,15 @@ class BillingTaxDerivationServiceTest {
     @Test
     @DisplayName("AC-40: 導出結果は amountExcludingTax/taxAmount/taxRateBasisPoints/taxNameSnapshot/amountIncludingTax を保持する")
     void ac40_resultHoldsAllSnapshotFields() {
-        BillingTaxCodeEntity code = taxCode(1000);
+        BillingTaxCodeView code = taxCode(1000);
         BillingTaxDerivationResult r = service.derive(100L, BillingTaxBehavior.EXCLUSIVE, code);
 
         assertThat(r.getAmountExcludingTax()).isNotNull();
         assertThat(r.getTaxAmount()).isNotNull();
         assertThat(r.getTaxRateBasisPoints()).isEqualTo(1000);
-        assertThat(r.getTaxNameSnapshot()).isEqualTo(code.getDisplayName());
+        assertThat(r.getTaxNameSnapshot()).isEqualTo(code.displayName());
         assertThat(r.getAmountIncludingTax()).isNotNull();
-        assertThat(r.getTaxCodeSnapshot()).isEqualTo(code.getCode());
+        assertThat(r.getTaxCodeSnapshot()).isEqualTo(code.code());
         assertThat(r.getTaxMasterSnapshot()).isNotBlank();
     }
 
