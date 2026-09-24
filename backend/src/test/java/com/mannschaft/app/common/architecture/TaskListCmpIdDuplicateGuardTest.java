@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -177,6 +178,106 @@ class TaskListCmpIdDuplicateGuardTest {
             sb.append("  ✗✗ ").append(e.getKey()).append(" : ").append(e.getValue()).append("回出現\n");
         }
         assertThat(duplicates).as(sb.toString()).isEmpty();
+    }
+
+    /** 表の1行が持つべき列数（ID / 戦役 / 状態 / 依存 / 完了条件 / 証拠(PR/テスト) / 台帳）。 */
+    private static final int EXPECTED_COLUMN_COUNT = 7;
+
+    @Test
+    @DisplayName("CMP-IDを持つ表の行がすべて7列であること（列ズレ検出）")
+    void cmpIdの行は列数が7である() throws IOException {
+        Path taskList = resolveTaskListPath();
+        assertThat(Files.isRegularFile(taskList))
+                .as("docs/task-list.md が見つからない: " + taskList.toAbsolutePath())
+                .isTrue();
+
+        String content = Files.readString(taskList, StandardCharsets.UTF_8);
+
+        List<String> mismatches = new ArrayList<>();
+        int rowCount = 0;
+        for (String line : content.split("\n", -1)) {
+            if (!line.startsWith("|")) {
+                continue;
+            }
+            List<String> cells = splitTableRow(line);
+            // 先頭・末尾は行頭/行末の "|" が作る空セル。実列数はその内側。
+            if (cells.size() < 2) {
+                continue;
+            }
+            String firstCell = cells.get(1).trim();
+            if (!Pattern.compile("^(" + CMP_ID_FORM + ")").matcher(firstCell).find()) {
+                continue;
+            }
+            rowCount++;
+            int actualColumns = cells.size() - 2;
+            if (actualColumns != EXPECTED_COLUMN_COUNT) {
+                mismatches.add(firstCell + "（実測列数=" + actualColumns + "）");
+            }
+        }
+
+        assertThat(rowCount)
+                .as("docs/task-list.md から CMP-ID を持つ表の行を1件も見つけられなかった。"
+                        + "走査経路（splitTableRow / CMP_ID_FORM）が壊れている可能性がある。")
+                .isPositive();
+
+        if (mismatches.isEmpty()) {
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("docs/task-list.md に列数が7でない行が見つかりました（期待列数: ID / 戦役 / 状態 / 依存 / ")
+                .append("完了条件 / 証拠(PR/テスト) / 台帳 の7列）。\n")
+                .append("原因: セル内に書いた `|` をエスケープ（`\\|`）せずに書いた、指示文の「注記」を")
+                .append("そのまま列として書き足した、証拠の追記で列区切りの `|` を余分に増やした等。\n")
+                .append("対処: 内容を消さずに正しい7列へ戻す。余った列の文章は意味の合う既存列（多くは")
+                .append("「証拠(PR/テスト)」）へ畳み込み、セル内で本物の `|` を使う場合は `\\|` へ")
+                .append("エスケープすること（コードスパン \\` ... \\` 内の `|` はエスケープ不要）。\n")
+                .append("列ズレ行一覧:\n");
+        for (String m : mismatches) {
+            sb.append("  ✗✗ ").append(m).append("\n");
+        }
+        assertThat(mismatches).as(sb.toString()).isEmpty();
+    }
+
+    /**
+     * Markdown 表の1行を GitHub のレンダリングに合わせてセル分割する。
+     *
+     * <p>GitHub は表セル内で <b>コードスパン（バッククォート）に囲まれた {@code |} を区切りとして扱わない</b>。
+     * さらに {@code \|} は<b>エスケープされたリテラル {@code |}</b> として扱い、区切りにしない。
+     * 単純に {@code String.split("\\|")} すると、コードスパン中の {@code |} やコード例に書いた
+     * シェルパイプ（{@code \|\| true} 等）まで列区切りとして誤検出し、正しい行を偽陽性で
+     * 列ズレと判定してしまう（2026-09-22 に `\|\| true` を含む正常行を誤検出した実例）。</p>
+     */
+    private static List<String> splitTableRow(String line) {
+        List<String> result = new ArrayList<>();
+        StringBuilder buf = new StringBuilder();
+        boolean inCode = false;
+        int i = 0;
+        int n = line.length();
+        while (i < n) {
+            char c = line.charAt(i);
+            if (c == '`') {
+                inCode = !inCode;
+                buf.append(c);
+                i++;
+                continue;
+            }
+            if (c == '\\' && i + 1 < n && line.charAt(i + 1) == '|') {
+                buf.append('|');
+                i += 2;
+                continue;
+            }
+            if (c == '|' && !inCode) {
+                result.add(buf.toString());
+                buf.setLength(0);
+                i++;
+                continue;
+            }
+            buf.append(c);
+            i++;
+        }
+        result.add(buf.toString());
+        return result;
     }
 
     /**
