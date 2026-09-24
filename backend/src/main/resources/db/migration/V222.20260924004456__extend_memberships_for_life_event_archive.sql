@@ -13,9 +13,16 @@
 --   archived_at / archive_reason / archived_by / archive_expires_at
 --   left_trigger / left_by / archive_generation
 --
--- 既存の退会済み行（left_at NOT NULL）は left_trigger を LEGACY でバックフィルしてから
--- 対称 CHECK 制約 chk_memberships_left_trigger を追加する
--- （列追加 → バックフィル → 制約追加の順序を守る。§5.2.2.1）。
+-- 既存の退会済み行（left_at NOT NULL）は left_trigger を LEGACY でバックフィルする
+-- （列追加 → バックフィルの順序を守る。§5.2.2.1）。
+--
+-- 【対称 CHECK 制約 chk_memberships_left_trigger の追加を本 migration から外したことについて】
+-- Codex 検分の指摘により、対称 CHECK 制約（left_at ⟺ left_trigger）は本 migration に含めない。
+-- 既存の MembershipService.leave() は setLeftAt / setLeaveReason のみを行い left_trigger を
+-- 設定しないため、この制約を先に入れると以後の退会処理がすべて DB エラーで失敗する
+-- （結合テストの DB は ddl-auto で生成されるため CI では検出できない）。
+-- 退会処理の全経路（9経路）が left_trigger を書き込むよう直す Phase 1 残りの PR で、
+-- この CHECK 制約を同じ PR 内に追加する（詳細: docs/features/F14.3_resident_life_events.md §16.1）。
 --
 -- leave_reason の ENUM を DECEASED / RELOCATED の 2 値拡張する（§5.4）。
 -- MODIFY COLUMN は列定義を丸ごと置き換えるため、現行定義（V60.001:31）を verbatim でコピーする。
@@ -33,12 +40,8 @@ ALTER TABLE memberships
 -- ② 既存の退会済み行を LEGACY でバックフィルする（§5.2.2.1）
 UPDATE memberships SET left_trigger = 'LEGACY' WHERE left_at IS NOT NULL;
 
--- ③ 対称 CHECK 制約を追加する（left_at ⟺ left_trigger）
-ALTER TABLE memberships
-    ADD CONSTRAINT chk_memberships_left_trigger CHECK (
-        (left_at IS NULL AND left_trigger IS NULL)
-        OR (left_at IS NOT NULL AND left_trigger IS NOT NULL)
-    );
+-- ③ （欠番）対称 CHECK 制約 chk_memberships_left_trigger は本 migration から外した。
+--    追加理由・移設先は本ファイル冒頭のコメントを参照。
 
 -- ④ アーカイブ 3 列の一貫性 CHECK（archived_by は含めない。§5.2 の注記・§5.2.3.2 #1'）
 ALTER TABLE memberships
