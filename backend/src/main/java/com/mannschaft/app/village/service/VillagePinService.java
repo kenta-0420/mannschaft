@@ -49,6 +49,7 @@ public class VillagePinService {
     private final UserVillagePinRepository pinRepository;
     private final VillageRepository villageRepository;
     private final MediaUrlResolver mediaUrlResolver;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // 一覧取得
@@ -64,7 +65,7 @@ public class VillagePinService {
     @Transactional(readOnly = true)
     public PinListResponse listMyPins(Long userId) {
         List<UserVillagePinEntity> pins = pinRepository.findByUserIdOrderBySortOrderAsc(userId);
-        Map<UUID, VillageEntity> villageMap = loadVillageMap(pins);
+        Map<UUID, VillageEntity> villageMap = loadVillageMap(pins, userId);
         List<PinResponse> items = pins.stream()
                 .map(p -> toResponse(p, villageMap.get(p.getVillageId())))
                 .toList();
@@ -95,7 +96,7 @@ public class VillagePinService {
      */
     @Transactional
     public PinResponse pin(Long userId, UUID villageId) {
-        VillageEntity village = loadActiveVillage(villageId);
+        VillageEntity village = loadActiveVillage(villageId, userId);
 
         if (pinRepository.findByUserIdAndVillageId(userId, villageId).isPresent()) {
             throw new BusinessException(VillageErrorCode.VILLAGE_PIN_ALREADY_EXISTS);
@@ -239,26 +240,50 @@ public class VillagePinService {
     // ========================================================================
 
     /**
-     * アクティブ村（未削除・未凍結）を取得する。
-     * 設計書 §10 に従い、削除済み / 凍結済み / 存在しない場合は IDOR 対策で一律 404 を返す。
+     * 閲覧可能かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>従来の実装は不在・削除済み・凍結済みをまとめて 404 に畳んでいたため、
+     * 凍結も 404 とする {@link VillageAccessGate#loadReadableVillage} へ委譲して挙動を揃える。
+     * 加えて、非公開(UNLISTED)村を非村人が叩いた場合も実在しない村 ID と同一の
+     * {@code VILLAGE_NOT_FOUND} となり、村の存在が漏れなくなる。</p>
      */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        return villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadReadableVillage(villageId, actorUserId);
     }
 
     /**
-     * ピン群に紐付く村エンティティを 1 クエリで取得して Map 化する。
-     * 凍結 / 削除済み村のピンが残っている場合はその村だけ Map に含まれないため、
-     * {@link #toResponse(UserVillagePinEntity, VillageEntity)} で null 防御する。
+     * ピン群に紐付く村エンティティを 1 クエリで取得し、
+     * <b>削除済み・凍結済み・閲覧者に不可視</b>の村を除いて Map 化する。
+     * 除かれた村は {@link #toResponse(UserVillagePinEntity, VillageEntity)} の null 防御で
+     * 村名・アイコンが空のまま返る。
+     *
+     * <h3>なぜ可視性判定が要るのか（ピン経由の存在漏洩）</h3>
+     * <p>ピンは退村・BAN では削除されない（削除されるのは明示的な unpin と退会時の
+     * {@code VillageUserCleanerEventListener} だけ）。そのため非公開(UNLISTED)村をピンしたまま
+     * 退村・BAN されたユーザーのピン一覧に、<b>その村の名前と村紋が残り続ける</b>。
+     * {@code findAllById} は ID 集合をそのまま実体化するだけで可視性も生存も見ないため、
+     * ここで {@link VillageAccessGate#isVisibleTo} を通す。
+     * 同じ欠陥がフィードの {@code VillageFeedService#loadVillagesByPin} にもあった。</p>
+     *
+     * <p>可視性判定は<b>操作者を軸に畳んだ一括版</b>（{@link VillageAccessGate#filterVisible}）へ渡す。
+     * 村ごとに {@code isVisibleTo} を呼ぶと、非 PUBLIC 村1件につき所属判定が 1 クエリ、
+     * 非メンバーならさらに SYSTEM_ADMIN 判定が 1 クエリ走り、ピン上限（30 件）に比例して増えてしまう。
+     * 一括版なら村の件数によらず追加クエリは最大 2 本で、
+     * PUBLIC 村だけをピンしている通常のユーザーでは<b>追加クエリ 0 件</b>のままである。</p>
      */
-    private Map<UUID, VillageEntity> loadVillageMap(List<UserVillagePinEntity> pins) {
+    private Map<UUID, VillageEntity> loadVillageMap(List<UserVillagePinEntity> pins, Long actorUserId) {
         if (pins.isEmpty()) {
             return Map.of();
         }
         List<UUID> ids = pins.stream().map(UserVillagePinEntity::getVillageId).toList();
+        List<VillageEntity> alive = villageRepository.findAllById(ids).stream()
+                .filter(v -> v.getDeletedAt() == null && v.getArchivedAt() == null)
+                .toList();
+
         Map<UUID, VillageEntity> map = new HashMap<>();
-        villageRepository.findAllById(ids).forEach(v -> map.put(v.getId(), v));
+        for (VillageEntity v : accessGate.filterVisible(alive, actorUserId)) {
+            map.put(v.getId(), v);
+        }
         return map;
     }
 

@@ -102,11 +102,12 @@ public class ReservationSlotTemplateService {
         if (templateRepository.countByTeamId(teamId) >= MAX_TEMPLATES_PER_TEAM) {
             throw new BusinessException(ReservationErrorCode.TEMPLATE_LIMIT_EXCEEDED);
         }
-        SlotTimeValidator.validateTimeRange(request.getStartTime(), request.getEndTime());
+        SlotTimeValidator.validateTimeRange(request.getStartTime(), request.getEndTime(),
+                Boolean.TRUE.equals(request.getEndsNextDay()));
         ReservationLineEntity line = resolveLineOrThrow(teamId, request.getLineId());
         validateStaffMembership(teamId, request.getStaffUserId());
         validateNoOverlap(teamId, request.getLineId(), request.getDayOfWeek(),
-                request.getStartTime(), request.getEndTime(), null);
+                request.getStartTime(), request.getEndTime(), Boolean.TRUE.equals(request.getEndsNextDay()), null);
 
         ReservationSlotTemplateEntity entity = ReservationSlotTemplateEntity.builder()
                 .teamId(teamId)
@@ -115,6 +116,7 @@ public class ReservationSlotTemplateService {
                 .dayOfWeek(request.getDayOfWeek())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
+                .endsNextDay(Boolean.TRUE.equals(request.getEndsNextDay()))
                 // 既定値（capacity=1）は Service 層で null→1 正規化（既存 normalizeCapacity と同じ考え方）。
                 // builder に null を渡すと @Builder.Default を上書きして NULL 挿入になるため必ず正規化する。
                 .capacity(normalizeCapacity(request.getCapacity()))
@@ -158,8 +160,13 @@ public class ReservationSlotTemplateService {
         if (request.getStartTime() != null || request.getEndTime() != null) {
             LocalTime newStart = request.getStartTime() != null ? request.getStartTime() : entity.getStartTime();
             LocalTime newEnd = request.getEndTime() != null ? request.getEndTime() : entity.getEndTime();
-            SlotTimeValidator.validateTimeRange(newStart, newEnd);
-            entity.changeTimeRange(newStart, newEnd);
+            boolean endsNextDay = request.getEndsNextDay() != null
+                    ? request.getEndsNextDay() : Boolean.TRUE.equals(entity.getEndsNextDay());
+            SlotTimeValidator.validateTimeRange(newStart, newEnd, endsNextDay);
+            entity.changeTimeRange(newStart, newEnd, endsNextDay);
+        } else if (request.getEndsNextDay() != null) {
+            SlotTimeValidator.validateTimeRange(entity.getStartTime(), entity.getEndTime(), request.getEndsNextDay());
+            entity.changeTimeRange(entity.getStartTime(), entity.getEndTime(), request.getEndsNextDay());
         }
         if (request.getCapacity() != null) {
             entity.changeCapacity(normalizeCapacity(request.getCapacity()));
@@ -186,7 +193,7 @@ public class ReservationSlotTemplateService {
         }
         // ライン・曜日・時間帯のいずれかが変わった可能性があるため、最終形で重複帯を再検証する（自分自身は除外）。
         validateNoOverlap(teamId, entity.getLineId(), entity.getDayOfWeek(),
-                entity.getStartTime(), entity.getEndTime(), entity.getId());
+                entity.getStartTime(), entity.getEndTime(), Boolean.TRUE.equals(entity.getEndsNextDay()), entity.getId());
 
         ReservationSlotTemplateEntity saved = templateRepository.save(entity);
         log.info("週間テンプレート更新: teamId={}, templateId={}", teamId, templateId);
@@ -377,19 +384,44 @@ public class ReservationSlotTemplateService {
      */
     private void validateNoOverlap(Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
                                    LocalTime startTime, LocalTime endTime, UUID excludeId) {
+        validateNoOverlap(teamId, lineId, dayOfWeek, startTime, endTime, false, excludeId);
+    }
+    private void validateNoOverlap(Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
+                                   LocalTime startTime, LocalTime endTime, boolean endsNextDay, UUID excludeId) {
         if (lineId == null) {
             return; // 共通枠テンプレ同士は意図的な並行枠として許可
         }
         boolean overlaps = templateRepository.findByTeamId(teamId).stream()
                 .filter(t -> !Objects.equals(t.getId(), excludeId))
                 .filter(t -> Objects.equals(t.getLineId(), lineId))
-                .filter(t -> t.getDayOfWeek() == dayOfWeek)
-                .anyMatch(t -> startTime.isBefore(t.getEndTime()) && t.getStartTime().isBefore(endTime));
+                .anyMatch(t -> {
+                    long candidateStart = weeklyMinute(dayOfWeek, startTime);
+                    long candidateEnd = candidateStart + durationMinutes(startTime, endTime, endsNextDay);
+                    long existingStart = weeklyMinute(t.getDayOfWeek(), t.getStartTime());
+                    long existingEnd = existingStart + durationMinutes(
+                            t.getStartTime(), t.getEndTime(), Boolean.TRUE.equals(t.getEndsNextDay()));
+                    // Compare the existing interval in adjacent weekly copies so SUN->MON
+                    // overnight ranges overlap deterministically at the week boundary.
+                    return java.util.stream.LongStream.of(-WEEK_MINUTES, 0, WEEK_MINUTES)
+                            .anyMatch(shift -> candidateStart < existingEnd + shift
+                                    && existingStart + shift < candidateEnd);
+                });
         if (overlaps) {
             throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE,
                     List.of(new ErrorResponse.FieldError(
                             "startTime", "同一ライン・同一曜日の既存テンプレートと時間帯が重複しています")));
         }
+    }
+
+    private static final long WEEK_MINUTES = 7L * 24 * 60;
+
+    private static long weeklyMinute(ReservationDayOfWeek day, LocalTime time) {
+        return day.ordinal() * 24L * 60 + time.getHour() * 60L + time.getMinute();
+    }
+
+    private static long durationMinutes(LocalTime start, LocalTime end, boolean endsNextDay) {
+        long minutes = java.time.Duration.between(start, end).toMinutes();
+        return endsNextDay ? minutes + 24L * 60 : minutes;
     }
 
     private Integer normalizeCapacity(Integer capacity) {
@@ -430,6 +462,7 @@ public class ReservationSlotTemplateService {
                 .dayOfWeek(entity.getDayOfWeek() != null ? entity.getDayOfWeek().name() : null)
                 .startTime(entity.getStartTime())
                 .endTime(entity.getEndTime())
+                .endsNextDay(entity.getEndsNextDay())
                 .capacity(entity.getCapacity())
                 .staffUserId(entity.getStaffUserId())
                 // staffName は管理画面のみで使う表示名（PII 考慮・§6）。null 安全に一括解決系と同じ Resolver を使う。

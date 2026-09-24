@@ -29,6 +29,22 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     Optional<OrganizationEntity> findBySlugAndDeletedAtIsNull(String slug);
 
     /**
+     * カスタムスラッグで組織を取得する（URL識別子。ACTIVE 限定）。
+     *
+     * <p>柱②-3 検分 P1-2 根治: {@code findBySlugAndDeletedAtIsNull} は PROVISIONED
+     * （承諾前の事前作成状態）も返してしまい、{@code resolveOrgId} 経由で公開判定前に
+     * PROVISIONED スコープへ到達できてしまう恐れがあった。全ての slug 解決の入口は
+     * このメソッドへ差し替え、{@code lifecycleStatus = ACTIVE} を必須条件とする。
+     * SYSTEM_ADMIN の管理系・プロビジョニング自身は ID 直参照（{@code findById}）で
+     * PROVISIONED 行に到達するため、本メソッドの対象外で影響しない。</p>
+     *
+     * @param slug URL に使用するカスタムスラッグ
+     * @return ACTIVE かつ未削除の組織エンティティ
+     */
+    Optional<OrganizationEntity> findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+            String slug, OrganizationEntity.LifecycleStatus lifecycleStatus);
+
+    /**
      * 指定スラッグが既に使用中かどうか確認する（一意性チェック用）。
      *
      * @param slug チェック対象のスラッグ
@@ -38,7 +54,56 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
 
     List<OrganizationEntity> findByVisibility(OrganizationEntity.Visibility visibility);
 
-    boolean existsByName(String name);
+    // existsByName は柱③-A で撤去済み（ORG_002 一律ブロックの残骸。検分P2-6是正）。
+    // 同名許可のため、代わりに findActiveByNormalizedName(ForUpdate) を使う。
+
+    /**
+     * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
+     *
+     * <p>検分第5巡是正: クエリ側の {@code TRIM()} を撤去した。Java の
+     * {@link String#trim()} は制御文字（タブ・改行等）も除去するのに対し MySQL の
+     * {@code TRIM()} は半角スペースのみ除去するため、両者を混在させると正規化基準が
+     * 食い違う（{@code "foo\t"} が Java 側では {@code "foo"} と同一視されるが DB 側では
+     * 別名として扱われる）。そのため呼び出し元は
+     * {@code DuplicateNameNormalizer#trimSpaces}（MySQL {@code TRIM()} と同じ規則）で
+     * 正規化済みの値を渡す契約とし、本クエリは {@code name_trimmed} 列との単純な等価比較のみ
+     * 行う（生成列 {@code name_trimmed} は {@code GENERATED ALWAYS AS (TRIM(name)) STORED}・
+     * 索引付き。V201 マイグレーション参照）。照合順序は列自体が {@code utf8mb4_0900_ai_ci}
+     * （大文字小文字・アクセントを区別しない）のため明示指定は不要。ACTIVE
+     * （{@code lifecycleStatus=ACTIVE}）かつ未削除（{@code @SQLRestriction} により自動除外）
+     * のみを対象とする。作成 TX 内で呼ばれることを想定し、常に最新状態を反映する。</p>
+     *
+     * @param nameTrimmed {@code DuplicateNameNormalizer#trimSpaces} で正規化済みの名称
+     * @return 同名の ACTIVE 組織一覧
+     */
+    @Query(value = "SELECT * FROM organizations "
+            + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
+            + "AND name_trimmed = :nameTrimmed",
+            nativeQuery = true)
+    List<OrganizationEntity> findActiveByNormalizedName(@Param("nameTrimmed") String nameTrimmed);
+
+    /**
+     * CMP-260901-1538 柱③-A 検分P1-2/第4〜5巡是正: {@link #findActiveByNormalizedName} の
+     * ロッキングリード版。
+     *
+     * <p>{@code FOR UPDATE} により InnoDB の REPEATABLE READ スナップショットを無視して
+     * <b>最新のコミット済みデータ</b>を読む（呼び出し元がこのクエリより前に他のクエリを
+     * 発行しトランザクションのスナップショットが既に確立していても安全）。
+     * {@code name_trimmed} の索引を使うことで、{@code FOR UPDATE} が索引レンジロックに
+     * 収まり、全表ロック（＝無関係な名称の作成まで巻き込んでブロックする事故）を避ける。
+     * {@code DuplicateNameGuardService#checkForCreateAndRun} が行ロック保持中に呼ぶことを
+     * 前提とし、同名候補の TOCTOU（確認時点と作成時点の乖離）を防ぐ。
+     * クエリ側の {@code TRIM()} を撤去した理由は {@link #findActiveByNormalizedName} と同じ
+     * （検分第5巡是正）。</p>
+     *
+     * @param nameTrimmed {@code DuplicateNameNormalizer#trimSpaces} で正規化済みの名称
+     * @return 同名の ACTIVE 組織一覧（最新コミット済み状態）
+     */
+    @Query(value = "SELECT * FROM organizations "
+            + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
+            + "AND name_trimmed = :nameTrimmed FOR UPDATE",
+            nativeQuery = true)
+    List<OrganizationEntity> findActiveByNormalizedNameForUpdate(@Param("nameTrimmed") String nameTrimmed);
 
     /**
      * 組織をキーワード検索する（公開検索）。
@@ -55,6 +120,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query("""
             SELECT o FROM OrganizationEntity o
             WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
               AND o.archivedAt IS NULL
               AND (o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%)
             """)
@@ -148,6 +214,20 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     Optional<Long> findParentOrganizationIdById(@Param("id") Long id);
 
     /**
+     * 組織ID集合に対応する親組織IDを一括取得する。
+     *
+     * <p>組織階層の祖先展開では、同じ深度にある組織を1クエリで解決するために使う。
+     * 呼び出し側は空集合を渡さない。</p>
+     *
+     * @param organizationIds 親組織IDを取得する組織ID集合
+     * @return 実在する組織のIDと親組織IDの射影
+     */
+    @Query("SELECT o.id AS organizationId, o.parentOrganizationId AS parentOrganizationId "
+            + "FROM OrganizationEntity o WHERE o.id IN :organizationIds")
+    List<OrganizationParentIdProjection> findParentOrganizationIdProjectionsByIdIn(
+            @Param("organizationIds") Collection<Long> organizationIds);
+
+    /**
      * F01.2 子組織一覧カーソルページング用: 直近の子組織を「カーソル・可視性・ID 昇順」を
      * すべて SQL 側で解決した上でページ取得する。
      *
@@ -186,6 +266,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
             SELECT o FROM OrganizationEntity o
             WHERE o.parentOrganizationId = :parentId
               AND (:cursorId IS NULL OR o.id > :cursorId)
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
               AND (o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
                    OR o.id IN :memberOrgIds)
             ORDER BY o.id ASC
@@ -270,6 +351,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query("SELECT o FROM OrganizationEntity o " +
            "WHERE o.id = :id " +
            "AND o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC " +
+           "AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE " +
            "AND o.archivedAt IS NULL")
     Optional<OrganizationEntity> findPublicOrganizationById(@Param("id") Long id);
 
@@ -282,6 +364,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
      */
     @Query("SELECT o FROM OrganizationEntity o " +
            "WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC " +
+           "AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE " +
            "AND o.archivedAt IS NULL " +
            "ORDER BY o.id ASC")
     List<OrganizationEntity> findAllPublicOrganizations();
@@ -303,6 +386,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query("""
             SELECT o FROM OrganizationEntity o
             WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
               AND o.archivedAt IS NULL
               AND (:keyword IS NULL OR o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%)
               AND (:prefecture IS NULL OR o.prefecture = :prefecture)
@@ -327,6 +411,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query("""
             SELECT COUNT(o) FROM OrganizationEntity o
             WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
               AND o.deletedAt IS NULL
               AND o.supporterNameDisclosure
                   = com.mannschaft.app.publicview.enums.NameDisclosureMode.REAL_NAME
@@ -343,6 +428,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query("""
             SELECT COUNT(o) FROM OrganizationEntity o
             WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
               AND o.deletedAt IS NULL
             """)
     long countPublicOrganizations();

@@ -9,7 +9,6 @@ import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageSerendipityScoreEntity;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.repository.VillageSerendipityScoreRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,8 +50,8 @@ public class VillageSerendipityService {
     private static final int DEFAULT_LIMIT = 10;
 
     private final VillageSerendipityScoreRepository serendipityRepository;
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
+    private final VillageAccessGate accessGate;
 
     // ====================================================================
     // 読み取り API
@@ -65,7 +64,7 @@ public class VillageSerendipityService {
      * （初回バッチ実行前は 404、UI 側で「まだスコアがありません」と案内する想定）。</p>
      */
     public VillageSerendipityScoreResponse getMyScore(UUID villageId, Long userId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, userId);
         VillageSerendipityScoreEntity entity = serendipityRepository
                 .findByVillageIdAndUserId(villageId, userId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.SERENDIPITY_NOT_FOUND));
@@ -84,7 +83,7 @@ public class VillageSerendipityService {
      */
     @Deprecated(since = "F17.2", forRemoval = true)
     public VillageSerendipityRankingResponse getRanking(UUID villageId, Integer limit, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillager(villageId, actorUserId);
         int size = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
         Pageable pageable = PageRequest.of(0, size);
@@ -150,13 +149,21 @@ public class VillageSerendipityService {
     // 共通ヘルパ
     // ====================================================================
 
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        return v;
+    /**
+     * 閲覧可能かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>従来の実装は不在・削除済みのみを 404 とし、<b>凍結済み村は素通りさせていた</b>
+     * （ご縁スコアの読み取り 2 本はいずれも read であり、凍結を意識していなかった）。
+     * ここで {@link VillageAccessGate#loadActiveVillage} を選ぶと凍結済み村に 409 が新設され、
+     * read 経路に「凍結された村がそこに在る」という新しい存在オラクルを作ってしまう。
+     * よって凍結も 404 に畳む {@link VillageAccessGate#loadReadableVillage} に委譲し、
+     * 同じく read で 404 統一を採っているピン・村内検索と流儀を揃える。</p>
+     *
+     * <p>加えて、非公開(UNLISTED)村を非村人が叩いた場合も実在しない村 ID と同一の
+     * {@code VILLAGE_NOT_FOUND} となり、村の存在が漏れなくなる。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadReadableVillage(villageId, actorUserId);
     }
 
     /**

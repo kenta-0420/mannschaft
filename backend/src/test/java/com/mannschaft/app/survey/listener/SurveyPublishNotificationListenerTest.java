@@ -1,5 +1,6 @@
 package com.mannschaft.app.survey.listener;
 
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
@@ -18,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -60,8 +62,41 @@ class SurveyPublishNotificationListenerTest {
     @Mock
     private NotificationFanoutJobService fanoutJobService;
 
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
+    /** Issue #2715 CMP-055 lot C-5: newly added i18n dependencies. */
+    @Mock private MessageSource messageSource;
+
     @InjectMocks
     private SurveyPublishNotificationListener listener;
+
+    /**
+     * 母集団解決（{@link com.mannschaft.app.survey.service.SurveyUniverseResolver}）は
+     * <b>本物</b>を注入する。ここをモックにすると「どの母集団を数えるか」という本質が
+     * テストから消えるため、実クラスへ既存のリポジトリモックを渡し、
+     * 従来どおり最下層のスタブ（{@code userRoleRepository} 等）で振る舞いを決める。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void 母集団リゾルバを実クラスで注入する() {
+        org.springframework.test.util.ReflectionTestUtils.setField(listener, "universeResolver",
+                new com.mannschaft.app.survey.service.SurveyUniverseResolver(
+                        organizationMembershipService, userRoleRepository, surveyTargetRepository));
+    }
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     private static final long SURVEY_ID = 100L;
     private static final long SCOPE_ID = 1L;
@@ -84,9 +119,7 @@ class SurveyPublishNotificationListenerTest {
                 eq(String.valueOf(SCOPE_ID)),
                 eq(SurveyNotificationType.SURVEY_CREATED.name()),
                 any(UUID.class),
-                eq(SCOPE_ID),
-                anyString(),
-                anyString(),
+                eq(SCOPE_ID),any(FanoutMessageKind.class), any(String[].class),
                 eq(NotificationPriority.NORMAL),
                 eq("SURVEY"),
                 eq(SURVEY_ID),
@@ -95,9 +128,16 @@ class SurveyPublishNotificationListenerTest {
                 eq(false));
         // 同期展開の窓口は一切呼ばない
         verify(userRoleRepository, never()).findUserIdsByScope(anyString(), any());
-        verify(notificationHelper, never()).notifyAllPreAuthorized(
-                any(), anyString(), anyString(), anyString(), anyString(),
-                any(), any(), any(), anyString(), any());
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    any(),
+                    anyString(),
+                    anyString(),
+                    any(),
+                    any(),
+                    any(),
+                    anyString(),
+                    any(),
+                    any());
     }
 
     @Test
@@ -117,9 +157,7 @@ class SurveyPublishNotificationListenerTest {
                 eq(String.valueOf(SCOPE_ID)),
                 eq(SurveyNotificationType.SURVEY_CREATED.name()),
                 any(UUID.class),
-                eq(SCOPE_ID),
-                anyString(),
-                anyString(),
+                eq(SCOPE_ID),any(FanoutMessageKind.class), any(String[].class),
                 eq(NotificationPriority.NORMAL),
                 eq("SURVEY"),
                 eq(SURVEY_ID),
@@ -144,19 +182,17 @@ class SurveyPublishNotificationListenerTest {
         // Then: チームは findUserIdsByScope のみ・耐久ジョブは使わない
         verify(userRoleRepository).findUserIdsByScope("TEAM", SCOPE_ID);
         verify(fanoutJobService, never()).enqueue(
-                anyString(), anyString(), anyString(), any(UUID.class), any(),
-                anyString(), anyString(), any(), anyString(), any(), anyString(), any(), anyBoolean());
-        verify(notificationHelper).notifyAllPreAuthorized(
-                eq(List.of(7L, 8L)),
-                eq(SurveyNotificationType.SURVEY_CREATED.name()),
-                anyString(),
-                anyString(),
-                eq("SURVEY"),
-                eq(SURVEY_ID),
-                eq(NotificationScopeType.TEAM),
-                eq(SCOPE_ID),
-                anyString(),
-                eq(ACTOR_ID));
+                anyString(), anyString(), anyString(), any(UUID.class), any(),any(FanoutMessageKind.class), any(String[].class), any(), anyString(), any(), anyString(), any(), anyBoolean());
+        verify(notificationHelper).notifyAllPreAuthorizedLocalized(
+                    eq(List.of(7L, 8L)),
+                    eq(SurveyNotificationType.SURVEY_CREATED.name()),
+                    eq("SURVEY"),
+                    eq(SURVEY_ID),
+                    eq(NotificationScopeType.TEAM),
+                    eq(SCOPE_ID),
+                    anyString(),
+                    eq(ACTOR_ID),
+                    any());
     }
 
     @Test
@@ -178,19 +214,17 @@ class SurveyPublishNotificationListenerTest {
         verify(surveyTargetRepository).findBySurveyId(SURVEY_ID);
         verify(userRoleRepository, never()).findUserIdsByScope(anyString(), any());
         verify(fanoutJobService, never()).enqueue(
-                anyString(), anyString(), anyString(), any(UUID.class), any(),
-                anyString(), anyString(), any(), anyString(), any(), anyString(), any(), anyBoolean());
-        verify(notificationHelper).notifyAllPreAuthorized(
-                eq(List.of(101L, 102L)),
-                eq(SurveyNotificationType.SURVEY_CREATED.name()),
-                anyString(),
-                anyString(),
-                eq("SURVEY"),
-                eq(SURVEY_ID),
-                eq(NotificationScopeType.TEAM),
-                eq(SCOPE_ID),
-                anyString(),
-                eq(ACTOR_ID));
+                anyString(), anyString(), anyString(), any(UUID.class), any(),any(FanoutMessageKind.class), any(String[].class), any(), anyString(), any(), anyString(), any(), anyBoolean());
+        verify(notificationHelper).notifyAllPreAuthorizedLocalized(
+                    eq(List.of(101L, 102L)),
+                    eq(SurveyNotificationType.SURVEY_CREATED.name()),
+                    eq("SURVEY"),
+                    eq(SURVEY_ID),
+                    eq(NotificationScopeType.TEAM),
+                    eq(SCOPE_ID),
+                    anyString(),
+                    eq(ACTOR_ID),
+                    any());
     }
 
     @Test
@@ -207,9 +241,16 @@ class SurveyPublishNotificationListenerTest {
         listener.onSurveyPublished(event);
 
         // Then
-        verify(notificationHelper, never()).notifyAllPreAuthorized(
-                any(), anyString(), anyString(), anyString(), anyString(),
-                any(), any(), any(), anyString(), any());
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    any(),
+                    anyString(),
+                    anyString(),
+                    any(),
+                    any(),
+                    any(),
+                    anyString(),
+                    any(),
+                    any());
     }
 
     // =====================================================================
@@ -239,8 +280,7 @@ class SurveyPublishNotificationListenerTest {
         // Then: enqueue に渡った sourceEventUuid（4番目の引数）が2回とも同一
         ArgumentCaptor<UUID> uuidCaptor = ArgumentCaptor.forClass(UUID.class);
         verify(fanoutJobService, org.mockito.Mockito.times(2)).enqueue(
-                anyString(), anyString(), anyString(), uuidCaptor.capture(), any(),
-                anyString(), anyString(), any(), anyString(), any(), anyString(), any(), anyBoolean());
+                anyString(), anyString(), anyString(), uuidCaptor.capture(), any(),any(FanoutMessageKind.class), any(String[].class), any(), anyString(), any(), anyString(), any(), anyBoolean());
         List<UUID> captured = uuidCaptor.getAllValues();
         assertThat(captured).hasSize(2);
         assertThat(captured.get(0)).as("同一発火の二重処理は同一 sourceEventUuid に収束する").isEqualTo(captured.get(1));
@@ -260,8 +300,7 @@ class SurveyPublishNotificationListenerTest {
         // Then: sourceEventUuid は互いに異なる（Wave-1 Major② の「再公開が恒久抑止される」回帰を封じる）
         ArgumentCaptor<UUID> uuidCaptor = ArgumentCaptor.forClass(UUID.class);
         verify(fanoutJobService, org.mockito.Mockito.times(2)).enqueue(
-                anyString(), anyString(), anyString(), uuidCaptor.capture(), any(),
-                anyString(), anyString(), any(), anyString(), any(), anyString(), any(), anyBoolean());
+                anyString(), anyString(), anyString(), uuidCaptor.capture(), any(),any(FanoutMessageKind.class), any(String[].class), any(), anyString(), any(), anyString(), any(), anyBoolean());
         List<UUID> captured = uuidCaptor.getAllValues();
         assertThat(captured).hasSize(2);
         assertThat(captured.get(0)).as("occurredAt が異なる再公開は別の sourceEventUuid になる").isNotEqualTo(captured.get(1));

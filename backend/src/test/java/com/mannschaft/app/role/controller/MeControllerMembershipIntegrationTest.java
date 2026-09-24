@@ -11,11 +11,15 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.annotation.Transactional;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -57,10 +61,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @DisplayName("MeController 所属一覧 memberships 統合 API 契約テスト")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+@Transactional
 class MeControllerMembershipIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @PersistenceContext
+    private EntityManager em;
 
     @Autowired
     private RoleRepository roleRepository;
@@ -138,6 +146,7 @@ class MeControllerMembershipIntegrationTest extends AbstractMySqlIntegrationTest
     }
 
     private void saveTeamUserRole(Long userId, Long teamId, Long roleId) {
+        MembershipTestHelper.insertActiveUser(em, userId);
         userRoleRepository.save(UserRoleEntity.builder()
                 .userId(userId)
                 .roleId(roleId)
@@ -146,6 +155,7 @@ class MeControllerMembershipIntegrationTest extends AbstractMySqlIntegrationTest
     }
 
     private void saveOrgUserRole(Long userId, Long orgId, Long roleId) {
+        MembershipTestHelper.insertActiveUser(em, userId);
         userRoleRepository.save(UserRoleEntity.builder()
                 .userId(userId)
                 .roleId(roleId)
@@ -154,6 +164,7 @@ class MeControllerMembershipIntegrationTest extends AbstractMySqlIntegrationTest
     }
 
     private void saveMembership(Long userId, ScopeType scopeType, Long scopeId, RoleKind roleKind, boolean active) {
+        MembershipTestHelper.insertActiveUser(em, userId);
         membershipRepository.save(MembershipEntity.builder()
                 .userId(userId)
                 .scopeType(scopeType)

@@ -1,5 +1,7 @@
 package com.mannschaft.app.repairplan.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.repairplan.entity.TeamMemberTerm;
@@ -40,6 +42,9 @@ public class TeamMemberTermDemoteBatch {
     /**
      * スケジュール起動エントリポイント（毎晩 23:00 JST）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROPERTY_REPAIRPLAN_ENABLED",
+            reason = "任期終了 90 日経過という時刻条件で冪等に判定でき、修繕計画機能を閉じている間は理事の権限が行使される画面自体が閉じている")
     @BatchEndpoint(name = "repairplan-team-member-term-demote-daily", description = "任期終了 90 日経過の理事を毎日 23:00 に非アクティブ化する")
     @Scheduled(cron = "0 0 23 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "TeamMemberTermDemoteBatch", lockAtMostFor = "PT55M")

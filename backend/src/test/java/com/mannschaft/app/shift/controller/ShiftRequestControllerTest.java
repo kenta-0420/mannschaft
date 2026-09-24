@@ -58,7 +58,7 @@ class ShiftRequestControllerTest {
             + "（ShiftRequestController#listMyRequests）")
     void listMyRequests_自己スコープ() {
         ShiftRequestResponse res = new ShiftRequestResponse(
-                1L, 2L, USER_ID, 3L, LocalDate.of(2026, 6, 1), "PREFERRED", null, LocalDateTime.now());
+                1L, 2L, USER_ID, 3L, LocalDate.of(2026, 6, 1), "PREFERRED", null, LocalDateTime.now(), false);
         given(requestService.listMyRequests(USER_ID)).willReturn(List.of(res));
 
         assertThat(controller.listMyRequests().getStatusCode()).isEqualTo(HttpStatus.OK);

@@ -2,14 +2,6 @@
   "admin_report": {
     "title": "Report Management",
     "empty": "No reports",
-    "status_options": {
-      "all": "All",
-      "pending": "Pending",
-      "reviewing": "Reviewing",
-      "escalated": "Escalated",
-      "resolved": "Resolved",
-      "dismissed": "Dismissed"
-    },
     "messages": {
       "load_failed": "Failed to load reports",
       "note_added": "Note added",
@@ -42,8 +34,7 @@
       "target_type": "Target Type",
       "reason": "Reason",
       "reported_at": "Reported At",
-      "actions": "Actions",
-      "status_placeholder": "Status"
+      "actions": "Actions"
     },
     "actions": {
       "review": "Review",

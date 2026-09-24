@@ -155,6 +155,17 @@ class WidgetKeyPersonalEnumTest {
         void personal_favorites_存在() {
             assertThat(WidgetKey.valueOf("PERSONAL_FAVORITES").getScopeType()).isEqualTo(ScopeType.PERSONAL);
         }
+
+        @Test
+        @DisplayName("C案の固定カテゴリ用 recruitment 系キーが PERSONAL スコープで存在する")
+        void c案_recruitment系キー_存在() {
+            assertThat(WidgetKey.valueOf("RECRUITMENT_FEED").getScopeType())
+                    .isEqualTo(ScopeType.PERSONAL);
+            assertThat(WidgetKey.valueOf("MY_RECRUITMENTS").getScopeType())
+                    .isEqualTo(ScopeType.PERSONAL);
+            assertThat(WidgetKey.valueOf("VILLAGE_LOBBY_DIGEST").getScopeType())
+                    .isEqualTo(ScopeType.PERSONAL);
+        }
     }
 
     // ========================================
@@ -177,9 +188,6 @@ class WidgetKeyPersonalEnumTest {
             assertThat(personalKeyNames)
                     .doesNotContain(
                             "PERSONAL_NOTIFICATIONS",
-                            "PERSONAL_RECRUITMENT_FEED",
-                            "PERSONAL_MY_RECRUITMENTS",
-                            "PERSONAL_VILLAGE_LOBBY_DIGEST",
                             "PERSONAL_INBOX"
                     );
         }
@@ -194,15 +202,30 @@ class WidgetKeyPersonalEnumTest {
     class PersonalScopeCount {
 
         @Test
-        @DisplayName("PERSONAL スコープのキーが 26 件（既存 15 件 + 新規 11 件）")
-        void personal_scope_total_26件() {
+        @DisplayName("PERSONAL スコープのキーが 30 件（C案の recruitment 系3キーを含む）")
+        void personal_scope_total_30件() {
             List<WidgetKey> personalKeys = Arrays.stream(WidgetKey.values())
                     .filter(wk -> wk.getScopeType() == ScopeType.PERSONAL)
                     .collect(Collectors.toList());
 
             assertThat(personalKeys)
-                    .as("PERSONAL スコープのキーが 26 件あること（既存 15 件 + 新規 11 件・PERSONAL_MY_TIMELINE 追加）")
-                    .hasSize(26);
+                    .as("PERSONAL スコープのキーが 30 件あること（C案の recruitment 系3キーを含む）")
+                    .hasSize(30)
+                    .contains(WidgetKey.RETURN_STAY_PLAN,
+                            WidgetKey.valueOf("RECRUITMENT_FEED"),
+                            WidgetKey.valueOf("MY_RECRUITMENTS"),
+                            WidgetKey.valueOf("VILLAGE_LOBBY_DIGEST"));
+        }
+
+        @Test
+        @DisplayName("PERSONAL スコープの sortOrder が一意である")
+        void personal_scope_sort_order_unique() {
+            List<Integer> sortOrders = Arrays.stream(WidgetKey.values())
+                    .filter(wk -> wk.getScopeType() == ScopeType.PERSONAL)
+                    .map(WidgetKey::getDefaultSortOrder)
+                    .collect(Collectors.toList());
+
+            assertThat(sortOrders).doesNotHaveDuplicates();
         }
 
         @Test
@@ -234,7 +257,7 @@ class WidgetKeyPersonalEnumTest {
     class ForScopePersonal {
 
         @Test
-        @DisplayName("forScope(PERSONAL) に新規追加キー 10 件が含まれる")
+        @DisplayName("forScope(PERSONAL) に新規追加キーと帰省・滞在予定が含まれる")
         void forScope_personal_新規キー含む() {
             List<WidgetKey> personalKeys = WidgetKey.forScope(ScopeType.PERSONAL);
 
@@ -245,10 +268,14 @@ class WidgetKeyPersonalEnumTest {
                     WidgetKey.valueOf("PERSONAL_REFLECTION_TODAY"),
                     WidgetKey.valueOf("PERSONAL_TEAM_ANNOUNCEMENTS"),
                     WidgetKey.valueOf("PERSONAL_ORG_ANNOUNCEMENTS"),
+                    WidgetKey.valueOf("RECRUITMENT_FEED"),
+                    WidgetKey.valueOf("MY_RECRUITMENTS"),
+                    WidgetKey.valueOf("VILLAGE_LOBBY_DIGEST"),
                     WidgetKey.valueOf("PERSONAL_BLOG"),
                     WidgetKey.valueOf("PERSONAL_MY_TEAMS"),
                     WidgetKey.valueOf("PERSONAL_MY_ORGANIZATIONS"),
-                    WidgetKey.valueOf("PERSONAL_FAVORITES")
+                    WidgetKey.valueOf("PERSONAL_FAVORITES"),
+                    WidgetKey.RETURN_STAY_PLAN
             );
         }
     }
@@ -262,7 +289,7 @@ class WidgetKeyPersonalEnumTest {
     class DefaultSortOrder {
 
         @Test
-        @DisplayName("新規追加キー 11 件の defaultSortOrder が既存の最大値（14）より大きい")
+        @DisplayName("新規追加キー 15 件の defaultSortOrder が既存の最大値（14）より大きい")
         void new_keys_sort_order_gt_14() {
             // MY_CORKBOARD が defaultSortOrder=14 で最後の既存キー
             List<WidgetKey> newKeys = Arrays.stream(WidgetKey.values())
@@ -270,8 +297,8 @@ class WidgetKeyPersonalEnumTest {
                     .filter(wk -> wk.getDefaultSortOrder() > 14)
                     .collect(Collectors.toList());
 
-            // 新規追加した 11 件全てが order > 14（連番 15〜25・PERSONAL_MY_TIMELINE=25）であること
-            assertThat(newKeys).hasSize(11);
+            // C案の3キーを含む新規追加 15 件が order > 14（連番 15〜29）であること
+            assertThat(newKeys).hasSize(15);
         }
     }
 }

@@ -1,11 +1,13 @@
 package com.mannschaft.app.workflow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.workflow.entity.WorkflowRequestApproverEntity;
 import com.mannschaft.app.workflow.entity.WorkflowRequestCommentEntity;
@@ -29,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -98,6 +101,12 @@ class WorkflowScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private WorkflowRequestCommentRepository commentRepository;
 
+    @Autowired
+    private FeatureFlagRepository featureFlagRepository;
+
+    @Autowired
+    private CacheManager cacheManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -132,6 +141,7 @@ class WorkflowScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager, "FEATURE_WORKFLOW_FORMS_ENABLED");
         given(r2StorageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
                 .willReturn(new PresignedUploadResult("https://r2.example.com/signed-upload", "workflow-attachments/dummy.bin", 900L));
 
@@ -947,9 +957,10 @@ class WorkflowScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("登録: スコープメンバーは201")
         void 登録スコープメンバーは201() throws Exception {
             setAuth(otherMemberTeamAId);
+            String fileKey = presignAttachmentFileKey(inProgressRequestId);
             mockMvc.perform(post("/api/v1/workflow-requests/{id}/attachments", inProgressRequestId)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(registerBody(inProgressRequestId))))
+                            .content(objectMapper.writeValueAsString(registerBody(inProgressRequestId, fileKey))))
                     .andExpect(status().isCreated());
         }
     }
@@ -1006,7 +1017,8 @@ class WorkflowScopeContractIT extends AbstractMySqlIntegrationTest {
 
         private Long registerAttachment(Long uploaderUserId) throws Exception {
             setAuth(uploaderUserId);
-            String body = objectMapper.writeValueAsString(registerBody(inProgressRequestId));
+            String fileKey = presignAttachmentFileKey(inProgressRequestId);
+            String body = objectMapper.writeValueAsString(registerBody(inProgressRequestId, fileKey));
             String response = mockMvc.perform(post("/api/v1/workflow-requests/{id}/attachments",
                             inProgressRequestId)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -1076,11 +1088,27 @@ class WorkflowScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Map<String, Object> registerBody(Long requestId) {
+        return registerBody(
+                requestId, "workflow-attachments/" + requestId + "/" + java.util.UUID.randomUUID() + ".png");
+    }
+
+    private Map<String, Object> registerBody(Long requestId, String fileKey) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("fileKey", "workflow-attachments/" + requestId + "/" + java.util.UUID.randomUUID() + ".png");
+        body.put("fileKey", fileKey);
         body.put("originalFilename", "test.png");
         body.put("fileSize", 1024);
         return body;
+    }
+
+    private String presignAttachmentFileKey(Long requestId) throws Exception {
+        String response = mockMvc.perform(post("/api/v1/workflow-requests/{id}/upload-url", requestId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(presignBody())))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).path("data").path("fileKey").asText();
     }
 
     private Long insertUser(String email) {

@@ -1,6 +1,8 @@
 package com.mannschaft.app.village.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -71,6 +73,8 @@ public class VillageNewsletterDispatchBatchService {
      */
     @BatchEndpoint(name = "village-newsletter-dispatch-daily",
             description = "配信予定が到来した凍結済み村ニュースレター号を配信・公開する（毎日 18:00 UTC）")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。村の便りの配信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 0 18 * * *", zone = "UTC")
     @SchedulerLock(
             name = "villageNewsletterDispatch",

@@ -1,8 +1,10 @@
 package com.mannschaft.app.resume;
 
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.resume.entity.ResumeEntity;
 import com.mannschaft.app.resume.repository.ResumeRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -63,6 +66,12 @@ class ResumeOwnerScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ResumeRepository resumeRepository;
 
+    @Autowired
+    private FeatureFlagRepository featureFlagRepository;
+
+    @Autowired
+    private CacheManager cacheManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -76,6 +85,7 @@ class ResumeOwnerScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager, "FEATURE_SKILL_RESUME_ENABLED");
         ownerId = insertUser("resume-owner@example.com");
         attackerId = insertUser("resume-attacker@example.com");
 

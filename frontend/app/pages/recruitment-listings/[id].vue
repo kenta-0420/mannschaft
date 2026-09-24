@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { RecruitmentListingResponse } from '~/types/recruitment'
+import type {
+  RecruitmentListingResponse,
+  RecruitmentParticipantResponse,
+} from '~/types/recruitment'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -11,7 +14,8 @@ const authStore = useAuthStore()
 const listingId = computed(() => Number(route.params.id))
 const listing = ref<RecruitmentListingResponse | null>(null)
 const loading = ref(false)
-const myParticipantId = ref<number | null>(null)
+const myParticipation = ref<RecruitmentParticipantResponse | null>(null)
+const cancelling = ref(false)
 
 /**
  * 自分が札主（募集主）か。USER scope の作成者本人を判定する。
@@ -32,10 +36,10 @@ async function load() {
     try {
       const myList = await api.listMyActiveParticipations()
       const mine = myList.data.find((p) => p.listingId === listingId.value)
-      myParticipantId.value = mine ? mine.id : null
+      myParticipation.value = mine ?? null
     }
     catch {
-      myParticipantId.value = null
+      myParticipation.value = null
     }
   }
   catch (e) {
@@ -59,6 +63,24 @@ async function onPublish() {
   }
   finally {
     loading.value = false
+  }
+}
+
+async function onCancel() {
+  if (!listing.value || !window.confirm(t('recruitment.confirmModal.cancel.message'))) return
+  cancelling.value = true
+  try {
+    const result = listing.value.scopeType === 'PERSONAL'
+      ? await api.cancelMyMarketListing(listingId.value, { reason: t('recruitment.action.cancelListing') })
+      : await api.cancelListing(listingId.value, { reason: t('recruitment.action.cancelListing') })
+    listing.value = result.data
+    success(t('recruitment.action.cancelledListing'))
+  }
+  catch (e) {
+    error(String(e))
+  }
+  finally {
+    cancelling.value = false
   }
 }
 
@@ -133,20 +155,30 @@ onMounted(() => load())
         icon="pi pi-send"
         @click="onPublish"
       />
+      <Button
+        v-if="isOwner && !['CANCELLED', 'AUTO_CANCELLED', 'COMPLETED'].includes(listing.status)"
+        :label="t('recruitment.action.cancelListing')"
+        icon="pi pi-times"
+        severity="danger"
+        outlined
+        :loading="cancelling"
+        data-testid="recruitment-listing-cancel"
+        @click="onCancel"
+      />
       <RecruitmentApplicationButton
         :listing="listing"
-        :my-participant-id="myParticipantId"
+        :my-participant-id="myParticipation?.id"
+        :my-participant-status="myParticipation?.status"
         @applied="load"
         @cancelled="load"
       />
     </div>
 
-    <!-- 札主の応募者管理（成立＋謝礼決済確認＋返金・F22.1） -->
+    <!-- 札主の応募者管理。謝礼の決済確認は支払者本人の申込導線に置く。 -->
     <RecruitmentParticipantManager
       v-if="isOwner"
       class="mt-6 border-t border-gray-200 pt-6"
       :listing-id="listingId"
-      :payment-enabled="listing.paymentEnabled"
     />
   </div>
 </template>

@@ -71,7 +71,7 @@ test.describe('TEAM-029〜031: 回覧板 ローディング門番のエラー可
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: [], meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 } }),
+          body: JSON.stringify({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } }),
         })
       }
     })

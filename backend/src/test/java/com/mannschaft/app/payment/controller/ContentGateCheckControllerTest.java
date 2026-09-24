@@ -5,7 +5,8 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
-import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.PaymentErrorCode;
+import com.mannschaft.app.payment.service.ContentGateAccessService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,7 +56,7 @@ class ContentGateCheckControllerTest {
     private static final Long CONTENT_ID = 500L;
 
     @Mock
-    private PaymentGateService paymentGateService;
+    private ContentGateAccessService contentGateAccessService;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -66,7 +67,7 @@ class ContentGateCheckControllerTest {
     void setUp() {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
-        ContentGateCheckController controller = new ContentGateCheckController(paymentGateService);
+        ContentGateCheckController controller = new ContentGateCheckController(contentGateAccessService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
@@ -87,7 +88,7 @@ class ContentGateCheckControllerTest {
         GateCheckResponse serviceResponse = new GateCheckResponse(
                 false, false,
                 List.of(new GateCheckResponse.RequiredItem(100L, "月会費", new BigDecimal("3000"), false)));
-        given(paymentGateService.checkAccess(eq(CONTENT_TYPE), eq(CONTENT_ID), eq(VIEWER_USER_ID)))
+        given(contentGateAccessService.check(eq(CONTENT_TYPE), eq(CONTENT_ID), eq(VIEWER_USER_ID)))
                 .willReturn(serviceResponse);
 
         mockMvc.perform(get("/api/v1/content-gates/check")
@@ -105,7 +106,7 @@ class ContentGateCheckControllerTest {
     @Test
     @DisplayName("解錠済: accessible=true / requiredItems 空でも 200")
     void check_accessible_true() throws Exception {
-        given(paymentGateService.checkAccess(eq(CONTENT_TYPE), eq(CONTENT_ID), eq(VIEWER_USER_ID)))
+        given(contentGateAccessService.check(eq(CONTENT_TYPE), eq(CONTENT_ID), eq(VIEWER_USER_ID)))
                 .willReturn(new GateCheckResponse(true, false, List.of()));
 
         mockMvc.perform(get("/api/v1/content-gates/check")
@@ -119,16 +120,14 @@ class ContentGateCheckControllerTest {
     @Test
     @DisplayName("titleHidden=true: requiredItems 空（存在秘匿）でも 200")
     void check_titleHidden_emptyItems() throws Exception {
-        given(paymentGateService.checkAccess(eq(CONTENT_TYPE), eq(CONTENT_ID), eq(VIEWER_USER_ID)))
-                .willReturn(new GateCheckResponse(false, true, List.of()));
+        given(contentGateAccessService.check(eq(CONTENT_TYPE), eq(CONTENT_ID), eq(VIEWER_USER_ID)))
+                .willThrow(new com.mannschaft.app.common.BusinessException(PaymentErrorCode.CONTENT_NOT_FOUND));
 
         mockMvc.perform(get("/api/v1/content-gates/check")
                         .param("contentType", CONTENT_TYPE)
                         .param("contentId", String.valueOf(CONTENT_ID)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.accessible").value(false))
-                .andExpect(jsonPath("$.data.titleHidden").value(true))
-                .andExpect(jsonPath("$.data.requiredItems").isEmpty());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PAYMENT_015"));
     }
 
     @Test

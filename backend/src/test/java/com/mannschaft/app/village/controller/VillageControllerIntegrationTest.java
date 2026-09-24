@@ -161,7 +161,7 @@ class VillageControllerIntegrationTest extends AbstractVillageIntegrationTest {
     }
 
     @Test
-    @DisplayName("GET /villages/{id} — UNLISTED 村は非村人だと VILLAGE_UNLISTED")
+    @DisplayName("AC-1: GET /villages/{id} — UNLISTED 村は非村人だと VILLAGE_NOT_FOUND（不在と同一コード）")
     void get_unlistedForbidden() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity v = persistVillage(VillageVisibility.UNLISTED);
@@ -169,7 +169,7 @@ class VillageControllerIntegrationTest extends AbstractVillageIntegrationTest {
         assertThatThrownBy(() -> controller.get(v.getId()))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(VillageErrorCode.VILLAGE_UNLISTED);
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
     }
 
     // ─────────────────────────────────────────────

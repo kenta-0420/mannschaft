@@ -29,6 +29,8 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.mannschaft.app.schedule.event.ScheduleKeepConvertedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -59,7 +61,10 @@ import java.util.UUID;
  *
  * <p><b>ドメイン境界</b>: 本サービスはキープと {@code schedules} の両方を1トランザクションで扱うが、
  * どちらも schedule ドメイン内であり越境していない（原則5）。通知（notification ドメイン）だけは
- * 越境するため、変換を巻き戻さないよう try/catch + ログで隔離する（{@link #notifyConverted}）。</p>
+ * 越境するため、業務TX内では {@link ScheduleKeepConvertedEvent} を publish するだけに留め、
+ * 実配送は {@link ScheduleKeepConvertedNotificationListener}（{@code AFTER_COMMIT} + {@code @Async}）
+ * が担う（原則5 / Issue #2990 L8。是正前の try/catch + REQUIRES_NEW では fan-out enqueue が
+ * 外側TXに残っており、変換ごと巻き戻る経路が塞げていなかった）。</p>
  *
  * <p>設計: {@code docs/features/F03.17_schedule_keep.md} §4 / §5 / §7 / §10。</p>
  */
@@ -88,7 +93,7 @@ public class ScheduleKeepService {
     private final ScheduleKeepAccessGuard scheduleKeepAccessGuard;
     private final ScheduleRepository scheduleRepository;
     private final ScheduleAttendanceRepository scheduleAttendanceRepository;
-    private final ScheduleKeepNotificationService scheduleKeepNotificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final TeamService teamService;
     private final OrganizationService organizationService;
     private final NameResolverService nameResolverService;
@@ -328,7 +333,12 @@ public class ScheduleKeepService {
         keep.setConvertedScheduleId(savedSchedule.getId());
         ScheduleKeepEntity savedKeep = scheduleKeepRepository.save(keep);
 
-        notifyConverted(scope, savedKeep, savedSchedule, viewerUserId);
+        // 通知は業務TX内では発火しない（原則5 / Issue #2990 L8）。是正前はここで同期的に
+        // notifyConverted を呼んでおり、その中の fan-out enqueue が外側TXのまま INSERT していたため、
+        // 失敗すると try/catch を素通りして UnexpectedRollbackException になり変換ごと失われていた。
+        // 実配送は ScheduleKeepConvertedNotificationListener（AFTER_COMMIT + @Async）が担う。
+        eventPublisher.publishEvent(new ScheduleKeepConvertedEvent(
+                savedKeep.getId(), savedSchedule.getId(), viewerUserId));
 
         return ConvertScheduleKeepResponse.builder()
                 .keep(toResponse(savedKeep, scope))
@@ -340,29 +350,6 @@ public class ScheduleKeepService {
                         .allDay(savedSchedule.getAllDay())
                         .build())
                 .build();
-    }
-
-    /**
-     * 変換をキープ作成者へ通知する（§6.1・§2.1.1 の代償）。
-     *
-     * <p>通知は notification ドメインへの越境であり、失敗しても<b>変換は巻き戻さない</b>
-     * （best-effort・§6.2）。ただし<b>握りつぶさずログには必ず残す</b>
-     * （CLAUDE.md 障害対応の原則2）。</p>
-     *
-     * <p><b>この try/catch が実際に効くのは、通知の永続化が
-     * {@link ScheduleKeepNotificationPublisher}（{@code REQUIRES_NEW}）に隔離されているからである</b>
-     * （§6.2.1）。同一 TX のまま catch していた頃は、永続化例外が TX を rollback-only にし、
-     * 本メソッドから戻った直後のコミットが {@code UnexpectedRollbackException} で 500 になって
-     * <b>変換ごと失われていた</b>（しかもログには「変換自体は成立」と嘘が残る）。</p>
-     */
-    private void notifyConverted(ScheduleKeepScope scope, ScheduleKeepEntity keep,
-                                  ScheduleEntity schedule, Long actorUserId) {
-        try {
-            scheduleKeepNotificationService.notifyConverted(scope, keep, schedule, actorUserId);
-        } catch (Exception ex) {
-            log.warn("キープ変換通知の発行に失敗しました（変換自体は成立）: keepId={}, scheduleId={}, error={}",
-                    keep.getId(), schedule.getId(), ex.getMessage(), ex);
-        }
     }
 
     // ------------------------------------------------------------------

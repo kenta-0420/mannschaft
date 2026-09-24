@@ -1,5 +1,6 @@
 package com.mannschaft.app.organization.service;
 
+import com.mannschaft.app.organization.repository.OrganizationParentIdProjection;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
@@ -15,14 +16,20 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link OrganizationHierarchyService} の祖先展開ヘルパー単体テスト（配下配信の土台）。
@@ -51,15 +58,31 @@ class OrganizationHierarchyServiceTest {
     @InjectMocks
     private OrganizationHierarchyService service;
 
+    private final Map<Long, Long> parentIds = new HashMap<>();
+
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "maxDepth", 5);
+        given(organizationRepository.findParentOrganizationIdProjectionsByIdIn(anyCollection()))
+                .willAnswer(invocation -> {
+                    Collection<Long> organizationIds = invocation.getArgument(0);
+                    return organizationIds.stream()
+                            .filter(parentIds::containsKey)
+                            .map(this::parentProjection)
+                            .toList();
+                });
     }
 
     /** {@code child → parent} の親リンクを仕込む。 */
     private void parentOf(Long childId, Long parentId) {
-        given(organizationRepository.findParentOrganizationIdById(childId))
-                .willReturn(Optional.ofNullable(parentId));
+        parentIds.put(childId, parentId);
+    }
+
+    private OrganizationParentIdProjection parentProjection(Long organizationId) {
+        OrganizationParentIdProjection projection = org.mockito.Mockito.mock(OrganizationParentIdProjection.class);
+        given(projection.getOrganizationId()).willReturn(organizationId);
+        given(projection.getParentOrganizationId()).willReturn(parentIds.get(organizationId));
+        return projection;
     }
 
     @Nested
@@ -139,7 +162,8 @@ class OrganizationHierarchyServiceTest {
 
             service.getAncestorOrgIdsWithDepth(List.of(10L, 20L));
 
-            verify(organizationRepository, atMost(1)).findParentOrganizationIdById(30L);
+            verify(organizationRepository).findParentOrganizationIdProjectionsByIdIn(Set.of(10L, 20L));
+            verify(organizationRepository).findParentOrganizationIdProjectionsByIdIn(Set.of(30L));
         }
 
         @Test
@@ -157,15 +181,17 @@ class OrganizationHierarchyServiceTest {
         @Test
         @DisplayName("ACTIVE なチーム所属組織を重複なく返す")
         void returnsActiveAnchorOrgIds() {
-            given(teamOrgMembershipRepository.findByTeamIdAndStatus(
-                    701L, TeamOrgMembershipEntity.Status.ACTIVE))
-                    .willReturn(List.of(membership(701L, 801L)));
-            given(teamOrgMembershipRepository.findByTeamIdAndStatus(
-                    702L, TeamOrgMembershipEntity.Status.ACTIVE))
-                    .willReturn(List.of(membership(702L, 801L)));
+            given(teamOrgMembershipRepository.findDistinctOrganizationIdsByTeamIdIn(Set.of(701L, 702L)))
+                    .willReturn(List.of(801L, 802L));
 
             assertThat(service.getAnchorOrgIdsByTeamIds(List.of(701L, 702L)))
-                    .containsExactly(801L);
+                    .containsExactlyInAnyOrder(801L, 802L);
+            verify(teamOrgMembershipRepository)
+                    .findDistinctOrganizationIdsByTeamIdIn(Set.of(701L, 702L));
+            verify(teamOrgMembershipRepository, never()).findByTeamIdAndStatus(
+                    701L, TeamOrgMembershipEntity.Status.ACTIVE);
+            verify(teamOrgMembershipRepository, never()).findByTeamIdAndStatus(
+                    702L, TeamOrgMembershipEntity.Status.ACTIVE);
         }
 
         @Test
@@ -175,13 +201,30 @@ class OrganizationHierarchyServiceTest {
             assertThat(service.getAnchorOrgIdsByTeamIds(null)).isEmpty();
         }
 
-        private TeamOrgMembershipEntity membership(Long teamId, Long orgId) {
-            return TeamOrgMembershipEntity.builder()
-                    .teamId(teamId)
-                    .organizationId(orgId)
-                    .status(TeamOrgMembershipEntity.Status.ACTIVE)
-                    .invitedAt(java.time.LocalDateTime.now())
-                    .build();
+        @Test
+        @DisplayName("null/空・重複IDは正規化し、空入力ではrepositoryを呼ばない")
+        void nullと重複を除去して空入力では照会しない() {
+            given(teamOrgMembershipRepository.findDistinctOrganizationIdsByTeamIdIn(Set.of(701L)))
+                    .willReturn(List.of(801L));
+
+            assertThat(service.getAnchorOrgIdsByTeamIds(asList(null, 701L, 701L)))
+                    .containsExactly(801L);
+            verify(teamOrgMembershipRepository).findDistinctOrganizationIdsByTeamIdIn(Set.of(701L));
+
+            assertThat(service.getAnchorOrgIdsByTeamIds(null)).isEmpty();
+            assertThat(service.getAnchorOrgIdsByTeamIds(List.of())).isEmpty();
+            verifyNoInteractions(organizationRepository);
+        }
+
+        @Test
+        @DisplayName("一括repositoryの例外は握り潰さず伝播する")
+        void 一括照会の例外を握り潰さず伝播する() {
+            RuntimeException failure = new RuntimeException("batch query failed");
+            given(teamOrgMembershipRepository.findDistinctOrganizationIdsByTeamIdIn(Set.of(701L)))
+                    .willThrow(failure);
+
+            assertThatThrownBy(() -> service.getAnchorOrgIdsByTeamIds(List.of(701L)))
+                    .isSameAs(failure);
         }
     }
 }

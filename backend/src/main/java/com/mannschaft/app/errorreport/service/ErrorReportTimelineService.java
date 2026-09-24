@@ -14,11 +14,13 @@ import com.mannschaft.app.errorreport.dto.ErrorReportTimelineResponse;
 import com.mannschaft.app.errorreport.entity.ErrorReportActivityEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportOccurrenceEntity;
+import com.mannschaft.app.errorreport.event.ErrorReportAssignedEvent;
 import com.mannschaft.app.errorreport.repository.ErrorReportActivityRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -50,7 +52,11 @@ public class ErrorReportTimelineService {
     private final AccessControlService accessControlService;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
-    private final ErrorReportNotifier errorReportNotifier;
+    /**
+     * Issue #2990 L11 — 担当者割り当て通知は業務TX内で発火せず、ID だけを載せた業務イベントを publish する。
+     * 実配送は {@link ErrorReportNotificationListener} が {@code AFTER_COMMIT} で行う。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     // ========================================
     // F12.5 Phase 2 — ワークフロー / 担当者 / コメント
@@ -179,7 +185,7 @@ public class ErrorReportTimelineService {
         activityService.record(id, actorId, ErrorReportActivityType.ASSIGNEE_CHANGED, null, metadata);
 
         if (assigneeId != null) {
-            errorReportNotifier.notifyAssignment(report, assigneeId);
+            eventPublisher.publishEvent(new ErrorReportAssignedEvent(id, assigneeId));
         }
 
         log.info("エラーレポート担当者更新: id={}, from={}, to={}, actorId={}",

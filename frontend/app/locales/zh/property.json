@@ -98,6 +98,9 @@
     "vendor": {
       "title": "承包商主数据",
       "subtitle": "施工・检查等承包商管理",
+      "notice": {
+        "personalScopeUnsupported": "个人范围内无法使用承包商主数据管理。请切换到团队或组织范围。"
+      },
       "newVendor": "新增承包商",
       "editVendor": "编辑承包商",
       "deleteConfirm": "确定逻辑删除该承包商？",

@@ -1,6 +1,7 @@
 package com.mannschaft.app.social.announcement.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.service.RoleResolver;
@@ -131,7 +132,7 @@ public class AnnouncementFeedController {
             @Valid @RequestBody CreateAnnouncementRequestDto request) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        AnnouncementSourceType sourceType = AnnouncementSourceType.valueOf(request.getSourceType());
+        AnnouncementSourceType sourceType = EnumInputParser.parse(AnnouncementSourceType.class, request.getSourceType(), "sourceType");
 
         var entity = announcementFeedService.createAnnouncement(
                 AnnouncementScopeType.TEAM, teamId, sourceType, request.getSourceId(), userId);

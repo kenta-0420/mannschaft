@@ -48,6 +48,20 @@ export function useOrgDetail(orgId: Ref<string>) {
   const showCancelSupporterConfirm = ref(false)
   const showLeaveConfirm = ref(false)
 
+  /**
+   * MEMBER 参加申請（柱③-A・CMP-260901-1538）。
+   * 取り下げ API は BE 未実装（PR #3139）のため PENDING 表示のみ提供する（対処療法禁止の原則）。
+   *
+   * 自分の申請状態の取得・送信は `useJoinRequestSelfStatus` に一本化している
+   * （Codex 検分第1巡 P1-1: 取得失敗を NONE に潰す fail-open を是正）。
+   */
+  const {
+    joinRequestStatus,
+    joinRequestLoading,
+    fetchJoinRequestStatus: fetchJoinRequestStatusRaw,
+    applyJoinRequest: applyJoinRequestRaw,
+  } = useJoinRequestSelfStatus('organization')
+
   async function fetchOrg() {
     loading.value = true
     try {
@@ -120,6 +134,18 @@ export function useOrgDetail(orgId: Ref<string>) {
     }
   }
 
+  async function fetchJoinRequestStatus(roleName: Ref<string | null>) {
+    if (roleName.value) return
+    if (org.value?.visibility?.visibility !== 'PUBLIC') return
+    if (!org.value?.numericId) return
+    await fetchJoinRequestStatusRaw(org.value.numericId)
+  }
+
+  async function applyJoinRequest() {
+    if (!org.value?.numericId) return
+    await applyJoinRequestRaw(org.value.numericId)
+  }
+
   async function leaveOrganization() {
     try {
       await orgApi.leaveOrganization(orgId.value)
@@ -139,6 +165,8 @@ export function useOrgDetail(orgId: Ref<string>) {
     loading,
     followStatus,
     followLoading,
+    joinRequestStatus,
+    joinRequestLoading,
     showCancelSupporterConfirm,
     showLeaveConfirm,
     fetchOrg,
@@ -147,6 +175,8 @@ export function useOrgDetail(orgId: Ref<string>) {
     fetchFollowStatus,
     applySupporter,
     cancelSupporter,
+    fetchJoinRequestStatus,
+    applyJoinRequest,
     leaveOrganization,
   }
 }

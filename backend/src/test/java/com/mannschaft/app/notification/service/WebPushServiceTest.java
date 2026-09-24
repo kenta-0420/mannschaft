@@ -4,6 +4,8 @@ import com.mannschaft.app.notification.config.VapidConfig;
 import com.mannschaft.app.notification.entity.PushSubscriptionEntity;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
 import nl.martijndwars.webpush.PushService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -56,6 +58,14 @@ class WebPushServiceTest {
         ReflectionTestUtils.setField(base, "pushService", pushService);
         // spy で doSend を差し替え可能にする（EC 暗号依存を排除）
         webPushService = spy(base);
+    }
+
+    @AfterEach
+    void restoreTimeoutConstants() {
+        // 所要時間の上限は static なのでテスト間に漏れないよう既定値へ戻す
+        ReflectionTestUtils.setField(WebPushService.class, "REQUEST_TIMEOUT_MS", 10_000L);
+        ReflectionTestUtils.setField(WebPushService.class, "TOTAL_BUDGET_MS", 30_000L);
+        ReflectionTestUtils.setField(WebPushService.class, "BACKOFF_DELAYS_MS", new long[]{1_000L, 4_000L, 16_000L});
     }
 
     @Nested
@@ -130,6 +140,53 @@ class WebPushServiceTest {
 
             // 例外が外に漏れないことも確認
             webPushService.sendPushNotification(buildSubscription(), "{\"type\":\"TEST\"}");
+
+            // 初回 + 最大3回リトライ = 合計4回
+            verify(webPushService, times(4)).doSend(any(PushSubscriptionEntity.class), anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("所要時間の上限ケース（Issue #2953 検分指摘1）")
+    class TimeBudgetCase {
+
+        /**
+         * 総予算を使い切った場合、<b>例外を投げずに</b>リトライを打ち切る。
+         * 例外を投げると CallerRuns 時に sendOne の REQUIRES_NEW ごと巻き戻り
+         * 通知行が消えるため、「諦めて次へ」でなければならない。
+         */
+        @Test
+        @DisplayName("総予算を使い切ったらリトライせず例外も投げずに諦める")
+        void sendPushNotification_totalBudgetExhausted_stopsRetryingWithoutThrowing() throws Exception {
+            doReturn(500).when(webPushService).doSend(any(PushSubscriptionEntity.class), anyString());
+            // バックオフ待ち（1s）に対して総予算 0ms → 1 回目のリトライ前に打ち切られる
+            ReflectionTestUtils.setField(WebPushService.class, "BACKOFF_DELAYS_MS", new long[]{1_000L, 4_000L, 16_000L});
+            ReflectionTestUtils.setField(WebPushService.class, "TOTAL_BUDGET_MS", 0L);
+
+            long startNanos = System.nanoTime();
+            Assertions.assertDoesNotThrow(
+                    () -> webPushService.sendPushNotification(buildSubscription(), "{\"type\":\"TEST\"}"));
+            long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+
+            // 初回のみ。バックオフ sleep には入らない
+            verify(webPushService, times(1)).doSend(any(PushSubscriptionEntity.class), anyString());
+            Assertions.assertTrue(elapsedMs < 1_000L,
+                    "総予算超過時はバックオフ sleep に入らないはずだが " + elapsedMs + "ms かかった");
+        }
+
+        /**
+         * 1 リクエストのタイムアウト（doSend が TimeoutException を投げる）は
+         * 既存の例外リトライ経路として扱われ、最終的に例外を外へ漏らさず諦める。
+         */
+        @Test
+        @DisplayName("リクエストタイムアウトはリトライ経路として扱われ例外を外へ漏らさない")
+        void sendPushNotification_requestTimeout_retriesAndGivesUpWithoutThrowing() throws Exception {
+            doThrow(new java.util.concurrent.TimeoutException("request timeout"))
+                    .when(webPushService).doSend(any(PushSubscriptionEntity.class), anyString());
+            ReflectionTestUtils.setField(WebPushService.class, "BACKOFF_DELAYS_MS", new long[]{0L, 0L, 0L});
+
+            Assertions.assertDoesNotThrow(
+                    () -> webPushService.sendPushNotification(buildSubscription(), "{\"type\":\"TEST\"}"));
 
             // 初回 + 最大3回リトライ = 合計4回
             verify(webPushService, times(4)).doSend(any(PushSubscriptionEntity.class), anyString());

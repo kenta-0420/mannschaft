@@ -47,6 +47,9 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class SurveyResponseService {
 
+    /** CMP-041: ADMIN+ 委任判定に用いる permission 名。 */
+    private static final String PERMISSION_MANAGE_SURVEYS = "MANAGE_SURVEYS";
+
     private final SurveyRepository surveyRepository;
     private final SurveyQuestionRepository questionRepository;
     private final SurveyOptionRepository optionRepository;
@@ -199,10 +202,10 @@ public class SurveyResponseService {
             throw new BusinessException(SurveyErrorCode.ANONYMOUS_RESPONSE_FORBIDDEN);
         }
 
-        // 認可
+        // 認可（MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任・CMP-041）
         boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(currentUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(
-                currentUserId, survey.getScopeId(), survey.getScopeType());
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                currentUserId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS);
         boolean isViewer = resultViewerRepository.existsBySurveyIdAndUserId(surveyId, currentUserId);
         if (!isAdmin && !isCreator && !isViewer) {
             throw new BusinessException(SurveyErrorCode.RESPONSE_ACCESS_DENIED);

@@ -1,5 +1,7 @@
 package com.mannschaft.app.reservation.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import jakarta.validation.constraints.DecimalMin;
@@ -19,8 +21,28 @@ import java.time.LocalTime;
  * （親の {@code clearApprovalMode} と同形）。<b>更新は既生成枠へ遡及しない</b>（§5.4）。</p>
  */
 @Getter
-@RequiredArgsConstructor
 public class UpdateSlotTemplateRequest {
+
+    public UpdateSlotTemplateRequest(String name, Long lineId, Boolean clearLineId, ReservationDayOfWeek dayOfWeek,
+            LocalTime startTime, LocalTime endTime, Integer capacity, Long staffUserId, String title,
+            BigDecimal price, ApprovalMode approvalMode, Boolean isActive) {
+        this(name, lineId, clearLineId, dayOfWeek, startTime, endTime, capacity, staffUserId, title, price,
+                approvalMode, isActive, null);
+    }
+
+    @JsonCreator
+    public UpdateSlotTemplateRequest(@JsonProperty("name") String name, @JsonProperty("lineId") Long lineId,
+            @JsonProperty("clearLineId") Boolean clearLineId, @JsonProperty("dayOfWeek") ReservationDayOfWeek dayOfWeek,
+            @JsonProperty("startTime") LocalTime startTime, @JsonProperty("endTime") LocalTime endTime,
+            @JsonProperty("capacity") Integer capacity, @JsonProperty("staffUserId") Long staffUserId,
+            @JsonProperty("title") String title, @JsonProperty("price") BigDecimal price,
+            @JsonProperty("approvalMode") ApprovalMode approvalMode, @JsonProperty("isActive") Boolean isActive,
+            @JsonProperty("endsNextDay") Boolean endsNextDay) {
+        this.name = name; this.lineId = lineId; this.clearLineId = clearLineId; this.dayOfWeek = dayOfWeek;
+        this.startTime = startTime; this.endTime = endTime; this.capacity = capacity; this.staffUserId = staffUserId;
+        this.title = title; this.price = price; this.approvalMode = approvalMode; this.isActive = isActive;
+        this.endsNextDay = endsNextDay;
+    }
 
     @Size(max = 100)
     private final String name;
@@ -53,4 +75,6 @@ public class UpdateSlotTemplateRequest {
 
     /** isActive の切替（生成対象 ON/OFF）。null = 据え置き。 */
     private final Boolean isActive;
+
+    private final Boolean endsNextDay;
 }

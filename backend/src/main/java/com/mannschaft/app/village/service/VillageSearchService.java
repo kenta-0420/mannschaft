@@ -18,7 +18,6 @@ import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -91,13 +90,13 @@ public class VillageSearchService {
     /** 4 種類のタイプ集合に対する 1 タイプあたりの最大取得件数（簡易プール用）。 */
     private static final int PER_TYPE_FETCH_HARD_CAP = 50;
 
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final UserVillageNicknameRepository nicknameRepository;
     private final BulletinThreadRepository bulletinThreadRepository;
     private final TimelinePostRepository timelinePostRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatChannelRepository chatChannelRepository;
+    private final VillageAccessGate accessGate;
 
     // ============================================================
     // 公開メソッド
@@ -118,7 +117,7 @@ public class VillageSearchService {
 
         validateQuery(q);
         SearchType resolvedType = resolveType(type);
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillageMember(villageId, actorUserId);
 
         int safePage = Math.max(0, page);
@@ -312,14 +311,16 @@ public class VillageSearchService {
         }
     }
 
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null || v.getArchivedAt() != null) {
-            // IDOR 対策で 404 統一
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        return v;
+    /**
+     * 閲覧可能かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>従来の実装は不在・削除済み・凍結済みをまとめて 404 に畳んでいたため、
+     * 凍結も 404 とする {@link VillageAccessGate#loadReadableVillage} へ委譲して挙動を揃える。
+     * 加えて、非公開(UNLISTED)村を非村人が叩いた場合も実在しない村 ID と同一の
+     * {@code VILLAGE_NOT_FOUND} となり、村の存在が漏れなくなる。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadReadableVillage(villageId, actorUserId);
     }
 
     /**

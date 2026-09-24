@@ -107,7 +107,7 @@ class ConnectChargeServiceChargeTest {
         given(stripePaymentProvider.createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString()))
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_mem", "pi_mem_secret", "requires_confirmation"));
-        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(escrowTransactionRepository.saveAndFlush(any())).willAnswer(inv -> inv.getArgument(0));
 
         MembershipChargeResult result = svc.charge(command());
 
@@ -117,7 +117,7 @@ class ConnectChargeServiceChargeTest {
                 eq(CaptureMethod.AUTOMATIC), eq("idem-membership-777"));
 
         ArgumentCaptor<EscrowTransactionEntity> captor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
-        verify(escrowTransactionRepository).save(captor.capture());
+        verify(escrowTransactionRepository).saveAndFlush(captor.capture());
         EscrowTransactionEntity saved = captor.getValue();
         assertThat(saved.getSourceKind()).isEqualTo(EscrowSourceKind.MEMBERSHIP);
         assertThat(saved.getCaptureMode()).isEqualTo(EscrowCaptureMode.AUTOMATIC);
@@ -151,12 +151,12 @@ class ConnectChargeServiceChargeTest {
         given(stripePaymentProvider.createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString()))
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_mem", "pi_mem_secret", "requires_confirmation"));
-        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(escrowTransactionRepository.saveAndFlush(any())).willAnswer(inv -> inv.getArgument(0));
 
         svc.charge(command());
 
         ArgumentCaptor<EscrowTransactionEntity> captor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
-        verify(escrowTransactionRepository).save(captor.capture());
+        verify(escrowTransactionRepository).saveAndFlush(captor.capture());
         EscrowTransactionEntity saved = captor.getValue();
         assertThat(saved.getFaceAmount()).isEqualTo(10_000L);
         assertThat(saved.getAmount()).isEqualTo(10_250L);
@@ -181,7 +181,7 @@ class ConnectChargeServiceChargeTest {
         // 即時モードゆえ HELD にせずエラー → PI は一切作らず escrow も保存しない。
         verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
-        verify(escrowTransactionRepository, never()).save(any());
+        verify(escrowTransactionRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -192,8 +192,9 @@ class ConnectChargeServiceChargeTest {
                 .sourceKind(EscrowSourceKind.MEMBERSHIP).sourceId(777L)
                 .captureMode(EscrowCaptureMode.AUTOMATIC)
                 .payerScopeKind(ScopeKind.USER).payerScopeId(999L)
+                .payerStripeCustomerId("cus_payer")
                 .payeeKind(ScopeKind.TEAM).payeeConnectAccountId(PAYEE_ACCOUNT_ID)
-                .faceAmount(10_000L).amount(10_250L).applicationFeeAmount(500L)
+                .organizationId(55L).faceAmount(10_000L).amount(10_250L).applicationFeeAmount(500L)
                 .currency("JPY").status(EscrowStatus.CAPTURED)
                 .stripePaymentIntentId("pi_existing")
                 .stripeIdempotencyKey("idem-membership-777")
@@ -202,17 +203,48 @@ class ConnectChargeServiceChargeTest {
         existing.setId(existingId);
         given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-membership-777"))
                 .willReturn(Optional.of(existing));
+        given(stripePaymentProvider.retrievePaymentIntentClientSecret("pi_existing"))
+                .willReturn(new StripePaymentProvider.PaymentIntentInfo(
+                        "pi_existing", "secret_existing", "requires_confirmation"));
 
         MembershipChargeResult result = svc.charge(command());
 
         assertThat(result.escrowTransactionId()).isEqualTo(existingId);
         assertThat(result.paymentIntentId()).isEqualTo("pi_existing");
         assertThat(result.status()).isEqualTo(EscrowStatus.CAPTURED);
-        // clientSecret は再発行しない（既存は払い手本人にしか返さない・冪等経路では null）。
-        assertThat(result.clientSecret()).isNull();
+        assertThat(result.clientSecret()).isEqualTo("secret_existing");
+        verify(stripePaymentProvider).retrievePaymentIntentClientSecret("pi_existing");
         verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
-        verify(escrowTransactionRepository, never()).save(any());
+        verify(escrowTransactionRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("同じ idempotencyKey を別の支払い内容へ再利用した場合は 409 相当で拒否する")
+    void charge_reusedIdempotencyKeyForDifferentRequest_rejected() {
+        ConnectChargeService svc = service();
+        EscrowTransactionEntity existing = EscrowTransactionEntity.builder()
+                .sourceKind(EscrowSourceKind.MEMBERSHIP).sourceId(778L)
+                .captureMode(EscrowCaptureMode.AUTOMATIC)
+                .payerScopeKind(ScopeKind.USER).payerScopeId(999L)
+                .payerStripeCustomerId("cus_payer")
+                .payeeKind(ScopeKind.TEAM).payeeConnectAccountId(PAYEE_ACCOUNT_ID)
+                .organizationId(55L).faceAmount(10_000L).amount(10_250L).applicationFeeAmount(500L)
+                .currency("JPY").status(EscrowStatus.AUTHORIZED)
+                .stripePaymentIntentId("pi_other")
+                .stripeIdempotencyKey("idem-membership-777")
+                .build();
+        given(escrowTransactionRepository.findByStripeIdempotencyKey("idem-membership-777"))
+                .willReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> svc.charge(command()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(com.mannschaft.app.payment.MembershipBillingErrorCode.MEMBERSHIP_IDEMPOTENCY_KEY_REUSED);
+
+        verify(stripePaymentProvider, never()).retrievePaymentIntentClientSecret(anyString());
+        verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
+                anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
     }
 
     @Test
@@ -236,7 +268,7 @@ class ConnectChargeServiceChargeTest {
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString()))
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_p5", "cs_p5", "requires_confirmation"))
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_p7", "cs_p7", "requires_confirmation"));
-        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(escrowTransactionRepository.saveAndFlush(any())).willAnswer(inv -> inv.getArgument(0));
 
         svc.charge(p5);
         svc.charge(p7);
@@ -245,7 +277,7 @@ class ConnectChargeServiceChargeTest {
         verify(stripePaymentProvider, org.mockito.Mockito.times(2)).createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
         ArgumentCaptor<EscrowTransactionEntity> captor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
-        verify(escrowTransactionRepository, org.mockito.Mockito.times(2)).save(captor.capture());
+        verify(escrowTransactionRepository, org.mockito.Mockito.times(2)).saveAndFlush(captor.capture());
         List<EscrowTransactionEntity> saved = captor.getAllValues();
         assertThat(saved).hasSize(2);
         assertThat(saved.get(0).getStripeIdempotencyKey()).isEqualTo("idem-P5-membership");
@@ -266,7 +298,7 @@ class ConnectChargeServiceChargeTest {
         given(stripePaymentProvider.createAndConfirmDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString(), anyString()))
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_mem", null, "succeeded"));
-        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(escrowTransactionRepository.saveAndFlush(any())).willAnswer(inv -> inv.getArgument(0));
 
         svc.charge(cmd);
 
@@ -307,7 +339,7 @@ class ConnectChargeServiceChargeTest {
         given(stripePaymentProvider.createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString()))
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_mem", "pi_mem_secret", "requires_confirmation"));
-        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(escrowTransactionRepository.saveAndFlush(any())).willAnswer(inv -> inv.getArgument(0));
 
         svc.charge(command());
 
@@ -346,7 +378,7 @@ class ConnectChargeServiceChargeTest {
 
         verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
-        verify(escrowTransactionRepository, never()).save(any());
+        verify(escrowTransactionRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -363,7 +395,7 @@ class ConnectChargeServiceChargeTest {
 
         verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
-        verify(escrowTransactionRepository, never()).save(any());
+        verify(escrowTransactionRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -379,6 +411,6 @@ class ConnectChargeServiceChargeTest {
 
         verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
-        verify(escrowTransactionRepository, never()).save(any());
+        verify(escrowTransactionRepository, never()).saveAndFlush(any());
     }
 }

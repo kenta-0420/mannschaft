@@ -310,4 +310,24 @@ describe('ReservationWaitlistDialog.vue', () => {
     expect(wrapper.emitted('update:visible')).toBeFalsy()
     expect(findByTestId('waitlist-register')).not.toBeNull()
   })
+
+  it('AC-10: own active reservation conflict refreshes the grid and closes the dialog', async () => {
+    mockJoinWaitlist.mockRejectedValue({ data: { error: { code: 'RESERVATION_013' } } })
+    const wrapper = await mountDialog({
+      visible: true,
+      teamId: 'team-slug',
+      isAdmin: false,
+      resourceName: 'Seat',
+      context,
+      registeredSlotIds: new Set<number>(),
+    })
+    await flush()
+
+    findByTestId<HTMLButtonElement>('waitlist-register')!.click()
+    await flush()
+
+    expect(mockNotifyInfo).toHaveBeenCalled()
+    expect(wrapper.emitted('changed')).toBeTruthy()
+    expect(wrapper.emitted('update:visible')).toBeTruthy()
+  })
 })

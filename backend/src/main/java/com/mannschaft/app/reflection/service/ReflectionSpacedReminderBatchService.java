@@ -1,6 +1,8 @@
 package com.mannschaft.app.reflection.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -23,6 +25,8 @@ public class ReflectionSpacedReminderBatchService {
 
     @BatchEndpoint(name = "reflection-spaced-reminder",
             description = "振り返りの間隔反復／考査前リマインドを1分毎に実効時刻判定して送信する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。振り返りの間隔反復リマインド送信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "reflectionSpacedReminderBatch",
             lockAtLeastFor = "PT50S", lockAtMostFor = "PT2M")

@@ -156,6 +156,28 @@ public interface ShiftBudgetAllocationRepository
      * <p>{@code period_start ≥ monthStart かつ period_end ≤ monthEnd} の生存レコードを返す。
      * 多テナント分離のため {@code organization_id} を強制条件に含める。</p>
      */
+    /**
+     * 月次締めのために割当 1 件を<b>排他ロック付きで</b>取得する（CMP-260910-1556）。
+     *
+     * <p>{@code MonthlyShiftBudgetCloseService#closeOneAllocation} は
+     * 「月次仕訳が未作成であること」を確認してから PLANNED 消化を CONFIRMED 化し
+     * {@code confirmed_amount} を加算する。この確認と更新の間に他トランザクションが
+     * 割り込むと、両者とも「未締め」と判定して<b>同じ PLANNED 消化を二重に計上</b>する
+     * （手動 API の同時送信、手動 API と cron の重なりで実際に起こりうる）。
+     * {@code budget_transactions} には
+     * {@code (source_type, source_id, transaction_date)} の一意制約が無いため、
+     * 仕訳も 2 件入って会計金額が倍になる。</p>
+     *
+     * <p>本メソッドで割当行を {@code SELECT ... FOR UPDATE} 相当でロックし、
+     * 以降の確認・更新をその保護下で行うことで直列化する。</p>
+     *
+     * @param allocationId 割当 ID
+     * @return ロック取得済みの割当（存在しない場合は empty）
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM ShiftBudgetAllocationEntity a WHERE a.id = :allocationId")
+    Optional<ShiftBudgetAllocationEntity> findByIdForUpdate(@Param("allocationId") Long allocationId);
+
     @Query("SELECT a FROM ShiftBudgetAllocationEntity a "
             + "WHERE a.organizationId = :organizationId "
             + "  AND a.periodStart >= :monthStart "

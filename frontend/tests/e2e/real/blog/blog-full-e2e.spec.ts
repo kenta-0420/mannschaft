@@ -8,7 +8,10 @@
  * ── テストID ──────────────────────────────────────────
  *   BLOG-CRUD-001   記事作成→本文入力→保存→削除 一気通貫
  *   BLOG-ROLE-001   一般ユーザーに管理者レビューUIが非表示
- *   BLOG-ROLE-002   管理者は /admin/blog-management にアクセス可能
+ *   BLOG-ROLE-002   （CMP-260917-0041で削除。/admin/blog-management 廃止に伴い、
+ *                    タグ管理・公開切替・削除は teams/[slug]/blog.vue・organizations/[slug]/blog.vue の
+ *                    BlogPostList.vue（can-manage=isAdminOrDeputy）へ移植済み。BLOG-SCOPE-001 が
+ *                    そのページへの実機到達を既に担保しているため移設せず削除）
  *   BLOG-SCOPE-001  チームブログページで scope_type 旧バグパラメータが使われていない
  *   BLOG-AUTOSAVE-001  自動保存トグルUIが存在しデフォルトON
  *
@@ -32,8 +35,7 @@ const BE_API = `${BE}/api/v1`
 
 const USER_EMAIL = process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local'
 const USER_PASS = process.env.TEST_USER_PASSWORD ?? 'TestPass2026!'
-const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
-const ADMIN_PASS = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
+// ADMIN_EMAIL/ADMIN_PASS は BLOG-ROLE-002 削除（CMP-260917-0041）に伴い不使用化したため削除。
 
 // CRUD テストは直列実行（create→edit→delete の依存関係があるため）
 test.describe.configure({ mode: 'serial' })
@@ -242,25 +244,8 @@ test('BLOG-ROLE-001: 一般ユーザーに管理者レビューUIが非表示', 
   }
 })
 
-// ===========================================================================
-// BLOG-ROLE-002: 管理者は /admin/blog-management にアクセス可能
-// ===========================================================================
-test('BLOG-ROLE-002: 管理者は /admin/blog-management にアクセス可能', async ({ page }) => {
-  test.setTimeout(60_000)
-
-  await loginUI(page, ADMIN_EMAIL, ADMIN_PASS)
-
-  await page.goto('/admin/blog-management')
-  await waitForHydration(page)
-  await page.waitForTimeout(2000)
-  await page.screenshot({ path: 'test-results/blog-role-002-admin.png', fullPage: false })
-
-  // 管理者ページが表示される（403/404/ログインページへのリダイレクトでない）
-  const url = page.url()
-  expect(url, '403ページへリダイレクトされていない').not.toContain('/403')
-  expect(url, 'ログインページへリダイレクトされていない').not.toContain('/login')
-  console.log(`BLOG-ROLE-002: PASS (URL: ${url})`)
-})
+// BLOG-ROLE-002 は CMP-260917-0041（/admin/blog-management 削除）に伴い削除。
+// 上記ヘッダーコメント参照。
 
 // ===========================================================================
 // BLOG-SCOPE-001: チームブログページで scope_type 旧バグパラメータが使われていない

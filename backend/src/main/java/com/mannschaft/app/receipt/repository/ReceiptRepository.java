@@ -1,6 +1,7 @@
 package com.mannschaft.app.receipt.repository;
 
 import com.mannschaft.app.receipt.ReceiptScopeType;
+import com.mannschaft.app.receipt.ReceiptSourceType;
 import com.mannschaft.app.receipt.entity.ReceiptEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -75,4 +76,27 @@ public interface ReceiptRepository extends JpaRepository<ReceiptEntity, Long>, J
             "AND YEAR(r.issuedAt) = :year AND r.voidedAt IS NOT NULL")
     List<ReceiptEntity> findVoidedByRecipientUserIdAndYear(
             @Param("userId") Long userId, @Param("year") int year);
+
+    /**
+     * 元データ（{@code source_type} + {@code source_ref}）で<b>有効な</b>領収書を検索する
+     * （F08.12 §3.1 の冪等判定用）。
+     *
+     * <p><b>これは重複防止の主体ではない。</b>「検索して無ければ作る」は TOCTOU であり、
+     * webhook の重複配送や webhook と手動補填の並行実行では 2 通作れてしまう。
+     * 正しさは {@code uq_r_active_platform_source}（生成列 + UNIQUE）が保証し、
+     * 本メソッドは正常系で DB 例外を出さないための<b>速度と可読性のための先読み</b>である。
+     * この役割分担は {@code WebhookIdempotencyService#tryBegin} と同じ構えである。</p>
+     */
+    @Query("SELECT r FROM ReceiptEntity r WHERE r.scopeType = :scopeType "
+            + "AND r.sourceType = :sourceType AND r.sourceRef = :sourceRef AND r.voidedAt IS NULL")
+    Optional<ReceiptEntity> findActiveBySource(
+            @Param("scopeType") ReceiptScopeType scopeType,
+            @Param("sourceType") ReceiptSourceType sourceType,
+            @Param("sourceRef") String sourceRef);
+
+    /**
+     * スコープ内の領収書を、無効化済みを除いて発行日降順で取得する（運営コンソールの既定）。
+     */
+    Page<ReceiptEntity> findByScopeTypeAndScopeIdAndVoidedAtIsNullOrderByIssuedAtDesc(
+            ReceiptScopeType scopeType, Long scopeId, Pageable pageable);
 }

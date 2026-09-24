@@ -13,6 +13,10 @@ import com.mannschaft.app.chat.repository.ChatMessageBookmarkRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.entity.StoragePlanEntity;
 import com.mannschaft.app.common.storage.quota.repository.StoragePlanRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
@@ -40,6 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -133,6 +138,9 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ChatMessageAttachmentRepository attachmentRepository;
+
+    @Autowired
+    private StorageAclService storageAclService;
 
     @Autowired
     private StoragePlanRepository storagePlanRepository;
@@ -239,13 +247,20 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                 .build()).getId();
 
         attachmentFileKey = "chatauthz-attachment-" + uniq;
-        attachmentRepository.save(ChatMessageAttachmentEntity.builder()
+        ChatMessageAttachmentEntity attachment = attachmentRepository.save(ChatMessageAttachmentEntity.builder()
                 .messageId(ownerMessageId)
                 .fileKey(attachmentFileKey)
                 .fileName("shiryou.pdf")
                 .fileSize(1024L)
                 .contentType("application/pdf")
                 .build());
+        StorageAclScope attachmentScope = StorageAclScope.team(teamId);
+        StorageAclContentReference attachmentParent =
+                new StorageAclContentReference("CHAT_CHANNEL", teamChannelId.toString());
+        storageAclService.registerPending(attachmentFileKey, ownerId, attachmentScope,
+                "application/pdf", Duration.ofMinutes(15), attachmentParent);
+        storageAclService.claimPending(attachmentFileKey, ownerId, attachmentScope, attachmentParent,
+                new StorageAclAttachmentBinding("CHAT_MESSAGE_ATTACHMENT", attachment.getId().toString()));
 
         em.flush();
         em.clear();
@@ -554,10 +569,22 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(ownerId);
             mockMvc.perform(post("/api/v1/chat/channels/{channelId}/members", teamChannelId)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("userIds", List.of(outsiderId)))))
+                            .content(json(Map.of("userIds", List.of(teamAdminId)))))
                     .andExpect(status().isCreated());
 
-            assertThat(memberRepository.existsByChannelIdAndUserId(teamChannelId, outsiderId)).isTrue();
+            assertThat(memberRepository.existsByChannelIdAndUserId(teamChannelId, teamAdminId)).isTrue();
+        }
+
+        @Test
+        @DisplayName("異常系: OWNERでもチーム非所属者は追加できない")
+        void OWNERでもチーム非所属者の追加は403() throws Exception {
+            setAuth(ownerId);
+            mockMvc.perform(post("/api/v1/chat/channels/{channelId}/members", teamChannelId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("userIds", List.of(outsiderId)))))
+                    .andExpect(status().isForbidden());
+
+            assertThat(memberRepository.existsByChannelIdAndUserId(teamChannelId, outsiderId)).isFalse();
         }
     }
 
@@ -1148,12 +1175,12 @@ class ChatAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("チャットが管理していない任意のキーは403（fail-closed）")
-        void 管理外キーは403() throws Exception {
+        @DisplayName("チャットが管理していない任意のキーは404（存在を秘匿する）")
+        void 管理外キーは404() throws Exception {
             setAuth(memberId);
             mockMvc.perform(get("/api/v1/chat/files/{fileKey}/download-url",
                             "chatauthz-unmanaged-key-" + ABSENT_ID))
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
 

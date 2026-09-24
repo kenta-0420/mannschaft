@@ -143,7 +143,7 @@ class MatchRequestServiceTest {
     class UpdateRequest {
 
         @Test
-        @DisplayName("AC-2 異常系: 募集チームの管理者/副管理者でないユーザーは更新不可（403相当）")
+        @DisplayName("AC-2 異常系: 募集チームの管理者/副管理者でないユーザーは更新不可（越境は存在秘匿のため 404 相当）")
         void 非管理者は更新不可() {
             // Given: entity.teamId=TEAM_ID の募集に対し、actor(USER_ID) は管理者ではない
             MatchRequestEntity entity = MatchRequestEntity.builder()
@@ -184,7 +184,7 @@ class MatchRequestServiceTest {
         }
 
         @Test
-        @DisplayName("AC-3 異常系: 募集チームの管理者/副管理者でないユーザーは削除不可（403相当）")
+        @DisplayName("AC-3 異常系: 募集チームの管理者/副管理者でないユーザーは削除不可（越境は存在秘匿のため 404 相当）")
         void 非管理者は削除不可() {
             // Given
             MatchRequestEntity entity = MatchRequestEntity.builder()

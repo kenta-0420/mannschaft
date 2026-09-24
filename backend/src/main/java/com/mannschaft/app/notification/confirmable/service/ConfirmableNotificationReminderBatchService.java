@@ -1,6 +1,8 @@
 package com.mannschaft.app.notification.confirmable.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -51,6 +53,8 @@ public class ConfirmableNotificationReminderBatchService {
      *
      * <p>1分間隔で起動し、ACTIVE 状態の通知を対象にリマインド送信・アラート送信を行う。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。確認通知の未確認者リマインド送信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "notification-confirmable-reminder", description = "確認通知の未確認受信者リマインドを 1 分毎に送信する")
     @Scheduled(fixedDelay = 60_000) // 1分間隔
     @SchedulerLock(

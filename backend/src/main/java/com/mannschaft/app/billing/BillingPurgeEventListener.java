@@ -1,5 +1,7 @@
 package com.mannschaft.app.billing;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.event.WithdrawalCancelledEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
@@ -66,6 +68,8 @@ public class BillingPurgeEventListener {
      * 2 時間アラート検出→{@code GdprPurgeRetryService} 経由の管理者手動 retry（{@link #retryPurge}）で
      * 拾えるようにする（従来は billing が未登録だったため、この再試行導線が存在しなかった）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会確定者の契約解約と Stripe 解約が実行されず、GDPR 第17条の消去期限を破るうえ account_purge_completion_status が PENDING のまま残り課金が継続する")
     @Async("purge-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAccountPurged(AccountPurgedEvent event) {
@@ -104,12 +108,16 @@ public class BillingPurgeEventListener {
      * <p>revoke は終端操作で撤回時に復活できないため、猶予中は契約・権利を維持する。
      * 「何もしない」ことを 1 メソッドで表明し、将来「猶予中は機能を一時抑止する」等の拡張フック点を残す。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "退会フローの明示 no-op であり、宣言を落とすと将来ここに処理が足されたとき退会の権利維持判断が黙って飛ぶため常時実行として固定する")
     @EventListener
     public void onWithdrawalRequested(WithdrawalRequestedEvent event) {
         log.debug("billing: 退会申請は no-op（猶予中は契約・権利を維持）userId={}", event.getUserId());
     }
 
     /** 退会撤回: <b>明示 no-op</b>（権利維持のまま・AC-45・01 §10 M-5）。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "退会撤回フローの明示 no-op であり、宣言を落とすと将来ここに処理が足されたとき撤回時の権利復帰が黙って飛ぶため常時実行として固定する")
     @EventListener
     public void onWithdrawalCancelled(WithdrawalCancelledEvent event) {
         log.debug("billing: 退会撤回は no-op（権利維持のまま）");

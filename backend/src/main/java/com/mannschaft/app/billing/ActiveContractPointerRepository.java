@@ -43,4 +43,46 @@ public interface ActiveContractPointerRepository
             @Param("scopeId") Long scopeId,
             @Param("contractKind") ContractKind contractKind,
             @Param("addonFeatureKey") String addonFeatureKey);
+
+    /**
+     * 柱③-B 請求担当引継（CMP-260901-1538・設計書 §3.7・P0-3根治）: スロットキーに加え
+     * {@code contract_id} 一致も条件に加えてポインタを物理 DELETE する。
+     *
+     * <p>旧契約由来の webhook 処理（{@code customer.subscription.deleted} 等）はこのメソッドを使い、
+     * 「自分（旧契約）が今も pointer の持ち主である場合のみ削除する」。既に切替TXで pointer が
+     * 新契約に付け替わっていれば {@code contract_id} 不一致のため 0 件更新となり、新契約の pointer は
+     * 消えない（{@link #hardDeleteBySlot} をスロット単位のまま使うと、切替TX後に届いた旧webhookが
+     * 新契約の pointer まで誤って消してしまう・AC-14）。</p>
+     */
+    @Modifying
+    @Query("DELETE FROM ActiveContractPointerEntity p WHERE p.scopeKind = :scopeKind "
+            + "AND p.scopeId = :scopeId AND p.contractKind = :contractKind "
+            + "AND p.addonFeatureKey = :addonFeatureKey AND p.contractId = :contractId")
+    int hardDeleteBySlotAndContractId(
+            @Param("scopeKind") EntitlementScopeKind scopeKind,
+            @Param("scopeId") Long scopeId,
+            @Param("contractKind") ContractKind contractKind,
+            @Param("addonFeatureKey") String addonFeatureKey,
+            @Param("contractId") UUID contractId);
+
+    /**
+     * スコープ配下のポインタを<b>1本のクエリで</b>物理 DELETE する（PR6a AC-72b・退会 purge 専用）。
+     *
+     * <p>退会 purge は当該ユーザーの契約を<b>すべて</b>解約するため、スロットを1つずつ
+     * {@link #hardDeleteBySlot} で消すと契約数 M に比例して DELETE が増える。purge の意味は
+     * 「この scope のアクティブ契約スロットを全部空ける」であり、スロット単位の逐次削除と
+     * 結果は同じになる（残ってよいポインタが1つも無い）。</p>
+     *
+     * <p><b>他の解約経路で使ってはならない</b>: 単一契約の解約は自分のスロットだけを消す必要がある。</p>
+     *
+     * @param scopeKind スコープ種別（purge は {@code USER} のみ）
+     * @param scopeId   スコープ ID
+     * @return 削除件数
+     */
+    @Modifying
+    @Query("DELETE FROM ActiveContractPointerEntity p "
+            + "WHERE p.scopeKind = :scopeKind AND p.scopeId = :scopeId")
+    int hardDeleteByScope(
+            @Param("scopeKind") EntitlementScopeKind scopeKind,
+            @Param("scopeId") Long scopeId);
 }

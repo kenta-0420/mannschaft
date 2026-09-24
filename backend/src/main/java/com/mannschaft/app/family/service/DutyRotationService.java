@@ -3,6 +3,7 @@ package com.mannschaft.app.family.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.family.FamilyErrorCode;
 import com.mannschaft.app.family.RotationType;
 import com.mannschaft.app.family.dto.DutyRotationRequest;
@@ -49,7 +50,9 @@ public class DutyRotationService {
         long count = dutyRotationRepository.countByTeamIdAndDeletedAtIsNull(teamId);
         if (count >= MAX_DUTIES_PER_TEAM) { throw new BusinessException(FamilyErrorCode.FAMILY_017); }
         RotationType rotationType = request.getRotationType() != null
-                ? RotationType.valueOf(request.getRotationType().toUpperCase()) : RotationType.DAILY;
+                ? EnumInputParser.parse(
+                        RotationType.class, request.getRotationType().toUpperCase(), "rotationType")
+                : RotationType.DAILY;
         DutyRotationEntity entity = DutyRotationEntity.builder()
                 .teamId(teamId).dutyName(request.getDutyName()).rotationType(rotationType)
                 .memberOrder(toJson(request.getMemberOrder())).startDate(request.getStartDate())
@@ -64,7 +67,9 @@ public class DutyRotationService {
         DutyRotationEntity entity = findDutyInTeamOrThrow(teamId, dutyId);
         accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TYPE_TEAM);
         RotationType rotationType = request.getRotationType() != null
-                ? RotationType.valueOf(request.getRotationType().toUpperCase()) : entity.getRotationType();
+                ? EnumInputParser.parse(
+                        RotationType.class, request.getRotationType().toUpperCase(), "rotationType")
+                : entity.getRotationType();
         entity.update(request.getDutyName(), rotationType, toJson(request.getMemberOrder()),
                 request.getStartDate(), request.getIcon(),
                 request.getIsEnabled() != null ? request.getIsEnabled() : entity.getIsEnabled());

@@ -32,7 +32,9 @@ const RESULT: SurveyResultSummary = {
 
 beforeEach(() => {
   mockGetResults.mockReset()
-  mockGetResults.mockResolvedValue({ data: [RESULT] })
+  mockGetResults.mockResolvedValue({
+    data: { surveyId: 1, title: 'テスト', responseCount: 3, targetCount: 5, questionResults: [RESULT] },
+  })
 })
 
 describe('SurveyResultsPanel.vue', () => {

@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.entity.RecruitmentCancellationRecordEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRepository;
@@ -64,6 +66,8 @@ public class RecruitmentPaymentRetryBatch {
     /**
      * 1時間ごとに実行。ShedLock で重複実行を防止。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "殿の裁定: Stripe の与信は期限で失効するため、止めている間に再試行の機会そのものが消える。遅延がそのまま復旧不能な取りはぐれになる")
     @BatchEndpoint(name = "recruitment-payment-retry-hourly", description = "募集キャンセル料の決済 FAILED を毎時最大 3 回までリトライする")
     @Scheduled(fixedDelay = 60 * 60 * 1000L)
     @SchedulerLock(

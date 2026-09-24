@@ -44,10 +44,10 @@ import {
 } from '~/composables/useReservationDayOptions'
 import { collectOccupiedCells, type SlotDragRange } from '~/composables/useSlotDragSelection'
 
-type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
+type SlotTemplateResponse = components['schemas']['SlotTemplateResponse'] & { endsNextDay?: boolean }
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type SlotGenerationResultDto = components['schemas']['SlotGenerationResultDto']
-type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeResponse']
+type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeResponse'] & { endsNextDay?: boolean }
 type RecurringBlockedTimeImpactResponse = components['schemas']['RecurringBlockedTimeImpactResponse']
 
 const props = defineProps<{
@@ -91,6 +91,7 @@ interface TemplateForm {
   lineId: number
   startTime: string
   endTime: string
+  endsNextDay: boolean
   capacity: number
   isActive: boolean
 }
@@ -100,6 +101,7 @@ function defaultForm(): TemplateForm {
     lineId: COMMON_LINE,
     startTime: '09:00',
     endTime: '10:00',
+    endsNextDay: false,
     capacity: 1,
     isActive: true,
   }
@@ -126,7 +128,8 @@ const lineOptions = computed(() => [
 ])
 
 const timeRangeValid = computed(() =>
-  !!form.value.startTime && !!form.value.endTime && form.value.startTime < form.value.endTime,
+  !!form.value.startTime && !!form.value.endTime
+  && (form.value.endsNextDay ? form.value.startTime > form.value.endTime : form.value.startTime < form.value.endTime),
 )
 
 const saveDisabled = computed(() =>
@@ -140,6 +143,11 @@ const saveDisabled = computed(() =>
 function dayLabel(code?: string | null): string {
   const opt = RESERVATION_DAY_OPTIONS.find(d => d.value === code)
   return opt ? t(opt.labelKey) : (code ?? '')
+}
+
+function formatEndTime(value: string | null | undefined, endsNextDay?: boolean): string {
+  const hm = toHm(value)
+  return endsNextDay ? t('reservation.template.next_day_time', { time: hm }) : hm
 }
 
 /**
@@ -199,6 +207,7 @@ function openEdit(template: SlotTemplateResponse) {
     lineId: template.lineId ?? COMMON_LINE,
     startTime: toHm(template.startTime),
     endTime: toHm(template.endTime),
+    endsNextDay: template.endsNextDay ?? false,
     capacity: template.capacity ?? 1,
     isActive: template.isActive ?? true,
   }
@@ -260,6 +269,7 @@ async function save() {
   const base = {
     startTime: `${form.value.startTime}:00`,
     endTime: `${form.value.endTime}:00`,
+    endsNextDay: form.value.endsNextDay,
     capacity: form.value.capacity,
   }
   try {
@@ -412,6 +422,7 @@ interface RecurringForm {
   lineId: number
   startTime: string
   endTime: string
+  endsNextDay: boolean
   reason: string
   isPublic: boolean
   isActive: boolean
@@ -423,6 +434,7 @@ function defaultRecurringForm(day?: ReservationDayOfWeekCode): RecurringForm {
     lineId: COMMON_LINE,
     startTime: '19:00',
     endTime: '20:00',
+    endsNextDay: false,
     reason: '',
     isPublic: false,
     isActive: true,
@@ -438,7 +450,9 @@ const recurringDayOptions = computed(() =>
 
 /** 全日型は作らせない（§4.3）: 両時刻が有効な半開区間（start < end）のときのみ true。 */
 const recurringTimeRangeValid = computed(() =>
-  isValidHalfHourRange(recurringForm.value.startTime, recurringForm.value.endTime),
+  recurringForm.value.endsNextDay
+    ? !!recurringForm.value.startTime && !!recurringForm.value.endTime && recurringForm.value.startTime > recurringForm.value.endTime
+    : isValidHalfHourRange(recurringForm.value.startTime, recurringForm.value.endTime),
 )
 
 /** 事由（reason）は必須（BE `@NotBlank`・§4.1）。 */
@@ -457,6 +471,7 @@ const recurringEffectiveRequest = computed(() => {
     dayOfWeek: recurringForm.value.dayOfWeek,
     startTime: `${recurringForm.value.startTime}:00`,
     endTime: `${recurringForm.value.endTime}:00`,
+    endsNextDay: recurringForm.value.endsNextDay,
     lineId: recurringForm.value.lineId === COMMON_LINE ? undefined : recurringForm.value.lineId,
   }
 })
@@ -535,6 +550,7 @@ function openEditRecurring(rule: RecurringBlockedTimeResponse) {
     lineId: rule.lineId ?? COMMON_LINE,
     startTime: toHm(rule.startTime),
     endTime: toHm(rule.endTime),
+    endsNextDay: rule.endsNextDay ?? false,
     reason: rule.reason ?? '',
     isPublic: rule.isPublic ?? false,
     isActive: rule.isActive ?? true,
@@ -587,6 +603,7 @@ async function saveRecurring(force = false) {
         dayOfWeek: req.dayOfWeek,
         startTime: req.startTime,
         endTime: req.endTime,
+        endsNextDay: req.endsNextDay,
         reason: recurringForm.value.reason.trim(),
         isPublic: recurringForm.value.isPublic,
         isActive: recurringForm.value.isActive,
@@ -601,6 +618,7 @@ async function saveRecurring(force = false) {
         dayOfWeek: req.dayOfWeek,
         startTime: req.startTime,
         endTime: req.endTime,
+        endsNextDay: req.endsNextDay,
         reason: recurringForm.value.reason.trim(),
         isPublic: recurringForm.value.isPublic,
         ...(recurringForm.value.lineId === COMMON_LINE ? {} : { lineId: recurringForm.value.lineId }),
@@ -783,7 +801,7 @@ defineExpose({
             <div class="min-w-0 flex-1">
               <p class="font-medium">
                 {{ dayLabel(template.dayOfWeek) }}
-                {{ toHm(template.startTime) }} - {{ toHm(template.endTime) }}
+                {{ toHm(template.startTime) }} - {{ formatEndTime(template.endTime, template.endsNextDay) }}
                 <span class="ml-2 text-sm text-surface-500">
                   {{ template.lineId != null ? (template.lineName ?? '') : t('reservation.template.line_common') }}
                 </span>
@@ -811,7 +829,7 @@ defineExpose({
             <div class="min-w-0 flex-1">
               <p class="font-medium">
                 {{ dayLabel(rule.dayOfWeek) }}
-                {{ toHm(rule.startTime) }} - {{ toHm(rule.endTime) }}
+                {{ toHm(rule.startTime) }} - {{ formatEndTime(rule.endTime, rule.endsNextDay) }}
                 <span class="ml-2 text-sm text-surface-500">
                   {{ rule.lineId != null ? (rule.lineName ?? '') : t('reservation.recurring_block.line_all') }}
                 </span>
@@ -967,6 +985,10 @@ defineExpose({
               option-value="value"
               class="w-32"
             />
+            <div class="flex items-center gap-2">
+              <ToggleSwitch v-model="form.endsNextDay" data-testid="template-ends-next-day" />
+              <span class="text-sm text-surface-600 dark:text-surface-400">{{ t('reservation.template.ends_next_day') }}</span>
+            </div>
           </div>
           <p v-if="!timeRangeValid" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
             {{ t('reservation.template.error.time_range_invalid') }}
@@ -1058,6 +1080,10 @@ defineExpose({
               class="w-32"
               data-testid="recurring-end-time"
             />
+            <div class="flex items-center gap-2">
+              <ToggleSwitch v-model="recurringForm.endsNextDay" data-testid="recurring-ends-next-day" />
+              <span class="text-sm text-surface-600 dark:text-surface-400">{{ t('reservation.template.ends_next_day') }}</span>
+            </div>
           </div>
           <p v-if="!recurringTimeRangeValid" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
             {{ t('reservation.template.error.time_range_invalid') }}

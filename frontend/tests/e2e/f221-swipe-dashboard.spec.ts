@@ -43,8 +43,10 @@ const ORG_SLUG = 'tokyo-fa'
  * @param withSlug true のとき public_id に人間可読 slug を載せる（slug 移行後の実 BE 挙動）。
  *   false のとき public_id を省略し scope_id（BIGINT）のみ（移行前 / 旧モック互換）。
  */
-function mockScopeTabPage(scopeType: 'TEAM' | 'ORGANIZATION', withSlug = false) {
+function mockScopeTabPage(scopeType: 'TEAM' | 'ORGANIZATION', withSlug = false, multipleScopes = false) {
   const isTeam = scopeType === 'TEAM'
+  const secondaryId = isTeam ? 5002 : 6002
+  const secondarySlug = isTeam ? 'fc-u-18-b' : 'tokyo-fa-b'
   return {
     items: [
       {
@@ -56,11 +58,22 @@ function mockScopeTabPage(scopeType: 'TEAM' | 'ORGANIZATION', withSlug = false) 
         unread_count: 0,
         sort_order: 0,
       },
+      ...(multipleScopes
+        ? [{
+            scope_id: secondaryId,
+            ...(withSlug ? { public_id: secondarySlug } : {}),
+            scope_type: scopeType,
+            name: isTeam ? 'E2E チームB' : 'E2E 組織B',
+            avatar_url: null,
+            unread_count: 0,
+            sort_order: 1,
+          }]
+        : []),
     ],
     page: 0,
     page_size: 6,
     total_pages: 1,
-    total_count: 1,
+    total_count: multipleScopes ? 2 : 1,
     has_next: false,
     has_prev: false,
   }
@@ -101,6 +114,14 @@ interface MockOptions {
   onSearchTabs?: (url: URL) => void
   /** scope-tabs の public_id に slug を載せる（slug 移行後の実 BE 挙動を再現）*/
   withSlug?: boolean
+  /** 複数タグを返し、未選択タグのキーボード操作を検証するためのfixture */
+  multipleScopes?: boolean
+  /** 容量APIの呼出回数を検証するフック */
+  onStorageUsage?: () => void
+  /** 容量APIを失敗させる検証用フック */
+  storageUsageFailure?: boolean
+  /** 警告Dialog表示用の容量mock */
+  storageUsageWarning?: boolean
 }
 
 /**
@@ -123,6 +144,43 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
     })
   })
 
+  // 容量サマリーは配列レスポンスを前提とするため、catch-allより後に専用mockを登録する。
+  await page.route('**/api/v1/me/storage/usage', async (route: Route) => {
+    opts.onStorageUsage?.()
+    if (opts.storageUsageFailure) {
+      await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_STORAGE_FAILURE' } }) })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          scopeType: 'PERSONAL',
+          scopeId: 1,
+          scopeName: '個人',
+          slug: null,
+          usedBytes: 0,
+          fileCount: 0,
+          includedBytes: 1024,
+          maxBytes: 1024,
+          usagePercent: opts.storageUsageWarning ? 90 : 0,
+        },
+      ]),
+    })
+  })
+
+  // 有料プラン画面の route gate が参照する公開フラグ。
+  await page.route('**/api/v1/feature-flags', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [{ flagKey: 'FEATURE_BILLING_PAYMENT_ENABLED', enabled: true }],
+      }),
+    })
+  })
+
   // --- 認証リフレッシュ（401 連鎖でログアウトさせない）---
   await page.route('**/api/v1/auth/refresh', async (route: Route) => {
     await route.fulfill({
@@ -142,7 +200,7 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: mockScopeTabPage(scopeType, opts.withSlug) }),
+      body: JSON.stringify({ data: mockScopeTabPage(scopeType, opts.withSlug, opts.multipleScopes) }),
     })
   })
 
@@ -212,10 +270,18 @@ test('F22.1-1: /dashboard がカルーセルを描画し、初期は個人パネ
   page,
 }) => {
   await loginAsMember(page)
-  await mockDashboardApis(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  let storageUsageCalls = 0
+  await mockDashboardApis(page, { onStorageUsage: () => { storageUsageCalls += 1 } })
 
   await page.goto('/dashboard')
   await waitForCarousel(page)
+  await expect(page.getByTestId('dashboard-storage-summary')).toHaveCount(1)
+  await expect.poll(() => storageUsageCalls).toBe(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+  const summaryBox = await page.getByTestId('dashboard-storage-summary').boundingBox()
+  expect(summaryBox).not.toBeNull()
+  expect(summaryBox!.x + summaryBox!.width).toBeLessThanOrEqual(390)
 
   // セグメントトグル（個人/チーム/組織）が存在する
   await expect(page.getByTestId('scope-segment-PERSONAL')).toBeVisible()
@@ -236,6 +302,42 @@ test('F22.1-1: /dashboard がカルーセルを描画し、初期は個人パネ
   await expect(page.locator('#scope-panel-PERSONAL')).toHaveCount(1)
   await expect(page.locator('#scope-panel-TEAM')).toHaveCount(1)
   await expect(page.locator('#scope-panel-ORGANIZATION')).toHaveCount(1)
+})
+
+test('F22.1-9: 容量API失敗時もカルーセルと切替タブを維持する', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page, { storageUsageFailure: true })
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  await expect(page.getByTestId('storage-error')).toBeVisible()
+  await expect(page.getByTestId('scope-carousel')).toBeVisible()
+  await expect(page.getByTestId('scope-segment-PERSONAL')).toBeVisible()
+})
+
+test('F22.1-11: 容量カードの通常遷移と警告Dialogのプラン導線', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page)
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  await page.getByTestId('storage-card-0').click()
+  await expect(page).toHaveURL(/\/settings\/storage/)
+
+  await page.goto('/dashboard')
+  await mockDashboardApis(page, { storageUsageWarning: true })
+  await page.reload()
+  await waitForCarousel(page)
+  const warningCard = page.getByTestId('storage-card-0')
+  await warningCard.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(warningCard).toBeFocused()
+
+  await warningCard.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('button', { name: 'プランを見る' }).click()
+  await expect(page).toHaveURL(/\/billing\/plans/)
 })
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -498,4 +600,52 @@ test('F22.1-8: slug ロード時に UUID 宛のダッシュボード取得が発
     uuidDashboardCalls,
     `UUID 宛のダッシュボード取得が発生した（slug 移行後は slug 宛であるべき）: ${uuidDashboardCalls.join(', ')}`,
   ).toHaveLength(0)
+})
+
+test('F22.1-9: selected scope chips open their scope pages by keyboard', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page, { withSlug: true })
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+
+  const teamChip = page.getByTestId(`scope-tab-chip-TEAM-${TEAM_SLUG}`)
+  await page.getByTestId('scope-segment-TEAM').click()
+  await expect(page.getByTestId('scope-tab-go-to-page-TEAM')).toHaveCount(0)
+  await expect(teamChip).toHaveAttribute('aria-pressed', 'true')
+  await expect(teamChip).toHaveAttribute('aria-label', 'E2E チームAのページを開く')
+  await teamChip.press('Enter')
+  await page.waitForURL(`**/teams/${TEAM_SLUG}`)
+
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  const orgChip = page.getByTestId(`scope-tab-chip-ORGANIZATION-${ORG_SLUG}`)
+  await page.getByTestId('scope-segment-ORGANIZATION').click()
+  await expect(page.getByTestId('scope-tab-go-to-page-ORGANIZATION')).toHaveCount(0)
+  await expect(orgChip).toHaveAttribute('aria-pressed', 'true')
+  await expect(orgChip).toHaveAttribute('aria-label', 'E2E 組織Aのページを開く')
+  await orgChip.press('Space')
+  await page.waitForURL(`**/organizations/${ORG_SLUG}`)
+})
+
+test('F22.1-10: unselected scope chips are selected without navigation by keyboard', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page, { withSlug: true, multipleScopes: true })
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+
+  await page.getByTestId('scope-segment-TEAM').click()
+  const secondaryTeamChip = page.getByTestId('scope-tab-chip-TEAM-fc-u-18-b')
+  await expect(secondaryTeamChip).toHaveAttribute('aria-pressed', 'false')
+  await expect(secondaryTeamChip).toHaveAttribute('aria-label', 'E2E チームB')
+  await secondaryTeamChip.press('Enter')
+  await expect(secondaryTeamChip).toHaveAttribute('aria-pressed', 'true')
+  await expect(page).toHaveURL(/\/dashboard(?:\/|$)/)
+
+  await page.getByTestId('scope-segment-ORGANIZATION').click()
+  const secondaryOrgChip = page.getByTestId('scope-tab-chip-ORGANIZATION-tokyo-fa-b')
+  await expect(secondaryOrgChip).toHaveAttribute('aria-pressed', 'false')
+  await expect(secondaryOrgChip).toHaveAttribute('aria-label', 'E2E 組織B')
+  await secondaryOrgChip.press('Space')
+  await expect(secondaryOrgChip).toHaveAttribute('aria-pressed', 'true')
+  await expect(page).toHaveURL(/\/dashboard(?:\/|$)/)
 })

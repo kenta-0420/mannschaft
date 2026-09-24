@@ -18,8 +18,8 @@ interface RawPreferenceResponse {
 }
 
 interface NotificationListParams {
-  cursor?: number
-  limit?: number
+  page?: number
+  size?: number
   isRead?: boolean
   scopeType?: string
   scopeId?: number
@@ -42,8 +42,8 @@ export function useNotificationApi() {
   // === Notifications ===
   async function getNotifications(params?: NotificationListParams) {
     const qs = buildQuery({
-      cursor: params?.cursor,
-      limit: params?.limit,
+      page: params?.page,
+      size: params?.size,
       is_read: params?.isRead,
       scope_type: params?.scopeType,
       scope_id: params?.scopeId,

@@ -1,5 +1,7 @@
 package com.mannschaft.app.timetable.personal.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableSlotEntity;
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetableSlotRepository;
@@ -55,6 +57,8 @@ public class PersonalTimetableSlotMembershipRevokeListener {
      * {@code changeType} は {@link MembershipChangedEvent} のコンパクトコンストラクタで非 null が
      * 保証されるため、SpEL で NPE の懸念はない。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。チーム脱退に伴う個人時間割コマの連携解除。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @EventListener(condition = "#event.changeType().name() == 'REMOVED' && #event.scopeType().equalsIgnoreCase('TEAM')")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onMembershipChanged(MembershipChangedEvent event) {

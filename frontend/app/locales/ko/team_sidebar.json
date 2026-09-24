@@ -4,6 +4,7 @@
       "home": "홈",
       "schedule": "일정",
       "match": "경기",
+      "market": "장터",
       "member": "멤버",
       "ops": "업무 운영",
       "ops_work": "태스크 및 진행",
@@ -14,6 +15,7 @@
     },
     "item": {
       "dashboard": "대시보드",
+      "member_profiles": "メンバー紹介",
       "announcements": "공지사항",
       "chat": "채팅",
       "bulletin": "게시판",
@@ -24,6 +26,7 @@
       "annual_plan": "연간 계획",
       "matches": "경기 기록",
       "matchAnalytics": "경기 분석",
+      "market": "장터",
       "members": "멤버",
       "circulation": "회람",
       "safety_check": "안전 확인",
@@ -41,9 +44,18 @@
       "audit_logs": "감사 로그",
       "settings": "설정",
       "faqSettings": "FAQ 설정",
+      "confirmableNotifications": "확인 알림 설정",
       "billing": "결제 및 요금제 관리",
       "leagueTransfers": "리그 이적",
-      "adminConsole": "관리 콘솔"
+      "adminConsole": "관리 콘솔",
+      "receipts": "영수증",
+      "receiptSettings": "영수증 발행자 설정",
+      "hourlyRate": "時給設定",
+      "vendors": "업체 마스터",
+      "lineSettings": "LINE 설정",
+      "snsSettings": "SNS 설정",
+      "scheduleSettings": "일정 설정",
+      "bulletinCategories": "게시판 카테고리 관리"
     }
   }
 }

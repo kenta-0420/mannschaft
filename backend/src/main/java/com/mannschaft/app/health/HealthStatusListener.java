@@ -1,5 +1,7 @@
 package com.mannschaft.app.health;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.batch.BatchEndpointExempt;
 import com.mannschaft.app.common.batch.PodLocalScheduled;
 import com.mannschaft.app.errorreport.ErrorReportActivityType;
@@ -108,6 +110,8 @@ public class HealthStatusListener {
         + "ロックを掛けると 1 Pod しか死活監視されず他 Pod の障害を検知できなくなるため")
     @BatchEndpointExempt("30 秒間隔（日次 2,880 回/Pod）の高頻度ポーリングであり、"
         + "実行履歴を書くと日次・月次バッチの記録が埋没する。可観測性は error_reports 生成側で担保")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。ヘルスステータスの定期ポーリングであり、運用基盤に属し機能フラグを持たない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(fixedDelayString = "${mannschaft.error-monitoring.health-polling.interval-ms:30000}",
                initialDelayString = "${mannschaft.error-monitoring.health-polling.interval-ms:30000}")
     public void pollHealthStatus() {

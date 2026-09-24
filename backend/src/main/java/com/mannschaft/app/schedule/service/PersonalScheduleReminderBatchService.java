@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -28,6 +30,8 @@ public class PersonalScheduleReminderBatchService {
      */
     @BatchEndpoint(name = "personal-schedule-reminder",
             description = "個人予定の due リマインダーを 1 分毎に所有者へ通知する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。個人予定のリマインド送信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(fixedDelay = 60_000) // 1分間隔
     @SchedulerLock(
             name = "personalScheduleReminderBatch",

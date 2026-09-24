@@ -1,5 +1,7 @@
 package com.mannschaft.app.analytics.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.analytics.entity.AnalyticsMonthlyCohortEntity;
 import com.mannschaft.app.analytics.repository.AnalyticsMonthlyCohortRepository;
@@ -38,6 +40,9 @@ public class MonthlyCohortBatchService {
      */
     private static final int USER_ID_IN_CLAUSE_CHUNK_SIZE = 1000;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_TRANSLATION_SEARCH_ENABLED",
+            reason = "毎回過去 24 ヶ月を丸ごと再計算する冪等バッチであり、止めても再開後の一回の実行で欠測期間ごと埋め直せる")
     @BatchEndpoint(name = "analytics-monthly-cohort-aggregation", description = "過去 24 ヶ月のコホート分析を毎月 1 日 03:00 に再計算する")
     @Scheduled(cron = "0 0 3 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "monthlyCohortAggregation", lockAtMostFor = "60m", lockAtLeastFor = "10m")

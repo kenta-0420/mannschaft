@@ -133,7 +133,7 @@ const inputId = computed(() => `disclosure-field-${props.field.id}`)
     />
 
     <!-- DATE -->
-    <Calendar
+    <DatePicker
       v-else-if="field.type === 'DATE'"
       :id="inputId"
       v-model="dateValue"

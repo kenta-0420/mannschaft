@@ -41,22 +41,37 @@ export type ShiftPeriodType = 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
 // レスポンス DTO 型
 // =====================================================
 
-/** シフトスケジュールレスポンス */
+/**
+ * シフトスケジュールレスポンス。
+ *
+ * BE（`ShiftScheduleResponse`）は Wave 2-C-B（PR #3019）以降、
+ * `content` / `period` / `status` / `audit` の 4 グループにネストして返す。
+ * ここはその実際の応答形と 1:1 で対応させること（フラットに書き直すと
+ * 型検査が通るまま画面が空欄になる）。
+ */
 export interface ShiftScheduleResponse {
   id: number
   teamId: number
-  title: string
-  periodType: ShiftPeriodType | null
-  startDate: string
-  endDate: string
-  status: ShiftScheduleStatus
-  requestDeadline: string | null
-  note: string | null
-  createdBy: number | null
-  publishedAt: string | null
-  publishedBy: number | null
-  createdAt: string
-  updatedAt: string
+  content: {
+    title: string
+    periodType: ShiftPeriodType | null
+    note: string | null
+  }
+  period: {
+    startDate: string
+    endDate: string
+    requestDeadline: string | null
+  }
+  status: {
+    status: ShiftScheduleStatus
+    publishedAt: string | null
+    publishedBy: number | null
+  }
+  audit: {
+    createdBy: number | null
+    createdAt: string
+    updatedAt: string
+  }
 }
 
 /** シフトポジションレスポンス */
@@ -70,17 +85,38 @@ export interface ShiftPositionResponse {
   createdAt: string
 }
 
-/** シフト枠レスポンス */
+/**
+ * シフト枠レスポンス。
+ *
+ * BE（`ShiftSlotResponse`）は Wave 2-C-B（PR #3019）以降、
+ * 日時を `time`、ポジションを `position` にネストして返す。
+ * `assignedUserIds` / `assignmentMasked` / `note` はトップレベルのまま。
+ */
 export interface ShiftSlotResponse {
   id: number
   scheduleId: number
-  slotDate: string
-  startTime: string
-  endTime: string
-  positionId: number | null
-  positionName: string | null
-  requiredCount: number
+  time: {
+    slotDate: string
+    startTime: string
+    endTime: string
+    /** 翌日終了（日跨ぎ）か。BE は明示フラグで返す（`endTime < startTime` から推測しないこと） */
+    endsNextDay: boolean
+  }
+  position: {
+    positionId: number | null
+    positionName: string | null
+    requiredCount: number
+  }
   assignedUserIds: number[]
+  /**
+   * 割当内容をサーバー側で伏せたか（CMP-260826-2127 / AC-4）。
+   *
+   * 非管理者が COLLECTING / ADJUSTING のシフト表の枠を取得したときだけ true になり、
+   * そのとき assignedUserIds は必ず空配列になる。
+   * 「本当に誰も割り当たっていない枠」と区別するために使う（人数バッジの出し分け）。
+   * 表示の判定に schedule.status を使ってはならない（BE と規則が二重化するため）。
+   */
+  assignmentMasked: boolean
   note: string | null
 }
 
@@ -132,8 +168,6 @@ export interface SwapRequestResponse {
   resolvedBy: number | null
   resolvedAt: string | null
   createdAt: string
-  /** v2.1: オープンコールフラグ */
-  isOpenCall?: boolean
   /** v2.1: 手挙げしたユーザー ID */
   claimedBy?: number | null
   /**
@@ -248,6 +282,8 @@ export interface CreateShiftSlotRequest {
   positionId?: number
   requiredCount?: number
   note?: string
+  /** 翌日終了（日跨ぎ）。省略時は false。日跨ぎは必ずこのフラグで明示する */
+  endsNextDay?: boolean
 }
 
 /** シフト枠一括作成リクエスト */
@@ -264,6 +300,8 @@ export interface UpdateShiftSlotRequest {
   requiredCount?: number
   assignedUserIds?: number[]
   note?: string
+  /** 翌日終了（日跨ぎ）。未指定は現値維持（部分更新） */
+  endsNextDay?: boolean
 }
 
 /** シフト希望提出リクエスト */
@@ -299,7 +337,11 @@ export interface CreateSwapRequestRequest {
 
 /** シフト交代リクエスト承認・却下 */
 export interface ResolveSwapRequestRequest {
-  action: 'approve' | 'reject'
+  /**
+   * 承認・却下の指示。BE（`ShiftSwapService#resolveSwapRequest`）は
+   * **大文字**の `APPROVE` / `REJECT` と文字列比較する。小文字を送ると必ず失敗する。
+   */
+  action: 'APPROVE' | 'REJECT'
   adminNote?: string
 }
 
@@ -416,19 +458,31 @@ export interface WorkConstraint {
 export type ChangeRequestType = 'PRE_CONFIRM_EDIT' | 'INDIVIDUAL_SWAP' | 'OPEN_CALL'
 export type ChangeRequestStatus = 'OPEN' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN' | 'EXPIRED'
 
+/**
+ * シフト変更依頼レスポンス。
+ *
+ * BE（`ChangeRequestResponse`）は Wave 2-C-B（PR #3019）以降、
+ * `requestInfo` / `reviewInfo` / `timing` の 3 グループにネストして返す。
+ */
 export interface ChangeRequest {
   id: number
   scheduleId: number
-  slotId?: number
-  requestType: ChangeRequestType
-  status: ChangeRequestStatus
-  requestedBy: number
-  reason?: string
-  reviewerId?: number
-  reviewComment?: string
-  reviewedAt?: string
-  expiresAt?: string
-  createdAt: string
+  slotId: number | null
+  requestInfo: {
+    requestType: ChangeRequestType
+    reason: string | null
+    requestedBy: number
+  }
+  reviewInfo: {
+    status: ChangeRequestStatus
+    reviewerId: number | null
+    reviewComment: string | null
+    reviewedAt: string | null
+  }
+  timing: {
+    expiresAt: string | null
+    createdAt: string
+  }
 }
 
 export interface CreateChangeRequestPayload {

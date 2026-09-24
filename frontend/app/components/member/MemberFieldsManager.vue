@@ -3,12 +3,31 @@ import type { MemberProfileField } from '~/types/member-profile'
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
+  /** チーム/組織の URL スラッグ。BE の /api/v1/team/member-fields は数値IDを要求するため内部で解決する */
   scopeId: string
 }>()
 
 const memberProfileApi = useMemberProfileApi()
+const teamApi = useTeamApi()
+const orgApi = useOrganizationApi()
 const notification = useNotification()
 const { t } = useI18n()
+
+const numericScopeId = ref<number | null>(null)
+
+async function resolveScopeId() {
+  if (!props.scopeId) {
+    numericScopeId.value = null
+    return
+  }
+  if (props.scopeType === 'TEAM') {
+    const res = await teamApi.getTeam(props.scopeId)
+    numericScopeId.value = res.data.numericId ?? null
+  } else {
+    const res = await orgApi.getOrganization(props.scopeId)
+    numericScopeId.value = res.data.numericId ?? null
+  }
+}
 
 const fields = ref<MemberProfileField[]>([])
 const loading = ref(false)
@@ -17,13 +36,12 @@ const editingField = ref<MemberProfileField | null>(null)
 const confirmDeleteId = ref<number | null>(null)
 const showDeleteDialog = ref(false)
 
+// バックエンドの FieldType enum は TEXT/NUMBER/DATE/SELECT の4種のみ（CHECKBOX/TEXTAREA は非対応）
 const fieldTypeOptions = computed(() => [
   { label: t('activity.member_fields.field_type.TEXT'), value: 'TEXT' },
   { label: t('activity.member_fields.field_type.NUMBER'), value: 'NUMBER' },
   { label: t('activity.member_fields.field_type.DATE'), value: 'DATE' },
   { label: t('activity.member_fields.field_type.SELECT'), value: 'SELECT' },
-  { label: t('activity.member_fields.field_type.CHECKBOX'), value: 'CHECKBOX' },
-  { label: t('activity.member_fields.field_type.TEXTAREA'), value: 'TEXTAREA' },
 ])
 
 const fieldTypeLabel = computed((): Record<string, string> => ({
@@ -31,8 +49,6 @@ const fieldTypeLabel = computed((): Record<string, string> => ({
   NUMBER: t('activity.member_fields.field_type.NUMBER'),
   DATE: t('activity.member_fields.field_type.DATE'),
   SELECT: t('activity.member_fields.field_type.SELECT'),
-  CHECKBOX: t('activity.member_fields.field_type.CHECKBOX'),
-  TEXTAREA: t('activity.member_fields.field_type.TEXTAREA'),
 }))
 
 const form = ref({
@@ -42,14 +58,17 @@ const form = ref({
   optionsText: '',
 })
 
-function toApiScopeType(scopeType: 'TEAM' | 'ORGANIZATION'): 'team' | 'organization' {
-  return scopeType === 'TEAM' ? 'team' : 'organization'
-}
-
 async function loadFields() {
   loading.value = true
   try {
-    fields.value = await memberProfileApi.listFields(toApiScopeType(props.scopeType), props.scopeId)
+    await resolveScopeId()
+    if (numericScopeId.value == null) {
+      fields.value = []
+      return
+    }
+    const teamId = props.scopeType === 'TEAM' ? numericScopeId.value : undefined
+    const organizationId = props.scopeType === 'ORGANIZATION' ? numericScopeId.value : undefined
+    fields.value = await memberProfileApi.listFields(teamId, organizationId)
   } catch {
     notification.error('フィールド一覧の取得に失敗しました')
   } finally {
@@ -63,38 +82,72 @@ function openCreate() {
   showDialog.value = true
 }
 
+/**
+ * options は BE では SELECT 型選択肢の JSON 文字列（配列）。パース失敗を空配列へ
+ * 握りつぶすと「選択肢が無い」という偽の0件表示になり、既存の選択肢を編集で
+ * 消してしまう事故につながる。そのため失敗時は通知で表面化させ、呼び出し元に
+ * 「失敗した」ことが分かる形（null）を返す。
+ */
+function parseOptions(options: string | null): string[] | null {
+  if (!options) return []
+  try {
+    const parsed = JSON.parse(options)
+    if (Array.isArray(parsed)) return parsed
+    notification.error(t('memberProfile.members.optionsInvalidFormat'))
+    return null
+  } catch (e) {
+    console.error('field.options JSON parse failed', options, e)
+    notification.error(t('memberProfile.members.optionsLoadFailed'))
+    return null
+  }
+}
+
+/**
+ * パースに失敗した場合は編集ダイアログを開かない。空のフォームを見せて保存させると、
+ * 壊れていただけの既存の選択肢を利用者の保存操作で本当に消してしまう事故になるため
+ * （壊れたデータの復旧は別の導線で行う）。
+ */
 function openEdit(field: MemberProfileField) {
-  // TODO: updateField が useMemberProfileApi に存在しないため編集機能は未実装
+  const parsedOptions = parseOptions(field.options)
+  if (parsedOptions === null) return
+
   editingField.value = field
   form.value = {
     fieldName: field.fieldName,
     fieldType: field.fieldType,
     isRequired: field.isRequired,
-    optionsText: field.options ? field.options.join('\n') : '',
+    optionsText: parsedOptions.join('\n'),
   }
   showDialog.value = true
 }
 
 async function save() {
-  if (!form.value.fieldName.trim()) return
+  if (!form.value.fieldName.trim() || numericScopeId.value == null) return
   try {
     const options =
       form.value.fieldType === 'SELECT'
-        ? form.value.optionsText
-            .split('\n')
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0)
+        ? JSON.stringify(
+            form.value.optionsText
+              .split('\n')
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0),
+          )
         : undefined
 
     if (editingField.value) {
-      // TODO: updateField が useMemberProfileApi に存在しないため更新は未実装
-      // await memberProfileApi.updateField(editingField.value.id, { fieldName: form.value.fieldName, fieldType: form.value.fieldType, options, isRequired: form.value.isRequired })
-      notification.error('フィールドの更新機能は未実装です（updateField APIが必要）')
-      return
-    } else {
-      await memberProfileApi.createField(toApiScopeType(props.scopeType), props.scopeId, {
+      await memberProfileApi.updateField(editingField.value.id, {
         fieldName: form.value.fieldName,
-        fieldType: form.value.fieldType,
+        fieldType: form.value.fieldType as 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT',
+        options,
+        isRequired: form.value.isRequired,
+      })
+      notification.success('フィールドを更新しました')
+    } else {
+      await memberProfileApi.createField({
+        teamId: props.scopeType === 'TEAM' ? numericScopeId.value : undefined,
+        organizationId: props.scopeType === 'ORGANIZATION' ? numericScopeId.value : undefined,
+        fieldName: form.value.fieldName,
+        fieldType: form.value.fieldType as 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT',
         options,
         isRequired: form.value.isRequired,
       })
@@ -116,9 +169,11 @@ function confirmDelete(id: number) {
 async function executeDelete() {
   if (confirmDeleteId.value === null) return
   try {
-    // TODO: deleteField が useMemberProfileApi に存在しないため削除は未実装
-    // await memberProfileApi.deleteField(confirmDeleteId.value)
-    notification.error('フィールドの削除機能は未実装です（deleteField APIが必要）')
+    await memberProfileApi.deactivateField(confirmDeleteId.value)
+    notification.success('フィールドを無効化しました')
+    await loadFields()
+  } catch {
+    notification.error('削除に失敗しました')
   } finally {
     showDeleteDialog.value = false
     confirmDeleteId.value = null

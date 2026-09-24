@@ -15,7 +15,6 @@ import com.mannschaft.app.village.entity.VillageRepresentativeEntity;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.repository.VillageRepresentativeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,11 +62,11 @@ public class VillageRepresentativeService {
 
     private final VillageRepresentativeRepository representativeRepository;
     private final VillageMembershipRepository membershipRepository;
-    private final VillageRepository villageRepository;
     /** Read-only: チーム/組織メンバー検証（原則1 FK 不在）。 */
     private final UserRoleRepository userRoleRepository;
     /** Read-only: 表示名解決（原則1 FK 不在）。 */
     private final UserRepository userRepository;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // 代表委任の付与
@@ -98,7 +97,7 @@ public class VillageRepresentativeService {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
 
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, grantedByUserId);
 
         // 実行者が HEADMAN/ELDER であること
         ensureModerator(villageId, grantedByUserId);
@@ -195,7 +194,7 @@ public class VillageRepresentativeService {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
 
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, revokedByUserId);
 
         ensureModerator(villageId, revokedByUserId);
 
@@ -244,7 +243,7 @@ public class VillageRepresentativeService {
     @Transactional(readOnly = true)
     public List<RepresentativeResponse> listRepresentatives(UUID villageId, boolean includeRevoked,
                                                              Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillager(villageId, actorUserId);
 
         List<VillageRepresentativeEntity> entities = includeRevoked
@@ -307,17 +306,16 @@ public class VillageRepresentativeService {
     // 共通ヘルパ
     // ========================================================================
 
-    /** 有効な村を取得する（削除/凍結済みは VILLAGE_001 で扱う）。 */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     /**

@@ -58,6 +58,8 @@ class ScheduleQueryServiceTest {
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
     @Mock private ScheduleAttendanceRepository attendanceRepository;
     @Mock private ScheduleTargetService scheduleTargetService;
+    // F03.19 W1-c: 色解決のためレイヤー設定を読む（既定 mock は空 Map を返す＝設定なし）。
+    @Mock private CalendarLayerService calendarLayerService;
 
     @InjectMocks
     private ScheduleQueryService scheduleQueryService;

@@ -15,7 +15,6 @@ import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageMatchRecruitRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRecruitCategoryRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -60,7 +59,7 @@ public class VillageRecruitCategoryService {
     /** 並び替え時の display_order 刻み幅（10刻み推奨・設計書 §4.2）。 */
     private static final int DISPLAY_ORDER_STEP = 10;
 
-    private final VillageRepository villageRepository;
+    private final VillageAccessGate accessGate;
     private final VillageMembershipRepository membershipRepository;
     private final VillageRecruitCategoryRepository categoryRepository;
     private final VillageMatchRecruitRepository recruitRepository;
@@ -75,7 +74,7 @@ public class VillageRecruitCategoryService {
      */
     @Transactional(readOnly = true)
     public List<VillageRecruitCategoryResponse> list(UUID villageId, Long actorUserId) {
-        loadVillage(villageId);
+        loadVillage(villageId, actorUserId);
         requireVillager(villageId, actorUserId);
 
         List<VillageRecruitCategoryEntity> categories = categoryRepository
@@ -97,7 +96,7 @@ public class VillageRecruitCategoryService {
     @Transactional
     public VillageRecruitCategoryResponse create(UUID villageId, Long actorUserId,
                                                  VillageRecruitCategoryCreateRequest request) {
-        VillageEntity village = loadVillage(villageId);
+        VillageEntity village = loadVillage(villageId, actorUserId);
         assertNotArchived(village);
         requireModerator(villageId, actorUserId);
 
@@ -138,7 +137,7 @@ public class VillageRecruitCategoryService {
     @Transactional
     public VillageRecruitCategoryResponse update(UUID villageId, UUID categoryId, Long actorUserId,
                                                  VillageRecruitCategoryUpdateRequest request) {
-        VillageEntity village = loadVillage(villageId);
+        VillageEntity village = loadVillage(villageId, actorUserId);
         assertNotArchived(village);
         requireModerator(villageId, actorUserId);
 
@@ -177,7 +176,7 @@ public class VillageRecruitCategoryService {
      */
     @Transactional
     public void delete(UUID villageId, UUID categoryId, Long actorUserId) {
-        VillageEntity village = loadVillage(villageId);
+        VillageEntity village = loadVillage(villageId, actorUserId);
         assertNotArchived(village);
         requireModerator(villageId, actorUserId);
 
@@ -203,7 +202,7 @@ public class VillageRecruitCategoryService {
     @Transactional
     public List<VillageRecruitCategoryResponse> reorder(UUID villageId, Long actorUserId,
                                                         VillageRecruitCategoryOrderRequest request) {
-        VillageEntity village = loadVillage(villageId);
+        VillageEntity village = loadVillage(villageId, actorUserId);
         assertNotArchived(village);
         requireModerator(villageId, actorUserId);
 
@@ -228,14 +227,20 @@ public class VillageRecruitCategoryService {
     // 共通ヘルパ
     // ========================================================================
 
-    /** 有効な村を取得する（削除済みは VILLAGE_001）。凍結の可否はここでは判定しない（§6.4）。 */
-    private VillageEntity loadVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        return v;
+    /**
+     * 有効な村を取得する（削除済みは VILLAGE_001）。凍結の可否はここでは判定しない（§6.4）。
+     *
+     * <p>存在確認と可視性判定は {@link VillageAccessGate} に一元化する。凍結村でも一覧の閲覧は
+     * 許す設計（§6.4）なので、凍結を 409/404 に倒さない
+     * {@link VillageAccessGate#loadVillageAllowingArchived} へ委譲し、
+     * 書き込み時の凍結拒否は従来どおり {@link #assertNotArchived} が担う。</p>
+     *
+     * <p>これにより、後段の {@link #requireVillager}（NOT_MEMBER）・{@link #requireModerator}（403）へ
+     * 進む前に非公開(UNLISTED)村の非村人が不在と同一の 404 で弾かれ、存在オラクルが塞がる。
+     * PUBLIC 村はゲートを素通りするため非村人の応答は従来どおり。</p>
+     */
+    private VillageEntity loadVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadVillageAllowingArchived(villageId, actorUserId);
     }
 
     /** 凍結済み村での書き込み操作を拒否する（§6.4・AC-15）。 */

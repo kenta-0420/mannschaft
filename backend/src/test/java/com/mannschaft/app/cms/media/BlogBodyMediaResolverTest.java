@@ -2,7 +2,8 @@ package com.mannschaft.app.cms.media;
 
 import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
 import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
-import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -46,7 +47,7 @@ import static org.mockito.Mockito.verify;
 class BlogBodyMediaResolverTest {
 
     @Mock
-    private MediaUrlResolver mediaUrlResolver;
+    private StorageAccessService storageAccessService;
     @Mock
     private BlogMediaUploadRepository blogMediaUploadRepository;
 
@@ -77,15 +78,17 @@ class BlogBodyMediaResolverTest {
             }
             return asked.stream()
                     .filter(registered::contains)
-                    .map(k -> BlogMediaUploadEntity.builder().s3Key(k).build())
+                    .map(k -> BlogMediaUploadEntity.builder().id(1L).blogPostId(100L).s3Key(k)
+                            .scopeType(k.split("/")[1]).scopeId(Long.valueOf(k.split("/")[2])).build())
                     .collect(Collectors.toList());
         });
     }
 
     /** resolveAll のモック既定動作: 渡されたキーを "signed::&lt;key&gt;" へ解決する。 */
     private void stubResolveAllEcho() {
-        lenient().when(mediaUrlResolver.resolveAll(any())).thenAnswer(inv -> {
-            Collection<String> keys = inv.getArgument(0);
+        lenient().when(storageAccessService.generateDownloadUrlsForList(any(), any())).thenAnswer(inv -> {
+            Collection<StorageAclDownloadRequest> requests = inv.getArgument(0);
+            List<String> keys = requests.stream().map(StorageAclDownloadRequest::fileKey).toList();
             Map<String, String> out = new LinkedHashMap<>();
             if (keys != null) {
                 for (String k : keys) {
@@ -99,9 +102,9 @@ class BlogBodyMediaResolverTest {
     /** presign 対象として実際に渡されたキー集合を捕捉する。 */
     private Collection<String> capturePresignedKeys() {
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<Collection<String>> captor = ArgumentCaptor.forClass(Collection.class);
-        verify(mediaUrlResolver).resolveAll(captor.capture());
-        return captor.getValue();
+        ArgumentCaptor<Collection<StorageAclDownloadRequest>> captor = ArgumentCaptor.forClass(Collection.class);
+        verify(storageAccessService).generateDownloadUrlsForList(captor.capture(), any());
+        return captor.getValue().stream().map(StorageAclDownloadRequest::fileKey).toList();
     }
 
     // ========================================
@@ -116,12 +119,12 @@ class BlogBodyMediaResolverTest {
         @DisplayName("AC-B2-1: 画像記法 ![alt](blog/...) が署名URLへ置換される")
         void 画像のr2Keyが署名URLへ置換される() {
             stubLedgerContains(OWN_IMAGE_KEY);
-            given(mediaUrlResolver.resolveAll(any()))
+            given(storageAccessService.generateDownloadUrlsForList(any(), any()))
                     .willReturn(Map.of(OWN_IMAGE_KEY, SIGNED_IMAGE));
 
             String body = "冒頭の文章\n\n![写真](" + OWN_IMAGE_KEY + ")\n\n末尾の文章";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(result)
                     .as("生キーは署名URLへ置換されていること")
@@ -137,12 +140,12 @@ class BlogBodyMediaResolverTest {
         @DisplayName("AC-B2-2: 動画記法 <video src=\"blog/...\"> が署名URLへ置換される")
         void 動画のr2Keyが署名URLへ置換される() {
             stubLedgerContains(OWN_VIDEO_KEY);
-            given(mediaUrlResolver.resolveAll(any()))
+            given(storageAccessService.generateDownloadUrlsForList(any(), any()))
                     .willReturn(Map.of(OWN_VIDEO_KEY, SIGNED_VIDEO));
 
             String body = "<video src=\"" + OWN_VIDEO_KEY + "\" controls></video>";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(result)
                     .as("動画の生キーも署名URLへ置換されていること")
@@ -154,13 +157,13 @@ class BlogBodyMediaResolverTest {
         @DisplayName("AC-B2-3: 画像と動画が混在する本文で両方とも解決される")
         void 画像と動画が混在しても両方解決される() {
             stubLedgerContains(OWN_IMAGE_KEY, OWN_VIDEO_KEY);
-            given(mediaUrlResolver.resolveAll(any()))
+            given(storageAccessService.generateDownloadUrlsForList(any(), any()))
                     .willReturn(Map.of(OWN_IMAGE_KEY, SIGNED_IMAGE, OWN_VIDEO_KEY, SIGNED_VIDEO));
 
             String body = "![写真](" + OWN_IMAGE_KEY + ")\n"
                     + "<video src=\"" + OWN_VIDEO_KEY + "\" controls></video>";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(result).contains(SIGNED_IMAGE).contains(SIGNED_VIDEO);
         }
@@ -173,7 +176,7 @@ class BlogBodyMediaResolverTest {
             stubResolveAllEcho();
 
             String result = resolver.resolveBody(
-                    "![図](" + orgKey + ")", StorageScopeType.ORGANIZATION, 7L);
+                    "![図](" + orgKey + ")", StorageScopeType.ORGANIZATION, 7L, 100L);
 
             assertThat(result).contains("signed::" + orgKey);
         }
@@ -186,7 +189,7 @@ class BlogBodyMediaResolverTest {
             stubResolveAllEcho();
 
             String result = resolver.resolveBody(
-                    "![図](" + personalKey + ")", StorageScopeType.PERSONAL, 42L);
+                    "![図](" + personalKey + ")", StorageScopeType.PERSONAL, 42L, 100L);
 
             assertThat(result).contains("signed::" + personalKey);
         }
@@ -222,7 +225,7 @@ class BlogBodyMediaResolverTest {
             String body = "![自分の画像](" + OWN_IMAGE_KEY + ")\n"
                     + "![盗み見狙い](" + FOREIGN_KEY + ")";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(capturePresignedKeys())
                     .as("他スコープのキーを presign 対象に含めてはならない（情報漏洩）")
@@ -247,7 +250,7 @@ class BlogBodyMediaResolverTest {
 
             String body = "![自分](" + OWN_IMAGE_KEY + ")\n![越境](" + orgKey + ")";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(capturePresignedKeys())
                     .as("scopeId が同じでも scopeType が違えば別スコープ")
@@ -265,7 +268,7 @@ class BlogBodyMediaResolverTest {
 
             String body = "![自分](" + OWN_IMAGE_KEY + ")\n![traversal](" + traversalKey + ")";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(capturePresignedKeys())
                     .as("プレフィックス一致だけで通すと ../ で越境できる。正規化して拒否すること")
@@ -283,7 +286,7 @@ class BlogBodyMediaResolverTest {
 
             String body = "![自分](" + OWN_IMAGE_KEY + ")\n![隣](" + siblingKey + ")";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(capturePresignedKeys())
                     .as("\"blog/TEAM/12\" の前方一致で判定すると TEAM/123 が通ってしまう")
@@ -302,7 +305,7 @@ class BlogBodyMediaResolverTest {
 
             String body = "![自分](" + OWN_IMAGE_KEY + ")\n![encoded traversal](" + percentEncodedTraversalKey + ")";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(capturePresignedKeys())
                     .as("%2e%2e はデコードせず、正規形でない（% を含む）キーとして一律拒否すること")
@@ -321,7 +324,7 @@ class BlogBodyMediaResolverTest {
 
             String body = "![自分](" + OWN_IMAGE_KEY + ")\n![他機能](" + otherFeatureKey + ")";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(capturePresignedKeys())
                     .as("blog 配下以外のキーは本部品の責務外。presign してはならない")
@@ -349,7 +352,7 @@ class BlogBodyMediaResolverTest {
 
             String body = "![自分](" + OWN_IMAGE_KEY + ")\n![捏造](" + fabricatedKey + ")";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(capturePresignedKeys())
                     .as("台帳に実在しないキーは presign 対象へ含めてはならない")
@@ -368,7 +371,7 @@ class BlogBodyMediaResolverTest {
                     .mapToObj(i -> "![img" + i + "](blog/TEAM/12/img-" + i + ".png)")
                     .collect(Collectors.joining("\n"));
 
-            resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             verify(blogMediaUploadRepository, times(1)).findByS3KeyIn(any());
             verify(blogMediaUploadRepository, never()).findByS3Key(anyString());
@@ -382,7 +385,7 @@ class BlogBodyMediaResolverTest {
 
             String body = "![自分](" + OWN_IMAGE_KEY + ")\n![越境](" + FOREIGN_KEY + ")";
 
-            resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             @SuppressWarnings("unchecked")
             ArgumentCaptor<Collection<String>> captor = ArgumentCaptor.forClass(Collection.class);
@@ -403,11 +406,11 @@ class BlogBodyMediaResolverTest {
             String body = "![自分](" + OWN_IMAGE_KEY + ")";
 
             String[] result = new String[1];
-            assertThatCode(() -> result[0] = resolver.resolveBody(body, StorageScopeType.TEAM, 12L))
+            assertThatCode(() -> result[0] = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L))
                     .as("台帳照会の失敗で記事取得 API を 500 にしてはならない")
                     .doesNotThrowAnyException();
 
-            verify(mediaUrlResolver, never()).resolveAll(any());
+            verify(storageAccessService, never()).generateDownloadUrlsForList(any(), any());
             assertThat(result[0])
                     .as("検証できない以上 presign しない（fail-closed）。本文は失わない")
                     .contains(OWN_IMAGE_KEY);
@@ -428,13 +431,13 @@ class BlogBodyMediaResolverTest {
             String brokenKey = "blog/TEAM/12/dddddddd-4444.png";
             stubLedgerContains(OWN_IMAGE_KEY, brokenKey);
             // resolveAll は解決できたものだけを返す（MediaUrlResolver の契約）
-            given(mediaUrlResolver.resolveAll(any()))
+            given(storageAccessService.generateDownloadUrlsForList(any(), any()))
                     .willReturn(Map.of(OWN_IMAGE_KEY, SIGNED_IMAGE));
 
             String body = "![ok](" + OWN_IMAGE_KEY + ")\n![壊れ](" + brokenKey + ")";
 
             String[] result = new String[1];
-            assertThatCode(() -> result[0] = resolver.resolveBody(body, StorageScopeType.TEAM, 12L))
+            assertThatCode(() -> result[0] = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L))
                     .as("画像1枚の解決失敗で API 全体を落としてはならない")
                     .doesNotThrowAnyException();
 
@@ -447,22 +450,17 @@ class BlogBodyMediaResolverTest {
         }
 
         @Test
-        @DisplayName("AC-B4-2: resolveAll が例外を投げても伝播させず、本文を素通しして返す")
-        void resolveAllが例外でも伝播させない() {
+        @DisplayName("AC-B4-2: 署名基盤の障害は未登録と混同せず伝播させる")
+        void 署名基盤の例外を伝播させる() {
             stubLedgerContains(OWN_IMAGE_KEY);
-            given(mediaUrlResolver.resolveAll(any()))
+            given(storageAccessService.generateDownloadUrlsForList(any(), any()))
                     .willThrow(new RuntimeException("R2 presign 全滅"));
 
             String body = "![ok](" + OWN_IMAGE_KEY + ")";
 
-            String[] result = new String[1];
-            assertThatCode(() -> result[0] = resolver.resolveBody(body, StorageScopeType.TEAM, 12L))
-                    .as("presign 基盤の障害で記事取得 API を 500 にしてはならない")
-                    .doesNotThrowAnyException();
-
-            assertThat(result[0])
-                    .as("縮退時も本文自体は失わないこと")
-                    .contains(OWN_IMAGE_KEY);
+            org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                    resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L))
+                    .isInstanceOf(RuntimeException.class).hasMessage("R2 presign 全滅");
         }
     }
 
@@ -477,16 +475,16 @@ class BlogBodyMediaResolverTest {
         @Test
         @DisplayName("EDGE-1: 本文が null なら null を返し presign を呼ばない")
         void 本文がnullならnullを返す() {
-            assertThat(resolver.resolveBody(null, StorageScopeType.TEAM, 12L)).isNull();
-            verify(mediaUrlResolver, never()).resolveAll(any());
+            assertThat(resolver.resolveBody(null, StorageScopeType.TEAM, 12L, 100L)).isNull();
+            verify(storageAccessService, never()).generateDownloadUrlsForList(any(), any());
             verify(blogMediaUploadRepository, never()).findByS3KeyIn(any());
         }
 
         @Test
         @DisplayName("EDGE-2: 本文が空文字ならそのまま返し presign を呼ばない")
         void 本文が空文字ならpresignを呼ばない() {
-            assertThat(resolver.resolveBody("", StorageScopeType.TEAM, 12L)).isEmpty();
-            verify(mediaUrlResolver, never()).resolveAll(any());
+            assertThat(resolver.resolveBody("", StorageScopeType.TEAM, 12L, 100L)).isEmpty();
+            verify(storageAccessService, never()).generateDownloadUrlsForList(any(), any());
             verify(blogMediaUploadRepository, never()).findByS3KeyIn(any());
         }
 
@@ -495,10 +493,10 @@ class BlogBodyMediaResolverTest {
         void 画像が無ければpresignを呼ばない() {
             String body = "# 見出し\n\nただのテキストです。外部リンク http://example.com もある。";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(result).isEqualTo(body);
-            verify(mediaUrlResolver, never()).resolveAll(any());
+            verify(storageAccessService, never()).generateDownloadUrlsForList(any(), any());
             verify(blogMediaUploadRepository, never()).findByS3KeyIn(any());
         }
 
@@ -507,10 +505,10 @@ class BlogBodyMediaResolverTest {
         void 外部URL画像はpresign対象外() {
             String body = "![外部](https://example.com/photo.png)";
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(result).isEqualTo(body);
-            verify(mediaUrlResolver, never()).resolveAll(any());
+            verify(storageAccessService, never()).generateDownloadUrlsForList(any(), any());
         }
 
         @Test
@@ -533,7 +531,7 @@ class BlogBodyMediaResolverTest {
                     .mapToObj(i -> "![img" + i + "](blog/TEAM/12/img-" + i + ".png)")
                     .collect(Collectors.joining("\n"));
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             for (int i = 0; i < 30; i++) {
                 assertThat(result)
@@ -564,10 +562,10 @@ class BlogBodyMediaResolverTest {
                     .mapToObj(i -> "![img" + i + "](blog/TEAM/12/img-" + i + ".png)")
                     .collect(Collectors.joining("\n"));
 
-            resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
-            verify(mediaUrlResolver, times(1)).resolveAll(any());
-            verify(mediaUrlResolver, never()).resolve(anyString());
+            verify(storageAccessService, times(1)).generateDownloadUrlsForList(any(), any());
+            verify(storageAccessService, never()).generateDownloadUrl(anyString(), any(), any(), any(), any());
         }
 
         @Test
@@ -580,7 +578,7 @@ class BlogBodyMediaResolverTest {
                     .mapToObj(i -> "![同じ画像](" + OWN_IMAGE_KEY + ")")
                     .collect(Collectors.joining("\n"));
 
-            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L);
+            String result = resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L);
 
             assertThat(capturePresignedKeys())
                     .as("同一キーは1件へ重複排除して渡すこと")

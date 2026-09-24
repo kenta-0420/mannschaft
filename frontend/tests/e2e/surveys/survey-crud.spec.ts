@@ -233,7 +233,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
           meta: {
             page: 0,
             size: 50,
-            totalElements: currentSurveys.length,
+            total: currentSurveys.length,
             totalPages: currentSurveys.length === 0 ? 0 : 1,
           },
         }),

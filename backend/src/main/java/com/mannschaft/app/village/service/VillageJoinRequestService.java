@@ -15,7 +15,6 @@ import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageJoinRequestRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -58,10 +57,10 @@ import java.util.UUID;
 public class VillageJoinRequestService {
 
     private final VillageJoinRequestRepository joinRequestRepository;
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     /** 代表権限検証ロジックを委譲する（B3 既存メソッド再利用）。 */
     private final VillageMembershipService membershipService;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // 4.4.4 申請作成
@@ -84,7 +83,7 @@ public class VillageJoinRequestService {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
 
-        VillageEntity village = loadActiveVillage(villageId);
+        VillageEntity village = loadActiveVillage(villageId, actorUserId);
 
         // FREE 村は申請不要。直接参加 API を使うべき
         if (village.getJoinPolicy() == VillageJoinPolicy.FREE) {
@@ -138,7 +137,7 @@ public class VillageJoinRequestService {
                                                      VillageRequestStatus status,
                                                      int page,
                                                      int size) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         ensureReviewer(villageId, actorUserId);
 
         VillageRequestStatus targetStatus = status != null ? status : VillageRequestStatus.PENDING;
@@ -181,7 +180,7 @@ public class VillageJoinRequestService {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
         // 村の存在・凍結チェックは本 Service の他メソッドと同一の流儀に揃える
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
 
         return joinRequestRepository
                 .findByVillageIdAndRequesterUserIdOrderByCreatedAtDesc(villageId, actorUserId)
@@ -209,7 +208,7 @@ public class VillageJoinRequestService {
                                        UUID requestId,
                                        Long actorUserId,
                                        JoinRequestReviewRequest review) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMembershipEntity reviewer = ensureReviewer(villageId, actorUserId);
 
         VillageJoinRequestEntity req = loadRequestForVillage(villageId, requestId);
@@ -263,7 +262,7 @@ public class VillageJoinRequestService {
         if (review == null || review.reviewComment() == null || review.reviewComment().isBlank()) {
             throw new BusinessException(CommonErrorCode.COMMON_001);
         }
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMembershipEntity reviewer = ensureReviewer(villageId, actorUserId);
 
         VillageJoinRequestEntity req = loadRequestForVillage(villageId, requestId);
@@ -293,7 +292,7 @@ public class VillageJoinRequestService {
      */
     @Transactional
     public JoinRequestResponse withdraw(UUID villageId, UUID requestId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
 
         VillageJoinRequestEntity req = loadRequestForVillage(villageId, requestId);
 
@@ -315,17 +314,16 @@ public class VillageJoinRequestService {
     // 共通ヘルパ
     // ========================================================================
 
-    /** 有効な村を取得する（削除/凍結済みは VILLAGE_001 で扱う）。 */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     /**

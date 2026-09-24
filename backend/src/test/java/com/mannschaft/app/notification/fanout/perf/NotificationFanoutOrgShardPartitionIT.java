@@ -1,5 +1,7 @@
 package com.mannschaft.app.notification.fanout.perf;
 
+import com.mannschaft.app.notification.fanout.FanoutPageRequest;
+import com.mannschaft.app.notification.fanout.FanoutRecipient;
 import com.mannschaft.app.role.fanout.OrgFanoutRecipientSource;
 import com.mannschaft.app.support.perf.Fanout500kSeeder;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -60,8 +62,9 @@ class NotificationFanoutOrgShardPartitionIT extends AbstractMySqlIntegrationTest
         Set<Long> union = new HashSet<>();
         int totalReturned = 0;
         for (int shardIndex = 0; shardIndex < shardCount; shardIndex++) {
-            List<Long> page = recipientSource.nextPage(
-                    String.valueOf(seed.organizationId()), 0L, CHUNK_SIZE, true, shardIndex, shardCount);
+            List<Long> page = recipientSource.nextPage(new FanoutPageRequest(
+                    String.valueOf(seed.organizationId()), 0L, CHUNK_SIZE, true, shardIndex, shardCount))
+                    .stream().map(FanoutRecipient::userId).toList();
             // 空シャードは即空ページ（1回の呼び出しでページング終端）。
             assertThat(page.size()).as("AC-4: 1シャード分は最大でも母集団件数を超えない")
                     .isLessThanOrEqualTo(seed.memberCount());
@@ -93,8 +96,9 @@ class NotificationFanoutOrgShardPartitionIT extends AbstractMySqlIntegrationTest
             List<Long> collected = new ArrayList<>();
             int guard = 0;
             while (true) {
-                List<Long> page = recipientSource.nextPage(
-                        String.valueOf(seed.organizationId()), cursor, CHUNK_SIZE, true, shardIndex, shardCount);
+                List<Long> page = recipientSource.nextPage(new FanoutPageRequest(
+                        String.valueOf(seed.organizationId()), cursor, CHUNK_SIZE, true, shardIndex, shardCount))
+                        .stream().map(FanoutRecipient::userId).toList();
                 if (page.isEmpty()) {
                     break;
                 }
@@ -131,8 +135,9 @@ class NotificationFanoutOrgShardPartitionIT extends AbstractMySqlIntegrationTest
             Set<Long> ids = new HashSet<>();
             long cursor = 0L;
             while (true) {
-                List<Long> page = recipientSource.nextPage(
-                        String.valueOf(seed.organizationId()), cursor, CHUNK_SIZE, true, shardIndex, shardCount);
+                List<Long> page = recipientSource.nextPage(new FanoutPageRequest(
+                        String.valueOf(seed.organizationId()), cursor, CHUNK_SIZE, true, shardIndex, shardCount))
+                        .stream().map(FanoutRecipient::userId).toList();
                 if (page.isEmpty()) {
                     break;
                 }

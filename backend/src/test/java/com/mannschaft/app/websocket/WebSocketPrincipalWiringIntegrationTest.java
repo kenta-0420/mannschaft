@@ -9,14 +9,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.lang.NonNull;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.broker.SimpleBrokerMessageHandler;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.messaging.simp.user.SimpUserRegistry;
+import org.springframework.messaging.simp.user.UserDestinationResolver;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -69,7 +74,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIf("com.mannschaft.app.websocket.WebSocketPrincipalWiringIntegrationTest#isDockerAvailable")
-@DisplayName("§7.2 AC-5: STOMP Principal 未配線の欠陥実証（red 先行）")
+@DisplayName("§7.2 AC-5: STOMP Principal 配線の統合検証")
 class WebSocketPrincipalWiringIntegrationTest {
 
     @SuppressWarnings("resource")
@@ -112,6 +117,9 @@ class WebSocketPrincipalWiringIntegrationTest {
     @Autowired
     SimpleBrokerMessageHandler simpleBrokerMessageHandler;
 
+    @Autowired
+    UserDestinationResolver userDestinationResolver;
+
     private WebSocketStompClient stompClient;
 
     public static boolean isDockerAvailable() {
@@ -130,7 +138,7 @@ class WebSocketPrincipalWiringIntegrationTest {
     }
 
     @Test
-    @DisplayName("AC-5: CONNECT 後 SimpUserRegistry に登録され、convertAndSendToUser が到達する（現行は Principal 未配線 → red）")
+    @DisplayName("AC-5: CONNECT 後 SimpUserRegistry に登録され、convertAndSendToUser が到達する")
     void userDestinationDelivery_requiresPrincipalWiring() throws Exception {
         long userId = 90001L;
         String jwt = authTokenService.issueAccessToken(userId, List.of("USER"));
@@ -143,7 +151,8 @@ class WebSocketPrincipalWiringIntegrationTest {
         // ── 実 STOMP CONNECT（Authorization ヘッダで JWT を渡す）──
         BlockingQueue<Object> inbox = new LinkedBlockingQueue<>();
         StompSession session = connect(jwt);
-        session.subscribe("/user/queue/notifications", new StompFrameHandler() {
+        StompSession.Subscription subscription = session.subscribe(
+                "/user/queue/notifications", new StompFrameHandler() {
             @Override
             public @NonNull Type getPayloadType(@NonNull StompHeaders headers) {
                 return Object.class;
@@ -168,14 +177,46 @@ class WebSocketPrincipalWiringIntegrationTest {
                 .isNotNull()
                 .satisfies(u -> assertThat(u.getName()).isEqualTo(String.valueOf(userId)));
 
-        // ── AC-5 (2): convertAndSendToUser が当該ユーザーに到達する（解決先 0 件 → 未達 → red）──
+        // ── session.subscribe は非同期であり、SimpUserRegistryの購読表示だけでは
+        //    SimpleBroker内部の登録完了を保証しない。実宛先への購読登録そのものを待ってから送信する。
+        boolean subscribed = awaitUntil(
+                () -> isBrokerSubscriptionRegistered(userId, subscription.getSubscriptionId()),
+                Duration.ofSeconds(10));
+        assertThat(subscribed)
+                .as("/user/queue/notifications の購読がSimpleBroker内部へ登録されること")
+                .isTrue();
+
+        // ── AC-5 (2): convertAndSendToUser が当該ユーザーに到達する ──
         messagingTemplate.convertAndSendToUser(
                 String.valueOf(userId), "/queue/notifications", Map.of("type", "TEST", "message", "hello"));
 
-        Object received = inbox.poll(3, TimeUnit.SECONDS);
+        Object received = inbox.poll(10, TimeUnit.SECONDS);
         assertThat(received)
-                .as("ユーザー宛通知が接続中のクライアントに届くこと（現行は Principal 未配線で解決先 0 件 → 未達 red）")
+                .as("ユーザー宛通知が接続中のクライアントに届くこと")
                 .isNotNull();
+    }
+
+    private boolean isBrokerSubscriptionRegistered(long userId, String subscriptionId) {
+        Message<byte[]> userDestination = messageTo("/user/" + userId + "/queue/notifications");
+        var resolved = userDestinationResolver.resolveDestination(userDestination);
+        if (resolved == null) {
+            return false;
+        }
+
+        return resolved.getTargetDestinations().stream().anyMatch(targetDestination -> {
+            var subscriptions = simpleBrokerMessageHandler.getSubscriptionRegistry()
+                    .findSubscriptions(messageTo(targetDestination));
+            return subscriptions.entrySet().stream().anyMatch(entry ->
+                    resolved.getSessionIds().contains(entry.getKey())
+                            && entry.getValue().contains(subscriptionId));
+        });
+    }
+
+    private Message<byte[]> messageTo(String destination) {
+        return MessageBuilder.withPayload(new byte[0])
+                .setHeader(SimpMessageHeaderAccessor.MESSAGE_TYPE_HEADER, SimpMessageType.MESSAGE)
+                .setHeader(SimpMessageHeaderAccessor.DESTINATION_HEADER, destination)
+                .build();
     }
 
     private StompSession connect(String jwt) throws Exception {

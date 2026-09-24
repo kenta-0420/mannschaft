@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -37,7 +38,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * F22.1 謝礼決済 フォロー Wave A: {@link ConnectChargeService#listReceivedEscrows}（受取側エスクロー一覧）単体テスト。
+ * F22.1 謝礼決済 フォロー Wave A: {@link EscrowQueryService#listReceivedEscrows}（受取側エスクロー一覧）単体テスト。
  *
  * <p>test-first。検証: USER 本人→自分の受取一覧（clientSecret 非含有）/ TEAM ADMIN→当該 TEAM 受取一覧 /
  * status フィルタ伝播 / pagination / 他人 USER scope→403（IDOR）/ 非 ADMIN TEAM→403 / 受取 Connect 口座未登録→空ページ /
@@ -62,12 +63,9 @@ class ConnectChargeReceivedListTest {
     private static final UUID PAYEE_ACCOUNT_ID = UUID.fromString("019607a0-0000-7000-8000-0000000000aa");
     private static final UUID ESCROW_ID = UUID.fromString("019607a0-0000-7000-8000-000000000099");
 
-    private ConnectChargeService service() {
-        return new ConnectChargeService(
-                escrowTransactionRepository, connectAccountRepository,
-                feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new PayeeScopeResolver(), feePolicyResolver,
-                org.mockito.Mockito.mock(com.mannschaft.app.payment.recovery.FeeRecoveryBalanceRepository.class));
+    private EscrowQueryService service() {
+        return new EscrowQueryService(escrowTransactionRepository, connectAccountRepository,
+                stripePaymentProvider, accessControlService, refundRepository, new PayeeScopeResolver());
     }
 
     private ConnectAccountEntity payeeAccount(ScopeKind scopeKind, Long scopeId) {
@@ -93,7 +91,7 @@ class ConnectChargeReceivedListTest {
     @Test
     @DisplayName("USER 本人: 自分の受取一覧を返す（scope 認可は本人照合のみ・AccessControlService 不使用）")
     void userSelf_returnsOwnReceived() {
-        ConnectChargeService svc = service();
+        EscrowQueryService svc = service();
         given(connectAccountRepository.findByScopeKindAndScopeIdAndDeletedAtIsNull(
                 ScopeKind.USER, ACTOR_USER_ID))
                 .willReturn(Optional.of(payeeAccount(ScopeKind.USER, ACTOR_USER_ID)));
@@ -103,11 +101,11 @@ class ConnectChargeReceivedListTest {
                 .willReturn(new PageImpl<>(List.of(captured()), pageable, 1));
         given(refundRepository.findByEscrowTransactionId(any())).willReturn(List.of());
 
-        Page<ConnectChargeService.ReceivedEscrow> result =
+        Page<EscrowQueryService.ReceivedEscrow> result =
                 svc.listReceivedEscrows(ScopeKind.USER, ACTOR_USER_ID, null, ACTOR_USER_ID, pageable);
 
         assertThat(result.getTotalElements()).isEqualTo(1L);
-        ConnectChargeService.ReceivedEscrow row = result.getContent().get(0);
+        EscrowQueryService.ReceivedEscrow row = result.getContent().get(0);
         assertThat(row.status()).isEqualTo(EscrowStatus.CAPTURED);
         assertThat(row.faceAmount()).isEqualTo(10_000L);
         assertThat(row.chargeAmount()).isEqualTo(10_250L);
@@ -121,7 +119,7 @@ class ConnectChargeReceivedListTest {
     @Test
     @DisplayName("TEAM ADMIN: checkPermission 通過→当該 TEAM の受取一覧＋status フィルタ伝播＋返金累計集計")
     void teamAdmin_withStatusFilter_aggregatesRefund() {
-        ConnectChargeService svc = service();
+        EscrowQueryService svc = service();
         given(connectAccountRepository.findByScopeKindAndScopeIdAndDeletedAtIsNull(
                 ScopeKind.TEAM, TEAM_ID))
                 .willReturn(Optional.of(payeeAccount(ScopeKind.TEAM, TEAM_ID)));
@@ -132,14 +130,14 @@ class ConnectChargeReceivedListTest {
                 any(), eq(EscrowStatus.PARTIALLY_REFUNDED), eq(pageable)))
                 .willReturn(new PageImpl<>(List.of(e), pageable, 1));
         RefundEntity ok = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
-                .stripeRefundId("re_1").amount(3_000L).currency("JPY").reason("REQUESTED_BY_CUSTOMER")
+                .stripeRefundId("re_1").amount(3_000L).currency("jpy").reason("REQUESTED_BY_CUSTOMER")
                 .status(RefundStatus.SUCCEEDED).build();
         RefundEntity failed = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
                 .stripeRefundId("re_2").amount(9_999L).currency("JPY").reason("REQUESTED_BY_CUSTOMER")
                 .status(RefundStatus.FAILED).build();
         given(refundRepository.findByEscrowTransactionId(any())).willReturn(List.of(ok, failed));
 
-        Page<ConnectChargeService.ReceivedEscrow> result = svc.listReceivedEscrows(
+        Page<EscrowQueryService.ReceivedEscrow> result = svc.listReceivedEscrows(
                 ScopeKind.TEAM, TEAM_ID, EscrowStatus.PARTIALLY_REFUNDED, ACTOR_USER_ID, pageable);
 
         assertThat(result.getContent()).hasSize(1);
@@ -150,9 +148,59 @@ class ConnectChargeReceivedListTest {
     }
 
     @Test
+    @DisplayName("FAILED返金はMoney生成前に除外し、成功返金の通貨不一致は拒否する")
+    void receivedList_excludesFailedBeforeMoneyConversionAndRejectsSuccessfulCurrencyMismatch() {
+        EscrowQueryService svc = service();
+        given(connectAccountRepository.findByScopeKindAndScopeIdAndDeletedAtIsNull(
+                ScopeKind.TEAM, TEAM_ID))
+                .willReturn(Optional.of(payeeAccount(ScopeKind.TEAM, TEAM_ID)));
+        Pageable pageable = PageRequest.of(0, 20);
+        given(escrowTransactionRepository.findByPayeeConnectAccountIdOrderByCreatedAtDesc(any(), eq(pageable)))
+                .willReturn(new PageImpl<>(List.of(captured()), pageable, 1));
+        RefundEntity failedDifferentCurrency = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
+                .stripeRefundId("re_failed").amount(9_999L).currency("USD").reason("REQUESTED_BY_CUSTOMER")
+                .status(RefundStatus.FAILED).build();
+        RefundEntity succeededDifferentCurrency = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
+                .stripeRefundId("re_succeeded").amount(1L).currency("USD").reason("REQUESTED_BY_CUSTOMER")
+                .status(RefundStatus.SUCCEEDED).build();
+        given(refundRepository.findByEscrowTransactionId(any()))
+                .willReturn(List.of(failedDifferentCurrency));
+
+        assertThat(svc.listReceivedEscrows(ScopeKind.TEAM, TEAM_ID, null, ACTOR_USER_ID, pageable)
+                .getContent().get(0).refundedAmount()).isZero();
+
+        given(refundRepository.findByEscrowTransactionId(any()))
+                .willReturn(List.of(succeededDifferentCurrency));
+        assertThatIllegalArgumentException().isThrownBy(() ->
+                svc.listReceivedEscrows(ScopeKind.TEAM, TEAM_ID, null, ACTOR_USER_ID, pageable));
+    }
+
+    @Test
+    @DisplayName("成功返金の累計がlongを超える場合は例外にする")
+    void receivedList_rejectsSuccessfulRefundOverflow() {
+        EscrowQueryService svc = service();
+        given(connectAccountRepository.findByScopeKindAndScopeIdAndDeletedAtIsNull(
+                ScopeKind.TEAM, TEAM_ID))
+                .willReturn(Optional.of(payeeAccount(ScopeKind.TEAM, TEAM_ID)));
+        Pageable pageable = PageRequest.of(0, 20);
+        given(escrowTransactionRepository.findByPayeeConnectAccountIdOrderByCreatedAtDesc(any(), eq(pageable)))
+                .willReturn(new PageImpl<>(List.of(captured()), pageable, 1));
+        RefundEntity first = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
+                .stripeRefundId("re_max").amount(Long.MAX_VALUE).currency("JPY").reason("REQUESTED_BY_CUSTOMER")
+                .status(RefundStatus.SUCCEEDED).build();
+        RefundEntity second = RefundEntity.builder().escrowTransactionId(ESCROW_ID)
+                .stripeRefundId("re_one").amount(1L).currency("JPY").reason("REQUESTED_BY_CUSTOMER")
+                .status(RefundStatus.SUCCEEDED).build();
+        given(refundRepository.findByEscrowTransactionId(any())).willReturn(List.of(first, second));
+
+        assertThatThrownBy(() -> svc.listReceivedEscrows(ScopeKind.TEAM, TEAM_ID, null, ACTOR_USER_ID, pageable))
+                .isInstanceOf(ArithmeticException.class);
+    }
+
+    @Test
     @DisplayName("USER 他人 scope: 本人と異なる scopeId→403（IDOR・Connect 口座も引かない）")
     void userOther_forbidden() {
-        ConnectChargeService svc = service();
+        EscrowQueryService svc = service();
         Pageable pageable = PageRequest.of(0, 20);
 
         assertThatThrownBy(() -> svc.listReceivedEscrows(
@@ -167,7 +215,7 @@ class ConnectChargeReceivedListTest {
     @Test
     @DisplayName("TEAM 非 ADMIN: checkPermission が認可エラー→403 へ正規化")
     void teamNonAdmin_forbidden() {
-        ConnectChargeService svc = service();
+        EscrowQueryService svc = service();
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                 .given(accessControlService).checkPermission(eq(ACTOR_USER_ID), eq(TEAM_ID), eq("TEAM"), any());
         Pageable pageable = PageRequest.of(0, 20);
@@ -182,13 +230,13 @@ class ConnectChargeReceivedListTest {
     @Test
     @DisplayName("受取 Connect 口座未登録（受取実績ゼロ）: 認可通過後に空ページを返す")
     void noConnectAccount_returnsEmptyPage() {
-        ConnectChargeService svc = service();
+        EscrowQueryService svc = service();
         given(connectAccountRepository.findByScopeKindAndScopeIdAndDeletedAtIsNull(
                 ScopeKind.TEAM, TEAM_ID))
                 .willReturn(Optional.empty());
         Pageable pageable = PageRequest.of(0, 20);
 
-        Page<ConnectChargeService.ReceivedEscrow> result = svc.listReceivedEscrows(
+        Page<EscrowQueryService.ReceivedEscrow> result = svc.listReceivedEscrows(
                 ScopeKind.TEAM, TEAM_ID, null, ACTOR_USER_ID, pageable);
 
         assertThat(result.getTotalElements()).isZero();

@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
@@ -31,6 +33,9 @@ public class RecruitmentPenaltyLiftBatch {
     /**
      * 毎日 03:00 JST (= 18:00 UTC) に実行。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_RECRUITMENT_ENABLED",
+            reason = "止めるとペナルティ解除が遅れるが、募集機能を閉じている間はペナルティが行使される場面が無く、再開後に期限切れ分をまとめて解除できる")
     @BatchEndpoint(name = "recruitment-penalty-lift-daily", description = "期限切れの募集ペナルティを毎日 03:00 に AUTO_EXPIRED で自動解除する")
     @Scheduled(cron = "0 0 18 * * *")
     @SchedulerLock(name = "recruitment-penalty-lift-batch", lockAtMostFor = "50m", lockAtLeastFor = "5m")

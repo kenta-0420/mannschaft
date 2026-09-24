@@ -59,6 +59,9 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class SurveyService {
 
+    /** CMP-041: ADMIN+ 委任判定に用いる permission 名。 */
+    private static final String PERMISSION_MANAGE_SURVEYS = "MANAGE_SURVEYS";
+
     private final SurveyRepository surveyRepository;
     private final SurveyQuestionRepository questionRepository;
     private final SurveyOptionRepository optionRepository;
@@ -68,12 +71,15 @@ public class SurveyService {
     private final SurveyMapper surveyMapper;
     private final ObjectMapper objectMapper;
     private final AccessControlService accessControlService;
-    private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
+    private final org.springframework.context.MessageSource messageSource;
     private final ApplicationEventPublisher eventPublisher;
-    private final OrganizationMembershipService organizationMembershipService;
+    /** 母集団解決の唯一の窓口（公開時のスナップショットと結果閲覧時の分母を同一定義にする）。 */
+    private final SurveyUniverseResolver universeResolver;
     /** 結果閲覧可否の唯一の判定点（結果取得 API の 403 と共用。Issue #2779）。 */
     private final SurveyResultAccessGuard resultAccessGuard;
+    /** 管理操作可否の唯一の判定点（管理系 API の 403 と共用。CMP-041）。 */
+    private final SurveyAccessGuard surveyAccessGuard;
 
     /**
      * アンケート一覧をページング取得する。
@@ -189,7 +195,15 @@ public class SurveyService {
         SurveyResponse surveyResponse = surveyMapper.toSurveyResponse(entity);
         List<QuestionResponse> questions = buildQuestionResponses(entity.getId());
         boolean viewerCanViewResults = resultAccessGuard.canViewResults(entity, userId);
-        return SurveyDetailResponse.of(surveyResponse, questions, viewerCanViewResults);
+        // CMP-041: 管理操作可否も BE の判定点（SurveyAccessGuard）から載せる。
+        // FE がロール名で操作ボタンを出し分けると、権限を持たない DEPUTY_ADMIN に
+        // 「押すと必ず 403 になるボタン」が見えるため、判定は BE 側に一本化する。
+        boolean viewerCanManage = surveyAccessGuard.canManage(
+                userId, entity.getCreatedBy(), entity.getScopeId(), entity.getScopeType());
+        boolean viewerCanViewTeamBreakdown = surveyAccessGuard.hasSurveyAdminPermission(
+                userId, entity.getScopeId(), entity.getScopeType());
+        return SurveyDetailResponse.of(surveyResponse, questions, viewerCanViewResults,
+                viewerCanManage, viewerCanViewTeamBreakdown);
     }
 
     /**
@@ -351,9 +365,15 @@ public class SurveyService {
             throw new BusinessException(SurveyErrorCode.NO_QUESTIONS);
         }
 
+        // 配信対象者数のスナップショット（F05.4 §1426-1428 / §117・Issue #2787）。
+        // 「公開時点の人数」で固定するのが仕様であり、後からメンバーが増減しても変えない。
+        // 母集団の定義は SurveyUniverseResolver に一元化してあり、結果閲覧時の分母・
+        // 未回答者一覧・督促の宛先とまったく同じ定義を用いる。
+        // 状態遷移と同一トランザクション内で書くため、公開が失敗すれば本値も保存されない。
+        entity.updateTargetCount(universeResolver.countUniverseUserIds(entity));
         entity.publish();
         SurveyEntity saved = surveyRepository.save(entity);
-        log.info("アンケート公開: surveyId={}", surveyId);
+        log.info("アンケート公開: surveyId={}, targetCount={}", surveyId, saved.getTargetCount());
 
         // 公開時通知（F05.4 §1528 SURVEY_CREATED）を AFTER_COMMIT・非同期で発火する（規模対応 Tier2）。
         // 受信者ループ（通知行作成）は SurveyPublishNotificationListener が event-pool で実行し、
@@ -542,9 +562,10 @@ public class SurveyService {
                                           java.time.LocalDateTime newDeadline, Long currentUserId) {
         SurveyEntity entity = findSurveyOrThrow(scopeType, scopeId, surveyId);
 
-        // 認可: 作成者 or ADMIN+
+        // 認可: 作成者 or ADMIN+（MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任・CMP-041）
         boolean isCreator = entity.getCreatedBy() != null && entity.getCreatedBy().equals(currentUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, scopeId, scopeType);
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                currentUserId, scopeId, scopeType, PERMISSION_MANAGE_SURVEYS);
         if (!isCreator && !isAdmin) {
             throw new BusinessException(SurveyErrorCode.OPERATION_PERMISSION_DENIED);
         }
@@ -585,17 +606,35 @@ public class SurveyService {
         // 通さない。これにより締切延長通知が直属一般メンバー・配下チームメンバーへ誤 deny で届かない
         // (B) レグを根治する。
         if (!recipients.isEmpty()) {
-            notificationHelper.notifyAllPreAuthorized(
+            // Issue #2715 CMP-055 ロットC-5: 受信者 locale に応じて件名・本文・日時表記を組み立てる
+            // （notifyAllPreAuthorizedLocalized は notifyAllPreAuthorized 同様 canView 絞り込みを通さない）。
+            // AC-7: newDeadline の表記もパターンを locale 鍵に持たせてロケール化する
+            // （時刻の値自体は変えない。テナントTZ対応は別戦役 CMP-023 の範囲）。
+            notificationHelper.notifyAllPreAuthorizedLocalized(
                     recipients,
                     SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
-                    "アンケート締切が延長されました",
-                    "「" + saved.getTitle() + "」の回答締切が " + newDeadline + " に延長されました。",
                     "SURVEY",
                     surveyId,
                     notifScope,
                     scopeId,
                     "/surveys/" + surveyId,
-                    currentUserId);
+                    currentUserId,
+                    (userId, locale) -> {
+                        String deadlinePattern = messageSource.getMessage(
+                                "notification.survey.deadlineExtended.deadlinePattern", null,
+                                "yyyy年M月d日 HH:mm", locale);
+                        String formattedDeadline = newDeadline.format(
+                                java.time.format.DateTimeFormatter.ofPattern(deadlinePattern, locale));
+                        return new NotificationHelper.LocalizedMessage(
+                                messageSource.getMessage(
+                                        "notification.survey.deadlineExtended.title", null,
+                                        "アンケート締切が延長されました", locale),
+                                messageSource.getMessage(
+                                        "notification.survey.deadlineExtended.body",
+                                        new Object[]{saved.getTitle(), formattedDeadline},
+                                        "「" + saved.getTitle() + "」の回答締切が " + formattedDeadline + " に延長されました。",
+                                        locale));
+                    });
         }
 
         log.info("アンケート締切延長: surveyId={}, newDeadline={}, by={}", surveyId, newDeadline, currentUserId);
@@ -621,9 +660,10 @@ public class SurveyService {
                                                  DuplicateSurveyRequest request, Long currentUserId) {
         SurveyEntity source = findSurveyOrThrow(scopeType, scopeId, surveyId);
 
-        // 認可: 作成者 or ADMIN+
+        // 認可: 作成者 or ADMIN+（MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任・CMP-041）
         boolean isCreator = source.getCreatedBy() != null && source.getCreatedBy().equals(currentUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, scopeId, scopeType);
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                currentUserId, scopeId, scopeType, PERMISSION_MANAGE_SURVEYS);
         if (!isCreator && !isAdmin) {
             throw new BusinessException(SurveyErrorCode.OPERATION_PERMISSION_DENIED);
         }
@@ -763,11 +803,8 @@ public class SurveyService {
      * @return 配信対象ユーザー ID リスト
      */
     private List<Long> resolveAllModeRecipients(String scopeType, Long scopeId, SurveyEntity survey) {
-        if ("ORGANIZATION".equals(scopeType)) {
-            return organizationMembershipService.resolveOrgDistributionUserIds(
-                    scopeId, Boolean.TRUE.equals(survey.getIncludeSupporters()));
-        }
-        return userRoleRepository.findUserIdsByScope(scopeType, scopeId);
+        return universeResolver.resolveAllModeUserIds(
+                scopeType, scopeId, Boolean.TRUE.equals(survey.getIncludeSupporters()));
     }
 
     /**

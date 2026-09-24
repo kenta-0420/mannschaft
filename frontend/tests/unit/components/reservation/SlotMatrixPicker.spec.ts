@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterAll, beforeEach, afterEach } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import type { VueWrapper } from '@vue/test-utils'
 import { ref } from 'vue'
 import dayjs from 'dayjs'
 import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
@@ -31,14 +32,18 @@ import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
 const mockGetLines = vi.fn()
 const mockGetMenus = vi.fn()
 const mockGetSlotGrid = vi.fn()
+const mockGetReservationSettings = vi.fn()
 const mockListMyWaitlist = vi.fn()
+const mockCreateGroup = vi.fn()
 
 vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
     getLines: mockGetLines,
     getMenus: mockGetMenus,
     getSlotGrid: mockGetSlotGrid,
+    getReservationSettings: mockGetReservationSettings,
     listMyWaitlist: mockListMyWaitlist,
+    createGroup: mockCreateGroup,
   }),
 }))
 
@@ -103,9 +108,33 @@ function bookedGridResponse(slotId: number, date: string) {
   }
 }
 
-async function flush() {
+async function flushRaw() {
   await new Promise(r => setTimeout(r, 0))
   await new Promise(r => setTimeout(r, 0))
+}
+
+/** 既存のセル操作テストは明示的に全日を開いた状態を前提にする。初期全閉の契約は専用テストで raw flush を使う。 */
+async function findDateToggle(wrapper: VueWrapper, date: string): Promise<HTMLButtonElement | null> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const toggle = wrapper.find<HTMLButtonElement>(`[data-testid="matrix-toggle-date-${date}"]`)
+    if (toggle.exists()) return toggle.element
+    await flushRaw()
+  }
+  return null
+}
+
+/** 初期全閉のグリッドで、検査対象の日だけを開く。 */
+async function openDate(wrapper: VueWrapper, date: string): Promise<void> {
+  const toggle = await findDateToggle(wrapper, date)
+  if (!toggle || toggle.getAttribute('aria-expanded') === 'true') return
+  toggle.click()
+  await flushRaw()
+}
+
+/** 通常のセル検査用に対象日を開いてから描画を安定させる。 */
+async function flush(wrapper: VueWrapper, date = tomorrow) {
+  await flushRaw()
+  await openDate(wrapper, date)
 }
 
 function findByTestId<T extends Element = HTMLElement>(testId: string): T | null {
@@ -116,8 +145,11 @@ beforeEach(() => {
   mockGetLines.mockReset()
   mockGetMenus.mockReset()
   mockGetSlotGrid.mockReset()
+  mockGetReservationSettings.mockReset()
   mockListMyWaitlist.mockReset()
+  mockCreateGroup.mockReset()
   mockGetMenus.mockResolvedValue({ data: [] })
+  mockGetReservationSettings.mockResolvedValue({ data: { resourceNameType: 'DEFAULT', resourceNameCustom: null } })
   mockListMyWaitlist.mockResolvedValue({ data: [] })
 })
 
@@ -131,14 +163,107 @@ afterAll(() => {
 })
 
 describe('SlotMatrixPicker.vue', () => {
+  it('AC-17: 初期は全日閉じ、日別開閉と全体開閉が機能し、週移動後も曜日ごとの開閉状態を保つ', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue(gridResponseWithCells())
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flushRaw()
+
+    expect(findByTestId('matrix-no-slots-empty')).toBeNull()
+    expect(wrapper.findAll('[data-header-index]').length).toBe(0)
+    const dayToggle = await findDateToggle(wrapper, tomorrow)
+    expect(dayToggle?.getAttribute('aria-expanded')).toBe('false')
+
+    await openDate(wrapper, tomorrow)
+    expect((await findDateToggle(wrapper, tomorrow))?.getAttribute('aria-expanded')).toBe('true')
+    expect(wrapper.findAll('[data-header-index]').length).toBeGreaterThan(0)
+
+    const nextWeekDate = dayjs(tomorrow).add(7, 'day').format('YYYY-MM-DD')
+    mockGetSlotGrid.mockResolvedValue(bookedGridResponse(201, nextWeekDate))
+    const nextWeekBtn = wrapper.findAllComponents({ name: 'Button' }).find(b => b.props('icon') === 'pi pi-angle-right')
+    await nextWeekBtn!.trigger('click')
+    await flush(wrapper, nextWeekDate)
+    expect((await findDateToggle(wrapper, nextWeekDate))?.getAttribute('aria-expanded')).toBe('true')
+
+    wrapper.find<HTMLButtonElement>('[data-testid="matrix-toggle-all"]').element.click()
+    await flushRaw()
+    expect(wrapper.findAll('[data-header-index]').length).toBe(0)
+  })
+
+  it('AC-18: 自分の予約済み満席セルは予約済み表示かつ操作不能で、キャンセル待ちを開かない', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        meta: null,
+        days: [{
+          date: tomorrow,
+          columns: [{
+            lineId: 1,
+            lineName: 'Seat1',
+            lineIds: [],
+            cells: [{ slotId: 901, startTime: '10:00', endTime: '10:30', state: 'BOOKED', reservedByCurrentUser: true }],
+          }],
+        }],
+      },
+    })
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flush(wrapper, tomorrow)
+
+    const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('10:00'))
+    expect(cell?.text()).toContain('Booked by you')
+    expect(cell?.attributes('disabled')).toBeDefined()
+    await cell!.trigger('click')
+    await flush(wrapper)
+    expect(findByTestId('waitlist-register')).toBeNull()
+  })
+
+  it('チームTZをviewer TZより優先し、週起点・API範囲・過去セルをチーム日付境界で判定する', async () => {
+    // UTC 23:30 は viewer=Asia/Tokyo では翌日08:30だが、team=America/New_Yorkでは同日19:30。
+    vi.setSystemTime(new Date('2026-08-09T23:30:00Z'))
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        meta: null,
+        days: [{
+          date: '2026-08-09',
+          columns: [{
+            lineId: 1,
+            lineName: 'Seat1',
+            lineIds: [],
+            cells: [{ slotId: 901, slotDate: '2026-08-09', endDate: '2026-08-09', startTime: '20:00', endTime: '20:30', state: 'AVAILABLE' }],
+          }],
+        }],
+      },
+    })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', teamTimezone: 'America/New_York', isAdmin: false },
+    })
+    await flush(wrapper)
+
+    const [, params] = mockGetSlotGrid.mock.calls[0] as [string, Record<string, unknown>]
+    // viewer TZ基準なら 2026-08-10週になるが、team TZでは 2026-08-03週。
+    expect(params.from).toBe('2026-08-03')
+    expect(params.to).toBe('2026-08-09')
+    const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('20:00'))
+    expect(cell?.attributes('disabled')).toBeUndefined()
+
+    vi.setSystemTime(new Date('2026-08-11T03:00:00Z'))
+  })
+
   it('AC-1: from/to レンジ呼びでグリッドAPIを叩く（#2575 で axis は送らない）', async () => {
     mockGetLines.mockResolvedValue({ data: [activeLine] })
     mockGetSlotGrid.mockResolvedValue(gridResponseWithCells())
 
-    await mountSuspended(SlotMatrixPicker, {
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: false },
     })
-    await flush()
+    await flush(wrapper)
 
     expect(mockGetSlotGrid).toHaveBeenCalled()
     const [teamId, params] = mockGetSlotGrid.mock.calls[0] as [string, Record<string, unknown>]
@@ -158,7 +283,7 @@ describe('SlotMatrixPicker.vue', () => {
     const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: true },
     })
-    await flush()
+    await flush(wrapper)
 
     expect(wrapper.html()).toContain('No reservation targets yet')
   })
@@ -170,13 +295,13 @@ describe('SlotMatrixPicker.vue', () => {
     const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: false },
     })
-    await flush()
+    await flush(wrapper)
 
     // 10:00 の30分セル（span=1）をクリック
     const cell10 = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('10:00'))
     expect(cell10).toBeTruthy()
     await cell10!.trigger('click')
-    await flush()
+    await flush(wrapper)
 
     // GroupBookingDialog が開き「メニューなしで30分だけ予約」ボタンが描画される
     expect(findByTestId('group-no-menu')).not.toBeNull()
@@ -190,19 +315,49 @@ describe('SlotMatrixPicker.vue', () => {
     const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: false },
     })
-    await flush()
+    await flush(wrapper)
 
     // 10:30-11:30（60分・span=2）セルをクリック
     const longCell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('10:30'))
     expect(longCell).toBeTruthy()
     await longCell!.trigger('click')
-    await flush()
+    await flush(wrapper)
 
     expect(wrapper.emitted('slotSelected')).toBeTruthy()
     const payload = wrapper.emitted('slotSelected')![0]
     expect(payload).toEqual([202, 1, 'Seat1', tomorrow, '10:30', '11:30'])
     // 単枠フローは親のReservationFormへ委譲するため、グループダイアログ内の要素は出ない
     expect(findByTestId('group-no-menu')).toBeNull()
+  })
+
+  it('AC-16: 実際の slotDate が未来なら翌日終了セルを disabled にせず、終了時刻を明示する', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    const rowDate = dayjs().format('YYYY-MM-DD')
+    const endDate = dayjs(tomorrow).add(1, 'day').format('YYYY-MM-DD')
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        meta: null,
+        days: [{
+          date: rowDate,
+          columns: [{
+            lineId: 1,
+            lineName: 'Seat1',
+            lineIds: [],
+            cells: [{ slotId: 299, slotDate: tomorrow, endDate, startTime: '23:00', endTime: '04:00', state: 'AVAILABLE' }],
+          }],
+        }],
+      },
+    })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flush(wrapper, rowDate)
+
+    const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('23:00'))
+    expect(cell).toBeTruthy()
+    expect(cell!.attributes('disabled')).toBeUndefined()
+    expect(cell!.attributes('aria-label')).toContain('Next day 04:00')
   })
 
   it('AC-5: 縦横スクロールコンテナに overscroll-contain が付与される（縦→横ホイール変換は実装しない。UX改善5点の4で縦スクロールも同一コンテナに統合）', async () => {
@@ -212,7 +367,7 @@ describe('SlotMatrixPicker.vue', () => {
     const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: false },
     })
-    await flush()
+    await flush(wrapper)
 
     expect(wrapper.html()).toContain('overscroll-contain')
   })
@@ -224,7 +379,7 @@ describe('SlotMatrixPicker.vue', () => {
     const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: false },
     })
-    await flush()
+    await flush(wrapper)
 
     const html = wrapper.html()
     // 左上コーナー: 左右上下の両軸 sticky（left-0 と top-0 の両方）で最前面（z-20）
@@ -265,7 +420,7 @@ describe('SlotMatrixPicker.vue', () => {
     const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: false },
     })
-    await flush()
+    await flush(wrapper)
 
     // 事由ありセル: × と事由文字列を描画し、aria-label/title にも事由が載る
     const reasonCell = wrapper.findAll('button').find(b => b.text().includes('Training'))
@@ -295,7 +450,7 @@ describe('SlotMatrixPicker.vue', () => {
     const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: false },
     })
-    await flush()
+    await flush(wrapper)
 
     // 今週の応答には登録先(902)が含まれないため「待機中」は出ない（901はBOOKEDのまま=Full表示）
     expect(wrapper.text()).not.toContain('Waiting')
@@ -308,7 +463,7 @@ describe('SlotMatrixPicker.vue', () => {
     const nextWeekBtn = wrapper.findAllComponents({ name: 'Button' }).find(b => b.props('icon') === 'pi pi-angle-right')
     expect(nextWeekBtn, '翌週ボタンが見つかること').toBeTruthy()
     await nextWeekBtn!.trigger('click')
-    await flush()
+    await flush(wrapper, nextWeekDate)
 
     // loadMyWaitlist がグリッド再取得後に呼ばれ、902 が loadedSlotIds に含まれるようになったことで
     // セルの表示が「待機中」に切り替わる（呼び忘れがあれば表示されない＝このアサーションが落ちる）。
@@ -373,7 +528,7 @@ describe('SlotMatrixPicker.vue', () => {
       // （既定のマウントは detached で、イベントがコンポーネント root 止まりになる）。
       attachTo: document.body,
     })
-    await flush()
+    await flush(wrapper)
 
     const root = wrapper.element as Element
     const start = cellAt(root, 0, 0)
@@ -382,7 +537,7 @@ describe('SlotMatrixPicker.vue', () => {
     dispatchPointer(start, 'pointerdown', { clientX: 100, clientY: 100 })
     // しきい値(8px)を超えて 11:00 のセルまで移動
     dispatchPointer(end, 'pointermove', { clientX: 200, clientY: 100 })
-    await flush()
+    await flush(wrapper)
 
     // ドラッグ中は選択範囲が視覚的に追従する（3枚ともハイライト）
     expect(cellAt(root, 0, 0).className).toContain('ring-primary')
@@ -390,7 +545,7 @@ describe('SlotMatrixPicker.vue', () => {
     expect(cellAt(root, 0, 2).className).toContain('ring-primary')
 
     dispatchPointer(end, 'pointerup', { clientX: 200, clientY: 100 })
-    await flush()
+    await flush(wrapper)
 
     // メニュー選択ステップを飛ばして「連続枠プレビュー」に入る（＝確定ボタンが出る）
     expect(findByTestId('group-confirm'), '一括予約の確定ボタンが出ること').not.toBeNull()
@@ -431,7 +586,7 @@ describe('SlotMatrixPicker.vue', () => {
       // （既定のマウントは detached で、イベントがコンポーネント root 止まりになる）。
       attachTo: document.body,
     })
-    await flush()
+    await flush(wrapper)
 
     const root = wrapper.element as Element
     const start = cellAt(root, 0, 0)
@@ -439,7 +594,7 @@ describe('SlotMatrixPicker.vue', () => {
 
     dispatchPointer(start, 'pointerdown', { clientX: 100, clientY: 100 })
     dispatchPointer(end, 'pointermove', { clientX: 200, clientY: 100 })
-    await flush()
+    await flush(wrapper)
 
     // BOOKED の手前（10:00 のみ）で打ち切られ、その先はハイライトされない
     expect(cellAt(root, 0, 0).className).toContain('ring-primary')
@@ -447,7 +602,7 @@ describe('SlotMatrixPicker.vue', () => {
     expect(cellAt(root, 0, 2).className).not.toContain('ring-primary')
 
     dispatchPointer(end, 'pointerup', { clientX: 200, clientY: 100 })
-    await flush()
+    await flush(wrapper)
 
     // 選択は1枠のみ＝従来どおりメニュー選択ステップから始まる（一括予約にはならない）
     expect(findByTestId('group-no-menu')).not.toBeNull()
@@ -464,7 +619,7 @@ describe('SlotMatrixPicker.vue', () => {
       // （既定のマウントは detached で、イベントがコンポーネント root 止まりになる）。
       attachTo: document.body,
     })
-    await flush()
+    await flush(wrapper)
 
     const root = wrapper.element as Element
     const start = cellAt(root, 0, 0)
@@ -472,16 +627,16 @@ describe('SlotMatrixPicker.vue', () => {
 
     dispatchPointer(start, 'pointerdown', { clientX: 100, clientY: 100 })
     dispatchPointer(end, 'pointermove', { clientX: 200, clientY: 100 })
-    await flush()
+    await flush(wrapper)
     expect(cellAt(root, 0, 2).className).toContain('ring-primary')
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-    await flush()
+    await flush(wrapper)
 
     // ハイライトが消え、離してもダイアログは開かない
     expect(cellAt(root, 0, 0).className).not.toContain('ring-primary')
     dispatchPointer(end, 'pointerup', { clientX: 200, clientY: 100 })
-    await flush()
+    await flush(wrapper)
     expect(findByTestId('group-confirm')).toBeNull()
     expect(findByTestId('group-no-menu')).toBeNull()
     wrapper.unmount()
@@ -497,7 +652,7 @@ describe('SlotMatrixPicker.vue', () => {
       // （既定のマウントは detached で、イベントがコンポーネント root 止まりになる）。
       attachTo: document.body,
     })
-    await flush()
+    await flush(wrapper)
 
     const root = wrapper.element as Element
     const start = cellAt(root, 0, 0)
@@ -506,13 +661,13 @@ describe('SlotMatrixPicker.vue', () => {
     dispatchPointer(start, 'pointerdown', { clientX: 100, clientY: 100 })
     dispatchPointer(start, 'pointermove', { clientX: 103, clientY: 100 })
     dispatchPointer(start, 'pointerup', { clientX: 103, clientY: 100 })
-    await flush()
+    await flush(wrapper)
     // ドラッグ確定していないのでこの時点ではダイアログは開かない
     expect(findByTestId('group-confirm')).toBeNull()
 
     // 続けて発火する click が従来どおりメニュー選択ダイアログを開く
     await wrapper.findAll('button').find(b => b.attributes('data-header-index') === '0')!.trigger('click')
-    await flush()
+    await flush(wrapper)
     expect(findByTestId('group-no-menu'), '単発クリックの既存挙動が壊れていないこと').not.toBeNull()
     wrapper.unmount()
   })
@@ -527,7 +682,7 @@ describe('SlotMatrixPicker.vue', () => {
       // （既定のマウントは detached で、イベントがコンポーネント root 止まりになる）。
       attachTo: document.body,
     })
-    await flush()
+    await flush(wrapper)
 
     const root = wrapper.element as Element
     const start = cellAt(root, 0, 0)
@@ -538,15 +693,42 @@ describe('SlotMatrixPicker.vue', () => {
     Object.defineProperty(down, 'pointerType', { value: 'touch' })
     start.dispatchEvent(down)
     dispatchPointer(end, 'pointermove', { clientX: 200, clientY: 100 })
-    await flush()
+    await flush(wrapper)
 
     // 選択ハイライトが一切出ない＝スクロール（パン）を邪魔しない
     expect(cellAt(root, 0, 0).className).not.toContain('ring-primary')
     expect(cellAt(root, 0, 2).className).not.toContain('ring-primary')
 
     dispatchPointer(end, 'pointerup', { clientX: 200, clientY: 100 })
-    await flush()
+    await flush(wrapper)
     expect(findByTestId('group-confirm')).toBeNull()
     wrapper.unmount()
+  })
+
+  it('日跨ぎ同一lineの23:30→翌日00:00をメニュー選択しslotIds payload化する', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetMenus.mockResolvedValue({ data: [{ id: 'overnight-menu', name: 'Overnight', durationMinutes: 60, requiredSlotCount: 2, isActive: true, lineIds: [] }] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: { days: [
+        { date: '2026-08-12', columns: [{ lineId: 1, lineName: 'Seat1', lineIds: [], cells: [{ slotId: 701, slotDate: '2026-08-12', endDate: '2026-08-13', startTime: '23:30', endTime: '00:00', state: 'AVAILABLE' }] }] },
+        { date: '2026-08-13', columns: [{ lineId: 1, lineName: 'Seat1', lineIds: [], cells: [{ slotId: 702, slotDate: '2026-08-13', endDate: '2026-08-13', startTime: '00:00', endTime: '00:30', state: 'AVAILABLE' }] }] },
+      ] },
+    })
+    mockCreateGroup.mockResolvedValue({ data: {} })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, { props: { teamId: 'team-slug', isAdmin: false } })
+    await flush(wrapper, '2026-08-12')
+    const cell = wrapper.findAll('button').find(button => button.attributes('aria-label')?.includes('23:30'))
+    expect(cell).toBeTruthy()
+    await cell!.trigger('click')
+    await flush(wrapper, '2026-08-12')
+    const menu = findByTestId<HTMLButtonElement>('group-menu-option-overnight-menu')
+    expect(menu).toBeTruthy()
+    menu!.click()
+    await flush(wrapper, '2026-08-12')
+    findByTestId<HTMLButtonElement>('group-confirm')!.click()
+    await flush(wrapper, '2026-08-12')
+
+    expect(mockCreateGroup).toHaveBeenCalledWith('team-slug', expect.objectContaining({ slotIds: [701, 702] }))
   })
 })

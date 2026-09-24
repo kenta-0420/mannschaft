@@ -1,5 +1,7 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,8 @@ public class AuditLogPartitionMaintenanceBatchService {
 
     private final JdbcTemplate jdbcTemplate;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると audit_logs の翌月パーティションが作られず、挿入先が枯渇して監査ログの書き込み自体が失敗する（記録の欠落は事後復元できない）")
     @BatchEndpoint(name = "auth-audit-log-partition-maintenance", description = "audit_logs テーブルの翌々月分パーティションを毎月 1 日 01:00 に追加する")
     @Scheduled(cron = "0 0 1 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "auditLogPartitionMaintenance", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")

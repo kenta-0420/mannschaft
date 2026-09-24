@@ -2,6 +2,7 @@ package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ApprovalMode;
@@ -45,6 +46,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -114,6 +116,9 @@ class ReservationGroupServiceTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private AuditLogService auditLogService;
+
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /** 機能B: overlap 判定は純ロジックのため実インスタンスを注入（RESERVATION_009 の実 throw を検証）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker = new ReservationUnavailabilityChecker();
@@ -290,6 +295,30 @@ class ReservationGroupServiceTest {
     @Nested
     @DisplayName("createGroup: 正常系（G-1）")
     class CreateGroupHappyPath {
+
+        @Test
+        @DisplayName("非JST境界: America/New_Yorkの未来枠でグループ予約を作成できる")
+        void 非JST境界の未来枠でグループ予約を作成できる() {
+            reinitServiceWithClock(Clock.fixed(Instant.parse("2026-08-10T02:30:00Z"), ZoneOffset.UTC));
+            ReflectionTestUtils.setField(service, "teamTimezoneResolver", teamTimezoneResolver);
+            given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("America/New_York"));
+            ReservationSlotEntity first = ReservationSlotEntity.builder().id(101L).teamId(TEAM_ID)
+                    .slotDate(LocalDate.of(2026, 8, 9)).startTime(LocalTime.of(23, 0))
+                    .endTime(LocalTime.of(23, 30)).build();
+            ReservationSlotEntity second = ReservationSlotEntity.builder().id(102L).teamId(TEAM_ID)
+                    .slotDate(LocalDate.of(2026, 8, 9)).startTime(LocalTime.of(23, 30))
+                    .endTime(LocalTime.of(23, 59)).build();
+            given(slotRepository.findAllById(anyIterable())).willReturn(List.of(first, second));
+            given(teamTimezoneResolver.toInstant(first.getSlotDate(), first.getStartTime(), ZoneId.of("America/New_York")))
+                    .willReturn(Instant.parse("2026-08-10T03:00:00Z"));
+            given(teamTimezoneResolver.toInstant(second.getSlotDate(), second.getStartTime(), ZoneId.of("America/New_York")))
+                    .willReturn(Instant.parse("2026-08-10T03:30:00Z"));
+
+            ReservationGroupResponse response =
+                    service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 102L)));
+
+            assertThat(response).isNotNull();
+        }
 
         @Test
         @DisplayName("G-1: AUTO 確定 — 2枠が同一 groupId で INSERT され代表行は先頭のみ・全行 CONFIRMED")
@@ -615,7 +644,7 @@ class ReservationGroupServiceTest {
         @Test
         @DisplayName("G-6: いずれかの枠が予約不可枠と overlap すると 400=009")
         void 予約不可枠overlapは009() {
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, SLOT_DATE))
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, SLOT_DATE, SLOT_DATE, SLOT_DATE.minusDays(1)))
                     .willReturn(List.of(ReservationBlockedTimeEntity.builder()
                             .teamId(TEAM_ID)
                             .blockedDate(SLOT_DATE)
@@ -629,6 +658,35 @@ class ReservationGroupServiceTest {
 
             assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
             verify(slotRepository, never()).incrementBookedCountIfAvailable(anyLong());
+        }
+
+        @Test
+        @DisplayName("日跨ぎslot集合は前日開始のendsNextDay blockも回避できない")
+        void 日跨ぎslot集合は前日開始blockを検出する() {
+            ReflectionTestUtils.setField(service, "teamTimezoneResolver", teamTimezoneResolver);
+            ReservationSlotEntity nextDay = ReservationSlotEntity.builder().id(103L).teamId(TEAM_ID)
+                    .slotDate(SLOT_DATE.plusDays(1)).startTime(LocalTime.of(0, 0)).endTime(LocalTime.of(0, 30))
+                    .endDate(SLOT_DATE.plusDays(1)).build();
+            ReservationSlotEntity overnightStart = ReservationSlotEntity.builder().id(101L).teamId(TEAM_ID)
+                    .slotDate(SLOT_DATE).startTime(LocalTime.of(23, 30)).endTime(LocalTime.MIDNIGHT)
+                    .endDate(SLOT_DATE.plusDays(1)).build();
+            given(slotRepository.findAllById(anyIterable())).willReturn(List.of(overnightStart, nextDay));
+            given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("Asia/Tokyo"));
+            given(teamTimezoneResolver.toInstant(SLOT_DATE, LocalTime.of(23, 30), ZoneId.of("Asia/Tokyo")))
+                    .willReturn(Instant.parse("2026-04-01T14:30:00Z"));
+            given(teamTimezoneResolver.toInstant(SLOT_DATE.plusDays(1), LocalTime.MIDNIGHT, ZoneId.of("Asia/Tokyo")))
+                    .willReturn(Instant.parse("2026-04-01T15:00:00Z"));
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, SLOT_DATE, SLOT_DATE.plusDays(1), SLOT_DATE.minusDays(1)))
+                    .willReturn(List.of(ReservationBlockedTimeEntity.builder().teamId(TEAM_ID)
+                            .blockedDate(SLOT_DATE).startTime(LocalTime.of(23, 0)).endTime(LocalTime.of(0, 30))
+                            .endsNextDay(true).resourceType(ReservationBlockedResourceType.TEAM).build()));
+
+            BusinessException e = catchBusiness(() ->
+                    service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 103L))));
+
+            assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
+            verify(blockedTimeRepository).findEffectiveBetween(TEAM_ID, SLOT_DATE, SLOT_DATE.plusDays(1), SLOT_DATE.minusDays(1));
+            verify(teamTimezoneResolver, times(1)).resolveZone(TEAM_ID);
         }
 
         @Test

@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -84,6 +86,8 @@ public class ReservationReminderDispatchBatchService {
      */
     @BatchEndpoint(name = "reservation-reminder-dispatch",
             description = "予約リマインド（remind_at 到来済み PENDING）を 1 分毎に通知送出する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予約リマインドの配信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "reservationReminderDispatchBatch", lockAtLeastFor = "30s", lockAtMostFor = "5m")
     @Transactional

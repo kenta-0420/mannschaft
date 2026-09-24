@@ -1,5 +1,7 @@
 package com.mannschaft.app.proxy.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.proxy.service.ProxyMonthlySummaryService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,8 @@ public class ProxyMonthlySummaryBatchJob {
      * 毎月1日 03:00 JST に実行する。
      * ShedLock により複数インスタンス環境でも1回だけ実行されることを保証する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "Codex検分/殿の裁定: 直前月の PDF しか生成せず BatchEndpoint の手動実行も同じ no-arg を呼ぶため、オフライン住民向け月次報告が恒久的に欠落する。生成物の保存のみで外部送信を伴わない")
     @BatchEndpoint(name = "proxy-monthly-summary-pdf-generate", description = "代理入力の前月サマリ PDF を毎月 1 日 03:00 に生成して S3 保存する")
     @Scheduled(cron = "0 0 3 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "ProxyMonthlySummaryBatchJob", lockAtMostFor = "30m", lockAtLeastFor = "5m")

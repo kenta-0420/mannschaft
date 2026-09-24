@@ -14,6 +14,7 @@
  * 共有する（重複ロジック回避・ユニットテスト容易化）。
  */
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+import type { components } from '~/types/generated'
 
 /** バックエンド ScheduleResponse のネスト構造（必要なフィールドのみ）。 */
 export interface NestedScheduleResponse {
@@ -168,3 +169,104 @@ export function toFlatScheduleEvent(raw: NestedScheduleResponse): FlatScheduleEv
     targets: raw.targets,
   }
 }
+
+/**
+ * カレンダー詳細パネル（`calendar.vue` / `WidgetMyCalendar.vue`）が表示する予定。
+ * {@link FlatScheduleEvent} に、応答には含まれない「どのスコープのカレンダーから開いたか」を足したもの。
+ */
+export interface CalendarPanelEvent extends FlatScheduleEvent {
+  scopeType?: string
+  /** 画面URL・詳細APIに渡す公開スコープID（slug）。 */
+  scopeId?: string
+  scopeName?: string | null
+  scopeIconUrl?: string | null
+  color?: string | null
+}
+
+/** 応答からは分からない、開いた側（カレンダーの行）が持っている情報。 */
+export interface CalendarPanelContext {
+  /** 親 schedules 行の ID（コメント欄の表示ガードに使う）。 */
+  scheduleId?: number | null
+  scopeType?: string
+  scopeId?: string
+  scopeName?: string | null
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: FlatScheduleEvent['targets']
+}
+
+/**
+ * ネスト ScheduleResponse（詳細 GET）→ 詳細パネル用の平坦な型へ変換する。
+ *
+ * F03.19 実機E2E 欠陥1 の根治: `calendar.vue` と `WidgetMyCalendar.vue` は
+ * 応答を `as EventDetail`（平坦な型）でキャストしてそのままスプレッドしており、
+ * 題名・日時が常に undefined になっていた。詰め替えを各画面に書くと1画面だけ
+ * 取り残されるため、**変換関数をここ1つに集約**する。
+ *
+ * 応答が持たない値（スコープ名など）は `ctx` で補うが、応答が値を持つ場合は
+ * 応答を優先する（同じ予定について2つの真実を作らない）。
+ */
+export function toCalendarPanelEvent(
+  raw: NestedScheduleResponse,
+  ctx: CalendarPanelContext = {},
+): CalendarPanelEvent {
+  const flat = toFlatScheduleEvent(raw)
+  return {
+    ...flat,
+    // 詳細 GET は親 schedules 行の ID を返さないため、カレンダー行の値をそのまま使う。
+    scheduleId: ctx.scheduleId ?? null,
+    // 応答に作成者名が無いときに空文字の createdBy を作らない（「作成者: 空欄」を出さない）。
+    createdBy: raw.audit?.createdByDisplayName
+      ? { displayName: raw.audit.createdByDisplayName }
+      : { displayName: '' },
+    color: flat.categoryColor,
+    scopeType: ctx.scopeType,
+    scopeId: ctx.scopeId,
+    scopeName: raw.scope?.scopeName ?? ctx.scopeName ?? null,
+    scopeIconUrl: raw.scope?.scopeIconUrl ?? null,
+    targetMode: flat.targetMode ?? ctx.targetMode,
+    targetCount: flat.targetCount ?? ctx.targetCount,
+    targets: flat.targets ?? ctx.targets,
+  }
+}
+
+/**
+ * ---- 生成型（OpenAPI 由来）との整合を型で固定する番人 ----
+ *
+ * 欠陥1 の根本原因は「画面が読む構造」と「API が返す構造」の食い違いであり、
+ * 平坦な `title` / `startAt` を読むコードがコンパイルを通ってしまった点にある。
+ * そこで {@link NestedScheduleResponse} が読むフィールド名が、生成型
+ * `components['schemas']['ScheduleResponse']` に**実在すること**を型で固定する。
+ *
+ * ここに平坦な `title` 等を足そうとすると（＝欠陥1 の再発）、生成型に無いキーなので
+ * 下の代入がコンパイルエラーになる。BE 応答の構造が変わった場合も同様に落ちる。
+ */
+type GeneratedScheduleResponse = components['schemas']['ScheduleResponse']
+type KeysExistIn<T, U> = keyof T extends keyof U ? true : { 'このキーは API 応答に存在しない': Exclude<keyof T, keyof U> }
+
+const _scheduleResponseKeysExist: KeysExistIn<NestedScheduleResponse, GeneratedScheduleResponse> = true
+const _contentKeysExist: KeysExistIn<
+  NonNullable<NestedScheduleResponse['content']>,
+  NonNullable<GeneratedScheduleResponse['content']>
+> = true
+const _timeKeysExist: KeysExistIn<
+  NonNullable<NestedScheduleResponse['time']>,
+  NonNullable<GeneratedScheduleResponse['time']>
+> = true
+const _scopeKeysExist: KeysExistIn<
+  NonNullable<NestedScheduleResponse['scope']>,
+  NonNullable<GeneratedScheduleResponse['scope']>
+> = true
+const _auditKeysExist: KeysExistIn<
+  NonNullable<NestedScheduleResponse['audit']>,
+  NonNullable<GeneratedScheduleResponse['audit']>
+> = true
+const _academicKeysExist: KeysExistIn<
+  NonNullable<NestedScheduleResponse['academic']>,
+  NonNullable<GeneratedScheduleResponse['academic']>
+> = true
+
+// 未使用変数扱いを避けつつ、番人が実際に評価されることを保つ。
+export const SCHEDULE_RESPONSE_SHAPE_VERIFIED
+  = _scheduleResponseKeysExist && _contentKeysExist && _timeKeysExist
+    && _scopeKeysExist && _auditKeysExist && _academicKeysExist

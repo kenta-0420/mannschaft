@@ -14,17 +14,25 @@ import com.mannschaft.app.chat.dto.UpdateChannelRequest;
 import com.mannschaft.app.chat.dto.UpdateInquiryChannelRequest;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
+import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
+import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.user.repository.UserBlockRepository;
 import com.mannschaft.app.chat.event.InquiryChannelChangedEvent;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -48,15 +56,19 @@ public class ChatChannelService {
     private final ChatChannelRepository channelRepository;
     private final ChatChannelMemberRepository memberRepository;
     private final ChatMessageRepository messageRepository;
+    private final ChatMessageAttachmentRepository attachmentRepository;
     private final ChatMapper chatMapper;
     private final UserRepository userRepository;
     private final ChatChannelEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
     private final AccessControlService accessControlService;
     private final UserBlockRepository userBlockRepository;
     private final UserRoleRepository userRoleRepository;
     private final ChatContactFolderItemRepository chatContactFolderItemRepository;
     private final ChatChannelAccessGuard channelAccessGuard;
+    private final ChatAttachmentService chatAttachmentService;
+    private final MembershipService membershipService;
 
     /**
      * ユーザーが参加しているチャンネル一覧を取得する。
@@ -214,13 +226,16 @@ public class ChatChannelService {
     // TODO: chatドメインがauthドメイン（UserRepository）・userドメイン（UserBlockRepository）・roleドメイン（UserRoleRepository）・dashboardドメイン（ChatContactFolderItemRepository）をまたいでいる。将来はそれぞれのQueryService/Eventで分離予定。Phase1-E: 2026-05-09
     @Transactional
     public ChannelResponse createChannel(CreateChannelRequest request, Long createdBy) {
-        ChannelType channelType = ChannelType.valueOf(request.getChannelType());
+        ChannelType channelType = EnumInputParser.parse(ChannelType.class, request.getChannelType(), "channelType");
         boolean isPrivate = Boolean.TRUE.equals(request.getIsPrivate());
 
         // チーム/組織チャンネルは当該スコープの内部資産である。作成者がそのスコープに属することを保証する
         //（非公開チャンネルはスコープの ADMIN 以上に限定する）。
         channelAccessGuard.requireChannelCreationScope(
                 channelType, request.getTeamId(), request.getOrganizationId(), isPrivate, createdBy);
+
+        requireScopeMembershipForRequestedMembers(
+                channelType, request.getTeamId(), request.getOrganizationId(), request.getMemberUserIds(), createdBy);
 
         validateChannelNameUniqueness(request, channelType);
 
@@ -268,6 +283,34 @@ public class ChatChannelService {
         return chatMapper.toChannelResponse(saved);
     }
 
+    /** スコープ連動チャネルへ追加する利用者が、同じスコープに在籍していることを確認する。 */
+    private void requireScopeMembershipForRequestedMembers(ChannelType channelType, Long teamId,
+                                                            Long organizationId, List<Long> userIds, Long createdBy) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        if (channelType == ChannelType.TEAM_PUBLIC || channelType == ChannelType.TEAM_PRIVATE) {
+            for (Long userId : userIds) {
+                if (!userId.equals(createdBy)) {
+                    requireActiveMembershipForUpdate(userId, ScopeType.TEAM, teamId);
+                }
+            }
+        } else if (channelType == ChannelType.ORG_PUBLIC || channelType == ChannelType.ORG_PRIVATE) {
+            for (Long userId : userIds) {
+                if (!userId.equals(createdBy)) {
+                    requireActiveMembershipForUpdate(userId, ScopeType.ORGANIZATION, organizationId);
+                }
+            }
+        }
+    }
+
+    /** 離脱処理と同じ membership 行をロックして、作成時の追加と離脱の競合を直列化する。 */
+    private void requireActiveMembershipForUpdate(Long userId, ScopeType scopeType, Long scopeId) {
+        if (!membershipService.isActiveMemberForUpdate(userId, scopeType, scopeId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
     /**
      * チャンネルを更新する。
      *
@@ -281,7 +324,9 @@ public class ChatChannelService {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
         checkChannelAdminAccess(channel, userId);
         validateNotArchived(channel);
+        boolean iconChanged = request.getIconKey() != null && !request.getIconKey().equals(channel.getIconKey());
 
+        String previousIconKey = channel.getIconKey();
         channel.updateInfo(
                 request.getName() != null ? request.getName() : channel.getName(),
                 request.getDescription() != null ? request.getDescription() : channel.getDescription(),
@@ -289,6 +334,13 @@ public class ChatChannelService {
         );
 
         ChatChannelEntity saved = channelRepository.save(channel);
+        if (iconChanged) {
+            chatAttachmentService.claimChannelIcon(saved, userId, request.getIconKey());
+            if (previousIconKey != null && !previousIconKey.isBlank()) {
+                chatAttachmentService.releaseChannelIcon(saved, previousIconKey);
+                domainEventPublisher.publish(new S3ObjectDeleteEvent(previousIconKey));
+            }
+        }
         log.info("チャンネル更新完了: channelId={}", channelId);
         return chatMapper.toChannelResponse(saved);
     }
@@ -303,6 +355,18 @@ public class ChatChannelService {
     public void deleteChannel(Long channelId, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
         checkChannelAdminAccess(channel, userId);
+        if (channel.getIconKey() != null && !channel.getIconKey().isBlank()) {
+            chatAttachmentService.releaseChannelIcon(channel, channel.getIconKey());
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(channel.getIconKey()));
+        }
+        for (ChatMessageEntity message : messageRepository.findByChannelIdOrderByCreatedAtAsc(channelId)) {
+            for (ChatMessageAttachmentEntity attachment : attachmentRepository.findByMessageId(message.getId())) {
+                chatAttachmentService.releaseMessageAttachment(attachment);
+                if (attachment.getFileKey() != null && !attachment.getFileKey().isBlank()) {
+                    domainEventPublisher.publish(new S3ObjectDeleteEvent(attachment.getFileKey()));
+                }
+            }
+        }
         channel.softDelete();
         channelRepository.save(channel);
         log.info("チャンネル削除完了: channelId={}", channelId);

@@ -1,5 +1,7 @@
 package com.mannschaft.app.analytics.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.analytics.PageViewScopeType;
 import com.mannschaft.app.analytics.entity.PageViewLogEntity;
 import com.mannschaft.app.analytics.repository.PageViewLogRepository;
@@ -55,6 +57,8 @@ public class PageViewRecordListener {
      *
      * @param event 計測イベント（Controller で相対パス検証済み・title は未加工）
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "上流の計測ビーコンは全ページ共通で、解析機能のゲートでは閉じない。よって閉栓中もイベントは飛んでくる。落とすことは可能だが、記録するだけの内部処理で外部送信を伴わず空回りの害が無い一方、落とせば生ログが恒久的に欠測するため常時実行とする")
     @Async("page-view-pool")
     @EventListener
     public void onPageViewRecorded(PageViewRecordedEvent event) {

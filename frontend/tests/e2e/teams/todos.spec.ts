@@ -57,7 +57,7 @@ async function mockTodoDetailApis(page: import('@playwright/test').Page, todoId 
       contentType: 'application/json',
       body: JSON.stringify({
         data: [],
-        meta: { page: 1, size: 20, totalElements: 0, totalPages: 0 },
+        meta: { page: 1, size: 20, total: 0, totalPages: 0 },
       }),
     })
   })
@@ -81,7 +81,7 @@ async function mockTodoDetailApis(page: import('@playwright/test').Page, todoId 
       contentType: 'application/json',
       body: JSON.stringify({
         data: [],
-        meta: { page: 1, size: 20, totalElements: 0, totalPages: 0 },
+        meta: { page: 1, size: 20, total: 0, totalPages: 0 },
       }),
     })
   })

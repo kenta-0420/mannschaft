@@ -4,6 +4,7 @@
       "home": "首页",
       "schedule": "日程",
       "match": "比赛",
+      "market": "集市",
       "member": "成员",
       "ops": "业务运营",
       "ops_work": "任务与进度",
@@ -14,6 +15,7 @@
     },
     "item": {
       "dashboard": "仪表盘",
+      "member_profiles": "メンバー紹介",
       "announcements": "公告",
       "chat": "聊天",
       "bulletin": "公告板",
@@ -24,6 +26,7 @@
       "annual_plan": "年度计划",
       "matches": "比赛记录",
       "matchAnalytics": "比赛分析",
+      "market": "集市",
       "members": "成员",
       "circulation": "传阅",
       "safety_check": "安全确认",
@@ -41,9 +44,18 @@
       "audit_logs": "审计日志",
       "settings": "设置",
       "faqSettings": "FAQ设置",
+      "confirmableNotifications": "确认通知设置",
       "billing": "账单与套餐管理",
       "leagueTransfers": "联赛升降级",
-      "adminConsole": "管理控制台"
+      "adminConsole": "管理控制台",
+      "receipts": "收据",
+      "receiptSettings": "收据开票方设置",
+      "hourlyRate": "時給設定",
+      "vendors": "供应商台账",
+      "lineSettings": "LINE设置",
+      "snsSettings": "社交媒体设置",
+      "scheduleSettings": "日程设置",
+      "bulletinCategories": "公告栏分类管理"
     }
   }
 }

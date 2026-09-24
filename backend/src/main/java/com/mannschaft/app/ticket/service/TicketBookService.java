@@ -1,6 +1,7 @@
 package com.mannschaft.app.ticket.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.ticket.PaymentMethod;
 import com.mannschaft.app.ticket.PaymentStatus;
@@ -153,7 +154,7 @@ public class TicketBookService {
     public IssueResultResponse issueTicketBook(Long teamId, Long staffId, IssueTicketBookRequest request) {
         TicketProductEntity product = findProductOrThrow(teamId, request.getProductId());
 
-        PaymentMethod paymentMethod = PaymentMethod.valueOf(request.getPaymentMethod());
+        PaymentMethod paymentMethod = EnumInputParser.parse(PaymentMethod.class, request.getPaymentMethod(), "paymentMethod");
 
         // 決済レコード作成（即座に PAID）
         TicketPaymentEntity payment = TicketPaymentEntity.builder()

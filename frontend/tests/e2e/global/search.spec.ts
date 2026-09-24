@@ -16,7 +16,7 @@ const MOCK_SEARCH_RESULTS = {
     timedOutTypes: [],
     zeroResultsHelp: null,
   },
-  meta: { page: 0, totalPages: 1, totalElements: 1 },
+  meta: { page: 0, totalPages: 1, total: 1 },
 }
 
 test.describe('GLOBAL-001: 検索機能', () => {

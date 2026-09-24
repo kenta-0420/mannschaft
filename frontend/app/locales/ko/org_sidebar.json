@@ -5,6 +5,7 @@
       "schedule": "일정",
       "member": "멤버",
       "ops": "업무 운영",
+      "market": "장터",
       "facility": "시설 설비",
       "resident": "주민·이용자",
       "data": "데이터·분석",
@@ -26,6 +27,7 @@
     "invite": "초대",
     "permissionGroups": "권한 그룹",
     "onboarding": "온보딩",
+    "market": "장터",
     "todos": "TODO",
     "workflows": "워크플로",
     "forms": "폼",
@@ -44,7 +46,6 @@
     "analytics": "접근 분석",
     "budget": "예산",
     "auditLogs": "감사 로그",
-    "gamification": "게이미피케이션",
     "tournaments": "토너먼트",
     "queue": "대기열",
     "timelineDigest": "타임라인 다이제스트",
@@ -57,8 +58,16 @@
     "notificationCredits": "알림 크레딧",
     "todoStatusLabels": "TODO 레이블",
     "faqSettings": "FAQ 설정",
+    "confirmableNotifications": "확인 알림 설정",
     "billing": "결제 및 요금제 관리",
     "leagueTransfers": "리그 이적",
-    "adminConsole": "관리 콘솔"
+    "adminConsole": "관리 콘솔",
+    "receipts": "영수증",
+    "receiptSettings": "영수증 발행자 설정",
+    "vendors": "업체 마스터",
+    "lineSettings": "LINE 설정",
+    "snsSettings": "SNS 설정",
+    "scheduleSettings": "일정 설정",
+    "bulletinCategories": "게시판 카테고리 관리"
   }
 }

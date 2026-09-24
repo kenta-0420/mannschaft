@@ -72,7 +72,7 @@ interface TodoBase {
 
 interface PagedTodos {
   data: TodoBase[]
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: { page: number; size: number; total: number; totalPages: number }
 }
 
 interface TodoDetail {
@@ -93,7 +93,7 @@ interface CommentList {
     createdAt: string
     updatedAt: string
   }>
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: { page: number; size: number; total: number; totalPages: number }
 }
 
 export function useTodoApi() {

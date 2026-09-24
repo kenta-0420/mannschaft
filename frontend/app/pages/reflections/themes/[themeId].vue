@@ -15,6 +15,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const notification = useNotification()
+const { showUndoToast } = useUndoToast()
 const reflectionApi = useReflectionApi()
 const router = useRouter()
 const route = useRoute()
@@ -108,25 +109,27 @@ async function doArchive() {
   }
 }
 
-// Phase 3: 復元確認
-function confirmRestore() {
-  confirm.require({
-    message: t('reflection.archive.confirm.restore'),
-    header: t('reflection.archive.action.restore'),
-    icon: 'pi pi-refresh',
-    rejectLabel: t('reflection.common.cancel'),
-    acceptLabel: t('reflection.archive.action.restore'),
-    accept: doRestore,
-  })
-}
-
 async function doRestore() {
-  if (!theme.value?.id) return
+  const restoredThemeId = theme.value?.id
+  if (!restoredThemeId) return
   archiving.value = true
   try {
-    const res = await reflectionApi.restoreTheme(theme.value.id)
+    const res = await reflectionApi.restoreTheme(restoredThemeId)
     theme.value = res.data
-    notification.success(t('reflection.archive.action.restore') + ' ✓')
+    showUndoToast({
+      summary: t('reflection.archive.action.restore'),
+      undoLabel: t('button.undo'),
+      onUndo: async () => {
+        try {
+          const archived = await reflectionApi.archiveTheme(restoredThemeId)
+          theme.value = archived.data
+          notification.success(t('reflection.archive.action.archive') + ' ✓')
+        }
+        catch {
+          notification.error(t('reflection.entry.save_failed'))
+        }
+      },
+    })
   }
   catch {
     notification.error(t('reflection.entry.save_failed'))
@@ -156,6 +159,7 @@ async function doRestore() {
           severity="secondary"
           :loading="archiving"
           :aria-label="t('reflection.archive.action.archive')"
+          data-testid="reflection-theme-archive"
           @click="confirmArchive"
         />
         <Button
@@ -167,7 +171,8 @@ async function doRestore() {
           severity="info"
           :loading="archiving"
           :aria-label="t('reflection.archive.action.restore')"
-          @click="confirmRestore"
+          data-testid="reflection-theme-restore"
+          @click="doRestore"
         />
       </template>
       <Button v-if="!isArchived" :label="t('reflection.entry.create')" icon="pi pi-plus" size="small" @click="createToday" />
@@ -185,7 +190,8 @@ async function doRestore() {
         size="small"
         text
         class="ml-auto"
-        @click="confirmRestore"
+        data-testid="reflection-theme-restore-banner"
+        @click="doRestore"
       />
     </div>
 

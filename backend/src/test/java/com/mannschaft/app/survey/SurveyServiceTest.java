@@ -32,6 +32,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -102,8 +103,46 @@ class SurveyServiceTest {
     @Mock
     private com.mannschaft.app.survey.service.SurveyResultAccessGuard resultAccessGuard;
 
+    /**
+     * 管理操作可否の判定点（CMP-041）。詳細レスポンスの {@code viewerCanManage} /
+     * {@code viewerCanViewTeamBreakdown} を載せるために SurveyService が依存する。
+     * 本テストは応答形のみを見るため既定の false で足りる。
+     */
+    @Mock
+    private com.mannschaft.app.survey.service.SurveyAccessGuard surveyAccessGuard;
+
+    /** Issue #2715 CMP-055 lot C-5: newly added i18n dependencies. */
+    @Mock private MessageSource messageSource;
+
     @InjectMocks
     private SurveyService surveyService;
+
+    /**
+     * 母集団解決（{@link com.mannschaft.app.survey.service.SurveyUniverseResolver}）は
+     * <b>本物</b>を注入する。ここをモックにすると「どの母集団を数えるか」という本質が
+     * テストから消えるため、実クラスへ既存のリポジトリモックを渡し、
+     * 従来どおり最下層のスタブ（{@code userRoleRepository} 等）で振る舞いを決める。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void 母集団リゾルバを実クラスで注入する() {
+        org.springframework.test.util.ReflectionTestUtils.setField(surveyService, "universeResolver",
+                new com.mannschaft.app.survey.service.SurveyUniverseResolver(
+                        organizationMembershipService, userRoleRepository, targetRepository));
+    }
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     private static final Long SURVEY_ID = 100L;
     private static final Long SCOPE_ID = 1L;
@@ -367,7 +406,8 @@ class SurveyServiceTest {
 
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
+                    .willReturn(true);
             given(surveyRepository.save(entity)).willReturn(entity);
             given(surveyMapper.toSurveyResponse(entity)).willReturn(createSurveyResponse());
             given(userRoleRepository.findUserIdsByScope(SCOPE_TYPE, SCOPE_ID))
@@ -397,7 +437,8 @@ class SurveyServiceTest {
 
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, orgScopeType, SCOPE_ID))
                     .willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, orgScopeType)).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(USER_ID, SCOPE_ID, orgScopeType, "MANAGE_SURVEYS"))
+                    .willReturn(true);
             given(surveyRepository.save(entity)).willReturn(entity);
             given(surveyMapper.toSurveyResponse(entity)).willReturn(createSurveyResponse());
             // 配下チーム展開の窓口（組織×ALL のみ呼ばれること）
@@ -411,17 +452,16 @@ class SurveyServiceTest {
             verify(organizationMembershipService).resolveOrgDistributionUserIds(SCOPE_ID, false);
             // (B) レグ番人: 締切延長通知も publish/remind と同形に notifyAllPreAuthorized で送られ、
             // canView 絞り込みを通さない（配下/直属一般メンバーへ誤 deny で届かないことを担保）。
-            verify(notificationHelper).notifyAllPreAuthorized(
+            verify(notificationHelper).notifyAllPreAuthorizedLocalized(
                     org.mockito.ArgumentMatchers.eq(java.util.List.of(11L, 22L, 33L)),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.eq(SURVEY_ID),
                     org.mockito.ArgumentMatchers.any(),
                     org.mockito.ArgumentMatchers.eq(SCOPE_ID),
                     org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.eq(USER_ID));
+                    org.mockito.ArgumentMatchers.eq(USER_ID),
+                    any());
             // 旧 canView ゲート付き notifyAll は使わないことも明示（取りこぼし非回帰）。
             verify(notificationHelper, org.mockito.Mockito.never()).notifyAll(
                     org.mockito.ArgumentMatchers.anyList(),
@@ -447,7 +487,8 @@ class SurveyServiceTest {
 
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
+                    .willReturn(true);
 
             // When & Then
             assertThatThrownBy(() -> surveyService.extendDeadline(
@@ -466,7 +507,8 @@ class SurveyServiceTest {
 
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(otherUserId, SCOPE_ID, SCOPE_TYPE)).willReturn(false);
+            given(accessControlService.hasAdminOrPermissionInScope(otherUserId, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
+                    .willReturn(false);
 
             // When & Then
             assertThatThrownBy(() -> surveyService.extendDeadline(
@@ -495,7 +537,8 @@ class SurveyServiceTest {
                     .willReturn(Optional.of(source));
             // duplicateSurvey は複製直後を非ガード toDetailResponse(savedNew) で返すため、
             // 新規survey の再lookup（findByIdAndScopeTypeAndScopeId）は不要になった。
-            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
+                    .willReturn(true);
             // save の呼び出しでは引数のエンティティをそのまま返す
             given(surveyRepository.save(org.mockito.ArgumentMatchers.any(SurveyEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -526,7 +569,7 @@ class SurveyServiceTest {
             SurveyEntity source = createDraftSurvey();
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(source));
-            given(accessControlService.isAdminOrAbove(otherUserId, SCOPE_ID, SCOPE_TYPE))
+            given(accessControlService.hasAdminOrPermissionInScope(otherUserId, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
                     .willReturn(false);
 
             // When & Then

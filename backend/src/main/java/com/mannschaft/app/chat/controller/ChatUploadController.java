@@ -11,6 +11,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -42,6 +44,7 @@ public class ChatUploadController {
     private final ChatChannelService chatChannelService;
     private final ChatAttachmentService chatAttachmentService;
     private final ChatMessageService chatMessageService;
+    private final StorageAclService storageAclService;
 
     private static final long DEFAULT_EXPIRY_SECONDS = 3600L;
 
@@ -79,6 +82,11 @@ public class ChatUploadController {
         String fileKey = "chat/" + scopeType + "/" + scopeId + "/" + UUID.randomUUID() + "/" + request.getFileName();
         PresignedUploadResult result = storageService.generateUploadUrl(
                 fileKey, request.getContentType(), Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS));
+        storageAclService.registerPending(result.s3Key(), currentUserId,
+                chatAttachmentService.resolveAclScope(channel.getChannelType(), channel.getId(), channel.getTeamId(),
+                        channel.getOrganizationId(), channel.getSourceId(), currentUserId), request.getContentType(),
+                Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS),
+                new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()));
         UploadUrlResponse response = new UploadUrlResponse(
                 result.uploadUrl(),
                 result.s3Key(),
@@ -92,7 +100,7 @@ public class ChatUploadController {
      *
      * <p>署名 URL は発行された時点でオブジェクト本体への読み取り能力そのものとなるため、
      * 発行前に <b>そのオブジェクトが属するチャンネルを解決し、本文閲覧と同一の判定</b>
-     * （{@link ChatMessageService#checkAttachmentDownloadAccess}）を適用する。
+     * （{@link ChatMessageService#generateAttachmentDownloadUrl}）を適用する。
      * チャットが管理していないキーは fail-closed で拒否する。</p>
      */
     @GetMapping("/{fileKey}/download-url")
@@ -101,9 +109,8 @@ public class ChatUploadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "閲覧権限なし")
     public ResponseEntity<ApiResponse<DownloadUrlResponse>> generateDownloadUrl(
             @PathVariable String fileKey) {
-        chatMessageService.checkAttachmentDownloadAccess(fileKey, SecurityUtils.getCurrentUserId());
-        String downloadUrl = storageService.generateDownloadUrl(
-                fileKey, Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS));
+        String downloadUrl = chatMessageService.generateAttachmentDownloadUrl(
+                fileKey, SecurityUtils.getCurrentUserId(), Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS));
         DownloadUrlResponse response = new DownloadUrlResponse(
                 downloadUrl,
                 DEFAULT_EXPIRY_SECONDS

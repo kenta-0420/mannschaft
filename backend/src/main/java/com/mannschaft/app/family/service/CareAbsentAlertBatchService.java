@@ -1,5 +1,7 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.event.entity.EventRsvpResponseEntity;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
@@ -98,6 +100,9 @@ public class CareAbsentAlertBatchService {
      *
      * <p>冪等チェックは {@link CareEventNotificationService#sendNoContactCheck} に委譲する。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_FAMILY_CARE_ENABLED",
+            reason = "止まるのはソフト確認通知のみで DB は書き換わらない。見守り機能を閉じている間は利用者に通知の期待が生じないため、閉栓は運用上の明示的な判断として扱える")
     // TODO: familyドメインとeventドメインをまたいでいる（EventRepository・EventRsvpResponseRepository・EventCheckinRepositoryを直接参照）。将来はEventQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @BatchEndpoint(name = "family-care-no-contact-check", description = "ケア対象者の未連絡を 3 分毎にソフト確認通知する")
     @Scheduled(fixedDelay = 180_000)
@@ -145,6 +150,9 @@ public class CareAbsentAlertBatchService {
      *
      * <p>冪等チェックは {@link CareEventNotificationService#sendAbsentAlert} に委譲する。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_FAMILY_CARE_ENABLED",
+            reason = "止まるのは不在アラート通知のみで DB は書き換わらない。見守り機能を閉じている間は利用者に通知の期待が生じないため、閉栓は運用上の明示的な判断として扱える")
     // TODO: familyドメインとeventドメインをまたいでいる（EventRepository・EventRsvpResponseRepository・EventCheckinRepositoryを直接参照）。将来はEventQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @BatchEndpoint(name = "family-care-absent-alert", description = "ケア対象者の正式不在アラートを 3 分毎に送信する")
     @Scheduled(fixedDelay = 180_000)

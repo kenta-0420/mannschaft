@@ -22,18 +22,15 @@ import type {
   ScopeType,
   UpdateAdMessagingCampaignRequest,
 } from '~/types/adMessagingCampaign'
+import type { PageMeta } from '~/types/api'
 
 interface ApiEnvelope<T> {
   data: T
 }
 
-interface PageMeta {
-  totalElements: number
-  page: number
-  size: number
-  totalPages: number
-}
-
+// ページングメタは正本（app/types/api.ts）を使う。
+// かつてここに `totalElements` を持つ独自 PageMeta を定義していたが、
+// BE が送るのは `total` であり、実行時は常に undefined だった（CMP-260912-1823）。
 interface PagedEnvelope<T> {
   data: T[]
   meta: PageMeta

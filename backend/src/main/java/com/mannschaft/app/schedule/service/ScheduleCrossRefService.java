@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.schedule.CrossRefStatus;
 import com.mannschaft.app.schedule.CrossRefTargetType;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
@@ -58,7 +59,7 @@ public class ScheduleCrossRefService {
         // 認可根治 Wave6: 招待元スケジュールの entity 由来 scope の ADMIN/DEPUTY_ADMIN のみ送信可。
         checkSourceScheduleAdmin(sourceScheduleId, userId);
         scheduleService.getSchedule(sourceScheduleId);
-        CrossRefTargetType targetType = CrossRefTargetType.valueOf(req.getTargetType());
+        CrossRefTargetType targetType = EnumInputParser.parse(CrossRefTargetType.class, req.getTargetType(), "targetType");
 
         // 重複チェック
         crossRefRepository.findBySourceScheduleIdAndTargetTypeAndTargetId(

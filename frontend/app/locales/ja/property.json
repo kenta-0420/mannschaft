@@ -98,6 +98,9 @@
     "vendor": {
       "title": "業者マスタ",
       "subtitle": "工事業者・点検業者などのマスタ管理",
+      "notice": {
+        "personalScopeUnsupported": "業者マスタは個人スコープでは利用できません。チームまたは組織スコープに切り替えてください。"
+      },
       "newVendor": "新規業者を追加",
       "editVendor": "業者を編集",
       "deleteConfirm": "業者を論理削除します。よろしいですか？",

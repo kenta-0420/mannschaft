@@ -2,6 +2,8 @@ package com.mannschaft.app.workflow.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowMapper;
 import com.mannschaft.app.workflow.WorkflowScopes;
@@ -16,6 +18,7 @@ import com.mannschaft.app.workflow.entity.WorkflowRequestStepEntity;
 import com.mannschaft.app.workflow.entity.WorkflowTemplateEntity;
 import com.mannschaft.app.workflow.entity.WorkflowTemplateStepEntity;
 import com.mannschaft.app.workflow.repository.WorkflowRequestApproverRepository;
+import com.mannschaft.app.workflow.repository.WorkflowRequestAttachmentRepository;
 import com.mannschaft.app.workflow.repository.WorkflowRequestRepository;
 import com.mannschaft.app.workflow.repository.WorkflowRequestStepRepository;
 import com.mannschaft.app.workflow.repository.WorkflowTemplateStepRepository;
@@ -40,6 +43,8 @@ public class WorkflowRequestService {
     private final WorkflowRequestRepository requestRepository;
     private final WorkflowRequestStepRepository requestStepRepository;
     private final WorkflowRequestApproverRepository approverRepository;
+    private final WorkflowRequestAttachmentRepository attachmentRepository;
+    private final StorageAclService storageAclService;
     private final WorkflowTemplateStepRepository templateStepRepository;
     private final WorkflowTemplateService templateService;
     private final WorkflowMapper workflowMapper;
@@ -321,6 +326,9 @@ public class WorkflowRequestService {
     public void deleteRequest(String scopeType, Long scopeId, Long requestId, Long actorUserId) {
         WorkflowRequestEntity entity = findRequestOrThrow(scopeType, scopeId, requestId);
         checkOwnerOrAdminOnEntityScope(actorUserId, entity);
+        attachmentRepository.findByRequestIdOrderByCreatedAtAsc(requestId).forEach(attachment ->
+                storageAclService.releaseClaimed(attachment.getFileKey(),
+                        new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", attachment.getId().toString())));
         entity.softDelete();
         requestRepository.save(entity);
         log.info("ワークフロー申請削除: requestId={}", requestId);

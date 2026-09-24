@@ -198,6 +198,35 @@ const quickLinks: QuickLink[] = [
     color: 'text-fuchsia-500',
     bg: 'bg-fuchsia-50 dark:bg-fuchsia-900/20',
   },
+  // CMP-260909-1141 Phase 3: 孤立ページのナビ接続（SYSTEM_ADMIN 向け4枚）
+  {
+    label: t('admin.quickLinks.villageCreationRequests'),
+    icon: 'pi pi-home',
+    to: '/admin/villages/creation-requests',
+    color: 'text-green-500',
+    bg: 'bg-green-50 dark:bg-green-900/20',
+  },
+  {
+    label: t('admin.quickLinks.seasonalWallpapers'),
+    icon: 'pi pi-image',
+    to: '/admin/seasonal-wallpapers',
+    color: 'text-sky-500',
+    bg: 'bg-sky-50 dark:bg-sky-900/20',
+  },
+  {
+    label: t('admin.quickLinks.pointCardSynonyms'),
+    icon: 'pi pi-id-card',
+    to: '/admin/point-card-synonyms',
+    color: 'text-teal-500',
+    bg: 'bg-teal-50 dark:bg-teal-900/20',
+  },
+  {
+    label: t('admin.quickLinks.appeals'),
+    icon: 'pi pi-gavel',
+    to: '/admin/appeals',
+    color: 'text-red-500',
+    bg: 'bg-red-50 dark:bg-red-900/20',
+  },
 ]
 </script>
 

@@ -10,16 +10,15 @@ import com.mannschaft.app.contact.dto.ContactInviteTokenResponse;
 import com.mannschaft.app.contact.dto.CreateInviteTokenBody;
 import com.mannschaft.app.contact.dto.SendContactRequestResponse;
 import com.mannschaft.app.contact.entity.ContactInviteTokenEntity;
+import com.mannschaft.app.contact.event.ContactInviteUsedNotificationEvent;
 import com.mannschaft.app.contact.repository.ContactInviteTokenRepository;
 import com.mannschaft.app.contact.repository.ContactRequestBlockRepository;
 import com.mannschaft.app.common.qr.BrandedQrImageWriter;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,9 +43,13 @@ public class ContactInviteTokenService {
     private final UserBlockRepository userBlockRepository;
     private final ContactRequestBlockRepository contactRequestBlockRepository;
     private final ContactService contactService;
-    private final NotificationService notificationService;
     private final BrandedQrImageWriter brandedQrImageWriter;
     private final NameResolverService nameResolverService;
+    /**
+     * Issue #2834 / CMP-056: 付随通知は業務トランザクションの外（AFTER_COMMIT）で発火させるため、
+     * 業務メソッドはイベントを publish するだけに留める（backend/.claudecode.md 原則5）。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 招待トークンを発行する。
@@ -211,21 +214,16 @@ public class ContactInviteTokenService {
         };
     }
 
+    /**
+     * 招待リンク使用通知を発火する（Issue #2834 / CMP-056 第1群ロットA）。
+     *
+     * <p>{@code createNotification} を直接呼ばず、{@link ContactInviteUsedNotificationEvent} を publish
+     * するだけに留める。本メソッド自体は {@link #acceptInvite} の業務トランザクションの<b>内側</b>で
+     * 呼ばれるが、実際の通知生成は {@code ContactInviteUsedNotificationListener} が
+     * {@code AFTER_COMMIT} で受け取ってから行う。これにより通知側の DB 例外が
+     * 招待受諾の永続化（利用回数インクリメント・双方向連絡先追加）を巻き戻さない。</p>
+     */
     private void sendInviteUsedNotification(Long actorId, Long issuerId, Long tokenId) {
-        UserEntity actor = userRepository.findById(actorId).orElse(null);
-        String actorName = actor != null ? actor.getLastName() + " " + actor.getFirstName() : "ユーザー";
-        notificationService.createNotification(
-                issuerId,
-                "CONTACT_INVITE_USED",
-                NotificationPriority.NORMAL,
-                "招待リンクが使用されました",
-                actorName + " さんが招待リンクを使用しました",
-                "CONTACT_INVITE_TOKEN",
-                tokenId,
-                NotificationScopeType.PERSONAL,
-                issuerId,
-                "/settings/contact-invite-tokens",
-                actorId
-        );
+        eventPublisher.publishEvent(new ContactInviteUsedNotificationEvent(actorId, issuerId, tokenId));
     }
 }

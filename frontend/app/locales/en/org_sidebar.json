@@ -5,6 +5,7 @@
       "schedule": "Schedule",
       "member": "Members",
       "ops": "Operations",
+      "market": "Market",
       "facility": "Facilities",
       "resident": "Residents",
       "data": "Data & Analytics",
@@ -26,6 +27,7 @@
     "invite": "Invite",
     "permissionGroups": "Permission Groups",
     "onboarding": "Onboarding",
+    "market": "Market",
     "todos": "TODO",
     "workflows": "Workflows",
     "forms": "Forms",
@@ -44,7 +46,6 @@
     "analytics": "Analytics",
     "budget": "Budget",
     "auditLogs": "Audit Logs",
-    "gamification": "Gamification",
     "tournaments": "Tournaments",
     "queue": "Queue",
     "timelineDigest": "Timeline Digest",
@@ -57,8 +58,16 @@
     "notificationCredits": "Notification Credits",
     "todoStatusLabels": "TODO Labels",
     "faqSettings": "FAQ Settings",
+    "confirmableNotifications": "Confirmation Notifications",
     "billing": "Billing & plan management",
     "leagueTransfers": "League Transfers",
-    "adminConsole": "Admin Console"
+    "adminConsole": "Admin Console",
+    "receipts": "Receipts",
+    "receiptSettings": "Receipt issuer settings",
+    "vendors": "Vendors",
+    "lineSettings": "LINE Settings",
+    "snsSettings": "SNS Settings",
+    "scheduleSettings": "Schedule Settings",
+    "bulletinCategories": "Bulletin Categories"
   }
 }

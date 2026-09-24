@@ -55,6 +55,8 @@ public class PayeeScopeResolver {
         return switch (scopeType) {
             case TEAM -> ScopeKind.TEAM;
             case ORGANIZATION -> ScopeKind.ORG;
+            case PERSONAL -> throw new IllegalArgumentException(
+                    "PERSONAL 札主は Phase 5 まで Connect 受領主体へ変換できません: " + scopeType);
         };
     }
 

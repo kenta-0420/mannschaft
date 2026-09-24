@@ -3,6 +3,8 @@ package com.mannschaft.app.role.controller;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
+import com.mannschaft.app.common.visibility.ScopeKey;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.MyOrganizationResponse;
@@ -51,6 +53,7 @@ public class MeController {
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final OrganizationRepository organizationRepository;
     private final AccessControlService accessControlService;
+    private final MembershipBatchQueryService membershipBatchQueryService;
 
     /**
      * 自分が所属するチーム一覧を取得する。
@@ -96,20 +99,34 @@ public class MeController {
         // memberships 由来で増えたチームも含めて解決するため、和集合後の teamIds で問い合わせる。
         Map<Long, Long> orgIdByTeamId = teamOrgMembershipRepository.findOrganizationIdByTeamIdIn(teamIds);
 
+        Map<Long, TeamEntity> teamById = new LinkedHashMap<>();
+        for (TeamEntity team : teamRepository.findAllById(teamIds)) {
+            teamById.put(team.getId(), team);
+        }
+        Set<ScopeKey> teamScopes = new LinkedHashSet<>();
+        for (Long teamId : teamIds) {
+            teamScopes.add(new ScopeKey("TEAM", teamId));
+        }
+        var roleSnapshot = membershipBatchQueryService.snapshotForUser(userId, teamScopes, Set.of());
+        Map<Long, Integer> memberCountByTeamId =
+                accessControlService.countActiveDistinctMembersByScopes("TEAM", teamIds);
+
         List<MyTeamResponse> teams = new ArrayList<>();
         for (Long teamId : teamIds) {
-            TeamEntity team = teamRepository.findById(teamId).orElse(null);
+            TeamEntity team = teamById.get(teamId);
             if (team == null) {
                 continue;
             }
             if (!includeArchived && team.getArchivedAt() != null) {
                 continue;
             }
-            String roleName = accessControlService.resolveEffectiveRoleName(userId, teamId, "TEAM");
+            String roleName = roleSnapshot.isSystemAdmin()
+                    ? "SYSTEM_ADMIN"
+                    : roleSnapshot.roleByScope().get(new ScopeKey("TEAM", teamId));
             if (roleName == null) {
                 roleName = "MEMBER";
             }
-            int memberCount = accessControlService.countActiveDistinctMembers("TEAM", teamId);
+            int memberCount = memberCountByTeamId.getOrDefault(teamId, 0);
             teams.add(new MyTeamResponse(
                     team.getId(),
                     team.getSlug(),

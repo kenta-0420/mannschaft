@@ -11,17 +11,20 @@ import com.mannschaft.app.event.dto.CheckinResponse;
 import com.mannschaft.app.event.dto.SelfCheckinRequest;
 import com.mannschaft.app.event.entity.EventCheckinEntity;
 import com.mannschaft.app.event.entity.EventTicketEntity;
+import com.mannschaft.app.event.event.EventCareNotificationTriggerEvent;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.event.repository.EventTicketRepository;
-import com.mannschaft.app.family.service.CareEventNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * イベントチェックインサービス。QRスキャン・セルフチェックインを担当する。
@@ -38,7 +41,7 @@ public class EventCheckinService {
     private final EventRegistrationRepository registrationRepository;
     private final EventTicketService ticketService;
     private final EventMapper eventMapper;
-    private final CareEventNotificationService careEventNotificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
@@ -86,9 +89,14 @@ public class EventCheckinService {
 
         incrementEventCheckinCount(ticket.getEventId());
 
-        // F03.12 ケア対象者見守り通知: 登録ユーザーへのチェックインフック
+        // F03.12 ケア対象者見守り通知: 登録ユーザーへのチェックインフック（Issue #2990 L5）。
+        // 業務TX内では publish だけに留め、実配送は EventCareNotificationTriggerListener が
+        // AFTER_COMMIT で行う。通知失敗でチケット使用済み化・チェックイン記録が巻き戻らないようにする。
         resolveTicketUserId(ticket).ifPresent(userId ->
-                careEventNotificationService.notifyCheckin(userId, ticket.getEventId()));
+                eventPublisher.publishEvent(new EventCareNotificationTriggerEvent(
+                        ticket.getEventId(),
+                        EventCareNotificationTriggerEvent.Kind.CHECKIN,
+                        List.of(userId))));
 
         log.info("スタッフチェックイン: ticketId={}, staffUserId={}", ticket.getId(), staffUserId);
         return eventMapper.toCheckinResponse(saved);
@@ -124,9 +132,14 @@ public class EventCheckinService {
 
         incrementEventCheckinCount(ticket.getEventId());
 
-        // F03.12 ケア対象者見守り通知: 登録ユーザーへのチェックインフック
+        // F03.12 ケア対象者見守り通知: 登録ユーザーへのチェックインフック（Issue #2990 L5）。
+        // 業務TX内では publish だけに留め、実配送は EventCareNotificationTriggerListener が
+        // AFTER_COMMIT で行う。通知失敗でチケット使用済み化・チェックイン記録が巻き戻らないようにする。
         resolveTicketUserId(ticket).ifPresent(userId ->
-                careEventNotificationService.notifyCheckin(userId, ticket.getEventId()));
+                eventPublisher.publishEvent(new EventCareNotificationTriggerEvent(
+                        ticket.getEventId(),
+                        EventCareNotificationTriggerEvent.Kind.CHECKIN,
+                        List.of(userId))));
 
         log.info("セルフチェックイン: ticketId={}", ticket.getId());
         return eventMapper.toCheckinResponse(saved);

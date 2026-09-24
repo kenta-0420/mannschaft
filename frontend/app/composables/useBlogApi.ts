@@ -48,8 +48,12 @@ export function useBlogApi() {
     return query.toString()
   }
 
-  // === Public / Admin Blog Posts ===
-  async function getPosts(params: Record<string, unknown>) {
+  /**
+   * FE の `scope_type`/`scope_id`（snake_case）を BE の `teamId`/`organizationId` へ写像する。
+   * `getPosts` で確立した作法（scope_type/scope_id → teamId/organizationId）を
+   * `getTags`/`createTag` にも適用し、命名の不一致によるスコープ未送信バグを防ぐ。
+   */
+  function mapScopeParams(params: Record<string, unknown>): Record<string, unknown> {
     const mapped: Record<string, unknown> = { ...params }
     if (mapped.scope_type === 'TEAM' && mapped.scope_id != null) {
       mapped.teamId = mapped.scope_id
@@ -58,10 +62,16 @@ export function useBlogApi() {
     }
     delete mapped.scope_type
     delete mapped.scope_id
+    return mapped
+  }
+
+  // === Public / Admin Blog Posts ===
+  async function getPosts(params: Record<string, unknown>) {
+    const mapped = mapScopeParams(params)
     const qs = buildQuery(mapped)
     return api<{
       data: BlogPostResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/blog/posts?${qs}`)
   }
 
@@ -129,13 +139,31 @@ export function useBlogApi() {
   }
 
   // === Tags ===
+  /**
+   * タグ一覧取得。`scope_type`/`scope_id`（snake_case）を BE の `teamId`/`organizationId` へ写像する
+   * （{@link getPosts} と同じ作法。旧実装は呼び出し元が渡す `scopeType`/`scopeId` をそのまま
+   * クエリに載せており、BE が読む `teamId`/`organizationId` と名前が一致せずスコープが
+   * 一切送信されていなかった）。
+   */
   async function getTags(params?: Record<string, unknown>) {
-    const qs = buildQuery(params || {})
+    const mapped = mapScopeParams(params || {})
+    const qs = buildQuery(mapped)
     return api<{ data: BlogTag[] }>(`/api/v1/blog/tags?${qs}`)
   }
 
-  async function createTag(body: { name: string }) {
-    return api<{ data: BlogTag }>('/api/v1/blog/tags', { method: 'POST', body })
+  /**
+   * タグ作成。`scopeType`/`scopeId` を BE の `CreateTagRequest`（teamId/organizationId + name）へ写像する
+   * （旧実装は name のみを送信しており、スコープを一切送れず `COMMON_002` になっていた）。
+   */
+  async function createTag(body: { name: string; scopeType?: string; scopeId?: string | number }) {
+    const mapped = mapScopeParams({
+      scope_type: body.scopeType,
+      scope_id: body.scopeId,
+    })
+    return api<{ data: BlogTag }>('/api/v1/blog/tags', {
+      method: 'POST',
+      body: { name: body.name, ...mapped },
+    })
   }
 
   async function updateTag(tagId: number, body: { name: string }) {

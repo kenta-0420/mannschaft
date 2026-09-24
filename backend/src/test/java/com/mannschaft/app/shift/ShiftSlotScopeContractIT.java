@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -110,7 +111,13 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
                 .periodType(ShiftPeriodType.WEEKLY)
                 .startDate(LocalDate.of(2026, 3, 1))
                 .endDate(LocalDate.of(2026, 3, 7))
-                .status(ShiftScheduleStatus.DRAFT)
+                // CMP-260826-2127（AC-13）: 本 IT が固定するのは<b>認可契約</b>（誰が触れるか）であり
+                // 可視性ではない。未公開シフト表の遮断が入ると DRAFT では一般メンバーの正常系が 404 になり、
+                // 「自チームの公開シフトを読める」という日常正常系の番人が消えてしまう。
+                // よって期待値でなくフィクスチャを公開済みへ直す（DRAFT に対する 404 は
+                // ShiftUnpublishedScheduleVisibilityContractIT が別途固定している）。
+                .status(ShiftScheduleStatus.PUBLISHED)
+                .publishedAt(java.time.LocalDateTime.of(2026, 2, 20, 10, 0))
                 .createdBy(adminTeamAId)
                 .build());
         scheduleAId = scheduleA.getId();
@@ -137,19 +144,25 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
     class ListSlots {
 
         @Test
-        @DisplayName("非メンバーは403")
-        void 非メンバーは403() throws Exception {
+        // CMP-260917-1137: /slots は兄弟エンドポイント GET /schedules/{id} と同じ scheduleId を
+        // 経路として使うため、同じ存在オラクル（実在ID→403／不在ID→404で応答が割れる）を抱えていた。
+        // 当該チームに所属すらしていない（越境）は不在時と同一の SHIFT_001/404 に寄せる。
+        @DisplayName("無所属ユーザーは404（存在オラクル解消）")
+        void 無所属ユーザーは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}/slots", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMIN）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 越境（teamBのADMIN）は存在オラクル解消のため 403(BOLA) → 404 へ変更。
+        @DisplayName("別scope ADMIN（teamBのADMIN）は404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}/slots", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test

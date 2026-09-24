@@ -4,6 +4,7 @@ import type {
   InternalNoteResponse,
   FeedbackResponse,
 } from '~/types/admin-report'
+import type { PageMeta } from '~/types/api'
 
 export function useAdminReportApi() {
   const api = useApi()
@@ -168,12 +169,22 @@ export function useAdminReportApi() {
   }
 
   // --- useAdminReports から参照されるメソッド ---
-  async function getReports(params?: { page?: number; size?: number; status?: string }) {
+  /**
+   * 全通報一覧を取得する。
+   *
+   * 実体は `SystemAdminReportController#getAllReports`（`/api/v1/system-admin/reports`）で、
+   * `PagedResponse` を返すため `meta` は {@link PageMeta}（総件数は `total`）。
+   *
+   * かつては存在しない `/api/v1/admin/reports` を叩いたうえ `meta` を任意扱いにしていたため、
+   * 呼び出しが失敗しても総件数が取れないことが型の上では表に出ず、
+   * ページャーが出ない原因になっていた（CMP-260912-1823）。
+   * なお BE が解釈するのは `page` / `size` のみで `status` は受け取らない。
+   */
+  async function getReports(params?: { page?: number; size?: number }) {
     const q = new URLSearchParams()
     if (params?.page != null) q.set('page', String(params.page))
     if (params?.size != null) q.set('size', String(params.size))
-    if (params?.status) q.set('status', params.status)
-    return api<{ data: ReportResponse[]; meta?: { totalElements: number } }>(`/api/v1/admin/reports?${q.toString()}`)
+    return api<{ data: ReportResponse[]; meta: PageMeta }>(`/api/v1/system-admin/reports?${q.toString()}`)
   }
 
   async function getReportNotes(reportId: number) {

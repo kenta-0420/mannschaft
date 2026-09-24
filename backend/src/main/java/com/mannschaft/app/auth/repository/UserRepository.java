@@ -2,9 +2,11 @@ package com.mannschaft.app.auth.repository;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,6 +21,78 @@ import java.util.stream.Collectors;
  * ユーザーリポジトリ。
  */
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from UserEntity u where u.id = :id "
+            + "and u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
+    Optional<UserEntity> findByIdForUpdate(@Param("id") Long id);
+
+    /** 退会後の空集合cleanup用。対象行の存在だけを確認し、SQLRestrictionを迂回してlockする。 */
+    @Query(value = "select * from users where id = :id for update", nativeQuery = true)
+    Optional<UserEntity> findByIdForUpdateIncludingDeleted(@Param("id") Long id);
+
+    /**
+     * 退会申請時刻（{@code deleted_at}）を SQLRestriction を迂回して読む（柱③-B PR-3）。
+     *
+     * <p>{@link UserEntity} には {@code @SQLRestriction("deleted_at IS NULL")} が付いており、
+     * JPQL や {@code findById} では<b>退会申請中のユーザーは1件も返らない</b>。退会処理そのものが
+     * 「退会申請中か」を判定する必要があるため、ここは native で読む必要がある。</p>
+     *
+     * @return 退会申請中ならその時刻、未申請なら空の Optional（行自体が無い場合も空）
+     */
+    @Query(value = "select deleted_at from users where id = :id", nativeQuery = true)
+    Optional<LocalDateTime> findDeletedAtIncludingDeleted(@Param("id") Long id);
+
+    /**
+     * 同上を <b>{@code FOR UPDATE} 付き</b>で読む（柱③-B PR-3・Codex 検分4巡目 P1-3）。
+     *
+     * <p>ロックなしの読み取りでは「真値を確認した直後・自分が書き込む前」に
+     * {@code cancelWithdrawal} や再退会が commit できてしまい、確認と反映が線形化しない。
+     * 退会状態を根拠に書き込みを行う経路は、必ずこちらでユーザー行をロックしてから判断する。</p>
+     *
+     * <p>ロック順序の正準は <b>users → membership_subscriptions →
+     * membership_payer_withdrawal_cancellations</b>。デッドロックを避けるため、この順を崩さないこと。</p>
+     */
+    @Query(value = "select deleted_at from users where id = :id for update", nativeQuery = true)
+    Optional<LocalDateTime> findDeletedAtForUpdateIncludingDeleted(@Param("id") Long id);
+
+    /**
+     * <b>退会申請中のときだけ</b>、その退会試行の識別子（{@code withdrawal_attempt_id}）を
+     * 16進文字列で返す（柱③-B PR-3・Codex 単点確認の指定設計）。
+     *
+     * <p>退会試行の同一性は、時刻（{@code deleted_at} は DATETIME で秒精度）や作業行の状態からは
+     * 判定できない。退会側が採番したこの識別子だけが正本である。</p>
+     *
+     * <p>{@code HEX()} で返すのは、{@code BINARY(16)} をドライバ依存のバイト列表現に頼らず
+     * 一意な文字列として受け取るためである。呼び出し側で {@link java.util.UUID} へ復元する。</p>
+     */
+    @Query(value = "select hex(withdrawal_attempt_id) from users "
+            + "where id = :id and deleted_at is not null", nativeQuery = true)
+    Optional<String> findWithdrawalAttemptIdHexIfPending(@Param("id") Long id);
+
+    /**
+     * 退会申請中（{@code deleted_at IS NOT NULL}）のユーザー ID を返す（柱③-B PR-3・PR-4 の照合バッチの起点）。
+     *
+     * <p>同上の理由で native。退会申請から30日で物理 purge されるため運用上有界な集合である。</p>
+     */
+    @Query(value = "select id from users where deleted_at is not null", nativeQuery = true)
+    List<Long> findIdsByDeletedAtIsNotNull();
+
+    /**
+     * 柱①「ADMINゼロ根治」§12.5 — purge開始マークを冪等に記録する（{@code purge_started_at} が
+     * まだ NULL のときだけ現在時刻を書く）。{@code @Modifying} native UPDATE のため
+     * {@link org.springframework.data.jpa.repository.Query} 経由で直接発行し、
+     * Entity のロード・SQLRestriction を経由しない（退会済ユーザーにも書き込める必要があるため）。
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "UPDATE users SET purge_started_at = NOW() WHERE id = :id AND purge_started_at IS NULL",
+            nativeQuery = true)
+    int markPurgeStarted(@Param("id") Long id);
+
+    /** {@link #markPurgeStarted(Long)} でマーク済みかどうかを返す。 */
+    @Query(value = "SELECT CASE WHEN purge_started_at IS NOT NULL THEN 1 ELSE 0 END FROM users WHERE id = :id",
+            nativeQuery = true)
+    Optional<Integer> findPurgeStartedFlag(@Param("id") Long id);
 
     Optional<UserEntity> findByEmail(String email);
 
@@ -269,6 +343,20 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      */
     @Query(value = "SELECT u.id, u.display_name AS displayName, u.avatar_url AS avatarUrl FROM users u WHERE u.id = :id AND u.deleted_at IS NULL", nativeQuery = true)
     Optional<MemberSummary> findMemberSummaryById(@Param("id") Long id);
+
+    /**
+     * メンバー一覧用の最小プロジェクションを ID 一括で取得する（CMP-260910-1555）。
+     *
+     * <p>{@link #findMemberSummaryById} をメンバー数ぶんループすると 1 ページの表示に
+     * 人数ぶんのクエリが出る（N+1）。一覧表示は常に複数ユーザーをまとめて扱うので、
+     * 1 クエリで引けるようにする。</p>
+     *
+     * @param ids 対象ユーザーID（空リストを渡してはならない。呼び出し側で早期 return すること）
+     * @return 該当ユーザーの最小プロジェクション（論理削除済みは含まれない）
+     */
+    @Query(value = "SELECT u.id, u.display_name AS displayName, u.avatar_url AS avatarUrl "
+            + "FROM users u WHERE u.id IN (:ids) AND u.deleted_at IS NULL", nativeQuery = true)
+    List<MemberSummary> findMemberSummariesByIds(@Param("ids") List<Long> ids);
 
     // === 広告ターゲティング セグメント検索クエリ（F09.17 AdSegmentEvaluator Phase B）===
 

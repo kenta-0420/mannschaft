@@ -25,7 +25,6 @@ import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageMatchRecruitApplicationRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -74,7 +73,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VillageMatchRecruitService {
 
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final VillageMatchRecruitRepository recruitRepository;
     private final VillageMatchRecruitApplicationRepository applicationRepository;
@@ -83,6 +81,7 @@ public class VillageMatchRecruitService {
     private final TeamRepository teamRepository;
     /** Read-only: 将来の組織募集拡張用（現 Phase は USER+TEAM のみ）。 */
     private final OrganizationRepository organizationRepository;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // 募集本体
@@ -102,7 +101,7 @@ public class VillageMatchRecruitService {
         if (actorUserId == null) {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         ensureVillager(villageId, actorUserId);
 
         validateTimes(request.matchTimeStart(), request.matchTimeEnd());
@@ -142,7 +141,7 @@ public class VillageMatchRecruitService {
                                               UUID recruitId,
                                               MatchRecruitUpdateRequest request,
                                               Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMatchRecruitEntity entity = loadRecruitForVillage(villageId, recruitId);
         ensureAuthor(villageId, entity, actorUserId);
 
@@ -236,7 +235,7 @@ public class VillageMatchRecruitService {
                                                  int page,
                                                  int size,
                                                  Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         ensureVillager(villageId, actorUserId);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -270,7 +269,7 @@ public class VillageMatchRecruitService {
      */
     @Transactional(readOnly = true)
     public MatchRecruitResponse getRecruit(UUID villageId, UUID recruitId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         ensureVillager(villageId, actorUserId);
         VillageMatchRecruitEntity entity = loadRecruitForVillage(villageId, recruitId);
         return toResponse(entity);
@@ -299,7 +298,7 @@ public class VillageMatchRecruitService {
         if (applicantUserId == null) {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, applicantUserId);
         ensureVillager(villageId, applicantUserId);
 
         VillageMatchRecruitEntity recruit = loadRecruitForVillage(villageId, recruitId);
@@ -344,7 +343,7 @@ public class VillageMatchRecruitService {
                                                         UUID recruitId,
                                                         UUID applicationId,
                                                         Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         loadRecruitForVillage(villageId, recruitId);
         VillageMatchRecruitApplicationEntity app = loadApplicationForRecruit(recruitId, applicationId);
 
@@ -387,7 +386,7 @@ public class VillageMatchRecruitService {
             throw new BusinessException(VillageErrorCode.MATCH_APPLICATION_INVALID_STATUS);
         }
 
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, reviewerUserId);
         VillageMatchRecruitEntity recruit = loadRecruitForVillage(villageId, recruitId);
         ensureRecruitReviewer(villageId, recruit, reviewerUserId);
 
@@ -413,7 +412,7 @@ public class VillageMatchRecruitService {
     public List<MatchApplicationResponse> listApplications(UUID villageId,
                                                            UUID recruitId,
                                                            Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMatchRecruitEntity recruit = loadRecruitForVillage(villageId, recruitId);
         ensureRecruitReviewer(villageId, recruit, actorUserId);
 
@@ -433,7 +432,7 @@ public class VillageMatchRecruitService {
                                             Long actorUserId,
                                             VillageMatchRecruitStatus targetStatus,
                                             String operationLabel) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMatchRecruitEntity entity = loadRecruitForVillage(villageId, recruitId);
         ensureRecruitReviewer(villageId, entity, actorUserId);
 
@@ -452,17 +451,16 @@ public class VillageMatchRecruitService {
     // 共通ヘルパ — 取得・検証
     // ========================================================================
 
-    /** 有効な村を取得する（削除/凍結済みは VILLAGE_001/027 で扱う）。 */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     /**

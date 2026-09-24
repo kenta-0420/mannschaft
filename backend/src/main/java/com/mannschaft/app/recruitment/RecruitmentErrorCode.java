@@ -91,6 +91,15 @@ public enum RecruitmentErrorCode implements ErrorCode {
     /** 短時間の申込多すぎ（レート制限 → 429） */
     APPLY_RATE_LIMIT_EXCEEDED("RECRUITMENT_208", "短時間に多くの申込を行いました。しばらく経ってから再試行してください", Severity.WARN),
 
+    /** start_at >= end_at */
+    INVALID_EVENT_TIME_RANGE("RECRUITMENT_216", "開催終了は開催開始より後に指定してください", Severity.WARN),
+
+    /** application_deadline >= start_at */
+    INVALID_APPLICATION_DEADLINE("RECRUITMENT_217", "応募締切は開催開始より前に指定してください", Severity.WARN),
+
+    /** auto_cancel_at > application_deadline */
+    INVALID_AUTO_CANCEL_AT("RECRUITMENT_218", "自動キャンセル判定は応募締切以前に指定してください", Severity.WARN),
+
     // ========================================
     // 15.4 ペナルティ・キャンセル料エラー (300〜399)
     // ========================================
@@ -142,7 +151,14 @@ public enum RecruitmentErrorCode implements ErrorCode {
     /** テンプレートが見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     TEMPLATE_NOT_FOUND("RECRUITMENT_313", "テンプレートが見つかりません", Severity.WARN),
 
-    /** テンプレートのスコープが一致しない */
+    /**
+     * テンプレートのスコープが一致しない（他チーム・他組織のテンプレート ID を指した越境）。
+     *
+     * <p><b>越境の存在秘匿のため 404 固定</b>。不在（{@link #TEMPLATE_NOT_FOUND}）と同じ
+     * ステータスに揃えないと、templateId の列挙で他スコープのテンプレートの実在が判別できる
+     * （存在オラクル）。かつては本コードが ERROR_CODE_STATUS_MAP 未登録で既定 400 に
+     * 落ちており「入力不正だから 400」と説明されていたが、それは登録漏れであって設計判断ではない。</p>
+     */
     TEMPLATE_SCOPE_MISMATCH("RECRUITMENT_314", "テンプレートのスコープが一致しません", Severity.WARN);
 
     private final String code;

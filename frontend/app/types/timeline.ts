@@ -76,7 +76,7 @@ export interface TimelineAttachmentFile {
 }
 
 /**
- * 画像添付。url/thumbnailUrl はBEが MediaUrlResolver で解決した署名付き表示URL（issue #2424）。
+ * 画像添付。url/thumbnailUrl はBEが StorageAccessService でACL照合後に解決した署名付き表示URL。
  * DBには生キーしか無いためBEが署名して返す（FEはR2を署名できない）。画像は別サムネイルを
  * 持たないため thumbnailUrl は url と同一値。
  */
@@ -151,9 +151,11 @@ export interface RepostOf {
 export interface PostScopeDto {
   scopeType: TimelineScopeType
   scopeId: string
-  /** 投稿元スコープ名（個人集約タイムラインで BE から enrich。TEAM/ORGANIZATION のみ・それ以外は null） */
+  /** VILLAGE スコープの UUID。既存の数値 scopeId（常に 0）と併存する。 */
+  scopeVillageId?: string | null
+  /** 投稿元スコープ名（個人集約タイムラインで BE から enrich。TEAM/ORGANIZATION/VILLAGE、その他は null） */
   name?: string | null
-  /** 投稿元スコープ slug（遷移先 /teams/{slug} or /organizations/{slug} の生成に使う。null 可） */
+  /** 投稿元スコープ slug（TEAM/ORGANIZATION の遷移先生成、村は UUID 遷移で補助表示。null 可） */
   slug?: string | null
 }
 

@@ -70,6 +70,43 @@
       "backToList": "Volver a la lista de canales",
       "noChannels": "Aún no hay canales",
       "createChannel": "Crear canal"
+    },
+    "invite": {
+      "button": "Invitar al equipo",
+      "sentSuccess": "Invitación enviada",
+      "joinedSuccess": "Te has unido",
+      "declinedSuccess": "Invitación rechazada",
+      "modal": {
+        "title": "Elige un equipo u organización para invitar",
+        "empty": "No hay equipos ni organizaciones disponibles para invitar",
+        "submit": "Enviar invitación"
+      },
+      "card": {
+        "pending": "Tienes una invitación a {scope}",
+        "waiting": "Esperando su respuesta",
+        "statusPending": "Pendiente",
+        "join": "Unirse",
+        "decline": "Rechazar",
+        "joined": "Unido",
+        "declined": "Rechazada",
+        "expired": "Caducada",
+        "revoked": "Cancelada",
+        "expiresAt": "Caduca: {time}"
+      },
+      "preview": {
+        "sent": "Invitación enviada a {scope}"
+      },
+      "notification": {
+        "received": "Has recibido una invitación a {scope}"
+      },
+      "error": {
+        "notTarget": "Esta invitación no es para ti",
+        "privilegedRole": "Los roles de administrador no se pueden invitar de esta forma",
+        "loadFailed": "No se pudieron cargar los equipos/organizaciones para invitar",
+        "sendFailed": "No se pudo enviar la invitación",
+        "joinFailed": "No se pudo unir",
+        "declineFailed": "No se pudo rechazar"
+      }
     }
   },
   "button": {
@@ -129,7 +166,39 @@
     "DEPUTY_ADMIN": "Subadministrador",
     "MEMBER": "Miembro",
     "SUPPORTER": "Colaborador",
-    "GUEST": "Invitado"
+    "GUEST": "Invitado",
+    "transfer": {
+      "offer": {
+        "button": "管理者を引き継ぐ",
+        "notification": "{scope} の管理者への就任を打診されています",
+        "pending": "管理者就任の打診が届いています",
+        "pendingByMe": "{name} さんへ管理者委譲を打診中です",
+        "accept": "引き受ける",
+        "decline": "辞退する",
+        "cancel": "取消",
+        "accepted": "管理者を引き継ぎました",
+        "declined": "打診を辞退しました",
+        "expired": "打診は期限切れです",
+        "cancelled": "打診は取り消されました",
+        "confirmTitle": "オーナー委譲の打診",
+        "confirmMessage": "{name} さんへ管理者権限の委譲を打診しますか？相手が引き受けを承諾すると、あなたはメンバーに降格されます（この時点ではまだ委譲されません）。",
+        "acceptConfirmTitle": "管理者就任の承諾",
+        "acceptConfirmMessage": "引き受けると、あなたが管理者(ADMIN)になり、現在の管理者はメンバーに降格されます。よろしいですか？",
+        "declineConfirmTitle": "打診の辞退",
+        "declineConfirmMessage": "この打診を辞退しますか？あなたのロールは変わりません。",
+        "cancelConfirmTitle": "打診の取消",
+        "cancelConfirmMessage": "この委譲の打診を取り消しますか？相手のロールは変わりません。",
+        "created": "委譲を打診しました",
+        "cancelSuccess": "打診を取り消しました"
+      },
+      "error": {
+        "notTarget": "この打診はあなた宛てではありません",
+        "need2fa": {
+          "message": "管理者になるには2段階認証の設定が必要です",
+          "cta": "2段階認証を設定する"
+        }
+      }
+    }
   },
   "timetable": {
     "title": "Gestión de Horarios",
@@ -260,7 +329,13 @@
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
     "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
-    "TIMELINE_017": "Has alcanzado el límite de 200 elementos ocultos. Muestra de nuevo alguno que ya no necesites."
+    "TIMELINE_017": "Has alcanzado el límite de 200 elementos ocultos. Muestra de nuevo alguno que ya no necesites.",
+    "ROLE_009": "この打診はあなた宛てではありません",
+    "ROLE_010": "管理者になるには2段階認証の設定が必要です",
+    "ROLE_011": "既に有効な委譲オファーが存在します",
+    "ROLE_012": "委譲オファーは既に処理済みか無効です",
+    "ROLE_013": "対象が見つかりません",
+    "ROLE_014": "自分自身への委譲はできません"
   },
   "annual_plan": {
     "title": "Plan anual de eventos",
@@ -411,6 +486,10 @@
   },
   "confirmable": {
     "title": "Notificación de confirmación",
+    "page": {
+      "settings_title": "Configuración de notificaciones de confirmación",
+      "settings_subtitle": "Gestiona la configuración, el envío y el historial de notificaciones de confirmación"
+    },
     "settings": "Configuración de notificaciones de confirmación",
     "send": "Enviar notificación de confirmación",
     "history": "Historial de envíos",
@@ -577,7 +656,25 @@
       "selfReviewHelp": "El período configurado se trata como tiempo de revisión antes de publicar",
       "saveSettings": "Guardar configuración",
       "loadFailed": "No se pudo cargar el artículo",
-      "scheduledPublishUnavailable": "La publicación programada no está disponible por ahora. Al publicar, la entrada se hace pública de inmediato."
+      "scheduledPublishUnavailable": "La publicación programada no está disponible por ahora. Al publicar, la entrada se hace pública de inmediato.",
+      "listHeading": "記事",
+      "createButton": "新規作成",
+      "createDialogTitle": "新規記事作成",
+      "titleLabel": "タイトル",
+      "titlePlaceholder": "記事タイトルを入力",
+      "createDialogHint": "下書きとして保存されます。タイトル入力後、編集ページで本文を書いてください。",
+      "loadListFailed": "記事一覧の取得に失敗しました",
+      "createFailed": "記事の作成に失敗しました",
+      "archived": "アーカイブ",
+      "publishSuccess": "公開しました",
+      "unpublishSuccess": "非公開にしました",
+      "publishStatusFailed": "ステータスの変更に失敗しました",
+      "deleteConfirm": "この記事を削除しますか？",
+      "deleteSuccess": "記事を削除しました",
+      "deleteFailed": "削除に失敗しました",
+      "publishButton": "公開",
+      "unpublishButton": "非公開",
+      "updatedAt": "更新日"
     },
     "autoSave": {
       "label": "Guardado automático",
@@ -585,6 +682,19 @@
       "lastSaved": "Guardado automáticamente a las {time}",
       "enabled": "Guardado automático activado",
       "disabled": "Guardado automático desactivado"
+    },
+    "tag": {
+      "heading": "タグ",
+      "addButton": "タグを追加",
+      "addDialogTitle": "タグを追加",
+      "nameLabel": "タグ名",
+      "namePlaceholder": "例: お知らせ",
+      "empty": "タグがありません",
+      "loadFailed": "タグの取得に失敗しました",
+      "createSuccess": "タグを作成しました",
+      "createFailed": "作成に失敗しました",
+      "deleteSuccess": "タグを削除しました",
+      "deleteFailed": "削除に失敗しました"
     }
   },
   "todo": {
@@ -1031,6 +1141,20 @@
     "unresponded_list": "Miembros sin responder"
   },
   "organization": {
+    "basicInfoEdit": {
+      "sectionTitle": "Información básica",
+      "title": "Editar información básica",
+      "name": "Nombre de la organización",
+      "nameKana": "Nombre de la organización (kana)",
+      "nickname1": "Apodo 1",
+      "nickname2": "Apodo 2",
+      "prefecture": "Prefectura",
+      "city": "Municipio",
+      "selectPlaceholder": "Seleccionar",
+      "nameRequired": "Introduce el nombre de la organización.",
+      "versionMissing": "La organización aún no se ha cargado. Recarga la página e inténtalo de nuevo.",
+      "saved": "Información básica actualizada."
+    },
     "parent_chain": "Organizaciones superiores",
     "children": "Sub-organizaciones",
     "children_tab": "Sub-organizaciones",
@@ -1326,6 +1450,54 @@
     "filter": {
       "allTeamsOrgs": "Equipos y organizaciones (todos)",
       "selectScope": "Seleccionar destino"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Personal",
+        "unknown": "Otros eventos",
+        "loadError": {
+          "summary": "Error al cargar las capas",
+          "detail": "Los filtros de equipo/organización no están disponibles temporalmente. Los eventos siguen mostrándose. Vuelve a intentarlo más tarde."
+        },
+        "hiddenNotice": "La capa en la que lo creaste está oculta",
+        "showIt": "Mostrar",
+        "title": "Capas",
+        "count": "{count} capas",
+        "color": "Cambiar color",
+        "colorAuto": "Restablecer a automático"
+      },
+      "more": "+{count} más",
+      "today": "Hoy",
+      "dayDetail": {
+        "title": "Eventos del {date}"
+      },
+      "empty": "No hay eventos en este período",
+      "view": {
+        "month": "Mes",
+        "week": "Semana",
+        "agenda": "Agenda"
+      },
+      "week": {
+        "allDay": "Todo el día",
+        "now": "Ahora",
+        "dragHint": "Arrastra para crear un evento",
+        "dragHintTouch": "Mantén pulsado y arrastra para crear un evento",
+        "selectedRange": "{start} – {end}"
+      },
+      "a11y": {
+        "selecting": "Seleccionando de {start} a {end}",
+        "emptySlot": "Disponible",
+        "time": "{hour}:{minute}",
+        "weekGrid": "Semana del {range}",
+        "slot": "{date} {time} {content}",
+        "allDayList": "Eventos de todo el día"
+      },
+      "error": {
+        "invalidColor": "Formato de color no válido",
+        "notMember": "No puedes cambiar la configuración de esta capa",
+        "layerLimit": "Se alcanzó el límite de configuraciones de capa",
+        "colorResetRefreshFailed": "El color se restableció a automático, pero no se pudo actualizar el calendario. Recarga la página."
+      }
     }
   },
   "handoff": {
@@ -1373,6 +1545,8 @@
   "common": {
     "cancel": "Cancelar",
     "search": "Buscar",
+    "edit": "Editar",
+    "save": "Guardar",
     "resume": {
       "title": "Currículum y hoja de vida",
       "listTitle": "Versiones del currículum",
@@ -1494,7 +1668,12 @@
       "load_error_body": "Inténtalo de nuevo más tarde. Puede estar oculto si no tienes permiso.",
       "back_to_dashboard": "Volver al panel",
       "retry": "Reintentar",
-      "slow_loading": "La carga está tardando más de lo esperado"
+      "slow_loading": "La carga está tardando más de lo esperado",
+      "join_request_applied": "参加申請を送信しました"
+    },
+    "unsavedChanges": {
+      "title": "Cambios sin guardar",
+      "confirmLeave": "Tienes cambios sin guardar. Si sales de esta página, se perderá lo que has introducido. ¿Continuar?"
     }
   },
   "teamHub": {
@@ -1622,7 +1801,11 @@
       "gdprPurge": "Estado de Purga GDPR",
       "feedbackInbox": "Buzón de comentarios (Global)",
       "billing": "Datos maestros de facturación",
-      "betaPerks": "ベータ特典管理"
+      "betaPerks": "ベータ特典管理",
+      "villageCreationRequests": "村作成申請",
+      "seasonalWallpapers": "季節壁紙",
+      "pointCardSynonyms": "ポイントカード同義語",
+      "appeals": "異議申立"
     },
     "impersonation": {
       "banner": "Suplantando a: {label}",
@@ -1871,6 +2054,13 @@
     "mapEmbedUrlHelp": "En Google Maps, haz clic en \"Compartir > Insertar mapa > Copiar HTML\" y pega la URL de src= aquí",
     "mapEmbedUrlInvalidFormat": "Debe ser una URL de inserción de Google Maps (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "URL del mapa de la tienda guardada",
+    "timezone": {
+      "label": "Zona horaria de reservas",
+      "help": "Zona horaria IANA para interpretar las horas de inicio y fin.",
+      "placeholder": "p. ej., Asia/Tokyo",
+      "invalid": "Introduce una zona horaria IANA válida",
+      "saved": "Zona horaria guardada"
+    },
     "regionCode": {
       "label": "Ubicación (prefectura / municipio)",
       "help": "Al seleccionar una prefectura y un municipio se establecen los valores predeterminados para la búsqueda regional y las publicaciones.",
@@ -1888,6 +2078,24 @@
     "bulletinOpen": "Discutir en el tablón"
   },
   "scopeDashboard": {
+    "storageSummary": {
+      "title": "Almacenamiento",
+      "personal": "Personal",
+      "team": "Equipo",
+      "organization": "Organización",
+      "details": "Ver detalles",
+      "error": "No se pudo cargar el almacenamiento",
+      "retry": "Reintentar",
+      "unconfigured": "Cuota no configurada",
+      "not_available": "Sin datos de almacenamiento",
+      "meterLabel": "Uso de almacenamiento de {scope}",
+      "meterValue": "Uso {percent}%",
+      "warningTitle": "Límite de almacenamiento cercano",
+      "warningMessage": "{scope} usa el {percent}%. Considera actualizar a un plan de pago.",
+      "viewPlans": "Ver planes",
+      "checkStorage": "Comprobar almacenamiento",
+      "cancel": "Cancelar"
+    },
     "tabs": {
       "personal": "Personal",
       "team": "Equipo",
@@ -1904,7 +2112,7 @@
       "prevPage": "Página anterior",
       "nextPage": "Página siguiente",
       "reorder": "Cambiar orden de visualización",
-      "goToScopePage": "Ir a la página del equipo/organización",
+      "goToScopePage": "Abrir la página de {name}",
       "empty": "No perteneces a ningún equipo u organización",
       "folderEmpty": "No hay alcances en esta carpeta",
       "loadError": "Error al cargar la lista de etiquetas"
@@ -1939,6 +2147,13 @@
       "saveError": "Error al cambiar la URL (slug)",
       "unchanged": "Igual que el identificador actual (sin cambios)"
     }
+  },
+  "duplicate_name": {
+    "title": "Ya existe un/a {entity} con este nombre",
+    "description": "Ya existe un/a {entity} con el mismo nombre introducido. Revisa el contenido y decide si deseas continuar.",
+    "hidden_note": "Hay {count} {entity}(s) privados adicionales (no se muestran nombres ni detalles)",
+    "cancel": "Cancelar",
+    "confirm": "Crear de todos modos"
   },
   "team_visibility": {
     "PUBLIC": "Público",
@@ -2011,7 +2226,8 @@
       "members": "Miembros",
       "invites": "Invitaciones",
       "supporters": "Gestión de seguidores",
-      "modules": "Funciones"
+      "modules": "Funciones",
+      "joinRequests": "参加申請"
     },
     "action": {
       "leave_confirm_title": "Salir del equipo",
@@ -2028,7 +2244,8 @@
       "invites": "Invitaciones",
       "permission_groups": "Grupos de permisos",
       "supporters": "Gestión de seguidores",
-      "modules": "Funciones"
+      "modules": "Funciones",
+      "joinRequests": "参加申請"
     },
     "action": {
       "leave_confirm_title": "Salir de la organización",
@@ -2144,18 +2361,180 @@
   },
   "transferOwnership": {
     "sectionTitle": "Transferir la propiedad",
-    "sectionDescription": "Cede el rol de propietario (administrador) a otro miembro. Tras la transferencia pasas a ser subadministrador y ya no podrás realizar acciones exclusivas de administrador.",
-    "openButton": "Transferir la propiedad",
-    "dialogTitle": "Transferir la propiedad",
-    "warning": "Esta acción no se puede deshacer. Los permisos de administrador pasan al nuevo propietario y solo él podrá devolverlos.",
+    "sectionDescription": "Ofrece el rol de administrador a otro miembro. Nada cambia hasta que acepte.",
+    "openButton": "Ofrecer transferencia",
+    "dialogTitle": "Ofrecer transferencia de propiedad",
+    "warning": "Si la persona acepta, recibirá los permisos de administrador y tú pasarás a ser miembro. Nada cambia mientras la oferta esté pendiente.",
     "targetLabel": "Nuevo propietario",
     "targetPlaceholder": "Selecciona un miembro",
     "noCandidates": "No hay ningún miembro al que puedas transferir la propiedad.",
     "confirmLabel": "Escribe “{name}” para confirmar",
     "confirmMismatch": "El nombre no coincide.",
     "cancel": "Cancelar",
-    "submit": "Transferir",
-    "successTitle": "Propiedad transferida",
-    "successDetail": "Los permisos de administrador se han transferido al nuevo propietario."
+    "submit": "Enviar oferta",
+    "successTitle": "Oferta enviada",
+    "successDetail": "Tu rol de administrador no cambiará hasta que la persona acepte."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Función no disponible",
+      "body": "Esta función aún no está disponible. Volviendo al panel."
+    },
+    "error": {
+      "fetchFailedTitle": "No se pudo comprobar la disponibilidad de la función",
+      "fetchFailedBody": "No se pudo comprobar si esta función está disponible debido a un error de red. Inténtalo de nuevo más tarde."
+    }
+  },
+  "member": {
+    "columns": {
+      "name": "Miembro",
+      "role": "Rol",
+      "joinedAt": "Fecha de ingreso",
+      "actions": "Acciones"
+    },
+    "empty": "Aún no hay miembros",
+    "roleChanged": "Rol cambiado",
+    "roleChangeFailed": "No se pudo cambiar el rol",
+    "removed": "Miembro eliminado",
+    "removeFailed": "No se pudo eliminar el miembro",
+    "remove": {
+      "confirmTitle": "Eliminar miembro",
+      "confirmMessage": "¿Eliminar a {name} de los miembros?"
+    }
+  },
+  "scopeSwitch": {
+    "hint": "Para cambiar, abre un equipo u organización desde el menú «Equipos» / «Organizaciones» de la parte superior. El que abras pasa a ser el ámbito actual.",
+    "goTeams": "Elegir un equipo",
+    "goOrganizations": "Elegir una organización"
+  },
+  "joinRequest": {
+    "apply": "参加申請",
+    "pending": "申請中（承認待ち）",
+    "approved": "承認済み",
+    "rejected": "却下されました",
+    "fetchError": "取得に失敗しました",
+    "retry": "再試行",
+    "admin": {
+      "pendingTitle": "承認待ちの参加申請",
+      "empty": "承認待ちの参加申請はありません",
+      "requesterLabel": "ユーザーID: {userId}",
+      "requestedAt": "申請日",
+      "approve": "承認",
+      "reject": "却下",
+      "fetchError": "一覧の取得に失敗しました",
+      "retry": "再試行",
+      "loadMore": "さらに読み込む",
+      "loadMoreError": "追加読み込みに失敗しました",
+      "approveSuccess": "参加申請を承認しました",
+      "rejectSuccess": "参加申請を却下しました"
+    }
+  },
+  "myPage": {
+    "pageTitle": "Mi página",
+    "cards": {
+      "onboarding": {
+        "label": "Incorporación",
+        "description": "Trámites pendientes de los equipos y organizaciones a los que te uniste"
+      },
+      "shift": {
+        "label": "Mis turnos",
+        "description": "Calendario de tus asignaciones confirmadas"
+      },
+      "reservations": {
+        "label": "Mis reservas",
+        "description": "Lista de tus reservas"
+      },
+      "charts": {
+        "label": "Mis registros",
+        "description": "Consulta registros de actividad y notas"
+      },
+      "performance": {
+        "label": "Mi rendimiento",
+        "description": "Tus resultados y logros"
+      },
+      "projects": {
+        "label": "Mis proyectos",
+        "description": "Gestiona proyectos personales"
+      },
+      "serviceRecords": {
+        "label": "Mi historial de servicios",
+        "description": "Historial de servicios recibidos"
+      },
+      "noShows": {
+        "label": "Historial de cancelaciones",
+        "description": "Historial de ausencias y penalizaciones"
+      },
+      "resume": {
+        "label": "Currículum",
+        "description": "Crea y exporta tu currículum"
+      },
+      "receipts": {
+        "description": "Consulta y descarga los recibos de tus pagos"
+      },
+      "tournamentFees": {
+        "description": "Consulta y paga las cuotas de inscripción a torneos"
+      }
+    }
+  },
+  "auditLog": {
+    "title": "Registro de auditoría",
+    "empty": "No hay registros",
+    "loadFailed": "Error al cargar el registro de auditoría",
+    "column": {
+      "datetime": "Fecha y hora",
+      "user": "Usuario",
+      "category": "Categoría",
+      "event": "Evento"
+    }
+  },
+  "memberProfile": {
+    "loadFailed": "No se pudo cargar la información de los miembros",
+    "unavailable": "Esta función no está disponible actualmente (próximamente)",
+    "saveFailed": "Error al guardar",
+    "deleteFailed": "Error al eliminar",
+    "pages": {
+      "title": "メンバー紹介ページ",
+      "newPage": "新規ページ作成",
+      "empty": "ページがまだありません",
+      "titleLabel": "タイトル",
+      "slugLabel": "URLスラッグ",
+      "yearLabel": "対象年度",
+      "visibilityLabel": "公開範囲",
+      "visibilityPublic": "全体公開",
+      "visibilityMembersOnly": "メンバー限定",
+      "statusDraft": "下書き",
+      "statusPublished": "公開中",
+      "publish": "公開する",
+      "unpublish": "下書きに戻す",
+      "delete": "ページを削除",
+      "deleteConfirm": "このページを削除しますか？この操作は元に戻せません。",
+      "createSuccess": "ページを作成しました",
+      "createFailed": "ページの作成に失敗しました",
+      "updateSuccess": "ページを更新しました",
+      "statusChangeFailed": "公開ステータスの変更に失敗しました",
+      "deleteSuccess": "ページを削除しました",
+      "deleteFailed": "ページの削除に失敗しました",
+      "open": "メンバーを見る",
+      "copyFromPrevious": "前年度からメンバーをコピー",
+      "copySourceLabel": "コピー元ページ",
+      "copyConfirm": "コピーする",
+      "copySuccess": "{count}件のメンバーをコピーしました",
+      "copyFailed": "メンバーのコピーに失敗しました"
+    },
+    "members": {
+      "title": "メンバー一覧",
+      "add": "メンバー追加",
+      "edit": "メンバー編集",
+      "empty": "メンバーが登録されていません",
+      "bulkRegister": "一括登録",
+      "bulkRegisterHelp": "1行に1名、「表示名,番号」の形式で入力してください（番号は省略可）",
+      "bulkRegisterSuccess": "{count}件のメンバーを登録しました",
+      "bulkRegisterFailed": "一括登録に失敗しました",
+      "deleteConfirm": "このメンバーを削除しますか？",
+      "back": "ページ一覧に戻る",
+      "customFieldsError": "カスタム項目の読み込みに失敗しました",
+      "optionsInvalidFormat": "選択肢データの形式が不正です",
+      "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
+    }
   }
 }

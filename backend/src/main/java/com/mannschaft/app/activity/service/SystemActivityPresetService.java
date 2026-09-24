@@ -9,6 +9,7 @@ import com.mannschaft.app.activity.dto.UpdatePresetRequest;
 import com.mannschaft.app.activity.entity.SystemActivityTemplatePresetEntity;
 import com.mannschaft.app.activity.repository.SystemActivityTemplatePresetRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,7 +44,7 @@ public class SystemActivityPresetService {
     @Transactional
     public PresetResponse createPreset(CreatePresetRequest request) {
         SystemActivityTemplatePresetEntity entity = SystemActivityTemplatePresetEntity.builder()
-                .category(PresetCategory.valueOf(request.getCategory()))
+                .category(EnumInputParser.parse(PresetCategory.class, request.getCategory(), "category"))
                 .name(request.getName())
                 .description(request.getDescription())
                 .icon(request.getIcon())

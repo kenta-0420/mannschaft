@@ -34,9 +34,18 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
     List<ShiftRequestEntity> findByScheduleIdAndSlotDate(Long scheduleId, LocalDate slotDate);
 
     /**
-     * スケジュール・ユーザー・日付で希望を検索する（重複チェック用）。
+     * スケジュール・ユーザー・<b>枠</b>で希望を検索する（枠単位の重複チェック用。設計 §11.5.1）。
+     *
+     * <p>同一日に枠が複数あるとき、希望は<b>枠ごとに 1 件</b>成立する。</p>
      */
-    Optional<ShiftRequestEntity> findByScheduleIdAndUserIdAndSlotDate(Long scheduleId, Long userId, LocalDate slotDate);
+    Optional<ShiftRequestEntity> findByScheduleIdAndUserIdAndSlotId(Long scheduleId, Long userId, Long slotId);
+
+    /**
+     * スケジュール・ユーザー・日付で<b>日単位希望</b>（{@code slotId IS NULL}）を検索する
+     *（重複チェック用。設計 §11.5.1「{@code slotId} が NULL の日単位希望は従来どおり日で判定」）。
+     */
+    Optional<ShiftRequestEntity> findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
+            Long scheduleId, Long userId, LocalDate slotDate);
 
     /**
      * スケジュールの希望提出ユーザー数を取得する。

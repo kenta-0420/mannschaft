@@ -161,9 +161,7 @@
     },
     "page": {
       "my_title": "내 예약",
-      "team_title": "예약 관리",
-      "settings_title": "예약 관리 설정",
-      "settings_subtitle": "예약 대상(직원 / 창구)을 관리합니다"
+      "team_title": "예약 관리"
     },
     "tab": {
       "book": "예약하기",
@@ -174,7 +172,16 @@
       "team_page": "예약"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "{label} 사용법",
+      "cards": {
+        "business_hours": { "title": "영업시간", "description": "예약 시간을 설정합니다" },
+        "lines": { "title": "예약 대상", "description": "{n}개 대상을 관리합니다" },
+        "menus": { "title": "메뉴", "description": "{n}개 메뉴를 관리합니다" },
+        "weekly_schedule": { "title": "주간 일정", "description": "{n}개 시간 및 반복 설정" },
+        "exception_day": { "title": "예외일", "description": "특정 날짜를 조정합니다" },
+        "advanced": { "title": "고급 설정", "description": "공개 범위와 알림 설정" }
+      }
     },
     "column": {
       "datetime": "일시",
@@ -214,7 +221,6 @@
     },
     "button": {
       "add_line": "{resourceName} 추가",
-      "add_line_long": "{resourceName} 추가",
       "save": "저장",
       "cancel": "취소",
       "reserve": "예약하기",
@@ -228,12 +234,9 @@
       "title": "확인",
       "line_create": "예약 대상 생성",
       "line_edit": "예약 대상 편집",
-      "line_create_long": "{resourceName} 추가",
-      "line_edit_long": "{resourceName} 편집",
       "reserve_confirm": "예약 확인",
       "cancel_confirm": "이 예약을 취소하시겠습니까?",
-      "line_delete_confirm": "이 예약 대상을 삭제하시겠습니까?",
-      "line_delete_named_confirm": "「{name}」을(를) 삭제하시겠습니까?"
+      "line_delete_confirm": "이 예약 대상을 삭제하시겠습니까?"
     },
     "message": {
       "confirm_success": "예약을 승인했습니다",
@@ -245,9 +248,6 @@
       "line_update_success": "예약 대상을 수정했습니다",
       "line_delete_success": "예약 대상을 삭제했습니다",
       "line_save_failed": "저장에 실패했습니다",
-      "line_create_success_long": "예약 대상을 생성했습니다",
-      "line_update_success_long": "예약 대상을 수정했습니다",
-      "line_delete_success_long": "예약 대상을 삭제했습니다",
       "line_load_failed": "예약 대상 조회에 실패했습니다",
       "save_failed": "저장에 실패했습니다",
       "delete_failed": "삭제에 실패했습니다",
@@ -583,6 +583,8 @@
       "capacity": "정원",
       "is_active": "사용",
       "cell_count": "1일 {n}슬롯(30분 단위)",
+      "ends_next_day": "다음 날 종료",
+      "next_day_time": "다음 날 {time}",
       "price": "요금(선택)",
       "slot_title": "제목(선택)",
       "generate": "지금 슬롯 생성",
@@ -647,6 +649,7 @@
     "business_hours": {
       "title": "영업시간",
       "day_open": "영업함",
+      "ends_next_day": "다음 날 종료",
       "save_success": "저장했습니다. 슬롯 {generated}개를 갱신했습니다",
       "generating": "슬롯을 갱신하는 중입니다…",
       "generation_failed": "영업시간은 저장되었지만 슬롯 자동 갱신에 실패했습니다. 다음 날 아침에 자동으로 보완됩니다",
@@ -679,6 +682,7 @@
       "state": {
         "available": "빈자리",
         "booked": "만석",
+        "reserved": "내 예약",
         "closed": "접수 마감",
         "unavailable": "예약 불가"
       },
@@ -699,6 +703,9 @@
       "no_menu_single": "메뉴 없이 30분만 예약",
       "preview_title": "다음 내용으로 예약합니다",
       "extend_30": "+30분 연장",
+      "open_all": "모두 보기",
+      "close_all": "모두 닫기",
+      "open_day_hint": "날짜를 선택하면 예약 시간을 볼 수 있습니다",
       "date_line_header": "날짜・{resourceName}",
       "help_toggle": "사용법 보기",
       "help_body": "비어 있는（초록색）시간대를 탭한 후 메뉴를 선택하면 필요한 시간대 수가 자동으로 선택됩니다. 「+30분 연장」으로 더 추가할 수 있습니다. 공통 시간대를 선택한 경우 {resourceName} 항목을 선택해 주세요.",

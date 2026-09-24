@@ -1,5 +1,7 @@
 package com.mannschaft.app.dashboard.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +39,8 @@ public class MembershipChangedListener {
      * <p>{@code AFTER_COMMIT} で動作するため、ロール変更が DB にコミットされた後に
      * キャッシュ DEL を行う。これにより一貫性を保ちつつ最新ロールが即座に反映される。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。所属変更に伴うダッシュボードの更新。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onMembershipChanged(MembershipChangedEvent event) {
         try {

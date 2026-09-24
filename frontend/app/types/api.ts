@@ -10,13 +10,20 @@ export interface PagedResponse<T> {
   meta: PageMeta
 }
 
+/**
+ * BE の {@code PagedResponse.PageMeta}（`backend/.../common/PagedResponse.java`）に一対一で対応する。
+ *
+ * BE が送信するのは `total` / `page` / `size` / `totalPages` の4フィールドのみ。
+ * かつて存在した `totalElements` は BE がそもそも送らない幽霊フィールドであり、
+ * 必須で型付けされていたために「実行時は常に undefined なのに型検査は素通りする」
+ * 状態を生んでいた（CMP-260912-1823）。総件数が取れずページャーが出ない実害が出たため削除した。
+ * 総件数は必ず {@link PageMeta.total} を読むこと。
+ */
 export interface PageMeta {
   page: number
   size: number
-  /** BE の PagedResponse.PageMeta#total に対応（正式フィールド名）*/
-  total?: number
-  /** 旧互換フィールド名。BE の PagedResponse は total を送信するが型の互換性のため残存 */
-  totalElements: number
+  /** 総件数。BE の PagedResponse.PageMeta#total に対応する正式フィールド名 */
+  total: number
   totalPages: number
 }
 

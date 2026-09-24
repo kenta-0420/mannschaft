@@ -27,7 +27,16 @@
     "table_field": "字段",
     "cancel_button": "取消",
     "delete_button": "删除",
-    "fetch_error": "获取删除预览失败"
+    "fetch_error": "获取删除预览失败",
+    "last_admin_title": "退会前需要处理以下组织/团队",
+    "last_admin_description": "您是以下范围中唯一的管理员（ADMIN）。在其他成员仍存在的情况下，请先指定继任者或将其归档后再退会。",
+    "scope_type_organization": "组织",
+    "scope_type_team": "团队",
+    "other_members_count": "另有 {count} 名成员",
+    "transfer_ownership_button": "指定继任者",
+    "archive_button": "归档",
+    "blocked_notice": "在完成以上所有事项之前无法退会",
+    "retry_button": "重试"
   },
   "signature": {
     "clear": "清除"
@@ -400,7 +409,8 @@
       "password_placeholder": "当前密码",
       "retention_note": "※ 由于法律要求，部分数据将在 {days} 天后删除。",
       "delete_success": "账户已删除。感谢您的使用。",
-      "delete_error": "删除账户失败"
+      "delete_error": "删除账户失败",
+      "gdpr_011_error": "由于您是某个组织或团队的唯一管理员，无法退会。请先指定继任者或将其归档。"
     },
     "notification": {
       "load_error": "获取设置失败",
@@ -444,6 +454,78 @@
       "upload_success": "「{name}」上传成功",
       "upload_error": "「{name}」上传失败",
       "uploading": "上传中..."
+    },
+    "hub": {
+      "pageTitle": "设置",
+      "searchPlaceholder": "搜索设置...",
+      "noSearchResults": "未找到与\"{query}\"匹配的设置",
+      "individualListToggle": "单项设置列表",
+      "itemCount": "（{count}项）",
+      "account": {
+        "description": "在一个页面管理所有设置"
+      },
+      "profile": {
+        "description": "管理个人资料信息和密码"
+      },
+      "security": {
+        "label": "安全",
+        "description": "双重验证・会话管理・安全密钥"
+      },
+      "email": {
+        "description": "更改电子邮件地址"
+      },
+      "password": {
+        "description": "更改或设置密码"
+      },
+      "language": {
+        "description": "显示语言和时区设置"
+      },
+      "loginHistory": {
+        "description": "登录和身份验证历史记录"
+      },
+      "linkedAccounts": {
+        "description": "管理OAuth和LINE连接"
+      },
+      "appearance": {
+        "description": "主题・背景色・显示设置"
+      },
+      "navigation": {
+        "description": "自定义显示的导航项目"
+      },
+      "memberCards": {
+        "description": "会员卡显示・签到历史"
+      },
+      "socialProfiles": {
+        "description": "管理匿名资料和关注"
+      },
+      "seals": {
+        "description": "印章显示和按范围设置"
+      },
+      "notifications": {
+        "description": "通知接收设置"
+      },
+      "calendarSync": {
+        "description": "日历同步・iCal集成"
+      },
+      "contactPrivacy": {
+        "description": "搜索・私信接收・在线状态的公开范围"
+      },
+      "contactInviteTokens": {
+        "description": "发放和管理用于添加联系人的邀请链接"
+      },
+      "contactRequestBlocks": {
+        "label": "申请预先拒绝列表",
+        "description": "拒绝特定用户的联系人申请"
+      },
+      "storage": {
+        "description": "查看个人・团队・组织的容量使用情况"
+      },
+      "billing": {
+        "description": "查看当前订阅的方案・附加功能・可用功能"
+      },
+      "parentalConsentManage": {
+        "description": "管理已批准的监护人和受监护的子账户"
+      }
     }
   }
 }

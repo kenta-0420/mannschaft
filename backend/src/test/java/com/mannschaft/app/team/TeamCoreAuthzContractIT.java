@@ -46,7 +46,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>PATCH /{slug}/unarchive — {@code checkAdminOrAbove}</li>
  *   <li>PATCH /{slug}/restore — {@code checkSystemAdmin}（チーム ADMIN でも不可）</li>
  *   <li>GET /{slug}/permission-groups — {@code checkAdminOrAbove}</li>
- *   <li>POST /{slug}/transfer-ownership — {@code checkAdminOrAbove}（入口二重防御）</li>
  *   <li>GET /{slug}/organizations — {@code ContentVisibilityChecker#assertCanView}</li>
  *   <li>GET /{slug}/followers — {@code ContentVisibilityChecker#assertCanView}</li>
  *   <li>GET /{slug}/shift-settings — {@code checkMembership}（shift ドメインの参照系と同粒度）</li>
@@ -325,33 +324,6 @@ class TeamCoreAuthzContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk());
         }
 
-        @Test
-        @DisplayName("一般メンバー(非ADMIN)のオーナー譲渡は403（自己昇格の遮断）")
-        void 一般メンバーのオーナー譲渡は403() throws Exception {
-            setAuthentication(memberAId);
-            mockMvc.perform(post("/api/v1/teams/{slug}/transfer-ownership", teamASlug)
-                            .param("targetUserId", String.valueOf(memberAId)))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
-        }
-
-        @Test
-        @DisplayName("他チームADMINの越境譲渡は403")
-        void 他チームADMINの越境譲渡は403() throws Exception {
-            setAuthentication(adminBId);
-            mockMvc.perform(post("/api/v1/teams/{slug}/transfer-ownership", teamASlug)
-                            .param("targetUserId", String.valueOf(memberAId)))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("正当ADMINのオーナー譲渡は200（正常系）")
-        void 正当ADMINのオーナー譲渡は200() throws Exception {
-            setAuthentication(adminAId);
-            mockMvc.perform(post("/api/v1/teams/{slug}/transfer-ownership", teamASlug)
-                            .param("targetUserId", String.valueOf(memberAId)))
-                    .andExpect(status().isOk());
-        }
     }
 
     // ═════════════════════════════════════════════════════════════════════

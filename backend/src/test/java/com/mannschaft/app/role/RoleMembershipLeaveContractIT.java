@@ -1,11 +1,14 @@
 package com.mannschaft.app.role;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
@@ -14,8 +17,11 @@ import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,12 +29,15 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 除名・退会と在籍（{@code memberships}）の整合を実 MySQL に対して固定する契約テスト。
@@ -51,6 +60,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>AC5: <b>正常系</b> — 除名されていない在籍者は引き続き
  *       {@code findAffiliatedScopeIds} / {@code isMember} に現れる（締め出し退行の防止）</li>
  *   <li>AC6: 上記を TEAM / ORGANIZATION 双方で満たす</li>
+ *   <li>AC7: {@code user_roles} が無い MEMBER membership も TEAM / ORGANIZATION 双方で自主退会できる</li>
+ *   <li>AC8: 同じ状態でも SUPPORTER は会員退会経路を使えず、別スコープは変更されない</li>
  * </ul>
  *
  * <p>テスト環境は {@code application-test.yml} の {@code ddl-auto=create} + {@code flyway.enabled=false}
@@ -64,12 +75,15 @@ class RoleMembershipLeaveContractIT extends AbstractMySqlIntegrationTest {
     private static final AtomicInteger SEQ = new AtomicInteger(0);
 
     @Autowired private RoleService roleService;
+    @Autowired private MembershipService membershipService;
     @Autowired private AccessControlService accessControlService;
     @Autowired private MembershipRepository membershipRepository;
     @Autowired private UserRoleRepository userRoleRepository;
     @Autowired private RoleRepository roleRepository;
     @Autowired private TeamRepository teamRepository;
     @Autowired private OrganizationRepository organizationRepository;
+    @Autowired private PlatformTransactionManager transactionManager;
+    @PersistenceContext private EntityManager em;
 
     private Long adminRoleId;
     private Long memberRoleId;
@@ -139,6 +153,8 @@ class RoleMembershipLeaveContractIT extends AbstractMySqlIntegrationTest {
 
     /** 招待参加後と同じ形（user_roles 行 + アクティブ membership）で在籍させる。 */
     private void enroll(Long userId, ScopeType scopeType, Long scopeId, Long roleId) {
+        new TransactionTemplate(transactionManager)
+                .executeWithoutResult(status -> MembershipTestHelper.insertActiveUser(em, userId));
         var builder = UserRoleEntity.builder().userId(userId).roleId(roleId);
         if (scopeType == ScopeType.TEAM) {
             builder.teamId(scopeId);
@@ -153,6 +169,19 @@ class RoleMembershipLeaveContractIT extends AbstractMySqlIntegrationTest {
                 .roleKind(RoleKind.MEMBER)
                 .joinedAt(LocalDateTime.now())
                 .build());
+    }
+
+    /** 本番の join 経由で memberships-only の在籍を作る。 */
+    private void enrollBare(Long userId, ScopeType scopeType, Long scopeId, RoleKind roleKind) {
+        new TransactionTemplate(transactionManager)
+                .executeWithoutResult(status -> MembershipTestHelper.insertActiveUser(em, userId));
+        MembershipCreateRequest request = new MembershipCreateRequest();
+        request.setUserId(userId);
+        request.setScopeType(scopeType);
+        request.setScopeId(scopeId);
+        request.setRoleKind(roleKind);
+        request.setSource("CONTRACT_TEST");
+        membershipService.join(request);
     }
 
     private Optional<MembershipEntity> membershipOf(Long userId, ScopeType scopeType, Long scopeId) {
@@ -301,6 +330,55 @@ class RoleMembershipLeaveContractIT extends AbstractMySqlIntegrationTest {
             MembershipEntity m = membershipOf(user, ScopeType.ORGANIZATION, orgId).orElseThrow();
             assertThat(m.getLeftAt()).isNotNull();
             assertThat(m.getLeaveReason()).isEqualTo(LeaveReason.SELF);
+        }
+
+        @Test
+        @DisplayName("AC7-team: user_roles無しのMEMBERも自主退会でき、別チームは在籍のまま")
+        void ac7_team_bareMemberLeavesOnlyTargetScope() {
+            Long targetTeamId = saveTeam();
+            Long otherTeamId = saveTeam();
+            Long user = 9052L;
+            enrollBare(user, ScopeType.TEAM, targetTeamId, RoleKind.MEMBER);
+            enrollBare(user, ScopeType.TEAM, otherTeamId, RoleKind.MEMBER);
+
+            roleService.leaveScope(user, targetTeamId, "TEAM");
+
+            assertNotAffiliated(user, ScopeType.TEAM, targetTeamId);
+            assertAffiliated(user, ScopeType.TEAM, otherTeamId);
+            MembershipEntity left = membershipOf(user, ScopeType.TEAM, targetTeamId).orElseThrow();
+            assertThat(left.getLeaveReason()).isEqualTo(LeaveReason.SELF);
+            assertThat(userRoleRepository.findByUserIdAndTeamId(user, targetTeamId)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC7-org: user_roles無しのMEMBERも自主退会できる")
+        void ac7_org_bareMemberLeaves() {
+            Long orgId = saveOrg();
+            Long user = 9053L;
+            enrollBare(user, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
+
+            roleService.leaveScope(user, orgId, "ORGANIZATION");
+
+            assertNotAffiliated(user, ScopeType.ORGANIZATION, orgId);
+            MembershipEntity left = membershipOf(user, ScopeType.ORGANIZATION, orgId).orElseThrow();
+            assertThat(left.getLeaveReason()).isEqualTo(LeaveReason.SELF);
+            assertThat(userRoleRepository.findByUserIdAndOrganizationId(user, orgId)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC8: user_roles無しのSUPPORTERは会員退会経路を使えない")
+        void ac8_bareSupporterCannotUseMemberLeave() {
+            Long teamId = saveTeam();
+            Long user = 9054L;
+            enrollBare(user, ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
+
+            assertThatThrownBy(() -> roleService.leaveScope(user, teamId, "TEAM"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ROLE_001"));
+
+            assertAffiliated(user, ScopeType.TEAM, teamId);
+            assertThat(membershipOf(user, ScopeType.TEAM, teamId).orElseThrow().getLeftAt()).isNull();
         }
     }
 

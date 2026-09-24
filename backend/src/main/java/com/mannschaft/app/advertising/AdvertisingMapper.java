@@ -31,6 +31,7 @@ public interface AdvertisingMapper {
      */
     @Mapping(target = "provider", expression = "java(entity.getProvider().name())")
     @Mapping(target = "placement", expression = "java(entity.getPlacement().name())")
+    @Mapping(target = "placeholderTagId", expression = "java(entity.isPlaceholderTagId())")
     AffiliateConfigResponse toResponse(AffiliateConfigEntity entity);
 
     /**
@@ -48,8 +49,8 @@ public interface AdvertisingMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "isActive", constant = "true")
-    @Mapping(target = "provider", expression = "java(AffiliateProvider.valueOf(request.getProvider()))")
-    @Mapping(target = "placement", expression = "java(AdPlacement.valueOf(request.getPlacement()))")
+    @Mapping(target = "provider", expression = "java(com.mannschaft.app.common.EnumInputParser.parse(AffiliateProvider.class, request.getProvider(), \"provider\"))")
+    @Mapping(target = "placement", expression = "java(com.mannschaft.app.common.EnumInputParser.parse(AdPlacement.class, request.getPlacement(), \"placement\"))")
     AffiliateConfigEntity toEntity(CreateAffiliateConfigRequest request);
 
     /**

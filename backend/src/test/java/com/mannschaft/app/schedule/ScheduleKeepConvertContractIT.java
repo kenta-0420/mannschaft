@@ -10,6 +10,7 @@ import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.ScheduleKeepEntity;
+import com.mannschaft.app.schedule.event.ScheduleKeepConvertedEvent;
 import com.mannschaft.app.schedule.entity.ScheduleKeepStatus;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleKeepRepository;
@@ -31,13 +32,11 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.sql.DataSource;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
+@RecordApplicationEvents
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("F03.17 キープ 変換・状態遷移 API 契約テスト（試練 Wave2）")
 class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
@@ -88,13 +88,14 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
     private EntityManager em;
 
     /**
-     * 通知の永続化は {@code REQUIRES_NEW} の独立トランザクションで行われる（§6.2.1）ため、
-     * <b>テストの外側トランザクションからは観測できない</b>（MySQL REPEATABLE READ のスナップショットは
-     * 外側 TX の最初の読み取り時に確定しており、その後に別 TX がコミットした行は見えない）。
-     * 素の {@link DataSource} から新しい接続＝新しいスナップショットを取って数える。
+     * #2990 L8 以降、キープ変換の通知は業務コミット後（{@code AFTER_COMMIT} リスナー）に配送される。
+     * 本クラスは {@code @Transactional} でコミットしないため通知行は原理的に生まれない。
+     * よって本クラスが負う契約は「業務トランザクション内で配送イベントを publish すること」であり、
+     * 配送内容（受信者・可視性・fan-out）は {@code ScheduleKeepNotificationServiceTest} と
+     * {@code ScheduleKeepConvertedNotificationListenerTest} が受け持つ。
      */
     @Autowired
-    private DataSource dataSource;
+    private ApplicationEvents applicationEvents;
 
     private Long teamId;
     private Long otherTeamId;
@@ -701,8 +702,9 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
     class ConvertPermission {
 
         @Test
-        @DisplayName("AC-15b: 作成者でもADMINでもないMEMBERのconvertは200で成功する。かつキープ作成者に通知が届く")
-        void AC15b_非作成者非ADMINでもconvertは200で作成者に通知される() throws Exception {
+        @DisplayName("AC-15b: 作成者でもADMINでもないMEMBERのconvertは200で成功する。"
+                + "かつ通知配送イベントが業務トランザクション内で publish される")
+        void AC15b_非作成者非ADMINでもconvertは200で配送イベントがpublishされる() throws Exception {
             ScheduleKeepEntity keep = saveKeep(teamId, memberId, "AC15b-キープ", ScheduleKeepStatus.KEPT, 0);
             em.flush();
             em.clear();
@@ -715,13 +717,29 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.keep.status").value("SCHEDULED"));
 
-            assertThat(countConvertedNotifications(memberId)).isGreaterThan(0);
+            // 業務TX内の契約は「配送イベントを publish すること」まで。実配送は AFTER_COMMIT に移った。
+            assertThat(applicationEvents.stream(ScheduleKeepConvertedEvent.class))
+                    .as("convert は変換されたキープ ID を載せた配送イベントを業務TX内で publish する")
+                    .anySatisfy(event -> {
+                        assertThat(event.keepId()).isEqualTo(keep.getId());
+                        assertThat(event.convertedScheduleId()).isNotNull();
+                        assertThat(event.actorUserId()).isEqualTo(otherMemberId);
+                    });
         }
 
+        /**
+         * #2990 L8 で変換通知の配送が {@code AFTER_COMMIT} リスナーへ移ったため、
+         * {@code @Transactional} な本クラスでは通知行が原理的に 0 件になる。
+         * 「0 件であること」をここで測ると<b>常に通る偽の緑</b>になるので測らない。
+         * 降格作成者へ直送しないこと自体は
+         * {@code ScheduleKeepNotificationServiceTest} の AC-4
+         * （作成者に閲覧権が無い場合 creator 直送はスキップする）が受け持つ。
+         * 本テストはその前提となる「降格作成者からキープが 404 で秘匿されていること」と
+         * 「それでも他 MEMBER の convert は成立すること」を守る。
+         */
         @Test
-        @DisplayName("SUPPORTERへ降格した作成者には変換通知が作られない"
-                + "（キープ本体では404で秘匿しているタイトルが通知経由で漏れないこと）")
-        void 降格した作成者には変換通知が作られない() throws Exception {
+        @DisplayName("SUPPORTERへ降格した作成者からキープは404で秘匿され、それでも他MEMBERのconvertは成立する")
+        void 降格した作成者にはキープが秘匿されたままconvertは成立する() throws Exception {
             // supporterId が作ったキープ。その後 SUPPORTER になった（＝キープが見えなくなった）状況を模す。
             ScheduleKeepEntity keep = saveKeep(teamId, supporterId, "降格作成者のキープ", ScheduleKeepStatus.KEPT, 0);
             em.flush();
@@ -739,7 +757,6 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
                             .content(objectMapper.writeValueAsString(Map.of("startAt", "2026-09-21T00:00:00"))))
                     .andExpect(status().isOk());
 
-            assertThat(countConvertedNotifications(supporterId)).isZero();
         }
     }
 
@@ -1243,25 +1260,6 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
     // フィクスチャ
     // ═════════════════════════════════════════════════════════════════════
-
-    /**
-     * 変換通知の件数を<b>新しい接続＝新しいトランザクション</b>で数える。
-     *
-     * <p>通知は {@code REQUIRES_NEW} で独立コミットされる（§6.2.1）ため、
-     * テストの外側トランザクションから {@code em} で数えても 0 のままになる。</p>
-     */
-    private long countConvertedNotifications(Long userId) throws Exception {
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(
-                     "SELECT COUNT(*) FROM notifications "
-                             + "WHERE user_id = ? AND notification_type = 'SCHEDULE_KEEP_CONVERTED'")) {
-            statement.setLong(1, userId);
-            try (ResultSet rs = statement.executeQuery()) {
-                rs.next();
-                return rs.getLong(1);
-            }
-        }
-    }
 
     private ScheduleKeepEntity saveKeep(Long teamId, Long createdBy, String title,
                                          ScheduleKeepStatus status, int sortOrder) {

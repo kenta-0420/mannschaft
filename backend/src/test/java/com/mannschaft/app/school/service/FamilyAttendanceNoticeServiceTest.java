@@ -11,6 +11,8 @@ import com.mannschaft.app.school.dto.FamilyNoticeListResponse;
 import com.mannschaft.app.school.entity.FamilyAttendanceNoticeEntity;
 import com.mannschaft.app.school.entity.FamilyNoticeType;
 import com.mannschaft.app.school.error.SchoolErrorCode;
+import com.mannschaft.app.school.event.FamilyAttendanceNoticeAcknowledgedEvent;
+import com.mannschaft.app.school.event.FamilyAttendanceNoticeSubmittedEvent;
 import com.mannschaft.app.school.repository.FamilyAttendanceNoticeRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
@@ -73,7 +76,7 @@ class FamilyAttendanceNoticeServiceTest {
     private StorageService storageService;
 
     @Mock
-    private SchoolAttendanceNotificationService notificationService;
+    private ApplicationEventPublisher eventPublisher;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -110,7 +113,13 @@ class FamilyAttendanceNoticeServiceTest {
             assertThat(response.getId()).isEqualTo(NOTICE_ID);
             assertThat(response.getStatus()).isEqualTo("PENDING");
             verify(noticeRepository).save(any());
-            verify(notificationService).notifyFamilyNoticeSubmitted(any());
+
+            // Issue #2990 L6: 業務TX内では通知を直接呼ばず、noticeId だけを載せたイベントを publish する。
+            // 通知の失敗で保護者が送った連絡そのものが巻き戻るのを防ぐ。
+            ArgumentCaptor<FamilyAttendanceNoticeSubmittedEvent> captor =
+                    ArgumentCaptor.forClass(FamilyAttendanceNoticeSubmittedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().noticeId()).isEqualTo(NOTICE_ID);
         }
 
         @Test
@@ -153,7 +162,12 @@ class FamilyAttendanceNoticeServiceTest {
             FamilyAttendanceNoticeResponse response = service.acknowledgeNotice(TEAM_ID, NOTICE_ID, 99L);
 
             assertThat(response.getStatus()).isEqualTo("ACKNOWLEDGED");
-            verify(notificationService).notifyFamilyNoticeAcknowledged(any());
+
+            // Issue #2990 L6: 通知の失敗で担任の確認済み化が巻き戻らないよう、publish だけに留める。
+            ArgumentCaptor<FamilyAttendanceNoticeAcknowledgedEvent> captor =
+                    ArgumentCaptor.forClass(FamilyAttendanceNoticeAcknowledgedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().noticeId()).isEqualTo(NOTICE_ID);
         }
 
         @Test

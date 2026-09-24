@@ -85,7 +85,7 @@ class JobPostingServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 権限なしで JOB_PERMISSION_DENIED")
+        @DisplayName("異常系: 権限なしで JOB_CREATE_PERMISSION_DENIED")
         void 権限なし_拒否() {
             CreateJobPostingCommand cmd = defaultCreateCommand(VisibilityScope.TEAM_MEMBERS, 3000);
             given(jobPolicy.canCreatePosting(USER_ID, TEAM_ID)).willReturn(false);
@@ -93,7 +93,7 @@ class JobPostingServiceTest {
             assertThatThrownBy(() -> service.create(cmd, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(JobmatchingErrorCode.JOB_PERMISSION_DENIED));
+                            .isEqualTo(JobmatchingErrorCode.JOB_CREATE_PERMISSION_DENIED));
         }
 
         @Test

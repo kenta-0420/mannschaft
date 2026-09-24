@@ -48,7 +48,7 @@ function setupMocks(page: Page, state: MockState) {
           { userId: 2, displayName: '山田', avatarUrl: null },
           { userId: 3, displayName: '佐藤', avatarUrl: null },
         ],
-        meta: { page: 0, size: 20, totalElements: 3, totalPages: 1 },
+        meta: { page: 0, size: 20, total: 3, totalPages: 1 },
       },
     })
   })

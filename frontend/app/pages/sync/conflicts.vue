@@ -21,7 +21,7 @@ const conflicts = ref<SyncConflictListItem[]>([])
 const pageMeta = ref<ApiPageMeta>({
   page: 0,
   size: 20,
-  totalElements: 0,
+  total: 0,
   totalPages: 0,
 })
 const errorMessage = ref('')
@@ -134,7 +134,7 @@ onMounted(() => {
       <div v-if="pageMeta.totalPages > 1" class="mt-6 flex justify-center">
         <Paginator
           :rows="pageMeta.size"
-          :total-records="pageMeta.totalElements"
+          :total-records="pageMeta.total"
           :first="pageMeta.page * pageMeta.size"
           @page="onPageChange"
         />

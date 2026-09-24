@@ -2,6 +2,7 @@ package com.mannschaft.app.proxyvote.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.proxyvote.DelegationStatus;
@@ -157,7 +158,7 @@ public class ProxyDelegationService {
             throw new BusinessException(ProxyVoteErrorCode.DELEGATION_NOT_SUBMITTED);
         }
 
-        DelegationStatus newStatus = DelegationStatus.valueOf(request.getStatus());
+        DelegationStatus newStatus = EnumInputParser.parse(DelegationStatus.class, request.getStatus(), "status");
         if (newStatus == DelegationStatus.ACCEPTED) {
             delegation.accept(reviewerId);
         } else if (newStatus == DelegationStatus.REJECTED) {

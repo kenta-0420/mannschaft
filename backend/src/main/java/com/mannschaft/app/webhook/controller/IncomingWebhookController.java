@@ -2,6 +2,8 @@ package com.mannschaft.app.webhook.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.webhook.service.IncomingWebhookService;
 import com.mannschaft.app.webhook.service.IncomingWebhookService.CreateIncomingWebhookRequest;
@@ -100,6 +102,8 @@ public class IncomingWebhookController {
      * @param eventType イベント種別（任意。Stripe等ではXヘッダーではなくクエリで指定される場合がある）
      */
     @AuthorizedInService
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "発行済みWebhook契約の外部イベントをGate状態にかかわらず受領するため")
     @PostMapping("/incoming/{token}")
     public ApiResponse<Void> processIncoming(
             @PathVariable String token,

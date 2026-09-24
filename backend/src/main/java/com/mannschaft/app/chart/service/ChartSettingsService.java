@@ -26,6 +26,7 @@ import com.mannschaft.app.chart.repository.ChartRecordTemplateRepository;
 import com.mannschaft.app.chart.repository.ChartSectionSettingRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -126,7 +127,7 @@ public class ChartSettingsService {
         // createは作成先スコープ（path teamId）でcheckAdminOrAbove。
         accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
         // enumバリデーション
-        CustomFieldType.valueOf(request.getFieldType());
+        EnumInputParser.parse(CustomFieldType.class, request.getFieldType(), "fieldType");
 
         long activeCount = customFieldRepository.countByTeamIdAndIsActiveTrue(teamId);
         if (activeCount >= MAX_CUSTOM_FIELDS_PER_TEAM) {
@@ -157,7 +158,7 @@ public class ChartSettingsService {
         // BOLA厳禁: entity 由来 teamId で認可する。
         accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
-        CustomFieldType.valueOf(request.getFieldType());
+        EnumInputParser.parse(CustomFieldType.class, request.getFieldType(), "fieldType");
 
         entity.update(request.getFieldName(), request.getFieldType(), request.getOptions(),
                 request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder());

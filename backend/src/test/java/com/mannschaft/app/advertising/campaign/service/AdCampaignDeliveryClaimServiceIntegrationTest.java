@@ -3,6 +3,7 @@ package com.mannschaft.app.advertising.campaign.service;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
+import com.mannschaft.app.advertising.campaign.repository.AdCampaignDeliveryClaimRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -44,6 +45,9 @@ class AdCampaignDeliveryClaimServiceIntegrationTest extends AbstractMySqlIntegra
 
     @Autowired
     private AdMessagingCampaignRepository campaignRepository;
+
+    @Autowired
+    private AdCampaignDeliveryClaimRepository claimRepository;
 
     private UUID persistCampaign() {
         LocalDateTime now = LocalDateTime.now();
@@ -112,6 +116,17 @@ class AdCampaignDeliveryClaimServiceIntegrationTest extends AbstractMySqlIntegra
         assertThat(claimService.tryClaim(campaignId, userId, week1)).isFalse();
         // 翌週は独立した claim として成功する
         assertThat(claimService.tryClaim(campaignId, userId, week2)).isTrue();
+
+        assertThat(claimRepository.findAll().stream()
+                .filter(claim -> campaignId.equals(claim.getCampaignId()))
+                .filter(claim -> userId.equals(claim.getUserId()))
+                .map(claim -> claim.getId().version()))
+                .containsOnly(7);
+        assertThat(claimRepository.findAll().stream()
+                .filter(claim -> campaignId.equals(claim.getCampaignId()))
+                .filter(claim -> userId.equals(claim.getUserId()))
+                .map(claim -> claim.getId().variant()))
+                .containsOnly(2);
     }
 
     @Test

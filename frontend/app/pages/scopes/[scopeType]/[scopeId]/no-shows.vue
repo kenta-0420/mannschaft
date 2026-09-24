@@ -33,7 +33,7 @@ async function load() {
       pageSize.value,
     )
     noShows.value = result.data
-    totalElements.value = result.meta.totalElements
+    totalElements.value = result.meta.total
   }
   catch (e) {
     error(String(e))

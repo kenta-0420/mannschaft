@@ -107,6 +107,15 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         if (roleId != null) {
             return;
         }
+        // 冪等化: roles はグローバル参照テーブルのため、既存の 'MEMBER' があれば再利用する
+        // （同一 name の盲目的 INSERT は roles の UNIQUE 制約違反になる。CI shard 再編成で
+        // 同一 JVM 内の同居テストが変わり得るため、存在確認なしの INSERT は禁止）。
+        List<?> found = em.createNativeQuery("SELECT id FROM roles WHERE name = 'MEMBER'")
+                .getResultList();
+        if (!found.isEmpty()) {
+            roleId = ((Number) found.get(0)).longValue();
+            return;
+        }
         RoleEntity role = RoleEntity.builder()
                 .name("MEMBER")
                 .displayName("メンバー")
@@ -114,6 +123,7 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
                 .isSystem(true)
                 .build();
         em.persist(role);
+        em.flush();
         roleId = role.getId();
     }
 

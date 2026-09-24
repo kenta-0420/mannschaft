@@ -1,5 +1,7 @@
 package com.mannschaft.app.common.storage;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -18,6 +20,8 @@ public class S3ObjectDeleteEventListener {
 
     private final StorageService storageService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると DB から消したファイルの実体が R2 に残り続ける。削除対象のキーはイベントにしか無く、後から辿って消す経路が存在しない")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleS3Delete(S3ObjectDeleteEvent event) {

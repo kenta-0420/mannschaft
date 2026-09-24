@@ -3,6 +3,8 @@ package com.mannschaft.app.incident.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.incident.service.IncidentCommentService;
+import com.mannschaft.app.incident.service.IncidentCommentService.IncidentCommentResponse;
 import com.mannschaft.app.incident.service.IncidentService;
 import com.mannschaft.app.incident.service.IncidentService.AssignIncidentRequest;
 import com.mannschaft.app.incident.service.IncidentService.IncidentResponse;
@@ -26,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 
 import java.util.List;
 
@@ -40,6 +41,7 @@ import java.util.List;
 public class IncidentController {
 
     private final IncidentService incidentService;
+    private final IncidentCommentService incidentCommentService;
 
     // ========================================
     // 内部DTO定義（ステータス変更リクエスト）
@@ -150,16 +152,11 @@ public class IncidentController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * インシデントのコメント一覧を取得する。
-     * TODO: コメント機能実装後に本実装に差し替えること
-     */
-    // SecurityConfig の anyRequest().authenticated() で認証必須。
-    // コメント機能は未実装のため常に固定の空リストを返し、id 値に関わらずユーザー固有データを
-    // 一切参照しない（本実装差し替え時は id の所有権検証を追加すること）。
-    @AuthorizedByPathConfig("anyRequest().authenticated()")
+    /** インシデントの可視コメントを取得する。 */
     @GetMapping("/{id}/comments")
-    public ResponseEntity<ApiResponse<List<Object>>> listComments(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(List.of()));
+    public ResponseEntity<ApiResponse<List<IncidentCommentResponse>>> listComments(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<IncidentCommentResponse> response = incidentCommentService.listComments(id, userId);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

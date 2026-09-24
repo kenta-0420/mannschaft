@@ -6,7 +6,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.config.OrgScopeId;
 import com.mannschaft.app.schedule.controller.OrgScheduleController;
 import com.mannschaft.app.schedule.dto.AttendanceTeamBreakdownResponse;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
@@ -63,15 +63,11 @@ class OrgScheduleControllerTest {
     private NameResolverService nameResolverService;
 
     @Mock
-    private OrganizationService organizationService;
-
-    @Mock
     private AccessControlService accessControlService;
 
     @InjectMocks
     private OrgScheduleController controller;
 
-    private static final String ORG_PUBLIC_ID = "acme";
     private static final Long ORG_ID = 100L;
     private static final Long SCHEDULE_ID = 30L;
     private static final Long USER_ID = 1L;
@@ -93,12 +89,11 @@ class OrgScheduleControllerTest {
         void 集計_ADMIN正常() {
             try (MockedStatic<SecurityUtils> utils = mockStatic(SecurityUtils.class)) {
                 utils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                given(organizationService.resolveOrgId(ORG_PUBLIC_ID)).willReturn(ORG_ID);
                 doNothing().when(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
                 given(attendanceService.getAttendanceTeamBreakdown(SCHEDULE_ID)).willReturn(buildBreakdown());
 
                 ResponseEntity<ApiResponse<AttendanceTeamBreakdownResponse>> result =
-                        controller.getAttendanceTeamBreakdown(ORG_PUBLIC_ID, SCHEDULE_ID);
+                        controller.getAttendanceTeamBreakdown(new OrgScopeId(ORG_ID), SCHEDULE_ID);
 
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
                 assertThat(result.getBody()).isNotNull();
@@ -112,11 +107,10 @@ class OrgScheduleControllerTest {
         void 集計_非ADMINは403() {
             try (MockedStatic<SecurityUtils> utils = mockStatic(SecurityUtils.class)) {
                 utils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                given(organizationService.resolveOrgId(ORG_PUBLIC_ID)).willReturn(ORG_ID);
                 doThrow(new BusinessException(CommonErrorCode.COMMON_002))
                         .when(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
 
-                assertThatThrownBy(() -> controller.getAttendanceTeamBreakdown(ORG_PUBLIC_ID, SCHEDULE_ID))
+                assertThatThrownBy(() -> controller.getAttendanceTeamBreakdown(new OrgScopeId(ORG_ID), SCHEDULE_ID))
                         .isInstanceOf(BusinessException.class)
                         .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                                 .isEqualTo(CommonErrorCode.COMMON_002));
@@ -135,13 +129,12 @@ class OrgScheduleControllerTest {
         void CSV_ADMIN正常() {
             try (MockedStatic<SecurityUtils> utils = mockStatic(SecurityUtils.class)) {
                 utils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                given(organizationService.resolveOrgId(ORG_PUBLIC_ID)).willReturn(ORG_ID);
                 doNothing().when(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
                 given(attendanceService.exportAttendanceTeamBreakdownCsv(SCHEDULE_ID))
                         .willReturn("チーム名,出席,一部参加,欠席,未回答,合計\n");
 
                 ResponseEntity<byte[]> result =
-                        controller.exportAttendanceTeamBreakdownCsv(ORG_PUBLIC_ID, SCHEDULE_ID);
+                        controller.exportAttendanceTeamBreakdownCsv(new OrgScopeId(ORG_ID), SCHEDULE_ID);
 
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
                 assertThat(result.getBody()).isNotEmpty();
@@ -153,11 +146,10 @@ class OrgScheduleControllerTest {
         void CSV_非ADMINは403() {
             try (MockedStatic<SecurityUtils> utils = mockStatic(SecurityUtils.class)) {
                 utils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                given(organizationService.resolveOrgId(ORG_PUBLIC_ID)).willReturn(ORG_ID);
                 doThrow(new BusinessException(CommonErrorCode.COMMON_002))
                         .when(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
 
-                assertThatThrownBy(() -> controller.exportAttendanceTeamBreakdownCsv(ORG_PUBLIC_ID, SCHEDULE_ID))
+                assertThatThrownBy(() -> controller.exportAttendanceTeamBreakdownCsv(new OrgScopeId(ORG_ID), SCHEDULE_ID))
                         .isInstanceOf(BusinessException.class)
                         .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                                 .isEqualTo(CommonErrorCode.COMMON_002));

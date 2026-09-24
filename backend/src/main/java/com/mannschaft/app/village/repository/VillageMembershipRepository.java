@@ -118,18 +118,31 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
      * @param villageId 対象村 UUID
      * @param cursor    直前チャンク末尾の subject_id（初回は最小値未満＝{@code 0L} 等を渡す）
      * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
-     * @return {@code subject_id > cursor} の現役 USER subject_id を昇順に最大 chunk 件
+     * @return {@code subject_id > cursor} の現役 USER の {@code [subject_id, locale]} を昇順に最大 chunk 件
+     *
+     * <h2>Issue #2871: locale 同時取得のための users JOIN（母集団は不変）</h2>
+     * <p>受信者ごとに文面のロケールを変えるため {@code users.locale} も一緒に取る。JPQL では
+     * village↔user のクロスドメイン association を張れない（原則1・FK 禁止）ため native query へ移した。</p>
+     * <p><b>あえて {@code LEFT JOIN} にしている。</b> 本クエリの母集団条件は「村メンバーシップが現役」
+     * だけであり、ユーザー状態（{@code status} / {@code deleted_at}）は元々見ていない。ここで
+     * {@code INNER JOIN} にすると、users 側に行が無いケースで受信者が<b>静かに減る</b>＝母集団の
+     * 定義を変えてしまう。JOIN は locale を取るためだけのものであり、絞り込みではないことを
+     * {@code LEFT JOIN} で構造的に表す（users 行が無ければ locale は NULL となり、
+     * {@link com.mannschaft.app.notification.fanout.FanoutRecipient} が既定ロケールへ正規化する）。</p>
+     * <p>実行計画: {@code idx_vm_fanout_keyset} の covering index range scan はそのまま駆動表に残り、
+     * users は主キーの {@code eq_ref}（Single-row index lookup）1 段が加わるだけで、
+     * filesort / temporary は増えない（20 万行の実測値は PR 本文参照）。</p>
      */
-    @Query("""
-            SELECT m.subjectId FROM VillageMembershipEntity m
-            WHERE m.villageId = :villageId
-              AND m.subjectType = com.mannschaft.app.village.entity.enums.VillageSubjectType.USER
-              AND m.leftAt IS NULL
-              AND m.bannedAt IS NULL
-              AND m.subjectId > :cursor
-            ORDER BY m.subjectId ASC
-            """)
-    List<Long> findActiveUserSubjectIdsByVillageIdKeyset(
+    @Query(value = "SELECT CAST(m.subject_id AS SIGNED), u.locale FROM village_memberships m "
+            + "LEFT JOIN users u ON u.id = m.subject_id "
+            + "WHERE m.village_id = :villageId "
+            + "AND m.subject_type = 'USER' "
+            + "AND m.left_at IS NULL "
+            + "AND m.banned_at IS NULL "
+            + "AND m.subject_id > :cursor "
+            + "ORDER BY m.subject_id ASC",
+            nativeQuery = true)
+    List<Object[]> findActiveUserSubjectIdsByVillageIdKeyset(
             @Param("villageId") UUID villageId,
             @Param("cursor") Long cursor,
             Pageable pageable);

@@ -2,6 +2,7 @@ package com.mannschaft.app.cms.service;
 
 import com.mannschaft.app.cms.CmsErrorCode;
 import com.mannschaft.app.cms.CmsMapper;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
 import com.mannschaft.app.cms.PostPriority;
 import com.mannschaft.app.cms.PostStatus;
@@ -31,14 +32,20 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
+import com.mannschaft.app.payment.service.ContentAccessState;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,7 +53,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -66,6 +76,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BlogPostService {
+    private final BlogMediaAclService mediaAclService;
+    private final BlogMediaCopyService mediaCopyService;
 
     private final BlogPostRepository postRepository;
     private final BlogPostTagRepository postTagRepository;
@@ -78,6 +90,10 @@ public class BlogPostService {
     // TODO: cms ドメインが team/organization ドメインを参照（CLAUDE.md 原則5）。将来はイベント駆動化を検討。
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
+    // 検分第2巡 残存経路チェック用（assertScopeNotProvisioned）。CrossDomainEntityImportArchTest(D-1)
+    // 根治のため Entity 直参照ではなく boolean のみを返す Service API 経由にする。
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
     private final AccessControlService accessControlService;
     // TODO: cms ドメインが payment ドメインを参照（CLAUDE.md 原則5）。クロスドメイン FK は張らず
     //       PaymentGateService のメソッド呼び（ID 渡し）に限定する。将来はイベント駆動化を検討。
@@ -101,9 +117,8 @@ public class BlogPostService {
         }
         Long teamId = resolveTeamId(teamIdStr);
         accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
-        Page<BlogPostEntity> page = postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(teamId, pageable);
-        // 一覧は body 常時 null（詳細でのみ本文を返す。N+1 回避＋有料本文の一覧漏洩封鎖）
-        return page.map(e -> stripBody(cmsMapper.toBlogPostResponse(e)));
+        return scanVisiblePage(pageable, SecurityUtils.getCurrentUserIdOrNull(),
+                request -> postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(teamId, request));
     }
 
     /**
@@ -120,9 +135,8 @@ public class BlogPostService {
         }
         Long organizationId = resolveOrganizationId(organizationIdStr);
         accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), organizationId, "ORGANIZATION");
-        Page<BlogPostEntity> page = postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(organizationId, pageable);
-        // 一覧は body 常時 null（詳細でのみ本文を返す。N+1 回避＋有料本文の一覧漏洩封鎖）
-        return page.map(e -> stripBody(cmsMapper.toBlogPostResponse(e)));
+        return scanVisiblePage(pageable, SecurityUtils.getCurrentUserIdOrNull(),
+                request -> postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(organizationId, request));
     }
 
     /**
@@ -134,21 +148,41 @@ public class BlogPostService {
      * 作成者本人に可視と判定するため、自分の下書きも見える。</p>
      */
     public Page<BlogPostResponse> listByUser(Long userId, Pageable pageable) {
-        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
-        Page<BlogPostEntity> page = postRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
-        List<BlogPostEntity> content = page.getContent();
-        if (content.isEmpty()) {
-            return Page.empty(pageable);
+        return scanVisiblePage(pageable, SecurityUtils.getCurrentUserIdOrNull(),
+                request -> postRepository.findByUserIdOrderByCreatedAtDesc(userId, request));
+    }
+
+    private Page<BlogPostResponse> scanVisiblePage(Pageable pageable, Long viewerUserId,
+                                                   Function<Pageable, Page<BlogPostEntity>> source) {
+        int scanSize = Math.max(100, pageable.getPageSize());
+        long offset = pageable.getOffset();
+        long visibleTotal = 0;
+        boolean systemAdmin = viewerUserId != null && accessControlService.isSystemAdmin(viewerUserId);
+        List<BlogPostResponse> result = new ArrayList<>();
+        for (int scanPage = 0; ; scanPage++) {
+            Page<BlogPostEntity> page = source.apply(PageRequest.of(scanPage, scanSize));
+            List<BlogPostEntity> content = page.getContent();
+            if (content.isEmpty()) break;
+            Set<Long> ids = content.stream().map(BlogPostEntity::getId).collect(Collectors.toSet());
+            Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, ids, viewerUserId);
+            Map<Long, ContentGateTarget> targets = content.stream()
+                    .map(BlogPostService::targetEntry)
+                    .flatMap(Optional::stream)
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            Map<Long, GateCheckResponse> gates = paymentGateService.checkAccessBatch(
+                    ContentGateType.POST, content.stream().map(BlogPostEntity::getId).toList(), viewerUserId, targets);
+            for (BlogPostEntity entity : content) {
+                if (!accessibleIds.contains(entity.getId())) continue;
+                BlogPostResponse response = applyListPaywall(entity, systemAdmin,
+                        gates == null ? null : gates.get(entity.getId()));
+                if (response == null) continue;
+                long index = visibleTotal++;
+                if (index >= offset && result.size() < pageable.getPageSize()) result.add(response);
+            }
+            if (!page.hasNext()) break;
         }
-        Set<Long> ids = content.stream().map(BlogPostEntity::getId).collect(Collectors.toSet());
-        Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
-                ReferenceType.BLOG_POST, ids, viewerUserId);
-        // 一覧は body 常時 null（他者閲覧分の有料本文漏洩封鎖。本人編集は ID 指定詳細経路で全文取得）
-        List<BlogPostResponse> filtered = content.stream()
-                .filter(e -> accessibleIds.contains(e.getId()))
-                .map(e -> stripBody(cmsMapper.toBlogPostResponse(e)))
-                .toList();
-        return new org.springframework.data.domain.PageImpl<>(filtered, pageable, page.getTotalElements());
+        return new PageImpl<>(result, pageable, visibleTotal);
     }
 
     /**
@@ -185,6 +219,13 @@ public class BlogPostService {
      * スコープ解決用であり閲覧者IDではないため使用しない）。</p>
      */
     public BlogPostResponse getBySlug(Long teamId, Long organizationId, Long userId, String slug) {
+        // 検分第2巡 残存経路チェック: teamId/organizationId は Controller が数値IDをそのまま
+        // 受け取る（slug 解決を経由しない）ため、PROVISIONED（承諾前の事前作成状態）スコープの
+        // ID を直接指定された場合の防御多層として、ここで lifecycleStatus=ACTIVE を確認する。
+        // PROVISIONED スコープは作成時点で会員が存在せず記事も作られ得ないため実害は現状無いが、
+        // 将来の経路変化に備えた最小差分の防御として追加する（存在秘匿のため POST_NOT_FOUND に畳む）。
+        assertScopeNotProvisioned(teamId, organizationId);
+
         BlogPostEntity entity;
         if (teamId != null) {
             entity = postRepository.findByTeamIdAndSlug(teamId, slug)
@@ -235,11 +276,11 @@ public class BlogPostService {
     @Transactional
     public BlogPostResponse createPost(Long userId, CreateBlogPostRequest request) {
         PostType postType = request.getPostType() != null
-                ? PostType.valueOf(request.getPostType()) : PostType.BLOG;
+                ? EnumInputParser.parse(PostType.class, request.getPostType(), "postType") : PostType.BLOG;
         Visibility visibility = request.getVisibility() != null
-                ? Visibility.valueOf(request.getVisibility()) : Visibility.MEMBERS_ONLY;
+                ? EnumInputParser.parse(Visibility.class, request.getVisibility(), "visibility") : Visibility.MEMBERS_ONLY;
         PostPriority priority = request.getPriority() != null
-                ? PostPriority.valueOf(request.getPriority()) : PostPriority.NORMAL;
+                ? EnumInputParser.parse(PostPriority.class, request.getPriority(), "priority") : PostPriority.NORMAL;
 
         String slug = request.getSlug() != null ? request.getSlug() : generateSlug(request.getTitle());
         short readingTime = calculateReadingTime(request.getBody());
@@ -290,6 +331,8 @@ public class BlogPostService {
 
         BlogPostEntity saved = postRepository.save(entity);
 
+        mediaAclService.bindBodyMedia(saved, userId);
+
         // タグ紐付け
         if (request.getTagIds() != null) {
             for (Long tagId : request.getTagIds()) {
@@ -310,9 +353,9 @@ public class BlogPostService {
         checkWriteAccess(entity, userId);
 
         Visibility visibility = request.getVisibility() != null
-                ? Visibility.valueOf(request.getVisibility()) : entity.getVisibility();
+                ? EnumInputParser.parse(Visibility.class, request.getVisibility(), "visibility") : entity.getVisibility();
         PostPriority priority = request.getPriority() != null
-                ? PostPriority.valueOf(request.getPriority()) : entity.getPriority();
+                ? EnumInputParser.parse(PostPriority.class, request.getPriority(), "priority") : entity.getPriority();
         String slug = request.getSlug() != null ? request.getSlug() : entity.getSlug();
         short readingTime = calculateReadingTime(request.getBody());
 
@@ -334,6 +377,7 @@ public class BlogPostService {
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("記事更新: postId={}", id);
+        mediaAclService.bindBodyMedia(saved, userId);
         return cmsMapper.toBlogPostResponse(saved);
     }
 
@@ -344,7 +388,7 @@ public class BlogPostService {
     public BlogPostResponse changeStatus(Long id, Long userId, PublishRequest request) {
         BlogPostEntity entity = findPostOrThrow(id);
         checkWriteAccess(entity, userId);
-        PostStatus newStatus = PostStatus.valueOf(request.getStatus());
+        PostStatus newStatus = EnumInputParser.parse(PostStatus.class, request.getStatus(), "status");
 
         if (newStatus == PostStatus.REJECTED && (request.getRejectionReason() == null || request.getRejectionReason().isBlank())) {
             throw new BusinessException(CmsErrorCode.REJECTION_REASON_REQUIRED);
@@ -406,6 +450,7 @@ public class BlogPostService {
                 .build();
 
         BlogPostEntity saved = postRepository.save(copy);
+        mediaCopyService.copyMedia(original, saved, userId);
 
         // タグのコピー
         List<BlogPostTagEntity> tags = postTagRepository.findByBlogPostId(id);
@@ -468,6 +513,7 @@ public class BlogPostService {
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("自動保存: postId={}", id);
+        mediaAclService.bindBodyMedia(saved, userId);
         return cmsMapper.toBlogPostResponse(saved);
     }
 
@@ -648,16 +694,15 @@ public class BlogPostService {
     /**
      * ペイウォール本文ゲートを適用する（F08.9 漏洩根治）。
      *
-     * <p>判定の単一真実源は {@link PaymentGateService#checkAccess(String, Long, Long)}
+     * <p>判定の単一真実源は対象スコープ付きの {@link PaymentGateService#checkAccess(String, Long, Long, ContentGateTarget)}
      * （content-gates/check と同一）。FE 専用ペイウォールではバイパス漏洩するため、
      * 可視性(F00)通過の<b>後段</b>で BE 側でも本文をマスクする。</p>
      *
      * <ul>
-     *   <li>著者本人・SystemAdmin はゲート無視で全文（編集/プレビュー）。</li>
+     *   <li>SystemAdmin だけがゲートを迂回できる。著者本人は通常どおり評価する。</li>
      *   <li>{@code accessible=false} のとき body=null。{@code titleHidden=true} なら title も null。
      *       {@code excerpt}/{@code coverImageUrl}/{@code title} はプレビュー素材として残す。</li>
-     *   <li>fail-closed: {@code checkAccess} が例外 → ゲート行有りなら body マスク、
-     *       ゲート行無し（=評価不能の真因がゲート不在）なら従来どおり body を返す。</li>
+     *   <li>fail-closed: {@code checkAccess} が例外または評価不能なら非表示として扱う。</li>
      * </ul>
      *
      * @param dto          マッピング済みレスポンス
@@ -666,35 +711,35 @@ public class BlogPostService {
      * @return ゲート適用後のレスポンス
      */
     private BlogPostResponse applyPaywallMask(BlogPostResponse dto, BlogPostEntity entity, Long viewerUserId) {
-        // 著者本人はゲート無視で全文
-        if (viewerUserId != null && viewerUserId.equals(entity.getAuthorId())) {
-            return dto;
-        }
-        // SystemAdmin はゲート無視で全文
+        // SystemAdmin だけがゲートを迂回できる。著者本人は通常どおり評価する。
         if (viewerUserId != null && accessControlService.isSystemAdmin(viewerUserId)) {
-            return dto;
+            return dto.withAccessState(ContentAccessState.FULL.name());
         }
 
         GateCheckResponse gate;
         try {
-            gate = paymentGateService.checkAccess(ContentGateType.POST, entity.getId(), viewerUserId);
+            gate = paymentGateService.checkAccess(ContentGateType.POST, entity.getId(), viewerUserId,
+                    targetOf(entity));
         } catch (Exception e) {
             // 評価不能（例外）→ null 扱いで fail-closed 経路へ統一する。
             log.warn("ペイウォール判定失敗（記事詳細）: postId={} → fail-closed 判定へ", entity.getId(), e);
             gate = null;
         }
 
-        // checkAccess が null／例外のいずれでも、ゲート行が有るなら本文をマスク（漏洩より過剰遮断）。
-        // ゲート行が無い（=評価不能の真因がゲート不在・非課金記事）なら従来どおり body を返す。
+        // checkAccess が null／例外のいずれでも、存在を秘匿して fail-closed にする。
         if (gate == null) {
-            return safelyHasGate(entity.getId()) ? maskContent(dto, false) : dto;
+            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
         }
         if (gate.isAccessible()) {
             // ゲートなし or 課金済 → 全文
-            return dto;
+            return dto.withAccessState(ContentAccessState.FULL.name());
         }
-        // 未課金 → body マスク。titleHidden=true なら title も。
-        return maskContent(dto, gate.isTitleHidden());
+        // 未課金: 未充足ゲートのtitleHiddenだけで存在秘匿を決める。
+        if (gate.isTitleHidden()) {
+            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
+        }
+        // LOCKED は title と最小限の状態だけ。本文・要約・カバー・メディアを返さない。
+        return maskContent(dto, false).withAccessState(ContentAccessState.LOCKED.name());
     }
 
     /**
@@ -719,7 +764,7 @@ public class BlogPostService {
             return dto;
         }
         String resolvedBody = blogBodyMediaResolver.resolveBody(
-                content.body(), scope.scopeType(), scope.scopeId());
+                content.body(), scope.scopeType(), scope.scopeId(), entity.getId());
         if (resolvedBody == null || resolvedBody.equals(content.body())) {
             return dto;
         }
@@ -744,8 +789,8 @@ public class BlogPostService {
                 maskTitle ? null : c.title(),
                 c.slug(),
                 null, // body をマスク（@JsonInclude(NON_NULL) でフィールド消滅）
-                c.excerpt(),
-                c.coverImageUrl());
+                null,
+                null);
         return dto.toBuilder().content(masked).build();
     }
 
@@ -762,16 +807,36 @@ public class BlogPostService {
         return dto.toBuilder().content(stripped).build();
     }
 
-    /**
-     * ゲート存在確認（fail-closed 判定用）。存在確認自体が失敗した場合は過剰遮断を避け false（非課金扱い）を返す。
-     */
-    private boolean safelyHasGate(Long postId) {
-        try {
-            return paymentGateService.hasGate(ContentGateType.POST, postId);
-        } catch (Exception e) {
-            log.warn("ペイウォールゲート存在確認に失敗: postId={} → ゲート無し扱い", postId, e);
-            return false;
+    /** 一覧の課金軸適用。HIDDENは除外し、LOCKEDはタイトルと状態だけ残す。 */
+    private BlogPostResponse applyListPaywall(
+            BlogPostEntity entity, boolean systemAdmin, GateCheckResponse gate) {
+        BlogPostResponse dto = stripBody(cmsMapper.toBlogPostResponse(entity));
+        if (systemAdmin) {
+            return dto.withAccessState(ContentAccessState.FULL.name());
         }
+        if (gate == null) {
+            return null;
+        }
+        if (gate.isAccessible()) {
+            return dto.withAccessState(ContentAccessState.FULL.name());
+        }
+        if (gate.isTitleHidden()) {
+            return null;
+        }
+        return maskContent(dto, false).withAccessState(ContentAccessState.LOCKED.name());
+    }
+
+    /**
+     * コンテンツの実在スコープを支払い判定へ渡す。
+     */
+    private static ContentGateTarget targetOf(BlogPostEntity entity) {
+        if (entity == null || entity.getId() == null) return null;
+        return new ContentGateTarget(entity.getId(), entity.getTeamId(), entity.getOrganizationId());
+    }
+
+    private static Optional<Map.Entry<Long, ContentGateTarget>> targetEntry(BlogPostEntity entity) {
+        ContentGateTarget target = targetOf(entity);
+        return target == null ? Optional.empty() : Optional.of(Map.entry(entity.getId(), target));
     }
 
     /**
@@ -871,6 +936,28 @@ public class BlogPostService {
             return organizationRepository.findBySlugAndDeletedAtIsNull(idStr)
                     .orElseThrow(() -> new BusinessException(CmsErrorCode.ORG_NOT_FOUND))
                     .getId();
+        }
+    }
+
+    /**
+     * 検分第2巡 残存経路チェック用: 指定スコープ（team もしくは organization）が
+     * PROVISIONED（承諾前の事前作成状態）でないことを確認する。数値 ID 直指定で
+     * PROVISIONED スコープを通過させない防御多層。teamId/organizationId が
+     * 両方 null（個人記事）の場合は対象外。PROVISIONED は存在秘匿のため
+     * {@link CmsErrorCode#POST_NOT_FOUND} に畳む。
+     *
+     * <p>CI red根治（CrossDomainEntityImportArchTest, D-1）: 当初 {@code TeamEntity}/
+     * {@code OrganizationEntity} を直接 import して {@code lifecycleStatus} を比較していたが、
+     * cms ドメインが team/organization ドメインの Entity（の nested enum）へ新規依存する形になり
+     * クロスドメイン Entity 参照番人に違反した。{@link TeamService#isProvisioned(Long)} /
+     * {@link OrganizationService#isProvisioned(Long)}（boolean のみを返す既存の D-1 準拠 API、
+     * 柱②-2/②-3 で新設済み）経由に変更し、Entity を一切 cms ドメインへ持ち込まない。</p>
+     */
+    private void assertScopeNotProvisioned(Long teamId, Long organizationId) {
+        if (teamId != null && teamService.isProvisioned(teamId)) {
+            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
+        } else if (organizationId != null && organizationService.isProvisioned(organizationId)) {
+            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
         }
     }
 }

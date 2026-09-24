@@ -125,7 +125,18 @@ public class GlobalSearchService {
         counts.put("reservations", (long) reservations.size());
 
         // shifts
-        var shifts = shiftScheduleRepository.searchByKeyword(query, teamIds, limit);
+        // CMP-260826-2127: 未公開シフト表（DRAFT / ARCHIVED かつ publishedAt が NULL）は
+        // 非管理者の検索母集団から外す。「閲覧者がそのチームの ADMIN か」は SQL 1 行の述語に
+        // 落ちない（チームごとに実効ロールが異なる）ため、所属チームを 2 集合に割って渡す。
+        // 取得後フィルタにしないのは、上限 SEARCH_LIMIT 件を取ってから削ると結果が痩せるため。
+        List<Long> shiftAdminTeamIds = toSafeIds(teamIds.stream()
+                .filter(id -> id > 0 && accessControlService.isAdminOrAbove(userId, id, "TEAM"))
+                .toList());
+        List<Long> shiftMemberTeamIds = toSafeIds(teamIds.stream()
+                .filter(id -> id > 0 && !shiftAdminTeamIds.contains(id))
+                .toList());
+        var shifts = shiftScheduleRepository.searchByKeyword(
+                query, shiftAdminTeamIds, shiftMemberTeamIds, limit);
         results.put("shifts", shifts.stream()
                 .map(s -> Map.<String, Object>of(
                         "id", s.getId(), "title", s.getTitle()))

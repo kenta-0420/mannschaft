@@ -1,11 +1,13 @@
 package com.mannschaft.app.shift;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,6 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -70,6 +74,12 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ShiftScheduleRepository scheduleRepository;
 
+    @Autowired
+    private FeatureFlagRepository featureFlagRepository;
+
+    @Autowired
+    private CacheManager cacheManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -82,10 +92,11 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long supporterTeamAId;  // TEAM A の SUPPORTER（参照系の下限境界）
     private Long outsiderId;        // どのチームにも属さない認証済みユーザー
 
-    private Long scheduleAId;    // TEAM A のシフトスケジュール（DRAFT）
+    private Long scheduleAId;    // TEAM A のシフトスケジュール（PUBLISHED）
 
     @BeforeEach
     void setUp() {
+        FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager, "FEATURE_SHIFT_ENABLED");
         teamAId = insertTeam("WAVE3B6 チームA");
         teamBId = insertTeam("WAVE3B6 チームB");
 
@@ -111,7 +122,13 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
                 .periodType(ShiftPeriodType.WEEKLY)
                 .startDate(LocalDate.of(2026, 3, 1))
                 .endDate(LocalDate.of(2026, 3, 7))
-                .status(ShiftScheduleStatus.DRAFT)
+                // CMP-260826-2127（AC-13）: 本 IT が固定するのは<b>認可契約</b>（誰が触れるか）であり
+                // 可視性ではない。未公開シフト表の遮断が入ると DRAFT では一般メンバーの正常系が 404 になり、
+                // 「自チームの公開シフトを読める」という日常正常系の番人が消えてしまう。
+                // よって期待値でなくフィクスチャを公開済みへ直す（DRAFT に対する 404 は
+                // ShiftUnpublishedScheduleVisibilityContractIT が別途固定している）。
+                .status(ShiftScheduleStatus.PUBLISHED)
+                .publishedAt(java.time.LocalDateTime.of(2026, 2, 20, 10, 0))
                 .createdBy(adminTeamAId)
                 .build());
         scheduleAId = scheduleA.getId();
@@ -186,13 +203,17 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更。
+        // teamB の ADMIN は teamA に所属していない（isMember=false）ため「存在自体を隠すべき」側と
+        // 判定し、不在時と同一の SHIFT_001/404 を返す（村の前例 VillageAccessGate に倣う）。
+        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(patch("/api/v1/shifts/schedules/{id}", scheduleAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("title", "更新後"))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -223,11 +244,13 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更（理由は UpdateSchedule 節参照）。
+        @DisplayName("別scope ADMINは404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(delete("/api/v1/shifts/schedules/{id}", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -257,12 +280,14 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINはPUBLISH遷移403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更（理由は UpdateSchedule 節参照）。
+        @DisplayName("別scope ADMINはPUBLISH遷移404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(post("/api/v1/shifts/schedules/{id}/transition", scheduleAId)
                             .param("status", "PUBLISHED"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -292,11 +317,13 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINが複製元(source)のscheduleIdを直接指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更（理由は UpdateSchedule 節参照）。
+        @DisplayName("別scope ADMIN（teamBのADMINが複製元(source)のscheduleIdを直接指定）は404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(post("/api/v1/shifts/schedules/{id}/duplicate", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -407,15 +434,23 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: GET /shifts/schedules/{id} は実機確認済みの存在オラクルだった。
+        // 他テナント（teamBのADMIN）が存在するIDを叩くと403、存在しないIDだと404で応答が割れ、
+        // scheduleId（連番）の総当りでシフトスケジュールの実在を判別できていた。
+        // 村ドメインの VillageAccessGate と同じ作法（不在側のコードそのものを返す）で
+        // 越境を不在時と同一の SHIFT_001/404 に寄せる。
+        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
-        @DisplayName("SUPPORTERは403")
+        // SUPPORTER は teamA に籍を置くメンバー（同一チーム内の権限不足）であり、
+        // 「存在自体を隠すべきか」の基準では隠す必要が無い側 = 403 のまま残す。
+        @DisplayName("SUPPORTERは403（同一チーム内の権限不足のため退行させない）")
         void サポーターは403() throws Exception {
             setAuth(supporterTeamAId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
@@ -423,11 +458,34 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("無所属の認証ユーザーは403")
-        void 無所属ユーザーは403() throws Exception {
+        // CMP-260917-1137: 無所属ユーザーもテナントに属さない越境と同じ扱いとし、404 へ寄せる。
+        @DisplayName("無所属の認証ユーザーは404（存在オラクル解消）")
+        void 無所属ユーザーは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
+        }
+
+        @Test
+        // CMP-260917-1137 の核心: 「存在するが越境」と「存在しない」の応答が
+        // ステータス・エラーコード・本文まで完全に一致し、総当りで存在を判別できないことを固定する。
+        @DisplayName("存在オラクル解消: 越境(存在するID)と不在(存在しないID)の応答が区別できない")
+        void 存在オラクルは解消されている() throws Exception {
+            setAuth(adminTeamBId);
+
+            String crossTenantBody = mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn().getResponse().getContentAsString();
+
+            long nonExistentId = scheduleAId + 999_999L;
+            String notFoundBody = mockMvc.perform(get("/api/v1/shifts/schedules/{id}", nonExistentId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn().getResponse().getContentAsString();
+
+            org.assertj.core.api.Assertions.assertThat(crossTenantBody).isEqualTo(notFoundBody);
         }
     }
 

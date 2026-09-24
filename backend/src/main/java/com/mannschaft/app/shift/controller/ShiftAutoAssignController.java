@@ -2,6 +2,7 @@ package com.mannschaft.app.shift.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.shift.dto.AssignmentRunResponse;
 import com.mannschaft.app.shift.dto.AutoAssignRequest;
 import com.mannschaft.app.shift.dto.ConfirmAutoAssignRequest;
@@ -29,11 +30,23 @@ import java.util.List;
  * <p><b>認可（認可根治 Wave7）:</b> scope（チーム）はパス変数ではなくスケジュール／実行ログ実体から
  * 解決するため {@code @PreAuthorize} の SpEL では表現できない。真の強制点は
  * {@link ShiftAutoAssignService} 内（全 public 入口に per-scope 管理者認可）に置く。</p>
+ *
+ * <p><b>機能フラグによる停止（F03.5 §11.1・戦役B-1）:</b> 時刻を見ない割当が二重割当を生むため、
+ * {@code FEATURE_SHIFT_AUTO_ASSIGN_ENABLED} を既定 OFF で seed し、本クラスを
+ * <b>クラスレベル</b>で塞いでいる。メソッド単位で付けると将来エンドポイントが増えたときに
+ * 付け忘れる（同ドメインの {@code ShiftScheduleController} は 9 本中 8 本で付け忘れている）。
+ * FE だけを外しても API 直叩きで {@code shift_slots.assigned_user_ids} が汚れるため、入口で塞ぐ。</p>
+ *
+ * <p><b>既知の制約（設計書 §11.1.3 の申し送り）:</b> フラグ OFF では目視確認 API も塞がるため、
+ * 未確認の {@code SUCCEEDED} run を持つシフト表は公開できなくなる。これは仕様であり、
+ * 「守るべき実データが無い」という現在の前提に依存する。本番データがある状態で改めて OFF に
+ * する場合は段階的停止か後始末 2 経路のゲート例外化が必須。</p>
  */
 @RestController
 @RequestMapping("/api/v1/shifts")
 @Tag(name = "シフト自動割当", description = "F03.5 シフト自動割当の実行・確定・破棄・履歴管理")
 @RequiredArgsConstructor
+@RequireFeature("FEATURE_SHIFT_AUTO_ASSIGN_ENABLED")
 public class ShiftAutoAssignController {
 
     private final ShiftAutoAssignService autoAssignService;

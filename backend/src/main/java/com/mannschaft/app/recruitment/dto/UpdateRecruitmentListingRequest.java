@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,6 +49,7 @@ public class UpdateRecruitmentListingRequest {
 
     private final RecruitmentVisibility visibility;
 
+    @Pattern(regexp = "(?s).*\\S.*", message = "location は空白以外の文字を含めてください")
     @Size(max = 200)
     private final String location;
 
@@ -80,6 +82,11 @@ public class UpdateRecruitmentListingRequest {
      */
     @Valid
     private final List<CreateRecruitmentListingRequest.RegionInput> regions;
+
+    /** PERSONAL + SELECTED_SCOPES の公開先を全置換する。null は変更なし、[] は無効。 */
+    @Valid
+    @Setter
+    private List<CreateRecruitmentListingRequest.AudienceScopeRequest> audienceScopes;
 
     // ===========================================
     // F22.1 市 謝礼決済: 受領主体（02_api_design §3）

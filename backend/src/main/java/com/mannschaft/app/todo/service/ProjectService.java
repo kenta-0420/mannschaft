@@ -3,6 +3,7 @@ package com.mannschaft.app.todo.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import com.mannschaft.app.common.PagedResponse;
@@ -331,7 +332,7 @@ public class ProjectService {
 
         // visibility バリデーション
         ProjectVisibility visibility = request.getVisibility() != null
-                ? ProjectVisibility.valueOf(request.getVisibility())
+                ? EnumInputParser.parse(ProjectVisibility.class, request.getVisibility(), "visibility")
                 : ProjectVisibility.MEMBERS_ONLY;
         validateVisibility(scopeType, visibility);
 
@@ -371,12 +372,12 @@ public class ProjectService {
         }
 
         ProjectVisibility visibility = request.getVisibility() != null
-                ? ProjectVisibility.valueOf(request.getVisibility())
+                ? EnumInputParser.parse(ProjectVisibility.class, request.getVisibility(), "visibility")
                 : project.getVisibility();
         validateVisibility(project.getScopeType(), visibility);
 
         ProjectStatus status = request.getStatus() != null
-                ? ProjectStatus.valueOf(request.getStatus())
+                ? EnumInputParser.parse(ProjectStatus.class, request.getStatus(), "status")
                 : project.getStatus();
 
         project = project.toBuilder()

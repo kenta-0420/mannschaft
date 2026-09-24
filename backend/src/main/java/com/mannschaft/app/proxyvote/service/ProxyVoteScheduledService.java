@@ -1,5 +1,7 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.proxyvote.ResolutionMode;
 import com.mannschaft.app.proxyvote.SessionStatus;
@@ -35,6 +37,9 @@ public class ProxyVoteScheduledService {
      * OPEN → CLOSED 自動遷移（WRITTEN モードのみ）。
      * MEETING モード投票タイマー自動終了。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SUCCESSION_PROXY_ENABLED",
+            reason = "状態遷移と投票タイマーは開始終了日時から冪等に再判定でき、代理投票機能を閉じている間は投票が行われないため票が失われない")
     @BatchEndpoint(name = "proxyvote-session-state-transition", description = "委任投票セッションの状態遷移と投票タイマーを 5 分毎に処理する")
     @Scheduled(fixedRate = 300_000) // 5分間隔
     // 起動間隔は 5 分（fixedRate）。処理は進行中セッションの状態遷移とタイマー判定のみで通常は数秒。間隔の 3 倍を上限とする。

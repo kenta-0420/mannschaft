@@ -49,11 +49,11 @@ watch(
     if (!visible) return
     if (props.slotData) {
       form.value = {
-        slotDate: props.slotData.slotDate,
-        startTime: props.slotData.startTime,
-        endTime: props.slotData.endTime,
-        positionId: props.slotData.positionId,
-        requiredCount: props.slotData.requiredCount,
+        slotDate: props.slotData.time.slotDate,
+        startTime: props.slotData.time.startTime,
+        endTime: props.slotData.time.endTime,
+        positionId: props.slotData.position.positionId,
+        requiredCount: props.slotData.position.requiredCount,
         note: props.slotData.note ?? '',
       }
     } else {

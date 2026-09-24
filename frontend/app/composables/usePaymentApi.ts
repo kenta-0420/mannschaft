@@ -2,6 +2,8 @@ import type {
   PaymentItemResponse,
   MemberPaymentResponse,
   CheckoutSessionResponse,
+  ConnectCheckoutResponse,
+  ConnectCheckoutStatusResponse,
   PaymentSummaryResponse,
   MyPaymentResponse,
   MemberPaymentReceiptResponse,
@@ -108,6 +110,24 @@ export function usePaymentApi() {
     })
   }
 
+  async function createConnectCheckout(
+    itemId: number,
+    beneficiaryUserId: number,
+    idempotencyKey: string,
+  ) {
+    return api<{ data: ConnectCheckoutResponse }>(`/api/v1/payment-items/${itemId}/checkout`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: { beneficiaryUserId },
+    })
+  }
+
+  async function getConnectCheckoutStatus(itemId: number, memberPaymentId: number) {
+    return api<{ data: ConnectCheckoutStatusResponse }>(
+      `/api/v1/payment-items/${itemId}/checkout/${memberPaymentId}`,
+    )
+  }
+
   /**
    * F08.9 P6 / Issue #2657: 支払い項目を ID で取得する（TERM 型の有効期間表示等に使用）。
    * BE エンドポイント: GET /api/v1/payment-items/{itemId}（PaymentCheckoutController#getPaymentItem）
@@ -184,10 +204,16 @@ export function usePaymentApi() {
    * F08.9 P8: チーム月次手数料明細を取得する。
    * BE: GET /api/v1/teams/{teamId}/fee-statements?period=YYYY-MM
    */
-  async function getFeeStatement(teamId: string, period: string) {
+  async function getFeeStatement(teamId: number, period: string) {
     return api<{ data: FeeStatementResponse }>(`/api/v1/teams/${teamId}/fee-statements`, {
       query: { period },
     })
+  }
+
+  async function exportFeeStatementPdf(teamId: number, period: string) {
+    return api(`/api/v1/teams/${teamId}/fee-statements/pdf`, {
+      query: { period }, responseType: 'blob' as const,
+    }) as Promise<Blob>
   }
 
   // === Subscriptions ===
@@ -242,6 +268,8 @@ export function usePaymentApi() {
     sendReminder,
     getPaymentSummary,
     createCheckoutSession,
+    createConnectCheckout,
+    getConnectCheckoutStatus,
     getPaymentItemById,
     getMyPayments,
     getMySubscriptions,
@@ -253,6 +281,7 @@ export function usePaymentApi() {
     resumeSubscription,
     getReceipt,
     getFeeStatement,
+    exportFeeStatementPdf,
     getBeneficiarySetting,
     updateBeneficiarySetting,
   }

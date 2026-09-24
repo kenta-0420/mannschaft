@@ -119,6 +119,31 @@ class SpotlightContentServingIT extends AbstractSpotlightIT {
         assertThat(items).isEmpty();
     }
 
+    @Test
+    @DisplayName("CMP-260918-0025: tag_id がプレースホルダの行は候補から除外され items:[] になる")
+    void プレースホルダtagIdは除外され空配列() {
+        insertAffiliateConfig("AMAZON", "PLACEHOLDER_AMAZON_TAG", TILE, 0);
+        em.flush();
+
+        List<SpotlightItem> items = content(1, "PERSONAL", null);
+
+        assertThat(items).isEmpty();
+    }
+
+    @Test
+    @DisplayName("CMP-260918-0025: プレースホルダ行と本物のtag_id行が混在する場合は本物のみ返る")
+    void プレースホルダと本物が混在すると本物のみ返る() {
+        insertAffiliateConfig("AMAZON", "PLACEHOLDER_AMAZON_TAG", TILE, 0);
+        insertAffiliateConfig("RAKUTEN", "mannschaft-22", TILE, 1);
+        em.flush();
+
+        List<SpotlightItem> items = content(1, "PERSONAL", null);
+
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).source()).isEqualTo("AFFILIATE");
+        assertThat(items.get(0).affiliate().provider()).isEqualTo("RAKUTEN");
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // AC-2.2 予約優先
     // ═════════════════════════════════════════════════════════════════════
@@ -345,6 +370,54 @@ class SpotlightContentServingIT extends AbstractSpotlightIT {
             assertThatThrownBy(() -> controller.content(TILE, 1, "PERSONAL", null, null, null, "ja"))
                     .as("未認証は 401 相当のセキュリティ例外で拒否される")
                     .isInstanceOf(org.springframework.security.core.AuthenticationException.class);
+        }
+    }
+
+    @Test
+    @DisplayName("CMP-260910-0042: affiliate のUTC基準の開始・終了境界を判定する")
+    void affiliateActiveWindowUsesUtcWallClock() {
+        insertAffiliateConfig("AMAZON", TILE, 0);
+        insertAffiliateConfig("RAKUTEN", TILE, 1);
+        em.createNativeQuery("UPDATE affiliate_configs SET active_from = UTC_TIMESTAMP() + INTERVAL 1 HOUR "
+                        + "WHERE provider = 'AMAZON'")
+                .executeUpdate();
+        em.createNativeQuery("UPDATE affiliate_configs SET active_until = UTC_TIMESTAMP() + INTERVAL 1 HOUR "
+                        + "WHERE provider = 'RAKUTEN'")
+                .executeUpdate();
+        em.flush();
+
+        em.createNativeQuery("SET time_zone = '+09:00'").executeUpdate();
+        try {
+            List<SpotlightItem> items = content(2, "PERSONAL", null);
+
+            assertThat(items).extracting(item -> item.affiliate().provider())
+                    .as("UTCの1時間後に開始するaffiliateは未配信、終了1時間前のaffiliateは配信")
+                    .containsExactly("RAKUTEN");
+        } finally {
+            em.createNativeQuery("SET time_zone = '+00:00'").executeUpdate();
+        }
+    }
+
+    @Test
+    @DisplayName("CMP-260910-0042: 予約の14日鮮度境界はUTC壁時計で判定する")
+    void reservationFreshnessUsesUtcWallClock() {
+        ReservationFixture reservation = insertReservationBanner(advOrgId, advAccountId, viewerId, TILE, creatorId);
+        em.createNativeQuery("UPDATE ad_banner_deliveries "
+                        + "SET created_at = UTC_TIMESTAMP() - INTERVAL 14 DAY + INTERVAL 1 HOUR "
+                        + "WHERE id = UUID_TO_BIN(:deliveryId)")
+                .setParameter("deliveryId", reservation.deliveryId())
+                .executeUpdate();
+        em.flush();
+
+        em.createNativeQuery("SET time_zone = '+09:00'").executeUpdate();
+        try {
+            List<SpotlightItem> items = content(1, "PERSONAL", null);
+
+            assertThat(items).hasSize(1);
+            assertThat(items.get(0).house().deliveryId())
+                    .as("UTC基準で14日より1時間新しい予約は配信対象").isEqualTo(reservation.deliveryId());
+        } finally {
+            em.createNativeQuery("SET time_zone = '+00:00'").executeUpdate();
         }
     }
 }

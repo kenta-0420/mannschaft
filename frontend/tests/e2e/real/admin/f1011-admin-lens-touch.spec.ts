@@ -186,7 +186,7 @@ async function openTeamLens(page: Page): Promise<void> {
     await page.waitForTimeout(300)
   }
   await expect(chip, `タグ一覧に TEAM スコープ ${teamSlug} のチップが見つかること`).toBeVisible({ timeout: 10_000 })
-  await chip.click()
+  if (await chip.getAttribute('aria-pressed') !== 'true') await chip.click()
   await expect(page.getByTestId('admin-lens-toggle-TEAM')).toBeVisible({ timeout: 20_000 })
 }
 

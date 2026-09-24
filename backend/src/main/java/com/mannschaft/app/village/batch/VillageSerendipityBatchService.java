@@ -3,6 +3,8 @@ package com.mannschaft.app.village.batch;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.service.VillageSerendipityService;
@@ -62,6 +64,8 @@ public class VillageSerendipityBatchService {
     /**
      * 毎日 02:00（JST）に集計を実行する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。村のご縁スコア集計であり、再開後の実行で作り直される。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "village-serendipity-daily", description = "村のご縁スコアを毎日 02:00 に集計する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(

@@ -57,7 +57,7 @@ public class ReceiptExportService {
 
     /**
      * 領収書一覧を CSV エクスポートする（BOM付き UTF-8）。
-     * 認可: 指定スコープのメンバーのみエクスポート可能。
+     * 認可: 指定スコープの ADMIN/DEPUTY_ADMIN のみエクスポート可能（CMP-260917-2102 Phase 1 の追撃。旧: メンバーのみ）。
      *
      * @param scopeType     スコープ種別
      * @param scopeId       スコープID
@@ -70,7 +70,10 @@ public class ReceiptExportService {
      */
     public byte[] exportCsv(ReceiptScopeType scopeType, Long scopeId, Integer year,
                             LocalDate issuedFrom, LocalDate issuedTo, boolean includeVoided, Long actorUserId) {
-        accessControlService.checkMembership(actorUserId, scopeId, scopeType.name());
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: CSVエクスポートは領収書全件を含む
+        // 一括漏洩経路であり、checkMembership止まりでMEMBERも全件エクスポートできていた。
+        // 領収書はスコープ問わずDEPUTY_ADMIN限定のためcheckAdminOrAboveに是正する。
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
 
         Specification<ReceiptEntity> spec = buildSpecification(scopeType, scopeId, year, issuedFrom, issuedTo, includeVoided);
         List<ReceiptEntity> receipts = receiptRepository.findAll(spec);
@@ -121,15 +124,19 @@ public class ReceiptExportService {
 
     /**
      * ZIP 一括ダウンロードジョブを作成する。
-     * 認可: request で指定されたスコープのメンバーのみジョブ作成可能。
+     * 認可: request で指定されたスコープの ADMIN/DEPUTY_ADMIN のみジョブ作成可能
+     * （CMP-260917-2102 Phase 1 の追撃。旧: メンバーのみ）。
      *
      * @param request     ZIP ダウンロードリクエスト
      * @param actorUserId 操作者ユーザーID
      * @return ZIP ジョブレスポンス
      */
     public DownloadZipResponse createZipJob(DownloadZipRequest request, Long actorUserId) {
-        ReceiptScopeType scopeType = ReceiptScopeType.valueOf(request.getScopeType());
-        accessControlService.checkMembership(actorUserId, request.getScopeId(), scopeType.name());
+        ReceiptScopeType scopeType = ReceiptScopeType.fromTenantScope(request.getScopeType());
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: ZIP一括ダウンロードも領収書全件を含む
+        // 一括漏洩経路であり、checkMembership止まりでMEMBERもジョブ作成できていた。
+        // 領収書はスコープ問わずDEPUTY_ADMIN限定のためcheckAdminOrAboveに是正する。
+        accessControlService.checkAdminOrAbove(actorUserId, request.getScopeId(), scopeType.name());
 
         String jobId = UUID.randomUUID().toString().substring(0, 8);
 
@@ -159,7 +166,7 @@ public class ReceiptExportService {
     /**
      * ZIP ダウンロードジョブの状態を取得する。
      * 認可: ジョブ作成時に固定したスコープ（entity由来。呼び出し側の自己申告を信用しない）の
-     * メンバーのみ状態確認可能（他スコープのジョブID推測によるダウンロードURL漏洩を防止）。
+     * ADMIN/DEPUTY_ADMIN のみ状態確認可能（他スコープのジョブID推測によるダウンロードURL漏洩を防止。CMP-260917-2102 Phase 1 の追撃。旧: メンバーのみ）。
      *
      * @param jobId       ジョブID
      * @param actorUserId 操作者ユーザーID
@@ -171,13 +178,16 @@ public class ReceiptExportService {
         if (response == null || scope == null) {
             throw new BusinessException(ReceiptErrorCode.ZIP_JOB_NOT_FOUND);
         }
-        accessControlService.checkMembership(actorUserId, scope.scopeId(), scope.scopeType().name());
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: ジョブ状態確認もダウンロードURL漏洩経路の
+        // 一部であり、checkMembership止まりでMEMBERも状態確認できていた。
+        // 領収書はスコープ問わずDEPUTY_ADMIN限定のためcheckAdminOrAboveに是正する。
+        accessControlService.checkAdminOrAbove(actorUserId, scope.scopeId(), scope.scopeType().name());
         return response;
     }
 
     /**
      * 但し書きの自動生成候補を取得する。
-     * 認可: 指定スコープのメンバーのみ取得可能。
+     * 認可: 指定スコープの ADMIN/DEPUTY_ADMIN のみ取得可能（CMP-260917-2102 Phase 1 の追撃。旧: メンバーのみ）。
      *
      * @param scopeType       スコープ種別
      * @param scopeId         スコープID
@@ -187,7 +197,10 @@ public class ReceiptExportService {
      */
     public DescriptionSuggestionResponse getDescriptionSuggestions(ReceiptScopeType scopeType, Long scopeId,
                                                                     Long memberPaymentId, Long actorUserId) {
-        accessControlService.checkMembership(actorUserId, scopeId, scopeType.name());
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: checkMembership止まりでMEMBERも
+        // 但し書き候補を取得できていた。領収書はスコープ問わずDEPUTY_ADMIN限定のため
+        // checkAdminOrAboveに是正する。
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
 
         // 将来実装: schedules / payment_items の実績データから但し書き候補を自動生成
         List<DescriptionSuggestionResponse.Suggestion> suggestions = new ArrayList<>();

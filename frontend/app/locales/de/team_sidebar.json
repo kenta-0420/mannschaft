@@ -4,6 +4,7 @@
       "home": "Startseite",
       "schedule": "Zeitplan",
       "match": "Spiele",
+      "market": "Markt",
       "member": "Mitglieder",
       "ops": "Betrieb",
       "ops_work": "Aufgaben und Fortschritt",
@@ -14,6 +15,7 @@
     },
     "item": {
       "dashboard": "Dashboard",
+      "member_profiles": "メンバー紹介",
       "announcements": "Ankündigungen",
       "chat": "Chat",
       "bulletin": "Schwarzes Brett",
@@ -24,6 +26,7 @@
       "annual_plan": "Jahresplan",
       "matches": "Spielaufzeichnungen",
       "matchAnalytics": "Spielanalyse",
+      "market": "Markt",
       "members": "Mitglieder",
       "circulation": "Umlauf",
       "safety_check": "Sicherheitscheck",
@@ -41,9 +44,18 @@
       "audit_logs": "Audit-Protokolle",
       "settings": "Einstellungen",
       "faqSettings": "FAQ-Einstellungen",
+      "confirmableNotifications": "Bestätigungsbenachrichtigungen",
       "billing": "Abrechnung & Planverwaltung",
       "leagueTransfers": "Liga-Transfers",
-      "adminConsole": "Administrationskonsole"
+      "adminConsole": "Administrationskonsole",
+      "receipts": "Belege",
+      "receiptSettings": "Aussteller-Einstellungen für Belege",
+      "hourlyRate": "時給設定",
+      "vendors": "Anbieterverzeichnis",
+      "lineSettings": "LINE-Einstellungen",
+      "snsSettings": "SNS-Einstellungen",
+      "scheduleSettings": "Terminplan-Einstellungen",
+      "bulletinCategories": "Pinnwand-Kategorien"
     }
   }
 }

@@ -56,6 +56,27 @@ class NotificationFanoutJobServiceTest {
         return new FanoutRecipientSourceRegistry(List.of());
     }
 
+    /**
+     * Issue #2871: enqueue は文面レンダラで 6 配信ロケールぶんを描画してから子表へ保存する。
+     * 本テストの関心は「例外の握り方」と「メトリクス」なので、描画自体はスタブで固定する。
+     */
+    private static FanoutMessageRenderer stubRenderer() {
+        FanoutMessageRenderer renderer = mock(FanoutMessageRenderer.class);
+        java.util.Map<String, FanoutMessageRenderer.RenderedMessage> rendered = new java.util.LinkedHashMap<>();
+        for (String tag : com.mannschaft.app.common.i18n.DeliveryLocales.TAGS) {
+            rendered.put(tag, new FanoutMessageRenderer.RenderedMessage("件名", "本文"));
+        }
+        when(renderer.renderAllLocales(any(), any(String[].class))).thenReturn(rendered);
+        return renderer;
+    }
+
+    private static NotificationFanoutJobService newService(NotificationFanoutJobRepository repo,
+                                                           PlatformTransactionManager txm,
+                                                           io.micrometer.core.instrument.MeterRegistry registry) {
+        return new NotificationFanoutJobService(repo, mock(NotificationFanoutJobMessageRepository.class),
+                stubRenderer(), txm, providerOf(registry), emptyRegistry());
+    }
+
     // ===================================================================
     // M-1: catch は uk 衝突のみ握る（冪等キーのジョブ実在時のみ skip）
     // ===================================================================
@@ -65,8 +86,7 @@ class NotificationFanoutJobServiceTest {
     void enqueue_rethrowsWhenNotIdempotentDuplicate() {
         NotificationFanoutJobRepository repo = mock(NotificationFanoutJobRepository.class);
         PlatformTransactionManager txm = mock(PlatformTransactionManager.class);
-        NotificationFanoutJobService service =
-                new NotificationFanoutJobService(repo, txm, providerOf(new SimpleMeterRegistry()), emptyRegistry());
+        NotificationFanoutJobService service = newService(repo, txm, new SimpleMeterRegistry());
 
         // 整合性違反（例: NOT NULL 違反）を模す。enqueue は saveAll → flush で一括確定するため flush で発火させる。
         doThrow(new DataIntegrityViolationException("not-null violation")).when(repo).flush();
@@ -75,7 +95,8 @@ class NotificationFanoutJobServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.enqueue(SCOPE_TYPE, SCOPE_REF, NOTIF_TYPE, UUID.randomUUID(),
-                null, "件名", "本文", NotificationPriority.NORMAL, "VILLAGE_EVENT", null, "/x", null))
+                null, FanoutMessageKind.VILLAGE_EVENT_ADDED, new String[]{"行事名"},
+                NotificationPriority.NORMAL, "VILLAGE_EVENT", null, "/x", null))
                 .as("M-1: uk 衝突でない整合性違反は握り潰さず露見させる")
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -85,8 +106,7 @@ class NotificationFanoutJobServiceTest {
     void enqueue_skipsWhenIdempotentDuplicateExists() {
         NotificationFanoutJobRepository repo = mock(NotificationFanoutJobRepository.class);
         PlatformTransactionManager txm = mock(PlatformTransactionManager.class);
-        NotificationFanoutJobService service =
-                new NotificationFanoutJobService(repo, txm, providerOf(new SimpleMeterRegistry()), emptyRegistry());
+        NotificationFanoutJobService service = newService(repo, txm, new SimpleMeterRegistry());
 
         UUID sourceEvent = UUID.randomUUID();
         doThrow(new DataIntegrityViolationException("duplicate key")).when(repo).flush();
@@ -96,7 +116,8 @@ class NotificationFanoutJobServiceTest {
                 .thenReturn(Optional.of(newJob(2)));
 
         assertThatCode(() -> service.enqueue(SCOPE_TYPE, SCOPE_REF, NOTIF_TYPE, sourceEvent,
-                null, "件名", "本文", NotificationPriority.NORMAL, "VILLAGE_EVENT", null, "/x", null))
+                null, FanoutMessageKind.VILLAGE_EVENT_ADDED, new String[]{"行事名"},
+                NotificationPriority.NORMAL, "VILLAGE_EVENT", null, "/x", null))
                 .as("M-1: 真の uk 衝突（二重登録）だけは静かに冪等 skip する")
                 .doesNotThrowAnyException();
     }
@@ -111,8 +132,7 @@ class NotificationFanoutJobServiceTest {
         NotificationFanoutJobRepository repo = mock(NotificationFanoutJobRepository.class);
         PlatformTransactionManager txm = mock(PlatformTransactionManager.class);
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        NotificationFanoutJobService service =
-                new NotificationFanoutJobService(repo, txm, providerOf(registry), emptyRegistry());
+        NotificationFanoutJobService service = newService(repo, txm, registry);
 
         UUID jobId = UUID.randomUUID();
         when(repo.findById(jobId)).thenReturn(Optional.of(newJob(0))); // retryCount 0 → 1（< 5）
@@ -131,8 +151,7 @@ class NotificationFanoutJobServiceTest {
         NotificationFanoutJobRepository repo = mock(NotificationFanoutJobRepository.class);
         PlatformTransactionManager txm = mock(PlatformTransactionManager.class);
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        NotificationFanoutJobService service =
-                new NotificationFanoutJobService(repo, txm, providerOf(registry), emptyRegistry());
+        NotificationFanoutJobService service = newService(repo, txm, registry);
 
         UUID jobId = UUID.randomUUID();
         when(repo.findById(jobId)).thenReturn(Optional.of(newJob(4))); // retryCount 4 → 5（= 上限）
@@ -152,7 +171,6 @@ class NotificationFanoutJobServiceTest {
                 .scopeType(SCOPE_TYPE)
                 .scopeRef(SCOPE_REF)
                 .notificationType(NOTIF_TYPE)
-                .title("件名")
                 .priority(NotificationPriority.NORMAL)
                 .status(NotificationFanoutJobStatus.RUNNING)
                 .cursorSubjectId(0L)

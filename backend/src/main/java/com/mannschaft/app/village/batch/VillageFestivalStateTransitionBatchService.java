@@ -3,6 +3,8 @@ package com.mannschaft.app.village.batch;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.entity.VillageFestivalEntity;
 import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.entity.enums.VillageFestivalStatus;
@@ -58,6 +60,8 @@ public class VillageFestivalStateTransitionBatchService {
      *
      * <p>cron 表現 {@code "0 *\/15 * * * *"} は毎時 0/15/30/45 分の 0 秒に発火。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。村のお祭りの状態遷移であり、再開後の実行で現在時刻に応じた状態へ収束する。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "village-festival-state-transition", description = "村のお祭り SCHEDULED→ACTIVE→ENDED 状態遷移を 15 分毎に処理する")
     @Scheduled(cron = "0 */15 * * * *", zone = "UTC")
     @SchedulerLock(

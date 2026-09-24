@@ -150,8 +150,13 @@ export interface BatchJobLogResponse {
 }
 
 // ===== F10.X 第二陣: 汎用バッチキック API =====
-/** バッチ直近実行ステータス（{@code @SchedulerLock} の SKIPPED を含む） */
-export type BatchEndpointLastStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | 'SKIPPED'
+/**
+ * バッチ直近実行ステータス（`@SchedulerLock` の SKIPPED を含む）
+ *
+ * RESUMED は Gate 基盤工事④-A で追加。フィーチャーフラグが有効化され、停止していた
+ * バッチが再開した境界の目印であり、実行そのものではない（実行は直後に SUCCESS 等で記録される）。
+ */
+export type BatchEndpointLastStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | 'SKIPPED' | 'RESUMED'
 
 /** バッチ起動応答ステータス */
 export type BatchTriggerStatus = 'ACCEPTED' | 'COMPLETED' | 'FAILED' | 'LOCKED'
@@ -253,6 +258,8 @@ export interface AffiliateConfigResponse {
   displayPriority: number
   createdAt: string
   updatedAt: string
+  /** タグIDが未設定（Flyway シード等のプレースホルダ）かどうか（CMP-260918-0025）。 */
+  placeholderTagId: boolean
 }
 
 export interface CreateAffiliateConfigRequest {

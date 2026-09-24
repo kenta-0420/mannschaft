@@ -3,6 +3,8 @@ package com.mannschaft.app.pointcard.batch;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import com.mannschaft.app.pointcard.entity.PointCardProviderEntity;
@@ -12,6 +14,7 @@ import com.mannschaft.app.pointcard.service.ProviderMatchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
@@ -82,6 +85,23 @@ public class PointCardRematchBatchService {
     private final AuditLogService auditLogService;
     private final ErrorReportService errorReportService;
 
+    /**
+     * 自分自身の Spring プロキシを取り出すための遅延解決プロバイダ（CMP-260912-1524）。
+     *
+     * <p>{@link #execute()} から {@link #processChunk(Pageable)} を素の {@code this} 呼び出しに
+     * すると AOP プロキシを経由せず、{@code @Transactional(propagation = REQUIRES_NEW)} が
+     * <b>まったく効かない</b>。呼び出し元もトランザクションを張っていないため、
+     * チャンクは「1 トランザクション」ではなく Spring Data 既定の
+     * {@code @Transactional} による<b>カード 1 件ごとの独立コミット</b>になっていた。
+     * その状態でチャンク後段が落ちると、途中まで書き換えた {@code provider_id} だけが
+     * 巻き戻らずに残る（症状として表面化しないまま部分適用が蓄積する）。</p>
+     *
+     * <p>別 Bean への切り出しではなく自己プロキシを採るのは、監査ログ・Sentry 通知を含む
+     * バッチの責務を 1 クラスに保ったまま最小差分で直せるため（前例: CMP-260910-1556）。
+     * {@code ObjectProvider} は遅延解決なので自己参照による循環依存にならない。</p>
+     */
+    private final ObjectProvider<PointCardRematchBatchService> selfProvider;
+
     @Value("${pointcard.rematch-batch.chunk-size:1000}")
     private int chunkSize;
 
@@ -96,6 +116,8 @@ public class PointCardRematchBatchService {
      * 監査ログに 1 件のみ記録する。失敗率が 10% を超えた場合は
      * {@link ErrorReportService#recordBackendException} で Sentry HIGH 通知を投げる。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。ポイントカードの提携先再マッチングであり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "${pointcard.rematch-batch.cron:0 0 3 * * *}", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = JOB_NAME,
@@ -116,7 +138,7 @@ public class PointCardRematchBatchService {
             Pageable pageable = PageRequest.of(pageIndex, chunkSize);
             ChunkResult result;
             try {
-                result = processChunk(pageable);
+                result = self().processChunk(pageable);
             } catch (RuntimeException e) {
                 // チャンク全体が失敗した場合（DB ロック競合など）はバッチ全体を継続せず終了し、
                 // Sentry 通知を投げる（DB 接続断のような致命傷を握りつぶさないため）
@@ -168,7 +190,20 @@ public class PointCardRematchBatchService {
     }
 
     /**
+     * 自分自身の Spring プロキシを返す。
+     *
+     * <p>トランザクション境界を跨ぐ内部呼び出しは必ず本メソッド経由で行うこと。</p>
+     */
+    private PointCardRematchBatchService self() {
+        return selfProvider.getObject();
+    }
+
+    /**
      * 1 チャンクを別トランザクションで処理する。
+     *
+     * <p><b>必ず {@link #self()} 経由で呼ぶこと。</b>同一 Bean 内の自己呼び出しでは
+     * プロキシを通らず {@code REQUIRES_NEW} が無効化され、チャンクの一部だけが
+     * コミットされた状態が残る（CMP-260912-1524）。</p>
      *
      * <p>{@link Propagation#REQUIRES_NEW} を採用する理由:
      * <ul>

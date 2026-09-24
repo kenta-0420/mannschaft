@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.fanout;
 
 import com.mannschaft.app.notification.NotificationPriority;
+import java.util.Map;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -62,6 +63,10 @@ public class NotificationFanoutJobService {
     static final String METRIC_RETRY = "mannschaft.notification.fanout.job.retry";
 
     private final NotificationFanoutJobRepository jobRepository;
+    /** ロケール別・描画済み文面の子表リポジトリ（Issue #2871）。 */
+    private final NotificationFanoutJobMessageRepository jobMessageRepository;
+    /** enqueue 時に 6 配信ロケールぶんの文面を描画するレンダラ（Issue #2871）。 */
+    private final FanoutMessageRenderer messageRenderer;
     /** enqueue の INSERT を「呼び出し側 TX と隔離した独立 TX」で確定させるための REQUIRES_NEW テンプレート。 */
     private final TransactionTemplate enqueueTxTemplate;
     /** MeterRegistry（optional。narrowed test context 等では不在・P1 と同じ ObjectProvider 方式）。 */
@@ -70,10 +75,14 @@ public class NotificationFanoutJobService {
     private final FanoutRecipientSourceRegistry recipientSourceRegistry;
 
     public NotificationFanoutJobService(NotificationFanoutJobRepository jobRepository,
+                                        NotificationFanoutJobMessageRepository jobMessageRepository,
+                                        FanoutMessageRenderer messageRenderer,
                                         PlatformTransactionManager transactionManager,
                                         ObjectProvider<MeterRegistry> meterRegistryProvider,
                                         FanoutRecipientSourceRegistry recipientSourceRegistry) {
         this.jobRepository = jobRepository;
+        this.jobMessageRepository = jobMessageRepository;
+        this.messageRenderer = messageRenderer;
         this.enqueueTxTemplate = new TransactionTemplate(transactionManager);
         this.enqueueTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.meterRegistryProvider = meterRegistryProvider;
@@ -83,18 +92,28 @@ public class NotificationFanoutJobService {
     /**
      * fan-out ジョブを 1 件 enqueue する（冪等・O(1)）。
      *
-     * <p>受信者数に依らずジョブ表への INSERT ちょうど 1 文で返る。同一
-     * {@code (scope_type, scope_ref, notification_type, source_event_uuid)} の二重 enqueue は
+     * <p>受信者数に依らずジョブ表への INSERT ちょうど 1 文＋文面子表への一括 INSERT で返る。同一
+     * {@code (scope_type, scope_ref, notification_type, source_event_uuid, shard_index)} の二重 enqueue は
      * {@code uk_fanout_idempotency} 違反となり、{@link DataIntegrityViolationException} を握って skip する
      * （これは「同一 fan-out の二重登録」＝正当な冪等のみを握る。他の例外は握らない）。</p>
+     *
+     * <h2>Issue #2871: 描画済み文字列ではなく「文面の種別＋型付き引数」を受ける</h2>
+     * <p>従来の引数 {@code String title, String body} は呼び出し側が日本語で組み立てた完成品であり、
+     * 受信者が後から展開される fan-out では受信者ごとの i18n が構造的に不可能だった。本メソッドは
+     * {@link FanoutMessageKind}（テンプレート種別）と<b>利用者が書いた中身</b>（アンケート名・行事名 等）を
+     * 受け取り、この場で 6 配信ロケールぶんの文面を描画して子表へ保存する。翻訳するのは properties 側の
+     * 「枠」だけで、引数はそのまま差し込む（翻訳しない・改変しない）。</p>
+     *
+     * <p>切り詰め（title 200 / body 1000・コードポイント境界）も enqueue 時に確定するため、
+     * リトライやデプロイをまたいでも同じ文面が再現される。</p>
      *
      * @param scopeType        受信者解決の戦略キー（{@link FanoutRecipientSource#scopeType()} と一致）
      * @param scopeRef         多型スコープ参照（村=UUID 文字列 / チーム・組織=ID 文字列）
      * @param notificationType 通知種別
      * @param sourceEventUuid  発生元イベント UUID（冪等キーの一部）
      * @param organizationId   テナント（NULL 可）
-     * @param title            通知タイトル
-     * @param body             通知本文（NULL 可）
+     * @param messageKind      文面テンプレート種別（村の 4 分岐もここで表す）
+     * @param messageArgs      利用者が書いた中身（0〜2 個・すべて {@code String}）。翻訳せずそのまま差し込む
      * @param priority         優先度（NULL は NORMAL 相当）
      * @param sourceType       ソース種別（NULL 可）
      * @param sourceId         ソースID（NULL 可）
@@ -104,41 +123,48 @@ public class NotificationFanoutJobService {
      * @implNote 本メソッド自体は非トランザクション。INSERT は {@code enqueueTxTemplate}（REQUIRES_NEW）で
      *           独立コミットし、ユニーク衝突は<b>トランザクション境界の外</b>で捕捉する。REQUIRES_NEW の内側で
      *           {@code catch} しても当該 TX は rollback-only のままコミット時に {@code UnexpectedRollbackException}
-     *           を投げるため、隔離した TX を丸ごと外側で握るのが正しい（呼び出し側＝還流の system 投稿 TX を巻き込まない）。
+     *           を投げるため、隔離した TX を丸ごと外側で握るのが正しい。
+     *           親ジョブと文面 6 行は<b>同一 TX</b>で確定する（文面の無いジョブを作らない）。
      */
     public void enqueue(String scopeType, String scopeRef, String notificationType, UUID sourceEventUuid,
-                        Long organizationId, String title, String body, NotificationPriority priority,
+                        Long organizationId, FanoutMessageKind messageKind, String[] messageArgs,
+                        NotificationPriority priority,
                         String sourceType, Long sourceId, String actionUrl, Long actorId) {
         // 応援者トグルを指定しない既存経路（VILLAGE 還流 / TEAM シフト公開）は全員配信＝includeSupporters=true。
-        enqueue(scopeType, scopeRef, notificationType, sourceEventUuid, organizationId, title, body, priority,
-                sourceType, sourceId, actionUrl, actorId, true);
+        enqueue(scopeType, scopeRef, notificationType, sourceEventUuid, organizationId, messageKind, messageArgs,
+                priority, sourceType, sourceId, actionUrl, actorId, true);
     }
 
     /**
      * 応援者トグル {@code includeSupporters} を運搬する enqueue（Wave-2・ORG 耐久 fan-out）。
      *
-     * <p>ジョブ列 {@code include_supporters} へ運搬し、ワーカーが受信者ソースの 4 引数版
-     * {@link FanoutRecipientSource#nextPage(String, long, int, boolean)} へ渡す。冪等キー
-     * {@code uk_fanout_idempotency} には含めない（トグル違いを別ジョブにしない設計）。冪等・O(1) は 12 引数版と同じ。</p>
+     * <p>ジョブ列 {@code include_supporters} へ運搬し、ワーカーが受信者ソースへ
+     * {@link FanoutPageRequest} 経由で渡す。冪等キー {@code uk_fanout_idempotency} には含めない
+     * （トグル違いを別ジョブにしない設計）。冪等・O(1) は 12 引数版と同じ。</p>
      *
      * @param includeSupporters 応援者（純 SUPPORTER）を配信対象に含めるか（ORGANIZATION 以外は既定 true で挙動不変）
      */
     public void enqueue(String scopeType, String scopeRef, String notificationType, UUID sourceEventUuid,
-                        Long organizationId, String title, String body, NotificationPriority priority,
+                        Long organizationId, FanoutMessageKind messageKind, String[] messageArgs,
+                        NotificationPriority priority,
                         String sourceType, Long sourceId, String actionUrl, Long actorId,
                         boolean includeSupporters) {
+        // 文面の描画は TX の外で先に済ませる。キー欠落（恒久的な設定不備）は握り潰さず例外として伝播させ、
+        // 「ジョブ行だけ作られて文面が無い」中途半端な状態を作らない（AC-6）。
+        Map<String, FanoutMessageRenderer.RenderedMessage> messages =
+                messageRenderer.renderAllLocales(messageKind, messageArgs == null ? new String[0] : messageArgs);
+
         LocalDateTime now = LocalDateTime.now();
         // 真の O(1)（AC-7）: 受信者数を数えず、母集団評価は worker 側へ先送りする（B案・マスター裁可 2026-08-08）。
-        // enqueue は常に「親ジョブ 1 行だけ」を INSERT する。shard_index=0・shard_count=0（0＝「シャード未評価」の
-        // 番人値）で作り、初回 claim した worker が resolveAndSplitShards で N を確定して子シャード行を発行する。
+        // enqueue は常に「親ジョブ 1 行＋文面 6 行」だけを INSERT する。shard_index=0・shard_count=0
+        //（0＝「シャード未評価」の番人値）で作り、初回 claim した worker が resolveAndSplitShards で
+        // N を確定して子シャード行を発行する。
         NotificationFanoutJob job = NotificationFanoutJob.builder()
                 .sourceEventUuid(sourceEventUuid)
                 .scopeType(scopeType)
                 .scopeRef(scopeRef)
                 .notificationType(notificationType)
                 .organizationId(organizationId)
-                .title(title)
-                .body(body)
                 .priority(priority == null ? NotificationPriority.NORMAL : priority)
                 .sourceType(sourceType)
                 .sourceId(sourceId)
@@ -156,12 +182,13 @@ public class NotificationFanoutJobService {
                 .updatedAt(now)
                 .build();
         try {
-            // 独立 TX（REQUIRES_NEW）で親ジョブ 1 行を INSERT・確定する。ユニーク違反時はこの TX のみ丸ごと
-            // ロールバック。例外は TX 境界の外（本 try）で捕捉するため呼び出し側 TX は無傷。
-            // save 後に flush して衝突を execute の内側で発火させる（TX 境界内でロールバック）。
+            // 独立 TX（REQUIRES_NEW）で親ジョブ 1 行＋文面 6 行を INSERT・確定する。ユニーク違反時はこの TX のみ
+            // 丸ごとロールバック。例外は TX 境界の外（本 try）で捕捉するため呼び出し側 TX は無傷。
             enqueueTxTemplate.executeWithoutResult(status -> {
                 jobRepository.save(job);
                 jobRepository.flush();
+                jobMessageRepository.saveAll(buildMessages(job.getId(), messages));
+                jobMessageRepository.flush();
             });
         } catch (DataIntegrityViolationException e) {
             // 握るのは「同一 fan-out の二重登録（uk_fanout_idempotency 衝突）」だけ。
@@ -179,6 +206,21 @@ public class NotificationFanoutJobService {
             log.debug("fan-out ジョブは既に登録済み（冪等 skip）: scopeType={} scopeRef={} type={} sourceEvent={}",
                     scopeType, scopeRef, notificationType, sourceEventUuid);
         }
+    }
+
+    /** 描画済み文面 Map をジョブ配下の子エンティティ群へ写す（配信ロケール数ぶん＝6 行）。 */
+    private static List<NotificationFanoutJobMessage> buildMessages(
+            UUID jobId, Map<String, FanoutMessageRenderer.RenderedMessage> messages) {
+        List<NotificationFanoutJobMessage> rows = new ArrayList<>(messages.size());
+        for (Map.Entry<String, FanoutMessageRenderer.RenderedMessage> entry : messages.entrySet()) {
+            rows.add(NotificationFanoutJobMessage.builder()
+                    .jobId(jobId)
+                    .locale(entry.getKey())
+                    .title(entry.getValue().title())
+                    .body(entry.getValue().body())
+                    .build());
+        }
+        return rows;
     }
 
     /**
@@ -249,8 +291,6 @@ public class NotificationFanoutJobService {
                     .scopeRef(parent.getScopeRef())
                     .notificationType(parent.getNotificationType())
                     .organizationId(parent.getOrganizationId())
-                    .title(parent.getTitle())
-                    .body(parent.getBody())
                     .priority(parent.getPriority())
                     .sourceType(parent.getSourceType())
                     .sourceId(parent.getSourceId())
@@ -272,7 +312,27 @@ public class NotificationFanoutJobService {
             // 子 INSERT。同一キー・同一 shard_index の二重挿入は uk_fanout_idempotency が弾く
             // （別原因の整合性違反はここで rethrow され、TX ロールバック→recovery で再走）。
             jobRepository.saveAll(children);
+            jobRepository.flush();
+            // Issue #2871: 文面は親と同一（同じイベントの同じ文言）。子シャードにも同じ 6 行を複製する。
+            // 親から読んだ「その時点の描画結果」をそのまま写すため、分割の前後で文面が食い違わない
+            // （分割中に翻訳がデプロイされても 1 イベント内の文面は一貫する）。
+            List<NotificationFanoutJobMessage> parentMessages = jobMessageRepository.findByJobId(parent.getId());
+            List<NotificationFanoutJobMessage> childMessages = new ArrayList<>();
+            for (NotificationFanoutJob child : children) {
+                for (NotificationFanoutJobMessage message : parentMessages) {
+                    childMessages.add(NotificationFanoutJobMessage.builder()
+                            .jobId(child.getId())
+                            .locale(message.getLocale())
+                            .title(message.getTitle())
+                            .body(message.getBody())
+                            .build());
+                }
+            }
+            if (!childMessages.isEmpty()) {
+                jobMessageRepository.saveAll(childMessages);
+            }
         }
+
         // 親自身（shard_index=0）を shard_count=N に更新（子 INSERT と同一 TX で原子確定）。
         parent.setShardCount((short) shardCount);
         parent.setUpdatedAt(now);

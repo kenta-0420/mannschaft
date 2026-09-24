@@ -185,7 +185,7 @@ async function mockApis(page: Page, opts: SearchMockOptions = {}): Promise<void>
           meta: {
             page: 0,
             size: 20,
-            totalElements: items.length,
+            total: items.length,
             totalPages: items.length > 0 ? 1 : 0,
           },
         }),

@@ -59,9 +59,6 @@ public class VillagePinController {
      *   <li>422 VILLAGE_PIN_LIMIT_EXCEEDED: 30 件超過</li>
      * </ul>
      */
-    @SelfScopedEndpoint("作成されるピン行の所有者は常に SecurityUtils.getCurrentUserId() で、"
-            + "他ユーザーのピンには到達しない（VillagePinService#pin が userId を認証主体で固定する）。"
-            + "villageId は公開の村識別子であり、ピン留め自体は村外からも行える仕様")
     @PostMapping("/{villageId}")
     @Operation(summary = "村をピン留め")
     public ResponseEntity<ApiResponse<PinResponse>> pin(@PathVariable UUID villageId) {

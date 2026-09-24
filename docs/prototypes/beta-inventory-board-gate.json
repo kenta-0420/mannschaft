@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": {
+    "taskList": "docs/task-list.md",
+    "command": ".claude/commands/ボード更新.md",
+    "checkedAt": "2026-08-24",
+    "note": "Gate基盤工事は機能台帳YAMLに存在しないため、正本と実ファイルを照合した手動確認オーバーレイ。"
+  },
+  "items": [
+    {
+      "id": "gate-public-feature-flag-api",
+      "title": "公開フラグ読取API",
+      "status": "done",
+      "detail": "公開フラグ一覧APIとFeatureFlagServiceの読取経路が存在する。",
+      "evidence": [
+        "backend/src/main/java/com/mannschaft/app/admin/controller/FeatureFlagController.java",
+        "backend/src/main/java/com/mannschaft/app/admin/service/FeatureFlagService.java",
+        "backend/src/main/java/com/mannschaft/app/admin/dto/PublicFeatureFlagResponse.java"
+      ],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260820-1550",
+        ".claude/commands/ボード更新.md:131"
+      ],
+      "decisionStatus": "confirmed"
+    },
+    {
+      "id": "gate-fe-route-middleware",
+      "title": "FE routeガード middleware",
+      "status": "done",
+      "detail": "global middlewareで未公開機能のURL直アクセスを遮断する実装があり、17 gate_key・91プレフィクスを対象にしている。",
+      "evidence": [
+        "frontend/app/middleware/feature-gate.global.ts",
+        "frontend/app/constants/featureGates.ts",
+        "backend/src/main/resources/db/migration/V187.20260820092252__seed_feature_gate_flags.sql"
+      ],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260820-1550",
+        ".claude/commands/ボード更新.md:132"
+      ],
+      "decisionStatus": "confirmed"
+    },
+    {
+      "id": "gate-require-feature-aop",
+      "title": "@RequireFeature AOP",
+      "status": "done",
+      "detail": "@RequireFeatureを実装クラス／メソッドで評価し、未知キーはフェイルクローズするAOPと番人テストが存在する。",
+      "evidence": [
+        "backend/src/main/java/com/mannschaft/app/common/featuregate/RequireFeature.java",
+        "backend/src/main/java/com/mannschaft/app/common/featuregate/FeatureGateAspect.java",
+        "backend/src/test/java/com/mannschaft/app/common/architecture/FeatureGateAnnotationKeyGuardTest.java",
+        "backend/src/test/java/com/mannschaft/app/common/architecture/RequireFeatureInterfaceGuardTest.java"
+      ],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260821-1547",
+        ".claude/commands/ボード更新.md:133"
+      ],
+      "decisionStatus": "confirmed"
+    },
+    {
+      "id": "gate-fe-ssr-slug-coverage",
+      "title": "FE SSR slug配下の閉栓",
+      "status": "blocked",
+      "detail": "91プレフィクス中44件のslug配下がSSRで隔離されない残件。β公開の閉栓前に解消必須で、Issue #2888は2026-08-24確認時点でOPEN。",
+      "evidence": [
+        "https://github.com/kenta-0420/mannschaft/issues/2888 (OPEN, 2026-08-24確認)",
+        "frontend/app/middleware/feature-gate.global.ts",
+        "frontend/app/constants/featureGates.ts"
+      ],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260820-1550",
+        "docs/inventory/feature-inventory.yaml:40"
+      ],
+      "decisionStatus": "confirmed"
+    },
+    {
+      "id": "gate-controller-annotation-coverage",
+      "title": "実Controllerへの@RequireFeature適用",
+      "status": "working",
+      "detail": "AOP基盤は完成しているが、正本は実Controller 17 gate_keyへの付与を残件として明記。ローカル全Controller走査でも@RequireFeatureは0件。",
+      "evidence": [
+        "local-scan: backend/src/main/java/**/*Controller.java の @RequireFeature = 0件",
+        "backend/src/main/java/com/mannschaft/app/common/featuregate/RequireFeature.java"
+      ],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260821-1547"
+      ],
+      "decisionStatus": "confirmed"
+    },
+    {
+      "id": "gate-batch-listener-declaration-guard",
+      "title": "バッチ／リスナー宣言必須番人",
+      "status": "unknown",
+      "detail": "正本ではGate基盤工事④を残務として明記している。実装済みと推測せず、対象154+バッチ・121リスナーの宣言網羅を別途確認する。",
+      "evidence": [],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260821-1547",
+        ".claude/commands/ボード更新.md:134"
+      ],
+      "decisionStatus": "proposed"
+    }
+  ]
+}

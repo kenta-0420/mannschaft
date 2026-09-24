@@ -1,6 +1,8 @@
 package com.mannschaft.app.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.service.entity.ServiceRecordEntity;
@@ -21,14 +23,19 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -73,6 +80,9 @@ class ServiceRecordScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ServiceRecordSettingsRepository serviceRecordSettingsRepository;
+
+    @MockitoBean
+    private R2StorageService r2StorageService;
 
     @PersistenceContext
     private EntityManager em;
@@ -151,6 +161,10 @@ class ServiceRecordScopeContractIT extends AbstractMySqlIntegrationTest {
 
         em.flush();
         em.clear();
+
+        given(r2StorageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
+                .willReturn(new PresignedUploadResult(
+                        "https://r2.example.com/upload-dummy", "service-records/dummy-key", 600L));
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -594,9 +608,10 @@ class ServiceRecordScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("正当ADMINは添付登録201")
         void 正当ADMINは添付登録201() throws Exception {
             setAuth(adminAId);
+            String fileKey = presignAttachmentFileKey();
             mockMvc.perform(post("/api/v1/teams/{teamId}/service-records/{id}/attachments", teamAId, recordAId)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(attachmentBody())))
+                            .content(objectMapper.writeValueAsString(attachmentBody(fileKey))))
                     .andExpect(status().isCreated());
         }
 
@@ -610,12 +625,33 @@ class ServiceRecordScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         private Map<String, Object> attachmentBody() {
+            return attachmentBody("service-records/test/key.jpg");
+        }
+
+        private Map<String, Object> attachmentBody(String fileKey) {
             Map<String, Object> body = new LinkedHashMap<>();
-            body.put("fileKey", "service-records/test/key.jpg");
+            body.put("fileKey", fileKey);
             body.put("fileName", "test.jpg");
             body.put("contentType", "image/jpeg");
             body.put("fileSize", 1000);
             return body;
+        }
+
+        private String presignAttachmentFileKey() throws Exception {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("fileName", "test.jpg");
+            body.put("contentType", "image/jpeg");
+            body.put("fileSize", 1000);
+            String response = mockMvc.perform(post(
+                            "/api/v1/teams/{teamId}/service-records/{id}/attachments/upload-url",
+                            teamAId, recordAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+            return objectMapper.readTree(response).path("data").path("fileKey").asText();
         }
     }
 

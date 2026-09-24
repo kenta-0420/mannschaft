@@ -1,10 +1,13 @@
 package com.mannschaft.app.team.controller;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.exception.OrganizationNotFoundException;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.dto.TeamPublicSummaryResponse;
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -64,9 +68,9 @@ public class OrganizationTeamSearchController {
 
     private final TeamSearchService teamSearchService;
     private final AccessControlService accessControlService;
-    private final OrganizationService organizationService;
     /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
     private final MediaUrlResolver mediaUrlResolver;
+    private final OrganizationService organizationService;
 
     /**
      * 組織配下のチーム（店舗）を検索する。
@@ -80,7 +84,7 @@ public class OrganizationTeamSearchController {
      * <p>組織が PUBLIC 以外で非メンバー／未ログインの場合は
      * エニュメレーション対策で 404 を返す（{@code TeamSearchService} 内部判定）。
      *
-     * @param orgPublicId    組織の公開 UUID
+     * @param orgScopeId     組織 slug または数値 ID を正準化したスコープ ID
      * @param keyword        部分一致キーワード（{@code name} または {@code name_kana}）
      * @param prefecture     都道府県名称（完全一致。{@code prefectureCode} 未指定時のフォールバック）
      * @param city           市町村名称（完全一致。{@code prefecture} 未指定時は無視）
@@ -97,7 +101,7 @@ public class OrganizationTeamSearchController {
             description = "未ログインでも実行可能。組織メンバーには詳細版、非メンバー／未ログインには抑制版 DTO を返す。"
                     + "F22.1: prefectureCode/cityCode 指定時はコード優先、未指定なら名称（prefecture/city）にフォールバック（dual-support）。")
     public ResponseEntity<PagedResponse<?>> search(
-            @PathVariable String orgPublicId,
+            @PathVariable("orgPublicId") OrgScopeId orgScopeId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String prefecture,
             @RequestParam(required = false) String city,
@@ -123,8 +127,9 @@ public class OrganizationTeamSearchController {
         // 4. 現在ユーザー（未ログイン許容）
         Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();
 
-        // 5. publicId → 内部 orgId 解決
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        // 5. OrgScopeIdConverter で slug / 数値を正準化
+        Long orgId = orgScopeId.value();
+        assertActiveOrganization(orgId);
 
         // 6. 検索実行（TeamSearchService 内で 404 判定を含む）
         Page<TeamEntity> resultPage = teamSearchService.search(orgId, criteria, currentUserId, pageable);
@@ -224,6 +229,29 @@ public class OrganizationTeamSearchController {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.of(Map.of("error", "Organization not found")));
+    }
+
+    /** 正準スコープ変換で 404 になった場合も、公開検索APIの固定エラー契約を維持する。 */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleScopeNotFound(
+            ResponseStatusException ex) {
+        if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
+            throw ex;
+        }
+        return ResponseEntity
+                .status(ex.getStatusCode())
+                .body(ApiResponse.of(Map.of("error", "Organization not found")));
+    }
+
+    private void assertActiveOrganization(Long orgId) {
+        try {
+            organizationService.assertActiveOrganizationExists(orgId);
+        } catch (BusinessException ex) {
+            if (ex.getErrorCode() == OrgErrorCode.ORG_001) {
+                throw new OrganizationNotFoundException();
+            }
+            throw ex;
+        }
     }
 
     /**

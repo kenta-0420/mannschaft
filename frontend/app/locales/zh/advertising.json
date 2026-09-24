@@ -11,6 +11,9 @@
       "saved": "账户设置已保存。",
       "save_failed": "保存失败。"
     },
+    "admin_affiliate_settings": {
+      "placeholder_tag_warning": "由于标签ID尚未设置，此广告目前不会显示"
+    },
     "spotlight": {
       "hide_advertiser": "隐藏该广告主",
       "hide_advertiser_done": "已隐藏该广告主的广告",
@@ -637,9 +640,21 @@
         "billing_method_label": "结算方式",
         "billing_stripe": "信用卡（Stripe）",
         "billing_invoice": "发票支付",
+        "billing_fixed_notice": "仅支持信用卡结算",
         "success_message": "已提交广告主注册申请，审核后即可使用。",
         "error_message": "注册失败"
       }
+    },
+    "register": {
+      "title": "广告主注册",
+      "submit": "提交申请",
+      "company_name_label": "公司名称 / 广告主名称",
+      "company_name_placeholder": "示例株式会社",
+      "contact_email_label": "联系邮箱地址",
+      "billing_method_label": "结算方式",
+      "billing_fixed_notice": "仅支持信用卡结算",
+      "success_message": "已提交广告主注册申请，审核后即可使用。",
+      "error_message": "注册失败"
     },
     "settings_ad_preferences_guide": {
       "page_title": "広告の受信設定 — 使い方ガイド",

@@ -68,6 +68,8 @@ public interface ReservationWaitlistEntryRepository
     List<ReservationWaitlistEntryEntity> findByUserIdAndStatusOrderByCreatedAtDesc(
             Long userId, WaitlistStatus status);
 
+    List<ReservationWaitlistEntryEntity> findByStatus(WaitlistStatus status);
+
     /**
      * 枠開始時刻を過ぎた WAITING エントリを列挙する（失効クリーンアップ・§6.1 バッチ）。
      *

@@ -50,7 +50,9 @@ const sourceBadge = computed(() => {
   const scope = props.post.scope
   if (!scope?.name) return null
   let to: string | null = null
-  if (scope.slug) {
+  if (scope.scopeType === 'VILLAGE' && scope.scopeVillageId) {
+    to = `/villages/${scope.scopeVillageId}`
+  } else if (scope.slug) {
     if (scope.scopeType === 'TEAM') to = `/teams/${scope.slug}`
     else if (scope.scopeType === 'ORGANIZATION') to = `/organizations/${scope.slug}`
   }
@@ -441,11 +443,11 @@ function replyIsSystemPost(r: TimelinePostResponse): boolean {
           @click.stop
         >
         <div
-          v-else-if="att.attachmentType === 'VIDEO_FILE' && att.file?.fileKey"
+          v-else-if="att.attachmentType === 'VIDEO_FILE' && att.video?.videoUrl"
           @click.stop
         >
           <VideoPlayer
-            :file-key="att.file.fileKey"
+            :source-url="att.video.videoUrl"
             :thumbnail-url="att.video?.videoThumbnailUrl"
             :processing-status="att.video?.videoProcessingStatus"
             :mime-type="att.file?.mimeType"

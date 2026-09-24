@@ -75,7 +75,7 @@ NO_ARG_NOW|com.mannschaft.app.advertising.service.CampaignPerformanceService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.service.OverdueInvoiceBatchService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.service.RateSimulatorService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.service.ReportDeliveryBatchService|1
-NO_ARG_NOW|com.mannschaft.app.advertising.service.SpotlightServingService|4
+NO_ARG_NOW|com.mannschaft.app.advertising.service.SpotlightServingService|3
 NO_ARG_NOW|com.mannschaft.app.analytics.controller.AnalyticsAlertController|3
 NO_ARG_NOW|com.mannschaft.app.analytics.entity.AnalyticsAlertRuleEntity|1
 NO_ARG_NOW|com.mannschaft.app.analytics.entity.AnalyticsMonthlySnapshotEntity|1
@@ -111,7 +111,7 @@ NO_ARG_NOW|com.mannschaft.app.auth.service.AuthPasswordResetService|2
 NO_ARG_NOW|com.mannschaft.app.auth.service.AuthRegistrationService|4
 NO_ARG_NOW|com.mannschaft.app.auth.service.AuthService|2
 NO_ARG_NOW|com.mannschaft.app.auth.service.AuthSessionService|4
-NO_ARG_NOW|com.mannschaft.app.auth.service.AuthTokenRotationService|3
+NO_ARG_NOW|com.mannschaft.app.auth.service.AuthTokenRotationService|2
 NO_ARG_NOW|com.mannschaft.app.auth.service.AuthWebAuthnService|1
 NO_ARG_NOW|com.mannschaft.app.auth.service.NewDeviceDetectionService|1
 NO_ARG_NOW|com.mannschaft.app.auth.service.ParentalConsentCleanupBatchService|1
@@ -273,12 +273,12 @@ NO_ARG_NOW|com.mannschaft.app.family.service.CareAbsentAlertBatchService|2
 NO_ARG_NOW|com.mannschaft.app.family.service.CareLinkService|3
 NO_ARG_NOW|com.mannschaft.app.family.service.CoinTossService|1
 NO_ARG_NOW|com.mannschaft.app.family.service.EventEndReminderBatchService|1
-NO_ARG_NOW|com.mannschaft.app.family.service.FamilyBatchService|3
+NO_ARG_NOW|com.mannschaft.app.family.service.FamilyBatchService|1
+NO_ARG_NOW|com.mannschaft.app.family.service.FamilyRetentionCleanupBatchService|2
 NO_ARG_NOW|com.mannschaft.app.family.service.PresenceService|4
 NO_ARG_NOW|com.mannschaft.app.faq.service.FaqAdminService|2
 NO_ARG_NOW|com.mannschaft.app.favorite.entity.UserFavoriteEntity|1
 NO_ARG_NOW|com.mannschaft.app.files.entity.MultipartUploadSessionEntity|2
-NO_ARG_NOW|com.mannschaft.app.files.service.MultipartUploadService|1
 NO_ARG_NOW|com.mannschaft.app.filesharing.entity.FilePermissionEntity|1
 NO_ARG_NOW|com.mannschaft.app.filesharing.entity.SharedFileCommentEntity|1
 NO_ARG_NOW|com.mannschaft.app.filesharing.entity.SharedFileEntity|1
@@ -380,7 +380,7 @@ NO_ARG_NOW|com.mannschaft.app.matching.service.MatchRequestService|7
 NO_ARG_NOW|com.mannschaft.app.matching.service.MatchReviewService|2
 NO_ARG_NOW|com.mannschaft.app.member.entity.TeamPageEntity|1
 NO_ARG_NOW|com.mannschaft.app.member.service.TeamPageService|1
-NO_ARG_NOW|com.mannschaft.app.memberinfo.batch.MemberInfoUpdateReminderBatchService|2
+NO_ARG_NOW|com.mannschaft.app.memberinfo.batch.MemberInfoUpdateReminderBatchService|1
 NO_ARG_NOW|com.mannschaft.app.memberinfo.service.MemberInfoResponseService|5
 NO_ARG_NOW|com.mannschaft.app.membership.entity.CheckinLocationEntity|3
 NO_ARG_NOW|com.mannschaft.app.membership.entity.MemberCardCheckinEntity|1
@@ -420,7 +420,6 @@ NO_ARG_NOW|com.mannschaft.app.notification.fanout.NotificationFanoutJobService|7
 NO_ARG_NOW|com.mannschaft.app.notification.fanout.NotificationFanoutStuckRecoveryBatch|1
 NO_ARG_NOW|com.mannschaft.app.notification.fanout.NotificationFanoutWorker|1
 NO_ARG_NOW|com.mannschaft.app.notification.service.NotificationBulkFanoutService|1
-NO_ARG_NOW|com.mannschaft.app.notification.service.NotificationCleanupBatchService|1
 NO_ARG_NOW|com.mannschaft.app.notification.service.NotificationService|1
 NO_ARG_NOW|com.mannschaft.app.onboarding.entity.OnboardingProgressEntity|4
 NO_ARG_NOW|com.mannschaft.app.onboarding.entity.OnboardingStepCompletionEntity|1
@@ -444,7 +443,6 @@ NO_ARG_NOW|com.mannschaft.app.parking.service.ParkingVisitorReservationService|1
 NO_ARG_NOW|com.mannschaft.app.payment.FeePolicyAssignmentEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.FeePolicyEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.StripeWebhookEventEntity|1
-NO_ARG_NOW|com.mannschaft.app.payment.WebhookIdempotencyService|2
 NO_ARG_NOW|com.mannschaft.app.payment.admin.FeePolicyAdminService|1
 NO_ARG_NOW|com.mannschaft.app.payment.connect.ConnectAccountEntity|1
 NO_ARG_NOW|com.mannschaft.app.payment.entity.ContentPaymentGateEntity|1
@@ -453,7 +451,6 @@ NO_ARG_NOW|com.mannschaft.app.payment.entity.MembershipSubscriptionEntity|3
 NO_ARG_NOW|com.mannschaft.app.payment.entity.OrganizationAccessRequirementEntity|1
 NO_ARG_NOW|com.mannschaft.app.payment.entity.PaymentBeneficiarySettingEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.entity.PaymentItemEntity|1
-NO_ARG_NOW|com.mannschaft.app.payment.entity.PaymentProxyGrantEntity|3
 NO_ARG_NOW|com.mannschaft.app.payment.entity.PaymentRequestEntity|5
 NO_ARG_NOW|com.mannschaft.app.payment.entity.StripeCustomerEntity|1
 NO_ARG_NOW|com.mannschaft.app.payment.entity.TeamAccessRequirementEntity|1
@@ -470,9 +467,7 @@ NO_ARG_NOW|com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.service.MemberPaymentService|2
 NO_ARG_NOW|com.mannschaft.app.payment.service.MembershipSubscriptionService|3
 NO_ARG_NOW|com.mannschaft.app.payment.service.MembershipSubscriptionWebhookService|4
-NO_ARG_NOW|com.mannschaft.app.payment.service.PaymentAuthorizationService|1
 NO_ARG_NOW|com.mannschaft.app.payment.service.PaymentSummaryService|1
-NO_ARG_NOW|com.mannschaft.app.payment.service.ReceiptService|1
 NO_ARG_NOW|com.mannschaft.app.payment.service.StripeWebhookService|1
 NO_ARG_NOW|com.mannschaft.app.performance.controller.PerformanceRecordController|1
 NO_ARG_NOW|com.mannschaft.app.performance.service.PerformanceBatchService|1
@@ -672,7 +667,7 @@ NO_ARG_NOW|com.mannschaft.app.school.entity.AttendanceRequirementRuleEntity|3
 NO_ARG_NOW|com.mannschaft.app.school.entity.DailyAttendanceRecordEntity|1
 NO_ARG_NOW|com.mannschaft.app.school.entity.PeriodAttendanceRecordEntity|1
 NO_ARG_NOW|com.mannschaft.app.school.entity.StudentAttendanceSummaryEntity|4
-NO_ARG_NOW|com.mannschaft.app.school.service.AttendanceRequirementBatchService|3
+NO_ARG_NOW|com.mannschaft.app.school.service.AttendanceRequirementBatchService|2
 NO_ARG_NOW|com.mannschaft.app.school.service.AttendanceRequirementEvaluationService|2
 NO_ARG_NOW|com.mannschaft.app.school.service.AttendanceRequirementService|4
 NO_ARG_NOW|com.mannschaft.app.school.service.AttendanceSummaryService|1
@@ -700,7 +695,7 @@ NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftAssignmentRunEntity|4
 NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftChangeRequestEntity|4
 NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftRequestEntity|2
 NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftScheduleEntity|2
-NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftSwapRequestEntity|3
+NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftSwapRequestEntity|2
 NO_ARG_NOW|com.mannschaft.app.shift.service.ShiftAutoArchiveBatchService|1
 NO_ARG_NOW|com.mannschaft.app.shift.service.ShiftRequestService|1
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.batch.ShiftBudgetRetryBatchJob|1
@@ -717,7 +712,8 @@ NO_ARG_NOW|com.mannschaft.app.signage.entity.SignageScreenEntity|1
 NO_ARG_NOW|com.mannschaft.app.signage.service.SignageAccessTokenService|1
 NO_ARG_NOW|com.mannschaft.app.skill.entity.MemberSkillEntity|2
 NO_ARG_NOW|com.mannschaft.app.skill.entity.SkillCategoryEntity|1
-NO_ARG_NOW|com.mannschaft.app.skill.service.SkillExpiryReminderBatchService|3
+NO_ARG_NOW|com.mannschaft.app.skill.service.SkillExpiryReminderBatchService|2
+NO_ARG_NOW|com.mannschaft.app.skill.service.SkillExpiryStatusUpdateBatchService|1
 NO_ARG_NOW|com.mannschaft.app.skill.service.SkillSearchService|1
 NO_ARG_NOW|com.mannschaft.app.social.announcement.AnnouncementFeedEntity|2
 NO_ARG_NOW|com.mannschaft.app.social.announcement.AnnouncementReadService|1

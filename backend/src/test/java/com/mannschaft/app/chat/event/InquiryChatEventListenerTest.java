@@ -1,6 +1,7 @@
 package com.mannschaft.app.chat.event;
 
 import com.mannschaft.app.admin.service.AdminBusinessAlertService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -14,10 +15,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,6 +76,12 @@ class InquiryChatEventListenerTest {
     @Mock
     private NotificationDispatchService dispatchService;
 
+    @Mock
+    private MessageSource messageSource;
+
+    @Mock
+    private UserLocaleCache userLocaleCache;
+
     private InquiryChatEventListener listener;
 
     @BeforeEach
@@ -81,7 +91,14 @@ class InquiryChatEventListenerTest {
                 notificationService,
                 redisTemplate,
                 adminBusinessAlertService,
-                dispatchService);
+                dispatchService,
+                messageSource,
+                userLocaleCache);
+        lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(Map.of());
+        lenient().when(messageSource.getMessage(
+                        anyString(), any(), anyString(), org.mockito.ArgumentMatchers.any(Locale.class)))
+                .thenReturn("stub-message");
     }
 
     private void stubDedupPass() {

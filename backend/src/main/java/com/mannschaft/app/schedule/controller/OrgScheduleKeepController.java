@@ -2,7 +2,7 @@ package com.mannschaft.app.schedule.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.config.OrgScopeId;
 import com.mannschaft.app.schedule.authz.ScheduleKeepScope;
 import com.mannschaft.app.schedule.dto.ConvertScheduleKeepRequest;
 import com.mannschaft.app.schedule.dto.ConvertScheduleKeepResponse;
@@ -42,15 +42,14 @@ import java.util.UUID;
 public class OrgScheduleKeepController {
 
     private final ScheduleKeepService scheduleKeepService;
-    private final OrganizationService organizationService;
 
     @PostMapping
     @Operation(summary = "組織キープ作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ScheduleKeepResponse>> create(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @RequestBody CreateScheduleKeepRequest request) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         ScheduleKeepResponse response = scheduleKeepService.create(
                 ScheduleKeepScope.organization(orgId), request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
@@ -60,11 +59,11 @@ public class OrgScheduleKeepController {
     @Operation(summary = "組織キープ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ScheduleKeepResponse>>> list(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         List<ScheduleKeepResponse> response = scheduleKeepService.list(
                 ScheduleKeepScope.organization(orgId), status, page, size, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -74,9 +73,9 @@ public class OrgScheduleKeepController {
     @Operation(summary = "組織キープ詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ScheduleKeepResponse>> get(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable UUID keepId) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         ScheduleKeepResponse response = scheduleKeepService.get(
                 ScheduleKeepScope.organization(orgId), keepId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -86,10 +85,10 @@ public class OrgScheduleKeepController {
     @Operation(summary = "組織キープ更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ScheduleKeepResponse>> update(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable UUID keepId,
             @RequestBody Map<String, Object> body) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         ScheduleKeepResponse response = scheduleKeepService.update(
                 ScheduleKeepScope.organization(orgId), keepId, body, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -99,9 +98,9 @@ public class OrgScheduleKeepController {
     @Operation(summary = "組織キープ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "削除成功")
     public ResponseEntity<Void> delete(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable UUID keepId) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         scheduleKeepService.delete(ScheduleKeepScope.organization(orgId), keepId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
@@ -110,10 +109,10 @@ public class OrgScheduleKeepController {
     @Operation(summary = "組織キープを予定へ変換")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変換成功")
     public ResponseEntity<ApiResponse<ConvertScheduleKeepResponse>> convert(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable UUID keepId,
             @RequestBody ConvertScheduleKeepRequest request) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         ConvertScheduleKeepResponse response = scheduleKeepService.convert(
                 ScheduleKeepScope.organization(orgId), keepId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -123,9 +122,9 @@ public class OrgScheduleKeepController {
     @Operation(summary = "組織キープの並び替え")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "並び替え成功")
     public ResponseEntity<Void> reorder(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @RequestBody ReorderScheduleKeepsRequest request) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         scheduleKeepService.reorder(
                 ScheduleKeepScope.organization(orgId), request.getOrderedIds(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
@@ -135,9 +134,9 @@ public class OrgScheduleKeepController {
     @Operation(summary = "予定から由来キープを逆引き")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ScheduleKeepResponse>> getByConvertedSchedule(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         ScheduleKeepResponse response = scheduleKeepService.getByConvertedSchedule(
                 ScheduleKeepScope.organization(orgId), scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -147,9 +146,9 @@ public class OrgScheduleKeepController {
     @Operation(summary = "組織キープをアーカイブ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
     public ResponseEntity<ApiResponse<ScheduleKeepResponse>> archive(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable UUID keepId) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         ScheduleKeepResponse response = scheduleKeepService.archive(
                 ScheduleKeepScope.organization(orgId), keepId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -159,9 +158,9 @@ public class OrgScheduleKeepController {
     @Operation(summary = "組織キープのアーカイブ解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "復帰成功")
     public ResponseEntity<ApiResponse<ScheduleKeepResponse>> restore(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable UUID keepId) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         ScheduleKeepResponse response = scheduleKeepService.restore(
                 ScheduleKeepScope.organization(orgId), keepId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -171,9 +170,9 @@ public class OrgScheduleKeepController {
     @Operation(summary = "組織キープの変換取消")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取消成功")
     public ResponseEntity<ApiResponse<ScheduleKeepResponse>> revert(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable UUID keepId) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         ScheduleKeepResponse response = scheduleKeepService.revert(
                 ScheduleKeepScope.organization(orgId), keepId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));

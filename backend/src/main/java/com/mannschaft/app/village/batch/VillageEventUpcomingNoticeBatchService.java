@@ -1,6 +1,8 @@
 package com.mannschaft.app.village.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.entity.VillageCalendarEventEntity;
 import com.mannschaft.app.village.entity.VillageFestivalEntity;
 import com.mannschaft.app.village.entity.VillageMeetupEntity;
@@ -53,6 +55,8 @@ public class VillageEventUpcomingNoticeBatchService {
      */
     @BatchEndpoint(name = "village-event-upcoming-notice",
             description = "翌日開催の歳時記/祭/寄合(CONFIRMED)を走査し EVENT_UPCOMING を前日1回だけ投稿・通知する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。村の行事の開催前告知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "villageEventUpcomingNoticeBatch",

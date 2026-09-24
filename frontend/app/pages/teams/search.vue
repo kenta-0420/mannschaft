@@ -83,7 +83,7 @@ async function fetchTeams() {
       size: pageSize,
     })
     teams.value = result.data
-    totalRecords.value = result.meta.totalElements
+    totalRecords.value = result.meta.total
   } catch (error) {
     handleApiError(error, t('teamHub.searchPageTitle'))
   } finally {

@@ -81,6 +81,17 @@ export interface CheckoutSessionResponse {
   expiresAt: string
 }
 
+export interface ConnectCheckoutResponse {
+  clientSecret: string
+  memberPaymentId: number
+  escrowTransactionId: string
+}
+
+export interface ConnectCheckoutStatusResponse {
+  memberPaymentId: number
+  status: PaymentStatus
+}
+
 export interface PaymentSummaryResponse {
   totalMembers: number
   items: Array<{
@@ -165,7 +176,7 @@ export interface PayableDueItem {
   totalCharge: number
   dueDate: string | null
   kind: 'ONE_TIME' | 'RECURRING' | 'TERM'
-  authorizationVia: 'SELF' | 'GUARDIAN' | 'GUARDIAN_PROXY' | 'PROXY_GRANT'
+  authorizationVia: 'SELF' | 'GUARDIAN' | 'GUARDIAN_PROXY'
   alreadyPaid: boolean
   paidByUserId: number | null
   paidByDisplayName: string | null

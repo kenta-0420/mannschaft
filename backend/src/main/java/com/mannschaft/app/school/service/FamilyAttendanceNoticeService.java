@@ -12,9 +12,12 @@ import com.mannschaft.app.school.dto.FamilyAttendanceNoticeResponse;
 import com.mannschaft.app.school.dto.FamilyNoticeListResponse;
 import com.mannschaft.app.school.entity.FamilyAttendanceNoticeEntity;
 import com.mannschaft.app.school.error.SchoolErrorCode;
+import com.mannschaft.app.school.event.FamilyAttendanceNoticeAcknowledgedEvent;
+import com.mannschaft.app.school.event.FamilyAttendanceNoticeSubmittedEvent;
 import com.mannschaft.app.school.repository.FamilyAttendanceNoticeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,9 @@ import java.util.List;
  * 保護者連絡サービス。
  *
  * <p>保護者による欠席・遅刻連絡の送信、担任による確認・出欠反映、一覧取得を担当する。
+ * 担任・保護者への通知は業務トランザクションの<b>コミット後</b>に送る（Issue #2990 L6）。
+ * 本サービスは {@code noticeId} だけを載せたイベントを publish し、実際の通知は
+ * {@code SchoolAttendanceNotificationListener}（{@code AFTER_COMMIT}）が行う。
  * reasonDetail は {@link com.mannschaft.app.common.EncryptedStringConverter} で透過的に暗号化される。
  * 添付ファイルは R2 オブジェクトキーとして保存し、取得時に Pre-signed URL を生成する。</p>
  */
@@ -43,7 +49,7 @@ public class FamilyAttendanceNoticeService {
     private final UserCareLinkRepository userCareLinkRepository;
     private final AccessControlService accessControlService;
     private final StorageService storageService;
-    private final SchoolAttendanceNotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
     // ========================================
@@ -77,7 +83,9 @@ public class FamilyAttendanceNoticeService {
                 .build();
 
         entity = noticeRepository.save(entity);
-        notificationService.notifyFamilyNoticeSubmitted(entity);
+        // 担任への通知は業務コミット後（Issue #2990 L6）。業務TX内では publish だけに留め、
+        // 通知の失敗で保護者が送った連絡そのものが巻き戻るのを防ぐ。
+        eventPublisher.publishEvent(new FamilyAttendanceNoticeSubmittedEvent(entity.getId()));
         return buildResponse(entity);
     }
 
@@ -118,7 +126,9 @@ public class FamilyAttendanceNoticeService {
         // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
         entity.acknowledge(acknowledgerUserId, LocalDateTime.now());
         noticeRepository.save(entity);
-        notificationService.notifyFamilyNoticeAcknowledged(entity);
+        // 保護者への確認通知は業務コミット後（Issue #2990 L6）。業務TX内では publish だけに留め、
+        // 通知の失敗で担任の確認済み化が巻き戻るのを防ぐ。
+        eventPublisher.publishEvent(new FamilyAttendanceNoticeAcknowledgedEvent(entity.getId()));
         return buildResponse(entity);
     }
 

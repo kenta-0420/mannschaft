@@ -3,6 +3,7 @@ package com.mannschaft.app.family.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.family.FamilyErrorCode;
 import com.mannschaft.app.family.WallpaperCategory;
 import com.mannschaft.app.family.dto.CreateWallpaperRequest;
@@ -41,7 +42,9 @@ public class WallpaperService {
     @Transactional
     public ApiResponse<WallpaperResponse> createWallpaper(CreateWallpaperRequest request) {
         WallpaperCategory category = request.getCategory() != null
-                ? WallpaperCategory.valueOf(request.getCategory().toUpperCase()) : WallpaperCategory.DEFAULT;
+                ? EnumInputParser.parse(
+                        WallpaperCategory.class, request.getCategory().toUpperCase(), "category")
+                : WallpaperCategory.DEFAULT;
         TemplateWallpaperEntity entity = TemplateWallpaperEntity.builder()
                 .templateSlug(request.getTemplateSlug()).name(request.getName())
                 .imageUrl(request.getImageUrl()).thumbnailUrl(request.getThumbnailUrl())

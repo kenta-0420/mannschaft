@@ -78,7 +78,7 @@ async function loadItems() {
       size: size.value,
     })
     items.value = res.data
-    totalElements.value = res.meta.totalElements
+    totalElements.value = res.meta.total
     totalPages.value = res.meta.totalPages
   } catch {
     showError('インシデント一覧の取得に失敗しました')

@@ -34,16 +34,20 @@ const createForm = ref<CreateForm>({
   scopeId: null,
 })
 const creating = ref(false)
+let clearDraftOnHide = false
 // 下書き復元フラッシュの表示フラグ
 const draftRestoredFlash = ref(false)
 
 // useFormDraft: createForm を source として監視し自動保存
-const { clear, restore, savedFlash } = useFormDraft<CreateForm>(draftKey.value, {
-  source: createForm as unknown as import('vue').WatchSource<CreateForm>,
-  debounceMs: 1000,
-  flashMs: 1500,
-  autoRestore: false, // ダイアログ open 時に手動で restore する
-})
+const { save, clear, cancelPendingSave, restore, savedFlash } = useFormDraft<CreateForm>(
+  draftKey.value,
+  {
+    source: createForm as unknown as import('vue').WatchSource<CreateForm>,
+    debounceMs: 1000,
+    flashMs: 1500,
+    autoRestore: false, // ダイアログ open 時に手動で restore する
+  },
+)
 
 const scopeOptions = computed(() => {
   const opts: Array<{ label: string; scopeType: string; scopeId: string | null }> = [
@@ -88,6 +92,17 @@ function resetForm() {
   draftRestoredFlash.value = false
 }
 
+function handleHide() {
+  if (clearDraftOnHide) {
+    clearDraftOnHide = false
+  } else {
+    save(createForm.value)
+  }
+  resetForm()
+  // resetForm は監視対象を書き換えるため、その内部リセットだけは保存しない。
+  cancelPendingSave()
+}
+
 // ダイアログが開いたとき: 下書き復元を試みる
 watch(visible, (isOpen) => {
   if (!isOpen) return
@@ -124,9 +139,7 @@ async function submitCreate() {
       startDate: createForm.value.startDate
         ? toLocalDateString(createForm.value.startDate)
         : undefined,
-      dueDate: createForm.value.dueDate
-        ? toLocalDateString(createForm.value.dueDate)
-        : undefined,
+      dueDate: createForm.value.dueDate ? toLocalDateString(createForm.value.dueDate) : undefined,
     }
     if (createForm.value.scopeType === 'PERSONAL') {
       await todoApi.createPersonalTodo(body)
@@ -143,6 +156,7 @@ async function submitCreate() {
   }
 
   if (success) {
+    clearDraftOnHide = true
     clear()
     visible.value = false
     notification.success(t('todo.create.create_success'))
@@ -158,7 +172,7 @@ async function submitCreate() {
     :header="t('todo.create.dialog_title')"
     modal
     class="w-full max-w-lg"
-    @hide="resetForm"
+    @hide="handleHide"
   >
     <div class="space-y-4">
       <!-- 下書き復元フラッシュ -->
@@ -173,6 +187,7 @@ async function submitCreate() {
         </label>
         <InputText
           v-model="createForm.title"
+          data-testid="todo-create-title"
           class="w-full"
           :placeholder="t('todo.create.title_placeholder')"
           autofocus

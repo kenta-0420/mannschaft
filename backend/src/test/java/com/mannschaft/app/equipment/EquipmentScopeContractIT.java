@@ -1,6 +1,7 @@
 package com.mannschaft.app.equipment;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.equipment.entity.EquipmentAssignmentEntity;
 import com.mannschaft.app.equipment.entity.EquipmentItemEntity;
 import com.mannschaft.app.equipment.repository.EquipmentAssignmentRepository;
@@ -8,6 +9,7 @@ import com.mannschaft.app.equipment.repository.EquipmentItemRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -68,6 +71,12 @@ class EquipmentScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private EquipmentAssignmentRepository assignmentRepository;
 
+    @Autowired
+    private FeatureFlagRepository featureFlagRepository;
+
+    @Autowired
+    private CacheManager cacheManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -94,6 +103,7 @@ class EquipmentScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager, "FEATURE_FACILITY_ENABLED");
         teamAId = insertTeam("EQAUTHZ チームA");
         teamBId = insertTeam("EQAUTHZ チームB");
         orgAId = insertOrganization("EQAUTHZ 組織A");

@@ -39,6 +39,14 @@ title = "Mannschaft gitleaks 設定"
 #             bootRun.logの1件は値が起動毎に変わる非決定的UUIDのためregexでは
 #             狙い撃ちできず、settings.local.jsonと同じcommits+paths ANDへ変更。
 #             前景実行でフル履歴7,066コミット完走・0件を実測（1m44s）
+# 2026-09-17: PR6b-1 修繕（billing-pr6b1）— 試練が置いたダミー
+#             pi_3DSsecret_test_secret_abc123XYZ（コミット93e76cd781）が
+#             CIのフル履歴スキャン（--log-opts範囲）にのみ残存し検出され続けた
+#             ため追加。値自体は作業木では既に低エントロピー値へ改名済みだが、
+#             範囲内コミット93e76cd781に旧値がそのまま残るため履歴走査で
+#             検出される。値が"pi_3DSsecret_test_secret_"という固有の命名
+#             規則＋"abc123XYZ"サフィックスを持ち他所と衝突しないためregexes
+#             単独（パス不問）とする
 # =============================================================================
 
 [extend]
@@ -146,6 +154,12 @@ regexes = [
   '''pi_123_secret_abc''',
 ]
 
+[[allowlists]]
+description = "PR6b-1 3DS決済試練のclientSecretダミー値（コミット93e76cd781に残存。実測: backend/src/test/java/com/mannschaft/app/billing/api/AbstractBillingPaymentActionApiIT.java, frontend/app/composables/useStripeSetup.paymentAction.spec.ts。作業木では既に低エントロピー値pi_dummy_secret_aaaaaaaaaaaaaaaaへ改名済みだが、CIのフル履歴スキャンが対象範囲に含む旧コミットに旧値が残るため検出され続ける。値は固有の命名規則で他所と衝突しないためregexesのみ（パス不問）"
+regexes = [
+  '''pi_3DSsecret_test_secret_abc123XYZ''',
+]
+
 # -----------------------------------------------------------------------------
 # BE テストフィクスチャ・CI固定値
 # -----------------------------------------------------------------------------
@@ -201,6 +215,17 @@ paths = [
 ]
 regexes = [
   '''Y2ktaG1hYy1naXRodWItYWN0aW9ucy1rZXktZml4ZWQ=''',
+]
+
+[[allowlists]]
+description = "PR4 Billing Center の return state 署名鍵（application-test.yml 固定値。テスト決定性のためのダミー値で、値そのものが test- 接頭辞と -xxxx 接尾辞を持つプレースホルダ命名。本番鍵は環境変数 MANNSCHAFT_BILLING_RETURN_SIGNING_SECRET から注入され、この値は本番では使用されない。src/main と src/test の両方に同一値を置く必要がある（src/test が優先されるため同期必須）ため paths に2件を挙げ、値とANDで限定する）"
+condition = "AND"
+paths = [
+  '''backend/src/main/resources/application-test\.yml''',
+  '''backend/src/test/resources/application-test\.yml''',
+]
+regexes = [
+  '''test-billing-return-signing-key-32bytes-xxxx''',
 ]
 
 [[allowlists]]

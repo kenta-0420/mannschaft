@@ -95,6 +95,18 @@
     },
     "detail": {
       "scopeMissing": "アンケートのスコープ情報が不足しています",
+      "scopeContext": {
+        "label": "アンケートの対象",
+        "type": { "TEAM": "対象チーム", "ORGANIZATION": "対象組織" },
+        "loading": "名称を確認中…",
+        "nameUnavailable": "名称を取得できませんでした",
+        "management": {
+          "admin": "管理者として管理中",
+          "delegated": "委任権限（アンケート管理）で管理中",
+          "creator": "作成者として管理中",
+          "authorized": "管理権限で管理中"
+        }
+      },
       "fetchFailed": "アンケート情報を取得できませんでした",
       "back": "戻る",
       "answeredBadge": "回答済み",

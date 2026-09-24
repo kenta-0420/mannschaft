@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.escrow;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.payment.escrow.event.RecruitmentCancellationFeeChargeFailedEvent;
 import com.mannschaft.app.payment.escrow.event.RecruitmentCancellationFeeChargedEvent;
 import com.mannschaft.app.recruitment.event.RecruitmentCancellationFeeChargeRequestedEvent;
@@ -36,6 +38,8 @@ public class RecruitmentCancellationFeeChargeListener {
      *
      * @param event 徴収要求イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとキャンセル料の請求が実行されず、DB 上は請求確定・決済は未実行という乖離が残る")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onCancellationFeeChargeRequested(RecruitmentCancellationFeeChargeRequestedEvent event) {

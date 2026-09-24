@@ -4,7 +4,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * F20.1: 権利サマリ内のアクティブ契約（PLAN または ADDON・設計書 02 §2.2）。
@@ -28,4 +31,118 @@ public class ActiveContract {
 
     @Schema(description = "契約時単価スナップショット（円）。ベータ中は null（無償）", nullable = true)
     private final Integer priceJpySnapshot;
+
+    @Schema(description = "契約状態（ContractStatus の6値: PENDING / ACTIVE / PAST_DUE / CANCELLED "
+            + "/ EXPIRED / PENDING_HANDOVER）", example = "ACTIVE")
+    private final String status;
+
+    @Schema(description = "現在の課金期間の終了時刻。期末を持たない契約は null", nullable = true)
+    private final OffsetDateTime currentPeriodEnd;
+
+    @Schema(description = "この契約を解約できるか（解約予約済みなら false）")
+    private final boolean canCancel;
+
+    @Schema(description = "解約予約を撤回できるか（期末を跨いだら false）")
+    private final boolean canResume;
+
+    /**
+     * 楽観ロックの CAS 期待値（{@code billing_contracts.version}）。
+     *
+     * <p>正本 05_billing_center.md:344 の {@code ContractBase} が持つ項目である。解約
+     * （{@code POST …/cancel}）と撤回（{@code DELETE …/cancel}）は本文 {@code {"version": N}} を
+     * <b>必須</b>とし、不一致なら 409 を返す（AC-27 / AC-44）。表示投影がこの値を返さないと
+     * FE は CAS 期待値を得られず、<b>解約も撤回も実行できない</b>（0 を決め打ちで埋めるのは
+     * 他人の更新を踏み潰す対処療法であり採らない）。</p>
+     */
+    @Schema(description = "楽観ロックのCAS期待値。解約・撤回APIの version に渡す", example = "0")
+    private final Long version;
+
+    @Schema(description = "解約予約の内容。予約が無ければ null", nullable = true)
+    private final ScheduledCancel cancel;
+
+    /**
+     * 進行中のプラン変更（upgrade）の内容（PR6b-1 AC-133）。{@code PENDING_PAYMENT} /
+     * {@code REQUIRES_ACTION} の変更が無ければ親の {@code pendingChange} 自体が null になる
+     * （AC-107: 支払い待ちでない契約ではこの投影自体を出さない）。
+     */
+    @Schema(description = "進行中のプラン変更（upgrade）の内容。進行中の変更が無ければ null", nullable = true)
+    private final PendingChange pendingChange;
+
+    /**
+     * この契約が変更先として選べる PLAN の {@code plan_key} 一覧（PR6b-1 残務③）。
+     *
+     * <p><b>FE がカタログの {@code baseMonthlyPriceJpy} で upgrade 判定を推測しない</b>ための投影。
+     * {@code baseMonthlyPriceJpy} は販売価格の正本ではなく、実際の upgrade 判定は現行 revision の
+     * {@code billing_price_band_versions.amount_including_tax} と現在の人数で行われる
+     * （{@code BillingPlanChangePreviewService}/{@link com.mannschaft.app.billing.api.BillingCurrentBandResolver}
+     * と同じ読み方）。ここに載る plan_key は「いま選んでも 409 CHANGE_CONFLICT にならない」ことを
+     * BE が保証した候補のみ。ADDON 契約・PLAN 契約でも候補が無ければ空配列（null にはしない。
+     * null は「この投影が未対応」に読めてしまい、FE 側の分岐が増える）。</p>
+     */
+    @Schema(description = "変更先として選べる PLAN の plan_key 一覧（ADDON 契約や候補が無ければ空配列）")
+    private final List<String> changeablePlanKeys;
+
+    /**
+     * 解約予約の内容（PR6a AC-60）。予約が入っていないときは親の {@code cancel} 自体が null になる。
+     *
+     * <p>時刻はオフセット付きで返す（新規の壁時計型フィールドは番人
+     * {@code DateTimeAndZoneGuardTest} が拒否する。API 境界を越える時刻はオフセットを明示する）。</p>
+     */
+    @Getter
+    @Builder
+    @Schema(name = "BillingScheduledCancel", description = "F20.1 解約予約の内容")
+    public static class ScheduledCancel {
+
+        @Schema(description = "解約予約を入れた時刻（cancelled_at）")
+        private final OffsetDateTime scheduledAt;
+
+        @Schema(description = "利用可能期限（＝currentPeriodEnd）")
+        private final OffsetDateTime endAt;
+    }
+
+    /**
+     * 進行中のプラン変更の内容（PR6b-1 AC-133）。{@code billing_contract_changes} の
+     * {@code effectiveAt} は Stripe 由来の瞬間であり {@link Instant} で返す
+     * （sibling の {@code BillingChangePreviewResponse}/{@code BillingContractChangeResponse}
+     * と同じ流儀。{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md} §1/§4）。
+     */
+    @Getter
+    @Builder
+    @Schema(name = "BillingPendingChange", description = "F20.1 進行中のプラン変更（upgrade）の内容")
+    public static class PendingChange {
+
+        /**
+         * 変更 ID（{@code billing_contract_changes.id}）。
+         *
+         * <p><b>これが無いと AC-71（別端末・再ログインからの再開）が成立しない</b>。FE は
+         * {@code GET …/contracts/{contractId}/changes/{changeId}/payment-action} を組み立てて
+         * clientSecret を取り直すため、変更 ID を投影から得られないとページ再読込後に
+         * 3DS を再開する術が無くなる（正本 05_billing_center.md:293-295）。</p>
+         */
+        @Schema(description = "変更 ID（UUID）。GET …/changes/{changeId}/payment-action に使う",
+                example = "0198aaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+        private final String changeId;
+
+        @Schema(description = "変更の状態（PENDING_PAYMENT または REQUIRES_ACTION）",
+                example = "REQUIRES_ACTION")
+        private final String status;
+
+        @Schema(description = "変更の効力発生予定の瞬間（ISO-8601 Instant）")
+        private final Instant effectiveAt;
+
+        @Schema(description = "3DS等の追加認証待ちか（true なら GET …/payment-action を叩ける）")
+        private final boolean paymentActionRequired;
+
+        /**
+         * 支払い（3DS）の期限（{@code billing_contract_changes.pending_update_expires_at}）。
+         *
+         * <p>AC-105 が言う「いつまでに完了しないと自動的に取り消されるか」の唯一の根拠である。
+         * {@code effectiveAt} は<b>変更行を作った時刻</b>（{@code effectiveAt(now)}）であって期限では
+         * ないため、表示の代用にしてはならない（利用者に「現在時刻までに払え」と読ませてしまう）。
+         * Stripe が pending_update を返していない同期成功の検体などでは期限が存在しないので
+         * {@code null} を許し、<b>取れないときは期限を断定しない</b>（FE も文言を出し分ける）。</p>
+         */
+        @Schema(description = "支払い（3DS）の期限。pending_update が無ければ null", nullable = true)
+        private final Instant pendingUpdateExpiresAt;
+    }
 }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.RecurringWeekSkipReason;
 import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.SlotStatus;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -62,6 +64,7 @@ public class ReservationRecurringSlotResolver {
     /** 単発＋定期を 1 本で判定する共有ユーティリティ（別実装厳禁・§4.2）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker;
     private final ReservationRepository reservationRepository;
+    private final TeamTimezoneResolver teamTimezoneResolver;
 
     /**
      * 週次の枠解決を行う。
@@ -105,10 +108,11 @@ public class ReservationRecurringSlotResolver {
 
         // ② 単発予約不可枠: 同じ範囲を 1 回。
         List<ReservationBlockedTimeEntity> blocks = blockedTimeRepository
-                .findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(teamId, from, to);
+                .findEffectiveBetween(teamId, from, to, from.minusDays(1));
         // ③ 定期予約不可枠: チーム単位 1 回（active 最大 50 行のメモリ突合）。
         List<ReservationRecurringBlockedTimeEntity> recurringRules =
                 recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
+        ZoneId teamZone = teamTimezoneResolver.resolveZone(teamId);
         // ④ 自分の既存 active 予約: 候補枠 ID をまとめて 1 回（候補ゼロなら空 IN 句を投げない）。
         Set<Long> alreadyReserved = slotByDate.isEmpty()
                 ? Set.of()
@@ -125,7 +129,7 @@ public class ReservationRecurringSlotResolver {
                 continue;
             }
             outcomes.add(new WeekCandidate(
-                    date, slot.getId(), skipReasonOf(slot, blocks, recurringRules, alreadyReserved)));
+                    date, slot.getId(), skipReasonOf(slot, blocks, recurringRules, alreadyReserved, teamZone)));
         }
         return outcomes;
     }
@@ -141,7 +145,8 @@ public class ReservationRecurringSlotResolver {
             ReservationSlotEntity slot,
             List<ReservationBlockedTimeEntity> blocks,
             List<ReservationRecurringBlockedTimeEntity> recurringRules,
-            Set<Long> alreadyReserved) {
+            Set<Long> alreadyReserved,
+            ZoneId teamZone) {
         if (slot.getSlotStatus() == SlotStatus.CLOSED) {
             // 管理者が明示的に閉じた枠。FULL に丸めると「満席」という嘘を会員に伝えることになる。
             return RecurringWeekSkipReason.CLOSED;
@@ -156,7 +161,7 @@ public class ReservationRecurringSlotResolver {
             return RecurringWeekSkipReason.FULL;
         }
         // 単発＋定期を 1 本で判定する共有ユーティリティ（別実装厳禁・§4.2 / AC-5-12）。
-        if (unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules)) {
+        if (unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules, teamZone)) {
             return RecurringWeekSkipReason.BLOCKED;
         }
         if (alreadyReserved.contains(slot.getId())) {

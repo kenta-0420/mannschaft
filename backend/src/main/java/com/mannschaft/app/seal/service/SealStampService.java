@@ -2,6 +2,7 @@ package com.mannschaft.app.seal.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.seal.SealErrorCode;
 import com.mannschaft.app.seal.SealMapper;
 import com.mannschaft.app.seal.SealVariant;
@@ -54,7 +55,7 @@ public class SealStampService {
             throw new BusinessException(SealErrorCode.SEAL_DELETED);
         }
 
-        StampTargetType targetType = StampTargetType.valueOf(request.getTargetType());
+        StampTargetType targetType = EnumInputParser.parse(StampTargetType.class, request.getTargetType(), "targetType");
 
         SealStampLogEntity entity = SealStampLogEntity.builder()
                 .userId(userId)
