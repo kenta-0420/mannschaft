@@ -103,6 +103,12 @@ test('WAVE5-REAL-001: UI visibility toggle controls public pages and rejects out
     await expect(anonymous.getByText(title, { exact: true })).toHaveCount(0)
     await expect(anonymous.getByText(marker, { exact: true })).toHaveCount(0)
 
+    const outsiderUpdates: string[] = []
+    outsider.page.on('request', (request) => {
+      if (request.method() === 'PATCH' && new URL(request.url()).pathname.includes(`/blog/posts/${post!.id}`)) {
+        outsiderUpdates.push(request.url())
+      }
+    })
     const outsiderLoad = outsider.page.waitForResponse((r) =>
       r.request().method() === 'GET'
       && new URL(r.url()).pathname === `/api/v1/users/me/blog/posts/${post!.id}`)
@@ -115,6 +121,10 @@ test('WAVE5-REAL-001: UI visibility toggle controls public pages and rejects out
     await expect(outsider.page.getByRole('button', { name: '今すぐ公開', exact: true })).toHaveCount(0)
     await expect(outsider.page.locator('#autosave-toggle')).toHaveCount(0)
     await expect(outsider.page.getByRole('switch', { name: LABEL.toggle })).toHaveCount(0)
+    await expect(outsider.page.getByText('下書き', { exact: true })).toHaveCount(0)
+    await outsider.page.keyboard.press('Control+s')
+    await outsider.page.waitForTimeout(500)
+    expect(outsiderUpdates, 'load failure blocks Ctrl+S updates').toEqual([])
 
     await owner.page.goto(editPath, { waitUntil: 'domcontentloaded' })
     await waitForHydration(owner.page)

@@ -36,6 +36,7 @@ const AUTO_SAVE_INTERVAL_MS = 30_000
 const autoSaveEnabled = ref(true)
 const lastAutoSavedAt = ref<Date | null>(null)
 let autoSaveTimer: ReturnType<typeof setInterval> | null = null
+let disposed = false
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -105,6 +106,7 @@ async function load() {
 }
 
 async function save() {
+  if (loading.value || loadError.value) return
   if (!title.value.trim()) return
   saving.value = true
   try {
@@ -276,7 +278,7 @@ const isAdmin = computed(() => authStore.isSystemAdmin)
 
 onMounted(async () => {
   await load()
-  if (loadError.value) return
+  if (disposed || loadError.value) return
   if (typeof localStorage !== 'undefined') {
     const stored = localStorage.getItem(AUTO_SAVE_STORAGE_KEY)
     if (stored !== null) autoSaveEnabled.value = stored !== 'false'
@@ -285,6 +287,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  disposed = true
   if (autoSaveTimer !== null) clearInterval(autoSaveTimer)
 })
 </script>
@@ -297,7 +300,7 @@ onUnmounted(() => {
         <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
         <span class="text-base font-semibold text-surface-600">ブログ編集</span>
         <Tag
-          v-if="!loading"
+            v-if="!loading && !loadError"
           :value="statusLabel"
           :severity="statusSeverity"
           rounded
