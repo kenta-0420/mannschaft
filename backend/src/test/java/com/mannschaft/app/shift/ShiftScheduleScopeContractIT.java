@@ -490,6 +490,78 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 8. GET /shifts/schedules?teamId=（一覧・非メンバー応答の不変条件／CMP-260923-1642）
+    //
+    //    経緯: 個別 GET /{id} は CMP-260917-1137 で越境(403)と不在(404)の応答を
+    //    完全一致の 404 へ畳んで存在オラクルを解消した。一覧 GET ?teamId= は
+    //    従来どおり一律 403 のままで、個別と異なるステータスを返す。
+    //
+    //    当初「チームの存在は公開情報だから403のままでよい」としていたが、この前提は誤りだった
+    //    （PublicTeamController は PUBLIC 以外の visibility を一律404で隠しており、
+    //    「チームの存在」自体は非公開の情報になり得る）。
+    //
+    //    それでも一覧が存在オラクルにならないのは、非メンバーへの応答が
+    //    「teamId の実在・visibility に関わらず常に同一の 403」だから。
+    //    本節はその不変条件をステータス・エラーコード・本文（timestamp除く）まで固定する。
+    //    方針の整合は docs/security/01_authorization_baseline.md
+    //    「一覧APIの403が存在オラクルにならない理由」節を参照。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("8. GET /shifts/schedules?teamId=（非メンバー応答の不変条件／CMP-260923-1642）")
+    class ListNonMemberResponseInvariant {
+
+        @Test
+        @DisplayName("非公開チーム(実在)・公開チーム(実在)・存在しないteamIdのいずれも、"
+                + "非メンバーへの応答は同一の403（COMMON_002）になる")
+        void 非メンバーへの応答は実在visibilityに関わらず同一() throws Exception {
+            Long nonPublicTeamId = insertTeam("WAVE8 非公開チーム", "MEMBERS_AND_ABOVE");
+            Long nonExistentTeamId = teamAId + 999_999L;
+
+            // outsiderId はどのチームにも所属しない（teamA/nonPublicTeam いずれにも非メンバー）。
+            setAuth(outsiderId);
+
+            String publicTeamBody = mockMvc.perform(get("/api/v1/shifts/schedules")
+                            .param("teamId", teamAId.toString()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"))
+                    .andReturn().getResponse().getContentAsString();
+
+            String nonPublicTeamBody = mockMvc.perform(get("/api/v1/shifts/schedules")
+                            .param("teamId", nonPublicTeamId.toString()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"))
+                    .andReturn().getResponse().getContentAsString();
+
+            String nonExistentTeamBody = mockMvc.perform(get("/api/v1/shifts/schedules")
+                            .param("teamId", nonExistentTeamId.toString()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"))
+                    .andReturn().getResponse().getContentAsString();
+
+            String publicTeamBodyNormalized = stripTimestamp(publicTeamBody);
+            String nonPublicTeamBodyNormalized = stripTimestamp(nonPublicTeamBody);
+            String nonExistentTeamBodyNormalized = stripTimestamp(nonExistentTeamBody);
+
+            org.assertj.core.api.Assertions.assertThat(nonPublicTeamBodyNormalized)
+                    .isEqualTo(publicTeamBodyNormalized);
+            org.assertj.core.api.Assertions.assertThat(nonExistentTeamBodyNormalized)
+                    .isEqualTo(publicTeamBodyNormalized);
+        }
+
+        /** 応答本文から timestamp フィールド（リクエストごとに変化する）を取り除く。 */
+        private String stripTimestamp(String body) throws Exception {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parsed = objectMapper.readValue(body, Map.class);
+            parsed.remove("timestamp");
+            if (parsed.get("error") instanceof Map) {
+                ((Map<?, ?>) parsed.get("error")).remove("timestamp");
+            }
+            return objectMapper.writeValueAsString(parsed);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
@@ -521,12 +593,18 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long insertTeam(String name) {
+        return insertTeam(name, "PUBLIC");
+    }
+
+    /** CMP-260923-1642: 非公開 visibility のチームを作るための拡張版。 */
+    private Long insertTeam(String name, String visibility) {
         em.createNativeQuery(
                         "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
                                 + "created_at, updated_at) "
-                                + "VALUES (:name, 'PUBLIC', 1, 0, 0, "
+                                + "VALUES (:name, :visibility, 1, 0, 0, "
                                 + "CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
+                .setParameter("visibility", visibility)
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE name = :name")
                 .setParameter("name", name)
