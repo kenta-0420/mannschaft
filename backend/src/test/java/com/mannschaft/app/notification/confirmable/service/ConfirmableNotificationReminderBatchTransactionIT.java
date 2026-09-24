@@ -168,4 +168,39 @@ class ConfirmableNotificationReminderBatchTransactionIT extends AbstractMySqlInt
                         + "（本テストは正常系。異常系の直接注入は出陣後、JdbcTemplateスパイで別途追加する）")
                 .isEqualTo(3L);
     }
+
+    @Test
+    @DisplayName("AC-57異常系: notifications への多値INSERTが失敗したら、"
+            + "first_reminder_sent_at の条件付きUPDATEもロールバックされ、次回バッチで再送される")
+    void insertFailureRollsBackConditionalUpdateNegativeCase() {
+        LocalDateTime past = LocalDateTime.now().minusMinutes(10);
+        List<Long> userIds = seed(3, past);
+
+        // notifications.body は VARCHAR(1000) だが、confirmable_notifications.body は TEXT で
+        // 上限が無い。本文を1000字超にしておくと、確認通知本体の作成（TEXT列）は成功するが、
+        // リマインドが notification.getBody() をそのまま notifications へ多値INSERTする段（AC-57の
+        // 手順3）でだけ Data too long エラーが起き、他のステップに影響しない形で失敗を注入できる
+        // （Service差し替えのモックは使わず、DB制約でのみ注入する）。
+        String tooLongBody = "あ".repeat(1001);
+        em.createNativeQuery("UPDATE confirmable_notifications SET body = :body WHERE id = :id")
+                .setParameter("body", tooLongBody)
+                .setParameter("id", notificationId)
+                .executeUpdate();
+        em.flush();
+        em.clear();
+
+        org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () ->
+                reminderBatchService.processRemindersTransactional(
+                        notificationId, userIds, true, LocalDateTime.now()),
+                "AC-57異常系: notifications.body の上限超過でINSERTが失敗し、例外が伝播する");
+
+        long sentCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM confirmable_notification_recipients "
+                        + "WHERE confirmable_notification_id = ? AND first_reminder_sent_at IS NOT NULL",
+                Long.class, notificationId);
+        assertThat(sentCount)
+                .as("AC-57異常系: notifications INSERT失敗時は手順1の条件付きUPDATEもロールバックされ0件のまま"
+                        + "（次回バッチで再送される）")
+                .isZero();
+    }
 }

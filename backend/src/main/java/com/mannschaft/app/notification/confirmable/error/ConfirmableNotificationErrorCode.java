@@ -67,7 +67,10 @@ public enum ConfirmableNotificationErrorCode implements ErrorCode {
     GROUP_NAME_DUPLICATE("CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE", "同名の宛先グループが既に存在します", Severity.WARN),
 
     /** 組織の通知クレジットが猶予超過。AC-26 等: 402想定（httpStatusOverride で明示） */
-    CREDIT_INSUFFICIENT("CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT", "通知クレジットが不足しています", Severity.WARN);
+    CREDIT_INSUFFICIENT("CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT", "通知クレジットが不足しています", Severity.WARN),
+
+    /** 確認期限（deadlineAt）が受け付けの時点で既に過去。AC-52: 400 */
+    DEADLINE_IN_PAST("CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST", "確認期限は現在時刻より後を指定してください", Severity.WARN);
 
     private final String code;
     private final String message;

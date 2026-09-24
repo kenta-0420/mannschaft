@@ -18,7 +18,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Duration;
 import java.util.List;
@@ -54,6 +57,7 @@ import static org.awaitility.Awaitility.await;
 @DisplayName("確認通知 親行のロック順序と競合の終局状態（AC-45/61/62/64/65a-c/66/67・試練B）")
 class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlIntegrationTest {
 
+    private static final Logger log = LoggerFactory.getLogger(ConfirmableNotificationLockOrderingConcurrentIT.class);
     private static final String EMAIL_PREFIX_BASE = "cfx-lock";
 
     @Autowired
@@ -76,6 +80,9 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
 
     @Autowired
     private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @PersistenceContext
     private EntityManager em;
@@ -382,6 +389,105 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
         assertThat(after.getStatus())
                 .as("AC-67: COMPLETEDのまま残る（EXPIREDに上書きされない）")
                 .isEqualTo(ConfirmableNotificationStatus.COMPLETED);
+    }
+
+    // =====================================================================
+    // AC-68: 期限切れバッチで1件が例外になっても、同じ回のほかの通知はEXPIREDになる
+    // =====================================================================
+
+    @Test
+    @DisplayName("AC-68: 期限切れバッチで1件がロック待ちタイムアウトで失敗しても、"
+            + "同じ回のほかの通知はEXPIREDになる（1件ごと独立トランザクションの契約）")
+    void oneFailureDuringBatchDoesNotBlockOtherExpirations() throws Exception {
+        // このテストのみ、ロック待ちを実測できる短さへ絞る（Testcontainersの使い捨てMySQLなので
+        // GLOBAL変更が他テストへ波及する心配はない。cleanUpの後に既定値へ戻す）。
+        jdbc.execute("SET GLOBAL innodb_lock_wait_timeout = 2");
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime pastDeadline = now.minusMinutes(10);
+            Long n1 = createExpiredActiveNotification(pastDeadline);
+            Long nLocked = createExpiredActiveNotification(pastDeadline);
+            Long n3 = createExpiredActiveNotification(pastDeadline);
+            try {
+                ac68Body(n1, nLocked, n3, now);
+            } finally {
+                notificationRepository.deleteById(n1);
+                notificationRepository.deleteById(nLocked);
+                notificationRepository.deleteById(n3);
+            }
+        } finally {
+            jdbc.execute("SET GLOBAL innodb_lock_wait_timeout = 50");
+        }
+    }
+
+    private void ac68Body(Long n1, Long nLocked, Long n3, LocalDateTime now) throws Exception {
+        {
+            TransactionTemplate lockTx = new TransactionTemplate(transactionManager);
+            CountDownLatch lockAcquired = new CountDownLatch(1);
+            CountDownLatch mayRelease = new CountDownLatch(1);
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            try {
+                Future<?> lockHolder = executor.submit(() -> lockTx.executeWithoutResult(status -> {
+                    notificationRepository.findByIdForUpdate(nLocked).orElseThrow();
+                    lockAcquired.countDown();
+                    try {
+                        if (!mayRelease.await(10, TimeUnit.SECONDS)) {
+                            throw new IllegalStateException("ロック解放許可が時間内に来なかった");
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new IllegalStateException(e);
+                    }
+                }));
+                assertThat(lockAcquired.await(10, TimeUnit.SECONDS))
+                        .as("ロック保持スレッドがnLockedの行ロックを取得した")
+                        .isTrue();
+
+                // findExpiredIds（骨格）が3件を抽出する想定。抽出後、1件ごとに独立トランザクションで
+                // expireOneWithLockを呼ぶ、というオーケストレーションをここで固定する
+                // （§11.1手順2・3。骨格段階ではfindExpiredIds自体がUOEを投げるため、
+                // ID列挙は直接収集し、対象抽出そのものの検証はfindExpiredIdsの別テストに委ねる）。
+                List<Long> ids = List.of(n1, nLocked, n3);
+                for (Long id : ids) {
+                    try {
+                        expiryBatchService.expireOneWithLock(id, now);
+                    } catch (Exception e) {
+                        // 1件の失敗（ロック待ちタイムアウト等）はログに残し、他のIDの処理は続ける
+                        // （§11.1手順3。握りつぶさず、ここでは失敗を許容してループを続けるだけ）。
+                        log.info("[AC-68] notificationId={} の期限切れ処理に失敗（想定内）: {}", id, e.toString());
+                    }
+                }
+
+                mayRelease.countDown();
+                lockHolder.get(10, TimeUnit.SECONDS);
+            } finally {
+                executor.shutdownNow();
+            }
+
+            ConfirmableNotificationEntity after1 = notificationRepository.findById(n1).orElseThrow();
+            ConfirmableNotificationEntity after3 = notificationRepository.findById(n3).orElseThrow();
+            assertThat(after1.getStatus())
+                    .as("AC-68: ロック競合と無関係のn1はEXPIREDになる")
+                    .isEqualTo(ConfirmableNotificationStatus.EXPIRED);
+            assertThat(after3.getStatus())
+                    .as("AC-68: ロック競合と無関係のn3はEXPIREDになる")
+                    .isEqualTo(ConfirmableNotificationStatus.EXPIRED);
+        }
+    }
+
+    private Long createExpiredActiveNotification(LocalDateTime deadlineAt) {
+        ConfirmableNotificationEntity notification = notificationRepository.save(ConfirmableNotificationEntity.builder()
+                .scopeType(ScopeType.ORGANIZATION)
+                .scopeId(1L)
+                .title("AC-68 期限切れバッチ部分失敗耐性")
+                .priority(ConfirmableNotificationPriority.NORMAL)
+                .status(ConfirmableNotificationStatus.ACTIVE)
+                .deliveryStatus(ConfirmableNotificationDeliveryStatus.DELIVERING)
+                .deadlineAt(deadlineAt)
+                .totalRecipientCount(0)
+                .unconfirmedCount(0)
+                .build());
+        return notification.getId();
     }
 
     // =====================================================================

@@ -331,6 +331,120 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
     }
 
     // =====================================================================
+    // AC-37 受付後・処理前にターゲットのチームが組織を離脱 → そのチームは届かない（他は届く）
+    // =====================================================================
+    @Test
+    @DisplayName("AC-37 受付後・処理前にターゲットのチームが組織を離脱すると、そのチームのメンバーには届かない（他のターゲットは届く）")
+    void ac37_teamLeavesOrgBeforeProcessingIsExcluded() {
+        long seed = 41_037L;
+        long org = createOrg(null);
+        long leavingTeam = 88_037L;
+        seedTeamOrgMembership(leavingTeam, org, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        long uOrgDirect = base(seed) + 1;   // 直属メンバー（届く）
+        long uLeavingTeam = base(seed) + 2; // 離脱するチームのメンバー（届かない）
+        long sender = base(seed) + 99;
+        seedOrgDirectMember(org, uOrgDirect);
+        seedTeamMember(leavingTeam, uLeavingTeam);
+        seedOrgDirectMember(org, sender);
+
+        long notificationId = seedConfirmableNotification(sender);
+        seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, org);
+
+        // 受付（targets保存）は済んでいるが、ワーカーが処理する前にチームが組織を離脱する
+        // （team_org_memberships の ACTIVE 行を削除。離脱は行削除で表す。§8.1）。
+        teamOrgMembershipRepository.findByTeamIdAndOrganizationId(leavingTeam, org)
+                .ifPresent(teamOrgMembershipRepository::delete);
+        teamOrgMembershipRepository.flush();
+
+        List<Long> collected = collectAll(notificationId, sender);
+
+        log.info("[AC-37] collected={}", collected);
+        assertThat(collected)
+                .as("AC-37: 離脱したチームのメンバーは届かないが、他のターゲット（組織直属）は届く")
+                .containsExactly(uOrgDirect)
+                .doesNotContain(uLeavingTeam);
+    }
+
+    // =====================================================================
+    // AC-38 受付後・処理前に子組織の親が変わる → 旧ツリーの配下ではなくなり届かない
+    // =====================================================================
+    @Test
+    @DisplayName("AC-38 受付後・処理前に子組織の親が変わると、旧ツリーの配下ではなくなり届かない")
+    void ac38_childOrgReparentedBeforeProcessingIsExcluded() {
+        long seed = 41_038L;
+        long root = createOrg(null);
+        long otherRoot = createOrg(null); // 移動先の親（旧ツリー外）
+        long child = createOrg(root);
+
+        long uRoot = base(seed) + 1;   // root直属（届く）
+        long uChild = base(seed) + 2;  // childの直属（親変更後は届かない）
+        long sender = base(seed) + 99;
+        seedOrgDirectMember(root, uRoot);
+        seedOrgDirectMember(child, uChild);
+        seedOrgDirectMember(root, sender);
+
+        long notificationId = seedConfirmableNotification(sender);
+        seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, root);
+
+        // 受付後・処理前に child の親が otherRoot へ変わる（root ツリーの配下から外れる）。
+        jdbc.update("UPDATE organizations SET parent_organization_id = ? WHERE id = ?", otherRoot, child);
+
+        List<Long> collected = collectAll(notificationId, sender);
+
+        log.info("[AC-38] collected={}", collected);
+        assertThat(collected)
+                .as("AC-38: 親が変わった子組織の配下メンバーは届かない。root直属は届く")
+                .containsExactly(uRoot)
+                .doesNotContain(uChild);
+    }
+
+    // =====================================================================
+    // AC-39 配信の途中（2チャンク目の前）でチームが離脱 → 以降のチャンクでは展開しない（既存行は残る）
+    // =====================================================================
+    @Test
+    @DisplayName("AC-39 配信の途中（2チャンク目の前）でチームが離脱すると、以降のチャンクではそのチームを展開しない")
+    void ac39_teamLeavesBetweenChunksExcludedFromLaterChunks() {
+        long seed = 41_039L;
+        long org = createOrg(null);
+        long team = 88_039L;
+        seedTeamOrgMembership(team, org, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        // カーソルは userId 昇順なので、1チャンク目に含まれるIDを小さく、2チャンク目のIDを大きくする。
+        long uFirstChunk = base(seed) + 1;   // org直属・1チャンク目
+        long uSecondChunk = base(seed) + 2;  // 離脱するチームのメンバー・2チャンク目のはずが届かない
+        long sender = base(seed) + 99;
+        seedOrgDirectMember(org, uFirstChunk);
+        seedTeamMember(team, uSecondChunk);
+        seedOrgDirectMember(org, sender);
+
+        long notificationId = seedConfirmableNotification(sender);
+        seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, org);
+
+        // 1チャンク目（pageSize=1）を取得する。
+        List<FanoutRecipient> firstPage = source.nextPage(
+                new FanoutPageRequest(String.valueOf(notificationId), 0L, 1, false, 0, 1));
+        assertThat(firstPage).as("AC-39: 1チャンク目にはorg直属メンバーが入る")
+                .extracting(FanoutRecipient::userId)
+                .containsExactly(uFirstChunk);
+
+        // 1チャンク目の確定後・2チャンク目の前にチームが組織を離脱する。
+        teamOrgMembershipRepository.findByTeamIdAndOrganizationId(team, org)
+                .ifPresent(teamOrgMembershipRepository::delete);
+        teamOrgMembershipRepository.flush();
+
+        // 2チャンク目（離脱前なら uSecondChunk が入るはずの位置）を取得する。
+        List<FanoutRecipient> secondPage = source.nextPage(new FanoutPageRequest(
+                String.valueOf(notificationId), firstPage.get(0).userId(), 1, false, 0, 1));
+
+        log.info("[AC-39] firstPage={} secondPage={}", firstPage, secondPage);
+        assertThat(secondPage)
+                .as("AC-39: 離脱後のチャンクにはそのチームのメンバーは含まれない（既に作った1チャンク目の行はそのまま残る想定）")
+                .extracting(FanoutRecipient::userId)
+                .doesNotContain(uSecondChunk);
+    }
+
+    // =====================================================================
     // ヘルパ
     // =====================================================================
 

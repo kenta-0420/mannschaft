@@ -187,6 +187,49 @@ class ConfirmableNotificationSendContractIT extends AbstractMySqlIntegrationTest
     }
 
     @Test
+    @DisplayName("AC-26: 受付の時点で猶予超過ならCREDIT_INSUFFICIENTを返し、本体・受信者行・課金残高の消費を一切作らない")
+    void ac26_creditInsufficientCreatesNothing() throws Exception {
+        seedGracePeriodExceeded(orgId);
+        long debtBefore = balanceRepository.findByOrganizationId(orgId).orElseThrow().getGracePeriodDebt();
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("title", "AC-26試練");
+        body.put("targets", List.of(target("ORGANIZATION", orgId)));
+
+        MvcResult result = sendAndCapture(body);
+
+        assertErrorCode(result, 402, "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT");
+        assertThat(recipientRepository.count())
+                .as("AC-26: 受信者行は1件も作られない")
+                .isZero();
+        assertThat(balanceRepository.findByOrganizationId(orgId).orElseThrow().getGracePeriodDebt())
+                .as("AC-26: 課金の消費（負債の加算）は行われない")
+                .isEqualTo(debtBefore);
+        long notificationCount = ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM confirmable_notifications WHERE scope_id = :orgId AND title = 'AC-26試練'")
+                .setParameter("orgId", orgId)
+                .getSingleResult()).longValue();
+        assertThat(notificationCount).as("AC-26: 確認通知の本体は作られない").isZero();
+        long jobCount = ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE scope_type = 'CONFIRMABLE_TARGETS'")
+                .getSingleResult()).longValue();
+        assertThat(jobCount).as("AC-26: fanoutジョブも作られない").isZero();
+    }
+
+    @Test
+    @DisplayName("AC-52: 確認期限（deadlineAt）が受付の時点で既に過去なら400 DEADLINE_IN_PASTを返す")
+    void ac52_deadlineInPastReturns400() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("title", "AC-52試練");
+        body.put("targets", List.of(target("ORGANIZATION", orgId)));
+        body.put("deadlineAt", LocalDateTime.now().minusHours(1)
+                .atOffset(java.time.ZoneOffset.ofHours(9))
+                .toString());
+
+        assertErrorCode(sendAndCapture(body), 400, "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST");
+    }
+
+    @Test
     @DisplayName("AC-36: 400/403/404/409/CREDIT_INSUFFICIENTの各シナリオは、ステータス・errorCodeとも互いに異なる")
     void ac36_全シナリオのステータスとerrorCodeが互いに異なる() throws Exception {
         seedGracePeriodExceeded(orgId);
