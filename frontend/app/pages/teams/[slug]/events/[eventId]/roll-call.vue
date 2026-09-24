@@ -30,8 +30,21 @@ const advanceNoticesLoading = ref(false)
 
 const showHistory = ref(false)
 
+/**
+ * 点呼候補の取得失敗は「対象者がいません」ではない。空状態へフォールバックせずエラー状態を出す。
+ *
+ * composable の `error` ref は submit / patchEntry など点呼候補取得以外の失敗でも
+ * 更新されるため、それに相乗りすると「送信に失敗しただけ」で一覧ごとエラー状態に
+ * 差し替わってしまう。取得専用の状態としてページ側で独立して持つ。
+ */
+const loadFailed = ref(false)
+
 async function reload(): Promise<void> {
-  await Promise.all([loadCandidates(), loadAdvanceNotices()])
+  // loadCandidates は失敗時に再 throw するため、Promise.all のままだと
+  // loadAdvanceNotices の完了を待たずに reload() 自体が reject してしまう。
+  // allSettled で両方の完了を待ったうえで、点呼候補側だけの成否を loadFailed に反映する。
+  const [candidatesResult] = await Promise.allSettled([loadCandidates(), loadAdvanceNotices()])
+  loadFailed.value = candidatesResult.status === 'rejected'
 }
 
 async function loadAdvanceNotices(): Promise<void> {
@@ -84,6 +97,11 @@ onMounted(() => {
 
     <main class="rc-page__main">
       <PageLoading v-if="loading && candidates.length === 0" />
+      <DashboardErrorState
+        v-else-if="loadFailed"
+        testid="roll-call-error-state"
+        @retry="reload"
+      />
       <RollCallSheet
         v-else
         :team-id="teamSlug"
