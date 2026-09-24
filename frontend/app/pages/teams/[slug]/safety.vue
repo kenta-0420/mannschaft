@@ -20,17 +20,21 @@ interface SafetyCheck {
 
 const checks = ref<SafetyCheck[]>([])
 const loading = ref(true)
+/** 取得失敗は「履歴なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 const showTriggerDialog = ref(false)
 const selectedCheckId = ref<number | null>(null)
 
 async function loadChecks() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await safetyApi.listSafetyChecks({ scopeType: 'TEAM', scopeId: teamSlug, size: 20 })
     checks.value = res.data as SafetyCheck[]
   } catch {
     notification.error('安否確認の取得に失敗しました')
     checks.value = []
+    loadFailed.value = true
   } finally {
     loading.value = false
   }
@@ -66,6 +70,11 @@ onMounted(async () => {
         <div v-if="loading" class="space-y-2">
           <Skeleton v-for="i in 3" :key="i" height="4rem" />
         </div>
+        <DashboardErrorState
+          v-else-if="loadFailed"
+          testid="safety-team-list-error-state"
+          @retry="loadChecks"
+        />
         <div v-else-if="checks.length > 0" class="space-y-2">
           <div
             v-for="check in checks"

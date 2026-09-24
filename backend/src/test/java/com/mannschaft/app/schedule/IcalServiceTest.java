@@ -4,8 +4,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.UserIcalTokenEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -48,7 +48,7 @@ class IcalServiceTest {
     private ScheduleRepository scheduleRepository;
 
     @Mock
-    private UserRoleRepository userRoleRepository;
+    private MembershipScopeQueryService membershipScopeQueryService;
 
     @Mock
     private NameResolverService nameResolverService;
@@ -122,8 +122,8 @@ class IcalServiceTest {
             // given
             UserIcalTokenEntity existing = createActiveToken();
             given(icalTokenRepository.findByUserId(USER_ID)).willReturn(Optional.of(existing));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
 
             // when
             var result = icalService.getOrCreateToken(USER_ID);
@@ -141,8 +141,8 @@ class IcalServiceTest {
                     .willReturn(Optional.empty())  // 初回: 未発行
                     .willReturn(Optional.of(createActiveToken()));  // insert後
 
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
 
             // when
             var result = icalService.getOrCreateToken(USER_ID);
@@ -168,8 +168,8 @@ class IcalServiceTest {
             given(icalTokenRepository.findByUserId(USER_ID))
                     .willReturn(Optional.of(createActiveToken()))
                     .willReturn(Optional.of(createActiveToken()));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
 
             // when
             icalService.regenerateToken(USER_ID);
@@ -384,8 +384,8 @@ class IcalServiceTest {
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
                     eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
                     .willReturn(List.of(createScheduleForFeed()));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
 
             String result = icalService.generateIcalFeed(TOKEN, null, null);
 
