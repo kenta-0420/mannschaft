@@ -31,6 +31,8 @@ const jobId = computed(() => Number(route.params.jobId))
 
 const job = ref<JobPostingResponse | null>(null)
 const loading = ref(false)
+/** 取得失敗は「求人が存在しない」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const jobLoadFailed = ref(false)
 const applications = ref<JobApplicationResponse[]>([])
 const applicationsMeta = ref<JobPagedMeta>({ total: 0, page: 0, size: 20, totalPages: 0 })
 const applicationsLoading = ref(false)
@@ -49,6 +51,7 @@ const rejectReason = ref('')
 
 async function loadJob() {
   loading.value = true
+  jobLoadFailed.value = false
   try {
     const res = await postingApi.getJob(jobId.value)
     job.value = res.data
@@ -56,6 +59,7 @@ async function loadJob() {
   catch (e) {
     error(t('jobmatching.error.loadFailed'), String(e))
     job.value = null
+    jobLoadFailed.value = true
   }
   finally {
     loading.value = false
@@ -251,6 +255,12 @@ onMounted(async () => {
     >
       <LoadingBounce />
     </div>
+
+    <DashboardErrorState
+      v-else-if="jobLoadFailed"
+      testid="job-detail-error-state"
+      @retry="loadJob"
+    />
 
     <div
       v-else-if="!job"

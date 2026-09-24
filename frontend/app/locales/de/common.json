@@ -2536,5 +2536,9 @@
       "optionsInvalidFormat": "選択肢データの形式が不正です",
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
+  },
+  "loadErrorState": {
+    "message": "Daten konnten nicht geladen werden",
+    "retry": "Wiederholen"
   }
 }
