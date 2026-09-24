@@ -116,29 +116,41 @@ class TeamConfirmableNotificationControllerTest {
     class Send {
 
         @Test
-        @DisplayName("POST_confirmable-notifications_正常系_201Createdが返りレスポンスにidが含まれる")
-        void POST_confirmableNotifications_正常系_201CreatedとレスポンスにIDが含まれる() {
+        @DisplayName("POST_confirmable-notifications_正常系_202Acceptedが返りdeliveryStatusとestimatedRecipientCountが含まれる")
+        void POST_confirmableNotifications_正常系_202AcceptedとレスポンスにQUEUEDと見込み件数が含まれる() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 // given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 ConfirmableNotificationCreateRequest request = createValidRequest();
-                ConfirmableNotificationEntity entity = createActiveNotification();
-                ConfirmableNotificationResponse response = createNotificationResponse();
+                // CMP-260920-1040: 送信APIは非同期化され、202 Accepted で
+                // ConfirmableNotificationSendAcceptedResponse（id・deliveryStatus=QUEUED・estimatedRecipientCount）
+                // を返す契約に変わった（軍議第8版確定稿 §3.3・AC-19）。受信者行はAPI内で作らない。
+                com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationSendAcceptedResponse
+                        accepted = com.mannschaft.app.notification.confirmable.dto
+                                .ConfirmableNotificationSendAcceptedResponse.builder()
+                                .id(NOTIFICATION_ID)
+                                .deliveryStatus(com.mannschaft.app.notification.confirmable.entity
+                                        .ConfirmableNotificationDeliveryStatus.QUEUED)
+                                .estimatedRecipientCount(3)
+                                .build();
 
-                given(notificationService.send(
-                        eq(ScopeType.TEAM), eq(TEAM_ID), any(), any(), any(), any(),
-                        any(), any(), any(), any(), any(), eq(USER_ID), any()))
-                        .willReturn(entity);
-                given(mapper.toResponse(entity)).willReturn(response);
+                given(notificationService.sendAsync(
+                        eq(ScopeType.TEAM), eq(TEAM_ID), any(), eq(USER_ID)))
+                        .willReturn(accepted);
 
                 // when
-                ResponseEntity<ApiResponse<ConfirmableNotificationResponse>> result =
+                ResponseEntity<ApiResponse<com.mannschaft.app.notification.confirmable.dto
+                        .ConfirmableNotificationSendAcceptedResponse>> result =
                         controller.send(TEAM_ID, request);
 
                 // then
-                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
                 assertThat(result.getBody()).isNotNull();
                 assertThat(result.getBody().getData().getId()).isEqualTo(NOTIFICATION_ID);
+                assertThat(result.getBody().getData().getDeliveryStatus())
+                        .isEqualTo(com.mannschaft.app.notification.confirmable.entity
+                                .ConfirmableNotificationDeliveryStatus.QUEUED);
+                assertThat(result.getBody().getData().getEstimatedRecipientCount()).isEqualTo(3);
             }
         }
     }

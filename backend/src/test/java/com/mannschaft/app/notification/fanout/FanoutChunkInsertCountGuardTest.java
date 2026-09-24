@@ -120,7 +120,7 @@ class FanoutChunkInsertCountGuardTest {
         given(jobMessageRepository.findByJobId(any())).willReturn(sixLocaleMessages());
 
         NotificationFanoutWorker worker =
-                new NotificationFanoutWorker(registry, jobService, bulkFanoutService, jobMessageRepository);
+                new NotificationFanoutWorker(registry, jobService, bulkFanoutService, List.of(), jobMessageRepository);
 
         // when
         worker.processOne(job());
@@ -180,7 +180,7 @@ class FanoutChunkInsertCountGuardTest {
         }).when(jobService).advanceCursor(any(), anyLong(), anyLong());
 
         NotificationFanoutWorker worker =
-                new NotificationFanoutWorker(registry, jobService, bulkFanoutService, jobMessageRepository);
+                new NotificationFanoutWorker(registry, jobService, bulkFanoutService, List.of(), jobMessageRepository);
 
         // when
         worker.processOne(job());
