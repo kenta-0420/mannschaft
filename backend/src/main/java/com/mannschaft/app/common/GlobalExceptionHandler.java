@@ -2525,7 +2525,17 @@ public class GlobalExceptionHandler {
             // （PARKING_020・PROV_001/009/010 と同じ流儀）。申請自体が見つからない場合
             // （IDOR 対策で scope 不一致も含む）も同様に 404。
             Map.entry("JOIN_REQUEST_001", HttpStatus.NOT_FOUND),
-            Map.entry("JOIN_REQUEST_003", HttpStatus.NOT_FOUND)
+            Map.entry("JOIN_REQUEST_003", HttpStatus.NOT_FOUND),
+
+            // CMP-260920-1040 F04.9 確認通知「宛先指定」（軍議第8版確定稿 §3.3・§4・AC-36）。
+            // TARGETS_EMPTY / TARGETS_AND_GROUP_BOTH_SPECIFIED / DEADLINE_IN_PAST は
+            // Severity.WARN 既定の 400 のまま（登録不要）。
+            Map.entry("CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE", HttpStatus.FORBIDDEN),
+            Map.entry("CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY", HttpStatus.CONFLICT),
+            Map.entry("CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE", HttpStatus.CONFLICT),
+            // NC_002（NotificationCreditErrorCode.CREDIT_INSUFFICIENT）と同じ 402 課金ゲートに統一する。
+            Map.entry("CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT", HttpStatus.PAYMENT_REQUIRED)
     );
 
     /**

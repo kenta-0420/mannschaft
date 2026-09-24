@@ -208,6 +208,63 @@ public class NotificationFanoutJobService {
         }
     }
 
+    /**
+     * CMP-260920-1040: 呼び出し側の進行中トランザクションに<b>同じ TX で</b> fan-out ジョブを1件 enqueue する
+     * （軍議第8版確定稿 §3.3「送信 API」・AC-22）。
+     *
+     * <p>{@link #enqueue}（12/13引数版）は enqueue を呼び出し側 TX から隔離した独立コミット（REQUIRES_NEW）
+     * にする設計だが、確認通知「宛先指定」の送信 API は「本体の INSERT（QUEUED）→ targets の INSERT →
+     * fanout ジョブの INSERT」を<b>同一トランザクション</b>で行い、targets の INSERT が失敗すればジョブも
+     * 本体も残らないことを要求する（AC-22）。そのため {@link Propagation#MANDATORY} とし、呼び出し側が
+     * 既にトランザクション内であることを要求する（トランザクション外からの誤呼び出しはこの場で例外にする）。</p>
+     *
+     * <p>Issue #2871 の文面レンダリング（{@link FanoutMessageKind}・ジョブ文面子表）は使わない。
+     * 確認通知はチャンク側（{@code ConfirmableFanoutChunkSink}）が
+     * {@code confirmable_notifications.title/body} を直接読んで配信するため、ジョブ表への文面複製は不要。</p>
+     *
+     * @param scopeType        受信者解決の戦略キー（{@code CONFIRMABLE_TARGETS}）
+     * @param scopeRef         確認通知ID（文字列化）
+     * @param notificationType 通知種別（{@code ConfirmableFanoutChunkSink#NOTIFICATION_TYPE}）
+     * @param idempotencyKey   冪等キー（確認通知IDから導出した UUID）
+     * @param organizationId   テナント（組織スコープのみ・チームスコープは NULL）
+     * @param priority         優先度（NULL は NORMAL 相当）
+     * @param actorId          送信者ユーザーID
+     * @return 作成されたジョブのID
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public UUID enqueueInCurrentTransaction(String scopeType, String scopeRef, String notificationType,
+                                            UUID idempotencyKey, Long organizationId,
+                                            NotificationPriority priority, Long actorId) {
+        LocalDateTime now = LocalDateTime.now();
+        NotificationFanoutJob job = NotificationFanoutJob.builder()
+                .sourceEventUuid(idempotencyKey)
+                .scopeType(scopeType)
+                .scopeRef(scopeRef)
+                .notificationType(notificationType)
+                .organizationId(organizationId)
+                .priority(priority == null ? NotificationPriority.NORMAL : priority)
+                .sourceType(null)
+                .sourceId(null)
+                .actionUrl(null)
+                .actorId(actorId)
+                .includeSupporters(true)
+                .shardIndex((short) 0)
+                // 軍議第8版確定稿 §3.2・マスター裁可: 1万件超のシャード分割は最初の段階では対応しない。
+                // shard_count=1 に固定し、resolveAndSplitShards の自動評価（0=未評価）を経由させない。
+                .shardCount((short) 1)
+                .status(NotificationFanoutJobStatus.PENDING)
+                .cursorSubjectId(0L)
+                .insertedCount(0L)
+                .retryCount(0)
+                .nextAttemptAt(now)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        jobRepository.save(job);
+        jobRepository.flush();
+        return job.getId();
+    }
+
     /** 描画済み文面 Map をジョブ配下の子エンティティ群へ写す（配信ロケール数ぶん＝6 行）。 */
     private static List<NotificationFanoutJobMessage> buildMessages(
             UUID jobId, Map<String, FanoutMessageRenderer.RenderedMessage> messages) {
