@@ -101,6 +101,8 @@ public class UserLocaleFilter extends OncePerRequestFilter {
         // セットする。これを除外しないと isAuthenticated()==true かつ getPrincipal() instanceof String に
         // 一致してしまい、Long.parseLong("anonymousUser") が失敗 → catch → DEFAULT_LOCALE(ja) 固定で
         // Accept-Language 分岐に一切進まなくなる（未ログイン利用者の言語切替が常に無視される実害があった）。
+        // この除外を外すと UserLocaleResolutionIT の「未認証・Accept-Language: en」が red になることを
+        // 実証済み（tests=5 failures=1、失敗するのはこの1件のみ）。
         boolean isRealUser = auth != null && auth.isAuthenticated()
                 && !(auth instanceof AnonymousAuthenticationToken);
 
