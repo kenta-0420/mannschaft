@@ -161,8 +161,8 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/social/announcement/AnnouncementSourceResolver.java | 78 | // TODO / SCHEDULE は F02.8 告知ウィザード専用。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/social/announcement/AnnouncementSyncEventListener.java | 40 | * // TODO: 各 Service から ApplicationEventPublisher.publishEvent() を呼ぶこと。例: | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/social/announcement/AnnouncementSyncEventListener.java | 175 | // TODO: 各 Service から ApplicationEventPublisher.publishEvent() を呼ぶこと。 | 次陣で仕様化・Issue化 |
-| 実装不足 | backend/src/main/java/com/mannschaft/app/social/announcement/controller/PersonalAnnouncementController.java | 51 | // TODO: AnnouncementFeedService.getPersonalFeed 実装後に注入する | 次陣で仕様化・Issue化 |
-| 将来仕様 | backend/src/main/java/com/mannschaft/app/social/announcement/controller/PersonalAnnouncementController.java | 86 | // TODO: AnnouncementFeedService.getPersonalFeed(userId, cursor, limit) を呼ぶ | 次陣で仕様化・Issue化 |
+| 完了 | backend/src/main/java/com/mannschaft/app/social/announcement/controller/PersonalAnnouncementController.java | 51 | AnnouncementFeedService を注入し、個人向けフィード取得へ接続 | Issue #3419 / PR #3420（全必須CI green） |
+| 完了 | backend/src/main/java/com/mannschaft/app/social/announcement/controller/PersonalAnnouncementController.java | 86 | AnnouncementFeedService.getPersonalFeed(userId, cursor, limit) を呼び出す | Issue #3419 / PR #3420（全必須CI green） |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/social/service/FollowService.java | 252 | // TODO: SocialドメインとAuthドメインをまたいでいる。将来はFollowListVisibilityUpdatedEventで分離予定 | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/social/service/FriendNotificationService.java | 106 | // TODO: SocialドメインとNotificationドメイン・Roleドメインをまたいでいる。将来はFriendNotificationDispatchedEventで分離予定 | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/social/service/TeamFriendsService.java | 125 | // TODO: SocialドメインとAuthドメイン・Notificationドメイン・Roleドメイン・Teamドメイン・Timelineドメインをまたいでいる。将来はTeamFriendEstablishedEventで分離予定 | 次陣で仕様化・Issue化 |
