@@ -73,6 +73,7 @@ public class ScheduleService {
     private static final String SCOPE_TYPE_TEAM = "TEAM";
     private static final String SCOPE_TYPE_ORGANIZATION = "ORGANIZATION";
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
+    private static final String MANAGE_SCHEDULES = "MANAGE_SCHEDULES";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
     /**
@@ -274,7 +275,7 @@ public class ScheduleService {
     public ScheduleResponse updateSchedule(Long id, UpdateScheduleRequest req,
                                            String updateScope, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(id);
-        checkScopeAdminAccess(schedule, userId);
+        checkScheduleManagementAccess(schedule, userId);
         validateScheduleNotCancelled(schedule);
 
         if (req.getStartAt() != null || req.getEndAt() != null) {
@@ -500,7 +501,8 @@ public class ScheduleService {
     @Transactional
     public void deleteSchedule(Long id, String updateScope, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(id);
-        checkScopeAdminAccess(schedule, userId);
+        checkScheduleManagementAccess(schedule, userId);
+        checkMemberScheduleDeleteAccess(schedule, userId);
 
         // F03.18 B-5: 削除操作も「1操作=1行」。SCHEDULE_CANCELLED 発行のための
         // 削除直前タイトル・対象ID・影響件数をここで確定させる（ソフトデリート後は
@@ -579,7 +581,7 @@ public class ScheduleService {
      * 呼ばれる共有メソッドのため、ここに per-scope 認可を埋め込むと招待受諾の正当系を壊す
      * （{@code feedback_authz_gate_on_public_entry_not_shared_method}）。認可は public な複製 API の
      * 入口（{@code OrgScheduleController} / {@code TeamScheduleController} の duplicate EP）で
-     * {@link #checkScopeAdminAccess(Long, Long)} を呼んで行う。</p>
+     * {@link #checkScheduleManagementAccess(Long, Long)} を呼んで行う。</p>
      *
      * @param id     複製元スケジュールID
      * @param userId 作成者ID
@@ -704,6 +706,51 @@ public class ScheduleService {
         checkScopeAdminAccess(schedule, userId);
     }
 
+    /** 予定の作成・編集・削除・取消・複製だけに適用する認可。出欠管理等の ADMIN 判定とは分ける。 */
+    public void checkScheduleManagementAccess(Long id, Long userId) {
+        checkScheduleManagementAccess(findScheduleOrThrow(id), userId);
+    }
+
+    private void checkScheduleManagementAccess(ScheduleEntity schedule, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (schedule.isTeamScope()) {
+            checkManagementScopeAccess(userId, schedule.getTeamId(), SCOPE_TYPE_TEAM);
+        } else if (schedule.isOrganizationScope()) {
+            checkManagementScopeAccess(userId, schedule.getOrganizationId(), SCOPE_TYPE_ORGANIZATION);
+        } else {
+            checkScopeAdminAccess(schedule, userId);
+        }
+    }
+
+    private void checkManagementScopeAccess(Long userId, Long scopeId, String scopeType) {
+        try {
+            accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+        } catch (BusinessException denied) {
+            if ("MEMBER".equals(accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType))
+                    && accessControlService.hasPermission(userId, scopeId, scopeType, MANAGE_SCHEDULES)) {
+                return;
+            }
+            throw denied;
+        }
+    }
+
+    private void checkMemberScheduleDeleteAccess(ScheduleEntity schedule, Long userId) {
+        if (accessControlService.isSystemAdmin(userId) || !schedule.isTeamScope() && !schedule.isOrganizationScope()) {
+            return;
+        }
+        Long scopeId = schedule.isTeamScope() ? schedule.getTeamId() : schedule.getOrganizationId();
+        String scopeType = schedule.isTeamScope() ? SCOPE_TYPE_TEAM : SCOPE_TYPE_ORGANIZATION;
+        if (!"MEMBER".equals(accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType))) {
+            return;
+        }
+        if (!Objects.equals(schedule.getCreatedBy(), userId)
+                && !accessControlService.hasPermission(userId, scopeId, scopeType, "DELETE_OTHERS_CONTENT")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
     /**
      * URL 組織の管理権限を通過した利用者に対してだけ、組織スコープ整合を確定する。
      * 呼び出し側は必ず URL 組織の認可を先行させ、非管理者への存在オラクルを防ぐ。
@@ -758,7 +805,8 @@ public class ScheduleService {
 
     /**
      * スケジュール作成時（entity 未生成の path 由来 scope）の per-scope 認可を強制する
-     * （認可根治 Wave3-B6）。TEAM/ORGANIZATION のみ ADMIN 必須。PERSONAL は
+     * （認可根治 Wave3-B6）。TEAM/ORGANIZATION は ADMIN 以上、または
+     * MANAGE_SCHEDULES を明示的に許可された MEMBER。PERSONAL は
      * {@code PersonalScheduleController} 経由の自己作成が正規ルートのため無条件許可、
      * 不正な scopeType は後続の {@link #buildScheduleEntity} の switch で
      * {@link ScheduleErrorCode#INVALID_SCOPE} として弾かれる。
@@ -768,7 +816,7 @@ public class ScheduleService {
             return;
         }
         if (SCOPE_TYPE_TEAM.equals(scopeType) || SCOPE_TYPE_ORGANIZATION.equals(scopeType)) {
-            accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+            checkManagementScopeAccess(userId, scopeId, scopeType);
         }
     }
 

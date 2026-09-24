@@ -2488,6 +2488,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "사용자 지정 항목",
+      "add": "항목 추가",
+      "loadFailed": "사용자 지정 항목을 불러오지 못했습니다",
+      "retry": "다시 시도",
+      "empty": "사용자 지정 항목이 없습니다",
+      "name": "항목 이름",
+      "type": "유형",
+      "required": "필수",
+      "active": "활성",
+      "order": "순서",
+      "yes": "예",
+      "no": "아니요",
+      "typeText": "텍스트",
+      "typeNumber": "숫자",
+      "typeDate": "날짜",
+      "typeSelect": "선택",
+      "options": "선택지 (한 줄에 하나씩)",
+      "createSuccess": "항목을 추가했습니다",
+      "createFailed": "항목을 추가하지 못했습니다"
+    },
     "loadFailed": "회원 정보를 불러오지 못했습니다",
     "unavailable": "이 기능은 현재 이용하실 수 없습니다(준비 중)",
     "saveFailed": "저장에 실패했습니다",
@@ -2536,5 +2557,25 @@
       "optionsInvalidFormat": "選択肢データの形式が不正です",
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
+  },
+  "memberPermissions": {
+    "title": "MEMBER 기본 권한",
+    "description": "이 팀 또는 조직에 참여하는 MEMBER 사용자의 기본 권한을 설정합니다.",
+    "sectionTitle": "기본 권한",
+    "invalidScope": "팀 또는 조직을 선택한 후 열어 주세요.",
+    "loadFailed": "MEMBER 기본 권한을 불러오지 못했습니다.",
+    "saveSuccess": "MEMBER 기본 권한을 업데이트했습니다.",
+    "saveFailed": "MEMBER 기본 권한을 업데이트하지 못했습니다.",
+    "inherited": "상위 설정에서 상속됨",
+    "accessDenied": "관리자만 이 작업을 수행할 수 있습니다.",
+    "permissions": {
+      "MANAGE_SCHEDULES": "일정 관리",
+      "MANAGE_FILES": "파일 관리",
+      "MANAGE_POSTS": "게시물 관리"
+    }
+  },
+  "loadErrorState": {
+    "message": "데이터를 가져오지 못했습니다",
+    "retry": "다시 시도"
   }
 }

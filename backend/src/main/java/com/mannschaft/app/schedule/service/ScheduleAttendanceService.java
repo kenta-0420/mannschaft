@@ -30,6 +30,7 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.ScheduleTargetRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.mannschaft.app.schedule.event.AttendanceSolicitationOpenedEvent;
@@ -68,6 +69,7 @@ public class ScheduleAttendanceService {
     private final ScheduleRepository scheduleRepository;
     private final ScheduleService scheduleService;
     private final EventSurveyService eventSurveyService;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final UserRoleRepository userRoleRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ProxyInputContext proxyInputContext;
@@ -714,14 +716,14 @@ public class ScheduleAttendanceService {
         List<Long> allScheduleIds = new ArrayList<>();
 
         // CMP-027: user_roles ∪ memberships の在籍チーム（素メンバー/応援者を取りこぼさない）
-        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
+        for (Long teamId : membershipScopeQueryService.findActiveTeamIds(userId)) {
             List<ScheduleEntity> teamSchedules = scheduleRepository
                     .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to);
             allScheduleIds.addAll(teamSchedules.stream().map(ScheduleEntity::getId).toList());
         }
 
         // ユーザーが所属する組織のスケジュールIDを収集（CMP-027: user_roles ∪ memberships の在籍組織）
-        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
+        for (Long orgId : membershipScopeQueryService.findActiveOrganizationIds(userId)) {
             List<ScheduleEntity> orgSchedules = scheduleRepository
                     .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to);
             allScheduleIds.addAll(orgSchedules.stream().map(ScheduleEntity::getId).toList());

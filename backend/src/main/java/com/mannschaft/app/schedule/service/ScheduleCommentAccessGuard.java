@@ -297,9 +297,9 @@ public class ScheduleCommentAccessGuard {
      * <p>許可されるのは <b>SYSTEM_ADMIN / 当該スコープの ADMIN / 予定の作成者</b> の 3 者のみ。</p>
      *
      * <p><b>{@code MANAGE_SCHEDULES} を条件に使わない</b>【御裁可済・§2.1.1】:
-     * {@code V2.016__seed_role_permissions.sql} は MEMBER × {@code MANAGE_SCHEDULES} を
-     * {@code is_default = 1}（既定付与）で seed している。これを条件にすると
-     * <b>一般 MEMBER が誰の予定のスレッドでも閉じられる</b>ことになり、荒れた議論を当事者が
+     * {@code V223} 以降の初期値は OFF だが、スコープ ADMIN は MEMBER に
+     * {@code MANAGE_SCHEDULES} を付与できる。これを条件にすると
+     * <b>付与された MEMBER が誰の予定のスレッドでも閉じられる</b>ことになり、荒れた議論を当事者が
      * 一方的に封じる運用事故につながる。{@code DELETE_OTHERS_CONTENT} も条件に使わない。
      * 判定は「ロール ＋ 作成者一致」のみで、権限テーブルを一切引かない。</p>
      *

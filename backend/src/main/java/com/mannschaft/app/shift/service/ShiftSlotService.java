@@ -54,9 +54,27 @@ import java.util.Set;
  * 不在時と同一の {@code SHIFT_001}（404）へ畳む。兄弟エンドポイントである
  * {@code ShiftScheduleService#getSchedule} と同じ穴（scheduleId の総当りで存在が判別できる）を
  * 本サービス（{@code /slots}）も抱えていたため揃える。同一チーム内の権限不足（SUPPORTER）は
- * 隠す必要が無いため 403 のまま残す。更新系（{@link #checkScheduleAdminAccess}）は
- * 引き続き {@code COMMON_002}（403）とする（Wave3-B6 時点の判断を維持。書込系は
- * {@code ShiftScheduleService#checkScheduleAdminAccess} 側で先行是正済み）。</p>
+ * 隠す必要が無いため 403 のまま残す。</p>
+ *
+ * <p><b>存在オラクル対策・更新系（CMP-260923-1641）:</b> 更新系（{@link #checkScheduleAdminAccess}）
+ * も同じ穴を抱えていた。{@code ShiftScheduleService#checkScheduleAdminAccess}
+ *（Wave6・書込系）が先行是正済みだったのに対し、本サービスは是正が漏れており、
+ * 越境（当該チームに所属すらしていない）でも同一チーム内の権限不足（COMMON_002/403）と
+ * 同じ応答を返していた。越境は呼び出し元起点の不在応答（scheduleId 起点なら
+ * {@code SHIFT_SCHEDULE_NOT_FOUND}、slotId 起点なら {@code SHIFT_SLOT_NOT_FOUND}）へ
+ * 畳むよう是正した。同一チーム内で ADMIN/DEPUTY_ADMIN 未満（隠す必要が無い）は
+ * 従来どおり {@code COMMON_002}（403）のまま残す。</p>
+ *
+ * <p><b>判定順（Codex 検分指摘・実測裏取り済み）:</b> {@link #checkScheduleAdminAccess} /
+ * {@link #checkScheduleReadAccess} とも、越境判定に {@code isMember} を単独で先に使うと
+ * 回帰を生む。{@code isMember} は {@code memberships} のみを見るのに対し、
+ * {@code isAdminOrAbove} は有効ロールを {@code user_roles} と {@code memberships} の
+ * 2系統で解決する。そのため {@code user_roles} にしか ADMIN/DEPUTY_ADMIN ロールを持たず
+ * 在籍中の {@code memberships} 行を持たない利用者（開発DB実測: チーム管理者ロール609件中
+ * 2件が該当）を、{@code isMember} 先判定だと「越境」と誤判定して不在応答（404）へ
+ * 弾いてしまう。したがって両メソッドとも <b>{@code isAdminOrAbove} を {@code isMember} より
+ * 先に評価</b>し、それでも通らない場合にだけ {@code isMember} で 404/403 を作り分ける
+ * （{@code ShiftAvailabilityService#checkTeamAccess} と同一方針）。</p>
  */
 @Slf4j
 @Service
@@ -111,7 +129,7 @@ public class ShiftSlotService {
      */
     @Transactional
     public ShiftSlotResponse createSlot(Long scheduleId, CreateShiftSlotRequest req, Long userId) {
-        checkScheduleAdminAccess(scheduleId, userId);
+        checkScheduleAdminAccess(scheduleId, userId, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
         // 枠時刻の検証（設計 F03.5 §11.2.5・単一の検証点）。
         ShiftSlotTimeValidator.validateTimeRange(
                 req.getStartTime(), req.getEndTime(), req.endsNextDayOrFalse());
@@ -141,7 +159,7 @@ public class ShiftSlotService {
      */
     @Transactional
     public List<ShiftSlotResponse> bulkCreateSlots(Long scheduleId, BulkCreateShiftSlotRequest req, Long userId) {
-        checkScheduleAdminAccess(scheduleId, userId);
+        checkScheduleAdminAccess(scheduleId, userId, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
         // 一括作成も単体作成と同じ検証点を通す（1 件でも不正ならトランザクションごと拒否）。
         req.getSlots().forEach(slotReq -> ShiftSlotTimeValidator.validateTimeRange(
                 slotReq.getStartTime(), slotReq.getEndTime(), slotReq.endsNextDayOrFalse()));
@@ -174,7 +192,7 @@ public class ShiftSlotService {
     @Transactional
     public ShiftSlotResponse updateSlot(Long slotId, UpdateShiftSlotRequest req, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
-        checkScheduleAdminAccess(entity.getScheduleId(), userId);
+        checkScheduleAdminAccess(entity.getScheduleId(), userId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
 
         // 枠時刻の検証（設計 F03.5 §11.2.5）。部分更新のため、リクエストで指定されなかった側は
         // 既存値と合成して検証する。時刻・日跨ぎのいずれも指定されていない更新（note のみ等）は
@@ -221,7 +239,7 @@ public class ShiftSlotService {
     @Transactional
     public ShiftSlotResponse patchSlotAssignments(Long slotId, SlotAssignmentPatchRequest request, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
-        checkScheduleAdminAccess(entity.getScheduleId(), userId);
+        checkScheduleAdminAccess(entity.getScheduleId(), userId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
 
         // 楽観ロックチェック: version が一致しない場合は 409
         if (!entity.getVersion().equals(request.slotVersion().longValue())) {
@@ -340,7 +358,7 @@ public class ShiftSlotService {
     @Transactional
     public void deleteSlot(Long slotId, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
-        checkScheduleAdminAccess(entity.getScheduleId(), userId);
+        checkScheduleAdminAccess(entity.getScheduleId(), userId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
         slotRepository.delete(entity);
         log.info("シフト枠削除: id={}", slotId);
     }
@@ -376,6 +394,14 @@ public class ShiftSlotService {
      * へ畳む（{@code ShiftScheduleService#checkScheduleReadAccess} と同一方針）。
      * SUPPORTER（同一チーム内の権限不足）は隠す必要が無いため 403 のまま残す。</p>
      *
+     * <p><b>判定順（CMP-260923-1641 是正・Codex 検分指摘）:</b> {@code isAdminOrAbove} を
+     * {@code isMember} より先に評価する。{@code isMember} は memberships のみを見るため、
+     * user_roles にしか ADMIN/DEPUTY_ADMIN ロールを持たない利用者（開発DB実測: チーム管理者ロール
+     * 609件中2件）を、isMember 先判定だと越境と誤判定して不在応答（404）へ弾いてしまう。
+     * 「読める条件（admin ロール or メンバーかつ非 SUPPORTER）」を先に評価し、どちらも満たさない
+     * 場合だけ、所属の有無で 404/403 を作り分ける
+     *（{@code ShiftAvailabilityService#checkTeamAccess} と同一方針）。</p>
+     *
      * @param scheduleId スケジュール ID
      * @param userId     操作者ユーザー ID
      * @throws BusinessException 越境の場合（{@code SHIFT_001}／404）、
@@ -389,6 +415,11 @@ public class ShiftSlotService {
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
+        // CMP-260923-1641: isAdminOrAbove を isMember より先に判定する（user_roles のみに
+        // ADMIN/DEPUTY_ADMIN を持つ利用者を越境と誤判定しないため）。
+        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
+            return;
+        }
         if (!accessControlService.isMember(userId, teamId, "TEAM")) {
             throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
         }
@@ -400,11 +431,27 @@ public class ShiftSlotService {
     /**
      * シフト枠の更新・割当認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）。
      *
-     * @param scheduleId スケジュール ID
-     * @param userId     操作者ユーザー ID
-     * @throws BusinessException 権限が無い場合（COMMON_002 / 403）
+     * <p><b>存在オラクル対策（CMP-260923-1641）:</b> {@code checkAdminOrAbove} は所属の有無を
+     * 見ずに一律 {@code COMMON_002}（403）を投げるため、越境（当該チームに所属すらしていない）と
+     * 同一チーム内の権限不足が同じ応答になっていた。所属を先に判定し、
+     * 越境は呼び出し元起点の不在応答（{@code notFoundCode}）へ畳む
+     *（{@code ShiftScheduleService#checkScheduleAdminAccess} と同一方針）。</p>
+     *
+     * <p><b>判定順（Codex 検分指摘）:</b> {@code isAdminOrAbove} を {@code isMember} より先に
+     * 評価する。{@code isMember} は memberships のみを見るのに対し、{@code isAdminOrAbove} は
+     * 有効ロールを user_roles と memberships の2系統で解決するため、user_roles にしか
+     * ADMIN/DEPUTY_ADMIN ロールを持たない利用者（開発DB実測: チーム管理者ロール609件中2件）を
+     * isMember 先判定だと越境と誤判定して不在応答（404）へ弾いてしまう回帰が生じる。</p>
+     *
+     * @param scheduleId   スケジュール ID
+     * @param userId       操作者ユーザー ID
+     * @param notFoundCode 越境時に投げる「不在時と同一」のエラーコード
+     *                     （scheduleId 起点なら {@code SHIFT_SCHEDULE_NOT_FOUND}、
+     *                     slotId 起点なら {@code SHIFT_SLOT_NOT_FOUND}）
+     * @throws BusinessException 越境の場合（{@code notFoundCode}／404）、
+     *                           同一チーム内で権限が足りない場合（{@code COMMON_002}／403）
      */
-    private void checkScheduleAdminAccess(Long scheduleId, Long userId) {
+    private void checkScheduleAdminAccess(Long scheduleId, Long userId, ShiftErrorCode notFoundCode) {
         // 親スケジュールの生存確認を SYSTEM_ADMIN 短絡より必ず先に行う（CMP-260917-1136）。
         // resolveTeamId は論理削除済みスケジュールに対して SHIFT_SCHEDULE_NOT_FOUND を投げる。
         // 短絡を先に置くと SYSTEM_ADMIN だけが亡霊枠（親削除済み）を編集・削除できてしまい、
@@ -413,7 +460,18 @@ public class ShiftSlotService {
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
-        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+        // isAdminOrAbove を isMember より先に判定する（user_roles のみに ADMIN/DEPUTY_ADMIN を
+        // 持つ利用者を越境と誤判定しないため）。
+        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
+            return;
+        }
+        if (!accessControlService.isMember(userId, teamId, "TEAM")) {
+            // 越境（他チーム／無所属）: 存在自体を隠すべき側。不在時と完全同一のコードを投げる。
+            throw new BusinessException(notFoundCode);
+        }
+        // 同一チーム内の権限不足（メンバーだが ADMIN/DEPUTY_ADMIN ではない）: 隠す必要が無い側。
+        // 従来どおり 403。
+        throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
     /**

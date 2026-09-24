@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -64,6 +65,9 @@ class ScheduleAttendanceServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
+
+    @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -967,8 +971,8 @@ class ScheduleAttendanceServiceTest {
         @DisplayName("個人出席統計_出欠なし_出席率0を返す")
         void 個人出席統計_出欠なし_出席率0を返す() {
             // given
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
 
             // when
             AttendanceStatsResponse result = attendanceService.getMyAttendanceStats(USER_ID, START, END);
