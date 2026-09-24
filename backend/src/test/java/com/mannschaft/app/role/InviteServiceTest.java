@@ -3,18 +3,18 @@ package com.mannschaft.app.role;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.membership.dto.MembershipCreateRequest;
-import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.InviteService;
+import com.mannschaft.app.role.service.MembershipGrantService;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
 import com.mannschaft.app.scopefolder.entity.AssignedVia;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
@@ -25,13 +25,15 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,7 +42,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -76,13 +81,25 @@ class InviteServiceTest {
     private MyScopeFolderRepository myScopeFolderRepository;
 
     @Mock
-    private MembershipService membershipService;
+    private MembershipGrantService membershipGrantService;
+
+    @Mock
+    private UserRowLockService userRowLockService;
 
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private ProvisioningGate provisioningGate;
+
     @InjectMocks
     private InviteService inviteService;
+
+    @BeforeEach
+    void stubActiveUserRowLockForJoinTests() {
+        lenient().when(userRowLockService.lock(USER_ID))
+                .thenReturn(UserRowLockService.UserState.ACTIVE);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー
@@ -325,6 +342,30 @@ class InviteServiceTest {
     class JoinByInvite {
 
         @Test
+        @DisplayName("2引数overloadも書込みトランザクションを開始する")
+        void twoArgumentOverloadStartsWriteTransaction() throws NoSuchMethodException {
+            Transactional transactional = InviteService.class
+                    .getMethod("joinByInvite", String.class, Long.class)
+                    .getAnnotation(Transactional.class);
+
+            assertThat(transactional).isNotNull();
+            assertThat(transactional.readOnly()).isFalse();
+        }
+
+        @Test
+        @DisplayName("逡ｰ蟶ｸ邉ｻ: ACTIVE縺ｧ縺ｪ縺・Θ繝ｼ繧ｶ繝ｼ縺ｯ蜿ょ刈蜑阪↓ROLE_002")
+        void 蜿ょ刈_非ACTIVEユーザー_ROLE002() {
+            given(userRowLockService.lock(USER_ID))
+                    .willReturn(UserRowLockService.UserState.INELIGIBLE_EXISTING);
+
+            assertThatThrownBy(() -> inviteService.joinByInvite(TOKEN_STR, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ROLE_002"));
+            verify(inviteTokenRepository, never()).findByTokenForUpdate(anyString());
+        }
+
+        @Test
         @DisplayName("正常系: チームに参加しロールが割り当てられる（F15.3: 未指定で未分類フォルダへ DEFAULT 配置）")
         void 参加_正常_ロール割当() {
             // Given
@@ -332,8 +373,6 @@ class InviteServiceTest {
             given(inviteTokenRepository.findByTokenForUpdate(TOKEN_STR)).willReturn(Optional.of(token));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(false);
             given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, TEAM_ID)).willReturn(false);
-            given(userRoleRepository.save(any(UserRoleEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
             // F15.3: folderId 未指定なら findOrCreateDefaultInternal → addItemWithAssignedVia(DEFAULT) が呼ばれる
             MyScopeFolderEntity defaultFolder = MyScopeFolderEntity.builder()
                     .id(999L).userId(USER_ID).scopeType(ScopeType.TEAM)
@@ -345,22 +384,11 @@ class InviteServiceTest {
             inviteService.joinByInvite(TOKEN_STR, USER_ID);
 
             // Then
-            verify(userRoleRepository).save(any(UserRoleEntity.class));
             verify(myScopeFolderService).addItemWithAssignedVia(USER_ID, 999L, TEAM_ID, AssignedVia.DEFAULT);
             assertThat(token.getUsedCount()).isEqualTo(1);
-            // F00.5 認可基盤根治: memberships にも MEMBER として入会させる（join 経由）
-            org.mockito.ArgumentCaptor<MembershipCreateRequest> captor =
-                    org.mockito.ArgumentCaptor.forClass(MembershipCreateRequest.class);
-            verify(membershipService).join(captor.capture());
-            MembershipCreateRequest joinReq = captor.getValue();
-            assertThat(joinReq.getUserId()).isEqualTo(USER_ID);
-            assertThat(joinReq.getScopeType())
-                    .isEqualTo(com.mannschaft.app.membership.domain.ScopeType.TEAM);
-            assertThat(joinReq.getScopeId()).isEqualTo(TEAM_ID);
-            assertThat(joinReq.getRoleKind())
-                    .isEqualTo(com.mannschaft.app.membership.domain.RoleKind.MEMBER);
-            assertThat(joinReq.getInvitedBy()).isEqualTo(CREATED_BY);
-            assertThat(joinReq.getSource()).isEqualTo("INVITE_TOKEN");
+            // ロール割当・メンバーシップ入会は共通経路 MembershipGrantService へ委譲する
+            // （招待承諾と参加申請承認で同一の付与ロジックを再利用・重複実装しない）
+            verify(membershipGrantService).grantRole("TEAM", TEAM_ID, USER_ID, ROLE_ID, CREATED_BY, "INVITE_TOKEN");
         }
 
         @Test

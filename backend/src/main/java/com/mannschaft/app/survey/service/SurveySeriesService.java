@@ -37,6 +37,9 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class SurveySeriesService {
 
+    /** CMP-041: ADMIN+ 委任判定に用いる permission 名。 */
+    private static final String PERMISSION_MANAGE_SURVEYS = "MANAGE_SURVEYS";
+
     private final SurveyRepository surveyRepository;
     private final SurveyQuestionRepository questionRepository;
     private final SurveyOptionRepository optionRepository;
@@ -56,10 +59,10 @@ public class SurveySeriesService {
             throw new BusinessException(SurveyErrorCode.SERIES_NOT_FOUND);
         }
 
-        // 認可: ADMIN+（先頭アンケートのスコープを基準とする）
+        // 認可: ADMIN+（先頭アンケートのスコープを基準とする。MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任・CMP-041）
         SurveyEntity head = surveys.get(0);
-        boolean isAdmin = accessControlService.isAdminOrAbove(
-                currentUserId, head.getScopeId(), head.getScopeType());
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                currentUserId, head.getScopeId(), head.getScopeType(), PERMISSION_MANAGE_SURVEYS);
         if (!isAdmin) {
             throw new BusinessException(SurveyErrorCode.OPERATION_PERMISSION_DENIED);
         }

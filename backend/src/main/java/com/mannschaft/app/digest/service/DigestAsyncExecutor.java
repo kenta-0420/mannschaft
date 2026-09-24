@@ -48,8 +48,15 @@ public class DigestAsyncExecutor {
     /**
      * AI スタイルのダイジェストを非同期生成する。
      * 別クラスに切り出すことで Spring AOP プロキシ経由の @Async 呼び出しを保証する。
+     *
+     * <p>Issue #2990 L4: executor を {@code job-pool} に明示する（是正前は無指定で
+     * {@code @Primary} の {@code event-pool} へ載っていた）。本メソッドは AI プロバイダへの
+     * ネットワーク呼び出しを含む長時間処理であり、{@code event-pool}（core=2/max=5）を占有すると
+     * 他ドメインの AFTER_COMMIT 通知配送リスナーが軒並み詰まる（Issue #2953 で問題化した
+     * event-pool の自己飽和と同じ経路）。{@code job-pool} は「定期実行タスクや重い処理」用であり、
+     * 通知配送と実行資源を分離できる。</p>
      */
-    @Async
+    @Async("job-pool")
     @Transactional
     public void generateAiDigestAsync(Long digestId, String scopeType, Long scopeId,
                                        String digestStyle, String customPrompt,

@@ -57,7 +57,7 @@ export function useBulletinThreads() {
     })
     return api<{
       data: BulletinThreadResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/bulletin/threads?${qs}`)
   }
 
@@ -193,7 +193,7 @@ export function useBulletinThreads() {
     query.set('size', String(params?.size ?? 20))
     return api<{
       data: BulletinThreadResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/${scopeType}/${scopeId}/bulletin/threads?${query}`)
   }
 
@@ -208,7 +208,7 @@ export function useBulletinThreads() {
     query.set('size', String(params.size ?? 20))
     return api<{
       data: BulletinThreadResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/search?${query}`)
   }
 
@@ -252,13 +252,13 @@ export function useBulletinThreads() {
     isArchived = true,
     archiveFolderId?: string | null,
   ) {
-    // BE は POST + body { is_archived: boolean, archive_folder_id?: string|null } の双方向 API
+    // BE は ArchiveThreadRequest の camelCase 契約を受ける双方向 API。
     //（設計書 F05.1 §4）。後方互換のため未指定時は true（アーカイブ）。
     // archiveFolderId は is_archived=true 時のみ任意で振り分け先を指定（省略=保管庫直下）。
     // is_archived=false（解除）時はサーバー側で自動 NULL リセットされる。
-    const body: Record<string, unknown> = { is_archived: isArchived }
+    const body: Record<string, unknown> = { isArchived }
     if (isArchived && archiveFolderId !== undefined) {
-      body.archive_folder_id = archiveFolderId
+      body.archiveFolderId = archiveFolderId
     }
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}/archive`, {
       method: 'POST',

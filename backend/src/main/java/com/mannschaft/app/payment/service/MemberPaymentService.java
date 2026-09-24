@@ -3,9 +3,6 @@ package com.mannschaft.app.payment.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.PayerRelationship;
 import com.mannschaft.app.payment.PaymentErrorCode;
@@ -21,6 +18,7 @@ import com.mannschaft.app.payment.dto.BulkPaymentRequest;
 import com.mannschaft.app.payment.dto.BulkPaymentResponse;
 import com.mannschaft.app.payment.dto.CheckoutResponse;
 import com.mannschaft.app.payment.dto.ConnectCheckoutResponse;
+import com.mannschaft.app.payment.dto.ConnectCheckoutStatusResponse;
 import com.mannschaft.app.payment.dto.CreateManualPaymentRequest;
 import com.mannschaft.app.payment.dto.MemberPaymentResponse;
 import com.mannschaft.app.payment.dto.ReconcileResponse;
@@ -32,13 +30,14 @@ import com.mannschaft.app.payment.entity.StripeCustomerEntity;
 import com.mannschaft.app.payment.escrow.ConnectChargeService;
 import com.mannschaft.app.payment.escrow.MembershipChargeCommand;
 import com.mannschaft.app.payment.escrow.MembershipChargeResult;
+import com.mannschaft.app.payment.event.PaymentRemindNotificationEvent;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -47,7 +46,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -68,16 +66,16 @@ public class MemberPaymentService {
     private final StripePaymentProvider stripePaymentProvider;
     private final PaymentMapper paymentMapper;
     private final NameResolverService nameResolverService;
-    private final NotificationHelper notificationHelper;
-    // Issue #2715 ロットA: 通知本文の i18n 化。auth の UserRepository を直接呼ばず、
-    // common.i18n 配下の共有サービス経由で受信者 locale を解決する（ArchUnit D-5 対応）。
-    private final UserLocaleCache userLocaleCache;
-    private final MessageSource messageSource;
+    // Issue #2990 L7: 未払いリマインドの通知は業務TXの外（AFTER_COMMIT）へ移したため、
+    // 本サービスは通知コラボレータ（NotificationHelper / UserLocaleCache / MessageSource）を持たない。
+    // 受信者 locale の解決と文面の組み立ては PaymentRemindNotificationListener が行う。
+    private final ApplicationEventPublisher eventPublisher;
 
     // === F08.9 P1 Wave4: 払い手分離・Connect 即時 charge 連携 ===
     private final PaymentAuthorizationService paymentAuthorizationService;
     private final ConnectChargeService connectChargeService;
     private final ConnectAccountRepository connectAccountRepository;
+    private final MemberPaymentCheckoutPersistenceService memberPaymentCheckoutPersistenceService;
 
     // === F08.9 認可 AC-6: 受益者のスコープ所属検証（F00 正準の AccessControlService 経由）===
     private final AccessControlService accessControlService;
@@ -399,13 +397,14 @@ public class MemberPaymentService {
         PayerRelationship relationship = paymentAuthorizationService.authorizePayment(
                 payerUserId, beneficiaryUserId, paymentItemId, false);
 
-        // 3. 重複チェック（受益者×項目に有効な PAID があれば 409）。DONATION は重複を許す。
-        if (paymentItem.getType() != PaymentItemType.DONATION
+        // 同じキーの完了後再送だけは既存結果を返す。新しいキーによる重複支払いは外部I/Oより前に拒否する。
+        boolean idempotentReplay = connectChargeService.hasExistingIdempotencyKey(idempotencyKey);
+        if (!idempotentReplay && paymentItem.getType() != PaymentItemType.DONATION
                 && memberPaymentRepository.existsValidPaidPayment(beneficiaryUserId, paymentItemId)) {
             throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_ALREADY_PAID);
         }
 
-        // 4. 受領者 Connect 口座をスコープから解決し READY を判定（即時モードゆえ非 READY は HELD にせず 409）。
+        // 3. 受領者 Connect 口座をスコープから解決し READY を判定（即時モードゆえ非 READY は HELD にせず 409）。
         ConnectAccountEntity payee = resolvePayeeConnectAccount(paymentItem);
         if (!Boolean.TRUE.equals(payee.getPayoutsEnabled())) {
             log.warn("会費 Connect checkout 拒否（受領口座が未 READY）: itemId={}, payeeAccount={}, payoutsEnabled={}",
@@ -413,39 +412,69 @@ public class MemberPaymentService {
             throw new BusinessException(ConnectPaymentErrorCode.ONBOARDING_NOT_READY);
         }
 
-        // 5. 払い手の Stripe Customer を get-or-create（払い手＝決済者の Customer）。
+        // 4. 払い手の Stripe Customer を get-or-create（払い手＝決済者の Customer）。
         StripeCustomerEntity payerCustomer = getOrCreateStripeCustomer(payerUserId);
 
-        // 6. ConnectChargeService.charge（Destination PI 作成・即時 AUTOMATIC・冪等キーを Stripe へ橋渡し）。
+        // 5. 同じキーの再送は PAID 後も既存結果を返す。新しいキーだけ重複支払いを拒否する。
         long faceAmount = paymentItem.getAmount().longValueExact();
-        MembershipChargeResult chargeResult = connectChargeService.charge(new MembershipChargeCommand(
+        MembershipChargeCommand chargeCommand = new MembershipChargeCommand(
                 faceAmount,
                 payee.getId(),
                 payerCustomer.getStripeCustomerId(),
                 payerUserId,
                 paymentItemId,
                 paymentItem.getOrganizationId(),
-                idempotencyKey));
+                idempotencyKey,
+                beneficiaryUserId);
+
+        var replay = connectChargeService.findExistingMembershipCharge(chargeCommand);
+        MembershipChargeResult chargeResult = replay.isPresent()
+                ? replay.get()
+                : connectChargeService.charge(chargeCommand);
+
+        var existingPayment = memberPaymentRepository.findByEscrowTransactionId(chargeResult.escrowTransactionId());
+        if (existingPayment.isPresent()) {
+            MemberPaymentEntity existing = existingPayment.get();
+            if (!existing.getUserId().equals(beneficiaryUserId)
+                    || !existing.getPaymentItemId().equals(paymentItemId)
+                    || !existing.getPayerUserId().equals(payerUserId)) {
+                throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_IDEMPOTENCY_KEY_REUSED);
+            }
+            String clientSecret = chargeResult.clientSecret();
+            if (clientSecret == null && chargeResult.paymentIntentId() != null) {
+                clientSecret = stripePaymentProvider
+                        .retrievePaymentIntentClientSecret(chargeResult.paymentIntentId()).clientSecret();
+            }
+            return new ConnectCheckoutResponse(clientSecret, existing.getId(), chargeResult.escrowTransactionId());
+        }
 
         // 7. member_payments を PENDING で起票（払い手列・escrow_transaction_id を埋める。受益者＝userId）。
-        MemberPaymentEntity payment = MemberPaymentEntity.builder()
-                .userId(beneficiaryUserId)
-                .paymentItemId(paymentItemId)
-                .amountPaid(paymentItem.getAmount())
-                .currency(paymentItem.getCurrency())
-                .paymentMethod(PaymentMethod.STRIPE)
-                .status(PaymentStatus.PENDING)
-                .payerUserId(payerUserId)
-                .payerRelationship(relationship)
-                .escrowTransactionId(chargeResult.escrowTransactionId())
-                .build();
-        payment = memberPaymentRepository.save(payment);
+        MemberPaymentCheckoutRecord payment = new MemberPaymentCheckoutRecord(
+                null, beneficiaryUserId, paymentItemId, paymentItem.getAmount(), paymentItem.getCurrency(),
+                PaymentMethod.STRIPE, PaymentStatus.PENDING, payerUserId, relationship,
+                chargeResult.escrowTransactionId());
+        payment = memberPaymentCheckoutPersistenceService.persist(payment);
+        if (!payment.userId().equals(beneficiaryUserId)
+                || !payment.paymentItemId().equals(paymentItemId)
+                || !payment.payerUserId().equals(payerUserId)) {
+            throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_IDEMPOTENCY_KEY_REUSED);
+        }
 
         log.info("会費 Connect checkout 起票（PENDING・PAID は webhook で反映）: paymentId={}, beneficiary={}, payer={}, "
                         + "relationship={}, escrowId={}",
-                payment.getId(), beneficiaryUserId, payerUserId, relationship, chargeResult.escrowTransactionId());
+                payment.id(), beneficiaryUserId, payerUserId, relationship, chargeResult.escrowTransactionId());
         return new ConnectCheckoutResponse(
-                chargeResult.clientSecret(), payment.getId(), chargeResult.escrowTransactionId());
+                chargeResult.clientSecret(), payment.id(), chargeResult.escrowTransactionId());
+    }
+
+    public ConnectCheckoutStatusResponse getConnectCheckoutStatus(Long paymentItemId, Long memberPaymentId,
+                                                                   Long currentUserId) {
+        MemberPaymentEntity payment = memberPaymentRepository.findByIdAndPaymentItemId(memberPaymentId, paymentItemId)
+                .orElseThrow(() -> new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_CHECKOUT_NOT_FOUND));
+        if (!currentUserId.equals(payment.getPayerUserId()) && !currentUserId.equals(payment.getUserId())) {
+            throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_CHECKOUT_NOT_FOUND);
+        }
+        return new ConnectCheckoutStatusResponse(payment.getId(), payment.getStatus().name());
     }
 
     /**
@@ -684,7 +713,6 @@ public class MemberPaymentService {
     /**
      * 未払いリマインドを送信する。
      */
-    // TODO: paymentドメインとnotificationドメインをまたいでいる。将来はPaymentReminderRequestedEventで分離予定
     @Transactional
     public RemindResponse sendRemind(Long paymentItemId) {
         PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(paymentItemId);
@@ -693,26 +721,13 @@ public class MemberPaymentService {
             throw new BusinessException(PaymentErrorCode.DONATION_REMIND_NOT_ALLOWED);
         }
 
-        // 未払いメンバーの取得と通知送信
+        // 未払いメンバーの取得。通知は業務TXに参加させず、commit 後に
+        // PaymentRemindNotificationListener が受信者ごと独立トランザクションで配送する（#2990 L7）。
         List<Long> unpaidUserIds = memberPaymentRepository.findUnpaidUserIdsByPaymentItemId(paymentItemId);
-        NotificationScopeType scopeType = paymentItem.getTeamId() != null
-                ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
         Long scopeId = paymentItem.getTeamId() != null
                 ? paymentItem.getTeamId() : paymentItem.getOrganizationId();
-        for (Long userId : unpaidUserIds) {
-            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(userId));
-            String title = messageSource.getMessage(
-                    "notification.payment.remind.title", null, "支払いリマインド", locale);
-            String body = messageSource.getMessage(
-                    "notification.payment.remind.body", new Object[]{paymentItem.getName()},
-                    paymentItem.getName() + "の支払いが未完了です", locale);
-            notificationHelper.notify(
-                    userId, "PAYMENT_REMIND",
-                    title, body,
-                    "PAYMENT", paymentItemId,
-                    scopeType, scopeId,
-                    "/payments/" + paymentItemId, null);
-        }
+        eventPublisher.publishEvent(new PaymentRemindNotificationEvent(
+                paymentItemId, paymentItem.getTeamId(), scopeId, unpaidUserIds));
         log.info("リマインド送信: paymentItemId={}, notifiedCount={}", paymentItemId, unpaidUserIds.size());
         return new RemindResponse(unpaidUserIds.size(), paymentItem.getName());
     }

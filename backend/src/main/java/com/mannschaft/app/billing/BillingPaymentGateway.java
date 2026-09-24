@@ -49,6 +49,56 @@ public interface BillingPaymentGateway {
     Instant cancelAtPeriodEnd(String subscriptionRef);
 
     /**
+     * 継続課金の Stripe Subscription を期末解約予約する（Billing Center PR6a・AC-39/AC-5）。
+     *
+     * <p>PR6a の operation Saga 経路はこちらを用いる。Stripe の Idempotency-Key は
+     * {@code billing-operation-{operationId}}（{@code BillingContractOperationSagaService
+     * #stripeIdempotencyKeyOf}）であり、既存の {@link #cancelAtPeriodEnd(String)} が使う
+     * {@code billing-cancel-{subscriptionRef}} とは<b>別名前空間</b>である。同一 operation の
+     * 再試行では同じキーになるため Stripe 側で二重に効かない。</p>
+     *
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる（既存呼び出し元
+     * {@code BillingContractService} の挙動を変えないために default とした）。実体は
+     * {@link StripeBillingPaymentGateway#cancelAtPeriodEnd(String, java.util.UUID)} が持つ。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     * @param operationId     {@code billing_contract_operations.id}（冪等キーの単位）
+     * @return 現サイクル終了時刻（{@code current_period_end}・null 可）
+     */
+    default Instant cancelAtPeriodEnd(String subscriptionRef, java.util.UUID operationId) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: 第6隊が実装する（試練Aの発注書）");
+    }
+
+    /**
+     * 期末解約予約を取り消す（{@code cancel_at_period_end=false}・Billing Center PR6a・AC-40/AC-47）。
+     *
+     * <p>Stripe 呼び出しの実体は payment ドメインに既にある期末解約予約の差し戻し API を
+     * <b>再利用</b>する（PR6a で自前実装しない）。billing から payment の provider を直接
+     * 参照させないため、本ポートを唯一の窓口とする（AC-47 のドメイン境界。実体のメソッド名を
+     * この Javadoc に書くと、境界の番人が「provider を直呼びしている billing クラス」として
+     * 本ファイルを検出する）。</p>
+     *
+     * <p>Idempotency-Key は {@link BillingContractOperationSagaService#stripeIdempotencyKeyOf(UUID)}
+     * ＝{@code billing-operation-{operationId}} であり、引継専用の
+     * {@code billing-handover-revert-cancel-*} とは<b>別名前空間</b>である。引継の差し戻し
+     * （{@link #revertCancelAtPeriodEndForHandover(String, UUID)}）と同一 subscription へ同時に
+     * 走ってもキー衝突（パラメータ不一致エラー）を起こさない。</p>
+     *
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる（テスト用のモック実装が
+     * 既存メソッドだけを持つ場合に備えた default）。実体は
+     * {@link StripeBillingPaymentGateway#revertCancelAtPeriodEnd(String, UUID)} が持つ。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     * @param operationId     {@code billing_contract_operations.id}（冪等キーの単位）
+     * @return 現サイクル終了時刻（{@code current_period_end}・null 可）
+     */
+    default Instant revertCancelAtPeriodEnd(String subscriptionRef, UUID operationId) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: revertCancelAtPeriodEnd の実体は StripeBillingPaymentGateway が持つ");
+    }
+
+    /**
      * 継続課金の Stripe Subscription を<b>即時解約</b>する（退会 purge 連動・AC-45）。
      *
      * <p>期末解約（{@link #cancelAtPeriodEnd}）と異なり、退会確定（purge）ユーザーへの課金継続を
@@ -58,8 +108,226 @@ public interface BillingPaymentGateway {
      */
     void cancelImmediately(String subscriptionRef);
 
+    // ========================================
+    // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md）
+    // ========================================
+
+    /**
+     * 引継用の新サブスク Checkout Session を生成する（{@code trial_end}＝旧期末・設計書 §2.3・AC-4/AC-5）。
+     *
+     * <p>新サブスクは {@code trialing} で作成され、<b>旧契約の期末まで一切請求されない</b>。trial 終了時刻を
+     * 旧 {@code current_period_end} と同一 unix 秒に揃えるため、旧期末と新開始の間に<b>隙間も重複も生じない</b>。</p>
+     *
+     * @param newPayerUserId    新 payer（承諾した ADMIN・Stripe Customer の get-or-create キー）
+     * @param priceJpy          月額（円）
+     * @param displayName       Stripe Product 表示名
+     * @param newContractId     引継先 {@code billing_contracts.id}（{@code PENDING_HANDOVER} で先行作成済み）
+     * @param oldContractId     引継元 {@code billing_contracts.id}（監査用 metadata）
+     * @param handoverRequestId {@code billing_payer_handover_requests.id}（回復経路の突合キー・冪等キーの単位）
+     * @param trialEnd          旧契約の {@code current_period_end}（<b>未来時刻必須</b>・過去なら要求作成時点で拒否済み）
+     * @param successUrl        決済成功時の遷移先
+     * @param cancelUrl         決済中断時の遷移先
+     * @return Checkout Session 情報（sessionId / url）
+     */
+    CheckoutSessionInfo createHandoverSubscriptionCheckout(
+            Long newPayerUserId, int priceJpy, String displayName,
+            UUID newContractId, UUID oldContractId, UUID handoverRequestId,
+            Instant trialEnd, String successUrl, String cancelUrl);
+
+    /**
+     * 承諾確定と同時に旧サブスクを期末解約予約する（{@code cancel_at_period_end=true}・設計書 §2.3 R3-P1-3）。
+     *
+     * <p>これを承諾確定（{@code checkout.session.completed}）の時点で行うことが、二重課金を<b>構造的に</b>
+     * 消す要である。以後どの後続手順（切替TX・trial 終了時の請求等）が失敗しても、旧サブスクは Stripe 側の
+     * 保証で必ず期末に終了する（AC-31）。冪等キーは通常解約の {@code billing-cancel-*} とは別名前空間の
+     * {@code billing-handover-schedule-cancel-{handoverRequestId}} を用い、同一 subscriptionRef に対して
+     * 通常解約と引継予約が同時に走ってもキー衝突（パラメータ不一致エラー）を起こさない（設計書 §3.4・AC-24）。</p>
+     *
+     * @param subscriptionRef   旧 Stripe Subscription ID（{@code sub_xxx}）
+     * @param handoverRequestId 冪等キーの単位
+     * @return 旧サブスクの現サイクル終了時刻（{@code current_period_end}）
+     */
+    Instant scheduleCancelAtPeriodEndForHandover(String subscriptionRef, UUID handoverRequestId);
+
+    /**
+     * 引継が旧期末前に {@code FAILED} 確定した場合、旧サブスクの期末解約予約を差し戻す（設計書 §3.6.1・AC-32）。
+     *
+     * <p>呼び出し側は成功後に {@code old_cancel_scheduled_at} を<b>必ず対で NULL クリア</b>すること
+     * （クリアし忘れると、同一契約への再要求時に「予約済み」と誤認され夜次照合の検出対象から外れる）。</p>
+     *
+     * @param subscriptionRef   旧 Stripe Subscription ID（{@code sub_xxx}）
+     * @param handoverRequestId 冪等キーの単位（{@code billing-handover-revert-cancel-*}）
+     */
+    void revertCancelAtPeriodEndForHandover(String subscriptionRef, UUID handoverRequestId);
+
+    /**
+     * 引継の<b>新</b> trial サブスクを即時解約する（設計書 §3.4・§3.6・AC-30/AC-32）。
+     *
+     * <p>trial 中は無課金のため即時解約して差し支えない。新 payer の離脱・{@code pending_setup_intent}
+     * 未解決による {@code FAILED} 確定時に呼ぶ。<b>旧</b>サブスクに対して即時解約を用いてはならない
+     * （R3-P1-3 で {@code cancelImmediately} 方式は廃止された）。</p>
+     *
+     * @param subscriptionRef   新 Stripe Subscription ID（{@code sub_xxx}）
+     * @param handoverRequestId 冪等キーの単位（{@code billing-handover-cancel-new-*}）
+     */
+    void cancelHandoverNewSubscription(String subscriptionRef, UUID handoverRequestId);
+
+    /**
+     * Stripe Subscription の実物スナップショットを取得する（設計書 §3.6.1(b)・§3.6 二段検証）。
+     *
+     * <p>DB の記録ではなく Stripe 側の実値で判定するために用いる。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     * @return スナップショット
+     */
+    SubscriptionSnapshot retrieveSubscription(String subscriptionRef);
+
+    /**
+     * 新サブスクの二重作成を防ぐ回復経路（設計書 §3.2・AC-7/AC-25/AC-33）。
+     *
+     * <p>「Stripe には作成済みだが DB へ {@code psp_new_subscription_ref} を書き戻す前に落ちた」ケースを
+     * 回収する。新 payer の Customer に紐づく Subscription を <b>List API で全ページ走査</b>し、
+     * {@code metadata.handoverRequestId} 一致をクライアント側で絞り込む。List は read-after-write 整合のため
+     * 待機間隔は不要（Search API の鮮度遅延という概念が存在しない）。</p>
+     *
+     * <p>呼び出し側は必ず「DB の ref が空」→「本メソッドが空」の<b>両方</b>を確認してから新規作成すること。</p>
+     *
+     * @param newPayerUserId    新 payer（Stripe Customer 解決キー）
+     * @param handoverRequestId 突合する {@code metadata.handoverRequestId}
+     * @return 既存サブスクの ID（無ければ空）
+     */
+    java.util.Optional<String> findHandoverSubscriptionRef(Long newPayerUserId, UUID handoverRequestId);
+
+    /**
+     * 新 payer が有効な支払い手段（既定 PaymentMethod）を持つかを判定する（設計書 §3.6・AC-16/AC-19）。
+     *
+     * <p>ACCEPTED→SWITCHING の前（二段検証の1段目）に必須。未登録のまま新サブスクを作ると、trial 終了時に
+     * {@code past_due} または {@code canceled} へ落ちるため、事前に {@code REQUIRES_PAYMENT_METHOD} へ差し戻す。</p>
+     *
+     * @param userId 対象ユーザー
+     * @return 既定 PaymentMethod が登録済みなら true
+     */
+    boolean hasUsablePaymentMethod(Long userId);
+
+    /**
+     * Stripe Subscription の metadata から operationId を読み出す（Billing Center PR6a・AC-77/AC-78）。
+     *
+     * <p>停止窓の回収（D8）は「Stripe 側に自分の operation の痕跡があるか」で
+     * 停止窓(a)（痕跡なし＝Stripe をまだ呼んでいない）と (b)/(c)（痕跡あり＝呼んだ）を区別する。
+     * 痕跡は {@code metadata.billingOperationId}（{@link BillingContractOperationRecoveryService
+     * #STRIPE_METADATA_OPERATION_ID_KEY}）である。</p>
+     *
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる。実体は
+     * {@link StripeBillingPaymentGateway} が override 済みであり、痕跡を読めない実装が
+     * この経路に紛れ込んだら握り潰さず fail-fast させる。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     * @return metadata に載っていた operationId（無ければ空）
+     */
+    default java.util.Optional<UUID> findOperationIdOnSubscription(String subscriptionRef) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: 第10隊が実装する（試練Dの発注書）");
+    }
+
     /**
      * Checkout Session 情報（sessionId / url）。
      */
     record CheckoutSessionInfo(String sessionId, String url) {}
+
+    /**
+     * Billing Center PR6b-1（AC-99）: Stripe Subscription の items 1件。
+     *
+     * <p>upgrade の回収は「現在の items が target の Price へ切り替わっているか」で
+     * 「待つ／失敗確定」を分けるため、Price ref を運べなければ判定が成立しない。</p>
+     *
+     * @param itemId   Stripe Subscription Item ID（{@code si_xxx}）
+     * @param priceRef Stripe Price ID（{@code price_xxx}）
+     * @param quantity 数量（null 可）
+     */
+    record SubscriptionItemSnapshot(String itemId, String priceRef, Long quantity) {}
+
+    /**
+     * Stripe Subscription 実物のスナップショット（設計書 §3.6.1）。
+     *
+     * @param subscriptionRef      Stripe Subscription ID
+     * @param status               Stripe ステータス（{@code trialing}/{@code active}/{@code canceled} 等）
+     * @param cancelAtPeriodEnd    期末解約が予約済みか
+     * @param currentPeriodStart   現サイクル開始（期末境界越え判定に用いる・null 可）
+     * @param currentPeriodEnd     現サイクル終了（null 可）
+     * @param pendingSetupIntentId 未解決 SetupIntent（SCA/3DS 未完了時のみ非 null）
+     */
+    record SubscriptionSnapshot(String subscriptionRef, String status, boolean cancelAtPeriodEnd,
+                                Instant currentPeriodStart, Instant currentPeriodEnd,
+                                String pendingSetupIntentId,
+                                java.util.List<SubscriptionItemSnapshot> items,
+                                Instant pendingUpdateExpiresAt) {
+
+        /**
+         * Billing Center PR6b-1（AC-99）: items / pending_update を持たない従来の6項目で組み立てる。
+         *
+         * <p>PR6a までの呼び出し元（引継・解約）は items を必要としないため、この互換
+         * コンストラクタで従来どおり組める。items は<b>空リスト</b>であり、
+         * 「参照したが1件も無かった」と「そもそも運んでいない」を区別しない。
+         * 区別が要る判定（回収の PLAN_CHANGE 判定）は {@link #hasItems()} で先に確かめること。</p>
+         *
+         * @param subscriptionRef      Stripe Subscription ID
+         * @param status               Stripe ステータス
+         * @param cancelAtPeriodEnd    期末解約が予約済みか
+         * @param currentPeriodStart   現サイクル開始（null 可）
+         * @param currentPeriodEnd     現サイクル終了（null 可）
+         * @param pendingSetupIntentId 未解決 SetupIntent（null 可）
+         */
+        public SubscriptionSnapshot(String subscriptionRef, String status, boolean cancelAtPeriodEnd,
+                                    Instant currentPeriodStart, Instant currentPeriodEnd,
+                                    String pendingSetupIntentId) {
+            this(subscriptionRef, status, cancelAtPeriodEnd, currentPeriodStart, currentPeriodEnd,
+                    pendingSetupIntentId, java.util.List.of(), null);
+        }
+
+        /** null を運ばせない（呼び出し側が毎回 null 検査をしなくてよいようにする）。 */
+        public SubscriptionSnapshot {
+            items = items == null ? java.util.List.of() : java.util.List.copyOf(items);
+        }
+
+        /**
+         * items を1件でも運んでいるか（AC-99）。
+         *
+         * @return 運んでいれば true
+         */
+        public boolean hasItems() {
+            return !items.isEmpty();
+        }
+
+        /**
+         * 現在の items に指定の Stripe Price ref が含まれるか（E2' の現在 items 側）。
+         *
+         * @param priceRef 探す Price ref
+         * @return 含まれていれば true
+         */
+        public boolean containsPriceRef(String priceRef) {
+            if (priceRef == null || priceRef.isBlank()) {
+                return false;
+            }
+            return items.stream().anyMatch(item -> priceRef.equals(item.priceRef()));
+        }
+
+        /**
+         * live な {@code pending_update} が存続しているか（AC-88b の「待つ」の一方）。
+         *
+         * @param now 判定時刻
+         * @return 失効時刻が {@code now} より未来なら true（半開区間: ちょうどは失効）
+         */
+        public boolean hasLivePendingUpdate(Instant now) {
+            return pendingUpdateExpiresAt != null && pendingUpdateExpiresAt.isAfter(now);
+        }
+
+        /**
+         * SCA/3DS の事前認証が未解決か（設計書 §3.6・二段検証の判定）。
+         *
+         * @return {@code pending_setup_intent} が残っていれば true
+         */
+        public boolean hasPendingSetupIntent() {
+            return pendingSetupIntentId != null && !pendingSetupIntentId.isBlank();
+        }
+    }
 }

@@ -16,12 +16,15 @@ import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
+import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.dto.UpdateInquiryChannelRequest;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.user.repository.UserBlockRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -66,6 +69,11 @@ class ChatChannelServiceTest {
 
     @Mock
     private ChatMessageRepository messageRepository;
+    @Mock
+    private ChatMessageAttachmentRepository attachmentRepository;
+
+    @Mock
+    private ChatAttachmentService chatAttachmentService;
 
     @Mock
     private ChatMapper chatMapper;
@@ -89,7 +97,13 @@ class ChatChannelServiceTest {
     private org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
+    private com.mannschaft.app.common.DomainEventPublisher domainEventPublisher;
+
+    @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private MembershipService membershipService;
 
     /**
      * チャットドメインの認可判定は本ガードに集約されている。
@@ -175,6 +189,8 @@ class ChatChannelServiceTest {
             // given
             Long member1 = 200L;
             Long member2 = 300L;
+            given(membershipService.isActiveMemberForUpdate(member1, ScopeType.TEAM, TEAM_ID)).willReturn(true);
+            given(membershipService.isActiveMemberForUpdate(member2, ScopeType.TEAM, TEAM_ID)).willReturn(true);
             CreateChannelRequest req = new CreateChannelRequest("TEAM_PUBLIC", TEAM_ID, null,
                     "新チャンネル", null, null, false, List.of(member1, member2));
             ChatChannelEntity saved = createChannel();
@@ -232,6 +248,56 @@ class ChatChannelServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.CHANNEL_NAME_DUPLICATE));
+        }
+
+        @Test
+        @DisplayName("TEAM channel 作成時、非在籍の指定メンバーは保存前に拒否する")
+        void teamOutsiderIsRejectedBeforeChannelSave() {
+            Long outsiderId = 400L;
+            CreateChannelRequest req = new CreateChannelRequest("TEAM_PRIVATE", TEAM_ID, null,
+                    "non-member", null, null, true, List.of(outsiderId));
+            given(membershipService.isActiveMemberForUpdate(outsiderId, ScopeType.TEAM, TEAM_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> chatChannelService.createChannel(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(channelRepository, never()).save(any(ChatChannelEntity.class));
+        }
+
+        @Test
+        @DisplayName("ORG channel 作成時、非在籍の指定メンバーは保存前に拒否する")
+        void organizationOutsiderIsRejectedBeforeChannelSave() {
+            Long organizationId = 20L;
+            Long outsiderId = 400L;
+            CreateChannelRequest req = new CreateChannelRequest("ORG_PRIVATE", null, organizationId,
+                    "non-member-org", null, null, true, List.of(outsiderId));
+            given(membershipService.isActiveMemberForUpdate(outsiderId, ScopeType.ORGANIZATION, organizationId))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> chatChannelService.createChannel(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(channelRepository, never()).save(any(ChatChannelEntity.class));
+        }
+
+        @Test
+        @DisplayName("DM channel 作成時、指定メンバーにスコープ在籍を要求しない")
+        void dmCreationDoesNotCheckScopeMembership() {
+            CreateChannelRequest req = new CreateChannelRequest("DM", null, null,
+                    null, null, null, true, List.of(PARTNER_ID));
+            ChatChannelEntity saved = createDmChannel();
+            given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(saved);
+            given(memberRepository.save(any(ChatChannelMemberEntity.class)))
+                    .willReturn(ChatChannelMemberEntity.builder().build());
+            given(userRepository.findById(PARTNER_ID)).willReturn(Optional.of(createUser(DmReceiveFrom.ANYONE)));
+            given(chatMapper.toChannelResponse(any(ChatChannelEntity.class)))
+                    .willReturn(ChannelResponse.builder().id(CHANNEL_ID).build());
+
+            chatChannelService.createChannel(req, USER_ID);
+
+            verify(membershipService, never()).isActiveMemberForUpdate(any(), any(), any());
         }
     }
 
@@ -1096,4 +1162,32 @@ class ChatChannelServiceTest {
             verify(channelRepository).save(channel);
         }
     }
+    @Nested
+    @DisplayName("ストレージ削除イベント")
+    class StorageDeletionEvent {
+
+        @Test
+        @DisplayName("アイコン差替え時は旧キーのコミット後R2削除イベントを発行する")
+        void oldChannelIconPublishesDeleteEvent() {
+            // given
+            ChatChannelEntity channel = ChatChannelEntity.builder()
+                    .id(CHANNEL_ID).channelType(ChannelType.TEAM_PUBLIC).teamId(TEAM_ID)
+                    .name("テストチャンネル").createdBy(USER_ID).iconKey("chat/icons/old.png").build();
+            UpdateChannelRequest request = new UpdateChannelRequest(null, null, "chat/icons/new.png");
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
+            given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
+            given(chatMapper.toChannelResponse(any(ChatChannelEntity.class)))
+                    .willReturn(ChannelResponse.builder().id(CHANNEL_ID).build());
+
+            // when
+            chatChannelService.updateChannel(CHANNEL_ID, request, USER_ID);
+
+            // then
+            ArgumentCaptor<com.mannschaft.app.common.storage.S3ObjectDeleteEvent> deleteEventCaptor =
+                    ArgumentCaptor.forClass(com.mannschaft.app.common.storage.S3ObjectDeleteEvent.class);
+            verify(domainEventPublisher).publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly("chat/icons/old.png");
+        }
+    }
+
 }

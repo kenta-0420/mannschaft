@@ -12,6 +12,7 @@ import com.mannschaft.app.advertising.dto.SpotlightViewResponse;
 import com.mannschaft.app.advertising.dto.SpotlightVisitRequest;
 import com.mannschaft.app.advertising.dto.SpotlightVisitResponse;
 import com.mannschaft.app.advertising.entity.AdEntity;
+import com.mannschaft.app.advertising.entity.AffiliateConfigEntity;
 import com.mannschaft.app.advertising.repository.AdEntityRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.service.MembershipService;
@@ -207,12 +208,11 @@ public class SpotlightServingService {
                                 + "JOIN advertiser_accounts acc ON acc.id = mc.advertiser_account_id "
                                 + "WHERE bd.user_id = :userId AND bd.served_at IS NULL "
                                 // 予約鮮度（§7.4・§16 AC-3.8）: created_at から 14 日超過した予約は EXPIRED 扱いで serve 対象外。
-                                + "AND bd.created_at >= :cutoff "
+                                + "AND bd.created_at >= UTC_TIMESTAMP() - INTERVAL " + RESERVATION_FRESHNESS_DAYS + " DAY "
                                 + "ORDER BY bd.created_at ASC")
                 .setParameter("placement", placement.name())
                 .setParameter("locale", locale)
                 .setParameter("userId", userId)
-                .setParameter("cutoff", java.time.LocalDateTime.now().minusDays(RESERVATION_FRESHNESS_DAYS))
                 .getResultList();
 
         for (Object[] r : rows) {
@@ -330,8 +330,8 @@ public class SpotlightServingService {
                                 + "FROM affiliate_configs "
                                 + "WHERE is_active = TRUE AND deleted_at IS NULL AND placement = :placement "
                                 + "  AND provider IN ('AMAZON','RAKUTEN') "
-                                + "  AND (active_from IS NULL OR active_from <= NOW()) "
-                                + "  AND (active_until IS NULL OR active_until >= NOW()) "
+                                + "  AND (active_from IS NULL OR active_from <= UTC_TIMESTAMP()) "
+                                + "  AND (active_until IS NULL OR active_until >= UTC_TIMESTAMP()) "
                                 + "  AND (target_template IS NULL OR target_template = :template) "
                                 + "  AND (target_prefecture IS NULL OR target_prefecture = :prefecture) "
                                 + "  AND (target_locale IS NULL OR target_locale = :locale) "
@@ -345,6 +345,12 @@ public class SpotlightServingService {
         for (Object[] r : rows) {
             String provider = (String) r[0];
             String tagId = (String) r[1];
+            // tag_id 未設定（プレースホルダ）行は候補から除外する（CMP-260918-0025）。
+            // 広告主タグが無いまま表示すると紹介料が計上されないリンクが利用者に出てしまうため、
+            // HOUSE・AFFILIATE 双方が空でも枠を静かに出さない（既存の items:[] 仕様どおり・エラーにしない）。
+            if (AffiliateConfigEntity.isPlaceholderTagId(tagId)) {
+                continue;
+            }
             SpotlightAllocationSelector.Candidate candidate = new SpotlightAllocationSelector.Candidate(
                     "AFFILIATE", null, null, null, null, provider, false);
             SpotlightAffiliateItem affiliate = new SpotlightAffiliateItem(
@@ -381,7 +387,7 @@ public class SpotlightServingService {
             impressionId = adImpressionService.recordForMessagingCampaign(creativeId, mcId, userId);
             // 予約行を実表示として充足（§7.4）。
             em.createNativeQuery(
-                            "UPDATE ad_banner_deliveries SET ad_impression_id = :impId, served_at = NOW() "
+                            "UPDATE ad_banner_deliveries SET ad_impression_id = :impId, served_at = UTC_TIMESTAMP() "
                                     + "WHERE id = UUID_TO_BIN(:deliveryId)")
                     .setParameter("impId", impressionId)
                     .setParameter("deliveryId", request.deliveryId())
@@ -429,7 +435,7 @@ public class SpotlightServingService {
             UUID mcId = UUID.fromString(request.messagingCampaignId());
             clickId = adClickService.recordForMessagingCampaign(creativeId, mcId, request.impressionId(), userId);
             em.createNativeQuery(
-                            "UPDATE ad_banner_deliveries SET clicked_at = NOW() WHERE id = UUID_TO_BIN(:deliveryId)")
+                            "UPDATE ad_banner_deliveries SET clicked_at = UTC_TIMESTAMP() WHERE id = UUID_TO_BIN(:deliveryId)")
                     .setParameter("deliveryId", request.deliveryId())
                     .executeUpdate();
         } else {

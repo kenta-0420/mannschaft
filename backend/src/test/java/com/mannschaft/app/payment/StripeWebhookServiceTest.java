@@ -37,6 +37,12 @@ class StripeWebhookServiceTest {
     @Mock private com.mannschaft.app.payment.escrow.EscrowWebhookService escrowWebhookService;
     @Mock private com.mannschaft.app.payment.service.MembershipSubscriptionWebhookService membershipSubscriptionWebhookService;
     @Mock private com.mannschaft.app.billing.BillingSubscriptionWebhookService billingSubscriptionWebhookService;
+    // F20.1 PR5 で StripeWebhookService に増えた依存。モックしないと dispatcher 内で NPE になる
+    // （既存の検証内容は一切変えず、依存だけ満たす）。
+    @Mock private com.mannschaft.app.billing.invoice.BillingInvoiceAdjustmentWebhookService
+            billingInvoiceAdjustmentWebhookService;
+    @Mock private com.mannschaft.app.billing.invoice.BillingWebhookEventGate billingWebhookEventGate;
+    @Mock private com.mannschaft.app.billing.invoice.StripeBillingPayloadParser billingPayloadParser;
 
     @InjectMocks
     private StripeWebhookService service;

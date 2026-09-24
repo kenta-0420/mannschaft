@@ -6,6 +6,7 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Version;
@@ -24,7 +25,12 @@ import java.time.LocalDateTime;
  * チームマスターエンティティ。チームの基本情報・公開設定を管理する。
  */
 @Entity
-@Table(name = "teams")
+@Table(name = "teams", indexes = {
+        // CMP-260901-1538 柱③-A 検分第4巡是正(P1-2): FOR UPDATE候補検索が全表走査/全表ロックに
+        // ならないよう、生成列 name_trimmed に索引を張る。test profile（ddl-auto=create）では
+        // ここが唯一の索引定義源のため、Flyway側（V202）と定義を一致させること。
+        @Index(name = "idx_teams_name_trimmed", columnList = "name_trimmed")
+})
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -54,6 +60,18 @@ public class TeamEntity extends BaseEntity {
 
     @Column(nullable = false, length = 100)
     private String name;
+
+    /**
+     * CMP-260901-1538 柱③-A 検分第4巡是正: 同名確認フローの候補検索が索引を使えるようにする
+     * ための生成列（{@code GENERATED ALWAYS AS (TRIM(name)) STORED}）。DB 側が自動算出するため
+     * JPA からは書き込まない（{@code insertable/updatable=false}）。
+     * {@code columnDefinition} で明示することで、test profile（{@code ddl-auto=create}）でも
+     * 本番と同じ生成列としてスキーマが作られる（本番/開発は Flyway
+     * {@code V202.*__add_teams_name_trimmed.sql} が担う）。
+     */
+    @Column(name = "name_trimmed", insertable = false, updatable = false,
+            columnDefinition = "VARCHAR(100) GENERATED ALWAYS AS (TRIM(name)) STORED")
+    private String nameTrimmed;
 
     @Column(length = 100)
     private String nameKana;
@@ -104,6 +122,16 @@ public class TeamEntity extends BaseEntity {
     private LocalDateTime archivedAt;
 
     private LocalDateTime deletedAt;
+
+    /**
+     * 柱②-1: 販促プロビジョニング。PROVISIONED（承諾前の事前作成状態）/ ACTIVE（通常）。
+     * <p>本 PR では ACTIVE 以外を生成するコードは存在しない（DDL とエンティティ骨格のみ）。
+     * 作成 API とゲート（PROVISIONED を通常導線から隠す等）は後続 PR で実装する。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lifecycle_status", nullable = false, length = 20)
+    @Builder.Default
+    private LifecycleStatus lifecycleStatus = LifecycleStatus.ACTIVE;
 
     // --- F01.2 拡張プロフィールフィールド ---
 
@@ -204,6 +232,31 @@ public class TeamEntity extends BaseEntity {
         GUESTS_AND_ABOVE,
         SUPPORTERS_AND_ABOVE,
         MEMBERS_AND_ABOVE
+    }
+
+    /**
+     * 柱②-1: 販促プロビジョニングのライフサイクル状態。
+     */
+    public enum LifecycleStatus {
+        /** 承諾前の事前作成状態。招待未承諾のため通常導線には出さない想定(ゲートは後続 PR)。 */
+        PROVISIONED,
+        /** 通常のチーム(既定値)。 */
+        ACTIVE
+    }
+
+    /**
+     * PROVISIONED（承諾前の事前作成状態）かどうかを判定する。
+     */
+    public boolean isProvisioned() {
+        return this.lifecycleStatus == LifecycleStatus.PROVISIONED;
+    }
+
+    /**
+     * 招待承諾により PROVISIONED から ACTIVE へ引き上げる。
+     * <p>本 PR では呼び出し元が存在しない（承諾 API は後続 PR）。</p>
+     */
+    public void activate() {
+        this.lifecycleStatus = LifecycleStatus.ACTIVE;
     }
 
     /**

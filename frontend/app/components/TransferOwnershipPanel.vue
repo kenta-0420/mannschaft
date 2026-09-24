@@ -1,22 +1,17 @@
 <script setup lang="ts">
 /**
- * CMP-051 チーム / 組織の「オーナー譲渡」導線。
- *
- * # 背景
- *  BE は `POST /api/v1/{teams|organizations}/{slug}/transfer-ownership?targetUserId={id}` を
- *  実装済みだが、FE 側に画面導線が一切存在せず composable が死んでいた（CMP-051）。
- *  本コンポーネントがチーム/組織双方の唯一の導線となる。
+ * CMP-051 / F04.12 チーム・組織のオーナー委譲打診導線。
  *
  * # 設計
  *  - チーム / 組織で API 形状が対称なため、`scopeType` で 1 コンポーネントに集約する
  *    （MemberTable と同じ流儀）。
- *  - オーナー譲渡は取り消しにくい重い操作のため、確認ダイアログで
+ *  - 委譲打診は将来の権限変更につながる重い操作のため、確認ダイアログで
  *    **スコープ名の完全一致入力**を要求する（メンバー除外より強い確認強度）。
- *  - 譲渡が成功すると自分は ADMIN でなくなる。権限依存 UI が古い権限のまま
- *    残らないよう `transferred` を emit し、親（永続シェル）に権限の再解決を促す。
+ *  - この操作では権限を即時変更せず、対象者が承諾した時点で委譲する。
+ *    打診作成後は `offered` を emit し、親に保留状態の再取得を促す。
  *  - エラーは握りつぶさず `useErrorHandler().handleApiError` に渡す。BE の
  *    message をそのままトーストに出すため、CMP-050 で追加される
- *    「譲渡先が凍結ユーザー（ROLE_001）」もユーザーに見える（専用分岐は持たない）。
+ *    「打診先が凍結ユーザー（ROLE_001）」もユーザーに見える（専用分岐は持たない）。
  */
 import type { MemberResponse } from '~/types/member'
 
@@ -30,13 +25,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  /** 譲渡成功。親は権限・スコープ情報を再取得すること。 */
-  transferred: []
+  /** 委譲の打診作成成功。親は表示状態を再取得すること。 */
+  offered: []
 }>()
 
 const { t } = useI18n()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
+const { confirmAction } = useConfirmDialog()
 const teamApi = useTeamApi()
 const organizationApi = useOrganizationApi()
 const authStore = useAuthStore()
@@ -50,6 +46,21 @@ const loadingMembers = ref(false)
 const targetUserId = ref<number | null>(null)
 const confirmationName = ref('')
 const submitting = ref(false)
+type PendingOffer = {
+  offerId: string
+  target: { userId: number, displayName?: string | null }
+  expiresAt?: string
+}
+const pendingOffer = ref<PendingOffer | null>(null)
+const loadingPending = ref(false)
+const cancellingOffer = ref(false)
+
+const pendingTargetLabel = computed(() => {
+  if (!pendingOffer.value) return ''
+  return pendingOffer.value.target.displayName
+    ?? members.value.find(member => member.userId === pendingOffer.value?.target.userId)?.displayName
+    ?? `#${pendingOffer.value.target.userId}`
+})
 
 /** 自分自身は譲渡先になり得ないため候補から除く。 */
 const candidates = computed<MemberResponse[]>(() => {
@@ -85,6 +96,24 @@ async function loadMembers(): Promise<void> {
   }
 }
 
+async function loadPendingOffer(): Promise<void> {
+  loadingPending.value = true
+  try {
+    const response = props.scopeType === 'team'
+      ? await teamApi.getPendingOwnershipOffers(props.scopeSlug)
+      : await organizationApi.getPendingOwnershipOffers(props.scopeSlug)
+    pendingOffer.value = (response.data[0] as PendingOffer | undefined) ?? null
+    if (pendingOffer.value && members.value.length === 0) await loadMembers()
+  }
+  catch (err) {
+    pendingOffer.value = null
+    handleApiError(err, 'TransferOwnershipPanel.loadPendingOffer')
+  }
+  finally {
+    loadingPending.value = false
+  }
+}
+
 async function openDialog(): Promise<void> {
   targetUserId.value = null
   confirmationName.value = ''
@@ -102,14 +131,16 @@ async function submit(): Promise<void> {
   submitting.value = true
   try {
     if (props.scopeType === 'team') {
-      await teamApi.transferOwnership(props.scopeSlug, targetUserId.value)
+      const response = await teamApi.createOwnershipOffer(props.scopeSlug, targetUserId.value)
+      pendingOffer.value = response.data as PendingOffer
     }
     else {
-      await organizationApi.transferOwnership(props.scopeSlug, targetUserId.value)
+      const response = await organizationApi.createOwnershipOffer(props.scopeSlug, targetUserId.value)
+      pendingOffer.value = response.data as PendingOffer
     }
-    notification.success(t('transferOwnership.successTitle'), t('transferOwnership.successDetail'))
+    notification.success(t('role.transfer.offer.created'))
     dialogVisible.value = false
-    emit('transferred')
+    emit('offered')
   }
   catch (err) {
     handleApiError(err, 'TransferOwnershipPanel.submit')
@@ -118,6 +149,39 @@ async function submit(): Promise<void> {
     submitting.value = false
   }
 }
+
+
+function onCancelOffer(): void {
+  if (!pendingOffer.value) return
+  confirmAction({
+    header: t('role.transfer.offer.cancelConfirmTitle'),
+    message: t('role.transfer.offer.cancelConfirmMessage'),
+    onAccept: cancelOffer,
+  })
+}
+
+async function cancelOffer(): Promise<void> {
+  if (!pendingOffer.value) return
+  cancellingOffer.value = true
+  try {
+    if (props.scopeType === 'team') {
+      await teamApi.cancelOwnershipOffer(props.scopeSlug, pendingOffer.value.offerId)
+    }
+    else {
+      await organizationApi.cancelOwnershipOffer(props.scopeSlug, pendingOffer.value.offerId)
+    }
+    pendingOffer.value = null
+    notification.success(t('role.transfer.offer.cancelSuccess'))
+  }
+  catch (err) {
+    handleApiError(err, 'TransferOwnershipPanel.cancelOffer')
+  }
+  finally {
+    cancellingOffer.value = false
+  }
+}
+
+onMounted(loadPendingOffer)
 // 注: defineExpose は行わない。expose プロキシは読み取り専用となり、ユニットテストから
 // 内部 ref を書き換えられなくなるため（ExtendExpiryDialog.spec.ts と同じ流儀）。
 </script>
@@ -127,6 +191,26 @@ async function submit(): Promise<void> {
     <p class="text-sm text-surface-600 dark:text-surface-300">
       {{ t('transferOwnership.sectionDescription') }}
     </p>
+    <Message
+      v-if="pendingOffer"
+      severity="info"
+      :closable="false"
+      class="mt-4"
+      data-testid="transfer-ownership-pending"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <span>{{ t('role.transfer.offer.pendingByMe', { name: pendingTargetLabel }) }}</span>
+        <Button
+          data-testid="transfer-ownership-cancel-pending"
+          :label="t('role.transfer.offer.cancel')"
+          severity="danger"
+          text
+          size="small"
+          :loading="cancellingOffer"
+          @click="onCancelOffer"
+        />
+      </div>
+    </Message>
     <div class="mt-4">
       <Button
         data-testid="transfer-ownership-open"
@@ -134,6 +218,7 @@ async function submit(): Promise<void> {
         icon="pi pi-user-edit"
         severity="danger"
         outlined
+        :disabled="loadingPending || pendingOffer !== null"
         @click="openDialog"
       />
     </div>

@@ -2,6 +2,9 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+// 隔離 worktree の実機 E2E は E2E_DB_NAME/USER/PASSWORD で専用 DB を指定する。
+// 未指定なら従来どおり本陣ローカル DB を使用する。
+
 /** チーム/組織名から URL スラッグを生成する（BE SlugGenerator と同ロジック）。
  * 日本語名など ASCII 英数字が 3 文字未満の場合は MD5 ハッシュのプレフィックスを使い
  * 一意性を担保する（seed の重複実行でも同じ名前から同じスラッグを生成）。 */
@@ -46,8 +49,10 @@ function encryptForTest(plain) {
 
 (async () => {
   const conn = await mysql.createConnection({
-    host: '127.0.0.1', port: 3306,
-    user: 'mannschaft', password: 'mannschaft', database: 'mannschaft',
+    host: '127.0.0.1', port: Number(process.env.E2E_DB_PORT ?? 3306),
+    user: process.env.E2E_DB_USER ?? 'mannschaft',
+    password: process.env.E2E_DB_PASSWORD ?? 'mannschaft',
+    database: process.env.E2E_DB_NAME ?? 'mannschaft',
     charset: 'utf8mb4', // 二重エンコード再発防止のため接続文字コードを明示
   });
 
@@ -167,6 +172,27 @@ function encryptForTest(plain) {
     userIds.push(Number(r.id));
   }
   console.log(`Users created/found: ${userIds.length} (id ${userIds[0]}-${userIds[userIds.length - 1]})`);
+
+  // F08.9 後見まとめ払い E2E: e2e-user を保護者、dummy-2 を12歳未満の受益者として固定する。
+  // 実機テストで「後見対象が無ければ skip」を許さず、権原と未払い項目を必ず検証できるようにする。
+  const E2E_GUARDIAN_CHILD = userIds[1];
+  await conn.execute(
+    `UPDATE users
+        SET birth_date = ?, birth_year = ?, updated_at = ?
+      WHERE id = ?`,
+    [encryptForTest('2020-04-02'), 2020, now, E2E_GUARDIAN_CHILD]
+  );
+  await conn.execute(
+    `INSERT INTO user_care_links
+      (care_recipient_user_id, watcher_user_id, care_category, relationship,
+       is_primary, status, invited_by, confirmed_at, created_by, created_at, updated_at)
+     VALUES (?,?,?,?,1,'ACTIVE','SYSTEM',?,?,?,?)
+     ON DUPLICATE KEY UPDATE
+       care_category = VALUES(care_category), relationship = VALUES(relationship),
+       is_primary = 1, status = 'ACTIVE', confirmed_at = VALUES(confirmed_at),
+       revoked_at = NULL, revoked_by = NULL, updated_at = VALUES(updated_at)`,
+    [E2E_GUARDIAN_CHILD, E2E_USER, 'MINOR', 'PARENT', now, E2E_USER, now, now]
+  );
 
   // ============================================================
   // 2. 組織（JFA階層構造）
@@ -356,6 +382,69 @@ function encryptForTest(plain) {
   await assignRole(userIds[5], 4, null, orgs.fcTokyo);
 
   console.log('Roles assigned');
+
+  // F08.9 CMP-011 実機 E2E: Stripe API を呼ばずに画面・認可・集計を検証する固定年会費。
+  // API から ANNUAL_FEE を作ると Stripe Product/Price の自動作成が走るため、
+  // ローカルの Stripe 鍵未設定環境でも再現可能な seed fixture として直接投入する。
+  const CMP011_PAYMENT_ITEM_NAME = 'CMP-011 E2E 年会費';
+  let [[cmp011PaymentItem]] = await conn.execute(
+    `SELECT id FROM payment_items
+      WHERE team_id = ? AND name = ? AND deleted_at IS NULL
+      ORDER BY id LIMIT 1`,
+    [teams.fcTokyoU18, CMP011_PAYMENT_ITEM_NAME]
+  );
+  if (!cmp011PaymentItem) {
+    await conn.execute(
+      `INSERT INTO payment_items
+        (team_id, organization_id, name, description, type, amount, currency,
+         stripe_product_id, stripe_price_id, is_active, display_order,
+         grace_period_days, created_by, created_at, updated_at,
+         is_recurring, billing_interval)
+       VALUES (?,NULL,?,?, 'ANNUAL_FEE',3000,'JPY',?,?,1,0,0,?,?,?,1,'YEARLY')`,
+      [teams.fcTokyoU18, CMP011_PAYMENT_ITEM_NAME, 'CMP-011 実機E2E固定項目',
+       'prod_cmp011_e2e', 'price_cmp011_e2e', E2E_ADMIN, now, now]
+    );
+    [[cmp011PaymentItem]] = await conn.execute(
+      `SELECT id FROM payment_items
+        WHERE team_id = ? AND name = ? AND deleted_at IS NULL
+        ORDER BY id LIMIT 1`,
+      [teams.fcTokyoU18, CMP011_PAYMENT_ITEM_NAME]
+    );
+  }
+
+  // 後見対象の未払いとして列挙されるには、所属だけでなくチーム参加要件への紐付けが必要。
+  await conn.execute(
+    `INSERT IGNORE INTO team_access_requirements
+      (team_id, payment_item_id, created_at)
+     VALUES (?,?,?)`,
+    [teams.fcTokyoU18, cmp011PaymentItem.id, now]
+  );
+
+  // 月次手数料明細は受領側 Connect 口座を集計起点にする。取引が0件でも
+  // 0円明細を返す契約を実機で検証できるよう、対象チームのREADY口座を固定する。
+  const [[cmp011ConnectAccount]] = await conn.execute(
+    `SELECT BIN_TO_UUID(id) AS id FROM connect_accounts
+      WHERE scope_kind = 'TEAM' AND scope_id = ? AND deleted_at IS NULL
+      ORDER BY created_at LIMIT 1`,
+    [teams.fcTokyoU18]
+  );
+  if (cmp011ConnectAccount) {
+    await conn.execute(
+      `UPDATE connect_accounts
+          SET onboarding_status = 'READY', charges_enabled = 1, payouts_enabled = 1, updated_at = ?
+        WHERE id = UUID_TO_BIN(?)`,
+      [now, cmp011ConnectAccount.id]
+    );
+  } else {
+    await conn.execute(
+      `INSERT INTO connect_accounts
+        (id, scope_kind, scope_id, organization_id, stripe_account_id,
+         onboarding_status, charges_enabled, payouts_enabled, country,
+         default_currency, created_at, updated_at)
+       VALUES (UUID_TO_BIN(UUID()),'TEAM',?,NULL,?,'READY',1,1,'JP','JPY',?,?)`,
+      [teams.fcTokyoU18, `acct_cmp011_e2e_${teams.fcTokyoU18}`, now, now]
+    );
+  }
 
   // ============================================================
   // 5. スケジュール

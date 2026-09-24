@@ -1,5 +1,7 @@
 package com.mannschaft.app.schedule.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.membership.event.MembershipEndedEvent;
 import com.mannschaft.app.schedule.service.GoogleCalendarService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,8 @@ public class GoogleCalendarMembershipListener {
      *
      * @param event メンバーシップ終了イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。所属終了に伴う Google カレンダー連携の解除。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMembershipEnded(MembershipEndedEvent event) {

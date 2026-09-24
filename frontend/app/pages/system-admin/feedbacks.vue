@@ -52,7 +52,7 @@ async function load() {
     })
     feedbacks.value = res.data
     // BE の PageMeta#total が正式フィールド名（Java の long total）
-    totalRecords.value = res.meta?.total ?? res.meta?.totalElements ?? 0
+    totalRecords.value = res.meta?.total ?? 0
   }
   catch {
     toast.add({ severity: 'error', summary: t('dialog.error'), life: 3000 })

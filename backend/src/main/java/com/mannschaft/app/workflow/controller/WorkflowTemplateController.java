@@ -2,6 +2,7 @@ package com.mannschaft.app.workflow.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.workflow.dto.CreateWorkflowTemplateRequest;
 import com.mannschaft.app.workflow.dto.UpdateWorkflowTemplateRequest;
 import com.mannschaft.app.workflow.dto.WorkflowTemplateResponse;
@@ -43,6 +44,7 @@ public class WorkflowTemplateController {
     @GetMapping
     @Operation(summary = "テンプレート一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @RequireFeature("FEATURE_WORKFLOW_FORMS_ENABLED")
     public ResponseEntity<PagedResponse<WorkflowTemplateResponse>> listTemplates(
             @PathVariable String scopeType,
             @PathVariable Long scopeId,

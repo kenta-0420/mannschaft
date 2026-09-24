@@ -15,13 +15,19 @@ import { waitForHydration } from '../helpers/wait'
 export async function loginViaApi(
   page: Page,
   credentials: { email: string; password: string },
-  options: { apiBaseUrl?: string } = {},
+  options: { apiBaseUrl?: string; deferNavigation?: boolean } = {},
 ): Promise<void> {
   // FE dev server が /api/v1/** をプロキシしていない場合 (NUXT_API_PROXY=true 未設定)、
   // バックエンドへ完全 URL で直接リクエストする。
   // Cookie の domain は 'localhost' で統一されているため、
   // :8080 に送った Set-Cookie も :3000 起源のブラウザコンテキストで有効になる。
   const apiBase = options.apiBaseUrl ?? process.env.API_BASE_URL ?? ''
+
+  if (!options.deferNavigation) {
+    // storageState を生成する既存呼び出しでは、localStorage のオリジンを先に確立する。
+    // SSR が重い画面を開く必要はなく、同一オリジンの静的ファイルで localStorage を確立する。
+    await page.goto('/robots.txt', { waitUntil: 'domcontentloaded' })
+  }
 
   const loginRes = await page.request.post(`${apiBase}/api/v1/auth/login`, {
     data: { email: credentials.email, password: credentials.password },
@@ -46,33 +52,36 @@ export async function loginViaApi(
     systemRole: string | null
     timezone: string | null
   }
-  const accessTokenCookie = (await page.context().cookies())
-    .find(cookie => cookie.name === 'access_token')
+  const accessTokenCookie = (await page.context().cookies()).find(
+    (cookie) => cookie.name === 'access_token',
+  )
   if (!accessTokenCookie || accessTokenCookie.expires <= 0) {
     throw new Error('API ログイン成功後の access_token Cookie に有効期限がありません')
   }
   const tokenExpiresAt = accessTokenCookie.expires * 1000
 
-  // アプリのオリジンへ遷移してから localStorage を書き込む（オリジンに紐づくため）。
-  // useAuthStore は currentUser の有無で isAuthenticated を判定する。
-  await page.goto('/')
-  await page.evaluate(
-    ({ user, expiresAt }) => {
+  const authState = {
+    user: {
+      id: me.id,
+      email: me.email,
+      fullName: `${me.lastName} ${me.firstName}`,
+      profileImageUrl: me.avatarUrl,
+      systemRole: me.systemRole ?? undefined,
+      timezone: me.timezone ?? undefined,
+    },
+    expiresAt: tokenExpiresAt,
+  }
+  const restoreAuth = ({ user, expiresAt }: typeof authState) => {
       localStorage.setItem('currentUser', JSON.stringify(user))
       localStorage.setItem('tokenExpiresAt', String(expiresAt))
-    },
-    {
-      user: {
-        id: me.id,
-        email: me.email,
-        fullName: `${me.lastName} ${me.firstName}`,
-        profileImageUrl: me.avatarUrl,
-        systemRole: me.systemRole ?? undefined,
-        timezone: me.timezone ?? undefined,
-      },
-      expiresAt: tokenExpiresAt,
-    },
-  )
+  }
+
+  if (options.deferNavigation) {
+    // 重い SSR を避ける実機テストでは、初回 document のアプリコードより先に復元する。
+    await page.addInitScript(restoreAuth, authState)
+  } else {
+    await page.evaluate(restoreAuth, authState)
+  }
 }
 
 export type AuthFixtures = {

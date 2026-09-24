@@ -90,7 +90,13 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match', 'composables/returnStayPlan'],
+    dirs: [
+      'composables',
+      'composables/jobs',
+      'composables/wallet-group-show',
+      'composables/match',
+      'composables/returnStayPlan',
+    ],
   },
 
   devServer: {
@@ -187,7 +193,11 @@ export default defineNuxtConfig({
         // F08.9 P5: Stripe.js の PaymentElement iframe（js.stripe.com）と
         //   3DS 認証チャレンジ iframe（hooks.stripe.com）を許可。
         // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2
-        'frame-src': ['https://www.google.com', 'https://js.stripe.com', 'https://hooks.stripe.com'],
+        'frame-src': [
+          'https://www.google.com',
+          'https://js.stripe.com',
+          'https://hooks.stripe.com',
+        ],
         // worker-src: @vite-pwa/nuxt の service worker。
         'worker-src': ["'self'", 'blob:'],
         'manifest-src': ["'self'"],
@@ -432,10 +442,6 @@ export default defineNuxtConfig({
     // （route ガード middleware feature-gate.global.ts の ssr-defer と対になっている）。
     // 対応表は app/constants/featureGates.ts が単一の正（YAML パーサ依存・コード生成は無し）。
     ...buildGateRouteRules(),
-    // 認証フォームは SEO を必要としない。SSR で操作不能なフォームを先に配信すると、
-    // クライアントのハイドレーションが遅延・失敗した際にログイン不能になるため、
-    // 最初からクライアントで操作可能な状態として描画する。
-    '/login': { ssr: false },
     ...(process.env.NUXT_API_PROXY === 'true'
       ? { '/api/v1/**': { proxy: `${apiBase}/api/v1/**` } }
       : {}),
@@ -534,12 +540,14 @@ export default defineNuxtConfig({
           'ja/file_sharing.json',
           'ja/admin_report.json',
           'ja/system_admin_incident_banner.json',
+          'ja/provisioning.json',
           'ja/admin_console.json',
           'ja/feedback.json',
           'ja/circulation.json',
           'ja/parental-consent.json',
           'ja/billing.json',
           'ja/global_nav.json',
+          'ja/receipt.json',
         ],
       },
       {
@@ -608,12 +616,14 @@ export default defineNuxtConfig({
           'en/file_sharing.json',
           'en/admin_report.json',
           'en/system_admin_incident_banner.json',
+          'en/provisioning.json',
           'en/admin_console.json',
           'en/feedback.json',
           'en/circulation.json',
           'en/parental-consent.json',
           'en/billing.json',
           'en/global_nav.json',
+          'en/receipt.json',
         ],
       },
       {
@@ -682,12 +692,14 @@ export default defineNuxtConfig({
           'zh/file_sharing.json',
           'zh/admin_report.json',
           'zh/system_admin_incident_banner.json',
+          'zh/provisioning.json',
           'zh/admin_console.json',
           'zh/feedback.json',
           'zh/circulation.json',
           'zh/parental-consent.json',
           'zh/billing.json',
           'zh/global_nav.json',
+          'zh/receipt.json',
         ],
       },
       {
@@ -756,12 +768,14 @@ export default defineNuxtConfig({
           'ko/file_sharing.json',
           'ko/admin_report.json',
           'ko/system_admin_incident_banner.json',
+          'ko/provisioning.json',
           'ko/admin_console.json',
           'ko/feedback.json',
           'ko/circulation.json',
           'ko/parental-consent.json',
           'ko/billing.json',
           'ko/global_nav.json',
+          'ko/receipt.json',
         ],
       },
       {
@@ -830,12 +844,14 @@ export default defineNuxtConfig({
           'es/file_sharing.json',
           'es/admin_report.json',
           'es/system_admin_incident_banner.json',
+          'es/provisioning.json',
           'es/admin_console.json',
           'es/feedback.json',
           'es/circulation.json',
           'es/parental-consent.json',
           'es/billing.json',
           'es/global_nav.json',
+          'es/receipt.json',
         ],
       },
       {
@@ -904,12 +920,14 @@ export default defineNuxtConfig({
           'de/file_sharing.json',
           'de/admin_report.json',
           'de/system_admin_incident_banner.json',
+          'de/provisioning.json',
           'de/admin_console.json',
           'de/feedback.json',
           'de/circulation.json',
           'de/parental-consent.json',
           'de/billing.json',
           'de/global_nav.json',
+          'de/receipt.json',
         ],
       },
     ],

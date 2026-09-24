@@ -1,12 +1,15 @@
 package com.mannschaft.app.contact.event;
 
 import com.mannschaft.app.auth.service.UserService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -14,8 +17,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.Locale;
 
 /**
  * 連絡先申請の通知配送リスナー（Issue #2834 / CMP-056 型確立PR）。
@@ -49,13 +50,15 @@ public class ContactRequestNotificationListener {
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。コンタクト申請の通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onContactRequestNotification(ContactRequestNotificationEvent event) {
         try {
             NotificationDeliveryRequest request = buildRequest(event);
-            NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-            if (created == null) {
+            NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+            if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                 // visibility deny（例外ではない）。NotificationService 側で既に WARN 済み。
                 log.warn("連絡先申請通知が visibility deny によりスキップされました: "
                                 + "recipientUserId={}, notificationType={}, sourceType={}, sourceId={}",

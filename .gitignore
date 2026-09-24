@@ -84,3 +84,35 @@ config/scheduler/
 .claude/handoffs/
 .b0-local/
 docs/prototypes/.b0-local/
+
+# npx skills add が生成するシンボリックリンク置き場。
+# 本リポジトリは core.symlinks=false のため、コミットするとクローン先で
+# リンク先パスを書いただけの壊れたテキストファイルになる。
+# スキルの実体は .agents/skills/ 配下にコミットしているので、リンクが要る場合は
+# `npx skills add https://docs.stripe.com` を再実行して張り直すこと。
+.claude/skills/
+
+# 一時領域・ビルドキャッシュ（本陣で7万件・36GB まで膨らんだ実績あり）
+# .tmp は CI ログのダウンロード残骸が溜まる（1ファイル2GB超のものも）
+.tmp/
+.claude/tmp/
+.codex-tmp/
+
+# Gradle のキャッシュ。worktree ごとに GRADLE_USER_HOME を分けると
+# 同名パターンのディレクトリが増えるため接頭辞で一括除外する
+.gradle/
+.gradle-*/
+
+# ローカル worktree・実行環境・生成キャッシュ
+.crm-worktrees/
+.tmp-codex-node-v22.23.2/
+node_modules/
+__pycache__/
+*.pyc
+
+# ローカル翻訳生成物（製品の正本ではない）
+data/translation/
+
+# ローカル起動用バッチ（鍵・環境固有設定を含む）
+start-be.bat
+start-fe.bat

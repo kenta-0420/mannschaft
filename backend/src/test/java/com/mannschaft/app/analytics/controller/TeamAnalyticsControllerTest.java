@@ -13,6 +13,7 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.security.AccessGuard;
+import com.mannschaft.app.config.TeamScopeIdConverter;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -34,6 +36,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -53,6 +57,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(TeamAnalyticsController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(TeamScopeIdConverter.class)
 class TeamAnalyticsControllerTest {
 
     @Autowired
@@ -119,6 +124,34 @@ class TeamAnalyticsControllerTest {
                 .andExpect(jsonPath("$.data.daily").exists())
                 .andExpect(jsonPath("$.data.monthly").exists())
                 .andExpect(jsonPath("$.data.topContent").exists());
+
+        verify(teamService).resolveTeamId(SLUG);
+        verify(accessGuard).requireScopeMember(isNull(), eq(PageViewScopeType.TEAM), eq(TEAM_ID));
+    }
+
+    @Test
+    @DisplayName("CMP-112: 数値チームIDはslug解決を呼ばず、同じ認可ガードを通る")
+    void getAnalytics_numericTeamId_usesCanonicalScopeId() throws Exception {
+        given(teamService.resolveTeamId("42")).willReturn(42L); // 旧実装でもHTTP 200にして呼出し差を検出
+        given(analyticsService.getAnalytics(eq(PageViewScopeType.TEAM), eq(42L), isNull(), isNull()))
+                .willReturn(mockResult());
+
+        mockMvc.perform(get("/api/v1/teams/{slug}/analytics", "42"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.summary.totalViews").value(100));
+
+        verify(teamService, never()).resolveTeamId("42");
+        verify(accessGuard).requireScopeMember(isNull(), eq(PageViewScopeType.TEAM), eq(42L));
+    }
+
+    @Test
+    @DisplayName("CMP-112: 数値IDのチームパスも正準スコープ型で受け付ける")
+    void getAnalytics_numericTeamId_returns200() throws Exception {
+        given(analyticsService.getAnalytics(eq(PageViewScopeType.TEAM), eq(TEAM_ID), isNull(), isNull()))
+                .willReturn(mockResult());
+
+        mockMvc.perform(get("/api/v1/teams/{slug}/analytics", TEAM_ID))
+                .andExpect(status().isOk());
     }
 
     // ─── AC-09: 非メンバー → 404 ─────────────────────────────────────

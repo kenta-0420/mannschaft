@@ -8,6 +8,7 @@ import com.mannschaft.app.admin.batch.ShedLockProbe;
 import com.mannschaft.app.admin.dto.BatchJobLogResponse;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.service.BatchJobLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicyEvaluator;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -67,6 +68,13 @@ class SystemAdminBatchControllerTest {
 
     @MockitoBean
     private ShedLockProbe shedLockProbe;
+
+    /**
+     * Gate 基盤工事④-A で Controller のコンストラクタに追加された依存。
+     * 本テストは既存挙動のみを見るため、既定の mock（拒否理由なし＝実行許可）のまま使う。
+     */
+    @MockitoBean
+    private BackgroundFeaturePolicyEvaluator backgroundFeaturePolicyEvaluator;
 
     /**
      * Controller が {@code @Qualifier("job-pool")} で要求する Executor。

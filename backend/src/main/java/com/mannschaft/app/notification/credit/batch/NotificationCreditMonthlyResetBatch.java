@@ -1,5 +1,7 @@
 package com.mannschaft.app.notification.credit.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.credit.entity.OrganizationNotificationBalanceEntity;
 import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
@@ -50,6 +52,8 @@ public class NotificationCreditMonthlyResetBatch {
      * 経由し独立トランザクションで実行する（バッチ失敗時のリトライ安全性を確保するため）。
      * 本メソッド自体は対象一覧の読み取りのみのため {@code @Transactional} を付けない。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると猶予期間債務が credit_balance に相殺されないまま翌月の無料枠が乗り、通知クレジット残高が恒久的に狂う")
     @BatchEndpoint(name = "notification-credit-monthly-reset", description = "通知クレジットの無料枠と猶予負債を毎月 1 日 02:00 にリセットする")
     @Scheduled(cron = "0 0 2 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(

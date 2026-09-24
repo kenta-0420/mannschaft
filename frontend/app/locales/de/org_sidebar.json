@@ -5,6 +5,7 @@
       "schedule": "Termine",
       "member": "Mitglieder",
       "ops": "Betrieb",
+      "market": "Markt",
       "facility": "Einrichtungen",
       "resident": "Bewohner",
       "data": "Daten & Analyse",
@@ -26,6 +27,7 @@
     "invite": "Einladen",
     "permissionGroups": "Berechtigungsgruppen",
     "onboarding": "Einführung",
+    "market": "Markt",
     "todos": "Aufgaben",
     "workflows": "Workflows",
     "forms": "Formulare",
@@ -44,7 +46,6 @@
     "analytics": "Analyse",
     "budget": "Budget",
     "auditLogs": "Audit-Protokolle",
-    "gamification": "Gamifizierung",
     "tournaments": "Turniere",
     "queue": "Warteschlange",
     "timelineDigest": "Zeitstrahl-Zusammenfassung",
@@ -57,8 +58,16 @@
     "notificationCredits": "Benachrichtigungsguthaben",
     "todoStatusLabels": "Aufgabenbezeichnungen",
     "faqSettings": "FAQ-Einstellungen",
+    "confirmableNotifications": "Bestätigungsbenachrichtigungen",
     "billing": "Abrechnung & Planverwaltung",
     "leagueTransfers": "Liga-Transfers",
-    "adminConsole": "Administrationskonsole"
+    "adminConsole": "Administrationskonsole",
+    "receipts": "Belege",
+    "receiptSettings": "Aussteller-Einstellungen für Belege",
+    "vendors": "Anbieterverzeichnis",
+    "lineSettings": "LINE-Einstellungen",
+    "snsSettings": "SNS-Einstellungen",
+    "scheduleSettings": "Terminplan-Einstellungen",
+    "bulletinCategories": "Pinnwand-Kategorien"
   }
 }

@@ -1,5 +1,7 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.event.ShiftArchivedEvent;
@@ -39,6 +41,9 @@ public class ShiftAutoArchiveBatchService {
     /**
      * 毎日 AM 3:00（JST）に実行。終了から 7 日超過した PUBLISHED スケジュールをアーカイブする。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SHIFT_ENABLED",
+            reason = "止めても PUBLISHED のまま滞留するだけで既存行は壊れず、再開後の同一バッチが終了 7 日超過という同じ条件で取りこぼしなく拾い直す")
     @BatchEndpoint(name = "shift-auto-archive-daily", description = "終了 7 日経過の PUBLISHED シフトを毎日 03:00 に ARCHIVED へ遷移する")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "shift_auto_archive", lockAtMostFor = "PT30M", lockAtLeastFor = "PT5M")

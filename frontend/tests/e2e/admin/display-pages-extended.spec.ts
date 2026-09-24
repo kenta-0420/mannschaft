@@ -12,7 +12,7 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [],
-          meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+          meta: { page: 0, size: 20, total: 0, totalPages: 0 },
         }),
       })
     })
@@ -48,13 +48,11 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
     })
   })
 
-  test('ADMIN-024: ブログ管理ページが表示される', async ({ page }) => {
-    await page.goto('/admin/blog-management')
-    await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'ブログ管理' })).toBeVisible({
-      timeout: 10_000,
-    })
-  })
+  // ADMIN-024（旧: /admin/blog-management 表示確認）は CMP-260917-0041 で削除。
+  // 機能は BlogPostList.vue へ移植済み（PR #3350）で teams/[slug]/blog.vue・
+  // organizations/[slug]/blog.vue から到達可能。実機E2E側は BLOG-SCOPE-001
+  // （frontend/tests/e2e/real/blog/blog-full-e2e.spec.ts）が /teams/{id}/blog への
+  // 到達とAPI疎通を既に担保しているため、二重管理を避けて本テストは移設せず削除する。
 
   test('ADMIN-025: 掲示板カテゴリ管理ページが表示される', async ({ page }) => {
     await page.goto('/admin/bulletin-categories')
@@ -76,14 +74,6 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
     await page.goto('/admin/equipment')
     await waitForHydration(page)
     await expect(page.getByRole('heading', { name: '備品管理' })).toBeVisible({
-      timeout: 10_000,
-    })
-  })
-
-  test('ADMIN-028: Googleカレンダー設定ページが表示される', async ({ page }) => {
-    await page.goto('/admin/google-calendar')
-    await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: /Google.*カレンダー/ })).toBeVisible({
       timeout: 10_000,
     })
   })
@@ -120,13 +110,9 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
     })
   })
 
-  test('ADMIN-033: 組織数課金設定ページが表示される', async ({ page }) => {
-    await page.goto('/admin/org-billing')
-    await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: '組織数課金設定' })).toBeVisible({
-      timeout: 10_000,
-    })
-  })
+  // ADMIN-033（旧: 組織数課金設定ページが表示される）は CMP-260909-1141・マスター裁可で
+  // ページごと削除（お蔵入り）。確定設計 F20.1 は org_type による課金額変更を採用しておらず、
+  // BE も未実装のため復活の予定は無い（将来取り入れる場合は docs/task-list.md 参照）。
 
   test('ADMIN-034: パッケージ管理ページが表示される', async ({ page }) => {
     await page.goto('/admin/packages')
@@ -160,13 +146,10 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
     })
   })
 
-  test('ADMIN-038: 予約管理設定ページが表示される', async ({ page }) => {
-    await page.goto('/admin/reservation-settings')
-    await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: '予約管理設定' })).toBeVisible({
-      timeout: 10_000,
-    })
-  })
+  // ADMIN-038（旧: 予約管理設定ページが表示される）は CMP-260909-1141 でページごと削除。
+  // 予約ラインCRUDはLineManager.vue経由でteams/[slug]/reservationsから、確認通知は
+  // teams/organizations配下のsettings/confirmable-notificationsから到達可能（テストは
+  // frontend/tests/e2e/admin/confirmable-notification.spec.ts の ADMIN-018〜020 へ移設済み）。
 
   test('ADMIN-039: スケジュール設定ページが表示される', async ({ page }) => {
     await page.goto('/admin/schedule-settings')

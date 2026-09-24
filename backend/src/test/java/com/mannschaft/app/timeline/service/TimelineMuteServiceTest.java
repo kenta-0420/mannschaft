@@ -10,6 +10,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,7 +46,7 @@ class TimelineMuteServiceTest {
 
     private static final Long USER_ID = 100L;
     private static final Long MUTED_ID = 200L;
-    private static final String MUTED_TYPE = "USER";
+    private static final String MUTED_TYPE = "TEAM";
 
     // ========================================
     // addMute
@@ -114,6 +117,34 @@ class TimelineMuteServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.MUTE_ALREADY_EXISTS));
         }
+    }
+
+    @Test
+    @DisplayName("AC-1: ORGANIZATION mutedType は追加できる")
+    void organizationMutedType_isAccepted() {
+        UserMuteEntity mute = UserMuteEntity.builder()
+                .userId(USER_ID).mutedType("ORGANIZATION").mutedId(MUTED_ID).build();
+        MuteResponse expected = new MuteResponse(2L, USER_ID, "ORGANIZATION", MUTED_ID, LocalDateTime.now());
+        given(muteRepository.existsByUserIdAndMutedTypeAndMutedId(USER_ID, "ORGANIZATION", MUTED_ID))
+                .willReturn(false);
+        given(muteRepository.save(any(UserMuteEntity.class))).willReturn(mute);
+        given(timelineMapper.toMuteResponse(any(UserMuteEntity.class))).willReturn(expected);
+
+        assertThat(timelineMuteService.addMute("ORGANIZATION", MUTED_ID, USER_ID)).isEqualTo(expected);
+        verify(muteRepository).save(any(UserMuteEntity.class));
+    }
+
+    @ParameterizedTest(name = "{0} は拒否")
+    @NullAndEmptySource
+    @ValueSource(strings = {"USER", "SOCIAL_PROFILE", "team", "UNKNOWN"})
+    @DisplayName("AC-2〜AC-5: 許可されない mutedType は TIMELINE_020 で拒否し、repositoryを呼ばない")
+    void unsupportedMutedType_isRejectedWithoutRepositoryAccess(String mutedType) {
+        assertThatThrownBy(() -> timelineMuteService.addMute(mutedType, MUTED_ID, USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                        .isEqualTo("TIMELINE_020"));
+
+        org.mockito.Mockito.verifyNoInteractions(muteRepository, timelineMapper);
     }
 
     // ========================================

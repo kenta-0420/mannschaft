@@ -4,10 +4,13 @@ import type { BillingMethod } from '~/types/advertiser'
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const orgSlug = String(route.params.slug)
 const advertiserApi = useAdvertiserApi()
 const { success, error: showError } = useNotification()
 
+// F08.12 §5.0: 後払い（請求書方式）は廃止済み。決済方式はクレジットカード（Stripe）一本のため
+// 選択肢は無く、固定表示にする。
 const form = ref({
   companyName: '',
   contactEmail: '',
@@ -15,41 +18,36 @@ const form = ref({
 })
 const submitting = ref(false)
 
-const billingOptions = [
-  { label: 'クレジットカード（Stripe）', value: 'STRIPE' },
-  { label: '請求書払い', value: 'INVOICE' },
-]
-
 async function submit() {
   if (!form.value.companyName || !form.value.contactEmail) return
   submitting.value = true
   try {
     await advertiserApi.register(orgSlug, form.value)
-    success('広告主登録を申請しました。審査後に利用開始できます。')
+    success(t('advertising.register.success_message'))
     router.push(`/organizations/${orgSlug}/advertiser`)
   }
-  catch { showError('登録に失敗しました') }
+  catch { showError(t('advertising.register.error_message')) }
   finally { submitting.value = false }
 }
 </script>
 
 <template>
   <div class="mx-auto max-w-lg">
-    <PageHeader title="広告主登録" />
+    <PageHeader :title="t('advertising.register.title')" />
     <SectionCard>
       <div class="mb-4">
-        <label class="mb-1 block text-sm font-medium">会社名 / 広告主名</label>
-        <InputText v-model="form.companyName" class="w-full" placeholder="株式会社サンプル" />
+        <label class="mb-1 block text-sm font-medium">{{ t('advertising.register.company_name_label') }}</label>
+        <InputText v-model="form.companyName" class="w-full" :placeholder="t('advertising.register.company_name_placeholder')" />
       </div>
       <div class="mb-4">
-        <label class="mb-1 block text-sm font-medium">連絡先メールアドレス</label>
+        <label class="mb-1 block text-sm font-medium">{{ t('advertising.register.contact_email_label') }}</label>
         <InputText v-model="form.contactEmail" type="email" class="w-full" placeholder="ads@example.com" />
       </div>
       <div class="mb-6">
-        <label class="mb-1 block text-sm font-medium">決済方法</label>
-        <Select v-model="form.billingMethod" :options="billingOptions" option-label="label" option-value="value" class="w-full" />
+        <label class="mb-1 block text-sm font-medium">{{ t('advertising.register.billing_method_label') }}</label>
+        <p class="text-sm text-gray-500">{{ t('advertising.register.billing_fixed_notice') }}</p>
       </div>
-      <Button label="登録申請" icon="pi pi-check" :loading="submitting" class="w-full" @click="submit" />
+      <Button :label="t('advertising.register.submit')" icon="pi pi-check" :loading="submitting" class="w-full" @click="submit" />
     </SectionCard>
   </div>
 </template>

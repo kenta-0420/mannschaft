@@ -60,6 +60,7 @@ const collapsed = ref(false)
       'h-full': scrollable,
     }"
     :style="scrollable ? { maxHeight } : undefined"
+    :data-widget-collapsed="collapsed"
   >
     <!-- ドロップインジケーター線 -->
     <div
@@ -128,9 +129,18 @@ const collapsed = ref(false)
 
     <!-- ローディング＋コンテンツ（折り畳み制御）。
          scrollable 時は flex-1 min-h-0 で余った縦を本文が埋め、溢れたら本文内でスクロールする。 -->
-    <Transition name="widget-collapse">
+    <div
+      data-testid="dashboard-widget-card-content"
+      class="grid transition-[grid-template-rows,opacity] duration-300 motion-reduce:transition-none"
+      :class="[
+        collapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100',
+        scrollable ? 'min-h-0 flex-1' : '',
+      ]"
+      :aria-hidden="collapsed"
+      :inert="collapsed"
+    >
       <div
-        v-show="!collapsed"
+        class="min-h-0 overflow-hidden"
         :class="scrollable ? 'flex min-h-0 flex-1 flex-col' : ''"
       >
         <!-- ローディング -->
@@ -148,18 +158,6 @@ const collapsed = ref(false)
           <slot />
         </div>
       </div>
-    </Transition>
+    </div>
   </div>
 </template>
-
-<style scoped>
-.widget-collapse-enter-active,
-.widget-collapse-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.widget-collapse-enter-from,
-.widget-collapse-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-</style>

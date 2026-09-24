@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.transaction.TransactionAwareCacheDecorator;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -51,10 +52,25 @@ class CacheConfigurationGuardTest {
     }
 
     private static Map<String, RedisCacheConfiguration> cacheConfigurations() {
-        RedisCacheManager manager = new RedisConfig().cacheManager(mock(RedisConnectionFactory.class));
+        RedisCacheManager manager = new RedisConfig().cacheManager(
+                mock(RedisConnectionFactory.class), mock(CacheErrorHandler.class));
         // 初期キャッシュ（withCacheConfiguration で登録したもの）を生成させる
         manager.afterPropertiesSet();
         return manager.getCacheConfigurations();
+    }
+
+    @Test
+    @DisplayName("本番 RedisCacheManager はトランザクション同期後に書き込む")
+    void redisCacheManagerはTransactionAwareである() {
+        RedisCacheManager manager = new RedisConfig().cacheManager(
+                mock(RedisConnectionFactory.class), mock(CacheErrorHandler.class));
+        manager.afterPropertiesSet();
+
+        assertThat(manager.isTransactionAware()).isTrue();
+        assertThat(manager.getCache("role-permissions"))
+                .isInstanceOf(TransactionAwareCacheDecorator.class)
+                .extracting(cache -> ((TransactionAwareCacheDecorator) cache).getTargetCache())
+                .isInstanceOf(FailOpenWriteCache.class);
     }
 
     @Nested

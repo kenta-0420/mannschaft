@@ -14,8 +14,9 @@ public enum OrgErrorCode implements ErrorCode {
     /** 組織が見つかりません */
     ORG_001("ORG_001", "組織が見つかりません", Severity.WARN),
 
-    /** 組織名は既に使用されています */
-    ORG_002("ORG_002", "組織名は既に使用されています", Severity.WARN),
+    // ORG_002（組織名は既に使用されています）は柱③-A で existsByName 一律ブロックごと撤去済み。
+    // 同名は許可し DUPNAME_001（common.duplicatename.DuplicateNameErrorCode）へ統合した。
+    // 欠番のまま維持する（他コードの採番はそのまま。過去ログ・監査記録との対応を崩さないため）。
 
     /** 組織はアーカイブ済みです */
     ORG_003("ORG_003", "組織はアーカイブ済みです", Severity.WARN),

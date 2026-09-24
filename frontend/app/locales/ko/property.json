@@ -98,6 +98,9 @@
     "vendor": {
       "title": "업체 마스터",
       "subtitle": "시공・점검 업체 마스터 관리",
+      "notice": {
+        "personalScopeUnsupported": "업체 마스터는 개인 스코프에서는 이용할 수 없습니다. 팀 또는 조직 스코프로 전환해 주세요."
+      },
       "newVendor": "신규 업체 추가",
       "editVendor": "업체 편집",
       "deleteConfirm": "이 업체를 논리 삭제할까요?",

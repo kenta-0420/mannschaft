@@ -39,7 +39,7 @@ public interface AdCampaignDeliveryClaimRepository extends JpaRepository<AdCampa
      *
      * @param id         事前生成した UUID（{@link com.mannschaft.app.common.entity.UuidV7Entity} と
      *                   同じ採番機構で生成すること。ネイティブ INSERT は JPA の
-     *                   {@code @GeneratedValue} ライフサイクルを経由しないため、呼び出し側で採番する）
+     *                   JPA ライフサイクルを経由しないため、呼び出し側で採番する）
      * @param createdAt  呼び出し側で確定させた作成時刻（DB 側 DEFAULT には依存しない）
      * @return INSERT できた行数（0 または 1）。0 は「既に他の実行が確保済み」を意味する。
      */

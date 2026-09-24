@@ -1,7 +1,9 @@
 package com.mannschaft.app.timetable.personal.listener;
 
-import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.timetable.personal.event.PersonalTimetableSyncNotificationEvent;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,8 @@ public class PersonalTimetableSyncNotificationListener {
 
     private final NotificationDeliveryRunner notificationDeliveryRunner;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。個人時間割の同期結果の通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPersonalTimetableSyncNotification(PersonalTimetableSyncNotificationEvent event) {
@@ -36,8 +40,8 @@ public class PersonalTimetableSyncNotificationListener {
 
     private void sendOne(NotificationDeliveryRequest request) {
         try {
-            NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-            if (created == null) {
+            NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+            if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                 log.warn("個人時間割リンク反映通知が visibility deny によりスキップされました: "
                                 + "recipientUserId={}, notificationType={}, sourceType={}, sourceId={}",
                         request.recipientUserId(), request.notificationType(),

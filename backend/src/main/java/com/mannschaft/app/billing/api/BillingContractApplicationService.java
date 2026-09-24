@@ -25,9 +25,10 @@ import java.util.UUID;
  *
  * <p>Controller とドメインの {@link BillingContractService} の間に立ち、(1) テナント
  * {@code organizationId} の解決（USER=null / ORG=自身 / TEAM=主所属組織）、(2) 冪等キーによる
- * 二重送信の吸収（M-1）、(3) {@link ContractResponse} への組み立て、を担う。認可（scope ADMIN・
- * 本人固定）は Controller の {@code @PreAuthorize} が一次防御、契約の所属スコープ一致（IDOR）は
- * ドメイン層 {@code loadContractInScope} が二重防御する（03 §2）。</p>
+ * 二重送信の吸収（M-1）、(3) {@link ContractResponse} への組み立て、を担う。認可は Controller の
+ * {@code @PreAuthorize} を一次防御とし、契約変更トランザクション内でも操作者行をロックして現在権限を
+ * 再確認する。契約の所属スコープ一致（IDOR）はドメイン層 {@code loadContractInScope} が二重防御する
+ * （03 §2）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -75,7 +76,10 @@ public class BillingContractApplicationService {
 
         // D-4: 価格をマスタから解決。NULL=無償ワンクリック（即 ACTIVE＋発行）／非 NULL=Checkout 決済フロー
         // （PENDING＋entitlements 未発行・入金 webhook で ACTIVE 化）。既存無償契約には遡及しない。
-        // 0 円以下は無償扱い（0 円サブスクの Checkout は成立しない・マスタ誤設定の防御）。
+        // 0 円は「0 円と明示された無償プラン」として無償扱い（0 円サブスクの Checkout は成立しない）。
+        // 価格が未設定（NULL）のプランは無償扱いにせず PLAN_PRICE_NOT_CONFIGURED を投げて契約自体を拒否する
+        // （resolver 側の requireConfigured。早馬・課金事故対応 2026-09-22。null が返るのは planKey 自体が
+        // マスタに存在しない場合のみで、その場合は下の createContract 側で PLAN_NOT_FOUND を検証する）。
         Integer priceJpy = priceResolver.resolveMonthlyPriceJpy(
                 scopeKind, scopeId, contractKind, request.planKey(), request.featureKey());
 

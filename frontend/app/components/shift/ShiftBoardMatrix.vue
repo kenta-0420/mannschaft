@@ -40,8 +40,8 @@
             class="border-b border-surface-100 hover:bg-surface-50"
           >
             <td class="px-3 py-2 text-surface-600 whitespace-nowrap font-medium">
-              <div>{{ formatSlotDate(slot.slotDate) }}</div>
-              <div class="text-xs text-surface-400">{{ slot.startTime }}〜{{ slot.endTime }}</div>
+              <div>{{ formatSlotDate(slot.time.slotDate) }}</div>
+              <div class="text-xs text-surface-400">{{ slot.time.startTime }}〜{{ slot.time.endTime }}</div>
             </td>
             <td
               v-for="position in positions"
@@ -49,7 +49,7 @@
               class="px-2 py-1 border-l border-surface-100"
             >
               <ShiftBoardCell
-                v-if="slot.positionId === position.id"
+                v-if="slot.position.positionId === position.id"
                 :slot-id="slot.id"
                 :assignments="getAssignments(slot)"
                 :warnings="getSlotWarnings(slot.id)"
@@ -93,8 +93,8 @@ const { formatDate } = useDatetime()
 // スロットをそのまま並べ（日付順にソート済みと仮定）
 const groupedSlots = computed(() => {
   return [...props.slots].sort((a, b) => {
-    if (a.slotDate !== b.slotDate) return a.slotDate.localeCompare(b.slotDate)
-    return a.startTime.localeCompare(b.startTime)
+    if (a.time.slotDate !== b.time.slotDate) return a.time.slotDate.localeCompare(b.time.slotDate)
+    return a.time.startTime.localeCompare(b.time.startTime)
   })
 })
 

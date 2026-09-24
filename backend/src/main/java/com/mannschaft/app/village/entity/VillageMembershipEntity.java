@@ -73,6 +73,20 @@ public class VillageMembershipEntity extends UuidV7Entity {
     @Column(name = "profile_public", nullable = false)
     private boolean profilePublic;
 
+    /**
+     * <b>入村のきっかけとなった村人</b>のメンバーシップID（上位概念で統一解釈する）。
+     *
+     * <p>この列は二つの経路から書かれ、意味が二重化している。混同しないよう明記しておく。</p>
+     * <ul>
+     *   <li>参加申請（{@code VillageJoinRequestService}）経由での入村 → <b>承認した</b>村長・長老</li>
+     *   <li>招待（{@code VillageInvitationService}）経由での入村 → 招待を<b>発行した</b>村長・長老</li>
+     * </ul>
+     *
+     * <p>「承認者」という狭い名前で解釈すると招待経由の行が説明できず、逆に招待専用の列を
+     * 新設すると「誰の縁で入ったか」を辿る処理が二箇所に割れる。よって<b>「入村のきっかけと
+     * なった村人」という上位概念で一本化</b>し、どちらの経路でもこの列だけを見ればよい形に保つ。
+     * 経路を区別したい場合は招待テーブル側（{@code village_invitations}）を突き合わせること。</p>
+     */
     @Column(name = "invited_by_membership_id", columnDefinition = "BINARY(16)")
     private UUID invitedByMembershipId;
 

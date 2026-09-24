@@ -49,7 +49,7 @@ import static org.mockito.Mockito.when;
 class ScheduleKeepNotificationServiceTest {
 
     @Mock
-    private ScheduleKeepNotificationPublisher publisher;
+    private com.mannschaft.app.notification.service.NotificationService notificationService;
     @Mock
     private ContentVisibilityChecker visibilityChecker;
     @Mock
@@ -58,7 +58,7 @@ class ScheduleKeepNotificationServiceTest {
     private NotificationFanoutJobService fanoutJobService;
 
     private ScheduleKeepNotificationService service() {
-        return new ScheduleKeepNotificationService(publisher, visibilityChecker, teamService, fanoutJobService);
+        return new ScheduleKeepNotificationService(notificationService, visibilityChecker, teamService, fanoutJobService);
     }
 
     private static final long TEAM_ID = 42L;
@@ -94,7 +94,7 @@ class ScheduleKeepNotificationServiceTest {
         service().notifyConverted(scope, keep, schedule(), 100L);
 
         verifyNoInteractions(fanoutJobService);
-        verifyNoInteractions(publisher);
+        verifyNoInteractions(notificationService);
     }
 
     // ── AC-1 / AC-3: TEAM は MEMBER 全員へ fan-out enqueue（操作者を scope_ref に埋めて除外） ──
@@ -127,7 +127,8 @@ class ScheduleKeepNotificationServiceTest {
         assertThat(actorId.getValue()).isEqualTo(ACTOR_ID);
 
         // 作成者必達（creator は母集団から除外する代わりに直送で必ず受領）。
-        verify(publisher).publishConverted(eq(CREATOR_ID), eq("SCHEDULE_KEEP_CONVERTED"), anyString(), anyString(),
+        verify(notificationService).createNotificationPreAuthorized(eq(CREATOR_ID), eq("SCHEDULE_KEEP_CONVERTED"),
+                any(NotificationPriority.class), anyString(), anyString(),
                 anyString(), anyLong(), eq(NotificationScopeType.TEAM), eq(TEAM_ID), anyString(), eq(ACTOR_ID));
     }
 
@@ -143,7 +144,8 @@ class ScheduleKeepNotificationServiceTest {
 
         service().notifyConverted(scope, keep, schedule(), ACTOR_ID);
 
-        verify(publisher, never()).publishConverted(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(notificationService, never()).createNotificationPreAuthorized(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         verify(fanoutJobService).enqueue(eq(ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE), anyString(),
                 anyString(), any(UUID.class), isNull(),any(FanoutMessageKind.class), any(String[].class), any(NotificationPriority.class),
                 anyString(), anyLong(), anyString(), eq(ACTOR_ID));
@@ -159,7 +161,7 @@ class ScheduleKeepNotificationServiceTest {
 
         service().notifyConverted(scope, keep, schedule(), ACTOR_ID);
 
-        verifyNoInteractions(publisher);
+        verifyNoInteractions(notificationService);
         ArgumentCaptor<String> scopeRef = ArgumentCaptor.forClass(String.class);
         verify(fanoutJobService).enqueue(eq(ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE), scopeRef.capture(),
                 anyString(), any(UUID.class), isNull(),any(FanoutMessageKind.class), any(String[].class), any(NotificationPriority.class),
@@ -180,13 +182,17 @@ class ScheduleKeepNotificationServiceTest {
                 .when(fanoutJobService).enqueue(anyString(), anyString(), anyString(), any(UUID.class), isNull(),any(FanoutMessageKind.class), any(String[].class), any(NotificationPriority.class), anyString(), anyLong(),
                         anyString(), anyLong());
 
-        // best-effort: enqueue の失敗は呼び出し側（ScheduleKeepService）が握る契約のため、ここでは伝播してよい。
+        // best-effort: enqueue の失敗は呼び出し側が握る契約のため、ここでは伝播してよい。
+        // Issue #2990 L8 以降、その呼び出し側は業務TX内の ScheduleKeepService ではなく
+        // AFTER_COMMIT の ScheduleKeepConvertedNotificationListener であり、握っても
+        // 巻き添えにする業務トランザクションはもう存在しない。
         assertThatThrownBy(() -> service().notifyConverted(scope, keep, schedule(), ACTOR_ID))
                 .isInstanceOf(RuntimeException.class);
 
         // 作成者直送が enqueue より先に行われていること（enqueue が落ちても作成者は受領済み）。
-        InOrder order = inOrder(publisher, fanoutJobService);
-        order.verify(publisher).publishConverted(eq(CREATOR_ID), anyString(), anyString(), anyString(),
+        InOrder order = inOrder(notificationService, fanoutJobService);
+        order.verify(notificationService).createNotificationPreAuthorized(eq(CREATOR_ID), anyString(),
+                any(NotificationPriority.class), anyString(), anyString(),
                 anyString(), anyLong(), any(NotificationScopeType.class), anyLong(), anyString(), anyLong());
         order.verify(fanoutJobService).enqueue(anyString(), anyString(), anyString(), any(UUID.class), isNull(),any(FanoutMessageKind.class), any(String[].class), any(NotificationPriority.class), anyString(), anyLong(), anyString(), anyLong());
     }

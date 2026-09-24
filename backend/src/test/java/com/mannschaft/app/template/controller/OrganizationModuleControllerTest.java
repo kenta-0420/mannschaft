@@ -4,7 +4,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.organization.OrgErrorCode;
+import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.config.OrgScopeIdConverter;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.template.dto.OrgModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
@@ -19,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -26,11 +28,11 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 /**
  * {@link OrganizationModuleController} の単体テスト。
@@ -44,6 +46,7 @@ class OrganizationModuleControllerTest {
     private static final Long ORG_ID = 10L;
     private static final Long MODULE_ID = 100L;
     private static final String ORG_SLUG = "org-000001";
+    private static final OrgScopeId ORG_SCOPE = new OrgScopeId(ORG_ID);
 
     @Mock private ModuleService moduleService;
     @Mock private AccessControlService accessControlService;
@@ -68,16 +71,16 @@ class OrganizationModuleControllerTest {
     // -------------------------------------------------------
 
     @Test
-    @DisplayName("AC-1: getOrganizationModules – slug を渡すと resolveOrgId 経由で 200 を返す")
+    @DisplayName("AC-1: getOrganizationModules – スコープIDとACTIVE存在確認で200を返す")
     void getOrganizationModules_slugResolves_200() {
-        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willDoNothing().given(organizationService).assertActiveOrganizationExists(ORG_ID);
         given(moduleService.getOrganizationModules(ORG_ID)).willReturn(List.of());
         willDoNothing().given(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
 
-        ResponseEntity<ApiResponse<List<OrgModuleResponse>>> resp = controller.getOrganizationModules(ORG_SLUG);
+        ResponseEntity<ApiResponse<List<OrgModuleResponse>>> resp = controller.getOrganizationModules(ORG_SCOPE);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(organizationService).resolveOrgId(ORG_SLUG);
+        verify(organizationService).assertActiveOrganizationExists(ORG_ID);
         verify(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
         verify(moduleService).getOrganizationModules(ORG_ID);
     }
@@ -89,14 +92,14 @@ class OrganizationModuleControllerTest {
     @Test
     @DisplayName("AC-2: toggleOrganizationModule – ADMIN ユーザーが slug でトグル成功 200")
     void toggleOrganizationModule_adminSlug_200() {
-        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willDoNothing().given(organizationService).assertActiveOrganizationExists(ORG_ID);
         given(accessControlService.isAdmin(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
         ToggleModuleRequest req = new ToggleModuleRequest(MODULE_ID, true);
 
-        ResponseEntity<Void> resp = controller.toggleOrganizationModule(ORG_SLUG, MODULE_ID, req);
+        ResponseEntity<Void> resp = controller.toggleOrganizationModule(ORG_SCOPE, MODULE_ID, req);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(organizationService).resolveOrgId(ORG_SLUG);
+        verify(organizationService).assertActiveOrganizationExists(ORG_ID);
         verify(accessControlService).isAdmin(USER_ID, ORG_ID, "ORGANIZATION");
         verify(moduleService).toggleOrganizationModule(ORG_ID, req, USER_ID);
     }
@@ -104,29 +107,50 @@ class OrganizationModuleControllerTest {
     @Test
     @DisplayName("AC-5: toggleOrganizationModule – ADMIN でないと COMMON_002 例外が投げられる")
     void toggleOrganizationModule_nonAdmin_throws() {
-        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willDoNothing().given(organizationService).assertActiveOrganizationExists(ORG_ID);
         given(accessControlService.isAdmin(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
         ToggleModuleRequest req = new ToggleModuleRequest(MODULE_ID, true);
 
-        assertThatThrownBy(() -> controller.toggleOrganizationModule(ORG_SLUG, MODULE_ID, req))
+        assertThatThrownBy(() -> controller.toggleOrganizationModule(ORG_SCOPE, MODULE_ID, req))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(CommonErrorCode.COMMON_002));
     }
 
-    // -------------------------------------------------------
-    // AC-4: 存在しない slug は resolveOrgId が BusinessException を投げる
-    // -------------------------------------------------------
+    @Test
+    @DisplayName("CMP-112: 数値組織IDは正規スコープとして認可を通る")
+    void getOrganizationModules_numericId_usesCanonicalScopeId() {
+        willDoNothing().given(organizationService).assertActiveOrganizationExists(ORG_ID);
+        given(moduleService.getOrganizationModules(ORG_ID)).willReturn(List.of());
+        willDoNothing().given(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
+
+        ResponseEntity<ApiResponse<List<OrgModuleResponse>>> resp =
+                controller.getOrganizationModules(new OrgScopeId(ORG_ID));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(organizationService).assertActiveOrganizationExists(ORG_ID);
+        verify(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
+    }
 
     @Test
-    @DisplayName("AC-4: getOrganizationModules – 存在しない slug は resolveOrgId が ORG_001 例外")
+    @DisplayName("AC-4: 存在しないslugはORG_001相当の404へ変換する")
     void getOrganizationModules_notFoundSlug_throws() {
         given(organizationService.resolveOrgId("unknown-slug"))
-                .willThrow(new BusinessException(OrgErrorCode.ORG_001));
+                .willThrow(new BusinessException(com.mannschaft.app.organization.OrgErrorCode.ORG_001));
 
-        assertThatThrownBy(() -> controller.getOrganizationModules("unknown-slug"))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                        .isEqualTo(OrgErrorCode.ORG_001));
+        assertThatThrownBy(() -> new OrgScopeIdConverter(organizationService).convert("unknown-slug"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
     }
+
+    @Test
+    @DisplayName("CMP-112: 数値組織IDはslug解決を呼ばず正規スコープになる")
+    void numericOrgId_skipsSlugResolution() {
+        OrgScopeId scopeId = new OrgScopeIdConverter(organizationService).convert(String.valueOf(ORG_ID));
+
+        assertThat(scopeId.value()).isEqualTo(ORG_ID);
+        verify(organizationService, never()).resolveOrgId(String.valueOf(ORG_ID));
+    }
+
 }

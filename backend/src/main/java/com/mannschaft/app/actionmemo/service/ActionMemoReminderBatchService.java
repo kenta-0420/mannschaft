@@ -5,6 +5,8 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -65,6 +67,8 @@ public class ActionMemoReminderBatchService {
      * <p>UTC 現在時刻を基準に全ユーザーをユーザーTZで評価する。
      * cron は UTC zone で毎分起動することで、全TZをカバーする。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。行動メモのリマインド通知送信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "actionmemo-reminder", description = "行動メモのリマインド通知を毎分送信する")
     @Scheduled(cron = "0 * * * * *")
     @SchedulerLock(name = "actionMemoReminderBatch", lockAtMostFor = "PT3M", lockAtLeastFor = "PT0S")

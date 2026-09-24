@@ -59,7 +59,7 @@ concurrency:
 
 env:
   AWS_REGION: ap-northeast-1
-  NODE_VERSION: "22"
+  NODE_VERSION: "22.23.2"
 
 jobs:
   # ---------------------------------------------------------------------------

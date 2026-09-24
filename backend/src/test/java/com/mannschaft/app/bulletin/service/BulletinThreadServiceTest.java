@@ -14,6 +14,7 @@ import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinCategoryRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReactionRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
@@ -60,6 +61,9 @@ class BulletinThreadServiceTest {
     private BulletinThreadRepository threadRepository;
 
     @Mock
+    private BulletinReplyRepository replyRepository;
+
+    @Mock
     private BulletinCategoryService categoryService;
 
     @Mock
@@ -70,6 +74,9 @@ class BulletinThreadServiceTest {
 
     @Mock
     private AuditLogService auditLogService;
+
+    @Mock
+    private BulletinAttachmentService attachmentService;
 
     @Mock
     private BulletinArchiveFolderService archiveFolderService;

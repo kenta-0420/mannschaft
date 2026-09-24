@@ -2,6 +2,8 @@ package com.mannschaft.app.actionmemo.handler;
 
 import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,8 @@ public class ActionMemoTeamDefaultResetHandler {
      *
      * @param event チームメンバー脱退イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。チーム脱退に伴う行動メモ既定値のリセット。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @EventListener
     @Transactional
     public void onTeamMemberRemoved(TeamMemberRemovedEvent event) {

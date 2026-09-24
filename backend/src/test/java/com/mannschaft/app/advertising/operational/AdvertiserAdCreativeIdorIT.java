@@ -6,7 +6,10 @@ import com.mannschaft.app.advertising.dto.AdCreativeResponse;
 import com.mannschaft.app.advertising.dto.CreateAdCreativeRequest;
 import com.mannschaft.app.advertising.dto.UpdateAdCreativeRequest;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.validation.ConstraintViolation;
@@ -76,6 +79,8 @@ class AdvertiserAdCreativeIdorIT extends AbstractMySqlIntegrationTest {
 
         insertUserRole(adminAId, adminRoleId, orgAId);
         insertUserRole(adminBId, adminRoleId, orgBId);
+        MembershipTestHelper.insertMembership(em, adminAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, adminBId, ScopeType.ORGANIZATION, orgBId, RoleKind.MEMBER);
 
         Long accountAId = insertAdvertiserAccount(orgAId, "IDOR組織A広告主");
         Long accountBId = insertAdvertiserAccount(orgBId, "IDOR組織B広告主");
@@ -237,6 +242,15 @@ class AdvertiserAdCreativeIdorIT extends AbstractMySqlIntegrationTest {
     }
 
     private void insertRole(String name, String displayName, int priority) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。CI shard 再編成で
+        // 同一 JVM 内の同居テストが変わり得るため、盲目的 INSERT は禁止）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
         em.createNativeQuery(
                         "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                                 + "VALUES (:name, :dn, :priority, 0, NOW(), NOW())")

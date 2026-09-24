@@ -31,13 +31,13 @@ const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> =
 const { currentYear, currentMonth, events, loading, loadEvents, refresh, onPrevMonth, onNextMonth } =
   useCalendarEvents(fetcher, { cacheHalfMonths: 2 })
 
-// モバイルのリストビュー用: 表示中の月のイベントを日付昇順に並べる。
+// モバイルのリストビュー用: 表示中の月のイベントを実際の時系列（瞬間）昇順に並べる。
+// ISO 文字列のまま localeCompare すると、時差の異なる予定（例: +09:00 と Z）が
+// 文字列としての大小関係で並んでしまい、実際の前後関係と食い違う（Codex 検分指摘）。
+// 必ず Date.parse で瞬間へ変換してから比較する。
 const sortedEvents = computed(() =>
-  [...events.value].sort((a, b) => a.startAt.localeCompare(b.startAt)),
+  [...events.value].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt)),
 )
-
-// モバイルのリストビュー月ナビ用ラベル（例: 2026年7月）。
-const periodLabel = computed(() => `${currentYear.value}年${currentMonth.value}月`)
 
 function onDateClick(date: string) {
   selectedDate.value = date
@@ -108,50 +108,19 @@ onMounted(async () => {
     <!-- カレンダーはタップしないと時刻/詳細が見えず即時性が無いため、狭幅では
          日付・時刻・タイトルを 1 行で即時可視化するリストを既定にする。 -->
     <div class="md:hidden">
-      <!-- 月ナビ -->
-      <div class="mb-3 flex items-center justify-center gap-3">
-        <Button
-          icon="pi pi-chevron-left"
-          text
-          rounded
-          severity="secondary"
-          :aria-label="$t('schedule.list.prevMonth')"
-          @click="onPrevMonth"
-        />
-        <span class="min-w-[110px] text-center text-sm font-semibold text-surface-700 dark:text-surface-300">
-          {{ periodLabel }}
-        </span>
-        <Button
-          icon="pi pi-chevron-right"
-          text
-          rounded
-          severity="secondary"
-          :aria-label="$t('schedule.list.nextMonth')"
-          @click="onNextMonth"
-        />
-      </div>
-
-      <SectionCard class="overflow-hidden p-0" :class="{ 'opacity-60': refreshing }">
-        <div data-testid="schedule-list-view">
-          <template v-if="sortedEvents.length > 0">
-            <ScheduleListRow
-              v-for="ev in sortedEvents"
-              :key="ev.uniqueKey"
-              :event="ev"
-              scope-type="team"
-              :scope-id="teamSlug"
-              @open="onEventClick"
-              @responded="refresh"
-            />
-          </template>
-          <DashboardEmptyState
-            v-else
-            icon="pi pi-calendar"
-            :message="$t('schedule.list.empty')"
-            class="py-10"
-          />
-        </div>
-      </SectionCard>
+      <ScheduleMobileListView
+        :year="currentYear"
+        :month="currentMonth"
+        :events="sortedEvents"
+        scope-type="team"
+        :scope-id="teamSlug"
+        :empty-message="$t('schedule.list.empty')"
+        :dimmed="refreshing"
+        @prev-month="onPrevMonth"
+        @next-month="onNextMonth"
+        @open="(ev) => onEventClick(ev.id)"
+        @responded="refresh"
+      />
 
       <!-- 行タップ時の詳細（モバイルはインライン表示） -->
       <SectionCard v-if="showDetailPanel && selectedEvent" class="mt-4">

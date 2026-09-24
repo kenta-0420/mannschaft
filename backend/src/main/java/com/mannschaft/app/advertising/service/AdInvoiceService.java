@@ -12,8 +12,10 @@ import com.mannschaft.app.advertising.entity.AdInvoiceItemEntity;
 import com.mannschaft.app.advertising.repository.AdInvoiceItemRepository;
 import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.advertising.event.AdInvoicePaidEvent;
 import com.mannschaft.app.common.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ public class AdInvoiceService {
     private final AdInvoiceRepository adInvoiceRepository;
     private final AdInvoiceItemRepository adInvoiceItemRepository;
     private final AdvertisingMapper advertisingMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 広告主の請求書一覧を取得する。
@@ -85,6 +88,9 @@ public class AdInvoiceService {
         } catch (IllegalStateException e) {
             throw new BusinessException(AdvertisingErrorCode.AD_014, e);
         }
+        // 運営領収書の発行契機（F08.12 §5.2）。ID だけを載せてドメイン境界を越える。
+        // 受け手は AFTER_COMMIT で受けるため、入金確定がロールバックすれば発行も起きない。
+        eventPublisher.publishEvent(new AdInvoicePaidEvent(invoice.getId()));
         return advertisingMapper.toInvoiceSummary(invoice);
     }
 }

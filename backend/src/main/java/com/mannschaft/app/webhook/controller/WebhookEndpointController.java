@@ -2,6 +2,7 @@ package com.mannschaft.app.webhook.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.webhook.service.WebhookEndpointService;
 import com.mannschaft.app.webhook.service.WebhookEndpointService.CreateWebhookEndpointRequest;
 import com.mannschaft.app.webhook.service.WebhookEndpointService.UpdateWebhookEndpointRequest;
@@ -59,6 +60,7 @@ public class WebhookEndpointController {
      * @param scopeId   スコープID
      */
     @GetMapping
+    @RequireFeature("FEATURE_WEBHOOK_SYNC_ENABLED")
     public ApiResponse<List<WebhookEndpointResponse>> listEndpoints(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {

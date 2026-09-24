@@ -131,6 +131,7 @@ function isItemActive(path: string): boolean {
 
       <button
         type="button"
+        data-testid="feedback-open-button"
         class="flex items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
         @click="emit('open-feedback')"
       >

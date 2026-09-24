@@ -1,8 +1,11 @@
 package com.mannschaft.app.succession.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.succession.entity.DelinquencyEscalationEntity;
 import com.mannschaft.app.succession.entity.LegalFilingEntity;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -104,6 +107,9 @@ class SuccessionAuthzContractIT extends AbstractSuccessionIntegrationTest {
         insertUserRole(ADMIN_A, adminRoleId, ORG_A);
         insertUserRole(MEMBER_A, memberRoleId, ORG_A);
         insertUserRole(ADMIN_B, adminRoleId, ORG_B);
+        MembershipTestHelper.insertMembership(em, ADMIN_A, ScopeType.ORGANIZATION, ORG_A, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, MEMBER_A, ScopeType.ORGANIZATION, ORG_A, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, ADMIN_B, ScopeType.ORGANIZATION, ORG_B, RoleKind.MEMBER);
         // OUTSIDER はどのスコープにも role を持たない
 
         // legal_filings / delinquency_escalations は cross-domain FK を持たないため
@@ -488,6 +494,15 @@ class SuccessionAuthzContractIT extends AbstractSuccessionIntegrationTest {
     }
 
     private void insertRole(String name, String displayName, int priority, boolean isSystem) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。CI shard 再編成で
+        // 同一 JVM 内の同居テストが変わり得るため、盲目的 INSERT は禁止）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
         em.createNativeQuery(
                         "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                                 + "VALUES (:name, :dn, :priority, :sys, NOW(), NOW())")

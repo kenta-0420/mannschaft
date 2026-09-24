@@ -27,7 +27,7 @@ export interface IncidentBannerPagedResponse {
   meta?: {
     page?: number
     size?: number
-    /** BE の PagedResponse.PageMeta は total フィールドを返す（totalElements ではない）。 */
+    /** BE の PagedResponse.PageMeta は total フィールドを返す（total ではない）。 */
     total?: number
     totalPages?: number
   }

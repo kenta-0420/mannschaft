@@ -33,6 +33,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AccessControlService {
 
+    /**
+     * 運営（プラットフォーム）スコープを表す {@code scope_type} 値。
+     *
+     * <p>{@code ScopeType} enum には存在しない値であるため、{@code ScopeType.valueOf} へ
+     * 到達させてはならない。receipt ドメインの {@code ReceiptScopeType.PLATFORM} と対応する。</p>
+     */
+    public static final String PLATFORM_SCOPE_TYPE = "PLATFORM";
+
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final RoleService roleService;
@@ -76,6 +84,30 @@ public class AccessControlService {
     public boolean isMember(Long userId, Long scopeId, String scopeType) {
         ScopeType scope = ScopeType.valueOf(scopeType);
         return membershipRepository.existsActiveByUserAndScope(userId, scope, scopeId);
+    }
+
+    /**
+     * スコープに<b>在籍中</b>のメンバーの userId を返す（CMP-260912-1525）。
+     *
+     * <p>{@link #isMember} の集合版であり、判定源は同じ {@code memberships}（{@code left_at IS NULL}）。
+     * 1 人ずつ {@link #isMember} を呼ぶと人数ぶんクエリが出るため、まとめて 1 クエリで引く。</p>
+     *
+     * <h2>なぜ要るのか</h2>
+     * <p>一覧系の API を「1 件ずつ取る経路」から「まとめて取る経路」へ変えると、
+     * <b>1 件ずつなら効いていた対象側の所属チェックが落ちやすい</b>。
+     * たとえば時給の一括取得を {@code teamId} だけで引くと、
+     * 時給を設定されたあとに脱退した元メンバーの金銭情報まで返ってしまう
+     * （単数取得は {@code checkMembership(targetUserId, ...)} で対象の現在の所属を見ていた）。
+     * 呼び出し元のロール検査（誰が呼べるか）と対象の絞り込み（誰のデータを返すか）は別の軸であり、
+     * 後者をこのメソッドで担保する。</p>
+     *
+     * @param scopeId   スコープ ID
+     * @param scopeType スコープ種別（{@code "TEAM"} 等）
+     * @return 在籍中メンバーの userId（重複なし。0 名なら空リスト）
+     */
+    public List<Long> listActiveMemberIds(Long scopeId, String scopeType) {
+        ScopeType scope = ScopeType.valueOf(scopeType);
+        return membershipRepository.findActiveDistinctUserIdsByScope(scope, scopeId);
     }
 
     /**
@@ -235,6 +267,21 @@ public class AccessControlService {
         // スコープ別 findUserRole() では取得できないため、最強ロールとして先に解決する。
         if (isSystemAdmin(userId)) {
             return Optional.of(new EffectiveRole("SYSTEM_ADMIN", 1));
+        }
+
+        // PLATFORM（運営）スコープには実テナントが無く、ScopeType enum にも値が無い。
+        // ここへ到達するのは「SYSTEM_ADMIN ではない利用者が PLATFORM スコープを指した」場合であり、
+        // そのまま下へ流すと ScopeType.valueOf("PLATFORM") が IllegalArgumentException を投げて
+        // 500 になる。認可の失敗は 403 でなければならないため、空（＝無権限）を返して打ち切る。
+        // F08.12 §2.1。
+        if (PLATFORM_SCOPE_TYPE.equals(scopeType)) {
+            return Optional.empty();
+        }
+
+        // 非アクティブ利用者だけをここで遮断する。user_roles は移行期間にも既存の認可情報源であり、
+        // membership 行が未作成というだけで既存 ADMIN/DEPUTY_ADMIN を無権限化してはならない。
+        if (!userRoleRepository.isActiveUser(userId)) {
+            return Optional.empty();
         }
 
         EffectiveRole best = null;
@@ -423,6 +470,13 @@ public class AccessControlService {
         }
     }
 
+    /** F09.14 の wallet/委任 mutation 用。scope ADMIN 本人だけを許可し、SYSTEM_ADMIN は監査 read-only とする。 */
+    public void checkScopeAdminOnly(Long userId, Long scopeId, String scopeType) {
+        if (isSystemAdmin(userId) || !isAdmin(userId, scopeId, scopeType)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
     /**
      * ADMIN 以上 or 指定 Permission を持つ DEPUTY_ADMIN かを判定する（F18 Phase 4 第二陣 2B）。
      *
@@ -466,6 +520,68 @@ public class AccessControlService {
         throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
+    /**
+     * ADMIN、または指定 Permission を持つ DEPUTY_ADMIN かを判定する（TEAM / ORGANIZATION 両対応・CMP-041）。
+     *
+     * <p>{@link #checkAdminOrHasPermission} は {@code ORGANIZATION} 以外を
+     * {@link IllegalArgumentException} で撥ねるため、TEAM・ORGANIZATION の両方に立つ機能
+     * （アンケート等、設計書の「ADMIN+」）では使えない。本メソッドは同じ意味論のまま
+     * scopeType でリポジトリのクエリを振り分ける。既存メソッドは一切変更していない。</p>
+     *
+     * <p>挙動:</p>
+     * <ul>
+     *   <li>ADMIN は無条件で許可（{@link #isAdmin}）</li>
+     *   <li>DEPUTY_ADMIN は次のいずれかを満たす場合のみ許可:
+     *     <ul>
+     *       <li>{@code role_permissions} に {@code is_default=1} で permission が登録されている</li>
+     *       <li>{@code permission_groups} 経由で permission が個別付与されている</li>
+     *     </ul>
+     *   </li>
+     *   <li>それ以外（MEMBER / SUPPORTER / 非メンバー / 天井登録のみの DEPUTY_ADMIN）は false</li>
+     * </ul>
+     *
+     * <p><b>SYSTEM_ADMIN の扱い</b>: 既存の {@link #isAdminOrAbove} は
+     * {@code ADMIN_ROLES = Set.of("ADMIN", "DEPUTY_ADMIN")}（:52）との照合であり SYSTEM_ADMIN を
+     * 含まない。本メソッドも同様に SYSTEM_ADMIN を特別扱いしない（必要な経路は
+     * {@link #isSystemAdmin} / {@link #checkSystemAdmin} を別途併用する既存作法に従う）。</p>
+     *
+     * @param userId         操作者ユーザー ID
+     * @param scopeId        チーム ID または組織 ID
+     * @param scopeType      {@code "TEAM"} または {@code "ORGANIZATION"}
+     * @param permissionName 必要な Permission 名（例: {@code "MANAGE_SURVEYS"}）
+     * @return 許可なら true
+     * @throws IllegalArgumentException scopeType が TEAM / ORGANIZATION 以外の場合
+     */
+    public boolean hasAdminOrPermissionInScope(
+            Long userId, Long scopeId, String scopeType, String permissionName) {
+        boolean team = "TEAM".equals(scopeType);
+        if (!team && !"ORGANIZATION".equals(scopeType)) {
+            throw new IllegalArgumentException(
+                    "hasAdminOrPermissionInScope は TEAM / ORGANIZATION のみ対応します: " + scopeType);
+        }
+        // 1. ADMIN なら無条件許可
+        if (isAdmin(userId, scopeId, scopeType)) {
+            return true;
+        }
+        // 2. DEPUTY_ADMIN かつ Permission 保有なら許可
+        return team
+                ? userRoleRepository.existsDeputyAdminWithPermissionInTeam(userId, scopeId, permissionName)
+                : userRoleRepository.existsDeputyAdminWithPermissionInOrganization(userId, scopeId, permissionName);
+    }
+
+    /**
+     * {@link #hasAdminOrPermissionInScope} の例外版。違反時は 403（COMMON_002）。
+     *
+     * @throws BusinessException        権限なしの場合（COMMON_002）
+     * @throws IllegalArgumentException scopeType が TEAM / ORGANIZATION 以外の場合
+     */
+    public void checkAdminOrHasPermissionInScope(
+            Long userId, Long scopeId, String scopeType, String permissionName) {
+        if (!hasAdminOrPermissionInScope(userId, scopeId, scopeType, permissionName)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
     // ========================================
     // SYSTEM_ADMIN 判定
     // ========================================
@@ -484,6 +600,27 @@ public class AccessControlService {
         if (!isSystemAdmin(userId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
+    }
+
+    /**
+     * スコープ種別に応じて ADMIN 以上を要求する。PLATFORM（運営）スコープの場合は
+     * SYSTEM_ADMIN を要求する（F08.12 §2.1）。
+     *
+     * <p>運営領収書の管理 API は {@code /api/v1/system-admin/**} 配下に置かれるため、
+     * 通常はフィルタチェーン（{@code SecurityConfig} のパス認可）で先に 403 になる。
+     * 本メソッドは<b>Service 層が別経路（バッチ・イベントリスナー）から呼ばれた場合の
+     * 二重防御</b>であり、フィルタが無い経路でも 500 ではなく 403 に落ちることを保証する。</p>
+     *
+     * @param userId    操作ユーザー
+     * @param scopeId   スコープ ID（PLATFORM は 0）
+     * @param scopeType スコープ種別（{@code "PLATFORM"} / {@code "TEAM"} / {@code "ORGANIZATION"}）
+     */
+    public void checkAdminOrAboveIncludingPlatform(Long userId, Long scopeId, String scopeType) {
+        if (PLATFORM_SCOPE_TYPE.equals(scopeType)) {
+            checkSystemAdmin(userId);
+            return;
+        }
+        checkAdminOrAbove(userId, scopeId, scopeType);
     }
 
     /**
@@ -590,6 +727,21 @@ public class AccessControlService {
     /** 指定スコープの ACTIVE な distinct ユーザー数を返す（membership 基準）。 */
     public int countActiveDistinctMembers(String scopeType, Long scopeId) {
         return (int) membershipRepository.countActiveDistinctUsersByScope(ScopeType.valueOf(scopeType), scopeId);
+    }
+
+    /** 複数スコープの ACTIVE distinct メンバー数を一括取得する。 */
+    public Map<Long, Integer> countActiveDistinctMembersByScopes(
+            String scopeType, java.util.Collection<Long> scopeIds) {
+        Map<Long, Integer> result = new LinkedHashMap<>();
+        if (scopeIds == null || scopeIds.isEmpty()) {
+            return result;
+        }
+        for (MembershipRepository.ScopeMemberCountProjection row
+                : membershipRepository.countActiveDistinctUsersByScopes(
+                        ScopeType.valueOf(scopeType), scopeIds)) {
+            result.put(row.getScopeId(), Math.toIntExact(row.getMemberCount()));
+        }
+        return result;
     }
 
     /**

@@ -2,6 +2,7 @@ package com.mannschaft.app.receipt.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.receipt.ReceiptArchiveKind;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.dto.AnnualSummaryResponse;
 import com.mannschaft.app.receipt.dto.MyReceiptResponse;
@@ -56,7 +57,7 @@ public class ReceiptMyController {
             @RequestParam(required = false) Long scopeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        ReceiptScopeType type = scopeType != null ? ReceiptScopeType.valueOf(scopeType.toUpperCase()) : null;
+        ReceiptScopeType type = scopeType != null ? ReceiptScopeType.from(scopeType) : null;
         PagedResponse<MyReceiptResponse> response = receiptMyService.listMyReceipts(
                 SecurityUtils.getCurrentUserId(), type, scopeId, page, size);
         return ResponseEntity.ok(response);
@@ -75,8 +76,11 @@ public class ReceiptMyController {
     @GetMapping("/{id}/pdf")
     @Operation(summary = "自分宛の領収書PDFダウンロード")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ダウンロード成功")
-    public ResponseEntity<byte[]> downloadMyReceiptPdf(@PathVariable Long id) {
-        byte[] pdf = receiptMyService.getMyReceiptPdf(SecurityUtils.getCurrentUserId(), id);
+    public ResponseEntity<byte[]> downloadMyReceiptPdf(
+            @PathVariable Long id,
+            @RequestParam(required = false) String kind) {
+        ReceiptArchiveKind archiveKind = kind == null ? null : ReceiptArchiveKind.valueOf(kind.toUpperCase());
+        byte[] pdf = receiptMyService.getMyReceiptPdf(SecurityUtils.getCurrentUserId(), id, archiveKind);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"receipt_" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
@@ -99,7 +103,7 @@ public class ReceiptMyController {
             @RequestParam int year,
             @RequestParam(required = false) String scopeType,
             @RequestParam(required = false) Long scopeId) {
-        ReceiptScopeType type = scopeType != null ? ReceiptScopeType.valueOf(scopeType.toUpperCase()) : null;
+        ReceiptScopeType type = scopeType != null ? ReceiptScopeType.from(scopeType) : null;
         AnnualSummaryResponse response = receiptMyService.getAnnualSummary(
                 SecurityUtils.getCurrentUserId(), year, type, scopeId);
         return ResponseEntity.ok(ApiResponse.of(response));

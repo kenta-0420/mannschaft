@@ -93,7 +93,9 @@ public class BudgetFiscalYearService {
     public FiscalYearResponse getById(Long id) {
         BudgetFiscalYearEntity entity = findById(id);
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, entity.getScopeId(), entity.getScopeType());
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: checkMembership止まりでMEMBERも会計年度詳細を
+        // 閲覧できていた実機バグを根治する。予算はスコープ問わずDEPUTY_ADMIN限定のためスコープ分岐は不要。
+        accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
         return budgetMapper.toFiscalYearResponse(entity);
     }
 
@@ -102,7 +104,9 @@ public class BudgetFiscalYearService {
      */
     public List<FiscalYearResponse> listByScope(String scopeType, Long scopeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: checkMembership止まりでMEMBERも会計年度一覧を
+        // 閲覧できていた実機バグを根治する。予算はスコープ問わずDEPUTY_ADMIN限定のためスコープ分岐は不要。
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
 
         return fiscalYearRepository.findByScopeTypeAndScopeId(scopeType, scopeId)
                 .stream()

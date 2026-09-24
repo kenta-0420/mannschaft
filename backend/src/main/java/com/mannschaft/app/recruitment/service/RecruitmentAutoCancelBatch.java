@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
@@ -10,12 +12,15 @@ import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantHistoryEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentCancelledEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -61,10 +66,15 @@ public class RecruitmentAutoCancelBatch {
     private final RecruitmentParticipantRepository participantRepository;
     private final RecruitmentParticipantHistoryRepository historyRepository;
     private final ConfirmableNotificationService confirmableNotificationService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ObjectProvider<RecruitmentAutoCancelBatch> selfProvider;
 
     /**
      * 5分間隔で自動キャンセル対象の募集を処理する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_RECRUITMENT_ENABLED",
+            reason = "auto_cancel_at 経過かつ定員不足という時刻条件のみで決まる冪等処理であり、止めても再開後に同じ募集をまとめて拾い直せる")
     @BatchEndpoint(name = "recruitment-auto-cancel", description = "auto_cancel_at 経過かつ最小定員不足の募集を 5 分毎に AUTO_CANCELLED に遷移する")
     @Scheduled(fixedDelay = 5 * 60 * 1000)
     @SchedulerLock(name = "recruitment-auto-cancel-batch", lockAtLeastFor = "PT4M", lockAtMostFor = "PT15M")
@@ -81,7 +91,9 @@ public class RecruitmentAutoCancelBatch {
         int totalCancelled = 0;
         for (RecruitmentListingEntity candidate : candidates) {
             try {
-                int result = processSingleListing(candidate.getId(), now);
+                // 同一 Bean 内の直接呼び出しでは @Transactional が適用されないため、
+                // Spring プロキシを経由して行ロックとイベントの AFTER_COMMIT を有効にする。
+                int result = selfProvider.getObject().processSingleListing(candidate.getId(), now);
                 totalCancelled += result;
             } catch (Exception e) {
                 log.warn("F03.11 自動キャンセルバッチ 個別処理失敗: listingId={}, error={}",
@@ -115,7 +127,6 @@ public class RecruitmentAutoCancelBatch {
         // PESSIMISTIC_WRITE で行ロックを取得して最新状態を確認
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new IllegalStateException("募集が見つかりません: id=" + listingId));
-
         // 再確認: OPEN/FULL かつ confirmedCount < minCapacity であること
         if (listing.getStatus() != RecruitmentListingStatus.OPEN
                 && listing.getStatus() != RecruitmentListingStatus.FULL) {
@@ -214,6 +225,8 @@ public class RecruitmentAutoCancelBatch {
 
         // 募集を保存
         listingRepository.save(listing);
+        eventPublisher.publishEvent(new RecruitmentCancelledEvent(
+                listing.getId(), Boolean.TRUE.equals(listing.getPaymentEnabled())));
 
         log.info("F03.11 自動キャンセル実行: listingId={}, 参加者キャンセル数={}", listingId, totalProcessed);
 
@@ -221,7 +234,9 @@ public class RecruitmentAutoCancelBatch {
         if (!affectedUserIds.isEmpty()) {
             try {
                 confirmableNotificationService.send(
-                        ScopeType.valueOf(listing.getScopeType().name()),
+                        listing.getScopeType() == com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                                ? ScopeType.PLATFORM
+                                : ScopeType.valueOf(listing.getScopeType().name()),
                         listing.getScopeId(),
                         "募集が自動キャンセルされました",
                         "最小定員を達成できなかったため自動キャンセルされました",

@@ -1,20 +1,20 @@
 package com.mannschaft.app.timetable.personal;
 
+
+
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.timetable.personal.event.PersonalTimetableSyncNotificationEvent;
 import com.mannschaft.app.timetable.personal.listener.PersonalTimetableSyncNotificationListener;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
@@ -45,7 +45,7 @@ class PersonalTimetableSyncNotificationListenerTest {
         NotificationDeliveryRequest r2 = buildRequest(2L);
 
         given(notificationDeliveryRunner.sendOne(any())).willReturn(
-                NotificationEntity.builder().userId(1L).build());
+                NotificationDeliveryResult.DELIVERED);
 
         listener.onPersonalTimetableSyncNotification(
                 new PersonalTimetableSyncNotificationEvent(List.of(r1, r2)));

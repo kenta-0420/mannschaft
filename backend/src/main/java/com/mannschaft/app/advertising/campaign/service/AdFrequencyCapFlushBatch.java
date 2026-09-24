@@ -1,5 +1,7 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.campaign.entity.UserAdDeliveryCounter;
 import com.mannschaft.app.advertising.campaign.repository.UserAdDeliveryCounterRepository;
@@ -44,6 +46,8 @@ public class AdFrequencyCapFlushBatch {
     /**
      * 日次 02:00 (Asia/Tokyo) 実行のフリーキャップ flush バッチ。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "Valkey 側のカウンタは週次 TTL で自動失効するため、止めると配信回数が RDB へ転記されないまま消え、フリークエンシーキャップの実績が復元不能に欠損する")
     @BatchEndpoint(name = "advertising-frequency-cap-flush-daily", description = "Valkey の広告フリークエンシーキャップカウンタを毎日 02:00 RDB へ転記する")
     @Scheduled(cron = "${mannschaft.ad.frequency-cap.flush-cron:0 0 2 * * *}", zone = "Asia/Tokyo")
     @SchedulerLock(name = "adFrequencyCapFlush", lockAtMostFor = "15m", lockAtLeastFor = "1m")

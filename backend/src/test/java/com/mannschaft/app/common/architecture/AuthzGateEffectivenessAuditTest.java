@@ -210,11 +210,14 @@ class AuthzGateEffectivenessAuditTest {
      * {@code CareLinkService} の 2 件は PR #2547 で是正済みのため本 baseline から除いてある。
      */
     private static final Set<String> TYPE1_REVIEWED = Set.of(
+        // ⚠️ 下記3件は「パス:行番号:引数名」照合のため行挿入で機械的に腐る（登録追加ではない）。
+        // Issue #2990 L5（通知TX境界の是正）の行挿入で 77->78 / 150->151 / 294->298 へ追随。
+        // 引数の宣言・死んでいる事実・門番の所在はいずれも変わっていない。
         // 門番は EventRollCallController の requireScopeAdmin(operator, TEAM, teamId, eventId)。
-        "src/main/java/com/mannschaft/app/event/service/EventRollCallService.java:77:teamId",
-        "src/main/java/com/mannschaft/app/event/service/EventRollCallService.java:150:teamId",
+        "src/main/java/com/mannschaft/app/event/service/EventRollCallService.java:78:teamId",
+        "src/main/java/com/mannschaft/app/event/service/EventRollCallService.java:151:teamId",
         // 門番は EventRsvpController の requireScopeMember(userId, TEAM, teamId, eventId)。
-        "src/main/java/com/mannschaft/app/event/service/EventRsvpService.java:294:teamId",
+        "src/main/java/com/mannschaft/app/event/service/EventRsvpService.java:298:teamId",
         // 門番は各 *ProfileMediaController の checkAdminOrAbove / 自己スコープ突合。
         "src/main/java/com/mannschaft/app/profile/service/ProfileMediaService.java:232:requestUserId",
         // 門番は listFriends の accessControlService.checkMembership(userId, teamId, SCOPE_TEAM)。

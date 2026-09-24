@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.UserConstants;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
@@ -78,6 +80,8 @@ public class PaymentPurgeEventListener {
      * 継続実行する（GDPR 30 日タイムリミット遵守のため）。失敗件は WARN ログを残し、
      * 夜次補正バッチ（Phase D で導入予定）で再処理する運用とする。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会確定者の支払履歴のセンチネル化と stripe_customers 行の削除が実行されず、GDPR 第17条の消去期限を直接破り外部 Stripe 顧客との紐付けも残る")
     @Async("purge-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

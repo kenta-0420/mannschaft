@@ -13,7 +13,10 @@ import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -60,7 +63,7 @@ public class CirculationExportService {
 
     private final CirculationDocumentRepository documentRepository;
     private final CirculationRecipientRepository recipientRepository;
-    private final StorageService storageService;
+    private final StorageAccessService storageAccessService;
     private final CirculationExportAsyncExecutor asyncExecutor;
     private final DomainEventPublisher eventPublisher;
 
@@ -101,7 +104,7 @@ public class CirculationExportService {
         // 既に COMPLETED の場合: Pre-signed URL を返す（Controller が 302 する）
         if (entity.getExportStatus() == CirculationExportStatus.COMPLETED
                 && entity.getExportFileKey() != null) {
-            String url = storageService.generateDownloadUrl(entity.getExportFileKey(), PRESIGN_TTL);
+            String url = generateExportDownloadUrl(entity);
             return new ExportStatusResponse(
                     entity.getId(),
                     CirculationExportStatus.COMPLETED.name(),
@@ -161,7 +164,7 @@ public class CirculationExportService {
         String url = null;
         if (entity.getExportStatus() == CirculationExportStatus.COMPLETED
                 && entity.getExportFileKey() != null) {
-            url = storageService.generateDownloadUrl(entity.getExportFileKey(), PRESIGN_TTL);
+            url = generateExportDownloadUrl(entity);
         }
 
         return new ExportStatusResponse(
@@ -212,6 +215,22 @@ public class CirculationExportService {
             return;
         }
         throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+    }
+
+    private String generateExportDownloadUrl(CirculationDocumentEntity entity) {
+        return storageAccessService.generateDownloadUrl(
+                entity.getExportFileKey(), scopeOf(entity),
+                new StorageAclContentReference("CIRCULATION_DOCUMENT", entity.getId().toString()),
+                new StorageAclAttachmentBinding("CIRCULATION_EXPORT", entity.getId().toString()), PRESIGN_TTL);
+    }
+
+    private StorageAclScope scopeOf(CirculationDocumentEntity entity) {
+        return switch (entity.getScopeType()) {
+            case "TEAM" -> StorageAclScope.team(entity.getScopeId());
+            case "ORGANIZATION" -> StorageAclScope.organization(entity.getScopeId());
+            case "PERSONAL" -> StorageAclScope.personal(entity.getCreatedBy());
+            default -> throw new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_INVALID_REQUEST);
+        };
     }
 
 }

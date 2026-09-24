@@ -3,6 +3,7 @@ package com.mannschaft.app.moderation.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.moderation.ModerationErrorCode;
 import com.mannschaft.app.moderation.ModerationMapper;
 import com.mannschaft.app.moderation.ReportReason;
@@ -12,6 +13,7 @@ import com.mannschaft.app.moderation.dto.CreateReportRequest;
 import com.mannschaft.app.moderation.dto.ReportResponse;
 import com.mannschaft.app.moderation.entity.ContentReportEntity;
 import com.mannschaft.app.moderation.repository.ContentReportRepository;
+import com.mannschaft.app.recruitment.service.RecruitmentListingModerationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -36,13 +38,30 @@ public class ContentReportService {
     private final ContentReportRepository reportRepository;
     private final UserRepository userRepository;
     private final ModerationMapper moderationMapper;
+    private final RecruitmentListingModerationService recruitmentListingModerationService;
 
     /**
      * コンテンツを通報する。
      */
     @Transactional
     public ReportResponse createReport(CreateReportRequest req, Long userId) {
-        ReportTargetType targetType = ReportTargetType.valueOf(req.getTargetType());
+        ReportTargetType targetType = EnumInputParser.parse(ReportTargetType.class, req.getTargetType(), "targetType");
+
+        String scopeType = req.getScopeType() != null ? req.getScopeType() : "TEAM";
+        Long scopeId = req.getScopeId() != null ? req.getScopeId() : 0L;
+        Long targetUserId = req.getTargetUserId();
+        String contentSnapshot = req.getContentSnapshot();
+        if (targetType == ReportTargetType.RECRUITMENT_LISTING) {
+            RecruitmentListingModerationService.ListingReportTarget target =
+                    recruitmentListingModerationService.getReportTarget(req.getTargetId(), userId);
+            if (userId.equals(target.ownerUserId())) {
+                throw new BusinessException(ModerationErrorCode.CANNOT_REPORT_OWN_CONTENT);
+            }
+            scopeType = target.scopeType();
+            scopeId = target.scopeId();
+            targetUserId = target.ownerUserId();
+            contentSnapshot = target.title();
+        }
 
         if (reportRepository.existsByReportedByAndTargetTypeAndTargetId(
                 userId, targetType, req.getTargetId())) {
@@ -53,12 +72,12 @@ public class ContentReportService {
                 .targetType(targetType)
                 .targetId(req.getTargetId())
                 .reportedBy(userId)
-                .scopeType(req.getScopeType() != null ? req.getScopeType() : "TEAM")
-                .scopeId(req.getScopeId() != null ? req.getScopeId() : 0L)
-                .reason(ReportReason.valueOf(req.getReason()))
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .reason(EnumInputParser.parse(ReportReason.class, req.getReason(), "reason"))
                 .description(req.getDescription())
-                .targetUserId(req.getTargetUserId())
-                .contentSnapshot(req.getContentSnapshot())
+                .targetUserId(targetUserId)
+                .contentSnapshot(contentSnapshot)
                 .build();
         report = reportRepository.save(report);
 
@@ -109,6 +128,9 @@ public class ContentReportService {
         ContentReportEntity report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new BusinessException(ModerationErrorCode.REPORT_NOT_FOUND));
         report.hideContent();
+        if (report.getTargetType() == ReportTargetType.RECRUITMENT_LISTING) {
+            recruitmentListingModerationService.hide(report.getTargetId());
+        }
         reportRepository.save(report);
         log.info("コンテンツ非表示: reportId={}, targetType={}, targetId={}",
                 reportId, report.getTargetType(), report.getTargetId());
@@ -122,6 +144,9 @@ public class ContentReportService {
         ContentReportEntity report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new BusinessException(ModerationErrorCode.REPORT_NOT_FOUND));
         report.unhideContent();
+        if (report.getTargetType() == ReportTargetType.RECRUITMENT_LISTING) {
+            recruitmentListingModerationService.restore(report.getTargetId());
+        }
         reportRepository.save(report);
         log.info("コンテンツ非表示解除: reportId={}, targetType={}, targetId={}",
                 reportId, report.getTargetType(), report.getTargetId());

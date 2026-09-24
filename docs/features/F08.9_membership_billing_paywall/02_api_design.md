@@ -21,13 +21,15 @@
 
 ```
 POST /api/v1/payment-items/{itemId}/checkout
-Body: { beneficiaryUserId: number, idempotencyKey?: string }
-Headers: Idempotency-Key
+Body: { beneficiaryUserId: number }
+Headers: Idempotency-Key（必須）
 ```
 - **払い手の確定**：払い手は常に `SecurityUtils.getCurrentUserId()`（＝実際にログインしている人）。**後見切替セッション中（`X-Proxy-For-User-Id` 付き）でも払い手は保護者のまま**（子になりすまさない）。この場合 `payer_relationship=GUARDIAN_PROXY` を記録し、決済が「子の自己払い」と誤読されないようにする。`beneficiaryUserId` は明示パラメータ（切替中は子＝`X-Proxy-For-User-Id` と一致を検証）。
 - 認可：払い手が `beneficiaryUserId` に対し代理払い可（§03_security §2）。本人なら `beneficiaryUserId==self`。
 - 処理：`ConnectChargeService.charge(MEMBERSHIP, AUTOMATIC, faceAmount, payeeConnectAccountId, payerStripeCustomerId, idempotencyKey)` を呼び、`member_payments`（PENDING→Webhook で PAID）＋`escrow_transaction_id` 連結。
-- レスポンス：`CheckoutResponse { checkoutUrl | clientSecret, memberPaymentId }`
+- レスポンス：`ConnectCheckoutResponse { clientSecret, memberPaymentId, escrowTransactionId }`
+- **再送契約**：同じ `Idempotency-Key` の再送は同じ PaymentIntent・`memberPayment` を返し、新しい決済を起票しない。Stripe confirm 前の通信断から再開できるよう、未確定の PaymentIntent では `clientSecret` も再取得して返す。`PAID` の確定は同期レスポンスではなく署名検証済み Webhook のみが行う。
+- 状態照会：`GET /api/v1/payment-items/{itemId}/checkout/{memberPaymentId}` は、払い手本人または受益者本人に限り `{ memberPaymentId, status }` を返す。不在・権限外は同じ 404 とし、他人の決済有無を秘匿する。
 - エラー：`MEMBERSHIP_PAYER_NOT_AUTHORIZED`(403)／`MEMBERSHIP_ALREADY_PAID`(409)／`CONNECT_ACCOUNT_NOT_READY`(409)／`PAYMENT_ITEM_INACTIVE`(422)。
 - **受領者 Connect 口座が READY でない場合**：払い手へは「このチーム/組織は現在お支払いの受け取り準備中です。しばらくお待ちください」と返し（払い手向け文言・04 §3）、受領者へは onboarding 督促通知（恒久/一時の別は `onboarding_status` で判定し、`DISABLED`=恒久、`PENDING/ONBOARDING/RESTRICTED`=一時）。定期監視で `is_active` な会費項目の受領口座が非 READY なものをアラート。
 
@@ -36,16 +38,19 @@ Headers: Idempotency-Key
 ```
 GET  /api/v1/me/payable-dues
 ```
-- 認証ユーザーが**払える対象だけ**（本人＋後見下の子＋有効 grant のある受益者）を返す。**権原のない受益者は一切含めない**（他人の未払いを列挙させない＝IDOR 防止・03_security §2）。受益者・チーム/組織・項目・金額・期限・継続/期別区分に加え、**既に他の払い手（別の保護者/本人）が支払い済みの項目は `alreadyPaid` で示す**（共同親権の二重払い・取り違えを防ぐ）。
+- 認証ユーザーが**払える対象だけ**（本人＋後見下の子）を返す。**権原のない受益者は一切含めない**（他人の未払いを列挙させない＝IDOR 防止・03_security §2）。受益者・チーム/組織・項目・金額・期限・継続/期別区分に加え、**既に他の払い手（別の保護者/本人）が支払い済みの項目は `alreadyPaid` で示す**（共同親権の二重払い・取り違えを防ぐ）。
 - レスポンス：`PayableDuesResponse { items: [{ beneficiaryUserId, beneficiaryDisplayName, scope, paymentItemId, name, faceAmount, payerSurcharge, totalCharge, dueDate, kind(ONE_TIME|RECURRING|TERM), authorizationVia, alreadyPaid: boolean, paidBy?: { userId, displayName }, paidAt? }] }`
 
 ```
-POST /api/v1/me/payable-dues/bulk-checkout
-Body: { selections: [{ paymentItemId, beneficiaryUserId }], idempotencyKey }
+POST /api/v1/payment-items/{itemId}/checkout
+Body: { beneficiaryUserId: number }
+Headers: Idempotency-Key（選択明細ごとに安定したキー）
 ```
-- 選択した複数会費を**1セッションでまとめて決済**（受領者ごとに destination 振り分け）。各明細を個別 `member_payments` として起票し、まとめの領収書はそれぞれ受領者名義で発行。
-- **起票直前に各明細を再認可**（一覧取得後に権原が失効/支払い済みに変わる可能性があるため）：明細ごとに `authorizePayment(payer, beneficiary, item)` と `existsValidPaidPayment` を**都度評価**し、権原喪失/支払い済みの明細は**スキップして結果に理由を返す**（部分成功）。確認画面で「誰の・どの会費を・いくら」を明細表示してから決済（受益者の取り違え防止）。
-- レスポンス：`BulkCheckoutResponse { checkoutUrl, lines: [{ paymentItemId, beneficiaryUserId, memberPaymentId, accepted: boolean, skipReason? }] }`
+- 「まとめて決済」は **1回の利用者選択・確認フロー**を意味し、Stripe上の単一 PaymentIntent を意味しない。複数受領者へ destination charge で直接着金するため、選択明細ごとに上記個別 checkout を順次起票・confirm する。1つの platform PaymentIntent を後から複数受領者へ振り分ける方式は採用しない。
+- **開始前の明示同意**：確認モーダルで、決済件数・受益者/受領先・明細・合計額に加え、カード明細が複数になる可能性、順次処理であること、途中失敗時は一部だけ成功し得ること、成功済み明細は再課金せず未完了分のみ再試行することを表示する。利用者が同意するまで checkout を1件も起票しない。
+- **各起票直前に再認可**（一覧取得後に権原が失効/支払い済みに変わる可能性があるため）：明細ごとに `authorizePayment(payer, beneficiary, item)` と `existsValidPaidPayment` を**都度評価**する。権原喪失/支払い済みは当該明細だけ失敗として表示し、後続を自動課金しない。
+- 各明細は Payment Element で confirm し、上記状態照会を `memberPaymentId` で短時間 poll する。confirm 成功だけでは「支払い済み」と表示せず、状態が `PAID` になった明細だけ完了とする（支払済みになると未払い一覧から消えるため、`GET /me/payable-dues` は確定判定には使わない）。途中失敗時は `支払い済み / 反映待ち / 失敗 / 未処理` を区別して表示する。
+- 明細ごとの `Idempotency-Key` は処理完了まで同じ値を再利用し、Webhook で `PAID` を確認した時点で破棄する。これにより画面再読込・通信再送でも二重 PaymentIntent を作らない。
 
 ---
 
@@ -115,17 +120,9 @@ POST /api/v1/me/guardianship/children/{childUserId}/handover/initiate   # 引き
 
 ---
 
-## 3. 代理払い許可（第三者・非後見）
+## 3. 非後見第三者への直接代理払い
 
-```
-POST   /api/v1/me/payment-proxy-grants/invite     # 受益者が払い手を招待（トークン or in-app）
-Body: { payerUserIdOrEmail, paymentItemId?, effectiveUntil? }
-POST   /api/v1/payment-proxy-grants/{token}/accept # 払い手が受諾
-GET    /api/v1/me/payment-proxy-grants             # 受益者/払い手が自分の grant 一覧
-DELETE /api/v1/me/payment-proxy-grants/{id}        # 取消（受益者 or 払い手）
-```
-- 後見（保護者）経由は **grant 不要**ゆえ本 API は対象外（祖父母・スポンサー等のみ）。
-- レスポンス：`PaymentProxyGrantResponse { id, beneficiaryUserId, payerUserId, paymentItemId?, status, effectiveFrom, effectiveUntil }`
+第三者向けの招待・grant API は提供しない。直接支払いは本人または承認済み保護者・後見人に限定し、例外的な援助は管理者手動記録、将来の組織管理補助・免除・クレジットで扱う。
 
 ---
 
@@ -143,7 +140,7 @@ GET    /api/v1/me/membership-subscriptions           # 自分が払い手の継�
 GET    /api/v1/teams/{id}/membership-subscriptions    # 管理者：チームの継続課金一覧
 ```
 - **支払い方法保存（SetupIntent 基盤・P5 第二波で新設）**：継続課金（案b）は次サイクル以降を off_session で課金するため、加入の前に PM を保存しておく必要がある。`POST /me/payment-methods/setup-intent`（`PaymentMethodService.createSetupIntent`）が認証ユーザーの Stripe Customer を get-or-create し `usage=off_session` の SetupIntent の `client_secret` を返す。FE が Stripe.js で confirm（カード直送・PCI SAQ-A・03 §1）した `payment_method_id` を `POST /me/payment-methods/confirm`（`PaymentMethodService.confirmPaymentMethod`）へ送り、PM を Customer に attach＋`invoice_settings.default_payment_method` へ設定し、`stripe_customers.default_payment_method`（V74.20260605130030 で追加）へ焼き付ける。設計書の `subscribe` ボディにあった `paymentMethodSetup: <SetupIntent結果>` は「事前に PM を Customer 既定へ保存しておく」意であり、本実装では subscribe ボディには含めず（保存済み default PM を Service 層が参照）、未保存なら `SUBSCRIPTION_PAYMENT_METHOD_NOT_SAVED`（409）で SetupIntent 導線へ誘導する。
-- `subscribe`：`is_recurring=true` 項目のみ。`MembershipSubscriptionService.subscribe(...)` が払い手→受益者の代理払い権原を `PaymentAuthorizationService.authorizePayment`（SELF/GUARDIAN/GUARDIAN_PROXY/PROXY_GRANT）で実評価し、SetupIntent で保存した default PM・受領者 Connect 口座・`billing_anchor_day` で Stripe Subscription を作成し、`membership_subscriptions(status=PENDING)` を起票。加入時に `FeePolicyResolver(MEMBERSHIP)` で解決した `fee_policy_key` を焼き付け（遡及防止・README §4.2）。二重加入（受益者×項目に終端でないサブスク既存）は `SUBSCRIPTION_ALREADY_EXISTS`（409）。
+- `subscribe`：`is_recurring=true` 項目のみ。`MembershipSubscriptionService.subscribe(...)` が払い手→受益者の代理払い権原を `PaymentAuthorizationService.authorizePayment`（SELF/GUARDIAN/GUARDIAN_PROXY）で実評価し、SetupIntent で保存した default PM・受領者 Connect 口座・`billing_anchor_day` で Stripe Subscription を作成し、`membership_subscriptions(status=PENDING)` を起票。加入時に `FeePolicyResolver(MEMBERSHIP)` で解決した `fee_policy_key` を焼き付け（遡及防止・README §4.2）。二重加入（受益者×項目に終端でないサブスク既存）は `SUBSCRIPTION_ALREADY_EXISTS`（409）。
 - **charge 後 DB 失敗の補償（§11.1 同型・P5 第二波）**：初回単発 charge（`ConnectChargeService.charge`）成功後の DB 処理（`membership_subscriptions` INSERT・`member_payments` PENDING 起票・Stripe Subscription 作成）が失敗した場合、PaymentIntent / escrow は既に作成済みのため、ERROR ログ（PaymentIntent ID・idempotencyKey）を残して**例外を握りつぶさず再 throw** する。トランザクションロールバックで `member_payments` は未起票となり、escrow succeeded webhook による PAID 反映（`applyMembershipPaidByEscrow`）は突合先なしで no-op に倒れる（escrow_transaction_id で後追い調査可能）。冪等キーにより再実行時の二重 charge は Stripe 側で拒否される。
 - **初回課金は単発 destination charge、Subscription は次サイクル開始（案 b・PoC 実証 2026-06-05）**：初回 invoice（`billing_reason=subscription_create`）は即 finalize されて `application_fee_amount` の固定上書き窓が無いことを PoC で実証（HTTP 400 拒否）。よって**初回会費は P1 同型の単発 destination charge（固定 `application_fee_amount`）で徴収**し、Stripe Subscription は `billing_cycle_anchor`（または `trial_end`）で**次サイクルから起動**する。これで以降の全 invoice が更新型（`subscription_cycle`）となり、全サイクルで draft 窓の固定手数料上書きが正確に通る（初回含め誤差ゼロ・escrow AUTHORIZED→CAPTURED の複式記帳を P1 流儀で全サイクル延長）。詳細＝`scripts/poc/README_f089_p5_poc.md` §0。
 - **会費額の固定（price-lock）**：加入時の額面で固定する。受領者が会費を値上げしても**既存サブスクは加入時 price のまま**継続し、値上げは新規加入者のみに適用。既存者へは「会費改定のお知らせ」を確認必須通知（F04.9）で送り、「新価格で継続する／解約する」を選ばせる移行フロー（管理者が改定 price で新項目を発行→既存者に乗り換え導線）。サイレントな自動値上げはしない。**手数料パターン（`fee_policy_key`）も加入時に固定**（料率改定は新規加入のみ反映・遡及しない）。
@@ -230,6 +227,12 @@ Query: contentType, contentId, beneficiaryUserId?(既定=自分)
 
 ## 7. 協会→加盟チーム請求
 
+### 支払い確定と冪等性（P7）
+
+`POST /api/v1/teams/{teamId}/payment-requests/{id}/pay` は `Idempotency-Key` を必須とし、blank または 255 文字超を 400 とする。開始レスポンスは `PROCESSING` の PaymentIntent client secret を返し、成功 webhook を受けるまで `PAID` を返さない。同一 key は既存 attempt/PaymentIntent を返し、PROCESSING 中の別 key は 409。`payment_intent.payment_failed` は同じ PaymentIntent を再確認できるため `PROCESSING` のまま保持し、終端の `payment_intent.canceled` だけが現行 attempt を元の `SENT`/`VIEWED`/`OVERDUE` へ戻す。古い attempt の webhook は現在の request を変更しない。
+
+PaymentIntent metadata の `paymentRequestId`/`paymentAttemptId` は webhook 相関に必須とする。metadata が P7 attempt を示すのに escrow attachment が未保存なら webhook handler は retryable 5xx を返す。
+
 ```
 POST   /api/v1/organizations/{orgId}/payment-requests           # 発行（DRAFT）
 PATCH  /api/v1/organizations/{orgId}/payment-requests/{id}/send # 配信（SENT・通知一斉送信）
@@ -272,9 +275,11 @@ GET /api/v1/teams/{id}/payment-items/{itemId}/payments/export  # CSV（BOM付UTF
 ### 8.2 領収書（受領者名義）
 ```
 GET /api/v1/member-payments/{id}/receipt        # 受益者/払い手向け：会費領収書（受領者名義・金額のみ）
+GET /api/v1/member-payments/{id}/receipt/pdf    # Stripe URL が無い場合の自前 PDF fallback
 GET /api/v1/teams/{id}/fee-statements?period=YYYY-MM   # 受領者向け：Mannschaft 名義の月次手数料明細
+GET /api/v1/teams/{id}/fee-statements/pdf?period=YYYY-MM # TEAM ADMIN向け月次手数料明細PDF
 ```
-- 会費領収書：`stripe_receipt_url`（受領者ブランド）優先、無ければ自前 PDF（F12.1）。税内訳/登録番号は**拡張枠**（既定非表示・`NoOpTaxPolicy`）。
+- 会費領収書：`PAID` かつ正金額のみ。`stripe_receipt_url`（受領者ブランド）優先、無ければ自前 PDF（F12.1）。取得者は払い手/受益者本人に限定し、不在・第三者・不適格状態はいずれも404で存在を秘匿する。税内訳/登録番号は**拡張枠**（既定非表示・`NoOpTaxPolicy`）。
 - **名義の出所**：`stripe_receipt_url` の表示名は Stripe Connect onboarding 登録情報に依存し**Mannschaft からは制御不可**。自前 PDF を出す場合の名義は `organizations.name` / `teams.name`（個人運営チームは onboarding 時の屋号/法人名＝Connect 登録名に揃える）を用い、Stripe 表示名との不一致を避ける。
 - 手数料明細：当月の `application_fee_amount` 合計を Mannschaft 名義で（仕入税額控除の枠・税からくり）。
 
@@ -283,7 +288,7 @@ GET /api/v1/teams/{id}/fee-statements?period=YYYY-MM   # 受領者向け：Manns
 ## 9. DTO 一覧（骨子）
 
 - `CheckoutResponse`／`BulkCheckoutResponse`／`PayableDuesResponse`
-- `SwitchableChildrenResponse`／`PaymentProxyGrantResponse`
+- `SwitchableChildrenResponse`
 - `MembershipSubscriptionResponse { id, beneficiaryUserId, payerUserId, paymentItemId, billingInterval, status, currentPeriodEnd, cancelAtPeriodEnd, skipUntil, feePolicyKey }`
 - `PaymentRequestResponse { id, issuerScope, payerScope, title, faceAmount, dueDate, status, paidAt }`
 - `TeamPaymentAdvanceResponse { id, teamId, payerUserId, paymentRequestId, advancedAmount, advancedAt, settlementStatus, settledAt }`
@@ -298,7 +303,6 @@ GET /api/v1/teams/{id}/fee-statements?period=YYYY-MM   # 受領者向け：Manns
 | `MEMBERSHIP_PAYER_NOT_AUTHORIZED` | 403 | 払い手が受益者の代理払い権原を欠く |
 | `GUARDIANSHIP_SWITCH_AGE_LOCKED` | 403 | 中学生以降の子は切替不可 |
 | `GUARDIANSHIP_LINK_NOT_FOUND` | 403 | 有効な保護者リンクなし |
-| `PAYMENT_PROXY_GRANT_EXPIRED` | 403 | 代理払い許可が失効 |
 | `MEMBERSHIP_ALREADY_PAID` | 409 | 受益者×項目に有効な支払い済 |
 | `CONNECT_ACCOUNT_NOT_READY` | 409 | 受領者の Connect 口座が READY でない |
 | `SUBSCRIPTION_INVOICE_FEE_OVERRIDE_FAILED` | 500 | invoice 手数料上書き失敗（要再試行・監視） |

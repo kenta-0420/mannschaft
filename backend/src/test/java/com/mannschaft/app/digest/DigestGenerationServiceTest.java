@@ -12,7 +12,6 @@ import com.mannschaft.app.digest.dto.DigestRegenerateRequest;
 import com.mannschaft.app.digest.entity.TimelineDigestEntity;
 import com.mannschaft.app.digest.repository.TimelineDigestConfigRepository;
 import com.mannschaft.app.digest.repository.TimelineDigestRepository;
-import com.mannschaft.app.digest.service.DigestAsyncExecutor;
 import com.mannschaft.app.digest.service.DigestGenerationService;
 import com.mannschaft.app.digest.service.TemplateDigestGenerator;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
@@ -37,7 +36,7 @@ class DigestGenerationServiceTest {
 
     @Mock private TimelineDigestRepository digestRepository;
     @Mock private TimelineDigestConfigRepository configRepository;
-    @Mock private DigestAsyncExecutor digestAsyncExecutor;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
     @Mock private TemplateDigestGenerator templateGenerator;
     @Mock private DigestMapper digestMapper;
     @Mock private DigestProperties digestProperties;

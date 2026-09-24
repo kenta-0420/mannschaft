@@ -83,7 +83,15 @@ async function submit() {
   await flushPromises()
 }
 
+// ACTIVE判定（getOwnReturnStayPlanStatus）はAsia/Tokyoの「現在日付」に依存する。
+// 固定日付フィクスチャ（例: startDate '2026-08-01'）と現在日時が相対的にずれると、
+// 日付の経過だけでACTIVE/非ACTIVEの前提が崩れ、テストが時限式に自壊する。
+// そのため時計を固定し、フィクスチャの日付が指す意味を将来にわたって固定する。
+const FIXED_NOW = new Date('2026-08-15T12:00:00+09:00')
+
 beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(FIXED_NOW)
   list.mockReset()
   create.mockReset()
   update.mockReset()
@@ -96,6 +104,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   document.body.innerHTML = ''
 })
 

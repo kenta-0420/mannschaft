@@ -82,7 +82,7 @@ async function mockTeamSchedulesWithAttendance(page: Page): Promise<void> {
             myAttendanceStatus: null,
           },
         ],
-        meta: { page: 0, size: 100, totalElements: 2, totalPages: 1 },
+        meta: { page: 0, size: 100, total: 2, totalPages: 1 },
       }),
     })
   })

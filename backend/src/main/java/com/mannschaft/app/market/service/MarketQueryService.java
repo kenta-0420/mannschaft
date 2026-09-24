@@ -1,8 +1,10 @@
 package com.mannschaft.app.market.service;
 
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.market.MarketErrorCode;
+import com.mannschaft.app.market.MarketListingSort;
 import com.mannschaft.app.market.dto.MarketCategoryDto;
 import com.mannschaft.app.market.dto.MarketListingResponse;
 import com.mannschaft.app.market.dto.MarketOwnerDto;
@@ -17,6 +19,7 @@ import com.mannschaft.app.matching.service.RegionTranslationService;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
+import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.entity.RecruitmentCategoryEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingRegionEntity;
@@ -24,10 +27,13 @@ import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.util.LikeEscapeUtil;
+import com.mannschaft.app.recruitment.visibility.RecruitmentListingVisibilityResolver;
+import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +63,7 @@ import java.util.stream.Collectors;
 public class MarketQueryService {
 
     private final RecruitmentListingRepository listingRepository;
+    private final RecruitmentListingVisibilityResolver listingVisibilityResolver;
     private final RecruitmentListingRegionRepository listingRegionRepository;
     private final RecruitmentCategoryRepository categoryRepository;
     private final PrefectureRepository prefectureRepository;
@@ -65,6 +72,8 @@ public class MarketQueryService {
     private final OrganizationRepository organizationRepository;
     private final RegionTranslationService regionTranslationService;
     private final MediaUrlResolver mediaUrlResolver;
+    private final UserService userService;
+    private final RoleService roleService;
 
     // =====================================================================
     // §3.1 一覧
@@ -98,20 +107,69 @@ public class MarketQueryService {
     public Page<MarketListingResponse> searchListings(
             String prefecture, String city, Long categoryId,
             String keyword, boolean includeRegionNone, Pageable pageable, String lang) {
+        return searchListings(
+                prefecture, city, categoryId, keyword, includeRegionNone, pageable, lang, null);
+    }
+
+    /**
+     * 市の公開札一覧を閲覧者別 owner 表示で検索する。
+     *
+     * @param viewerUserId 認証済み閲覧者 ID（未認証は null）
+     */
+    public Page<MarketListingResponse> searchListings(
+            String prefecture, String city, Long categoryId,
+            String keyword, boolean includeRegionNone, Pageable pageable, String lang,
+            Long viewerUserId) {
+        return searchListings(prefecture, city, categoryId, null, keyword, includeRegionNone,
+                pageable, lang, viewerUserId);
+    }
+
+    /**
+     * 札主区分を含めて市の札を検索する。
+     *
+     * @param ownerType 札主区分（null=全区分）
+     */
+    public Page<MarketListingResponse> searchListings(
+            String prefecture, String city, Long categoryId, RecruitmentScopeType ownerType,
+            String keyword, boolean includeRegionNone, Pageable pageable, String lang,
+            Long viewerUserId) {
+        return searchListings(prefecture, city, categoryId, ownerType, keyword, includeRegionNone,
+                pageable, lang, viewerUserId, MarketListingSort.START_AT_ASC);
+    }
+
+    /**
+     * 札主区分と公開済み並び順を含めて市の札を検索する。
+     *
+     * @param sort 公開 API で許可する並び順
+     */
+    public Page<MarketListingResponse> searchListings(
+            String prefecture, String city, Long categoryId, RecruitmentScopeType ownerType,
+            String keyword, boolean includeRegionNone, Pageable pageable, String lang,
+            Long viewerUserId, MarketListingSort sort) {
         String normalizedPref = blankToNull(prefecture);
         String normalizedCity = blankToNull(city);
         // blankToNull → escape の順。null はエスケープせず透過する。
         // LIKE ワイルドカード（% / _ / \）をリテラル化し、フィルタ無効化を防ぐ（JPQL の ESCAPE '\' と対）。
         String normalizedKeyword = LikeEscapeUtil.escape(blankToNull(keyword));
+        MarketListingSort effectiveSort = sort == null ? MarketListingSort.START_AT_ASC : sort;
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(), pageable.getPageSize(), effectiveSort.toSort());
 
-        Page<RecruitmentListingEntity> page = listingRepository.searchMarketListings(
-                normalizedPref, normalizedCity, categoryId, normalizedKeyword,
-                includeRegionNone, pageable);
+        Page<RecruitmentListingEntity> page;
+        if (viewerUserId == null) {
+            page = listingRepository.searchMarketListings(
+                    normalizedPref, normalizedCity, categoryId, ownerType, normalizedKeyword,
+                    includeRegionNone, sortedPageable);
+        } else {
+            page = listingRepository.searchAccessibleMarketListings(
+                    accessibleListingIdsOrSentinel(viewerUserId), normalizedPref, normalizedCity,
+                    categoryId, ownerType, normalizedKeyword, includeRegionNone, sortedPageable);
+        }
 
         // N+1 回避: ページ内の全札からカテゴリ/scope/地域コードを集約し、
         // それぞれ findAllById で 1 SQL ずつバルク解決して Map 引きでマッピングする。
         List<RecruitmentListingEntity> listings = page.getContent();
-        MarketResolverMaps maps = buildResolverMaps(listings, lang);
+        MarketResolverMaps maps = buildResolverMaps(listings, lang, viewerUserId);
         return page.map(e -> toMarketListingResponse(e, maps));
     }
 
@@ -125,16 +183,20 @@ public class MarketQueryService {
             Map<Long, RecruitmentCategoryEntity> categories,
             Map<Long, TeamEntity> teams,
             Map<Long, OrganizationEntity> organizations,
+            Map<Long, UserService.MarketOwnerIdentity> personalOwners,
+            Set<Long> sharedAffiliationOwnerIds,
             Map<String, PrefectureEntity> prefectures,
             Map<String, CityEntity> cities,
             Map<String, String> regionTranslations,
             Map<Long, List<RecruitmentListingRegionEntity>> regionsByListing) {
     }
 
-    private MarketResolverMaps buildResolverMaps(List<RecruitmentListingEntity> listings, String lang) {
+    private MarketResolverMaps buildResolverMaps(
+            List<RecruitmentListingEntity> listings, String lang, Long viewerUserId) {
         Set<Long> categoryIds = new LinkedHashSet<>();
         Set<Long> teamIds = new LinkedHashSet<>();
         Set<Long> orgIds = new LinkedHashSet<>();
+        Set<Long> personalOwnerIds = new LinkedHashSet<>();
         Set<String> prefCodes = new LinkedHashSet<>();
         Set<String> cityCodes = new LinkedHashSet<>();
 
@@ -155,12 +217,12 @@ public class MarketQueryService {
             if (e.getCategoryId() != null) {
                 categoryIds.add(e.getCategoryId());
             }
-            if (e.getScopeType() == RecruitmentScopeType.TEAM) {
-                if (e.getScopeId() != null) {
-                    teamIds.add(e.getScopeId());
+            if (e.getScopeId() != null) {
+                switch (e.getScopeType()) {
+                    case TEAM -> teamIds.add(e.getScopeId());
+                    case ORGANIZATION -> orgIds.add(e.getScopeId());
+                    case PERSONAL -> personalOwnerIds.add(e.getScopeId());
                 }
-            } else if (e.getScopeId() != null) {
-                orgIds.add(e.getScopeId());
             }
             // 旧単一列（代表・後方互換）由来のコード。
             if (e.getPrefectureCode() != null) {
@@ -194,6 +256,10 @@ public class MarketQueryService {
         for (OrganizationEntity o : organizationRepository.findAllById(orgIds)) {
             organizations.put(o.getId(), o);
         }
+        Map<Long, UserService.MarketOwnerIdentity> personalOwners =
+                userService.getActiveMarketOwnerIdentities(personalOwnerIds);
+        Set<Long> sharedAffiliationOwnerIds =
+                roleService.findUserIdsSharingAffiliation(viewerUserId, personalOwnerIds);
         Map<String, PrefectureEntity> prefectures = new LinkedHashMap<>();
         for (PrefectureEntity p : prefectureRepository.findAllById(prefCodes)) {
             prefectures.put(p.getCode(), p);
@@ -208,7 +274,8 @@ public class MarketQueryService {
         Map<String, String> regionTranslations =
                 regionTranslationService.resolveNames(allRegionCodes, lang);
         return new MarketResolverMaps(
-                categories, teams, organizations, prefectures, cities,
+                categories, teams, organizations, personalOwners, sharedAffiliationOwnerIds,
+                prefectures, cities,
                 regionTranslations, regionsByListing);
     }
 
@@ -231,7 +298,7 @@ public class MarketQueryService {
                 e.getId(),
                 e.getTitle(),
                 resolveCategoryFromMap(e.getCategoryId(), maps),
-                resolveOwnerFromMap(e.getScopeType(), e.getScopeId(), maps),
+                resolveOwnerFromMap(e.getScopeType(), e.getScopeId(), e.getVisibility(), maps),
                 representative,
                 regions,
                 e.getLocation(),
@@ -256,21 +323,36 @@ public class MarketQueryService {
     }
 
     private MarketOwnerDto resolveOwnerFromMap(
-            RecruitmentScopeType scopeType, Long scopeId, MarketResolverMaps maps) {
-        if (scopeType == RecruitmentScopeType.TEAM) {
-            TeamEntity t = maps.teams().get(scopeId);
-            return t == null
-                    ? new MarketOwnerDto("TEAM", scopeId, null, null)
-                    // iconUrl は DB の生 R2 キー。表示用署名付き URL へ解決して返す（生キーは 404）。
-                    : new MarketOwnerDto("TEAM", scopeId, t.getName(),
-                            mediaUrlResolver.resolve(t.getIconUrl()));
-        }
-        OrganizationEntity o = maps.organizations().get(scopeId);
-        return o == null
-                ? new MarketOwnerDto("ORGANIZATION", scopeId, null, null)
-                // iconUrl は DB の生 R2 キー。表示用署名付き URL へ解決して返す（生キーは 404）。
-                : new MarketOwnerDto("ORGANIZATION", scopeId, o.getName(),
-                        mediaUrlResolver.resolve(o.getIconUrl()));
+            RecruitmentScopeType scopeType,
+            Long scopeId,
+            RecruitmentVisibility visibility,
+            MarketResolverMaps maps) {
+        return switch (scopeType) {
+            case TEAM -> {
+                TeamEntity t = maps.teams().get(scopeId);
+                yield t == null ? new MarketOwnerDto("TEAM", scopeId, null, null)
+                        : new MarketOwnerDto("TEAM", scopeId, t.getName(), mediaUrlResolver.resolve(t.getIconUrl()));
+            }
+            case ORGANIZATION -> {
+                OrganizationEntity o = maps.organizations().get(scopeId);
+                yield o == null ? new MarketOwnerDto("ORGANIZATION", scopeId, null, null)
+                        : new MarketOwnerDto("ORGANIZATION", scopeId, o.getName(), mediaUrlResolver.resolve(o.getIconUrl()));
+            }
+            case PERSONAL -> {
+                UserService.MarketOwnerIdentity owner = maps.personalOwners().get(scopeId);
+                // 凍結・退会・不在・公開プロフィール無効は公開側へ倒さない。
+                if (owner == null || (visibility == RecruitmentVisibility.PUBLIC
+                        && !owner.publicProfileEnabled())) {
+                    throw new BusinessException(MarketErrorCode.LISTING_NOT_FOUND);
+                }
+                boolean maySeeRealName = !owner.minor()
+                        && maps.sharedAffiliationOwnerIds().contains(scopeId);
+                String displayName = maySeeRealName
+                        && owner.fullName() != null && !owner.fullName().isBlank()
+                        ? owner.fullName() : owner.displayName();
+                yield new MarketOwnerDto("PERSONAL", null, displayName, owner.avatarUrl());
+            }
+        };
     }
 
     private MarketRegionDto resolveRegionFromMap(
@@ -316,11 +398,33 @@ public class MarketQueryService {
      * @throws BusinessException {@code MARKET_404}（404 で存在秘匿）
      */
     public MarketListingResponse getListing(Long id, String lang) {
-        RecruitmentListingEntity entity = listingRepository.findPublicMarketListingById(id)
-                .orElseThrow(() -> new BusinessException(MarketErrorCode.LISTING_NOT_FOUND));
+        return getListing(id, lang, null);
+    }
+
+    /**
+     * 市の公開札詳細を閲覧者別 owner 表示で取得する。
+     *
+     * @param viewerUserId 認証済み閲覧者 ID（未認証は null）
+     */
+    public MarketListingResponse getListing(Long id, String lang, Long viewerUserId) {
+        RecruitmentListingEntity entity = viewerUserId == null
+                ? listingRepository.findPublicMarketListingById(id)
+                        .orElseThrow(() -> new BusinessException(MarketErrorCode.LISTING_NOT_FOUND))
+                : listingRepository.findAccessibleMarketListingById(
+                        id, accessibleListingIdsOrSentinel(viewerUserId))
+                        .orElseThrow(() -> new BusinessException(MarketErrorCode.LISTING_NOT_FOUND));
         // 単一札でも一覧と同じ解決経路（訳→日本語fallback込み）を通して表記を揃える。
-        MarketResolverMaps maps = buildResolverMaps(List.of(entity), lang);
+        MarketResolverMaps maps = buildResolverMaps(List.of(entity), lang, viewerUserId);
         return toMarketListingResponse(entity, maps);
+    }
+
+    private Set<Long> accessibleListingIdsOrSentinel(Long viewerUserId) {
+        Set<Long> listingIds = new LinkedHashSet<>(
+                listingVisibilityResolver.findAccessibleSelectedListingIds(viewerUserId));
+        if (listingIds.isEmpty()) {
+            listingIds.add(-1L);
+        }
+        return listingIds;
     }
 
     // =====================================================================

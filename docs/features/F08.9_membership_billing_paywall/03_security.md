@@ -7,17 +7,20 @@
 
 ## 1. 認可マトリクス
 
+### P7 協会請求の決済境界
+
+支払いの team scope と ADMIN/DEPUTY_ADMIN 認可、request の支払い可能 status、Connect READY は Stripe 呼出より前の短い DB transaction で検証する。raw `Idempotency-Key`、PaymentIntent client secret、Stripe 秘密情報を DB またはログへ保存しない。hash 済み key と Stripe metadata は相関専用であり、webhook payload の metadata は信頼済み Stripe signature 検証後にのみ用いる。
+
 | 操作 | 許可される主体 | 検証 |
 |---|---|---|
-| 会費決済（受益者指定） | 払い手＝本人 / 後見保護者 / 有効 grant 保有者 / チーム・組織 ADMIN(手動記録) | §2 代理払い認可 |
+| 会費決済（受益者指定） | 払い手＝本人 / 後見保護者 / チーム・組織 ADMIN(手動記録) | §2 代理払い認可 |
 | 後見まとめ支払い | 本人（払い手） | `payable-dues` は自分が払える対象のみ返す |
 | 後見切替開始 | 子の有効保護者 **かつ** 国別ポリシーが切替可（`switchAllowed`） | §3 年齢ゲート |
-| 代理払い grant 発行 | 受益者本人（または切替可能な段階の子に代わり保護者） | 受益者所有権 |
 | 継続課金 加入/解約/今月スキップ/再開 | 払い手本人 / 後見保護者 | サブスク所有権（payer_user_id）。skip/resume も同所有権（02 §4.3） |
 | 協会請求の立替/精算確認 | 当該チーム ADMIN | `team_payment_advances.team_id` の team ADMIN（案3・02 §7） |
 | ペイウォール設定 | チーム/組織 ADMIN | scope 所有権（既存 ContentPaymentGateController） |
 | 集計・CSV・手数料明細 | チーム/組織 ADMIN | scope ADMIN（既存 PaymentSummary） |
-| 領収書取得 | 受益者本人 / 払い手 / scope ADMIN | 当該支払いの関係者のみ |
+| 領収書取得 | 受益者本人 / 払い手 | 当該支払いの直接関係者のみ。scope ADMIN による個人領収書の閲覧は許可しない |
 | 協会請求 発行/取消/集計 | 組織(協会) ADMIN | org scope ADMIN |
 | 協会請求 支払い | 請求先チームの ADMIN | `payment_requests.payer_scope_id == teamId` かつ team ADMIN |
 | 返金 | 受領側 scope ADMIN（チーム/組織） | F22.1 返金規約（reverse_transfer:true / refund_application_fee:false） |
@@ -35,19 +38,18 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
   if payerUserId == beneficiaryUserId: return SELF
   if parentalConsentLink(child=beneficiary, parent=payer).status == APPROVED: return GUARDIAN
   if userCareLink(recipient=beneficiary, watcher=payer, relationship=PARENT).status == ACTIVE: return GUARDIAN
-  if paymentProxyGrant(beneficiary, payer, item|null).status == ACTIVE
-       and now in [effective_from, effective_until]: return PROXY_GRANT
   if caller is ADMIN of scope(paymentItem) and manualRecord: return ADMIN_MANUAL
   else: throw MEMBERSHIP_PAYER_NOT_AUTHORIZED
 ```
 
-- 結果（`SELF`/`GUARDIAN`/`GUARDIAN_PROXY`/`PROXY_GRANT`/`ADMIN_MANUAL`）と権原ID（grant_id 等）を `member_payments.payer_relationship`/`payment_proxy_grant_id` に**記録**（監査・非否認）。**後見切替セッション中（`X-Proxy-For-User-Id` 付き）の決済は `GUARDIAN`（保護者リンクで権原成立）だが `payer_relationship=GUARDIAN_PROXY` として区別記録**し、「子の自己払い」と誤読させない。
+- 結果（`SELF`/`GUARDIAN`/`GUARDIAN_PROXY`/`ADMIN_MANUAL`）を `member_payments.payer_relationship` に**記録**（監査・非否認）。**後見切替セッション中（`X-Proxy-For-User-Id` 付き）の決済は `GUARDIAN`（保護者リンクで権原成立）だが `payer_relationship=GUARDIAN_PROXY` として区別記録**し、「子の自己払い」と誤読させない。
   - **実装（P3c-2・2026-06-05）**: `PaymentAuthorizationService` に `ProxyInputContext`（RequestScope・`AuthenticationCriticalOperationGuard` と同じ scoped proxy 注入）を注入し、`GUARDIAN_PROXY` を実評価する。条件は「GUARDIAN 成立（保護者リンク）**かつ** `proxyInputContext.isProxy()`（`X-Proxy-For-User-Id` 付き）**かつ** 切替対象の子（`subjectUserId`）＝受益者（`beneficiaryUserId`）」で、このとき `GUARDIAN_PROXY` を `GUARDIAN` より優先して返す。本人払い（`SELF`）は先に確定するため切替中でも子自身の自己払いは `SELF`。別の子へ acting-as 中（`subject≠beneficiary`）の支払いは誤分類せず `GUARDIAN`。権原評価そのものは `GUARDIAN` と同一（保護者リンクが無ければ `isProxy` でも 403）。
-- **F14.1 の代理権は本 authorizePayment の経路に含めない**（日常の代理払いは SELF/保護者リンク/grant/ADMIN の4経路のみ）。代理権スコープ `PAYMENT` は紙同意書ベースの**組織代理の重い経路**として温存し、必要時に別途評価する（README §3.3 と一致）。
+- **F14.1 の代理権は本 authorizePayment の経路に含めない**（日常の直接支払いは SELF/保護者リンク/ADMIN の3経路のみ）。代理権スコープ `PAYMENT` は紙同意書ベースの**組織代理の重い経路**として維持し、必要時に別途評価する（README §3.3 と一致）。
   - **是正（2026-06-04）**: scope `PAYMENT` は実在の `proxy_input_consent_scopes.feature_scope`（VARCHAR(64)・V18.011・CHECK なし・実機確認済）に **enum 値 `PAYMENT` を1つ足すだけ**で表現する（`proxy_input_consents` 本体への列追加・DDL は不要）。代理払い認可・退会失効はこの scope 行（同意書ごとの許可スコープ）で判定する。
   - **実装（P3b・2026-06-04）**: `FeatureScope.PAYMENT` を追加（DDL 不要）。`ProxyInputContextFilter` は検証済み同意書の許可スコープ集合を `ProxyInputContext.activate(...)` に渡し、決済系 Service は `ProxyInputContext.hasScope(FeatureScope.PAYMENT)` で代理払いの要求スコープを検証できる（素地）。実際の代理払い認可経路（`authorizePayment` での scope `PAYMENT` 評価）は P1/P3c の管轄。
 - **IDOR 防止**：`beneficiaryUserId` を payload で受けるが、上記権原検証なしには一切起票しない。`payable-dues` も「自分が払える受益者」だけを返し、他人の未払いを列挙させない。**まとめ決済(bulk-checkout)は一覧取得後の権原失効・支払い済み化に備え、起票直前に明細ごと再認可**（02_api §1.2）。
-- **権原の失効**：保護者リンク取消・grant 失効・受益者退会で即時に権原消失（毎回実行時評価・キャッシュしない or 短TTL）。
+- **状態照会の秘匿**：`GET /payment-items/{itemId}/checkout/{memberPaymentId}` は `memberPayment` の払い手本人または受益者本人だけに返す。不在と権限外を同じ 404 に畳み、連番 ID から他人の支払い状態を列挙できないようにする。
+- **権原の失効**：保護者リンク取消・受益者退会で即時に権原消失（毎回実行時評価・キャッシュしない）。非後見第三者への直接grant・招待は提供しない。
 
 ---
 
@@ -122,7 +124,8 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 
 - **PCI SAQ-A**：カード情報は Stripe Elements/Checkout のみ。Mannschaft は PAN を一切受けない・保存しない。
 - **Webhook 署名検証**：`StripeWebhookController` で署名必須・`event_id` UNIQUE 冪等（既存）。`invoice.created`/`invoice.paid`/`invoice.payment_failed`/`customer.subscription.deleted` を追加処理。
-- **二重課金防止**：起票系は `Idempotency-Key`、Webhook は冪等ゲート＋行ロック。
+- **二重課金防止**：起票系は必須 `Idempotency-Key` を Stripe とDBの両方へ橋渡しし、同じキーの再送では既存 PaymentIntent・会費支払い行を返す。まとめ支払いは明細ごとの安定キーを `PAID` 確認まで再利用する。Webhook は冪等ゲート＋行ロック。
+- **複数決済の明示同意**：まとめ支払いは単一 PaymentIntent ではなく複数の destination charge を順次 confirm する。開始前に件数・受領先別の請求・複数のカード明細・部分成功の可能性と再試行範囲を表示し、同意前は起票しない。
 - **手数料取りこぼしの可視化**：`invoice.created` 上書き失敗を握りつぶさず記録・再試行・アラート（[[feedback_root_cause_fix]]）。
 - **資金移動業回避**：会費も destination charge で受領者へ直接着金。Mannschaft は資金を保持しない（F22.1 §資金移動業回避の根拠を踏襲）。
 
@@ -131,7 +134,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 ## 6. GDPR・退会・データ保持
 
 - 金銭記録（`member_payments`/`membership_subscriptions`/`payment_requests`/`escrow_transactions`）は**物理削除せず**、退会時はユーザー PII を匿名化し記録は保持（会計・税務保持義務）。F12.3／F09.18 の保持期間方針に整合。
-- 退会・年齢到達（中学進学）で **後見切替権原・代理払い grant を自動失効**（F14.1 の自動失効と同型）。
+- 退会・年齢到達（中学進学）で **後見切替権原を自動失効**（F14.1 の自動失効と同型）。保護者リンクに基づく代理払い権原は、リンク取消・受益者退会で失効する。
 - 領収書の会員 PII（氏名）は生成時に暗号化済み `users` から都度復号し、ファイルに残さない（ダウンロード都度生成 or 短期署名URL）。
 - `tax_registration_number` は公開情報・非 PII。
 
@@ -152,7 +155,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 
 ## 8. レート制限・濫用対策
 
-- 代理払い grant 招待・後見切替開始は受益者単位でレート制限（招待スパム防止・既存 ParentalConsent のレートリミットに倣う）。
+- 後見切替開始は受益者単位でレート制限（既存 ParentalConsent のレートリミットに倣う）。
 - まとめ支払いの明細数に上限（一度の決済対象数）。
 - 協会請求の一斉配信は配信先数・頻度に上限（通知スパム防止）。
 
@@ -166,10 +169,10 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 |---|---|---|
 | 11-1 | 後見切替の年齢しきい値 | **御裁可済**（国別 `GuardianshipAgePolicy` のからくり・JP既定＝満12歳年度末・未対応国は満13歳） |
 | 11-2 | 税務6論点 | 税理士確認（実装はからくりのみで先行可・NoOp 既定） |
-| 11-3 | invoice 固定手数料上書き × destination charge | Stripe テスト環境 PoC 成立（不成立時は自前バッチ退避） |
+| 11-3 | invoice 固定手数料上書き × destination charge | **成立済**（2026-06-05、`scripts/poc/README_f089_p5_poc.md`。API `2025-02-24.acacia` / stripe-java 28.2.0 固定） |
 | 11-4 | 協会請求の手数料負担 | **御裁可済**（会費と同折半） |
-| 11-5 | 第三者代理払いの許諾UX | 設計内確定（保護者は自動・第三者は grant） |
+| 11-5 | 非後見第三者への直接代理払い | 不提供（援助は組織管理の補助・免除・クレジットへ分離） |
 | 11-6 | 既存データ移行 | 解決済（不要・データ無し） |
 | 11-7 | 無ログイン管理子アカウント | 解決済（不採用） |
 
-> 11-1/11-4 は御裁可済（提案採用）。11-2/11-3 は**実装をブロックしない**（からくり先行＋PoC は P5 着手前）。設計の論理的整合は全点クローズ済み＝**設計ステータス 🟢 確定**。
+> 11-1/11-4 は御裁可済（提案採用）、11-3 はStripeテスト環境PoC成立済み。11-2は実装スコープ外として `NoOpTaxPolicy` を維持する。設計の論理的整合は全点クローズ済み＝**設計ステータス 🟢 確定**。

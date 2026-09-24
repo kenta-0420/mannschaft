@@ -74,6 +74,19 @@ class SurveyRemindServiceTest {
     private SurveyRemindService remindService;
 
     /**
+     * 母集団解決（{@link com.mannschaft.app.survey.service.SurveyUniverseResolver}）は
+     * <b>本物</b>を注入する。ここをモックにすると「どの母集団を数えるか」という本質が
+     * テストから消えるため、実クラスへ既存のリポジトリモックを渡し、
+     * 従来どおり最下層のスタブ（{@code userRoleRepository} 等）で振る舞いを決める。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void 母集団リゾルバを実クラスで注入する() {
+        org.springframework.test.util.ReflectionTestUtils.setField(remindService, "universeResolver",
+                new com.mannschaft.app.survey.service.SurveyUniverseResolver(
+                        organizationMembershipService, userRoleRepository, targetRepository));
+    }
+
+    /**
      * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
      * title/body. Return the supplied default message so existing assertions keep working.
      */
@@ -201,7 +214,7 @@ class SurveyRemindServiceTest {
         // Given: 作成者ではない別ユーザーだが ADMIN 権限あり
         SurveyEntity survey = createRemindableSurvey();
         given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
-        given(accessControlService.isAdminOrAbove(OTHER_USER_ID, SCOPE_ID, SCOPE_TYPE))
+        given(accessControlService.hasAdminOrPermissionInScope(OTHER_USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
                 .willReturn(true);
         given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(buildTarget(200L)));
         given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
@@ -232,7 +245,7 @@ class SurveyRemindServiceTest {
         // Given
         SurveyEntity survey = createRemindableSurvey();
         given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
-        given(accessControlService.isAdminOrAbove(OTHER_USER_ID, SCOPE_ID, SCOPE_TYPE))
+        given(accessControlService.hasAdminOrPermissionInScope(OTHER_USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
                 .willReturn(false);
 
         // When & Then

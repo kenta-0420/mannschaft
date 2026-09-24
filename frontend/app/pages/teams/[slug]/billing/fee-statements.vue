@@ -10,11 +10,13 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.slug)
-const { getFeeStatement } = usePaymentApi()
+const teamSlug = computed(() => String(route.params.slug))
+const teamId = ref<number | null>(null)
+const { resolveScopeId } = useActivityScopeId()
+const { getFeeStatement, exportFeeStatementPdf } = usePaymentApi()
 const notification = useNotification()
 
-const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug.value)
 
 const loading = ref(true)
 const permissionDenied = ref(false)
@@ -24,6 +26,7 @@ const selectedPeriod = ref<string>(currentYearMonth())
 const statement = ref<FeeStatementResponse | null>(null)
 const dataLoading = ref(false)
 const noData = ref(false)
+const pdfDownloading = ref(false)
 
 /** 現在の年月を YYYY-MM 形式で返す。 */
 function currentYearMonth(): string {
@@ -39,11 +42,12 @@ function formatAmount(amount: number, currency: string): string {
 }
 
 async function load() {
+  if (teamId.value === null) return
   dataLoading.value = true
   noData.value = false
   statement.value = null
   try {
-    const res = await getFeeStatement(teamId, selectedPeriod.value)
+    const res = await getFeeStatement(teamId.value, selectedPeriod.value)
     statement.value = res.data
   } catch (err: unknown) {
     // 404 = 対象月のデータなし、それ以外はエラー通知
@@ -66,6 +70,11 @@ onMounted(async () => {
       permissionDenied.value = true
       return
     }
+    teamId.value = await resolveScopeId('TEAM', teamSlug.value)
+    if (teamId.value === null) {
+      notification.error(t('payment.feeStatements.loadError'))
+      return
+    }
     await load()
   } finally {
     loading.value = false
@@ -75,6 +84,24 @@ onMounted(async () => {
 watch(selectedPeriod, () => {
   if (!permissionDenied.value) load()
 })
+
+async function downloadPdf() {
+  if (teamId.value === null) return
+  pdfDownloading.value = true
+  try {
+    const blob = await exportFeeStatementPdf(teamId.value, selectedPeriod.value)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `fee-statement-${selectedPeriod.value}.pdf`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    notification.error(t('payment.feeStatements.loadError'))
+  } finally {
+    pdfDownloading.value = false
+  }
+}
 </script>
 
 <template>
@@ -107,7 +134,8 @@ watch(selectedPeriod, () => {
           v-model="selectedPeriod"
           type="month"
           class="rounded-lg border border-surface-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-surface-600 dark:bg-surface-800"
-        />
+        >
+        <Button icon="pi pi-file-pdf" label="PDF" :loading="pdfDownloading" @click="downloadPdf" />
       </div>
 
       <!-- ローディング -->

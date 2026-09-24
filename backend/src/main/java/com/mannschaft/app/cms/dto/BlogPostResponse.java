@@ -27,6 +27,8 @@ public class BlogPostResponse {
     private BlogPostStatisticsDto stats;
     private List<TagSummary> tags;
     private BlogPostAuditDto audit;
+    /** 課金合成状態（FULL/LOCKED）。HIDDEN は404または一覧除外のため返さない。 */
+    private String accessState;
 
     /** 投稿スコープ（チーム/組織/ユーザー/投稿者ID）。 */
     public record BlogPostScopeDto(
@@ -94,5 +96,9 @@ public class BlogPostResponse {
                         mitayoCount
                 ))
                 .build();
+    }
+
+    public BlogPostResponse withAccessState(String state) {
+        return this.toBuilder().accessState(state).build();
     }
 }

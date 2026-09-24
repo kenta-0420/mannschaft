@@ -1,6 +1,7 @@
 package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.entity.MfaRecoveryTokenEntity;
+import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
@@ -20,12 +21,15 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -279,6 +283,34 @@ class Auth2faServiceTest {
     @Nested
     @DisplayName("validateTotp")
     class ValidateTotp {
+
+        @Test
+        @DisplayName("正常系: リフレッシュトークンを保存するため書き込みトランザクションで実行する")
+        void validateTotp_書き込みトランザクション() throws NoSuchMethodException {
+            Method method = Auth2faService.class.getDeclaredMethod(
+                    "validateTotp", String.class, String.class);
+            Transactional transactional = method.getAnnotation(Transactional.class);
+
+            assertThat(transactional).isNotNull();
+            assertThat(transactional.readOnly()).isFalse();
+        }
+
+        @Test
+        @DisplayName("正常系: 2FAログインで保存するリフレッシュトークンにjtiを設定する")
+        void issueTokenPair_リフレッシュトークンにjtiを設定する() throws Exception {
+            given(authTokenService.generateRefreshToken()).willReturn("refresh-token");
+            given(authTokenService.hashToken("refresh-token")).willReturn("refresh-token-hash");
+            given(refreshTokenRepository.save(any(RefreshTokenEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            Method method = Auth2faService.class.getDeclaredMethod("issueTokenPair", Long.class);
+            method.setAccessible(true);
+            method.invoke(auth2faService, TEST_USER_ID);
+
+            ArgumentCaptor<RefreshTokenEntity> captor = ArgumentCaptor.forClass(RefreshTokenEntity.class);
+            verify(refreshTokenRepository).save(captor.capture());
+            assertThat(captor.getValue().getJti()).isNotBlank();
+        }
 
         @Test
         @DisplayName("異常系: MFAセッショントークン無効でAUTH_019例外")

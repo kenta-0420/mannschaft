@@ -5,6 +5,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.repairplan.dto.RepairPlanDashboardResponse;
 import com.mannschaft.app.repairplan.module.RequireRepairPlanModule;
 import com.mannschaft.app.repairplan.service.RepairPlanDashboardService;
@@ -41,6 +42,7 @@ public class RepairPlanDashboardController {
             description = "5 ペイン統合 DTO を返す。Phase 1 では次 5 年の修繕予定のみデータあり、"
                     + "残りペインは Phase 2 以降で実装。"
     )
+    @RequireFeature("FEATURE_PROPERTY_REPAIRPLAN_ENABLED")
     public ResponseEntity<ApiResponse<RepairPlanDashboardResponse>> getDashboard(
             @PathVariable("scopeType") String scopeType,
             @PathVariable("scopeId") Long scopeId) {

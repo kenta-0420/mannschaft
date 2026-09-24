@@ -1,6 +1,8 @@
 package com.mannschaft.app.event.listener;
 
 import com.mannschaft.app.auth.service.UserService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.event.EventAdvanceNoticeNotificationEvent;
@@ -9,9 +11,12 @@ import com.mannschaft.app.family.EventCareNotificationType;
 import com.mannschaft.app.family.service.CareLinkService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -19,10 +24,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * F03.12 事前遅刻・欠席連絡の通知配送リスナー（Issue #2834 / CMP-056 型確立PR）。
@@ -70,6 +71,8 @@ public class EventAdvanceNoticeNotificationListener {
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。イベント事前告知の通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onEventAdvanceNoticeNotification(EventAdvanceNoticeNotificationEvent event) {
@@ -169,8 +172,8 @@ public class EventAdvanceNoticeNotificationListener {
 
     private void sendOne(NotificationDeliveryRequest request) {
         try {
-            NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-            if (created == null) {
+            NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+            if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                 log.warn("事前連絡通知が visibility deny によりスキップされました: "
                                 + "recipientUserId={}, notificationType={}, sourceType={}, sourceId={}",
                         request.recipientUserId(), request.notificationType(),

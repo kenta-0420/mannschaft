@@ -20,7 +20,7 @@
 | **大名 (Agent) 起動完了直後** | その agent の commit を本リポに統合 (cherry-pick / merge) → 直ちに対応する worktree を `git worktree remove --force` で削除 |
 | **セッション開始時** | `git worktree list` を確認し、自分が作ったものでない `agent-*` worktree が残っていれば原因を確認のうえ削除を提案する |
 | **セッション終了時** | 自分が起動した agent の worktree がすべて消えていることを確認 |
-| **週次** | 全 `worktree-agent-*` ブランチと残骸ディレクトリを一括削除 |
+| **週次** | `/陣払い` の dry-run で stale と残骸理由を確認し、必要時だけ明示適用 |
 
 ### コマンド集
 
@@ -28,26 +28,17 @@
 # 残存worktreeの確認
 git worktree list
 
-# 個別削除（コミットを取り込み済みであることを確認してから）
-git worktree remove --force .claude/worktrees/agent-xxxxx
-git branch -D worktree-agent-xxxxx
+# 既定は dry-run（7日超）。対象・保持理由を確認する
+node scripts/worktree-cleanup.mjs --days 7
 
-# 全 agent worktree を一括削除（変更が残っていても強制削除する）
-for wt in $(git worktree list --porcelain | grep "^worktree" | grep "agent-" | awk '{print $2}'); do
-  git worktree remove --force "$wt"
-done
+# clean な agent-* / worktree-agent-* のworktree登録だけを明示適用で撤去する（branchは削除しない）
+node scripts/worktree-cleanup.mjs --days 7 --apply
 
-# 孤立した worktree-agent-* ブランチを一括削除
-git branch -D $(git branch | grep "worktree-agent-" | tr -d ' ')
-
-# stale entries（既にディレクトリが消えた worktree のメタ情報）を削除
-git worktree prune
-
-# .claude/worktrees/ 配下に空ディレクトリが残っていれば削除
-rmdir .claude/worktrees/agent-* 2>/dev/null || true
+# 凱旋後の必須ゲート（1日超staleと総数60超は非0）
+node scripts/worktree-cleanup.mjs --days 1 --check --limit 60
 ```
 
-> 一括掃除はスキル `/陣払い` でも実行できる（既定で 7 日以上前の足軽 worktree を撤去）。
+> `/陣払い` は上記スクリプトへ委譲する。dirty/locked/index.lock/Git検査失敗、prunable登録、未登録ディレクトリ、junction は自動で消さず、理由を出して保持する。`frontend/node_modules` を含むjunctionはリンクだけを先に外し、リンク先は削除しない。
 
 ### 注意事項
 

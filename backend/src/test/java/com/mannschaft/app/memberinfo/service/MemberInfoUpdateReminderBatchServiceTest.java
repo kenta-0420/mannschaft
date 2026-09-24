@@ -3,215 +3,141 @@ package com.mannschaft.app.memberinfo.service;
 import com.mannschaft.app.memberinfo.MemberInfoFieldType;
 import com.mannschaft.app.memberinfo.TeamMemberInfoFieldEntity;
 import com.mannschaft.app.memberinfo.TeamMemberInfoFieldRepository;
-import com.mannschaft.app.memberinfo.TeamMemberInfoResponseEntity;
-import com.mannschaft.app.memberinfo.TeamMemberInfoResponseRepository;
 import com.mannschaft.app.memberinfo.batch.MemberInfoUpdateReminderBatchService;
+import com.mannschaft.app.memberinfo.batch.MemberInfoUpdateReminderRunner;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import org.junit.jupiter.api.DisplayName;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.MessageSource;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link MemberInfoUpdateReminderBatchService} の単体テスト。
- * F14.2 メンバー情報更新リマインダーバッチの動作を検証する。
+ * {@link MemberInfoUpdateReminderBatchService}（オーケストレータ）の単体テスト。
+ *
+ * <p>Issue #2834 / CMP-056 第2群ロット2 の是正後は、本クラスは<b>トランザクションを持たない
+ * オーケストレータ</b>であり、1 メンバーぶんの確定と通知は {@link MemberInfoUpdateReminderRunner} が
+ * {@code REQUIRES_NEW} で担う。よってここでは「対象の列挙」「BATCH_LIMIT」「1 件の失敗で後続が
+ * 止まらないこと」だけを検証し、期限切れ判定・クールダウン・通知の中身は
+ * {@code MemberInfoUpdateReminderRunnerTest} が担当する。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("MemberInfoUpdateReminderBatchService 単体テスト")
+@DisplayName("MemberInfoUpdateReminderBatchService 単体テスト（Issue #2834 / CMP-056）")
 class MemberInfoUpdateReminderBatchServiceTest {
+
+    private static final Long TEAM_ID = 1L;
+    private static final Long TEAM_ID_2 = 2L;
+    private static final Long FIELD_ID = 100L;
+    private static final Long FIELD_ID_2 = 200L;
+    private static final LocalDateTime BASE_TIME = LocalDateTime.of(2026, 1, 1, 0, 0);
 
     @Mock
     private TeamMemberInfoFieldRepository fieldRepository;
 
     @Mock
-    private TeamMemberInfoResponseRepository responseRepository;
-
-    @Mock
     private MembershipRepository membershipRepository;
 
     @Mock
-    private NotificationHelper notificationHelper;
-
-    /** Issue #2715 CMP-055 lot C-5: newly added i18n dependencies. */
-    @Mock private UserLocaleCache userLocaleCache;
-    @Mock private MessageSource messageSource;
+    private MemberInfoUpdateReminderRunner memberInfoUpdateReminderRunner;
 
     @InjectMocks
     private MemberInfoUpdateReminderBatchService batchService;
 
-    /**
-     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
-     * title/body. Return the supplied default message so existing assertions keep working.
-     */
-    @org.junit.jupiter.api.BeforeEach
-    void stubI18nMessageSource() {
-        org.mockito.Mockito.lenient().when(messageSource.getMessage(
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any(),
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(inv -> inv.getArgument(2));
-    }
-
-    private static final Long TEAM_ID = 10L;
-    private static final Long USER_ID = 1L;
-    private static final Long FIELD_ID = 100L;
-    private static final LocalDateTime BASE_TIME = LocalDateTime.of(2026, 1, 1, 0, 0);
-
     @Test
-    @DisplayName("バッチが正常実行され notify が呼ばれる（期限切れメンバーが存在する場合）")
-    void run_withOverdueMembers_notifyCalled() {
-        // チームIDリストを返す
-        given(fieldRepository.findDistinctTeamIdsWithRefreshInterval()).willReturn(List.of(TEAM_ID));
-
-        // アクティブメンバーを1件返す
-        MembershipEntity membership = buildMembership(USER_ID);
-        given(membershipRepository.findAllActiveByScope(ScopeType.TEAM, TEAM_ID))
-                .willReturn(List.of(membership));
-
-        // 期限切れフィールドを返す（confirmedAt が古いので期限切れ）
-        TeamMemberInfoFieldEntity field = buildField(FIELD_ID, 12);
-        given(fieldRepository.findByTeamIdAndIsActiveTrueOrderBySortOrderAsc(TEAM_ID))
-                .willReturn(List.of(field));
-
-        // 期限切れのレスポンス（confirmedAt が13ヶ月前 → 12ヶ月インターバルで期限切れ）
-        TeamMemberInfoResponseEntity overdueResponse = TeamMemberInfoResponseEntity.builder()
-                .teamId(TEAM_ID)
-                .userId(USER_ID)
-                .fieldId(FIELD_ID)
-                .confirmedAt(BASE_TIME.minusMonths(13))
-                .lastReminderSentAt(null)
-                .build();
-        given(responseRepository.findByFieldIdIn(List.of(FIELD_ID)))
-                .willReturn(List.of(overdueResponse));
-        given(responseRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+    @DisplayName("対象チームが無い場合 → Runner を呼ばない")
+    void run_noTeams_noRunnerCall() {
+        given(fieldRepository.findDistinctTeamIdsWithRefreshInterval()).willReturn(List.of());
 
         batchService.run();
 
-        verify(notificationHelper, atLeastOnce()).notify(
-                eq(USER_ID), anyString(), anyString(), anyString(),
-                anyString(), eq(TEAM_ID), any(), eq(TEAM_ID), anyString(), isNull());
+        verify(memberInfoUpdateReminderRunner, never()).markReminderSent(any(), any(), anyList(), any());
     }
 
     @Test
-    @DisplayName("期限切れでないフィールドのメンバーは通知されない")
-    void run_withNonOverdueMembers_notifyNotCalled() {
+    @DisplayName("refreshIntervalMonths を持つフィールドが無いチームはスキップされる")
+    void run_noTargetField_skipsTeam() {
         given(fieldRepository.findDistinctTeamIdsWithRefreshInterval()).willReturn(List.of(TEAM_ID));
-
-        MembershipEntity membership = buildMembership(USER_ID);
         given(membershipRepository.findAllActiveByScope(ScopeType.TEAM, TEAM_ID))
-                .willReturn(List.of(membership));
-
-        // 12ヶ月インターバルのフィールド
-        TeamMemberInfoFieldEntity field = buildField(FIELD_ID, 12);
+                .willReturn(List.of(buildMembership(10L)));
         given(fieldRepository.findByTeamIdAndIsActiveTrueOrderBySortOrderAsc(TEAM_ID))
-                .willReturn(List.of(field));
-
-        // まだ期限切れでないレスポンス（confirmedAt が1ヶ月前 → まだ有効）
-        TeamMemberInfoResponseEntity freshResponse = TeamMemberInfoResponseEntity.builder()
-                .teamId(TEAM_ID)
-                .userId(USER_ID)
-                .fieldId(FIELD_ID)
-                .confirmedAt(BASE_TIME.minusMonths(1))
-                .lastReminderSentAt(null)
-                .build();
-        // confirmedAt.plusMonths(12) > now なので期限切れではない
-        // BASE_TIME の1ヶ月前 + 12ヶ月 = BASE_TIME の11ヶ月後 → 未来（有効）
-        // ただし LocalDateTime.now() を使っているため、テストの「今」に依存する。
-        // 確実に期限切れにならないよう、confirmedAt を現在の1ヶ月前に設定する
-        TeamMemberInfoResponseEntity notOverdueResponse = TeamMemberInfoResponseEntity.builder()
-                .teamId(TEAM_ID)
-                .userId(USER_ID)
-                .fieldId(FIELD_ID)
-                .confirmedAt(LocalDateTime.now().minusMonths(1)) // 1ヶ月前 → 12ヶ月インターバルなのでまだ有効
-                .lastReminderSentAt(null)
-                .build();
-
-        given(responseRepository.findByFieldIdIn(List.of(FIELD_ID)))
-                .willReturn(List.of(notOverdueResponse));
+                .willReturn(List.of(buildField(FIELD_ID, TEAM_ID, null)));
 
         batchService.run();
 
-        verify(notificationHelper, never()).notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(memberInfoUpdateReminderRunner, never()).markReminderSent(any(), any(), anyList(), any());
     }
 
     @Test
-    @DisplayName("BATCH_LIMIT (500) 超過時の繰り越し動作 — 500件目まで処理される")
-    void run_batchLimitExceeded_processes500Members() {
-        // チームを複数用意し、合計で500件超のメンバーを作成
-        Long TEAM_ID_1 = 1L;
-        Long TEAM_ID_2 = 2L;
+    @DisplayName("AC-1: 1メンバーぶんが失敗しても後続メンバーは処理される（catch はオーケストレータ側）")
+    void run_oneMemberFails_continuesWithRest() {
+        given(fieldRepository.findDistinctTeamIdsWithRefreshInterval()).willReturn(List.of(TEAM_ID));
+        given(membershipRepository.findAllActiveByScope(ScopeType.TEAM, TEAM_ID))
+                .willReturn(List.of(buildMembership(10L), buildMembership(11L), buildMembership(12L)));
+        given(fieldRepository.findByTeamIdAndIsActiveTrueOrderBySortOrderAsc(TEAM_ID))
+                .willReturn(List.of(buildField(FIELD_ID, TEAM_ID, 6)));
+        willThrow(new RuntimeException("模擬 DB 例外"))
+                .given(memberInfoUpdateReminderRunner).markReminderSent(eq(TEAM_ID), eq(11L), anyList(), any());
 
-        given(fieldRepository.findDistinctTeamIdsWithRefreshInterval())
-                .willReturn(List.of(TEAM_ID_1, TEAM_ID_2));
+        assertThatCode(() -> batchService.run()).doesNotThrowAnyException();
 
-        // チーム1に300名のメンバー
-        List<MembershipEntity> team1Members = LongStream.rangeClosed(1, 300)
-                .mapToObj(this::buildMembership)
-                .collect(Collectors.toList());
-        given(membershipRepository.findAllActiveByScope(ScopeType.TEAM, TEAM_ID_1))
-                .willReturn(team1Members);
+        // 失敗した 11L の後も 12L が処理される（是正前は全体が rollback-only になり全件巻き戻っていた）。
+        verify(memberInfoUpdateReminderRunner).markReminderSent(eq(TEAM_ID), eq(10L), anyList(), any());
+        verify(memberInfoUpdateReminderRunner).markReminderSent(eq(TEAM_ID), eq(11L), anyList(), any());
+        verify(memberInfoUpdateReminderRunner).markReminderSent(eq(TEAM_ID), eq(12L), anyList(), any());
+    }
 
-        // チーム2に300名のメンバー（合計600名 > BATCH_LIMIT=500）
-        List<MembershipEntity> team2Members = LongStream.rangeClosed(301, 600)
-                .mapToObj(this::buildMembership)
-                .collect(Collectors.toList());
+    @Test
+    @DisplayName("GDPRマスキング済み（userId=null）のメンバーは Runner に渡さない")
+    void run_maskedMember_isSkipped() {
+        given(fieldRepository.findDistinctTeamIdsWithRefreshInterval()).willReturn(List.of(TEAM_ID));
+        given(membershipRepository.findAllActiveByScope(ScopeType.TEAM, TEAM_ID))
+                .willReturn(List.of(buildMembership(null), buildMembership(10L)));
+        given(fieldRepository.findByTeamIdAndIsActiveTrueOrderBySortOrderAsc(TEAM_ID))
+                .willReturn(List.of(buildField(FIELD_ID, TEAM_ID, 6)));
+
+        batchService.run();
+
+        verify(memberInfoUpdateReminderRunner, times(1))
+                .markReminderSent(any(), any(), anyList(), any());
+        verify(memberInfoUpdateReminderRunner).markReminderSent(eq(TEAM_ID), eq(10L), anyList(), any());
+    }
+
+    @Test
+    @DisplayName("BATCH_LIMIT(500) を超えるメンバーは翌日へ繰り越される")
+    void run_batchLimit_stopsAt500() {
+        given(fieldRepository.findDistinctTeamIdsWithRefreshInterval()).willReturn(List.of(TEAM_ID, TEAM_ID_2));
+        given(membershipRepository.findAllActiveByScope(ScopeType.TEAM, TEAM_ID))
+                .willReturn(LongStream.range(0, 300).mapToObj(this::buildMembership).toList());
         given(membershipRepository.findAllActiveByScope(ScopeType.TEAM, TEAM_ID_2))
-                .willReturn(team2Members);
-
-        // 両チームともに同じフィールドを持つ
-        Long FIELD_ID_1 = 100L;
-        Long FIELD_ID_2 = 200L;
-
-        TeamMemberInfoFieldEntity field1 = buildFieldForTeam(FIELD_ID_1, TEAM_ID_1, 12);
-        TeamMemberInfoFieldEntity field2 = buildFieldForTeam(FIELD_ID_2, TEAM_ID_2, 12);
-
-        given(fieldRepository.findByTeamIdAndIsActiveTrueOrderBySortOrderAsc(TEAM_ID_1))
-                .willReturn(List.of(field1));
+                .willReturn(LongStream.range(1000, 1300).mapToObj(this::buildMembership).toList());
+        given(fieldRepository.findByTeamIdAndIsActiveTrueOrderBySortOrderAsc(TEAM_ID))
+                .willReturn(List.of(buildField(FIELD_ID, TEAM_ID, 6)));
         given(fieldRepository.findByTeamIdAndIsActiveTrueOrderBySortOrderAsc(TEAM_ID_2))
-                .willReturn(List.of(field2));
-
-        // 全メンバーのレスポンスは空（未回答 = 期限切れ扱い）
-        given(responseRepository.findByFieldIdIn(List.of(FIELD_ID_1))).willReturn(List.of());
-        given(responseRepository.findByFieldIdIn(List.of(FIELD_ID_2))).willReturn(List.of());
-        given(responseRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+                .willReturn(List.of(buildField(FIELD_ID_2, TEAM_ID_2, 6)));
 
         batchService.run();
 
-        // BATCH_LIMIT=500 のため、チーム1の300名 + チーム2の200名 = 500名分のnotifyが呼ばれる
-        // チーム2の残り100名はskipされる
-        verify(notificationHelper, times(500)).notify(
-                anyLong(), anyString(), anyString(), anyString(),
-                anyString(), anyLong(), any(), anyLong(), anyString(), isNull());
+        // チーム1の300名 + チーム2の200名 = 500名で打ち切り
+        verify(memberInfoUpdateReminderRunner, times(500))
+                .markReminderSent(any(), any(), anyList(), any());
     }
-
-    // ========================================
-    // ヘルパー
-    // ========================================
 
     private MembershipEntity buildMembership(Long userId) {
         return MembershipEntity.builder()
@@ -222,11 +148,7 @@ class MemberInfoUpdateReminderBatchServiceTest {
                 .build();
     }
 
-    private TeamMemberInfoFieldEntity buildField(Long id, Integer intervalMonths) {
-        return buildFieldForTeam(id, TEAM_ID, intervalMonths);
-    }
-
-    private TeamMemberInfoFieldEntity buildFieldForTeam(Long id, Long teamId, Integer intervalMonths) {
+    private TeamMemberInfoFieldEntity buildField(Long id, Long teamId, Integer intervalMonths) {
         TeamMemberInfoFieldEntity entity = TeamMemberInfoFieldEntity.builder()
                 .teamId(teamId)
                 .fieldName("テストフィールド")

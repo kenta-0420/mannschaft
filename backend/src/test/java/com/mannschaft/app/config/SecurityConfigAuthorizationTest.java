@@ -418,6 +418,56 @@ class SecurityConfigAuthorizationTest {
                 "GET /api/v1/public/stats");
     }
 
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET /api/v1/postal-code/policies は認証で弾かれない")
+    void anonymous_postal_code_policies_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(mockMvc.perform(get("/api/v1/postal-code/policies")),
+                "GET /api/v1/postal-code/policies");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("F15.4: 匿名の地域マスタGETだけは認証で弾かれない")
+    void anonymous_region_master_get_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(mockMvc.perform(get("/api/v1/master/prefectures")),
+                "GET /api/v1/master/prefectures");
+        expectNotAuthRejected(mockMvc.perform(get("/api/v1/master/prefectures/13/cities")),
+                "GET /api/v1/master/prefectures/{code}/cities");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("F15.4: 地域マスタの書込みと余分な階層は認証必須")
+    void anonymous_region_master_non_get_or_extra_path_is_auth_rejected() throws Exception {
+        expectAuthRejected(mockMvc.perform(post("/api/v1/master/prefectures")),
+                "POST /api/v1/master/prefectures");
+        expectAuthRejected(mockMvc.perform(get("/api/v1/master/prefectures/13/cities/extra")),
+                "GET /api/v1/master/prefectures/{code}/cities/extra");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("BC-11: 匿名のGET /api/v1/public/billing/plans は認証で弾かれない")
+    void anonymous_public_billing_plans_get_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(mockMvc.perform(get("/api/v1/public/billing/plans")),
+                "GET /api/v1/public/billing/plans");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("BC-11: 匿名のPOST /api/v1/public/billing/plans は認証必須")
+    void anonymous_public_billing_plans_post_is_auth_required() throws Exception {
+        mockMvc.perform(post("/api/v1/public/billing/plans"))
+                .andExpect(result -> {
+                    int responseStatus = result.getResponse().getStatus();
+                    if (responseStatus != 401 && responseStatus != 403) {
+                        throw new AssertionError("POST /api/v1/public/billing/plans は認証必須 (status="
+                                + responseStatus + ")");
+                    }
+                });
+    }
+
     // ---- F08.7 項目① 公開大会参照 API（PublicTournamentController）が permitAll であること ----
 
     @Test

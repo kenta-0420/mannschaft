@@ -1,7 +1,12 @@
 package com.mannschaft.app.common;
 
 import com.mannschaft.app.billing.FeatureNotEntitledException;
+import com.mannschaft.app.billing.api.BillingConflictException;
+import com.mannschaft.app.billing.api.BillingIdempotencyProcessingException;
+import com.mannschaft.app.billing.api.dto.BillingConflictErrorResponse;
 import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationErrorResponse;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequiredException;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
@@ -15,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -82,10 +88,16 @@ public class GlobalExceptionHandler {
      */
     // 型推論限界回避のため明示型指定（エントリ数増加に伴う javac 推論破綻を根治）
     private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.<String, HttpStatus>ofEntries(
+            // Storage ACL: 不在は存在秘匿、所有境界違反は権限拒否、claim 状態競合は再試行不能として返す。
+            // Storage ACL: existence is hidden; permission, and claim conflicts retain their own statuses.
+            Map.entry("STORAGE_005", HttpStatus.NOT_FOUND),
+            Map.entry("STORAGE_006", HttpStatus.FORBIDDEN),
+            Map.entry("STORAGE_007", HttpStatus.CONFLICT),
             Map.entry("RETURN_STAY_PLAN_001", HttpStatus.NOT_FOUND),
             Map.entry("RETURN_STAY_PLAN_005", HttpStatus.CONFLICT),
             Map.entry("RETURN_STAY_PLAN_006", HttpStatus.CONFLICT),
             Map.entry("RETURN_STAY_PLAN_007", HttpStatus.NOT_FOUND),
+            Map.entry("PAYMENT_015", HttpStatus.NOT_FOUND),
             // F00 共通可視性基盤（Severity.WARN デフォルト 400 を設計書 §7.4 の正しい status に上書き）
             Map.entry("VISIBILITY_001", HttpStatus.FORBIDDEN),   // 認可拒否（権限不足）→ 403
             Map.entry("VISIBILITY_004", HttpStatus.NOT_FOUND),  // コンテンツ不在 → 404
@@ -160,8 +172,19 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED),
             Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
             Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
+            // F04.12 承諾型招待: 宛先照合 IDOR（他人宛て招待を第三者が承諾/辞退）は 403 が既定。
+            //（発行時の特権ロール指定は 422 でスロー箇所が httpStatusOverride を明示する。§6）
+            Map.entry("ROLE_009", HttpStatus.FORBIDDEN),
             // 未マップAPIパス・staticリソース不在は 404（Severity.WARN デフォルト 400 を上書き）
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
+            // F01.2 オーナー委譲 承諾型オファー（2026-07-18 承諾型化。Severity.WARN 既定 400 を上書き）
+            //（ROLE_009 宛先照合失敗=403 は上の F04.12 承諾型招待ブロックで既に定義済みのため重複登録しない。
+            //   Map.ofEntries は重複キーで IllegalArgumentException になるため統合時に一本化した）
+            Map.entry("ROLE_010", HttpStatus.UNPROCESSABLE_ENTITY), // 承諾者 2FA 未設定 → 422
+            Map.entry("ROLE_011", HttpStatus.CONFLICT),             // 重複 PENDING 打診 → 409
+            Map.entry("ROLE_012", HttpStatus.CONFLICT),             // オファー状態不整合/期限切れ/発行後状態変化 → 409
+            Map.entry("ROLE_013", HttpStatus.NOT_FOUND),            // オファー不在（BOLA）/対象非所属 → 404
+            Map.entry("ROLE_014", HttpStatus.UNPROCESSABLE_ENTITY), // 自己委譲など不正対象 → 422
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
             // 組織不在は 404（Severity.WARN 既定の 400 を上書き）。兄弟の TEAM_001 と流儀を揃える。
@@ -454,6 +477,15 @@ public class GlobalExceptionHandler {
             Map.entry("SCHEDULE_092", HttpStatus.CONFLICT),                 // SCHEDULED_TASK_NOT_CANCELLABLE（PENDING 以外）
             Map.entry("SCHEDULE_093", HttpStatus.BAD_REQUEST),              // INVALID_TARGET_SELECTION
             Map.entry("SCHEDULE_094", HttpStatus.NOT_FOUND),                // SCHEDULE_TARGET_MEMBER_NOT_FOUND（存在秘匿）
+            // F03.19 統合カレンダービュー カレンダーレイヤー設定（設計書 §7）
+            Map.entry("SCHEDULE_100", HttpStatus.NOT_FOUND),                // CALENDAR_LAYER_NOT_FOUND
+            Map.entry("SCHEDULE_101", HttpStatus.FORBIDDEN),                // CALENDAR_LAYER_NOT_MEMBER（非所属・存在秘匿で統一）
+            Map.entry("SCHEDULE_102", HttpStatus.UNPROCESSABLE_ENTITY),     // CALENDAR_LAYER_INVALID_COLOR
+            Map.entry("SCHEDULE_103", HttpStatus.UNPROCESSABLE_ENTITY),     // CALENDAR_LAYER_INVALID_SCOPE
+            // SCHEDULE_104 CALENDAR_LAYER_LIMIT_EXCEEDED（行数上限 §10.1）は
+            // 「件数の上限超過」であり .claudecode.md §3.2.1 の表どおり既定の 400 が本則。
+            // 当初 409 で上書き登録していたが、上書き自体が不要なので登録ごと削除した
+            // （回帰固定: GlobalExceptionHandlerTest#resolveHttpStatus_SCHEDULE_104_400）。
             // F03.4 スケジュール本体・クロスチーム招待・アンケート設問の不在 → 404。
             // ErrorCodeHttpStatusDeclarationGuardTest 是正（ロットA）: throw 元
             // （ScheduleService/ScheduleRecurrenceService/ScheduleAttendanceService/
@@ -482,8 +514,9 @@ public class GlobalExceptionHandler {
             // 同一概念）が既定 400 のままであるため、系統を割らないよう既定 400 のまま据え置く
             // （GlobalExceptionHandlerTest の系統の割れ防止番人が固定）。
             Map.entry("SCHEDULE_011", HttpStatus.CONFLICT),                 // CROSS_INVITE_INVALID_STATUS
-            Map.entry("SCHEDULE_019", HttpStatus.CONFLICT),                 // PERSONAL_REMINDER_LIMIT_EXCEEDED
-            Map.entry("SCHEDULE_020", HttpStatus.CONFLICT),                 // PERSONAL_SCHEDULE_LIMIT_EXCEEDED
+            // SCHEDULE_019/020（個人リマインダー・個人予定の件数上限超過）は
+            // .claudecode.md §3.2.1 の本則どおり Severity.WARN 既定の 400 とする。
+            // 409 への上書き登録は行わない（回帰固定: GlobalExceptionHandlerTest CMP-114）。
             // SCHEDULE_002/003/012/014/015/016/021/030/032/033/041〜044/050/060〜067/090 は
             // 入力バリデーション・未使用定数のいずれかであり Severity.WARN/ERROR 既定が妥当と判定し変更なし。
             // F03.8 / 認可根治 Wave3-B12event: イベント本体・サブリソースの IDOR 秘匿。
@@ -537,13 +570,11 @@ public class GlobalExceptionHandler {
             // 存在秘匿で 404 にするため（Severity.WARN 既定の 400 を上書き）
             Map.entry("SHIFT_024", HttpStatus.NOT_FOUND),                   // ASSIGNMENT_RUN_NOT_FOUND（越境404秘匿にも使用）
             Map.entry("SHIFT_030", HttpStatus.NOT_FOUND),                   // CHANGE_REQUEST_NOT_FOUND（越境404秘匿にも使用）
-            // 認可根治 Wave6: 候補者選定の権限拒否は 403（Severity.WARN 既定の 400 を上書き）
-            Map.entry("SHIFT_035", HttpStatus.FORBIDDEN),                   // CLAIMER_SELECT_DENIED
             // 認可監査 Wave6 ロットC: F03.5 シフト管理の残り未登録分。
             //  - SHIFT_003/004/005/020 は not-found → 404
             //  - SHIFT_022（勤務制約の管理権限なし）は明確な認可拒否 → 403
-            //  - SHIFT_011/013/014/015/018/025/026/031/034 は状態競合（期限超過・ステータス不正・
-            //    重複・楽観ロック競合・目視確認未了・既に手挙げ済み等）→ 409
+            //  - SHIFT_011/013/014/015/018/025/026/031 は状態競合（期限超過・ステータス不正・
+            //    重複・楽観ロック競合・目視確認未了等）→ 409
             //    （SHIFT_018 OPTIMISTIC_LOCK_CONFLICT は兄弟 SHIFT_BUDGET_014 と同流儀で揃える）
             //  - SHIFT_036（連打防止スロットリング）はレート制限 → 429
             //  - SHIFT_017（SLOT_ASSIGNMENT_EXCEEDED）は既存番人
@@ -564,8 +595,9 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_025", HttpStatus.CONFLICT),
             Map.entry("SHIFT_026", HttpStatus.CONFLICT),
             Map.entry("SHIFT_031", HttpStatus.CONFLICT),
-            Map.entry("SHIFT_034", HttpStatus.CONFLICT),
             Map.entry("SHIFT_036", HttpStatus.TOO_MANY_REQUESTS),
+            // F03.5 §11.3.5: 完全一致の重複割当（状態競合）→ 409
+            Map.entry("SHIFT_042", HttpStatus.CONFLICT),                    // DUPLICATE_ASSIGNMENT
             // F08.7 シフト予算 (Phase 9-α: 逆算 API)
             Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
             Map.entry("SHIFT_BUDGET_002", HttpStatus.BAD_REQUEST),          // EMPTY_POSITION_LIST
@@ -1052,6 +1084,9 @@ public class GlobalExceptionHandler {
             Map.entry("MARKET_003", HttpStatus.FORBIDDEN),           // フレンド未成立チームを宛先指定
             Map.entry("MARKET_004", HttpStatus.FORBIDDEN),           // 他チーム所有フォルダを宛先指定
             Map.entry("MARKET_005", HttpStatus.BAD_REQUEST),         // FRIEND_TEAMS_ONLY × distribution_targets 併用
+            Map.entry("MARKET_006", HttpStatus.BAD_REQUEST),         // 個人札の決済/受領者指定はPhase 5まで禁止
+            Map.entry("MARKET_007", HttpStatus.FORBIDDEN),           // 個人札主本人の自己応募
+            Map.entry("MARKET_008", HttpStatus.BAD_REQUEST),         // 個人札の公開/フレンド限定はPhase 4まで禁止
             Map.entry("MARKET_404", HttpStatus.NOT_FOUND),           // 非公開 / 不在の札（存在秘匿）
             // F03.11 / F22.1 募集枠 公開（publish）時の配信対象検証
             //   いずれも「入力不備」であり 400（MARKET_002 と対称）。未登録だと Severity.ERROR 既定の 500 になり、
@@ -1114,6 +1149,8 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBERSHIP_BILLING_021", HttpStatus.CONFLICT),        // 同一受益者・項目に有効な継続課金が既存（二重加入防止・02_api §4.1 SUBSCRIPTION_ALREADY_EXISTS）
             Map.entry("MEMBERSHIP_BILLING_022", HttpStatus.CONFLICT),        // 継続課金がスキップ中でないため再開できない（02_api §4.3 SUBSCRIPTION_NOT_SKIPPED）
             Map.entry("MEMBERSHIP_BILLING_023", HttpStatus.PAYMENT_REQUIRED), // 保存済みカードが off-session 初回課金に使えない（R2-1・02_api §4.1 SUBSCRIPTION_OFF_SESSION_AUTHENTICATION_REQUIRED）
+            Map.entry("MEMBERSHIP_BILLING_024", HttpStatus.CONFLICT),        // Idempotency-Key の別要求への再利用
+            Map.entry("MEMBERSHIP_BILLING_025", HttpStatus.NOT_FOUND),       // checkout 状態なし/参照権限なし（IDOR 秘匿）
             // セキュリティインシデント（GDPR Article 33）
             Map.entry("SEC_INCIDENT_001", HttpStatus.NOT_FOUND),             // SECURITY_INCIDENT_NOT_FOUND（IDOR 対策で 404）
             // F08.10 試合記録・分析（03 §C.4/C.6: 不在/越境/親子不一致は 404、権限不足は 403、検証系は 400）
@@ -1142,7 +1179,8 @@ public class GlobalExceptionHandler {
             // F01.2 §5.9.5 slug リネーム: 他スコープ履歴に予約済み slug は 409（SLUG_RETIRED）
             Map.entry("TEAM_063", HttpStatus.CONFLICT),                      // SLUG_RETIRED（他チーム履歴予約）
             // ロットD追補: team の残り未登録分。organization と同型の兄弟コードのため同一方針で揃える
-            // （ORG_002/003/005/006/007/042/044/048/050/051 と同じ判定基準）。
+            // （ORG_003/005/006/007/042/044/048/050/051 と同じ判定基準。
+            // ORG_002 は柱③-A で existsByName 一律ブロックごと撤去済み＝DUPNAME_001 に統合）。
             Map.entry("TEAM_002", HttpStatus.CONFLICT),                      // チームはアーカイブ済み（操作不可の状態競合）
             Map.entry("TEAM_003", HttpStatus.CONFLICT),                      // 既にこのチームに所属
             Map.entry("TEAM_004", HttpStatus.FORBIDDEN),                     // ブロックされているため参加できない
@@ -1157,7 +1195,6 @@ public class GlobalExceptionHandler {
             // ロットD追補: organization の残り未登録分。権限不足は 403、名称重複・アーカイブ済み・
             // 既加入・並び替え競合等の状態競合は 409、役員/カスタムフィールド not found は
             // organizationId 束縛の IDOR 秘匿のため 404。
-            Map.entry("ORG_002", HttpStatus.CONFLICT),                       // 組織名重複
             Map.entry("ORG_003", HttpStatus.CONFLICT),                       // 組織はアーカイブ済み（操作不可の状態競合）
             Map.entry("ORG_005", HttpStatus.FORBIDDEN),                      // この操作を行う権限がありません
             Map.entry("ORG_006", HttpStatus.CONFLICT),                       // 削除されていないため復元できない
@@ -1272,6 +1309,34 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),         // CHECKOUT_SESSION_FAILED（Stripe 呼び出し失敗 → 502）
             Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT),           // CONTRACT_PENDING_PAYMENT（PENDING スロット占有中）
             Map.entry("ENTITLEMENT_017", HttpStatus.CONFLICT),           // CONTRACT_CHANGE_REQUIRES_PAYMENT（有償が絡む changePlan 拒否・AC-44）
+            Map.entry("ENTITLEMENT_018", HttpStatus.NOT_FOUND),          // INVOICE_NOT_FOUND（IDOR 秘匿）
+            Map.entry("ENTITLEMENT_019", HttpStatus.CONFLICT),           // PRICE_NOT_SELLABLE
+            Map.entry("ENTITLEMENT_020", HttpStatus.CONFLICT),           // PREVIEW_EXPIRED
+            Map.entry("ENTITLEMENT_021", HttpStatus.CONFLICT),           // CHANGE_CONFLICT
+            Map.entry("ENTITLEMENT_022", HttpStatus.CONFLICT),           // MONTH_BOUNDARY
+            Map.entry("ENTITLEMENT_023", HttpStatus.CONFLICT),           // QUOTE_EXPIRED / QUOTE_STALE
+            Map.entry("ENTITLEMENT_024", HttpStatus.CONFLICT),           // MIGRATION_REQUIRED
+            Map.entry("ENTITLEMENT_025", HttpStatus.BAD_GATEWAY),        // STRIPE_UNAVAILABLE
+            Map.entry("ENTITLEMENT_026", HttpStatus.CONFLICT),           // BILLING_FLOW_REQUIRED
+            // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md）。
+            // 登録漏れは Severity 既定 400/500 へ黙ってフォールバックする前科（#1279）ゆえ明示登録。
+            Map.entry("ENTITLEMENT_027", HttpStatus.BAD_REQUEST),        // HANDOVER_SCOPE_NOT_SUPPORTED（USER スコープ）
+            Map.entry("ENTITLEMENT_028", HttpStatus.CONFLICT),           // HANDOVER_CONTRACT_NOT_ELIGIBLE（PAST_DUE/過去期末・AC-29）
+            Map.entry("ENTITLEMENT_029", HttpStatus.CONFLICT),           // HANDOVER_ALREADY_IN_PROGRESS（生成列+UNIQUE）
+            Map.entry("ENTITLEMENT_030", HttpStatus.NOT_FOUND),          // HANDOVER_NOT_FOUND（IDOR 秘匿・スコープ越境も404で畳む）
+            Map.entry("ENTITLEMENT_031", HttpStatus.CONFLICT),           // HANDOVER_NOT_ACCEPTABLE
+            Map.entry("ENTITLEMENT_032", HttpStatus.CONFLICT),           // HANDOVER_NO_CANDIDATE（§5.5 ①②）
+            Map.entry("ENTITLEMENT_033", HttpStatus.CONFLICT),           // HANDOVER_EXPIRED
+            // 認可境界（Codex検分1巡目 P1-1/P1-2）。対象スコープの管理権限は既に検証済みで契約の存在は
+            // 呼び出し元に見えているため、存在オラクルは生じない。よって 404 で畳まず 403 を返す。
+            Map.entry("ENTITLEMENT_034", HttpStatus.FORBIDDEN),          // HANDOVER_NOT_OLD_PAYER（申請者は旧 payer 本人のみ）
+            Map.entry("ENTITLEMENT_035", HttpStatus.FORBIDDEN),          // HANDOVER_NOT_ELIGIBLE_ACCEPTOR（承諾者は他 ADMIN のみ）
+            Map.entry("ENTITLEMENT_036", HttpStatus.CONFLICT),           // HANDOVER_NOT_RESUMABLE（RESUME は MANUAL_INTERVENTION 専用・§3.6.2）
+            Map.entry("ENTITLEMENT_037", HttpStatus.SERVICE_UNAVAILABLE), // PORTAL_UNAVAILABLE（Portal configuration 未照合 → 503）
+            Map.entry("ENTITLEMENT_038", HttpStatus.TOO_MANY_REQUESTS),  // PORTAL_RATE_LIMITED（scope ごと 10 回/時 → 429）
+            Map.entry("ENTITLEMENT_039", HttpStatus.TOO_MANY_REQUESTS),  // CANCEL_RATE_LIMITED（解約/撤回は同一バケットで scope ごと 10 回/時 → 429・AC-55/56）
+            // 早馬（課金事故対応）: マスタ価格未設定（NULL）を無償扱いにせず契約拒否する（PLAN_PRICE_NOT_CONFIGURED）。
+            Map.entry("ENTITLEMENT_040", HttpStatus.CONFLICT),           // PLAN_PRICE_NOT_CONFIGURED（価格未設定は状態不整合として409）
             // F20.3 ベータ特典（設計書 02 §8）。登録漏れは Severity 既定 400/500 にフォールバックする前科（#1279）ゆえ明示登録。
             Map.entry("BETA_PERK_001", HttpStatus.NOT_FOUND),            // GRANT_NOT_FOUND（IDOR 秘匿含む）
             Map.entry("BETA_PERK_002", HttpStatus.CONFLICT),            // GRANT_ALREADY_EXISTS（uk_bg_scope_phase）
@@ -1546,6 +1611,22 @@ public class GlobalExceptionHandler {
             Map.entry("RECEIPT_019", HttpStatus.CONFLICT),
             Map.entry("RECEIPT_021", HttpStatus.NOT_FOUND),
             Map.entry("RECEIPT_024", HttpStatus.CONFLICT),
+            // RECEIPT_020（ロゴアップロード失敗）は Severity.ERROR だが、実際の発生原因は
+            // 上限超過・非対応形式・MIME 偽装といった「入力の不備」である（F08.4 §9.4 AC-10）。
+            // Severity は変えずに status だけ 400 へ写像する。
+            Map.entry("RECEIPT_020", HttpStatus.BAD_REQUEST),
+            // F08.12 運営領収書。既定 500 に落ちないよう status を明示する
+            // （RECEIPT_020 が未登録で既定 500 になっていた前例を繰り返さない）。
+            Map.entry("RECEIPT_025", HttpStatus.NOT_FOUND),              // 運営の発行者設定が未登録
+            Map.entry("RECEIPT_026", HttpStatus.BAD_REQUEST),            // source 指定が必須
+            Map.entry("RECEIPT_027", HttpStatus.BAD_REQUEST),            // source_ref の形式不正
+            Map.entry("RECEIPT_028", HttpStatus.NOT_FOUND),              // 元データ不在
+            Map.entry("RECEIPT_029", HttpStatus.CONFLICT),               // 元データが未入金
+            Map.entry("RECEIPT_030", HttpStatus.NOT_FOUND),              // PDF 原本不在
+            Map.entry("RECEIPT_031", HttpStatus.SERVICE_UNAVAILABLE),    // PDF 再試行上限
+            Map.entry("RECEIPT_032", HttpStatus.CONFLICT),               // 未無効化からの再発行
+            Map.entry("RECEIPT_033", HttpStatus.INTERNAL_SERVER_ERROR),  // PDF 原本のストレージ書き込み失敗
+            Map.entry("RECEIPT_034", HttpStatus.INTERNAL_SERVER_ERROR),  // PDF 原本のハッシュ不一致（改ざんの疑い）
             // 認可根治戦役 Wave3-B3: moderation の createReReview は actionId 所有者検証(BOLA是正)で MODERATION_EXT_001、越境は 404。
             Map.entry("MODERATION_EXT_001", HttpStatus.NOT_FOUND),       // VIOLATION_NOT_FOUND（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3-B3: incident は entity 由来 scope で認可判定。ID 直指定 EP で scope 非所属は 404。
@@ -2080,6 +2161,11 @@ public class GlobalExceptionHandler {
             Map.entry("GDPR_009", HttpStatus.CONFLICT),                     // エクスポート未完了（ダウンロード不可）
             Map.entry("GDPR_010", HttpStatus.GONE),                         // エクスポート期限切れ
             Map.entry("GDPR_006", HttpStatus.CONFLICT),                     // 唯一のSYSTEM_ADMIN退会拒否
+            // 柱①ADMINゼロ根治: 他メンバー1人以上のlastAdminスコープが残る退会要求（409・
+            // RoleSuccessionService#checkNoLastAdminScopes）／purge開始マーク後のcancel拒否
+            // （409・PurgeStartGuard#checkCancelAllowed）。いずれも状態競合。
+            Map.entry("GDPR_011", HttpStatus.CONFLICT),
+            Map.entry("GDPR_012", HttpStatus.CONFLICT),
 
             // 認可監査 Wave6 ロットE: 時間割管理（TimetableErrorCode）の残り未登録分。
             // NOT_FOUND 系は既存登録済み。ステータス遷移ガード・学期期間重複・
@@ -2410,7 +2496,36 @@ public class GlobalExceptionHandler {
             //    是正した（兄弟の STORAGE_001/002/004 と同じ外部ストレージ障害のため）。
             // Gate 基盤工事③: @RequireFeature ゲート拒否は Severity.WARN 既定の 400 ではなく
             // 403 FORBIDDEN（マスター裁可済み）。
-            Map.entry("FEATURE_GATE_001", HttpStatus.FORBIDDEN)
+            Map.entry("FEATURE_GATE_001", HttpStatus.FORBIDDEN),
+
+            // 柱②-2 販促プロビジョニング（試練・.claude/campaigns/2026-09-01-org-governance.md）:
+            // 招待不在／メール不一致は状態秘匿のため404/403、期限切れ・取消済・二重承諾競合は409、
+            // PROVISIONED スコープへの通常導線アクセスは423（Locked）とする。実装は後続 PR（出陣）。
+            Map.entry("PROV_001", HttpStatus.NOT_FOUND),
+            Map.entry("PROV_002", HttpStatus.CONFLICT),
+            Map.entry("PROV_003", HttpStatus.CONFLICT),
+            Map.entry("PROV_006", HttpStatus.FORBIDDEN),
+            Map.entry("PROV_007", HttpStatus.FORBIDDEN),
+            Map.entry("PROV_008", HttpStatus.LOCKED),
+            Map.entry("PROV_009", HttpStatus.NOT_FOUND),
+            Map.entry("PROV_010", HttpStatus.NOT_FOUND),
+            // 検分 P1-3 根治: ACCEPTED 済み招待への resend/cancel は状態競合のため409。
+            Map.entry("PROV_011", HttpStatus.CONFLICT),
+            // CMP-260901-1538 柱③-A: 組織・チーム名称の同名確認フロー。専用ハンドラ
+            // （handleDuplicateNameConfirmationRequired）が優先して処理するが、宣言ステータス
+            // 一致番人（ErrorCodeHttpStatusDeclarationGuardTest）は STATUS_MAP 経由の
+            // resolveHttpStatus() の結果で判定するため、金型 ENTITLEMENT_003 と同様に登録する。
+            Map.entry("DUPNAME_001", HttpStatus.CONFLICT),
+            // 検分 P1-2 是正: アドバイザリロック（GET_LOCK）取得タイムアウト。同名同士の
+            // 同時作成競合を示す一時的な 409（クライアントは再試行してよい）。
+            Map.entry("DUPNAME_002", HttpStatus.CONFLICT),
+
+            // CMP-260901-1538 柱③-A「MEMBER 参加申請（join request）」: 対象スコープ不存在／
+            // PRIVATE／PROVISIONED／アーカイブ済みは同一の 404 に畳んで存在を秘匿する
+            // （PARKING_020・PROV_001/009/010 と同じ流儀）。申請自体が見つからない場合
+            // （IDOR 対策で scope 不一致も含む）も同様に 404。
+            Map.entry("JOIN_REQUEST_001", HttpStatus.NOT_FOUND),
+            Map.entry("JOIN_REQUEST_003", HttpStatus.NOT_FOUND)
     );
 
     /**
@@ -2428,7 +2543,11 @@ public class GlobalExceptionHandler {
         String message = resolveMessage(errorCode);
         log.warn("BusinessException: code={}, message={}", errorCode.getCode(), message);
 
-        HttpStatus status = resolveHttpStatus(errorCode);
+        // スロー箇所固有のステータス上書きがあれば優先する（F04.12 ROLE_009 は
+        // 宛先照合 IDOR=403 / 発行時の特権ロール指定=422 と、同一コードで文脈により異なる）。
+        HttpStatus status = ex.getHttpStatusOverride() != null
+                ? ex.getHttpStatusOverride()
+                : resolveHttpStatus(errorCode);
 
         // F10.6: 5xx を返す BusinessException のみ記録対象（severity=MEDIUM）
         if (status.is5xxServerError()) {
@@ -2478,6 +2597,65 @@ public class GlobalExceptionHandler {
         FeatureNotEntitledErrorResponse body =
                 new FeatureNotEntitledErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+    }
+
+    /**
+     * Billing Center PR6b-1 A群追補: {@link BillingConflictException} 専用ハンドラ（金型:
+     * {@link #handleFeatureNotEntitled}）。
+     *
+     * <p>月境界（{@code ENTITLEMENT_022}）・preview/quote 競合（{@code ENTITLEMENT_020/021/023}）で
+     * {@code $.error.details.reason} / {@code $.error.details.availableAt} を返す
+     * （AC-18/AC-19b/AC-20/AC-21）。HTTP ステータスは {@link #resolveHttpStatus} に委ねる
+     * （全て 4xx のため error_reports への記録はしない）。</p>
+     */
+    @ExceptionHandler(BillingConflictException.class)
+    public ResponseEntity<BillingConflictErrorResponse> handleBillingConflict(BillingConflictException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("BillingConflictException: code={}, reason={}",
+                ex.getErrorCode().getCode(), ex.getDetails().reason());
+        BillingConflictErrorResponse body =
+                new BillingConflictErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
+        return ResponseEntity.status(resolveHttpStatus(ex.getErrorCode())).body(body);
+    }
+
+    /**
+     * CMP-260901-1538 柱③-A 409 details 追補: {@link DuplicateNameConfirmationRequiredException}
+     * 専用ハンドラ（金型: {@link #handleFeatureNotEntitled}）。
+     *
+     * <p>組織・チーム作成時、同名候補が存在し確認未完了（または確認後に fingerprint が不一致 = 確認後に
+     * 新たな同名が出現）の場合に 409 として候補一覧・fingerprint を返す。4xx のため error_reports への
+     * 記録はしない（{@link #handleBusinessException} と同じ方針）。</p>
+     */
+    @ExceptionHandler(DuplicateNameConfirmationRequiredException.class)
+    public ResponseEntity<DuplicateNameConfirmationErrorResponse> handleDuplicateNameConfirmationRequired(
+            DuplicateNameConfirmationRequiredException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("DuplicateNameConfirmationRequiredException: code={}, visibleCandidateCount={}, hiddenCandidateCount={}",
+                ex.getErrorCode().getCode(), ex.getDetails().visibleCandidates().size(),
+                ex.getDetails().hiddenCandidateCount());
+        DuplicateNameConfirmationErrorResponse body =
+                new DuplicateNameConfirmationErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    /**
+     * F20.1 PR4 BC-23: 同一 {@code Idempotency-Key} の先行要求が処理中の場合のハンドラ。
+     *
+     * <p>{@link BillingIdempotencyProcessingException} は {@link BusinessException} のサブクラスだが、
+     * Spring は最も具体的な例外型のハンドラを優先するため本メソッドが先に選ばれる。
+     * 409 の本文は素の {@link ErrorResponse} のまま（既存応答・lease 所有者を漏らさない）で、
+     * {@code Retry-After} ヘッダだけを追加する。</p>
+     */
+    @ExceptionHandler(BillingIdempotencyProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleBillingIdempotencyProcessing(
+            BillingIdempotencyProcessingException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("BillingIdempotencyProcessingException: code={}, retryAfterSeconds={}",
+                ex.getErrorCode().getCode(), ex.getRetryAfterSeconds());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(new ErrorResponse(
+                        new ErrorResponse.ErrorDetail(ex.getErrorCode().getCode(), message, List.of())));
     }
 
     /**

@@ -1,0 +1,10 @@
+{
+  "rules": [
+    {
+      "id": "receipts-7y",
+      "enabled": true,
+      "prefix": "receipts/",
+      "condition": { "type": "Age", "maxAgeSeconds": 220924800 }
+    }
+  ]
+}

@@ -125,6 +125,35 @@ async function cancelSupporter() {
 }
 
 // =============================================================================
+// MEMBER 参加申請（柱③-A・CMP-260901-1538）
+// =============================================================================
+/**
+ * PUBLIC & ACTIVE チームへの MEMBER 参加申請。取り下げ API は BE 未実装（PR #3139）のため
+ * 対処療法で偽装せず、PENDING 表示のみ提供する（対処療法禁止の原則）。
+ *
+ * 自分の申請状態の取得・送信は `useJoinRequestSelfStatus` に一本化している
+ * （Codex 検分 CMP-260901-1538 第1巡 P1-1: 取得失敗を NONE に潰す fail-open を是正）。
+ */
+const {
+  joinRequestStatus,
+  joinRequestLoading,
+  fetchJoinRequestStatus: fetchJoinRequestStatusRaw,
+  applyJoinRequest: applyJoinRequestRaw,
+} = useJoinRequestSelfStatus('team')
+
+async function fetchJoinRequestStatus() {
+  if (roleName.value) return
+  if (team.value?.visibility?.visibility !== 'PUBLIC') return
+  if (!team.value?.numericId) return
+  await fetchJoinRequestStatusRaw(team.value.numericId)
+}
+
+async function applyJoinRequest() {
+  if (!team.value?.numericId) return
+  await applyJoinRequestRaw(team.value.numericId)
+}
+
+// =============================================================================
 // チームデータ + slug redirect
 // =============================================================================
 const team = ref<TeamResponse | null>(null)
@@ -201,6 +230,7 @@ async function leaveTeam() {
 async function refresh() {
   await Promise.all([fetchTeam(), loadPermissions()])
   await fetchFollowStatus()
+  await fetchJoinRequestStatus()
 }
 
 // =============================================================================
@@ -212,6 +242,7 @@ const SEGMENT_TO_TAB: Record<string, string> = {
   members: 'members',
   invites: 'invites',
   supporters: 'supporters',
+  'join-requests': 'join-requests',
   modules: 'modules',
   reservations: 'reservations',
   nav: 'nav',
@@ -240,6 +271,7 @@ const SHELL_SEGMENTS = new Set([
   'members',
   'invites',
   'supporters',
+  'join-requests',
   'modules',
   'reservations',
   'nav',
@@ -328,6 +360,7 @@ async function loadShellData() {
   try {
     await Promise.all([fetchTeam(), loadPermissions()])
     await fetchFollowStatus()
+    await fetchJoinRequestStatus()
     // ウィジェット可視性設定と予約モジュール有効フラグを並列取得。
     // 非メンバー・サポーターは 403/401 が想定内（装飾的な visible:false のみ失われ、ロールゲートは
     // defaultMinRole で生存）なので静かにフォールバック。それ以外の実エラーはログで表面化する。
@@ -377,12 +410,13 @@ watch(teamSlug, () => {
   teamLoaded.value = false
   team.value = null
   followStatus.value = 'NONE'
+  joinRequestStatus.value = 'UNKNOWN'
   reservationEnabled.value = false
   if (isShellRoute.value) void loadShellData()
 })
 
 /** 管理系タブ key（レンズ OFF・非管理者では滞在させない）。 */
-const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'supporters', 'modules'])
+const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'supporters', 'join-requests', 'modules'])
 
 /**
  * 管理者レンズ OFF、または管理権限を失った状態で管理ルートに滞在している場合は
@@ -431,6 +465,13 @@ const tabs = computed<ScopeTab[]>(() => {
       icon: 'pi pi-heart',
       labelKey: 'teamShell.tab.supporters',
       visible: isAdmin.value && (team.value?.visibility?.supporterEnabled ?? false) && adminLens.value,
+    },
+    {
+      key: 'join-requests',
+      to: `${base}/join-requests`,
+      icon: 'pi pi-user-plus',
+      labelKey: 'teamShell.tab.joinRequests',
+      visible: isAdminOrDeputy.value && adminLens.value,
     },
     {
       key: 'modules',
@@ -544,10 +585,14 @@ provideTeamShellContext({
             :is-admin-or-deputy="isAdminOrDeputy"
             :follow-status="followStatus"
             :follow-loading="followLoading"
+            :join-request-status="joinRequestStatus"
+            :join-request-loading="joinRequestLoading"
             :template-label="templateLabel"
             @back="navigateTo('/dashboard')"
             @apply-supporter="applySupporter"
             @cancel-supporter="cancelSupporter"
+            @apply-join-request="applyJoinRequest"
+            @retry-join-request-status="fetchJoinRequestStatus"
             @show-cancel-confirm="showCancelSupporterConfirm = true"
             @show-leave-confirm="showLeaveConfirm = true"
             @icon-updated="teamMutators.updateTeamIcon"

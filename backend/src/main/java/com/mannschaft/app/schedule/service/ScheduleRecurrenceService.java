@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.dto.RecurrenceRuleDto;
@@ -10,14 +11,20 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 /**
  * スケジュールの繰り返し展開・例外処理・繰り返しスコープに応じた更新／削除のディスパッチを担当するサービス。
@@ -26,7 +33,7 @@ import java.util.function.BiConsumer;
  * 繰り返し関連のロジックを切り出して責務を分離した。</p>
  *
  * <p>単一スケジュールへの更新適用 ({@code applyUpdateToSchedule}) はファサード側の責務として
- * {@link BiConsumer} で受け取り、本サービスは「対象スケジュール群を選び出してそれぞれに適用する」役割に集中する。</p>
+ * {@link BiFunction} で受け取り、本サービスは「対象スケジュール群を選び出してそれぞれに適用する」役割に集中する。</p>
  */
 @Slf4j
 @Service
@@ -34,14 +41,29 @@ import java.util.function.BiConsumer;
 @Transactional
 public class ScheduleRecurrenceService {
 
+    public record RecurringScheduleUpdateResult(ScheduleEntity selectedSchedule, long affectedCount,
+                                                List<Long> updatedScheduleIds) {
+        public RecurringScheduleUpdateResult {
+            updatedScheduleIds = List.copyOf(updatedScheduleIds);
+        }
+
+        /** 既存の件数検証用モックとの互換性を保つ。実処理では3引数で更新IDを渡す。 */
+        public RecurringScheduleUpdateResult(ScheduleEntity selectedSchedule, long affectedCount) {
+            this(selectedSchedule, affectedCount, List.of(selectedSchedule.getId()));
+        }
+    }
+
     private static final int MAX_RECURRENCE_OCCURRENCES = 365;
     private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
+    private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final ScheduleRepository scheduleRepository;
     private final ScheduleTargetService scheduleTargetService;
     private final ObjectMapper objectMapper;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 繰り返しスケジュールを展開して子スケジュールを生成する。
@@ -90,22 +112,43 @@ public class ScheduleRecurrenceService {
      * @param updateScope  更新スコープ
      * @param applyUpdate  単一スケジュールへの更新適用ロジック（ファサード側で実装）
      */
-    public void updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
+    RecurringScheduleUpdateResult updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
                                         String updateScope,
-                                        BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
+                                        BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate) {
         switch (updateScope) {
             case UPDATE_SCOPE_THIS_ONLY -> {
-                applyUpdate.accept(schedule, req);
+                ScheduleEntity target = schedule.getParentScheduleId() != null
+                        ? schedule.toBuilder().isException(true).build()
+                        : schedule;
+                ScheduleEntity updated = applyUpdate.apply(target, req);
                 // 繰り返しの例外としてマーク
-                if (schedule.getParentScheduleId() != null) {
-                    schedule = schedule.toBuilder().isException(true).build();
-                    scheduleRepository.save(schedule);
-                }
+                return new RecurringScheduleUpdateResult(updated, 1, List.of(updated.getId()));
             }
             case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
-                applyUpdate.accept(schedule, req);
+                ScheduleEntity originalSchedule = schedule.toBuilder().build();
+                Long parentId = schedule.getParentScheduleId() != null
+                        ? schedule.getParentScheduleId() : schedule.getId();
+                List<ScheduleEntity> children = scheduleRepository
+                        .findByParentScheduleIdOrderByStartAtAsc(parentId);
+                Duration shift = startShift(originalSchedule, req);
+                LocalDateTime editTime = LocalDateTime.now(wallClock);
+                if (!shift.isNegative() && !shift.isZero()) {
+                    // uq_sch_parent_start は各 SQL 更新時に検証される。後ろへ移す場合は
+                    // 末尾から確定し、次回の元日時を先に空けてから選択回を更新する。
+                    List<Long> followingIds = updateFollowingSchedules(
+                            originalSchedule, req, applyUpdate, children, shift, editTime);
+                    ScheduleEntity updated = applyUpdate.apply(schedule, req);
+                    scheduleRepository.flush();
+                    return new RecurringScheduleUpdateResult(updated, 1 + followingIds.size(),
+                            selectedAndFollowingIds(updated, followingIds));
+                }
+                ScheduleEntity updated = applyUpdate.apply(schedule, req);
+                if (!shift.isZero()) scheduleRepository.flush();
                 // この日以降の子スケジュールも更新（例外を除く）
-                updateFollowingSchedules(schedule, req, applyUpdate);
+                List<Long> followingIds = updateFollowingSchedules(
+                        originalSchedule, req, applyUpdate, children, shift, editTime);
+                return new RecurringScheduleUpdateResult(updated, 1 + followingIds.size(),
+                        selectedAndFollowingIds(updated, followingIds));
             }
             case UPDATE_SCOPE_ALL -> {
                 // 親を更新、全子を更新（例外を除く）
@@ -113,11 +156,14 @@ public class ScheduleRecurrenceService {
                         ? schedule.getParentScheduleId() : schedule.getId();
                 ScheduleEntity parent = scheduleRepository.findById(parentId)
                         .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
-                applyUpdate.accept(parent, req);
-                scheduleRepository.save(parent);
-                updateAllChildSchedules(parentId, req, applyUpdate);
+                ScheduleEntity originalParent = parent.toBuilder().build();
+                ScheduleEntity updatedParent = applyUpdate.apply(parent, req);
+                return updateAllChildSchedules(parentId, schedule, req, applyUpdate, originalParent, updatedParent);
             }
-            default -> applyUpdate.accept(schedule, req);
+            default -> {
+                ScheduleEntity updated = applyUpdate.apply(schedule, req);
+                return new RecurringScheduleUpdateResult(updated, 1, List.of(updated.getId()));
+            }
         }
     }
 
@@ -286,30 +332,100 @@ public class ScheduleRecurrenceService {
     /**
      * 指定スケジュール以降の子スケジュールを更新する（例外は除く）。
      */
-    private void updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req,
-                                          BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
-        Long parentId = schedule.getParentScheduleId() != null
-                ? schedule.getParentScheduleId() : schedule.getId();
-        List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
-
-        children.stream()
+    private List<Long> updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req,
+                                         BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate,
+                                         List<ScheduleEntity> children, Duration shift, LocalDateTime editTime) {
+        Comparator<ScheduleEntity> order = Comparator.comparing(ScheduleEntity::getStartAt);
+        if (!shift.isNegative() && !shift.isZero()) order = order.reversed();
+        List<ScheduleEntity> followingChildren = children.stream()
                 .filter(child -> !child.getIsException())
                 .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
-                .forEach(child -> applyUpdate.accept(child, req));
+                .filter(child -> !child.getId().equals(schedule.getId()))
+                // 過去の回を起点にしても、選択回以外の終了済み回は履歴として残す。
+                .filter(child -> child.getEndAt() != null
+                        ? child.getEndAt().isAfter(editTime)
+                        : !child.getStartAt().isBefore(editTime))
+                .sorted(order)
+                .toList();
+        for (ScheduleEntity child : followingChildren) {
+            applyUpdate.apply(child, shiftedRequest(schedule, child, req));
+            if (!shift.isZero()) scheduleRepository.flush();
+        }
+        return followingChildren.stream().map(ScheduleEntity::getId).toList();
+    }
+
+    private List<Long> selectedAndFollowingIds(ScheduleEntity selected, List<Long> followingIds) {
+        List<Long> ids = new ArrayList<>(1 + followingIds.size());
+        ids.add(selected.getId());
+        ids.addAll(followingIds);
+        return ids;
     }
 
     /**
      * 親スケジュールの全子を更新する（例外は除く）。
      */
-    private void updateAllChildSchedules(Long parentId, UpdateScheduleRequest req,
-                                         BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
+    private RecurringScheduleUpdateResult updateAllChildSchedules(Long parentId, ScheduleEntity selected,
+                                         UpdateScheduleRequest req,
+                                         BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate,
+                                         ScheduleEntity originalParent,
+                                         ScheduleEntity updatedParent) {
         List<ScheduleEntity> children = scheduleRepository
                 .findByParentScheduleIdOrderByStartAtAsc(parentId);
-
-        children.stream()
+        Duration shift = startShift(originalParent, req);
+        Comparator<ScheduleEntity> order = Comparator.comparing(ScheduleEntity::getStartAt);
+        // ALL の子行も同じ一意制約を持つため、後ろへの移動は末尾から確定する。
+        if (!shift.isNegative() && !shift.isZero()) order = order.reversed();
+        List<ScheduleEntity> nonExceptionChildren = children.stream()
                 .filter(child -> !child.getIsException())
-                .forEach(child -> applyUpdate.accept(child, req));
+                .sorted(order)
+                .toList();
+        ScheduleEntity updatedSelected = selected.getId().equals(parentId) ? updatedParent : selected;
+        List<Long> updatedIds = new ArrayList<>(1 + nonExceptionChildren.size());
+        updatedIds.add(parentId);
+        for (ScheduleEntity child : nonExceptionChildren) {
+            ScheduleEntity updatedChild = applyUpdate.apply(child, shiftedRequest(originalParent, child, req));
+            if (!shift.isZero()) scheduleRepository.flush();
+            updatedIds.add(child.getId());
+            if (child.getId().equals(selected.getId())) {
+                updatedSelected = updatedChild;
+            }
+        }
+        return new RecurringScheduleUpdateResult(updatedSelected, updatedIds.size(), updatedIds);
+    }
+
+    /** 起点の開始日時に対する変更量を求める。 */
+    private Duration startShift(ScheduleEntity anchor, UpdateScheduleRequest req) {
+        if (req == null || req.getStartAt() == null) return Duration.ZERO;
+        return Duration.between(anchor.getStartAt(),
+                req.getStartAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime());
+    }
+
+    /** 絶対日時を全行へ複製せず、起点の変更量を各行の元日時へ足す。 */
+    private UpdateScheduleRequest shiftedRequest(ScheduleEntity anchor, ScheduleEntity child,
+                                                  UpdateScheduleRequest req) {
+        if (req == null) return null;
+        LocalDateTime requestedStart = req.getStartAt() != null
+                ? req.getStartAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime()
+                : anchor.getStartAt();
+        LocalDateTime requestedEnd = req.getEndAt() != null
+                ? req.getEndAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime()
+                : anchor.getEndAt();
+        Duration startShift = startShift(anchor, req);
+        Duration endShift = anchor.getEndAt() != null && requestedEnd != null
+                ? Duration.between(anchor.getEndAt(), requestedEnd) : Duration.ZERO;
+        OffsetDateTime childStart = req.getStartAt() != null && !startShift.isZero()
+                ? child.getStartAt().plus(startShift).atZone(STORAGE_ZONE).toOffsetDateTime() : null;
+        OffsetDateTime childEnd = null;
+        if (req.getEndAt() != null) {
+            if (child.getEndAt() != null && anchor.getEndAt() != null && !endShift.isZero()) {
+                childEnd = child.getEndAt().plus(endShift).atZone(STORAGE_ZONE).toOffsetDateTime();
+            } else if (child.getEndAt() == null && requestedEnd != null) {
+                childEnd = child.getStartAt().plus(startShift)
+                        .plus(Duration.between(requestedStart, requestedEnd))
+                        .atZone(STORAGE_ZONE).toOffsetDateTime();
+            }
+        }
+        return req.withTimes(childStart, childEnd);
     }
 
     /**

@@ -10,7 +10,7 @@ const props = defineProps<{
   /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
   scopeId?: string | number
   /**
-   * 個人ダッシュボード集約タイムライン（所属 team/org 横断）モード。
+   * 個人ダッシュボード集約タイムライン（所属 TEAM/ORGANIZATION/VILLAGE 横断）モード。
    * true の場合 GET /api/v1/timeline/my を使い、scopeType/scopeId は不要・pinned は常に空。
    */
   myFeed?: boolean
@@ -78,7 +78,7 @@ const repostSubmitting = ref(false)
 async function loadFeed(cursor?: number) {
   loading.value = true
   try {
-    // myFeed モード: 所属 team/org 横断の個人集約タイムライン（pinned は常に空）。
+    // myFeed モード: 所属 TEAM/ORGANIZATION/VILLAGE 横断の個人集約タイムライン（pinned は常に空）。
     // 単一スコープモード: 従来通り scopeType/scopeId でフィード取得。
     const res = props.myFeed
       ? await getMyTimeline(cursor)
@@ -257,7 +257,11 @@ defineExpose({ refresh })
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div
+    class="flex flex-col gap-3"
+    data-testid="timeline-feed"
+    :data-loaded="initialLoaded"
+  >
     <!-- 非表示中チップ（個人集約フィードのみ・0件のときは出さない） -->
     <div v-if="showMutedChip" class="flex justify-end">
       <button

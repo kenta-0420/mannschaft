@@ -11,6 +11,9 @@
       "saved": "Configuración de la cuenta guardada.",
       "save_failed": "Error al guardar."
     },
+    "admin_affiliate_settings": {
+      "placeholder_tag_warning": "Este anuncio no se muestra porque su ID de etiqueta aún no está configurado."
+    },
     "spotlight": {
       "hide_advertiser": "Ocultar este anunciante",
       "hide_advertiser_done": "Los anuncios de este anunciante ya están ocultos",
@@ -637,9 +640,21 @@
         "billing_method_label": "Método de pago",
         "billing_stripe": "Tarjeta de crédito (Stripe)",
         "billing_invoice": "Pago por factura",
+        "billing_fixed_notice": "Solo pago con tarjeta de crédito",
         "success_message": "Se ha enviado la solicitud de registro. Podrás comenzar a usar el servicio tras la revisión.",
         "error_message": "Error al registrar"
       }
+    },
+    "register": {
+      "title": "Registro de anunciante",
+      "submit": "Enviar solicitud",
+      "company_name_label": "Nombre de la empresa / anunciante",
+      "company_name_placeholder": "Ejemplo S.A.",
+      "contact_email_label": "Correo electrónico de contacto",
+      "billing_method_label": "Método de pago",
+      "billing_fixed_notice": "Solo pago con tarjeta de crédito",
+      "success_message": "Se ha enviado la solicitud de registro. Podrás comenzar a usar el servicio tras la revisión.",
+      "error_message": "Error al registrar"
     },
     "settings_ad_preferences_guide": {
       "page_title": "広告の受信設定 — 使い方ガイド",

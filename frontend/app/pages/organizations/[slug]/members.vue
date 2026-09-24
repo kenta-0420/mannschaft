@@ -11,35 +11,56 @@ definePageMeta({
 })
 
 const route = useRoute()
+const router = useRouter()
 const orgSlug = computed(() => String(route.params.slug))
 
 const { isAdmin, isAdminOrDeputy, displayName, refresh } = useOrgShellContext()
 
 /**
- * CMP-051: オーナー譲渡後は自分が ADMIN でなくなるため、シェルの組織・権限を
- * 再解決して権限依存 UI（管理者専用タブ・操作ボタン）を即座に整合させる。
+ * オーナー委譲オファーの承諾/辞退カードを表示するための offerId（`?offerId=` クエリ由来）。
+ * 打診通知の actionUrl がこのディープリンク形式
+ * （`/organizations/{slug}/members?offerId=...`）を指す。
  */
-async function onOwnershipTransferred(): Promise<void> {
+const offerIdFromQuery = computed<string | null>(() => {
+  const v = route.query.offerId
+  return typeof v === 'string' && v.length > 0 ? v : null
+})
+
+/** 承諾/辞退が確定したらクエリを除去し、ロール・権限を再取得して画面を最新化する。 */
+async function onOfferResolved() {
   await refresh()
+  const query = { ...route.query }
+  delete query.offerId
+  await router.replace({ query })
 }
+
 </script>
 
 <template>
   <div class="mt-4">
+    <TransferOwnershipOfferCard
+      v-if="offerIdFromQuery"
+      class="mb-4"
+      scope-type="organization"
+      :slug="orgSlug"
+      :offer-id="offerIdFromQuery"
+      :scope-name="displayName"
+      @resolved="onOfferResolved"
+    />
     <MemberTable
       scope-type="organization"
       :scope-id="orgSlug"
       :can-change-role="isAdminOrDeputy"
       :can-remove="isAdminOrDeputy"
     />
-    <!-- CMP-051: オーナー譲渡は ADMIN 本人のみ（BE も最終判定を ADMIN 限定にしている） -->
+    <!-- オーナー委譲の打診は ADMIN 本人のみ。権限変更は相手の承諾時に行う。 -->
     <TransferOwnershipPanel
       v-if="isAdmin"
       class="mt-6"
       scope-type="organization"
       :scope-slug="orgSlug"
       :scope-name="displayName"
-      @transferred="onOwnershipTransferred"
+      @offered="refresh"
     />
   </div>
 </template>

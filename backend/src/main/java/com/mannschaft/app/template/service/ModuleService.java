@@ -39,8 +39,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -239,20 +241,30 @@ public class ModuleService {
     }
 
     /**
-     * チームの有効モジュール一覧を取得する。
+     * チームの有効モジュール一覧を取得する（DEFAULTモジュール含む）。
+     *
+     * <p>DEFAULT モジュールは team_enabled_modules に行を持たない（常時有効のため有効化フラグ不要な設計）。
+     * サイドバー（{@code BaseSidebar.vue}）はこの応答から {@code moduleSlug} の有効集合を作るため、
+     * DEFAULT を含めないと該当項目が全利用者から永久に消える（SYSTEM_ADMIN は別経路で素通りするため
+     * この欠落が長期間発覚しなかった）。DEFAULT は {@code isEnabled=true} 固定・{@code enabledAt=null}
+     * （有効化した瞬間が存在しないため）で合成し、OPTIONAL の有効化行と結合して返す。
      *
      * @param teamId チームID
      * @return チームモジュールレスポンスリスト
      */
     @Cacheable(value = "teamModules", key = "#teamId", unless = "#result == null || #result.isEmpty()")
     public List<TeamModuleResponse> getTeamModules(Long teamId) {
-        return teamEnabledModuleRepository.findByTeamId(teamId).stream()
+        List<TeamModuleResponse> result = new ArrayList<>();
+        // OPTIONAL: 有効化行（team_enabled_modules）から従来どおり反映
+        Set<Long> seenModuleIds = new HashSet<>();
+        teamEnabledModuleRepository.findByTeamId(teamId).stream()
                 .map(tem -> {
                     ModuleDefinitionEntity module = moduleDefinitionRepository.findById(tem.getModuleId())
                             .orElse(null);
-                    if (module == null) {
+                    if (module == null || !Boolean.TRUE.equals(module.getIsActive())) {
                         return null;
                     }
+                    seenModuleIds.add(module.getId());
                     return new TeamModuleResponse(
                             module.getId(),
                             module.getName(),
@@ -262,11 +274,27 @@ public class ModuleService {
                             tem.getTrialExpiresAt());
                 })
                 .filter(r -> r != null)
-                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
-                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
-                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
-                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
-                .collect(Collectors.toCollection(ArrayList::new));
+                .forEach(result::add);
+
+        // DEFAULT: 有効化行を持たないため moduleDefinitions から直接合成し、常に isEnabled=true とする。
+        // 万一 DEFAULT にも有効化行が存在する環境があっても seenModuleIds で重複を防ぐ。
+        moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.DEFAULT).stream()
+                .filter(ModuleDefinitionEntity::getIsActive)
+                .filter(module -> !seenModuleIds.contains(module.getId()))
+                .map(module -> new TeamModuleResponse(
+                        module.getId(),
+                        module.getName(),
+                        module.getSlug(),
+                        true,
+                        null,
+                        null))
+                .forEach(result::add);
+
+        // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+        // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+        // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+        // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList を返すこと（担保済み）。
+        return result;
     }
 
     /**
@@ -435,18 +463,28 @@ public class ModuleService {
     /**
      * 組織の有効モジュール一覧を返す（DEFAULTモジュール含む）。
      *
+     * <p>DEFAULT モジュールは organization_enabled_modules に行を持たない（常時有効のため有効化
+     * フラグ不要な設計）。サイドバー（{@code BaseSidebar.vue}）はこの応答から {@code moduleSlug} の
+     * 有効集合を作るため、DEFAULT を含めないと該当項目が全利用者から永久に消える（SYSTEM_ADMIN は
+     * 別経路で素通りするためこの欠落が長期間発覚しなかった）。DEFAULT は {@code isEnabled=true} 固定・
+     * {@code enabledAt=null}（有効化した瞬間が存在しないため）で合成し、OPTIONAL の有効化行と結合して返す。
+     *
      * @param orgId 組織ID
      * @return 組織モジュールレスポンスリスト
      */
     @Cacheable(value = "orgModules", key = "#orgId")
     public List<OrgModuleResponse> getOrganizationModules(Long orgId) {
-        return organizationEnabledModuleRepository.findByOrganizationId(orgId).stream()
+        List<OrgModuleResponse> result = new ArrayList<>();
+        Set<Long> seenModuleIds = new HashSet<>();
+        // OPTIONAL: 有効化行（organization_enabled_modules）から従来どおり反映
+        organizationEnabledModuleRepository.findByOrganizationId(orgId).stream()
                 .map(oem -> {
                     ModuleDefinitionEntity module = moduleDefinitionRepository.findById(oem.getModuleId())
                             .orElse(null);
-                    if (module == null) {
+                    if (module == null || !Boolean.TRUE.equals(module.getIsActive())) {
                         return null;
                     }
+                    seenModuleIds.add(module.getId());
                     return new OrgModuleResponse(
                             module.getId(),
                             module.getName(),
@@ -455,11 +493,26 @@ public class ModuleService {
                             oem.getEnabledAt());
                 })
                 .filter(r -> r != null)
-                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
-                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
-                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
-                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
-                .collect(Collectors.toCollection(ArrayList::new));
+                .forEach(result::add);
+
+        // DEFAULT: 有効化行を持たないため moduleDefinitions から直接合成し、常に isEnabled=true とする。
+        // 万一 DEFAULT にも有効化行が存在する環境があっても seenModuleIds で重複を防ぐ。
+        moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.DEFAULT).stream()
+                .filter(ModuleDefinitionEntity::getIsActive)
+                .filter(module -> !seenModuleIds.contains(module.getId()))
+                .map(module -> new OrgModuleResponse(
+                        module.getId(),
+                        module.getName(),
+                        module.getSlug(),
+                        true,
+                        null))
+                .forEach(result::add);
+
+        // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+        // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+        // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+        // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList を返すこと（担保済み）。
+        return result;
     }
 
     /**

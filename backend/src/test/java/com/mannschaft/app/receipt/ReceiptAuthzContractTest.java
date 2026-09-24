@@ -11,8 +11,11 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,8 +33,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -70,6 +73,9 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @PersistenceContext
+    private EntityManager em;
+
     @Autowired
     private RoleRepository roleRepository;
 
@@ -95,6 +101,11 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        MembershipTestHelper.insertActiveUser(em, ADMIN_A);
+        MembershipTestHelper.insertActiveUser(em, MEMBER_A);
+        MembershipTestHelper.insertActiveUser(em, ADMIN_B);
+        MembershipTestHelper.insertActiveUser(em, OUTSIDER);
+
         // roles はグローバル参照テーブル（本番は V2.014 で seed）。共有 Testcontainer を汚さないため、
         // 削除・再INSERT せず name で既存を引く（無ければ idempotent に作成）。本クラスは @Transactional なので
         // 全 seed はテスト毎にロールバックされ、他テストと衝突しない。
@@ -290,7 +301,7 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
     @WithMockUser(username = "920100002")
     @DisplayName("AC-2-4a: teamAの非ADMINメンバーが発行者設定を変更 → 403")
     void upsertSettings_byNonAdminMember_forbidden() throws Exception {
-        mockMvc.perform(put("/api/v1/admin/receipt-settings")
+        mockMvc.perform(patch("/api/v1/admin/receipt-settings")
                         .param("scopeType", "TEAM")
                         .param("scopeId", String.valueOf(teamAId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -303,7 +314,7 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
     @WithMockUser(username = "920100001")
     @DisplayName("AC-2-4b(正常系): teamAのADMINは発行者設定を変更できる → 200")
     void upsertSettings_byValidAdmin_ok() throws Exception {
-        mockMvc.perform(put("/api/v1/admin/receipt-settings")
+        mockMvc.perform(patch("/api/v1/admin/receipt-settings")
                         .param("scopeType", "TEAM")
                         .param("scopeId", String.valueOf(teamAId))
                         .contentType(MediaType.APPLICATION_JSON)

@@ -37,6 +37,7 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.search.dto.SearchResultResponse;
 import com.mannschaft.app.search.service.GlobalSearchService;
 import com.mannschaft.app.shift.ShiftPeriodType;
+import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -347,6 +348,17 @@ class GlobalSearchVisibilityContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("shifts")
     class Shifts {
 
+        /**
+         * 検索用のシフト表を保存する。
+         *
+         * <p>CMP-260826-2127（AC-13）: ステータスを明示していなかったため
+         * {@code ShiftScheduleEntity} の既定値 {@code DRAFT} になっていた。
+         * 未公開シフト表の遮断により非管理者の検索母集団から DRAFT が外れるため、
+         * そのままでは「所属チームのシフト表は検索に出る」という日常の正常系が落ちる。
+         * 本クラスが固定したいのは<b>スコープ可視性</b>（所属していれば出る／していなければ出ない）であり
+         * 公開ステータスではないため、期待値ではなくフィクスチャを公開済みへ直す
+         *（未公開が検索に出ないことは {@code ShiftUnpublishedScheduleVisibilityContractIT} が固定する）。</p>
+         */
         private Long saveShift(Long teamId) {
             return shiftScheduleRepository.saveAndFlush(ShiftScheduleEntity.builder()
                     .teamId(teamId)
@@ -354,6 +366,8 @@ class GlobalSearchVisibilityContractIT extends AbstractMySqlIntegrationTest {
                     .periodType(ShiftPeriodType.MONTHLY)
                     .startDate(LocalDate.of(2026, 5, 1))
                     .endDate(LocalDate.of(2026, 5, 31))
+                    .status(ShiftScheduleStatus.PUBLISHED)
+                    .publishedAt(java.time.LocalDateTime.of(2026, 4, 20, 10, 0))
                     .build()).getId();
         }
 

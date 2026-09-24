@@ -17,8 +17,11 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -77,6 +80,9 @@ class ResidentAuthzContractTest extends AbstractMySqlIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @PersistenceContext
+    private EntityManager em;
+
     @Autowired
     private RoleRepository roleRepository;
 
@@ -114,6 +120,11 @@ class ResidentAuthzContractTest extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        MembershipTestHelper.insertActiveUser(em, ADMIN_A);
+        MembershipTestHelper.insertActiveUser(em, MEMBER_A);
+        MembershipTestHelper.insertActiveUser(em, ADMIN_B);
+        MembershipTestHelper.insertActiveUser(em, OUTSIDER);
+
         // roles はグローバル参照テーブル（本番は V2.014 で seed）。共有 Testcontainer を汚さないため、
         // 削除・再INSERT せず name で既存を引く（無ければ idempotent に作成）。本クラスは @Transactional なので
         // 全 seed はテスト毎にロールバックされ、他テストと衝突しない。

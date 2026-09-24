@@ -36,7 +36,7 @@ function makePagedResponse(posts: unknown[], meta?: Record<string, unknown>) {
     meta: {
       page: 0,
       size: 20,
-      totalElements: posts.length,
+      total: posts.length,
       totalPages: 1,
       ...meta,
     },

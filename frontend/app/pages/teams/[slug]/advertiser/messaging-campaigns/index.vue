@@ -64,7 +64,7 @@ async function load() {
       size: size.value,
     })
     items.value = res.data
-    totalElements.value = res.meta.totalElements
+    totalElements.value = res.meta.total
   }
   catch {
     items.value = []

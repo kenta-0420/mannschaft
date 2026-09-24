@@ -1,6 +1,8 @@
 package com.mannschaft.app.returnstayplan.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -19,6 +21,8 @@ public class ReturnStayPlanPurgeBatchService {
 
     @BatchEndpoint(name = "return-stay-plan-purge-daily",
             description = "終了から1年を超えた帰省・滞在予定を日次削除する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "終了から1年を超えた帰省・滞在予定の保持期間超過削除。止めると保持期限を超えた個人データが残留する")
     @Scheduled(cron = "0 10 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "returnStayPlanPurgeBatch", lockAtLeastFor = "PT5S", lockAtMostFor = "PT5M")
     public Integer purgeExpiredPlans() {

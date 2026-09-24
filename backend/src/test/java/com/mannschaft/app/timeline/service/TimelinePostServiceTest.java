@@ -5,6 +5,11 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
@@ -30,6 +35,7 @@ import com.mannschaft.app.timeline.repository.TimelinePostReactionRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
+import com.mannschaft.app.village.service.VillageAccessGate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -93,6 +99,9 @@ class TimelinePostServiceTest {
     private PostingIdentityService postingIdentityService;
 
     @Mock
+    private VillageAccessGate villageAccessGate;
+
+    @Mock
     private AccessControlService accessControlService;
 
     @Mock
@@ -108,7 +117,10 @@ class TimelinePostServiceTest {
     private com.mannschaft.app.organization.service.OrganizationService organizationService;
 
     @Mock
-    private com.mannschaft.app.common.storage.MediaUrlResolver mediaUrlResolver;
+    private StorageAccessService storageAccessService;
+
+    @Mock
+    private StorageAclService storageAclService;
 
     @Mock
     private TimelinePostVisibilityAccessGuard postVisibilityGuard;
@@ -195,6 +207,76 @@ class TimelinePostServiceTest {
         org.mockito.Mockito.lenient().when(nameResolverService.resolveOrganizationIconUrls(anySet())).thenReturn(Map.of());
         org.mockito.Mockito.lenient().when(nameResolverService.resolveUserDisplayNames(anySet())).thenReturn(Map.of());
         org.mockito.Mockito.lenient().when(nameResolverService.resolveUserAvatarUrls(anySet())).thenReturn(Map.of());
+    }
+
+    @Test
+    @DisplayName("AC-村: 村のみ所属でも一括解決した UUID・名前・遷移用 slug を返し limit+1 件を要求する")
+    void villageOnlyMyFeed_enrichesIdentityAndRequestsOneExtraRow() {
+        UUID villageId = UUID.fromString("018f0000-0000-7000-8000-000000000101");
+        VillageAccessGate.VisibleVillage village = new VillageAccessGate.VisibleVillage(
+                villageId, "村一", "village-one");
+        PostResponse raw = PostResponse.builder()
+                .id(10L)
+                .scope(new PostResponse.PostScopeDto("VILLAGE", 0L, villageId, null, null))
+                .author(new PostResponse.PostAuthorDto(USER_ID, null, "USER", null))
+                .content(new PostResponse.PostContentDto("村投稿", null, null, "PUBLISHED", null, false))
+                .stats(new PostResponse.PostStatsDto(0, 0, 0, (short) 0, (short) 0))
+                .audit(new PostResponse.PostAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                .build();
+        given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of());
+        given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
+        given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(villageId));
+        given(villageAccessGate.findActiveVisibleVillages(List.of(villageId), USER_ID)).willReturn(List.of(village));
+        given(postRepository.findMyVillageFeed(anyList(), any(), any(PageRequest.class)))
+                .willReturn(List.of());
+        given(timelineMapper.toPostResponseList(any())).willReturn(List.of(raw));
+
+        List<PostResponse> result = timelinePostService.getMyFeed(USER_ID, null, 2);
+
+        assertThat(result).singleElement().satisfies(post -> {
+            assertThat(post.getScope().scopeVillageId()).isEqualTo(villageId);
+            assertThat(post.getScope().name()).isEqualTo("村一");
+            assertThat(post.getScope().slug()).isEqualTo("village-one");
+        });
+        verify(villageAccessGate).findActiveVisibleVillages(List.of(villageId), USER_ID);
+        verify(postRepository).findMyVillageFeed(
+                eq(List.of(villageId)), isNull(), eq(PageRequest.of(0, 3)));
+    }
+
+    @Test
+    @DisplayName("AC-ページング: TEAM と VILLAGE の投稿をID降順で合流し、各クエリは limit+1 までに留める")
+    void myFeed_mergesTeamAndVillageByIdWithOneExtraRowPerQuery() {
+        UUID villageId = UUID.fromString("018f0000-0000-7000-8000-000000000102");
+        VillageAccessGate.VisibleVillage village = new VillageAccessGate.VisibleVillage(
+                villageId, "村", "village-two");
+        TimelinePostEntity teamPost12 = TimelinePostEntity.builder()
+                .id(12L).scopeType(PostScopeType.TEAM).scopeId(1L).build();
+        TimelinePostEntity teamPost10 = TimelinePostEntity.builder()
+                .id(10L).scopeType(PostScopeType.TEAM).scopeId(1L).build();
+        TimelinePostEntity villagePost11 = TimelinePostEntity.builder()
+                .id(11L).scopeType(PostScopeType.VILLAGE).scopeVillageId(villageId).build();
+        TimelinePostEntity villagePost9 = TimelinePostEntity.builder()
+                .id(9L).scopeType(PostScopeType.VILLAGE).scopeVillageId(villageId).build();
+        given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of(1L));
+        given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
+        given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(villageId));
+        given(villageAccessGate.findActiveVisibleVillages(List.of(villageId), USER_ID)).willReturn(List.of(village));
+        given(postRepository.findMyFeed(anyList(), anyList(), anyList(), anyList(), anyList(), anyList(), isNull(), any(PageRequest.class)))
+                .willReturn(List.of(teamPost12, teamPost10));
+        given(postRepository.findMyVillageFeed(eq(List.of(villageId)), isNull(), any(PageRequest.class)))
+                .willReturn(List.of(villagePost11, villagePost9));
+        given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+        timelinePostService.getMyFeed(USER_ID, null, 2);
+
+        ArgumentCaptor<List<TimelinePostEntity>> postsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(timelineMapper).toPostResponseList(postsCaptor.capture());
+        assertThat(postsCaptor.getValue()).extracting(TimelinePostEntity::getId)
+                .containsExactly(12L, 11L, 10L);
+        verify(postRepository).findMyFeed(
+                eq(List.of(1L)), eq(List.of(-1L)), anyList(), anyList(), anyList(), anyList(),
+                isNull(), eq(PageRequest.of(0, 3)));
+        verify(postRepository).findMyVillageFeed(eq(List.of(villageId)), isNull(), eq(PageRequest.of(0, 3)));
     }
 
     // ========================================
@@ -1612,6 +1694,21 @@ class TimelinePostServiceTest {
         }
     }
 
+        @Test
+        @DisplayName("AC-村のみ: TEAM/ORG 非所属でも現役村 ID を解決して個人集約フィードに含める")
+        void 村のみ所属でも現役村IDを解決する() {
+            // given: TEAM/ORG が空でも、退村・BAN 済みを除外する村の現役所属は存在する。
+            UUID villageId = UUID.randomUUID();
+            given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of());
+            given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
+            given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(villageId));
+
+            // when
+            timelinePostService.getMyFeed(USER_ID, null, 20);
+
+            // then: 実装は VILLAGE の scopeVillageId IN 条件へ渡す村 ID を必ず解決する。
+            verify(postingIdentityService).getActiveVillageIdsByUser(USER_ID);
+        }
     // ========================================
     // togglePin
     // ========================================
@@ -1723,7 +1820,6 @@ class TimelinePostServiceTest {
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(attachments);
-            given(timelineMapper.toAttachmentResponseList(attachments)).willReturn(attachmentResponses);
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
 
             // when
@@ -1762,7 +1858,6 @@ class TimelinePostServiceTest {
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(List.of());
-            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
 
             // DB は createdAt 昇順・先頭5件（id 11〜15）を返す。id=16 の6件目は LIMIT 5 で含まれない。
@@ -1839,7 +1934,6 @@ class TimelinePostServiceTest {
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID)).willReturn(List.of());
-            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
             given(postRepository.findRepliesByParentId(eq(POST_ID), any())).willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
@@ -1889,7 +1983,6 @@ class TimelinePostServiceTest {
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID)).willReturn(List.of());
-            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
             given(postRepository.findRepliesByParentId(eq(POST_ID), any())).willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
@@ -2003,6 +2096,8 @@ class TimelinePostServiceTest {
 
             // then
             assertThat(result).hasSize(1);
+            verify(postRepository).findRepliesByParentIdAfterCursor(
+                    eq(parentId), isNull(), eq(PageRequest.of(0, 11)));
         }
 
         @Test
@@ -2021,7 +2116,7 @@ class TimelinePostServiceTest {
             timelinePostService.getReplies(parentId, null, -1, USER_ID);
 
             // then
-            verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), isNull(), eq(PageRequest.of(0, 20)));
+            verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), isNull(), eq(PageRequest.of(0, 21)));
         }
 
         @Test
@@ -2041,7 +2136,7 @@ class TimelinePostServiceTest {
             timelinePostService.getReplies(parentId, cursor, 20, USER_ID);
 
             // then
-            verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), eq(cursor), eq(PageRequest.of(0, 20)));
+            verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), eq(cursor), eq(PageRequest.of(0, 21)));
         }
 
         @Test
@@ -2333,7 +2428,10 @@ class TimelinePostServiceTest {
 
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
             given(attachmentRepository.save(any(TimelinePostAttachmentEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
+                    .willAnswer(invocation -> {
+                        TimelinePostAttachmentEntity entity = invocation.getArgument(0);
+                        return entity.toBuilder().id(1L).build();
+                    });
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
 
             // when
@@ -2458,6 +2556,10 @@ class TimelinePostServiceTest {
                     .recordUpload(eq(StorageScopeType.TEAM), eq(TEAM_ID), eq(2048L),
                             eq(StorageFeatureType.TIMELINE),
                             eq("timeline_post_attachments"), eq(ATTACHMENT_ID), eq(USER_ID));
+            then(storageAclService).should().claimPending(
+                    eq("timeline/TEAM/50/tmp/uuid.jpg"), eq(USER_ID), eq(StorageAclScope.team(TEAM_ID)),
+                    eq(new StorageAclContentReference("TIMELINE_SCOPE", "TEAM:" + TEAM_ID)),
+                    eq(new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", ATTACHMENT_ID.toString())));
         }
 
         @Test
@@ -2512,6 +2614,12 @@ class TimelinePostServiceTest {
                     .recordDeletion(eq(StorageScopeType.PERSONAL), eq(USER_ID), eq(4096L),
                             eq(StorageFeatureType.TIMELINE),
                             eq("timeline_post_attachments"), eq(ATTACHMENT_ID), eq(USER_ID));
+            then(storageAclService).should().releaseClaimed(eq("timeline/PUBLIC/0/tmp/uuid.jpg"),
+                    eq(new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", ATTACHMENT_ID.toString())));
+            ArgumentCaptor<com.mannschaft.app.common.storage.S3ObjectDeleteEvent> deleteEventCaptor =
+                    ArgumentCaptor.forClass(com.mannschaft.app.common.storage.S3ObjectDeleteEvent.class);
+            then(domainEventPublisher).should().publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly("timeline/PUBLIC/0/tmp/uuid.jpg");
         }
 
         @Test
@@ -2580,6 +2688,10 @@ class TimelinePostServiceTest {
         private static final String SIGNED_URL =
                 "https://r2.example.com/" + IMAGE_KEY
                         + "?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=deadbeef";
+        private static final String VIDEO_KEY = "timeline/PUBLIC/0/tmp/video-123.mp4";
+        private static final String SIGNED_VIDEO_URL =
+                "https://r2.example.com/" + VIDEO_KEY
+                        + "?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=cafebabe";
 
         /** Mapper 変換直後の生 AttachmentResponse（image.url/thumbnailUrl は未解決＝null）を作る。 */
         private AttachmentResponse rawImageResponse(long id, String fileKey) {
@@ -2594,9 +2706,31 @@ class TimelinePostServiceTest {
 
         private TimelinePostAttachmentEntity imageEntity(Long postId, String fileKey) {
             return TimelinePostAttachmentEntity.builder()
+                    .id(9L)
                     .timelinePostId(postId)
                     .attachmentType(AttachmentType.IMAGE)
                     .fileKey(fileKey)
+                    .build();
+        }
+
+        private TimelinePostAttachmentEntity videoEntity(Long postId, String fileKey) {
+            return TimelinePostAttachmentEntity.builder()
+                    .id(10L)
+                    .timelinePostId(postId)
+                    .attachmentType(AttachmentType.VIDEO_FILE)
+                    .fileKey(fileKey)
+                    .build();
+        }
+
+        private AttachmentResponse rawVideoResponse(long id, String fileKey) {
+            return AttachmentResponse.builder()
+                    .id(id)
+                    .attachmentType("VIDEO_FILE")
+                    .file(new AttachmentResponse.AttachmentFileDto(fileKey, "video.mp4", 4096L, "video/mp4"))
+                    .video(new AttachmentResponse.AttachmentVideoDto(
+                            null, "https://cdn.example.com/thumb.jpg", "動画", "thumb-key",
+                            42, "h264", (short) 1280, (short) 720, "READY"))
+                    .sortOrder((short) 0)
                     .build();
         }
 
@@ -2610,9 +2744,9 @@ class TimelinePostServiceTest {
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(List.of(entity));
-            given(timelineMapper.toAttachmentResponseList(List.of(entity)))
-                    .willReturn(List.of(rawImageResponse(9L, IMAGE_KEY)));
-            given(mediaUrlResolver.resolveAll(anyCollection()))
+            given(timelineMapper.toAttachmentResponse(entity))
+                    .willReturn(rawImageResponse(9L, IMAGE_KEY));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
                     .willReturn(Map.of(IMAGE_KEY, SIGNED_URL));
             given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
             given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
@@ -2644,7 +2778,7 @@ class TimelinePostServiceTest {
             given(attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection()))
                     .willReturn(List.of(entity));
             given(timelineMapper.toAttachmentResponse(entity)).willReturn(rawImageResponse(9L, IMAGE_KEY));
-            given(mediaUrlResolver.resolveAll(anyCollection()))
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
                     .willReturn(Map.of(IMAGE_KEY, SIGNED_URL));
 
             // when
@@ -2691,9 +2825,8 @@ class TimelinePostServiceTest {
                             imageEntity(1L, "timeline/PUBLIC/0/tmp/a.jpg"),
                             imageEntity(2L, "timeline/PUBLIC/0/tmp/b.jpg"),
                             imageEntity(3L, "timeline/PUBLIC/0/tmp/c.jpg")));
-            given(timelineMapper.toAttachmentResponse(any(TimelinePostAttachmentEntity.class)))
-                    .willReturn(rawImageResponse(9L, IMAGE_KEY));
-            given(mediaUrlResolver.resolveAll(anyCollection())).willReturn(Map.of());
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of());
 
             // when
             timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
@@ -2701,7 +2834,75 @@ class TimelinePostServiceTest {
             // then: 添付の一括取得も署名解決も 1 回のみ（ループ内 resolve なし）
             verify(attachmentRepository, org.mockito.Mockito.times(1))
                     .findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection());
-            verify(mediaUrlResolver, org.mockito.Mockito.times(1)).resolveAll(anyCollection());
+            verify(storageAccessService, org.mockito.Mockito.times(1))
+                    .generateDownloadUrlsForList(anyCollection(), any());
+        }
+
+        @Test
+        @DisplayName("ACL不一致の画像添付は投稿詳細から除外される")
+        void ACL不一致画像は投稿詳細から除外される() {
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = imageEntity(POST_ID, IMAGE_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of());
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            assertThat(result.getAttachments()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("動画添付はACL照合済み署名URLをvideoUrlへ設定しメタデータを保持する")
+        void 動画添付に署名URLを設定する() {
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = videoEntity(POST_ID, VIDEO_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(timelineMapper.toAttachmentResponse(entity))
+                    .willReturn(rawVideoResponse(10L, VIDEO_KEY));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of(VIDEO_KEY, SIGNED_VIDEO_URL));
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            assertThat(result.getAttachments()).hasSize(1);
+            AttachmentResponse.AttachmentVideoDto video = result.getAttachments().get(0).getVideo();
+            assertThat(video.videoUrl()).isEqualTo(SIGNED_VIDEO_URL).contains("X-Amz-Signature");
+            assertThat(video.videoProcessingStatus()).isEqualTo("READY");
+            assertThat(video.videoCodec()).isEqualTo("h264");
+            assertThat(video.videoWidth()).isEqualTo((short) 1280);
+        }
+
+        @Test
+        @DisplayName("ACL不一致の動画添付は投稿詳細から除外される")
+        void ACL不一致動画は投稿詳細から除外される() {
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = videoEntity(POST_ID, VIDEO_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of());
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            assertThat(result.getAttachments()).isEmpty();
         }
     }
 }

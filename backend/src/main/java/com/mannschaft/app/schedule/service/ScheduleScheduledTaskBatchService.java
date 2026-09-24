@@ -3,6 +3,8 @@ package com.mannschaft.app.schedule.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.MinResponseRole;
@@ -86,6 +88,8 @@ public class ScheduleScheduledTaskBatchService {
     @BatchEndpoint(
             name = "schedule-scheduled-task",
             description = "予約アンケート・予約出欠募集を scheduledAt 到来時に materialize する（1分毎）")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予定に紐づく予約タスクの実行。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(
             name = "scheduleScheduledTaskBatch",

@@ -27,7 +27,16 @@
     "table_field": "Field",
     "cancel_button": "Cancel",
     "delete_button": "Delete",
-    "fetch_error": "Failed to retrieve deletion preview"
+    "fetch_error": "Failed to retrieve deletion preview",
+    "last_admin_title": "Some organizations/teams need action before you can withdraw",
+    "last_admin_description": "You are the sole administrator (ADMIN) of the scopes below. While other members remain, please appoint a successor or archive the scope before withdrawing.",
+    "scope_type_organization": "Organization",
+    "scope_type_team": "Team",
+    "other_members_count": "{count} other members",
+    "transfer_ownership_button": "Appoint a successor",
+    "archive_button": "Archive",
+    "blocked_notice": "You cannot withdraw until all of the above are resolved",
+    "retry_button": "Retry"
   },
   "signature": {
     "clear": "Clear"
@@ -400,7 +409,8 @@
       "password_placeholder": "Current Password",
       "retention_note": "※ Some data may be retained for {days} days due to legal requirements before being deleted.",
       "delete_success": "Your account has been deleted. Thank you for using our service.",
-      "delete_error": "Failed to delete the account"
+      "delete_error": "Failed to delete the account",
+      "gdpr_011_error": "You cannot withdraw because you are the sole administrator of an organization or team. Please appoint a successor or archive it first."
     },
     "notification": {
       "load_error": "Failed to load settings",
@@ -444,6 +454,78 @@
       "upload_success": "\"{name}\" uploaded successfully",
       "upload_error": "Failed to upload \"{name}\"",
       "uploading": "Uploading..."
+    },
+    "hub": {
+      "pageTitle": "Settings",
+      "searchPlaceholder": "Search settings...",
+      "noSearchResults": "No settings found matching \"{query}\"",
+      "individualListToggle": "Individual settings list",
+      "itemCount": "({count} items)",
+      "account": {
+        "description": "Manage all settings on one screen"
+      },
+      "profile": {
+        "description": "Manage profile information and password"
+      },
+      "security": {
+        "label": "Security",
+        "description": "2FA, session management, security keys"
+      },
+      "email": {
+        "description": "Change your email address"
+      },
+      "password": {
+        "description": "Change or set your password"
+      },
+      "language": {
+        "description": "Display language and timezone settings"
+      },
+      "loginHistory": {
+        "description": "Login and authentication history"
+      },
+      "linkedAccounts": {
+        "description": "Manage OAuth and LINE connections"
+      },
+      "appearance": {
+        "description": "Theme, background color, display settings"
+      },
+      "navigation": {
+        "description": "Customize which navigation items are shown"
+      },
+      "memberCards": {
+        "description": "View membership card and check-in history"
+      },
+      "socialProfiles": {
+        "description": "Manage anonymous profiles and follows"
+      },
+      "seals": {
+        "description": "Display seal and scope-specific settings"
+      },
+      "notifications": {
+        "description": "Notification delivery settings"
+      },
+      "calendarSync": {
+        "description": "Calendar sync and iCal integration"
+      },
+      "contactPrivacy": {
+        "description": "Visibility settings for search, DMs, and online status"
+      },
+      "contactInviteTokens": {
+        "description": "Issue and manage invite URLs for adding contacts"
+      },
+      "contactRequestBlocks": {
+        "label": "Pre-blocked request list",
+        "description": "Block contact requests from specific users"
+      },
+      "storage": {
+        "description": "Check storage usage for personal, team, and organization"
+      },
+      "billing": {
+        "description": "Review your current plan, add-ons, and available features"
+      },
+      "parentalConsentManage": {
+        "description": "Manage approved parents and supervised child accounts"
+      }
     }
   }
 }

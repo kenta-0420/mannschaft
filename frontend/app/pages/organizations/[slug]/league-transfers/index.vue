@@ -3,7 +3,7 @@ import type { components } from '~/types/generated/index'
 import { useLeagueTransfer } from '~/composables/tournament/useLeagueTransfer'
 import { useTournamentBase } from '~/composables/tournament/useTournamentBase'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ layout: 'organization', middleware: ['auth', 'org-role-guard'] })
 
 type LeagueTransferResponse = components['schemas']['LeagueTransferResponse']
 type TransferCandidateResponse = components['schemas']['TransferCandidateResponse']

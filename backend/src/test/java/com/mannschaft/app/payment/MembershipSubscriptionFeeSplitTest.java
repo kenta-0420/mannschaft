@@ -77,6 +77,13 @@ class MembershipSubscriptionFeeSplitTest {
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private MemberPaymentService memberPaymentService;
     @Mock private com.mannschaft.app.auth.repository.UserRepository userRepository;
+    @Mock private com.mannschaft.app.payment.service.MembershipPayerWithdrawalRunner payerWithdrawalRunner;
+    @Mock private com.mannschaft.app.payment.service.MembershipBeneficiaryWithdrawalRunner beneficiaryWithdrawalRunner;
+    @Mock private com.mannschaft.app.payment.repository.MembershipBeneficiaryWithdrawalCancellationRepository
+            beneficiaryWithdrawalCancellationRepository;
+    @Mock private com.mannschaft.app.payment.repository.MembershipPayerWithdrawalCancellationRepository
+            payerWithdrawalCancellationRepository;
+    @Mock private com.mannschaft.app.auth.service.WithdrawalStateQueryService withdrawalStateQueryService;
 
     /** 純粋関数なので実物を使う（モックで固定値を返すと「金額一致」の検証にならない）。 */
     private final PaymentFeeCalculator paymentFeeCalculator = new PaymentFeeCalculator();
@@ -105,7 +112,10 @@ class MembershipSubscriptionFeeSplitTest {
                 membershipSubscriptionRepository, paymentItemService, paymentItemRepository,
                 paymentAuthorizationService, connectAccountRepository, connectChargeService,
                 feePolicyResolver, stripeCustomerRepository, stripePaymentProvider,
-                memberPaymentService, userRepository, paymentFeeCalculator);
+                memberPaymentService, userRepository, paymentFeeCalculator,
+                payerWithdrawalRunner, beneficiaryWithdrawalRunner, beneficiaryWithdrawalCancellationRepository,
+                payerWithdrawalCancellationRepository,
+                withdrawalStateQueryService);
     }
 
     private PaymentItemEntity recurringItem(long faceAmount) {

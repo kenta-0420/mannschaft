@@ -1,5 +1,7 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.AuditLogEntity;
@@ -67,6 +69,8 @@ public class AuditLogArchiveBatchService {
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると監査ログが本表に滞留し続け、アーカイブされないまま肥大化して監査記録の保全と参照性能が壊れる")
     @BatchEndpoint(name = "auth-audit-log-archive-monthly", description = "2 年以上前の audit_logs を R2 に毎月 1 日 02:00 アーカイブして物理削除する")
     @Scheduled(cron = "0 0 2 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "auditLogArchiveBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")

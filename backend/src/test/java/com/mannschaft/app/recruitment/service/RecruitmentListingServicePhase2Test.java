@@ -16,6 +16,7 @@ import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
 import com.mannschaft.app.recruitment.entity.RecruitmentDistributionTargetEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentDistributionTargetRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 
 import java.lang.reflect.Field;
@@ -44,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -69,6 +72,8 @@ class RecruitmentListingServicePhase2Test {
     private RecruitmentParticipantRepository participantRepository;
     @Mock
     private RecruitmentParticipantHistoryRepository participantHistoryRepository;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
     @Mock
     private UserRoleRepository userRoleRepository;
     @Mock
@@ -226,10 +231,13 @@ class RecruitmentListingServicePhase2Test {
     class ConfirmApplication {
 
         @Test
-        @DisplayName("APPLIED → CONFIRMED + リマインダー作成")
+        @DisplayName("有料募集の APPLIED → CONFIRMED + リマインダー作成 + 与信起票")
         void confirm_applied_success() throws Exception {
             RecruitmentParticipantEntity participant = buildParticipant(RecruitmentParticipantStatus.APPLIED);
             RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "paymentEnabled", true);
+            setField(listing, "price", 2000);
+            setField(listing, "payeeKind", "TEAM");
 
             given(participantRepository.findByIdForUpdate(PARTICIPANT_ID)).willReturn(Optional.of(participant));
             given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
@@ -246,6 +254,20 @@ class RecruitmentListingServicePhase2Test {
 
             verify(participantRepository).save(any());
             verify(reminderRepository).save(any());
+            verify(eventPublisher).publishEvent(argThat((Object event) -> {
+                if (!(event instanceof RecruitmentParticipantConfirmedEvent confirmedEvent)) {
+                    return false;
+                }
+                return LISTING_ID.equals(confirmedEvent.listingId())
+                        && PARTICIPANT_ID.equals(confirmedEvent.participantId())
+                        && USER_ID.equals(confirmedEvent.payerUserId())
+                        && "TEAM".equals(confirmedEvent.listingScopeType())
+                        && TEAM_ID.equals(confirmedEvent.listingScopeId())
+                        && "TEAM".equals(confirmedEvent.payeeKind())
+                        && confirmedEvent.payeeUserId() == null
+                        && confirmedEvent.faceAmount() == 2000L
+                        && listing.getStartAt().equals(confirmedEvent.serviceDate());
+            }));
         }
 
         @Test

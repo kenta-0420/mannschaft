@@ -1,5 +1,7 @@
 package com.mannschaft.app.notification.fanout;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.batch.BatchEndpointExempt;
 import com.mannschaft.app.common.i18n.DeliveryLocales;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -80,6 +82,8 @@ public class NotificationFanoutWorker {
      * fan-out の進捗・失敗は {@code notification_fanout_jobs} のジョブ行そのもの
      * （ステータス・{@code cursor_subject_id}・リトライ回数）が記録しているため、実行履歴は不要である。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "通知 fan-out の唯一の実行主体であり、止めると配信ジョブが滞留して再開時に一斉配信される")
     @BatchEndpointExempt("5 秒間隔（日次 17,280 回）の高頻度ワーカーであり、"
         + "実行履歴を書くと日次・月次バッチの記録が埋没する。進捗は notification_fanout_jobs のジョブ行が記録")
     @Scheduled(fixedDelay = 5_000)

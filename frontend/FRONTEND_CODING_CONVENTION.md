@@ -541,3 +541,26 @@ date.toLocaleDateString(locale.value, { weekday: 'short' })
 1. **6 言語すべて**（ja/en/zh/ko/es/de）に同じファイル名で JSON を配置する（未翻訳ならひとまず日本語と同じ値で可、後で翻訳でもよい）。
 2. `nuxt.config.ts` の各ロケール定義の `files:` 配列にファイル名を追加する（6 箇所）。
 3. `npm run dev` で該当画面を目視し、キーが実テキストに解決されていることを確認する。
+
+---
+
+## 16. 日付入力（DatePicker）**【必須】**
+
+日付・日時の入力欄は PrimeVue の **`<DatePicker>` を使う**。`<Calendar>` は PrimeVue 3 時代の名前で、v4 では `DatePicker` を継承した非推奨エイリアス（マウント時に `console.warn` を出す）にすぎない。新規に書かないこと。
+
+### 手入力（キーボード入力）は共通パッチで担保されている
+
+PrimeVue 4.5.4 の `DatePicker` には、**キーボードで日付を打つと桁が落ちる**欠陥がある（CMP-260910-1557）。
+
+- 入力欄は `<InputText :defaultValue="inputFieldValue">` として描画され、`InputText` 側は `:value="d_value"` で DOM を完全制御している。
+- 1打鍵ごとに `onInput` がモデルを更新すると `inputFieldValue`（ゼロ詰め済みの整形文字列）が変化し、**利用者が打っている途中の文字列が整形済み文字列で上書きされる**。さらに `DatePicker` の `updated()` が打鍵前のキャレット位置を復元するため、桁がずれた位置に次の文字が入る。
+- 結果、`2026/09/30` と打つと `2026/09/03` が**無警告で保存される**（途中表示は `2026/09/003`）。
+
+この欠陥は `app/plugins/primevue-datepicker-manual-input.client.ts` が `primevue/datepicker` のコンポーネント定義そのものにパッチを当てることで、**アプリ内の全 `<DatePicker>` に一括で効く**。実装は `app/utils/primevueDatePickerManualInput.ts`。
+
+したがって:
+
+- **画面ごとに `@input` を握って自前で整形し直すなどの個別対処をしないこと。** 共通パッチと二重に DOM を書き換えると再び桁ずれる。
+- パッチは区切り文字も正規化するため、`dateFormat` が `yy/mm/dd` の欄に `2026-09-30` や `２０２６年９月３０日` と打っても受理される。
+- 正規化は `selectionMode` を見て、**日付どうしの区切り**（範囲選択の ` - `、複数選択の `,`）で一旦分割してから各日付を個別に処理する。これをしないと `dateFormat="yy/mm/dd"` の範囲選択で `2026/09/01 - 2026/09/30` の ` - ` まで `/` に置換され、`parseValue()` が終了日を分割できず**モデルが無警告で更新されなくなる**。範囲選択の日付欄を新設する場合も画面側の対処は不要だが、この分割規則は PrimeVue の `parseValue()` 実装に追随させること。
+- PrimeVue を更新した際は `tests/unit/components/datepicker/manualInput.spec.ts` が回帰の番人になる。上流が修正されたらパッチを外し、このテストだけ残すこと。

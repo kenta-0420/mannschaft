@@ -1,10 +1,12 @@
 package com.mannschaft.app.family;
 
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.family.entity.TeamCareNotificationOverrideEntity;
 import com.mannschaft.app.family.entity.UserCareLinkEntity;
 import com.mannschaft.app.family.repository.TeamCareNotificationOverrideRepository;
 import com.mannschaft.app.family.repository.UserCareLinkRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -73,6 +76,12 @@ class CareLinkInvitationScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private TeamCareNotificationOverrideRepository overrideRepository;
 
+    @Autowired
+    private FeatureFlagRepository featureFlagRepository;
+
+    @Autowired
+    private CacheManager cacheManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -89,6 +98,7 @@ class CareLinkInvitationScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager, "FEATURE_FAMILY_CARE_ENABLED");
         String uniq = Long.toString(System.nanoTime(), 36);
 
         recipientId = insertUser("careauthz-recipient-" + uniq + "@example.test");

@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.event.entity.EventDelegationEntity;
 import com.mannschaft.app.event.service.EventDelegationService;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -43,6 +45,8 @@ public class ProxyDelegationCleanupBatchService {
      */
     @BatchEndpoint(name = "proxy-delegation-cleanup",
             description = "代理出席の孤立委任（当事者がスコープ在籍不可）を日次で CANCELLED にする")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。期限切れ代理権限の整理であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 40 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "proxyDelegationCleanupBatch", lockAtMostFor = "PT10M", lockAtLeastFor = "PT0S")
     public void execute() {

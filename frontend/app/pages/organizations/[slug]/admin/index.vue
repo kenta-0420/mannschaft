@@ -83,6 +83,13 @@ const cards = computed<AdminConsoleCard[]>(() => [
     to: `${base.value}/payments`,
   },
   {
+    key: 'paymentRequests',
+    titleKey: 'payment.membership.paymentRequest.adminTitle',
+    descKey: 'payment.membership.paymentRequest.adminDescription',
+    icon: 'pi pi-file-edit',
+    to: `${base.value}/payment-requests`,
+  },
+  {
     key: 'approvals',
     titleKey: 'adminConsole.cards.approvals.title',
     descKey: 'adminConsole.cards.approvals.desc',

@@ -5,6 +5,7 @@ import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.dto.ReceiptResponse;
+import com.mannschaft.app.payment.service.MemberPaymentReceiptPdfService;
 import com.mannschaft.app.payment.service.ReceiptService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +54,9 @@ class ReceiptControllerTest {
     @Mock
     private ReceiptService receiptService;
 
+    @Mock
+    private MemberPaymentReceiptPdfService memberPaymentReceiptPdfService;
+
     private MockMvc mockMvc;
 
     private MockedStatic<SecurityUtils> securityUtilsMock;
@@ -60,7 +64,7 @@ class ReceiptControllerTest {
     @BeforeEach
     void setUp() {
         StaticMessageSource ms = new StaticMessageSource();
-        ReceiptController controller = new ReceiptController(receiptService);
+        ReceiptController controller = new ReceiptController(receiptService, memberPaymentReceiptPdfService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .setControllerAdvice(new GlobalExceptionHandler(ms))

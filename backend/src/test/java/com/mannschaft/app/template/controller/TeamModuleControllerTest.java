@@ -4,7 +4,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.team.TeamErrorCode;
+import com.mannschaft.app.config.TeamScopeId;
+import com.mannschaft.app.config.TeamScopeIdConverter;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
@@ -19,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -29,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 /**
  * {@link TeamModuleController} の単体テスト。
@@ -42,11 +45,11 @@ class TeamModuleControllerTest {
     private static final Long TEAM_ID = 20L;
     private static final Long MODULE_ID = 200L;
     private static final Long TEMPLATE_ID = 300L;
-    private static final String TEAM_SLUG = "team-000001";
+    private static final TeamScopeId TEAM_SCOPE = new TeamScopeId(TEAM_ID);
 
     @Mock private ModuleService moduleService;
-    @Mock private TeamService teamService;
     @Mock private AccessControlService accessControlService;
+    @Mock private TeamService teamService;
 
     @InjectMocks
     private TeamModuleController controller;
@@ -67,16 +70,16 @@ class TeamModuleControllerTest {
     // -------------------------------------------------------
 
     @Test
-    @DisplayName("AC-3a: getTeamModules – slug を渡すと resolveTeamId 経由で 200 を返す")
+    @DisplayName("AC-3a: getTeamModules – スコープIDとACTIVE存在確認で200を返す")
     void getTeamModules_slugResolves_200() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willDoNothing().given(teamService).assertActiveTeamExists(TEAM_ID);
         willDoNothing().given(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
         given(moduleService.getTeamModules(TEAM_ID)).willReturn(List.of());
 
-        ResponseEntity<ApiResponse<List<TeamModuleResponse>>> resp = controller.getTeamModules(TEAM_SLUG);
+        ResponseEntity<ApiResponse<List<TeamModuleResponse>>> resp = controller.getTeamModules(TEAM_SCOPE);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(teamService).resolveTeamId(TEAM_SLUG);
+        verify(teamService).assertActiveTeamExists(TEAM_ID);
         verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
         verify(moduleService).getTeamModules(TEAM_ID);
     }
@@ -84,11 +87,11 @@ class TeamModuleControllerTest {
     @Test
     @DisplayName("認可根治: 非メンバーは checkMembership が COMMON_002 を投げ 一覧取得不可（BOLA対策）")
     void getTeamModules_nonMember_403() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willDoNothing().given(teamService).assertActiveTeamExists(TEAM_ID);
         org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                 .given(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
 
-        assertThatThrownBy(() -> controller.getTeamModules(TEAM_SLUG))
+        assertThatThrownBy(() -> controller.getTeamModules(TEAM_SCOPE))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(CommonErrorCode.COMMON_002));
@@ -101,14 +104,14 @@ class TeamModuleControllerTest {
     @Test
     @DisplayName("AC-3b: toggleTeamModule – ADMIN が slug でトグル成功 200")
     void toggleTeamModule_slugResolves_200() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willDoNothing().given(teamService).assertActiveTeamExists(TEAM_ID);
         given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
         ToggleModuleRequest req = new ToggleModuleRequest(MODULE_ID, true);
 
-        ResponseEntity<Void> resp = controller.toggleTeamModule(TEAM_SLUG, MODULE_ID, req);
+        ResponseEntity<Void> resp = controller.toggleTeamModule(TEAM_SCOPE, MODULE_ID, req);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(teamService).resolveTeamId(TEAM_SLUG);
+        verify(teamService).assertActiveTeamExists(TEAM_ID);
         verify(accessControlService).isAdmin(USER_ID, TEAM_ID, "TEAM");
         verify(moduleService).toggleTeamModule(TEAM_ID, req, USER_ID);
     }
@@ -116,11 +119,11 @@ class TeamModuleControllerTest {
     @Test
     @DisplayName("認可根治: ADMIN でないユーザーの toggleTeamModule は COMMON_002 で拒否（無認可トグルBOLA対策）")
     void toggleTeamModule_notAdmin_403() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willDoNothing().given(teamService).assertActiveTeamExists(TEAM_ID);
         given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
         ToggleModuleRequest req = new ToggleModuleRequest(MODULE_ID, true);
 
-        assertThatThrownBy(() -> controller.toggleTeamModule(TEAM_SLUG, MODULE_ID, req))
+        assertThatThrownBy(() -> controller.toggleTeamModule(TEAM_SCOPE, MODULE_ID, req))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(CommonErrorCode.COMMON_002));
@@ -134,13 +137,13 @@ class TeamModuleControllerTest {
     @Test
     @DisplayName("AC-3c: applyTemplate – ADMIN が slug でテンプレート適用 200")
     void applyTemplate_slugResolves_200() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willDoNothing().given(teamService).assertActiveTeamExists(TEAM_ID);
         given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
-        ResponseEntity<Void> resp = controller.applyTemplate(TEAM_SLUG, TEMPLATE_ID);
+        ResponseEntity<Void> resp = controller.applyTemplate(TEAM_SCOPE, TEMPLATE_ID);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(teamService).resolveTeamId(TEAM_SLUG);
+        verify(teamService).assertActiveTeamExists(TEAM_ID);
         verify(accessControlService).isAdmin(USER_ID, TEAM_ID, "TEAM");
         verify(moduleService).applyTemplate(TEAM_ID, TEMPLATE_ID, USER_ID);
     }
@@ -148,29 +151,50 @@ class TeamModuleControllerTest {
     @Test
     @DisplayName("認可根治: ADMIN でないユーザーの applyTemplate は COMMON_002 で拒否（無認可一括適用BOLA対策）")
     void applyTemplate_notAdmin_403() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willDoNothing().given(teamService).assertActiveTeamExists(TEAM_ID);
         given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
-        assertThatThrownBy(() -> controller.applyTemplate(TEAM_SLUG, TEMPLATE_ID))
+        assertThatThrownBy(() -> controller.applyTemplate(TEAM_SCOPE, TEMPLATE_ID))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(CommonErrorCode.COMMON_002));
         org.mockito.Mockito.verifyNoInteractions(moduleService);
     }
 
-    // -------------------------------------------------------
-    // AC-4: 存在しない slug は resolveTeamId が BusinessException を投げる
-    // -------------------------------------------------------
+    @Test
+    @DisplayName("CMP-112: 数値チームIDは正規スコープとして認可を通る")
+    void getTeamModules_numericId_usesCanonicalScopeId() {
+        willDoNothing().given(teamService).assertActiveTeamExists(TEAM_ID);
+        given(moduleService.getTeamModules(TEAM_ID)).willReturn(List.of());
+        willDoNothing().given(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+
+        ResponseEntity<ApiResponse<List<TeamModuleResponse>>> resp =
+                controller.getTeamModules(new TeamScopeId(TEAM_ID));
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(teamService).assertActiveTeamExists(TEAM_ID);
+        verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+    }
 
     @Test
-    @DisplayName("AC-4: getTeamModules – 存在しない slug は resolveTeamId が TEAM_001 例外")
+    @DisplayName("AC-4: 存在しないslugはTEAM_001相当の404へ変換する")
     void getTeamModules_notFoundSlug_throws() {
         given(teamService.resolveTeamId("unknown-slug"))
-                .willThrow(new BusinessException(TeamErrorCode.TEAM_001));
+                .willThrow(new BusinessException(com.mannschaft.app.team.TeamErrorCode.TEAM_001));
 
-        assertThatThrownBy(() -> controller.getTeamModules("unknown-slug"))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                        .isEqualTo(TeamErrorCode.TEAM_001));
+        assertThatThrownBy(() -> new TeamScopeIdConverter(teamService).convert("unknown-slug"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
     }
+
+    @Test
+    @DisplayName("CMP-112: 数値チームIDはslug解決を呼ばず正規スコープになる")
+    void numericTeamId_skipsSlugResolution() {
+        TeamScopeId scopeId = new TeamScopeIdConverter(teamService).convert(String.valueOf(TEAM_ID));
+
+        assertThat(scopeId.value()).isEqualTo(TEAM_ID);
+        verify(teamService, never()).resolveTeamId(String.valueOf(TEAM_ID));
+    }
+
 }

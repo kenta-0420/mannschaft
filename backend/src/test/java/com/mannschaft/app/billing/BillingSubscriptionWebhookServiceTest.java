@@ -1,5 +1,9 @@
 package com.mannschaft.app.billing;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.billing.invoice.BillingInvoiceProjectionService;
+import com.mannschaft.app.billing.invoice.BillingWebhookEventGate;
+import com.mannschaft.app.billing.invoice.StripeBillingPayloadParser;
 import com.mannschaft.app.payment.WebhookIdempotencyService;
 import com.mannschaft.app.payment.WebhookProcessStatus;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
@@ -53,20 +57,37 @@ class BillingSubscriptionWebhookServiceTest {
     @Mock private WebhookIdempotencyService idempotencyService;
     @Mock private BillingContractService billingContractService;
     @Mock private BillingContractRepository billingContractRepository;
+    /**
+     * F20.1 PR5: invoice 投影。本テストの payload はダミー文字列（"p"）なので
+     * {@code readInvoice} は空を返し、投影は行われない。ここで測るのは所有判定と契約遷移の委譲である。
+     */
+    @Mock private BillingInvoiceProjectionService invoiceProjectionService;
+    @Mock private BillingPayerHandoverService payerHandoverService;
+    /** PR6a AC-83: customer.subscription.updated の受け口（本テストは deleted/invoice 系のみを測る）。 */
+    @Mock private BillingContractOperationRecoveryService operationRecoveryService;
+    /**
+     * PR6b-1 第7隊: upgrade 確定（E8）。本テストの invoice は upgrade の change を持たないため、
+     * 未スタブ（{@code resolveByInvoice} は空 Optional）のまま従来の契約遷移経路を測る。
+     */
+    @Mock private BillingPlanChangeConfirmationService planChangeConfirmationService;
 
     private BillingSubscriptionWebhookService service;
 
     @BeforeEach
     void setUp() {
+        // ゲートは本物を使う（冪等ゲートの呼ばれ方まで含めて契約を測るため）。
+        StripeBillingPayloadParser parser = new StripeBillingPayloadParser(new ObjectMapper());
+        BillingWebhookEventGate gate = new BillingWebhookEventGate(idempotencyService, parser);
         service = new BillingSubscriptionWebhookService(
                 stripePaymentProvider, idempotencyService, billingContractService,
-                billingContractRepository, FIXED_CLOCK);
+                billingContractRepository, invoiceProjectionService, gate, parser,
+                payerHandoverService, operationRecoveryService, planChangeConfirmationService, FIXED_CLOCK);
     }
 
     private BillingSubscriptionWebhookEventInfo event(
             String type, String billingContractId, String subscriptionId, Long periodEnd) {
         return new BillingSubscriptionWebhookEventInfo(
-                "evt_1", type, false, "cs_1", billingContractId, subscriptionId, "cus_1", periodEnd);
+                "evt_1", type, false, "cs_1", billingContractId, subscriptionId, "cus_1", periodEnd, null);
     }
 
     private BillingContractEntity billingContract() {
@@ -100,6 +121,33 @@ class BillingSubscriptionWebhookServiceTest {
     }
 
     @Test
+    @DisplayName("柱③-B AC-6/AC-31: 引継の新契約（handover_request_id あり）は activatePaidContract を通さず"
+            + "onHandoverCheckoutCompleted へ振り分ける")
+    void handover_checkoutCompleted_routesToHandoverService() {
+        UUID contractId = UUID.randomUUID();
+        UUID handoverRequestId = UUID.randomUUID();
+        BillingContractEntity newContract = billingContract();
+        newContract.setId(contractId);
+        newContract.setStatus(ContractStatus.PENDING_HANDOVER);
+        newContract.setHandoverRequestId(handoverRequestId);
+
+        given(stripePaymentProvider.constructBillingSubscriptionEvent("p", "s"))
+                .willReturn(event("checkout.session.completed", contractId.toString(), "sub_new", PERIOD_END_EPOCH));
+        given(idempotencyService.tryBegin("evt_1", "checkout.session.completed", false)).willReturn(true);
+        given(billingContractRepository.findById(contractId)).willReturn(java.util.Optional.of(newContract));
+
+        boolean handled = service.handleCheckoutCompletedIfBilling("p", "s");
+
+        assertThat(handled).isTrue();
+        verify(payerHandoverService).onHandoverCheckoutCompleted(handoverRequestId, "sub_new");
+        // activatePaidContract は契約を ACTIVE 化し pointer を張るため、旧契約が旧期末までスロットを
+        // 保持している引継では uk_acp_slot と衝突して webhook ごと落ちる（設計書 §3.1 P0-4）。
+        // 「引継のときは絶対に通らない」ことを never() で機械担保する。
+        verify(billingContractService, never()).activatePaidContract(any(), any(), any(), any());
+        verify(idempotencyService).markProcessed("evt_1", WebhookProcessStatus.PROCESSED);
+    }
+
+    @Test
     @DisplayName("AC-38: completed（billingContractId なし）は false（F09.13/F08.2 既存処理へ・billing は関与しない）")
     void ac38_checkoutCompleted_notBilling_returnsFalse() {
         given(stripePaymentProvider.constructBillingSubscriptionEvent("p", "s"))
@@ -123,6 +171,32 @@ class BillingSubscriptionWebhookServiceTest {
 
         assertThat(handled).isTrue();
         verify(billingContractService).abandonPendingContract(contractId);
+        verify(idempotencyService).markProcessed("evt_1", WebhookProcessStatus.PROCESSED);
+    }
+
+    @Test
+    @DisplayName("P1-3: 引継の expired は abandonPendingContract を通さず引継専用の巻き戻しへルーティングする")
+    void checkoutExpired_handoverContract_routesToHandoverRollback() {
+        UUID contractId = UUID.randomUUID();
+        UUID handoverRequestId = UUID.randomUUID();
+        BillingContractEntity newContract = billingContract();
+        newContract.setId(contractId);
+        newContract.setStatus(ContractStatus.PENDING_HANDOVER);
+        newContract.setHandoverRequestId(handoverRequestId);
+
+        given(stripePaymentProvider.constructBillingSubscriptionEvent("p", "s"))
+                .willReturn(event("checkout.session.expired", contractId.toString(), null, null));
+        given(idempotencyService.tryBegin("evt_1", "checkout.session.expired", false)).willReturn(true);
+        given(billingContractRepository.findById(contractId)).willReturn(java.util.Optional.of(newContract));
+
+        boolean handled = service.handleCheckoutExpiredIfBilling("p", "s");
+
+        assertThat(handled).isTrue();
+        // イベント元の契約 ID を渡すこと（過去の承諾試行の遅着で進行中の承諾を壊さないための照合キー）。
+        verify(payerHandoverService).onHandoverCheckoutExpired(handoverRequestId, contractId);
+        // abandonPendingContract はスロット単位で pointer を物理 DELETE するため、引継に適用すると
+        // 同スロットの pointer を持つ旧契約の entitlement を巻き添えで剥がす。通らないことを機械担保する。
+        verify(billingContractService, never()).abandonPendingContract(any());
         verify(idempotencyService).markProcessed("evt_1", WebhookProcessStatus.PROCESSED);
     }
 
@@ -189,7 +263,8 @@ class BillingSubscriptionWebhookServiceTest {
                 .willReturn(event("invoice.paid", null, "sub_bill", PERIOD_END_EPOCH));
         given(billingContractRepository.findByPspSubscriptionRefAndDeletedAtIsNull("sub_bill"))
                 .willReturn(Optional.of(billingContract()));
-        given(idempotencyService.tryBegin("evt_1", "invoice.paid", false)).willReturn(true);
+        given(idempotencyService.tryBegin(eq("evt_1"), eq("invoice.paid"), eq(false),
+                any(), any(), any(), any())).willReturn(true);
 
         boolean handled = service.handleSubscriptionEventIfBilling("p", "s");
 
@@ -205,7 +280,8 @@ class BillingSubscriptionWebhookServiceTest {
                 .willReturn(event("invoice.payment_failed", null, "sub_bill", null));
         given(billingContractRepository.findByPspSubscriptionRefAndDeletedAtIsNull("sub_bill"))
                 .willReturn(Optional.of(billingContract()));
-        given(idempotencyService.tryBegin("evt_1", "invoice.payment_failed", false)).willReturn(true);
+        given(idempotencyService.tryBegin(eq("evt_1"), eq("invoice.payment_failed"), eq(false),
+                any(), any(), any(), any())).willReturn(true);
 
         boolean handled = service.handleSubscriptionEventIfBilling("p", "s");
 
@@ -235,7 +311,8 @@ class BillingSubscriptionWebhookServiceTest {
                 .willReturn(event("invoice.created", null, "sub_bill", null));
         given(billingContractRepository.findByPspSubscriptionRefAndDeletedAtIsNull("sub_bill"))
                 .willReturn(Optional.of(billingContract()));
-        given(idempotencyService.tryBegin("evt_1", "invoice.created", false)).willReturn(true);
+        given(idempotencyService.tryBegin(eq("evt_1"), eq("invoice.created"), eq(false),
+                any(), any(), any(), any())).willReturn(true);
 
         boolean handled = service.handleSubscriptionEventIfBilling("p", "s");
 

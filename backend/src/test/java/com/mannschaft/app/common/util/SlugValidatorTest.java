@@ -44,6 +44,33 @@ class SlugValidatorTest {
         assertThat(SlugValidator.isValidFormat("")).isFalse();
     }
 
+    /**
+     * CMP-054 P1是正: {@code ScopeSlugResolution} は数値文字列を内部BIGINT IDとして解釈する
+     * 高速パスを slug 解決より先に通すため、数字だけの slug を許すと別スコープへ誤って
+     * 解決されうる（権限を持つ利用者が誤ったスコープを閲覧・操作する事故）。
+     * 本番に実データが無い今のうちに書式検査そのもので禁止する。
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"123", "007", "000", "1234567890"})
+    @DisplayName("数字だけのslugは形式不正（内部IDの高速パスと衝突するため拒否）")
+    void 数字だけのslugは不正(String slug) {
+        assertThat(SlugValidator.isValidFormat(slug)).isFalse();
+    }
+
+    @Test
+    @DisplayName("一桁の数字だけのslugも形式不正（3文字未満で既に弾かれるが多重に確認）")
+    void 一桁の数字だけのslugも不正() {
+        assertThat(SlugValidator.isValidFormat("0")).isFalse();
+        assertThat(SlugValidator.isValidFormat("9")).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"123-a", "a123", "team-1", "1-team", "a1b2c3"})
+    @DisplayName("数字以外を含めば数字始まり・数字混在でも形式は正常")
+    void 数字を含むが数字だけではないslugは正常(String slug) {
+        assertThat(SlugValidator.isValidFormat(slug)).isTrue();
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"new", "search", "admin", "settings", "me", "public", "api", "login", "register", "index", "ADMIN", "Search"})
     @DisplayName("予約語は isReserved=true（大文字小文字非依存）")

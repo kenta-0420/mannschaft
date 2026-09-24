@@ -21,6 +21,7 @@ import com.mannschaft.app.timetable.notes.entity.TimetableSlotUserNoteAttachment
 import com.mannschaft.app.timetable.notes.repository.TimetableSlotUserNoteAttachmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -70,6 +72,22 @@ public class StoragePathMigrationBatchService {
 
     /** ステータス集計（{@link #getStatus}）走査の暴走を防ぐ最大ページ数。 */
     private static final int STATUS_MAX_PAGES = 2000;
+
+    /**
+     * 自分自身の Spring プロキシを取り出すための遅延解決プロバイダ（CMP-260912-1524）。
+     *
+     * <p>{@code migrateXxx} の走査ループから {@code migrateOneXxx} を素の {@code this} 呼び出しに
+     * すると AOP プロキシを経由せず、{@code @Transactional(propagation = REQUIRES_NEW)} が
+     * <b>まったく効かない</b>。呼び出し元にもトランザクションが無いため、
+     * 「R2 のコピー → DB のキー更新」という 1 ファイルぶんの移行単位が
+     * トランザクションの保護をまったく受けない状態で走っていた。</p>
+     *
+     * <p>別 Bean への切り出しではなく自己プロキシを採るのは、本クラスが
+     * chat / filesharing / circulation / schedule / timetable の Repository を横断して
+     * 持っており（ArchUnit 凍結ストア登録済みの既存負債）、新クラス名で再登録すると
+     * 番人を新たに赤くするため（前例: CMP-260910-1556）。</p>
+     */
+    private final ObjectProvider<StoragePathMigrationBatchService> selfProvider;
 
     private final R2StorageService r2StorageService;
     private final StorageMigrationErrorRepository errorRepository;
@@ -124,7 +142,7 @@ public class StoragePathMigrationBatchService {
                 }
                 try {
                     String newKey = buildNewChatPath(attachment.getFileKey(), attachment.getMessageId());
-                    migrateOneChatAttachment(attachment.getId(), attachment.getFileKey(), newKey);
+                    self().migrateOneChatAttachment(attachment.getId(), attachment.getFileKey(), newKey);
                     migrated++;
                 } catch (Exception e) {
                     log.warn("CHAT 添付移行スキップ: id={}, error={}", attachment.getId(), e.getMessage());
@@ -159,7 +177,7 @@ public class StoragePathMigrationBatchService {
                 }
                 try {
                     String newKey = buildNewSharedFilePath(file.getFileKey(), file.getFolderId());
-                    migrateOneSharedFile(file.getId(), file.getFileKey(), newKey);
+                    self().migrateOneSharedFile(file.getId(), file.getFileKey(), newKey);
                     migrated++;
                 } catch (Exception e) {
                     log.warn("FILE_SHARING 移行スキップ: id={}, error={}", file.getId(), e.getMessage());
@@ -194,7 +212,7 @@ public class StoragePathMigrationBatchService {
                 }
                 try {
                     String newKey = buildNewCirculationPath(attachment.getFileKey(), attachment.getDocumentId());
-                    migrateOneCirculationAttachment(attachment.getId(), attachment.getFileKey(), newKey);
+                    self().migrateOneCirculationAttachment(attachment.getId(), attachment.getFileKey(), newKey);
                     migrated++;
                 } catch (Exception e) {
                     log.warn("CIRCULATION 移行スキップ: id={}, error={}", attachment.getId(), e.getMessage());
@@ -229,11 +247,11 @@ public class StoragePathMigrationBatchService {
                 }
                 try {
                     String newKey = buildNewScheduleMediaPath(media.getR2Key(), media.getScheduleId());
-                    migrateOneScheduleMedia(media.getId(), media.getR2Key(), newKey);
+                    self().migrateOneScheduleMedia(media.getId(), media.getR2Key(), newKey);
                     migrated++;
                 } catch (Exception e) {
                     log.warn("SCHEDULE_MEDIA 移行スキップ: id={}, error={}", media.getId(), e.getMessage());
-                    recordError("schedule_media_uploads", media.getId(),
+                    recordUuidError("schedule_media_uploads", media.getId(),
                             media.getR2Key(), "", e.getMessage());
                 }
             }
@@ -264,7 +282,7 @@ public class StoragePathMigrationBatchService {
                 }
                 try {
                     String newKey = buildNewTimetableNotePath(attachment.getR2ObjectKey(), attachment.getUserId());
-                    migrateOneTimetableNoteAttachment(attachment.getId(), attachment.getR2ObjectKey(), newKey);
+                    self().migrateOneTimetableNoteAttachment(attachment.getId(), attachment.getR2ObjectKey(), newKey);
                     migrated++;
                 } catch (Exception e) {
                     log.warn("PERSONAL_TIMETABLE_NOTES 移行スキップ: id={}, error={}", attachment.getId(), e.getMessage());
@@ -303,6 +321,17 @@ public class StoragePathMigrationBatchService {
 
     // ==================== 個別移行処理（REQUIRES_NEW） ====================
 
+    /**
+     * 自分自身の Spring プロキシを返す。
+     *
+     * <p>以下の {@code migrateOneXxx} は<b>必ず本メソッド経由で呼ぶこと</b>。
+     * 同一 Bean 内の自己呼び出しではプロキシを通らず {@code REQUIRES_NEW} が無効化され、
+     * 1 ファイルぶんの移行がトランザクション外で実行される（CMP-260912-1524）。</p>
+     */
+    private StoragePathMigrationBatchService self() {
+        return selfProvider.getObject();
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void migrateOneChatAttachment(Long attachmentId, String oldKey, String newKey) {
         r2StorageService.copyObject(oldKey, newKey);
@@ -334,7 +363,7 @@ public class StoragePathMigrationBatchService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void migrateOneScheduleMedia(Long mediaId, String oldKey, String newKey) {
+    public void migrateOneScheduleMedia(UUID mediaId, String oldKey, String newKey) {
         r2StorageService.copyObject(oldKey, newKey);
         scheduleMediaUploadRepository.findById(mediaId).ifPresent(media -> {
             ScheduleMediaUploadEntity updated = media.toBuilder().r2Key(newKey).build();
@@ -628,6 +657,22 @@ public class StoragePathMigrationBatchService {
         errorRepository.save(error);
         log.warn("ストレージ移行エラー記録: referenceType={}, referenceId={}, error={}",
                 referenceType, referenceId, errorMessage);
+    }
+
+    /** UUID主キーを持つ対象の移行エラーを記録する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordUuidError(String referenceType, UUID referenceUuid,
+                                String oldKey, String newKey, String errorMessage) {
+        StorageMigrationErrorEntity error = StorageMigrationErrorEntity.builder()
+                .referenceType(referenceType)
+                .referenceUuid(referenceUuid)
+                .oldFileKey(oldKey)
+                .newFileKey(newKey)
+                .errorMessage(errorMessage)
+                .build();
+        errorRepository.save(error);
+        log.warn("ストレージ移行エラー記録: referenceType={}, referenceUuid={}, error={}",
+                referenceType, referenceUuid, errorMessage);
     }
 
     // ==================== ステータス集計ヘルパー ====================

@@ -2,6 +2,7 @@ package com.mannschaft.app.family.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.family.dto.CareLinkNotifySettingsRequest;
@@ -59,6 +60,7 @@ public class CareLinkController {
             + "（CareLinkService#getActiveLinksForCareRecipient）")
     @GetMapping("/watchers")
     @Operation(summary = "見守り者一覧取得（ケア対象者視点）")
+    @RequireFeature("FEATURE_FAMILY_CARE_ENABLED")
     public ResponseEntity<ApiResponse<List<CareLinkResponse>>> getActiveWatchers() {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(

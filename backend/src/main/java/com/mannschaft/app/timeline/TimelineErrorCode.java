@@ -60,7 +60,10 @@ public enum TimelineErrorCode implements ErrorCode {
     ATTACHMENT_NOT_FOUND_IN_STORAGE("TIMELINE_016", "添付ファイルがストレージに存在しません", Severity.WARN),
 
     /** ミュート件数の上限超過（1 ユーザーあたり 200 件） */
-    MAX_MUTES_EXCEEDED("TIMELINE_017", "ミュートは最大200件です", Severity.WARN);
+    MAX_MUTES_EXCEEDED("TIMELINE_017", "ミュートは最大200件です", Severity.WARN),
+
+    /** ミュート対象種別が許可されていない。 */
+    INVALID_MUTE_TYPE("TIMELINE_020", "ミュート対象種別が不正です", Severity.WARN);
 
     private final String code;
     private final String message;

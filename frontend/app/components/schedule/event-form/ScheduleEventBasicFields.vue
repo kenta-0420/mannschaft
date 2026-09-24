@@ -49,7 +49,13 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
   <div class="grid grid-cols-2 gap-3">
     <div>
       <label for="schedule-start-date" class="mb-1 block text-sm font-medium">開始日</label>
-      <DatePicker v-model="form.startDate" input-id="schedule-start-date" date-format="yy/mm/dd" class="w-full" show-icon />
+      <DatePicker
+        v-model="form.startDate"
+        input-id="schedule-start-date"
+        date-format="yy/mm/dd"
+        class="w-full [&_.p-datepicker-dropdown]:min-h-11 [&_.p-datepicker-dropdown]:min-w-11 [&_input]:min-h-11"
+        show-icon
+      />
     </div>
     <div v-if="!form.allDay">
       <label class="mb-1 block text-sm font-medium">開始時刻</label>
@@ -66,7 +72,13 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
   <div class="grid grid-cols-2 gap-3">
     <div>
       <label for="schedule-end-date" class="mb-1 block text-sm font-medium">終了日</label>
-      <DatePicker v-model="form.endDate" input-id="schedule-end-date" date-format="yy/mm/dd" class="w-full" show-icon />
+      <DatePicker
+        v-model="form.endDate"
+        input-id="schedule-end-date"
+        date-format="yy/mm/dd"
+        class="w-full [&_.p-datepicker-dropdown]:min-h-11 [&_.p-datepicker-dropdown]:min-w-11 [&_input]:min-h-11"
+        show-icon
+      />
     </div>
     <div v-if="!form.allDay">
       <label class="mb-1 block text-sm font-medium">終了時刻</label>

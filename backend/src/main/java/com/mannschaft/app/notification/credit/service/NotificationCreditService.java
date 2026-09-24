@@ -1,7 +1,6 @@
 package com.mannschaft.app.notification.credit.service;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.credit.dto.NotificationCreditBalanceResponse;
 import com.mannschaft.app.notification.credit.dto.NotificationCreditPackageResponse;
 import com.mannschaft.app.notification.credit.dto.NotificationCreditPurchaseResponse;
@@ -12,18 +11,14 @@ import com.mannschaft.app.notification.credit.entity.NotificationMonthlyUsageEnt
 import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
 import com.mannschaft.app.notification.credit.entity.OrganizationNotificationBalanceEntity;
 import com.mannschaft.app.notification.credit.error.NotificationCreditErrorCode;
+import com.mannschaft.app.notification.credit.event.NotificationCreditFreeQuotaAlertEvent;
 import com.mannschaft.app.notification.credit.repository.NotificationCreditPackageRepository;
 import com.mannschaft.app.notification.credit.repository.NotificationCreditPurchaseRepository;
 import com.mannschaft.app.notification.credit.repository.NotificationMonthlyUsageRepository;
 import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.MessageSource;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,14 +59,11 @@ public class NotificationCreditService {
     private final NotificationCreditPurchaseRepository purchaseRepository;
     private final NotificationCreditPackageRepository packageRepository;
     private final NotificationMonthlyUsageRepository monthlyUsageRepository;
-    private final UserRoleRepository userRoleRepository;
-    // NotificationHelper → NotificationCreditService → NotificationHelper の循環を断つ。
-    // sendFreeQuotaAlertAsync（@Async）でのみ使用するため @Lazy プロキシで遅延解決する。
-    @Lazy
-    @Autowired
-    private NotificationHelper notificationHelper;
-    /** Issue #2715 CMP-055 ロットC-1: 通知本文の i18n。locale 解決自体は notifyAllLocalized 内部の UserLocaleCache が担う。 */
-    private final MessageSource messageSource;
+    /**
+     * Issue #2990 L2: 無料枠アラートは業務トランザクション内で送らず、AFTER_COMMIT 後に
+     * {@code NotificationCreditFreeQuotaAlertListener} が配送する（原則5）。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
 
     // ─────────────────────────────────────────────────────────
@@ -178,7 +170,7 @@ public class NotificationCreditService {
         if (balance.getFreeUsedThisMonth() >= FREE_ALERT_THRESHOLD
                 && !Boolean.TRUE.equals(balance.getAlertSentThisMonth())) {
             balance.markAlertSentThisMonth();
-            sendFreeQuotaAlertAsync(organizationId);
+            eventPublisher.publishEvent(new NotificationCreditFreeQuotaAlertEvent(organizationId));
         }
 
         balanceRepository.save(balance);
@@ -322,38 +314,4 @@ public class NotificationCreditService {
         monthlyUsageRepository.save(usage);
     }
 
-    /**
-     * 無料枠9000通超過アラートをADMINへ非同期送信する。
-     *
-     * @param organizationId 組織ID
-     */
-    @Async
-    protected void sendFreeQuotaAlertAsync(Long organizationId) {
-        try {
-            List<Long> adminUserIds = userRoleRepository.findAdminUserIdsByOrganizationId(organizationId);
-            if (adminUserIds.isEmpty()) {
-                return;
-            }
-            notificationHelper.notifyAllLocalized(
-                    adminUserIds,
-                    "NOTIFICATION_CREDIT_ALERT",
-                    "NOTIFICATION_CREDIT",
-                    organizationId,
-                    NotificationScopeType.ORGANIZATION,
-                    organizationId,
-                    "/organizations/" + organizationId + "/settings/notification-credits",
-                    null,
-                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
-                            messageSource.getMessage(
-                                    "notification.credit.freeQuotaAlert.title", null,
-                                    "無料通知枠が残りわずかです", locale),
-                            messageSource.getMessage(
-                                    "notification.credit.freeQuotaAlert.body", null,
-                                    "今月の無料通知枠（10,000通）の90%を使用しました。超過分はクレジットから消費されます。", locale))
-            );
-            log.info("無料枠アラート送信: organizationId={}", organizationId);
-        } catch (Exception e) {
-            log.error("無料枠アラート送信失敗: organizationId={}", organizationId, e);
-        }
-    }
 }

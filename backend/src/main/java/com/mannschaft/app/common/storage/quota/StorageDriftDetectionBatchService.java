@@ -1,6 +1,8 @@
 package com.mannschaft.app.common.storage.quota;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.StorageProperties;
 import com.mannschaft.app.common.storage.quota.entity.StorageSubscriptionEntity;
 import com.mannschaft.app.common.storage.quota.entity.StorageUsageLogEntity;
@@ -123,6 +125,8 @@ public class StorageDriftDetectionBatchService {
      * 週次ドリフト検出バッチのエントリポイント。
      * 毎週日曜日深夜 2:00 に実行する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。R2 実使用量と DB の差分検出であり、再開後の週次実行で同じ差分を検出し直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "storage-quota-drift-detection-weekly", description = "R2 実使用量と DB の used_bytes 差分を毎週日曜 02:00 に自動修正する")
     @Scheduled(cron = "0 0 2 * * SUN")
     // 起動間隔は週次（日曜 02:00）。全スコープの R2 実使用量を列挙して DB と突き合わせるため、オブジェクト数に比例して伸びる。

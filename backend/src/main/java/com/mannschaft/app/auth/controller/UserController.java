@@ -35,6 +35,8 @@ import java.time.LocalDateTime;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 
 /**
  * ユーザー管理コントローラー。プロフィール操作・パスワード管理・メール変更・退会・OAuth連携・ログイン履歴を提供する。
@@ -185,6 +187,8 @@ public class UserController {
     /**
      * 退会をリクエストする（論理削除）。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "本人の退会要求をGate状態にかかわらず受け付けるため")
     @DeleteMapping("/me")
     @Operation(summary = "退会リクエスト", description = "退会をリクエストする（論理削除。30日間は取り消し可能）")
     public ResponseEntity<ApiResponse<MessageResponse>> requestWithdrawal(
@@ -208,6 +212,8 @@ public class UserController {
     @SelfScopedEndpoint(
             "SecurityUtils.getCurrentUserId() のみで取消対象ユーザーを解決する"
                     + "（UserController#cancelWithdrawal）")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "本人が退会猶予期間中に取消できる安全経路を維持するため")
     @PostMapping("/me/withdrawal/cancel")
     @Operation(summary = "退会取り消し", description = "退会リクエストを取り消し、アカウントを復帰させる")
     public ResponseEntity<ApiResponse<MessageResponse>> cancelWithdrawal() {

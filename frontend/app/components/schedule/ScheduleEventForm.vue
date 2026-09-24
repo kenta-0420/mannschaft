@@ -2,6 +2,7 @@
 import dayjs from 'dayjs'
 import type { RecurrenceEndType, RecurrenceType, ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
 import type { ScheduleTargetMode } from '~/types/schedule'
+import { PERSONAL_SCOPE_KEY, scheduleScopeKey } from '~/utils/scheduleScopeKey'
 
 interface ScopeOption {
   label: string
@@ -16,29 +17,51 @@ const props = defineProps<{
   scopeId: string
   scheduleId?: number
   initialDate?: string
+  /**
+   * 作成時の開始日時（F03.19 §6.6.5）。ISO 8601・ユーザー TZ のオフセット付き
+   * （例 `2026-08-06T09:00:00+09:00`）。指定時は `initialDate` より優先する。
+   */
+  initialStartAt?: string
+  /** 作成時の終了日時（同上）。`initialStartAt` が無い場合は無視する。 */
+  initialEndAt?: string
   visible: boolean
   isPersonal?: boolean
   scopeOptions?: ScopeOption[]
 }>()
 
+/** 実際に保存されたスコープ（フォーム内でスコープ変更が可能なため、呼び出し側の props とは食い違いうる）。 */
+interface SavedScope {
+  isPersonal: boolean
+  scopeType: 'team' | 'organization'
+  scopeId: string
+}
+
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  saved: []
+  saved: [scope: SavedScope]
 }>()
 
 // スコープ選択（フォーム内で変更可能）
-const selectedScopeKey = ref<string>(
-  (props.isPersonal ?? false) ? 'personal' : `${props.scopeType}_${props.scopeId}`,
-)
+/**
+ * props のスコープに対応する選択鍵。**必ず {@link scheduleScopeKey} で作る**
+ * （素の文字列連結で作っていた頃は選択肢側の `TEAM:<slug>` と形式が食い違い、
+ * 初期表示でどのボタンにも選択状態が付かなかった。F03.19 実機E2E 欠陥2）。
+ */
+function currentScopeKey(): string {
+  return (props.isPersonal ?? false)
+    ? PERSONAL_SCOPE_KEY
+    : scheduleScopeKey(props.scopeType, props.scopeId)
+}
+
+const selectedScopeKey = ref<string>(currentScopeKey())
 
 // ダイアログが開くたびにスコープキーを prop に合わせてリセット
 watch(
   () => props.visible,
   (v) => {
     if (v) {
-      selectedScopeKey.value = (props.isPersonal ?? false)
-        ? 'personal'
-        : `${props.scopeType}_${props.scopeId}`
+      selectedScopeKey.value = currentScopeKey()
+      recurrenceUpdateScopeDialogVisible.value = false
     }
   },
 )
@@ -69,6 +92,8 @@ const isEdit = computed(() => !!props.scheduleId)
 const targetMode = ref<ScheduleTargetMode>('ALL_MEMBERS')
 const targetUserIds = ref<number[]>([])
 const targetValidationError = ref<string | null>(null)
+const loadedRecurringEvent = ref(false)
+const recurrenceUpdateScopeDialogVisible = ref(false)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -142,10 +167,18 @@ const form = ref<ScheduleEventFormState>({
   },
 })
 
+/**
+ * 初期日時の一括適用（{@link applyInitialDateTime}）の間だけ、下の「開始時刻→終了時刻を1時間後」
+ * 自動補正を抑止するフラグ。明示的に渡された終了時刻（`initialEndAt`）を自動補正が
+ * 上書きしてしまうのを防ぐ。適用直後の nextTick で必ず false に戻す。
+ */
+let suppressEndTimeAutoAdjust = false
+
 // 開始時刻が変わったら終了時刻を1時間後に自動設定
 watch(
   () => form.value.startTime,
   (newTime) => {
+    if (suppressEndTimeAutoAdjust) return
     if (!newTime || form.value.allDay) return
     const parts = newTime.split(':').map(Number)
     const h = parts[0] ?? 0
@@ -233,6 +266,7 @@ watch(
           // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
           const status = (data.status as Record<string, unknown>) ?? {}
           const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
+          loadedRecurringEvent.value = recurrenceRule != null || status.parentScheduleId != null
           if (recurrenceRule && typeof recurrenceRule === 'object') {
             form.value.recurrence = true
             form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
@@ -250,24 +284,26 @@ watch(
           }
         }
         else {
-          form.value.title = (data.title as string) ?? ''
-          form.value.description = (data.description as string) ?? ''
-          form.value.location = (data.location as string) ?? ''
-          form.value.allDay = (data.allDay as boolean) ?? false
-          form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
+          const content = (data.content as Record<string, unknown>) ?? {}
+          const time = (data.time as Record<string, unknown>) ?? {}
+          form.value.title = (content.title as string) ?? ''
+          form.value.description = (content.description as string) ?? ''
+          form.value.location = (content.location as string) ?? ''
+          form.value.allDay = (time.allDay as boolean) ?? false
+          form.value.attendanceRequired = (content.attendanceRequired as boolean) ?? false
           form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
           form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
           form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
           targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
           targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
             .map(target => target.userId)
-          if (data.startAt) {
-            const start = new Date(data.startAt as string)
+          if (time.startAt) {
+            const start = new Date(time.startAt as string)
             form.value.startDate = start
             form.value.startTime = start.toTimeString().slice(0, 5)
           }
-          if (data.endAt) {
-            const end = new Date(data.endAt as string)
+          if (time.endAt) {
+            const end = new Date(time.endAt as string)
             form.value.endDate = end
             form.value.endTime = end.toTimeString().slice(0, 5)
           }
@@ -276,6 +312,30 @@ watch(
           form.value.reminders = reminders.map(reminderResponseToFormEntry)
           // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
           const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
+          const recurrence = (data.recurrenceInfo as Record<string, unknown>) ?? {}
+          loadedRecurringEvent.value = recurrence.recurrenceRule != null || recurrence.parentScheduleId != null
+          let recurrenceRule: Record<string, unknown> | null = null
+          if (typeof recurrence.recurrenceRule === 'string') {
+            try {
+              const parsed: unknown = JSON.parse(recurrence.recurrenceRule)
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                recurrenceRule = parsed as Record<string, unknown>
+              }
+            } catch {
+              // 旧データに不正なルールがあっても詳細画面の表示は継続する。
+            }
+          } else if (recurrence.recurrenceRule && typeof recurrence.recurrenceRule === 'object') {
+            recurrenceRule = recurrence.recurrenceRule as Record<string, unknown>
+          }
+          form.value.recurrence = recurrenceRule != null
+          if (recurrenceRule) {
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            if (recurrenceRule.endDate) form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
+            if (recurrenceRule.count != null) form.value.recurrenceCount = recurrenceRule.count as number
+          }
           for (const task of scheduledTasks) {
             if (task.status !== 'PENDING') continue
             if (task.taskType === 'SURVEY') {
@@ -297,14 +357,87 @@ watch(
         notification.error(t('schedule.error_load_event'))
       }
     } else if (visible && !scheduleId) {
+      loadedRecurringEvent.value = false
       resetForm()
-      if (props.initialDate) {
-        form.value.startDate = new Date(props.initialDate)
-        form.value.endDate = new Date(props.initialDate)
-      }
+      applyInitialDateTime()
     }
   },
 )
+
+/**
+ * ISO 8601 文字列を「ユーザー設定 TZ における壁時計」として解釈し、
+ * ピッカーが扱う Date（壁時計値をそのまま持つ Date）を組み立てる（F03.19 §6.6.5・R16）。
+ *
+ * `new Date(iso)` は実行端末のローカル TZ で解釈されるため、端末 TZ とユーザー設定 TZ が
+ * 異なると時刻がずれる（端末 UTC・ユーザー Asia/Tokyo で 9:00 が 18:00 になる）。
+ * 端末 TZ（`Intl.DateTimeFormat().resolvedOptions().timeZone`）は参照しない。
+ */
+function toUserZonedParts(iso: string): { date: Date; time: string } | null {
+  const parsed = dayjs(iso)
+  if (!parsed.isValid()) return null
+  const z = parsed.tz(userTimezone.value)
+  return {
+    date: new Date(z.year(), z.month(), z.date(), z.hour(), z.minute(), 0, 0),
+    time: z.format('HH:mm'),
+  }
+}
+
+/**
+ * 「終了時刻は開始の1時間後」規則を明示的に適用する（F03.19 §6.6.5）。
+ * `form.value.startTime` の watcher（自動補正）と**同じ規則**を保つこと — 24時をまたぐ場合は
+ * 時刻を 24 で折り返し、終了日を翌日へ繰り上げる。
+ */
+function applyDefaultEndOneHourAfter(startDate: Date, startTime: string) {
+  const parts = startTime.split(':').map(Number)
+  const h = parts[0] ?? 0
+  const m = parts[1] ?? 0
+  const endH = h + 1
+  const mm = String(m).padStart(2, '0')
+  if (endH >= 24) {
+    form.value.endTime = `${String(endH - 24).padStart(2, '0')}:${mm}`
+    const next = new Date(startDate)
+    next.setDate(next.getDate() + 1)
+    form.value.endDate = next
+  }
+  else {
+    form.value.endTime = `${String(endH).padStart(2, '0')}:${mm}`
+    form.value.endDate = startDate
+  }
+}
+
+/**
+ * 作成ダイアログを開くときの初期日時をフォームへ適用する（F03.19 §6.6.5）。
+ * 優先順位: `initialStartAt`/`initialEndAt`（時刻付き）> `initialDate`（日付のみ・従来挙動）。
+ * `initialDate` 経路の挙動は一切変更していない（AC-22c）。
+ */
+function applyInitialDateTime() {
+  if (props.initialStartAt) {
+    const start = toUserZonedParts(props.initialStartAt)
+    if (start) {
+      // 開始・終了を「渡された値のまま」入れる。自動補正は抑止する（下で nextTick に解除を予約）。
+      suppressEndTimeAutoAdjust = true
+      void nextTick(() => { suppressEndTimeAutoAdjust = false })
+      form.value.startDate = start.date
+      form.value.startTime = start.time
+      const end = props.initialEndAt ? toUserZonedParts(props.initialEndAt) : null
+      if (end) {
+        form.value.endDate = end.date
+        form.value.endTime = end.time
+      }
+      else {
+        // 終了が渡されない場合、抑止した自動補正の規則（開始の1時間後・日付繰り上がり込み）を
+        // 呼び出し側で明示的に適用する。抑止しておきながら補完しないと、終了時刻がフォーム初期値の
+        // まま残り「開始より前の終了」になりうるため（watcher を止めた分の責任をここで引き受ける）。
+        applyDefaultEndOneHourAfter(start.date, start.time)
+      }
+      return
+    }
+  }
+  if (props.initialDate) {
+    form.value.startDate = new Date(props.initialDate)
+    form.value.endDate = new Date(props.initialDate)
+  }
+}
 
 // ユーザーのタイムゾーン設定に基づいてDateをYYYY-MM-DD文字列に変換する。
 // recurrenceRule.endDate など「日付のみ」フィールドに使用する。
@@ -399,7 +532,7 @@ function validateScheduledInputs(): string | null {
   return null
 }
 
-async function submit() {
+async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
   if (!form.value.title.trim()) {
     fieldErrors.value = { title: t('schedule.error_title_required') }
     return
@@ -411,6 +544,10 @@ async function submit() {
   const scheduledError = validateScheduledInputs()
   if (scheduledError) {
     notification.error(scheduledError)
+    return
+  }
+  if (isEdit.value && loadedRecurringEvent.value && !updateScope) {
+    recurrenceUpdateScopeDialogVisible.value = true
     return
   }
   submitting.value = true
@@ -434,14 +571,16 @@ async function submit() {
   if (effectiveScope.value.isPersonal) {
     body.color = form.value.color
   } else {
-    body.eventType = 'OTHER'
+    if (!isEdit.value) body.eventType = 'OTHER'
     body.attendanceRequired = form.value.attendanceRequired
-    body.allow_proxy_attendance = form.value.allowProxyAttendance
-    body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
+    if (!isEdit.value) {
+      body.allow_proxy_attendance = form.value.allowProxyAttendance
+      body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
+    }
     body.targetMode = targetMode.value
     body.targetUserIds = targetMode.value === 'SELECTED_MEMBERS' ? targetUserIds.value : []
     // F03.1 (B) チーム別内訳トグルは組織スコープ + 出欠ありのときのみ送る
-    if (effectiveScope.value.scopeType === 'organization' && form.value.attendanceRequired) {
+    if (!isEdit.value && effectiveScope.value.scopeType === 'organization' && form.value.attendanceRequired) {
       body.teamBreakdownEnabled = form.value.teamBreakdownEnabled
     }
   }
@@ -522,21 +661,32 @@ async function submit() {
     }
   }
 
+  // [P2是正・検分四巡目] await を跨いでリアクティブな effectiveScope.value を読むと、API 応答待ちの
+  // 間にユーザーがスコープ選択欄（submitting 中も操作可能）を変更した場合、emit に渡る値が
+  // 「実際に保存した先」と食い違う（無関係なレイヤーの案内が出る）。API 呼び出しの直前に値を
+  // スナップショット（プレーンオブジェクトへコピー）し、以降はこのスナップショットだけを使う。
+  const savedScope = {
+    isPersonal: effectiveScope.value.isPersonal,
+    scopeType: effectiveScope.value.scopeType,
+    scopeId: effectiveScope.value.scopeId,
+  }
+
   try {
-    if (effectiveScope.value.isPersonal) {
+    if (savedScope.isPersonal) {
       if (isEdit.value && props.scheduleId) {
+        if (updateScope) body.updateScope = updateScope
         await scheduleApi.updatePersonalSchedule(props.scheduleId, body)
       } else {
         await scheduleApi.createPersonalSchedule(body)
       }
     } else {
       if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updateSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, props.scheduleId, body)
+        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body, updateScope)
       } else {
-        await scheduleApi.createSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, body)
+        await scheduleApi.createSchedule(savedScope.scopeType, savedScope.scopeId, body)
       }
     }
-    const successMsg = effectiveScope.value.isPersonal
+    const successMsg = savedScope.isPersonal
       ? isEdit.value
         ? t('schedule.success_update_personal')
         : t('schedule.success_create_personal')
@@ -547,7 +697,9 @@ async function submit() {
       saveTimeHistory(form.value.startTime, form.value.endTime)
     }
     notification.success(successMsg)
-    emit('saved')
+    // 実際に保存されたスコープ（スナップショット）を渡す。呼び出し側が開いた時点の props や
+    // 応答待ち中に変わりうる現在値とは食い違いうるため、これを正とする（§5.4/AC-11b）。
+    emit('saved', savedScope)
     close()
   } catch (error) {
     fieldErrors.value = getFieldErrors(error)
@@ -604,6 +756,7 @@ function resetForm() {
 }
 
 function close() {
+  recurrenceUpdateScopeDialogVisible.value = false
   emit('update:visible', false)
 }
 </script>
@@ -621,6 +774,7 @@ function close() {
           : 'イベントを作成'
     "
     :style="{ width: '500px' }"
+    class="[&_.p-dialog-close-button]:min-h-11 [&_.p-dialog-close-button]:min-w-11"
     modal
     @update:visible="close"
     @hide="resetForm"
@@ -727,13 +881,42 @@ function close() {
       </div>
     </div>
     <template #footer>
-      <Button label="キャンセル" text @click="close" />
+      <Button label="キャンセル" class="min-h-11" text @click="close" />
       <Button
         :label="isEdit ? '更新' : '作成'"
         icon="pi pi-check"
+        class="min-h-11"
         :loading="submitting"
-        @click="submit"
+        data-testid="schedule-submit"
+        @click="submit()"
       />
     </template>
+  </Dialog>
+  <Dialog
+    v-if="recurrenceUpdateScopeDialogVisible"
+    v-model:visible="recurrenceUpdateScopeDialogVisible"
+    modal
+    :header="$t('schedule.recurrence.update_scope.title')"
+    data-testid="recurrence-update-scope-dialog"
+  >
+    <p class="mb-4 text-sm text-surface-600">{{ $t('schedule.recurrence.update_scope.description') }}</p>
+    <div class="flex flex-col gap-2">
+      <Button
+        :label="$t('schedule.recurrence.update_scope.this_only')"
+        data-testid="recurrence-update-this"
+        @click="submit('THIS_ONLY')"
+      />
+      <Button
+        :label="$t('schedule.recurrence.update_scope.this_and_following')"
+        data-testid="recurrence-update-following"
+        @click="submit('THIS_AND_FOLLOWING')"
+      />
+      <Button
+        :label="$t('common.cancel')"
+        text
+        data-testid="recurrence-update-cancel"
+        @click="recurrenceUpdateScopeDialogVisible = false"
+      />
+    </div>
   </Dialog>
 </template>

@@ -4,18 +4,32 @@ import com.mannschaft.app.schedule.entity.ScheduleMediaUploadEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import jakarta.persistence.LockModeType;
 
 /**
  * スケジュールメディアアップロードリポジトリ。
  */
 @Repository
-public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMediaUploadEntity, Long> {
+public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMediaUploadEntity, UUID> {
+
+    /** multipart開始・完了時に保存済みメディアを復元する。呼び出し側でもキーを厳密比較する。 */
+    java.util.Optional<ScheduleMediaUploadEntity> findByR2Key(String r2Key);
+
+    /** 単発PUTの完了確認を直列化し、使用量の二重計上を防ぐ。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM ScheduleMediaUploadEntity m WHERE m.id = :id")
+    Optional<ScheduleMediaUploadEntity> findByIdForUploadCompletion(@Param("id") UUID id);
 
     /**
      * スケジュール別メディア一覧（作成日時降順）。
@@ -48,6 +62,13 @@ public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMed
      * 孤立メディア取得（日次クリーンアップ用）。
      * schedule_id IS NULL かつ created_at が cutoff より古いレコードを返す。
      */
-    @Query("SELECT e FROM ScheduleMediaUploadEntity e WHERE e.scheduleId IS NULL AND e.createdAt < :cutoff")
+    @Query("SELECT e FROM ScheduleMediaUploadEntity e WHERE e.createdAt < :cutoff "
+            + "AND (e.scheduleId IS NULL OR (e.mediaType = 'IMAGE' AND e.processingStatus = 'UPLOADING'))")
     List<ScheduleMediaUploadEntity> findOrphanMedia(@Param("cutoff") LocalDateTime cutoff);
+
+    /** 完了通知との競合で READY になった行を削除しない条件付き claim。 */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM ScheduleMediaUploadEntity e WHERE e.id = :id "
+            + "AND (e.scheduleId IS NULL OR (e.mediaType = 'IMAGE' AND e.processingStatus = 'UPLOADING'))")
+    int deleteCleanupCandidateById(@Param("id") UUID id);
 }

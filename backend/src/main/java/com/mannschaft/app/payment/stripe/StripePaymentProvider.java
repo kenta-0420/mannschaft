@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.stripe;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 /**
  * Stripe 決済プロバイダーインターフェース。
@@ -186,6 +187,22 @@ public interface StripePaymentProvider {
                                                      String payerCustomerId, long applicationFeeMinor,
                                                      String destinationAccountId, CaptureMethod captureMethod,
                                                      String idempotencyKey);
+
+    /**
+     * PaymentIntent に業務相関 metadata を設定して作成する。
+     *
+     * <p>既存の呼出し互換性を保つため通常の destination charge は空 metadata を渡す。metadata は機密値を
+     * 含めず、webhook で業務レコードを特定する UUID 等に限定する。</p>
+     */
+    default PaymentIntentInfo createDestinationPaymentIntent(long chargeAmountMinor, String currency,
+                                                               String payerCustomerId, long applicationFeeMinor,
+                                                               String destinationAccountId,
+                                                               CaptureMethod captureMethod,
+                                                               String idempotencyKey,
+                                                               Map<String, String> metadata) {
+        return createDestinationPaymentIntent(chargeAmountMinor, currency, payerCustomerId, applicationFeeMinor,
+                destinationAccountId, captureMethod, idempotencyKey);
+    }
 
     /**
      * Destination Charge の PaymentIntent を作成し、保存済み PaymentMethod で<b>server-side off-session 即時確定</b>する
@@ -564,6 +581,37 @@ public interface StripePaymentProvider {
     SubscriptionInfo cancelSubscriptionAtPeriodEnd(String subscriptionId, String idempotencyKey);
 
     /**
+     * Stripe Subscription を期末解約予約し、<b>同時に metadata を焼き付ける</b>
+     * （Billing Center PR6a・AC-77）。
+     *
+     * <p>PR6a の operation Saga は「tx1 commit → Stripe 呼び出し → tx2 反映」に分割されるため、
+     * Stripe 呼び出しの成否が DB に書かれないままプロセスが落ちる窓が構造的に存在する（D8）。
+     * その窓を回収する唯一の手掛かりが、Stripe 側に残る
+     * {@code metadata.billingOperationId}（{@code BillingContractOperationRecoveryService
+     * #STRIPE_METADATA_OPERATION_ID_KEY}）である。既存の
+     * {@link #cancelSubscriptionAtPeriodEnd(String, String)} は {@code cancel_at_period_end=true}
+     * しか送っておらず metadata を書かないため、回収が原理的に成立しない。</p>
+     *
+     * <p><b>既存の metadata を消してはならない</b>（引継の {@code handoverRequestId} が同じ
+     * subscription に載っていることがある）。{@code SubscriptionUpdateParams} の
+     * {@code putAllMetadata} で<b>差分マージ</b>すること。</p>
+     *
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる（既存呼び出し元の挙動を変えない
+     * ために default としている）。実体は {@code StripePaymentProviderImpl} が override 済みであり、
+     * metadata を書けない実装がこの経路に紛れ込んだら握り潰さず fail-fast させる。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param idempotencyKey 冪等性キー（{@code billing-operation-{operationId}}）
+     * @param metadata       焼き付ける metadata（既存キーは保持・差分マージ）
+     * @return Subscription 情報（id / status / currentPeriodEnd）
+     */
+    default SubscriptionInfo cancelSubscriptionAtPeriodEnd(
+            String subscriptionId, String idempotencyKey, java.util.Map<String, String> metadata) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: 第10隊が実装する（試練Dの発注書）");
+    }
+
+    /**
      * SetupIntent 情報（設計書 F08.9 02 §4.1）。
      *
      * <p>{@code clientSecret} は払い手本人のみへ返す（他人へ漏らさない・03 §1）。</p>
@@ -611,7 +659,8 @@ public interface StripePaymentProvider {
      */
     record EscrowWebhookEventInfo(String eventId, String type, boolean livemode,
                                   String paymentIntentId, String paymentIntentStatus,
-                                  String refundId, Long refundedAmountMinor, Long chargeAmountMinor) {}
+                                  String refundId, Long refundedAmountMinor, Long chargeAmountMinor,
+                                  Map<String, String> metadata) {}
 
     /**
      * Connect 返金情報（設計書 02 §6.1・設定A）。
@@ -756,9 +805,304 @@ public interface StripePaymentProvider {
      * @param subscriptionId           Stripe Subscription ID（{@code sub_xxx}・逆引きキー）
      * @param customerId               Stripe Customer ID（{@code cus_xxx}・焼付用・{@code checkout.session.completed} のみ）
      * @param currentPeriodEndEpochSec 現サイクル終了の unix 秒（valid_until 延長/失効時刻・null 可）
+     * @param billingOperationId       {@code data.object.metadata.billingOperationId}（PR6b-1 AC-40。
+     *                                 {@code customer.subscription.*} のみ・invoice を経由せず change を
+     *                                 解決するための痕跡。無ければ {@code null}）
      */
     record BillingSubscriptionWebhookEventInfo(
             String eventId, String type, boolean livemode,
             String sessionId, String billingContractId, String subscriptionId, String customerId,
-            Long currentPeriodEndEpochSec) {}
+            Long currentPeriodEndEpochSec, String billingOperationId) {}
+
+    // ========================================
+    // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md §2.3・§3.2・§3.4）
+    // ========================================
+
+    /**
+     * 引継用の月額サブスク Checkout Session を作成する（{@code Mode.SUBSCRIPTION}・設計書 §2.3）。
+     *
+     * <p>{@link #createBillingSubscriptionCheckoutSession} との差分は3点:</p>
+     * <ol>
+     *   <li>{@code subscription_data.trial_end} に<b>旧契約の {@code current_period_end}</b>（unix 秒）を指定し、
+     *       新サブスクを {@code trialing} で作成する。旧期末までは一切請求が発生しないため、新旧併存期間の
+     *       <b>二重課金がゼロ</b>になる（設計書 §2.3・AC-4/AC-5 の核心）。</li>
+     *   <li>{@code subscription_data.metadata.handoverRequestId} を焼き付ける。DB へ
+     *       {@code psp_new_subscription_ref} を書き戻す前にプロセスが落ちた場合、
+     *       {@link #listSubscriptionsByCustomer} の全ページ走査＋本 metadata の突合で実物を回収し、
+     *       二重作成を防ぐ（設計書 §3.2・AC-7/AC-25/AC-33）。</li>
+     *   <li>{@code Idempotency-Key}（{@code billing-handover-create-{handoverRequestId}}）を付与する。
+     *       ただし Key は<b>24時間で失効する補助防御</b>にすぎず、一次防衛は上記 DB＋List 照合である
+     *       （設計書 §3.2 P0-2 根治）。</li>
+     * </ol>
+     *
+     * <p>{@code proration_behavior=none} を指定し、trial 終了時の日割りを発生させない（設計書 §2.3）。
+     * {@code metadata.billingContractId} は従来どおり焼き付け、{@code checkout.session.completed} で
+     * 契約を突合する（引継の新契約は {@code PENDING_HANDOVER} 状態で待機している）。</p>
+     *
+     * @param stripeCustomerId  新 payer の Stripe Customer ID（{@code cus_xxx}・get-or-create 済み）
+     * @param priceJpy          月額（円）
+     * @param productName       Stripe Product 表示名
+     * @param billingContractId 引継先の {@code billing_contracts.id}（{@code metadata.billingContractId}）
+     * @param handoverRequestId {@code billing_payer_handover_requests.id}（回復経路の突合キー）
+     * @param oldContractId     引継元の {@code billing_contracts.id}（監査用 metadata）
+     * @param trialEndEpochSec  旧契約の {@code current_period_end}（unix 秒・<b>未来時刻でなければならない</b>）
+     * @param successUrl        決済成功時の遷移先
+     * @param cancelUrl         決済中断時の遷移先
+     * @param idempotencyKey    冪等性キー（{@code billing-handover-create-{handoverRequestId}}）
+     * @return Checkout Session 情報（sessionId / checkoutUrl / expiresAt）
+     */
+    CheckoutSessionInfo createBillingHandoverSubscriptionCheckoutSession(
+            String stripeCustomerId, long priceJpy, String productName,
+            String billingContractId, String handoverRequestId, String oldContractId,
+            long trialEndEpochSec, String successUrl, String cancelUrl, String idempotencyKey);
+
+    /**
+     * Stripe Subscription の実物を取得する（設計書 §3.6.1(b)・§3.6 二段検証の2段目）。
+     *
+     * <p>DB の記録を信用せず Stripe 側の実値を突合するために用いる。切替バッチの実行前チェックでは
+     * {@code cancelAtPeriodEnd}（旧の期末終了が予約済みか）と {@code currentPeriodStart}（期末境界越えの判定）を、
+     * {@code pending_setup_intent} の二段検証では {@code pendingSetupIntentId} を参照する。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @return Subscription 実物のスナップショット
+     */
+    SubscriptionDetail retrieveSubscriptionDetail(String subscriptionId);
+
+    /**
+     * Customer に紐づく Subscription を<b>全ページ走査</b>して列挙する（設計書 §3.2・R4-P1-1・AC-33）。
+     *
+     * <p>{@code customer} 指定・{@code status=all}（{@code trialing}/{@code canceled} を含む）で照会する。
+     * <b>Search API は用いない</b>（Stripe 公式が「read-after-write フローにはリストアップ API を使え。
+     * これらは Search の鮮度遅延の影響を受けない」と明記しているため・設計書 §3.2 R3-P0 の裁定）。</p>
+     *
+     * <p><b>実装は必ず {@code autoPagingIterable()} を用いて {@code has_more} を追い切ること。</b>
+     * List は1リクエスト最大100件のページング型 API であり、対象 Customer が多数のサブスクを持つ場合、
+     * 目的のサブスクは2ページ目以降に存在しうる。<b>1ページ目だけを見て「未作成」と判定する実装は禁止</b>
+     * （そう判定すると二重サブスクを作ってしまい、二重課金に直結する）。</p>
+     *
+     * @param stripeCustomerId 対象 Stripe Customer ID（{@code cus_xxx}）
+     * @return 当該 Customer の全 Subscription（全ページ・全ステータス）
+     */
+    java.util.List<SubscriptionDetail> listSubscriptionsByCustomer(String stripeCustomerId);
+
+    /**
+     * Stripe Subscription の期末解約予約を<b>差し戻す</b>（{@code cancel_at_period_end=false}・設計書 §3.4）。
+     *
+     * <p>引継が旧期末前に {@code FAILED} 確定した場合、承諾確定時に予約した旧サブスクの期末終了を取り消し、
+     * 旧契約を継続させる（設計書 §2.3・§3.6.1・AC-32）。呼び出し側は本メソッドの成功後に
+     * {@code old_cancel_scheduled_at} を NULL クリアする責務を負う（対で行わないと夜次照合が誤判定する）。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param idempotencyKey 冪等性キー（{@code billing-handover-revert-cancel-{handoverRequestId}}）
+     * @return Subscription 情報（id / status / currentPeriodEnd）
+     */
+    SubscriptionInfo revertSubscriptionCancelAtPeriodEnd(String subscriptionId, String idempotencyKey);
+
+    /**
+     * Stripe Subscription の期末解約予約を差し戻し、<b>同時に metadata を焼き付ける</b>
+     * （Billing Center PR6a・AC-77 / Codex 検分 P1-1）。
+     *
+     * <p>撤回（{@code RESUME}）も解約と同じ停止窓を持つ。metadata を書かずに差し戻すと、
+     * Stripe 側には<b>直前の解約 operation の ID が残ったまま</b>になり、撤回成功後〜tx2 前に
+     * プロセスが停止したときの回収で {@code traceMatches} が必ず偽になる。その結果、
+     * 正常に撤回済みの契約が {@code RECONCILIATION_REQUIRED} へ永久隔離される。</p>
+     *
+     * <p><b>既存の metadata を消してはならない</b>（引継の {@code handoverRequestId} が同じ
+     * subscription に載っていることがある）。{@code putAllMetadata} で<b>差分マージ</b>すること。</p>
+     *
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる（既存呼び出し元の挙動を変えない
+     * ために default としている）。実体は {@code StripePaymentProviderImpl} が override 済みであり、
+     * metadata を書けない実装がこの経路に紛れ込んだら握り潰さず fail-fast させる。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param idempotencyKey 冪等性キー（{@code billing-operation-{operationId}}）
+     * @param metadata       焼き付ける metadata（既存キーは保持・差分マージ）
+     * @return Subscription 情報（id / status / currentPeriodEnd）
+     */
+    default SubscriptionInfo revertSubscriptionCancelAtPeriodEnd(
+            String subscriptionId, String idempotencyKey, java.util.Map<String, String> metadata) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: metadata を書ける実装で override すること");
+    }
+
+    // ========================================
+    // Billing Center PR6b-1: プラン変更（upgrade）＋ 3DS
+    // ========================================
+
+    /**
+     * Billing Center PR6b-1（AC-1/AC-2）: プラン変更の<b>見積り請求書</b>を Stripe に作らせる。
+     *
+     * <p>Stripe の {@code POST /v1/invoices/create_preview} を {@code subscription} ＋
+     * {@code subscription_details.items} ＋ {@code subscription_details.proration_behavior} で呼ぶ。
+     * <b>日割りをこちらで計算してはならない</b>（AC-2: 金額の唯一の出所は Stripe）。</p>
+     *
+     * <p>対象の Subscription Item は<b>実物から解決する</b>（{@code items[0][id]} を指定しないと
+     * Stripe は「項目の追加」と解釈し、旧プランと新プランの二重課金になる）。契約用の Subscription は
+     * 項目1件で作られるため、項目が1件でない場合は推測せず例外にする。</p>
+     *
+     * @param subscriptionId    対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param targetPriceRef    変更後の Stripe Price ID（{@code price_xxx}）
+     * @param quantity          数量（人数band課金。個人契約は 1・null 可）
+     * @param prorationBehavior {@code always_invoice} 等（Stripe の生値）
+     * @param prorationDateEpochSec 按分の基準日時（{@code proration_date}・unix 秒）。
+     *                              <b>実適用でも同じ値を渡すこと</b>で見積り額と請求額が一致する
+     * @return 見積り請求書から読み取った金額・税・期間
+     */
+    InvoicePreviewInfo previewSubscriptionPlanChange(
+            String subscriptionId, String targetPriceRef, Long quantity, String prorationBehavior,
+            Long prorationDateEpochSec);
+
+    /**
+     * Billing Center PR6b-1（AC-29/AC-30/AC-31）: Subscription の項目を差し替えてプラン変更を適用する。
+     *
+     * <p>{@code proration_behavior=always_invoice}（差額を即時請求）＋
+     * {@code payment_behavior=pending_if_incomplete}（支払いが通らなければ適用を保留）で呼ぶ。
+     * <b>支払いが同期的に成功した場合 {@code pending_update} は返らない</b>。追加認証（3DS）や
+     * カード拒否で支払いが完了しなかったときだけ {@code pending_update} が返る
+     * （Stripe 公式「更新の保留」）。</p>
+     *
+     * <p>metadata は {@code putAllMetadata} で<b>差分マージ</b>する（既存の
+     * {@code handoverRequestId} 等を巻き添えで消さない）。</p>
+     *
+     * @param subscriptionId    対象 Stripe Subscription ID
+     * @param targetPriceRef    変更後の Stripe Price ID
+     * @param quantity          数量（null 可）
+     * @param prorationBehavior {@code always_invoice}
+     * @param paymentBehavior   {@code pending_if_incomplete}
+     * @param metadata          焼き付ける metadata（既存キーは保持）
+     * @param idempotencyKey    冪等性キー（{@code billing-operation-{operationId}}）
+     * @param prorationDateEpochSec 按分の基準日時（{@code proration_date}・unix 秒）。
+     *                              見積り時に渡した値と<b>同一</b>でなければ、利用者へ見せた額と
+     *                              実際の請求額がずれる
+     * @return 適用結果（最新 Invoice ＋ {@code pending_update}）
+     */
+    SubscriptionPlanChangeInfo changeSubscriptionPlan(
+            String subscriptionId, String targetPriceRef, Long quantity,
+            String prorationBehavior, String paymentBehavior,
+            java.util.Map<String, String> metadata, String idempotencyKey,
+            Long prorationDateEpochSec);
+
+    /**
+     * Billing Center PR6b-1（AC-48/AC-54）: 追加認証（3DS）の client secret を<b>都度取得</b>する。
+     *
+     * <p>{@code pending_update} を生んだ差額請求の Invoice から PaymentIntent を辿り、
+     * その {@code client_secret} を返す。<b>返り値をログ・DB へ出してはならない</b>（AC-57/AC-58）。
+     * 既に決済済み／取り消し済みで追加認証の余地が無い場合は空を返す。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID
+     * @param invoiceId      差額請求の Invoice ID（未確定なら null。その場合は {@code latest_invoice} を辿る）
+     * @return 追加認証情報（不要なら空）
+     */
+    java.util.Optional<SubscriptionPaymentActionInfo> retrieveSubscriptionPaymentAction(
+            String subscriptionId, String invoiceId);
+
+    /**
+     * Billing Center PR6b-1（AC-2）: 見積り請求書から読み取った値。
+     *
+     * <p>時刻は Stripe 由来の unix 秒のまま保持する（変換は呼び出し側の責務）。</p>
+     *
+     * @param currency            通貨（小文字の ISO コード）
+     * @param amountDue           今すぐ請求される額（最小貨幣単位・税込）
+     * @param totalExcludingTax   税抜額（取得できなければ null）
+     * @param taxAmount           税額（取得できなければ null）
+     * @param taxDisplayName      税の表示名（{@code total_tax_amounts.tax_rate} 展開時のみ・null 可）
+     * @param taxPercentage       税率（パーセント・展開時のみ・null 可）
+     * @param periodStartEpochSec 見積り対象期間の開始（null 可）
+     * @param periodEndEpochSec   見積り対象期間の終了（null 可）
+     */
+    record InvoicePreviewInfo(String currency, Long amountDue, Long totalExcludingTax, Long taxAmount,
+                              String taxDisplayName, BigDecimal taxPercentage,
+                              Long periodStartEpochSec, Long periodEndEpochSec) {}
+
+    /**
+     * Billing Center PR6b-1（AC-32/AC-33）: プラン変更適用の結果。
+     *
+     * @param subscriptionId                Stripe Subscription ID
+     * @param status                        Subscription のステータス
+     * @param latestInvoiceRef              差額請求の Invoice ID（発行されなければ null）
+     * @param latestInvoiceStatus           その Invoice のステータス（{@code paid}/{@code open} 等・null 可）
+     * @param pendingUpdatePresent          {@code pending_update} が返ったか（＝支払い未了・追加認証が要る）
+     * @param pendingUpdateExpiresAtEpochSec {@code pending_update.expires_at}（null 可）
+     * @param pendingUpdateItems            {@code pending_update.subscription_items}（無ければ空）
+     * @param currentPeriodStartEpochSec    現サイクル開始（null 可）
+     */
+    record SubscriptionPlanChangeInfo(String subscriptionId, String status,
+                                      String latestInvoiceRef, String latestInvoiceStatus,
+                                      boolean pendingUpdatePresent,
+                                      Long pendingUpdateExpiresAtEpochSec,
+                                      java.util.List<SubscriptionItemDetail> pendingUpdateItems,
+                                      Long currentPeriodStartEpochSec) {
+
+        /** null を運ばせない。 */
+        public SubscriptionPlanChangeInfo {
+            pendingUpdateItems = pendingUpdateItems == null
+                    ? java.util.List.of() : java.util.List.copyOf(pendingUpdateItems);
+        }
+    }
+
+    /**
+     * Billing Center PR6b-1（AC-48）: 追加認証の情報。
+     *
+     * <p>{@code clientSecret} は<b>短命な秘密</b>である。ログ・DB・URL のいずれにも残してはならない。</p>
+     *
+     * @param type              追加認証の種別（{@code payment_intent}）
+     * @param clientSecret      PaymentIntent の client secret
+     * @param expiresAtEpochSec 追加認証の期限（{@code pending_update.expires_at}・null 可）
+     */
+    record SubscriptionPaymentActionInfo(String type, String clientSecret, Long expiresAtEpochSec) {}
+
+    /**
+     * Stripe Subscription 実物のスナップショット（設計書 §3.6.1・§3.2）。
+     *
+     * <p>時刻は Stripe 由来の unix 秒のまま保持する（変換は呼び出し側の責務）。{@code metadata} は
+     * 回復経路の {@code handoverRequestId} 突合に用いる（設計書 §3.2）。</p>
+     *
+     * @param subscriptionId      Stripe Subscription ID（{@code sub_xxx}）
+     * @param status              Stripe ステータス（{@code trialing}/{@code active}/{@code canceled} 等）
+     * @param cancelAtPeriodEnd   期末解約が予約済みか（Stripe が null を返した場合は false 扱い）
+     * @param currentPeriodStart  現サイクル開始の unix 秒（期末境界越え判定に用いる・null 可）
+     * @param currentPeriodEnd    現サイクル終了の unix 秒（null 可）
+     * @param pendingSetupIntentId 未解決の SetupIntent ID（SCA/3DS 未完了時のみ非 null・設計書 §3.6）
+     * @param metadata            Subscription の metadata（{@code handoverRequestId} を含む・null 不可）
+     */
+    record SubscriptionDetail(String subscriptionId, String status, boolean cancelAtPeriodEnd,
+                              Long currentPeriodStart, Long currentPeriodEnd,
+                              String pendingSetupIntentId,
+                              java.util.Map<String, String> metadata,
+                              java.util.List<SubscriptionItemDetail> items,
+                              Long pendingUpdateExpiresAtEpochSec) {
+
+        /**
+         * Billing Center PR6b-1（AC-99）: items / pending_update を運ばない従来の7項目版。
+         *
+         * @param subscriptionId       Stripe Subscription ID
+         * @param status               Stripe ステータス
+         * @param cancelAtPeriodEnd    期末解約が予約済みか
+         * @param currentPeriodStart   現サイクル開始（epoch 秒・null 可）
+         * @param currentPeriodEnd     現サイクル終了（epoch 秒・null 可）
+         * @param pendingSetupIntentId 未解決 SetupIntent（null 可）
+         * @param metadata             metadata
+         */
+        public SubscriptionDetail(String subscriptionId, String status, boolean cancelAtPeriodEnd,
+                                  Long currentPeriodStart, Long currentPeriodEnd,
+                                  String pendingSetupIntentId,
+                                  java.util.Map<String, String> metadata) {
+            this(subscriptionId, status, cancelAtPeriodEnd, currentPeriodStart, currentPeriodEnd,
+                    pendingSetupIntentId, metadata, java.util.List.of(), null);
+        }
+
+        /** null を運ばせない。 */
+        public SubscriptionDetail {
+            items = items == null ? java.util.List.of() : java.util.List.copyOf(items);
+        }
+    }
+
+    /**
+     * Billing Center PR6b-1（AC-99）: Subscription Item 1件（Price ref を運ぶ）。
+     *
+     * @param itemId   Stripe Subscription Item ID
+     * @param priceRef Stripe Price ID
+     * @param quantity 数量（null 可）
+     */
+    record SubscriptionItemDetail(String itemId, String priceRef, Long quantity) {}
 }

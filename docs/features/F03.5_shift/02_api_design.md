@@ -32,16 +32,17 @@
 | POST | `/api/v1/shifts/positions` | 必要 | ポジション作成 |
 | PATCH | `/api/v1/shifts/positions/{id}` | 必要 | ポジション更新（部分更新、PUT から PATCH へ変更） |
 | DELETE | `/api/v1/shifts/positions/{id}` | 必要 | ポジション削除（is_active=FALSE） |
+| GET | `/api/v1/shifts/swap-requests` | 必要 | シフト交代リクエスト一覧（`teamId` 必須。管理者は全件、一般メンバーは**自分に関係する依頼のみ**） **【🟢 可視範囲を是正 CMP-260908-2116 / 2026-09-08】** |
 | POST | `/api/v1/shifts/swap-requests` | 必要 | シフト交代リクエスト作成 |
 | POST | `/api/v1/shifts/swap-requests/{id}/accept` | 必要 | シフト交代を引き受ける（旧 PATCH → POST に変更） |
-| POST | `/api/v1/shifts/swap-requests/{id}/resolve` | 必要 | シフト交代の承認/却下統合（管理者用、リクエストボディの `decision` で `APPROVE`/`REJECT` を指定。旧 PATCH `/approve` + PATCH `/reject` を統合） |
+| POST | `/api/v1/shifts/swap-requests/{id}/resolve` | 必要 | シフト交代の承認/却下統合（管理者用、リクエストボディの `action` で **大文字** `APPROVE`/`REJECT` を指定。旧 PATCH `/approve` + PATCH `/reject` を統合） |
 | DELETE | `/api/v1/shifts/swap-requests/{id}` | 必要 | シフト交代リクエスト取り下げ |
 | GET | `/api/v1/shifts/availability` | 必要 | 自分のデフォルト可否プロファイル取得 |
 | PUT | `/api/v1/shifts/availability` | 必要 | デフォルト可否プロファイル一括更新 |
 | DELETE | `/api/v1/shifts/availability` | 必要 | デフォルト可否プロファイルを削除（既定値に戻す） |
 | GET | `/api/v1/shifts/hourly-rate` | 必要 | 自分の時給設定取得 |
 | POST | `/api/v1/shifts/hourly-rate` | 必要 | 自分の時給設定登録・更新（旧 PUT → POST に変更、Service 側 upsert 動作） |
-| GET | `/api/v1/shifts/hourly-rates` | 必要 | チームメンバーの時給一覧取得（管理者用） **【v2 計画、現状未実装】** |
+| GET | `/api/v1/shifts/hourly-rates` | 必要 | チームメンバーの有効時給を一括取得（ADMIN/DEPUTY_ADMIN 用・CMP-260912-1525 で実装） |
 | PUT | `/api/v1/shifts/hourly-rates/{userId}` | 必要 | メンバーの時給設定（管理者用） **【v2 計画、現状未実装】** |
 | POST | `/api/v1/shifts/schedules/{id}/auto-assign` | 必要 | **【v2】自動割当を実行（PROPOSED 状態で shift_assignments にドラフト書き込み）** |
 | POST | `/api/v1/shifts/schedules/{id}/auto-assign/confirm` | 必要 | **【v2】自動割当の提案を確定（PROPOSED → CONFIRMED、shift_slots.assigned_user_ids を更新）** |
@@ -61,8 +62,6 @@
 | GET | `/api/v1/shifts/change-requests/{id}` | 必要 | **【v2.1】変更依頼の詳細取得** |
 | PATCH | `/api/v1/shifts/change-requests/{id}/review` | 必要 | **【v2.1】管理者が変更依頼を受諾（ACCEPTED）または却下（REJECTED）** |
 | DELETE | `/api/v1/shifts/change-requests/{id}` | 必要 | **【v2.1】依頼者本人が変更依頼を取下（WITHDRAWN）** |
-| POST | `/api/v1/shifts/swap-requests/{id}/claim` | 必要 | **【v2.1】オープンコール（全体募集）への手挙げ（先着優先、楽観ロック）** |
-| POST | `/api/v1/shifts/swap-requests/{id}/select-claimer` | 必要 | **【v2.1】オープンコール候補選定（依頼者または管理者が accepter を確定）** |
 | POST | `/api/v1/shifts/assignment-runs/{runId}/confirm-visual-review` | 必要 | **【v2.1】自動割当結果の目視確認を承認（PUBLISHED 遷移の前提条件）** |
 | GET | `/api/v1/shifts/schedules/{id}/pdf` | 必要 | **【v2.2】シフト表PDF出力（`layout=team` チーム全体マトリクス / `layout=personal` 個人タイムライン）** |
 
@@ -714,13 +713,20 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 }
 ```
 
-**エラーレスポンス**
-| ステータス | 条件 |
-|-----------|------|
-| 400 | バリデーションエラー / 同一枠の重複希望 |
-| 403 | チームメンバーではない / SUPPORTER・GUEST は希望提出不可 |
-| 404 | シフトスケジュール/スロットが存在しない |
-| 409 | `COLLECTING` 以外のステータス / `request_deadline` が過去（希望提出期限切れ） |
+**エラーレスポンス**（実装準拠。`06_manual_authoring.md` §11.5.1.1 / §11.5.1.2）
+| ステータス | エラーコード | 条件 |
+|-----------|------|------|
+| 400 | （bean validation） | バリデーションエラー |
+| 400 | `SHIFT_037` (`REQUEST_SLOT_DATE_MISMATCH`) | `slot_id` の枠が持つ日付と `slot_date` が食い違う（越境ではなくクライアントの自己矛盾） |
+| 403 | `COMMON_002` | チームメンバーではない / SUPPORTER は希望提出不可 |
+| 403 | `SHIFT_019` (`ACCESS_DENIED`) | `slot_id` が**他スケジュール配下**、または**存在しない**。<br>404 と畳まないのは ID の存否を漏らさないため（存在オラクルの封鎖） |
+| 404 | `SHIFT_001` | シフトスケジュールが存在しない |
+| 409 | `SHIFT_015` (`REQUEST_ALREADY_EXISTS`) | **同一枠**（`slot_id` 非 NULL）または**同一日**（`slot_id` = NULL）の希望が既にある。<br>同時提出は DB の UNIQUE `uq_sr_schedule_user_slot` が最後の砦となり、こちらも 409（500 にはしない） |
+| 409 | `SHIFT_012` / `SHIFT_011` | `COLLECTING` 以外のステータス / `request_deadline` が過去（希望提出期限切れ） |
+
+> **一意性の単位（CMP-260909-1143 是正・PR A3）**: `slot_id` 非 NULL は `(schedule_id, user_id, slot_id)`、
+> `slot_id` NULL は `(schedule_id, user_id, slot_date)`。
+> **同一日でも枠が違えば希望は複数件並ぶ**（旧実装は日付だけで判定しており、同一日に 1 件しか出せなかった）。
 
 ---
 
@@ -822,6 +828,8 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 ```
 
 - `confirmed_shifts`: `PUBLISHED` 状態のスケジュールで自分がアサインされているスロット
+  - **参照元は `shift_slots.assigned_user_ids`（割当の正本。CMP-260908-2117）**。`shift_assignments` は履歴表であり、状態問い合わせには使わない。旧実装は後者の `status = CONFIRMED` を引いており、手動割当（同表に書かない）が本人にまったく表示されなかった
+  - 可視性は `ShiftScheduleVisibilityPolicy.Visibility.FULL`（PUBLISHED / 公開済み ARCHIVED）に限る。割当を伏せる `MASKED`（COLLECTING / ADJUSTING）と `HIDDEN`（DRAFT 等）は本人にも返さない
 - `confirmed_shifts[].estimated_pay`: 時給設定がある場合のみ返却。`hours` はスロットの実勤務時間（深夜跨ぎ対応）、`hourly_rate` は `slot_date` 時点の適用時給、`amount = hours × hourly_rate`。時給未設定の場合は `null`
 - `pay_summary`: 取得期間内の全確定シフトの給与概算合計。時給未設定の場合は `null`。複数チームの場合はチーム別に集計しない（合計のみ）
 - `pending_requests`: `COLLECTING` 状態のスケジュールで自分が所属するチームのもの。未提出の場合は `my_request_count: 0` で含める（未提出の気づき促進）
@@ -1031,6 +1039,33 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 ---
 
+#### `GET /api/v1/shifts/swap-requests`
+
+指定チームの交代リクエスト一覧を取得する。**クエリ `teamId`（数値 ID）は必須**、`status` は任意のフィルタ。
+
+**可視範囲（CMP-260908-2116 で是正 / 2026-09-08）**
+
+| 閲覧者 | 見える範囲 |
+|---|---|
+| SYSTEM_ADMIN / 当該チームの ADMIN・DEPUTY_ADMIN | 当該チームの**全件** |
+| 当該チームの一般メンバー（SUPPORTER を除く） | **自分に関係する依頼のみ**（① `recipient_mode=SPECIFIC` かつ `target_user_ids` に自分が含まれる ② `recipient_mode=OPEN_CALL`（指名なし。誰でも承諾できる） ③ 自分が申請した ④ 自分が承諾済み） |
+| SUPPORTER / チーム外 | 403 |
+
+- **是正の背景**: 従来この API は ADMIN 限定であり、一般メンバーは 403 で一覧を引けなかった。
+  一方 `accept` は「同一チームの非 SUPPORTER メンバーなら申請者以外の誰でも承諾できる」ため、
+  **承諾できる相手が承諾すべき依頼を一覧できない**という矛盾があり、UI から承諾操作へ到達できなかった。
+- **絞り込みは必ず BE 側で行う**。`reason` には体調・家庭の事情など私的な内容が書かれうるため、
+  FE で表示を隠すだけでは他人の理由がレスポンス本文に乗って漏れる。関係のない依頼は**返さない**。
+- テナント越境は起こらない（`teamId` に対する認可が先に走り、取得も当該チームに閉じる）。
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | `teamId` 未指定 / 数値でない |
+| 403 | 当該チームのメンバーではない、または SUPPORTER |
+
+---
+
 #### `POST /api/v1/shifts/swap-requests`
 
 メンバーがシフト交代リクエストを作成する。`PUBLISHED` 状態のスケジュールに属する、自分がアサインされているスロットのみ対象。**v2.1 より 2 つのモードをサポート**: (A-2) 特定メンバー指名、(A-3) オープンコール（全体募集）。
@@ -1107,7 +1142,18 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 #### `POST /api/v1/shifts/swap-requests/{id}/resolve`
 
-> ※ 旧設計は `PATCH /approve` + `PATCH /reject` の 2 本。実装は `POST /resolve` 1 本に統合し、リクエストボディの `decision: "APPROVE" | "REJECT"` で分岐する方式に変更。以降のサブセクションは旧設計の参考情報として残す。
+> ※ 旧設計は `PATCH /approve` + `PATCH /reject` の 2 本。実装は `POST /resolve` 1 本に統合し、リクエストボディの `action: "APPROVE" | "REJECT"` で分岐する方式に変更。以降のサブセクションは旧設計の参考情報として残す。
+
+**リクエストボディ**
+```json
+{ "action": "APPROVE", "adminNote": "承認します" }
+```
+
+- フィールド名は `action`（旧設計の `decision` ではない）。
+- 値は**大文字**の `APPROVE` / `REJECT` のみ。BE は文字列を大文字のまま比較するため、
+  小文字（`approve` / `reject`）を送ると必ず失敗する（CMP-260908-2116 で FE の小文字送信を是正）。
+- 対象は **`ACCEPTED` の依頼のみ**。`PENDING` の依頼は承認・却下できない
+  （UI もこの契約に合わせ、承認・却下ボタンは管理者かつ `ACCEPTED` の行にだけ出す）。
 
 #### 【旧】`PATCH /api/v1/shifts/swap-requests/{id}/approve`
 
@@ -1177,7 +1223,7 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 **レスポンス（200 OK）**: 交代リクエスト単体を返却（`status: "CANCELLED"`）
 
-- **オープンコールの取下時（v2.1）**: 既に `CLAIMED` 状態でも依頼者本人なら取下可能。手挙げ済みだった `claimed_by` ユーザーに「募集が取下されました」通知を送信
+- ~~**オープンコールの取下時（v2.1）**: 既に `CLAIMED` 状態でも依頼者本人なら取下可能~~ → **廃止（CMP-260903-0655）**。`CLAIMED` へ遷移する経路が削除されたため、この分岐に入る行は発生しない
 
 **エラーレスポンス**
 | ステータス | 条件 |
@@ -1188,91 +1234,26 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 ---
 
-#### `POST /api/v1/shifts/swap-requests/{id}/claim`【v2.1 新規】
+#### `POST /api/v1/shifts/swap-requests/{id}/claim` / `select-claimer`【v2.1 → 廃止（CMP-260903-0655）】
 
-オープンコール（`is_open_call=true`, `status=OPEN_CALL`）に対して「代わりに入ります」と手を挙げる API。**先着優先**を楽観的ロックで保証する。
+**この2エンドポイントは削除済み。実装・呼び出し元ともに存在しない。**
 
-**リクエストボディ**
-```json
-{
-  "version": 0
-}
-```
+理由: 交代リクエストの作成経路（`POST /api/v1/shifts/swap-requests`）は `is_open_call=true` でも
+status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移させる経路がどこにも無かった。
+`claim` は `status != 'OPEN_CALL'` を 409 で弾くため、本番データでは**一度も成功し得ない**死んだ API だった
+（`CLAIMED` 行も同じ理由で発生しない）。半実装のまま残すと、到達不能なコードが認可レビューの対象に
+残り続けるため、BE / FE / ロケール / OpenAPI から一式削除した。
 
-- `version`: 必須。クライアントが取得した時点の `shift_swap_requests.version`。サーバ側で `WHERE version = :version` で更新し、競合時は 409
+**撤退範囲（どこまで消したか）**:
+- 消したもの: 手挙げ（claim）と候補者選定（select-claimer）という**status 遷移の2段階**、および対応する
+  FE の `useOpenCall` / `ShiftOpenCallBadge` / `claimSwap` / `selectClaimer`
+- 残したもの: 交代リクエストの**受信者モードとしての `OPEN_CALL`**（`is_open_call=true` での作成、
+  チーム全員への通知、月次上限3件）。こちらは作成〜承認まで生きている
+- `SwapRequestStatus` の定数 `OPEN_CALL` / `CLAIMED` は**削除していない**。永続 enum のため、
+  万一の既存行の読み出しが落ちるのを避ける目的で残置している（新規に書き込む経路は無い）
 
-**レスポンス（200 OK）**
-```json
-{
-  "data": {
-    "id": 1,
-    "slot_id": 101,
-    "status": "CLAIMED",
-    "claimed_by": { "id": 12, "display_name": "高橋次郎" },
-    "claimed_at": "2026-04-23T10:05:00+09:00",
-    "version": 1
-  }
-}
-```
-
-- **処理（1トランザクション）**:
-  1. 対象 swap_request を `SELECT ... FOR UPDATE` でロック（念押しの悲観ロック併用）
-  2. `status != 'OPEN_CALL'` なら 409（既に他ユーザーが claim 済み or 取下済み）
-  3. `version` 不一致なら 409（並行 claim の片方が先着したケース）
-  4. `claimed_by = 認証ユーザーID`, `claimed_at = NOW()`, `status = 'CLAIMED'`, `version + 1` に更新
-  5. 依頼者・管理者にプッシュ通知（「高橋次郎さんが代打に応じました。候補を確定してください」）
-  6. ApplicationEvent: `ShiftOpenCallClaimedEvent`
-
-**エラーレスポンス**
-| ステータス | 条件 |
-|-----------|------|
-| 400 | `is_open_call = FALSE` の swap_request を対象にした（個別指名には claim 不可） |
-| 403 | チームメンバーではない / SUPPORTER/GUEST |
-| 403 | 依頼者本人が自分の募集に claim しようとした |
-| 404 | swap_request が存在しない |
-| 409 | `status != 'OPEN_CALL'`（既に他者が先着、または CANCELLED）/ 楽観的ロック競合 |
-
----
-
-#### `POST /api/v1/shifts/swap-requests/{id}/select-claimer`【v2.1 新規】
-
-オープンコールの `CLAIMED` 状態から `ACCEPTED` 状態へ遷移させ、`accepter_id` を確定する API。**依頼者または管理者**が実行可能。管理者は先着者（`claimed_by`）以外の候補に差し替える裁量を持つ（例: 手挙げ者が複数いた場合、過去に手挙げしたがキャンセルされた候補を選ぶ、スキル要件を満たす別メンバーを選ぶ）。
-
-**リクエストボディ**
-```json
-{
-  "accepter_user_id": 12,
-  "version": 1
-}
-```
-
-- `accepter_user_id`: 必須。確定する候補者の user_id。通常は `claimed_by` と同一値。管理者のみ異なる値を指定可能
-- `version`: 必須。楽観的ロック
-
-**レスポンス（200 OK）**
-```json
-{
-  "data": {
-    "id": 1,
-    "status": "ACCEPTED",
-    "accepter": { "id": 12, "display_name": "高橋次郎" },
-    "version": 2
-  }
-}
-```
-
-- 以降は通常の `PATCH /swap-requests/{id}/approve` フローで管理者承認に進む
-- 依頼者・確定された accepter の両方にプッシュ通知
-
-**エラーレスポンス**
-| ステータス | 条件 |
-|-----------|------|
-| 400 | `accepter_user_id` がチームメンバーではない / 依頼者本人を指定 / SUPPORTER/GUEST 指定 |
-| 403 | 依頼者本人でも管理者でもない / 依頼者が `claimed_by` 以外の値を指定（管理者のみ裁量可） |
-| 404 | swap_request が存在しない |
-| 409 | `status != 'CLAIMED'` / 楽観的ロック競合 |
-
----
+**現行のオープンコール依頼の扱い**: `is_open_call=true` で作られた依頼は `accepter_id` が NULL のまま
+`PENDING` で並ぶ。承諾の導線を通すかどうかは別途 CMP-260907-1531 で扱う。
 
 #### `GET /api/v1/shifts/availability`
 
@@ -1426,43 +1407,62 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 ---
 
-#### `GET /api/v1/shifts/hourly-rates` 【v2 計画・現状未実装】
+#### `GET /api/v1/shifts/hourly-rates`（CMP-260912-1525 で実装）
 
-> ※ 管理者向け時給一覧 API。現状実装は単数 `/shifts/hourly-rate` のみ。v2 で `ShiftHourlyRateAdminController` 追加予定（triage_log `shifts.md` §5-2 参照）。
+チームメンバーの「基準日時点で有効な時給」を**一括で**取得する。時給設定画面が
+全メンバーの現在時給を並べるための経路。
 
-チームメンバーの時給一覧を取得する。管理者がチーム全体の人件費を把握するための画面用。
+**なぜ単数 `/hourly-rate` の反復ではだめか**: 1 人ずつ引くとメンバー数ぶんの HTTP 往復と
+クエリが出る。本 EP は相関副問い合わせで「ユーザーごとに基準日以下で最新の適用開始日の行」を
+選ぶ 1 クエリにまとめており、処理量はメンバー数 N に比例する（`ShiftHourlyRateRepository#findEffectiveRatesByTeam`）。
 
 **クエリパラメータ**
 | パラメータ | 型 | 必須 | 説明 |
 |-----------|---|------|------|
-| `team_id` | Long | 必須 | チーム ID |
+| `teamId` | Long | 必須 | チーム ID |
+| `date` | LocalDate (ISO) | 必須 | 基準日。この日時点で有効な時給を返す |
 
-**レスポンス（200 OK）**
+**レスポンス（200 OK）** — 単数 EP と同じ `HourlyRateResponse` の配列。
+**基準日時点で時給が未設定のユーザーは含まれない**（画面側は返ってきた `userId` で突き合わせ、
+含まれないメンバーを「未設定」として表示する）。
+
 ```json
 {
   "data": [
-    {
-      "user": { "id": 10, "display_name": "田中太郎" },
-      "current_rate": 1200.00,
-      "effective_from": "2026-01-01"
-    },
-    {
-      "user": { "id": 11, "display_name": "佐藤花子" },
-      "current_rate": 1100.00,
-      "effective_from": "2025-10-01"
-    },
-    {
-      "user": { "id": 12, "display_name": "鈴木一郎" },
-      "current_rate": null
-    }
+    { "id": 100, "userId": 10, "teamId": 3, "hourlyRate": 1200.00,
+      "effectiveFrom": "2026-01-01", "createdAt": "2026-01-01T00:00:00" },
+    { "id": 101, "userId": 11, "teamId": 3, "hourlyRate": 1100.00,
+      "effectiveFrom": "2025-10-01", "createdAt": "2025-10-01T00:00:00" }
   ]
 }
 ```
 
+**認可は 2 軸ある。どちらか一方では足りない。**
+
+1. **誰が呼べるか（ロールの検査）**: 返す内容に他メンバーの時給（金銭情報）が必ず含まれるため、
+   単数 EP の「本人 + 当該チームの ADMIN/DEPUTY_ADMIN」のうち
+   **ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）だけ**を許可する。
+   一般メンバーは自分の時給を単数 EP で従来どおり読めるため、本 EP を一律拒否しても機能は失われない。
+2. **誰の時給を返すか（対象の絞り込み）**: **在籍中のメンバーに限る**
+   （`AccessControlService#listActiveMemberIds` が `memberships.left_at IS NULL` で 1 クエリ取得し、
+   その ID 集合でクエリを絞る）。
+
+> ⚠️ 2 を落とすと認可の回帰になる。単数 EP は `checkHourlyRateAccess` が
+> **対象ユーザーの現在の所属**まで確認していた（`checkMembership(targetUserId, ...)`）。
+> 一括取得を `teamId` だけで引くと、**時給を設定されたあとに脱退した元メンバーの金銭情報まで返る**。
+> 「1 件ずつなら効いていた対象側のチェックが、まとめて取ると効かなくなる」典型であり、
+> 性能改善のための一括化では必ず起きうる（CMP-260912-1525 の Codex 検分 P1 で検出）。
+
+**インデックス**: `idx_shr_team_user_from (team_id, user_id, effective_from)`（`V213` で追加）。
+既存の一意インデックス `uq_shr_user_team_from` は左端が `user_id` のため `team_id = ?` を絞れず、
+履歴が複数チームに蓄積すると `shift_hourly_rates` 全体の走査になる
+（＝一括化による性能改善が全テナントの履歴件数に比例して劣化する）。
+外側の検索条件と相関副問い合わせの `MAX(effective_from)` の両方をこの 1 本で支える。
+
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 403 | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
+| 403 | 当該チームの ADMIN / DEPUTY_ADMIN ではない |
 
 ---
 

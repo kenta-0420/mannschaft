@@ -1,6 +1,7 @@
 package com.mannschaft.app.social.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.social.FollowListVisibility;
 import com.mannschaft.app.social.dto.FollowListVisibilityResponse;
@@ -110,7 +111,7 @@ public class UserFollowController {
     public ResponseEntity<Void> updateFollowListVisibility(
             @Valid @RequestBody UpdateFollowListVisibilityRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        FollowListVisibility visibility = FollowListVisibility.valueOf(request.getVisibility());
+        FollowListVisibility visibility = EnumInputParser.parse(FollowListVisibility.class, request.getVisibility(), "visibility");
         followService.updateFollowListVisibility(userId, visibility);
         return ResponseEntity.noContent().build();
     }

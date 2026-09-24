@@ -70,8 +70,17 @@ public class NotificationDispatchService {
      *
      * <p>F00 Phase F: 配信直前にも visibility ガードを行い、Resolver 配備済の
      * sourceType に対しては受信者の閲覧可否を確認してから送信する。
+     *
+     * <p><b>Issue #2953: プールは {@code notification-dispatch-pool} に固定する（executor 無指定にしない）。</b>
+     * 無指定だと {@code @Primary} の {@code event-pool} に載り、{@code AFTER_COMMIT + @Async("event-pool")} の
+     * 配送リスナー →
+     * {@link NotificationDeliveryRunner#sendOne}（{@code REQUIRES_NEW}）→ 本メソッド、という経路で
+     * <b>呼び出し元と同じプールへの自己投入</b>になる。飽和すると既定 AbortPolicy の
+     * {@code RejectedExecutionException} が {@code sendOne} の {@code REQUIRES_NEW} を巻き戻し、
+     * 作成済みの通知行ごと消える。専用プール（CallerRuns）に固定することで、
+     * 自己投入と拒否によるロールバックの双方を構造的に断つ。</p>
      */
-    @Async
+    @Async("notification-dispatch-pool")
     public void dispatch(NotificationEntity notification) {
         if (notification == null) {
             return;

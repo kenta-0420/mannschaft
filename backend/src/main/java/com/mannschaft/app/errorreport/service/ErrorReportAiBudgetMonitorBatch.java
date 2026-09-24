@@ -1,6 +1,8 @@
 package com.mannschaft.app.errorreport.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,8 @@ public class ErrorReportAiBudgetMonitorBatch {
     /**
      * 毎時 0 分（JST）に実行。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。AI 月次予算の到達監視であり、運用基盤に属し機能フラグを持たない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "errorreport-ai-budget-monitor-hourly", description = "AI 月次予算の 80% / 100% 到達を毎時監視して通知する")
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(

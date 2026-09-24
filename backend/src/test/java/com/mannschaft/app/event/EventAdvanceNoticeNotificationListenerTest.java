@@ -1,5 +1,7 @@
 package com.mannschaft.app.event;
 
+
+
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.entity.EventEntity;
@@ -7,9 +9,12 @@ import com.mannschaft.app.event.event.EventAdvanceNoticeNotificationEvent;
 import com.mannschaft.app.event.listener.EventAdvanceNoticeNotificationListener;
 import com.mannschaft.app.event.service.EventService;
 import com.mannschaft.app.family.service.CareLinkService;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,11 +25,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -93,7 +93,7 @@ class EventAdvanceNoticeNotificationListenerTest {
         lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
                 .thenAnswer(inv -> inv.getArgument(2));
         lenient().when(notificationDeliveryRunner.sendOne(any()))
-                .thenReturn(NotificationEntity.builder().userId(1L).build());
+                .thenReturn(NotificationDeliveryResult.DELIVERED);
     }
 
     private EventEntity buildEvent(Long organizerId) {

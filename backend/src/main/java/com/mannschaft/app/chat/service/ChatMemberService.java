@@ -14,6 +14,10 @@ import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +40,7 @@ public class ChatMemberService {
     private final ChatChannelEventPublisher eventPublisher;
     private final AccessControlService accessControlService;
     private final ChatChannelAccessGuard channelAccessGuard;
+    private final MembershipService membershipService;
 
     /**
      * チャンネルのメンバー一覧を取得する。
@@ -59,10 +64,12 @@ public class ChatMemberService {
      */
     @Transactional
     public List<MemberResponse> addMembers(Long channelId, Long operatorUserId, AddMemberRequest request) {
-        channelService.findChannelOrThrow(channelId);
+        ChatChannelEntity channel = channelService.findChannelOrThrow(channelId);
         // 操作者が当該チャンネルの OWNER / ADMIN であることを保証する（一般 MEMBER によるメンバー追加を禁止）。
         channelAccessGuard.requireChannelManagerRole(
                 channelId, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
+
+        requireScopeMembership(channel, request.getUserIds());
 
         List<ChatChannelMemberEntity> added = new java.util.ArrayList<>();
         for (Long userId : request.getUserIds()) {
@@ -79,6 +86,28 @@ public class ChatMemberService {
 
         log.info("メンバー追加完了: channelId={}, addedCount={}", channelId, added.size());
         return chatMapper.toMemberResponseList(added);
+    }
+
+    /** スコープ連動チャネルへの追加対象が当該スコープに在籍していることを確認する。 */
+    private void requireScopeMembership(ChatChannelEntity channel, List<Long> userIds) {
+        if (channel.getChannelType() == ChannelType.TEAM_PUBLIC
+                || channel.getChannelType() == ChannelType.TEAM_PRIVATE) {
+            for (Long userId : userIds) {
+                requireActiveMembershipForUpdate(userId, ScopeType.TEAM, channel.getTeamId());
+            }
+        } else if (channel.getChannelType() == ChannelType.ORG_PUBLIC
+                || channel.getChannelType() == ChannelType.ORG_PRIVATE) {
+            for (Long userId : userIds) {
+                requireActiveMembershipForUpdate(userId, ScopeType.ORGANIZATION, channel.getOrganizationId());
+            }
+        }
+    }
+
+    /** 離脱処理と同じ membership 行をロックして、追加と離脱の競合を直列化する。 */
+    private void requireActiveMembershipForUpdate(Long userId, ScopeType scopeType, Long scopeId) {
+        if (!membershipService.isActiveMemberForUpdate(userId, scopeType, scopeId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**
@@ -172,7 +201,7 @@ public class ChatMemberService {
                 channelId, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
 
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, targetUserId);
-        ChannelMemberRole newRole = ChannelMemberRole.valueOf(request.getRole());
+        ChannelMemberRole newRole = EnumInputParser.parse(ChannelMemberRole.class, request.getRole(), "role");
         member.changeRole(newRole);
         ChatChannelMemberEntity saved = memberRepository.save(member);
         log.info("ロール変更完了: channelId={}, userId={}, newRole={}, operatorUserId={}",
@@ -273,11 +302,11 @@ public class ChatMemberService {
         }
         // 公開チャンネルは「スコープ内に対する公開」。当該チーム/組織のメンバーであることを要求する。
         if (channel.getTeamId() != null) {
-            accessControlService.checkMembership(userId, channel.getTeamId(), "TEAM");
+            requireActiveMembershipForUpdate(userId, ScopeType.TEAM, channel.getTeamId());
             return;
         }
         if (channel.getOrganizationId() != null) {
-            accessControlService.checkMembership(userId, channel.getOrganizationId(), "ORGANIZATION");
+            requireActiveMembershipForUpdate(userId, ScopeType.ORGANIZATION, channel.getOrganizationId());
             return;
         }
         // 公開種別なのにスコープが無いチャンネルは所属を検証できない。安全側に倒して拒否する。

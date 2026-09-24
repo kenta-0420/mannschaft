@@ -160,7 +160,7 @@ public class MemberProfileController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "検索成功")
     public ResponseEntity<ApiResponse<List<MemberLookupResponse>>> lookupMembers(
             @RequestParam String q,
-            @RequestParam(required = false) Long teamPageId,
+            @RequestParam Long teamPageId,
             @RequestParam(defaultValue = "10") int limit) {
         Long userId = SecurityUtils.getCurrentUserId();
         List<MemberLookupResponse> response = profileService.lookupMembers(userId, teamPageId, q, limit);

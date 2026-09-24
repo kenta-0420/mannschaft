@@ -3,6 +3,8 @@ package com.mannschaft.app.team.event;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.organization.event.OrganizationCreatedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
 import com.mannschaft.app.organization.event.OrganizationInviteTokenCreatedEvent;
@@ -36,6 +38,8 @@ public class TeamOrgAuditEventListener {
     // TEAM 系
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとチーム・組織の作成削除とメンバー操作の監査記録が欠落する。イベントは再生されないため停止期間の証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTeamCreated(TeamCreatedEvent event) {
@@ -50,6 +54,8 @@ public class TeamOrgAuditEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとチーム・組織の作成削除とメンバー操作の監査記録が欠落する。イベントは再生されないため停止期間の証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTeamDeleted(TeamDeletedEvent event) {
@@ -63,6 +69,8 @@ public class TeamOrgAuditEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとチーム・組織の作成削除とメンバー操作の監査記録が欠落する。イベントは再生されないため停止期間の証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTeamMemberAudit(TeamMemberAuditEvent event) {
@@ -84,6 +92,8 @@ public class TeamOrgAuditEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとチーム・組織の作成削除とメンバー操作の監査記録が欠落する。イベントは再生されないため停止期間の証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTeamInviteTokenCreated(TeamInviteTokenCreatedEvent event) {
@@ -102,6 +112,8 @@ public class TeamOrgAuditEventListener {
     // ORGANIZATION 系
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとチーム・組織の作成削除とメンバー操作の監査記録が欠落する。イベントは再生されないため停止期間の証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOrganizationCreated(OrganizationCreatedEvent event) {
@@ -116,6 +128,8 @@ public class TeamOrgAuditEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとチーム・組織の作成削除とメンバー操作の監査記録が欠落する。イベントは再生されないため停止期間の証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOrganizationDeleted(OrganizationDeletedEvent event) {
@@ -129,6 +143,8 @@ public class TeamOrgAuditEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとチーム・組織の作成削除とメンバー操作の監査記録が欠落する。イベントは再生されないため停止期間の証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOrganizationMemberAudit(OrganizationMemberAuditEvent event) {
@@ -149,6 +165,8 @@ public class TeamOrgAuditEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとチーム・組織の作成削除とメンバー操作の監査記録が欠落する。イベントは再生されないため停止期間の証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOrganizationInviteTokenCreated(OrganizationInviteTokenCreatedEvent event) {

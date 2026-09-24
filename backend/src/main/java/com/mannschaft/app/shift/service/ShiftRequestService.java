@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
@@ -17,10 +18,13 @@ import com.mannschaft.app.shift.dto.ShiftRequestSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftRequestRequest;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +32,8 @@ import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * シフト希望サービス。メンバーのシフト希望提出・更新・集計を担当する。
@@ -54,6 +60,7 @@ import java.util.Map;
 public class ShiftRequestService {
 
     private final ShiftRequestRepository requestRepository;
+    private final ShiftSlotRepository slotRepository;
     private final ShiftScheduleService scheduleService;
     private final ShiftMapper shiftMapper;
     private final UserRoleRepository userRoleRepository;
@@ -83,7 +90,20 @@ public class ShiftRequestService {
      */
     public List<ShiftRequestResponse> listMyRequests(Long userId) {
         List<ShiftRequestEntity> entities = requestRepository.findByUserIdOrderBySlotDateDesc(userId);
-        return shiftMapper.toRequestResponseList(entities);
+        List<ShiftRequestResponse> responses = shiftMapper.toRequestResponseList(entities);
+
+        // 案C（CMP-260917-1136）: 親スケジュールが論理削除済みでも提出履歴は一覧から消さず、
+        // 削除済みフラグだけを立てる（詳細取得は 404 のまま）。
+        java.util.Set<Long> scheduleIds = responses.stream()
+                .map(ShiftRequestResponse::getScheduleId)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> existingScheduleIds = scheduleService.findExistingScheduleIds(scheduleIds);
+
+        return responses.stream()
+                .map(r -> r.toBuilder()
+                        .scheduleDeleted(!existingScheduleIds.contains(r.getScheduleId()))
+                        .build())
+                .toList();
     }
 
     /**
@@ -98,25 +118,34 @@ public class ShiftRequestService {
     public ShiftRequestResponse submitRequest(CreateShiftRequestRequest req, Long userId) {
         ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(req.getScheduleId());
         checkTeamMemberAccess(schedule.getTeamId(), userId);
+        // slotId の実体整合検証は認可（BOLA 封鎖）そのものなので、public 入口のここで行う。
+        validateSlotIdentity(req);
         validateCollectingStatus(schedule);
         validateRequestDeadline(schedule);
 
-        // 重複チェック
-        requestRepository.findByScheduleIdAndUserIdAndSlotDate(req.getScheduleId(), userId, req.getSlotDate())
-                .ifPresent(existing -> {
-                    throw new BusinessException(ShiftErrorCode.REQUEST_ALREADY_EXISTS);
-                });
+        // 重複チェック（枠単位。slotId が NULL の日単位希望のみ従来どおり「同一日 1 件」で判定する）
+        findDuplicateRequest(req, userId).ifPresent(existing -> {
+            throw new BusinessException(ShiftErrorCode.REQUEST_ALREADY_EXISTS);
+        });
 
         ShiftRequestEntity entity = ShiftRequestEntity.builder()
                 .scheduleId(req.getScheduleId())
                 .userId(userId)
                 .slotId(req.getSlotId())
                 .slotDate(req.getSlotDate())
-                .preference(ShiftPreference.valueOf(req.getPreference()))
+                .preference(EnumInputParser.parse(ShiftPreference.class, req.getPreference(), "preference"))
                 .note(req.getNote())
                 .build();
 
-        entity = requestRepository.save(entity);
+        // アプリ層の事前チェックは原子的でない（同時リクエストは両方とも通過しうる）。
+        // 最後の砦は DB の UNIQUE 制約であり、その違反は握りつぶさず 409 へ写像する（設計 §11.5.1.2）。
+        try {
+            entity = requestRepository.saveAndFlush(entity);
+        } catch (DataIntegrityViolationException e) {
+            log.info("シフト希望の一意性制約違反（同時提出）: scheduleId={}, userId={}, slotId={}",
+                    req.getScheduleId(), userId, req.getSlotId());
+            throw new BusinessException(ShiftErrorCode.REQUEST_ALREADY_EXISTS);
+        }
 
         // 代理入力の場合: proxy_input_records を作成し、フラグをセット
         if (proxyInputContext.isProxy()) {
@@ -148,7 +177,7 @@ public class ShiftRequestService {
         validateCollectingStatus(schedule);
         validateRequestDeadline(schedule);
 
-        entity.updatePreference(ShiftPreference.valueOf(req.getPreference()), req.getNote());
+        entity.updatePreference(EnumInputParser.parse(ShiftPreference.class, req.getPreference(), "preference"), req.getNote());
         entity = requestRepository.save(entity);
 
         log.info("シフト希望更新: id={}", requestId);
@@ -166,6 +195,10 @@ public class ShiftRequestService {
     public void deleteRequest(Long requestId, Long userId) {
         ShiftRequestEntity entity = findRequestOrThrow(requestId);
         checkOwnerOrTeamAdmin(entity, userId);
+        // 親スケジュールの生存確認（CMP-260917-1136）。checkOwnerOrTeamAdmin は本人一致なら
+        // 親を一度も引かずに return するため、ここで findScheduleOrThrow を必ず通す
+        //（updateRequest と同型。親が論理削除済みなら SHIFT_SCHEDULE_NOT_FOUND / 404）。
+        scheduleService.findScheduleOrThrow(entity.getScheduleId());
         requestRepository.delete(entity);
         log.info("シフト希望削除: id={}", requestId);
     }
@@ -248,6 +281,56 @@ public class ShiftRequestService {
                                 .build()));
     }
 
+    /**
+     * {@code slotId} の実体整合を検証する（設計 §11.5.1.1 / CMP-260909-1143）。
+     *
+     * <p>枠を<b>実体で引き</b>、リクエストが名乗る {@code scheduleId} / {@code slotDate} と突き合わせる。
+     * 検証しないと他チームの枠 ID を自チームの {@code scheduleId} に紐付けられる（BOLA）。</p>
+     *
+     * <ul>
+     *   <li>枠が存在しない → <b>403</b>（{@link ShiftErrorCode#ACCESS_DENIED}）。
+     *       404 と畳まないのは <b>ID の存否を漏らさない</b>ため（存在オラクルの封鎖）。</li>
+     *   <li>{@code slot.scheduleId} 不一致 → <b>403</b>（越境）。</li>
+     *   <li>{@code slot.slotDate} 不一致 → <b>400</b>（{@link ShiftErrorCode#REQUEST_SLOT_DATE_MISMATCH}。
+     *       越境ではなくクライアントの自己矛盾）。</li>
+     * </ul>
+     *
+     * @param req 提出リクエスト
+     */
+    private void validateSlotIdentity(CreateShiftRequestRequest req) {
+        Long slotId = req.getSlotId();
+        if (slotId == null) {
+            return;
+        }
+        ShiftSlotEntity slot = slotRepository.findById(slotId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.ACCESS_DENIED));
+        if (!Objects.equals(slot.getScheduleId(), req.getScheduleId())) {
+            throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
+        }
+        if (!Objects.equals(slot.getSlotDate(), req.getSlotDate())) {
+            throw new BusinessException(ShiftErrorCode.REQUEST_SLOT_DATE_MISMATCH);
+        }
+    }
+
+    /**
+     * 既存の重複希望を引く（設計 §11.5.1）。
+     *
+     * <p>枠指定（{@code slotId} 非 null）は {@code (scheduleId, userId, slotId)}、
+     * 日単位（{@code slotId} null）は {@code (scheduleId, userId, slotDate)} が一意性の単位。</p>
+     *
+     * @param req    提出リクエスト
+     * @param userId ユーザーID
+     * @return 既存の希望（無ければ空）
+     */
+    private Optional<ShiftRequestEntity> findDuplicateRequest(CreateShiftRequestRequest req, Long userId) {
+        if (req.getSlotId() != null) {
+            return requestRepository.findByScheduleIdAndUserIdAndSlotId(
+                    req.getScheduleId(), userId, req.getSlotId());
+        }
+        return requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
+                req.getScheduleId(), userId, req.getSlotDate());
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // 認可ヘルパー（認可根治 Wave6）
     // ═════════════════════════════════════════════════════════════════════
@@ -262,11 +345,15 @@ public class ShiftRequestService {
     private void checkScheduleAdminAccess(Long scheduleId, Long userId) {
         // AccessControlService をこのメソッドから直接呼ぶ（番人 AuthzControllerGuardArchTest の
         // 委譲探索は深さ2までのため、認可クラスへの到達を1ホップ内に収める）
+        //
+        // 親スケジュールの生存確認（findScheduleOrThrow）を SYSTEM_ADMIN 短絡より必ず先に行う
+        //（CMP-260917-1136）。短絡を先に置くと SYSTEM_ADMIN だけが親削除済みスケジュールの
+        // 希望一覧・サマリーを取得できてしまう。
+        Long teamId = scheduleService.findScheduleOrThrow(scheduleId).getTeamId();
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
-        accessControlService.checkAdminOrAbove(
-                userId, scheduleService.findScheduleOrThrow(scheduleId).getTeamId(), "TEAM");
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
     }
 
     /**

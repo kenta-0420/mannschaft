@@ -1,5 +1,7 @@
 package com.mannschaft.app.billing.beta;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.billing.EntitlementScopeKind;
@@ -106,6 +108,9 @@ public class BetaPerkAutoGrantBatchService {
     /**
      * 個人特典の自動付与バッチ。毎日 04:00 JST に実行する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_BILLING_PAYMENT_ENABLED",
+            reason = "付与判定の元になる活動実績は残り続けるため、止めても再開後の初回実行で条件を満たす利用者へ改めて付与できる")
     @BatchEndpoint(name = "beta-perk-auto-grant-batch",
             description = "F20.3 個人ベータ特典 活動実績ゲート自動付与バッチ（INDIVIDUAL のみ）")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")

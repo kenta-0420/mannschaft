@@ -10,6 +10,7 @@ import com.mannschaft.app.event.dto.RollCallSessionRequest;
 import com.mannschaft.app.event.dto.RollCallSessionResponse;
 import com.mannschaft.app.event.entity.EventCheckinEntity;
 import com.mannschaft.app.event.entity.EventRsvpResponseEntity;
+import com.mannschaft.app.event.event.EventCareNotificationTriggerEvent;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
 import com.mannschaft.app.family.CareLinkInvitedBy;
@@ -17,16 +18,17 @@ import com.mannschaft.app.family.CareLinkStatus;
 import com.mannschaft.app.family.CareCategory;
 import com.mannschaft.app.family.entity.UserCareLinkEntity;
 import com.mannschaft.app.family.repository.UserCareLinkRepository;
-import com.mannschaft.app.family.service.CareEventNotificationService;
 import com.mannschaft.app.family.service.CareLinkService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -63,7 +65,7 @@ class EventRollCallServiceTest {
     private CareLinkService careLinkService;
 
     @Mock
-    private CareEventNotificationService careEventNotificationService;
+    private ApplicationEventPublisher eventPublisher;
 
     @Mock
     private MediaUrlResolver mediaUrlResolver;
@@ -199,8 +201,8 @@ class EventRollCallServiceTest {
             assertThat(response.getGuardianNotificationsSent()).isEqualTo(1);
             assertThat(response.getGuardianSetupWarnings()).isEmpty();
 
-            // notifyCheckin が呼ばれていること
-            verify(careEventNotificationService).notifyCheckin(USER_ID_TARO, EVENT_ID);
+            // 見守り通知の配送要求が publish されていること（実配送は AFTER_COMMIT・Issue #2990 L5）
+            verifyCareNotificationPublished(List.of(USER_ID_TARO));
         }
 
         @Test
@@ -233,8 +235,8 @@ class EventRollCallServiceTest {
             // Assert
             assertThat(response.getGuardianNotificationsSent()).isEqualTo(0);
 
-            // notifyCheckin は呼ばれていないこと
-            verify(careEventNotificationService, never()).notifyCheckin(anyLong(), anyLong());
+            // 見守り通知の配送要求は publish されないこと
+            verifyNoCareNotificationPublished();
         }
 
         @Test
@@ -298,8 +300,8 @@ class EventRollCallServiceTest {
             assertThat(response.getGuardianSetupWarnings()).hasSize(1);
             assertThat(response.getGuardianSetupWarnings().get(0)).contains("山田 太郎");
 
-            // 通知は送信されないこと
-            verify(careEventNotificationService, never()).notifyCheckin(anyLong(), anyLong());
+            // 通知の配送要求は publish されないこと
+            verifyNoCareNotificationPublished();
         }
 
         @Test
@@ -340,9 +342,8 @@ class EventRollCallServiceTest {
             assertThat(response.getCreatedCount()).isEqualTo(2);
             assertThat(response.getGuardianNotificationsSent()).isEqualTo(1);
 
-            // 太郎のみ notifyCheckin が呼ばれること
-            verify(careEventNotificationService).notifyCheckin(USER_ID_TARO, EVENT_ID);
-            verify(careEventNotificationService, never()).notifyCheckin(USER_ID_HANAKO, EVENT_ID);
+            // 太郎のみが配送要求の宛先に載ること（花子は ABSENT のため載らない）
+            verifyCareNotificationPublished(List.of(USER_ID_TARO));
         }
     }
 
@@ -398,5 +399,28 @@ class EventRollCallServiceTest {
                 .lateArrivalMinutes(lateArrivalMinutes)
                 .absenceReason(absenceReason)
                 .build();
+    }
+
+    /**
+     * ケア対象者見守り通知の配送要求が、指定した宛先だけを載せて publish されたことを検証する
+     * （Issue #2990 L5）。
+     *
+     * <p>是正前は {@code CareEventNotificationService} を直接呼んでおり、その Service をモックして
+     * いたため、通知が業務トランザクションに参加している事実（= 通知失敗で点呼セッション 1 回ぶんの
+     * 出欠が全件巻き戻る）を本 UT は一切捕まえられなかった。是正後は publish の検証に置き換え、
+     * 実際の巻き戻り有無は {@code EventCareNotificationTransactionIT}（実 DB）で測る。</p>
+     */
+    private void verifyCareNotificationPublished(List<Long> expectedRecipients) {
+        verify(eventPublisher).publishEvent(ArgumentMatchers.<Object>argThat(
+                published -> published instanceof EventCareNotificationTriggerEvent trigger
+                        && trigger.kind() == EventCareNotificationTriggerEvent.Kind.CHECKIN
+                        && trigger.eventId().equals(EVENT_ID)
+                        && trigger.careRecipientUserIds().equals(expectedRecipients)));
+    }
+
+    /** 見守り通知の配送要求が一切 publish されていないことを検証する。 */
+    private void verifyNoCareNotificationPublished() {
+        verify(eventPublisher, never()).publishEvent(
+                ArgumentMatchers.<Object>argThat(EventCareNotificationTriggerEvent.class::isInstance));
     }
 }

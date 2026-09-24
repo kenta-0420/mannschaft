@@ -61,11 +61,21 @@ public class MemberSkillQueryRepository {
     /**
      * 指定期限以内に失効する資格のうち、指定通知種別がまだ送信されていないものを返す（期限リマインダー用）。
      *
+     * <p><b>既に失効した資格は対象外とする（{@code expires_at >= today}）。</b>
+     * 初版は上限（{@code expires_at <= threshold}）しか持たず、
+     * <b>期限を過ぎた ACTIVE 資格まで拾っていた</b>。その結果、
+     * 障害や停止でバッチが数日走らなかっただけで、再開時に
+     * 「期限まで 30 日です」という通知が<b>失効済みの資格に対して</b>送られる
+     * （Codex 検分の指摘。機能フラグとは無関係に存在する潜在バグであった）。
+     * 下限を入れることで、通知は「まだ失効していないもの」に限られる。</p>
+     *
+     * @param today            基準日（この日より前に失効済みのものは対象外）
      * @param threshold        期限日の閾値（この日付以前に失効する資格を対象とする）
      * @param notificationType 通知種別文字列（例: "DAYS_30", "DAYS_7"）
      * @return 対象のMemberSkillEntityリスト
      */
-    public List<MemberSkillEntity> findExpiringSoon(LocalDate threshold, String notificationType) {
+    public List<MemberSkillEntity> findExpiringSoon(
+            LocalDate today, LocalDate threshold, String notificationType) {
         String sql = """
                 SELECT ms.id, ms.skill_category_id, ms.user_id, ms.scope_type, ms.scope_id,
                        ms.name, ms.issuer, ms.credential_number, ms.acquired_on, ms.expires_at,
@@ -74,6 +84,7 @@ public class MemberSkillQueryRepository {
                 FROM member_skills ms
                 WHERE ms.expires_at IS NOT NULL
                   AND ms.expires_at <= ?
+                  AND ms.expires_at >= ?
                   AND ms.status = 'ACTIVE'
                   AND ms.deleted_at IS NULL
                   AND NOT EXISTS (
@@ -94,6 +105,6 @@ public class MemberSkillQueryRepository {
                 .expiresAt(rs.getObject("expires_at", LocalDate.class))
                 .certificateS3Key(rs.getString("certificate_s3_key"))
                 .build(),
-                threshold, notificationType);
+                threshold, today, notificationType);
     }
 }

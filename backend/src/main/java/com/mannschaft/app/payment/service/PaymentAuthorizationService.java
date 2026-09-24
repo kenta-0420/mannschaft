@@ -6,16 +6,12 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.service.CareLinkService;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.PayerRelationship;
-import com.mannschaft.app.payment.PaymentProxyGrantStatus;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
-import com.mannschaft.app.payment.repository.PaymentProxyGrantRepository;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 
 /**
  * F08.9 代理払い認可サービス（払い手 ≠ 受益者の核心 IDOR 対策）。
@@ -24,13 +20,12 @@ import java.time.LocalDateTime;
  * 権原が欠落する場合は一切起票させず {@code MEMBERSHIP_PAYER_NOT_AUTHORIZED}（403）を投げる。</p>
  *
  * <p><b>権原はキャッシュせず毎回実行時評価する</b>（03_security §2「権原の失効」）。
- * 保護者リンク取消・grant 失効・受益者退会で権原は即時消失するため、判定結果を保持してはならない。</p>
+ * 保護者リンク取消・受益者退会で権原は即時消失するため、判定結果を保持してはならない。</p>
  *
  * <p><b>本サービスで実効な経路（P2 注入完了）:</b>
  * <ul>
  *   <li>{@code SELF} — 受益者本人が支払う（常に許可）</li>
  *   <li>{@code GUARDIAN} — 払い手が受益者の承認済み保護者（parental_consent_links / user_care_links）</li>
- *   <li>{@code PROXY_GRANT} — payment_proxy_grants の ACTIVE かつ有効期間内 grant</li>
  *   <li>{@code ADMIN_MANUAL} — 当該 payment_item のスコープ（team/org）の ADMIN が手動記録する</li>
  * </ul>
  * 上記いずれにも該当しなければ 403。
@@ -43,7 +38,7 @@ import java.time.LocalDateTime;
  * {@link AccessControlService} を経由する（role ドメインへの直接越境を避ける）。
  * GUARDIAN 経路の保護者リンク照会は auth の {@link ParentalConsentService} / family の
  * {@link CareLinkService} の公開 boolean メソッド経由で行い、両ドメインの Entity / Repository を
- * 直接参照しない。PROXY_GRANT は payment ドメイン自身の {@link PaymentProxyGrantRepository} を参照する。</p>
+ * 直接参照しない。</p>
  *
  * <p>設計書: docs/features/F08.9_membership_billing_paywall/03_security.md §2</p>
  */
@@ -57,7 +52,6 @@ public class PaymentAuthorizationService {
     private final AccessControlService accessControlService;
     private final ParentalConsentService parentalConsentService;
     private final CareLinkService careLinkService;
-    private final PaymentProxyGrantRepository paymentProxyGrantRepository;
     /**
      * 後見切替セッション（acting-as）判定用の RequestScope Bean（F14.1）。
      * 単一スコープの本 Service へは Spring の scoped proxy（{@code @RequestScope} 既定の
@@ -73,8 +67,6 @@ public class PaymentAuthorizationService {
      *   <li>{@code payerUserId == beneficiaryUserId} → {@link PayerRelationship#SELF}（常に許可）</li>
      *   <li>GUARDIAN（payer が beneficiary の承認済み保護者 parental_consent_links=APPROVED
      *       または 見守り PARENT user_care_links=ACTIVE）→ {@link PayerRelationship#GUARDIAN}</li>
-     *   <li>PROXY_GRANT（payment_proxy_grants に ACTIVE かつ {@code now ∈ [effective_from, effective_until]}
-     *       の有効 grant が存在）→ {@link PayerRelationship#PROXY_GRANT}</li>
      *   <li>{@code manualRecordByAdmin} かつ呼び出し元が当該 paymentItem スコープの ADMIN
      *       → {@link PayerRelationship#ADMIN_MANUAL}</li>
      *   <li>いずれも不成立 → {@code MEMBERSHIP_PAYER_NOT_AUTHORIZED}（403）</li>
@@ -117,14 +109,6 @@ public class PaymentAuthorizationService {
                 return PayerRelationship.GUARDIAN_PROXY;
             }
             return PayerRelationship.GUARDIAN;
-        }
-
-        // 4. PROXY_GRANT — 第三者代理払い grant（非後見・祖父母・スポンサー等）。
-        //    payment_proxy_grants に (beneficiary, payer, item|包括NULL)・status=ACTIVE・
-        //    now ∈ [effective_from, effective_until] の有効 grant があれば PROXY_GRANT。
-        //    grant の引き当て・有効期間判定は Repository クエリに委譲する（findActiveGrant）。
-        if (hasActiveProxyGrant(payerUserId, beneficiaryUserId, paymentItemId)) {
-            return PayerRelationship.PROXY_GRANT;
         }
 
         // 5. ADMIN_MANUAL — 当該 payment_item のスコープ（team/org）の ADMIN による手動記録。
@@ -177,31 +161,10 @@ public class PaymentAuthorizationService {
     }
 
     /**
-     * 払い手が受益者に対する有効な第三者代理払い grant（PROXY_GRANT）を保有するかを判定する。
-     *
-     * <p>payment ドメイン自身の {@link PaymentProxyGrantRepository#findActiveGrant} に委譲し、
-     * status=ACTIVE かつ {@code now ∈ [effective_from, effective_until]} の grant を引き当てる。
-     * payment_item_id 指定 grant と包括 grant（item=NULL）の双方を対象とする（Repository クエリ側で吸収）。
-     * 判定はキャッシュせず毎回実行時評価する（grant 失効で即時に権原消失するため）。</p>
-     */
-    private boolean hasActiveProxyGrant(Long payerUserId, Long beneficiaryUserId, Long paymentItemId) {
-        if (payerUserId == null || beneficiaryUserId == null) {
-            return false;
-        }
-        return paymentProxyGrantRepository.findActiveGrant(
-                beneficiaryUserId,
-                payerUserId,
-                paymentItemId,
-                PaymentProxyGrantStatus.ACTIVE,
-                LocalDateTime.now()
-        ).isPresent();
-    }
-
-    /**
      * 一括手動入金（bulk）の払い手が当該 payment_item のスコープ ADMIN 以上であることを検証する（欠落① 根治）。
      *
      * <p>一括記録は ADMIN によるバッチ操作であり、受益者は複数（自分以外が大半）になる。
-     * 単一記録のように受益者ごとに {@link #authorizePayment} を呼ぶと SELF/GUARDIAN/PROXY_GRANT の
+     * 単一記録のように受益者ごとに {@link #authorizePayment} を呼ぶと SELF/GUARDIAN の
      * 個別権原まで評価してしまい「ADMIN バッチ」という性質に合わない。本メソッドは
      * <b>ループに入る前に1度だけ</b>払い手のスコープ ADMIN 権原を検証する用途に用いる
      * （{@code MemberPaymentService.createBulkPayments}）。</p>

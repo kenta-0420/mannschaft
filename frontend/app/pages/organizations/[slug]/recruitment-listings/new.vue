@@ -6,10 +6,13 @@ import type {
 } from '~/types/recruitment'
 import type { FriendTargetInput, RegionInput } from '~/types/market'
 
+definePageMeta({ layout: 'organization', middleware: 'auth' })
+
 const route = useRoute()
 const router = useRouter()
 const { t, te } = useI18n()
 const api = useRecruitmentApi()
+const { resolveOrganizationNumericId } = useOrganizationNumericId()
 const { success, error } = useNotification()
 
 const orgSlug = computed(() => String(route.params.slug))
@@ -41,8 +44,7 @@ async function loadCategories() {
   try {
     const result = await api.listCategories()
     categories.value = result.data
-  }
-  catch {
+  } catch {
     error(t('error.unknown'))
   }
 }
@@ -57,9 +59,11 @@ async function onSubmit(body: CreateRecruitmentListingRequest) {
       prefectureCode: marketPrefectureCode.value,
       cityCode: marketCityCode.value,
       regions: marketRegions.value,
-      friendTargets: marketVisibility.value === 'FRIEND_TEAMS_ONLY' ? marketFriendTargets.value : [],
+      friendTargets:
+        marketVisibility.value === 'FRIEND_TEAMS_ONLY' ? marketFriendTargets.value : [],
     }
-    const result = await api.createOrgListing(orgSlug.value, fullBody)
+    const orgNumericId = await resolveOrganizationNumericId(orgSlug.value)
+    const result = await api.createOrgListing(orgNumericId, fullBody)
     // F22.1 市: visibility=PUBLIC の札は publish 時に配信対象へ PUBLIC_FEED を含むことが必須（BE §5.1 RECRUITMENT_207）。
     //   BE の create は配信対象を保存しない設計のため、作成直後に PUBLIC_FEED を配信対象として登録しておく。
     //   これを怠ると publish が RECRUITMENT_204（配信対象 0 件）で失敗し、PUBLIC 札が市に出ない。
@@ -69,21 +73,18 @@ async function onSubmit(body: CreateRecruitmentListingRequest) {
     }
     success(t('recruitment.action.create'))
     router.push(`/recruitment-listings/${result.data.id}`)
-  }
-  catch (e) {
+  } catch (e) {
     // payee 系エラー（PAYMENT_C011/012/013）は専用 i18n メッセージで表示
     const payeeMsg = resolvePayeeErrorMessage(e)
     if (payeeMsg) {
       error(payeeMsg)
-    }
-    else {
+    } else {
       // その他のエラーは汎用ハンドラへ（エラーを握り潰さない）
       const code = (e as { data?: { error?: { code?: string } } })?.data?.error?.code
       const errKey = `recruitment.error.${code}`
       error(code && te(errKey) ? t(errKey) : t('error.unknown'))
     }
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }

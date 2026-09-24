@@ -2,6 +2,7 @@ package com.mannschaft.app.translation.service;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.translation.TranslationErrorCode;
 import com.mannschaft.app.translation.TranslationStatus;
 import com.mannschaft.app.translation.entity.ContentTranslationEntity;
@@ -55,8 +56,8 @@ public class ContentTranslationStatusService {
         TranslationStatus currentStatus = TranslationStatus.valueOf(entity.getStatus());
         TranslationStatus targetStatus;
         try {
-            targetStatus = TranslationStatus.valueOf(req.getStatus());
-        } catch (IllegalArgumentException e) {
+            targetStatus = EnumInputParser.parse(TranslationStatus.class, req.getStatus(), "status");
+        } catch (BusinessException e) {
             throw new BusinessException(TranslationErrorCode.TRANSLATION_005);
         }
 

@@ -101,6 +101,14 @@ class UserServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    // 柱①ADMINゼロ根治: requestWithdrawal 冒頭の GDPR_011 ガード
+    @Mock
+    private com.mannschaft.app.role.service.RoleSuccessionService roleSuccessionService;
+
+    // 柱①ADMINゼロ根治 §12.5: cancelWithdrawal 冒頭の purge×cancel 勝敗判定
+    @Mock
+    private com.mannschaft.app.gdpr.service.PurgeStartGuard purgeStartGuard;
+
     @Mock
     private MediaUrlResolver mediaUrlResolver;
 
@@ -411,7 +419,7 @@ class UserServiceTest {
         void cancelWithdrawal_未申請_AUTH032例外() {
             // Given
             UserEntity user = createActiveUser(); // deletedAt = null
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(userRepository.findByIdForUpdateIncludingDeleted(USER_ID)).willReturn(Optional.of(user));
 
             // When / Then
             assertThatThrownBy(() -> userService.cancelWithdrawal(USER_ID))
@@ -426,7 +434,12 @@ class UserServiceTest {
             // Given
             UserEntity user = createActiveUserWithDeletedAt();
             assertThat(user.getDeletedAt()).isNotNull(); // 事前確認
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            // 【重要】ここを findById でスタブしてはならない（柱③-B PR-3・Codex 検分3巡目 P1-1）。
+            // UserEntity には @SQLRestriction("deleted_at IS NULL") が付いており、
+            // 「findById が deletedAt != null のユーザーを返す」のは本番では起こり得ない状態である。
+            // 是正前の本テストはその不可能な行をフィクスチャで作っていたため、
+            // 実際には常に AUTH_015 で終了していた退会取消を「正常系 green」と偽っていた。
+            given(userRepository.findByIdForUpdateIncludingDeleted(USER_ID)).willReturn(Optional.of(user));
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
 
             // When
@@ -443,7 +456,8 @@ class UserServiceTest {
         void cancelWithdrawal_正常_イベント発行() {
             // Given
             UserEntity user = createActiveUserWithDeletedAt();
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            // findById は @SQLRestriction により退会者を返さない。本番と同じ窓口でスタブする。
+            given(userRepository.findByIdForUpdateIncludingDeleted(USER_ID)).willReturn(Optional.of(user));
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
 
             // When
@@ -460,7 +474,7 @@ class UserServiceTest {
         void cancelWithdrawal_未申請時_イベント未発行() {
             // Given
             UserEntity user = createActiveUser(); // deletedAt = null
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(userRepository.findByIdForUpdateIncludingDeleted(USER_ID)).willReturn(Optional.of(user));
 
             // When / Then
             assertThatThrownBy(() -> userService.cancelWithdrawal(USER_ID))

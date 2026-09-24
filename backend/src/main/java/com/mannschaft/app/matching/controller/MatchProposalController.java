@@ -2,6 +2,7 @@ package com.mannschaft.app.matching.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.matching.dto.AcceptProposalRequest;
 import com.mannschaft.app.matching.dto.AcceptProposalResponse;
 import com.mannschaft.app.matching.dto.AgreeCancelResponse;
@@ -153,6 +154,7 @@ public class MatchProposalController {
     @Operation(summary = "自チームの応募一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
+    @RequireFeature("FEATURE_MATCHING_ENABLED")
     public ResponseEntity<PagedResponse<ProposalResponse>> listTeamProposals(
             @PathVariable Long teamId,
             @RequestParam(required = false) String status,

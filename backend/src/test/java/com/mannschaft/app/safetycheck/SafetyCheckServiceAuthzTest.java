@@ -3,7 +3,6 @@ package com.mannschaft.app.safetycheck;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.safetycheck.dto.CreateSafetyCheckRequest;
 import com.mannschaft.app.safetycheck.entity.SafetyCheckEntity;
@@ -13,13 +12,12 @@ import com.mannschaft.app.safetycheck.repository.SafetyResponseRepository;
 import com.mannschaft.app.safetycheck.service.SafetyCheckService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -57,31 +55,16 @@ class SafetyCheckServiceAuthzTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
-    private NotificationHelper notificationHelper;
-
-    @Mock
     private AccessControlService accessControlService;
 
-    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
-    @Mock private UserLocaleCache userLocaleCache;
-    @Mock private MessageSource messageSource;
+    /**
+     * Issue #2834 / CMP-056 第1群ロットA: サービスは通知を直接作らずイベントを publish するだけになった。
+     */
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private SafetyCheckService safetyCheckService;
-
-    /**
-     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
-     * title/body. Return the supplied default message so existing assertions keep working.
-     */
-    @org.junit.jupiter.api.BeforeEach
-    void stubI18nMessageSource() {
-        org.mockito.Mockito.lenient().when(messageSource.getMessage(
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any(),
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(inv -> inv.getArgument(2));
-    }
 
     private static final Long SAFETY_CHECK_ID = 100L;
     private static final Long SCOPE_ID = 1L;

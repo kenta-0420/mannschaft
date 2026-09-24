@@ -5,5 +5,7 @@ package com.mannschaft.app.recruitment;
  */
 public enum RecruitmentScopeType {
     TEAM,
-    ORGANIZATION
+    ORGANIZATION,
+    /** 主体別管理市 Phase 2 の個人札主。scopeId と createdBy は認証済み userId に固定する。 */
+    PERSONAL
 }

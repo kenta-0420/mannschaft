@@ -36,7 +36,7 @@ async function loadLogs() {
       size: 30,
     })
     logs.value = res.data
-    totalRecords.value = res.meta.totalElements
+    totalRecords.value = res.meta.total
   } catch {
     notification.error('監査ログの取得に失敗しました')
   } finally {

@@ -1,10 +1,14 @@
 package com.mannschaft.app.notification.service;
 
+import com.mannschaft.app.committee.service.CommitteeAccessGuard;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.notification.NotificationErrorCode;
 import com.mannschaft.app.notification.NotificationMapper;
 import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.NotificationType;
 import com.mannschaft.app.notification.dto.NotificationSettingsResponse;
 import com.mannschaft.app.notification.dto.NotificationSettingsUpdateRequest;
@@ -55,6 +59,8 @@ public class NotificationPreferenceService {
     private final NotificationMapper notificationMapper;
     private final NameResolverService nameResolverService;
     private final MessageSource messageSource;
+    private final AccessControlService accessControlService;
+    private final CommitteeAccessGuard committeeAccessGuard;
 
     // ============================================================
     // スコープ別設定（notification_preferences）
@@ -68,22 +74,107 @@ public class NotificationPreferenceService {
      */
     public List<PreferenceResponse> listPreferences(Long userId) {
         List<NotificationPreferenceEntity> entities = preferenceRepository.findByUserId(userId);
+        if (entities.isEmpty()) {
+            return List.of();
+        }
+        // ScopeAffiliationCache は listPreferences 1 回の呼び出しにつき 1 個だけ構築する。
+        // stream().map() の lambda 内で毎回 new すると行数ぶんクエリが増える（N+1）ため、
+        // ループの外で 1 度だけ構築して使い回す（AC-30）。
+        ScopeAffiliationCache cache = new ScopeAffiliationCache(userId, entities);
         return entities.stream()
                 .map(notificationMapper::toPreferenceResponse)
-                .map(this::fillScopeName)
+                .map(response -> fillScopeName(userId, response, cache))
                 .collect(Collectors.toList());
     }
 
     /**
-     * PreferenceResponse にスコープ表示名を充填する（NameResolverService 経由・越境禁止）。
+     * PreferenceResponse にスコープ表示名を充填する（越境禁止・非所属スコープは実名を返さない）。
+     *
+     * <p>認可根治戦役 Wave4 ロットD AC-29: 行が非所属スコープを指していても（レガシーデータ・
+     * 脱退後の残置行等）実名を返してはならない（実在／非実在の区別が付く名前列挙オラクルになるため）。
+     * 所属可否の判定は {@link ScopeAffiliationCache} が {@code listPreferences} 呼び出し単位で
+     * まとめて 1 回だけ解決した集合を参照するため、行数に比例したクエリは発生しない（AC-30）。</p>
      */
-    private PreferenceResponse fillScopeName(PreferenceResponse response) {
+    private PreferenceResponse fillScopeName(Long userId, PreferenceResponse response,
+                                              ScopeAffiliationCache cache) {
         if (response.getScope() == null) {
             return response;
         }
-        String scopeName = nameResolverService.resolveScopeName(
-                response.getScope().scopeType(), response.getScope().scopeId());
+        String scopeType = response.getScope().scopeType();
+        Long scopeId = response.getScope().scopeId();
+        String scopeName = switch (scopeType == null ? "" : scopeType) {
+            case "TEAM", "FRIEND_TEAM" -> cache.isAffiliatedTeam(scopeId)
+                    ? cache.teamName(scopeId)
+                    : "不明なチーム";
+            case "ORGANIZATION" -> cache.isAffiliatedOrganization(scopeId)
+                    ? cache.organizationName(scopeId)
+                    : "不明な組織";
+            case "PERSONAL" -> "個人";
+            default -> "不明なスコープ";
+        };
         return response.toBuilder().scopeName(scopeName).build();
+    }
+
+    /**
+     * {@link #listPreferences} 1 回の呼び出しに閉じたスコープ所属・表示名のキャッシュ。
+     *
+     * <p>行ごとに所属チェック・名前解決を行うと N+1 になるため（AC-30）、対象行に登場する
+     * scopeId を種別ごとにまとめて 1 回のクエリ（{@link AccessControlService#findAffiliatedScopeIds}
+     * 等）で解決する。SYSTEM_ADMIN は全件を所属扱いとする（他 API の越境窓口と同じ扱い）。</p>
+     */
+    private final class ScopeAffiliationCache {
+
+        private final Set<Long> affiliatedTeamIds;
+        private final Set<Long> affiliatedOrganizationIds;
+        private final Map<Long, String> teamNames;
+        private final Map<Long, String> organizationNames;
+
+        ScopeAffiliationCache(Long userId, List<NotificationPreferenceEntity> entities) {
+            boolean systemAdmin = accessControlService.isSystemAdmin(userId);
+
+            Set<Long> teamIds = new LinkedHashSet<>();
+            Set<Long> orgIds = new LinkedHashSet<>();
+            for (NotificationPreferenceEntity e : entities) {
+                if (e.getScopeId() == null) {
+                    continue;
+                }
+                if ("TEAM".equals(e.getScopeType()) || "FRIEND_TEAM".equals(e.getScopeType())) {
+                    teamIds.add(e.getScopeId());
+                } else if ("ORGANIZATION".equals(e.getScopeType())) {
+                    orgIds.add(e.getScopeId());
+                }
+            }
+
+            this.affiliatedTeamIds = teamIds.isEmpty()
+                    ? Set.of()
+                    : systemAdmin ? teamIds : accessControlService.findAffiliatedScopeIds(userId, "TEAM");
+            this.affiliatedOrganizationIds = orgIds.isEmpty()
+                    ? Set.of()
+                    : systemAdmin ? orgIds : accessControlService.findAffiliatedScopeIds(userId, "ORGANIZATION");
+
+            Set<Long> resolvableTeamIds = teamIds.stream()
+                    .filter(this.affiliatedTeamIds::contains).collect(Collectors.toSet());
+            Set<Long> resolvableOrgIds = orgIds.stream()
+                    .filter(this.affiliatedOrganizationIds::contains).collect(Collectors.toSet());
+            this.teamNames = nameResolverService.resolveTeamNames(resolvableTeamIds);
+            this.organizationNames = nameResolverService.resolveOrganizationNames(resolvableOrgIds);
+        }
+
+        boolean isAffiliatedTeam(Long teamId) {
+            return teamId != null && affiliatedTeamIds.contains(teamId);
+        }
+
+        boolean isAffiliatedOrganization(Long orgId) {
+            return orgId != null && affiliatedOrganizationIds.contains(orgId);
+        }
+
+        String teamName(Long teamId) {
+            return teamNames.getOrDefault(teamId, "不明なチーム");
+        }
+
+        String organizationName(Long orgId) {
+            return organizationNames.getOrDefault(orgId, "不明な組織");
+        }
     }
 
     /**
@@ -95,6 +186,8 @@ public class NotificationPreferenceService {
      */
     @Transactional
     public PreferenceResponse updatePreference(Long userId, PreferenceUpdateRequest request) {
+        authorizeScope(userId, request.getScopeType(), request.getScopeId());
+
         NotificationPreferenceEntity entity = preferenceRepository
                 .findByUserIdAndScopeTypeAndScopeId(userId, request.getScopeType(), request.getScopeId())
                 .orElse(null);
@@ -113,7 +206,92 @@ public class NotificationPreferenceService {
         NotificationPreferenceEntity saved = preferenceRepository.save(entity);
         log.info("通知設定更新: userId={}, scopeType={}, scopeId={}, enabled={}",
                 userId, request.getScopeType(), request.getScopeId(), request.getIsEnabled());
-        return fillScopeName(notificationMapper.toPreferenceResponse(saved));
+        return fillScopeName(userId, notificationMapper.toPreferenceResponse(saved),
+                new ScopeAffiliationCache(userId, List.of(saved)));
+    }
+
+    /**
+     * {@code request} のスコープ指定を検証する（認可根治戦役 Wave4 ロットD）。
+     *
+     * <p>既存行の有無に関わらず必ず実行する（{@link #updatePreference} の先頭で呼ぶ）。既存行を
+     * 迂回路にして検証を素通りさせない（AC-23）。</p>
+     *
+     * <table>
+     * <caption>スコープ別の資格</caption>
+     * <tr><th>scopeType</th><th>scopeId</th><th>資格</th></tr>
+     * <tr><td>TEAM / FRIEND_TEAM</td><td>必須</td>
+     *     <td>SYSTEM_ADMIN || ADMIN以上(user_roles) || メンバー(memberships)</td></tr>
+     * <tr><td>ORGANIZATION</td><td>必須（直接所属のみ。配下チーム所属は対象外）</td>
+     *     <td>SYSTEM_ADMIN || ADMIN以上(user_roles) || メンバー(memberships)</td></tr>
+     * <tr><td>COMMITTEE</td><td>必須</td><td>委員会の現役メンバー</td></tr>
+     * <tr><td>PERSONAL</td><td>null または自分の userId</td><td>常に可（他人の userId は拒否）</td></tr>
+     * <tr><td>SYSTEM</td><td>null のみ</td><td>常に可（非 null は 400）</td></tr>
+     * <tr><td>FRIEND_FOLDER</td><td>-</td><td>常に拒否（使用箇所ゼロ）</td></tr>
+     * </table>
+     *
+     * <p>SUPPORTER を排除しない（{@link AccessControlService#isMember} は role_kind を問わず判定する）。
+     * シフト表の未公開情報遮断とは異なり、SUPPORTER もそのスコープの通知を受け取りうるため、
+     * 受信可否を止める理由が無い。</p>
+     *
+     * @throws BusinessException {@link NotificationErrorCode#INVALID_PREFERENCE_SCOPE}（400）:
+     *         scopeType 未指定・未知の列挙値・ID必須スコープでの scopeId 欠落・SYSTEM での scopeId 非null。
+     *         {@link CommonErrorCode#COMMON_002}（403）: スコープへの資格が無い。
+     */
+    private void authorizeScope(Long userId, String scopeType, Long scopeId) {
+        if (scopeType == null) {
+            throw new BusinessException(NotificationErrorCode.INVALID_PREFERENCE_SCOPE);
+        }
+        NotificationScopeType type;
+        try {
+            type = NotificationScopeType.valueOf(scopeType);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(NotificationErrorCode.INVALID_PREFERENCE_SCOPE);
+        }
+
+        switch (type) {
+            case TEAM, FRIEND_TEAM -> {
+                requireScopeId(scopeId);
+                requireTeamOrOrganizationAccess(userId, scopeId, "TEAM");
+            }
+            case ORGANIZATION -> {
+                requireScopeId(scopeId);
+                requireTeamOrOrganizationAccess(userId, scopeId, "ORGANIZATION");
+            }
+            case COMMITTEE -> {
+                requireScopeId(scopeId);
+                committeeAccessGuard.requireCommitteeMember(scopeId, userId);
+            }
+            case PERSONAL -> {
+                if (scopeId != null && !scopeId.equals(userId)) {
+                    throw new BusinessException(CommonErrorCode.COMMON_002);
+                }
+            }
+            case SYSTEM -> {
+                if (scopeId != null) {
+                    throw new BusinessException(NotificationErrorCode.INVALID_PREFERENCE_SCOPE);
+                }
+            }
+            case FRIEND_FOLDER -> throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    private void requireScopeId(Long scopeId) {
+        if (scopeId == null) {
+            throw new BusinessException(NotificationErrorCode.INVALID_PREFERENCE_SCOPE);
+        }
+    }
+
+    /**
+     * TEAM / ORGANIZATION（直接所属のみ）の資格を検証する。
+     * SYSTEM_ADMIN || ADMIN以上(user_roles) || メンバー(memberships) のいずれか。
+     */
+    private void requireTeamOrOrganizationAccess(Long userId, Long scopeId, String scopeType) {
+        if (accessControlService.isSystemAdmin(userId)
+                || accessControlService.isAdminOrAbove(userId, scopeId, scopeType)
+                || accessControlService.isMember(userId, scopeId, scopeType)) {
+            return;
+        }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
     // ============================================================

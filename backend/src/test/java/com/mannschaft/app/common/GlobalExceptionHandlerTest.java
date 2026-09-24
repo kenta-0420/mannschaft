@@ -14,6 +14,7 @@ import com.mannschaft.app.matching.MatchingErrorCode;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.social.SocialErrorCode;
+import com.mannschaft.app.common.storage.StorageErrorCode;
 import com.mannschaft.app.succession.SuccessionErrorCode;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.skill.SkillErrorCode;
@@ -792,6 +793,17 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_999");
         }
+
+        @Test
+        @DisplayName("通常のIllegalArgumentExceptionは500のまま返る")
+        void 通常のIllegalArgumentExceptionは500のまま返る() {
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler
+                    .handleUnexpectedException(new IllegalArgumentException("内部不変条件違反"));
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_999");
+        }
     }
 
     // ========================================
@@ -945,6 +957,66 @@ class GlobalExceptionHandlerTest {
             assertThat(globalExceptionHandler.resolveHttpStatus(
                     com.mannschaft.app.event.EventErrorCode.TIMETABLE_ITEM_NOT_FOUND))
                     .isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("F03.19 CMP-112: CALENDAR_LAYER_LIMIT_EXCEEDED（SCHEDULE_104）は件数上限なので既定の 400 BadRequest"
+                + "（.claudecode.md §3.2.1「上限超過は 409 ではない」の回帰固定）")
+        void resolveHttpStatus_SCHEDULE_104_400() {
+            // 当初 ERROR_CODE_STATUS_MAP に 409 で登録していたが、規約 §3.2.1 の表は
+            // 「件数/サイズの上限超過」を 400（既定のまま・上書き不要）と定めている。
+            // 上書き登録ごと削除し、Severity.WARN 既定の 400 に戻した。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.schedule.ScheduleErrorCode.CALENDAR_LAYER_LIMIT_EXCEEDED);
+
+            assertThat(result).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @ParameterizedTest(name = "{0} は 400 / {1}")
+        @CsvSource({
+                "PERSONAL_REMINDER_LIMIT_EXCEEDED, SCHEDULE_019, 個人スケジュールのリマインダーは相対・絶対の合計で最大5件です",
+                "PERSONAL_SCHEDULE_LIMIT_EXCEEDED, SCHEDULE_020, 個人スケジュールの上限（1000件）に達しています"
+        })
+        @DisplayName("CMP-114: 個人予定・リマインダーの件数上限超過は 400 BadRequest")
+        void handleBusinessException_personalLimitExceeded_400(
+                String errorCodeName,
+                String expectedCode,
+                String expectedMessage) {
+            com.mannschaft.app.schedule.ScheduleErrorCode errorCode =
+                    com.mannschaft.app.schedule.ScheduleErrorCode.valueOf(errorCodeName);
+
+            when(messageSource.getMessage(anyString(), any(), any()))
+                    .thenThrow(new org.springframework.context.NoSuchMessageException(expectedCode));
+
+            assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(errorCode.getMessage()).isEqualTo(expectedMessage);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(
+                    new BusinessException(errorCode));
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo(expectedCode);
+            assertThat(response.getBody().getError().getMessage()).isEqualTo(expectedMessage);
+        }
+
+        @ParameterizedTest(name = "{0} は 409")
+        @CsvSource({
+                "ATTENDANCE_DEADLINE_PASSED",
+                "SCHEDULE_ALREADY_CANCELLED",
+                "MAX_SURVEYS_EXCEEDED",
+                "CROSS_INVITE_ALREADY_EXISTS",
+                "CROSS_INVITE_INVALID_STATUS",
+                "TODO_ALREADY_LINKED"
+        })
+        @DisplayName("CMP-114: 状態競合の Schedule エラーコードは 409 Conflict を維持する")
+        void resolveHttpStatus_scheduleStateConflicts_409(String errorCodeName) {
+            com.mannschaft.app.schedule.ScheduleErrorCode errorCode =
+                    com.mannschaft.app.schedule.ScheduleErrorCode.valueOf(errorCodeName);
+
+            assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                    .isEqualTo(HttpStatus.CONFLICT);
         }
 
         @Test
@@ -1936,6 +2008,24 @@ class GlobalExceptionHandlerTest {
                     SuccessionErrorCode.COVENANT_LIST_FORBIDDEN);
 
             assertThat(status).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+    }
+
+    @Nested
+    @DisplayName("Storage ACL ErrorCode の HTTP 写像")
+    class StorageAclErrorCodeHttpStatus {
+
+        @Test
+        @DisplayName("ACL不在は存在秘匿404、所有境界違反は403、claim競合は409になる")
+        void storageAclErrorCodesResolveToDeclaredHttpStatus() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(StorageErrorCode.ACL_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(StorageErrorCode.ACL_FORBIDDEN))
+                    .isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(globalExceptionHandler.resolveHttpStatus(StorageErrorCode.ACL_CLAIM_CONFLICT))
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(StorageErrorCode.ACL_INVALID_REQUEST))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
         }
     }
 }

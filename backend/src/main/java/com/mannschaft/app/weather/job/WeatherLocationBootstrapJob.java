@@ -2,6 +2,8 @@ package com.mannschaft.app.weather.job;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.weather.config.WeatherLocationProperties;
 import com.mannschaft.app.weather.entity.WeatherLocationBootstrapJobEntity;
 import com.mannschaft.app.weather.exception.WeatherLocationDeriveException;
@@ -56,6 +58,8 @@ public class WeatherLocationBootstrapJob {
     /**
      * アプリケーション起動完了時に実行されるブートストラップ。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。起動時の天気地点マスタ初期化であり、次回起動時に再度実行される。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {

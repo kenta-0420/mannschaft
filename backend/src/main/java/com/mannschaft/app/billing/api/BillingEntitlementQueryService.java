@@ -1,5 +1,9 @@
 package com.mannschaft.app.billing.api;
 
+import com.mannschaft.app.billing.BillingCancelState;
+import com.mannschaft.app.billing.BillingContractChangeEntity;
+import com.mannschaft.app.billing.BillingContractChangeRepository;
+import com.mannschaft.app.billing.BillingContractChangeStatus;
 import com.mannschaft.app.billing.BillingContractEntity;
 import com.mannschaft.app.billing.BillingContractRepository;
 import com.mannschaft.app.billing.ContractKind;
@@ -16,6 +20,9 @@ import com.mannschaft.app.billing.PlanEntity;
 import com.mannschaft.app.billing.PlanFeatureEntity;
 import com.mannschaft.app.billing.PlanFeatureRepository;
 import com.mannschaft.app.billing.PlanRepository;
+import com.mannschaft.app.billing.BillingPriceBandVersionEntity;
+import com.mannschaft.app.billing.BillingProductKind;
+import com.mannschaft.app.billing.ScopeMemberCountService;
 import com.mannschaft.app.billing.api.dto.ActiveContract;
 import com.mannschaft.app.billing.api.dto.EntitledFeature;
 import com.mannschaft.app.billing.api.dto.EntitlementCheckResponse;
@@ -27,12 +34,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * F20.1: 権利サマリ・単一判定 API の読み取りサービス（設計書 02 §2.2 / §2.3 / 03 §2.2）。
@@ -54,11 +65,26 @@ public class BillingEntitlementQueryService {
     private final EntitlementQueryService entitlementQueryService;
     private final EntitlementRepository entitlementRepository;
     private final BillingContractRepository billingContractRepository;
+    private final BillingContractChangeRepository billingContractChangeRepository;
     private final FeatureCatalogRepository featureCatalogRepository;
     private final PlanFeatureRepository planFeatureRepository;
     private final PlanRepository planRepository;
     private final AccessControlService accessControlService;
+    private final BillingCurrentBandResolver currentBandResolver;
+    private final ScopeMemberCountService scopeMemberCountService;
     private final Clock clock;
+
+    /** 権利サマリの投影に載せる契約状態（AC-65。PAST_DUE は期末まで利用でき解約もできる・D4）。 */
+    private static final List<ContractStatus> DISPLAYED_CONTRACT_STATUSES =
+            List.of(ContractStatus.ACTIVE, ContractStatus.PAST_DUE);
+
+    /**
+     * pendingChange として投影に載せる変更状態（PR6b-1 AC-107・AC-133）。
+     * {@code PENDING_PAYMENT}/{@code REQUIRES_ACTION} 以外（{@code APPLIED}/{@code FAILED} 等の
+     * terminal）は既に決着しているため投影しない（AC-107: 支払い待ちでない契約では出さない）。
+     */
+    private static final List<BillingContractChangeStatus> IN_FLIGHT_CHANGE_STATUSES = List.of(
+            BillingContractChangeStatus.PENDING_PAYMENT, BillingContractChangeStatus.REQUIRES_ACTION);
 
     // ============================================================
     // 権利サマリ（§2.2）
@@ -66,21 +92,27 @@ public class BillingEntitlementQueryService {
 
     /** スコープの権利サマリ（現在の契約と有効機能）を組み立てる。 */
     public EntitlementSummaryResponse getSummary(EntitlementScopeKind scopeKind, Long scopeId) {
+        // PAST_DUE も投影に載せる（支払失敗中でも期末まで利用でき、解約もできる・D4 / AC-65）。
+        // 解約確認画面はこの投影だけを読むため、ここに出ない契約は FE から操作できない。
         List<BillingContractEntity> active = billingContractRepository
-                .findByScopeKindAndScopeIdAndStatusAndDeletedAtIsNull(scopeKind, scopeId, ContractStatus.ACTIVE);
+                .findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
+                        scopeKind, scopeId, DISPLAYED_CONTRACT_STATUSES);
+
+        // AC-134: 契約 N 件でも SQL は1本（契約ごとに問い合わせない）。
+        Map<UUID, BillingContractChangeEntity> pendingChangeByContractId = loadPendingChanges(active);
 
         ActiveContract activePlan = null;
+        ContractStatus activePlanStatus = null;
         List<ActiveContract> activeAddons = new ArrayList<>();
         for (BillingContractEntity c : active) {
-            ActiveContract dto = ActiveContract.builder()
-                    .contractId(c.getId().toString())
-                    .planKey(c.getPlanKey())
-                    .featureKey(c.getFeatureKey())
-                    .contractedAt(c.getContractedAt())
-                    .priceJpySnapshot(c.getPriceJpySnapshot())
-                    .build();
+            ActiveContract dto = toActiveContract(c, pendingChangeByContractId.get(c.getId()));
             if (c.getContractKind() == ContractKind.PLAN) {
-                activePlan = dto;
+                // ACTIVE と PAST_DUE が同時に並ぶ異常時でも見え方を一意にする（ACTIVE を優先）。
+                if (activePlan == null || (activePlanStatus != ContractStatus.ACTIVE
+                        && c.getStatus() == ContractStatus.ACTIVE)) {
+                    activePlan = dto;
+                    activePlanStatus = c.getStatus();
+                }
             } else {
                 activeAddons.add(dto);
             }
@@ -93,6 +125,113 @@ public class BillingEntitlementQueryService {
                 .activeAddons(activeAddons)
                 .entitledFeatures(buildEntitledFeatures(scopeKind, scopeId))
                 .build();
+    }
+
+    /**
+     * 契約 1 件を表示用の投影へ落とす（PR6a AC-60 / AC-63 / AC-65）。
+     *
+     * <p><b>Stripe を一度も呼ばない</b>（AC-63。正本 05:369）。{@code canCancel} / {@code canResume} は
+     * DB の {@code status} / {@code cancelled_at} / {@code current_period_end} と注入 {@link Clock} だけから
+     * {@link BillingCancelState} が導出する。解約 API の応答と同じ関数を使うので、両者が食い違わない。</p>
+     */
+    private ActiveContract toActiveContract(BillingContractEntity c, BillingContractChangeEntity pendingChange) {
+        var now = LocalDateTime.now(clock);
+        var endAt = c.getCurrentPeriodEnd();
+        boolean scheduled = BillingCancelState.scheduled(c.getStatus(), c.getCancelledAt());
+        return ActiveContract.builder()
+                .contractId(c.getId().toString())
+                .planKey(c.getPlanKey())
+                .featureKey(c.getFeatureKey())
+                .contractedAt(c.getContractedAt())
+                .priceJpySnapshot(c.getPriceJpySnapshot())
+                .status(c.getStatus() == null ? null : c.getStatus().name())
+                // AC-27 / AC-44: FE はこの値を解約・撤回 API の CAS 期待値として送り返す。
+                .version(c.getVersion())
+                .currentPeriodEnd(toOffset(endAt))
+                .canCancel(BillingCancelState.canCancel(c.getStatus(), c.getCancelledAt()))
+                .canResume(BillingCancelState.canResume(c.getStatus(), c.getCancelledAt(), endAt, now))
+                .cancel(scheduled
+                        ? ActiveContract.ScheduledCancel.builder()
+                                .scheduledAt(toOffset(c.getCancelledAt()))
+                                .endAt(toOffset(endAt))
+                                .build()
+                        : null)
+                // PR6b-1 AC-107/AC-133: 進行中の変更が無ければ null（常時表示にしない）。
+                .pendingChange(pendingChange == null ? null : ActiveContract.PendingChange.builder()
+                        // AC-71: 別端末・再ログインから 3DS を再開するには変更 ID が要る。
+                        .changeId(pendingChange.getId() == null ? null : pendingChange.getId().toString())
+                        .status(pendingChange.getStatus().name())
+                        .effectiveAt(pendingChange.getEffectiveAt())
+                        .paymentActionRequired(
+                                pendingChange.getStatus() == BillingContractChangeStatus.REQUIRES_ACTION)
+                        // AC-105: 期限は pending_update の失効時刻。effectiveAt で代用しない。
+                        .pendingUpdateExpiresAt(pendingChange.getPendingUpdateExpiresAt())
+                        .build())
+                .changeablePlanKeys(resolveChangeablePlanKeys(c))
+                .build();
+    }
+
+    /**
+     * PR6b-1 残務③: 変更先として選べる PLAN の候補を、見積り（{@link BillingPlanChangePreviewService}）
+     * が実際に使っている band 解決（{@link BillingCurrentBandResolver}）と同じ読み方で解決する。
+     *
+     * <p>ADDON 契約は対象外（{@code null}/空扱いではなく空配列を返す）。候補算出はカタログ
+     * （{@code enabled} な PLAN 一覧・小さいマスタ）を1回取得し、契約 1 件あたり高々カタログ件数ぶんの
+     * band 解決に留める。表示対象契約は {@link #getSummary} で既にスコープ1件分に絞られているため、
+     * 契約 N 件でも SQL 発行数はカタログ件数に比例するだけで N に比例しない（AC-134 と同型の配慮）。</p>
+     */
+    private List<String> resolveChangeablePlanKeys(BillingContractEntity contract) {
+        if (contract.getContractKind() != ContractKind.PLAN || contract.getPlanKey() == null) {
+            return List.of();
+        }
+        Instant now = clock.instant();
+        int memberCount = scopeMemberCountService.countActiveMembers(contract.getScopeKind(), contract.getScopeId());
+        Optional<BillingPriceBandVersionEntity> fromBand =
+                currentBandResolver.resolveContractBand(contract, memberCount, now);
+        if (fromBand.isEmpty()) {
+            return List.of();
+        }
+        long fromAmount = fromBand.get().getAmountIncludingTax();
+
+        List<String> candidates = new ArrayList<>();
+        for (PlanEntity plan : planRepository.findByEnabledTrueOrderBySortOrderAsc()) {
+            String candidateKey = plan.getPlanKey();
+            if (candidateKey.equals(contract.getPlanKey())) {
+                continue;
+            }
+            currentBandResolver
+                    .resolveCurrentBand(BillingProductKind.PLAN, candidateKey, contract.getScopeKind(),
+                            memberCount, now)
+                    // 見積り側と同じ 2 条件（AC-20c: Stripe Price ref 必須 / AC-22〜24: 上位のみ）を
+                    // 満たすものだけを候補にする。この2条件を満たさない候補は見積りが必ず 409 を返す。
+                    .filter(band -> band.getStripePriceRef() != null && !band.getStripePriceRef().isBlank())
+                    .filter(band -> band.getAmountIncludingTax() > fromAmount)
+                    .ifPresent(band -> candidates.add(candidateKey));
+        }
+        return candidates;
+    }
+
+    /**
+     * 表示対象契約ぶんの進行中変更を一括取得する（PR6b-1 AC-134: N+1 回避）。
+     * 契約 0 件なら空 Map をそのまま返し（0 クエリ）、SQL を発行しない。
+     */
+    private Map<UUID, BillingContractChangeEntity> loadPendingChanges(List<BillingContractEntity> contracts) {
+        if (contracts.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> contractIds = contracts.stream().map(BillingContractEntity::getId).toList();
+        Map<UUID, BillingContractChangeEntity> byContractId = new LinkedHashMap<>();
+        for (BillingContractChangeEntity change : billingContractChangeRepository
+                .findByContractIdInAndStatusInAndDeletedAtIsNull(contractIds, IN_FLIGHT_CHANGE_STATUSES)) {
+            // 契約1件につき進行中の変更は高々1件（PR6a 資産の pointer が同時 mutation を排他する）。
+            byContractId.putIfAbsent(change.getContractId(), change);
+        }
+        return byContractId;
+    }
+
+    /** DB の壁時計値を、注入 {@link Clock} のゾーンでオフセット付きへ変換する唯一の変換点。 */
+    private OffsetDateTime toOffset(LocalDateTime value) {
+        return value == null ? null : value.atZone(clock.getZone()).toOffsetDateTime();
     }
 
     /**

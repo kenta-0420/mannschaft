@@ -2,6 +2,7 @@ package com.mannschaft.app.succession.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.succession.dto.SignCovenantRequest;
@@ -103,6 +104,7 @@ public class SuccessionCovenantController {
      */
     @GetMapping("/api/v1/organizations/{orgId}/succession/covenants")
     @Operation(summary = "組織内の誓約一覧（組織 ADMIN のみ）")
+    @RequireFeature("FEATURE_SUCCESSION_PROXY_ENABLED")
     public ResponseEntity<ApiResponse<Page<SuccessionCovenantResponse>>> listOrgCovenants(
             @PathVariable Long orgId,
             @RequestParam(defaultValue = "0") int page,

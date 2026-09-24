@@ -1,5 +1,8 @@
 package com.mannschaft.app.advertising.operational;
 
+import org.springframework.cache.CacheManager;
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.advertising.service.MonthlyInvoiceBatchService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
@@ -12,8 +15,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.YearMonth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 /**
  * F09.19.5 AC-5.4 月次請求バッチが TEAM 広告主のキャンペーンを請求書に含めることの検証（試練 / red 先行）。
@@ -50,6 +58,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("F09.19.5 月次請求バッチ TEAM 広告主包含テスト（試練）")
 class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
 
+    /** ゲート開放用（{@link #openBackgroundFeatureGate()} で使う）。 */
+    @Autowired
+    private FeatureFlagRepository backgroundGateFeatureFlagRepository;
+
+    /** フラグキャッシュ退避用（行を入れるだけでは isEnabled が false を返し続ける）。 */
+    @Autowired
+    private CacheManager backgroundGateCacheManager;
+
+    /**
+     * ゲート対象のバックグラウンド入口を open にしてから各テストを走らせる。
+     *
+     * <p>テストプロファイルは Flyway を無効化しており {@code feature_flags} が空のため、
+     * 何もしないと {@code FeatureFlagService#isEnabled} がフェイルクローズで false を返し、
+     * 検証対象のバッチ／リスナーが本体を呼ばずに正常終了してしまう。
+     * 詳細は {@link FeatureFlagTestSupport} を参照。</p>
+     */
+    @BeforeEach
+    void openBackgroundFeatureGate() {
+        FeatureFlagTestSupport.enable(
+                backgroundGateFeatureFlagRepository,
+                backgroundGateCacheManager,
+                "FEATURE_PROMOTION_ENABLED");
+    }
+
     @Autowired
     private MonthlyInvoiceBatchService monthlyInvoiceBatchService;
 
@@ -59,20 +91,39 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("ac5_4: TEAM 広告主のキャンペーンが前月分の請求書に明細として計上される")
     void ac5_4_チーム広告主のキャンペーンが月次請求に含まれる() {
-        // given: TEAM スコープの ACTIVE 広告主アカウント（billing=INVOICE）
-        Long teamAccountId = insertAdvertiserAccount("TEAM", 987654L, "チーム広告主", "INVOICE");
+        YearMonth targetMonth = YearMonth.now().minusMonths(1);
+
+        // given: TEAM スコープの ACTIVE 広告主アカウント。
+        // F08.12 §5.0 で後払い（INVOICE）は廃止済みのため STRIPE 方式で seed する。
+        Long teamAccountId = insertAdvertiserAccount("TEAM", 987654L, "チーム広告主", "STRIPE", "cus_team_test");
 
         // TEAM 広告主に advertiser_account_id で直結するキャンペーン（前方互換 seed）
         Long campaignId = insertCampaignForAccount(teamAccountId, "チーム運用型キャンペーン");
 
         // 前月内の日次統計（CPM 単価 500 円 × 2000 imp = cost 1000.00 円）
-        insertDailyStatsLastMonth(campaignId, 2000L, 10L, new BigDecimal("1000.00"));
+        insertDailyStats(campaignId, targetMonth, 2000L, 10L, new BigDecimal("1000.00"));
 
         em.flush();
         em.clear();
 
-        // when: 月次請求バッチ（前月分）を実行
-        monthlyInvoiceBatchService.generateMonthlyInvoices();
+        // when: 月次請求バッチ（前月分）を実行。外部境界（Stripe SDK）だけをモックし、
+        // finalize 成功をシミュレートする。
+        com.stripe.model.Invoice stripeInvoice = mock(com.stripe.model.Invoice.class);
+        try (var invoiceStatic = mockStatic(com.stripe.model.Invoice.class);
+             var itemStatic = mockStatic(com.stripe.model.InvoiceItem.class)) {
+            when(stripeInvoice.getId()).thenReturn("in_team_test_0001");
+            try {
+                when(stripeInvoice.finalizeInvoice()).thenReturn(stripeInvoice);
+            } catch (Exception ignored) {
+                // モック定義時に実際の例外は発生しない
+            }
+            invoiceStatic.when(() -> com.stripe.model.Invoice.create(any(com.stripe.param.InvoiceCreateParams.class)))
+                    .thenReturn(stripeInvoice);
+            itemStatic.when(() -> com.stripe.model.InvoiceItem.create(any(com.stripe.param.InvoiceItemCreateParams.class)))
+                    .thenReturn(mock(com.stripe.model.InvoiceItem.class));
+
+            monthlyInvoiceBatchService.generateMonthlyInvoices(targetMonth);
+        }
 
         em.flush();
         em.clear();
@@ -85,6 +136,16 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
         assertThat(invoiceCount.longValue())
                 .as("TEAM 広告主の請求書が生成される（scope_id 流用バグの根治後は 1 件）")
                 .isEqualTo(1L);
+
+        // F08.12 §5.0: STRIPE 方式でも finalize 成功後は issue() が呼ばれ ISSUED になること
+        // （旧実装は INVOICE 分岐でしか issue() を呼んでおらず DRAFT のまま残っていた）
+        String status = (String) em.createNativeQuery(
+                        "SELECT status FROM ad_invoices WHERE advertiser_account_id = :aid")
+                .setParameter("aid", teamAccountId)
+                .getSingleResult();
+        assertThat(status)
+                .as("STRIPE 経路でも finalize 成功後は ISSUED に進むこと")
+                .isEqualTo("ISSUED");
 
         // 明細に当該キャンペーンが載り、subtotal = 集計 cost 合算（1000.00）
         Object subtotal = em.createNativeQuery(
@@ -103,15 +164,19 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
-    private Long insertAdvertiserAccount(String scopeType, Long scopeId, String companyName, String billingMethod) {
+    private Long insertAdvertiserAccount(String scopeType, Long scopeId, String companyName,
+                                          String billingMethod, String stripeCustomerId) {
         em.createNativeQuery(
                         "INSERT INTO advertiser_accounts (scope_type, scope_id, status, company_name, "
-                                + "contact_email, billing_method, credit_limit, created_at, updated_at) "
-                                + "VALUES (:st, :sid, 'ACTIVE', :cn, 'ads@example.com', :bm, 100000, NOW(), NOW())")
+                                + "contact_email, billing_method, stripe_customer_id, credit_limit, "
+                                + "created_at, updated_at) "
+                                + "VALUES (:st, :sid, 'ACTIVE', :cn, 'ads@example.com', :bm, :scid, 100000, "
+                                + "NOW(), NOW())")
                 .setParameter("st", scopeType)
                 .setParameter("sid", scopeId)
                 .setParameter("cn", companyName)
                 .setParameter("bm", billingMethod)
+                .setParameter("scid", stripeCustomerId)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
                         "SELECT id FROM advertiser_accounts WHERE company_name = :cn")
@@ -139,15 +204,15 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
         return ((Number) em.createNativeQuery("SELECT MAX(id) FROM ad_campaigns").getSingleResult()).longValue();
     }
 
-    /** 前月 15 日付の日次統計を 1 行 seed する（バッチの集計対象期間 = 前月）。 */
-    private void insertDailyStatsLastMonth(Long campaignId, long impressions, long clicks, BigDecimal cost) {
+    /** 対象月15日付の日次統計を1行seedする。 */
+    private void insertDailyStats(Long campaignId, YearMonth targetMonth,
+                                  long impressions, long clicks, BigDecimal cost) {
         em.createNativeQuery(
                         "INSERT INTO ad_daily_stats (campaign_id, ad_id, date, impressions, clicks, cost, "
                                 + "created_at, updated_at) "
-                                + "VALUES (:cid, 1, "
-                                + "DATE_ADD(DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH), INTERVAL 14 DAY), "
-                                + ":imp, :clk, :cost, NOW(), NOW())")
+                                + "VALUES (:cid, 1, :statDate, :imp, :clk, :cost, NOW(), NOW())")
                 .setParameter("cid", campaignId)
+                .setParameter("statDate", targetMonth.atDay(15))
                 .setParameter("imp", impressions)
                 .setParameter("clk", clicks)
                 .setParameter("cost", cost)

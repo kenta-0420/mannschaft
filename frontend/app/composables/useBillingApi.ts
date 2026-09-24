@@ -31,9 +31,58 @@ export type BillingPriceBandsReplaceRequest = components['schemas']['BillingPric
 export type BillingPlanFeaturesReplaceRequest = components['schemas']['BillingPlanFeaturesReplaceRequest']
 export type BillingManualGrantRequest = components['schemas']['BillingManualGrantRequest']
 export type BillingPagedContractResponse = components['schemas']['BillingPagedContractResponse']
+export type BillingCancelRequest = components['schemas']['BillingCancelRequest']
+export type BillingContractCancelResponse = components['schemas']['BillingContractCancelResponse']
 
 /** API 表現のスコープ種別（設計書 02 §0）。 */
 export type BillingScopeKind = 'USER' | 'TEAM' | 'ORG'
+
+/**
+ * Billing Center PR6b-1 AC-133: `BillingActiveContract` 投影に載る保留中のプラン変更。
+ *
+ * <p>生成型（`docs/openapi.json` 再生成後）へ移行済み。BE スキーマは全フィールドが optional
+ * （`changeId?` / `status?` / `effectiveAt?` / `paymentActionRequired?` /
+ * `pendingUpdateExpiresAt?`）であり、値が無いことは実際に起こりうる状態を表す本物の事実である。
+ * 呼び出し側は「無い」を偽の既定値で埋めず、不在として正しく扱うこと
+ * （支払期限が無ければ断定しない文言へ、changeId が無ければ 3DS 再開ボタン自体を出さない）。</p>
+ */
+export type BillingPendingChange = components['schemas']['BillingPendingChange']
+
+// ============================================================
+// プラン変更（upgrade）— Billing Center PR6b-1 A群/B群/C群
+// ============================================================
+//
+// 下記は BE の record（`BillingChangePreviewRequest` / `BillingChangePreviewResponse` /
+// `BillingPlanChangeRequest` / `BillingContractChangeResponse` / `BillingPaymentActionResponse` /
+// `Money`）に対応する生成型（`docs/openapi.json` 再生成済み）を再エクスポートしたもの。
+// 以前はここに手書きの暫定型を置いていたが、生成型が真実のソースという方針どおり撤去した。
+
+/** 見積り金額（BE `Money`）。税はすべて BE 由来でこちらで計算しない。 */
+export type BillingChangePreviewMoney = components['schemas']['Money']
+
+/** `POST …/change-previews` のリクエスト（AC-17: 価格・band の版は server が tx 内で確定するため送らない）。 */
+export type BillingChangePreviewRequestBody = components['schemas']['BillingChangePreviewRequest']
+
+/** `POST …/change-previews` のレスポンス（AC-1）。`amountDueNow` は optional（BE 応答不備時の安全網）。 */
+export type BillingChangePreviewResponse = components['schemas']['BillingChangePreviewResponse']
+
+/** `POST …/changes` のリクエスト（AC-25: previewId 必須）。 */
+export type BillingPlanChangeExecuteRequest = components['schemas']['BillingPlanChangeRequest']
+
+/**
+ * `POST …/changes` のレスポンス（AC-25: clientSecret は返らない）。
+ * `status` は生成型では `string` 合併（7値。DOWNGRADE 系の `CREATING_SCHEDULE`/`SCHEDULED` を含む）。
+ */
+export type BillingContractChangeResponse = components['schemas']['BillingContractChangeResponse']
+
+/**
+ * `GET …/changes/{changeId}/payment-action` のレスポンス（AC-48/54）。
+ *
+ * <p>`clientSecret` は Stripe から都度取得される値であり、DB にも FE の永続領域にも
+ * 残してはならない（AC-55〜59）。受け取った値は `stripe.handleNextAction` へ渡す一時変数として
+ * だけ扱い、ログ・URL・browser storage・DOM 属性のいずれにも書かないこと。</p>
+ */
+export type BillingPaymentActionResponse = components['schemas']['BillingPaymentActionResponse']
 
 /** 契約作成に必須の Idempotency-Key ヘッダを生成する（連打・再送の二重発行防止・設計書 02 §0 M-1）。 */
 function idempotencyHeaders(): Record<string, string> {
@@ -117,25 +166,45 @@ export function useBillingApi() {
   }
 
   // ============================================================
-  // 解約
+  // 解約（Billing Center PR6a: 期末解約の予約・撤回）
   // ============================================================
 
-  async function cancelMyContract(contractId: string) {
-    return api<{ data: BillingContractResponse }>(`/api/v1/me/billing/contracts/${contractId}`, { method: 'DELETE' })
+  /**
+   * 期末解約を予約する（無償契約は即時失効）。
+   *
+   * <p>正本 05_billing_center.md:334-335（D6）: スコープに関わらず唯一の {@code /me} 配下パスへ
+   * 集約する。TEAM/ORG の契約も {@code contractId} で操作し、認可は BE 側がスコープを解決して
+   * 判定する。旧 {@code DELETE /me|teams/{id}|organizations/{id}/billing/contracts/{contractId}}
+   * （即時削除）を呼んでいた FE 唯一の呼び出し元 {@code BillingManagePanel.vue} は本メソッドへ
+   * 完全移行した（Codex 検分 P1 是正）。FE composable からは旧メソッドを削除済み
+   * （呼び出し箇所ゼロのため）。BE 側の旧エンドポイント自体の要否は backend 側の判断であり、
+   * 本 PR では削除していない。</p>
+   *
+   * @param contractId 対象契約
+   * @param version    契約の CAS 期待値（不一致は 409）
+   */
+  async function cancelContractReservation(contractId: string, version: number) {
+    const body: BillingCancelRequest = { version }
+    return api<{ data: BillingContractCancelResponse }>(`/api/v1/me/billing/contracts/${contractId}/cancel`, {
+      method: 'POST',
+      body,
+      headers: idempotencyHeaders(),
+    })
   }
 
-  async function cancelTeamContract(teamId: string, contractId: string) {
-    return api<{ data: BillingContractResponse }>(`/api/v1/teams/${teamId}/billing/contracts/${contractId}`, { method: 'DELETE' })
-  }
-
-  async function cancelOrgContract(orgId: string, contractId: string) {
-    return api<{ data: BillingContractResponse }>(`/api/v1/organizations/${orgId}/billing/contracts/${contractId}`, { method: 'DELETE' })
-  }
-
-  async function cancelContract(scopeKind: BillingScopeKind, scopeId: string, contractId: string) {
-    if (scopeKind === 'USER') return cancelMyContract(contractId)
-    if (scopeKind === 'TEAM') return cancelTeamContract(scopeId, contractId)
-    return cancelOrgContract(scopeId, contractId)
+  /**
+   * 解約予約を撤回する（期末を跨ぐ前に限り可能）。
+   *
+   * @param contractId 対象契約
+   * @param version    契約の CAS 期待値（不一致は 409）
+   */
+  async function resumeContractCancellation(contractId: string, version: number) {
+    const body: BillingCancelRequest = { version }
+    return api<{ data: BillingContractCancelResponse }>(`/api/v1/me/billing/contracts/${contractId}/cancel`, {
+      method: 'DELETE',
+      body,
+      headers: idempotencyHeaders(),
+    })
   }
 
   // ============================================================
@@ -158,6 +227,56 @@ export function useBillingApi() {
     if (scopeKind === 'USER') return changeMyPlan(contractId, body)
     if (scopeKind === 'TEAM') return changeTeamPlan(scopeId, contractId, body)
     return changeOrgPlan(scopeId, contractId, body)
+  }
+
+  // ============================================================
+  // 上位プラン変更（upgrade）と 3DS（Billing Center PR6b-1）
+  // ============================================================
+  //
+  // 解約（PR6a）と同じく、BE のエンドポイントはスコープに関わらず `/me/billing/contracts/{contractId}`
+  // 配下の唯一のパスへ集約されている（`BillingPlanChangeController` / `BillingPlanChangePaymentActionController`
+  // の `@RequestMapping("/api/v1/me/billing/contracts")` を実読して確認）。TEAM/ORG の契約も
+  // contractId で操作し、スコープの解決と認可は BE 側が行う。したがって FE 側にスコープ分岐は無い。
+
+  /**
+   * プラン変更の事前見積り（AC-1〜24）。金額は Stripe の見積り API 由来で FE は計算しない。
+   *
+   * @param contractId 対象契約
+   * @param body       変更先プランと契約の CAS 期待値
+   */
+  async function createPlanChangePreview(contractId: string, body: BillingChangePreviewRequestBody) {
+    return api<{ data: BillingChangePreviewResponse }>(`/api/v1/me/billing/contracts/${contractId}/change-previews`, {
+      method: 'POST',
+      body,
+      headers: idempotencyHeaders(),
+    })
+  }
+
+  /**
+   * 見積りを一回だけ消費して upgrade を実行する（AC-25〜31）。
+   *
+   * <p>202 で `changeId` / `status` / `effectiveAt` が返る。`status` が `REQUIRES_ACTION` の場合は
+   * {@link getPlanChangePaymentAction} で 3DS の clientSecret を取得して確認へ進む。</p>
+   */
+  async function executePlanChange(contractId: string, body: BillingPlanChangeExecuteRequest) {
+    return api<{ data: BillingContractChangeResponse }>(`/api/v1/me/billing/contracts/${contractId}/changes`, {
+      method: 'POST',
+      body,
+      headers: idempotencyHeaders(),
+    })
+  }
+
+  /**
+   * 3DS の追加認証情報を都度取得する（AC-48〜54）。
+   *
+   * <p>Stripe を都度叩く API であるため、呼び出し側は `usePlanChangePolling` の間隔・回数上限の
+   * 枠内でのみ使うこと（AC-135）。返る clientSecret は保存せず、その場で
+   * `useStripeSetup.confirmPaymentAction` へ渡して捨てる。</p>
+   */
+  async function getPlanChangePaymentAction(contractId: string, changeId: string) {
+    return api<{ data: BillingPaymentActionResponse }>(
+      `/api/v1/me/billing/contracts/${contractId}/changes/${changeId}/payment-action`,
+    )
   }
 
   // ============================================================
@@ -239,14 +358,15 @@ export function useBillingApi() {
     createTeamContract,
     createOrgContract,
     createContract,
-    cancelMyContract,
-    cancelTeamContract,
-    cancelOrgContract,
-    cancelContract,
+    cancelContractReservation,
+    resumeContractCancellation,
     changeMyPlan,
     changeTeamPlan,
     changeOrgPlan,
     changePlan,
+    createPlanChangePreview,
+    executePlanChange,
+    getPlanChangePaymentAction,
     listPlansAdmin,
     getPlanAdmin,
     createPlanAdmin,

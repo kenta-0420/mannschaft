@@ -48,7 +48,7 @@ public class AdminLensSummaryController {
      */
     @GetMapping("/organization/{orgSlug}/admin-payment-summary")
     @Operation(summary = "組織 支払サマリ（管理者レンズ）",
-            description = "ADMIN/DEPUTY 向け。組織が発行した未収請求件数（SENT/VIEWED/OVERDUE）と期限超過件数（OVERDUE 単体）を返す")
+            description = "ADMIN/DEPUTY 向け。組織が発行した未収請求件数（SENT/VIEWED/PROCESSING/OVERDUE）と期限超過件数（OVERDUE 単体）を返す")
     public ResponseEntity<ApiResponse<AdminPaymentSummaryResponse>> getOrgPaymentSummary(
             @PathVariable String orgSlug) {
         Long userId = SecurityUtils.getCurrentUserId();

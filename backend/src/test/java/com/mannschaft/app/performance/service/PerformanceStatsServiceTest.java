@@ -294,6 +294,10 @@ class PerformanceStatsServiceTest {
         @DisplayName("正常系: teamId指定で自分のパフォーマンスが返る")
         void getMyPerformance_teamId指定_パフォーマンスが返る() {
             // Given
+            // teamId 指定時は所属検証が入る（CMP-260826-2127 派生: 非所属 teamId 指定で
+            // 指標定義名・チーム名が読めていた欠陥の根治）。USER_ID_1 は TEAM_ID の
+            // メンバーであるという正常系を表現するためスタブする。
+            given(accessControlService.isMember(USER_ID_1, TEAM_ID, "TEAM")).willReturn(true);
             given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of(TEAM_ID, "TestTeam"));
             PerformanceMetricEntity metric = createMetric(METRIC_ID, "距離", AggregationType.SUM, new BigDecimal("100"));
             given(metricService.getActiveMetrics(TEAM_ID)).willReturn(List.of(metric));
@@ -335,6 +339,8 @@ class PerformanceStatsServiceTest {
         @DisplayName("正常系: metricIdsが空の場合は空リストが返る")
         void getMyPerformance_メトリクスなし_空リスト() {
             // Given
+            // teamId 指定時は所属検証が入る（CMP-260826-2127 派生）。
+            given(accessControlService.isMember(USER_ID_1, TEAM_ID, "TEAM")).willReturn(true);
             given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of(TEAM_ID, "TestTeam"));
             given(metricService.getActiveMetrics(TEAM_ID)).willReturn(List.of());
 

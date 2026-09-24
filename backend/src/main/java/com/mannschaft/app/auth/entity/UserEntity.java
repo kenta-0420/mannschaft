@@ -155,6 +155,37 @@ public class UserEntity extends BaseEntity {
     @Column(name = "purged_at")
     private LocalDateTime purgedAt;
 
+    /**
+     * purge 開始マーク（柱①ADMINゼロ根治 §12.5・V197 で新設）。NULL の場合は未開始。
+     *
+     * <p>読み書きは {@code PurgeMarkerService}（native クエリ）が担い、本フィールドを直接更新する
+     * 経路は無い。それでも<b>マッピングを置く必要がある</b>——test プロファイルは
+     * {@code ddl-auto: create}＋{@code flyway.enabled: false} でスキーマを Entity から起こすため、
+     * ここに無い列は<b>統合テストのスキーマに存在せず</b>、当該 native クエリが
+     * {@code Unknown column 'purge_started_at'} で落ちる。実際に柱③-B PR-3 で
+     * {@code UserService#cancelWithdrawal} を IT から通した瞬間にこれが露見した
+     * （それまでは IT が SQL 直叩きで本番経路を迂回しており、誰も踏んでいなかった）。</p>
+     *
+     * <p>型を {@link java.time.Instant} にしているのは、本クラスの他の時刻列（legacy な
+     * {@link LocalDateTime}）に合わせるより {@code datetime_policy} の方針に従うほうが正しいためである。
+     * 本フィールドを JPA 経由で読み書きする経路は存在せず（native のみ）、型は DDL 生成にしか効かない。
+     * {@code LocalDateTime} にすると {@code DateTimeAndZoneGuardTest} の凍結台帳を新規に1件増やすことになる。</p>
+     */
+    @Column(name = "purge_started_at")
+    private java.time.Instant purgeStartedAt;
+
+    /**
+     * 退会申請ごとに一意な識別子（退会試行の<b>世代の正本</b>・V204）。
+     *
+     * <p>{@link #requestDeletion()} が毎回新規採番するため、<b>同一秒内の再退会でも必ず別の値</b>になる。
+     * 退会取消では消さず据え置く（次の退会申請で必ず更新される）。</p>
+     *
+     * <p>この列を足したのは、退会試行の同一性を「時刻」や「作業行の状態」から<b>推測</b>していたために
+     * 同じ欠陥を3度作ってしまったからである。推測をやめ、退会側に正本を置く。</p>
+     */
+    @Column(name = "withdrawal_attempt_id", columnDefinition = "BINARY(16)")
+    private UUID withdrawalAttemptId;
+
     // === プライバシーポリシー同意記録（F_privacy_policy）===
 
     /**
@@ -331,6 +362,8 @@ public class UserEntity extends BaseEntity {
      */
     public void requestDeletion() {
         this.deletedAt = LocalDateTime.now();
+        // 退会申請ごとに必ず新しい世代を採番する（同一秒内の再退会でも別の値になる）。
+        this.withdrawalAttemptId = com.mannschaft.app.common.UuidV7.generate();
     }
 
     /**

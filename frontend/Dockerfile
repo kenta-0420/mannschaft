@@ -1,7 +1,7 @@
 # ============================================================
 # Stage 1: Install dependencies
 # ============================================================
-FROM node:22-alpine AS deps
+FROM node:22.23.2-alpine AS deps
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN npm ci
 # ============================================================
 # Stage 2: Build
 # ============================================================
-FROM node:22-alpine AS builder
+FROM node:22.23.2-alpine AS builder
 
 WORKDIR /app
 
@@ -46,7 +46,7 @@ RUN npm run build
 # ============================================================
 # Stage 3: Runtime
 # ============================================================
-FROM node:22-alpine AS runtime
+FROM node:22.23.2-alpine AS runtime
 
 # Security: add non-root user
 RUN addgroup --system --gid 1001 nuxtgroup \

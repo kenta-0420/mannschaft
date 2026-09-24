@@ -86,6 +86,20 @@ class SurveyResultServiceTest {
     private SurveyResultService surveyResultService;
 
     /**
+     * 母集団解決（{@link com.mannschaft.app.survey.service.SurveyUniverseResolver}）は
+     * <b>本物</b>を注入する。ここをモックにすると「どの母集団を数えるか」という本質が
+     * テストから消えるため、実クラスへ既存のリポジトリモックを渡し、
+     * 従来どおり最下層のスタブ（{@code userRoleRepository} 等）で振る舞いを決める。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void 母集団リゾルバを実クラスで注入する() {
+        org.springframework.test.util.ReflectionTestUtils.setField(surveyResultService, "universeResolver",
+                new com.mannschaft.app.survey.service.SurveyUniverseResolver(
+                        organizationMembershipService, userRoleRepository, targetRepository));
+    }
+
+
+    /**
      * 結果閲覧可否の判定点は<b>実物</b>を差し込む（Issue #2779）。
      *
      * <p>モックに置き換えると「403 を投げる経路」と「詳細応答の viewerCanViewResults」が
@@ -309,7 +323,8 @@ class SurveyResultServiceTest {
             SurveyResponseEntity response1 = buildResponse(SURVEY_ID, 10L, respondedAt);
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, 1L, "TEAM")).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(ADMIN_USER_ID, 1L, "TEAM", "MANAGE_SURVEYS"))
+                    .willReturn(true);
             given(userRoleRepository.findUserIdsByScope("TEAM", 1L)).willReturn(List.of(10L, 20L));
             given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID)).willReturn(List.of(response1));
             given(userRepository.findAllById(anyList())).willReturn(List.of(user1, user2));
@@ -412,7 +427,8 @@ class SurveyResultServiceTest {
             survey.publish();
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, 1L, "TEAM")).willReturn(false);
+            given(accessControlService.hasAdminOrPermissionInScope(MEMBER_USER_ID, 1L, "TEAM", "MANAGE_SURVEYS"))
+                    .willReturn(false);
             given(resultViewerRepository.existsBySurveyIdAndUserId(SURVEY_ID, MEMBER_USER_ID)).willReturn(false);
 
             // When & Then
@@ -437,7 +453,8 @@ class SurveyResultServiceTest {
             survey.publish();
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, 1L, "TEAM")).willReturn(false);
+            given(accessControlService.hasAdminOrPermissionInScope(MEMBER_USER_ID, 1L, "TEAM", "MANAGE_SURVEYS"))
+                    .willReturn(false);
             given(resultViewerRepository.existsBySurveyIdAndUserId(SURVEY_ID, MEMBER_USER_ID)).willReturn(false);
 
             // When & Then
@@ -469,7 +486,8 @@ class SurveyResultServiceTest {
 
             // ALL モード: user_roles 経由で母集団を取得する
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, 1L, "TEAM")).willReturn(false);
+            given(accessControlService.hasAdminOrPermissionInScope(MEMBER_USER_ID, 1L, "TEAM", "MANAGE_SURVEYS"))
+                    .willReturn(false);
             given(resultViewerRepository.existsBySurveyIdAndUserId(SURVEY_ID, MEMBER_USER_ID)).willReturn(false);
             given(userRoleRepository.findUserIdsByScope("TEAM", 1L)).willReturn(List.of(10L, MEMBER_USER_ID));
             given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID)).willReturn(List.of(response1));
@@ -499,7 +517,8 @@ class SurveyResultServiceTest {
             survey.publish();
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, 1L, "TEAM")).willReturn(false);
+            given(accessControlService.hasAdminOrPermissionInScope(MEMBER_USER_ID, 1L, "TEAM", "MANAGE_SURVEYS"))
+                    .willReturn(false);
             given(resultViewerRepository.existsBySurveyIdAndUserId(SURVEY_ID, MEMBER_USER_ID)).willReturn(false);
             // ALL モード: user_roles に MEMBER_USER_ID が含まれないので isUserInUniverse は false
             given(userRoleRepository.findUserIdsByScope("TEAM", 1L)).willReturn(List.of(10L, 20L));
@@ -537,7 +556,8 @@ class SurveyResultServiceTest {
             SurveyResponseEntity r2 = buildResponse(SURVEY_ID, 30L, respondedAt);
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, 1L, "TEAM")).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(ADMIN_USER_ID, 1L, "TEAM", "MANAGE_SURVEYS"))
+                    .willReturn(true);
             given(userRoleRepository.findUserIdsByScope("TEAM", 1L))
                     .willReturn(List.of(10L, 20L, 30L, 40L, 50L));
             given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
@@ -578,7 +598,8 @@ class SurveyResultServiceTest {
             SurveyResponseEntity r1 = buildResponse(SURVEY_ID, 10L, respondedAt);
 
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
-            given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, 1L, "TEAM")).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(ADMIN_USER_ID, 1L, "TEAM", "MANAGE_SURVEYS"))
+                    .willReturn(true);
             given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(t1, t2));
             given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
                     .willReturn(List.of(r1));
@@ -792,7 +813,8 @@ class SurveyResultServiceTest {
             given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
             org.mockito.BDDMockito.willThrow(new BusinessException(
                             com.mannschaft.app.common.CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(MEMBER_USER_ID, ORG_ID, "ORGANIZATION");
+                    .given(accessControlService).checkAdminOrHasPermissionInScope(
+                            MEMBER_USER_ID, ORG_ID, "ORGANIZATION", "MANAGE_SURVEYS");
 
             assertThatThrownBy(() -> surveyResultService.getTeamBreakdown(SURVEY_ID, MEMBER_USER_ID))
                     .isInstanceOf(BusinessException.class);

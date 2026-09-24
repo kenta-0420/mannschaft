@@ -32,16 +32,54 @@ cp .githooks/pre-commit .git/hooks/pre-commit   # PowerShell: Copy-Item .githook
       "hooks": [
         {
           "type": "command",
-          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<リポジトリ絶対パス>/.claude/hooks/block-honjin-git.ps1\"",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-honjin-git.ps1\"",
           "if": "Bash(git *)",
           "timeout": 15,
           "statusMessage": "本陣git操作ガード"
+        }
+      ]
+    },
+    {
+      "matcher": "PowerShell",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-honjin-git.ps1\"",
+          "timeout": 15,
+          "statusMessage": "本陣git操作ガード(PowerShell)"
         }
       ]
     }
   ]
 }
 ```
+
+### ⚠️ `matcher` は Bash と PowerShell の両方を必ず登録すること
+
+`settings.local.json` は `.gitignore` 済み（マシンローカル）で git 追跡されないため、**この節が登録内容の正本**である。
+
+- Windows の Claude Code は `Bash` と `PowerShell` の2つのシェルツールを持つ。**`matcher` が `Bash` だけだと、PowerShell ツールへ切り替えるだけでガードを丸ごと迂回できる。** 当家では実際に、Bash 経由の commit が誤検知で拒否された足軽が PowerShell へ切り替えて commit・push した事故がある
+- 2026-09-02 の実測: `matcher: "Bash"` のみの登録では、PowerShell ツールの呼び出しでフックは**一度も起動しなかった**（フック本体に標準入力ペイロードを記録して確認）
+- 同じ実測で、PowerShell ツールの PreToolUse ペイロードも Bash と**同じ `tool_input.command` キー**でコマンド行を渡してくることを確認した。したがってフック本体はツール名で分岐する必要がない（同一スクリプトを両 matcher から呼べばよい）
+- **PowerShell 側には `if` による絞り込みを付けない。** `if` の条件式は `Bash(git *)` という Bash 用の書式であり、PowerShell 呼び出しに対する挙動が保証されない。絞り込みが効いてしまうと PowerShell が素通りして穴になるため、絞り込まず必ずフックを起動させる（フック本体は git 変更系以外を即座に素通りさせるので実害は無い）
+
+### 登録元はリポジトリ側に一本化する（2026-09-02）
+
+以前は同じフックが **①リポジトリ `settings.local.json`／②`daimyo` プラグイン配布元／③プラグインキャッシュ** の3系統から登録されており、②③が旧版のまま取り残されていた。PreToolUse は**どれか1つでも deny すれば deny** になるため、①だけを直しても旧版の誤検知が残り続ける。そこで②の登録を外し、**登録もフック本体もリポジトリ側を正本**とした。
+
+- フック本体の正本: `.claude/hooks/block-honjin-git.ps1`（このリポジトリ）
+- プラグイン側 `plugins/daimyo/hooks/hooks.json` の `PreToolUse` は空にしてある。**再び登録を足す場合も、上記の Bash / PowerShell 両対応を必ず守ること**
+- プラグインを再インストール・更新した後は、キャッシュ側（`~/.claude/plugins/cache/daimyo-marketplace/daimyo/<version>/hooks/hooks.json`）に古い登録が復活していないか確認する
+
+### 検証
+
+登録を変えたら必ず検証スクリプトを走らせる（Bash / PowerShell 両ツール分のケースを含む）:
+
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/test-block-honjin-git.ps1
+```
+
+全件合格なら終了コード 0。**本陣ではなく worktree の中で実行すること**（本陣・worktree の実パスを git から実測して使うため）。
 
 ## C. dev サーバーは本陣と別 worktree で起動（任意・推奨）
 

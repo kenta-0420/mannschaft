@@ -17,6 +17,12 @@ import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
+import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
+import com.mannschaft.app.social.announcement.AnnouncementScopeType;
+import com.mannschaft.app.social.announcement.AnnouncementSourceType;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,9 +45,13 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 /**
  * F02.2.1: {@link DashboardService#getTeamDashboard} の可視性フィルタを検証する単体テスト。
@@ -77,6 +87,7 @@ class DashboardServiceVisibilityFilterTest {
     @Mock private PlatformAnnouncementRepository platformAnnouncementRepository;
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
+    @Mock private PaymentGateService paymentGateService;
     @Mock private ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
@@ -87,6 +98,19 @@ class DashboardServiceVisibilityFilterTest {
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 100L;
+
+    private AnnouncementFeedEntity announcement(long id) {
+        AnnouncementFeedEntity feed = mock(AnnouncementFeedEntity.class);
+        given(feed.getId()).willReturn(id);
+        given(feed.getTitleCache()).willReturn("title-" + id);
+        given(feed.getExcerptCache()).willReturn("secret-excerpt");
+        given(feed.getSourceType()).willReturn(AnnouncementSourceType.BLOG_POST);
+        given(feed.getSourceId()).willReturn(900L + id);
+        given(feed.getTargetTeamIds()).willReturn("[100]");
+        given(feed.getScopeType()).willReturn(AnnouncementScopeType.TEAM);
+        given(feed.getScopeId()).willReturn(TEAM_ID);
+        return feed;
+    }
 
     /**
      * チームスコープの全管理対象ウィジェット 10 件のデフォルト可視性マップを返す。
@@ -132,6 +156,44 @@ class DashboardServiceVisibilityFilterTest {
         given(swipeWidgetVisibilityResolver.resolve(any(), any())).willReturn(java.util.Map.of());
         given(swipeWidgetVisibilityResolver.filterIfVisible(any(), any(), any(), any()))
                 .willAnswer(inv -> inv.getArgument(3));
+        given(announcementFeedQueryRepository.findByScope(
+                any(com.mannschaft.app.social.announcement.AnnouncementScopeType.class),
+                anyLong(), any(), any(), anyInt()))
+                .willReturn(List.of());
+    }
+
+    @Test
+    @DisplayName("TEAM告知はHIDDEN除外、LOCKEDは最小情報、batch判定を適用する")
+    void teamAnnouncementsApplyPaymentGateState() {
+        given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+        given(widgetVisibilityResolver.resolve("TEAM", TEAM_ID)).willReturn(teamDefaultVisibilityMap());
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        AnnouncementFeedEntity hidden = announcement(3L);
+        AnnouncementFeedEntity locked = announcement(2L);
+        AnnouncementFeedEntity full = announcement(1L);
+        given(announcementFeedQueryRepository.findByScope(
+                eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), eq(10)))
+                .willReturn(List.of(hidden, locked, full));
+        given(paymentGateService.checkAccessBatch(
+                eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                .willReturn(Map.of(
+                        3L, new GateCheckResponse(false, true, List.of()),
+                        2L, new GateCheckResponse(false, false, List.of()),
+                        1L, new GateCheckResponse(true, false, List.of())));
+
+        TeamDashboardResponse response = dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> notices = (List<Map<String, Object>>) response.getTeamNotices();
+        assertThat(notices).hasSize(2);
+        Map<String, Object> lockedMap = notices.stream()
+                .filter(item -> item.get("id").equals(2L)).findFirst().orElseThrow();
+        assertThat(lockedMap).containsEntry("title_cache", "title-2")
+                .containsEntry("access_state", "LOCKED")
+                .doesNotContainKeys("excerpt_cache", "source_type", "target_team_ids");
+        assertThat(notices.stream().map(item -> item.get("id"))).containsExactly(2L, 1L);
+        verify(paymentGateService).checkAccessBatch(
+                eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class));
     }
 
     // ════════════════════════════════════════════════

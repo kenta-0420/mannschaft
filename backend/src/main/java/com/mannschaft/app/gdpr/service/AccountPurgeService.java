@@ -1,5 +1,7 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.entity.UserEntity;
@@ -54,6 +56,7 @@ public class AccountPurgeService {
     private boolean dryRun;
 
     private final UserRepository userRepository;
+    private final PurgeStartGuard purgeStartGuard;
     private final DataExportRepository dataExportRepository;
     private final StorageService storageService;
 
@@ -73,6 +76,8 @@ public class AccountPurgeService {
     private final AccountPurgeCompletionStatusRepository completionStatusRepository;
     private final GdprS3PurgeFailureRepository gdprS3PurgeFailureRepository;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会後の猶予期間を過ぎたアカウントの強匿名化が実行されず、GDPR 第17条の消去期限を直接破る")
     @BatchEndpoint(name = "gdpr-account-purge-daily", description = "退会後 30 日経過アカウントを毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "accountPurgeBatch", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
@@ -106,6 +111,10 @@ public class AccountPurgeService {
     @Transactional
     void purgeUser(UserEntity user) {
         Long userId = user.getId();
+
+        // 柱①ADMINゼロ根治 §12.5: purge開始マークを先に独立コミットする（AC11）。
+        // これにより本メソッドの以降の処理が失敗しても cancel-withdrawal は確実に止まる。
+        purgeStartGuard.markPurgeStarted(userId);
 
         // Phase 1: トークン・セッション系の削除
         refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId)

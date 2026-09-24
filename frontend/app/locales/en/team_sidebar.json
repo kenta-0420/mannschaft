@@ -4,6 +4,7 @@
       "home": "Home",
       "schedule": "Schedule",
       "match": "Matches",
+      "market": "Market",
       "member": "Members",
       "ops": "Operations",
       "ops_work": "Tasks & Progress",
@@ -14,6 +15,7 @@
     },
     "item": {
       "dashboard": "Dashboard",
+      "member_profiles": "Member Introduction",
       "announcements": "Announcements",
       "chat": "Chat",
       "bulletin": "Bulletin Board",
@@ -24,6 +26,7 @@
       "annual_plan": "Annual Plan",
       "matches": "Match Records",
       "matchAnalytics": "Match Analytics",
+      "market": "Market",
       "members": "Members",
       "circulation": "Circulation",
       "safety_check": "Safety Check",
@@ -41,9 +44,18 @@
       "audit_logs": "Audit Logs",
       "settings": "Settings",
       "faqSettings": "FAQ Settings",
+      "confirmableNotifications": "Confirmation Notifications",
       "billing": "Billing & plan management",
       "leagueTransfers": "League Transfers",
-      "adminConsole": "Admin Console"
+      "adminConsole": "Admin Console",
+      "receipts": "Receipts",
+      "receiptSettings": "Receipt issuer settings",
+      "hourlyRate": "Hourly rate",
+      "vendors": "Vendors",
+      "lineSettings": "LINE Settings",
+      "snsSettings": "SNS Settings",
+      "scheduleSettings": "Schedule Settings",
+      "bulletinCategories": "Bulletin Categories"
     }
   }
 }

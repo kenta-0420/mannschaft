@@ -9,15 +9,17 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -25,9 +27,9 @@ import com.mannschaft.app.common.SecurityUtils;
  * <p>
  * エンドポイント数: 4
  * <ul>
- *   <li>GET  /api/v1/admin/receipt-settings</li>
- *   <li>PUT  /api/v1/admin/receipt-settings</li>
- *   <li>POST /api/v1/admin/receipt-settings/logo</li>
+ *   <li>GET   /api/v1/admin/receipt-settings</li>
+ *   <li>PATCH /api/v1/admin/receipt-settings（差分更新・UPSERT）</li>
+ *   <li>POST  /api/v1/admin/receipt-settings/logo</li>
  *   <li>DELETE /api/v1/admin/receipt-settings/logo</li>
  * </ul>
  */
@@ -48,41 +50,43 @@ public class ReceiptIssuerSettingsController {
     public ResponseEntity<ApiResponse<IssuerSettingsResponse>> getSettings(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.from(scopeType);
         IssuerSettingsResponse response = issuerSettingsService.getSettings(
                 type, scopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
-     * 発行者設定を作成または更新する（UPSERT）。
+     * 発行者設定を差分更新する（未作成なら新規作成する UPSERT）。
+     *
+     * <p>未送信・{@code null} のフィールドは無変更、空文字は明示的なクリアである（F08.4 §9.2）。</p>
      */
-    @PutMapping
-    @Operation(summary = "発行者設定更新")
+    @PatchMapping
+    @Operation(summary = "発行者設定更新（差分更新）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<IssuerSettingsResponse>> upsertSettings(
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @Valid @RequestBody UpdateIssuerSettingsRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.from(scopeType);
         IssuerSettingsResponse response = issuerSettingsService.upsertSettings(
                 type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
-     * ロゴ画像をアップロードする。
+     * ロゴ画像をアップロードする（PNG / JPEG・1MB 以下）。
      */
-    @PostMapping("/logo")
+    @PostMapping(value = "/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "ロゴ画像アップロード")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アップロード成功")
     public ResponseEntity<ApiResponse<IssuerSettingsResponse>> uploadLogo(
             @RequestParam String scopeType,
-            @RequestParam Long scopeId) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        String logoStorageKey = "receipt-logos/" + scopeType + "/" + scopeId + "/logo.png";
-        IssuerSettingsResponse response = issuerSettingsService.updateLogo(
-                type, scopeId, SecurityUtils.getCurrentUserId(), logoStorageKey);
+            @RequestParam Long scopeId,
+            @RequestParam("file") MultipartFile file) {
+        ReceiptScopeType type = ReceiptScopeType.from(scopeType);
+        IssuerSettingsResponse response = issuerSettingsService.uploadLogo(
+                type, scopeId, SecurityUtils.getCurrentUserId(), file);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -95,7 +99,7 @@ public class ReceiptIssuerSettingsController {
     public ResponseEntity<Void> deleteLogo(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.from(scopeType);
         issuerSettingsService.deleteLogo(type, scopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }

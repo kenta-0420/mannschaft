@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.SurveyQuestionType;
 import com.mannschaft.app.schedule.dto.CreateSurveyRequest;
@@ -61,7 +62,7 @@ public class EventSurveyService {
             EventSurveyEntity survey = EventSurveyEntity.builder()
                     .scheduleId(scheduleId)
                     .question(req.getQuestion())
-                    .questionType(SurveyQuestionType.valueOf(req.getQuestionType()))
+                    .questionType(EnumInputParser.parse(SurveyQuestionType.class, req.getQuestionType(), "questionType"))
                     .options(optionsJson)
                     .isRequired(req.getIsRequired())
                     .sortOrder(req.getSortOrder() != null ? req.getSortOrder() : 0)
