@@ -17,13 +17,15 @@ ALTER TABLE billing_price_versions
     ADD COLUMN updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) AFTER created_at;
 
 -- 単一 future 予約制限（マスター裁可・第6版）: 同一 (product_kind, product_key, scope_kind) につき
--- DRAFT/READY/SCHEDULED のいずれかの行は同時に1本まで。半開区間の日時重なりではなく状態そのものを
+-- future（DRAFT/PROVISIONING/PROVISION_FAILED/READY/SCHEDULED）の行は同時に1本まで。
+-- PROVISIONING/PROVISION_FAILED は DRAFT→READY の途中状態で retry/reconcile により READY へ戻りうるため
+-- future として数える（御裁可 2026-09-24）。半開区間の日時重なりではなく状態そのものを
 -- キーにするため、生成列 + UNIQUE KEY で表現する（MySQL は NULL を複数許容するため
--- ACTIVE/RETIRED/PROVISIONING/PROVISION_FAILED 行は制約の対象外になる）。
+-- ACTIVE/RETIRED 行は制約の対象外になる）。
 ALTER TABLE billing_price_versions
     ADD COLUMN future_reservation_key VARCHAR(200)
         GENERATED ALWAYS AS (
-            CASE WHEN status IN ('DRAFT', 'READY', 'SCHEDULED')
+            CASE WHEN status IN ('DRAFT', 'PROVISIONING', 'PROVISION_FAILED', 'READY', 'SCHEDULED')
                  THEN CONCAT(product_kind, '|', product_key, '|', scope_kind)
                  ELSE NULL END
         ) STORED,

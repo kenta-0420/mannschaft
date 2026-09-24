@@ -53,8 +53,15 @@ public class PriceRevisionCreateService {
     private static final long MAX_INPUT_AMOUNT = 9_999_999L;
 
     /** future 予約とみなす状態（マスター裁可・第6版: 同時に1本まで）。 */
+    /**
+     * future（同一商品につき同時に1本まで）とみなす状態。PROVISIONING / PROVISION_FAILED は DRAFT→READY の
+     * 途中状態（retry / reconcile で READY に戻りうる）であり future の一形態として数える
+     * （御裁可 2026-09-24。外すと別 DRAFT を作れてしまい、READY へ戻す瞬間に future が2本併存する）。
+     * DB 側の {@code uk_bpv_single_future}（生成列 future_reservation_key）も同じ5状態を対象にする。
+     */
     private static final Set<BillingPriceVersionStatus> FUTURE_STATUSES =
-            EnumSet.of(BillingPriceVersionStatus.DRAFT, BillingPriceVersionStatus.READY,
+            EnumSet.of(BillingPriceVersionStatus.DRAFT, BillingPriceVersionStatus.PROVISIONING,
+                    BillingPriceVersionStatus.PROVISION_FAILED, BillingPriceVersionStatus.READY,
                     BillingPriceVersionStatus.SCHEDULED);
 
     private final BillingPriceVersionRepository priceVersionRepository;

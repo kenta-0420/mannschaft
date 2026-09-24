@@ -544,6 +544,39 @@ class PriceRevisionCreateServiceTest {
     }
 
     @Test
+    @DisplayName("単一future（御裁可 2026-09-24）: PROVISIONING の revision がある商品では新規 DRAFT の create は409")
+    void singleFuture_provisioningRevisionBlocksNewDraft() {
+        assertSecondDraftConflictsWhileExisting(BillingPriceVersionStatus.PROVISIONING);
+    }
+
+    @Test
+    @DisplayName("単一future（御裁可 2026-09-24）: PROVISION_FAILED の revision がある商品では新規 DRAFT の create は409")
+    void singleFuture_provisionFailedRevisionBlocksNewDraft() {
+        assertSecondDraftConflictsWhileExisting(BillingPriceVersionStatus.PROVISION_FAILED);
+    }
+
+    /**
+     * PROVISIONING / PROVISION_FAILED は DRAFT→READY の途中状態（retry / reconcile で READY に戻りうる）であり
+     * future の一形態。これを future 判定から外すと、別の DRAFT を作れてしまい、後から READY へ戻す瞬間に
+     * future が2本併存する（uk_bpv_single_future 違反または単一 future 制限の破れ）。
+     */
+    private void assertSecondDraftConflictsWhileExisting(BillingPriceVersionStatus existingStatus) {
+        BillingPriceVersionEntity existing = BillingPriceVersionEntity.builder()
+                .productKind(BillingProductKind.PLAN).productKey("FULL").scopeKind(EntitlementScopeKind.TEAM)
+                .status(existingStatus)
+                .effectiveFrom(Instant.parse("2027-03-01T00:00:00Z")).effectiveUntil(null)
+                .revisionNo(1L).build();
+        given(priceVersionRepository.findAllForUpdate(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.TEAM))
+                .willReturn(List.of(existing));
+
+        PriceRevisionCreateRequest req = new PriceRevisionCreateRequest(BillingProductKind.PLAN, "FULL",
+                EntitlementScopeKind.TEAM, Instant.parse("2029-01-01T00:00:00Z"), null,
+                List.of(band(1, 1, null, 1000)));
+
+        assertBadRequest(req, PriceRevisionErrorCode.FUTURE_REVISION_ALREADY_EXISTS);
+    }
+
+    @Test
     @DisplayName("AC-177（第6版新設）: Bがactivateにより future でなくなった（ACTIVE化）後は新規future Cのcreateが成功する")
     void ac177_createSucceedsAfterFormerFutureActivated() {
         BillingPriceVersionEntity nowActiveB = BillingPriceVersionEntity.builder()

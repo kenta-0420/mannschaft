@@ -85,13 +85,13 @@ public class BillingPriceVersionEntity extends UuidV7Entity {
 
     /**
      * 単一 future 予約制限（マスター裁可・第6版）を DB 側で強制するための生成列。
-     * {@code status} が DRAFT/READY/SCHEDULED のときのみ非 null になり、
+     * {@code status} が DRAFT/PROVISIONING/PROVISION_FAILED/READY/SCHEDULED（＝future）のときのみ非 null になり、
      * {@code uk_bpv_single_future} が同一 (product_kind, product_key, scope_kind) の
      * 同時 future を1本に制限する。アプリからは読み取り専用。
      */
     @Column(name = "future_reservation_key", insertable = false, updatable = false,
             columnDefinition = "VARCHAR(200) GENERATED ALWAYS AS "
-                    + "(CASE WHEN status IN ('DRAFT','READY','SCHEDULED') "
+                    + "(CASE WHEN status IN ('DRAFT','PROVISIONING','PROVISION_FAILED','READY','SCHEDULED') "
                     + "THEN CONCAT(product_kind, '|', product_key, '|', scope_kind) ELSE NULL END) STORED")
     private String futureReservationKey;
 
