@@ -14,7 +14,6 @@ const LABEL = {
   toggle: '\u6295\u7a3f\u306e\u516c\u958b\u30fb\u975e\u516c\u958b\u3092\u5207\u308a\u66ff\u3048\u308b',
   visible: '\u516c\u958b\u4e2d',
   hidden: '\u975e\u516c\u958b',
-  saveFailed: '\u5207\u66ff\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002\u518d\u5ea6\u304a\u8a66\u3057\u304f\u3060\u3055\u3044',
 } as const
 
 interface Team { numericId: number, slug: string }
@@ -111,16 +110,11 @@ test('WAVE5-REAL-001: UI visibility toggle controls public pages and rejects out
     expect((await outsiderLoad).status(), 'outsider edit load conceals existence').toBe(404)
     await expect(outsider.page.locator(`input[value="${title}"]`), 'title not disclosed').toHaveCount(0)
     await expect(outsider.page.getByText(marker, { exact: true }), 'body not disclosed').toHaveCount(0)
-    const outsiderToggle = outsider.page.getByRole('switch', { name: LABEL.toggle })
-    await expect(outsiderToggle, 'edit shell cannot disclose the post state').toBeVisible()
-    const outsiderPatch = outsider.page.waitForResponse((r) =>
-      r.request().method() === 'PATCH'
-      && new URL(r.url()).pathname === `/api/v1/blog/posts/${post!.id}/public-visible`)
-    await outsiderToggle.click()
-    expect((await outsiderPatch).status(), 'outsider UI toggle is rejected').toBe(403)
-    await expect(
-      outsider.page.locator('p[role="alert"]').filter({ hasText: LABEL.saveFailed }),
-    ).toBeVisible()
+    await expect(outsider.page.getByTestId('blog-load-error')).toContainText('記事を読み込めませんでした')
+    await expect(outsider.page.getByRole('button', { name: '保存', exact: true })).toHaveCount(0)
+    await expect(outsider.page.getByRole('button', { name: '今すぐ公開', exact: true })).toHaveCount(0)
+    await expect(outsider.page.locator('#autosave-toggle')).toHaveCount(0)
+    await expect(outsider.page.getByRole('switch', { name: LABEL.toggle })).toHaveCount(0)
 
     await owner.page.goto(editPath, { waitUntil: 'domcontentloaded' })
     await waitForHydration(owner.page)
