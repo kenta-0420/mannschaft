@@ -44947,7 +44947,7 @@ export interface paths {
         };
         /**
          * 個人横断お知らせ一覧取得
-         * @description 所属する全チーム/組織のお知らせを横断集約して返す（個人ダッシュボード用）。TODO: AnnouncementFeedService.getPersonalFeed 実装後に本実装に差し替える。
+         * @description 現役のチーム・組織所属のお知らせを横断取得する。ページ継続は未提供。
          */
         get: operations["getPersonalFeed"];
         put?: never;
@@ -60951,6 +60951,7 @@ export interface components {
             read?: boolean;
             /** Format: int64 */
             scopeId?: number;
+            scopeName?: string;
             scopeType?: string;
             /** Format: int64 */
             sourceId?: number;
@@ -165331,6 +165332,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                include_read?: boolean;
             };
             header?: never;
             path?: never;
@@ -165344,7 +165346,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["AnnouncementFeedResponseDto"];
                 };
             };
         };
