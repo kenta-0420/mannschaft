@@ -17,6 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
@@ -60,6 +61,9 @@ class ConfirmableFanoutChunkSinkEmailAndReceiptIT extends AbstractMySqlIntegrati
     @Autowired
     private NotificationFanoutJobRepository fanoutJobRepository;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -85,7 +89,7 @@ class ConfirmableFanoutChunkSinkEmailAndReceiptIT extends AbstractMySqlIntegrati
             jdbc.update("DELETE FROM confirmable_notifications WHERE id = ?", notificationId);
         }
         if (emailPrefix != null) {
-            ConfirmableFanoutFixture.deleteUsers(em, emailPrefix);
+            ConfirmableFanoutFixture.deleteUsers(transactionManager, em, emailPrefix);
         }
     }
 
@@ -94,7 +98,7 @@ class ConfirmableFanoutChunkSinkEmailAndReceiptIT extends AbstractMySqlIntegrati
             + "受信者行と課金（受信者数としてのカウント）は作られる")
     void recipientWithoutEmailIsSkippedInOutboxButStillCounted() {
         emailPrefix = EMAIL_PREFIX_BASE + "-48-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 5, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 5, emailPrefix);
 
         // 1人だけメールアドレスを空にする（「メールアドレスが無い受信者」の代替表現。
         // usersテーブルのemail列はNOT NULLのため、空文字をアドレス未解決の代理として使う）。
@@ -135,7 +139,7 @@ class ConfirmableFanoutChunkSinkEmailAndReceiptIT extends AbstractMySqlIntegrati
             + "受信者が確認すると送信側の受信者行にも反映される")
     void asyncDeliveredNotificationCanBeConfirmedAndReflected() {
         emailPrefix = EMAIL_PREFIX_BASE + "-29-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 1, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 1, emailPrefix);
         Long recipientUserId = userIds.get(0);
 
         ConfirmableNotificationEntity notification = notificationRepository.save(ConfirmableNotificationEntity.builder()

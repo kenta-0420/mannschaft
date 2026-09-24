@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -58,6 +59,9 @@ class ConfirmableNotificationRecipientPageTest extends AbstractMySqlIntegrationT
     private ConfirmableNotificationRepository notificationRepository;
     @Autowired
     private ConfirmableNotificationRecipientRepository recipientRepository;
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -86,7 +90,7 @@ class ConfirmableNotificationRecipientPageTest extends AbstractMySqlIntegrationT
             notificationRepository.deleteById(notificationId);
         }
         if (emailPrefix != null) {
-            ConfirmableFanoutFixture.deleteUsers(em, emailPrefix);
+            ConfirmableFanoutFixture.deleteUsers(transactionManager, em, emailPrefix);
         }
     }
 
@@ -124,7 +128,7 @@ class ConfirmableNotificationRecipientPageTest extends AbstractMySqlIntegrationT
     @DisplayName("AC-59: ADMINが未確認者だけに絞ったページを開くと、総件数・確認済み・未確認件数は通知全体の値で返る")
     void ac59_ADMIN視点_総件数は通知全体の値() throws Exception {
         emailPrefix = EMAIL_PREFIX_BASE + "-59-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 3, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 3, emailPrefix);
         notificationId = createNotification(3, 3);
         seedRecipients(userIds);
         setAuth(adminUserId);
@@ -145,7 +149,7 @@ class ConfirmableNotificationRecipientPageTest extends AbstractMySqlIntegrationT
     @DisplayName("AC-60: MEMBERの場合、公開範囲設定どおりに見えてよい範囲の一覧と件数だけが返る")
     void ac60_MEMBER視点_公開範囲どおりの件数() throws Exception {
         emailPrefix = EMAIL_PREFIX_BASE + "-60-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 1, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 1, emailPrefix);
         notificationId = createNotification(1, 1);
         seedRecipients(userIds);
         // memberUserId も受信者に含める（MEMBER視点の受信者資格）。

@@ -22,6 +22,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDate;
@@ -67,6 +68,9 @@ class ConfirmableFanoutChunkSinkCreditRollbackIT extends AbstractMySqlIntegratio
     @Autowired
     private NotificationFanoutJobRepository fanoutJobRepository;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -97,7 +101,7 @@ class ConfirmableFanoutChunkSinkCreditRollbackIT extends AbstractMySqlIntegratio
             jdbc.update("DELETE FROM organization_notification_balances WHERE organization_id = ?", organizationId);
         }
         if (emailPrefix != null) {
-            ConfirmableFanoutFixture.deleteUsers(em, emailPrefix);
+            ConfirmableFanoutFixture.deleteUsers(transactionManager, em, emailPrefix);
         }
     }
 
@@ -121,7 +125,7 @@ class ConfirmableFanoutChunkSinkCreditRollbackIT extends AbstractMySqlIntegratio
     void duplicateUserIdWithinChunkRollsBackWholeChunk() {
         emailPrefix = EMAIL_PREFIX_BASE + "-24-" + UUID.randomUUID();
         organizationId = ORG_ID_BASE + System.nanoTime() % 1_000_000L;
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 10, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 10, emailPrefix);
         notificationId = createNotification(organizationId);
 
         // チャンク内で同じuser_idを2回渡す（DBのUNIQUE制約 uq_cnr_notification_user 違反を誘発する）。
@@ -153,7 +157,7 @@ class ConfirmableFanoutChunkSinkCreditRollbackIT extends AbstractMySqlIntegratio
     void secondChunkExceedsGraceButFirstChunkStays() {
         emailPrefix = EMAIL_PREFIX_BASE + "-25-" + UUID.randomUUID();
         organizationId = ORG_ID_BASE + 1 + System.nanoTime() % 1_000_000L;
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 20, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 20, emailPrefix);
         notificationId = createNotification(organizationId);
 
         // 猶予期間を既に72時間超過した状態で残高0・無料枠使い切りにしておく
@@ -188,7 +192,7 @@ class ConfirmableFanoutChunkSinkCreditRollbackIT extends AbstractMySqlIntegratio
     void billedCountMatchesActualRecipientRows() {
         emailPrefix = EMAIL_PREFIX_BASE + "-27-" + UUID.randomUUID();
         organizationId = ORG_ID_BASE + 2 + System.nanoTime() % 1_000_000L;
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 30, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 30, emailPrefix);
         notificationId = createNotification(organizationId);
 
         sink.processChunk(UUID.randomUUID(), notificationId, userIds);
@@ -210,7 +214,7 @@ class ConfirmableFanoutChunkSinkCreditRollbackIT extends AbstractMySqlIntegratio
     void finishCommitsJobDeliveryStatusAndStatusTogetherAtomically() {
         emailPrefix = EMAIL_PREFIX_BASE + "-56-" + UUID.randomUUID();
         organizationId = ORG_ID_BASE + 3 + System.nanoTime() % 1_000_000L;
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 5, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 5, emailPrefix);
         notificationId = createNotification(organizationId);
 
         UUID jobId = UUID.randomUUID();

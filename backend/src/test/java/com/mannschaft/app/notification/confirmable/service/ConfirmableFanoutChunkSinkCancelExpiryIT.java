@@ -19,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
@@ -48,6 +49,9 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
     @Autowired
     private NotificationFanoutJobRepository fanoutJobRepository;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -68,7 +72,7 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
             jdbc.update("DELETE FROM confirmable_notifications WHERE id = ?", notificationId);
         }
         if (emailPrefix != null) {
-            ConfirmableFanoutFixture.deleteUsers(em, emailPrefix);
+            ConfirmableFanoutFixture.deleteUsers(transactionManager, em, emailPrefix);
         }
     }
 
@@ -116,7 +120,7 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
     @DisplayName("AC-43: QUEUEDの段階でCANCELLEDされていると、最初のチャンクは1件も作らずstopped=true")
     void cancelledBeforeAnyChunkStopsImmediately() {
         emailPrefix = EMAIL_PREFIX_BASE + "-43-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 10, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 10, emailPrefix);
         notificationId = createNotification(ConfirmableNotificationStatus.CANCELLED);
         UUID jobId = UUID.randomUUID();
 
@@ -132,7 +136,7 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
     @DisplayName("AC-44: 配信の途中でキャンセルされると、それ以降のチャンクは作られないが既存分は残る")
     void cancelMidwayStopsSubsequentChunksButKeepsExisting() {
         emailPrefix = EMAIL_PREFIX_BASE + "-44-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 20, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 20, emailPrefix);
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE);
         UUID jobId = UUID.randomUUID();
 
@@ -158,7 +162,7 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
     @DisplayName("AC-51: 配信の途中でEXPIREDになった場合も、それ以降のチャンクは作られない")
     void expiredMidwayStopsSubsequentChunks() {
         emailPrefix = EMAIL_PREFIX_BASE + "-51-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 20, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 20, emailPrefix);
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE);
         UUID jobId = UUID.randomUUID();
 

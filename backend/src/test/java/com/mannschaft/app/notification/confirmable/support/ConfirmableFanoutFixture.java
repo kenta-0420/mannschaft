@@ -5,6 +5,8 @@ import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import jakarta.persistence.EntityManager;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -26,6 +28,13 @@ public final class ConfirmableFanoutFixture {
     /**
      * {@code count} 人の利用者を一括投入し、生成された ID を昇順で返す。
      *
+     * <p>CI是正（CMP-260920-1040）: フィクスチャの投入はテストメソッド本体のトランザクション
+     * （通常は無い）とは独立した、それ自体で完結するトランザクションで行う必要があるため、
+     * {@link TransactionTemplate}（{@code REQUIRES_NEW}）で明示的に包む
+     * （テスト本体を {@code @Transactional} にはしない。並行・順序系の試練はコミットの実在を
+     * 前提にしているため）。</p>
+     *
+     * @param txManager   呼び出し側で {@code @Autowired} した {@link PlatformTransactionManager}
      * @param em          EntityManager
      * @param count       投入人数
      * @param emailPrefix 実行ごとに一意な接頭辞（例: {@code "cfx-" + UUID.randomUUID()}）。
@@ -33,39 +42,46 @@ public final class ConfirmableFanoutFixture {
      * @return 生成された user.id のリスト（昇順・{@code count} 件）
      */
     @SuppressWarnings("unchecked")
-    public static List<Long> insertUsers(EntityManager em, int count, String emailPrefix) {
-        StringBuilder sql = new StringBuilder(
-                "INSERT INTO users (email, last_name, first_name, display_name, status, "
-                        + "is_searchable, handle_searchable, contact_approval_required, "
-                        + "online_visibility, dm_receive_from, encryption_key_version, "
-                        + "locale, timezone, reporting_restricted, follow_list_visibility, "
-                        + "care_notification_enabled, offline_only, created_at, updated_at) VALUES ");
-        for (int i = 0; i < count; i++) {
-            if (i > 0) {
-                sql.append(',');
+    public static List<Long> insertUsers(
+            PlatformTransactionManager txManager, EntityManager em, int count, String emailPrefix) {
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        tx.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
+        return tx.execute(status -> {
+            StringBuilder sql = new StringBuilder(
+                    "INSERT INTO users (email, last_name, first_name, display_name, status, "
+                            + "is_searchable, handle_searchable, contact_approval_required, "
+                            + "online_visibility, dm_receive_from, encryption_key_version, "
+                            + "locale, timezone, reporting_restricted, follow_list_visibility, "
+                            + "care_notification_enabled, offline_only, created_at, updated_at) VALUES ");
+            for (int i = 0; i < count; i++) {
+                if (i > 0) {
+                    sql.append(',');
+                }
+                sql.append("('").append(emailPrefix).append('-').append(i).append("@example.com', ")
+                        .append("'CFX', 'テスト', 'CFXテスト', 'ACTIVE', 1, 1, 1, 'NOBODY', 'ANYONE', 1, ")
+                        .append("'ja', 'Asia/Tokyo', 0, 'PUBLIC', 1, 0, NOW(), NOW())");
             }
-            sql.append("('").append(emailPrefix).append('-').append(i).append("@example.com', ")
-                    .append("'CFX', 'テスト', 'CFXテスト', 'ACTIVE', 1, 1, 1, 'NOBODY', 'ANYONE', 1, ")
-                    .append("'ja', 'Asia/Tokyo', 0, 'PUBLIC', 1, 0, NOW(), NOW())");
-        }
-        em.createNativeQuery(sql.toString()).executeUpdate();
+            em.createNativeQuery(sql.toString()).executeUpdate();
 
-        List<Object> rows = em.createNativeQuery(
-                        "SELECT id FROM users WHERE email LIKE :prefix ORDER BY id")
-                .setParameter("prefix", emailPrefix + "-%")
-                .getResultList();
-        List<Long> ids = new ArrayList<>(rows.size());
-        for (Object o : rows) {
-            ids.add(((Number) o).longValue());
-        }
-        return ids;
+            List<Object> rows = em.createNativeQuery(
+                            "SELECT id FROM users WHERE email LIKE :prefix ORDER BY id")
+                    .setParameter("prefix", emailPrefix + "-%")
+                    .getResultList();
+            List<Long> ids = new ArrayList<>(rows.size());
+            for (Object o : rows) {
+                ids.add(((Number) o).longValue());
+            }
+            return ids;
+        });
     }
 
     /** 指定した接頭辞で投入した利用者をすべて削除する（{@code @AfterEach} 用）。 */
-    public static void deleteUsers(EntityManager em, String emailPrefix) {
-        em.createNativeQuery("DELETE FROM users WHERE email LIKE :prefix")
+    public static void deleteUsers(PlatformTransactionManager txManager, EntityManager em, String emailPrefix) {
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        tx.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
+        tx.executeWithoutResult(status -> em.createNativeQuery("DELETE FROM users WHERE email LIKE :prefix")
                 .setParameter("prefix", emailPrefix + "-%")
-                .executeUpdate();
+                .executeUpdate());
     }
 
     /**

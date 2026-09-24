@@ -109,7 +109,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
             notificationRepository.deleteById(notificationId);
         }
         if (emailPrefix != null) {
-            ConfirmableFanoutFixture.deleteUsers(em, emailPrefix);
+            ConfirmableFanoutFixture.deleteUsers(transactionManager, em, emailPrefix);
         }
     }
 
@@ -137,7 +137,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
             + "（本体行の悲観ロックで直列化される契約）")
     void cancelThenChunkCreatesNoNewRecipients() {
         emailPrefix = EMAIL_PREFIX_BASE + "-45-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 5, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 5, emailPrefix);
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE,
                 ConfirmableNotificationDeliveryStatus.QUEUED, 0, 0);
 
@@ -158,7 +158,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
     @DisplayName("AC-62: 同じ受信者がconfirmを2回呼んでも、unconfirmed_countは1だけ減る（二重に減らない）")
     void confirmTwiceDecrementsCounterOnlyOnce() {
         emailPrefix = EMAIL_PREFIX_BASE + "-62-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 2, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 2, emailPrefix);
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE,
                 ConfirmableNotificationDeliveryStatus.DELIVERING, 2, 2);
         seedRecipients(userIds);
@@ -184,7 +184,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
             + "（現行cancelはロックを取らず、読取後の対象行を無条件UPDATEするため、この実測で上書きが起きてしまうべき＝red）")
     void cancelRacesWithConcurrentFinishAndMustNotOverwriteCompleted() throws Exception {
         emailPrefix = EMAIL_PREFIX_BASE + "-64-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 1, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 1, emailPrefix);
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE,
                 ConfirmableNotificationDeliveryStatus.DELIVERING, 1, 1);
         seedRecipients(userIds);
@@ -287,7 +287,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
             + "その後の期限切れバッチはこれを上書きしない")
     void finishCompletesFirstThenExpiryDoesNotOverride() {
         emailPrefix = EMAIL_PREFIX_BASE + "-65b-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 1, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 1, emailPrefix);
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE,
                 ConfirmableNotificationDeliveryStatus.DELIVERING, 1, 0); // 既に全員確認済み(unconfirmed=0)
         seedRecipients(userIds);
@@ -314,7 +314,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
             + "delivery_status=DELIVERED・status=ACTIVEのまま。期限を過ぎたあと期限切れバッチでEXPIREDになる")
     void finishDeliveredWithUnconfirmedThenExpiryTransitionsLater() {
         emailPrefix = EMAIL_PREFIX_BASE + "-65c-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 2, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 2, emailPrefix);
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE,
                 ConfirmableNotificationDeliveryStatus.DELIVERING, 2, 2);
         seedRecipients(userIds);
@@ -346,7 +346,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
             + "（§9.3: confirmとconfirmByTokenの両方に同じ件数クエリ契約を適用する）")
     void confirmByTokenForLastRecipientCompletes() {
         emailPrefix = EMAIL_PREFIX_BASE + "-61-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 1, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 1, emailPrefix);
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE,
                 ConfirmableNotificationDeliveryStatus.DELIVERED, 1, 1);
         seedRecipients(userIds);
@@ -381,7 +381,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
             + "finishがCOMPLETEDを確定した場合、EXPIREDに上書きされない")
     void expiryDoesNotOverrideCompletedEvenIfExtractedBeforeFinishCommitted() {
         emailPrefix = EMAIL_PREFIX_BASE + "-67-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 1, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 1, emailPrefix);
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE,
                 ConfirmableNotificationDeliveryStatus.DELIVERING, 1, 0);
         seedRecipients(userIds);

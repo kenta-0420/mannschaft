@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.util.List;
 import java.util.UUID;
@@ -63,6 +64,9 @@ class ConfirmableNotificationFinishCompletionOrderIT extends AbstractMySqlIntegr
     @Autowired
     private NotificationFanoutJobRepository fanoutJobRepository;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -88,14 +92,14 @@ class ConfirmableNotificationFinishCompletionOrderIT extends AbstractMySqlIntegr
             notificationRepository.deleteById(notificationId);
         }
         if (emailPrefix != null) {
-            ConfirmableFanoutFixture.deleteUsers(em, emailPrefix);
+            ConfirmableFanoutFixture.deleteUsers(transactionManager, em, emailPrefix);
         }
     }
 
     /** ACTIVE・DELIVERING の確認通知に、指定人数ぶんの未確認受信者を直接作る（sinkは通さない）。 */
     private List<Long> seedNotificationWithRecipients(int count) {
         emailPrefix = EMAIL_PREFIX_BASE + "-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, count, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, count, emailPrefix);
 
         ConfirmableNotificationEntity notification = notificationRepository.save(ConfirmableNotificationEntity.builder()
                 .scopeType(ScopeType.ORGANIZATION)

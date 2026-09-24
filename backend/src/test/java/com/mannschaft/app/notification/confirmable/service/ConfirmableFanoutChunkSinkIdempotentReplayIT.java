@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
@@ -47,6 +48,9 @@ class ConfirmableFanoutChunkSinkIdempotentReplayIT extends AbstractMySqlIntegrat
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -63,7 +67,7 @@ class ConfirmableFanoutChunkSinkIdempotentReplayIT extends AbstractMySqlIntegrat
             jdbc.update("DELETE FROM confirmable_notifications WHERE id = ?", notificationId);
         }
         if (emailPrefix != null) {
-            ConfirmableFanoutFixture.deleteUsers(em, emailPrefix);
+            ConfirmableFanoutFixture.deleteUsers(transactionManager, em, emailPrefix);
         }
     }
 
@@ -72,7 +76,7 @@ class ConfirmableFanoutChunkSinkIdempotentReplayIT extends AbstractMySqlIntegrat
             + "受信者行・notifications・outbox・unconfirmed_countは2倍にならない")
     void reprocessingSameChunkDoesNotDuplicateAnything() {
         emailPrefix = EMAIL_PREFIX_BASE + "-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 500, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 500, emailPrefix);
         assertThat(userIds).hasSize(500);
 
         ConfirmableNotificationEntity notification = notificationRepository.save(ConfirmableNotificationEntity.builder()

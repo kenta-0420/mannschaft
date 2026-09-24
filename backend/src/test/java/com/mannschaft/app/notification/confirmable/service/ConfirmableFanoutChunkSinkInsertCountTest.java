@@ -17,6 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -62,6 +63,9 @@ class ConfirmableFanoutChunkSinkInsertCountTest extends AbstractMySqlIntegration
     @Autowired
     private SqlStatementCounter statementCounter;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -80,7 +84,7 @@ class ConfirmableFanoutChunkSinkInsertCountTest extends AbstractMySqlIntegration
             jdbc.update("DELETE FROM confirmable_notifications WHERE id = ?", notificationId);
         }
         if (emailPrefix != null) {
-            ConfirmableFanoutFixture.deleteUsers(em, emailPrefix);
+            ConfirmableFanoutFixture.deleteUsers(transactionManager, em, emailPrefix);
         }
     }
 
@@ -89,7 +93,7 @@ class ConfirmableFanoutChunkSinkInsertCountTest extends AbstractMySqlIntegration
             + "それぞれ高々数文（受信者数=500に比例しない）")
     void chunkOf500EmitsBoundedInsertsPerTable() {
         emailPrefix = EMAIL_PREFIX_BASE + "-" + UUID.randomUUID();
-        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(em, 500, emailPrefix);
+        List<Long> userIds = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 500, emailPrefix);
 
         ConfirmableNotificationEntity notification = notificationRepository.save(ConfirmableNotificationEntity.builder()
                 .scopeType(ScopeType.ORGANIZATION)

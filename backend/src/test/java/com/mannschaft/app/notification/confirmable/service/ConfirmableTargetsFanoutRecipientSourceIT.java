@@ -526,8 +526,8 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
     /** confirmable_notifications 最小行を1件 INSERT し、生成IDを返す（FK非依存の直接SQL）。 */
     private long seedConfirmableNotification(long senderUserId) {
         jdbc.update("INSERT INTO confirmable_notifications "
-                        + "(scope_type, scope_id, title, created_by, status, created_at, updated_at) "
-                        + "VALUES ('ORGANIZATION', 1, 'IT title', ?, 'ACTIVE', NOW(), NOW())",
+                        + "(scope_type, scope_id, title, created_by, status, delivered_count, created_at, updated_at) "
+                        + "VALUES ('ORGANIZATION', 1, 'IT title', ?, 'ACTIVE', 0, NOW(), NOW())",
                 senderUserId);
         Long id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
         return id == null ? 0L : id;

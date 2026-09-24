@@ -65,8 +65,10 @@ class ConfirmableNotificationCreateAtomicityIT extends AbstractMySqlIntegrationT
     @BeforeEach
     void setUp() {
         txTemplate = new TransactionTemplate(transactionManager);
-        orgId = insertOrganization();
-        adminUserId = insertUser();
+        TransactionTemplate setupTx = new TransactionTemplate(transactionManager);
+        setupTx.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
+        orgId = setupTx.execute(status -> insertOrganization());
+        adminUserId = setupTx.execute(status -> insertUser());
     }
 
     @Test
