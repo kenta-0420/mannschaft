@@ -715,8 +715,11 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値（JUnit XML の
      * AssertionFailedError メッセージ「1505 → 1459 に減少（-46件）」）へ追随。</p>
+     *
+     * <p>1459 → 1447（2026-09-24）: 管理者ロックのドメインサービス委譲と通知クレジットの
+     * トランザクション境界是正で解消済みとなった D-3 違反 12 行へ追随（CMP-260922-2230）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1459;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1447;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
