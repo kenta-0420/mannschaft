@@ -6,11 +6,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * CMP-260919-1140 Phase 1: メンバーサブタブのロール別可視性設定リポジトリ。
  */
-public interface MemberSubtabRoleVisibilityRepository extends JpaRepository<MemberSubtabRoleVisibilityEntity, Long> {
+public interface MemberSubtabRoleVisibilityRepository extends JpaRepository<MemberSubtabRoleVisibilityEntity, UUID> {
 
     List<MemberSubtabRoleVisibilityEntity> findByScopeTypeAndScopeId(ScopeType scopeType, Long scopeId);
 

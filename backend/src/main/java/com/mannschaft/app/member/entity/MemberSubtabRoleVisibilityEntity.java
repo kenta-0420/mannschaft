@@ -1,5 +1,6 @@
 package com.mannschaft.app.member.entity;
 
+import com.mannschaft.app.common.entity.UuidV7Entity;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.member.MemberSubtabKey;
@@ -7,9 +8,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -26,7 +24,8 @@ import java.time.LocalDateTime;
  * <p>スコープ（チーム／組織）×サブタブ（一覧／紹介）ごとに、最低必要ロール（min_role）を管理する。
  * レコードがないサブタブはアプリ層のデフォルト値（{@link com.mannschaft.app.member.MemberSubtabDefaultMinRoleMap}）
  * が適用されるため、全件 INSERT は行わず、デフォルト値と異なる場合のみ DB レコードが作られる遅延作成方式
- * （{@link com.mannschaft.app.dashboard.entity.DashboardWidgetRoleVisibilityEntity} と同一パターン）。</p>
+ * （{@link com.mannschaft.app.dashboard.entity.DashboardWidgetRoleVisibilityEntity} と同一パターン。
+ * ただし主キーは DB 設計原則 #6 に従い新規テーブルとして UUIDv7 を採用する）。</p>
  *
  * <p>設計書: docs/features/F06.6_member_subtab_visibility.md §3</p>
  */
@@ -35,11 +34,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
-public class MemberSubtabRoleVisibilityEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class MemberSubtabRoleVisibilityEntity extends UuidV7Entity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "scope_type", nullable = false, length = 20)

@@ -8,10 +8,11 @@
 -- 一覧タブ（subtab_key='member_list'）は氏名・役割等を含むため PUBLIC 設定不可（Service 層で検証、422）。
 --
 -- クロスドメインFK禁止のため scope_id には FK を張らず、参照整合性はアプリ層で保証する（インデックスのみ）。
+-- 主キーは DB 設計原則 #6（新規テーブルは UUIDv7）に従い BINARY(16) とする。
 -- 設計書: docs/features/F06.6_member_subtab_visibility.md §3, §9
 
 CREATE TABLE member_subtab_role_visibility (
-  id BIGINT UNSIGNED AUTO_INCREMENT,
+  id BINARY(16) NOT NULL,
   scope_type VARCHAR(20) NOT NULL,
   scope_id BIGINT UNSIGNED NOT NULL,
   subtab_key VARCHAR(30) NOT NULL,
@@ -23,6 +24,6 @@ CREATE TABLE member_subtab_role_visibility (
   UNIQUE KEY uq_msrv_scope_subtab (scope_type, scope_id, subtab_key),
   INDEX idx_msrv_scope (scope_type, scope_id),
   CONSTRAINT fk_msrv_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE RESTRICT
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- 初期データ投入なし。レコードがないサブタブはアプリ層デフォルト（MEMBER）が適用される。
