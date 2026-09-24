@@ -44,7 +44,7 @@ test.describe('CMP-260820-1015 スコア一括入力の実機回帰', () => {
     await awayInput.fill('1')
 
     const saved = page.waitForResponse(
-      (response) => response.url().includes('/scores/batch') && response.request().method() === 'PUT',
+      (response) => response.url().includes('/scores/batch') && response.request().method() === 'POST',
     )
     await page.getByTestId('score-entry-save-button').click()
     expect((await saved).status()).toBe(204)
