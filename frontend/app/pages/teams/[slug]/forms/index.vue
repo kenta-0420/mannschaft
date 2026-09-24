@@ -18,14 +18,18 @@ const loading = ref(true)
 const showSubmitDialog = ref(false)
 const selectedTemplateId = ref<number | null>(null)
 const submissionListRef = ref<{ refresh: () => void } | null>(null)
+/** 取得失敗は「フォームなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 async function loadPublishedTemplates() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await formApi.listTemplates('team', teamSlug, { status: 'PUBLISHED', size: 100 })
     templates.value = res.data
   } catch {
     templates.value = []
+    loadFailed.value = true
   } finally {
     loading.value = false
   }
@@ -88,6 +92,12 @@ onMounted(async () => {
         </template>
       </Card>
     </div>
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="forms-list-error-state"
+      @retry="loadPublishedTemplates"
+    />
 
     <DashboardEmptyState v-else icon="pi pi-file-edit" message="公開中のフォームはありません" />
 

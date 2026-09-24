@@ -91,6 +91,10 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long memberTeamAId;     // TEAM A の非 ADMIN メンバー
     private Long supporterTeamAId;  // TEAM A の SUPPORTER（参照系の下限境界）
     private Long outsiderId;        // どのチームにも属さない認証済みユーザー
+    // CMP-260923-1641 差し戻し対応（Codex 検分指摘）: user_roles に ADMIN ロールを持つが
+    // memberships の在籍行を持たない利用者（開発DB実測: チーム管理者ロール609件中2件が該当）。
+    // isMember を isAdminOrAbove より先に判定すると、この利用者を越境と誤判定して404を返す回帰が生じる。
+    private Long userRolesOnlyAdminTeamAId;
 
     private Long scheduleAId;    // TEAM A のシフトスケジュール（PUBLISHED）
 
@@ -105,6 +109,7 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         memberTeamAId = insertUser("wave3b6-shift-member-team-a@example.com");
         supporterTeamAId = insertUser("wave6-shift-supporter-team-a@example.com");
         outsiderId = insertUser("wave6-shift-outsider@example.com");
+        userRolesOnlyAdminTeamAId = insertUser("wave6-shift-userroles-only-admin-team-a@example.com");
 
         // checkAdminOrAbove（user_roles）と checkMembership（memberships）は別系統のため
         // ADMIN ユーザーにも memberships 行を張る（RepairPlanAuthorizationMatrixTest 踏襲）。
@@ -115,6 +120,8 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, memberTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, supporterTeamAId, ScopeType.TEAM, teamAId, RoleKind.SUPPORTER);
         // outsiderId は意図的にどの memberships / user_roles にも紐付けない
+        // memberships は張らず、user_roles の ADMIN 行のみを持つ利用者（CMP-260923-1641 差し戻し対応）。
+        MembershipTestHelper.insertUserRole(em, userRolesOnlyAdminTeamAId, "ADMIN", teamAId, null);
 
         ShiftScheduleEntity scheduleA = scheduleRepository.save(ShiftScheduleEntity.builder()
                 .teamId(teamAId)
@@ -486,6 +493,60 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andReturn().getResponse().getContentAsString();
 
             org.assertj.core.api.Assertions.assertThat(crossTenantBody).isEqualTo(notFoundBody);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 8. user_roles のみに ADMIN ロールを持つ利用者（memberships 在籍行なし）が
+    //    読取系・管理系ともに通れること
+    //    （CMP-260923-1641 差し戻し対応・Codex 検分指摘。開発DB実測: チーム管理者ロール609件中2件該当）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("8. user_rolesのみのADMIN（membershipsの在籍行なし）は読取系・管理系ともに通過できる")
+    class UserRolesOnlyAdmin {
+
+        @Test
+        @DisplayName("GET /schedules/{id}（詳細）は200")
+        void 詳細は200() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("PATCH /schedules/{id}（更新）は200")
+        void 更新は200() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(patch("/api/v1/shifts/schedules/{id}", scheduleAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("title", "更新後"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("POST /schedules/{id}/transition（PUBLISH遷移）は200")
+        void 遷移は200() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/schedules/{id}/transition", scheduleAId)
+                            .param("status", "PUBLISHED"))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("POST /schedules/{id}/duplicate（複製）は201")
+        void 複製は201() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/schedules/{id}/duplicate", scheduleAId))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("DELETE /schedules/{id}（削除）は204")
+        void 削除は204() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(delete("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isNoContent());
         }
     }
 

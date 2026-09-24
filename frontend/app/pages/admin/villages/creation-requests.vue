@@ -42,6 +42,8 @@ const requests = ref<VillageCreationRequestResponse[]>([])
 const loading = ref(false)
 const totalRecords = ref(0)
 const page = ref(0)
+/** 取得失敗は「申請なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 // 詳細 Dialog
 const detailVisible = ref(false)
@@ -67,6 +69,7 @@ const submitting = ref(false)
 async function load() {
   if (!isAllowed.value) return
   loading.value = true
+  loadFailed.value = false
   try {
     const params = {
       ...(statusFilter.value === 'ALL' ? {} : { status: statusFilter.value }),
@@ -80,6 +83,7 @@ async function load() {
   catch {
     requests.value = []
     totalRecords.value = 0
+    loadFailed.value = true
     showError(t('village.creationRequest.loadFailed'))
   }
   finally {
@@ -240,7 +244,15 @@ onMounted(() => {
         </TabList>
       </Tabs>
 
+      <!-- 取得失敗: 空状態とは別に描き分ける -->
+      <DashboardErrorState
+        v-if="loadFailed"
+        testid="creation-requests-error-state"
+        @retry="load"
+      />
+
       <DataTable
+        v-else
         :value="requests"
         :loading="loading"
         data-key="id"

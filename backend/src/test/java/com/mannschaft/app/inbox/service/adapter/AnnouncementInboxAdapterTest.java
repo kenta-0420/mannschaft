@@ -1,5 +1,6 @@
 package com.mannschaft.app.inbox.service.adapter;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.inbox.InboxPriority;
@@ -7,7 +8,6 @@ import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.InboxState;
 import com.mannschaft.app.inbox.dto.InboxItemDto;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedRepository;
@@ -59,7 +59,8 @@ class AnnouncementInboxAdapterTest {
     private static final Long TEAM_ID = 10L;
     private static final Long ORG_ID = 20L;
 
-    private final UserRoleRepository userRoleRepository = mock(UserRoleRepository.class);
+    private final MembershipScopeQueryService membershipScopeQueryService =
+            mock(MembershipScopeQueryService.class);
     private final RoleResolver roleResolver = mock(RoleResolver.class);
     private final AnnouncementFeedQueryRepository feedQueryRepository =
             mock(AnnouncementFeedQueryRepository.class);
@@ -70,7 +71,7 @@ class AnnouncementInboxAdapterTest {
     private final PaymentGateService paymentGateService = mock(PaymentGateService.class);
 
     private final AnnouncementInboxAdapter adapter = new AnnouncementInboxAdapter(
-            userRoleRepository, roleResolver, feedQueryRepository, feedRepository,
+            membershipScopeQueryService, roleResolver, feedQueryRepository, feedRepository,
             readStatusRepository, normalizer,
             new com.mannschaft.app.inbox.service.InboxDedupeKeyResolver(), paymentGateService);
 
@@ -119,8 +120,8 @@ class AnnouncementInboxAdapterTest {
 
     /** 所属なし・既読なしの既定スタブ。 */
     private void noScopes() {
-        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
         given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                 .willReturn(List.of());
     }
@@ -144,8 +145,8 @@ class AnnouncementInboxAdapterTest {
                     "MEMBERS_AND_ABOVE", "locked", "secret", LocalDateTime.now(), null, null);
             AnnouncementFeedEntity full = feed(82L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
                     "MEMBERS_AND_ABOVE", "full", "excerpt", LocalDateTime.now(), null, null);
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of(TEAM_ID));
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
                     .willReturn(List.of(hidden, locked, full));
@@ -182,9 +183,9 @@ class AnnouncementInboxAdapterTest {
             AnnouncementFeedEntity f = feed(
                     30L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL", "MEMBERS_AND_ABOVE",
                     "お知らせタイトル", "抜粋", now, null, null);
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
@@ -218,9 +219,9 @@ class AnnouncementInboxAdapterTest {
                     "MEMBERS_AND_ABOVE", "i", "e", now, null, null);
             AnnouncementFeedEntity n = feed(33L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
                     "MEMBERS_AND_ABOVE", "n", "e", now, null, null);
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
@@ -247,9 +248,9 @@ class AnnouncementInboxAdapterTest {
             AnnouncementFeedEntity unread = feed(41L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
                     "MEMBERS_AND_ABOVE", "unread", "e", now, null, null);
             AnnouncementReadStatusEntity rs = readStatus(40L);
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(feedQueryRepository.findByScope(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
@@ -274,9 +275,9 @@ class AnnouncementInboxAdapterTest {
                     "MEMBERS_AND_ABOVE", "t", "e", now, null, null);
             AnnouncementFeedEntity orgFeed = feed(51L, AnnouncementScopeType.ORGANIZATION, ORG_ID, "NORMAL",
                     "MEMBERS_AND_ABOVE", "o", "e", now, null, null);
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID))
                     .willReturn(List.of(ORG_ID));
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(roleResolver.resolveViewerRole(USER_ID, "ORGANIZATION", ORG_ID)).willReturn(ViewerRole.MEMBER);
@@ -310,8 +311,8 @@ class AnnouncementInboxAdapterTest {
                     "MEMBERS_AND_ABOVE", "l", "e", LocalDateTime.now(), null, null);
             given(feedRepository.findById(90L)).willReturn(Optional.of(hidden));
             given(feedRepository.findById(91L)).willReturn(Optional.of(locked));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of(TEAM_ID));
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             given(paymentGateService.checkAccess(
                     eq(ContentGateType.ANNOUNCEMENT), eq(90L), eq(USER_ID), any(ContentGateTarget.class)))
@@ -330,9 +331,9 @@ class AnnouncementInboxAdapterTest {
             AnnouncementFeedEntity f = feed(60L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
                     "MEMBERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, null);
             given(feedRepository.findById(60L)).willReturn(Optional.of(f));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             givenFullGate(60L);
 
@@ -345,9 +346,9 @@ class AnnouncementInboxAdapterTest {
             AnnouncementFeedEntity f = feed(61L, AnnouncementScopeType.TEAM, 999L, "NORMAL",
                     "MEMBERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, null);
             given(feedRepository.findById(61L)).willReturn(Optional.of(f));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
 
             assertThat(adapter.isVisibleTo(USER_ID, 61L)).isFalse();
@@ -361,9 +362,9 @@ class AnnouncementInboxAdapterTest {
             AnnouncementFeedEntity f = feed(62L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
                     "MEMBERS_AND_ABOVE", "t", "e", LocalDateTime.now(), null, null);
             given(feedRepository.findById(62L)).willReturn(Optional.of(f));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.SUPPORTER);
 
             assertThat(adapter.isVisibleTo(USER_ID, 62L)).isFalse();
@@ -378,9 +379,9 @@ class AnnouncementInboxAdapterTest {
                     "PUBLIC", "t", "e", LocalDateTime.now(), null, null);
             given(feedRepository.findById(66L)).willReturn(Optional.of(sup));
             given(feedRepository.findById(67L)).willReturn(Optional.of(pub));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.SUPPORTER);
             givenFullGate(66L, 67L);
 
@@ -400,9 +401,9 @@ class AnnouncementInboxAdapterTest {
             given(feedRepository.findById(70L)).willReturn(Optional.of(members));
             given(feedRepository.findById(71L)).willReturn(Optional.of(sup));
             given(feedRepository.findById(72L)).willReturn(Optional.of(pub));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
             givenFullGate(70L, 71L, 72L);
 
