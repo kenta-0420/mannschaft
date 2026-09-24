@@ -174,6 +174,7 @@ CREATE TABLE billing_contracts (
 
 - **契約の一意性は DB で保証する**（アプリ層 exists チェックだけでは TOCTOU レースで二重契約が作れるため）。§3.1.1 の「アクティブ契約ポインタ表」で物理担保する。`billing_contracts` 自体は**契約履歴（append-only）**として全行を残す（`status` を含む UNIQUE は CANCELLED→再契約の履歴を壊すので張らない）。
 - **PSP 列**: `psp_customer_ref` / `psp_subscription_ref` / `current_period_end` は履歴/逆引き用に温存する。V196 で `billing_customer_id` と不変 `price_band_version_id` を追加する。親`billing_price_versions`はcatalog revision、Money/税/Stripe Priceを持つ子`billing_price_band_versions`を販売正本とし、以後の所有者・販売価格を正規化する（05 §5）。
+- **band の税 snapshot（価格改定戦役）**: `billing_price_band_versions.tax_code_snapshot` は税コードマスタ `billing_tax_codes` の**内部 `code`**（例 `JP_STANDARD_10`。API・DTO の `taxCode`）を保持する。`tax_master_snapshot`（JSON）は revision create 時に band の `effectiveFrom` 時点で解決したマスタ行を `{code, displayName, rateBasisPoints, stripeTaxCode}` で固定する。**Stripe Product の `tax_code`・Product 解決キー（`billing_stripe_products.stripe_tax_code`）・reconcile の Product `tax_code` 照合には、この snapshot の `stripeTaxCode`（`txcd_...`。未設定なら null＝tax_code を付けない）を使い、内部 `code` は Stripe へ渡さない**（Provision 時にマスタを引き直さない＝決定8。マスタの `stripe_tax_code` を後から更新しても作成済み revision の税分類は変わらない）。当初 Provision が内部 `code` を Stripe の `tax_code` に渡していた欠陥（2026-09-24 Codex 検分）の根治。
 - Repository: `BillingContractRepository extends AbstractTenantAwareRepository<BillingContractEntity, UUID>`（`organization_id` NULL 許容＋`deleted_at` 保持で適用・escrow 前例・§0）。
 
 ### 3.1.1 `active_contract_pointers`（契約一意性の DB バックストップ・H-1）

@@ -111,7 +111,10 @@ class PriceRevisionProvisionTransactionIT extends AbstractMySqlIntegrationTest {
                 BillingProductKind.PLAN, planKey, EntitlementScopeKind.TEAM,
                 Instant.now().plusSeconds(3600), null,
                 List.of(new PriceBandInput(1, 1, null, 1000L, BillingTaxBehavior.EXCLUSIVE, TAX_CODE)));
-        return createService.create(request, 1L);
+        PriceRevisionResponse draft = createService.create(request, 1L);
+        // create 応答の band id は後続操作（観測・reconcile）の鍵。null なら create 側の欠陥。
+        assertThat(draft.getBands()).allSatisfy(b -> assertThat(b.getId()).isNotNull());
+        return draft;
     }
 
     @Test
@@ -148,17 +151,27 @@ class PriceRevisionProvisionTransactionIT extends AbstractMySqlIntegrationTest {
         AtomicReference<BillingPriceVersionStatus> revisionSeenByOtherTx = new AtomicReference<>();
         AtomicReference<BillingPriceVersionStatus> bandSeenByOtherTx = new AtomicReference<>();
 
+        AtomicReference<Throwable> observationFailure = new AtomicReference<>();
         given(gateway.resolveOrCreateProduct(any())).willAnswer(invocation -> {
-            revisionSeenByOtherTx.set(observeInOtherThread(
-                    () -> versionRepository.findById(revisionId).orElseThrow().getStatus()));
-            bandSeenByOtherTx.set(observeInOtherThread(
-                    () -> bandRepository.findById(bandId).orElseThrow().getStatus()));
+            // 観測の失敗を RuntimeException で投げると fail-forward の catch に飲まれて原因が消えるため、
+            // 記録だけして後で assert する。
+            try {
+                revisionSeenByOtherTx.set(observeInOtherThread(
+                        () -> versionRepository.findById(revisionId).orElseThrow().getStatus()));
+                bandSeenByOtherTx.set(observeInOtherThread(
+                        () -> bandRepository.findById(bandId).orElseThrow().getStatus()));
+            } catch (RuntimeException e) {
+                observationFailure.set(e);
+            }
             // Stripe 呼び出し中のプロセス停止を模擬する（fail-forward の catch(RuntimeException) を素通りする）。
             throw new SimulatedProcessDeath();
         });
 
         assertThatThrownBy(() -> provisionService.provision(revisionId, draft.getLockVersion(), 1L))
+                .as("Gateway の中で模擬したプロセス停止が呼び出し元まで伝播すること"
+                        + "（伝播しない場合は Gateway 到達前に band が失敗している）")
                 .isInstanceOf(SimulatedProcessDeath.class);
+        assertThat(observationFailure.get()).as("別スレッドからの DB 観測自体が失敗していないこと").isNull();
 
         assertThat(bandSeenByOtherTx.get())
                 .as("Stripe 呼び出し時点で band の PROVISIONING が commit 済みでなければならない")
@@ -177,7 +190,12 @@ class PriceRevisionProvisionTransactionIT extends AbstractMySqlIntegrationTest {
         try {
             return observer.submit(query).get(30, TimeUnit.SECONDS);
         } catch (Exception e) {
-            throw new IllegalStateException("別スレッドからの DB 観測に失敗しました", e);
+            Throwable root = e;
+            while (root.getCause() != null) {
+                root = root.getCause();
+            }
+            throw new IllegalStateException("別スレッドからの DB 観測に失敗しました: "
+                    + root.getClass().getName() + ": " + root.getMessage(), e);
         }
     }
 

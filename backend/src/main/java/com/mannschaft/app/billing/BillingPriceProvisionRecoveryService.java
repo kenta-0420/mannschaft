@@ -1,15 +1,10 @@
 package com.mannschaft.app.billing;
 
-import com.mannschaft.app.auth.AuditEventType;
-import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.billing.api.dto.PriceRevisionBandResponse;
 import com.mannschaft.app.billing.api.dto.PriceRevisionResponse;
-import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.billing.tax.BillingTaxMasterSnapshot;
 import com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +20,10 @@ import java.util.UUID;
  * （unit_amount/currency/recurring/Product/tax_behavior/Product の tax_code）で READY へ回収するか、
  * 一致しなければ {@code RECONCILE_ATTRIBUTE_MISMATCH} で隔離する（第5版・重大3の直接反証）。</p>
  *
+ * <p>本メソッド自体は {@code @Transactional} にしない（AC-69: Stripe 呼び出しを DB トランザクションに
+ * 含めない）。DB の読み取りと結果反映は別 Bean {@link BillingPriceReconcileStateWriter} の2つの独立
+ * トランザクションで行い、その間でトランザクション外に Stripe を照会する。</p>
+ *
  * <p>正本: {@code .claude/campaigns/price-rev-plan-v3.md} 決定3改訂・決定9改訂・AC-96〜AC-103。</p>
  */
 @Service
@@ -33,26 +32,17 @@ public class BillingPriceProvisionRecoveryService {
     /** 決定9改訂（第6版・重大3対応）: provision系3EPと同一の9分猶予。 */
     private static final Duration STALE_THRESHOLD = Duration.ofMinutes(9);
 
-    private final BillingPriceVersionRepository versionRepository;
-    private final BillingPriceBandVersionRepository bandRepository;
+    private final BillingPriceReconcileStateWriter stateWriter;
     private final BillingPriceProvisionGateway gateway;
-    private final Clock clock;
     private final StripeEnvironmentIdentifier environmentIdentifier;
-    private final AuditLogService auditLogService;
 
     public BillingPriceProvisionRecoveryService(
-            BillingPriceVersionRepository versionRepository,
-            BillingPriceBandVersionRepository bandRepository,
+            BillingPriceReconcileStateWriter stateWriter,
             BillingPriceProvisionGateway gateway,
-            Clock clock,
-            StripeEnvironmentIdentifier environmentIdentifier,
-            AuditLogService auditLogService) {
-        this.versionRepository = versionRepository;
-        this.bandRepository = bandRepository;
+            StripeEnvironmentIdentifier environmentIdentifier) {
+        this.stateWriter = stateWriter;
         this.gateway = gateway;
-        this.clock = clock;
         this.environmentIdentifier = environmentIdentifier;
-        this.auditLogService = auditLogService;
     }
 
     /** AC-99/AC-100: provision系3EPと同一の9分lease猶予。 */
@@ -60,80 +50,44 @@ public class BillingPriceProvisionRecoveryService {
         return STALE_THRESHOLD;
     }
 
-    @Transactional
     public PriceRevisionResponse reconcileProvision(UUID id, long lockVersion, Long actorId) {
-        BillingPriceVersionEntity revision = versionRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new BusinessException(PriceRevisionErrorCode.REVISION_NOT_FOUND));
+        // AC-102/AC-103: 404 と lockVersion の CAS。
+        BillingPriceReconcileStateWriter.ReconcilePlan plan = stateWriter.begin(id, lockVersion);
 
-        // AC-103: lockVersion を必須CAS条件とする。
-        if (!Objects.equals(revision.getLockVersion(), lockVersion)) {
-            throw new BusinessException(PriceRevisionErrorCode.LOCK_VERSION_CONFLICT);
+        List<BillingPriceReconcileStateWriter.ReconcileOutcome> outcomes = new ArrayList<>();
+        for (BillingPriceReconcileStateWriter.ReconcileTarget band : plan.bands()) {
+            outcomes.add(reconcileBand(plan.revisionId(), band));
         }
 
-        List<BillingPriceBandVersionEntity> bands = bandRepository.findAllByPriceVersionIdForUpdate(id);
-
-        boolean allReady = true;
-        String firstErrorCode = null;
-        for (BillingPriceBandVersionEntity band : bands) {
-            if (band.getStatus() != BillingPriceVersionStatus.PROVISIONING) {
-                if (band.getStatus() != BillingPriceVersionStatus.READY) {
-                    allReady = false;
-                }
-                continue;
-            }
-
-            String errorCode = reconcileBand(revision, band);
-            if (errorCode != null) {
-                allReady = false;
-                if (firstErrorCode == null) {
-                    firstErrorCode = errorCode;
-                }
-            }
-        }
-        bandRepository.saveAll(bands);
-
-        revision.setStatus(allReady ? BillingPriceVersionStatus.READY : BillingPriceVersionStatus.PROVISION_FAILED);
-        revision.setLastProvisionErrorCode(allReady ? null : firstErrorCode);
-        versionRepository.save(revision);
-        // 根治治療（2026-09-23）: lockVersion は @Version（JPA optimistic lock）で Hibernate が
-        // flush 時にのみインクリメントする。save() 直後に revision.getLockVersion() を読んでも
-        // flush 前は旧値のままのことがあり、レスポンスの lockVersion が実際に永続化された値と
-        // 食い違う（クライアントが次のCAS呼び出しで確実に409になる）。明示的に flush して
-        // レスポンス構築前に確定させる。
-        versionRepository.flush();
-
-        // L群AC-171: 監査記録。band成否の詳細・Stripe Price/Product IDは載せない（AC-168）。
-        auditLogService.record(AuditEventType.PRICE_REVISION_RECONCILED.name(), actorId, null, null, null,
-                null, null, null,
-                "{\"revisionId\":\"" + revision.getId() + "\",\"status\":\"" + revision.getStatus() + "\"}");
-
-        return toResponse(revision, bands);
+        return stateWriter.complete(id, plan.lockVersion(), outcomes, actorId);
     }
 
     /**
      * AC-96/AC-97/AC-97a/AC-98: metadata で見つけた Price の全属性（tax_code含む）が band snapshot と
-     * 一致する場合にのみ READY へ回収する。
+     * 一致する場合にのみ READY へ回収する（トランザクション外で呼ぶ）。
      */
-    private String reconcileBand(BillingPriceVersionEntity revision, BillingPriceBandVersionEntity band) {
+    private BillingPriceReconcileStateWriter.ReconcileOutcome reconcileBand(
+            UUID revisionId, BillingPriceReconcileStateWriter.ReconcileTarget band) {
         Optional<BillingPriceProvisionGateway.PriceSnapshot> found =
-                gateway.findPriceByMetadata(revision.getId(), band.getId());
+                gateway.findPriceByMetadata(revisionId, band.bandId());
         if (found.isEmpty()) {
-            band.setStatus(BillingPriceVersionStatus.PROVISION_FAILED);
-            String code = "RECONCILE_PRICE_NOT_FOUND";
-            band.setProvisionErrorCode(code);
-            return code;
+            return new BillingPriceReconcileStateWriter.ReconcileOutcome(
+                    band.bandId(), null, "RECONCILE_PRICE_NOT_FOUND");
         }
 
         BillingPriceProvisionGateway.PriceSnapshot snapshot = found.get();
-        boolean matches = snapshot.unitAmount() == band.getInputAmount()
+        boolean matches = snapshot.unitAmount() == band.inputAmount()
                 && "jpy".equalsIgnoreCase(snapshot.currency())
                 && "month".equalsIgnoreCase(snapshot.recurringInterval())
                 && snapshot.recurringIntervalCount() == 1
-                && band.getProductKind().name().equals(snapshot.productKind())
-                && band.getProductKey().equals(snapshot.productKey())
-                && band.getTaxBehavior().name().equalsIgnoreCase(snapshot.taxBehavior())
+                && band.productKind().name().equals(snapshot.productKind())
+                && band.productKey().equals(snapshot.productKey())
+                && band.taxBehavior().name().equalsIgnoreCase(snapshot.taxBehavior())
                 // AC-97a（第5版・重大3の直接反証）: Product 実体の tax_code まで一致しなければ回収しない。
-                && Objects.equals(band.getTaxCodeSnapshot(), snapshot.productTaxCode())
+                // 比較対象は band snapshot の Stripe 側税コード（txcd_...）。内部 code（taxCodeSnapshot）とは
+                // 別概念であり、内部 code と比べると正しく作られた Price も常に不一致になる（決定7）。
+                && Objects.equals(BillingTaxMasterSnapshot.stripeTaxCodeOf(band.taxMasterSnapshot()),
+                        snapshot.productTaxCode())
                 // AC-79: test/live Price 分離。作成時に焼いた環境識別子と現在の実行環境の識別子が
                 // 一致しなければ回収しない（test 環境で作られた Price を live 環境が拾う事故を防ぐ）。
                 // "unknown" 同士は素直な等値比較で一致扱いになる（ローカル開発は両側とも
@@ -141,52 +95,9 @@ public class BillingPriceProvisionRecoveryService {
                 && Objects.equals(environmentIdentifier.environmentId(), snapshot.environmentId());
 
         if (!matches) {
-            band.setStatus(BillingPriceVersionStatus.PROVISION_FAILED);
-            String code = PriceRevisionErrorCode.RECONCILE_ATTRIBUTE_MISMATCH.name();
-            band.setProvisionErrorCode(code);
-            return code;
+            return new BillingPriceReconcileStateWriter.ReconcileOutcome(
+                    band.bandId(), null, PriceRevisionErrorCode.RECONCILE_ATTRIBUTE_MISMATCH.name());
         }
-
-        band.setStripePriceRef(snapshot.stripePriceId());
-        band.setStatus(BillingPriceVersionStatus.READY);
-        band.setProvisionErrorCode(null);
-        return null;
-    }
-
-    private PriceRevisionResponse toResponse(
-            BillingPriceVersionEntity revision, List<BillingPriceBandVersionEntity> bands) {
-        List<PriceRevisionBandResponse> bandResponses = new ArrayList<>();
-        for (BillingPriceBandVersionEntity band : bands) {
-            bandResponses.add(PriceRevisionBandResponse.builder()
-                    .id(band.getId())
-                    .bandNo(band.getBandNo())
-                    .minMembers(band.getMinMembers())
-                    .maxMembers(band.getMaxMembers())
-                    .inputAmount(band.getInputAmount())
-                    .taxBehavior(band.getTaxBehavior())
-                    .taxCode(band.getTaxCodeSnapshot())
-                    .amountExcludingTax(band.getAmountExcludingTax())
-                    .taxAmount(band.getTaxAmount())
-                    .amountIncludingTax(band.getAmountIncludingTax())
-                    .taxRateBasisPoints(band.getTaxRateBasisPoints())
-                    .status(band.getStatus())
-                    .stripePriceRef(band.getStripePriceRef())
-                    .provisionErrorCode(band.getProvisionErrorCode())
-                    .provisionAttempts(band.getProvisionAttempts() == null ? 0 : band.getProvisionAttempts())
-                    .build());
-        }
-        return PriceRevisionResponse.builder()
-                .id(revision.getId())
-                .productKind(revision.getProductKind())
-                .productKey(revision.getProductKey())
-                .scopeKind(revision.getScopeKind())
-                .revisionNo(revision.getRevisionNo())
-                .catalogRevision(revision.getCatalogRevision())
-                .status(revision.getStatus())
-                .lockVersion(revision.getLockVersion())
-                .effectiveFrom(revision.getEffectiveFrom())
-                .effectiveUntil(revision.getEffectiveUntil())
-                .bands(bandResponses)
-                .build();
+        return new BillingPriceReconcileStateWriter.ReconcileOutcome(band.bandId(), snapshot.stripePriceId(), null);
     }
 }

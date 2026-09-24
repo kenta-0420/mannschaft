@@ -42,9 +42,9 @@ public class BillingTaxDerivationService {
             amountIncludingTax = amountExcludingTax + taxAmount;
         }
 
-        String taxMasterSnapshot = String.format(
-                "{\"code\":\"%s\",\"displayName\":\"%s\",\"rateBasisPoints\":%d}",
-                taxCode.code(), taxCode.displayName(), rateBasisPoints);
+        // Stripe 側税コード（stripeTaxCode）も snapshot に固定する。Provision / reconcile はこれを
+        // Stripe Product の tax_code に使う（決定7・決定8。内部 code は Stripe へ渡さない）。
+        String taxMasterSnapshot = BillingTaxMasterSnapshot.of(taxCode);
 
         return BillingTaxDerivationResult.builder()
                 .amountExcludingTax(amountExcludingTax)

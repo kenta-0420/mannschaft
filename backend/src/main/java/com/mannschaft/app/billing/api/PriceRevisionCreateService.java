@@ -166,6 +166,11 @@ public class PriceRevisionCreateService {
                     .createdBy(adminId)
                     .creationSource(BillingPriceCreationSource.OPERATOR)
                     .build();
+            // 根治治療（2026-09-24・IT で実測）: band は @Version（lockVersion 既定 0）を持つため、Spring Data は
+            // 「新規ではない」と判定して persist ではなく merge する。merge は別インスタンスへ採番するので、
+            // ここで保持している bandEntity の id は null のまま残り、create 応答の band id が null になっていた。
+            // revision と同じく id をアプリ側で採番してから保存する。
+            bandEntity.setId(UuidV7.generate());
             bandEntities.add(bandEntity);
         }
         bandVersionRepository.saveAll(bandEntities);

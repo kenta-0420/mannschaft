@@ -22,9 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -65,22 +63,30 @@ class PriceRevisionProvisionServiceTest {
     @Mock private BillingStripeProductRepository stripeProductRepository;
     @Mock private BillingPriceProvisionGateway gateway;
 
-    private PriceRevisionProvisionService service() {
-        return new PriceRevisionProvisionService(
-                versionRepository, bandRepository, stripeProductRepository, gateway,
-                Clock.fixed(NOW, ZoneOffset.UTC), new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier(),
+    private PriceRevisionProvisionStateWriter stateWriter() {
+        return new PriceRevisionProvisionStateWriter(versionRepository, bandRepository,
                 org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class));
+    }
+
+    private PriceRevisionProvisionService service() {
+        return new PriceRevisionProvisionService(stateWriter(), stripeProductRepository, gateway,
+                new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier());
+    }
+
+    private PriceRevisionRetryProvisionService retryService() {
+        return new PriceRevisionRetryProvisionService(stateWriter(), stripeProductRepository, gateway,
+                new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier());
     }
 
     @Test
     @DisplayName("AC-66: 全band成功時は200と status='READY' を返す。202もPROVISIONINGも返さない")
     void allBandsSucceedReturnsReadySynchronously() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "TAX10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_10000000");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(
-                revision.getProductKind(), revision.getProductKey(), "TAX10")).willReturn(Optional.empty());
+                revision.getProductKind(), revision.getProductKey(), "txcd_10000000")).willReturn(Optional.empty());
         given(gateway.resolveOrCreateProduct(any())).willReturn(
                 new BillingPriceProvisionGateway.ProductResolution("prod_1", true));
         given(gateway.createPrice(any())).willReturn(
@@ -96,11 +102,11 @@ class PriceRevisionProvisionServiceTest {
     @DisplayName("AC-67: 全band失敗でも常に200と status='PROVISION_FAILED'（502分岐は無い）")
     void allBandsFailStillReturns200WithProvisionFailed() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "TAX10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_10000000");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(
-                revision.getProductKind(), revision.getProductKey(), "TAX10")).willReturn(Optional.empty());
+                revision.getProductKind(), revision.getProductKey(), "txcd_10000000")).willReturn(Optional.empty());
         given(gateway.resolveOrCreateProduct(any())).willThrow(new RuntimeException("stripe unreachable"));
 
         PriceRevisionResponse response = service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
@@ -112,11 +118,11 @@ class PriceRevisionProvisionServiceTest {
     @DisplayName("AC-68: DBにbandごとPROVISIONINGをcommitした後にのみStripeを呼ぶ（呼び出し順序）")
     void provisioningIsPersistedBeforeStripeIsCalled() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "TAX10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_10000000");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(
-                revision.getProductKind(), revision.getProductKey(), "TAX10")).willReturn(Optional.empty());
+                revision.getProductKind(), revision.getProductKey(), "txcd_10000000")).willReturn(Optional.empty());
         given(gateway.resolveOrCreateProduct(any())).willAnswer(invocation -> {
             assertThat(b1.getStatus())
                     .as("Stripe呼び出し時点でDBはPROVISIONINGへ既にcommitされていなければならない")
@@ -134,8 +140,8 @@ class PriceRevisionProvisionServiceTest {
     void failForwardContinuesRemainingBandsAfterOneFailure() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
         List<BillingPriceBandVersionEntity> bands = List.of(
-                band(revision, 1, "TAX10"), band(revision, 2, "TAX10"), band(revision, 3, "TAX10"),
-                band(revision, 4, "TAX10"), band(revision, 5, "TAX10"));
+                band(revision, 1, "txcd_10000000"), band(revision, 2, "txcd_10000000"), band(revision, 3, "txcd_10000000"),
+                band(revision, 4, "txcd_10000000"), band(revision, 5, "txcd_10000000"));
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(bands);
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(any(), any(), any()))
@@ -164,7 +170,7 @@ class PriceRevisionProvisionServiceTest {
     @DisplayName("AC-73: 失敗bandにprovision_error_code/provision_attempts=1、親にlast_provision_error_code/provision_attemptsが保存される")
     void failedBandRecordsErrorCodeAndAttempts() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "TAX10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_10000000");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(any(), any(), any()))
@@ -182,16 +188,16 @@ class PriceRevisionProvisionServiceTest {
     @DisplayName("AC-74/AC-75: band ごとにstripeTaxCodeが異なれば別々のProductが解決され、既存Productのtax_codeは上書きされない")
     void differentTaxCodesResolveDistinctProductsWithoutOverwritingExisting() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity standard = band(revision, 1, "JP_STANDARD_10");
-        BillingPriceBandVersionEntity reduced = band(revision, 2, "JP_REDUCED_8");
+        BillingPriceBandVersionEntity standard = band(revision, 1, "txcd_99999999");
+        BillingPriceBandVersionEntity reduced = band(revision, 2, "txcd_20030000");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId()))
                 .willReturn(List.of(standard, reduced));
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(
-                revision.getProductKind(), revision.getProductKey(), "JP_STANDARD_10"))
+                revision.getProductKind(), revision.getProductKey(), "txcd_99999999"))
                 .willReturn(Optional.empty());
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(
-                revision.getProductKind(), revision.getProductKey(), "JP_REDUCED_8"))
+                revision.getProductKind(), revision.getProductKey(), "txcd_20030000"))
                 .willReturn(Optional.empty());
         given(gateway.resolveOrCreateProduct(any()))
                 .willReturn(new BillingPriceProvisionGateway.ProductResolution("prod_standard", true))
@@ -207,7 +213,7 @@ class PriceRevisionProvisionServiceTest {
         verify(gateway, times(2)).resolveOrCreateProduct(captor.capture());
         assertThat(captor.getAllValues())
                 .extracting(BillingPriceProvisionGateway.ProductResolutionCommand::stripeTaxCode)
-                .containsExactlyInAnyOrder("JP_STANDARD_10", "JP_REDUCED_8");
+                .containsExactlyInAnyOrder("txcd_99999999", "txcd_20030000");
     }
 
     @Test
@@ -249,7 +255,7 @@ class PriceRevisionProvisionServiceTest {
     @DisplayName("AC-79/AC-80/AC-81/AC-82: 作成するPriceのmetadata・unit_amount・currency・recurring・tax_behaviorがband snapshotと一致する")
     void createdPriceMatchesBandSnapshotAttributes() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "JP_STANDARD_10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_99999999");
         b1.setInputAmount(1200L);
         b1.setTaxBehavior(BillingTaxBehavior.EXCLUSIVE);
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
@@ -280,13 +286,13 @@ class PriceRevisionProvisionServiceTest {
     @DisplayName("AC-83/AC-84: DBマッピングにヒットした既存Productはtax_codeを再確認・上書きせず、Stripe Product系APIを呼ばない")
     void existingProductMappingSkipsStripeProductCall() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "JP_STANDARD_10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_99999999");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
         BillingStripeProductEntity existingMapping = new BillingStripeProductEntity(
-                revision.getProductKind(), revision.getProductKey(), "JP_STANDARD_10", "prod_existing");
+                revision.getProductKind(), revision.getProductKey(), "txcd_99999999", "prod_existing");
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(
-                revision.getProductKind(), revision.getProductKey(), "JP_STANDARD_10"))
+                revision.getProductKind(), revision.getProductKey(), "txcd_99999999"))
                 .willReturn(Optional.of(existingMapping));
         given(gateway.createPrice(any())).willReturn(
                 new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
@@ -300,7 +306,7 @@ class PriceRevisionProvisionServiceTest {
     @DisplayName("AC-86: 決定10のIdempotency-Keyがgatewayコマンドに渡る（price-band-create:{bandId}）")
     void idempotencyKeysAreDeterministic() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "JP_STANDARD_10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_99999999");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(any(), any(), any()))
@@ -322,7 +328,7 @@ class PriceRevisionProvisionServiceTest {
     @DisplayName("AC-88a: 初回ProvisionでProduct新規作成された場合、billing_stripe_productsに1件永続化される")
     void newProductResolutionPersistsMappingRow() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "JP_STANDARD_10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_99999999");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(any(), any(), any()))
@@ -337,28 +343,25 @@ class PriceRevisionProvisionServiceTest {
 
         verify(stripeProductRepository).save(mappingCaptor.capture());
         assertThat(mappingCaptor.getValue().getStripeProductId()).isEqualTo("prod_new");
-        assertThat(mappingCaptor.getValue().getStripeTaxCode()).isEqualTo("JP_STANDARD_10");
+        assertThat(mappingCaptor.getValue().getStripeTaxCode()).isEqualTo("txcd_99999999");
     }
 
     @Test
     @DisplayName("AC-88b: DBマッピング先読みヒット時、retry-provision相当の呼び出しでProduct系Stripe API呼び出し回数は0")
     void dbMappingHitMakesZeroProductApiCalls() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISION_FAILED);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "JP_STANDARD_10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_99999999");
         b1.setStatus(BillingPriceVersionStatus.PROVISION_FAILED);
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(
-                revision.getProductKind(), revision.getProductKey(), "JP_STANDARD_10"))
+                revision.getProductKind(), revision.getProductKey(), "txcd_99999999"))
                 .willReturn(Optional.of(new BillingStripeProductEntity(
-                        revision.getProductKind(), revision.getProductKey(), "JP_STANDARD_10", "prod_cached")));
+                        revision.getProductKind(), revision.getProductKey(), "txcd_99999999", "prod_cached")));
         given(gateway.createPrice(any())).willReturn(
                 new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
 
-        new PriceRevisionRetryProvisionService(
-                versionRepository, bandRepository, stripeProductRepository, gateway,
-                Clock.fixed(NOW, ZoneOffset.UTC), new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier(),
-                org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class))
+        retryService()
                 .retryProvision(revision.getId(), revision.getLockVersion(), 700_001L);
 
         verify(gateway, never()).resolveOrCreateProduct(any());
@@ -371,7 +374,7 @@ class PriceRevisionProvisionServiceTest {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
         List<BillingPriceBandVersionEntity> bands = new ArrayList<>();
         for (int i = 1; i <= 10; i++) {
-            bands.add(band(revision, i, "TAXCODE_" + i));
+            bands.add(band(revision, i, "txcd_1000000" + i));
         }
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(bands);
@@ -396,7 +399,7 @@ class PriceRevisionProvisionServiceTest {
     @DisplayName("AC-88c: 同一の新規(productKind,productKey,stripeTaxCode)への同時解決は決定的Product IDの重複を経てretrieveへ収束する")
     void concurrentFirstResolutionConvergesViaRetrieve() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "JP_STANDARD_10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_99999999");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(any(), any(), any()))
@@ -416,7 +419,7 @@ class PriceRevisionProvisionServiceTest {
             + "（2回目は状態が既にREADYのため409で本処理へ到達しない＝Stripe Price二重作成を防止）")
     void provisioningTwiceDoesNotCreatePriceTwice() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "TAX10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_10000000");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
         given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(any(), any(), any()))
@@ -446,7 +449,7 @@ class PriceRevisionProvisionServiceTest {
             + "409で本処理へ到達しない＝Stripe Price二重作成を防止）")
     void retryProvisionTwiceDoesNotRecreatePriceForAlreadyReadyBand() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISION_FAILED);
-        BillingPriceBandVersionEntity b1 = band(revision, 1, "TAX10");
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_10000000");
         b1.setStatus(BillingPriceVersionStatus.PROVISION_FAILED);
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
@@ -457,10 +460,7 @@ class PriceRevisionProvisionServiceTest {
         given(gateway.createPrice(any())).willReturn(
                 new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
 
-        PriceRevisionRetryProvisionService retryService = new PriceRevisionRetryProvisionService(
-                versionRepository, bandRepository, stripeProductRepository, gateway,
-                Clock.fixed(NOW, ZoneOffset.UTC), new com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier(),
-                org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class));
+        PriceRevisionRetryProvisionService retryService = retryService();
 
         PriceRevisionResponse first = retryService.retryProvision(revision.getId(), revision.getLockVersion(), 700_001L);
         assertThat(first.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
@@ -491,7 +491,13 @@ class PriceRevisionProvisionServiceTest {
         return entity;
     }
 
-    static BillingPriceBandVersionEntity band(BillingPriceVersionEntity version, int bandNo, String taxCode) {
+    /**
+     * @param stripeTaxCode band の {@code tax_master_snapshot} に固定する Stripe 側税コード。
+     *                      内部税コード（{@code taxCodeSnapshot}）は常に {@code JP_STANDARD_10} とし、
+     *                      Stripe へ渡るのが snapshot の Stripe 側税コードであることを区別できるようにする
+     *                      （Codex 検分 P1: 以前は内部 code を Stripe 税コードとして扱う fixture が欠陥を追認していた）。
+     */
+    static BillingPriceBandVersionEntity band(BillingPriceVersionEntity version, int bandNo, String stripeTaxCode) {
         BillingPriceBandVersionEntity entity = BillingPriceBandVersionEntity.builder()
                 .productKind(version.getProductKind())
                 .productKey(version.getProductKey())
@@ -501,8 +507,9 @@ class PriceRevisionProvisionServiceTest {
                 .minMembers(1)
                 .inputAmount(1000L)
                 .taxBehavior(BillingTaxBehavior.EXCLUSIVE)
-                .taxCodeSnapshot(taxCode)
-                .taxMasterSnapshot("{}")
+                .taxCodeSnapshot("JP_STANDARD_10")
+                .taxMasterSnapshot("{\"code\":\"JP_STANDARD_10\",\"displayName\":\"standard\","
+                        + "\"rateBasisPoints\":1000,\"stripeTaxCode\":\"" + stripeTaxCode + "\"}")
                 .amountExcludingTax(1000L)
                 .taxAmount(100L)
                 .taxRateBasisPoints(1000)

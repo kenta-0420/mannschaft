@@ -20,10 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -57,7 +55,8 @@ import static org.mockito.Mockito.verify;
 class PriceRevisionRetryReconcileServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-10-01T00:00:00Z");
-    private static final Clock FIXED_CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
+    /** band snapshot の Stripe 側税コード（Stripe Product の tax_code として照合される値）。 */
+    private static final String STRIPE_TAX_CODE = "txcd_99999999";
 
     @Mock private BillingPriceVersionRepository versionRepository;
     @Mock private BillingPriceBandVersionRepository bandRepository;
@@ -66,15 +65,17 @@ class PriceRevisionRetryReconcileServiceTest {
 
     private PriceRevisionRetryProvisionService retryService() {
         return new PriceRevisionRetryProvisionService(
-                versionRepository, bandRepository, stripeProductRepository, gateway, FIXED_CLOCK,
-                com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"),
-                org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class));
+                new PriceRevisionProvisionStateWriter(versionRepository, bandRepository,
+                        org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class)),
+                stripeProductRepository, gateway,
+                com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"));
     }
 
     private BillingPriceProvisionRecoveryService recoveryService() {
-        return new BillingPriceProvisionRecoveryService(versionRepository, bandRepository, gateway, FIXED_CLOCK,
-                com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"),
-                org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class));
+        return new BillingPriceProvisionRecoveryService(
+                new com.mannschaft.app.billing.BillingPriceReconcileStateWriter(versionRepository, bandRepository,
+                        org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class)),
+                gateway, com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"));
     }
 
     // ═════════ retry-provision ═════════
@@ -204,7 +205,7 @@ class PriceRevisionRetryReconcileServiceTest {
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(stuckBand));
         BillingPriceProvisionGateway.PriceSnapshot mismatched = new BillingPriceProvisionGateway.PriceSnapshot(
                 "price_x", stuckBand.getInputAmount() + 1, "jpy", "month", 1,
-                revision.getProductKind().name(), revision.getProductKey(), stuckBand.getTaxCodeSnapshot(),
+                revision.getProductKind().name(), revision.getProductKey(), STRIPE_TAX_CODE,
                 stuckBand.getTaxBehavior().name(), "test");
         given(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId())).willReturn(Optional.of(mismatched));
 
@@ -219,12 +220,11 @@ class PriceRevisionRetryReconcileServiceTest {
     void reconcileRejectsWhenOnlyProductTaxCodeMismatches() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISIONING);
         BillingPriceBandVersionEntity stuckBand = band(revision, 1, BillingPriceVersionStatus.PROVISIONING);
-        stuckBand.setTaxCodeSnapshot("JP_STANDARD_10");
         given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
         given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(stuckBand));
         BillingPriceProvisionGateway.PriceSnapshot taxCodeMismatch = new BillingPriceProvisionGateway.PriceSnapshot(
                 "price_x", stuckBand.getInputAmount(), "jpy", "month", 1,
-                revision.getProductKind().name(), revision.getProductKey(), "JP_REDUCED_8",
+                revision.getProductKind().name(), revision.getProductKey(), "txcd_20030000",
                 stuckBand.getTaxBehavior().name(), "test");
         given(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId())).willReturn(Optional.of(taxCodeMismatch));
 
@@ -248,7 +248,7 @@ class PriceRevisionRetryReconcileServiceTest {
         // Priceを発見したケースを再現する（本番のPriceをtest環境が誤って回収する事故の模擬）。
         BillingPriceProvisionGateway.PriceSnapshot liveEnvironmentSnapshot = new BillingPriceProvisionGateway.PriceSnapshot(
                 "price_live", stuckBand.getInputAmount(), "jpy", "month", 1,
-                revision.getProductKind().name(), revision.getProductKey(), stuckBand.getTaxCodeSnapshot(),
+                revision.getProductKind().name(), revision.getProductKey(), STRIPE_TAX_CODE,
                 stuckBand.getTaxBehavior().name(), "live");
         given(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId()))
                 .willReturn(Optional.of(liveEnvironmentSnapshot));
@@ -332,7 +332,9 @@ class PriceRevisionRetryReconcileServiceTest {
                 .inputAmount(1000L)
                 .taxBehavior(BillingTaxBehavior.EXCLUSIVE)
                 .taxCodeSnapshot("JP_STANDARD_10")
-                .taxMasterSnapshot("{}")
+                // Stripe 側税コードは内部 code とは別の値（決定7）。reconcile が照合すべきはこちら。
+                .taxMasterSnapshot("{\"code\":\"JP_STANDARD_10\",\"displayName\":\"standard\","
+                        + "\"rateBasisPoints\":1000,\"stripeTaxCode\":\"" + STRIPE_TAX_CODE + "\"}")
                 .amountExcludingTax(1000L)
                 .taxAmount(100L)
                 .taxRateBasisPoints(1000)
@@ -350,7 +352,7 @@ class PriceRevisionRetryReconcileServiceTest {
             BillingPriceVersionEntity revision, BillingPriceBandVersionEntity band, String stripePriceId) {
         return new BillingPriceProvisionGateway.PriceSnapshot(
                 stripePriceId, band.getInputAmount(), "jpy", "month", 1,
-                revision.getProductKind().name(), revision.getProductKey(), band.getTaxCodeSnapshot(),
+                revision.getProductKind().name(), revision.getProductKey(), STRIPE_TAX_CODE,
                 band.getTaxBehavior().name(), "test");
     }
 }

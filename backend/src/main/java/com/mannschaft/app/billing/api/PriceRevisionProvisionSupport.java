@@ -2,11 +2,11 @@ package com.mannschaft.app.billing.api;
 
 import com.mannschaft.app.billing.BillingPriceBandVersionEntity;
 import com.mannschaft.app.billing.BillingPriceProvisionGateway;
-import com.mannschaft.app.billing.BillingPriceVersionStatus;
 import com.mannschaft.app.billing.BillingProductKind;
 import com.mannschaft.app.billing.BillingStripeProductEntity;
 import com.mannschaft.app.billing.BillingStripeProductRepository;
 import com.mannschaft.app.billing.api.dto.PriceRevisionBandResponse;
+import com.mannschaft.app.billing.tax.BillingTaxMasterSnapshot;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -39,46 +39,47 @@ final class PriceRevisionProvisionSupport {
      *   <li>ヒットしなければ Product を解決（DB先読み→ミス時のみ決定的IDでStripe解決）</li>
      *   <li>Price を作成する</li>
      * </ol>
-     * 成功なら band を READY・失敗なら PROVISION_FAILED にし、band.provisionAttempts を必ず+1する。</p>
+     * 結果は {@link PriceRevisionProvisionStateWriter.BandOutcome} で返し、DB への反映（READY/PROVISION_FAILED・
+     * provisionAttempts+1）は {@link PriceRevisionProvisionStateWriter#complete} が別トランザクションで行う。
+     * 本メソッドはトランザクション外で呼ばれる（AC-69: Stripe 呼び出しを DB トランザクションに含めない）。</p>
+     *
+     * <p>Stripe Product の {@code tax_code}・Product 解決キーには band snapshot の <b>Stripe 側税コード</b>
+     * （{@link BillingTaxMasterSnapshot#stripeTaxCodeOf}）を使う。内部税コード（{@code taxCodeSnapshot}。
+     * {@code JP_STANDARD_10} 等）は Stripe へ渡さない（決定7・AC-84）。</p>
      */
-    static void attemptProvisionBand(
+    static PriceRevisionProvisionStateWriter.BandOutcome attemptProvisionBand(
             BillingStripeProductRepository stripeProductRepository,
             BillingPriceProvisionGateway gateway,
             UUID revisionId, BillingProductKind productKind, String productKey,
-            BillingPriceBandVersionEntity band, String environmentId) {
-        band.setProvisionAttempts(nz(band.getProvisionAttempts()) + 1);
+            PriceRevisionProvisionStateWriter.BandTarget band, String environmentId) {
         try {
             Optional<BillingPriceProvisionGateway.PriceSnapshot> recovered =
-                    gateway.findPriceByMetadata(revisionId, band.getId());
+                    gateway.findPriceByMetadata(revisionId, band.bandId());
             if (recovered.isPresent()) {
-                band.setStripePriceRef(recovered.get().stripePriceId());
-                band.setStatus(BillingPriceVersionStatus.READY);
-                band.setProvisionErrorCode(null);
-                return;
+                return new PriceRevisionProvisionStateWriter.BandOutcome(
+                        band.bandId(), recovered.get().stripePriceId(), null);
             }
 
+            String stripeTaxCode = BillingTaxMasterSnapshot.stripeTaxCodeOf(band.taxMasterSnapshot());
             String stripeProductId = resolveProductId(
-                    stripeProductRepository, gateway, productKind, productKey, band.getTaxCodeSnapshot());
+                    stripeProductRepository, gateway, productKind, productKey, stripeTaxCode);
 
             Map<String, String> metadata = new LinkedHashMap<>();
             metadata.put("revisionId", revisionId.toString());
-            metadata.put("bandId", band.getId().toString());
+            metadata.put("bandId", band.bandId().toString());
             // AC-79: Stripe の test/live Price 分離。誤って test 環境の Price を live 環境が
             // reconcile で回収してしまう事故を防ぐため、作成時の環境識別子を Price 自身の
             // metadata に焼く（読み戻しは BillingPriceProvisionRecoveryService#reconcileBand）。
             metadata.put("environmentId", environmentId);
             BillingPriceProvisionGateway.PriceCreationCommand command =
                     new BillingPriceProvisionGateway.PriceCreationCommand(
-                            revisionId, band.getId(), stripeProductId, band.getInputAmount(), "jpy", "month", 1,
-                            band.getTaxBehavior().name(), metadata, "price-band-create:" + band.getId());
+                            revisionId, band.bandId(), stripeProductId, band.inputAmount(), "jpy", "month", 1,
+                            band.taxBehavior().name(), metadata, "price-band-create:" + band.bandId());
             BillingPriceProvisionGateway.PriceCreationResult result = gateway.createPrice(command);
 
-            band.setStripePriceRef(result.stripePriceId());
-            band.setStatus(BillingPriceVersionStatus.READY);
-            band.setProvisionErrorCode(null);
+            return new PriceRevisionProvisionStateWriter.BandOutcome(band.bandId(), result.stripePriceId(), null);
         } catch (RuntimeException e) {
-            band.setStatus(BillingPriceVersionStatus.PROVISION_FAILED);
-            band.setProvisionErrorCode(truncate(
+            return new PriceRevisionProvisionStateWriter.BandOutcome(band.bandId(), null, truncate(
                     e.getClass().getSimpleName() + ":" + e.getMessage(), MAX_PROVISION_ERROR_CODE_LENGTH));
         }
     }
@@ -86,24 +87,26 @@ final class PriceRevisionProvisionSupport {
     /**
      * 決定9改訂: {@code billing_stripe_products} をDB先読みし、ヒットしなければ決定的Product IDで解決する。
      * 新規解決した場合はマッピングをDBへ永続化する（AC-88a/AC-88c）。
+     *
+     * @param stripeTaxCode Stripe 側税コード（{@code txcd_...}。未設定なら null）。内部税コードではない
      */
     static String resolveProductId(
             BillingStripeProductRepository stripeProductRepository, BillingPriceProvisionGateway gateway,
-            BillingProductKind productKind, String productKey, String taxCode) {
+            BillingProductKind productKind, String productKey, String stripeTaxCode) {
         Optional<BillingStripeProductEntity> existing = stripeProductRepository
-                .findByProductKindAndProductKeyAndStripeTaxCode(productKind, productKey, taxCode);
+                .findByProductKindAndProductKeyAndStripeTaxCode(productKind, productKey, stripeTaxCode);
         if (existing.isPresent()) {
             return existing.get().getStripeProductId();
         }
 
-        String deterministicProductId = deterministicProductId(productKind, productKey, taxCode);
+        String deterministicProductId = deterministicProductId(productKind, productKey, stripeTaxCode);
         BillingPriceProvisionGateway.ProductResolution resolution = gateway.resolveOrCreateProduct(
                 new BillingPriceProvisionGateway.ProductResolutionCommand(
-                        productKind, productKey, taxCode, deterministicProductId,
+                        productKind, productKey, stripeTaxCode, deterministicProductId,
                         "price-product-create:" + deterministicProductId));
 
         stripeProductRepository.save(new BillingStripeProductEntity(
-                productKind, productKey, taxCode, resolution.stripeProductId()));
+                productKind, productKey, stripeTaxCode, resolution.stripeProductId()));
         return resolution.stripeProductId();
     }
 

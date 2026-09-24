@@ -120,6 +120,27 @@ class BillingTaxDerivationServiceTest {
     }
 
     @Test
+    @DisplayName("決定7/AC-84: tax_master_snapshot は Stripe 側税コード（stripeTaxCode）を内部 code と別に保持する")
+    void snapshotHoldsStripeTaxCodeSeparatelyFromInternalCode() {
+        BillingTaxCodeView code = BillingTaxCodeView.from(BillingTaxCodeEntity.builder()
+                .code("JP_STANDARD_10").displayName("標準税率\"10%\"").rateBasisPoints(1000)
+                .stripeTaxCode("txcd_99999999").validFrom(Instant.EPOCH).enabled(true).build());
+
+        BillingTaxDerivationResult r = service.derive(100L, BillingTaxBehavior.EXCLUSIVE, code);
+
+        assertThat(r.getTaxCodeSnapshot()).isEqualTo("JP_STANDARD_10");
+        assertThat(BillingTaxMasterSnapshot.stripeTaxCodeOf(r.getTaxMasterSnapshot())).isEqualTo("txcd_99999999");
+    }
+
+    @Test
+    @DisplayName("AC-85: stripe_tax_code 未設定の税コードでは snapshot の stripeTaxCode は null（Product に tax_code を付けない）")
+    void snapshotStripeTaxCodeIsNullWhenMasterHasNone() {
+        BillingTaxDerivationResult r = service.derive(100L, BillingTaxBehavior.EXCLUSIVE, taxCode(1000));
+
+        assertThat(BillingTaxMasterSnapshot.stripeTaxCodeOf(r.getTaxMasterSnapshot())).isNull();
+    }
+
+    @Test
     @DisplayName("AC-27: inputAmount<=0 は作成時点で拒否される")
     void ac27_nonPositiveAmount_rejected() {
         assertThatThrownBy(() -> service.derive(0L, BillingTaxBehavior.EXCLUSIVE, taxCode(1000)))
