@@ -9,6 +9,7 @@ import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationCr
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationDetailResponse;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationResponse;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationSendAcceptedResponse;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
@@ -61,14 +62,16 @@ public class TeamConfirmableNotificationController {
     private static final String SEND_NOTIFICATION = "SEND_NOTIFICATION";
 
     /**
-     * 確認通知を送信する。
+     * 確認通知を送信する（CMP-260920-1040 軍議第8版確定稿 §3.3・AC-19）。
      *
-     * <p>受信者への確認トークン付与・リマインド設定解決を行い、F04.3通知基盤に引き渡す。</p>
+     * <p>宛先は {@code targets} / {@code recipientGroupId} / 省略（既定＝自チーム）で指定する
+     * （公開 API の {@code recipientUserIds} は廃止・AC-11）。本体・targets・fanoutジョブを同一
+     * トランザクションで作成し、受信者行は作らずに <b>202 Accepted</b> を返す（AC-19）。</p>
      */
     @PostMapping
     @Operation(summary = "確認通知送信")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "送信成功")
-    public ResponseEntity<ApiResponse<ConfirmableNotificationResponse>> send(
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "受付成功（非同期配信）")
+    public ResponseEntity<ApiResponse<ConfirmableNotificationSendAcceptedResponse>> send(
             @PathVariable Long teamId,
             @Valid @RequestBody ConfirmableNotificationCreateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
@@ -76,25 +79,9 @@ public class TeamConfirmableNotificationController {
         // 設計書 F04.9 §2 のとおり「ADMIN、または SEND_NOTIFICATION を持つ DEPUTY_ADMIN」で判定する。
         accessControlService.checkAdminOrHasPermissionInScope(
                 currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
-        ConfirmableNotificationEntity entity = notificationService.send(
-                ScopeType.TEAM,
-                teamId,
-                request.getTitle(),
-                request.getBody(),
-                request.getPriority(),
-                request.getDeadlineAtAsJst(),
-                request.getFirstReminderMinutes(),
-                request.getSecondReminderMinutes(),
-                request.getActionUrl(),
-                request.getTemplateId(),
-                request.getUnconfirmedVisibility(),
-                currentUserId,
-                request.getRecipientUserIds());
-
-        ConfirmableNotificationResponse response = mapper.toResponse(entity);
-        // confirmedCount は送信直後なので0
-        response.setConfirmedCount(0L);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+        ConfirmableNotificationSendAcceptedResponse response = notificationService.sendAsync(
+                ScopeType.TEAM, teamId, request, currentUserId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(response));
     }
 
     /**
@@ -248,6 +235,29 @@ public class TeamConfirmableNotificationController {
         List<ConfirmableNotificationRecipientResponse> responses =
                 mapper.toRecipientPublicResponseList(unconfirmed);
         return ResponseEntity.ok(ApiResponse.of(responses));
+    }
+
+    /**
+     * CMP-260920-1040: 受信者一覧をページングして取得する（軍議第8版確定稿 §9.5・AC-30・AC-59・AC-60）。
+     */
+    @GetMapping("/{notificationId}/recipients/page")
+    @Operation(summary = "受信者一覧取得（ページング）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientPageResponse>>
+            getRecipientsPage(
+                    @PathVariable Long teamId,
+                    @PathVariable Long notificationId,
+                    @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+                    @org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") int size,
+                    @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean unconfirmedOnly) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity notification = notificationService.getDetail(notificationId);
+        if (!ScopeType.TEAM.equals(notification.getScopeType()) || !teamId.equals(notification.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
+        accessControlService.checkMembership(currentUserId, teamId, ScopeType.TEAM.name());
+        return ResponseEntity.ok(ApiResponse.of(
+                notificationService.getRecipientsPage(notificationId, currentUserId, page, size, unconfirmedOnly)));
     }
 
     /**

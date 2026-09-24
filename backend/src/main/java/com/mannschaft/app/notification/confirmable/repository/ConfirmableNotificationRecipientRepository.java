@@ -2,6 +2,7 @@ package com.mannschaft.app.notification.confirmable.repository;
 
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -228,4 +229,38 @@ public interface ConfirmableNotificationRecipientRepository
            "ORDER BY r.id ASC")
     List<Long> findActiveUnconfirmedUserIdsByNotificationId(
             @Param("notificationId") Long notificationId, Pageable pageable);
+
+    // -------------------------------------------------------------------------
+    // CMP-260920-1040: 受信者一覧のページング（軍議第8版確定稿 §9.5・AC-30・AC-59・AC-60）
+    // -------------------------------------------------------------------------
+
+    /**
+     * 通知IDで受信者一覧をページングして取得する（ADMIN+ 視点・全件）。
+     *
+     * @param notificationId 確認通知ID
+     * @param pageable        ページング情報
+     * @return 受信者ページ（作成日時昇順）
+     */
+    Page<ConfirmableNotificationRecipientEntity> findByConfirmableNotificationIdOrderByIdAsc(
+            Long notificationId, Pageable pageable);
+
+    /**
+     * 通知IDで未確認かつ除外されていない受信者一覧をページングして取得する。
+     *
+     * @param notificationId 確認通知ID
+     * @param pageable        ページング情報
+     * @return 未確認受信者ページ（作成日時昇順）
+     */
+    Page<ConfirmableNotificationRecipientEntity> findByConfirmableNotificationIdAndIsConfirmedFalseAndExcludedAtIsNullOrderByIdAsc(
+            Long notificationId, Pageable pageable);
+
+    /**
+     * 通知IDとユーザーIDで受信者1件を取得する（MEMBER 視点の受信者資格確認用）。
+     *
+     * @param notificationId 確認通知ID
+     * @param userId          ユーザーID
+     * @return 受信者（存在しない場合 empty）
+     */
+    Optional<ConfirmableNotificationRecipientEntity> findByConfirmableNotificationIdAndUserId(
+            Long notificationId, Long userId);
 }
