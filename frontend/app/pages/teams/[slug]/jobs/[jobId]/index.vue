@@ -239,12 +239,20 @@ const canClose = computed(() => job.value?.status === 'OPEN')
 const canCancel = computed(() => job.value?.status === 'DRAFT' || job.value?.status === 'OPEN')
 const canDelete = computed(() => job.value?.status === 'DRAFT')
 
-onMounted(async () => {
+/**
+ * 求人詳細の初回表示・再試行の両方が通る単一の入り口。
+ * 初回表示（onMounted）と DashboardErrorState の再試行（@retry）で処理が分岐すると、
+ * 求人取得に失敗→再試行で復旧したとき応募者一覧だけ未取得のまま残る欠陥になる
+ * （CMP-260922-2045 検分差し戻し）。
+ */
+async function loadPage() {
   await loadJob()
   if (job.value) {
-    loadApplications()
+    await loadApplications()
   }
-})
+}
+
+onMounted(loadPage)
 </script>
 
 <template>
@@ -259,7 +267,7 @@ onMounted(async () => {
     <DashboardErrorState
       v-else-if="jobLoadFailed"
       testid="job-detail-error-state"
-      @retry="loadJob"
+      @retry="loadPage"
     />
 
     <div
