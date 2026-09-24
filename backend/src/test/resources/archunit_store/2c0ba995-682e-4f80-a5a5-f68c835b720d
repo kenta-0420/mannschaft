@@ -402,7 +402,6 @@ Class <com.mannschaft.app.schedule.entity.ScheduleAttendanceReminderEntity> is n
 Class <com.mannschaft.app.schedule.entity.ScheduleCrossRefEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ScheduleCrossRefEntity.java:0)
 Class <com.mannschaft.app.schedule.entity.ScheduleEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ScheduleEntity.java:0)
 Class <com.mannschaft.app.schedule.entity.ScheduleEventCategoryEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ScheduleEventCategoryEntity.java:0)
-Class <com.mannschaft.app.schedule.entity.ScheduleMediaUploadEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ScheduleMediaUploadEntity.java:0)
 Class <com.mannschaft.app.schedule.entity.UserCalendarSyncSettingEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (UserCalendarSyncSettingEntity.java:0)
 Class <com.mannschaft.app.schedule.entity.UserGoogleCalendarConnectionEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (UserGoogleCalendarConnectionEntity.java:0)
 Class <com.mannschaft.app.schedule.entity.UserIcalTokenEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (UserIcalTokenEntity.java:0)

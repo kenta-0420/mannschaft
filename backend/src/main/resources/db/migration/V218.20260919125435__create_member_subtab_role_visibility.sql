@@ -7,7 +7,8 @@
 -- min_role は既存 com.mannschaft.app.dashboard.MinRole（PUBLIC/SUPPORTER/MEMBER）を再利用する。
 -- 一覧タブ（subtab_key='member_list'）は氏名・役割等を含むため PUBLIC 設定不可（Service 層で検証、422）。
 --
--- クロスドメインFK禁止のため scope_id には FK を張らず、参照整合性はアプリ層で保証する（インデックスのみ）。
+-- クロスドメインFK禁止のため scope_id・updated_by には FK を張らず、参照整合性はアプリ層で保証する
+-- （インデックスのみ。member ドメイン→auth ドメインへの FK は CLAUDE.md DB設計原則 #1 違反のため不可）。
 -- 主キーは DB 設計原則 #6（新規テーブルは UUIDv7）に従い BINARY(16) とする。
 -- 設計書: docs/features/F06.6_member_subtab_visibility.md §3, §9
 
@@ -23,7 +24,7 @@ CREATE TABLE member_subtab_role_visibility (
   PRIMARY KEY (id),
   UNIQUE KEY uq_msrv_scope_subtab (scope_type, scope_id, subtab_key),
   INDEX idx_msrv_scope (scope_type, scope_id),
-  CONSTRAINT fk_msrv_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE RESTRICT
+  INDEX idx_msrv_updated_by (updated_by)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- 初期データ投入なし。レコードがないサブタブはアプリ層デフォルト（MEMBER）が適用される。
