@@ -48955,6 +48955,7 @@ export interface components {
             pinned?: boolean;
             postType?: string;
             priority?: string;
+            publicVisible?: boolean;
             status?: string;
             visibility?: string;
         };
