@@ -64,9 +64,15 @@ public class TeamPageService {
      * 従来の {@code checkMembership} と等価。チームスコープは Phase 1 対象外のため従来どおり
      * {@code checkMembership} を維持する。下書き（DRAFT）ページは ADMIN 以外には一覧に出さない
      * （内側の扉。設計書 §5 合成ルール）。</p>
+     *
+     * <p>検分修正（P1）: サブタブが PUBLIC 設定でも、それは「サブタブという入口」の可視性に過ぎず、
+     * ページ個別の {@code visibility}（{@link PageVisibility#MEMBERS_ONLY}）までは緩めない（AND 条件。
+     * 設計書 F06.2 §アクセス制御ロジック 1081-1082 行）。非会員（サブタブ門は通過したがスコープの
+     * メンバーではない）には {@code MEMBERS_ONLY} ページを列挙させない。</p>
      */
     public Page<TeamPageResponse> listPages(Long actorUserId, Long teamId, Long organizationId, Pageable pageable) {
         boolean isAdmin;
+        boolean isMember = false;
         if (teamId != null) {
             accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
             isAdmin = accessControlService.isAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
@@ -74,16 +80,23 @@ public class TeamPageService {
             memberSubtabVisibilityService.assertViewable(
                     actorUserId, ScopeType.ORGANIZATION, organizationId, MemberSubtabKey.MEMBER_PROFILES);
             isAdmin = accessControlService.isAdminOrAbove(actorUserId, organizationId, SCOPE_ORGANIZATION);
+            if (!isAdmin) {
+                isMember = accessControlService.isMember(actorUserId, organizationId, SCOPE_ORGANIZATION);
+            }
         }
         Page<TeamPageEntity> page;
         if (teamId != null) {
             page = pageRepository.findByTeamIdOrderBySortOrder(teamId, pageable);
         } else if (isAdmin) {
             page = pageRepository.findByOrganizationIdOrderBySortOrder(organizationId, pageable);
-        } else {
+        } else if (isMember) {
             // 内側の扉: DRAFT ページは非管理者の一覧から除外（組織スコープのみ・Phase 1）
             page = pageRepository.findByOrganizationIdAndStatusOrderBySortOrder(
                     organizationId, PageStatus.PUBLISHED, pageable);
+        } else {
+            // 非会員（サブタブ門は通過したがスコープ非所属）: ページ個別 visibility=PUBLIC のみ列挙可
+            page = pageRepository.findByOrganizationIdAndStatusAndVisibilityOrderBySortOrder(
+                    organizationId, PageStatus.PUBLISHED, PageVisibility.PUBLIC, pageable);
         }
         return page.map(memberMapper::toTeamPageResponse);
     }
@@ -294,6 +307,14 @@ public class TeamPageService {
                         actorUserId, ScopeType.ORGANIZATION, scopeId, MemberSubtabKey.MEMBER_PROFILES);
             } catch (BusinessException ex) {
                 // Wave3-B2 member BOLA対策の 404 秘匿パターンを維持（403 ではなく 404 を返す）
+                throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+            }
+            // 検分修正（P1）: サブタブの外側の門（min_role）は「サブタブという入口」の可視性であり、
+            // ページ個別の visibility（MEMBERS_ONLY）までは緩めない（AND 条件。設計書 F06.2
+            // §アクセス制御ロジック 1081-1082 行）。サブタブが PUBLIC 設定でも、ページが
+            // MEMBERS_ONLY なら非会員は拒否する。
+            if (page.getVisibility() == PageVisibility.MEMBERS_ONLY
+                    && !accessControlService.isMember(actorUserId, scopeId, scopeType)) {
                 throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
             }
             return;
