@@ -48,6 +48,7 @@
       "billing": "課金・プラン管理",
       "leagueTransfers": "リーグ移籍",
       "adminConsole": "管理コンソール",
+      "memberPermissions": "MEMBER既定権限",
       "receipts": "領収書",
       "receiptSettings": "領収書の発行者設定",
       "hourlyRate": "時給設定",

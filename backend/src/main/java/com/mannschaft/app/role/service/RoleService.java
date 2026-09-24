@@ -7,6 +7,7 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.RolePermissionEntity;
 import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.entity.TeamRolePermissionEntity;
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.auth.service.UserRowLockService.UserState;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -16,6 +17,7 @@ import com.mannschaft.app.role.repository.PermissionRepository;
 import com.mannschaft.app.role.repository.PermissionGroupRepository;
 import com.mannschaft.app.role.repository.PermissionGroupPermissionRepository;
 import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
+import com.mannschaft.app.role.repository.TeamRolePermissionRepository;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -67,6 +69,7 @@ public class RoleService {
     private final PermissionGroupRepository permissionGroupRepository;
     private final PermissionGroupPermissionRepository permissionGroupPermissionRepository;
     private final UserPermissionGroupRepository userPermissionGroupRepository;
+    private final TeamRolePermissionRepository teamRolePermissionRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final MembershipService membershipService;
     private final RolePermissionCleanupService rolePermissionCleanupService;
@@ -654,6 +657,38 @@ public class RoleService {
             return new ArrayList<>();
         }
 
+        if ("MEMBER".equals(effectiveRoleName)) {
+            Long memberRoleId = roleRepository.findByName("MEMBER").map(RoleEntity::getId).orElse(null);
+            if (memberRoleId != null) {
+                Set<Long> memberCeilingPermissionIds = rolePermissionRepository.findByRoleId(memberRoleId)
+                        .stream().map(RolePermissionEntity::getPermissionId).collect(Collectors.toSet());
+                Map<Long, Boolean> overrides = teamRolePermissionRepository
+                        .findByScopeTypeAndScopeIdAndRoleId(scopeType, scopeId, memberRoleId)
+                        .stream()
+                        .filter(override -> memberCeilingPermissionIds.contains(override.getPermissionId()))
+                        .collect(Collectors.toMap(
+                                TeamRolePermissionEntity::getPermissionId,
+                                TeamRolePermissionEntity::getIsEnabled));
+                if (!overrides.isEmpty()) {
+                    Map<Long, String> permissionNames = permissionRepository.findByIdIn(
+                                    new ArrayList<>(overrides.keySet()))
+                            .stream().collect(Collectors.toMap(PermissionEntity::getId, PermissionEntity::getName));
+                    overrides.forEach((permissionId, enabled) -> {
+                        String permissionName = permissionNames.get(permissionId);
+                        if (permissionName == null) {
+                            return;
+                        }
+                        if (Boolean.TRUE.equals(enabled)) {
+                            if (!rolePermissions.contains(permissionName)) {
+                                rolePermissions.add(permissionName);
+                            }
+                        } else {
+                            rolePermissions.remove(permissionName);
+                        }
+                    });
+                }
+            }
+        }
         return rolePermissions.stream().distinct().collect(Collectors.toCollection(ArrayList::new));
     }
 

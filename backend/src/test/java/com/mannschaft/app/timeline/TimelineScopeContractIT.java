@@ -209,17 +209,15 @@ class TimelineScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("投稿者本人は自分の投稿を更新できる")
-        void 本人は更新できる() {
+        @DisplayName("初期設定では投稿者本人でも管理権限がなく更新できない")
+        void 初期設定では本人も更新できない() {
             Long postId = teamAPost().getId();
             setAuthentication(USER_OWNER);
 
-            ResponseEntity<ApiResponse<PostResponse>> response =
-                    postController.updatePost(postId, new UpdatePostRequest("本人による更新"));
-
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(postRepository.findById(postId).orElseThrow().getContent())
-                    .isEqualTo("本人による更新");
+            assertThatThrownBy(() -> postController.updatePost(postId, new UpdatePostRequest("本人による更新")))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.NOT_POST_OWNER));
         }
 
         @Test

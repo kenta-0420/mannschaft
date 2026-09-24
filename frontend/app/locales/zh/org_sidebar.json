@@ -62,6 +62,7 @@
     "billing": "账单与套餐管理",
     "leagueTransfers": "联赛升降级",
     "adminConsole": "管理控制台",
+    "memberPermissions": "MEMBER 默认权限",
     "receipts": "收据",
     "receiptSettings": "收据开票方设置",
     "vendors": "供应商台账",
