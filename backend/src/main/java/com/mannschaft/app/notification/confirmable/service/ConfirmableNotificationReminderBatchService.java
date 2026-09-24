@@ -256,4 +256,31 @@ public class ConfirmableNotificationReminderBatchService {
             case NORMAL -> NotificationPriority.NORMAL;
         };
     }
+
+    /**
+     * CMP-260920-1040: 通知1件・受信者500人ごとに、1トランザクションで
+     * 「条件付きUPDATEで送信済みを確定→確定できた人だけ notifications を多値INSERT」を行う
+     * （軍議第8版確定稿 §9.4）。
+     *
+     * <p>手順:
+     * <ol>
+     *   <li>対象者の {@code first_reminder_sent_at}（2回目なら {@code second}）を
+     *       {@code … IS NULL AND is_confirmed = false AND excluded_at IS NULL} の条件付き UPDATE で確定する</li>
+     *   <li>UPDATE で確定できた人の ID を取り出す</li>
+     *   <li>その人たちの分だけ notifications を多値 INSERT する</li>
+     * </ol>
+     * 手順3が失敗したら手順1もロールバックされ、次回バッチで再送される（AC-57）。
+     * 骨格のみ（試練B）。実装は出陣で行う。</p>
+     *
+     * @param notificationId  対象の確認通知 ID
+     * @param candidateUserIds 候補の受信者 user_id（最大500件を1トランザクションで扱う契約）
+     * @param isFirstReminder true なら1回目リマインド、false なら2回目
+     * @param now             現在日時
+     * @return 実際に送信を確定した user_id（UPDATE で確定できた人だけ）
+     */
+    @Transactional
+    public List<Long> processRemindersTransactional(
+            Long notificationId, List<Long> candidateUserIds, boolean isFirstReminder, java.time.LocalDateTime now) {
+        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+    }
 }
