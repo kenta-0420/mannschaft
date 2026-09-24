@@ -211,7 +211,15 @@ public class GlobalBulletinThreadController {
     private ResponseEntity<ApiResponse<ThreadResponse>> doCreate(GlobalCreateThreadRequest request) {
         ScopeType type = parseScopeType(request.getScopeType());
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        Long scopeId = request.getScopeId() != null ? request.getScopeId() : 0L;
+        Long scopeId;
+        if (type == ScopeType.VILLAGE) {
+            scopeId = 0L;
+        } else {
+            if (request.getScopeId() == null) {
+                throw new BusinessException(CommonErrorCode.COMMON_001);
+            }
+            scopeId = scopeIdResolver.resolve(type, request.getScopeId());
+        }
         ThreadResponse response = threadService.createThreadGlobal(
                 type, scopeId, currentUserId, request.toCreateThreadRequest());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));

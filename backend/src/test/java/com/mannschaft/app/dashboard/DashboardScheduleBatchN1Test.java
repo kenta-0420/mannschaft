@@ -1,5 +1,6 @@
 package com.mannschaft.app.dashboard;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.admin.repository.PlatformAnnouncementRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
@@ -97,6 +98,7 @@ class DashboardScheduleBatchN1Test {
     @Mock private ChatChannelMemberRepository chatChannelMemberRepository;
     @Mock private PlatformAnnouncementRepository platformAnnouncementRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     @Mock private com.mannschaft.app.dashboard.service.RoleResolver roleResolver;
     @Mock private com.mannschaft.app.dashboard.service.WidgetVisibilityResolver widgetVisibilityResolver;
@@ -157,7 +159,7 @@ class DashboardScheduleBatchN1Test {
                 notificationRepository,
                 timelinePostRepository,
                 scheduleRepository,
-                userRoleRepository,
+                membershipScopeQueryService,
                 bulletinThreadRepository,
                 bulletinReadStatusRepository,
                 chatChannelMemberRepository,
@@ -212,7 +214,7 @@ class DashboardScheduleBatchN1Test {
         void getCalendar_3チーム_旧メソッド未呼出_新バッチ1回() {
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_A, TEAM_B, TEAM_C));
             given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                     .willReturn(List.of());
@@ -233,7 +235,7 @@ class DashboardScheduleBatchN1Test {
         @DisplayName("Service.getPersonalDashboard: 3チーム所属でも旧teamメソッドは呼ばれず新バッチメソッドのみ使用")
         void personalDashboard_3チーム_旧メソッド未呼出_新バッチ使用() {
             stubCommonPersonalForAll();
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_A, TEAM_B, TEAM_C));
             given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                     .willReturn(List.of());
@@ -261,7 +263,7 @@ class DashboardScheduleBatchN1Test {
             // 個人予定は 0 件。
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_A, TEAM_B));
 
             // 最広範囲（todayStart〜monthEnd）を 1 回だけ取得する。5件のうち
@@ -290,7 +292,7 @@ class DashboardScheduleBatchN1Test {
             LocalDateTime todayStart = LocalDate.now(ZoneOffset.UTC).atStartOfDay();
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(TEAM_A));
 
             ScheduleEntity visible = teamSchedule(TEAM_A, todayStart.plusHours(1), 1L);
@@ -324,7 +326,7 @@ class DashboardScheduleBatchN1Test {
         void getCalendar_teamRoles空_バッチ未呼出() {
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
             dashboardController.getCalendar(null);
 
@@ -338,7 +340,7 @@ class DashboardScheduleBatchN1Test {
         @DisplayName("Service.getPersonalDashboard: teamRoles が空ならバッチメソッドを呼ばない")
         void personalDashboard_teamRoles空_バッチ未呼出() {
             stubCommonPersonalForAll();
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
             dashboardService.getPersonalDashboard(USER_ID, "ALL");
 
@@ -361,7 +363,7 @@ class DashboardScheduleBatchN1Test {
                 .willReturn(new org.springframework.data.domain.PageImpl<>(List.of()));
         given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any()))

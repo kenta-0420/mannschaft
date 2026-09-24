@@ -1,10 +1,10 @@
 package com.mannschaft.app.actionmemo.service;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.actionmemo.dto.AvailableOrgResponse;
 import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +25,7 @@ import java.util.Objects;
 @Transactional(readOnly = true)
 public class ActionMemoScopeService {
 
-    private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
     private final ActionMemoSettingsService settingsService;
@@ -38,7 +38,7 @@ public class ActionMemoScopeService {
      */
     public List<AvailableTeamResponse> getAvailableTeams(Long userId) {
         // ユーザーのチーム所属一覧を取得（CMP-027: user_roles ∪ memberships の在籍チーム ID）
-        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        List<Long> teamIds = membershipScopeQueryService.findActiveTeamIds(userId);
 
         // デフォルト投稿先チームID
         Long defaultPostTeamId = settingsService.findSettings(userId)
@@ -64,7 +64,7 @@ public class ActionMemoScopeService {
      * @return 所属組織一覧
      */
     public List<AvailableOrgResponse> getAvailableOrgs(Long userId) {
-        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        List<Long> orgIds = membershipScopeQueryService.findActiveOrganizationIds(userId);
 
         return orgIds.stream()
                 .distinct()

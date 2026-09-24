@@ -214,6 +214,7 @@ export default {
       "resetButton": "Zurücksetzen",
       "allCategories": "Alle Kategorien",
       "noResults": "Keine Ausschreibungen gefunden",
+      "loadError": "Ausschreibungen konnten nicht geladen werden",
       "resultsCount": "{count} Ausschreibungen",
       "capacity": "Kapazität",
       "remaining": "Noch {count} Plätze",
