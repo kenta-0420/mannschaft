@@ -130,7 +130,6 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
         divPubA = insertDivision(tPubA, "TOUR92C公開A1部");
         divPrivB = insertDivision(tPrivB, "TOUR92C非公開B1部");
         matchdayPubA = insertMatchday(divPubA, "第1節");
-        matchPubA = insertFixture(matchdayPubA);
         Long matchdayPrivB = insertMatchday(divPrivB, "第1節");
         matchPrivB = insertFixture(matchdayPrivB);
 
@@ -380,6 +379,7 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("一括スコアのversion欠落は400となり試合を更新しない")
         void 一括スコアのversion欠落は400で試合を更新しない() throws Exception {
+            prepareBatchScoreFixture();
             setAuthentication(adminAId);
             Map<String, Object> body = batchScoreBody(matchPubA, null);
 
@@ -396,6 +396,7 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("一括スコアのmatchId欠落は400となり試合を更新しない")
         void 一括スコアのmatchId欠落は400で試合を更新しない() throws Exception {
+            prepareBatchScoreFixture();
             setAuthentication(adminAId);
             Map<String, Object> body = batchScoreBody(null, 0L);
 
@@ -412,6 +413,7 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("一括スコアのnull要素は400となり試合を更新しない")
         void 一括スコアのnull要素は400で試合を更新しない() throws Exception {
+            prepareBatchScoreFixture();
             setAuthentication(adminAId);
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("scores", java.util.Collections.singletonList(null));
@@ -429,6 +431,7 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("一括スコアは現在versionで更新に成功する")
         void 一括スコアは現在versionで更新に成功する() throws Exception {
+            prepareBatchScoreFixture();
             setAuthentication(adminAId);
             Map<String, Object> body = batchScoreBody(matchPubA, 0L);
 
@@ -448,6 +451,12 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
             assertThat(((Number) row[0]).intValue()).isEqualTo(2);
             assertThat(((Number) row[1]).intValue()).isEqualTo(1);
             assertThat(((Number) row[2]).longValue()).isEqualTo(1L);
+        }
+
+        private void prepareBatchScoreFixture() {
+            matchPubA = insertFixture(matchdayPubA);
+            em.flush();
+            em.clear();
         }
 
         private Map<String, Object> batchScoreBody(Long matchId, Long version) {
