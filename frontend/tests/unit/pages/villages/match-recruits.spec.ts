@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import MatchRecruitsPage from '~/pages/villages/[id]/match-recruits.vue'
+import MatchRecruitList from '~/components/match-recruits/MatchRecruitList.vue'
 
 /**
  * CMP-260922-2045 第2陣 G2 の根治テスト。
@@ -15,6 +16,9 @@ import MatchRecruitsPage from '~/pages/villages/[id]/match-recruits.vue'
  *   MR-001 取得失敗時に village-match-recruits-error-state が描画される
  *   MR-002（対照）取得成功・0件時はエラー状態を出さない
  *   MR-003 再試行が初回表示と同じ取得関数（loadRecruits）を呼ぶ
+ *   MR-004（Codex 検分差し戻し・世代ガード）フィルタ連打で取得が重なり、
+ *          新しい取得が成功した直後に古い取得が失敗で返っても、
+ *          最新の一覧が表示されエラー状態に隠れない
  */
 
 const listMatchRecruits = vi.fn()
@@ -91,6 +95,44 @@ describe('pages/villages/[id]/match-recruits.vue — 取得失敗時のエラー
 
     expect(listMatchRecruits).toHaveBeenCalledTimes(2)
     expect(wrapper.find('[data-testid="village-match-recruits-error-state"]').exists()).toBe(false)
+  })
+
+  it('MR-004（世代ガード）: 新しい取得が成功した直後に古い取得が失敗で返っても、最新の一覧を隠さない', async () => {
+    // 初回マウント分を片付ける
+    listMatchRecruits.mockResolvedValueOnce({ items: [], page: 0, size: 50, total: 0 })
+    const wrapper = await mountSuspended(MatchRecruitsPage)
+    await flushMicrotasks()
+
+    let rejectOld!: (e: unknown) => void
+    const oldPromise = new Promise((_resolve, reject) => { rejectOld = reject })
+    let resolveNew!: (v: unknown) => void
+    const newPromise = new Promise((resolve) => { resolveNew = resolve })
+
+    // フィルタを連打したことを模す: 1回目（古い・遅い・後で失敗）→ 2回目（新しい・速い・先に成功）
+    listMatchRecruits.mockReturnValueOnce(oldPromise)
+    listMatchRecruits.mockReturnValueOnce(newPromise)
+
+    const list = wrapper.findComponent(MatchRecruitList)
+    await list.vm.$emit('update:statusFilter', 'CLOSED')
+    await list.vm.$emit('update:statusFilter', 'OPEN')
+    await flushMicrotasks()
+
+    // 新しい（2回目の）取得が先に成功で返る
+    resolveNew({
+      items: [{ id: 'r-new', category: 'PRACTICE_MATCH', status: 'OPEN', title: '最新の募集', postedByUserId: 1 }],
+      page: 0,
+      size: 50,
+      total: 1,
+    })
+    await flushMicrotasks()
+
+    // 古い（1回目の）取得が後から失敗で返る
+    rejectOld(new Error('stale network error'))
+    await flushMicrotasks()
+
+    // 古い失敗応答に上書きされず、最新の一覧のままエラー状態は出ない
+    expect(wrapper.find('[data-testid="village-match-recruits-error-state"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('最新の募集')
   })
 })
 

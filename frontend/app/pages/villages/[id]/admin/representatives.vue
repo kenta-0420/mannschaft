@@ -93,19 +93,32 @@ const repsLoading = ref(false)
 /** 取得失敗は「代表委任なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
 const repsLoadFailed = ref(false)
 
+/**
+ * onMounted の初回取得と watch(village) の再取得が重なりうるための世代番号。
+ *
+ * 新しい取得が成功した直後に古い取得が失敗で返ると、catch がその古い応答で
+ * `representatives`/`repsLoadFailed` を上書きし、最新の一覧がエラー状態に隠れてしまう
+ * （CMP-260922-2045 第2陣 G2 差し戻し・match-recruits.vue と同型）。
+ */
+let repsRequestSeq = 0
+
 async function loadRepresentatives() {
+  const seq = ++repsRequestSeq
   repsLoading.value = true
   repsLoadFailed.value = false
   try {
-    representatives.value = await listRepresentatives(villageId.value)
+    const fetched = await listRepresentatives(villageId.value)
+    if (seq !== repsRequestSeq) return
+    representatives.value = fetched
   }
   catch (err) {
+    if (seq !== repsRequestSeq) return
     representatives.value = []
     repsLoadFailed.value = true
     showError(translateError(extractErrorCode(err), t('village.representative.loadFailed')))
   }
   finally {
-    repsLoading.value = false
+    if (seq === repsRequestSeq) repsLoading.value = false
   }
 }
 

@@ -241,8 +241,18 @@ const page = ref(0)
 /** 取得失敗は「申請なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
 const requestsLoadFailed = ref(false)
 
+/**
+ * ステータスタブ切り替え・ページ送り連打による取得の重なりを検知する世代番号。
+ *
+ * 新しい取得が成功した直後に古い取得が失敗で返ると、catch がその古い応答で
+ * `requests`/`requestsLoadFailed` を上書きし、最新の一覧がエラー状態に隠れてしまう
+ * （CMP-260922-2045 第2陣 G2 差し戻し・match-recruits.vue と同型）。
+ */
+let requestsRequestSeq = 0
+
 async function loadRequests() {
   if (!isReviewer.value) return
+  const seq = ++requestsRequestSeq
   listLoading.value = true
   requestsLoadFailed.value = false
   try {
@@ -250,10 +260,12 @@ async function loadRequests() {
       page: page.value,
       size: PAGE_SIZE,
     })
+    if (seq !== requestsRequestSeq) return
     requests.value = res.content
     totalElements.value = res.totalElements
   }
   catch (err) {
+    if (seq !== requestsRequestSeq) return
     requests.value = []
     totalElements.value = 0
     requestsLoadFailed.value = true
@@ -261,7 +273,7 @@ async function loadRequests() {
     showError(translateApiError(code, status))
   }
   finally {
-    listLoading.value = false
+    if (seq === requestsRequestSeq) listLoading.value = false
   }
 }
 

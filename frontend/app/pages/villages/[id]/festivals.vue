@@ -64,20 +64,33 @@ const statusFilterTabs: { value: StatusFilter, i18nKey: string }[] = [
   { value: 'ALL', i18nKey: 'village.festival.filterAll' },
 ]
 
+/**
+ * ステータスフィルタ連打による取得の重なりを検知する世代番号。
+ *
+ * 新しい取得が成功した直後に古い取得が失敗で返ると、catch がその古い応答で
+ * `festivals`/`festivalsLoadFailed` を上書きし、最新の一覧がエラー状態に隠れてしまう
+ * （CMP-260922-2045 第2陣 G2 差し戻し・match-recruits.vue と同型）。
+ */
+let festivalsRequestSeq = 0
+
 async function loadFestivals() {
+  const seq = ++festivalsRequestSeq
   festivalsLoading.value = true
   festivalsLoadFailed.value = false
   try {
     const status = statusFilter.value === 'ALL' ? undefined : statusFilter.value
-    festivals.value = await villageApi.listFestivals(villageId.value, status)
+    const fetched = await villageApi.listFestivals(villageId.value, status)
+    if (seq !== festivalsRequestSeq) return
+    festivals.value = fetched
   }
   catch (error) {
+    if (seq !== festivalsRequestSeq) return
     festivals.value = []
     festivalsLoadFailed.value = true
     handleApiError(error, t('village.festival.loadFailed'))
   }
   finally {
-    festivalsLoading.value = false
+    if (seq === festivalsRequestSeq) festivalsLoading.value = false
   }
 }
 

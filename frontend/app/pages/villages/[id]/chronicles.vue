@@ -67,7 +67,17 @@ function sourceTypeLabel(sourceType: VillageEventArchiveSourceType): string {
   }
 }
 
+/**
+ * フィルタ切り替え連打による取得の重なりを検知する世代番号（reset 呼び出しのみ採番）。
+ *
+ * 新しい reset 取得が成功した直後に古い reset 取得が失敗で返ると、catch がその古い
+ * 応答で `archives`/`archivesLoadFailed` を上書きし、最新の一覧がエラー状態に隠れて
+ * しまう（CMP-260922-2045 第2陣 G2 差し戻し・match-recruits.vue と同型）。
+ */
+let archivesResetSeq = 0
+
 async function loadArchives(opts: { reset: boolean }) {
+  const seq = opts.reset ? ++archivesResetSeq : archivesResetSeq
   const page = opts.reset ? 0 : archivesPage.value + 1
   const loadingRef = opts.reset ? archivesLoading : archivesLoadingMore
   loadingRef.value = true
@@ -78,6 +88,8 @@ async function loadArchives(opts: { reset: boolean }) {
       page,
       size: ARCHIVE_PAGE_SIZE,
     })
+    // reset 呼び出しの応答が届いた時点で、さらに新しい reset が走っていれば古い応答は捨てる。
+    if (opts.reset && seq !== archivesResetSeq) return
     archives.value = opts.reset ? fetched : [...archives.value, ...fetched]
     archivesPage.value = page
     // BE はページ総数を返さない前提のため、直前ページが size 丁度ならまだ続きがあるとみなす。
@@ -85,13 +97,14 @@ async function loadArchives(opts: { reset: boolean }) {
   }
   catch (error) {
     if (opts.reset) {
+      if (seq !== archivesResetSeq) return
       archives.value = []
       archivesLoadFailed.value = true
     }
     handleApiError(error, t('village.archive.loadFailed'))
   }
   finally {
-    loadingRef.value = false
+    if (!opts.reset || seq === archivesResetSeq) loadingRef.value = false
   }
 }
 

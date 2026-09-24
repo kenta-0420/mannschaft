@@ -76,7 +76,18 @@ const statusDropdownOptions = computed(() =>
   statusOptions.map(o => ({ value: o.value, label: t(o.i18nKey) })),
 )
 
+/**
+ * フィルタ切り替え連打による取得の重なりを検知する世代番号。
+ *
+ * 新しい取得が成功した直後に古い取得が失敗で返ると、catch がその古い応答で
+ * `recruits`/`recruitsLoadFailed` を上書きし、最新の一覧がエラー状態に隠れてしまう
+ * （Codex 検分指摘・CMP-260922-2045 第2陣 G2 差し戻し）。取得開始時に採番し、
+ * 応答時点で世代が古ければ状態を一切書き換えない。
+ */
+let recruitsRequestSeq = 0
+
 async function loadRecruits() {
+  const seq = ++recruitsRequestSeq
   recruitsLoading.value = true
   recruitsLoadFailed.value = false
   try {
@@ -87,15 +98,17 @@ async function loadRecruits() {
       page: 0,
       size: 50,
     })
+    if (seq !== recruitsRequestSeq) return
     recruits.value = res.items
   }
   catch (error) {
+    if (seq !== recruitsRequestSeq) return
     recruits.value = []
     recruitsLoadFailed.value = true
     handleApiError(error, t('village.matchRecruit.loadFailed'))
   }
   finally {
-    recruitsLoading.value = false
+    if (seq === recruitsRequestSeq) recruitsLoading.value = false
   }
 }
 

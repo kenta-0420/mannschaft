@@ -62,7 +62,17 @@ function formatYmd(y: number, m: number, d: number): string {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
+/**
+ * 月送り連打による取得の重なりを検知する世代番号。
+ *
+ * 新しい月の取得が成功した直後に古い月の取得が失敗で返ると、catch がその古い応答で
+ * `events`/`eventsLoadFailed` を上書きし、最新の一覧がエラー状態に隠れてしまう
+ * （CMP-260922-2045 第2陣 G2 差し戻し・match-recruits.vue と同型）。
+ */
+let eventsRequestSeq = 0
+
 async function loadEvents() {
+  const seq = ++eventsRequestSeq
   eventsLoading.value = true
   eventsLoadFailed.value = false
   try {
@@ -71,15 +81,17 @@ async function loadEvents() {
       year: currentYear.value,
       month: currentMonth.value,
     })
+    if (seq !== eventsRequestSeq) return
     events.value = result.items
   }
   catch (error) {
+    if (seq !== eventsRequestSeq) return
     events.value = []
     eventsLoadFailed.value = true
     handleApiError(error, t('village.calendar.loadFailed'))
   }
   finally {
-    eventsLoading.value = false
+    if (seq === eventsRequestSeq) eventsLoading.value = false
   }
 }
 
