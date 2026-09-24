@@ -56,7 +56,7 @@ public class TimelinePostAccessGuard {
     }
 
     /** 投稿本人の編集権限。TEAM/ORGANIZATION の MEMBER は MANAGE_POSTS を要する。 */
-    public void checkCanEdit(Long userId, TimelinePostEntity post) {
+    void checkCanEdit(Long userId, TimelinePostEntity post) {
         if (userId == null || !userId.equals(post.getUserId())) {
             checkCanManage(userId, post);
             return;
