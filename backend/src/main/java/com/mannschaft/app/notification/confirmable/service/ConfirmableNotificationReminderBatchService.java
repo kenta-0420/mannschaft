@@ -18,11 +18,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.MessageSource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -47,6 +49,10 @@ public class ConfirmableNotificationReminderBatchService {
     /** Issue #2715 ロットB: 送信者アラート本文の locale 解決（D-5: auth の UserRepository を直接呼ばない）。 */
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
+    private final JdbcTemplate jdbcTemplate;
+
+    /** リマインドの1バッチあたりの受信者数上限（軍議第8版確定稿 §9.4: 「受信者500人ごと」）。 */
+    static final int REMINDER_BATCH_SIZE = 500;
 
     /**
      * リマインドバッチを実行する。
@@ -265,12 +271,14 @@ public class ConfirmableNotificationReminderBatchService {
      * <p>手順:
      * <ol>
      *   <li>対象者の {@code first_reminder_sent_at}（2回目なら {@code second}）を
-     *       {@code … IS NULL AND is_confirmed = false AND excluded_at IS NULL} の条件付き UPDATE で確定する</li>
-     *   <li>UPDATE で確定できた人の ID を取り出す</li>
+     *       {@code … IS NULL AND is_confirmed = false AND excluded_at IS NULL} の条件付き UPDATE で確定する。
+     *       実装は「{@code SELECT ... FOR UPDATE} で同じ条件を満たす行をロック・取得 → ロック済みの行だけ
+     *       UPDATE」という形を取る。ロック済みの行に対する UPDATE は、他トランザクションがこの間に割り込めない
+     *       ため、条件付き UPDATE と等価である</li>
+     *   <li>UPDATE で確定できた人の ID を取り出す（ロックした時点で取れている）</li>
      *   <li>その人たちの分だけ notifications を多値 INSERT する</li>
      * </ol>
-     * 手順3が失敗したら手順1もロールバックされ、次回バッチで再送される（AC-57）。
-     * 骨格のみ（試練B）。実装は出陣で行う。</p>
+     * 手順3が失敗したら手順1もロールバックされ、次回バッチで再送される（AC-57）。</p>
      *
      * @param notificationId  対象の確認通知 ID
      * @param candidateUserIds 候補の受信者 user_id（最大500件を1トランザクションで扱う契約）
@@ -280,7 +288,77 @@ public class ConfirmableNotificationReminderBatchService {
      */
     @Transactional
     public List<Long> processRemindersTransactional(
-            Long notificationId, List<Long> candidateUserIds, boolean isFirstReminder, java.time.LocalDateTime now) {
-        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+            Long notificationId, List<Long> candidateUserIds, boolean isFirstReminder, LocalDateTime now) {
+        if (candidateUserIds == null || candidateUserIds.isEmpty()) {
+            return List.of();
+        }
+
+        // 手順1〜2: ロックを取ったうえで、経過時間・期限の条件（needsFirstReminder/needsSecondReminder）を
+        // 満たす行だけを確定対象とする。ロック済みの行への UPDATE は他トランザクションが割り込めないため
+        // 条件付き UPDATE と等価（軍議第8版確定稿 §9.4）。
+        List<ConfirmableNotificationRecipientEntity> lockedCandidates = isFirstReminder
+                ? recipientRepository.findFirstReminderCandidatesForUpdate(notificationId, candidateUserIds)
+                : recipientRepository.findSecondReminderCandidatesForUpdate(notificationId, candidateUserIds);
+
+        List<ConfirmableNotificationRecipientEntity> confirmed = new ArrayList<>();
+        for (ConfirmableNotificationRecipientEntity recipient : lockedCandidates) {
+            boolean eligible = isFirstReminder ? recipient.needsFirstReminder(now) : recipient.needsSecondReminder(now);
+            if (eligible) {
+                if (isFirstReminder) {
+                    recipient.markFirstReminderSent();
+                } else {
+                    recipient.markSecondReminderSent();
+                }
+                confirmed.add(recipient);
+            }
+        }
+        if (confirmed.isEmpty()) {
+            return List.of();
+        }
+        recipientRepository.saveAll(confirmed);
+
+        // 手順3: notification 本体を読み、確定した人たちの分だけ notifications を多値 INSERT する。
+        ConfirmableNotificationEntity notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "リマインドバッチ: 確認通知が見つからない notificationId=" + notificationId));
+        List<Long> confirmedUserIds = confirmed.stream().map(r -> r.getUser().getId()).toList();
+        insertReminderNotifications(notification, confirmedUserIds, isFirstReminder);
+
+        return confirmedUserIds;
+    }
+
+    /** リマインド用の notifications 多値 INSERT（受信者数に比例した文数にしない・§9.4）。 */
+    private void insertReminderNotifications(
+            ConfirmableNotificationEntity notification, List<Long> userIds, boolean isFirstReminder) {
+        if (userIds.isEmpty()) {
+            return;
+        }
+        String notificationType = isFirstReminder
+                ? "CONFIRMABLE_NOTIFICATION_REMINDER_1" : "CONFIRMABLE_NOTIFICATION_REMINDER_2";
+        String scopeTypeStr = notification.getScopeType() == null ? null : notification.getScopeType().name();
+        StringBuilder sql = new StringBuilder(
+                "INSERT INTO notifications (user_id, organization_id, notification_type, priority, title, body, "
+                        + "source_type, source_id, scope_type, scope_id, action_url, actor_id, is_read, created_at) VALUES ");
+        Object[] args = new Object[userIds.size() * 12];
+        int a = 0;
+        for (int i = 0; i < userIds.size(); i++) {
+            if (i > 0) {
+                sql.append(',');
+            }
+            sql.append("(?,?,?,?,?,?,?,?,?,?,?,?,0,UTC_TIMESTAMP())");
+            args[a++] = userIds.get(i);
+            args[a++] = null;
+            args[a++] = notificationType;
+            args[a++] = notification.getPriority() == null ? null : notification.getPriority().name();
+            args[a++] = notification.getTitle();
+            args[a++] = notification.getBody() != null ? notification.getBody() : "";
+            args[a++] = "CONFIRMABLE_NOTIFICATION";
+            args[a++] = notification.getId();
+            args[a++] = scopeTypeStr;
+            args[a++] = notification.getScopeId();
+            args[a++] = notification.getActionUrl();
+            args[a++] = null;
+        }
+        jdbcTemplate.update(sql.toString(), args);
     }
 }
