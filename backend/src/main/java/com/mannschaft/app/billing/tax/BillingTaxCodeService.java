@@ -28,7 +28,7 @@ public class BillingTaxCodeService {
     private static final String LOCK_ROW_CODE = "__TAX_CODE_LOCK__";
 
     /**
-     * ロック行（{@code __TAX_CODE_LOCK__}）の {@code valid_from}。V220 migration の投入値
+     * ロック行（{@code __TAX_CODE_LOCK__}）の {@code valid_from}。V222 migration の投入値
      * {@code 1970-01-01 00:00:00.000000} と完全一致する固定値（根治治療の詳細は
      * {@link BillingTaxCodeRepository#lockTaxCodeLockRowForUpdate} の Javadoc 参照）。
      */
@@ -55,7 +55,7 @@ public class BillingTaxCodeService {
      * の実測で「{@code __TAX_CODE_LOCK__} 行への {@code FOR UPDATE} がスタックトレースに
      * 一切登場しない」ことが判明し、真因を辿ったところ<b>ロック行自体がテストDBに
      * 実在しなかった</b>（{@code application-test.yml} の {@code flyway.enabled=false}・
-     * {@code ddl-auto=create} により、V220 migration の seed INSERT がテストに一切適用されない
+     * {@code ddl-auto=create} により、V222 migration の seed INSERT がテストに一切適用されない
      * ため）。{@code lockTaxCodeLockRowForUpdate()} は0件を返し、{@code FOR UPDATE} は
      * 何も掴まず完全に空振りしていた＝排他は最初から機能していなかった。
      * ギャップロックの交差はその<b>二次症状</b>に過ぎなかった。

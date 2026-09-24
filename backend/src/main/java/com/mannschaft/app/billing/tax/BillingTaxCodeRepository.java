@@ -57,7 +57,7 @@ public interface BillingTaxCodeRepository extends JpaRepository<BillingTaxCodeEn
      * get lock} が実測で再現した（{@code BillingTaxCodeLockConcurrencyIT} AC-11）。
      * {@code valid_from} まで含めて複合キーを完全一致させれば、InnoDB は当該1行だけの
      * record lock に絞り込め、隣接ギャップへ波及しない。ロック行の {@code valid_from} は
-     * migration（V220）が {@code 1970-01-01 00:00:00.000000} で投入しており、
+     * migration（V222）が {@code 1970-01-01 00:00:00.000000} で投入しており、
      * これは {@link java.time.Instant#EPOCH} と完全一致する
      * （{@code PriceRevisionOverlapConcurrencyIT} 等、既存コードも同じ前提で
      * {@code Instant.EPOCH} を使っている）。</p>
