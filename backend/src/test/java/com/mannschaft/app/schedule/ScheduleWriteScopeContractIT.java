@@ -135,6 +135,7 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminOrgBId, ScopeType.ORGANIZATION, orgBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminOrgBId, "ADMIN", null, orgBId);
         MembershipTestHelper.insertMembership(em, memberOrgAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
+        seedMemberManagementPermissions();
         // outsiderId / personalOwnerId はどこにも所属させない。
 
         ScheduleEntity teamScheduleA = scheduleRepository.save(ScheduleEntity.builder()
@@ -843,6 +844,28 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    /** この IT は Flyway 無効のため、MEMBER 管理権限3件の初期 OFF をテスト内で再現する。 */
+    private void seedMemberManagementPermissions() {
+        for (String name : List.of("MANAGE_SCHEDULES", "MANAGE_FILES", "MANAGE_POSTS")) {
+            em.createNativeQuery("INSERT INTO permissions (name, display_name, scope, created_at, updated_at) "
+                            + "SELECT :name, :name, 'TEAM', NOW(), NOW() FROM DUAL "
+                            + "WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = :name)")
+                    .setParameter("name", name)
+                    .executeUpdate();
+            em.createNativeQuery("INSERT INTO role_permissions (role_id, permission_id, is_default, created_at) "
+                            + "SELECT r.id, p.id, 0, NOW() FROM roles r CROSS JOIN permissions p "
+                            + "WHERE r.name = 'MEMBER' AND p.name = :name "
+                            + "AND NOT EXISTS (SELECT 1 FROM role_permissions rp "
+                            + "WHERE rp.role_id = r.id AND rp.permission_id = p.id)")
+                    .setParameter("name", name)
+                    .executeUpdate();
+        }
+        em.createNativeQuery("UPDATE role_permissions rp JOIN roles r ON r.id = rp.role_id "
+                        + "JOIN permissions p ON p.id = rp.permission_id SET rp.is_default = 0 "
+                        + "WHERE r.name = 'MEMBER' AND p.name IN ('MANAGE_SCHEDULES', 'MANAGE_FILES', 'MANAGE_POSTS')")
+                .executeUpdate();
+    }
 
     private void setAuth(Long userId) {
         SecurityContextHolder.getContext().setAuthentication(
