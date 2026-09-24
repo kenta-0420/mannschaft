@@ -231,7 +231,7 @@ class TaskListCmpIdDuplicateGuardTest {
                 .append("そのまま列として書き足した、証拠の追記で列区切りの `|` を余分に増やした等。\n")
                 .append("対処: 内容を消さずに正しい7列へ戻す。余った列の文章は意味の合う既存列（多くは")
                 .append("「証拠(PR/テスト)」）へ畳み込み、セル内で本物の `|` を使う場合は `\\|` へ")
-                .append("エスケープすること（コードスパン \\` ... \\` 内の `|` はエスケープ不要）。\n")
+                .append("エスケープすること（コードスパン \\` ... \\` の中でも `\\|` へのエスケープが必要）。\n")
                 .append("列ズレ行一覧:\n");
         for (String m : mismatches) {
             sb.append("  ✗✗ ").append(m).append("\n");
@@ -240,34 +240,31 @@ class TaskListCmpIdDuplicateGuardTest {
     }
 
     /**
-     * Markdown 表の1行を GitHub のレンダリングに合わせてセル分割する。
+     * Markdown 表の1行を GFM（GitHub Flavored Markdown）のレンダリングに合わせてセル分割する。
      *
-     * <p>GitHub は表セル内で <b>コードスパン（バッククォート）に囲まれた {@code |} を区切りとして扱わない</b>。
-     * さらに {@code \|} は<b>エスケープされたリテラル {@code |}</b> として扱い、区切りにしない。
-     * 単純に {@code String.split("\\|")} すると、コードスパン中の {@code |} やコード例に書いた
-     * シェルパイプ（{@code \|\| true} 等）まで列区切りとして誤検出し、正しい行を偽陽性で
-     * 列ズレと判定してしまう（2026-09-22 に `\|\| true` を含む正常行を誤検出した実例）。</p>
+     * <h2>2026-09-24 是正（Codex検分指摘）</h2>
+     * <p>GFM の表仕様では、セル内でパイプを区切りにしないためには <b>{@code \|} エスケープが必須</b>であり、
+     * それは<b>コードスパン（バッククォート）の中でも変わらない</b>。コードスパン内の未エスケープ {@code |} は
+     * 実際には<b>列の区切りとして扱われる</b>（GitHub上で表が崩れる）。旧実装は「コードスパン内の {@code |}
+     * は区切りにしない」という誤った仮定を置いており、コードスパン内に未エスケープ {@code |} を含む
+     * 実在の列ズレ行（例: {@code `scopeType` を `'team'` または `'organization'` ...} のような、
+     * バッククォート内に生の {@code |} を書いた行）を見逃していた。本メソッドは
+     * <b>{@code \|} のみを区切りにしない特殊扱いとし、それ以外の {@code |} はコードスパンの内外を問わず
+     * すべて区切りとして数える</b>（バッククォート自体のペアリングは追跡しない）。</p>
      */
     private static List<String> splitTableRow(String line) {
         List<String> result = new ArrayList<>();
         StringBuilder buf = new StringBuilder();
-        boolean inCode = false;
         int i = 0;
         int n = line.length();
         while (i < n) {
             char c = line.charAt(i);
-            if (c == '`') {
-                inCode = !inCode;
-                buf.append(c);
-                i++;
-                continue;
-            }
             if (c == '\\' && i + 1 < n && line.charAt(i + 1) == '|') {
                 buf.append('|');
                 i += 2;
                 continue;
             }
-            if (c == '|' && !inCode) {
+            if (c == '|') {
                 result.add(buf.toString());
                 buf.setLength(0);
                 i++;
