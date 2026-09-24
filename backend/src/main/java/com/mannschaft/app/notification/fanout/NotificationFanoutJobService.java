@@ -392,6 +392,24 @@ public class NotificationFanoutJobService {
     }
 
     /**
+     * CMP-260920-1040: {@code DONE} に遷移させる（呼び出し側のトランザクションに<b>参加</b>する版）。
+     *
+     * <p>{@link #markDone} は {@code REQUIRES_NEW} で独立コミットするが、確認通知の fan-out は
+     * 「親の行のロック解除・delivery_status 確定・ジョブ DONE 化」を<b>同一トランザクション</b>で
+     * 行う必要がある（軍議第8版確定稿 §9.2 の「関所」）。{@code ConfirmableFanoutChunkSink#finish}
+     * のようにすでに {@code @Transactional} な呼び出し元から呼ぶことを前提とし、本メソッド自体は
+     * トランザクション境界を持たない（呼び出し元の TX に暗黙に参加する）。</p>
+     *
+     * @param jobId fan-out ジョブ ID
+     */
+    public void markDoneInCallerTransaction(UUID jobId) {
+        NotificationFanoutJob job = jobRepository.findById(jobId).orElseThrow();
+        job.setStatus(NotificationFanoutJobStatus.DONE);
+        job.setUpdatedAt(LocalDateTime.now());
+        jobRepository.save(job);
+    }
+
+    /**
      * 配信失敗を記録する。{@code retry_count} を増やし、上限未満なら指数バックオフで {@code FAILED}（再試行待ち）、
      * 上限到達で {@code DEAD_LETTER}（行は消さず調査・手動再投入対象として残す・AC-3）に遷移させる。
      * 呼び出し元の例外で巻き戻らないよう独立コミット（{@code REQUIRES_NEW}）で確定する。

@@ -298,4 +298,63 @@ public class ConfirmableNotificationEntity {
     public void decrementUnconfirmedCount() {
         this.unconfirmedCount = Math.max(0, this.unconfirmedCount - 1);
     }
+
+    /**
+     * CMP-260920-1040: delivery_status を DELIVERING に遷移する（軍議第8版確定稿 §3.4）。
+     *
+     * <p>{@code findByIdForUpdate} でロックしているトランザクションからのみ呼ぶこと。</p>
+     */
+    public void markDelivering() {
+        this.deliveryStatus = ConfirmableNotificationDeliveryStatus.DELIVERING;
+    }
+
+    /**
+     * CMP-260920-1040: delivery_status を DELIVERED に遷移する（軍議第8版確定稿 §9.2）。
+     */
+    public void markDelivered() {
+        this.deliveryStatus = ConfirmableNotificationDeliveryStatus.DELIVERED;
+    }
+
+    /**
+     * CMP-260920-1040: delivery_status を PARTIALLY_FAILED に遷移する（軍議第8版確定稿 §3.4・§8.3）。
+     *
+     * <p>課金の猶予超過などで途中から配れなくなった場合に呼ぶ。一度 PARTIALLY_FAILED になったら
+     * {@link #finishIfNotAlreadyTerminal()} 系の判定で上書きしないこと（呼び出し側の契約）。</p>
+     */
+    public void markPartiallyFailed() {
+        this.deliveryStatus = ConfirmableNotificationDeliveryStatus.PARTIALLY_FAILED;
+    }
+
+    /**
+     * CMP-260920-1040: delivery_status を STOPPED に遷移する（軍議第8版確定稿 §9.1・§9.2）。
+     *
+     * <p>打ち切った理由は本メソッドでは持たない。呼び出し側が親の status（CANCELLED / EXPIRED）を
+     * 見て表示を出し分ける。</p>
+     */
+    public void markStopped() {
+        this.deliveryStatus = ConfirmableNotificationDeliveryStatus.STOPPED;
+    }
+
+    /**
+     * CMP-260920-1040: total_recipient_count / delivered_count を加算する（軍議第8版確定稿 §3.4 手順5）。
+     *
+     * <p>{@code findByIdForUpdate} でロックしているトランザクションからのみ呼ぶこと。</p>
+     */
+    public void addDeliveredCount(int delta) {
+        this.totalRecipientCount = this.totalRecipientCount + delta;
+        this.deliveredCount = this.deliveredCount + delta;
+    }
+
+    /**
+     * CMP-260920-1040: 完了判定（軍議第8版確定稿 §10.1・§9.2）。
+     *
+     * <p>{@code unconfirmedCount == 0 && deliveryStatus == DELIVERED && totalRecipientCount > 0} を、
+     * ロックした親の行の値だけで判定する。0 人（誰も配信していない）で「全員確認済み」を成立させない
+     * （AC-54）。</p>
+     */
+    public boolean isReadyToComplete() {
+        return this.unconfirmedCount == 0
+                && this.deliveryStatus == ConfirmableNotificationDeliveryStatus.DELIVERED
+                && this.totalRecipientCount > 0;
+    }
 }

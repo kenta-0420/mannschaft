@@ -67,6 +67,15 @@ public class NotificationFanoutWorker {
     private final FanoutRecipientSourceRegistry recipientSourceRegistry;
     private final NotificationFanoutJobService jobService;
     private final NotificationBulkFanoutService bulkFanoutService;
+    /**
+     * CMP-260920-1040: notification_type ごとの「チャンク出力先」戦略（軍議第8版確定稿 §3.4）。
+     *
+     * <p>Spring が {@link FanoutChunkSink} 実装のすべてを自動収集する。{@code job.getNotificationType()} に
+     * 一致する実装があれば {@link #processOne} 内でそちらへ委譲し（{@link ConfirmableFanoutChunkSink} 等）、
+     * 無ければ既存の {@link #bulkFanoutService} 経路（{@code insertAndDispatchChunk}）を使う。
+     * 一致する実装が無い既存ジョブの挙動は 1 バイトも変わらない（陣立て書 §3.4「既存は無変更」）。</p>
+     */
+    private final List<FanoutChunkSink> chunkSinks;
     /** ロケール別・描画済み文面の子表リポジトリ（Issue #2871）。 */
     private final NotificationFanoutJobMessageRepository jobMessageRepository;
 
@@ -182,6 +191,14 @@ public class NotificationFanoutWorker {
             if (job.getShardCount() < 1) {
                 job.setShardCount((short) 1);
             }
+            // CMP-260920-1040 §3.4: notification_type に一致する FanoutChunkSink があれば、
+            // そちらへチャンク出力を委譲する（確認通知の宛先指定 fan-out 等）。無ければ既存経路のまま。
+            FanoutChunkSink sink = resolveChunkSink(job.getNotificationType());
+            if (sink != null) {
+                processOneWithSink(job, source, sink);
+                return;
+            }
+
             // Issue #2871: ロケール別の描画済み文面をジョブ 1 件につき 1 回だけ読む（高々 6 行）。
             // チャンクごと・受信者ごとに引かない（チャンク数にも受信者数にも比例させない）。
             Map<String, NotificationFanoutJobMessage> messagesByLocale = loadMessages(job.getId());
@@ -228,6 +245,56 @@ public class NotificationFanoutWorker {
             log.warn("fan-out ジョブ配信失敗: jobId={} scopeType={} scopeRef={} cursor={}",
                     job.getId(), job.getScopeType(), job.getScopeRef(), job.getCursorSubjectId(), ex);
             jobService.recordFailure(job.getId(), ex.getClass().getSimpleName() + ": " + ex.getMessage(), MAX_RETRY);
+        }
+    }
+
+    /**
+     * CMP-260920-1040: {@code notificationType} に一致する {@link FanoutChunkSink} を探す。
+     * 一致するものが無い（既存ジョブ）場合は {@code null} を返し、呼び出し側は既存経路を使う。
+     */
+    private FanoutChunkSink resolveChunkSink(String notificationType) {
+        for (FanoutChunkSink candidate : chunkSinks) {
+            if (candidate.notificationType().equals(notificationType)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * CMP-260920-1040: {@link FanoutChunkSink} へチャンク出力を委譲する経路（軍議第8版確定稿 §3.4・§9.2）。
+     *
+     * <p>{@code job.getSourceId()} を確認通知の親行 ID として渡す（{@code ConfirmableFanoutChunkSink} は
+     * source_type='CONFIRMABLE_NOTIFICATION'・source_id=確認通知 ID で enqueue される契約）。
+     * チャンクが {@code stopped}（親が CANCELLED/EXPIRED で打ち切り）を返した場合は、それ以上ページを
+     * 取得せず {@link FanoutChunkSink#finish} を呼んでジョブを終える（§8.3・§9.2）。</p>
+     */
+    private void processOneWithSink(NotificationFanoutJob job, FanoutRecipientSource source, FanoutChunkSink sink) {
+        while (true) {
+            long cursor = job.getCursorSubjectId();
+            boolean includeSupporters = !Boolean.FALSE.equals(job.getIncludeSupporters());
+            List<FanoutRecipient> page = source.nextPage(new FanoutPageRequest(
+                    job.getScopeRef(), cursor, CHUNK_SIZE, includeSupporters,
+                    job.getShardIndex(), job.getShardCount()));
+            if (page.isEmpty()) {
+                // §9.2 の関所: 汎用の markDone を直接呼ばず、sink.finish で親行の状態確定と
+                // ジョブ DONE 化を行わせる。ジョブ表そのものへの参照を sink は持たないため、
+                // ジョブの DONE 化はここ（sink.finish の直後・別トランザクション）で行う。
+                sink.finish(job.getId(), job.getSourceId());
+                jobService.markDone(job.getId());
+                break;
+            }
+            List<Long> userIds = page.stream().map(FanoutRecipient::userId).toList();
+            FanoutChunkSink.ChunkResult result = sink.processChunk(job.getId(), job.getSourceId(), userIds);
+            if (result.stopped()) {
+                // 親が CANCELLED/EXPIRED で打ち切られた（§8.3）。以降のチャンクは取得せず終える。
+                sink.finish(job.getId(), job.getSourceId());
+                jobService.markDone(job.getId());
+                break;
+            }
+            long newCursor = page.get(page.size() - 1).userId();
+            job.setCursorSubjectId(newCursor);
+            jobService.advanceCursor(job.getId(), newCursor, result.addedCount());
         }
     }
 

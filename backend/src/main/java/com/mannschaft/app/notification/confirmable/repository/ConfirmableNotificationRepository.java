@@ -78,4 +78,17 @@ public interface ConfirmableNotificationRepository
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT n FROM ConfirmableNotificationEntity n WHERE n.id = :id")
     Optional<ConfirmableNotificationEntity> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * CMP-260920-1040: 期限切れ対象の ID だけを抽出する（軍議第8版確定稿 §11.1 手順1）。
+     *
+     * <p>エンティティは読み込まない。期限切れバッチが ID 1件ごとに独立したトランザクションで
+     * {@link #findByIdForUpdate} を呼んで再判定するための入力。</p>
+     *
+     * @param now 現在日時
+     * @return 期限切れ対象の確認通知 ID 一覧
+     */
+    @Query("SELECT n.id FROM ConfirmableNotificationEntity n " +
+           "WHERE n.status = 'ACTIVE' AND n.deadlineAt IS NOT NULL AND n.deadlineAt < :now")
+    List<Long> findExpiredIds(@Param("now") LocalDateTime now);
 }
