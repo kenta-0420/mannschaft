@@ -3,6 +3,7 @@ package com.mannschaft.app.notification.confirmable.service;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientGroupCreateRequest;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientGroupResponse;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableTargetSpec;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,16 @@ public class ConfirmableRecipientGroupService {
 
     @Transactional
     public void delete(ScopeType scopeType, Long scopeId, UUID groupId) {
+        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+    }
+
+    /**
+     * 送信時、指定グループを送信スコープに対して解決しターゲット一覧を返す（軍議第8版確定稿 §3.3・AC-15・AC-7）。
+     *
+     * <p>存在しない・論理削除済み・他スコープのグループはすべて {@code RECIPIENT_GROUP_NOT_FOUND}
+     * （404・存在秘匿）とする（AC-15）。認可済みのターゲット一覧は送信の時点で展開する（AC-7）。</p>
+     */
+    public List<ConfirmableTargetSpec> resolveForSend(ScopeType scopeType, Long scopeId, UUID groupId) {
         throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
     }
 }
