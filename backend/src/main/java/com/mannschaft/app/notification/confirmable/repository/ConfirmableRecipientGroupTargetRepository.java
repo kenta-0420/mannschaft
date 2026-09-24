@@ -10,7 +10,7 @@ import java.util.UUID;
  * CMP-260920-1040 F04.9 確認通知の宛先グループのターゲットリポジトリ。
  */
 public interface ConfirmableRecipientGroupTargetRepository
-        extends JpaRepository<ConfirmableRecipientGroupTargetEntity, Long> {
+        extends JpaRepository<ConfirmableRecipientGroupTargetEntity, UUID> {
 
     /**
      * グループIDに紐づくターゲット一覧を取得する。

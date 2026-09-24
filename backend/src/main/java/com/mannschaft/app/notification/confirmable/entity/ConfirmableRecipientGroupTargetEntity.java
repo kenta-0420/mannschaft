@@ -1,15 +1,15 @@
 package com.mannschaft.app.notification.confirmable.entity;
 
+import com.mannschaft.app.common.entity.UuidV7Entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -26,12 +26,10 @@ import java.util.UUID;
 @Table(name = "confirmable_recipient_group_targets")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder
-public class ConfirmableRecipientGroupTargetEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@EqualsAndHashCode(callSuper = true)
+public class ConfirmableRecipientGroupTargetEntity extends UuidV7Entity {
 
     @Column(name = "group_id", nullable = false, columnDefinition = "BINARY(16)")
     private UUID groupId;

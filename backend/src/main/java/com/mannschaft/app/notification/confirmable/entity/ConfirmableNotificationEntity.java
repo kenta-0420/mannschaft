@@ -221,6 +221,17 @@ public class ConfirmableNotificationEntity {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * CI是正（CMP-260920-1040 / D-1）: 作成者の {@code users.id} だけを {@code Long} で返す。
+     *
+     * <p>{@link #getCreatedBy()} は {@link UserEntity} 型を露出するため、他ドメインのクラスが
+     * これを呼ぶとクロスドメイン Entity 依存として {@code CrossDomainEntityImportArchTest} に
+     * 新規違反として検知される。ID だけが必要な呼び出し元はこちらを使うこと。</p>
+     */
+    public Long getCreatedByUserId() {
+        return this.createdBy == null ? null : this.createdBy.getId();
+    }
+
     // -------------------------------------------------------------------------
     // ドメインメソッド
     // -------------------------------------------------------------------------

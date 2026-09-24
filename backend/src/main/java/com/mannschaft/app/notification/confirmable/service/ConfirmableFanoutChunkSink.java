@@ -291,7 +291,7 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
 
     private void insertAppNotifications(ConfirmableNotificationEntity notification, List<Long> newUserIds) {
         String scopeTypeStr = notification.getScopeType() == null ? null : notification.getScopeType().name();
-        Long actorId = notification.getCreatedBy() == null ? null : notification.getCreatedBy().getId();
+        Long actorId = notification.getCreatedByUserId();
         StringBuilder sql = new StringBuilder(
                 "INSERT INTO notifications (user_id, organization_id, notification_type, priority, title, body, "
                         + "source_type, source_id, scope_type, scope_id, action_url, actor_id, is_read, created_at) VALUES ");
