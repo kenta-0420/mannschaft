@@ -60,10 +60,21 @@ import java.util.Set;
  * も同じ穴を抱えていた。{@code ShiftScheduleService#checkScheduleAdminAccess}
  *（Wave6・書込系）が先行是正済みだったのに対し、本サービスは是正が漏れており、
  * 越境（当該チームに所属すらしていない）でも同一チーム内の権限不足（COMMON_002/403）と
- * 同じ応答を返していた。これを {@code isMember} で先に判定し、越境は呼び出し元起点の
- * 不在応答（scheduleId 起点なら {@code SHIFT_SCHEDULE_NOT_FOUND}、slotId 起点なら
- * {@code SHIFT_SLOT_NOT_FOUND}）へ畳むよう是正した。同一チーム内で ADMIN/DEPUTY_ADMIN
- * 未満（隠す必要が無い）は従来どおり {@code COMMON_002}（403）のまま残す。</p>
+ * 同じ応答を返していた。越境は呼び出し元起点の不在応答（scheduleId 起点なら
+ * {@code SHIFT_SCHEDULE_NOT_FOUND}、slotId 起点なら {@code SHIFT_SLOT_NOT_FOUND}）へ
+ * 畳むよう是正した。同一チーム内で ADMIN/DEPUTY_ADMIN 未満（隠す必要が無い）は
+ * 従来どおり {@code COMMON_002}（403）のまま残す。</p>
+ *
+ * <p><b>判定順（Codex 検分指摘・実測裏取り済み）:</b> {@link #checkScheduleAdminAccess} /
+ * {@link #checkScheduleReadAccess} とも、越境判定に {@code isMember} を単独で先に使うと
+ * 回帰を生む。{@code isMember} は {@code memberships} のみを見るのに対し、
+ * {@code isAdminOrAbove} は有効ロールを {@code user_roles} と {@code memberships} の
+ * 2系統で解決する。そのため {@code user_roles} にしか ADMIN/DEPUTY_ADMIN ロールを持たず
+ * 在籍中の {@code memberships} 行を持たない利用者（開発DB実測: チーム管理者ロール609件中
+ * 2件が該当）を、{@code isMember} 先判定だと「越境」と誤判定して不在応答（404）へ
+ * 弾いてしまう。したがって両メソッドとも <b>{@code isAdminOrAbove} を {@code isMember} より
+ * 先に評価</b>し、それでも通らない場合にだけ {@code isMember} で 404/403 を作り分ける
+ * （{@code ShiftAvailabilityService#checkTeamAccess} と同一方針）。</p>
  */
 @Slf4j
 @Service
@@ -383,6 +394,14 @@ public class ShiftSlotService {
      * へ畳む（{@code ShiftScheduleService#checkScheduleReadAccess} と同一方針）。
      * SUPPORTER（同一チーム内の権限不足）は隠す必要が無いため 403 のまま残す。</p>
      *
+     * <p><b>判定順（CMP-260923-1641 是正・Codex 検分指摘）:</b> {@code isAdminOrAbove} を
+     * {@code isMember} より先に評価する。{@code isMember} は memberships のみを見るため、
+     * user_roles にしか ADMIN/DEPUTY_ADMIN ロールを持たない利用者（開発DB実測: チーム管理者ロール
+     * 609件中2件）を、isMember 先判定だと越境と誤判定して不在応答（404）へ弾いてしまう。
+     * 「読める条件（admin ロール or メンバーかつ非 SUPPORTER）」を先に評価し、どちらも満たさない
+     * 場合だけ、所属の有無で 404/403 を作り分ける
+     *（{@code ShiftAvailabilityService#checkTeamAccess} と同一方針）。</p>
+     *
      * @param scheduleId スケジュール ID
      * @param userId     操作者ユーザー ID
      * @throws BusinessException 越境の場合（{@code SHIFT_001}／404）、
@@ -394,6 +413,11 @@ public class ShiftSlotService {
         // SYSTEM_ADMIN だけが親削除済みでも通過してしまう（一般メンバーは resolveTeamId で404）。
         Long teamId = resolveTeamId(scheduleId);
         if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        // CMP-260923-1641: isAdminOrAbove を isMember より先に判定する（user_roles のみに
+        // ADMIN/DEPUTY_ADMIN を持つ利用者を越境と誤判定しないため）。
+        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
             return;
         }
         if (!accessControlService.isMember(userId, teamId, "TEAM")) {
@@ -409,9 +433,15 @@ public class ShiftSlotService {
      *
      * <p><b>存在オラクル対策（CMP-260923-1641）:</b> {@code checkAdminOrAbove} は所属の有無を
      * 見ずに一律 {@code COMMON_002}（403）を投げるため、越境（当該チームに所属すらしていない）と
-     * 同一チーム内の権限不足が同じ応答になっていた。所属を先に {@code isMember} で判定し、
+     * 同一チーム内の権限不足が同じ応答になっていた。所属を先に判定し、
      * 越境は呼び出し元起点の不在応答（{@code notFoundCode}）へ畳む
      *（{@code ShiftScheduleService#checkScheduleAdminAccess} と同一方針）。</p>
+     *
+     * <p><b>判定順（Codex 検分指摘）:</b> {@code isAdminOrAbove} を {@code isMember} より先に
+     * 評価する。{@code isMember} は memberships のみを見るのに対し、{@code isAdminOrAbove} は
+     * 有効ロールを user_roles と memberships の2系統で解決するため、user_roles にしか
+     * ADMIN/DEPUTY_ADMIN ロールを持たない利用者（開発DB実測: チーム管理者ロール609件中2件）を
+     * isMember 先判定だと越境と誤判定して不在応答（404）へ弾いてしまう回帰が生じる。</p>
      *
      * @param scheduleId   スケジュール ID
      * @param userId       操作者ユーザー ID
@@ -430,14 +460,18 @@ public class ShiftSlotService {
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
+        // isAdminOrAbove を isMember より先に判定する（user_roles のみに ADMIN/DEPUTY_ADMIN を
+        // 持つ利用者を越境と誤判定しないため）。
+        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
+            return;
+        }
         if (!accessControlService.isMember(userId, teamId, "TEAM")) {
             // 越境（他チーム／無所属）: 存在自体を隠すべき側。不在時と完全同一のコードを投げる。
             throw new BusinessException(notFoundCode);
         }
-        if (!accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
-            // 同一チーム内の権限不足: 隠す必要が無い側。従来どおり 403。
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        // 同一チーム内の権限不足（メンバーだが ADMIN/DEPUTY_ADMIN ではない）: 隠す必要が無い側。
+        // 従来どおり 403。
+        throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
     /**

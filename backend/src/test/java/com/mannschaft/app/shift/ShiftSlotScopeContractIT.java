@@ -81,6 +81,10 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long memberTeamAId;     // TEAM A の非 ADMIN メンバー
     private Long supporterTeamAId;  // TEAM A の SUPPORTER（参照不可）
     private Long outsiderId;        // どのチームにも属さないユーザー
+    // CMP-260923-1641 差し戻し対応（Codex 検分指摘）: user_roles に ADMIN ロールを持つが
+    // memberships の在籍行を持たない利用者（開発DB実測: チーム管理者ロール609件中2件が該当）。
+    // isMember を isAdminOrAbove より先に判定すると、この利用者を越境と誤判定して404を返す回帰が生じる。
+    private Long userRolesOnlyAdminTeamAId;
 
     private Long scheduleAId;       // TEAM A のシフトスケジュール
     private Long slotAId;           // TEAM A のシフト枠
@@ -95,6 +99,7 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
         memberTeamAId = insertUser("wave6-slot-member-team-a@example.com");
         supporterTeamAId = insertUser("wave6-slot-supporter-team-a@example.com");
         outsiderId = insertUser("wave6-slot-outsider@example.com");
+        userRolesOnlyAdminTeamAId = insertUser("wave6-slot-userroles-only-admin-team-a@example.com");
 
         // checkAdminOrAbove（user_roles）と isMember（memberships）は別系統のため
         // ADMIN ユーザーには両方張る（ShiftScheduleScopeContractIT 踏襲）。
@@ -104,6 +109,8 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertUserRole(em, adminTeamBId, "ADMIN", teamBId, null);
         MembershipTestHelper.insertMembership(em, memberTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, supporterTeamAId, ScopeType.TEAM, teamAId, RoleKind.SUPPORTER);
+        // memberships は張らず、user_roles の ADMIN 行のみを持つ利用者（CMP-260923-1641 差し戻し対応）。
+        MembershipTestHelper.insertUserRole(em, userRolesOnlyAdminTeamAId, "ADMIN", teamAId, null);
 
         ShiftScheduleEntity scheduleA = scheduleRepository.save(ShiftScheduleEntity.builder()
                 .teamId(teamAId)
@@ -428,6 +435,76 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("正当ADMINは204")
         void 正当ADMINは204() throws Exception {
             setAuth(adminTeamAId);
+            mockMvc.perform(delete("/api/v1/shifts/slots/{id}", slotAId))
+                    .andExpect(status().isNoContent());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 7. user_roles のみに ADMIN ロールを持つ利用者（memberships 在籍行なし）が通れること
+    //    （CMP-260923-1641 差し戻し対応・Codex 検分指摘。開発DB実測: チーム管理者ロール609件中2件該当）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("7. user_rolesのみのADMIN（membershipsの在籍行なし）は全EPを通過できる")
+    class UserRolesOnlyAdmin {
+
+        @Test
+        @DisplayName("GET /schedules/{id}/slots（一覧）は200")
+        void 一覧は200() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/schedules/{id}/slots", scheduleAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("POST /schedules/{id}/slots（作成）は201")
+        void 作成は201() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/schedules/{id}/slots", scheduleAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(slotBody())))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("POST /schedules/{id}/slots/bulk（一括作成）は201")
+        void 一括作成は201() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/schedules/{id}/slots/bulk", scheduleAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("slots", List.of(slotBody())))))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("PATCH /slots/{id}（更新）は200")
+        void 更新は200() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(patch("/api/v1/shifts/slots/{id}", slotAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("note", "更新後"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("PATCH /slots/{id}/assignments（差分割当）は200")
+        void 差分割当は200() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("addUserIds", List.of(memberTeamAId));
+            body.put("removeUserIds", List.of());
+            body.put("slotVersion", 0);
+            mockMvc.perform(patch("/api/v1/shifts/slots/{id}/assignments", slotAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("DELETE /slots/{id}（削除）は204")
+        void 削除は204() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
             mockMvc.perform(delete("/api/v1/shifts/slots/{id}", slotAId))
                     .andExpect(status().isNoContent());
         }
