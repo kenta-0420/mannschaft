@@ -12,6 +12,7 @@ import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
 import com.mannschaft.app.notification.credit.error.NotificationCreditErrorCode;
 import com.mannschaft.app.notification.credit.service.NotificationCreditService;
 import com.mannschaft.app.notification.fanout.FanoutChunkSink;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -57,14 +58,11 @@ import java.util.UUID;
  * {@link #requiresNewTxTemplate}（{@code REQUIRES_NEW}）の別の独立した物理トランザクションで確定する。
  * 参加トランザクション側がロールバックされても、独立トランザクション側は既にコミット済みのため残る。</p>
  *
- * <p><b>ジョブ行の DONE 化について（仕様と試練の不一致・要報告）</b>: 軍議第8版確定稿 §9.2 は
- * 「親行の状態確定とジョブの DONE 化を同一トランザクションで行う（REQUIRES_NEW は使わない）」ことを
- * 求めるが、試練B の IT（{@code ConfirmableFanoutChunkSinkChunkProcessingIT}・
- * {@code ConfirmableFanoutChunkSinkCancelExpiryIT} 等）はいずれも {@code notification_fanout_jobs} に
- * 存在しない {@code jobId} で {@link #finish} を直接呼んでおり、ジョブ行の存在を前提にしていない。
- * 本クラスはテストの実態を優先し、{@link #finish} では fan-out ジョブ表に一切触れない。ジョブの
- * {@code DONE} 遷移は呼び出し元（{@code NotificationFanoutWorker}）が {@code finish} 呼び出し直後に
- * 別トランザクション（既存の {@code NotificationFanoutJobService#markDone}・{@code REQUIRES_NEW}）で行う。</p>
+ * <p><b>ジョブ行の DONE 化について（§9.2 の関所）</b>: 親行の状態確定とジョブの DONE 化は
+ * {@link #finish} の<b>同一トランザクション</b>で行う（{@code REQUIRES_NEW} は使わない）。
+ * {@link NotificationFanoutJobService#markDoneInCallerTransaction} を呼び出し元の TX にそのまま
+ * 参加させる。試練の IT はいずれも {@code finish} を呼ぶ前に {@code notification_fanout_jobs} 行を
+ * 用意してから jobId を渡す（是正: ジョブ行が存在しない前提の旧実装から修正）。</p>
  */
 @Slf4j
 @Service
@@ -86,6 +84,8 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
     private final EmailOutboxService emailOutboxService;
     private final JdbcTemplate jdbcTemplate;
     private final MessageSource messageSource;
+    /** §9.2: finish で親の状態確定と同一トランザクションでジョブを DONE にするために使う。 */
+    private final NotificationFanoutJobService fanoutJobService;
     /** {@code consume} を別物理トランザクションで呼ぶためのテンプレート（クラス javadoc 参照）。 */
     private final TransactionTemplate requiresNewTxTemplate;
 
@@ -97,12 +97,14 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
             EmailOutboxService emailOutboxService,
             JdbcTemplate jdbcTemplate,
             MessageSource messageSource,
+            NotificationFanoutJobService fanoutJobService,
             PlatformTransactionManager transactionManager) {
         this.notificationRepository = notificationRepository;
         this.creditService = creditService;
         this.emailOutboxService = emailOutboxService;
         this.jdbcTemplate = jdbcTemplate;
         this.messageSource = messageSource;
+        this.fanoutJobService = fanoutJobService;
         this.requiresNewTxTemplate = new TransactionTemplate(transactionManager);
         this.requiresNewTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -211,15 +213,8 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
         }
         notificationRepository.save(notification);
 
-        // 軍議第8版確定稿 §9.2 は「親の状態確定とジョブの DONE 化を同一トランザクションで行う」ことを
-        // 求めるが、試練Bの IT（ConfirmableFanoutChunkSinkChunkProcessingIT・CancelExpiryIT 等）は
-        // すべて notification_fanout_jobs に存在しない jobId で finish を呼んでおり、ジョブ行の存在を
-        // 前提にしていない。ここで jobService.markDoneInCallerTransaction(jobId) を呼ぶと
-        // 「ジョブ行が無い」という現実のテスト条件で例外になり red のまま動かない。
-        // テストの実態を仕様より優先し、ジョブの DONE 化は呼び出し元（NotificationFanoutWorker）が
-        // finish 呼び出し直後に行う（別トランザクション・既存の markDone）。
-        // 【仕様との矛盾・要報告】§9.2 の文言（同一トランザクション・REQUIRES_NEW は使わない）と
-        // 現物の試練の間に食い違いがある。殿へ報告し、opus 格上げの要否を判断してもらうこと。
+        // §9.2: 親行の状態確定と同一トランザクションでジョブを DONE にする（REQUIRES_NEW は使わない）。
+        fanoutJobService.markDoneInCallerTransaction(jobId);
     }
 
     // -------------------------------------------------------------------------

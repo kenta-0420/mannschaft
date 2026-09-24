@@ -8,6 +8,9 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixture;
 import com.mannschaft.app.notification.fanout.FanoutChunkSink;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -51,14 +54,47 @@ class ConfirmableFanoutChunkSinkChunkProcessingIT extends AbstractMySqlIntegrati
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private NotificationFanoutJobRepository fanoutJobRepository;
+
     @PersistenceContext
     private EntityManager em;
 
     private String emailPrefix;
     private Long notificationId;
+    private UUID jobId;
+
+    /**
+     * 是正: {@code finish} は §9.2 の関所として notification_fanout_jobs 行を FOR UPDATE 相当で
+     * 参照しジョブを DONE にする契約に改めたため、試練は存在しない jobId ではなく実在するジョブ行を
+     * 先に用意してから {@code finish} を呼ぶ。
+     */
+    private void insertJobRow(UUID jobId, Long notificationId) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        fanoutJobRepository.save(NotificationFanoutJob.builder()
+                .id(jobId)
+                .sourceEventUuid(UUID.randomUUID())
+                .scopeType("CONFIRMABLE_TARGETS")
+                .scopeRef(String.valueOf(notificationId))
+                .notificationType("CONFIRMABLE_NOTIFICATION_FANOUT")
+                .sourceType("CONFIRMABLE_NOTIFICATION")
+                .sourceId(notificationId)
+                .status(NotificationFanoutJobStatus.RUNNING)
+                .cursorSubjectId(0L)
+                .insertedCount(0L)
+                .retryCount(0)
+                .nextAttemptAt(now)
+                .priority(com.mannschaft.app.notification.NotificationPriority.NORMAL)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+    }
 
     @AfterEach
     void cleanUp() {
+        if (jobId != null) {
+            fanoutJobRepository.deleteById(jobId);
+        }
         if (notificationId != null) {
             jdbc.update("DELETE FROM confirmable_notification_recipients WHERE confirmable_notification_id = ?",
                     notificationId);
@@ -91,7 +127,8 @@ class ConfirmableFanoutChunkSinkChunkProcessingIT extends AbstractMySqlIntegrati
                 .build());
         notificationId = notification.getId();
 
-        UUID jobId = UUID.randomUUID();
+        jobId = UUID.randomUUID();
+        insertJobRow(jobId, notificationId);
         List<Long> chunk1 = userIds.subList(0, 500);
         List<Long> chunk2 = userIds.subList(500, 1000);
         List<Long> chunk3 = userIds.subList(1000, 1201);
@@ -141,5 +178,9 @@ class ConfirmableFanoutChunkSinkChunkProcessingIT extends AbstractMySqlIntegrati
                 .as("AC-63: unconfirmed_countは受信者表の実測未確認数と一致する")
                 .isEqualTo(unconfirmedActual.intValue())
                 .isEqualTo(1201);
+
+        // 是正3（§9.2）: finish は同一トランザクションでジョブも DONE にする。
+        NotificationFanoutJob job = fanoutJobRepository.findById(jobId).orElseThrow();
+        assertThat(job.getStatus()).as("finish 後はジョブも DONE").isEqualTo(NotificationFanoutJobStatus.DONE);
     }
 }

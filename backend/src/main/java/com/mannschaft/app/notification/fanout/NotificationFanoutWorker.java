@@ -267,7 +267,9 @@ public class NotificationFanoutWorker {
      * <p>{@code job.getSourceId()} を確認通知の親行 ID として渡す（{@code ConfirmableFanoutChunkSink} は
      * source_type='CONFIRMABLE_NOTIFICATION'・source_id=確認通知 ID で enqueue される契約）。
      * チャンクが {@code stopped}（親が CANCELLED/EXPIRED で打ち切り）を返した場合は、それ以上ページを
-     * 取得せず {@link FanoutChunkSink#finish} を呼んでジョブを終える（§8.3・§9.2）。</p>
+     * 取得せず {@link FanoutChunkSink#finish} を呼んでジョブを終える（§8.3・§9.2）。
+     * {@code finish} 自身が「親行の状態確定とジョブの DONE 化」を同一トランザクションで行う契約
+     * （§9.2 の関所）のため、ここでは {@code jobService.markDone} を重ねて呼ばない。</p>
      */
     private void processOneWithSink(NotificationFanoutJob job, FanoutRecipientSource source, FanoutChunkSink sink) {
         while (true) {
@@ -277,11 +279,8 @@ public class NotificationFanoutWorker {
                     job.getScopeRef(), cursor, CHUNK_SIZE, includeSupporters,
                     job.getShardIndex(), job.getShardCount()));
             if (page.isEmpty()) {
-                // §9.2 の関所: 汎用の markDone を直接呼ばず、sink.finish で親行の状態確定と
-                // ジョブ DONE 化を行わせる。ジョブ表そのものへの参照を sink は持たないため、
-                // ジョブの DONE 化はここ（sink.finish の直後・別トランザクション）で行う。
+                // §9.2 の関所: sink.finish が親行の状態確定とジョブ DONE 化を同一トランザクションで行う。
                 sink.finish(job.getId(), job.getSourceId());
-                jobService.markDone(job.getId());
                 break;
             }
             List<Long> userIds = page.stream().map(FanoutRecipient::userId).toList();
@@ -289,7 +288,6 @@ public class NotificationFanoutWorker {
             if (result.stopped()) {
                 // 親が CANCELLED/EXPIRED で打ち切られた（§8.3）。以降のチャンクは取得せず終える。
                 sink.finish(job.getId(), job.getSourceId());
-                jobService.markDone(job.getId());
                 break;
             }
             long newCursor = page.get(page.size() - 1).userId();

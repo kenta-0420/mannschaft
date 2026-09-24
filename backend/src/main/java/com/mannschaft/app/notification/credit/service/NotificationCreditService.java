@@ -230,6 +230,26 @@ public class NotificationCreditService {
      * @param organizationId 組織ID
      * @return 残高レスポンス
      */
+    /**
+     * CMP-260920-1040: 受付の時点で猶予期間を既に超過しているかを、消費を伴わずに判定する
+     * （軍議第8版確定稿 §3.3・AC-26。確認通知の送信APIが受付時の事前チェックに使う）。
+     *
+     * <p>{@link #consume} と同じ猶予期間の判定基準（{@link #GRACE_PERIOD_HOURS}）を用いるが、
+     * 残高の取得・更新は一切行わない読み取り専用の判定である。</p>
+     *
+     * @param organizationId 組織ID
+     * @return 猶予期間を超過していて送信をブロックすべきなら true
+     */
+    public boolean isSendBlocked(Long organizationId) {
+        return balanceRepository.findByOrganizationId(organizationId)
+                .map(balance -> {
+                    LocalDateTime graceStart = balance.getGracePeriodStartAt();
+                    return graceStart != null
+                            && LocalDateTime.now().isAfter(graceStart.plusHours(GRACE_PERIOD_HOURS));
+                })
+                .orElse(false);
+    }
+
     public NotificationCreditBalanceResponse getBalance(Long organizationId) {
         Optional<OrganizationNotificationBalanceEntity> balanceOpt =
                 balanceRepository.findByOrganizationId(organizationId);

@@ -1,9 +1,15 @@
 package com.mannschaft.app.notification.confirmable.support;
 
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import jakarta.persistence.EntityManager;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * CMP-260920-1040 試練B: 確認通知の非同期配信ワーカー系テスト共通フィクスチャ。
@@ -60,5 +66,36 @@ public final class ConfirmableFanoutFixture {
         em.createNativeQuery("DELETE FROM users WHERE email LIKE :prefix")
                 .setParameter("prefix", emailPrefix + "-%")
                 .executeUpdate();
+    }
+
+    /**
+     * CMP-260920-1040 是正3: {@code ConfirmableFanoutChunkSink#finish} は §9.2 の関所として
+     * {@code notification_fanout_jobs} 行を参照しジョブを DONE にする契約のため、試練が
+     * {@code finish} を直接呼ぶ場合は、実在するジョブ行を先に用意してから jobId を渡す。
+     *
+     * @param jobRepository  ジョブリポジトリ（呼び出し側で {@code @Autowired}）
+     * @param jobId          {@code finish} に渡す jobId（呼び出し側が生成した UUID）
+     * @param notificationId 確認通知の親行 ID（{@code source_id} として保存する）
+     */
+    public static void insertFanoutJobRow(
+            NotificationFanoutJobRepository jobRepository, UUID jobId, Long notificationId) {
+        LocalDateTime now = LocalDateTime.now();
+        jobRepository.save(NotificationFanoutJob.builder()
+                .id(jobId)
+                .sourceEventUuid(UUID.randomUUID())
+                .scopeType("CONFIRMABLE_TARGETS")
+                .scopeRef(String.valueOf(notificationId))
+                .notificationType("CONFIRMABLE_NOTIFICATION_FANOUT")
+                .sourceType("CONFIRMABLE_NOTIFICATION")
+                .sourceId(notificationId)
+                .status(NotificationFanoutJobStatus.RUNNING)
+                .cursorSubjectId(0L)
+                .insertedCount(0L)
+                .retryCount(0)
+                .nextAttemptAt(now)
+                .priority(NotificationPriority.NORMAL)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
     }
 }

@@ -8,6 +8,9 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixture;
 import com.mannschaft.app.notification.fanout.FanoutChunkSink;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -42,14 +45,21 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private NotificationFanoutJobRepository fanoutJobRepository;
+
     @PersistenceContext
     private EntityManager em;
 
     private String emailPrefix;
     private Long notificationId;
+    private UUID jobIdToCleanUp;
 
     @AfterEach
     void cleanUp() {
+        if (jobIdToCleanUp != null) {
+            fanoutJobRepository.deleteById(jobIdToCleanUp);
+        }
         if (notificationId != null) {
             jdbc.update("DELETE FROM confirmable_notification_recipients WHERE confirmable_notification_id = ?",
                     notificationId);
@@ -60,6 +70,32 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
         if (emailPrefix != null) {
             ConfirmableFanoutFixture.deleteUsers(em, emailPrefix);
         }
+    }
+
+    /**
+     * 是正: finish は §9.2 の関所として notification_fanout_jobs 行を参照しジョブを DONE にする契約の
+     * ため、存在しない jobId ではなく実在するジョブ行を先に用意してから finish を呼ぶ。
+     */
+    private void insertJobRow(UUID jobId, Long notificationId) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        fanoutJobRepository.save(NotificationFanoutJob.builder()
+                .id(jobId)
+                .sourceEventUuid(UUID.randomUUID())
+                .scopeType("CONFIRMABLE_TARGETS")
+                .scopeRef(String.valueOf(notificationId))
+                .notificationType("CONFIRMABLE_NOTIFICATION_FANOUT")
+                .sourceType("CONFIRMABLE_NOTIFICATION")
+                .sourceId(notificationId)
+                .status(NotificationFanoutJobStatus.RUNNING)
+                .cursorSubjectId(0L)
+                .insertedCount(0L)
+                .retryCount(0)
+                .nextAttemptAt(now)
+                .priority(com.mannschaft.app.notification.NotificationPriority.NORMAL)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        jobIdToCleanUp = jobId;
     }
 
     private Long createNotification(ConfirmableNotificationStatus status) {
@@ -147,6 +183,7 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
         emailPrefix = EMAIL_PREFIX_BASE + "-53-" + UUID.randomUUID();
         notificationId = createNotification(ConfirmableNotificationStatus.CANCELLED);
         UUID jobId = UUID.randomUUID();
+        insertJobRow(jobId, notificationId);
 
         sink.finish(jobId, notificationId);
 
@@ -154,6 +191,10 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
         assertThat(after.getDeliveryStatus()).as("AC-53: STOPPEDになる（DELIVEREDにはならない）")
                 .isEqualTo(ConfirmableNotificationDeliveryStatus.STOPPED);
         assertThat(after.getStatus()).isEqualTo(ConfirmableNotificationStatus.CANCELLED);
+
+        NotificationFanoutJob job = fanoutJobRepository.findById(jobId).orElseThrow();
+        assertThat(job.getStatus()).as("AC-53: ジョブはDONEになる（DELIVEREDにはならない）")
+                .isEqualTo(NotificationFanoutJobStatus.DONE);
     }
 
     @Test
@@ -163,6 +204,7 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
         emailPrefix = EMAIL_PREFIX_BASE + "-54-" + UUID.randomUUID();
         notificationId = createNotification(ConfirmableNotificationStatus.ACTIVE);
         UUID jobId = UUID.randomUUID();
+        insertJobRow(jobId, notificationId);
 
         sink.finish(jobId, notificationId);
 
@@ -172,6 +214,9 @@ class ConfirmableFanoutChunkSinkCancelExpiryIT extends AbstractMySqlIntegrationT
         assertThat(after.getStatus())
                 .as("AC-54: 0人に対して『全員確認済み』を成立させないのでACTIVEのまま")
                 .isEqualTo(ConfirmableNotificationStatus.ACTIVE);
+
+        NotificationFanoutJob job = fanoutJobRepository.findById(jobId).orElseThrow();
+        assertThat(job.getStatus()).as("finish後はジョブもDONE").isEqualTo(NotificationFanoutJobStatus.DONE);
     }
 
     private long countRecipients() {

@@ -11,6 +11,7 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixture;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -24,7 +25,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * CMP-260920-1040 試練B: 完了判定を配信の終了まで保留する（軍議第8版確定稿 §8.2・§9.2・§9.3・
@@ -60,14 +60,29 @@ class ConfirmableNotificationFinishCompletionOrderIT extends AbstractMySqlIntegr
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private NotificationFanoutJobRepository fanoutJobRepository;
+
     @PersistenceContext
     private EntityManager em;
 
     private String emailPrefix;
     private Long notificationId;
+    private UUID jobIdToCleanUp;
+
+    /** 是正3（§9.2）: finish に渡す jobId は実在するジョブ行を伴わせる。 */
+    private UUID newFinishableJobId(Long notificationId) {
+        UUID jobId = UUID.randomUUID();
+        ConfirmableFanoutFixture.insertFanoutJobRow(fanoutJobRepository, jobId, notificationId);
+        jobIdToCleanUp = jobId;
+        return jobId;
+    }
 
     @AfterEach
     void cleanUp() {
+        if (jobIdToCleanUp != null) {
+            fanoutJobRepository.deleteById(jobIdToCleanUp);
+        }
         if (notificationId != null) {
             recipientRepository.deleteAll(recipientRepository.findByConfirmableNotificationId(notificationId));
             notificationRepository.deleteById(notificationId);
@@ -125,11 +140,8 @@ class ConfirmableNotificationFinishCompletionOrderIT extends AbstractMySqlIntegr
         List<Long> userIds = seedNotificationWithRecipients(1);
         confirmService.confirm(notificationId, userIds.get(0));
 
-        assertThatThrownBy(() -> sink.finish(UUID.randomUUID(), notificationId))
-                .as("AC-55a: finish骨格は未実装のため現状は例外（出陣後は正常終了しCOMPLETEDになる想定）")
-                .isInstanceOf(UnsupportedOperationException.class);
+        sink.finish(newFinishableJobId(notificationId), notificationId);
 
-        // 出陣後にこのアサーションへ差し替える想定（骨格段階では到達しない = red）。
         ConfirmableNotificationEntity after = notificationRepository.findById(notificationId).orElseThrow();
         assertThat(after.getStatus())
                 .as("AC-55a: confirmが先でもfinish後にCOMPLETEDになるべき")
@@ -141,9 +153,7 @@ class ConfirmableNotificationFinishCompletionOrderIT extends AbstractMySqlIntegr
     void finishThenConfirmEndsCompleted() {
         List<Long> userIds = seedNotificationWithRecipients(1);
 
-        assertThatThrownBy(() -> sink.finish(UUID.randomUUID(), notificationId))
-                .as("AC-55b: finish骨格は未実装のため現状は例外")
-                .isInstanceOf(UnsupportedOperationException.class);
+        sink.finish(newFinishableJobId(notificationId), notificationId);
 
         confirmService.confirm(notificationId, userIds.get(0));
 

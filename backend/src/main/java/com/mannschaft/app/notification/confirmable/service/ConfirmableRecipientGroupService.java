@@ -10,11 +10,10 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableRecipientGr
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableRecipientGroupRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableRecipientGroupTargetRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -25,16 +24,9 @@ import java.util.stream.Collectors;
  *
  * <p>同じスコープで名前が重複すると {@code GROUP_NAME_DUPLICATE}（409）、ターゲットには
  * {@link ConfirmableTargetAuthorizationValidator} と同じ認可検証を掛ける（AC-12〜14 と同じ・AC-31）。</p>
- *
- * <p><b>インメモリフォールバック</b>: {@link ConfirmableRecipientGroupServiceTest} は DI を経由せず
- * {@code new ConfirmableRecipientGroupService()} で直接インスタンス化する軽量ユニットテストであり、
- * DB / Spring コンテキストを必要としない契約確認に留めている（試練の申し送り事項）。無引数コンストラクタで
- * 生成された場合は {@code groupRepository == null} となるため、このときだけインメモリの簡易実装へ倒す。
- * 実運用（Spring 注入）では {@link #ConfirmableRecipientGroupService(ConfirmableRecipientGroupRepository,
- * ConfirmableRecipientGroupTargetRepository, ConfirmableTargetAuthorizationValidator)} が使われ、
- * 実データベースで重複検証・永続化・認可検証を行う。</p>
  */
 @Service
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ConfirmableRecipientGroupService {
 
@@ -42,32 +34,9 @@ public class ConfirmableRecipientGroupService {
     private final ConfirmableRecipientGroupTargetRepository groupTargetRepository;
     private final ConfirmableTargetAuthorizationValidator authorizationValidator;
 
-    /** 試練の軽量ユニットテスト（DI無し）向けのインメモリフォールバック格納先。 */
-    private final List<InMemoryGroup> inMemoryGroups = new ArrayList<>();
-
-    /** 軽量ユニットテスト用の無引数コンストラクタ（DB非依存の契約確認専用）。 */
-    public ConfirmableRecipientGroupService() {
-        this.groupRepository = null;
-        this.groupTargetRepository = null;
-        this.authorizationValidator = null;
-    }
-
-    @Autowired
-    public ConfirmableRecipientGroupService(
-            ConfirmableRecipientGroupRepository groupRepository,
-            ConfirmableRecipientGroupTargetRepository groupTargetRepository,
-            ConfirmableTargetAuthorizationValidator authorizationValidator) {
-        this.groupRepository = groupRepository;
-        this.groupTargetRepository = groupTargetRepository;
-        this.authorizationValidator = authorizationValidator;
-    }
-
     @Transactional
     public ConfirmableRecipientGroupResponse create(
             ScopeType scopeType, Long scopeId, Long createdByUserId, ConfirmableRecipientGroupCreateRequest request) {
-        if (groupRepository == null) {
-            return createInMemory(scopeType, scopeId, request);
-        }
         authorizationValidator.validateForGroupRegistration(scopeType, scopeId, request.getTargets());
         if (groupRepository.existsByScopeTypeAndScopeIdAndNameAndDeletedAtIsNull(
                 scopeType, scopeId, request.getName())) {
@@ -84,12 +53,6 @@ public class ConfirmableRecipientGroupService {
     }
 
     public List<ConfirmableRecipientGroupResponse> list(ScopeType scopeType, Long scopeId) {
-        if (groupRepository == null) {
-            return inMemoryGroups.stream()
-                    .filter(g -> g.scopeType == scopeType && Objects.equals(g.scopeId, scopeId))
-                    .map(g -> g.response)
-                    .collect(Collectors.toList());
-        }
         return groupRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId).stream()
                 .map(group -> toResponse(group, targetsOf(group.getId())))
                 .collect(Collectors.toList());
@@ -163,28 +126,4 @@ public class ConfirmableRecipientGroupService {
                 .build();
     }
 
-    // =====================================================================
-    // 試練の軽量ユニットテスト（DI無し）向けのインメモリフォールバック
-    // =====================================================================
-
-    private ConfirmableRecipientGroupResponse createInMemory(
-            ScopeType scopeType, Long scopeId, ConfirmableRecipientGroupCreateRequest request) {
-        boolean duplicate = inMemoryGroups.stream()
-                .anyMatch(g -> g.scopeType == scopeType && Objects.equals(g.scopeId, scopeId)
-                        && g.response.getName().equals(request.getName()));
-        if (duplicate) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.GROUP_NAME_DUPLICATE);
-        }
-        ConfirmableRecipientGroupResponse response = ConfirmableRecipientGroupResponse.builder()
-                .id(UUID.randomUUID())
-                .name(request.getName())
-                .targets(request.getTargets())
-                .createdAt(java.time.LocalDateTime.now())
-                .build();
-        inMemoryGroups.add(new InMemoryGroup(scopeType, scopeId, response));
-        return response;
-    }
-
-    private record InMemoryGroup(ScopeType scopeType, Long scopeId, ConfirmableRecipientGroupResponse response) {
-    }
 }

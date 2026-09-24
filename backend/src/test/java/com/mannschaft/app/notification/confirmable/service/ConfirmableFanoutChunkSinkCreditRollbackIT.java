@@ -11,6 +11,9 @@ import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixt
 import com.mannschaft.app.notification.credit.entity.OrganizationNotificationBalanceEntity;
 import com.mannschaft.app.notification.credit.error.NotificationCreditErrorCode;
 import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -61,15 +64,28 @@ class ConfirmableFanoutChunkSinkCreditRollbackIT extends AbstractMySqlIntegratio
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private NotificationFanoutJobRepository fanoutJobRepository;
+
     @PersistenceContext
     private EntityManager em;
 
     private String emailPrefix;
     private Long notificationId;
     private Long organizationId;
+    private UUID jobIdToCleanUp;
+
+    /** 是正3（§9.2）: finish に渡す jobId は実在するジョブ行を伴わせる。 */
+    private void insertJobRow(UUID jobId, Long notificationId) {
+        ConfirmableFanoutFixture.insertFanoutJobRow(fanoutJobRepository, jobId, notificationId);
+        jobIdToCleanUp = jobId;
+    }
 
     @AfterEach
     void cleanUp() {
+        if (jobIdToCleanUp != null) {
+            fanoutJobRepository.deleteById(jobIdToCleanUp);
+        }
         if (notificationId != null) {
             jdbc.update("DELETE FROM confirmable_notification_recipients WHERE confirmable_notification_id = ?",
                     notificationId);
@@ -198,11 +214,8 @@ class ConfirmableFanoutChunkSinkCreditRollbackIT extends AbstractMySqlIntegratio
         notificationId = createNotification(organizationId);
 
         UUID jobId = UUID.randomUUID();
+        insertJobRow(jobId, notificationId);
         sink.processChunk(jobId, notificationId, userIds);
-        // finish自体はUnsupportedOperationExceptionで失敗する（骨格段階＝red）。
-        // 出陣後は、ここで例外を投げずに完了し、かつ下の3アサーションがすべて満たされるべき
-        // （途中で例外が出るケースでは、この3つのうちどれか1つでも先に確定した痕跡があってはならない、
-        // というAC-56の要求を、正常完了時の一貫性として裏側から固定する）。
         sink.finish(jobId, notificationId);
 
         ConfirmableNotificationEntity after = notificationRepository.findById(notificationId).orElseThrow();
@@ -215,6 +228,35 @@ class ConfirmableFanoutChunkSinkCreditRollbackIT extends AbstractMySqlIntegratio
         assertThat(after.getTotalRecipientCount())
                 .as("AC-56: total_recipient_countも矛盾なく確定している")
                 .isEqualTo(5);
+
+        NotificationFanoutJob job = fanoutJobRepository.findById(jobId).orElseThrow();
+        assertThat(job.getStatus())
+                .as("AC-56: finish正常完了時はジョブもDONEに同一トランザクションで確定する")
+                .isEqualTo(NotificationFanoutJobStatus.DONE);
+    }
+
+    @Test
+    @DisplayName("AC-56: finishの途中で例外が出たら、ジョブのDONE・delivery_status・statusのどれも確定しない"
+            + "（ロールバックし、ジョブは再試行に回る＝再試行時にDONEになっていない）")
+    void finishExceptionRollsBackJobDeliveryStatusAndStatusTogether() {
+        emailPrefix = EMAIL_PREFIX_BASE + "-56ex-" + UUID.randomUUID();
+        organizationId = ORG_ID_BASE + 4 + System.nanoTime() % 1_000_000L;
+        notificationId = createNotification(organizationId);
+
+        UUID jobId = UUID.randomUUID();
+        insertJobRow(jobId, notificationId);
+
+        // 存在しない確認通知IDを渡し、finish内部のfindByIdForUpdateがIllegalStateExceptionを
+        // 投げて処理が途中で失敗する状況を作る（AC-56: 例外が出たら何も確定しない）。
+        Long nonexistentNotificationId = notificationId + 999_000_000L;
+        assertThatThrownBy(() -> sink.finish(jobId, nonexistentNotificationId))
+                .as("AC-56: finish内部の例外はそのまま伝播する")
+                .isInstanceOf(RuntimeException.class);
+
+        NotificationFanoutJob job = fanoutJobRepository.findById(jobId).orElseThrow();
+        assertThat(job.getStatus())
+                .as("AC-56: finishが例外で終わった場合、ジョブはDONEにならない（ロールバック）")
+                .isNotEqualTo(NotificationFanoutJobStatus.DONE);
     }
 
     private long countRecipients() {

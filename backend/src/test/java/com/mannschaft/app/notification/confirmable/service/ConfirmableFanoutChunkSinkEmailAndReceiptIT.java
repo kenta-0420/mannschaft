@@ -8,6 +8,7 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixture;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -56,11 +57,21 @@ class ConfirmableFanoutChunkSinkEmailAndReceiptIT extends AbstractMySqlIntegrati
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private NotificationFanoutJobRepository fanoutJobRepository;
+
     @PersistenceContext
     private EntityManager em;
 
     private String emailPrefix;
     private Long notificationId;
+
+    /** {@code sink.finish} に渡す jobId を都度生成し、実在するジョブ行を用意して返す（是正3・§9.2）。 */
+    private UUID newFinishableJobId(Long notificationId) {
+        UUID jobId = UUID.randomUUID();
+        ConfirmableFanoutFixture.insertFanoutJobRow(fanoutJobRepository, jobId, notificationId);
+        return jobId;
+    }
 
     @AfterEach
     void cleanUp() {
@@ -140,7 +151,7 @@ class ConfirmableFanoutChunkSinkEmailAndReceiptIT extends AbstractMySqlIntegrati
         notificationId = notification.getId();
 
         sink.processChunk(UUID.randomUUID(), notificationId, userIds);
-        sink.finish(UUID.randomUUID(), notificationId);
+        sink.finish(newFinishableJobId(notificationId), notificationId);
 
         long notificationsRowCount = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM notifications WHERE source_type = 'CONFIRMABLE_NOTIFICATION' "

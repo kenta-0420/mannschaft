@@ -11,6 +11,7 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixture;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -84,11 +85,21 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private NotificationFanoutJobRepository fanoutJobRepository;
+
     @PersistenceContext
     private EntityManager em;
 
     private String emailPrefix;
     private Long notificationId;
+
+    /** {@code sink.finish} に渡す jobId を都度生成し、実在するジョブ行を用意して返す（是正3・§9.2）。 */
+    private UUID newFinishableJobId(Long notificationId) {
+        UUID jobId = UUID.randomUUID();
+        ConfirmableFanoutFixture.insertFanoutJobRow(fanoutJobRepository, jobId, notificationId);
+        return jobId;
+    }
 
     @AfterEach
     void cleanUp() {
@@ -261,7 +272,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
         // 骨格段階ではUOEでredになる。
         assertThat(expired).as("AC-65a: 期限切れが確定する").isTrue();
 
-        sink.finish(UUID.randomUUID(), notificationId);
+        sink.finish(newFinishableJobId(notificationId), notificationId);
 
         ConfirmableNotificationEntity after = notificationRepository.findById(notificationId).orElseThrow();
         assertThat(after.getDeliveryStatus())
@@ -283,7 +294,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
                 .forEach(r -> { r.confirm(com.mannschaft.app.notification.confirmable.entity.ConfirmedVia.APP);
                     recipientRepository.save(r); });
 
-        sink.finish(UUID.randomUUID(), notificationId);
+        sink.finish(newFinishableJobId(notificationId), notificationId);
 
         boolean expiredAfterFinish = expiryBatchService.expireOneWithLock(
                 notificationId, java.time.LocalDateTime.now());
@@ -307,7 +318,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
                 ConfirmableNotificationDeliveryStatus.DELIVERING, 2, 2);
         seedRecipients(userIds);
 
-        sink.finish(UUID.randomUUID(), notificationId);
+        sink.finish(newFinishableJobId(notificationId), notificationId);
 
         ConfirmableNotificationEntity afterFinish = notificationRepository.findById(notificationId).orElseThrow();
         assertThat(afterFinish.getDeliveryStatus()).isEqualTo(ConfirmableNotificationDeliveryStatus.DELIVERED);
@@ -380,7 +391,7 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
         // 期限切れバッチが「対象ID抽出」した時点ではまだACTIVE（このnotificationIdがfindExpiredIdsに
         // 含まれる想定）。抽出後、finishが先にCOMPLETEDを確定してから、抽出済みIDに対して
         // expireOneWithLockを呼ぶ、という順序を固定する。
-        sink.finish(UUID.randomUUID(), notificationId);
+        sink.finish(newFinishableJobId(notificationId), notificationId);
 
         boolean expired = expiryBatchService.expireOneWithLock(notificationId, java.time.LocalDateTime.now());
 

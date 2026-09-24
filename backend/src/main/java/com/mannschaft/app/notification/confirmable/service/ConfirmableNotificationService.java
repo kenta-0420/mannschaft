@@ -25,7 +25,6 @@ import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotific
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationTargetRepository;
 import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
-import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
 import com.mannschaft.app.notification.credit.service.NotificationCreditService;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -110,16 +109,6 @@ public class ConfirmableNotificationService {
     private final ConfirmableRecipientPreviewService recipientPreviewService;
     /** チャンク処理は乙隊担当（ワーカー隊）。enqueue のみ本サービス（送信API側）が同一TXで行う（AC-22）。 */
     private final NotificationFanoutJobService fanoutJobService;
-    /**
-     * 課金の事前確認（AC-26）用の読み取り専用アクセス。{@code findByOrganizationId} はロックを取らない
-     * （消費はしないため PESSIMISTIC_WRITE は不要。実際の消費・猶予判定はワーカーのチャンク処理が
-     * {@link NotificationCreditService#consume} を通じて行う）。
-     */
-    private final OrganizationNotificationBalanceRepository creditBalanceRepository;
-
-    /** CMP-260920-1040: 猶予期間（時間）。{@code NotificationCreditService} の定数と重複するが、
-     * 事前確認（消費しない読み取りのみ）専用のためここに複製する（跨ドメインの private 定数は共有できない）。 */
-    private static final long CREDIT_GRACE_PERIOD_HOURS = 72L;
 
     /** {@link com.mannschaft.app.notification.confirmable.service.ConfirmableFanoutChunkSink#NOTIFICATION_TYPE}
      * と一致させる文字列（クラス参照はワーカー隊の担当パッケージに置かれるため、循環依存を避けここでは
@@ -153,20 +142,20 @@ public class ConfirmableNotificationService {
             throw new BusinessException(ConfirmableNotificationErrorCode.DEADLINE_IN_PAST);
         }
 
-        // AC-8〜11: 宛先入力（targets/recipientGroupId/空配列/recipientUserIds無視）の意味を検証する。
-        // 甲隊担当のバリデータを現在のシグネチャのまま呼ぶ（TARGETS_EMPTY・TARGETS_AND_GROUP_BOTH_SPECIFIED
-        // を投げる契約。戻り値は無く、以降の分岐は request の生値で判定する）。
-        targetSelectionValidator.resolve(request.getTargets(), request.getRecipientGroupId(), request.getRecipientUserIds());
+        // AC-8〜11: 宛先入力（targets/recipientGroupId/空配列/recipientUserIds無視）の意味を解決する。
+        // 甲隊担当のバリデータが返す Resolution を以降の唯一の判定材料とする（二重の解決ロジックを持たない）。
+        ConfirmableTargetSelectionValidator.Resolution resolution = targetSelectionValidator.resolve(
+                request.getTargets(), request.getRecipientGroupId(), request.getRecipientUserIds());
 
         // 宛先の解決: グループ経由 → 直接指定 → 既定（配下すべて）の優先順位（AC-7・AC-8）。
         List<ConfirmableTargetSpec> effectiveTargets;
-        if (request.getRecipientGroupId() != null) {
+        if (resolution.isGroup()) {
             // AC-7・AC-15: グループの解決は送信の時点で行う。存在しない/他スコープ/削除済みは404（RECIPIENT_GROUP_NOT_FOUND）。
-            effectiveTargets = recipientGroupService.resolveForSend(scopeType, scopeId, request.getRecipientGroupId());
-        } else if (request.getTargets() != null && !request.getTargets().isEmpty()) {
+            effectiveTargets = recipientGroupService.resolveForSend(scopeType, scopeId, resolution.recipientGroupId());
+        } else if (!resolution.isDefault()) {
             // AC-12〜14: 直接指定はここで403判定（TARGET_OUT_OF_SCOPE）。
-            targetAuthorizationValidator.validateForSend(scopeType, scopeId, request.getTargets());
-            effectiveTargets = request.getTargets();
+            targetAuthorizationValidator.validateForSend(scopeType, scopeId, resolution.targets());
+            effectiveTargets = resolution.targets();
         } else {
             // AC-8・AC-1・AC-6: 省略時は既定（自スコープ配下すべて）。
             ConfirmableTargetType defaultType = scopeType == ScopeType.ORGANIZATION
@@ -182,8 +171,8 @@ public class ConfirmableNotificationService {
 
         // AC-20: 見込みが0件なら RECIPIENTS_EMPTY（409）で何も作らない。
         ConfirmableRecipientPreviewRequest previewRequest = new ConfirmableRecipientPreviewRequest(
-                request.getRecipientGroupId() == null ? effectiveTargets : null,
-                request.getRecipientGroupId());
+                resolution.isGroup() ? null : effectiveTargets,
+                resolution.recipientGroupId());
         ConfirmableRecipientPreviewResponse preview =
                 recipientPreviewService.preview(scopeType, scopeId, createdByUserId, previewRequest);
         if (preview.getEstimatedRecipientCount() <= 0) {
@@ -279,15 +268,13 @@ public class ConfirmableNotificationService {
     /**
      * AC-26: 受付の時点で既に猶予期間（72時間）を超過している組織なら CREDIT_INSUFFICIENT を投げる。
      * 消費は一切行わない読み取り専用チェック（実際の消費・猶予開始判定はワーカーのチャンク処理が担う）。
+     * 判定は {@link NotificationCreditService#isSendBlocked} に委譲する（猶予期間の定数・残高参照は
+     * notification.credit ドメインの一次情報源に一本化し、複製しない）。
      */
     private void checkCreditNotAlreadyExceeded(Long organizationId) {
-        creditBalanceRepository.findByOrganizationId(organizationId).ifPresent(balance -> {
-            LocalDateTime graceStart = balance.getGracePeriodStartAt();
-            if (graceStart != null
-                    && LocalDateTime.now().isAfter(graceStart.plusHours(CREDIT_GRACE_PERIOD_HOURS))) {
-                throw new BusinessException(ConfirmableNotificationErrorCode.CREDIT_INSUFFICIENT);
-            }
-        });
+        if (notificationCreditService.isSendBlocked(organizationId)) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.CREDIT_INSUFFICIENT);
+        }
     }
 
 

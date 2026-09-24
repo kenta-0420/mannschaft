@@ -6,7 +6,7 @@ import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientPrevi
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableTargetSpec;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableTargetType;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationTargetRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +17,9 @@ import java.util.List;
  *
  * <p>{@code POST .../confirmable-notifications/recipient-preview} の実処理。
  * 見込みが0件の場合、送信APIは {@code RECIPIENTS_EMPTY}（409）を返す（AC-20）。</p>
- *
- * <p>軽量ユニットテスト（{@code new ConfirmableRecipientPreviewService()}）互換のため、
- * {@link ConfirmableRecipientGroupService} と同様に無引数コンストラクタでは DB を一切引かず
- * 0件を返す（試練の申し送り事項。実運用は Spring 注入のコンストラクタを使う）。</p>
  */
 @Service
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ConfirmableRecipientPreviewService {
 
@@ -35,25 +32,8 @@ public class ConfirmableRecipientPreviewService {
     private final ConfirmableNotificationTargetRepository targetRepository;
     private final ConfirmableRecipientGroupService recipientGroupService;
 
-    public ConfirmableRecipientPreviewService() {
-        this.targetRepository = null;
-        this.recipientGroupService = null;
-    }
-
-    @Autowired
-    public ConfirmableRecipientPreviewService(
-            ConfirmableNotificationTargetRepository targetRepository,
-            ConfirmableRecipientGroupService recipientGroupService) {
-        this.targetRepository = targetRepository;
-        this.recipientGroupService = recipientGroupService;
-    }
-
     public ConfirmableRecipientPreviewResponse preview(
             ScopeType scopeType, Long scopeId, Long requesterUserId, ConfirmableRecipientPreviewRequest request) {
-        if (targetRepository == null) {
-            return ConfirmableRecipientPreviewResponse.builder().estimatedRecipientCount(0).build();
-        }
-
         List<ConfirmableTargetSpec> targets;
         if (request.getRecipientGroupId() != null) {
             targets = recipientGroupService.resolveForSend(scopeType, scopeId, request.getRecipientGroupId());
