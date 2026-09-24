@@ -209,13 +209,24 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260923-1641: scheduleId 起点の書込系は越境（他チーム/他テナント）を
+        // 不在時と同一の SHIFT_001/404 へ畳む（読取系 CMP-260917-1137 と同じ方針）。
+        @DisplayName("別scope ADMINは404（存在オラクル解消、不在IDと本文一致）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
-            mockMvc.perform(post("/api/v1/shifts/schedules/{id}/slots", scheduleAId)
+            String realBody = mockMvc.perform(post("/api/v1/shifts/schedules/{id}/slots", scheduleAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(slotBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn().getResponse().getContentAsString();
+            String missingBody = mockMvc.perform(post("/api/v1/shifts/schedules/{id}/slots", 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(slotBody())))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn().getResponse().getContentAsString();
+            org.assertj.core.api.Assertions.assertThat(realBody).isEqualTo(missingBody);
         }
 
         @Test
@@ -248,13 +259,22 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404（存在オラクル解消、不在IDと本文一致）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
-            mockMvc.perform(post("/api/v1/shifts/schedules/{id}/slots/bulk", scheduleAId)
+            String realBody = mockMvc.perform(post("/api/v1/shifts/schedules/{id}/slots/bulk", scheduleAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("slots", List.of(slotBody())))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn().getResponse().getContentAsString();
+            String missingBody = mockMvc.perform(post("/api/v1/shifts/schedules/{id}/slots/bulk", 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("slots", List.of(slotBody())))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn().getResponse().getContentAsString();
+            org.assertj.core.api.Assertions.assertThat(realBody).isEqualTo(missingBody);
         }
 
         @Test
@@ -287,13 +307,23 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINがslotIdを直接指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260923-1641: slotId 起点の書込系は越境を不在時と同一の SHIFT_002/404 へ畳む。
+        @DisplayName("別scope ADMIN（teamBのADMINがslotIdを直接指定）は404（存在オラクル解消、不在IDと本文一致）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
-            mockMvc.perform(patch("/api/v1/shifts/slots/{id}", slotAId)
+            String realBody = mockMvc.perform(patch("/api/v1/shifts/slots/{id}", slotAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("note", "更新後"))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"))
+                    .andReturn().getResponse().getContentAsString();
+            String missingBody = mockMvc.perform(patch("/api/v1/shifts/slots/{id}", 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("note", "更新後"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"))
+                    .andReturn().getResponse().getContentAsString();
+            org.assertj.core.api.Assertions.assertThat(realBody).isEqualTo(missingBody);
         }
 
         @Test
@@ -326,13 +356,22 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404（存在オラクル解消、不在IDと本文一致）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
-            mockMvc.perform(patch("/api/v1/shifts/slots/{id}/assignments", slotAId)
+            String realBody = mockMvc.perform(patch("/api/v1/shifts/slots/{id}/assignments", slotAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(assignmentBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"))
+                    .andReturn().getResponse().getContentAsString();
+            String missingBody = mockMvc.perform(patch("/api/v1/shifts/slots/{id}/assignments", 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(assignmentBody())))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"))
+                    .andReturn().getResponse().getContentAsString();
+            org.assertj.core.api.Assertions.assertThat(realBody).isEqualTo(missingBody);
         }
 
         @Test
@@ -371,11 +410,18 @@ class ShiftSlotScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404（存在オラクル解消、不在IDと本文一致）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
-            mockMvc.perform(delete("/api/v1/shifts/slots/{id}", slotAId))
-                    .andExpect(status().isForbidden());
+            String realBody = mockMvc.perform(delete("/api/v1/shifts/slots/{id}", slotAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"))
+                    .andReturn().getResponse().getContentAsString();
+            String missingBody = mockMvc.perform(delete("/api/v1/shifts/slots/{id}", 999_999_999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"))
+                    .andReturn().getResponse().getContentAsString();
+            org.assertj.core.api.Assertions.assertThat(realBody).isEqualTo(missingBody);
         }
 
         @Test
