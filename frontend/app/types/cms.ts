@@ -13,6 +13,7 @@ export interface BlogPostMeta {
   status: BlogPostStatus
   visibility: string | null
   postType: string | null
+  publicVisible: boolean
 }
 
 export interface BlogPostAudit {

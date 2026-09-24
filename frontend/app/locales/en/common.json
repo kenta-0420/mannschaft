@@ -2488,6 +2488,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "Custom fields",
+      "add": "Add field",
+      "loadFailed": "Could not load custom fields",
+      "retry": "Retry",
+      "empty": "No custom fields",
+      "name": "Field name",
+      "type": "Type",
+      "required": "Required",
+      "active": "Active",
+      "order": "Order",
+      "yes": "Yes",
+      "no": "No",
+      "typeText": "Text",
+      "typeNumber": "Number",
+      "typeDate": "Date",
+      "typeSelect": "Select",
+      "options": "Options (one per line)",
+      "createSuccess": "Field added",
+      "createFailed": "Could not add field"
+    },
     "loadFailed": "Could not load member information",
     "unavailable": "This feature is currently unavailable (coming soon)",
     "saveFailed": "Failed to save",
@@ -2536,5 +2557,9 @@
       "optionsInvalidFormat": "The options data is in an invalid format",
       "optionsLoadFailed": "Failed to load the options data"
     }
+  },
+  "loadErrorState": {
+    "message": "Failed to load data",
+    "retry": "Retry"
   }
 }
