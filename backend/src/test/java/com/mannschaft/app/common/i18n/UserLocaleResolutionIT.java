@@ -3,8 +3,6 @@ package com.mannschaft.app.common.i18n;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -12,12 +10,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.RequestContextUtils;
 
 import java.util.List;
 import java.util.Locale;
@@ -41,35 +38,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>正本: 2026-09-24 実測（本陣 BE:8080, e2e-user id=23, DB locale=ja）—
  * Accept-Language なし → ラベルが英語になる／Accept-Language: ja → 日本語 になる。</p>
  *
- * <h2>未認証象限（殿の差し戻しで追加）の実装方針</h2>
- * <p>未認証・{@code Accept-Language} の有無で応答文言が変わる HTTP 経路を本リポジトリ内で
- * 探索したが、<b>実在しない</b>ことを実証した上で確認した:</p>
- * <ul>
- *   <li>認証必須 EP を未認証で叩いた場合（{@code GET /api/v1/notification-type-preferences} 等）:
- *       {@code HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)} が 401 を返すのみで
- *       レスポンスボディは空（実測: {@code Body = }）。MessageSource を一切経由しない。</li>
- *   <li>{@code POST /api/v1/error-reports}（permitAll・Bean Validation エラーを誘発）:
- *       {@code GlobalExceptionHandler#handleValidationException} は
- *       {@code ErrorResponse.of(CommonErrorCode.COMMON_001, fieldErrors)} を返すが、これは
- *       {@code CommonErrorCode#getMessage()} の<b>ハードコードされた日本語文字列</b>を使うだけで
- *       {@code MessageSource}/{@code LocaleContextHolder} を経由しない。実測でも
- *       {@code Accept-Language} 無し／{@code en} のいずれも同一の日本語文言
- *       （"入力内容に不備があります" 等）が返ることを確認した（差が無い＝locale 解決とは無関係）。</li>
- *   <li>{@code messages_en.properties} には {@code error.common.*} / {@code error.translation.*} /
- *       {@code error.visibility.*} / {@code error.ad_*} 等の限られたキーしか無く、これらを
- *       直接 {@code new BusinessException(...)} で投げている箇所（{@code resolveMessage()} 経由で
- *       {@code LocaleContextHolder} を見る唯一の経路）はすべて認証必須ドメインに属し、
- *       permitAll から到達できない。{@code AUTH_*} コード（未認証で到達しうる auth 系 EP が
- *       投げる唯一のコード体系）には {@code messages_en.properties} に対応キーが1件も無く、
- *       常に {@code NoSuchMessageException} → {@code ErrorCode.getMessage()}（日本語固定）に
- *       フォールバックするため、そもそも locale で文言が変わらない。</li>
- * </ul>
- * <p>そのため未認証象限は、DispatcherServlet が実際に行う手順
- * （{@code UserLocaleFilter} 実行 → リクエスト属性へ解決結果を保存 → その後
- * {@code localeResolver.resolveLocale(request)} を呼ぶ）を、実 Spring コンテキストから
- * 取得した本物の {@link UserLocaleFilter} / {@link UserLocaleResolver} Bean（モック不使用）で
- * 直接再現して検証する（{@link #未認証_ヘッダー無し_ja()} 以下3件）。HTTP 経由の {@code MockMvc}
- * では検証できる EP が存在しないための代替であり、フィルタ・リゾルバ自体は本物である。</p>
+ * <h2>未認証象限（殿の差し戻し・Codex 指摘対応）</h2>
+ * <p>未認証・{@code Accept-Language} の有無で<b>応答文言</b>が変わる HTTP 経路を探索したが
+ * 存在しない（認証必須 EP を未認証で叩くと 401・空ボディ、{@code POST /api/v1/error-reports} の
+ * バリデーションエラーはハードコード日本語固定で locale 非依存）。そのため未認証象限は、
+ * {@code GET /api/i18n/supported-locales}（{@code permitAll}・200 を返す唯一の言語非依存な
+ * 公開 GET EP）へ本物の {@code MockMvc}（{@code addFilters} 既定 true・Spring Security の
+ * フィルタ鎖を含む実 HTTP 経路）でリクエストし、{@code DispatcherServlet} が実際に使った
+ * locale を {@link RequestContextUtils#getLocale(jakarta.servlet.http.HttpServletRequest)} で
+ * 検証する（レスポンス本文ではなく、DispatcherServlet が request に残す
+ * {@code LocaleResolver} 参照経由で問い合わせるため、"DispatcherServlet が実際に使った値" を
+ * 直接読める。Filter が残す {@code RESOLVED_LOCALE_ATTRIBUTE} を直に読むのではなく、
+ * こちらを正としたのは、Resolver が呼ばれず属性が孤立して残るだけの回帰があっても
+ * {@code RequestContextUtils} 経由なら検知できるため）。</p>
+ *
+ * <p><b>実 HTTP 経路化で追加発見・根治した実害</b>: 直接呼び出し版（Codex 指摘前）では見えなかった
+ * 別欠陥が本物のフィルタ鎖を通したことで発覚した。Spring Security の
+ * {@code AnonymousAuthenticationFilter} は未ログインリクエストにも
+ * principal="anonymousUser"（{@code String}）・{@code isAuthenticated()==true} の
+ * {@code AnonymousAuthenticationToken} を {@code SecurityContextHolder} にセットする。
+ * {@code UserLocaleFilter} はこれを「ログイン済み」と誤判定し、{@code Long.parseLong("anonymousUser")}
+ * が失敗して {@code DEFAULT_LOCALE(ja)} に固定フォールバックしていたため、未ログイン利用者の
+ * {@code Accept-Language} が常に無視されていた（本試練の未認証・en ケースで実際に red になった）。
+ * {@code UserLocaleFilter} 側で {@code AnonymousAuthenticationToken} を除外する修正で根治した。</p>
  */
 @AutoConfigureMockMvc
 @Transactional
@@ -79,6 +70,9 @@ class UserLocaleResolutionIT extends AbstractMySqlIntegrationTest {
 
     private static final String PATH = "/api/v1/notification-type-preferences";
 
+    /** {@code permitAll}・200 を返す言語非依存の公開 GET EP（未認証象限の検体）。 */
+    private static final String PUBLIC_PATH = "/api/i18n/supported-locales";
+
     /** SCHEDULE_CREATED のラベル（messages_ja.properties / messages_en.properties で文言が異なる）。 */
     private static final String LABEL_JA = "スケジュール作成通知";
     private static final String LABEL_EN = "Schedule created";
@@ -87,12 +81,6 @@ class UserLocaleResolutionIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private UserLocaleFilter userLocaleFilter;
-
-    @Autowired
-    private UserLocaleResolver userLocaleResolver;
 
     @PersistenceContext
     private EntityManager em;
@@ -136,51 +124,30 @@ class UserLocaleResolutionIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("未認証・Accept-Language ヘッダー無し → ja が解決される（DispatcherServletのlocaleResolver呼び出しを再現）")
+    @DisplayName("未認証・Accept-Language ヘッダー無し → DispatcherServletがjaを使う（実HTTP経路・フィルタ鎖込み）")
     void 未認証_ヘッダー無し_ja() throws Exception {
-        Locale resolved = resolveLocaleAsDispatcherServletWould(null);
-        assertThat(resolved.getLanguage()).isEqualTo("ja");
+        MvcResult result = mockMvc.perform(get(PUBLIC_PATH))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(RequestContextUtils.getLocale(result.getRequest()).getLanguage()).isEqualTo("ja");
     }
 
     @Test
-    @DisplayName("未認証・Accept-Language: en → en が解決される（DispatcherServletのlocaleResolver呼び出しを再現）")
+    @DisplayName("未認証・Accept-Language: en → DispatcherServletがenを使う（実HTTP経路・フィルタ鎖込み）")
     void 未認証_ヘッダーen_en() throws Exception {
-        Locale resolved = resolveLocaleAsDispatcherServletWould("en");
-        assertThat(resolved.getLanguage()).isEqualTo("en");
+        MvcResult result = mockMvc.perform(get(PUBLIC_PATH).header("Accept-Language", "en"))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(RequestContextUtils.getLocale(result.getRequest()).getLanguage()).isEqualTo("en");
     }
 
     @Test
-    @DisplayName("未認証・サポート外言語(fr) → ja にフォールバックする（DispatcherServletのlocaleResolver呼び出しを再現）")
+    @DisplayName("未認証・サポート外言語(fr) → DispatcherServletがjaにフォールバックする（実HTTP経路・フィルタ鎖込み）")
     void 未認証_サポート外言語fr_ja() throws Exception {
-        Locale resolved = resolveLocaleAsDispatcherServletWould("fr");
-        assertThat(resolved.getLanguage()).isEqualTo("ja");
-    }
-
-    /**
-     * 未認証リクエストに対して、実際の Spring Bean である {@link UserLocaleFilter} →
-     * {@link UserLocaleResolver} の順で呼び出し、DispatcherServlet が
-     * {@code localeResolver.resolveLocale(request)} を呼ぶ時点と同じ状態
-     * （フィルタ実行後のリクエスト属性が付いた状態）を再現して解決結果を返す。
-     * モックは使わず、本物の Bean・本物の {@link MockHttpServletRequest} を使う。
-     */
-    private Locale resolveLocaleAsDispatcherServletWould(String acceptLanguage) throws Exception {
-        SecurityContextHolder.clearContext();
-        try {
-            MockHttpServletRequest request = new MockHttpServletRequest("GET", PATH);
-            if (acceptLanguage != null) {
-                request.addHeader("Accept-Language", acceptLanguage);
-            }
-            MockHttpServletResponse response = new MockHttpServletResponse();
-            Locale[] resolvedHolder = new Locale[1];
-            // DispatcherServlet は UserLocaleFilter 実行 “後” に localeResolver.resolveLocale(request) を
-            // 呼ぶ。フィルタチェーンの終端（= フィルタ通過後）でそれを再現する。
-            FilterChain dispatcherServletSimulation = (req, res) ->
-                    resolvedHolder[0] = userLocaleResolver.resolveLocale((HttpServletRequest) req);
-            userLocaleFilter.doFilter(request, response, dispatcherServletSimulation);
-            return resolvedHolder[0];
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
+        MvcResult result = mockMvc.perform(get(PUBLIC_PATH).header("Accept-Language", "fr"))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(RequestContextUtils.getLocale(result.getRequest()).getLanguage()).isEqualTo("ja");
     }
 
     /**

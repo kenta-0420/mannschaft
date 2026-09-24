@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -45,6 +46,16 @@ import java.util.Set;
  * 本フィルターが解決した結果を {@link #RESOLVED_LOCALE_ATTRIBUTE} 経由で Resolver に渡して
  * DispatcherServlet 側の上書きでも同じ値が使われるようにした（判定ロジックの二重化を避けるため、
  * Resolver 自身は独自の解決を行わずこのフィルターの結果を尊重する）。</p>
+ *
+ * <p><b>あわせて根治した実害（未ログイン利用者の Accept-Language が無視される別欠陥）</b>:
+ * Spring Security の {@code AnonymousAuthenticationFilter} は未ログインリクエストにも
+ * principal="anonymousUser"（{@code String}）・{@code isAuthenticated()==true} の
+ * {@link org.springframework.security.authentication.AnonymousAuthenticationToken} をセットする。
+ * これを除外せずに「{@code isAuthenticated()} かつ {@code getPrincipal() instanceof String}」だけで
+ * ログイン済み判定すると、未ログイン利用者も常にこの分岐に入り
+ * {@code Long.parseLong("anonymousUser")} が失敗 → {@code DEFAULT_LOCALE(ja)} に固定され、
+ * {@code Accept-Language} 分岐に一切進まなくなっていた。判定条件に
+ * {@code !(auth instanceof AnonymousAuthenticationToken)} を追加して根治した。</p>
  */
 @Slf4j
 @Component
@@ -85,8 +96,16 @@ public class UserLocaleFilter extends OncePerRequestFilter {
     private Locale resolveLocale(HttpServletRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
+        // CMP-260923-1640 是正: Spring Security の AnonymousAuthenticationFilter は未ログインリクエストにも
+        // 「principal="anonymousUser"（String）・isAuthenticated()=true」の AnonymousAuthenticationToken を
+        // セットする。これを除外しないと isAuthenticated()==true かつ getPrincipal() instanceof String に
+        // 一致してしまい、Long.parseLong("anonymousUser") が失敗 → catch → DEFAULT_LOCALE(ja) 固定で
+        // Accept-Language 分岐に一切進まなくなる（未ログイン利用者の言語切替が常に無視される実害があった）。
+        boolean isRealUser = auth != null && auth.isAuthenticated()
+                && !(auth instanceof AnonymousAuthenticationToken);
+
         // ログイン済みの場合は DB（キャッシュ経由）から locale を取得
-        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof String principal) {
+        if (isRealUser && auth.getPrincipal() instanceof String principal) {
             try {
                 Long userId = Long.parseLong(principal);
                 String localeStr = userLocaleCache.getLocale(userId);
