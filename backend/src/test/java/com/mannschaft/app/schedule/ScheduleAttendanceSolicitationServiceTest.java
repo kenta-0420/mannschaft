@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -57,6 +58,8 @@ class ScheduleAttendanceSolicitationServiceTest {
     @Mock
     private EventSurveyService eventSurveyService;
     @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
+    @Mock
     private UserRoleRepository userRoleRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -83,7 +86,8 @@ class ScheduleAttendanceSolicitationServiceTest {
     void setUp() {
         service = new ScheduleAttendanceService(
                 attendanceRepository, scheduleRepository, scheduleService, eventSurveyService,
-                userRoleRepository, eventPublisher, proxyInputContext, proxyInputRecordRepository,
+                membershipScopeQueryService, userRoleRepository, eventPublisher,
+                proxyInputContext, proxyInputRecordRepository,
                 scheduleDelegationService,
                 scheduleTargetRepository,
                 organizationMembershipService,
