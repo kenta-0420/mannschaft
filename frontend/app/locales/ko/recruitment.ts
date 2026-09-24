@@ -214,6 +214,7 @@ export default {
       "resetButton": "초기화",
       "allCategories": "모든 카테고리",
       "noResults": "조건에 맞는 모집을 찾을 수 없습니다",
+      "loadError": "모집 정보를 가져오지 못했습니다",
       "resultsCount": "{count}건의 모집",
       "capacity": "정원",
       "remaining": "잔여 {count}자리",
