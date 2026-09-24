@@ -41,7 +41,7 @@ export type BillingScopeKind = 'USER' | 'TEAM' | 'ORG'
 export type PriceRevisionProductKind = 'PLAN' | 'ADDON'
 export type PriceRevisionTaxBehavior = 'INCLUSIVE' | 'EXCLUSIVE'
 export type PriceRevisionStatus =
-  | 'DRAFT' | 'PROVISIONING' | 'PROVISION_FAILED' | 'READY' | 'SCHEDULED' | 'ACTIVE' | 'RETIRED'
+  | 'DRAFT' | 'PROVISIONING' | 'PROVISION_FAILED' | 'READY' | 'SCHEDULED' | 'ACTIVE' | 'RETIRED' | 'CANCELLED'
 
 export interface PriceRevisionBandInput {
   bandNo: number
@@ -504,6 +504,15 @@ export function useBillingApi() {
     })
   }
 
+  /** 価格改定の取り消し（DRAFT / READY / PROVISION_FAILED → CANCELLED。future 枠を解放する）。 */
+  async function cancelPriceRevision(id: string, lockVersion: number, idempotencyKey?: string) {
+    return api<{ data: PriceRevisionResponse }>(`${PRICE_REVISIONS_BASE}/${id}/cancel`, {
+      method: 'POST',
+      body: { lockVersion },
+      headers: idempotencyHeaders(idempotencyKey),
+    })
+  }
+
   async function activatePriceRevision(id: string, lockVersion: number, idempotencyKey?: string) {
     return api<{ data: PriceRevisionResponse }>(`${PRICE_REVISIONS_BASE}/${id}/activate`, {
       method: 'POST',
@@ -575,6 +584,7 @@ export function useBillingApi() {
     retryProvisionPriceRevision,
     reconcileProvisionPriceRevision,
     activatePriceRevision,
+    cancelPriceRevision,
     listTaxCodes,
     createTaxCode,
     updateTaxCode,

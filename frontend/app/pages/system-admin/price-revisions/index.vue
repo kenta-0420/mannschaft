@@ -30,26 +30,24 @@ const authStore = useAuthStore()
 const billingApi = useBillingApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
-const { formatDateTime, buildOffsetDateTimeStr } = useDatetime()
+const { formatDateTime, buildOffsetDateTimeFromLocalInput } = useDatetime()
 
 /**
  * `<input type="datetime-local">` の値（例 `2026-09-24T12:00`。オフセットを持たない）を、
  * BE の `Instant` が受理するオフセット付き ISO-8601 へ変換する。
  *
  * オフセット無しのまま送ると Jackson が `Instant` に解釈できず 400 になる。入力値は「画面で指した
- * 壁時計」なので、壁時計成分を保ったままユーザーTZのオフセットを付ける既存の正準
- * `buildOffsetDateTimeStr` を通す（`formatDateTime` の表示と往復しても値がずれない）。
+ * 壁時計」なので、文字列の成分から直接ユーザーTZのオフセットを付ける（`new Date()` を経由すると
+ * ブラウザTZの DST 境界で 1 時間ずれる。`formatDateTime` の表示と往復しても値がずれない）。
  */
 function toInstantPayload(datetimeLocal: string): string {
-  const offsetIso = buildOffsetDateTimeStr(new Date(datetimeLocal))
-  if (!offsetIso) throw new RangeError(`invalid datetime-local value: ${datetimeLocal}`)
-  return offsetIso
+  return buildOffsetDateTimeFromLocalInput(datetimeLocal)
 }
 
 const isAllowed = computed(() => authStore.isSystemAdmin)
 
 const STATUS_OPTIONS: PriceRevisionStatus[] = [
-  'DRAFT', 'PROVISIONING', 'PROVISION_FAILED', 'READY', 'SCHEDULED', 'ACTIVE', 'RETIRED',
+  'DRAFT', 'PROVISIONING', 'PROVISION_FAILED', 'READY', 'SCHEDULED', 'ACTIVE', 'RETIRED', 'CANCELLED',
 ]
 
 // ============================================================
@@ -94,7 +92,7 @@ function statusSeverity(status: PriceRevisionStatus): 'success' | 'warn' | 'seco
   if (status === 'ACTIVE' || status === 'READY') return 'success'
   if (status === 'PROVISION_FAILED') return 'danger'
   if (status === 'PROVISIONING' || status === 'SCHEDULED') return 'warn'
-  if (status === 'RETIRED') return 'secondary'
+  if (status === 'RETIRED' || status === 'CANCELLED') return 'secondary'
   return 'info'
 }
 
@@ -221,6 +219,12 @@ const taxCodeForm = reactive<BillingTaxCodeCreateRequest>({
   enabled: true,
 })
 
+/** BE の Stripe 税コード形式検証（400 PRICE_REVISION_021: txcd_ + 数字8桁）に落ちたか。 */
+function isInvalidStripeTaxCode(err: unknown): boolean {
+  const apiError = err as { data?: { error?: { code?: string } } }
+  return apiError?.data?.error?.code === 'PRICE_REVISION_021'
+}
+
 async function loadTaxCodes() {
   taxCodeLoading.value = true
   try {
@@ -254,7 +258,8 @@ async function submitCreateTaxCode() {
     await loadTaxCodes()
   } catch (err) {
     console.error('price-revisions/index.vue: createTaxCode failed', err)
-    handleApiError(err, 'price-revisions-tax-code-create')
+    if (isInvalidStripeTaxCode(err)) notification.error(t('billing.priceRevisions.errorInvalidStripeTaxCode'))
+    else handleApiError(err, 'price-revisions-tax-code-create')
   } finally {
     taxCodeSaving.value = false
   }
@@ -271,7 +276,8 @@ async function updateTaxCode(row: BillingTaxCodeResponse, enabled: boolean) {
     await loadTaxCodes()
   } catch (err) {
     console.error('price-revisions/index.vue: updateTaxCode failed', err)
-    handleApiError(err, 'price-revisions-tax-code-update')
+    if (isInvalidStripeTaxCode(err)) notification.error(t('billing.priceRevisions.errorInvalidStripeTaxCode'))
+    else handleApiError(err, 'price-revisions-tax-code-update')
   }
 }
 

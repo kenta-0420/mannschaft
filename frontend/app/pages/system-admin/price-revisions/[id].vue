@@ -76,15 +76,23 @@ const allBandsReady = computed(() =>
 const activateDisabledReason = computed(() =>
   allBandsReady.value ? '' : t('billing.priceRevisions.activateDisabledReason'))
 
-/** AC-151: PROVISIONING のまま停滞している（=reconcile 導線を出す）状態かどうか。 */
-const showReconcile = computed(() =>
-  revision.value?.status === 'PROVISIONING' || revision.value?.status === 'PROVISION_FAILED')
+/**
+ * AC-151: PROVISIONING のまま停滞している（=reconcile 導線を出す）状態かどうか。
+ * reconcile は PROVISIONING 専用（PROVISION_FAILED の再実行は retry-provision の責務。BE も409を返す）。
+ * 停滞の判定（staleThreshold=9分）は BE が注入時計で行い、未満なら 409 PRICE_REVISION_020 を返すので
+ * 「処理中」の文言で知らせる（apiErrorMessage）。
+ */
+const showReconcile = computed(() => revision.value?.status === 'PROVISIONING')
+
+/** 取り消しできる状態（DRAFT / READY / PROVISION_FAILED）。修復できない失敗で future 枠が塞がるのを解く出口。 */
+const CANCELLABLE_STATUSES = ['DRAFT', 'READY', 'PROVISION_FAILED']
+const canCancel = computed(() => !!revision.value && CANCELLABLE_STATUSES.includes(revision.value.status))
 
 function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'danger' | 'info' {
   if (status === 'ACTIVE' || status === 'READY') return 'success'
   if (status === 'PROVISION_FAILED') return 'danger'
   if (status === 'PROVISIONING' || status === 'SCHEDULED') return 'warn'
-  if (status === 'RETIRED') return 'secondary'
+  if (status === 'RETIRED' || status === 'CANCELLED') return 'secondary'
   return 'info'
 }
 
@@ -105,6 +113,9 @@ function bandErrorMessage(code?: string | null): string {
   if (code.includes('TAX_CODE_NOT_FOUND') || code.includes('INVALID_TAX_CODE')) {
     return t('billing.priceRevisions.errorInvalidTaxCode')
   }
+  if (code.includes('TAX_SNAPSHOT_LEGACY_FORMAT')) {
+    return t('billing.priceRevisions.errorTaxSnapshotLegacy')
+  }
   if (code.includes('RECONCILE_ATTRIBUTE_MISMATCH')) {
     return t('billing.priceRevisions.errorReconcileMismatch')
   }
@@ -114,12 +125,27 @@ function bandErrorMessage(code?: string | null): string {
   return t('billing.priceRevisions.errorStateConflict')
 }
 
-/** API 呼び出し失敗時（トースト表示用）も同じ振り分けを使う。 */
+/**
+ * API エラー応答の code（`PriceRevisionErrorCode#getCode` の `PRICE_REVISION_0xx`）から文言キーへの対応。
+ * band の provisionErrorCode（enum 名）とは表記が異なるため、応答側はこの表で振り分ける。
+ */
+const API_ERROR_CODE_MESSAGE_KEYS: Record<string, string> = {
+  PRICE_REVISION_003: 'billing.priceRevisions.errorInvalidTaxCode',
+  PRICE_REVISION_013: 'billing.priceRevisions.errorFutureExists',
+  PRICE_REVISION_014: 'billing.priceRevisions.errorOverlap',
+  PRICE_REVISION_017: 'billing.priceRevisions.errorLockVersionConflict',
+  PRICE_REVISION_018: 'billing.priceRevisions.errorStateConflict',
+  PRICE_REVISION_019: 'billing.priceRevisions.errorReconcileMismatch',
+  PRICE_REVISION_020: 'billing.priceRevisions.errorProvisionInProgress',
+}
+
+/** API 呼び出し失敗時（トースト表示用）の振り分け。 */
 function apiErrorMessage(err: unknown): string | null {
   const apiError = err as { data?: { error?: { code?: string } } }
   const code = apiError?.data?.error?.code
   if (!code) return null
-  return bandErrorMessage(code)
+  const key = API_ERROR_CODE_MESSAGE_KEYS[code]
+  return key ? t(key) : bandErrorMessage(code)
 }
 
 // ============================================================
@@ -159,7 +185,9 @@ const provisioning = ref(false)
 const retrying = ref(false)
 const reconciling = ref(false)
 const activating = ref(false)
-const busy = computed(() => loading.value || provisioning.value || retrying.value || reconciling.value || activating.value)
+const cancelling = ref(false)
+const busy = computed(() => loading.value || provisioning.value || retrying.value || reconciling.value
+  || activating.value || cancelling.value)
 
 async function onProvisionClick() {
   if (!revision.value || busy.value) return
@@ -225,6 +253,30 @@ async function onReconcileClick() {
     else handleApiError(err, 'price-revisions-reconcile-provision')
   } finally {
     reconciling.value = false
+  }
+}
+
+/** 取り消し。確認ダイアログを経て、押下ごとに新しい Idempotency-Key で呼ぶ（AC-158 の業務操作と同じ扱い）。 */
+async function onCancelClick() {
+  if (!revision.value || busy.value || !canCancel.value) return
+  if (!window.confirm(t('billing.priceRevisions.confirmCancel'))) return
+  cancelling.value = true
+  const key = crypto.randomUUID()
+  try {
+    const result = await autoResendOnNetworkError(
+      (idempotencyKey) => billingApi.cancelPriceRevision(revision.value!.id, revision.value!.lockVersion ?? 0, idempotencyKey)
+        .then((r) => r.data),
+      key,
+    )
+    revision.value = result
+    notification.success(t('billing.priceRevisions.cancelSuccess'))
+  } catch (err) {
+    console.error('price-revisions/[id].vue: cancel failed', err)
+    const mapped = apiErrorMessage(err)
+    if (mapped) notification.error(mapped)
+    else handleApiError(err, 'price-revisions-cancel')
+  } finally {
+    cancelling.value = false
   }
 }
 
@@ -372,6 +424,17 @@ async function onActivateClick() {
             :loading="activating"
             :disabled="!allBandsReady || loading || busy"
             @click="onActivateClick"
+          />
+          <Button
+            v-if="canCancel"
+            :label="t('billing.priceRevisions.cancelAction')"
+            icon="pi pi-times"
+            severity="danger"
+            outlined
+            aria-label="cancel-price-revision"
+            :loading="cancelling"
+            :disabled="busy"
+            @click="onCancelClick"
           />
         </div>
         <p v-if="!allBandsReady" class="text-xs text-surface-500" aria-label="activate-disabled-reason">

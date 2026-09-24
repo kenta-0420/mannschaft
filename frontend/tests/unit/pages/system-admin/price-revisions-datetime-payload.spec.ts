@@ -30,6 +30,7 @@ mockNuxtImport('useBillingApi', () => () => ({
 mockNuxtImport('useAuthStore', () => () => ({
   isSystemAdmin: true,
   user: { timezone: 'Asia/Tokyo' },
+  loadFromStorage: vi.fn(),
 }))
 
 const Page = (await import('~/pages/system-admin/price-revisions/index.vue')).default

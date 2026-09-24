@@ -117,6 +117,45 @@ export function useDatetime() {
   }
 
   /**
+   * `<input type="datetime-local">` の値（`YYYY-MM-DDTHH:mm` または `YYYY-MM-DDTHH:mm:ss`）を、
+   * **文字列の壁時計成分のまま**ユーザーTZで解釈し、オフセット付き ISO-8601 文字列を返す。
+   *
+   * `new Date(value)` を経由してはならない。ブラウザTZで存在しない時刻（DST 開始時刻。例:
+   * America/New_York の 2026-03-08 02:30）が 1 時間ずれて正規化され、ずれた壁時計にユーザーTZの
+   * オフセットを付けて送ってしまう（2026-09-24 検分指摘）。`dayjs.tz(...).format()` も内部で
+   * ブラウザローカルの Date を経由するため同じくずれる（実測: 03:30 になった）。
+   * そこで壁時計の文字列はそのまま使い、オフセットだけを `Intl.DateTimeFormat`（ユーザーTZ）から求める。
+   *
+   * @throws {RangeError} 形式違反（症状を隠さず失敗させる）
+   * @example buildOffsetDateTimeFromLocalInput('2026-03-08T02:30') // ユーザーTZ=JST → "2026-03-08T02:30:00+09:00"
+   */
+  function buildOffsetDateTimeFromLocalInput(value: string): string {
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value)
+    if (!match) throw new RangeError(`invalid datetime-local value: ${value}`)
+    const [, y, mo, d, h, mi, sec = '00'] = match
+    // 壁時計を仮に UTC とみなした時刻から、ユーザーTZのオフセットを2段で確定する（ユーザーTZ側の DST にも追従）。
+    const wallAsUtc = Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(sec))
+    const firstOffset = zoneOffsetMinutes(wallAsUtc, userTimezone.value)
+    const offset = zoneOffsetMinutes(wallAsUtc - firstOffset * 60_000, userTimezone.value)
+    const sign = offset >= 0 ? '+' : '-'
+    const abs = Math.abs(offset)
+    const hh = String(Math.floor(abs / 60)).padStart(2, '0')
+    const mm = String(abs % 60).padStart(2, '0')
+    return `${y}-${mo}-${d}T${h}:${mi}:${sec}${sign}${hh}:${mm}`
+  }
+
+  /** 指定 UTC 瞬間における timeZone の UTC からのオフセット（分）。ブラウザTZに依存しない。 */
+  function zoneOffsetMinutes(utcMillis: number, timeZone: string): number {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(new Date(utcMillis))
+    const get = (type: string) => Number(parts.find(p => p.type === type)?.value)
+    const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
+    return Math.round((asUtc - Math.floor(utcMillis / 1000) * 1000) / 60_000)
+  }
+
+  /**
    * `yyyy-MM-dd` 形式の暦日を「ユーザーTZでのその日の 00:00:00」として解釈し、
    * オフセット付き ISO-8601 文字列を返す（範囲検索の from 用）。
    *
@@ -146,6 +185,7 @@ export function useDatetime() {
     formatTime,
     fromNow,
     buildOffsetDateTimeStr,
+    buildOffsetDateTimeFromLocalInput,
     buildDayStartStr,
     buildDayEndStr,
   }
