@@ -15,6 +15,8 @@ const form = ref({
   frequency: 'WEEKLY' as ReportFrequency,
   recipients: '',
 })
+/** 取得失敗は「未設定」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 const frequencyOptions = [
   { label: '週次（毎週月曜）', value: 'WEEKLY' },
@@ -23,11 +25,15 @@ const frequencyOptions = [
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await advertiserApi.getReportSchedules('ORGANIZATION', orgSlug)
     schedules.value = res.data
   }
-  catch { schedules.value = [] }
+  catch {
+    schedules.value = []
+    loadFailed.value = true
+  }
   finally { loading.value = false }
 }
 
@@ -66,6 +72,12 @@ onMounted(load)
     </div>
 
     <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="report-schedules-error-state"
+      @retry="load"
+    />
 
     <div v-else-if="schedules.length === 0" class="py-10 text-center text-surface-500">
       定期レポートはまだ設定されていません。
