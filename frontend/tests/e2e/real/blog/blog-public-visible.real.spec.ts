@@ -105,7 +105,9 @@ test('WAVE5-REAL-001: UI visibility toggle controls public pages and rejects out
 
     const outsiderUpdates: string[] = []
     outsider.page.on('request', (request) => {
-      if (request.method() === 'PATCH' && new URL(request.url()).pathname.includes(`/blog/posts/${post!.id}`)) {
+      const method = request.method()
+      const path = new URL(request.url()).pathname
+      if ((method === 'PUT' || method === 'PATCH') && path === `/api/v1/users/me/blog/posts/${post!.id}`) {
         outsiderUpdates.push(request.url())
       }
     })
@@ -122,6 +124,7 @@ test('WAVE5-REAL-001: UI visibility toggle controls public pages and rejects out
     await expect(outsider.page.locator('#autosave-toggle')).toHaveCount(0)
     await expect(outsider.page.getByRole('switch', { name: LABEL.toggle })).toHaveCount(0)
     await expect(outsider.page.getByText('下書き', { exact: true })).toHaveCount(0)
+    await outsider.page.locator('button').first().focus()
     await outsider.page.keyboard.press('Control+s')
     await outsider.page.waitForTimeout(500)
     expect(outsiderUpdates, 'load failure blocks Ctrl+S updates').toEqual([])

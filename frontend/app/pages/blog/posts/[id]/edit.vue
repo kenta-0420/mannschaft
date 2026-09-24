@@ -300,7 +300,7 @@ onUnmounted(() => {
         <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
         <span class="text-base font-semibold text-surface-600">ブログ編集</span>
         <Tag
-            v-if="!loading && !loadError"
+          v-if="!loading && !loadError"
           :value="statusLabel"
           :severity="statusSeverity"
           rounded
