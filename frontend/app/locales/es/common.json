@@ -2558,6 +2558,22 @@
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
   },
+  "memberPermissions": {
+    "title": "Permisos predeterminados de MEMBER",
+    "description": "Configura los permisos predeterminados de los usuarios MEMBER que se unan a este equipo u organización.",
+    "sectionTitle": "Permisos predeterminados",
+    "invalidScope": "Selecciona un equipo o una organización antes de abrir esta página.",
+    "loadFailed": "No se pudieron cargar los permisos predeterminados de MEMBER.",
+    "saveSuccess": "Se actualizaron los permisos predeterminados de MEMBER.",
+    "saveFailed": "No se pudieron actualizar los permisos predeterminados de MEMBER.",
+    "inherited": "Heredado de una configuración superior",
+    "accessDenied": "Solo los administradores pueden realizar esta acción.",
+    "permissions": {
+      "MANAGE_SCHEDULES": "Gestionar calendarios",
+      "MANAGE_FILES": "Gestionar archivos",
+      "MANAGE_POSTS": "Gestionar publicaciones"
+    }
+  },
   "loadErrorState": {
     "message": "Error al cargar los datos",
     "retry": "Reintentar"

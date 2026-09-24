@@ -201,6 +201,7 @@ public class TimelinePostService {
         // checkScopeMembership を直接呼ぶ形にフラット化している。
         if (parseScopeType(req.getScopeTypeOrDefault()) != PostScopeType.VILLAGE) {
             checkScopeMembership(req.getScopeTypeOrDefault(), resolvedScopeId, userId);
+            checkCanCreateInManagedScope(req.getScopeTypeOrDefault(), resolvedScopeId, userId);
         }
         // 配下配信（CHILDREN / DESCENDANTS）の送信権限ゲート。
         //
@@ -393,11 +394,27 @@ public class TimelinePostService {
                 // 公開スコープ。誰でも読み書きできるため追加の検証はしない。
             }
             case TEAM -> accessControlService.checkMembership(userId, resolvedScopeId, "TEAM");
-            case ORGANIZATION ->
-                    accessControlService.checkMembership(userId, resolvedScopeId, "ORGANIZATION");
+            case ORGANIZATION -> accessControlService.checkMembership(userId, resolvedScopeId, "ORGANIZATION");
             case PERSONAL -> requireSelfScope(resolvedScopeId, userId);
             case VILLAGE, FRIEND_TEAM, FRIEND_FORWARD, FRIEND_ARCHIVE ->
                     throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    private void checkCanCreateInManagedScope(String scopeType, Long scopeId, Long userId) {
+        if (!("TEAM".equals(scopeType) || "ORGANIZATION".equals(scopeType))) {
+            return;
+        }
+        if (accessControlService.isAdminOrAbove(userId, scopeId, scopeType)) {
+            return;
+        }
+        String roleName = accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType);
+        if ("MEMBER".equals(roleName)
+                && accessControlService.hasPermission(userId, scopeId, scopeType, "MANAGE_POSTS")) {
+            return;
+        }
+        if ("MEMBER".equals(roleName)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }
 
@@ -646,7 +663,7 @@ public class TimelinePostService {
     @Transactional
     public PostResponse updatePost(Long postId, UpdatePostRequest req, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
-        postAccessGuard.checkCanManage(userId, post);
+        postAccessGuard.checkCanEdit(userId, post);
 
         if (req.getContent() == null || req.getContent().isBlank()) {
             throw new BusinessException(TimelineErrorCode.EMPTY_POST_CONTENT);
