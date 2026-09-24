@@ -142,20 +142,25 @@ class BillingPlanChangeGuardExistenceRedIT extends AbstractMySqlIntegrationTest 
                 .isEqualTo((long) frozen.size());
     }
 
-    // ═════════ AC-146: 新規Flyway migrationを作らない ═════════
+    // ═════════ AC-146: billing系 migration の実測一覧を固定する ═════════
 
     /**
-     * PR6b-1 着手時点（PR6a 完了時点）に実在した billing 系 migration の実測一覧。
+     * 価格改定戦役（price-revisions）投入後に実在する billing 系 migration の実測一覧。
+     *
+     * <p><b>この番人の位置付け（マスター裁可 2026-09-24）</b>: AC-146 はもともと PR6b-1 の期間中に
+     * billing スキーマを凍結する目的の番人で、PR6b-1 の完了（#3302 マージ）で役目を終えた。
+     * 本一覧は、PR6a 完了時点の実測に価格改定戦役が正当に追加した3本（税コード表・band の
+     * provision 追跡列・Stripe Product 対応表）を加えた<b>実測</b>で固定し直したものであり、
+     * 以後の billing migration 追加を止める意図はない。<b>後続戦役で billing migration を足す場合は、
+     * 本一覧を実測で更新すること</b>（推測で足さない。削除・改名の取り違えを検出する役目は残す）。</p>
      *
      * <p><b>なぜ「V196 より新しい名前が無いこと」で測らないか</b>: ファイル名の辞書順比較は
      * Flyway の version 順と一致しない。{@code V198…} / {@code V203…} / {@code V9.027…} はいずれも
-     * 文字列としては {@code "V196…"} より大きいため、<b>PR6b-1 が1本も migration を足していなくても
-     * 必ず赤になる</b>（実際 CI で赤になった。いずれも PR6a 以前から main にある既存ファイル）。
-     * 番人が測るべきは「この戦役で billing 系 migration が増えていないこと」なので、
-     * <b>実測した一覧との完全一致</b>で測る。追加はもちろん、取り違えた削除・改名も落ちるため
-     * 辞書順版より強い。</p>
+     * 文字列としては {@code "V196…"} より大きいため、migration を1本も足していなくても
+     * 必ず赤になる（実際 CI で赤になった）。そのため<b>実測した一覧との完全一致</b>で測る。
+     * 追加はもちろん、取り違えた削除・改名も落ちるため辞書順版より強い。</p>
      */
-    private static final List<String> BILLING_MIGRATIONS_AT_PR6A = List.of(
+    private static final List<String> BILLING_MIGRATIONS_AFTER_PRICE_REVISIONS = List.of(
             "V150.20260710030424__create_billing_master_tables.sql",
             "V150.20260710030425__create_billing_contracts.sql",
             "V150.20260710030427__seed_billing_master.sql",
@@ -167,11 +172,15 @@ class BillingPlanChangeGuardExistenceRedIT extends AbstractMySqlIntegrationTest 
             "V205.20260909093522__add_billing_payer_handover_setup_intent_verified_at.sql",
             "V206.20260909102921__add_billing_payer_handover_failing_cleanup_status.sql",
             "V207.20260909111023__add_billing_payer_handover_cleanup_policy.sql",
+            // 価格改定戦役（price-revisions・陣立て書 決定5）で正当に追加した3本。
+            "V220.20260922142330__create_billing_tax_codes.sql",
+            "V220.20260922142331__add_billing_price_band_provision_tracking.sql",
+            "V220.20260922142332__create_billing_stripe_products.sql",
             "V9.027__create_promotion_billing_records_table.sql");
 
     @Test
-    @DisplayName("AC-146: PR6a以降、billing系の新規Flyway migrationファイルが追加されていない")
-    void AC146_billing系の新規migrationを作らない() throws IOException {
+    @DisplayName("AC-146: billing系 Flyway migration が価格改定戦役投入後の実測一覧と完全一致する")
+    void AC146_billing系migrationが実測一覧と一致する() throws IOException {
         Path migrationDir = resolveRepoRelative("backend/src/main/resources/db/migration");
         Pattern billingFileNamePattern = Pattern.compile("(?i).*billing.*\\.sql$");
 
@@ -185,12 +194,10 @@ class BillingPlanChangeGuardExistenceRedIT extends AbstractMySqlIntegrationTest 
         }
 
         assertThat(billingMigrations)
-                .as("V196.20260831142049__expand_billing_center.sql が"
-                        + "PR6b-1（見積り・upgrade変更）に必要な列を既に持つ前提（正本V196:265-302）。"
-                        + "billing系migrationが増えていたら根治の対象（新規テーブル追加が必要な"
-                        + "設計に倒れていないか見直すこと）。減っていた場合も課金データの再構築が"
-                        + "できなくなるため同じく赤にする")
-                .containsExactlyInAnyOrderElementsOf(BILLING_MIGRATIONS_AT_PR6A);
+                .as("billing系migrationの実測一覧（価格改定戦役投入後）と完全一致すること。"
+                        + "後続戦役で正当に追加した場合は一覧を実測で更新する（推測で足さない）。"
+                        + "減っていた・改名されていた場合は課金データの再構築ができなくなるため赤にする")
+                .containsExactlyInAnyOrderElementsOf(BILLING_MIGRATIONS_AFTER_PRICE_REVISIONS);
     }
 
     // ═════════ AC-147: 表示経路でStripeを呼ばない（payment-actionだけが例外） ═════════
