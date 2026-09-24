@@ -91,20 +91,11 @@ class TeamConfirmableNotificationControllerTest {
     }
 
     private ConfirmableNotificationCreateRequest createValidRequest() {
-        ConfirmableNotificationCreateRequest request =
-                mock(ConfirmableNotificationCreateRequest.class);
-        // CMP-260920-1040: send は sendAsync(...) を any() で丸ごとモック化するため、
-        // title/body は Controller から個別参照されない（UnnecessaryStubbingException回避のため削除）
-        given(request.getPriority()).willReturn(ConfirmableNotificationPriority.NORMAL);
-        // deadlineAt は OffsetDateTime へ変更済み。Controller は getDeadlineAtAsJst() を呼ぶ
-        given(request.getDeadlineAtAsJst()).willReturn(null);
-        given(request.getFirstReminderMinutes()).willReturn(null);
-        given(request.getSecondReminderMinutes()).willReturn(null);
-        given(request.getActionUrl()).willReturn(null);
-        given(request.getTemplateId()).willReturn(null);
-        given(request.getUnconfirmedVisibility()).willReturn(null);
-        given(request.getRecipientUserIds()).willReturn(List.of(2L, 3L, 4L));
-        return request;
+        // CMP-260920-1040 CI是正: send は notificationService.sendAsync(...) の引数を
+        // any() で丸ごとモック化するため、Controller は request の各 getter を個別に呼ばない。
+        // getter をスタブしても使われず UnnecessaryStubbingException になるため、
+        // モックの生成のみ行う（検証の力は sendAsync の戻り値アサーションで担保する）。
+        return mock(ConfirmableNotificationCreateRequest.class);
     }
 
     // ========================================

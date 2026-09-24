@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * CMP-260920-1040 F04.9 確認通知の送信時点の宛先ターゲット（軍議第8版確定稿 §3.1）。
@@ -42,12 +42,13 @@ public class ConfirmableNotificationTargetEntity extends UuidV7Entity {
     private Long targetId;
 
     /**
-     * CI是正（CMP-260920-1040）: 引数なし {@code LocalDateTime.now()} を使う {@code @PrePersist} の
-     * 代わりに Hibernate の {@link CreationTimestamp}（JVM既定ゾーン基準）を使う
-     * （docs/architecture/datetime_policy_utc_instant_vs_wallclock.md 是正・番人
-     * {@code DateTimeAndZoneGuardTest} 新規クラス違反の根治）。
+     * CI是正3（CMP-260920-1040）: {@code LocalDateTime} 型のフィールドは番人
+     * {@code DateTimeAndZoneGuardTest}（LOCAL_DATE_TIME_FIELD）が新規追加を禁止するため、
+     * 起きた瞬間を表す本列は {@link Instant} で持つ
+     * （docs/architecture/datetime_policy_utc_instant_vs_wallclock.md・
+     * {@code TeamRolePermissionEntity} 等の前例に倣う）。
      */
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

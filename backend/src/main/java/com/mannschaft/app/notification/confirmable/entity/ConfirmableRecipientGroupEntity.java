@@ -17,7 +17,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Clock;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * CMP-260920-1040 F04.9 確認通知の宛先グループ（軍議第8版確定稿 §3.1）。
@@ -49,21 +49,22 @@ public class ConfirmableRecipientGroupEntity extends UuidV7Entity {
 
     /** 論理削除日時。NULL の場合は有効なグループ。 */
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     /**
-     * CI是正（CMP-260920-1040）: 引数なし {@code LocalDateTime.now()} を使う {@code @PrePersist}/
-     * {@code @PreUpdate} の代わりに Hibernate の {@link CreationTimestamp}/{@link UpdateTimestamp}
-     * （JVM既定ゾーン基準）を使う（docs/architecture/datetime_policy_utc_instant_vs_wallclock.md
-     * 是正・番人 datetime_guard の新規クラス違反の根治。他の新規エンティティに倣う）。
+     * CI是正3（CMP-260920-1040）: {@code LocalDateTime} 型のフィールドは番人
+     * {@code DateTimeAndZoneGuardTest}（LOCAL_DATE_TIME_FIELD）が新規追加を禁止するため、
+     * 起きた瞬間を表す本列は {@link Instant} で持つ
+     * （docs/architecture/datetime_policy_utc_instant_vs_wallclock.md・
+     * {@code TeamRolePermissionEntity} 等の前例に倣う）。
      */
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     /**
      * グループを論理削除する。
@@ -71,13 +72,14 @@ public class ConfirmableRecipientGroupEntity extends UuidV7Entity {
      * <p>削除後、テンプレートの既定グループとして参照されていても無視され、
      * 「既定＝配下すべて」に戻す（§3.1・AC-32）。</p>
      *
-     * <p>CI是正（CMP-260920-1040）: 引数なし {@code LocalDateTime.now()} は番人違反のため、
-     * 呼び出し側が {@code @Qualifier("wallClock")} の {@link Clock} を渡す（既存 now() 群と同じゾーン基準）。</p>
+     * <p>CI是正3（CMP-260920-1040）: 引数なし {@code now()} は番人違反のため、
+     * 呼び出し側が {@code @Qualifier("wallClock")} の {@link Clock} を渡す（既存 now() 群と同じゾーン基準）。
+     * 本列は {@link Instant} のため {@code Clock.instant()} を使う。</p>
      *
      * @param clock 壁時計クロック（{@code @Qualifier("wallClock")}）
      */
     public void softDelete(Clock clock) {
-        this.deletedAt = LocalDateTime.now(clock);
+        this.deletedAt = clock.instant();
     }
 
     public boolean isDeleted() {

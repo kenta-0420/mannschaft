@@ -152,7 +152,8 @@ class CommitteeDistributionConfirmableSendRegressionIT extends AbstractMySqlInte
                         + "(slug, name, org_type, visibility, hierarchy_visibility, supporter_enabled, "
                         + "version, created_at, updated_at) "
                         + "VALUES (?, 'AC-17回帰用組織', 'COMMUNITY', 'PUBLIC', 'FULL', 1, 0, NOW(), NOW())",
-                "committee-ac17-it-" + System.nanoTime());
+                // slug は VARCHAR(30)。"committee-ac17-" (15) + nanoTime下位9桁 で30文字以内に収める。
+                "committee-ac17-" + (System.nanoTime() % 1_000_000_000L));
         Long id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
         return id == null ? 0L : id;
     }

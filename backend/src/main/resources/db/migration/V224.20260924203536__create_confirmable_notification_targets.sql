@@ -35,7 +35,7 @@ CREATE TABLE confirmable_notification_targets (
     confirmable_notification_id BIGINT UNSIGNED NOT NULL COMMENT 'confirmable_notifications.id（同一ドメイン内FK・CASCADE）',
     target_type                 ENUM('ORGANIZATION', 'TEAM') NOT NULL,
     target_id                   BIGINT UNSIGNED NOT NULL,
-    created_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at                  DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     INDEX idx_cnt_notification (confirmable_notification_id),
     CONSTRAINT fk_cnt_notification FOREIGN KEY (confirmable_notification_id)
@@ -51,9 +51,9 @@ CREATE TABLE confirmable_recipient_groups (
     scope_id    BIGINT UNSIGNED NOT NULL,
     name        VARCHAR(100) NOT NULL,
     created_by  BIGINT UNSIGNED NULL COMMENT 'users.id（クロスドメイン参照のためFKは張らない。CLAUDE.md DB設計原則#1）',
-    deleted_at  DATETIME NULL,
-    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at  DATETIME(6) NULL,
+    created_at  DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at  DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     INDEX idx_crg_scope (scope_type, scope_id, deleted_at),
     INDEX idx_crg_created_by (created_by)
@@ -72,7 +72,7 @@ CREATE TABLE confirmable_recipient_group_targets (
     group_id    BINARY(16) NOT NULL COMMENT 'confirmable_recipient_groups.id（同一ドメイン内FK・CASCADE）',
     target_type ENUM('ORGANIZATION', 'TEAM') NOT NULL,
     target_id   BIGINT UNSIGNED NOT NULL,
-    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at  DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_crgt_group_target (group_id, target_type, target_id),
     CONSTRAINT fk_crgt_group FOREIGN KEY (group_id)

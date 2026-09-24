@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -56,7 +56,7 @@ class ConfirmableRecipientGroupResolutionIT extends AbstractMySqlIntegrationTest
                 .scopeType(ScopeType.ORGANIZATION)
                 .scopeId(502L)
                 .name("削除予定グループ")
-                .deletedAt(LocalDateTime.now())
+                .deletedAt(Instant.now())
                 .build());
 
         assertThatThrownBy(() -> service.resolveForSend(ScopeType.ORGANIZATION, 502L, group.getId()))

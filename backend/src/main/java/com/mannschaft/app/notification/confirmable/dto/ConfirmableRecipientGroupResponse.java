@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,5 +24,7 @@ public class ConfirmableRecipientGroupResponse {
 
     private List<ConfirmableTargetSpec> targets;
 
-    private LocalDateTime createdAt;
+    // CI是正3（CMP-260920-1040）: LocalDateTime は番人 DateTimeAndZoneGuardTest の新規追加禁止対象。
+    // 起きた瞬間を表すため Instant で持つ（ConfirmableRecipientGroupEntity.createdAt に合わせる）。
+    private Instant createdAt;
 }

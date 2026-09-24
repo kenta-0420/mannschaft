@@ -523,12 +523,18 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
                 userId, "confirmable-targets-it-" + userId + "@example.test", "U" + userId, status, deletedAt, now, now);
     }
 
-    /** confirmable_notifications 最小行を1件 INSERT し、生成IDを返す（FK非依存の直接SQL）。 */
+    /**
+     * confirmable_notifications 最小行を1件 INSERT し、生成IDを返す（FK非依存の直接SQL）。
+     * test profile は ddl-auto:create でDEFAULTが効かないため、NOT NULL列をすべて明示的に埋める。
+     */
     private long seedConfirmableNotification(long senderUserId) {
         jdbc.update("INSERT INTO confirmable_notifications "
-                        + "(scope_type, scope_id, title, created_by, status, total_recipient_count, delivered_count, "
-                        + "created_at, updated_at) "
-                        + "VALUES ('ORGANIZATION', 1, 'IT title', ?, 'ACTIVE', 0, 0, NOW(), NOW())",
+                        + "(source_type, scope_type, scope_id, title, created_by, priority, status, "
+                        + "total_recipient_count, delivery_status, delivered_count, unconfirmed_count, "
+                        + "unconfirmed_visibility, created_at, updated_at) "
+                        + "VALUES ('EMERGENCY_CLOSURE', 'ORGANIZATION', 1, 'IT title', ?, 'NORMAL', 'ACTIVE', "
+                        + "0, 'DELIVERED', 0, 0, "
+                        + "'CREATOR_AND_ADMIN', NOW(), NOW())",
                 senderUserId);
         Long id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
         return id == null ? 0L : id;

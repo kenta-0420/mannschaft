@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,7 +74,7 @@ class ConfirmableNotificationTemplateDefaultGroupIT extends AbstractMySqlIntegra
                 .scopeType(ScopeType.ORGANIZATION)
                 .scopeId(602L)
                 .name("AC-32用削除済みグループ")
-                .deletedAt(LocalDateTime.now())
+                .deletedAt(Instant.now())
                 .build());
 
         ConfirmableNotificationTemplateEntity template = templateRepository.save(
