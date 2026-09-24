@@ -71,7 +71,17 @@ public class ShiftAvailabilityService {
         validateAvailabilities(req.getAvailabilities());
 
         // 既存データを全削除
+        // 【根治治療 CMP-260923】deleteByUserIdAndTeamId は導出delete（select→remove）のため、
+        // DELETE の実SQLはこの時点では発行されず flush まで遅延される。一方、下記 saveAll の
+        // 対象エンティティは @GeneratedValue(IDENTITY) のため、Hibernate は persist() 時点で
+        // INSERT を即時発行する（IDENTITY 採番の仕様上、通常の flush キュー順序に従わない）。
+        // その結果、同一 (user_id, team_id, day_of_week, start_time, end_time) の内容で
+        // 保存ボタンを2回連続で押すと、古い行がまだ削除されていない状態で同じ内容の行を
+        // INSERT しようとし、UNIQUE 制約 uq_mad_user_team_dow_time に衝突して 500 になっていた
+        // （内容が1文字でも違えば一意キーが衝突しないため症状が出ず、気づかれにくかった）。
+        // ここで明示的に flush して DELETE を先に確定させることで、PUT の冪等性を保証する。
         availabilityRepository.deleteByUserIdAndTeamId(userId, teamId);
+        availabilityRepository.flush();
 
         // 新規作成
         List<MemberAvailabilityDefaultEntity> entities = req.getAvailabilities().stream()

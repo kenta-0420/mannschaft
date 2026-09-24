@@ -34,6 +34,9 @@ public class AnnouncementFeedItemDto {
     /** 表示スコープ ID */
     private final Long scopeId;
 
+    /** 表示スコープ名。個人横断フィード以外では null。 */
+    private final String scopeName;
+
     /** 元コンテンツ種別（BLOG_POST / BULLETIN_THREAD / TIMELINE_POST / CIRCULATION_DOCUMENT / SURVEY） */
     private final String sourceType;
 
@@ -94,6 +97,7 @@ public class AnnouncementFeedItemDto {
                 .id(feed.getId())
                 .scopeType(feed.getScopeType() != null ? feed.getScopeType().name() : null)
                 .scopeId(feed.getScopeId())
+                .scopeName(item.scopeName())
                 .sourceType(locked ? null : feed.getSourceType() != null ? feed.getSourceType().name() : null)
                 .sourceId(locked ? null : feed.getSourceId())
                 .authorId(feed.getAuthorId())
