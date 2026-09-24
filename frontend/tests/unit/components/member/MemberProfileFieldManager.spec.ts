@@ -47,7 +47,7 @@ describe('メンバー紹介のカスタム項目管理', () => {
     await flushPromises()
 
     expect(notifyError).toHaveBeenCalled()
-    expect(wrapper.text()).toContain('再試行')
-    expect(wrapper.text()).not.toContain('カスタム項目がありません')
+    expect(wrapper.find('[data-testid="member-field-retry"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="member-field-empty"]').exists()).toBe(false)
   })
 })

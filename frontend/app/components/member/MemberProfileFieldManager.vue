@@ -89,11 +89,11 @@ onMounted(loadFields)
     <PageLoading v-if="loading" />
     <div v-else-if="loadError" class="py-8 text-center">
       <p class="mb-3">{{ t('memberProfile.fields.loadFailed') }}</p>
-      <Button :label="t('memberProfile.fields.retry')" @click="loadFields" />
+      <Button :label="t('memberProfile.fields.retry')" data-testid="member-field-retry" @click="loadFields" />
     </div>
     <DataTable v-else :value="fields" striped-rows data-key="id">
       <template #empty>
-        <DashboardEmptyState icon="pi pi-id-card" :message="t('memberProfile.fields.empty')" />
+        <DashboardEmptyState icon="pi pi-id-card" :message="t('memberProfile.fields.empty')" data-testid="member-field-empty" />
       </template>
       <Column field="fieldName" :header="t('memberProfile.fields.name')" />
       <Column :header="t('memberProfile.fields.type')">
