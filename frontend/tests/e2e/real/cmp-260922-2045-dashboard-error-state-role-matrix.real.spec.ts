@@ -22,16 +22,16 @@ test.use({ storageState: { cookies: [], origins: [] } })
  * reload フォールバックを踏まない軽量な待機（対象要素の可視化待ち）に差し替える。
  */
 async function waitForHydrationLocal(page: Page): Promise<void> {
-  await page
-    .waitForFunction(
-      () => {
-        const el = document.querySelector('#__nuxt')
-        return el !== null && el.childElementCount > 0
-      },
-      undefined,
-      { timeout: 30_000 },
-    )
-    .catch(() => undefined)
+  // 失敗を握りつぶさない: タイムアウトした場合はそのままテストを失敗させる
+  // （握りつぶすと「画面が描画されていない」異常を見逃すため。CMP-260922-2045の主題に反する）。
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('#__nuxt')
+      return el !== null && el.childElementCount > 0
+    },
+    undefined,
+    { timeout: 30_000 },
+  )
 }
 async function loginAsLocal(
   page: Page,
@@ -136,6 +136,9 @@ for (const screen of ADMIN_ONLY_SCREENS) {
       await loginAsLocal(page, ADMIN_CREDS)
       await page.goto(screen.path, { waitUntil: 'domcontentloaded' })
       await waitForHydrationLocal(page)
+      // ネットワーク安定待ちの best-effort（成否の判定はこの直後の明示的な expect が担う。
+      // ここでの握りつぶしはデータの取得失敗を空/無反応に偽装するものではない）。
+      // eslint-disable-next-line no-restricted-syntax -- 上記コメント参照
       await page.waitForLoadState('networkidle').catch(() => undefined)
 
       await expect(
@@ -213,6 +216,9 @@ test.describe('villages/[id]/admin/recruit-categories', () => {
     await loginAsLocal(page, MEMBER_CREDS)
     await page.goto(`/villages/${OWNED_VILLAGE_ID}/admin/recruit-categories`, { waitUntil: 'domcontentloaded' })
     await waitForHydrationLocal(page)
+    // ネットワーク安定待ちの best-effort（成否の判定はこの直後の明示的な expect が担う。
+    // ここでの握りつぶしはデータの取得失敗を空/無反応に偽装するものではない）。
+    // eslint-disable-next-line no-restricted-syntax -- 上記コメント参照
     await page.waitForLoadState('networkidle').catch(() => undefined)
 
     await expect(
@@ -281,6 +287,9 @@ test.describe('villages/[id]/calendar', () => {
     await loginAsLocal(page, MEMBER_CREDS)
     await page.goto(`/villages/${OWNED_VILLAGE_ID}/calendar`, { waitUntil: 'domcontentloaded' })
     await waitForHydrationLocal(page)
+    // ネットワーク安定待ちの best-effort（成否の判定はこの直後の明示的な expect が担う。
+    // ここでの握りつぶしはデータの取得失敗を空/無反応に偽装するものではない）。
+    // eslint-disable-next-line no-restricted-syntax -- 上記コメント参照
     await page.waitForLoadState('networkidle').catch(() => undefined)
 
     await expect(
