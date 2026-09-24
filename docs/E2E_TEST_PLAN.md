@@ -191,7 +191,7 @@ tests/e2e/
 | 8 | ~~`/admin/equipment`~~ | ~~ADMIN-027~~（CMP-260917-0041で削除。チーム・組織の備品ページとサイドバー導線に統合） |
 | 10 | `/admin/line-settings` | ADMIN-029 |
 | 11 | `/admin/member-permissions` | ADMIN-030 |
-| 12 | `/admin/member-profiles` | ADMIN-031 |
+| 12 | ~~`/admin/member-profiles`~~ | ~~ADMIN-031~~（独自項目管理をチーム・組織のメンバー紹介画面へ移して削除） |
 | 13 | `/admin/module-pricing` | ADMIN-032 |
 | 14 | ~~`/admin/org-billing`~~ | ~~ADMIN-033~~（CMP-260909-1141・マスター裁可でページごと削除。お蔵入り。確定設計F20.1がorg_type別課金を採用しておらず、BEも未実装だったため） |
 | 15 | `/admin/packages` | ADMIN-034 |

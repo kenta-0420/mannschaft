@@ -2488,6 +2488,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "自定义字段",
+      "add": "添加字段",
+      "loadFailed": "无法加载自定义字段",
+      "retry": "重试",
+      "empty": "暂无自定义字段",
+      "name": "字段名称",
+      "type": "类型",
+      "required": "必填",
+      "active": "启用",
+      "order": "顺序",
+      "yes": "是",
+      "no": "否",
+      "typeText": "文本",
+      "typeNumber": "数字",
+      "typeDate": "日期",
+      "typeSelect": "选项",
+      "options": "选项（每行一个）",
+      "createSuccess": "字段已添加",
+      "createFailed": "无法添加字段"
+    },
     "loadFailed": "无法加载成员信息",
     "unavailable": "该功能目前尚无法使用（准备中）",
     "saveFailed": "保存失败",

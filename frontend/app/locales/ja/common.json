@@ -2488,6 +2488,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "カスタム項目",
+      "add": "項目を追加",
+      "loadFailed": "カスタム項目を読み込めませんでした",
+      "retry": "再試行",
+      "empty": "カスタム項目がありません",
+      "name": "項目名",
+      "type": "種類",
+      "required": "必須",
+      "active": "有効",
+      "order": "順序",
+      "yes": "はい",
+      "no": "いいえ",
+      "typeText": "テキスト",
+      "typeNumber": "数値",
+      "typeDate": "日付",
+      "typeSelect": "選択肢",
+      "options": "選択肢（1行に1つ）",
+      "createSuccess": "項目を追加しました",
+      "createFailed": "項目を追加できませんでした"
+    },
     "loadFailed": "メンバー情報を読み込めませんでした",
     "unavailable": "この機能は現在ご利用いただけません（準備中です）",
     "saveFailed": "保存に失敗しました",
