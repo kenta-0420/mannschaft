@@ -1,5 +1,6 @@
 package com.mannschaft.app.filesharing.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
@@ -80,6 +81,7 @@ public class SharedFileService {
     private final FolderScopeAccessGuard folderScopeAccessGuard;
     private final StorageAclService storageAclService;
     private final StorageAccessService storageAccessService;
+    private final AccessControlService accessControlService;
 
     /**
      * ファイルアップロード用の Presigned PUT URL を発行する。
@@ -100,6 +102,7 @@ public class SharedFileService {
         folderScopeAccessGuard.checkFolderPostByFolderId(folderId, actorId);
         // 1. フォルダ取得
         SharedFolderEntity folder = folderService.findFolderOrThrow(folderId);
+        checkManageFilesPermission(folder, actorId);
 
         // 2. クォータ事前チェック
         long fileSize = req.fileSize() != null ? req.fileSize() : 0L;
@@ -308,6 +311,7 @@ public class SharedFileService {
         folderScopeAccessGuard.checkFolderPostByFolderId(request.getFolderId(), userId);
         // F13 Phase 4-ε: クォータ事前チェック
         SharedFolderEntity folder = folderService.findFolderOrThrow(request.getFolderId());
+        checkManageFilesPermission(folder, userId);
         long fileSize = request.getFileSize() != null ? request.getFileSize() : 0L;
         quotaService.checkFileQuota(folder, fileSize);
 
@@ -426,7 +430,12 @@ public class SharedFileService {
             folderScopeAccessGuard.checkFolderPostByFolderId(request.getFolderId(), actorId);
         }
         SharedFileEntity entity = findFileOrThrow(fileId);
-
+        SharedFolderEntity sourceFolder = folderService.findFolderOrThrow(entity.getFolderId());
+        checkManageFilesPermission(sourceFolder, actorId);
+        if (request.getFolderId() != null && !request.getFolderId().equals(entity.getFolderId())) {
+            SharedFolderEntity targetFolder = folderService.findFolderOrThrow(request.getFolderId());
+            checkManageFilesPermission(targetFolder, actorId);
+        }
         if (request.getName() != null) {
             entity.changeName(request.getName());
         }
@@ -468,6 +477,7 @@ public class SharedFileService {
 
         // フォルダ情報を取得してスコープを解決する
         SharedFolderEntity folder = folderService.findFolderOrThrow(entity.getFolderId());
+        checkManageFilesPermission(folder, actorId);
 
         releaseAllVersions(entity);
         entity.softDelete();
@@ -485,6 +495,25 @@ public class SharedFileService {
     public SharedFileEntity findFileOrThrow(Long fileId) {
         return fileRepository.findById(fileId)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.FILE_NOT_FOUND));
+    }
+
+    void checkManageFilesPermission(SharedFolderEntity folder, Long userId) {
+        String scopeType;
+        Long scopeId;
+        if (folder.getScopeType() == FileScopeType.TEAM) {
+            scopeType = "TEAM";
+            scopeId = folder.getTeamId();
+        } else if (folder.getScopeType() == FileScopeType.ORGANIZATION) {
+            scopeType = "ORGANIZATION";
+            scopeId = folder.getOrganizationId();
+        } else {
+            return;
+        }
+        if (!accessControlService.isAdminOrAbove(userId, scopeId, scopeType)
+                && "MEMBER".equals(accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType))
+                && !accessControlService.hasPermission(userId, scopeId, scopeType, "MANAGE_FILES")) {
+            throw new BusinessException(FileSharingErrorCode.INSUFFICIENT_PERMISSION);
+        }
     }
 
     private void releaseAllVersions(SharedFileEntity file) {

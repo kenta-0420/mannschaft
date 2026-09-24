@@ -2558,6 +2558,22 @@
       "optionsLoadFailed": "Failed to load the options data"
     }
   },
+  "memberPermissions": {
+    "title": "Default MEMBER permissions",
+    "description": "Configure the default permissions for MEMBER users joining this team or organization.",
+    "sectionTitle": "Default permissions",
+    "invalidScope": "Select a team or organization before opening this page.",
+    "loadFailed": "Failed to load default MEMBER permissions.",
+    "saveSuccess": "Default MEMBER permissions updated.",
+    "saveFailed": "Failed to update default MEMBER permissions.",
+    "inherited": "Inherited from a higher-level setting",
+    "accessDenied": "Only administrators can perform this action.",
+    "permissions": {
+      "MANAGE_SCHEDULES": "Manage schedules",
+      "MANAGE_FILES": "Manage files",
+      "MANAGE_POSTS": "Manage posts"
+    }
+  },
   "loadErrorState": {
     "message": "Failed to load data",
     "retry": "Retry"

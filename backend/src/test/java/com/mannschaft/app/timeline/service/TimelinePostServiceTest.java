@@ -59,6 +59,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 /**
  * {@link TimelinePostService} の単体テスト。
@@ -304,6 +305,19 @@ class TimelinePostServiceTest {
             // then
             assertThat(result).isEqualTo(expected);
             verify(postRepository).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        void teamMemberWithoutManagePostsCannotCreate() {
+            CreatePostRequest req = new CreatePostRequest("test", "TEAM", 10L,
+                    "USER", null, null, null, null, null, null);
+            given(accessControlService.isAdminOrAbove(USER_ID, 10L, "TEAM")).willReturn(false);
+            given(accessControlService.resolveEffectiveRoleName(USER_ID, 10L, "TEAM")).willReturn("MEMBER");
+            given(accessControlService.hasPermission(USER_ID, 10L, "TEAM", "MANAGE_POSTS")).willReturn(false);
+
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(postRepository, never()).save(any());
         }
 
         @Test
@@ -1194,7 +1208,7 @@ class TimelinePostServiceTest {
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             // 認可根治 Wave7: 所有者判定は TimelinePostAccessGuard へ委譲されるためスタブする
             org.mockito.BDDMockito.willThrow(new BusinessException(TimelineErrorCode.NOT_POST_OWNER))
-                    .given(postAccessGuard).checkCanManage(OTHER_USER_ID, post);
+                    .given(postAccessGuard).checkCanEdit(OTHER_USER_ID, post);
 
             // when & then
             assertThatThrownBy(() -> timelinePostService.updatePost(POST_ID, req, OTHER_USER_ID))
@@ -1407,6 +1421,31 @@ class TimelinePostServiceTest {
 
             // then
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("TEAM feedはMANAGE_POSTS権限がなくても閲覧できる")
+        void teamFeedRemainsReadableWithoutManagePosts() {
+            Long teamId = 10L;
+            TimelinePostEntity post = TimelinePostEntity.builder()
+                    .id(1L)
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(teamId)
+                    .userId(USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("team post")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            PostResponse response = rawFeedPost(1L, "TEAM", teamId, USER_ID, "USER", null);
+            given(postRepository.findFeedByScopeType(eq(PostScopeType.TEAM), eq(teamId), any(PageRequest.class)))
+                    .willReturn(List.of(post));
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of(response));
+            stubAllResolversEmpty();
+
+            List<PostResponse> result = timelinePostService.getFeed("TEAM", teamId, null, 10, USER_ID);
+
+            assertThat(result).hasSize(1);
+            verify(accessControlService).checkMembership(USER_ID, teamId, "TEAM");
         }
 
         @Test

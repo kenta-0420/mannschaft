@@ -62,6 +62,7 @@
     "billing": "Facturación y gestión de planes",
     "leagueTransfers": "Ascensos y descensos",
     "adminConsole": "Consola de administración",
+    "memberPermissions": "Permisos predeterminados de MEMBER",
     "receipts": "Recibos",
     "receiptSettings": "Configuración del emisor de recibos",
     "vendors": "Maestro de proveedores",

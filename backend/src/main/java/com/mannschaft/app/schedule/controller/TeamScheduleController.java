@@ -265,7 +265,7 @@ public class TeamScheduleController {
      * <p><b>認可（認可根治 Wave3-B6・BOLA是正）</b>: {@code ScheduleService.duplicateSchedule} は
      * クロス招待受諾（{@code ScheduleCrossRefService.acceptInvitation}）からも呼ばれる共有メソッドで
      * 認可を持たないため、この public な複製 API 入口で複製元(source)の entity 由来 scope に対する
-     * ADMIN 認可を行う（他 team/org の scheduleId を渡す複製元なりすましを防ぐ）。</p>
+     * 予定管理権限を確認する（他 team/org の scheduleId を渡す複製元なりすましを防ぐ）。</p>
      */
     @PostMapping("/{scheduleId}/duplicate")
     @Operation(summary = "チームスケジュール複製")
@@ -274,7 +274,7 @@ public class TeamScheduleController {
             @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        scheduleService.checkScopeAdminAccess(scheduleId, userId);
+        scheduleService.checkScheduleManagementAccess(scheduleId, userId);
         ScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }

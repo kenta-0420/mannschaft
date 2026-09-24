@@ -2558,6 +2558,22 @@
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
   },
+  "memberPermissions": {
+    "title": "MEMBER 기본 권한",
+    "description": "이 팀 또는 조직에 참여하는 MEMBER 사용자의 기본 권한을 설정합니다.",
+    "sectionTitle": "기본 권한",
+    "invalidScope": "팀 또는 조직을 선택한 후 열어 주세요.",
+    "loadFailed": "MEMBER 기본 권한을 불러오지 못했습니다.",
+    "saveSuccess": "MEMBER 기본 권한을 업데이트했습니다.",
+    "saveFailed": "MEMBER 기본 권한을 업데이트하지 못했습니다.",
+    "inherited": "상위 설정에서 상속됨",
+    "accessDenied": "관리자만 이 작업을 수행할 수 있습니다.",
+    "permissions": {
+      "MANAGE_SCHEDULES": "일정 관리",
+      "MANAGE_FILES": "파일 관리",
+      "MANAGE_POSTS": "게시물 관리"
+    }
+  },
   "loadErrorState": {
     "message": "데이터를 가져오지 못했습니다",
     "retry": "다시 시도"

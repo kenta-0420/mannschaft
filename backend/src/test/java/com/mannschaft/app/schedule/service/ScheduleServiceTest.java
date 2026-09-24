@@ -699,6 +699,55 @@ class ScheduleServiceTest {
         }
 
         @Test
+        @DisplayName("予定管理権限がOFFのTEAM MEMBERは予定を編集できない")
+        void scheduleManagement_TEAM_MEMBER_OFF拒否() {
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            given(accessControlService.resolveEffectiveRoleName(USER_ID, TEAM_ID, "TEAM"))
+                    .willReturn("MEMBER");
+            given(accessControlService.hasPermission(USER_ID, TEAM_ID, "TEAM", "MANAGE_SCHEDULES"))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> scheduleService.checkScheduleManagementAccess(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("予定管理権限がONのORGANIZATION MEMBERは予定を編集できる")
+        void scheduleManagement_ORG_MEMBER_ON許可() {
+            ScheduleEntity entity = createOrgScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+            given(accessControlService.resolveEffectiveRoleName(USER_ID, ORG_ID, "ORGANIZATION"))
+                    .willReturn("MEMBER");
+            given(accessControlService.hasPermission(USER_ID, ORG_ID, "ORGANIZATION", "MANAGE_SCHEDULES"))
+                    .willReturn(true);
+
+            scheduleService.checkScheduleManagementAccess(SCHEDULE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("予定管理権限がONでもMEMBER以外は予定管理を許可しない")
+        void scheduleManagement_非MEMBER拒否() {
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            given(accessControlService.resolveEffectiveRoleName(USER_ID, TEAM_ID, "TEAM"))
+                    .willReturn("GUEST");
+
+            assertThatThrownBy(() -> scheduleService.checkScheduleManagementAccess(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(accessControlService, never())
+                    .hasPermission(USER_ID, TEAM_ID, "TEAM", "MANAGE_SCHEDULES");
+        }
+
+        @Test
         @DisplayName("checkScopeAdminAccess_PERSONALスケジュール_所有者本人は許可")
         void checkScopeAdminAccess_PERSONAL_所有者許可() {
             ScheduleEntity entity = createPersonalScheduleEntity(USER_ID);
