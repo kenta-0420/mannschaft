@@ -49,6 +49,7 @@ class CmsMapperTest {
                     .visibility(Visibility.MEMBERS_ONLY)
                     .priority(PostPriority.NORMAL)
                     .status(PostStatus.DRAFT)
+                    .publicVisible(false)
                     .readingTimeMinutes((short) 2)
                     .build();
 
@@ -61,6 +62,7 @@ class CmsMapperTest {
             assertThat(result.getMeta().visibility()).isEqualTo("MEMBERS_ONLY");
             assertThat(result.getMeta().priority()).isEqualTo("NORMAL");
             assertThat(result.getMeta().status()).isEqualTo("DRAFT");
+            assertThat(result.getMeta().publicVisible()).isFalse();
             assertThat(result.getTags()).isEmpty();
         }
 

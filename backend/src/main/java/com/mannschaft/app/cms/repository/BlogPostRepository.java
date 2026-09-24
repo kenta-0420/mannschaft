@@ -162,6 +162,7 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             + "WHERE bp.teamId = :teamId "
             + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
             + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "AND bp.publicVisible = true "
             + "ORDER BY bp.publishedAt DESC, bp.id DESC")
     Page<BlogPostEntity> findPublicPostsByTeamId(@Param("teamId") Long teamId, Pageable pageable);
 
@@ -174,6 +175,7 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             + "WHERE bp.organizationId = :organizationId "
             + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
             + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "AND bp.publicVisible = true "
             + "ORDER BY bp.publishedAt DESC, bp.id DESC")
     Page<BlogPostEntity> findPublicPostsByOrganizationId(
             @Param("organizationId") Long organizationId, Pageable pageable);
@@ -188,7 +190,8 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             + "WHERE bp.id = :postId "
             + "AND bp.teamId = :teamId "
             + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
-            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED")
+            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "AND bp.publicVisible = true")
     Optional<BlogPostEntity> findPublicPostByTeamIdAndId(
             @Param("teamId") Long teamId, @Param("postId") Long postId);
 
@@ -199,7 +202,8 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             + "WHERE bp.id = :postId "
             + "AND bp.organizationId = :organizationId "
             + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
-            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED")
+            + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "AND bp.publicVisible = true")
     Optional<BlogPostEntity> findPublicPostByOrganizationIdAndId(
             @Param("organizationId") Long organizationId, @Param("postId") Long postId);
 
@@ -244,6 +248,7 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             + "WHERE bp.teamId IN :publicTeamIds "
             + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
             + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "AND bp.publicVisible = true "
             + "ORDER BY bp.teamId ASC, bp.id ASC")
     List<BlogPostEntity> findAllPublicPostsByTeam(
             @Param("publicTeamIds") Collection<Long> publicTeamIds);
@@ -263,6 +268,7 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             + "WHERE bp.organizationId IN :publicOrganizationIds "
             + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
             + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
+            + "AND bp.publicVisible = true "
             + "ORDER BY bp.organizationId ASC, bp.id ASC")
     List<BlogPostEntity> findAllPublicPostsByOrganization(
             @Param("publicOrganizationIds") Collection<Long> publicOrganizationIds);
@@ -287,6 +293,8 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             FROM BlogPostEntity bp
             WHERE bp.teamId IN :teamIds
               AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED
+              AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC
+              AND bp.publicVisible = true
             GROUP BY bp.teamId
             """)
     List<Object[]> findMaxCreatedAtByTeamIdIn(@Param("teamIds") Collection<Long> teamIds);
@@ -338,6 +346,8 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             FROM BlogPostEntity bp
             WHERE bp.organizationId IN :organizationIds
               AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED
+              AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC
+              AND bp.publicVisible = true
             GROUP BY bp.organizationId
             """)
     List<Object[]> findMaxCreatedAtByOrganizationIdIn(@Param("organizationIds") Collection<Long> organizationIds);
