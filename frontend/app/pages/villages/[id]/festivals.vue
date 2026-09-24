@@ -50,6 +50,8 @@ type StatusFilter = VillageFestivalStatus | 'ALL'
 const statusFilter = ref<StatusFilter>('ACTIVE')
 const festivals = ref<VillageFestivalResponse[]>([])
 const festivalsLoading = ref(false)
+/** 取得失敗は「お祭りなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const festivalsLoadFailed = ref(false)
 
 const canManage = computed(() => perms.value.isAdmin)
 const isVillager = computed(() => perms.value.isMember)
@@ -64,12 +66,14 @@ const statusFilterTabs: { value: StatusFilter, i18nKey: string }[] = [
 
 async function loadFestivals() {
   festivalsLoading.value = true
+  festivalsLoadFailed.value = false
   try {
     const status = statusFilter.value === 'ALL' ? undefined : statusFilter.value
     festivals.value = await villageApi.listFestivals(villageId.value, status)
   }
   catch (error) {
     festivals.value = []
+    festivalsLoadFailed.value = true
     handleApiError(error, t('village.festival.loadFailed'))
   }
   finally {
@@ -406,12 +410,14 @@ onMounted(() => {
     <VillageFestivalListSection
       :festivals="festivals"
       :festivals-loading="festivalsLoading"
+      :festivals-load-failed="festivalsLoadFailed"
       :status-filter="statusFilter"
       :status-filter-tabs="statusFilterTabs"
       :can-manage="canManage"
       @set-status-filter="setStatusFilter"
       @open-create-dialog="openCreateDialog"
       @open-detail-dialog="openDetailDialog"
+      @retry="loadFestivals"
     />
 
     <!-- 作成 Dialog（投稿主体 Selector 付き） -->

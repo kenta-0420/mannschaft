@@ -47,6 +47,8 @@ const currentMonth = ref<number>(dayjs().tz(userTimezone.value).month() + 1)
 
 const events = ref<VillageCalendarEventResponse[]>([])
 const eventsLoading = ref(false)
+/** 取得失敗は「行事なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const eventsLoadFailed = ref(false)
 
 const canManage = computed(() => perms.value.isAdmin)
 const isVillager = computed(() => perms.value.isMember)
@@ -62,6 +64,7 @@ function formatYmd(y: number, m: number, d: number): string {
 
 async function loadEvents() {
   eventsLoading.value = true
+  eventsLoadFailed.value = false
   try {
     // BE の @RequestParam は year/month のみ（from/to は存在しない。年中行事は月のみで判定するため）
     const result = await villageApi.listCalendarEvents(villageId.value, {
@@ -72,6 +75,7 @@ async function loadEvents() {
   }
   catch (error) {
     events.value = []
+    eventsLoadFailed.value = true
     handleApiError(error, t('village.calendar.loadFailed'))
   }
   finally {
@@ -383,6 +387,11 @@ onMounted(() => {
     <div v-if="eventsLoading" class="text-center py-12 text-surface-500">
       <i class="pi pi-spin pi-spinner text-2xl" />
     </div>
+    <DashboardErrorState
+      v-else-if="eventsLoadFailed"
+      testid="village-calendar-error-state"
+      @retry="loadEvents"
+    />
     <DashboardEmptyState
       v-else-if="events.length === 0"
       icon="pi pi-calendar"

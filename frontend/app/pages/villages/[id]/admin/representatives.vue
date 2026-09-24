@@ -90,14 +90,18 @@ function translateError(code: string | null, fallback: string): string {
 
 const representatives = ref<VillageRepresentativeResponse[]>([])
 const repsLoading = ref(false)
+/** 取得失敗は「代表委任なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const repsLoadFailed = ref(false)
 
 async function loadRepresentatives() {
   repsLoading.value = true
+  repsLoadFailed.value = false
   try {
     representatives.value = await listRepresentatives(villageId.value)
   }
   catch (err) {
     representatives.value = []
+    repsLoadFailed.value = true
     showError(translateError(extractErrorCode(err), t('village.representative.loadFailed')))
   }
   finally {
@@ -277,6 +281,12 @@ async function confirmRevoke() {
         <div v-if="repsLoading" class="py-12 text-center text-surface-500">
           <i class="pi pi-spin pi-spinner text-2xl" aria-hidden="true" />
         </div>
+
+        <DashboardErrorState
+          v-else-if="repsLoadFailed"
+          testid="representative-error-state"
+          @retry="loadRepresentatives"
+        />
 
         <DataTable
           v-else

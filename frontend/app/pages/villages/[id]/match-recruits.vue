@@ -47,6 +47,8 @@ const categoryFilter = ref<CategoryFilter>('ALL')
 const statusFilter = ref<StatusFilter>('OPEN')
 const recruits = ref<VillageMatchRecruitResponse[]>([])
 const recruitsLoading = ref(false)
+/** 取得失敗は「募集なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const recruitsLoadFailed = ref(false)
 
 const isVillager = computed(() => perms.value.isMember)
 const canManage = computed(() => perms.value.isAdmin)
@@ -76,6 +78,7 @@ const statusDropdownOptions = computed(() =>
 
 async function loadRecruits() {
   recruitsLoading.value = true
+  recruitsLoadFailed.value = false
   try {
     // BE は `{items, page, size, total}` のエンベロープを返す。items を取り出すこと。
     const res = await villageApi.listMatchRecruits(villageId.value, {
@@ -88,6 +91,7 @@ async function loadRecruits() {
   }
   catch (error) {
     recruits.value = []
+    recruitsLoadFailed.value = true
     handleApiError(error, t('village.matchRecruit.loadFailed'))
   }
   finally {
@@ -276,11 +280,13 @@ onMounted(() => {
       v-model:status-filter="statusFilter"
       :recruits="recruits"
       :recruits-loading="recruitsLoading"
+      :recruits-load-failed="recruitsLoadFailed"
       :is-villager="isVillager"
       :category-dropdown-options="categoryDropdownOptions"
       :status-dropdown-options="statusDropdownOptions"
       @create="openCreateDialog"
       @select="openDetailDialog"
+      @retry="loadRecruits"
     />
 
     <!-- 募集作成 Dialog (Selector 付き) -->

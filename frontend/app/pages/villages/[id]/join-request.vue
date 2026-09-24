@@ -238,10 +238,13 @@ const requests = ref<JoinRequestResponse[]>([])
 const listLoading = ref(false)
 const totalElements = ref(0)
 const page = ref(0)
+/** 取得失敗は「申請なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const requestsLoadFailed = ref(false)
 
 async function loadRequests() {
   if (!isReviewer.value) return
   listLoading.value = true
+  requestsLoadFailed.value = false
   try {
     const res = await listJoinRequests(villageId.value, statusFilter.value, {
       page: page.value,
@@ -253,6 +256,7 @@ async function loadRequests() {
   catch (err) {
     requests.value = []
     totalElements.value = 0
+    requestsLoadFailed.value = true
     const { code, status } = extractApiError(err)
     showError(translateApiError(code, status))
   }
@@ -435,7 +439,14 @@ watch(village, (v) => {
         </TabList>
       </Tabs>
 
+      <DashboardErrorState
+        v-if="requestsLoadFailed"
+        testid="join-request-review-error-state"
+        @retry="loadRequests"
+      />
+
       <DataTable
+        v-else
         :value="requests"
         :loading="listLoading"
         data-key="id"

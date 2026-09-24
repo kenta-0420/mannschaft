@@ -124,14 +124,18 @@ function translateError(code: string | null, fallback: string): string {
 
 const categories = ref<VillageRecruitCategory[]>([])
 const loading = ref(false)
+/** 取得失敗は「カテゴリなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     categories.value = await listCategories(villageId.value)
   }
   catch (err) {
     categories.value = []
+    loadFailed.value = true
     showError(translateError(extractErrorCode(err), t('village.recruitCategory.error.loadFailed')))
   }
   finally {
@@ -388,6 +392,12 @@ const showGuide = ref(false)
         <div v-if="loading" class="py-12 text-center text-surface-500">
           <i class="pi pi-spin pi-spinner text-2xl" aria-hidden="true" />
         </div>
+
+        <DashboardErrorState
+          v-else-if="loadFailed"
+          testid="recruit-category-error-state"
+          @retry="load"
+        />
 
         <DataTable
           v-else
