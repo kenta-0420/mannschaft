@@ -240,7 +240,7 @@ INDEX idx_rp_permission (permission_id)
 
 **シードデータ（V2.015__seed_role_permissions.sql / V2.021__seed_member_permission_ceiling.sql / Phase 3: V3.007__add_manage_payments_permission.sql）**
 
-凡例: **✓** = is_default TRUE（自動付与） / **△** = is_default FALSE（天井のみ・権限グループ経由で個別付与可）
+凡例: **✓** = is_default TRUE（自動付与） / **△** = is_default FALSE（天井のみ。権限グループ、または MANAGE_SCHEDULES のスコープ別設定で付与可）
 
 | パーミッション | SYSTEM_ADMIN | ADMIN | DEPUTY_ADMIN | MEMBER | SUPPORTER | GUEST |
 |--------------|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -249,9 +249,9 @@ INDEX idx_rp_permission (permission_id)
 | `CHANGE_MEMBER_ROLES` | ✓ | ✓ | △ | - | - | - |
 | `MANAGE_INVITE_TOKENS` | ✓ | ✓ | △ | - | - | - |
 | `EDIT_TEAM_SETTINGS` | ✓ | ✓ | △ | - | - | - |
-| `MANAGE_SCHEDULES` | ✓ | ✓ | △ | ✓ | - | - |
-| `MANAGE_FILES` | ✓ | ✓ | △ | ✓ | - | - |
-| `MANAGE_POSTS` | ✓ | ✓ | △ | ✓ | - | - |
+| `MANAGE_SCHEDULES` | ✓ | ✓ | △ | △ | - | - |
+| `MANAGE_FILES` | ✓ | ✓ | △ | △ | - | - |
+| `MANAGE_POSTS` | ✓ | ✓ | △ | △ | - | - |
 | `DELETE_OTHERS_CONTENT` | ✓ | ✓ | △ | △ | - | - |
 | `MANAGE_ANNOUNCEMENTS` | ✓ | ✓ | △ | △ | - | - |
 | `SEND_SAFETY_CONFIRMATION` | ✓ | ✓ | △ | △ | - | - |
@@ -259,15 +259,15 @@ INDEX idx_rp_permission (permission_id)
 
 > ※ `MANAGE_PAYMENTS` は Phase 3 / V3.007 で追加
 
-Phase 2 合計レコード数: 11 + 11 + 11 + 6（✓3 + △3） = **39件**
+Phase 2 合計レコード数: 11 + 11 + 11 + 6 = **39件**（現行の MEMBER 内訳は V223 適用後 ✓0 + △6）
 Phase 3 追加（MANAGE_PAYMENTS）: SYSTEM_ADMIN ✓ + ADMIN ✓ + DEPUTY_ADMIN △ = **+3件 → 合計42件**
 
 **制約・備考**
 - **SYSTEM_ADMIN**: Phase 3 以降 全12件（is_default = TRUE）。権限チェックは JWT 判定に統一（runtime で DB 参照しない）。シードは監査・将来対応のため投入する
 - **ADMIN**: Phase 3 以降 全12件（is_default = TRUE）。`DELETE_OTHERS_CONTENT` / `MANAGE_PAYMENTS` を含む全パーミッションを行使可能
 - **DEPUTY_ADMIN**: Phase 3 以降 全12件（is_default = FALSE）。**天井（ceiling）定義**として機能する。runtime での権限解決は role_permissions を参照せず `user_permission_groups` のみを使用する（権限グループ未割り当ての DEPUTY_ADMIN は実効パーミッション 0）
-- **MEMBER（is_default = TRUE）**: `MANAGE_SCHEDULES` / `MANAGE_FILES` / `MANAGE_POSTS` の3件。`team_role_permissions` にスコープ上書きが無い場合の基準値
-- **MEMBER（is_default = FALSE）**: `DELETE_OTHERS_CONTENT` / `MANAGE_ANNOUNCEMENTS` / `SEND_SAFETY_CONFIRMATION` の3件。天井のみ（自動付与なし）。ADMIN が MEMBER 用権限グループを作成し特定ユーザーへ割り当てた場合のみ有効
+- **MEMBER（is_default = TRUE）**: 0件。スコープ上書きが無い場合、管理権限は付与しない
+- **MEMBER（is_default = FALSE）**: `MANAGE_SCHEDULES` / `MANAGE_FILES` / `MANAGE_POSTS` / `DELETE_OTHERS_CONTENT` / `MANAGE_ANNOUNCEMENTS` / `SEND_SAFETY_CONFIRMATION` の6件。管理権限3件は V223 で初期 OFF とし、対象スコープの ADMIN が既定権限画面から ON にするか、権限グループへ含めて割り当てた場合に許可する。ほか3件は権限グループ経由の個別付与対象
 - **`MANAGE_PAYMENTS`**: MEMBER の role_permissions に含めない（天井エントリなし）。MEMBER は支払い管理権限を付与不可
 - **`DELETE_OTHERS_CONTENT`**: DEPUTY_ADMIN / MEMBER いずれの天井にも含める。ただしいかなるデフォルト権限グループにも含めない。ADMIN が意図的に付与した場合のみ有効
 - **SUPPORTER / GUEST**: role_permissions なし。閲覧権限はロールチェックで制御し、パーミッションテーブルは参照しない

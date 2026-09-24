@@ -56,17 +56,17 @@ class MemberDefaultPermissionServiceTest {
         lenient().when(permissionRepository.findByNameIn(MemberDefaultPermissionService.DEFAULT_PERMISSION_NAMES))
                 .thenReturn(permissions);
         lenient().when(rolePermissionRepository.findByRoleId(10L)).thenReturn(List.of(
-                rolePermission(1L, true), rolePermission(2L, true), rolePermission(3L, true)));
+                rolePermission(1L, false), rolePermission(2L, false), rolePermission(3L, false)));
     }
 
     @Test
-    void 未設定なら3権限を有効として返す() {
+    void 未設定なら管理権限はすべて無効として返す() {
         given(teamRolePermissionRepository.findByScopeTypeAndScopeIdAndRoleId("TEAM", 20L, 10L))
                 .willReturn(List.of());
 
         assertThat(service.get("TEAM", 20L, 99L).permissions())
                 .extracting(MemberPermissionSetting::enabled)
-                .containsExactly(true, true, true);
+                .containsExactly(false, false, false);
         assertThat(service.get("TEAM", 20L, 99L).permissions())
                 .extracting(MemberPermissionSetting::inherited)
                 .containsExactly(true, true, true);
