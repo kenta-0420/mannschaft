@@ -39,6 +39,8 @@ const applicationsMeta = ref<JobPagedMeta>({
 const applicationsLoading = ref(false)
 const applicationsPage = ref(0)
 const busyApplicationId = ref<number | null>(null)
+/** 取得失敗は「応募なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const applicationsLoadFailed = ref(false)
 
 // === 契約履歴 ===
 const contracts = ref<JobContractResponse[]>([])
@@ -51,6 +53,8 @@ const contractsMeta = ref<JobPagedMeta>({
 const contractsLoading = ref(false)
 const contractsPage = ref(0)
 const busyContractKey = ref<string | null>(null)
+/** 取得失敗は「契約なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const contractsLoadFailed = ref(false)
 
 // Contract の差し戻しダイアログ
 const rejectDialog = ref(false)
@@ -69,6 +73,7 @@ const tabs = computed(() => [
 
 async function loadApplications(page = 0) {
   applicationsLoading.value = true
+  applicationsLoadFailed.value = false
   applicationsPage.value = page
   try {
     const res = await applicationApi.listMyApplications({ page, size: PAGE_SIZE })
@@ -78,6 +83,7 @@ async function loadApplications(page = 0) {
   catch (e) {
     error(t('jobmatching.error.loadFailed'), String(e))
     applications.value = []
+    applicationsLoadFailed.value = true
   }
   finally {
     applicationsLoading.value = false
@@ -86,6 +92,7 @@ async function loadApplications(page = 0) {
 
 async function loadContracts(page = 0) {
   contractsLoading.value = true
+  contractsLoadFailed.value = false
   contractsPage.value = page
   try {
     const res = await contractApi.listMyContracts({ page, size: PAGE_SIZE })
@@ -95,6 +102,7 @@ async function loadContracts(page = 0) {
   catch (e) {
     error(t('jobmatching.error.loadFailed'), String(e))
     contracts.value = []
+    contractsLoadFailed.value = true
   }
   finally {
     contractsLoading.value = false
@@ -291,6 +299,12 @@ onMounted(async () => {
         <LoadingBounce />
       </div>
 
+      <DashboardErrorState
+        v-else-if="applicationsLoadFailed"
+        testid="my-applications-error-state"
+        @retry="loadApplications(applicationsPage)"
+      />
+
       <div
         v-else-if="applications.length === 0"
         class="rounded border border-dashed border-surface-300 p-8 text-center text-surface-500 dark:border-surface-600"
@@ -368,6 +382,12 @@ onMounted(async () => {
       >
         <LoadingBounce />
       </div>
+
+      <DashboardErrorState
+        v-else-if="contractsLoadFailed"
+        testid="my-contracts-error-state"
+        @retry="loadContracts(contractsPage)"
+      />
 
       <div
         v-else-if="contracts.length === 0"

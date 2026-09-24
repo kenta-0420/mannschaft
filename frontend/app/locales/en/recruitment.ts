@@ -214,6 +214,7 @@ export default {
       "resetButton": "Reset",
       "allCategories": "All Categories",
       "noResults": "No recruitments found matching your criteria",
+      "loadError": "Failed to load recruitments",
       "resultsCount": "{count} recruitments",
       "capacity": "Capacity",
       "remaining": "{count} spots left",
