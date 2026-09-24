@@ -95,7 +95,6 @@ export const GATE_ROUTE_MAP: Record<string, string[]> = {
     '/teams/*/workflows',
   ],
   FEATURE_FACILITY_ENABLED: [
-    '/admin/equipment',
     '/organizations/*/equipment',
     '/organizations/*/facilities',
     '/organizations/*/parking',

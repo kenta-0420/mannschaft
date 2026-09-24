@@ -163,6 +163,10 @@
       "description": "F03.8 チームスコープのイベントCRUD・ステータス管理"
     },
     {
+      "name": "個人横断お知らせウィジェット",
+      "description": "F02.6 個人ダッシュボード向け横断お知らせ API"
+    },
+    {
       "name": "F03.11 募集型予約 / サブカテゴリ",
       "description": "チームのサブカテゴリ CRUD"
     },
@@ -237,10 +241,6 @@
     {
       "name": "通知管理(管理者)",
       "description": "F04.3 管理者向け通知統計"
-    },
-    {
-      "name": "個人横断お知らせウィジェット",
-      "description": "F02.6 個人ダッシュボード用 横断お知らせ API"
     },
     {
       "name": "試合採点内訳",
@@ -142444,7 +142444,7 @@
           "個人横断お知らせウィジェット"
         ],
         "summary": "個人横断お知らせ一覧取得",
-        "description": "所属する全チーム/組織のお知らせを横断集約して返す（個人ダッシュボード用）。TODO: AnnouncementFeedService.getPersonalFeed 実装後に本実装に差し替える。",
+        "description": "現役のチーム・組織所属のお知らせを横断取得する。ページ継続は未提供。",
         "operationId": "getPersonalFeed",
         "parameters": [
           {
@@ -142456,6 +142456,15 @@
               "format": "int32",
               "default": 15
             }
+          },
+          {
+            "name": "include_read",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -142464,7 +142473,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AnnouncementFeedResponseDto"
                 }
               }
             }
@@ -161325,7 +161334,9 @@
         "properties": {
           "dayOfWeek": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 6,
+            "minimum": 0
           },
           "endTime": {
             "type": "string",
@@ -183968,6 +183979,9 @@
             "type": "integer",
             "format": "int64"
           },
+          "scopeName": {
+            "type": "string"
+          },
           "scopeType": {
             "type": "string"
           },
@@ -188743,6 +188757,9 @@
           },
           "preference": {
             "type": "string"
+          },
+          "scheduleDeleted": {
+            "type": "boolean"
           },
           "scheduleId": {
             "type": "integer",

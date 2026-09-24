@@ -9,7 +9,7 @@
 # |---|---|---|
 # | ① リンクが無い | Phase 1〜4 で導線を足した18枚 | 扱う（reachable） |
 # | ② リンクはあるが条件で永久に消える（機能フラグ等） | サイドバー27項目の永久非表示（#3322で根治） | **扱わない**（別番人を後続で作る） |
-# | ③ スコープ配下に同機能ページがある残骸 | /admin/equipment 等4枚（CMP-260917-0041） | 扱う（duplicate-remnant） |
+# | ③ スコープ配下に同機能ページがある残骸 | /admin/member-profiles（CMP-260917-0041） | 扱う（duplicate-remnant） |
 #
 # 注: /admin/google-calendar（CMP-260912-0911）は当初この台帳にも duplicate-remnant として
 # 載せていたが、本番人の初回実行で「該当ページが実在しない」red を検出した。実測すると
@@ -63,7 +63,6 @@ tracked_paths:
   - /profile/following
   - /settings/profile-visibility
   - /parental-consent/manage
-  - /admin/equipment
   - /admin/member-profiles
   - /admin/campaigns
   - /admin/promotions
@@ -137,11 +136,7 @@ pages:
     classification: reachable
     reason: "Phase 4（PR #3330）で設定ハブへ追加。あわせて pending.vue の承認済み時の逃げ先を manage に修正。実機でクリック到達確認済み"
 
-  # --- 重複残骸5枚（CMP-260917-0041 / CMP-260912-0911）: 削除待ち ---
-  - path: /admin/equipment
-    classification: duplicate-remnant
-    replacement: /teams/[slug]/equipment
-    reason: "CMP-260917-0041①。teams/[slug]/equipment.vue と organizations/[slug]/equipment.vue が同じ useMemberProfileApi系ではなくequipment APIを叩き、両サイドバーに導線あり。teamsを代表としてreplacementに記載（organizations版も別途導線あり）。削除するかどうかは未着手（要確認事項あり）"
+  # --- 重複残骸3枚（CMP-260917-0041 / CMP-260912-0911）: 削除待ち ---
   - path: /admin/member-profiles
     classification: duplicate-remnant
     replacement: /organizations/[slug]/member-profiles
