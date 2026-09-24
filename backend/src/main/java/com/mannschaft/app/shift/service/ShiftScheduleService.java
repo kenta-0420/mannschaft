@@ -27,6 +27,7 @@ import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
+import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -90,6 +91,9 @@ public class ShiftScheduleService {
     private final ShiftMapper shiftMapper;
     private final DomainEventPublisher eventPublisher;
     private final AccessControlService accessControlService;
+
+    /** 検証用（マージ禁止・CMP-260923-1642 red 実証）: 存在しない teamId だけ応答を変えるための一時注入 */
+    private final TeamRepository verificationOnlyTeamRepository;
 
     /** 循環依存を避けるため @Lazy で注入する */
     @Lazy
@@ -681,6 +685,10 @@ public class ShiftScheduleService {
             return;
         }
         if (!accessControlService.isMember(userId, teamId, "TEAM")) {
+            // 検証用（マージ禁止）: 存在しない teamId のときだけ応答を変える。
+            if (!verificationOnlyTeamRepository.existsById(teamId)) {
+                throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+            }
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         if (accessControlService.isSupporter(userId, teamId, "TEAM")) {
