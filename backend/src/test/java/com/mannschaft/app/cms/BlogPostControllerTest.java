@@ -81,7 +81,7 @@ class BlogPostControllerTest {
                 .id(POST_ID)
                 .scope(new BlogPostResponse.BlogPostScopeDto(TEAM_ID, null, null, USER_ID))
                 .content(new BlogPostResponse.BlogPostContentDto("テスト記事", "test-post", "本文", null, null))
-                .meta(new BlogPostResponse.BlogPostMetaDto("BLOG", "MEMBERS_ONLY", "NORMAL", "DRAFT", false, false))
+                .meta(new BlogPostResponse.BlogPostMetaDto("BLOG", "MEMBERS_ONLY", "NORMAL", "DRAFT", false, false, true))
                 .stats(new BlogPostResponse.BlogPostStatisticsDto(0, (short) 1, false, 0))
                 .audit(new BlogPostResponse.BlogPostAuditDto(null, 1, null, null))
                 .tags(List.of())

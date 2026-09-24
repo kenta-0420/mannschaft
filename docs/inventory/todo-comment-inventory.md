@@ -207,9 +207,9 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 越境整理 | backend/src/main/java/com/mannschaft/app/village/service/VillageLobbyService.java | 75 | // TODO: chat と village ドメインをまたいでいる。将来 VillageCreatedEvent + ChatProvisioner 分離予定。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/village/service/VillageNewsletterDigestAggregator.java | 49 | // TODO: 将来は VillagePostCreatedEvent を購読するカウンタテーブルへ分離し、read-only 越境を解消する（原則5）。 | 次陣で仕様化・Issue化 |
 | 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/village/service/VillageSerendipityService.java | 190 | // TODO Phase 4: 専用 COUNT クエリ or materialized rank に置換して効率化 | 次陣で仕様化・Issue化 |
-| 実装不足 | frontend/app/components/admin/PublicVisibleToggle.vue | 14 | // TODO: Phase 3 以降で API 実装時にインポートを有効化する | 次陣で仕様化・Issue化 |
-| 既存CMP・Issue候補 | frontend/app/components/admin/PublicVisibleToggle.vue | 63 | // TODO: Phase 3 以降で以下のリクエスト本体を使い API を呼び出す | 次陣で仕様化・Issue化 |
-| 既存CMP・Issue候補 | frontend/app/components/admin/PublicVisibleToggle.vue | 72 | // TODO: Phase 3 以降で以下の API 呼び出しを有効化する | 次陣で仕様化・Issue化 |
+| 完了 | frontend/app/components/admin/PublicVisibleToggle.vue | 14 | 公開表示トグルを実APIへ接続し、成功時反映・失敗時復元・重複送信防止を実装 | Issue #3421 / PR #3430（全必須CI green） |
+| 完了 | frontend/app/components/admin/PublicVisibleToggle.vue | 63 | 公開表示トグルを実APIへ接続し、成功時反映・失敗時復元・重複送信防止を実装 | Issue #3421 / PR #3430（全必須CI green） |
+| 完了 | frontend/app/components/admin/PublicVisibleToggle.vue | 72 | 公開表示トグルを実APIへ接続し、成功時反映・失敗時復元・重複送信防止を実装 | Issue #3421 / PR #3430（全必須CI green） |
 | 将来仕様 | frontend/app/components/dashboard/DashboardActionPanel.vue | 145 | // TODO 期限切れ | 次陣で仕様化・Issue化 |
 | 非債務（TODO機能語） | frontend/app/components/dashboard/DashboardPersonalPanel.vue | 123 | 'todo-countdown',              // TODOカウントダウン | 対応不要 |
 | 実装不足 | frontend/app/components/member/MemberFieldsManager.vue | 67 | // TODO: updateField が useMemberProfileApi に存在しないため編集機能は未実装 | 次陣で仕様化・Issue化 |
