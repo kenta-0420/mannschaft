@@ -100,7 +100,7 @@ public class MembershipEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // ─── F14.3 住民ライフイベント（逝去・転出）アーカイブ（V187 で追加）────────
+    // ─── F14.3 住民ライフイベント（逝去・転出）アーカイブ（V222 で追加）────────
 
     /**
      * アーカイブ在籍の開始日時（起きた瞬間）。NULL = 通常在籍。
