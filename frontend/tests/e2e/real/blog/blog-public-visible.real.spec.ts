@@ -144,10 +144,14 @@ test('WAVE5-REAL-001: UI visibility toggle controls public pages and rejects out
         .catch((error: unknown) => { cleanupErrors.push(`post delete failed: ${String(error)}`); return null })
       if (result && result.status() !== 204) cleanupErrors.push(`post delete returned ${result.status()}`)
       if (team) {
-        const probe = await anonymous.request.get(
-          `${API_BASE}/api/v1/public/teams/${team.numericId}/posts/${post.id}`,
-        ).catch(() => null)
-        if (probe && probe.status() !== 404) cleanupErrors.push(`deleted post returned ${probe.status()}`)
+        try {
+          const probe = await anonymous.request.get(
+            `${API_BASE}/api/v1/public/teams/${team.numericId}/posts/${post.id}`,
+          )
+          if (probe.status() !== 404) cleanupErrors.push(`deleted post returned ${probe.status()}`)
+        } catch (error: unknown) {
+          cleanupErrors.push(`post delete verification failed: ${String(error)}`)
+        }
       }
     }
     if (team) {
