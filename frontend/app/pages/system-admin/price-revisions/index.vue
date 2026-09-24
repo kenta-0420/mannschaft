@@ -30,7 +30,21 @@ const authStore = useAuthStore()
 const billingApi = useBillingApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
-const { formatDateTime } = useDatetime()
+const { formatDateTime, buildOffsetDateTimeStr } = useDatetime()
+
+/**
+ * `<input type="datetime-local">` の値（例 `2026-09-24T12:00`。オフセットを持たない）を、
+ * BE の `Instant` が受理するオフセット付き ISO-8601 へ変換する。
+ *
+ * オフセット無しのまま送ると Jackson が `Instant` に解釈できず 400 になる。入力値は「画面で指した
+ * 壁時計」なので、壁時計成分を保ったままユーザーTZのオフセットを付ける既存の正準
+ * `buildOffsetDateTimeStr` を通す（`formatDateTime` の表示と往復しても値がずれない）。
+ */
+function toInstantPayload(datetimeLocal: string): string {
+  const offsetIso = buildOffsetDateTimeStr(new Date(datetimeLocal))
+  if (!offsetIso) throw new RangeError(`invalid datetime-local value: ${datetimeLocal}`)
+  return offsetIso
+}
 
 const isAllowed = computed(() => authStore.isSystemAdmin)
 
@@ -169,8 +183,8 @@ async function createPriceRevision() {
       productKind: form.productKind,
       productKey: form.productKey.trim(),
       scopeKind: form.scopeKind,
-      effectiveFrom: form.effectiveFrom,
-      effectiveUntil: form.effectiveUntil || null,
+      effectiveFrom: toInstantPayload(form.effectiveFrom),
+      effectiveUntil: form.effectiveUntil ? toInstantPayload(form.effectiveUntil) : null,
       bands,
     })
     notification.success(t('billing.priceRevisions.createSuccess'))
@@ -228,7 +242,11 @@ async function submitCreateTaxCode() {
   if (!taxCodeForm.code.trim() || !taxCodeForm.displayName.trim() || !taxCodeForm.validFrom) return
   taxCodeSaving.value = true
   try {
-    await billingApi.createTaxCode({ ...taxCodeForm, code: taxCodeForm.code.trim() })
+    await billingApi.createTaxCode({
+      ...taxCodeForm,
+      code: taxCodeForm.code.trim(),
+      validFrom: toInstantPayload(taxCodeForm.validFrom),
+    })
     notification.success(t('billing.priceRevisions.taxCodeCreateSuccess'))
     taxCodeForm.code = ''
     taxCodeForm.displayName = ''
