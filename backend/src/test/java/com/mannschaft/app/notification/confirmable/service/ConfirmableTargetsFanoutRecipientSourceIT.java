@@ -157,9 +157,14 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedTeamMember(pendingTeam, uPendingTeam);
         seedOrgDirectMember(org, uWithdrawn, "ACTIVE", true);
         seedOrgDirectMember(org, uFrozen, "FROZEN", false);
-        seedOrgDirectMember(org, uLeft, "ACTIVE", false);
-        seedOrgDirectMember(org, uPureSupporter, "ACTIVE", false);
-        seedOrgDirectMember(org, uMemberAndSupporter, "ACTIVE", false);
+        // uLeft/uPureSupporter/uMemberAndSupporter は user_roles を持たせない。
+        // 展開は user_roles ∪ memberships の和集合であり（F00.5以後、一般メンバーの在籍は
+        // memberships にのみ存在）、user_roles を与えると memberships 側の left_at や
+        // roleKind に関わらず user_roles 経由で拾われてしまい、AC-2 の意図（在籍終了者・
+        // 純SUPPORTERの除外／MEMBER兼SUPPORTERの包含）を検証できなくなるため。
+        seedUserOnly(uLeft);
+        seedUserOnly(uPureSupporter);
+        seedUserOnly(uMemberAndSupporter);
         seedOrgDirectMember(org, sender, "ACTIVE", false);
 
         seedMembership(uLeft, ScopeType.ORGANIZATION, org, RoleKind.MEMBER, LocalDateTime.now().minusDays(1));
@@ -485,6 +490,11 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
                 .roleId(3L)
                 .organizationId(orgId)
                 .build());
+    }
+
+    /** user_roles を持たせず利用者行のみ作る（memberships だけで在籍を表すケース用）。 */
+    private void seedUserOnly(long userId) {
+        insertUser(userId, "ACTIVE", null);
     }
 
     private void seedTeamMember(long teamId, long userId) {
