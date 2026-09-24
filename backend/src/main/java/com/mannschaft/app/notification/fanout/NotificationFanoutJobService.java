@@ -5,6 +5,7 @@ import java.util.Map;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -73,13 +75,20 @@ public class NotificationFanoutJobService {
     private final ObjectProvider<MeterRegistry> meterRegistryProvider;
     /** 自動シャード数算出のため scope_type から受信者ソース（{@code countRecipients}）を引くレジストリ（CMP-001⑤）。 */
     private final FanoutRecipientSourceRegistry recipientSourceRegistry;
+    /**
+     * CMP-260920-1040是正: 新規追加メソッドは引数なし {@code LocalDateTime.now()} を使わず、
+     * 注入した {@link Clock} を明示的に渡す（docs/architecture/datetime_policy_utc_instant_vs_wallclock.md）。
+     * 既存メソッド群の引数なし {@code now()} は凍結台帳の対象のため、本是正では触れない。
+     */
+    private final Clock clock;
 
     public NotificationFanoutJobService(NotificationFanoutJobRepository jobRepository,
                                         NotificationFanoutJobMessageRepository jobMessageRepository,
                                         FanoutMessageRenderer messageRenderer,
                                         PlatformTransactionManager transactionManager,
                                         ObjectProvider<MeterRegistry> meterRegistryProvider,
-                                        FanoutRecipientSourceRegistry recipientSourceRegistry) {
+                                        FanoutRecipientSourceRegistry recipientSourceRegistry,
+                                        @Qualifier("wallClock") Clock clock) {
         this.jobRepository = jobRepository;
         this.jobMessageRepository = jobMessageRepository;
         this.messageRenderer = messageRenderer;
@@ -87,6 +96,7 @@ public class NotificationFanoutJobService {
         this.enqueueTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.meterRegistryProvider = meterRegistryProvider;
         this.recipientSourceRegistry = recipientSourceRegistry;
+        this.clock = clock;
     }
 
     /**
@@ -235,7 +245,7 @@ public class NotificationFanoutJobService {
     public UUID enqueueInCurrentTransaction(String scopeType, String scopeRef, String notificationType,
                                             UUID idempotencyKey, Long organizationId,
                                             NotificationPriority priority, Long actorId) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         NotificationFanoutJob job = NotificationFanoutJob.builder()
                 .sourceEventUuid(idempotencyKey)
                 .scopeType(scopeType)
@@ -462,7 +472,7 @@ public class NotificationFanoutJobService {
     public void markDoneInCallerTransaction(UUID jobId) {
         NotificationFanoutJob job = jobRepository.findById(jobId).orElseThrow();
         job.setStatus(NotificationFanoutJobStatus.DONE);
-        job.setUpdatedAt(LocalDateTime.now());
+        job.setUpdatedAt(LocalDateTime.now(clock));
         jobRepository.save(job);
     }
 

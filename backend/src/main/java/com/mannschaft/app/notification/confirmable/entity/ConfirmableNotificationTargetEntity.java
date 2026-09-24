@@ -5,7 +5,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -13,6 +12,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -41,13 +41,13 @@ public class ConfirmableNotificationTargetEntity extends UuidV7Entity {
     @Column(name = "target_id", nullable = false)
     private Long targetId;
 
+    /**
+     * CI是正（CMP-260920-1040）: 引数なし {@code LocalDateTime.now()} を使う {@code @PrePersist} の
+     * 代わりに Hibernate の {@link CreationTimestamp}（JVM既定ゾーン基準）を使う
+     * （docs/architecture/datetime_policy_utc_instant_vs_wallclock.md 是正・番人
+     * {@code DateTimeAndZoneGuardTest} 新規クラス違反の根治）。
+     */
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
-    }
 }
