@@ -24,6 +24,11 @@ import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.payment.spi.ContentGateTarget;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.RecentMembershipScopeQueryService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -42,13 +47,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 
@@ -126,6 +131,15 @@ class AnnouncementFeedServiceTest {
 
     @Mock
     private PaymentGateService paymentGateService;
+
+    @Mock
+    private RecentMembershipScopeQueryService recentMembershipScopeQueryService;
+
+    @Mock
+    private TeamService teamService;
+
+    @Mock
+    private OrganizationService organizationService;
 
     @InjectMocks
     private AnnouncementFeedService announcementFeedService;
@@ -748,6 +762,136 @@ class AnnouncementFeedServiceTest {
         void public_seesOnlyPublic() {
             assertThat(captureAllowedVisibilities("PUBLIC"))
                     .containsExactlyInAnyOrder("PUBLIC");
+        }
+    }
+
+    @Nested
+    @DisplayName("getPersonalFeed（個人横断）")
+    class GetPersonalFeed {
+
+        @Test
+        @DisplayName("DB障害を空配列へ変換せず呼び出し元へ伝播する")
+        void databaseFailureIsPropagated() {
+            RuntimeException failure = new RuntimeException("database unavailable");
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(
+                    OTHER_USER_ID, 20)).willThrow(failure);
+
+            assertThatThrownBy(() -> announcementFeedService.getPersonalFeed(OTHER_USER_ID, 15, false))
+                    .isSameAs(failure);
+        }
+
+        @Test
+        @DisplayName("所属取得は現役TEAM/ORGANIZATIONを上位20件に限定する")
+        void membershipScopeIsBoundedToTwenty() {
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(OTHER_USER_ID, 20))
+                    .willReturn(List.of());
+
+            announcementFeedService.getPersonalFeed(OTHER_USER_ID, 15, false);
+
+            verify(recentMembershipScopeQueryService)
+                    .findRecentTeamAndOrganizationScopes(OTHER_USER_ID, 20);
+        }
+
+        @Test
+        @DisplayName("limitは1以上50以下へ補正しinclude_readを検索へ渡す")
+        void limitAndIncludeReadAreApplied() {
+            RecentMembershipScopeQueryService.RecentScope membership =
+                    new RecentMembershipScopeQueryService.RecentScope(ScopeType.TEAM, TEAM_ID, RoleKind.MEMBER);
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(OTHER_USER_ID, 20))
+                    .willReturn(List.of(membership));
+            given(feedQueryRepository.findPersonalFeed(any(), eq(OTHER_USER_ID), eq(true), eq(0), eq(51)))
+                    .willReturn(List.of());
+            given(teamService.getNamesByIds(Set.of(TEAM_ID))).willReturn(Map.of());
+            given(organizationService.getNamesByIds(Set.of())).willReturn(Map.of());
+
+            AnnouncementFeedService.AnnouncementFeedResult result =
+                    announcementFeedService.getPersonalFeed(OTHER_USER_ID, 999, true);
+
+            assertThat(result.nextCursor()).isNull();
+            assertThat(result.hasNext()).isFalse();
+            verify(feedQueryRepository).findPersonalFeed(any(), eq(OTHER_USER_ID), eq(true), eq(0), eq(51));
+        }
+
+        @Test
+        @DisplayName("検索対象はrepositoryが返した現役所属だけでロール別visibilityを適用する")
+        void onlyReturnedMembershipsBecomeQueryScopes() {
+            RecentMembershipScopeQueryService.RecentScope teamSupporter =
+                    new RecentMembershipScopeQueryService.RecentScope(ScopeType.TEAM, TEAM_ID, RoleKind.SUPPORTER);
+            RecentMembershipScopeQueryService.RecentScope organizationMember =
+                    new RecentMembershipScopeQueryService.RecentScope(ScopeType.ORGANIZATION, 20L, RoleKind.MEMBER);
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(OTHER_USER_ID, 20))
+                    .willReturn(List.of(teamSupporter, organizationMember));
+            given(feedQueryRepository.findPersonalFeed(any(), eq(OTHER_USER_ID), eq(false), eq(0), eq(16)))
+                    .willReturn(List.of());
+            given(teamService.getNamesByIds(Set.of(TEAM_ID))).willReturn(Map.of());
+            given(organizationService.getNamesByIds(Set.of(20L))).willReturn(Map.of());
+
+            announcementFeedService.getPersonalFeed(OTHER_USER_ID, 15, false);
+
+            @SuppressWarnings("unchecked")
+            org.mockito.ArgumentCaptor<List<AnnouncementFeedQueryRepository.PersonalScopeAccess>> scopes =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            verify(feedQueryRepository).findPersonalFeed(
+                    scopes.capture(), eq(OTHER_USER_ID), eq(false), eq(0), eq(16));
+            assertThat(scopes.getValue()).hasSize(2);
+            assertThat(scopes.getValue().get(0).allowedVisibilities())
+                    .containsExactlyInAnyOrder("PUBLIC", "SUPPORTERS_AND_ABOVE");
+            assertThat(scopes.getValue().get(1).allowedVisibilities())
+                    .contains("PUBLIC", "SUPPORTERS_AND_ABOVE", "MEMBERS_AND_ABOVE");
+        }
+
+        @Test
+        @DisplayName("所属が無い場合はDBフィード検索を行わず空結果を返す")
+        void noMembershipReturnsEmpty() {
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(
+                    OTHER_USER_ID, 20)).willReturn(List.of());
+
+            AnnouncementFeedService.AnnouncementFeedResult result =
+                    announcementFeedService.getPersonalFeed(OTHER_USER_ID, 15, false);
+
+            assertThat(result.data()).isEmpty();
+            assertThat(result.hasNext()).isFalse();
+            assertThat(result.unreadCount()).isZero();
+            verify(feedQueryRepository, never()).findPersonalFeed(any(), anyLong(), anyBoolean(), anyInt(), anyInt());
+        }
+
+        @Test
+        @DisplayName("SUPPORTERの内輪向け非表示と課金HIDDENを除外し次chunkから補充する")
+        void supporterAndGateVisibilityAreAppliedWithBoundedReplenishment() {
+            RecentMembershipScopeQueryService.RecentScope membership =
+                    new RecentMembershipScopeQueryService.RecentScope(ScopeType.TEAM, TEAM_ID, RoleKind.SUPPORTER);
+            AnnouncementFeedEntity hidden = personalFeed(3L);
+            AnnouncementFeedEntity visible2 = personalFeed(2L);
+            AnnouncementFeedEntity visible1 = personalFeed(1L);
+            given(recentMembershipScopeQueryService.findRecentTeamAndOrganizationScopes(OTHER_USER_ID, 20))
+                    .willReturn(List.of(membership));
+            given(feedQueryRepository.findPersonalFeed(any(), eq(OTHER_USER_ID), eq(false), eq(0), eq(3)))
+                    .willReturn(List.of(hidden, visible2, visible1));
+            given(feedQueryRepository.findPersonalFeed(any(), eq(OTHER_USER_ID), eq(false), eq(3), eq(3)))
+                    .willReturn(List.of());
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(),
+                    eq(OTHER_USER_ID), any(Map.class))).willReturn(Map.of(
+                            3L, new GateCheckResponse(false, true, List.of()),
+                            2L, new GateCheckResponse(true, false, List.of()),
+                            1L, new GateCheckResponse(true, false, List.of())));
+            given(teamService.getNamesByIds(Set.of(TEAM_ID))).willReturn(Map.of(TEAM_ID, "チームA"));
+            given(organizationService.getNamesByIds(Set.of())).willReturn(Map.of());
+
+            AnnouncementFeedService.AnnouncementFeedResult result =
+                    announcementFeedService.getPersonalFeed(OTHER_USER_ID, 2, false);
+
+            assertThat(result.data()).extracting(item -> item.feed().getId()).containsExactly(2L, 1L);
+            assertThat(result.data()).extracting(AnnouncementFeedService.AnnouncementFeedItem::scopeName)
+                    .containsOnly("チームA");
+            assertThat(result.hasNext()).isFalse();
+        }
+
+        private AnnouncementFeedEntity personalFeed(long id) {
+            AnnouncementFeedEntity feed = mock(AnnouncementFeedEntity.class);
+            given(feed.getId()).willReturn(id);
+            given(feed.getScopeType()).willReturn(AnnouncementScopeType.TEAM);
+            given(feed.getScopeId()).willReturn(TEAM_ID);
+            return feed;
         }
     }
 }
