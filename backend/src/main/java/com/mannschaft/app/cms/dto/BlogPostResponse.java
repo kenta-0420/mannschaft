@@ -54,7 +54,8 @@ public class BlogPostResponse {
             String priority,
             String status,
             Boolean pinned,
-            Boolean allowComments
+            Boolean allowComments,
+            Boolean publicVisible
     ) {}
 
     /** シリーズ情報（シリーズID/順序）。 */
