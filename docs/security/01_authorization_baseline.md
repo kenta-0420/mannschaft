@@ -166,7 +166,7 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 上記「403 は存在オラクルになるため使わない」は **公開（permitAll）EP** の話であり、**認証必須 API 全般に及ぶ規則ではない**。認証必須 API では、非メンバーへの応答が「リクエストされたリソースの実在・状態によって変わるかどうか」で個別に判断する。
 
 - **個別参照 `GET /api/v1/shifts/schedules/{id}` など scheduleId 直接指定系**: 越境（実在するが非メンバー）と不在（存在しない ID）で応答が **割れていた**（403 と 404）ため、CMP-260917-1137 で不在と完全同一の 404 へ畳んだ。ID は連番で総当りが容易であり、応答の違いがそのまま「この ID は実在する」という1ビットの漏洩になっていた。
-- **一覧 `GET /api/v1/shifts/schedules?teamId=` など teamId 直接指定系**: 非メンバーへの応答は、`teamId` の実在有無・`visibility`（PUBLIC / GUESTS_AND_ABOVE / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE）のいずれであっても **常に同一の 403（`COMMON_002`）**（`ShiftScheduleService#checkTeamReadAccess` は `AccessControlService#isMember` の真偽のみで分岐し、`teamId` の実在を問い合わせていない）。応答から実在・非公開の別が一切読み取れないため、**403 のまま残しても存在オラクルにはならない**。契約は `ShiftScheduleScopeContractIT`（8. 節、`ListNonMemberResponseInvariant`）が固定する。
+- **一覧 `GET /api/v1/shifts/schedules?teamId=` など teamId 直接指定系**: 非メンバーへの応答は、`teamId` の実在有無・`visibility`（PUBLIC / GUESTS_AND_ABOVE / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE）のいずれであっても **常に同一の 403（`COMMON_002`）**（`ShiftScheduleService#checkTeamReadAccess` は `AccessControlService#isMember` の真偽のみで分岐し、`teamId` の実在を問い合わせていない）。応答から実在・非公開の別が一切読み取れないため、**403 のまま残しても存在オラクルにはならない**。契約は `ShiftScheduleScopeContractIT`（9. 節、`ListNonMemberResponseInvariant`）が固定する。
 
 **判断の軸**: 「403 か 404 か」というステータスの違い自体が問題なのではなく、**同じ入力軸（実在/非実在、公開/非公開）に対して応答が割れるかどうか**が問題。一覧のようにどの軸でも応答が不変であれば、個別参照と異なるステータスを返すこと自体は是正の対象にならない。今後 `teamId` 直接指定系のエンドポイントで同種の疑義が出た場合は、まず「非メンバー応答が実在・visibility で割れるか」を契約テストで実測してから判断すること（実測せずに「403は存在オラクルだから404へ揃えるべき」と早合点しない）。
 

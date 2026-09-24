@@ -1,6 +1,7 @@
 package com.mannschaft.app.membership.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.membership.domain.LeaveReason;
@@ -73,6 +74,9 @@ class MembershipServiceTest {
     private MembershipRepository membershipRepository;
 
     @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
+
+    @Mock
     private MemberPositionRepository memberPositionRepository;
 
     @Mock
@@ -98,6 +102,33 @@ class MembershipServiceTest {
 
     @InjectMocks
     private MembershipService service;
+
+    @Nested
+    @DisplayName("所属スコープ列挙の互換窓口")
+    class ScopeEnumerationCompatibilityTest {
+
+        @Test
+        @DisplayName("従来のteam getterはmembership直結の正本メソッドへ委譲する")
+        void teamGetterDelegatesToCurrentMembershipQuery() {
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(99L))
+                    .willReturn(List.of(10L, 20L));
+
+            assertThat(service.getActiveTeamIdsByUser(99L)).containsExactly(10L, 20L);
+            verify(membershipScopeQueryService).findCurrentMembershipTeamIds(99L);
+        }
+
+        @Test
+        @DisplayName("IncludingRoleAssignmentsは従来どおりACTIVE UNIONとmembership直結を合成する")
+        void includingRoleAssignmentsPreservesMixedPopulation() {
+            given(membershipScopeQueryService.findActiveTeamIds(99L))
+                    .willReturn(List.of(10L, 20L));
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(99L))
+                    .willReturn(List.of(20L, 30L));
+
+            assertThat(service.getActiveTeamIdsIncludingRoleAssignments(99L))
+                    .containsExactly(10L, 20L, 30L);
+        }
+    }
 
     @Nested
     @DisplayName("join() — 入会")

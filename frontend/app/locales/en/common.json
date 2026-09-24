@@ -2557,5 +2557,9 @@
       "optionsInvalidFormat": "The options data is in an invalid format",
       "optionsLoadFailed": "Failed to load the options data"
     }
+  },
+  "loadErrorState": {
+    "message": "Failed to load data",
+    "retry": "Retry"
   }
 }

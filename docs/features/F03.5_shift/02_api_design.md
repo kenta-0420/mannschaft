@@ -148,7 +148,7 @@
 
 いずれの場合も応答（ステータス・`error.code`・本文）が一致するため、`team_id` の実在・非公開の別を
 一覧 API から読み取ることはできない。契約テストは `ShiftScheduleScopeContractIT` の
-`8. GET /shifts/schedules?teamId=（非メンバー応答の不変条件／CMP-260923-1642）`
+`9. GET /shifts/schedules?teamId=（非メンバー応答の不変条件／CMP-260923-1642）`
 （`ListNonMemberResponseInvariant`）が固定する。
 
 ---
