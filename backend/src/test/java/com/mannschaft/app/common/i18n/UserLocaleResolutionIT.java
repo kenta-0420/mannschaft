@@ -10,12 +10,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Locale;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -74,7 +76,7 @@ class UserLocaleResolutionIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("ログイン済み・DB locale=ja・Accept-Language ヘッダー無し → 日本語ラベルを返す")
     void ログイン済み_DBロケールja_ヘッダー無し_日本語ラベル() throws Exception {
-        mockMvc.perform(get(PATH).with(user(String.valueOf(JA_USER_ID))))
+        mockMvc.perform(get(PATH).with(authentication(jaUserAuthentication())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[?(@.notificationType=='SCHEDULE_CREATED')].label")
                         .value(LABEL_JA));
@@ -84,11 +86,21 @@ class UserLocaleResolutionIT extends AbstractMySqlIntegrationTest {
     @DisplayName("ログイン済み・DB locale=ja・Accept-Language: en → DB locale が優先され日本語ラベルを返す")
     void ログイン済み_DBロケールja_ヘッダーen_DBロケール優先で日本語ラベル() throws Exception {
         mockMvc.perform(get(PATH)
-                        .with(user(String.valueOf(JA_USER_ID)))
+                        .with(authentication(jaUserAuthentication()))
                         .header("Accept-Language", "en"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[?(@.notificationType=='SCHEDULE_CREATED')].label")
                         .value(LABEL_JA));
+    }
+
+    /**
+     * 実 {@code JwtAuthenticationFilter} が生成する Authentication と同じ形（principal =
+     * userId の生 String）で組み立てる。{@code SecurityMockMvcRequestPostProcessors.user(String)} は
+     * principal が {@link org.springframework.security.core.userdetails.UserDetails} になり
+     * {@code UserLocaleFilter} の {@code auth.getPrincipal() instanceof String} 判定に一致しないため使わない。
+     */
+    private static UsernamePasswordAuthenticationToken jaUserAuthentication() {
+        return new UsernamePasswordAuthenticationToken(String.valueOf(JA_USER_ID), null, List.of());
     }
 
     private void insertUserWithLocale(long userId, String locale) {
