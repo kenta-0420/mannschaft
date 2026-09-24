@@ -214,6 +214,7 @@ export default {
       "resetButton": "重置",
       "allCategories": "所有类别",
       "noResults": "没有找到符合条件的招募",
+      "loadError": "获取招募信息失败",
       "resultsCount": "{count}条招募",
       "capacity": "定员",
       "remaining": "剩余{count}名额",

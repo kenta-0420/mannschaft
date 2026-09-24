@@ -2488,6 +2488,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "自定义字段",
+      "add": "添加字段",
+      "loadFailed": "无法加载自定义字段",
+      "retry": "重试",
+      "empty": "暂无自定义字段",
+      "name": "字段名称",
+      "type": "类型",
+      "required": "必填",
+      "active": "启用",
+      "order": "顺序",
+      "yes": "是",
+      "no": "否",
+      "typeText": "文本",
+      "typeNumber": "数字",
+      "typeDate": "日期",
+      "typeSelect": "选项",
+      "options": "选项（每行一个）",
+      "createSuccess": "字段已添加",
+      "createFailed": "无法添加字段"
+    },
     "loadFailed": "无法加载成员信息",
     "unavailable": "该功能目前尚无法使用（准备中）",
     "saveFailed": "保存失败",
@@ -2536,5 +2557,25 @@
       "optionsInvalidFormat": "選択肢データの形式が不正です",
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
+  },
+  "memberPermissions": {
+    "title": "MEMBER 默认权限",
+    "description": "设置加入此团队或组织的 MEMBER 用户的默认权限。",
+    "sectionTitle": "默认权限",
+    "invalidScope": "请先选择团队或组织。",
+    "loadFailed": "无法加载 MEMBER 默认权限。",
+    "saveSuccess": "已更新 MEMBER 默认权限。",
+    "saveFailed": "无法更新 MEMBER 默认权限。",
+    "inherited": "继承自上级设置",
+    "accessDenied": "只有管理员可以执行此操作。",
+    "permissions": {
+      "MANAGE_SCHEDULES": "管理日程",
+      "MANAGE_FILES": "管理文件",
+      "MANAGE_POSTS": "管理帖子"
+    }
+  },
+  "loadErrorState": {
+    "message": "数据获取失败",
+    "retry": "重试"
   }
 }

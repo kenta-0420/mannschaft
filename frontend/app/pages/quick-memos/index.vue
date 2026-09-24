@@ -23,6 +23,8 @@ const totalPages = ref(1)
 const unsortedCount = ref(0)
 const searchQuery = ref('')
 const searchResults = ref<QuickMemoResponse[] | null>(null)
+/** 取得失敗は「メモなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 const captureVisible = computed({
   get: () => capture.visible.value,
   set: (v) => { if (!v) capture.close() },
@@ -38,6 +40,7 @@ const showGuide = ref(false)
 
 async function loadMemos() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await memoApi.listMemos({ status: activeTab.value, page: page.value, size: 20 })
     memos.value = res.data
@@ -45,6 +48,8 @@ async function loadMemos() {
     if (res.meta.unsortedCount !== undefined) unsortedCount.value = res.meta.unsortedCount
   } catch {
     notification.error(t('quick_memo.load_error'))
+    memos.value = []
+    loadFailed.value = true
   } finally {
     loading.value = false
   }
@@ -229,6 +234,12 @@ const showLimitBanner = computed(
         <div v-if="loading" class="space-y-3">
           <Skeleton v-for="i in 5" :key="i" height="80px" border-radius="12px" />
         </div>
+
+        <DashboardErrorState
+          v-else-if="loadFailed && !searchResults"
+          testid="quick-memos-error-state"
+          @retry="loadMemos"
+        />
 
         <div v-else-if="displayedMemos.length === 0" class="py-16 text-center text-surface-400">
           <i class="pi pi-feather mb-3 text-4xl" />

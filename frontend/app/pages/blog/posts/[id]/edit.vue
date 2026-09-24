@@ -15,6 +15,7 @@ const { buildOffsetDateTimeStr } = useDatetime()
 const title = ref(route.query.title ? String(route.query.title) : '')
 const body = ref('')
 const status = ref('DRAFT')
+const publicVisible = ref(true)
 const scopeType = ref<string | null>(route.query.scopeType ? String(route.query.scopeType) : null)
 const scopeId = ref<string | null>(route.query.scopeId ? String(route.query.scopeId) : null)
 const rejectionReason = ref<string | null>(null)
@@ -87,6 +88,7 @@ async function load() {
     const rawBody = post.content?.body ?? ''
     body.value = rawBody === '.' ? '' : rawBody
     status.value = post.meta?.status ?? 'DRAFT'
+    publicVisible.value = resolveBlogPublicVisible(post.meta)
     scopeType.value = post.scope?.organizationId ? 'ORGANIZATION' : post.scope?.teamId ? 'TEAM' : null
     const rawScopeId = post.scope?.organizationId ?? post.scope?.teamId ?? null
     scopeId.value = rawScopeId != null ? String(rawScopeId) : null
@@ -464,6 +466,17 @@ onUnmounted(() => {
 
       <!-- Markdownエディタ（ツールバー + 編集/プレビュー） -->
       <MarkdownEditor v-model="body" />
+
+      <div class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+        <p class="mb-2 text-sm font-medium">
+          {{ $t('public.admin.publicVisible.toggleAriaLabel') }}
+        </p>
+        <PublicVisibleToggle
+          :post-id="postId"
+          v-model:public-visible="publicVisible"
+          @error="showError"
+        />
+      </div>
 
       <!-- お知らせウィジェット表示フラグ（チーム/組織スコープのみ） -->
       <div v-if="isTeamOrOrgScope" class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">

@@ -29,6 +29,8 @@ const jobs = ref<JobPostingSummaryResponse[]>([])
 const meta = ref<JobPagedMeta>({ total: 0, page: 0, size: PAGE_SIZE, totalPages: 0 })
 const loading = ref(false)
 const currentPage = ref(0)
+/** 取得失敗は「求人なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 const teamOptions = computed(() =>
   teamStore.myTeams.map(t => ({
@@ -44,6 +46,7 @@ async function load(page = 0) {
     return
   }
   loading.value = true
+  loadFailed.value = false
   currentPage.value = page
   try {
     const res = await api.searchJobs({
@@ -59,10 +62,15 @@ async function load(page = 0) {
     error(t('jobmatching.error.loadFailed'), String(e))
     jobs.value = []
     meta.value = { total: 0, page: 0, size: PAGE_SIZE, totalPages: 0 }
+    loadFailed.value = true
   }
   finally {
     loading.value = false
   }
+}
+
+function retryLoad() {
+  load(currentPage.value)
 }
 
 function onTeamChange() {
@@ -132,6 +140,13 @@ onMounted(async () => {
     >
       <LoadingBounce />
     </div>
+
+    <!-- 取得失敗: 空状態とは別に描き分ける -->
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="jobs-list-error-state"
+      @retry="retryLoad"
+    />
 
     <!-- 空 -->
     <div

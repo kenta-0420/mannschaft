@@ -215,6 +215,14 @@ export function useBlogApi() {
     })
   }
 
+  /** 投稿者本人が公開ページへの表示可否を切り替える。 */
+  async function patchPublicVisible(postId: number, publicVisible: boolean): Promise<void> {
+    await api(`/api/v1/blog/posts/${postId}/public-visible`, {
+      method: 'PATCH',
+      body: { publicVisible },
+    })
+  }
+
   async function deleteMyPost(postId: number) {
     return api(`/api/v1/users/me/blog/posts/${postId}`, { method: 'DELETE' })
   }
@@ -303,6 +311,7 @@ export function useBlogApi() {
     getMyPost,
     createMyPost,
     updateMyPost,
+    patchPublicVisible,
     deleteMyPost,
     publishMyPost,
     selfReviewPost,

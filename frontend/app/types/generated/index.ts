@@ -5307,6 +5307,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/member-permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** MEMBER既定権限取得 */
+        get: operations["get_18"];
+        /** MEMBER既定権限更新 */
+        put: operations["update_43"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/form-presets/{presetId}": {
         parameters: {
             query?: never;
@@ -5338,7 +5356,7 @@ export interface paths {
          * 年齢区分設定更新
          * @description 指定した年齢区分の機能設定・テーマ設定を更新する（SYSTEM_ADMIN のみ）
          */
-        put: operations["update_43"];
+        put: operations["update_44"];
         post?: never;
         delete?: never;
         options?: never;
@@ -24646,7 +24664,7 @@ export interface paths {
             cookie?: never;
         };
         /** 計画項目取得 */
-        get: operations["get_18"];
+        get: operations["get_19"];
         put?: never;
         post?: never;
         /** 計画項目削除（ADMIN/DEPUTY_ADMIN、If-Match 必須） */
@@ -24654,7 +24672,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 計画項目更新（ADMIN/DEPUTY_ADMIN、If-Match 必須） */
-        patch: operations["update_44"];
+        patch: operations["update_45"];
         trace?: never;
     };
     "/api/v1/{scopeType}/{scopeId}/bulletin/archive/threads/{threadId}/folder": {
@@ -24699,7 +24717,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村詳細取得 */
-        get: operations["get_19"];
+        get: operations["get_20"];
         put?: never;
         post?: never;
         /** 村論理削除（HEADMAN / SYSTEM_ADMIN） */
@@ -24707,7 +24725,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 村更新（HEADMAN / SYSTEM_ADMIN） */
-        patch: operations["update_45"];
+        patch: operations["update_46"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/memberships/{membershipId}/role": {
@@ -24752,14 +24770,14 @@ export interface paths {
             cookie?: never;
         };
         /** 寄合詳細を取得する（候補日込み） */
-        get: operations["get_20"];
+        get: operations["get_21"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 寄合を部分更新する（幹事のみ） */
-        patch: operations["update_46"];
+        patch: operations["update_47"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/match-recruits/{recruitId}": {
@@ -24770,14 +24788,14 @@ export interface paths {
             cookie?: never;
         };
         /** 練習試合・審判募集の詳細（村人のみ） */
-        get: operations["get_21"];
+        get: operations["get_22"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 練習試合・審判募集を更新（投稿者本人のみ） */
-        patch: operations["update_47"];
+        patch: operations["update_48"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/festivals/{festivalId}": {
@@ -24788,14 +24806,14 @@ export interface paths {
             cookie?: never;
         };
         /** 村のお祭り詳細を取得する */
-        get: operations["get_22"];
+        get: operations["get_23"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 村のお祭りを部分更新する（HEADMAN / ELDER のみ） */
-        patch: operations["update_48"];
+        patch: operations["update_49"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/charter/articles/order": {
@@ -24823,7 +24841,7 @@ export interface paths {
             cookie?: never;
         };
         /** 歳時記イベントの詳細を取得する（村人のみ） */
-        get: operations["get_23"];
+        get: operations["get_24"];
         put?: never;
         post?: never;
         /** 歳時記イベントを論理削除する（HEADMAN / ELDER のみ） */
@@ -24831,7 +24849,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 歳時記イベントを部分更新する（HEADMAN / ELDER のみ） */
-        patch: operations["update_49"];
+        patch: operations["update_50"];
         trace?: never;
     };
     "/api/v1/users/me/public-profile": {
@@ -25301,7 +25319,7 @@ export interface paths {
             cookie?: never;
         };
         /** チームキープ詳細 */
-        get: operations["get_24"];
+        get: operations["get_25"];
         put?: never;
         post?: never;
         /** チームキープ削除 */
@@ -25309,7 +25327,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チームキープ更新 */
-        patch: operations["update_50"];
+        patch: operations["update_51"];
         trace?: never;
     };
     "/api/v1/teams/{teamPublicId}/members/{memberUserId}/calendar-color": {
@@ -26682,13 +26700,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_25"];
+        get: operations["get_26"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update_51"];
+        patch: operations["update_52"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/attendance/periods/{recordId}": {
@@ -27170,7 +27188,7 @@ export interface paths {
          * セキュリティインシデント更新
          * @description ステータス変更・DPA 通知記録を行う。
          */
-        patch: operations["update_52"];
+        patch: operations["update_53"];
         trace?: never;
     };
     "/api/v1/system-admin/safety-checks/templates/{templateId}": {
@@ -27319,14 +27337,14 @@ export interface paths {
             cookie?: never;
         };
         /** エラーレポート詳細取得 */
-        get: operations["get_26"];
+        get: operations["get_27"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** エラーレポート更新 */
-        patch: operations["update_53"];
+        patch: operations["update_54"];
         trace?: never;
     };
     "/api/v1/system-admin/error-reports/{id}/workflow-stage": {
@@ -28024,14 +28042,14 @@ export interface paths {
             cookie?: never;
         };
         /** 募集枠詳細取得 */
-        get: operations["get_27"];
+        get: operations["get_28"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 募集枠編集 (§5.7) */
-        patch: operations["update_54"];
+        patch: operations["update_55"];
         trace?: never;
     };
     "/api/v1/quick-memos/{id}/restore": {
@@ -28855,7 +28873,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織キープ詳細 */
-        get: operations["get_28"];
+        get: operations["get_29"];
         put?: never;
         post?: never;
         /** 組織キープ削除 */
@@ -28863,7 +28881,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 組織キープ更新 */
-        patch: operations["update_55"];
+        patch: operations["update_56"];
         trace?: never;
     };
     "/api/v1/organizations/{orgPublicId}/members/{memberUserId}/calendar-color": {
@@ -29390,13 +29408,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_29"];
+        get: operations["get_30"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update_56"];
+        patch: operations["update_57"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/announcements/{id}/pin": {
@@ -29521,7 +29539,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** カスタム項目更新 */
-        patch: operations["update_57"];
+        patch: operations["update_58"];
         trace?: never;
     };
     "/api/v1/me/schedules/{id}": {
@@ -29551,7 +29569,7 @@ export interface paths {
             cookie?: never;
         };
         /** 個人キープ詳細 */
-        get: operations["get_30"];
+        get: operations["get_31"];
         put?: never;
         post?: never;
         /** 個人キープ削除 */
@@ -29559,7 +29577,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 個人キープ更新 */
-        patch: operations["update_58"];
+        patch: operations["update_59"];
         trace?: never;
     };
     "/api/v1/me/reflections/themes/{themeId}": {
@@ -29623,7 +29641,7 @@ export interface paths {
             cookie?: never;
         };
         /** 個人時間割詳細 */
-        get: operations["get_31"];
+        get: operations["get_32"];
         put?: never;
         post?: never;
         /** 個人時間割論理削除 */
@@ -29631,7 +29649,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 個人時間割メタ情報更新 */
-        patch: operations["update_59"];
+        patch: operations["update_60"];
         trace?: never;
     };
     "/api/v1/me/market/listings/{id}": {
@@ -29648,7 +29666,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 個人札のDRAFT編集 */
-        patch: operations["update_60"];
+        patch: operations["update_61"];
         trace?: never;
     };
     "/api/v1/me/favorites/reorder": {
@@ -30202,14 +30220,14 @@ export interface paths {
             cookie?: never;
         };
         /** ポリシー詳細 (段階含む) */
-        get: operations["get_32"];
+        get: operations["get_33"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** ポリシー編集 (is_template_policy=true のみ) */
-        patch: operations["update_61"];
+        patch: operations["update_62"];
         trace?: never;
     };
     "/api/v1/bulletin/threads/{threadId}/priority": {
@@ -30276,7 +30294,7 @@ export interface paths {
         delete: operations["delete_49"];
         options?: never;
         head?: never;
-        patch: operations["update_62"];
+        patch: operations["update_63"];
         trace?: never;
     };
     "/api/v1/budget/categories/{categoryId}": {
@@ -30292,7 +30310,7 @@ export interface paths {
         delete: operations["delete_50"];
         options?: never;
         head?: never;
-        patch: operations["update_63"];
+        patch: operations["update_64"];
         trace?: never;
     };
     "/api/v1/blog/posts/{id}/publish": {
@@ -30725,7 +30743,7 @@ export interface paths {
          * 同義語編集
          * @description synonymDisplay 指定時は再正規化と重複チェックを行う。
          */
-        patch: operations["update_64"];
+        patch: operations["update_65"];
         trace?: never;
     };
     "/api/v1/admin/permission-groups/{id}/unassign/{userId}": {
@@ -31758,7 +31776,7 @@ export interface paths {
             cookie?: never;
         };
         /** 指定月の村史を取得する（YYYY-MM-DD 形式） */
-        get: operations["get_33"];
+        get: operations["get_34"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31775,7 +31793,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村憲章を取得する（read 公開ゲート・PUBLIC は非メンバー可・UNLISTED はメンバー/SYSTEM_ADMIN） */
-        get: operations["get_34"];
+        get: operations["get_35"];
         put?: never;
         post?: never;
         delete?: never;
@@ -43624,7 +43642,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_35"];
+        get: operations["get_36"];
         put?: never;
         post?: never;
         delete?: never;
@@ -44971,7 +44989,7 @@ export interface paths {
         };
         /**
          * 個人横断お知らせ一覧取得
-         * @description 所属する全チーム/組織のお知らせを横断集約して返す（個人ダッシュボード用）。TODO: AnnouncementFeedService.getPersonalFeed 実装後に本実装に差し替える。
+         * @description 現役のチーム・組織所属のお知らせを横断取得する。ページ継続は未提供。
          */
         get: operations["getPersonalFeed"];
         put?: never;
@@ -48979,6 +48997,7 @@ export interface components {
             pinned?: boolean;
             postType?: string;
             priority?: string;
+            publicVisible?: boolean;
             status?: string;
             visibility?: string;
         };
@@ -54824,6 +54843,29 @@ export interface components {
             name?: string;
             permissions?: string[];
             targetRole?: string;
+        };
+        MemberPermissionUpdateItem: {
+            enabled: boolean;
+            name?: string;
+        };
+        MemberPermissionUpdateRequest: {
+            permissions: components["schemas"]["MemberPermissionUpdateItem"][];
+        };
+        ApiResponseMemberPermissionsResponse: {
+            data?: components["schemas"]["MemberPermissionsResponse"];
+        };
+        MemberPermissionSetting: {
+            displayName?: string;
+            enabled?: boolean;
+            inherited?: boolean;
+            name?: string;
+        };
+        MemberPermissionsResponse: {
+            permissions?: components["schemas"]["MemberPermissionSetting"][];
+            roleName?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeType?: string;
         };
         UpdateFormPresetRequest: {
             category?: string;
@@ -61007,6 +61049,7 @@ export interface components {
             read?: boolean;
             /** Format: int64 */
             scopeId?: number;
+            scopeName?: string;
             scopeType?: string;
             /** Format: int64 */
             sourceId?: number;
@@ -67127,8 +67170,7 @@ export interface components {
             postedAsSubjectType?: "USER" | "TEAM" | "ORGANIZATION";
             priority?: string;
             readTrackingMode?: string;
-            /** Format: int64 */
-            scopeId?: number;
+            scopeId?: string;
             scopeType?: string;
             /** Format: uuid */
             scopeVillageId?: string;
@@ -96641,6 +96683,56 @@ export interface operations {
             };
         };
     };
+    get_18: {
+        parameters: {
+            query: {
+                scopeType: string;
+                scopeId: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberPermissionsResponse"];
+                };
+            };
+        };
+    };
+    update_43: {
+        parameters: {
+            query: {
+                scopeType: string;
+                scopeId: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberPermissionUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberPermissionsResponse"];
+                };
+            };
+        };
+    };
     getPreset: {
         parameters: {
             query?: never;
@@ -96709,7 +96801,7 @@ export interface operations {
             };
         };
     };
-    update_43: {
+    update_44: {
         parameters: {
             query?: never;
             header?: never;
@@ -133631,7 +133723,7 @@ export interface operations {
             };
         };
     };
-    get_18: {
+    get_19: {
         parameters: {
             query?: never;
             header: {
@@ -133682,7 +133774,7 @@ export interface operations {
             };
         };
     };
-    update_44: {
+    update_45: {
         parameters: {
             query?: never;
             header: {
@@ -133767,7 +133859,7 @@ export interface operations {
             };
         };
     };
-    get_19: {
+    get_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -133809,7 +133901,7 @@ export interface operations {
             };
         };
     };
-    update_45: {
+    update_46: {
         parameters: {
             query?: never;
             header?: {
@@ -133890,7 +133982,7 @@ export interface operations {
             };
         };
     };
-    get_20: {
+    get_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -133913,7 +134005,7 @@ export interface operations {
             };
         };
     };
-    update_46: {
+    update_47: {
         parameters: {
             query?: never;
             header?: never;
@@ -133940,7 +134032,7 @@ export interface operations {
             };
         };
     };
-    get_21: {
+    get_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -133963,7 +134055,7 @@ export interface operations {
             };
         };
     };
-    update_47: {
+    update_48: {
         parameters: {
             query?: never;
             header?: never;
@@ -133990,7 +134082,7 @@ export interface operations {
             };
         };
     };
-    get_22: {
+    get_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -134013,7 +134105,7 @@ export interface operations {
             };
         };
     };
-    update_48: {
+    update_49: {
         parameters: {
             query?: never;
             header?: never;
@@ -134066,7 +134158,7 @@ export interface operations {
             };
         };
     };
-    get_23: {
+    get_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -134110,7 +134202,7 @@ export interface operations {
             };
         };
     };
-    update_49: {
+    update_50: {
         parameters: {
             query?: never;
             header?: never;
@@ -134960,7 +135052,7 @@ export interface operations {
             };
         };
     };
-    get_24: {
+    get_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -135004,7 +135096,7 @@ export interface operations {
             };
         };
     };
-    update_50: {
+    update_51: {
         parameters: {
             query?: never;
             header?: never;
@@ -137726,7 +137818,7 @@ export interface operations {
             };
         };
     };
-    get_25: {
+    get_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -137748,7 +137840,7 @@ export interface operations {
             };
         };
     };
-    update_51: {
+    update_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -138781,7 +138873,7 @@ export interface operations {
             };
         };
     };
-    update_52: {
+    update_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -139045,7 +139137,7 @@ export interface operations {
             };
         };
     };
-    get_26: {
+    get_27: {
         parameters: {
             query?: never;
             header?: never;
@@ -139067,7 +139159,7 @@ export interface operations {
             };
         };
     };
-    update_53: {
+    update_54: {
         parameters: {
             query?: never;
             header?: never;
@@ -140289,7 +140381,7 @@ export interface operations {
             };
         };
     };
-    get_27: {
+    get_28: {
         parameters: {
             query?: never;
             header?: never;
@@ -140311,7 +140403,7 @@ export interface operations {
             };
         };
     };
-    update_54: {
+    update_55: {
         parameters: {
             query?: never;
             header?: never;
@@ -141822,7 +141914,7 @@ export interface operations {
             };
         };
     };
-    get_28: {
+    get_29: {
         parameters: {
             query?: never;
             header?: never;
@@ -141866,7 +141958,7 @@ export interface operations {
             };
         };
     };
-    update_55: {
+    update_56: {
         parameters: {
             query?: never;
             header?: never;
@@ -143008,7 +143100,7 @@ export interface operations {
             };
         };
     };
-    get_29: {
+    get_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -143030,7 +143122,7 @@ export interface operations {
             };
         };
     };
-    update_56: {
+    update_57: {
         parameters: {
             query?: never;
             header?: never;
@@ -143273,7 +143365,7 @@ export interface operations {
             };
         };
     };
-    update_57: {
+    update_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -143369,7 +143461,7 @@ export interface operations {
             };
         };
     };
-    get_30: {
+    get_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -143411,7 +143503,7 @@ export interface operations {
             };
         };
     };
-    update_58: {
+    update_59: {
         parameters: {
             query?: never;
             header?: never;
@@ -143551,7 +143643,7 @@ export interface operations {
             };
         };
     };
-    get_31: {
+    get_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -143593,7 +143685,7 @@ export interface operations {
             };
         };
     };
-    update_59: {
+    update_60: {
         parameters: {
             query?: never;
             header?: never;
@@ -143619,7 +143711,7 @@ export interface operations {
             };
         };
     };
-    update_60: {
+    update_61: {
         parameters: {
             query?: never;
             header?: never;
@@ -144824,7 +144916,7 @@ export interface operations {
             };
         };
     };
-    get_32: {
+    get_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -144846,7 +144938,7 @@ export interface operations {
             };
         };
     };
-    update_61: {
+    update_62: {
         parameters: {
             query?: never;
             header?: never;
@@ -144992,7 +145084,7 @@ export interface operations {
             };
         };
     };
-    update_62: {
+    update_63: {
         parameters: {
             query?: never;
             header?: never;
@@ -145041,7 +145133,7 @@ export interface operations {
             };
         };
     };
-    update_63: {
+    update_64: {
         parameters: {
             query: {
                 scopeId: number;
@@ -145768,7 +145860,7 @@ export interface operations {
             };
         };
     };
-    update_64: {
+    update_65: {
         parameters: {
             query?: never;
             header?: never;
@@ -147277,7 +147369,7 @@ export interface operations {
             };
         };
     };
-    get_33: {
+    get_34: {
         parameters: {
             query?: never;
             header?: never;
@@ -147300,7 +147392,7 @@ export interface operations {
             };
         };
     };
-    get_34: {
+    get_35: {
         parameters: {
             query?: never;
             header?: never;
@@ -163648,7 +163740,7 @@ export interface operations {
             };
         };
     };
-    get_35: {
+    get_36: {
         parameters: {
             query: {
                 organizationId: number;
@@ -165436,6 +165528,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                include_read?: boolean;
             };
             header?: never;
             path?: never;
@@ -165449,7 +165542,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["AnnouncementFeedResponseDto"];
                 };
             };
         };

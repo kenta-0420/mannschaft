@@ -167,6 +167,10 @@
       "description": "F03.8 チームスコープのイベントCRUD・ステータス管理"
     },
     {
+      "name": "個人横断お知らせウィジェット",
+      "description": "F02.6 個人ダッシュボード向け横断お知らせ API"
+    },
+    {
       "name": "F03.11 募集型予約 / サブカテゴリ",
       "description": "チームのサブカテゴリ CRUD"
     },
@@ -241,10 +245,6 @@
     {
       "name": "通知管理(管理者)",
       "description": "F04.3 管理者向け通知統計"
-    },
-    {
-      "name": "個人横断お知らせウィジェット",
-      "description": "F02.6 個人ダッシュボード用 横断お知らせ API"
     },
     {
       "name": "試合採点内訳",
@@ -1225,6 +1225,10 @@
     {
       "name": "組織備品管理",
       "description": "F07.3 組織備品CRUD・貸出・返却・消費・画像・QR"
+    },
+    {
+      "name": "管理 - MEMBER既定権限",
+      "description": "F10.1 MEMBER既定権限管理API"
     },
     {
       "name": "年次更新キャンペーン（F09.16）",
@@ -26197,6 +26201,94 @@
         }
       }
     },
+    "/api/v1/admin/member-permissions": {
+      "get": {
+        "tags": [
+          "管理 - MEMBER既定権限"
+        ],
+        "summary": "MEMBER既定権限取得",
+        "operationId": "get_18",
+        "parameters": [
+          {
+            "name": "scopeType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberPermissionsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "管理 - MEMBER既定権限"
+        ],
+        "summary": "MEMBER既定権限更新",
+        "operationId": "update_43",
+        "parameters": [
+          {
+            "name": "scopeType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberPermissionUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberPermissionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/form-presets/{presetId}": {
       "get": {
         "tags": [
@@ -26299,7 +26391,7 @@
         ],
         "summary": "年齢区分設定更新",
         "description": "指定した年齢区分の機能設定・テーマ設定を更新する（SYSTEM_ADMIN のみ）",
-        "operationId": "update_43",
+        "operationId": "update_44",
         "parameters": [
           {
             "name": "ageGroup",
@@ -87853,7 +87945,7 @@
           "修繕計画項目"
         ],
         "summary": "計画項目取得",
-        "operationId": "get_18",
+        "operationId": "get_19",
         "parameters": [
           {
             "name": "scopeType",
@@ -87966,7 +88058,7 @@
           "修繕計画項目"
         ],
         "summary": "計画項目更新（ADMIN/DEPUTY_ADMIN、If-Match 必須）",
-        "operationId": "update_44",
+        "operationId": "update_45",
         "parameters": [
           {
             "name": "scopeType",
@@ -88140,7 +88232,7 @@
           "村機能"
         ],
         "summary": "村詳細取得",
-        "operationId": "get_19",
+        "operationId": "get_20",
         "parameters": [
           {
             "name": "villageId",
@@ -88193,7 +88285,7 @@
           "村機能"
         ],
         "summary": "村更新（HEADMAN / SYSTEM_ADMIN）",
-        "operationId": "update_45",
+        "operationId": "update_46",
         "parameters": [
           {
             "name": "villageId",
@@ -88336,7 +88428,7 @@
           "寄合 (F17.1 Phase 3-β)"
         ],
         "summary": "寄合詳細を取得する（候補日込み）",
-        "operationId": "get_20",
+        "operationId": "get_21",
         "parameters": [
           {
             "name": "villageId",
@@ -88375,7 +88467,7 @@
           "寄合 (F17.1 Phase 3-β)"
         ],
         "summary": "寄合を部分更新する（幹事のみ）",
-        "operationId": "update_46",
+        "operationId": "update_47",
         "parameters": [
           {
             "name": "villageId",
@@ -88426,7 +88518,7 @@
           "村練習試合・審判募集 (F17.1)"
         ],
         "summary": "練習試合・審判募集の詳細（村人のみ）",
-        "operationId": "get_21",
+        "operationId": "get_22",
         "parameters": [
           {
             "name": "villageId",
@@ -88465,7 +88557,7 @@
           "村練習試合・審判募集 (F17.1)"
         ],
         "summary": "練習試合・審判募集を更新（投稿者本人のみ）",
-        "operationId": "update_47",
+        "operationId": "update_48",
         "parameters": [
           {
             "name": "villageId",
@@ -88516,7 +88608,7 @@
           "村お祭り (F17.1)"
         ],
         "summary": "村のお祭り詳細を取得する",
-        "operationId": "get_22",
+        "operationId": "get_23",
         "parameters": [
           {
             "name": "villageId",
@@ -88555,7 +88647,7 @@
           "村お祭り (F17.1)"
         ],
         "summary": "村のお祭りを部分更新する（HEADMAN / ELDER のみ）",
-        "operationId": "update_48",
+        "operationId": "update_49",
         "parameters": [
           {
             "name": "villageId",
@@ -88648,7 +88740,7 @@
           "村歳時記カレンダー (F17.1)"
         ],
         "summary": "歳時記イベントの詳細を取得する（村人のみ）",
-        "operationId": "get_23",
+        "operationId": "get_24",
         "parameters": [
           {
             "name": "villageId",
@@ -88719,7 +88811,7 @@
           "村歳時記カレンダー (F17.1)"
         ],
         "summary": "歳時記イベントを部分更新する（HEADMAN / ELDER のみ）",
-        "operationId": "update_49",
+        "operationId": "update_50",
         "parameters": [
           {
             "name": "villageId",
@@ -90094,7 +90186,7 @@
           "チームキープ管理"
         ],
         "summary": "チームキープ詳細",
-        "operationId": "get_24",
+        "operationId": "get_25",
         "parameters": [
           {
             "name": "teamPublicId",
@@ -90163,7 +90255,7 @@
           "チームキープ管理"
         ],
         "summary": "チームキープ更新",
-        "operationId": "update_50",
+        "operationId": "update_51",
         "parameters": [
           {
             "name": "teamPublicId",
@@ -95072,7 +95164,7 @@
         "tags": [
           "team-budget-config-controller"
         ],
-        "operationId": "get_25",
+        "operationId": "get_26",
         "parameters": [
           {
             "name": "teamId",
@@ -95101,7 +95193,7 @@
         "tags": [
           "team-budget-config-controller"
         ],
-        "operationId": "update_51",
+        "operationId": "update_52",
         "parameters": [
           {
             "name": "teamId",
@@ -96683,7 +96775,7 @@
         ],
         "summary": "セキュリティインシデント更新",
         "description": "ステータス変更・DPA 通知記録を行う。",
-        "operationId": "update_52",
+        "operationId": "update_53",
         "parameters": [
           {
             "name": "id",
@@ -97076,7 +97168,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート詳細取得",
-        "operationId": "get_26",
+        "operationId": "get_27",
         "parameters": [
           {
             "name": "id",
@@ -97106,7 +97198,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート更新",
-        "operationId": "update_53",
+        "operationId": "update_54",
         "parameters": [
           {
             "name": "id",
@@ -98960,7 +99052,7 @@
           "F03.11 募集型予約 / 募集枠"
         ],
         "summary": "募集枠詳細取得",
-        "operationId": "get_27",
+        "operationId": "get_28",
         "parameters": [
           {
             "name": "id",
@@ -98990,7 +99082,7 @@
           "F03.11 募集型予約 / 募集枠"
         ],
         "summary": "募集枠編集 (§5.7)",
-        "operationId": "update_54",
+        "operationId": "update_55",
         "parameters": [
           {
             "name": "id",
@@ -101444,7 +101536,7 @@
           "組織キープ管理"
         ],
         "summary": "組織キープ詳細",
-        "operationId": "get_28",
+        "operationId": "get_29",
         "parameters": [
           {
             "name": "orgPublicId",
@@ -101513,7 +101605,7 @@
           "組織キープ管理"
         ],
         "summary": "組織キープ更新",
-        "operationId": "update_55",
+        "operationId": "update_56",
         "parameters": [
           {
             "name": "orgPublicId",
@@ -103638,7 +103730,7 @@
         "tags": [
           "org-budget-config-controller"
         ],
-        "operationId": "get_29",
+        "operationId": "get_30",
         "parameters": [
           {
             "name": "orgId",
@@ -103667,7 +103759,7 @@
         "tags": [
           "org-budget-config-controller"
         ],
-        "operationId": "update_56",
+        "operationId": "update_57",
         "parameters": [
           {
             "name": "orgId",
@@ -104071,7 +104163,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目更新",
-        "operationId": "update_57",
+        "operationId": "update_58",
         "parameters": [
           {
             "name": "fieldId",
@@ -104217,7 +104309,7 @@
           "個人キープ管理"
         ],
         "summary": "個人キープ詳細",
-        "operationId": "get_30",
+        "operationId": "get_31",
         "parameters": [
           {
             "name": "keepId",
@@ -104270,7 +104362,7 @@
           "個人キープ管理"
         ],
         "summary": "個人キープ更新",
-        "operationId": "update_58",
+        "operationId": "update_59",
         "parameters": [
           {
             "name": "keepId",
@@ -104474,7 +104566,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割詳細",
-        "operationId": "get_31",
+        "operationId": "get_32",
         "parameters": [
           {
             "name": "id",
@@ -104527,7 +104619,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割メタ情報更新",
-        "operationId": "update_59",
+        "operationId": "update_60",
         "parameters": [
           {
             "name": "id",
@@ -104569,7 +104661,7 @@
           "personal-market-listing-controller"
         ],
         "summary": "個人札のDRAFT編集",
-        "operationId": "update_60",
+        "operationId": "update_61",
         "parameters": [
           {
             "name": "id",
@@ -106425,7 +106517,7 @@
           "F03.11 募集型予約 / キャンセルポリシー"
         ],
         "summary": "ポリシー詳細 (段階含む)",
-        "operationId": "get_32",
+        "operationId": "get_33",
         "parameters": [
           {
             "name": "id",
@@ -106455,7 +106547,7 @@
           "F03.11 募集型予約 / キャンセルポリシー"
         ],
         "summary": "ポリシー編集 (is_template_policy\u003dtrue のみ)",
-        "operationId": "update_61",
+        "operationId": "update_62",
         "parameters": [
           {
             "name": "id",
@@ -106673,7 +106765,7 @@
         "tags": [
           "budget-fiscal-year-controller"
         ],
-        "operationId": "update_62",
+        "operationId": "update_63",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -106753,7 +106845,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "update_63",
+        "operationId": "update_64",
         "parameters": [
           {
             "name": "categoryId",
@@ -107919,7 +108011,7 @@
         ],
         "summary": "同義語編集",
         "description": "synonymDisplay 指定時は再正規化と重複チェックを行う。",
-        "operationId": "update_64",
+        "operationId": "update_65",
         "parameters": [
           {
             "name": "id",
@@ -110687,7 +110779,7 @@
           "村史 (F17.1)"
         ],
         "summary": "指定月の村史を取得する（YYYY-MM-DD 形式）",
-        "operationId": "get_33",
+        "operationId": "get_34",
         "parameters": [
           {
             "name": "villageId",
@@ -110728,7 +110820,7 @@
           "村憲章 (F17.3)"
         ],
         "summary": "村憲章を取得する（read 公開ゲート・PUBLIC は非メンバー可・UNLISTED はメンバー/SYSTEM_ADMIN）",
-        "operationId": "get_34",
+        "operationId": "get_35",
         "parameters": [
           {
             "name": "villageId",
@@ -139738,7 +139830,7 @@
         "tags": [
           "disclosure-form-template-controller"
         ],
-        "operationId": "get_35",
+        "operationId": "get_36",
         "parameters": [
           {
             "name": "templateId",
@@ -142520,7 +142612,7 @@
           "個人横断お知らせウィジェット"
         ],
         "summary": "個人横断お知らせ一覧取得",
-        "description": "所属する全チーム/組織のお知らせを横断集約して返す（個人ダッシュボード用）。TODO: AnnouncementFeedService.getPersonalFeed 実装後に本実装に差し替える。",
+        "description": "現役のチーム・組織所属のお知らせを横断取得する。ページ継続は未提供。",
         "operationId": "getPersonalFeed",
         "parameters": [
           {
@@ -142532,6 +142624,15 @@
               "format": "int32",
               "default": 15
             }
+          },
+          {
+            "name": "include_read",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -142540,7 +142641,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AnnouncementFeedResponseDto"
                 }
               }
             }
@@ -151970,6 +152071,9 @@
           },
           "priority": {
             "type": "string"
+          },
+          "publicVisible": {
+            "type": "boolean"
           },
           "status": {
             "type": "string"
@@ -167275,6 +167379,83 @@
             }
           },
           "targetRole": {
+            "type": "string"
+          }
+        }
+      },
+      "MemberPermissionUpdateItem": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "MemberPermissionUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberPermissionUpdateItem"
+            },
+            "maxItems": 3,
+            "minItems": 3
+          }
+        },
+        "required": [
+          "permissions"
+        ]
+      },
+      "ApiResponseMemberPermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemberPermissionsResponse"
+          }
+        }
+      },
+      "MemberPermissionSetting": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "inherited": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "MemberPermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberPermissionSetting"
+            }
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
             "type": "string"
           }
         }
@@ -184144,6 +184325,9 @@
             "type": "integer",
             "format": "int64"
           },
+          "scopeName": {
+            "type": "string"
+          },
           "scopeType": {
             "type": "string"
           },
@@ -200984,8 +201168,7 @@
             "minLength": 0
           },
           "scopeId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "scopeType": {
             "type": "string",

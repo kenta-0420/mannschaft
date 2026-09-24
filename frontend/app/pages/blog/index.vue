@@ -52,7 +52,7 @@ async function handleTogglePublish(post: BlogPostResponse) {
     if (idx >= 0 && myPosts.value[idx]) {
       myPosts.value[idx] = {
         ...myPosts.value[idx]!,
-        meta: { ...myPosts.value[idx]!.meta, status: newStatus as BlogPostStatus, visibility: myPosts.value[idx]!.meta?.visibility ?? null, postType: myPosts.value[idx]!.meta?.postType ?? null },
+        meta: { ...myPosts.value[idx]!.meta, status: newStatus as BlogPostStatus, visibility: myPosts.value[idx]!.meta?.visibility ?? null, postType: myPosts.value[idx]!.meta?.postType ?? null, publicVisible: myPosts.value[idx]!.meta?.publicVisible ?? false },
       }
     }
     success(newStatus === 'PUBLISHED' ? '記事を公開しました' : '下書きに戻しました')

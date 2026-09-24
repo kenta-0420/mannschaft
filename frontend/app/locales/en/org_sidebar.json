@@ -62,6 +62,7 @@
     "billing": "Billing & plan management",
     "leagueTransfers": "League Transfers",
     "adminConsole": "Admin Console",
+    "memberPermissions": "Default MEMBER permissions",
     "receipts": "Receipts",
     "receiptSettings": "Receipt issuer settings",
     "vendors": "Vendors",

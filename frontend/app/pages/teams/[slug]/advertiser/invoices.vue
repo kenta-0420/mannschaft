@@ -15,6 +15,8 @@ const loading = ref(true)
 const selectedInvoice = ref<InvoiceDetailResponse | null>(null)
 const showDetail = ref(false)
 const statusFilter = ref<InvoiceStatus | null>(null)
+/** 取得失敗は「請求書なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 const statusOptions = computed(() => [
   { label: t('advertising.teams_page.invoices.status_all'), value: null },
@@ -26,13 +28,17 @@ const statusOptions = computed(() => [
 
 async function loadInvoices() {
   loading.value = true
+  loadFailed.value = false
   try {
     const params: Record<string, string> = {}
     if (statusFilter.value) params.status = statusFilter.value
     const res = await advertiserApi.getInvoices('TEAM', teamSlug, params)
     invoices.value = res.data
   }
-  catch { invoices.value = [] }
+  catch {
+    invoices.value = []
+    loadFailed.value = true
+  }
   finally { loading.value = false }
 }
 
@@ -75,6 +81,12 @@ onMounted(loadInvoices)
     </div>
 
     <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="advertiser-invoices-error-state"
+      @retry="loadInvoices"
+    />
 
     <DataTable v-else :value="invoices" striped-rows @row-click="(e: { data: InvoiceSummaryResponse }) => viewDetail(e.data)">
       <Column field="invoiceNumber" :header="t('advertising.teams_page.invoices.column_invoice_number')" />

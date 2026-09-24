@@ -8,7 +8,7 @@ import com.mannschaft.app.payment.entity.TeamAccessRequirementEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.OrganizationAccessRequirementRepository;
 import com.mannschaft.app.payment.repository.TeamAccessRequirementRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ public class PaymentRequirementService {
     private final OrganizationAccessRequirementRepository organizationAccessRequirementRepository;
     private final PaymentItemService paymentItemService;
     private final MemberPaymentRepository memberPaymentRepository;
-    private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
 
     /**
      * ユーザーに課されている未払い要件一覧を取得する。
@@ -40,12 +40,12 @@ public class PaymentRequirementService {
         List<PaymentRequirementResponse> requirements = new ArrayList<>();
 
         // ユーザーの所属チーム一覧（CMP-027: user_roles ∪ memberships の在籍チーム）ごとに access_requirements を確認
-        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
+        for (Long teamId : membershipScopeQueryService.findActiveTeamIds(userId)) {
             requirements.addAll(getTeamPaymentRequirements(userId, teamId));
         }
 
         // ユーザーの所属組織一覧（CMP-027: user_roles ∪ memberships の在籍組織）ごとに access_requirements を確認
-        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
+        for (Long orgId : membershipScopeQueryService.findActiveOrganizationIds(userId)) {
             requirements.addAll(getOrganizationPaymentRequirements(userId, orgId));
         }
 

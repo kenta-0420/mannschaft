@@ -211,7 +211,7 @@ watch(() => props.threadId, () => loadThread())
         <div
           v-for="reply in replies"
           :key="reply.id"
-          class="rounded-lg border border-surface-100 bg-surface-0 p-4"
+          class="rounded-lg border border-surface-100 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
           :style="{ marginLeft: `${reply.depth * 24}px` }"
         >
           <div class="mb-2 flex items-center gap-2 text-xs text-surface-400">
