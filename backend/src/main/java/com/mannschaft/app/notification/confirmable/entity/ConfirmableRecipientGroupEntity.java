@@ -81,4 +81,9 @@ public class ConfirmableRecipientGroupEntity extends UuidV7Entity {
     public boolean isDeleted() {
         return this.deletedAt != null;
     }
+
+    /** グループ名を変更する（更新API用）。 */
+    public void rename(String newName) {
+        this.name = newName;
+    }
 }
