@@ -129,9 +129,14 @@ class FlywayFromScratchMigrationTest {
      *   <li><b>{@code circulation_recipients}（3 件）</b> —
      *       V9.175 のコメントは「V9.171 で追加済み」と書いているが、
      *       V9.171 は {@code create_name_disclosure_change_logs} で無関係。実際にはどこにも存在しない。</li>
-     *   <li><b>{@code content_reports.content_hidden}・{@code tournament_entry_members.member_number}・
-     *       {@code tournament_entry_template_members.created_at/updated_at}（4 件）</b> —
-     *       {@code queue_tickets.guest_phone} と同型（Entity にだけ足して migration を忘れた）。</li>
+     *   <li><b>{@code tournament_entry_members.member_number}・
+     *       {@code tournament_entry_template_members.created_at/updated_at}（旧 4 件・うち
+     *       {@code content_reports.content_hidden} は 2026-09-22 に CMP-260920-0705 で返済）</b> —
+     *       {@code queue_tickets.guest_phone} と同型（Entity にだけ足して migration を忘れた）。
+     *       {@code content_reports.content_hidden} は本番相当環境で
+     *       {@code Unknown column 'cre1_0.content_hidden'} により運営の通報一覧
+     *       {@code GET /api/v1/admin/moderation/reports} が常時 500 になっており、
+     *       V220 で列を追加して台帳から削除した。</li>
      *   <li><b>{@code shift_budget_allocations} の {@code *_uq}（旧 3 件・2026-09-09 に返済）</b> —
      *       Entity が {@code @GeneratedColumn} で生成カラムを宣言していたが、Flyway（V11.030）は
      *       MySQL 8.0 の制約（FK ベースカラムに STORED 生成カラム不可、Error 3192）により
@@ -152,7 +157,6 @@ class FlywayFromScratchMigrationTest {
         "circulation_recipients.skip_reason",
         "circulation_recipients.skipped_by",
         "circulation_recipients.skipped_at",
-        "content_reports.content_hidden",
         "tournament_entry_members.member_number",
         "tournament_entry_template_members.created_at",
         "tournament_entry_template_members.updated_at",

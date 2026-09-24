@@ -42,12 +42,12 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3574);   // 内訳: 3566 + 2 + 2 + 3 + 1 = 3574
+                .isEqualTo(3576);   // 内訳: 3566 + 2 + 2 + 3 + 3 = 3576
                                     //   main 3566（ブログ・スケジュール画像の完了確認2本を含む）
                                     // + Billing Center PR6a の解約/撤回2エンドポイント（D6・正本 05:334-335）
                                     // + CMP-260912-1525 のメンバー一括取得・チーム時給一括取得の2エンドポイント
                                     // + Billing Center PR6b-1 の見積り/実行/3DS payment-action の3エンドポイント（AC-142/145・第13隊）
-                                    // + CMP-011 の会費チェックアウト状態取得1エンドポイント
+                                    // + CMP-011 の会費チェックアウト状態取得・領収書PDF・手数料明細PDFの3エンドポイント
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.STOMP).count())
                 .as("STOMP @MessageMapping の走査総数。Chat 2件と VillageLobbyPresence 3件")
                 .isEqualTo(5);

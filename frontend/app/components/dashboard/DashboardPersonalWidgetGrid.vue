@@ -66,9 +66,14 @@ function linkTo(key: string): string | undefined {
     <template v-for="widget in widgets" :key="widget.key">
       <div
         v-show="widget.key !== 'event-dismissal-reminder' || dismissalHasContent"
-        class="min-w-0"
+        class="personal-widget-grid-item min-w-0"
         :class="
-          widget.key === 'notices' || widget.key === 'my-calendar' ? 'col-span-1 md:col-span-2' : ''
+          [
+            widget.key === 'notices' || widget.key === 'my-calendar'
+              ? 'col-span-1 md:col-span-2'
+              : '',
+            collapsedKeys.has(widget.key) ? 'max-md:col-span-full' : '',
+          ]
         "
       >
         <template v-if="isDataWidget(widget.key)">
@@ -150,14 +155,22 @@ function linkTo(key: string): string | undefined {
             </button>
             <i class="pi pi-chevron-right hidden text-xs text-surface-400 md:block" />
           </div>
-          <p
-            class="text-xs text-surface-500"
-            :class="collapsedKeys.has(widget.key) ? 'hidden md:block' : ''"
+          <div
+            class="grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none md:grid-rows-[1fr] md:opacity-100"
+            :class="collapsedKeys.has(widget.key) ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'"
           >
-            {{ $t(widget.descriptionKey) }}
-          </p>
+            <div class="min-h-0 overflow-hidden">
+              <p class="text-xs text-surface-500">{{ $t(widget.descriptionKey) }}</p>
+            </div>
+          </div>
         </DashboardWidgetCard>
       </div>
     </template>
   </div>
 </template>
+
+<style scoped>
+:global(.personal-widget-grid-item:has([data-widget-collapsed='true'])) {
+  grid-column: 1 / -1;
+}
+</style>

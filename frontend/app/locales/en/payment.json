@@ -236,8 +236,7 @@
       "via": {
         "SELF": "Self",
         "GUARDIAN": "Guardian",
-        "GUARDIAN_PROXY": "Guardian proxy",
-        "PROXY_GRANT": "Proxy grant"
+        "GUARDIAN_PROXY": "Guardian proxy"
       },
       "selectAll": "Select all",
       "deselectAll": "Deselect all",

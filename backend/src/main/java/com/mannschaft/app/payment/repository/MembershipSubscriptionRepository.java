@@ -90,6 +90,13 @@ public interface MembershipSubscriptionRepository
     List<UUID> findIdsByPayerUserIdAndStatusIn(@Param("payerUserId") Long payerUserId,
             @Param("statuses") Collection<MembershipSubscriptionStatus> statuses);
 
+    /** 受益者退会の対象 ID を抽出し、取消トランザクション内で状態を再検証する。 */
+    @Query("SELECT s.id FROM MembershipSubscriptionEntity s "
+            + "WHERE s.beneficiaryUserId = :beneficiaryUserId AND s.status IN :statuses "
+            + "AND s.deletedAt IS NULL ORDER BY s.createdAt ASC, s.id ASC")
+    List<UUID> findIdsByBeneficiaryUserIdAndStatusIn(@Param("beneficiaryUserId") Long beneficiaryUserId,
+            @Param("statuses") Collection<MembershipSubscriptionStatus> statuses);
+
     /**
      * 柱③-B PR-3: 退会申請中の払い手のうち、<b>まだ期末解約が予約されていない</b>継続課金 ID を引く
      * （PR-4 の照合バッチの本体・Codex 検分2巡目 P1-2）。

@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -202,13 +203,17 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更。
+        // teamB の ADMIN は teamA に所属していない（isMember=false）ため「存在自体を隠すべき」側と
+        // 判定し、不在時と同一の SHIFT_001/404 を返す（村の前例 VillageAccessGate に倣う）。
+        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(patch("/api/v1/shifts/schedules/{id}", scheduleAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("title", "更新後"))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -239,11 +244,13 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更（理由は UpdateSchedule 節参照）。
+        @DisplayName("別scope ADMINは404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(delete("/api/v1/shifts/schedules/{id}", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -273,12 +280,14 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINはPUBLISH遷移403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更（理由は UpdateSchedule 節参照）。
+        @DisplayName("別scope ADMINはPUBLISH遷移404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(post("/api/v1/shifts/schedules/{id}/transition", scheduleAId)
                             .param("status", "PUBLISHED"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -308,11 +317,13 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINが複製元(source)のscheduleIdを直接指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更（理由は UpdateSchedule 節参照）。
+        @DisplayName("別scope ADMIN（teamBのADMINが複製元(source)のscheduleIdを直接指定）は404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(post("/api/v1/shifts/schedules/{id}/duplicate", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -423,15 +434,23 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: GET /shifts/schedules/{id} は実機確認済みの存在オラクルだった。
+        // 他テナント（teamBのADMIN）が存在するIDを叩くと403、存在しないIDだと404で応答が割れ、
+        // scheduleId（連番）の総当りでシフトスケジュールの実在を判別できていた。
+        // 村ドメインの VillageAccessGate と同じ作法（不在側のコードそのものを返す）で
+        // 越境を不在時と同一の SHIFT_001/404 に寄せる。
+        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
-        @DisplayName("SUPPORTERは403")
+        // SUPPORTER は teamA に籍を置くメンバー（同一チーム内の権限不足）であり、
+        // 「存在自体を隠すべきか」の基準では隠す必要が無い側 = 403 のまま残す。
+        @DisplayName("SUPPORTERは403（同一チーム内の権限不足のため退行させない）")
         void サポーターは403() throws Exception {
             setAuth(supporterTeamAId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
@@ -439,11 +458,34 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("無所属の認証ユーザーは403")
-        void 無所属ユーザーは403() throws Exception {
+        // CMP-260917-1137: 無所属ユーザーもテナントに属さない越境と同じ扱いとし、404 へ寄せる。
+        @DisplayName("無所属の認証ユーザーは404（存在オラクル解消）")
+        void 無所属ユーザーは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
+        }
+
+        @Test
+        // CMP-260917-1137 の核心: 「存在するが越境」と「存在しない」の応答が
+        // ステータス・エラーコード・本文まで完全に一致し、総当りで存在を判別できないことを固定する。
+        @DisplayName("存在オラクル解消: 越境(存在するID)と不在(存在しないID)の応答が区別できない")
+        void 存在オラクルは解消されている() throws Exception {
+            setAuth(adminTeamBId);
+
+            String crossTenantBody = mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn().getResponse().getContentAsString();
+
+            long nonExistentId = scheduleAId + 999_999L;
+            String notFoundBody = mockMvc.perform(get("/api/v1/shifts/schedules/{id}", nonExistentId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn().getResponse().getContentAsString();
+
+            org.assertj.core.api.Assertions.assertThat(crossTenantBody).isEqualTo(notFoundBody);
         }
     }
 

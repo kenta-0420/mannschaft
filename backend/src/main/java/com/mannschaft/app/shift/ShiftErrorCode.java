@@ -112,7 +112,22 @@ public enum ShiftErrorCode implements ErrorCode {
      * {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} への明示登録が要る
      *（{@code Severity.WARN} の既定は 400 のため）。</p>
      */
-    DUPLICATE_ASSIGNMENT("SHIFT_042", "同じ時間帯の枠に同じメンバーが既に割り当てられています", Severity.WARN);
+    DUPLICATE_ASSIGNMENT("SHIFT_042", "同じ時間帯の枠に同じメンバーが既に割り当てられています", Severity.WARN),
+
+    /**
+     * デフォルト勤務可能時間の {@code preference} が {@link com.mannschaft.app.shift.ShiftPreference}
+     * の有効値ではない（CMP-260912-1758・400）。
+     *
+     * <p>根治前は {@code ShiftPreference.valueOf()} が素通しで {@code IllegalArgumentException} を
+     * 未捕捉のまま投げ、{@code COMMON_999}（500）になっていた。</p>
+     */
+    INVALID_AVAILABILITY_PREFERENCE("SHIFT_043", "勤務希望区分の指定が不正です", Severity.WARN),
+
+    /**
+     * デフォルト勤務可能時間の一括設定で、同一 {@code dayOfWeek} の行が重複している
+     *（CMP-260912-1758・400）。
+     */
+    DUPLICATE_AVAILABILITY_DAY_OF_WEEK("SHIFT_044", "同じ曜日の勤務可能時間が複数指定されています", Severity.WARN);
 
     private final String code;
     private final String message;

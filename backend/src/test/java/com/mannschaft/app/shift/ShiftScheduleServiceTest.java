@@ -288,8 +288,11 @@ class ShiftScheduleServiceTest {
         }
 
         @Test
-        @DisplayName("別チームのユーザーは単体取得不可_COMMON_002（BOLA封鎖・scopeは実体由来）")
-        void 別チームのユーザーは単体取得不可_COMMON_002() {
+        // CMP-260917-1137: 越境（scopeはスケジュール実体のteamIdで解決、所属すらしていない）は
+        // scheduleId 総当りでの存在オラクル対策として、不在時と同一の SHIFT_SCHEDULE_NOT_FOUND(404) に
+        // 変更した（旧: COMMON_002/403）。
+        @DisplayName("別チームのユーザーは単体取得不可_SHIFT_SCHEDULE_NOT_FOUND（BOLA封鎖・存在オラクル解消）")
+        void 別チームのユーザーは単体取得不可_SHIFT_SCHEDULE_NOT_FOUND() {
             // Given: scope はスケジュール実体の teamId で解決される
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
@@ -299,7 +302,7 @@ class ShiftScheduleServiceTest {
             assertThatThrownBy(() -> shiftScheduleService.getSchedule(SCHEDULE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(CommonErrorCode.COMMON_002));
+                            .isEqualTo(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
             verify(shiftMapper, never()).toScheduleResponse(any());
         }
 
@@ -442,6 +445,8 @@ class ShiftScheduleServiceTest {
                     "更新タイトル", null, null, null, null, null, null);
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willReturn(entity);
             given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
 
@@ -475,6 +480,8 @@ class ShiftScheduleServiceTest {
                     null, null, LocalDate.of(2026, 3, 10), LocalDate.of(2026, 3, 1),
                     null, null, null);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
             assertThatThrownBy(() -> shiftScheduleService.updateSchedule(SCHEDULE_ID, req, USER_ID))
@@ -492,8 +499,10 @@ class ShiftScheduleServiceTest {
                     "更新タイトル", null, null, null, null, null, null);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            // CMP-260917-1137: 同一チーム内の権限不足（isMember=true, isAdminOrAbove=false）は
+            // 隠す必要が無いため従来どおり COMMON_002/403。越境（isMember=false）だけを 404 化した。
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             // When & Then
             assertThatThrownBy(() -> shiftScheduleService.updateSchedule(SCHEDULE_ID, req, USER_ID))
@@ -535,6 +544,8 @@ class ShiftScheduleServiceTest {
             ShiftScheduleResponse response = createScheduleResponse();
 
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(existing));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
 
@@ -566,6 +577,8 @@ class ShiftScheduleServiceTest {
             ShiftScheduleResponse response = createScheduleResponse();
 
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(existing));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
 
@@ -596,6 +609,8 @@ class ShiftScheduleServiceTest {
             // Given
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
 
             // When
@@ -624,8 +639,9 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            // CMP-260917-1137: 同一チーム内の権限不足は隠す必要が無いため従来どおり 403。
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             // When & Then
             assertThatThrownBy(() -> shiftScheduleService.deleteSchedule(SCHEDULE_ID, USER_ID))
@@ -651,6 +667,8 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
 
@@ -669,6 +687,8 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
 
@@ -686,6 +706,8 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
 
@@ -705,6 +727,8 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
 
@@ -721,6 +745,8 @@ class ShiftScheduleServiceTest {
             // Given
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
             assertThatThrownBy(() -> shiftScheduleService.transitionStatus(SCHEDULE_ID, "DRAFT", USER_ID))
@@ -736,8 +762,9 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            // CMP-260917-1137: 同一チーム内の権限不足は隠す必要が無いため従来どおり 403。
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             // When & Then
             assertThatThrownBy(() -> shiftScheduleService.transitionStatus(SCHEDULE_ID, "PUBLISHED", USER_ID))
@@ -765,6 +792,8 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity duplicate = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(source));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willReturn(duplicate);
             given(shiftMapper.toScheduleResponse(duplicate)).willReturn(response);
 
@@ -794,8 +823,9 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity source = createScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(source));
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            // CMP-260917-1137: 同一チーム内の権限不足は隠す必要が無いため従来どおり 403。
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             // When & Then
             assertThatThrownBy(() -> shiftScheduleService.duplicateSchedule(SCHEDULE_ID, USER_ID))
@@ -821,6 +851,8 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity schedule = createScheduleEntity();
             ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // ポジション
             ShiftPositionEntity posHall = ShiftPositionEntity.builder().teamId(TEAM_ID).name("ホール").build();
@@ -893,6 +925,8 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity schedule = createScheduleEntity();
             ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
                     .willReturn(List.of());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
@@ -918,9 +952,10 @@ class ShiftScheduleServiceTest {
             ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            // 当該チームの ADMIN/DEPUTY_ADMIN でない → checkAdminOrAbove が COMMON_002 を投げる
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            // CMP-260917-1137: 当該チームの ADMIN/DEPUTY_ADMIN でない（同一チーム内の権限不足）は
+            // 隠す必要が無いため従来どおり 403。
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             assertThatThrownBy(() -> shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)

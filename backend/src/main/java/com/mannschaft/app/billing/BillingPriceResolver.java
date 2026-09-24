@@ -1,5 +1,6 @@
 package com.mannschaft.app.billing;
 
+import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,9 +27,16 @@ public class BillingPriceResolver {
     private final ScopeMemberCountService scopeMemberCountService;
 
     /**
-     * 契約の月額（円）を解決する。マスタ不整合/未定は {@code null}（無償）を返す（fail-safe＝無償に倒す）。
+     * 契約の月額（円）を解決する。
      *
-     * @return 月額（円）。NULL のとき無償フロー、非 NULL のとき決済フロー
+     * <p>「プラン不在」と「価格未設定」は意味が異なる（早馬・課金事故対応）。{@code planKey} 自体が
+     * マスタに存在しない場合は呼び出し元（{@code BillingContractService}）が別途 {@code PLAN_NOT_FOUND}
+     * を検証するため {@code null} を返す。一方、プランは存在するのに月額（base/band とも）が NULL の場合は
+     * マスタ整備漏れであり「0 円の無償プラン」ではないため、無償フローへ畳まず
+     * {@link EntitlementErrorCode#PLAN_PRICE_NOT_CONFIGURED} を投げて契約自体を拒否する。</p>
+     *
+     * @return 月額（円）。{@code planKey} がマスタに存在しない場合のみ {@code null}
+     * @throws BusinessException プランは存在するが価格が未設定（NULL）の場合
      */
     public Integer resolveMonthlyPriceJpy(
             EntitlementScopeKind scopeKind, Long scopeId, ContractKind contractKind,
@@ -41,11 +49,12 @@ public class BillingPriceResolver {
         // PLAN
         PlanEntity plan = planRepository.findById(planKey).orElse(null);
         if (plan == null) {
+            // プラン自体が不在 → 呼び出し元の PLAN_NOT_FOUND 検証に委ねる（無償扱いにしない）。
             return null;
         }
         Integer base = plan.getBaseMonthlyPriceJpy();
         if (scopeKind == EntitlementScopeKind.USER) {
-            return base;
+            return requireConfigured(base);
         }
         // TEAM / ORG: バンド価格を優先（バンド未定義/価格 NULL は base へフォールバック）。
         PlanPriceBandScopeKind bandScope = scopeKind == EntitlementScopeKind.TEAM
@@ -56,9 +65,20 @@ public class BillingPriceResolver {
             boolean lowerOk = band.getMinMembers() != null && memberCount >= band.getMinMembers();
             boolean upperOk = band.getMaxMembers() == null || memberCount <= band.getMaxMembers();
             if (lowerOk && upperOk) {
-                return band.getMonthlyPriceJpy() != null ? band.getMonthlyPriceJpy() : base;
+                return requireConfigured(band.getMonthlyPriceJpy() != null ? band.getMonthlyPriceJpy() : base);
             }
         }
-        return base;
+        return requireConfigured(base);
+    }
+
+    /**
+     * 「0 円と明示された無償プラン」（base=0）はそのまま通し、「価格未設定（NULL）」のみ拒否する。
+     * プランがマスタに存在すると確定した後の最終価格にのみ適用する（プラン不在時は呼ばない）。
+     */
+    private Integer requireConfigured(Integer priceJpy) {
+        if (priceJpy == null) {
+            throw new BusinessException(EntitlementErrorCode.PLAN_PRICE_NOT_CONFIGURED);
+        }
+        return priceJpy;
     }
 }

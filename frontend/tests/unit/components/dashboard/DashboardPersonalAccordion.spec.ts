@@ -91,6 +91,18 @@ describe('DashboardPersonalAccordion', () => {
     await buttons[0]!.trigger('click')
     expect(wrapper.findAll('[aria-expanded="true"]')).toHaveLength(1)
     expect(wrapper.findAll('.widget-grid')).toHaveLength(3)
+    const scheduleRegion = wrapper.get('#personal-dashboard-section-schedule')
+    expect(scheduleRegion.classes()).toEqual(
+      expect.arrayContaining(['grid-rows-[0fr]', 'opacity-0']),
+    )
+    expect(scheduleRegion.attributes('aria-hidden')).toBe('true')
+    expect(scheduleRegion.attributes()).toHaveProperty('inert')
+    await buttons[0]!.trigger('click')
+    expect(scheduleRegion.classes()).toEqual(
+      expect.arrayContaining(['grid-rows-[1fr]', 'opacity-100']),
+    )
+    expect(scheduleRegion.attributes('aria-hidden')).toBe('false')
+    expect(scheduleRegion.attributes()).not.toHaveProperty('inert')
   })
   it('classifies all 24 widgets and provides ARIA plus a zero-count badge', async () => {
     const emptyWrapper = await mountAccordion([widget('my-calendar'), widget('notices')])
