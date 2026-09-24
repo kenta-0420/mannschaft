@@ -3,12 +3,15 @@ package com.mannschaft.app.notification.confirmable.repository;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * F04.9 確認通知リポジトリ。
@@ -61,4 +64,18 @@ public interface ConfirmableNotificationRepository
      */
     boolean existsBySourceTypeAndSourceIdAndStatus(
             String sourceType, Long sourceId, ConfirmableNotificationStatus status);
+
+    /**
+     * CMP-260920-1040: 親の行を {@code SELECT ... FOR UPDATE} でロックして読む（軍議第8版確定稿 §9.2・§11.1）。
+     *
+     * <p>親の行を扱うすべてのトランザクション（chunk・finish・confirm・confirmByToken・cancel・expire・
+     * リマインド）は、そのトランザクションで最初に親を読む操作を本メソッドにすること
+     * （通常の {@code findById} で先に読み込永続化コンテキストへ載せてはならない）。</p>
+     *
+     * @param id 確認通知 ID
+     * @return ロック済みの確認通知（存在しなければ empty）
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT n FROM ConfirmableNotificationEntity n WHERE n.id = :id")
+    Optional<ConfirmableNotificationEntity> findByIdForUpdate(@Param("id") Long id);
 }

@@ -75,4 +75,33 @@ public class ConfirmableNotificationExpiryBatchService {
 
         log.info("確認通知期限切れバッチ完了: 対象={}, 期限切れ処理={}", expiredTargets.size(), expiredCount);
     }
+
+    /**
+     * CMP-260920-1040: 期限切れ対象の ID だけを抽出する（軍議第8版確定稿 §11.1 手順1）。
+     *
+     * <p>エンティティは読み込まない（{@code SELECT id ... WHERE status='ACTIVE' AND deadline_at < now}）。
+     * 骨格のみ（試練B）。実装は出陣で行う。</p>
+     *
+     * @param now 現在日時
+     * @return 期限切れ対象の確認通知 ID 一覧
+     */
+    public List<Long> findExpiredIds(LocalDateTime now) {
+        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+    }
+
+    /**
+     * CMP-260920-1040: ID 1件ごとに独立したトランザクション（REQUIRES_NEW）で、親を
+     * {@code findByIdForUpdate} でロックして最新の状態を読み、ACTIVE かつ期限を過ぎている場合だけ
+     * EXPIRED にする（軍議第8版確定稿 §11.1 手順2）。
+     *
+     * <p>この間に別トランザクションが先に COMPLETED を確定していた場合は何もしない（AC-67）。
+     * 骨格のみ（試練B）。実装は出陣で行う。</p>
+     *
+     * @param notificationId 確認通知 ID
+     * @param now            現在日時
+     * @return EXPIRED に遷移させたら true。ACTIVE でなくなっていた等で何もしなかったら false
+     */
+    public boolean expireOneWithLock(Long notificationId, LocalDateTime now) {
+        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+    }
 }
