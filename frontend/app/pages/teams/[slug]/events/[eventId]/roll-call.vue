@@ -40,11 +40,20 @@ const showHistory = ref(false)
 const loadFailed = ref(false)
 
 async function reload(): Promise<void> {
-  // loadCandidates は失敗時に再 throw するため、Promise.all のままだと
-  // loadAdvanceNotices の完了を待たずに reload() 自体が reject してしまう。
-  // allSettled で両方の完了を待ったうえで、点呼候補側だけの成否を loadFailed に反映する。
-  const [candidatesResult] = await Promise.allSettled([loadCandidates(), loadAdvanceNotices()])
-  loadFailed.value = candidatesResult.status === 'rejected'
+  // 【検分差し戻し対応・CMP-260922-2045】loadCandidates と loadAdvanceNotices を
+  // allSettled で両方の完了を待ってから loadFailed を決めていたが、それだと
+  // 補助情報（事前連絡）が遅い／止まっている間、候補取得の成否が画面に反映されない
+  // （初回: 候補が失敗していても補助情報待ちの間は空状態のまま／再試行: 候補が
+  // 成功してもエラー画面から戻れない）。loadFailed は候補取得が終わった時点で
+  // 即座に反映し、補助情報の完了を待たない。補助情報は従来どおり並行して取得する
+  // （失敗しても静かに0件扱いという既存方針は変えない）。
+  void loadAdvanceNotices()
+  loadFailed.value = false
+  try {
+    await loadCandidates()
+  } catch {
+    loadFailed.value = true
+  }
 }
 
 async function loadAdvanceNotices(): Promise<void> {

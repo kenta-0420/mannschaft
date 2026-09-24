@@ -16,6 +16,17 @@ import RollCallPage from '~/pages/teams/[slug]/events/[eventId]/roll-call.vue'
  *   RC-002（対照）取得成功・0件時は roll-call-empty（RollCallSheet 側の空状態）が出て、
  *          エラー状態は出ない
  *   RC-003 再試行は初回表示と同じ取得関数（getCandidates）を呼ぶ
+ *
+ * 【検分差し戻し対応】候補取得（主データ）の成否を、補助情報（事前連絡 /
+ * getAdvanceNotices）の完了を待たずに反映することの根治テスト。
+ * 修正前は `Promise.allSettled([loadCandidates(), loadAdvanceNotices()])` の
+ * 完了を待ってから loadFailed を決めていたため、補助情報が終わらない間は
+ * 候補取得の成否が画面に反映されなかった（初回: 候補が失敗していてもエラー状態が
+ * 出ない／再試行: 候補が成功してもエラー画面から戻れない）。
+ *   RC-004 補助情報が解決しない状態で候補取得が失敗 → 補助情報を待たずに
+ *          roll-call-error-state が描画される
+ *   RC-005 同じ状態で再試行し候補取得が成功 → 補助情報を待たずにエラー状態が消え、
+ *          roll-call-empty（候補0件の通常空状態）が出る
  */
 
 const getCandidates = vi.fn()
@@ -85,6 +96,34 @@ describe('pages/teams/[slug]/events/[eventId]/roll-call.vue — 取得失敗時�
 
     expect(getCandidates).toHaveBeenCalledTimes(2)
     expect(wrapper.find('[data-testid="roll-call-error-state"]').exists()).toBe(false)
+  })
+
+  it('RC-004: 補助情報が解決しない状態で候補取得が失敗 → 補助情報を待たずにエラー状態が出る', async () => {
+    // getAdvanceNotices は意図的に resolve/reject させない（止まっている状態を模す）
+    getAdvanceNotices.mockReturnValue(new Promise(() => {}))
+    getCandidates.mockRejectedValue(new Error('network error'))
+    const wrapper = await mountSuspended(RollCallPage)
+    await flushMicrotasks()
+
+    expect(wrapper.find('[data-testid="roll-call-error-state"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="roll-call-empty"]').exists()).toBe(false)
+  })
+
+  it('RC-005: 同じ状態で再試行し候補取得が成功 → 補助情報を待たずにエラー状態が消える', async () => {
+    getAdvanceNotices.mockReturnValue(new Promise(() => {}))
+    getCandidates.mockRejectedValueOnce(new Error('network error'))
+    const wrapper = await mountSuspended(RollCallPage)
+    await flushMicrotasks()
+    expect(wrapper.find('[data-testid="roll-call-error-state"]').exists()).toBe(true)
+
+    getCandidates.mockResolvedValueOnce([])
+    const retryButton = wrapper.find('[data-testid="roll-call-error-state-retry"]')
+    expect(retryButton.exists()).toBe(true)
+    await retryButton.trigger('click')
+    await flushMicrotasks()
+
+    expect(wrapper.find('[data-testid="roll-call-error-state"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="roll-call-empty"]').exists()).toBe(true)
   })
 })
 
