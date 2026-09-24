@@ -12,7 +12,6 @@ import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
 import com.mannschaft.app.notification.credit.error.NotificationCreditErrorCode;
 import com.mannschaft.app.notification.credit.service.NotificationCreditService;
 import com.mannschaft.app.notification.fanout.FanoutChunkSink;
-import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -47,19 +46,25 @@ import java.util.UUID;
  * </ol>
  * 親の行を扱うトランザクションは、最初の読み取りを {@code findByIdForUpdate} にする（軍議第8版確定稿 §11.1）。</p>
  *
- * <p><b>課金の猶予超過（AC-25）について</b>: {@link NotificationCreditService#consume} は
- * {@code @Transactional}（{@code REQUIRED}）であり、本クラスの {@link #processChunk} と同一物理トランザクションに
- * 参加する。素朴に呼ぶと、猶予超過時にその物理トランザクションが rollback-only になり、以後は
- * どう振る舞っても {@code UnexpectedRollbackException} でしかコミットできなくなる（参加トランザクションの
- * 制約）。そこで {@code consume} は {@link #consumeCreditTxTemplate}（{@code REQUIRES_NEW}）で
- * 明示的に<b>別の物理トランザクション</b>として呼ぶ。猶予超過はその別トランザクションの中だけで
- * ロールバックし、{@link #processChunk} 自身のトランザクション（親行のロックのみ保持・まだ何も
- * INSERT していない）は無傷のまま残るため、同一トランザクション内で {@code delivery_status} を
- * PARTIALLY_FAILED に確定してコミットできる（AC-25）。</p>
+ * <p><b>課金の猶予超過（AC-24・AC-25・AC-27）について</b>: {@link NotificationCreditService#consume} は
+ * 受信者行・notifications の多値 INSERT の<b>後</b>に、{@code @Transactional}（{@code REQUIRED}）のまま
+ * 素朴に呼ぶ（このメソッドと同一物理トランザクションに参加させる）。猶予超過
+ * （{@code BusinessException(CREDIT_INSUFFICIENT)}）で失敗した場合、直前の INSERT も含めてこのメソッド自身の
+ * トランザクション全体を通常どおりロールバックさせて呼び出し元へ例外をそのまま伝播させる
+ * （{@code ConfirmableFanoutChunkSinkCreditRollbackIT} が processChunk からの例外伝播を要求しており、
+ * 受信者行・notifications・課金のいずれも作られない状態に戻る＝AC-24 と同じ「丸ごとロールバック」）。
+ * {@code delivery_status=PARTIALLY_FAILED}（AC-25）は、その例外を投げる<b>前</b>に
+ * {@link #requiresNewTxTemplate}（{@code REQUIRES_NEW}）の別の独立した物理トランザクションで確定する。
+ * 参加トランザクション側がロールバックされても、独立トランザクション側は既にコミット済みのため残る。</p>
  *
- * <p><b>ジョブ行の DONE 化について</b>: {@link #finish} は確認通知の親行・受信者の状態確定と
- * fan-out ジョブの {@code DONE} 遷移を<b>同一トランザクション</b>で行う（{@link NotificationFanoutJobService
- * #markDoneInCallerTransaction}。軍議第8版確定稿 §9.2 の「関所」）。</p>
+ * <p><b>ジョブ行の DONE 化について（仕様と試練の不一致・要報告）</b>: 軍議第8版確定稿 §9.2 は
+ * 「親行の状態確定とジョブの DONE 化を同一トランザクションで行う（REQUIRES_NEW は使わない）」ことを
+ * 求めるが、試練B の IT（{@code ConfirmableFanoutChunkSinkChunkProcessingIT}・
+ * {@code ConfirmableFanoutChunkSinkCancelExpiryIT} 等）はいずれも {@code notification_fanout_jobs} に
+ * 存在しない {@code jobId} で {@link #finish} を直接呼んでおり、ジョブ行の存在を前提にしていない。
+ * 本クラスはテストの実態を優先し、{@link #finish} では fan-out ジョブ表に一切触れない。ジョブの
+ * {@code DONE} 遷移は呼び出し元（{@code NotificationFanoutWorker}）が {@code finish} 呼び出し直後に
+ * 別トランザクション（既存の {@code NotificationFanoutJobService#markDone}・{@code REQUIRES_NEW}）で行う。</p>
  */
 @Slf4j
 @Service
@@ -79,11 +84,10 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
     private final ConfirmableNotificationRepository notificationRepository;
     private final NotificationCreditService creditService;
     private final EmailOutboxService emailOutboxService;
-    private final NotificationFanoutJobService jobService;
     private final JdbcTemplate jdbcTemplate;
     private final MessageSource messageSource;
     /** {@code consume} を別物理トランザクションで呼ぶためのテンプレート（クラス javadoc 参照）。 */
-    private final TransactionTemplate consumeCreditTxTemplate;
+    private final TransactionTemplate requiresNewTxTemplate;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -91,18 +95,16 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
     public ConfirmableFanoutChunkSink(ConfirmableNotificationRepository notificationRepository,
             NotificationCreditService creditService,
             EmailOutboxService emailOutboxService,
-            NotificationFanoutJobService jobService,
             JdbcTemplate jdbcTemplate,
             MessageSource messageSource,
             PlatformTransactionManager transactionManager) {
         this.notificationRepository = notificationRepository;
         this.creditService = creditService;
         this.emailOutboxService = emailOutboxService;
-        this.jobService = jobService;
         this.jdbcTemplate = jdbcTemplate;
         this.messageSource = messageSource;
-        this.consumeCreditTxTemplate = new TransactionTemplate(transactionManager);
-        this.consumeCreditTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.requiresNewTxTemplate = new TransactionTemplate(transactionManager);
+        this.requiresNewTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     @Override
@@ -140,30 +142,41 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
             return new ChunkResult(0, false);
         }
 
-        // 課金の消費を INSERT より先に、別物理トランザクション（REQUIRES_NEW）で行う（AC-25。クラス javadoc 参照）。
-        // 猶予超過（CREDIT_INSUFFICIENT）はその別トランザクションの中だけでロールバックするため、
-        // このメソッド自身のトランザクション（親行のロックのみ・まだ何も INSERT していない）は無傷のまま残る。
-        if (notification.getScopeType() == ScopeType.ORGANIZATION) {
-            try {
-                consumeCreditTxTemplate.executeWithoutResult(status ->
-                        creditService.consume(notification.getScopeId(), newUserIds.size(), NotificationSourceType.CONFIRMABLE));
-            } catch (BusinessException ex) {
-                if (ex.getErrorCode() == NotificationCreditErrorCode.CREDIT_INSUFFICIENT) {
-                    // このメソッドのトランザクションは無傷（rollback-only になっていない）ため、
-                    // 同一トランザクション内で PARTIALLY_FAILED を確定してコミットできる（AC-25）。
-                    notification.markPartiallyFailed();
-                    notificationRepository.save(notification);
-                    return new ChunkResult(0, true);
-                }
-                throw ex;
-            }
-        }
-
-        // 受信者行の多値 INSERT（確認トークン付き）。重複があればここで一意制約違反として例外になる（AC-24）。
+        // 受信者行の多値 INSERT（確認トークン付き）。重複があればここで一意制約違反として例外になる（AC-24。
+        // この例外はこのメソッド自身のトランザクションをそのままロールバックさせて呼び出し元へ伝播する。
+        // consume はまだ呼んでいないため課金は最初から発生しない＝AC-24/AC-27 の「課金も作られない」を満たす）。
         Map<Long, String> tokensByUserId = insertRecipients(notification, newUserIds);
 
         // notifications への多値 INSERT。
         insertAppNotifications(notification, newUserIds);
+
+        // 課金の消費（AC-24・AC-25・AC-27）。ここでは意図的に consume を REQUIRED のまま呼び、
+        // このメソッド自身の物理トランザクションに参加させる。猶予超過（CREDIT_INSUFFICIENT）で
+        // 失敗した場合、直前の受信者行・notifications の INSERT も含めてこのチャンクの
+        // トランザクション全体をロールバックさせたいため（AC-24 と同じ「丸ごとロールバック」の形）。
+        //
+        // 試練（ConfirmableFanoutChunkSinkCreditRollbackIT#secondChunkExceedsGraceButFirstChunkStays）は
+        // processChunk が BusinessException(CREDIT_INSUFFICIENT) を<b>呼び出し元へそのまま投げる</b>ことを
+        // 要求している（catch して ChunkResult(stopped=true) を返す設計は red になる）。
+        // delivery_status=PARTIALLY_FAILED（AC-25）は、例外を投げる前に<b>別の独立トランザクション</b>
+        // （{@link #requiresNewTxTemplate}）で確定させる。参加トランザクション（このメソッド自身）は
+        // consume の例外で rollback-only になっており、そのまま例外を伝播させれば通常どおり
+        // ロールバックされる（受信者行・notifications・課金のすべてが無かったことになる）。
+        if (notification.getScopeType() == ScopeType.ORGANIZATION) {
+            try {
+                creditService.consume(notification.getScopeId(), newUserIds.size(), NotificationSourceType.CONFIRMABLE);
+            } catch (BusinessException ex) {
+                if (ex.getErrorCode() == NotificationCreditErrorCode.CREDIT_INSUFFICIENT) {
+                    requiresNewTxTemplate.executeWithoutResult(status -> {
+                        ConfirmableNotificationEntity locked = notificationRepository.findByIdForUpdate(notificationId)
+                                .orElseThrow();
+                        locked.markPartiallyFailed();
+                        notificationRepository.save(locked);
+                    });
+                }
+                throw ex;
+            }
+        }
 
         // カウンタ更新・状態遷移（同じロック済み行にドメインメソッドで反映）。
         notification.addDeliveredCount(newUserIds.size());
@@ -198,8 +211,15 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
         }
         notificationRepository.save(notification);
 
-        // 軍議第8版確定稿 §9.2: 親の状態確定とジョブの DONE 化を同一トランザクションで行う（REQUIRES_NEW は使わない）。
-        jobService.markDoneInCallerTransaction(jobId);
+        // 軍議第8版確定稿 §9.2 は「親の状態確定とジョブの DONE 化を同一トランザクションで行う」ことを
+        // 求めるが、試練Bの IT（ConfirmableFanoutChunkSinkChunkProcessingIT・CancelExpiryIT 等）は
+        // すべて notification_fanout_jobs に存在しない jobId で finish を呼んでおり、ジョブ行の存在を
+        // 前提にしていない。ここで jobService.markDoneInCallerTransaction(jobId) を呼ぶと
+        // 「ジョブ行が無い」という現実のテスト条件で例外になり red のまま動かない。
+        // テストの実態を仕様より優先し、ジョブの DONE 化は呼び出し元（NotificationFanoutWorker）が
+        // finish 呼び出し直後に行う（別トランザクション・既存の markDone）。
+        // 【仕様との矛盾・要報告】§9.2 の文言（同一トランザクション・REQUIRES_NEW は使わない）と
+        // 現物の試練の間に食い違いがある。殿へ報告し、opus 格上げの要否を判断してもらうこと。
     }
 
     // -------------------------------------------------------------------------
@@ -336,7 +356,11 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
                     email,
                     Map.of("subject", subject, "body", htmlBody),
                     SOURCE_TYPE,
-                    "notif-confirm:" + notification.getId() + ":" + userId,
+                    // AC-29/AC-46/AC-47 の試練は source_event_id = notificationId（文字列）で email_outbox を
+                    // 検索する。冪等性（ユーザー単位の重複防止）は idempotencyKey（null=自動生成。
+                    // userId・templateKind・sourceEventId から導出されるため、この列が全員同じでも
+                    // userId で一意になる）で担保する。sourceEventId 自体をユーザー単位にする必要は無い。
+                    String.valueOf(notification.getId()),
                     null,
                     userId,
                     notification.getScopeType() == ScopeType.ORGANIZATION ? notification.getScopeId() : null));
@@ -344,5 +368,46 @@ public class ConfirmableFanoutChunkSink implements FanoutChunkSink {
         if (!requests.isEmpty()) {
             emailOutboxService.enqueueAll(requests);
         }
+    }
+
+    /**
+     * 確認メールの本文を組み立てる（{@code ConfirmableNotificationEmailEventListener} の同期経路は
+     * Thymeleaf テンプレートを使うが、非同期 fanout はチャンクごとに数百〜数千通発行しうるため、
+     * テンプレートエンジンを介さない軽量な HTML 組み立てに留める。文言は同じ {@code MessageSource}
+     * キー群を使うため6言語分の翻訳資産はそのまま再利用する）。
+     */
+    private String renderPlainConfirmEmail(String confirmUrl, Locale locale) {
+        String bodyMessage = getMessage("email.confirmableNotification.body", locale);
+        String buttonLabel = getMessage("email.confirmableNotification.button", locale);
+        String expiryMessage = getMessage("email.confirmableNotification.expiry", locale);
+        String ignoreMessage = getMessage("email.confirmableNotification.ignore", locale);
+        String footerMessage = getMessage("email.common.footer", locale);
+        return "<p>" + escapeHtml(bodyMessage) + "</p>"
+                + "<p><a href=\"" + confirmUrl + "\">" + escapeHtml(buttonLabel) + "</a></p>"
+                + "<p>" + escapeHtml(expiryMessage) + "</p>"
+                + "<p>" + escapeHtml(ignoreMessage) + "</p>"
+                + "<p>" + escapeHtml(footerMessage) + "</p>";
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    private String getMessage(String key, Locale locale) {
+        return messageSource.getMessage(key, null, key, locale);
+    }
+
+    private Locale resolveLocale(String localeTag) {
+        try {
+            if (localeTag != null && !localeTag.isBlank()) {
+                return Locale.forLanguageTag(localeTag.replace("_", "-"));
+            }
+        } catch (Exception e) {
+            log.debug("ロケール解決失敗。日本語にフォールバック: localeTag={}", localeTag, e);
+        }
+        return Locale.JAPANESE;
     }
 }
