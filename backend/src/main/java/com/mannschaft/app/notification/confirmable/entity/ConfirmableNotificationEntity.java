@@ -276,4 +276,26 @@ public class ConfirmableNotificationEntity {
     public void updateTotalRecipientCount(int count) {
         this.totalRecipientCount = count;
     }
+
+    /**
+     * CMP-260920-1040: unconfirmed_count を加算する（軍議第8版確定稿 §10.1）。
+     *
+     * <p>この行を {@code findByIdForUpdate} でロックしているトランザクションからのみ呼ぶこと
+     * （チャンクで受信者を作ったときの加算用）。</p>
+     *
+     * @param delta 加算する件数（マイナス不可）
+     */
+    public void addUnconfirmedCount(int delta) {
+        this.unconfirmedCount = this.unconfirmedCount + delta;
+    }
+
+    /**
+     * CMP-260920-1040: unconfirmed_count を 1 減らす（軍議第8版確定稿 §10.1）。
+     *
+     * <p>受信者行が未確認から確認済みへ実際に変わったとき、または除外されたときにだけ呼ぶこと。
+     * 0 未満にはしない（二重減算の防御）。</p>
+     */
+    public void decrementUnconfirmedCount() {
+        this.unconfirmedCount = Math.max(0, this.unconfirmedCount - 1);
+    }
 }
