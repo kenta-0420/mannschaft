@@ -9,6 +9,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -73,6 +75,25 @@ public final class ConfirmableFanoutFixture {
             }
             return ids;
         });
+    }
+
+    /**
+     * CI是正（CMP-260920-1040）: JdbcTemplate で日時カラムへ {@link LocalDateTime} を直接束縛
+     * するテストのための、壁時計 → DB 格納値への変換ヘルパ。
+     *
+     * <p>このプロジェクトの JVM 既定タイムゾーンは Asia/Tokyo（JST）だが、Hibernate は
+     * {@code hibernate.jdbc.time_zone: UTC} で動く。つまり Hibernate 経由（エンティティ保存・
+     * JPQL の {@code :now} バインド）で書き込む {@code created_at} 等の日時カラムには、実際には
+     * JST → UTC へ変換した値が入る。テストが {@link org.springframework.jdbc.core.JdbcTemplate}
+     * で同じカラムへ直接 {@code LocalDateTime.now()}（JST の壁時計）をそのまま束縛すると、
+     * Hibernate 側の読み出し・比較（{@code n.deadlineAt < :now} 等）と9時間ズレる。
+     * 必ずこのヘルパを通してから {@code jdbc.update(...)} に渡すこと。</p>
+     *
+     * @param wallClock JVM 既定タイムゾーン（JST）の壁時計としての {@link LocalDateTime}
+     * @return Hibernate が UTC として解釈する値と一致する、UTC 換算後の {@link LocalDateTime}
+     */
+    public static LocalDateTime toUtcColumnValue(LocalDateTime wallClock) {
+        return wallClock.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
     /** 指定した接頭辞で投入した利用者をすべて削除する（{@code @AfterEach} 用）。 */

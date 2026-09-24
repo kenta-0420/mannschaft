@@ -128,10 +128,18 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
         return notification.getId();
     }
 
-    /** 是正: expireOneWithLock を実際に発火させるため、期限を過去に更新する（DB直更新）。 */
+    /**
+     * 是正: expireOneWithLock を実際に発火させるため、期限を過去に更新する（DB直更新）。
+     *
+     * <p>CI是正（CMP-260920-1040）: Hibernate は hibernate.jdbc.time_zone: UTC で動くが
+     * JVM既定ゾーンはJSTのため、JdbcTemplateで直接 deadline_at を書く場合はUTC換算してから渡す
+     * （そうしないと {@code n.deadlineAt < :now} のJPQL比較で「過去」に見えない。
+     * ConfirmableFanoutFixture#toUtcColumnValue 参照）。</p>
+     */
     private void markDeadlineInPast(Long notificationId) {
         jdbc.update("UPDATE confirmable_notifications SET deadline_at = ? WHERE id = ?",
-                java.time.LocalDateTime.now().minusMinutes(10), notificationId);
+                ConfirmableFanoutFixture.toUtcColumnValue(java.time.LocalDateTime.now().minusMinutes(10)),
+                notificationId);
     }
 
     // =====================================================================

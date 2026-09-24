@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
@@ -101,8 +102,11 @@ class ConfirmableNotificationReminderBatchTransactionIT extends AbstractMySqlInt
                             .build());
             // 受信者行の created_at は非同期配信の「届いた時刻」を表す（AC-49）。
             // 通常は @PrePersist で now() が入るが、テストでは意図的に過去時刻へ書き換える。
+            // CI是正（CMP-260920-1040）: Hibernate は hibernate.jdbc.time_zone: UTC で動くが
+            // JVM既定ゾーンはJSTのため、JdbcTemplateで直接書く場合はUTC換算してから渡す
+            // （ConfirmableFanoutFixture#toUtcColumnValue 参照）。
             jdbc.update("UPDATE confirmable_notification_recipients SET created_at = ? WHERE id = ?",
-                    recipientCreatedAt, recipient.getId());
+                    ConfirmableFanoutFixture.toUtcColumnValue(recipientCreatedAt), recipient.getId());
         }
         return userIds;
     }
@@ -185,12 +189,18 @@ class ConfirmableNotificationReminderBatchTransactionIT extends AbstractMySqlInt
         // リマインドが notification.getBody() をそのまま notifications へ多値INSERTする段（AC-57の
         // 手順3）でだけ Data too long エラーが起き、他のステップに影響しない形で失敗を注入できる
         // （Service差し替えのモックは使わず、DB制約でのみ注入する）。
+        // CI是正（CMP-260920-1040）: テストメソッド本体はトランザクションを持たないため、
+        // em.createNativeQuery(...).executeUpdate() をそのまま呼ぶと TransactionRequiredException
+        // になる。この注入用UPDATE自体はコミットされている必要があるため、
+        // TransactionTemplate（REQUIRES_NEW）で明示的に包む。
         String tooLongBody = "あ".repeat(1001);
-        em.createNativeQuery("UPDATE confirmable_notifications SET body = :body WHERE id = :id")
+        TransactionTemplate injectTx = new TransactionTemplate(transactionManager);
+        injectTx.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
+        injectTx.executeWithoutResult(status -> em.createNativeQuery(
+                        "UPDATE confirmable_notifications SET body = :body WHERE id = :id")
                 .setParameter("body", tooLongBody)
                 .setParameter("id", notificationId)
-                .executeUpdate();
-        em.flush();
+                .executeUpdate());
         em.clear();
 
         org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () ->

@@ -25,7 +25,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -41,9 +41,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * {@code GET .../confirmable-notifications/{id}/recipients/page} を実際の MockMvc + 実DB
  * （Testcontainers MySQL）で叩き、認可（ADMIN/MEMBER 判定）とページングが本物のコード経路を
  * 通ることを検証する（是正: Mockito 単体テストから Testcontainers IT へ戻す）。</p>
+ *
+ * <p>CI是正（CMP-260920-1040）: クラス全体への {@code @Transactional} は付けない。
+ * {@link ConfirmableFanoutFixture#insertUsers} は REQUIRES_NEW で別トランザクションを
+ * コミットするため、外側を {@code @Transactional} にすると MySQL の REPEATABLE READ の下で
+ * {@code setUp} 時点のスナップショットに固定され、後からコミットされた利用者が
+ * 見えなくなる（{@code EntityNotFoundException}）。後始末の DELETE も外側が握るロック待ちで
+ * タイムアウトする。{@code setUp} の投入自体もコミットされるトランザクション
+ * （{@link TransactionTemplate}）で行う。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
-@Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("受信者一覧ページング応答契約 試練（AC-30・AC-59・AC-60）")
 class ConfirmableNotificationRecipientPageTest extends AbstractMySqlIntegrationTest {
@@ -73,13 +80,17 @@ class ConfirmableNotificationRecipientPageTest extends AbstractMySqlIntegrationT
 
     @BeforeEach
     void setUp() {
-        seedRoles();
-        orgId = insertOrganization();
-        adminUserId = insertUser();
-        grantRole(adminUserId, "ADMIN", orgId);
-        memberUserId = insertUser();
-        grantRole(memberUserId, "MEMBER", orgId);
-        em.flush();
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
+        tx.executeWithoutResult(status -> {
+            seedRoles();
+            orgId = insertOrganization();
+            adminUserId = insertUser();
+            grantRole(adminUserId, "ADMIN", orgId);
+            memberUserId = insertUser();
+            grantRole(memberUserId, "MEMBER", orgId);
+            em.flush();
+        });
         em.clear();
     }
 
