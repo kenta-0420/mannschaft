@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import RollCallPage from '~/pages/teams/[slug]/events/[eventId]/roll-call.vue'
+import type { AdvanceNoticeResponse } from '~/types/care/advanceNotice'
 
 /**
  * CMP-260922-2045 第2陣 G1 の根治テスト。
@@ -27,6 +28,17 @@ import RollCallPage from '~/pages/teams/[slug]/events/[eventId]/roll-call.vue'
  *          roll-call-error-state が描画される
  *   RC-005 同じ状態で再試行し候補取得が成功 → 補助情報を待たずにエラー状態が消え、
  *          roll-call-empty（候補0件の通常空状態）が出る
+ *
+ * 【2度目の検分差し戻し対応】loadAdvanceNotices を loadCandidates から独立させた
+ * ことで新たに持ち込まれた競合の根治テスト。初回の候補取得が失敗して再試行すると、
+ * 初回・再試行の2回分の loadAdvanceNotices が同時に進行しうる。初回側が後から
+ * 解決（失敗）すると、既に再試行側が更新した最新の advanceNotices を古い結果
+ * （0件）で上書きしてしまい、遅刻・欠席の件数（roll-call-advance-banner）が
+ * 消えていた。世代番号（seq）で「自分より後の呼び出しが既に走っていたら自分の
+ * 結果は state に反映しない」よう修正した。
+ *   RC-006 初回（候補失敗・事前連絡は遅れて失敗）→ 再試行（候補成功・事前連絡は
+ *          先に成功）→ 最新の事前連絡（roll-call-advance-banner）が残り、
+ *          件数が消えない
  */
 
 const getCandidates = vi.fn()
@@ -125,7 +137,62 @@ describe('pages/teams/[slug]/events/[eventId]/roll-call.vue — 取得失敗時�
     expect(wrapper.find('[data-testid="roll-call-error-state"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="roll-call-empty"]').exists()).toBe(true)
   })
+
+  it('RC-006: 初回(候補失敗・事前連絡は遅れて失敗)→再試行(候補成功・事前連絡は先に成功)で最新の事前連絡が残る', async () => {
+    const initialAdvance = createDeferred<AdvanceNoticeResponse[]>()
+    const retryAdvance = createDeferred<AdvanceNoticeResponse[]>()
+
+    getAdvanceNotices
+      .mockReturnValueOnce(initialAdvance.promise)
+      .mockReturnValueOnce(retryAdvance.promise)
+
+    // 初回: 候補取得は失敗
+    getCandidates.mockRejectedValueOnce(new Error('network error'))
+    const wrapper = await mountSuspended(RollCallPage)
+    await flushMicrotasks()
+    expect(wrapper.find('[data-testid="roll-call-error-state"]').exists()).toBe(true)
+
+    // 再試行: 候補取得は成功させる
+    getCandidates.mockResolvedValueOnce([])
+    const retryButton = wrapper.find('[data-testid="roll-call-error-state-retry"]')
+    expect(retryButton.exists()).toBe(true)
+    await retryButton.trigger('click')
+    await flushMicrotasks()
+
+    // 再試行側の事前連絡が先に成功で解決（遅刻1件）
+    retryAdvance.resolve([
+      {
+        userId: 1,
+        displayName: 'テスト太郎',
+        noticeType: 'LATE',
+        expectedArrivalMinutesLate: 10,
+        absenceReason: null,
+        comment: null,
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+    ])
+    await flushMicrotasks()
+
+    expect(wrapper.find('[data-testid="roll-call-advance-banner"]').exists()).toBe(true)
+
+    // 初回側の事前連絡が遅れて失敗で解決（古い呼び出しの結果は反映されないはず）
+    initialAdvance.reject(new Error('stale network error'))
+    await flushMicrotasks()
+
+    // 古い失敗が新しい成功（遅刻1件）を上書きして件数が消えていないこと
+    expect(wrapper.find('[data-testid="roll-call-advance-banner"]').exists()).toBe(true)
+  })
 })
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
 
 async function flushMicrotasks() {
   for (let i = 0; i < 5; i++) {
