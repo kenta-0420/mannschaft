@@ -2488,6 +2488,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "Campos personalizados",
+      "add": "Añadir campo",
+      "loadFailed": "No se pudieron cargar los campos personalizados",
+      "retry": "Reintentar",
+      "empty": "No hay campos personalizados",
+      "name": "Nombre del campo",
+      "type": "Tipo",
+      "required": "Obligatorio",
+      "active": "Activo",
+      "order": "Orden",
+      "yes": "Sí",
+      "no": "No",
+      "typeText": "Texto",
+      "typeNumber": "Número",
+      "typeDate": "Fecha",
+      "typeSelect": "Selección",
+      "options": "Opciones (una por línea)",
+      "createSuccess": "Campo añadido",
+      "createFailed": "No se pudo añadir el campo"
+    },
     "loadFailed": "No se pudo cargar la información de los miembros",
     "unavailable": "Esta función no está disponible actualmente (próximamente)",
     "saveFailed": "Error al guardar",
