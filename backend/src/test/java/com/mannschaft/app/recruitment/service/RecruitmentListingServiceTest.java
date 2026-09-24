@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
@@ -71,6 +72,9 @@ class RecruitmentListingServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
 
     @Mock
     private RecruitmentMapper mapper;

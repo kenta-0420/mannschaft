@@ -17,7 +17,7 @@ import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.proxy.dto.ProxyActionView;
 import com.mannschaft.app.proxy.service.ProxyInputQueryService;
@@ -67,7 +67,7 @@ class GuardianChildViewServiceTest {
     @Mock
     private ScheduleAttendanceService scheduleAttendanceService;
     @Mock
-    private MembershipService membershipService;
+    private MembershipScopeQueryService membershipScopeQueryService;
     @Mock
     private NameResolverService nameResolverService;
     @Mock
@@ -174,8 +174,10 @@ class GuardianChildViewServiceTest {
     void memberships_ok() {
         given(guardianshipSwitchService.evaluateSwitch(GUARDIAN_ID, CHILD_ID))
                 .willReturn(SwitchVerdict.ALLOWED);
-        given(membershipService.getActiveTeamIdsByUser(CHILD_ID)).willReturn(List.of(200L));
-        given(membershipService.getActiveOrgIdsByUser(CHILD_ID)).willReturn(List.of(300L));
+        given(membershipScopeQueryService.findCurrentTeamIdsForAuthorizedGuardianSubject(CHILD_ID))
+                .willReturn(List.of(200L));
+        given(membershipScopeQueryService.findCurrentOrganizationIdsForAuthorizedGuardianSubject(CHILD_ID))
+                .willReturn(List.of(300L));
         given(nameResolverService.resolveScopeName("TEAM", 200L)).willReturn("サッカークラブ");
         given(nameResolverService.resolveScopeName("ORGANIZATION", 300L)).willReturn("県協会");
 
@@ -196,8 +198,10 @@ class GuardianChildViewServiceTest {
     void announcements_mergedSortedByUpdatedAt() {
         given(guardianshipSwitchService.evaluateSwitch(GUARDIAN_ID, CHILD_ID))
                 .willReturn(SwitchVerdict.ALLOWED);
-        given(membershipService.getActiveTeamIdsByUser(CHILD_ID)).willReturn(List.of(200L));
-        given(membershipService.getActiveOrgIdsByUser(CHILD_ID)).willReturn(List.of(300L));
+        given(membershipScopeQueryService.findCurrentTeamIdsForAuthorizedGuardianSubject(CHILD_ID))
+                .willReturn(List.of(200L));
+        given(membershipScopeQueryService.findCurrentOrganizationIdsForAuthorizedGuardianSubject(CHILD_ID))
+                .willReturn(List.of(300L));
         given(nameResolverService.resolveScopeName("TEAM", 200L)).willReturn("サッカークラブ");
         given(nameResolverService.resolveScopeName("ORGANIZATION", 300L)).willReturn("県協会");
 

@@ -23,6 +23,8 @@ const tournaments = ref<TournamentResponse[]>([])
 const selectedTournamentId = ref<number | null>(null)
 const candidates = ref<TransferCandidateResponse[]>([])
 const candidatesLoading = ref(false)
+/** 取得失敗は「候補なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const candidatesLoadFailed = ref(false)
 const selectedCandidateIds = ref<number[]>([])
 const divisions = ref<TournamentDivision[]>([])
 
@@ -40,6 +42,8 @@ const relegationSaving = ref(false)
 // ===== 受信箱セクション =====
 const inboundTransfers = ref<LeagueTransferResponse[]>([])
 const inboundLoading = ref(false)
+/** 取得失敗は「受信箱なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const inboundLoadFailed = ref(false)
 
 // 承認ダイアログ用
 const showApproveDialog = ref(false)
@@ -69,6 +73,7 @@ async function loadCandidates() {
     return
   }
   candidatesLoading.value = true
+  candidatesLoadFailed.value = false
   selectedCandidateIds.value = []
   try {
     const res = await leagueTransfer.getCandidates(selectedTournamentId.value)
@@ -78,6 +83,8 @@ async function loadCandidates() {
     divisions.value = divRes.data ?? []
   } catch {
     notification.error(t('transfer.empty_candidates'))
+    candidates.value = []
+    candidatesLoadFailed.value = true
   } finally {
     candidatesLoading.value = false
   }
@@ -86,11 +93,14 @@ async function loadCandidates() {
 // --- 受信箱取得 ---
 async function loadInbound() {
   inboundLoading.value = true
+  inboundLoadFailed.value = false
   try {
     const res = await leagueTransfer.getInboundTransfers()
     inboundTransfers.value = res.data ?? []
   } catch {
     notification.error(t('transfer.empty_inbound'))
+    inboundTransfers.value = []
+    inboundLoadFailed.value = true
   } finally {
     inboundLoading.value = false
   }
@@ -328,6 +338,12 @@ watch(selectedTournamentId, loadCandidates)
         <i class="pi pi-spin pi-spinner text-xl" />
       </div>
 
+      <DashboardErrorState
+        v-else-if="selectedTournamentId && candidatesLoadFailed"
+        testid="league-transfer-candidates-error-state"
+        @retry="loadCandidates"
+      />
+
       <template v-else-if="selectedTournamentId">
         <!-- 昇格候補 -->
         <div class="mb-6">
@@ -414,6 +430,12 @@ watch(selectedTournamentId, loadCandidates)
       <div v-if="inboundLoading" class="text-center py-8 text-surface-500">
         <i class="pi pi-spin pi-spinner text-xl" />
       </div>
+
+      <DashboardErrorState
+        v-else-if="inboundLoadFailed"
+        testid="league-transfer-inbound-error-state"
+        @retry="loadInbound"
+      />
 
       <template v-else>
         <!-- 審査中 -->

@@ -97,7 +97,7 @@ public class ProjectService {
      * ログインユーザーが所属する全チームのプロジェクトを集約して取得する
      * （マイページ チームプロジェクト集約 {@code GET /api/v1/me/team-projects}）。
      *
-     * <p>所属チーム ID 集合を {@code MembershipRepository.findActiveByUserAndScopeType(userId, TEAM)}
+     * <p>所属チーム ID 集合を {@code MembershipService.getActiveTeamIdsByUser(userId)}
      * から取得し、{@code findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(TEAM, teamIds, status, pageable)}
      * で 1 クエリ取得する。各プロジェクトに {@link TeamService#getNamesByIds} / {@link TeamService#getSlugsByIds}
      * のバッチ結果から teamName / teamSlug を付与して {@link TeamProjectSummaryResponse} のページを返す。</p>

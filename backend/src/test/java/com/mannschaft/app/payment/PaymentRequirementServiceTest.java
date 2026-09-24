@@ -8,7 +8,7 @@ import com.mannschaft.app.payment.repository.OrganizationAccessRequirementReposi
 import com.mannschaft.app.payment.repository.TeamAccessRequirementRepository;
 import com.mannschaft.app.payment.service.PaymentItemService;
 import com.mannschaft.app.payment.service.PaymentRequirementService;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ class PaymentRequirementServiceTest {
     @Mock private OrganizationAccessRequirementRepository organizationAccessRequirementRepository;
     @Mock private PaymentItemService paymentItemService;
     @Mock private MemberPaymentRepository memberPaymentRepository;
-    @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipScopeQueryService membershipScopeQueryService;
 
     @InjectMocks
     private PaymentRequirementService service;
