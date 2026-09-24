@@ -9,12 +9,15 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationSettingsEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTemplateEntity;
+import com.mannschaft.app.notification.confirmable.repository.ConfirmableRecipientGroupRepository;
 import org.mapstruct.IterableMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * F04.9 確認通知システムの Entity → DTO 変換マッパー（MapStruct）。
@@ -23,9 +26,17 @@ import java.util.List;
  * {@link ConfirmableNotificationResponse} および {@link ConfirmableNotificationDetailResponse} の
  * {@code confirmedCount} は Repository のカウントメソッドを使って Controller 側でセットすること。
  * MapStruct はそのフィールドを無視する（{@code ignore = true}）。</p>
+ *
+ * <p><b>CMP-260920-1040 AC-32</b>: テンプレートの {@code defaultRecipientGroupId} は、参照先グループが
+ * 論理削除済みなら応答で NULL に落とす（「既定＝配下すべて」に戻す）。この判定は MapStruct の
+ * 既定マッピングでは表現できない（DB 参照が要る）ため、interface ではなく abstract class とし、
+ * {@link ConfirmableRecipientGroupRepository} を注入して {@link #toTemplateResponse} を手動実装する。</p>
  */
 @Mapper(componentModel = "spring")
-public interface ConfirmableNotificationMapper {
+public abstract class ConfirmableNotificationMapper {
+
+    @Autowired(required = false)
+    protected ConfirmableRecipientGroupRepository recipientGroupRepository;
 
     /**
      * 確認通知 Entity → 一覧用レスポンスDTO に変換する。
@@ -33,7 +44,7 @@ public interface ConfirmableNotificationMapper {
      * <p>confirmedCount は Controller 側で別途セットすること。</p>
      */
     @Mapping(target = "confirmedCount", ignore = true)
-    ConfirmableNotificationResponse toResponse(ConfirmableNotificationEntity entity);
+    public abstract ConfirmableNotificationResponse toResponse(ConfirmableNotificationEntity entity);
 
     /**
      * 確認通知エンティティリスト → 一覧用レスポンスDTOリストに変換する。
@@ -41,7 +52,7 @@ public interface ConfirmableNotificationMapper {
      * <p>confirmedCount は Controller 側で個別にセットすること。</p>
      */
     @Mapping(target = "confirmedCount", ignore = true)
-    List<ConfirmableNotificationResponse> toResponseList(List<ConfirmableNotificationEntity> entities);
+    public abstract List<ConfirmableNotificationResponse> toResponseList(List<ConfirmableNotificationEntity> entities);
 
     /**
      * 確認通知 Entity → 詳細レスポンスDTO に変換する。
@@ -51,7 +62,7 @@ public interface ConfirmableNotificationMapper {
      */
     @Mapping(target = "createdBy", source = "createdBy.id")
     @Mapping(target = "confirmedCount", ignore = true)
-    ConfirmableNotificationDetailResponse toDetailResponse(ConfirmableNotificationEntity entity);
+    public abstract ConfirmableNotificationDetailResponse toDetailResponse(ConfirmableNotificationEntity entity);
 
     /**
      * 確認通知受信者 Entity → レスポンスDTO に変換する（ADMIN+ 視点・全フィールド）。
@@ -60,14 +71,14 @@ public interface ConfirmableNotificationMapper {
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "displayName", source = "user.displayName")
     @Mapping(target = "avatarUrl", source = "user.avatarUrl")
-    ConfirmableNotificationRecipientResponse toRecipientResponse(
+    public abstract ConfirmableNotificationRecipientResponse toRecipientResponse(
             ConfirmableNotificationRecipientEntity entity);
 
     /**
      * 確認通知受信者エンティティリスト → レスポンスDTOリストに変換する（ADMIN+ 視点）。
      */
     @IterableMapping(qualifiedByName = "toRecipientResponseFull")
-    List<ConfirmableNotificationRecipientResponse> toRecipientResponseList(
+    public abstract List<ConfirmableNotificationRecipientResponse> toRecipientResponseList(
             List<ConfirmableNotificationRecipientEntity> entities);
 
     /**
@@ -85,7 +96,7 @@ public interface ConfirmableNotificationMapper {
     @Mapping(target = "confirmedAt", ignore = true)
     @Mapping(target = "confirmedVia", ignore = true)
     @Mapping(target = "excludedAt", ignore = true)
-    ConfirmableNotificationRecipientResponse toRecipientPublicResponse(
+    public abstract ConfirmableNotificationRecipientResponse toRecipientPublicResponse(
             ConfirmableNotificationRecipientEntity entity);
 
     /**
@@ -94,24 +105,55 @@ public interface ConfirmableNotificationMapper {
      * <p>F04.9 Phase D の MEMBER 視点用。confirmedAt / confirmedVia / excludedAt はマスク。</p>
      */
     @IterableMapping(qualifiedByName = "toRecipientResponsePublic")
-    List<ConfirmableNotificationRecipientResponse> toRecipientPublicResponseList(
+    public abstract List<ConfirmableNotificationRecipientResponse> toRecipientPublicResponseList(
             List<ConfirmableNotificationRecipientEntity> entities);
 
     /**
-     * 確認通知テンプレート Entity → レスポンスDTO に変換する。
+     * 確認通知テンプレート Entity → レスポンスDTO に変換する（AC-32: 削除済み既定グループは NULL）。
      */
-    ConfirmableNotificationTemplateResponse toTemplateResponse(
-            ConfirmableNotificationTemplateEntity entity);
+    public ConfirmableNotificationTemplateResponse toTemplateResponse(ConfirmableNotificationTemplateEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        ConfirmableNotificationTemplateResponse base = mapTemplateBase(entity);
+        UUID groupId = entity.getDefaultRecipientGroupId();
+        UUID resolvedGroupId = isDefaultGroupValid(groupId) ? groupId : null;
+        return ConfirmableNotificationTemplateResponse.builder()
+                .id(base.getId())
+                .scopeType(base.getScopeType())
+                .scopeId(base.getScopeId())
+                .name(base.getName())
+                .title(base.getTitle())
+                .body(base.getBody())
+                .defaultPriority(base.getDefaultPriority())
+                .defaultRecipientGroupId(resolvedGroupId)
+                .createdAt(base.getCreatedAt())
+                .build();
+    }
 
     /**
      * 確認通知テンプレートエンティティリスト → レスポンスDTOリストに変換する。
      */
-    List<ConfirmableNotificationTemplateResponse> toTemplateResponseList(
-            List<ConfirmableNotificationTemplateEntity> entities);
+    public List<ConfirmableNotificationTemplateResponse> toTemplateResponseList(
+            List<ConfirmableNotificationTemplateEntity> entities) {
+        return entities.stream().map(this::toTemplateResponse).toList();
+    }
+
+    /** MapStruct の既定マッピング（defaultRecipientGroupId を除く全フィールド）。 */
+    @Mapping(target = "defaultRecipientGroupId", ignore = true)
+    protected abstract ConfirmableNotificationTemplateResponse mapTemplateBase(
+            ConfirmableNotificationTemplateEntity entity);
+
+    private boolean isDefaultGroupValid(UUID groupId) {
+        if (groupId == null || recipientGroupRepository == null) {
+            return false;
+        }
+        return recipientGroupRepository.findByIdAndDeletedAtIsNull(groupId).isPresent();
+    }
 
     /**
      * 確認通知設定 Entity → レスポンスDTO に変換する。
      */
-    ConfirmableNotificationSettingsResponse toSettingsResponse(
+    public abstract ConfirmableNotificationSettingsResponse toSettingsResponse(
             ConfirmableNotificationSettingsEntity entity);
 }

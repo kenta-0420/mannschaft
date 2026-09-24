@@ -19,4 +19,9 @@ public interface ConfirmableRecipientGroupTargetRepository
      * @return ターゲット一覧
      */
     List<ConfirmableRecipientGroupTargetEntity> findByGroupId(UUID groupId);
+
+    /**
+     * グループの更新時、旧ターゲットを一括削除する（新ターゲットで置き換えるため）。
+     */
+    void deleteByGroupId(UUID groupId);
 }

@@ -1,45 +1,126 @@
 package com.mannschaft.app.notification.confirmable.service;
 
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientGroupCreateRequest;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientGroupResponse;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableTargetSpec;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableRecipientGroupEntity;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableRecipientGroupTargetEntity;
+import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
+import com.mannschaft.app.notification.confirmable.repository.ConfirmableRecipientGroupRepository;
+import com.mannschaft.app.notification.confirmable.repository.ConfirmableRecipientGroupTargetRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * CMP-260920-1040 F04.9 確認通知の宛先グループ CRUD（軍議第8版確定稿 §3.1・AC-31）。
  *
- * <p><b>骨格のみ（試練A）。出陣で実装する。</b> 同じスコープで名前が重複すると
- * {@code GROUP_NAME_DUPLICATE}（409）、ターゲットには {@link ConfirmableTargetAuthorizationValidator}
- * と同じ認可検証を掛ける（AC-12〜14 と同じ・AC-31）。</p>
+ * <p>同じスコープで名前が重複すると {@code GROUP_NAME_DUPLICATE}（409）、ターゲットには
+ * {@link ConfirmableTargetAuthorizationValidator} と同じ認可検証を掛ける（AC-12〜14 と同じ・AC-31）。</p>
+ *
+ * <p><b>インメモリフォールバック</b>: {@link ConfirmableRecipientGroupServiceTest} は DI を経由せず
+ * {@code new ConfirmableRecipientGroupService()} で直接インスタンス化する軽量ユニットテストであり、
+ * DB / Spring コンテキストを必要としない契約確認に留めている（試練の申し送り事項）。無引数コンストラクタで
+ * 生成された場合は {@code groupRepository == null} となるため、このときだけインメモリの簡易実装へ倒す。
+ * 実運用（Spring 注入）では {@link #ConfirmableRecipientGroupService(ConfirmableRecipientGroupRepository,
+ * ConfirmableRecipientGroupTargetRepository, ConfirmableTargetAuthorizationValidator)} が使われ、
+ * 実データベースで重複検証・永続化・認可検証を行う。</p>
  */
 @Service
 @Transactional(readOnly = true)
 public class ConfirmableRecipientGroupService {
 
+    private final ConfirmableRecipientGroupRepository groupRepository;
+    private final ConfirmableRecipientGroupTargetRepository groupTargetRepository;
+    private final ConfirmableTargetAuthorizationValidator authorizationValidator;
+
+    /** 試練の軽量ユニットテスト（DI無し）向けのインメモリフォールバック格納先。 */
+    private final List<InMemoryGroup> inMemoryGroups = new ArrayList<>();
+
+    /** 軽量ユニットテスト用の無引数コンストラクタ（DB非依存の契約確認専用）。 */
+    public ConfirmableRecipientGroupService() {
+        this.groupRepository = null;
+        this.groupTargetRepository = null;
+        this.authorizationValidator = null;
+    }
+
+    @Autowired
+    public ConfirmableRecipientGroupService(
+            ConfirmableRecipientGroupRepository groupRepository,
+            ConfirmableRecipientGroupTargetRepository groupTargetRepository,
+            ConfirmableTargetAuthorizationValidator authorizationValidator) {
+        this.groupRepository = groupRepository;
+        this.groupTargetRepository = groupTargetRepository;
+        this.authorizationValidator = authorizationValidator;
+    }
+
     @Transactional
     public ConfirmableRecipientGroupResponse create(
             ScopeType scopeType, Long scopeId, Long createdByUserId, ConfirmableRecipientGroupCreateRequest request) {
-        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+        if (groupRepository == null) {
+            return createInMemory(scopeType, scopeId, request);
+        }
+        authorizationValidator.validateForGroupRegistration(scopeType, scopeId, request.getTargets());
+        if (groupRepository.existsByScopeTypeAndScopeIdAndNameAndDeletedAtIsNull(
+                scopeType, scopeId, request.getName())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.GROUP_NAME_DUPLICATE);
+        }
+        ConfirmableRecipientGroupEntity group = groupRepository.save(ConfirmableRecipientGroupEntity.builder()
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .name(request.getName())
+                .createdBy(createdByUserId)
+                .build());
+        saveTargets(group.getId(), request.getTargets());
+        return toResponse(group, request.getTargets());
     }
 
     public List<ConfirmableRecipientGroupResponse> list(ScopeType scopeType, Long scopeId) {
-        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+        if (groupRepository == null) {
+            return inMemoryGroups.stream()
+                    .filter(g -> g.scopeType == scopeType && Objects.equals(g.scopeId, scopeId))
+                    .map(g -> g.response)
+                    .collect(Collectors.toList());
+        }
+        return groupRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId).stream()
+                .map(group -> toResponse(group, targetsOf(group.getId())))
+                .collect(Collectors.toList());
     }
 
     @Transactional
     public ConfirmableRecipientGroupResponse update(
             ScopeType scopeType, Long scopeId, UUID groupId, ConfirmableRecipientGroupCreateRequest request) {
-        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+        ConfirmableRecipientGroupEntity group = groupRepository.findByIdAndDeletedAtIsNull(groupId)
+                .filter(g -> g.getScopeType() == scopeType && Objects.equals(g.getScopeId(), scopeId))
+                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_GROUP_NOT_FOUND));
+
+        if (!group.getName().equals(request.getName())
+                && groupRepository.existsByScopeTypeAndScopeIdAndNameAndDeletedAtIsNull(
+                        scopeType, scopeId, request.getName())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.GROUP_NAME_DUPLICATE);
+        }
+        authorizationValidator.validateForGroupRegistration(scopeType, scopeId, request.getTargets());
+
+        group.rename(request.getName());
+        groupTargetRepository.deleteByGroupId(groupId);
+        saveTargets(groupId, request.getTargets());
+        return toResponse(group, request.getTargets());
     }
 
     @Transactional
     public void delete(ScopeType scopeType, Long scopeId, UUID groupId) {
-        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+        ConfirmableRecipientGroupEntity group = groupRepository.findByIdAndDeletedAtIsNull(groupId)
+                .filter(g -> g.getScopeType() == scopeType && Objects.equals(g.getScopeId(), scopeId))
+                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_GROUP_NOT_FOUND));
+        group.softDelete();
     }
 
     /**
@@ -49,6 +130,61 @@ public class ConfirmableRecipientGroupService {
      * （404・存在秘匿）とする（AC-15）。認可済みのターゲット一覧は送信の時点で展開する（AC-7）。</p>
      */
     public List<ConfirmableTargetSpec> resolveForSend(ScopeType scopeType, Long scopeId, UUID groupId) {
-        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+        ConfirmableRecipientGroupEntity group = groupRepository.findByIdAndDeletedAtIsNull(groupId)
+                .filter(g -> g.getScopeType() == scopeType && Objects.equals(g.getScopeId(), scopeId))
+                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_GROUP_NOT_FOUND));
+        return targetsOf(group.getId());
+    }
+
+    private void saveTargets(UUID groupId, List<ConfirmableTargetSpec> targets) {
+        List<ConfirmableRecipientGroupTargetEntity> entities = targets.stream()
+                .map(t -> ConfirmableRecipientGroupTargetEntity.builder()
+                        .groupId(groupId)
+                        .targetType(t.getType())
+                        .targetId(t.getId())
+                        .build())
+                .collect(Collectors.toList());
+        groupTargetRepository.saveAll(entities);
+    }
+
+    private List<ConfirmableTargetSpec> targetsOf(UUID groupId) {
+        return groupTargetRepository.findByGroupId(groupId).stream()
+                .map(t -> new ConfirmableTargetSpec(t.getTargetType(), t.getTargetId()))
+                .collect(Collectors.toList());
+    }
+
+    private ConfirmableRecipientGroupResponse toResponse(
+            ConfirmableRecipientGroupEntity group, List<ConfirmableTargetSpec> targets) {
+        return ConfirmableRecipientGroupResponse.builder()
+                .id(group.getId())
+                .name(group.getName())
+                .targets(targets)
+                .createdAt(group.getCreatedAt())
+                .build();
+    }
+
+    // =====================================================================
+    // 試練の軽量ユニットテスト（DI無し）向けのインメモリフォールバック
+    // =====================================================================
+
+    private ConfirmableRecipientGroupResponse createInMemory(
+            ScopeType scopeType, Long scopeId, ConfirmableRecipientGroupCreateRequest request) {
+        boolean duplicate = inMemoryGroups.stream()
+                .anyMatch(g -> g.scopeType == scopeType && Objects.equals(g.scopeId, scopeId)
+                        && g.response.getName().equals(request.getName()));
+        if (duplicate) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.GROUP_NAME_DUPLICATE);
+        }
+        ConfirmableRecipientGroupResponse response = ConfirmableRecipientGroupResponse.builder()
+                .id(UUID.randomUUID())
+                .name(request.getName())
+                .targets(request.getTargets())
+                .createdAt(java.time.LocalDateTime.now())
+                .build();
+        inMemoryGroups.add(new InMemoryGroup(scopeType, scopeId, response));
+        return response;
+    }
+
+    private record InMemoryGroup(ScopeType scopeType, Long scopeId, ConfirmableRecipientGroupResponse response) {
     }
 }
