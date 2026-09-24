@@ -18,7 +18,7 @@ const { t } = useI18n()
 // 年度別ページの二段構え: ページ一覧 → ページを選ぶとそのページのメンバー一覧、という2画面構成。
 // BE の実在エンドポイントは /api/v1/team/pages・/api/v1/team/members（teamId/organizationId は
 // 数値IDで指定する）であり、URL の slug をそのまま使えないため組織の numericId を解決してから叩く。
-const view = ref<'pages' | 'members'>('pages')
+const view = ref<'pages' | 'members' | 'fields'>('pages')
 const organizationId = ref<number | null>(null)
 
 const loading = ref(true)
@@ -290,7 +290,13 @@ onMounted(loadData)
 
     <!-- ページ一覧 -->
     <template v-else-if="view === 'pages'">
-      <div v-if="isAdmin" class="mb-4 flex justify-end">
+      <div v-if="isAdmin" class="mb-4 flex justify-end gap-2">
+        <Button
+          :label="t('memberProfile.fields.title')"
+          icon="pi pi-list"
+          severity="secondary"
+          @click="view = 'fields'"
+        />
         <Button
           :label="t('memberProfile.pages.newPage')"
           icon="pi pi-plus"
@@ -354,6 +360,18 @@ onMounted(loadData)
     </template>
 
     <!-- メンバー一覧（ページ選択後） -->
+    <template v-else-if="view === 'fields' && isAdmin && organizationId != null">
+      <Button
+        :label="t('memberProfile.members.back')"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        text
+        class="mb-4"
+        @click="view = 'pages'"
+      />
+      <MemberProfileFieldManager scope-type="organization" :scope-id="organizationId" />
+    </template>
+
     <template v-else-if="view === 'members' && selectedPage">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-3">

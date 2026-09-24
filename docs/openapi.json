@@ -200822,8 +200822,7 @@
             "minLength": 0
           },
           "scopeId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "scopeType": {
             "type": "string",

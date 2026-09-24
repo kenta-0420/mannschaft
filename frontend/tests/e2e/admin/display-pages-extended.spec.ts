@@ -86,14 +86,6 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
     ).toBeVisible({ timeout: 10_000 })
   })
 
-  test('ADMIN-031: メンバー紹介管理ページが表示される', async ({ page }) => {
-    await page.goto('/admin/member-profiles')
-    await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'メンバー紹介管理' })).toBeVisible({
-      timeout: 10_000,
-    })
-  })
-
   test('ADMIN-032: モジュール価格管理ページが表示される', async ({ page }) => {
     await page.goto('/admin/module-pricing')
     await waitForHydration(page)

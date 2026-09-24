@@ -31,7 +31,7 @@ public class GlobalCreateThreadRequest {
     private String scopeType;
 
     /** スコープ ID（VILLAGE 時は 0）。 */
-    private Long scopeId;
+    private String scopeId;
 
     /** カテゴリ ID（任意・NULL = 未分類）。 */
     private Long categoryId;

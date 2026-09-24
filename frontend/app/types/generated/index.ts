@@ -67073,8 +67073,7 @@ export interface components {
             postedAsSubjectType?: "USER" | "TEAM" | "ORGANIZATION";
             priority?: string;
             readTrackingMode?: string;
-            /** Format: int64 */
-            scopeId?: number;
+            scopeId?: string;
             scopeType?: string;
             /** Format: uuid */
             scopeVillageId?: string;
