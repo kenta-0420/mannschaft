@@ -2488,6 +2488,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "Benutzerdefinierte Felder",
+      "add": "Feld hinzufügen",
+      "loadFailed": "Benutzerdefinierte Felder konnten nicht geladen werden",
+      "retry": "Erneut versuchen",
+      "empty": "Keine benutzerdefinierten Felder",
+      "name": "Feldname",
+      "type": "Typ",
+      "required": "Erforderlich",
+      "active": "Aktiv",
+      "order": "Reihenfolge",
+      "yes": "Ja",
+      "no": "Nein",
+      "typeText": "Text",
+      "typeNumber": "Zahl",
+      "typeDate": "Datum",
+      "typeSelect": "Auswahl",
+      "options": "Optionen (eine pro Zeile)",
+      "createSuccess": "Feld hinzugefügt",
+      "createFailed": "Feld konnte nicht hinzugefügt werden"
+    },
     "loadFailed": "Mitgliederinformationen konnten nicht geladen werden",
     "unavailable": "Diese Funktion ist derzeit nicht verfügbar (in Vorbereitung)",
     "saveFailed": "Speichern fehlgeschlagen",

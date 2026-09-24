@@ -9,7 +9,7 @@
 # |---|---|---|
 # | ① リンクが無い | Phase 1〜4 で導線を足した18枚 | 扱う（reachable） |
 # | ② リンクはあるが条件で永久に消える（機能フラグ等） | サイドバー27項目の永久非表示（#3322で根治） | **扱わない**（別番人を後続で作る） |
-# | ③ スコープ配下に同機能ページがある残骸 | /admin/member-profiles（CMP-260917-0041） | 扱う（duplicate-remnant） |
+# | ③ スコープ配下へ機能移植後に残る旧ページ | 旧 /admin/member-profiles（CMP-260917-0041、削除済み） | 削除まで扱う（duplicate-remnant） |
 #
 # 注: /admin/google-calendar（CMP-260912-0911）は当初この台帳にも duplicate-remnant として
 # 載せていたが、本番人の初回実行で「該当ページが実在しない」red を検出した。実測すると
@@ -39,7 +39,7 @@
 # 番人が最初から無効化される（intentional-direct-only 等で無審査に埋めるのも同じ理由で不可）。
 # `/my/`・`/me/`・`/settings/` も同様に今回調査していない他のページを多数含む。
 #
-# そのため本番人は `tracked_paths`（下記の30パスちょうど）に対する **exact-match** で
+# そのため本番人は `tracked_paths`（下記の26パスちょうど）に対する **exact-match** で
 # 網羅性を取る: 「tracked_paths に載っているが pages: に無い」「pages: にあるが実在しない」
 # の両方向で陳腐化を検出する。新規ページの黙った孤立を機械的に防ぐという本来の狙い（対象を
 # 全FEに広げること）はまだ果たせていない — **対象を広げるときは、その prefix 配下を実測してから
@@ -63,7 +63,6 @@ tracked_paths:
   - /profile/following
   - /settings/profile-visibility
   - /parental-consent/manage
-  - /admin/member-profiles
   - /admin/campaigns
   - /admin/promotions
   - /admin/packages
@@ -136,11 +135,8 @@ pages:
     classification: reachable
     reason: "Phase 4（PR #3330）で設定ハブへ追加。あわせて pending.vue の承認済み時の逃げ先を manage に修正。実機でクリック到達確認済み"
 
-  # --- 重複残骸3枚（CMP-260917-0041 / CMP-260912-0911）: 削除待ち ---
-  - path: /admin/member-profiles
-    classification: duplicate-remnant
-    replacement: /organizations/[slug]/member-profiles
-    reason: "CMP-260917-0041②。organizations/[slug]/member-profiles.vue が同一のuseMemberProfileApi().listFields(scopeType, scopeId)を叩き、OrganizationSidebar.vueに導線あり。削除は未着手"
+  # /admin/member-profiles は独自項目の管理機能をチーム・組織の
+  # member-profiles.vue から開く共通部品へ移して削除済み。
 # /admin/reservation-settings は CMP-260909-1141 で削除済み。
 # 予約ライン CRUD は components/reservation/LineManager.vue と重複しており、そちらは
 # teams/[slug]/reservations.vue から健在（管理コンソールカード経由で到達可能）。
