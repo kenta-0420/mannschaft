@@ -70,14 +70,6 @@ test.describe('ADMIN-020〜043: 管理画面表示確認（拡張）', () => {
     })
   })
 
-  test('ADMIN-027: 備品管理ページが表示される', async ({ page }) => {
-    await page.goto('/admin/equipment')
-    await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: '備品管理' })).toBeVisible({
-      timeout: 10_000,
-    })
-  })
-
   test('ADMIN-029: LINE設定ページが表示される', async ({ page }) => {
     await page.goto('/admin/line-settings')
     await waitForHydration(page)

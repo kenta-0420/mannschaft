@@ -719,6 +719,8 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>CMP-260820-1014 で所属スコープ列挙を正本サービスへ集約後、CIフル解析で実測した
      * {@code 1450 → 1407}（43件解消）へ追随。</p>
      */
+    // origin/main の CMP-260922-2230（1459→1447、12件解消）は上記1407行版の
+    // 削除集合に全件包含されるため、並行ブランチの削除数を二重加算しない。
     private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1407;
 
     /**
