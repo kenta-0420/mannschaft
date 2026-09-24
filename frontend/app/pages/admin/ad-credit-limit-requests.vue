@@ -33,7 +33,6 @@ async function load() {
   catch {
     requests.value = []
     loadFailed.value = true
-    showError('与信枠増額申請の取得に失敗しました')
   }
   finally { loading.value = false }
 }

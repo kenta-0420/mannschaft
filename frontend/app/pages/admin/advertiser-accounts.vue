@@ -35,7 +35,6 @@ async function load() {
   catch {
     accounts.value = []
     loadFailed.value = true
-    showError('広告主アカウントの取得に失敗しました')
   }
   finally { loading.value = false }
 }

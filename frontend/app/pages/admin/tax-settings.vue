@@ -39,7 +39,6 @@ async function load() {
   catch {
     taxSettings.value = []
     loadFailed.value = true
-    showError('税率設定の取得に失敗しました')
   }
   finally { loading.value = false }
 }

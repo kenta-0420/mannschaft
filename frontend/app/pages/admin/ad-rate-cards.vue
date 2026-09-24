@@ -36,7 +36,6 @@ async function load() {
   catch {
     rateCards.value = []
     loadFailed.value = true
-    showError('広告料金カードの取得に失敗しました')
   }
   finally { loading.value = false }
 }
