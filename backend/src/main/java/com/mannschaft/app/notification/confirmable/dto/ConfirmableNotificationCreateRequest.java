@@ -3,7 +3,6 @@ package com.mannschaft.app.notification.confirmable.dto;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.entity.UnconfirmedVisibility;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -60,9 +59,27 @@ public class ConfirmableNotificationCreateRequest {
      */
     private UnconfirmedVisibility unconfirmedVisibility;
 
-    /** 受信者ユーザーIDリスト（必須・最低1件） */
-    @NotEmpty
+    /**
+     * 受信者ユーザーIDリスト（内部呼び出し {@code send(List<Long>)} 用の旧フィールド）。
+     *
+     * <p>CMP-260920-1040 軍議第8版確定稿 §3.3 により、公開 API のリクエストからは廃止する
+     * （AC-11。指定しても無視される。フィールド自体は内部呼び出しとの互換のため残置するが、
+     * 公開 API のバリデーションでは必須にしない）。</p>
+     */
     private List<Long> recipientUserIds;
+
+    /**
+     * CMP-260920-1040 宛先ターゲット（軍議第8版確定稿 §3.3）。
+     *
+     * <p>{@code recipientGroupId} と同時指定は不可（AC-10）。空配列 {@code []} は「何も選んでいない」
+     * を意味し 400 になる（AC-9）。省略（null）は既定の宛先（AC-8）。</p>
+     */
+    private List<ConfirmableTargetSpec> targets;
+
+    /**
+     * CMP-260920-1040 宛先グループID（軍議第8版確定稿 §3.3）。{@code targets} と排他。
+     */
+    private java.util.UUID recipientGroupId;
 
     /**
      * 確認期限を JST の {@link LocalDateTime} に変換して返す。

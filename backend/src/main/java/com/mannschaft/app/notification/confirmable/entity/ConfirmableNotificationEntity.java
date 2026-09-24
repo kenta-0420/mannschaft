@@ -143,10 +143,44 @@ public class ConfirmableNotificationEntity {
     /**
      * 受信者総数（受信者追加時に更新）。
      * 確認率計算の分母として使用。
+     *
+     * <p>CMP-260920-1040 以降、非同期経路では「受け付けた時点の見込み件数」ではなく
+     * 「実際に作った受信者行の数」を表す（軍議第8版確定稿 §3.1）。チャンクごとに加算する。</p>
      */
     @Column(nullable = false)
     @Builder.Default
     private Integer totalRecipientCount = 0;
+
+    /**
+     * CMP-260920-1040: 配信状態（軍議第8版確定稿 §9.1）。
+     *
+     * <p>既存行と同期経路の {@code send} は DELIVERED のままとする。
+     * 非同期経路（宛先指定の fanout）は QUEUED から開始し、ワーカーが遷移させる。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_status", nullable = false, length = 20)
+    @Builder.Default
+    private ConfirmableNotificationDeliveryStatus deliveryStatus = ConfirmableNotificationDeliveryStatus.DELIVERED;
+
+    /**
+     * CMP-260920-1040: ワーカーが作った受信者行の数（軍議第8版確定稿 §3.1）。
+     * 同期経路では常に 0（total_recipient_count と重複しない）。
+     */
+    @Column(name = "delivered_count", nullable = false)
+    @Builder.Default
+    private Integer deliveredCount = 0;
+
+    /**
+     * CMP-260920-1040: 未確認件数のカウンタ（軍議第8版確定稿 §10.1）。
+     *
+     * <p><b>更新してよいのは、この行を {@code SELECT ... FOR UPDATE} でロックしている
+     * トランザクションだけ</b>である（出陣で実装するワーカー・confirm・cancel 等がこの規約に従う）。
+     * 完了判定は {@code unconfirmedCount == 0 && deliveryStatus == DELIVERED && totalRecipientCount > 0}
+     * を、ロックした親の行の値だけで行う（受信者表への通常の COUNT は使わない）。</p>
+     */
+    @Column(name = "unconfirmed_count", nullable = false)
+    @Builder.Default
+    private Integer unconfirmedCount = 0;
 
     /**
      * 未確認者リストの公開範囲（HIDDEN / CREATOR_AND_ADMIN / ALL_MEMBERS）。

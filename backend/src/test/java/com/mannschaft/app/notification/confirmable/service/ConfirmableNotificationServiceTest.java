@@ -31,6 +31,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -286,6 +287,91 @@ class ConfirmableNotificationServiceTest {
             verify(notificationRepository).save(captor.capture());
             assertThat(captor.getValue().getUnconfirmedVisibility())
                     .isEqualTo(UnconfirmedVisibility.HIDDEN);
+        }
+    }
+
+    // ========================================
+    // CMP-260920-1040 AC-28: 内部の同期経路でも受信者 ID を一意化してから保存・課金する
+    //
+    // 軍議第8版確定稿 §2 の実測事実（origin/main 27bc64c37e）:
+    // 「recipientUserIds は一意化されていない。受信者表には UNIQUE 制約があるため、
+    //   同じ ID を2度渡すと一意制約違反になる」。§4 AC-28 はこれを根治させる。
+    //
+    // このテストは骨格段階では red（現状の send() は一意化しないため、
+    // saveAll に渡る受信者リストが重複したまま=3件になり、hasSize(2) の期待に落ちる）。
+    // ========================================
+    @Nested
+    @DisplayName("send 受信者IDの一意化（AC-28）")
+    class SendRecipientDeduplication {
+
+        @Test
+        @DisplayName("AC-28: 同じユーザーIDを複数回含むrecipientUserIdsを渡しても受信者行は1人1行になる")
+        void send_重複したrecipientUserIds_一意化されて保存される() {
+            // given: USER_ID_1 を2回、USER_ID_2 を1回含む（実務上は委員会伝達等の内部呼び出しで
+            // 複数の役職を兼務するユーザーが重複計上されるケースを想定）
+            List<Long> recipientIdsWithDuplicate = List.of(USER_ID_1, USER_ID_1, USER_ID_2);
+            ConfirmableNotificationSettingsEntity settings = createSettings(null, null);
+            ConfirmableNotificationEntity savedNotification = createActiveNotification();
+
+            given(settingsService.getOrCreate(ScopeType.TEAM, SCOPE_ID)).willReturn(settings);
+            given(userRepository.findById(USER_ID_1)).willReturn(Optional.empty());
+            given(userRepository.getReferenceById(USER_ID_1)).willReturn(mock(UserEntity.class));
+            given(userRepository.getReferenceById(USER_ID_2)).willReturn(mock(UserEntity.class));
+            given(notificationRepository.save(any(ConfirmableNotificationEntity.class)))
+                    .willReturn(savedNotification);
+            given(recipientRepository.saveAll(any()))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            notificationService.send(
+                    ScopeType.TEAM, SCOPE_ID, "委員会伝達テスト", null,
+                    ConfirmableNotificationPriority.NORMAL, null,
+                    null, null, null, null, null, USER_ID_1, recipientIdsWithDuplicate);
+
+            // then: 一意化後の2件（USER_ID_1, USER_ID_2）だけが saveAll に渡る
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<ConfirmableNotificationRecipientEntity>> captor =
+                    ArgumentCaptor.forClass(List.class);
+            verify(recipientRepository).saveAll(captor.capture());
+            assertThat(captor.getValue()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("AC-28: 一意化後の件数で課金する（組織スコープ）")
+        void send_重複したrecipientUserIds_一意化後の件数で課金される() {
+            // given: 組織スコープで USER_ID_1 を2回、USER_ID_2 を1回渡す → 一意化後は2件のはず
+            List<Long> recipientIdsWithDuplicate = List.of(USER_ID_1, USER_ID_1, USER_ID_2);
+            ConfirmableNotificationSettingsEntity settings = ConfirmableNotificationSettingsEntity.builder()
+                    .scopeType(ScopeType.ORGANIZATION)
+                    .scopeId(SCOPE_ID)
+                    .build();
+            ConfirmableNotificationEntity savedNotification = ConfirmableNotificationEntity.builder()
+                    .scopeType(ScopeType.ORGANIZATION)
+                    .scopeId(SCOPE_ID)
+                    .title("テスト")
+                    .priority(ConfirmableNotificationPriority.NORMAL)
+                    .totalRecipientCount(2)
+                    .build();
+
+            given(settingsService.getOrCreate(ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(settings);
+            given(userRepository.findById(USER_ID_1)).willReturn(Optional.empty());
+            given(userRepository.getReferenceById(USER_ID_1)).willReturn(mock(UserEntity.class));
+            given(userRepository.getReferenceById(USER_ID_2)).willReturn(mock(UserEntity.class));
+            given(notificationRepository.save(any(ConfirmableNotificationEntity.class)))
+                    .willReturn(savedNotification);
+            given(recipientRepository.saveAll(any()))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            notificationService.send(
+                    ScopeType.ORGANIZATION, SCOPE_ID, "組織テスト", null,
+                    ConfirmableNotificationPriority.NORMAL, null,
+                    null, null, null, null, null, USER_ID_1, recipientIdsWithDuplicate);
+
+            // then: consume は一意化後の件数（2）で呼ばれる。現状は入力の長さ（3）で呼ばれるため red
+            verify(notificationCreditService).consume(
+                    eq(SCOPE_ID), eq(2),
+                    any(com.mannschaft.app.notification.credit.entity.NotificationSourceType.class));
         }
     }
 }

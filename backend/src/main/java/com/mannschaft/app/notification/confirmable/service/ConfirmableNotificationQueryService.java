@@ -105,6 +105,28 @@ public class ConfirmableNotificationQueryService {
                 .collect(Collectors.toList());
     }
 
+    /** 受信者一覧ページングの上限件数（AC-30）。 */
+    public static final int MAX_RECIPIENT_PAGE_SIZE = 100;
+
+    /**
+     * CMP-260920-1040 受信者一覧をページングして取得する（軍議第8版確定稿 §9.5・AC-30・AC-59・AC-60）。
+     *
+     * <p><b>骨格のみ（試練A）。出陣で実装する。</b> {@code size} は上限 {@value #MAX_RECIPIENT_PAGE_SIZE}
+     * に丸めるか 400 とする（試練で1つに固定する）。件数・{@code viewerRole} は API が明示的に返す。</p>
+     *
+     * @param notificationId  確認通知ID
+     * @param requesterUserId リクエスト元ユーザーID
+     * @param page            ページ番号（0始まり）
+     * @param size            ページサイズ
+     * @param unconfirmedOnly 未確認者のみに絞り込むか
+     * @return ページング済み受信者一覧の応答契約
+     */
+    public com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientPageResponse
+            getRecipientsPage(
+                    Long notificationId, Long requesterUserId, int page, int size, boolean unconfirmedOnly) {
+        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+    }
+
     /**
      * スコープ内の確認通知一覧を取得する（作成日時降順）。
      *

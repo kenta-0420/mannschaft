@@ -1,0 +1,55 @@
+package com.mannschaft.app.notification.confirmable.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+/**
+ * CMP-260920-1040 F04.9 確認通知の宛先グループのターゲット（軍議第8版確定稿 §3.1）。
+ *
+ * <p>{@code UNIQUE(group_id, target_type, target_id)}。{@code group_id} は同一ドメイン内 FK・CASCADE。</p>
+ */
+@Entity
+@Table(name = "confirmable_recipient_group_targets")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@SuperBuilder
+public class ConfirmableRecipientGroupTargetEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "group_id", nullable = false, columnDefinition = "BINARY(16)")
+    private UUID groupId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type", nullable = false, length = 20)
+    private ConfirmableTargetType targetType;
+
+    @Column(name = "target_id", nullable = false)
+    private Long targetId;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
+}
