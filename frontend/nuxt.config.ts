@@ -991,6 +991,8 @@ export default defineNuxtConfig({
   ...(process.env.NUXT_GENERATE_SPA === 'true' ? { ssr: false } : {}),
 
   vite: {
+    // node_modules を worktree 間で共有しても、依存最適化キャッシュは各 worktree に隔離する。
+    cacheDir: './.nuxt/vite-cache',
     server: {
       allowedHosts: true,
     },
