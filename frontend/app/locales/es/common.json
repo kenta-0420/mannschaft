@@ -544,6 +544,8 @@
     },
     "unconfirmed_count": "Sin confirmar: {count}",
     "unconfirmed_list": "Usuarios no confirmados"
+  ,
+    "recipient_groups": "Grupos de destinatarios", "recipient_groups_help": "Guarde organizaciones o equipos como destinatarios.", "group_name": "Nombre del grupo", "targets": "Destinos", "target_id": "ID de destino", "target_type": { "ORGANIZATION": "Organización", "TEAM": "Equipo" }, "template": "Plantilla", "audience": "Destinatarios", "current_scope": "Esta organización o equipo", "current_scope_help": "Enviar a miembros activos del ámbito actual.", "group_audience_help": "Enviar al grupo de destinatarios guardado.", "message_title": "Título", "message_body": "Mensaje", "priority_label": "Prioridad", "accepted": "Entrega aceptada", "accepted_count": "Entrega aceptada (destinatarios estimados: {count})", "recipient": "Destinatario", "withdrawn": "Retirado", "withdrawn_user": "Usuario retirado", "unknown_recipient": "Destinatario desconocido", "unconfirmed": "Sin confirmar", "unconfirmed_only": "Solo sin confirmar", "delivery_status": { "QUEUED": "En cola", "DELIVERING": "Enviando", "DELIVERED": "Entregado", "PARTIALLY_FAILED": "Parcialmente fallido" }, "help": { "title": "Notificaciones de confirmación", "body": "Elija un grupo de destinatarios o el ámbito actual. La entrega es asíncrona; consulte el historial." }
   },
   "timeline": {
     "videoProcessing": "Procesando video...",

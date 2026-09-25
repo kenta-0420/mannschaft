@@ -544,6 +544,8 @@
     },
     "unconfirmed_count": "未确认: {count}名",
     "unconfirmed_list": "未确认者列表"
+  ,
+    "recipient_groups": "收件人群组", "recipient_groups_help": "将组织或团队保存为通知收件人。", "group_name": "群组名称", "targets": "目标", "target_id": "目标 ID", "target_type": { "ORGANIZATION": "组织", "TEAM": "团队" }, "template": "模板", "audience": "收件人", "current_scope": "当前组织或团队", "current_scope_help": "发送给当前范围内的活跃成员。", "group_audience_help": "发送给已保存的收件人群组。", "message_title": "标题", "message_body": "正文", "priority_label": "优先级", "accepted": "已接受发送", "accepted_count": "已接受发送（预计收件人：{count}）", "recipient": "收件人", "withdrawn": "已退出", "withdrawn_user": "已退出用户", "unknown_recipient": "未知收件人", "unconfirmed": "未确认", "unconfirmed_only": "仅未确认", "delivery_status": { "QUEUED": "等待发送", "DELIVERING": "发送中", "DELIVERED": "已送达", "PARTIALLY_FAILED": "部分失败" }, "help": { "title": "确认通知使用方法", "body": "选择收件人群组或当前范围。发送将异步进行，可在历史记录中查看。" }
   },
   "timeline": {
     "videoProcessing": "视频处理中...",

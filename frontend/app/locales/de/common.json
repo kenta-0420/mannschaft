@@ -544,6 +544,8 @@
     },
     "unconfirmed_count": "Nicht bestaetigt: {count}",
     "unconfirmed_list": "Nicht bestaetigte Empfaenger"
+  ,
+    "recipient_groups": "Empfängergruppen", "recipient_groups_help": "Organisationen oder Teams als Empfänger speichern.", "group_name": "Gruppenname", "targets": "Ziele", "target_id": "Ziel-ID", "target_type": { "ORGANIZATION": "Organisation", "TEAM": "Team" }, "template": "Vorlage", "audience": "Empfänger", "current_scope": "Diese Organisation oder dieses Team", "current_scope_help": "An aktive Mitglieder des aktuellen Bereichs senden.", "group_audience_help": "An die gespeicherte Empfängergruppe senden.", "message_title": "Titel", "message_body": "Nachricht", "priority_label": "Priorität", "accepted": "Versand angenommen", "accepted_count": "Versand angenommen (geschätzte Empfänger: {count})", "recipient": "Empfänger", "withdrawn": "Ausgetreten", "withdrawn_user": "Ausgetretener Benutzer", "unknown_recipient": "Unbekannter Empfänger", "unconfirmed": "Unbestätigt", "unconfirmed_only": "Nur unbestätigte", "delivery_status": { "QUEUED": "Wartend", "DELIVERING": "Wird zugestellt", "DELIVERED": "Zugestellt", "PARTIALLY_FAILED": "Teilweise fehlgeschlagen" }, "help": { "title": "Bestätigungsbenachrichtigungen", "body": "Wählen Sie eine Empfängergruppe oder den aktuellen Bereich. Die Zustellung läuft asynchron; verfolgen Sie sie im Verlauf." }
   },
   "timeline": {
     "videoProcessing": "Video wird verarbeitet...",

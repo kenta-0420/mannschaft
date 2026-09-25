@@ -544,6 +544,8 @@
     },
     "unconfirmed_count": "미확인: {count}명",
     "unconfirmed_list": "미확인자 목록"
+  ,
+    "recipient_groups": "수신자 그룹", "recipient_groups_help": "조직 또는 팀을 알림 수신자로 저장합니다.", "group_name": "그룹 이름", "targets": "대상", "target_id": "대상 ID", "target_type": { "ORGANIZATION": "조직", "TEAM": "팀" }, "template": "템플릿", "audience": "수신자", "current_scope": "현재 조직 또는 팀", "current_scope_help": "현재 범위의 활성 구성원에게 보냅니다.", "group_audience_help": "저장된 수신자 그룹에게 보냅니다.", "message_title": "제목", "message_body": "본문", "priority_label": "우선순위", "accepted": "전송이 접수되었습니다", "accepted_count": "전송이 접수되었습니다(예상 수신자: {count}명)", "recipient": "수신자", "withdrawn": "탈퇴", "withdrawn_user": "탈퇴한 사용자", "unknown_recipient": "알 수 없는 수신자", "unconfirmed": "미확인", "unconfirmed_only": "미확인만", "delivery_status": { "QUEUED": "대기", "DELIVERING": "전송 중", "DELIVERED": "전송 완료", "PARTIALLY_FAILED": "일부 실패" }, "help": { "title": "확인 알림 사용 방법", "body": "수신자 그룹 또는 현재 범위를 선택하세요. 전송은 비동기로 진행되며 이력에서 확인할 수 있습니다." }
   },
   "timeline": {
     "videoProcessing": "동영상 처리 중...",

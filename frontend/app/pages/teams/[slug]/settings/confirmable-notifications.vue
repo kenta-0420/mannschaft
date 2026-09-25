@@ -39,6 +39,11 @@ function onNotificationSent() {
 
     <!-- 確認通知送信セクション -->
     <section class="mt-8">
+      <h2 class="text-lg font-semibold mb-4">{{ $t('confirmable.recipient_groups') }}</h2>
+      <ConfirmableRecipientGroupManager scope-type="TEAM" :scope-id="scopeId" />
+    </section>
+
+    <section class="mt-8">
       <h2 class="text-lg font-semibold mb-4">{{ $t('confirmable.send') }}</h2>
       <ConfirmableNotificationSender
         scope-type="TEAM"

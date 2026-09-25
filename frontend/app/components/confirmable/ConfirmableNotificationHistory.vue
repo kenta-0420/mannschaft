@@ -135,6 +135,11 @@ defineExpose({ refresh: () => loadNotifications() })
                   :value="$t(`confirmable.priority.${notif.priority}`)"
                   :severity="notif.priority === 'URGENT' ? 'danger' : notif.priority === 'HIGH' ? 'warn' : 'secondary'"
                 />
+                <Tag
+                  v-if="notif.deliveryStatus"
+                  :value="$t(`confirmable.delivery_status.${notif.deliveryStatus}`)"
+                  :severity="notif.deliveryStatus === 'PARTIALLY_FAILED' ? 'warn' : 'secondary'"
+                />
               </div>
 
               <!-- 確認率プログレスバー -->

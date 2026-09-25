@@ -544,6 +544,8 @@
     },
     "unconfirmed_count": "Unconfirmed: {count}",
     "unconfirmed_list": "Unconfirmed users"
+  ,
+    "recipient_groups": "Recipient groups", "recipient_groups_help": "Save organizations or teams as notification recipients.", "group_name": "Group name", "targets": "Targets", "target_id": "Target ID", "target_type": { "ORGANIZATION": "Organization", "TEAM": "Team" }, "template": "Template", "audience": "Audience", "current_scope": "This organization or team", "current_scope_help": "Send to active members of the current scope.", "group_audience_help": "Send to the saved recipient group.", "message_title": "Title", "message_body": "Message", "priority_label": "Priority", "accepted": "Delivery accepted", "accepted_count": "Delivery accepted (estimated recipients: {count})", "recipient": "Recipient", "withdrawn": "Withdrawn", "withdrawn_user": "Withdrawn user", "unknown_recipient": "Unknown recipient", "unconfirmed": "Unconfirmed", "unconfirmed_only": "Unconfirmed only", "delivery_status": { "QUEUED": "Queued", "DELIVERING": "Delivering", "DELIVERED": "Delivered", "PARTIALLY_FAILED": "Partially failed" }, "help": { "title": "Using confirmation notifications", "body": "Choose a recipient group or the current scope. Delivery runs asynchronously; track delivery and confirmations in history." }
   },
   "timeline": {
     "videoProcessing": "Processing video...",
