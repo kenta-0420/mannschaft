@@ -47,6 +47,7 @@ public class IncidentService {
      * {@code checkOwnerOrAdmin} を用いる（手本: committee/pointcard）。
      */
     private final AccessControlService accessControlService;
+    private final IncidentAccessGuard incidentAccessGuard;
 
     // ========================================
     // DTOクラス定義
@@ -213,7 +214,7 @@ public class IncidentService {
      */
     public IncidentResponse getIncident(Long id, Long userId) {
         IncidentEntity incident = findIncidentOrThrow(id);
-        requireMemberOrConceal(incident, userId);
+        incidentAccessGuard.requireVisibleOrConceal(incident, userId);
         return IncidentResponse.from(incident);
     }
 
@@ -232,13 +233,13 @@ public class IncidentService {
      */
     public Page<IncidentSummaryResponse> listIncidents(
             String scopeType, Long scopeId, String status, Pageable pageable, Long userId) {
-        accessControlService.checkMembership(userId, scopeId, scopeType);
+        boolean canViewAll = incidentAccessGuard.requireListVisibility(userId, scopeId, scopeType);
 
         // CMP-028 Phase D: 全件ロード＋メモリページングを撤去し、status絞り込みも含めて
         // DB に Pageable を渡してページング・総件数算出させる。
         String normalizedStatus = (status != null && !status.isBlank()) ? status : null;
-        Page<IncidentEntity> page = incidentRepository.findByScopeTypeAndScopeIdAndStatus(
-                scopeType, scopeId, normalizedStatus, pageable);
+        Page<IncidentEntity> page = incidentRepository.findVisibleByScopeTypeAndScopeIdAndStatus(
+                scopeType, scopeId, normalizedStatus, userId, canViewAll, pageable);
 
         return page.map(IncidentSummaryResponse::from);
     }

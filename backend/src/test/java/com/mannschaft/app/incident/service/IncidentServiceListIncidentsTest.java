@@ -69,6 +69,9 @@ class IncidentServiceListIncidentsTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private IncidentAccessGuard incidentAccessGuard;
+
     private IncidentService incidentService;
 
     private static final Long USER_ID = 1L;
@@ -79,7 +82,7 @@ class IncidentServiceListIncidentsTest {
     void setUp() {
         incidentService = new IncidentService(
                 incidentRepository, categoryRepository, assignmentRepository,
-                statusHistoryRepository, eventPublisher, accessControlService);
+                statusHistoryRepository, eventPublisher, accessControlService, incidentAccessGuard);
     }
 
     /**
@@ -92,8 +95,8 @@ class IncidentServiceListIncidentsTest {
     void DBへPageableを渡す() {
         Pageable pageable = PageRequest.of(0, 20);
         IncidentEntity entity = buildIncident(1L, SCOPE_ID, "REPORTED");
-        given(incidentRepository.findByScopeTypeAndScopeIdAndStatus(
-                eq(SCOPE_TYPE), eq(SCOPE_ID), isNull(), eq(pageable)))
+        given(incidentRepository.findVisibleByScopeTypeAndScopeIdAndStatus(
+                eq(SCOPE_TYPE), eq(SCOPE_ID), isNull(), eq(USER_ID), eq(false), eq(pageable)))
                 .willReturn(new PageImpl<>(List.of(entity), pageable, 1));
 
         Page<IncidentService.IncidentSummaryResponse> result =
@@ -101,8 +104,8 @@ class IncidentServiceListIncidentsTest {
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getTotalElements()).isEqualTo(1);
-        verify(incidentRepository).findByScopeTypeAndScopeIdAndStatus(
-                SCOPE_TYPE, SCOPE_ID, null, pageable);
+        verify(incidentRepository).findVisibleByScopeTypeAndScopeIdAndStatus(
+                SCOPE_TYPE, SCOPE_ID, null, USER_ID, false, pageable);
         verify(incidentRepository, org.mockito.Mockito.never())
                 .findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByCreatedAtDesc(any(), any());
     }
@@ -115,14 +118,14 @@ class IncidentServiceListIncidentsTest {
     @DisplayName("status指定時はstatusがそのままRepositoryへ渡る")
     void statusがそのまま渡る() {
         Pageable pageable = PageRequest.of(0, 20);
-        given(incidentRepository.findByScopeTypeAndScopeIdAndStatus(
-                eq(SCOPE_TYPE), eq(SCOPE_ID), eq("RESOLVED"), eq(pageable)))
+        given(incidentRepository.findVisibleByScopeTypeAndScopeIdAndStatus(
+                eq(SCOPE_TYPE), eq(SCOPE_ID), eq("RESOLVED"), eq(USER_ID), eq(false), eq(pageable)))
                 .willReturn(new PageImpl<>(List.of(), pageable, 0));
 
         incidentService.listIncidents(SCOPE_TYPE, SCOPE_ID, "RESOLVED", pageable, USER_ID);
 
-        verify(incidentRepository).findByScopeTypeAndScopeIdAndStatus(
-                SCOPE_TYPE, SCOPE_ID, "RESOLVED", pageable);
+        verify(incidentRepository).findVisibleByScopeTypeAndScopeIdAndStatus(
+                SCOPE_TYPE, SCOPE_ID, "RESOLVED", USER_ID, false, pageable);
     }
 
     /**
@@ -133,14 +136,14 @@ class IncidentServiceListIncidentsTest {
     @DisplayName("statusが空白のみの場合はnullに正規化されてRepositoryへ渡る")
     void 空白statusはnullに正規化される() {
         Pageable pageable = PageRequest.of(0, 20);
-        given(incidentRepository.findByScopeTypeAndScopeIdAndStatus(
-                eq(SCOPE_TYPE), eq(SCOPE_ID), isNull(), eq(pageable)))
+        given(incidentRepository.findVisibleByScopeTypeAndScopeIdAndStatus(
+                eq(SCOPE_TYPE), eq(SCOPE_ID), isNull(), eq(USER_ID), eq(false), eq(pageable)))
                 .willReturn(new PageImpl<>(List.of(), pageable, 0));
 
         incidentService.listIncidents(SCOPE_TYPE, SCOPE_ID, "  ", pageable, USER_ID);
 
-        verify(incidentRepository).findByScopeTypeAndScopeIdAndStatus(
-                SCOPE_TYPE, SCOPE_ID, null, pageable);
+        verify(incidentRepository).findVisibleByScopeTypeAndScopeIdAndStatus(
+                SCOPE_TYPE, SCOPE_ID, null, USER_ID, false, pageable);
     }
 
     /**
@@ -151,7 +154,7 @@ class IncidentServiceListIncidentsTest {
     void 非会員は弾かれる() {
         Pageable pageable = PageRequest.of(0, 20);
         doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                .when(accessControlService).checkMembership(USER_ID, SCOPE_ID, SCOPE_TYPE);
+                .when(incidentAccessGuard).requireListVisibility(USER_ID, SCOPE_ID, SCOPE_TYPE);
 
         assertThatThrownBy(() ->
                 incidentService.listIncidents(SCOPE_TYPE, SCOPE_ID, null, pageable, USER_ID))
@@ -168,15 +171,15 @@ class IncidentServiceListIncidentsTest {
     void 会員には一覧が返る() {
         Pageable pageable = PageRequest.of(0, 20);
         IncidentEntity entity = buildIncident(2L, SCOPE_ID, "REPORTED");
-        given(incidentRepository.findByScopeTypeAndScopeIdAndStatus(
-                eq(SCOPE_TYPE), eq(SCOPE_ID), isNull(), eq(pageable)))
+        given(incidentRepository.findVisibleByScopeTypeAndScopeIdAndStatus(
+                eq(SCOPE_TYPE), eq(SCOPE_ID), isNull(), eq(USER_ID), eq(false), eq(pageable)))
                 .willReturn(new PageImpl<>(List.of(entity), pageable, 1));
 
         Page<IncidentService.IncidentSummaryResponse> result =
                 incidentService.listIncidents(SCOPE_TYPE, SCOPE_ID, null, pageable, USER_ID);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(accessControlService).checkMembership(USER_ID, SCOPE_ID, SCOPE_TYPE);
+        verify(incidentAccessGuard).requireListVisibility(USER_ID, SCOPE_ID, SCOPE_TYPE);
     }
 
     private IncidentEntity buildIncident(Long id, Long scopeId, String status) {

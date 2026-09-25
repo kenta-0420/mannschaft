@@ -41,6 +41,7 @@ class IncidentCommentServiceTest {
     @Mock private IncidentCommentRepository commentRepository;
     @Mock private IncidentAssignmentRepository assignmentRepository;
     @Mock private AccessControlService accessControlService;
+    @Mock private IncidentAccessGuard incidentAccessGuard;
     @Mock private NameResolverService nameResolverService;
     @InjectMocks private IncidentCommentService service;
 
@@ -61,6 +62,7 @@ class IncidentCommentServiceTest {
     @Test
     @DisplayName("報告者は内部コメントを SQL 段階で除外して作成日時昇順に取得する")
     void listComments_reporter_excludesInternalAtQueryLayer() {
+        given(incidentAccessGuard.requireVisibleOrConceal(incident, REPORTER_ID)).willReturn(false);
         allowMember(REPORTER_ID);
         given(accessControlService.isAdminOrAbove(REPORTER_ID, SCOPE_ID, "TEAM")).willReturn(false);
         IncidentCommentEntity first = comment(1L, REPORTER_ID, "最初", false);
@@ -82,6 +84,7 @@ class IncidentCommentServiceTest {
     @Test
     @DisplayName("ADMIN は内部コメントを含めて取得し、退会済み投稿者は安全な代替表示名にする")
     void listComments_admin_includesInternalAndUsesFallbackName() {
+        given(incidentAccessGuard.requireVisibleOrConceal(incident, ADMIN_ID)).willReturn(true);
         allowMember(ADMIN_ID);
         given(accessControlService.isAdminOrAbove(ADMIN_ID, SCOPE_ID, "TEAM")).willReturn(true);
         IncidentCommentEntity internal = comment(1L, 999L, "内部引継ぎ", true);
@@ -101,6 +104,7 @@ class IncidentCommentServiceTest {
     @Test
     @DisplayName("SYSTEM_ADMIN は所属の有無にかかわらず全コメントを取得する")
     void listComments_systemAdmin_includesInternalWithoutMembership() {
+        given(incidentAccessGuard.requireVisibleOrConceal(incident, ADMIN_ID)).willReturn(true);
         given(accessControlService.isSystemAdmin(ADMIN_ID)).willReturn(true);
         given(commentRepository.findVisibleByIncidentIdOrderByCreatedAtAsc(INCIDENT_ID, true))
                 .willReturn(List.of(comment(1L, REPORTER_ID, "監査", true)));
@@ -110,13 +114,13 @@ class IncidentCommentServiceTest {
 
         assertThat(result).singleElement().extracting(IncidentCommentService.IncidentCommentResponse::isInternal)
                 .isEqualTo(true);
-        verify(accessControlService, never()).isMember(ADMIN_ID, SCOPE_ID, "TEAM");
     }
 
     @Test
     @DisplayName("非所属者は incident の存在を秘匿して 404 エラーとなりコメントを検索しない")
     void listComments_nonMember_concealsExistence() {
-        given(accessControlService.isMember(999L, SCOPE_ID, "TEAM")).willReturn(false);
+        given(incidentAccessGuard.requireVisibleOrConceal(incident, 999L))
+                .willThrow(new BusinessException(IncidentErrorCode.INCIDENT_002));
 
         assertThatThrownBy(() -> service.listComments(INCIDENT_ID, 999L))
                 .isInstanceOf(BusinessException.class)
@@ -130,6 +134,8 @@ class IncidentCommentServiceTest {
     @DisplayName("所属していても報告者・担当者・ADMIN/DEPUTY_ADMIN 以外は 404 とする")
     void listComments_unrelatedMember_concealsExistence() {
         long unrelatedMemberId = 777L;
+        given(incidentAccessGuard.requireVisibleOrConceal(incident, unrelatedMemberId))
+                .willThrow(new BusinessException(IncidentErrorCode.INCIDENT_002));
         allowMember(unrelatedMemberId);
         given(accessControlService.isAdminOrAbove(unrelatedMemberId, SCOPE_ID, "TEAM")).willReturn(false);
         given(assignmentRepository.existsByIncidentIdAndUserIdAndAssigneeType(
@@ -145,6 +151,8 @@ class IncidentCommentServiceTest {
     @Test
     @DisplayName("SUPPORTER は報告者本人でもコメントを閲覧できない")
     void listComments_supporterReporter_concealsExistence() {
+        given(incidentAccessGuard.requireVisibleOrConceal(incident, REPORTER_ID))
+                .willThrow(new BusinessException(IncidentErrorCode.INCIDENT_002));
         allowMember(REPORTER_ID);
         given(accessControlService.isAdminOrAbove(REPORTER_ID, SCOPE_ID, "TEAM")).willReturn(false);
         given(accessControlService.isSupporter(REPORTER_ID, SCOPE_ID, "TEAM")).willReturn(true);
@@ -160,6 +168,7 @@ class IncidentCommentServiceTest {
     @DisplayName("USER 担当が重複していても exists 判定で関係者として取得できる")
     void listComments_userAssigneeUsesExistsQuery() {
         long assigneeId = 778L;
+        given(incidentAccessGuard.requireVisibleOrConceal(incident, assigneeId)).willReturn(false);
         allowMember(assigneeId);
         given(accessControlService.isAdminOrAbove(assigneeId, SCOPE_ID, "TEAM")).willReturn(false);
         given(accessControlService.isSupporter(assigneeId, SCOPE_ID, "TEAM")).willReturn(false);
@@ -176,6 +185,7 @@ class IncidentCommentServiceTest {
     @Test
     @DisplayName("createdAt はサーバー基準ゾーンを明示した OffsetDateTime で返す")
     void listComments_convertsCreatedAtToOffsetDateTime() {
+        given(incidentAccessGuard.requireVisibleOrConceal(incident, ADMIN_ID)).willReturn(true);
         allowMember(ADMIN_ID);
         given(accessControlService.isAdminOrAbove(ADMIN_ID, SCOPE_ID, "TEAM")).willReturn(true);
         IncidentCommentEntity comment = comment(1L, REPORTER_ID, "timestamp", false).toBuilder()
