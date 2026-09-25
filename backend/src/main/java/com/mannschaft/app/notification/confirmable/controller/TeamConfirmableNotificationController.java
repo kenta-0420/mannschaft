@@ -221,11 +221,11 @@ public class TeamConfirmableNotificationController {
         }
 
         // ADMIN+ なら全件返す（既存挙動）
+        // CMP-260920-1040是正: getRecipients は退会者でも500化しないネイティブ投影から
+        // 直接DTOを返すため、mapper を経由しない（家老の検出・殿の確認）。
         if (accessControlService.isAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name())) {
-            List<ConfirmableNotificationRecipientEntity> recipients =
-                    notificationService.getRecipients(notificationId);
             List<ConfirmableNotificationRecipientResponse> responses =
-                    mapper.toRecipientResponseList(recipients);
+                    notificationService.getRecipients(notificationId);
             return ResponseEntity.ok(ApiResponse.of(responses));
         }
 

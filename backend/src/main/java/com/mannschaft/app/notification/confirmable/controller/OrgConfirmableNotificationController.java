@@ -218,10 +218,10 @@ public class OrgConfirmableNotificationController {
         }
 
         if (accessControlService.isAdminOrAbove(currentUserId, orgId, ScopeType.ORGANIZATION.name())) {
-            List<ConfirmableNotificationRecipientEntity> recipients =
-                    notificationService.getRecipients(notificationId);
+            // CMP-260920-1040是正: getRecipients は退会者でも500化しないネイティブ投影から
+            // 直接DTOを返すため、mapper を経由しない（家老の検出・殿の確認）。
             List<ConfirmableNotificationRecipientResponse> responses =
-                    mapper.toRecipientResponseList(recipients);
+                    notificationService.getRecipients(notificationId);
             return ResponseEntity.ok(ApiResponse.of(responses));
         }
 

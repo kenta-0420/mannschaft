@@ -28,11 +28,23 @@ public class ConfirmableNotificationRecipientResponse {
     /** 受信者ユーザーID */
     private Long userId;
 
-    /** 受信者表示名 */
+    /** 受信者表示名（退会者は個人情報を出さないため NULL） */
     private String displayName;
 
-    /** 受信者アバターURL（未設定なら NULL） */
+    /** 受信者アバターURL（未設定・退会者は NULL） */
     private String avatarUrl;
+
+    /**
+     * CMP-260920-1040是正: 受信者が退会済みかどうか（家老の検出・殿の確認）。
+     *
+     * <p>{@code UserEntity} は {@code @SQLRestriction("deleted_at IS NULL")} を持つため、
+     * 受信者の {@code user} を JPA の LAZY 関連経由で読むと、退会者は
+     * {@code EntityNotFoundException} になり一覧全体が 500 化していた。本フィールドは
+     * その根治として、関連経由ではなく退会者にも対応した投影（native/JOIN）で作る
+     * レスポンスに載せる「退会している」ことを示す項目。true の間は
+     * {@code displayName}/{@code avatarUrl} は NULL（個人情報を出さない）。</p>
+     */
+    private boolean withdrawn;
 
     /** 確認済みフラグ */
     private Boolean isConfirmed;

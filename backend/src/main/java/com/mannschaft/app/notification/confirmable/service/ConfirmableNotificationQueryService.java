@@ -10,7 +10,6 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.entity.UnconfirmedVisibility;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
-import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import lombok.RequiredArgsConstructor;
@@ -45,8 +44,6 @@ public class ConfirmableNotificationQueryService {
      * {@code new ConfirmableNotificationQueryService(null, null)} はIT差し替えで解消する）。
      */
     private final AccessControlService accessControlService;
-    /** {@link #getRecipientsPage} の応答生成に使う（Entity→DTO）。 */
-    private final ConfirmableNotificationMapper mapper;
 
     /**
      * 確認通知の詳細を取得する。
@@ -66,15 +63,74 @@ public class ConfirmableNotificationQueryService {
      * F04.9 Phase D の MEMBER 視点アクセスは
      * {@link #getRecipientsForMember(Long, Long)} を使用すること。</p>
      *
+     * <p><b>CMP-260920-1040是正</b>: 従来は Entity を返し、Controller 側で
+     * {@code ConfirmableNotificationMapper#toRecipientResponseList} を通していたが、そのマッピングが
+     * LAZY な {@code recipient.getUser()} を関連経由で読むため、退会者（{@code UserEntity} の
+     * {@code @SQLRestriction("deleted_at IS NULL")}）が1人でも含まれると
+     * {@code EntityNotFoundException} になり一覧全体が 500 化していた（家老の検出・殿の確認）。
+     * 本メソッドはネイティブ投影（{@link ConfirmableNotificationRecipientRepository#findRecipientRowsByNotificationId}）
+     * から直接 DTO を組み立てることでこれを根治し、退会者は {@code withdrawn=true}
+     * （表示名・アバターURLはNULL）の行として返す。</p>
+     *
      * @param notificationId 確認通知ID
-     * @return 受信者エンティティリスト（除外者・確認済みも含む全件）
+     * @return 受信者レスポンスリスト（除外者・確認済みも含む全件・退会者は withdrawn=true）
      */
-    public List<ConfirmableNotificationRecipientEntity> getRecipients(Long notificationId) {
+    public List<ConfirmableNotificationRecipientResponse> getRecipients(Long notificationId) {
         // 通知の存在確認
         if (!notificationRepository.existsById(notificationId)) {
             throw new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND);
         }
-        return recipientRepository.findByConfirmableNotificationId(notificationId);
+        return recipientRepository.findRecipientRowsByNotificationId(notificationId).stream()
+                .map(ConfirmableNotificationQueryService::toRecipientResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * CMP-260920-1040是正: ネイティブ投影の1行（id, user_id, display_name, avatar_url,
+     * user_deleted_at, is_confirmed, confirmed_at, confirmed_via, excluded_at, created_at）を
+     * {@link ConfirmableNotificationRecipientResponse} に変換する。退会者
+     * （{@code user_deleted_at IS NOT NULL} または {@code LEFT JOIN} で該当行が無い）は
+     * {@code withdrawn=true} とし、表示名・アバターURLは個人情報保護のため NULL のまま返す。
+     */
+    private static ConfirmableNotificationRecipientResponse toRecipientResponse(Object[] row) {
+        return toRecipientResponse(row, false);
+    }
+
+    /**
+     * @param maskConfirmationDetails true の場合 {@code confirmedAt}/{@code confirmedVia}/{@code excludedAt}
+     *                                を NULL マスクする（{@code toRecipientPublicResponse} と同じ MEMBER 視点契約）。
+     */
+    private static ConfirmableNotificationRecipientResponse toRecipientResponse(
+            Object[] row, boolean maskConfirmationDetails) {
+        Object userDeletedAt = row[4];
+        boolean withdrawn = userDeletedAt != null || row[2] == null;
+        return ConfirmableNotificationRecipientResponse.builder()
+                .id(((Number) row[0]).longValue())
+                .userId(row[1] == null ? null : ((Number) row[1]).longValue())
+                .displayName(withdrawn ? null : (String) row[2])
+                .avatarUrl(withdrawn ? null : (String) row[3])
+                .withdrawn(withdrawn)
+                .isConfirmed(toBoolean(row[5]))
+                .confirmedAt(maskConfirmationDetails ? null : (java.time.LocalDateTime) row[6])
+                .confirmedVia(maskConfirmationDetails || row[7] == null ? null
+                        : com.mannschaft.app.notification.confirmable.entity.ConfirmedVia.valueOf((String) row[7]))
+                .excludedAt(maskConfirmationDetails ? null : (java.time.LocalDateTime) row[8])
+                .createdAt((java.time.LocalDateTime) row[9])
+                .build();
+    }
+
+    /** JDBC ドライバによって Boolean/Byte/Integer と型が揺れる TINYINT(1) を安全に真偽値化する。 */
+    private static Boolean toBoolean(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Boolean b) {
+            return b;
+        }
+        if (value instanceof Number n) {
+            return n.intValue() != 0;
+        }
+        return Boolean.parseBoolean(value.toString());
     }
 
     /**
@@ -179,10 +235,13 @@ public class ConfirmableNotificationQueryService {
             if (!isRecipient) {
                 throw new BusinessException(CommonErrorCode.COMMON_002);
             }
-            Page<ConfirmableNotificationRecipientEntity> recipientPage = recipientRepository
-                    .findByConfirmableNotificationIdAndIsConfirmedFalseAndExcludedAtIsNullOrderByIdAsc(
-                            notificationId, pageable);
-            items = mapper.toRecipientPublicResponseList(recipientPage.getContent());
+            // CMP-260920-1040是正: mapper 経由の Entity→DTO（user 関連の LAZY 読み）は退会者を含むと
+            // EntityNotFoundException で 500 化するため、ネイティブ投影から直接 DTO を組み立てる。
+            Page<Object[]> recipientRowPage = recipientRepository
+                    .findUnconfirmedRecipientRowsPage(notificationId, pageable);
+            items = recipientRowPage.getContent().stream()
+                    .map(row -> toRecipientResponse(row, true))
+                    .collect(Collectors.toList());
             // MEMBER 視点で見える範囲は「未確認・非除外」だけ（自分が見てよい範囲の外は漏らさない）。
             return ConfirmableNotificationRecipientPageResponse.builder()
                     .items(items)
@@ -195,11 +254,13 @@ public class ConfirmableNotificationQueryService {
                     .build();
         }
 
-        Page<ConfirmableNotificationRecipientEntity> recipientPage = unconfirmedOnly
-                ? recipientRepository.findByConfirmableNotificationIdAndIsConfirmedFalseAndExcludedAtIsNullOrderByIdAsc(
-                        notificationId, pageable)
-                : recipientRepository.findByConfirmableNotificationIdOrderByIdAsc(notificationId, pageable);
-        items = mapper.toRecipientResponseList(recipientPage.getContent());
+        // CMP-260920-1040是正: ADMIN+/CREATOR 視点も同じ理由でネイティブ投影経由に揃える。
+        Page<Object[]> recipientRowPage = unconfirmedOnly
+                ? recipientRepository.findUnconfirmedRecipientRowsPage(notificationId, pageable)
+                : recipientRepository.findRecipientRowsPage(notificationId, pageable);
+        items = recipientRowPage.getContent().stream()
+                .map(ConfirmableNotificationQueryService::toRecipientResponse)
+                .collect(Collectors.toList());
 
         return ConfirmableNotificationRecipientPageResponse.builder()
                 .items(items)

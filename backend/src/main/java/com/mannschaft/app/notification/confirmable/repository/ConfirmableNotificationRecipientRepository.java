@@ -263,4 +263,67 @@ public interface ConfirmableNotificationRecipientRepository
      */
     Optional<ConfirmableNotificationRecipientEntity> findByConfirmableNotificationIdAndUserId(
             Long notificationId, Long userId);
+
+    // -------------------------------------------------------------------------
+    // CMP-260920-1040是正: 退会者を含む受信者一覧が500化する欠陥の根治（家老の検出・殿の確認）。
+    //
+    // UserEntity は @SQLRestriction("deleted_at IS NULL") を持つため、受信者の user（LAZY）を
+    // 関連経由で読むと、退会者は EntityNotFoundException になり一覧全体が500化する。
+    // 以下のネイティブ投影は Hibernate のエンティティ読込を経由しない（@SQLRestriction は
+    // エンティティ読込にのみ適用され、素のJOINには影響しない）ため、退会者の行も
+    // 「退会している」ことが分かる形（display_name/avatar_url はNULL、deleted_atで判定）で返せる。
+    // 個人情報保護のため、投影自体にも表示名・メールは退会者ぶんは含めない（display_nameはNULL）。
+    // -------------------------------------------------------------------------
+
+    /** 受信者一覧の投影SELECT列（順序固定）: id, user_id, display_name, avatar_url, user_deleted_at,
+     *  is_confirmed, confirmed_at, confirmed_via, excluded_at, created_at。 */
+    String RECIPIENT_ROW_SELECT =
+            "SELECT r.id, r.user_id, u.display_name, u.avatar_url, u.deleted_at, "
+            + "r.is_confirmed, r.confirmed_at, r.confirmed_via, r.excluded_at, r.created_at "
+            + "FROM confirmable_notification_recipients r "
+            + "LEFT JOIN users u ON u.id = r.user_id ";
+
+    /**
+     * 確認通知の受信者一覧を投影で取得する（ADMIN+ 視点・全件・{@code /recipients}）。
+     * 退会者は {@code EntityNotFoundException} にならず、行として返る（呼び出し側で withdrawn 判定）。
+     *
+     * @param notificationId 確認通知ID
+     * @return 受信者行の投影（id順）
+     */
+    @Query(value = RECIPIENT_ROW_SELECT
+            + "WHERE r.confirmable_notification_id = :notificationId ORDER BY r.id ASC",
+            nativeQuery = true)
+    List<Object[]> findRecipientRowsByNotificationId(@Param("notificationId") Long notificationId);
+
+    /**
+     * 確認通知の受信者一覧を投影でページングして取得する（ADMIN+ 視点・全件・{@code /recipients/page}）。
+     *
+     * @param notificationId 確認通知ID
+     * @param pageable       ページング情報
+     * @return 受信者行の投影ページ（id順）
+     */
+    @Query(value = RECIPIENT_ROW_SELECT
+            + "WHERE r.confirmable_notification_id = :notificationId ORDER BY r.id ASC",
+            countQuery = "SELECT COUNT(*) FROM confirmable_notification_recipients r "
+                    + "WHERE r.confirmable_notification_id = :notificationId",
+            nativeQuery = true)
+    Page<Object[]> findRecipientRowsPage(@Param("notificationId") Long notificationId, Pageable pageable);
+
+    /**
+     * 確認通知の未確認・非除外の受信者一覧を投影でページングして取得する
+     * （MEMBER 視点・{@code unconfirmedOnly=true} の {@code /recipients/page}）。
+     *
+     * @param notificationId 確認通知ID
+     * @param pageable       ページング情報
+     * @return 未確認・非除外の受信者行の投影ページ（id順）
+     */
+    @Query(value = RECIPIENT_ROW_SELECT
+            + "WHERE r.confirmable_notification_id = :notificationId "
+            + "AND r.is_confirmed = 0 AND r.excluded_at IS NULL ORDER BY r.id ASC",
+            countQuery = "SELECT COUNT(*) FROM confirmable_notification_recipients r "
+                    + "WHERE r.confirmable_notification_id = :notificationId "
+                    + "AND r.is_confirmed = 0 AND r.excluded_at IS NULL",
+            nativeQuery = true)
+    Page<Object[]> findUnconfirmedRecipientRowsPage(
+            @Param("notificationId") Long notificationId, Pageable pageable);
 }
