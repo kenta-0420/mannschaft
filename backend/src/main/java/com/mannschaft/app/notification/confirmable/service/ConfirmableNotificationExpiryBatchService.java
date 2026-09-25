@@ -6,8 +6,6 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -40,15 +38,6 @@ public class ConfirmableNotificationExpiryBatchService {
      * （{@code NotificationFanoutJobService.enqueueTxTemplate} と同じ手法）。
      */
     private final TransactionTemplate expireOneTxTemplate;
-
-    /**
-     * CI是正3（CMP-260920-1040 / AC-68）: {@code findByIdForUpdate} のロック待ちを短く打ち切るため、
-     * トランザクション開始直後に {@code SET SESSION innodb_lock_wait_timeout} を明示発行する
-     * （{@link ConfirmableNotificationRepository#findByIdForUpdate} のJavadoc参照。
-     * {@code jakarta.persistence.lock.timeout} ヒントはMySQL方言では効かない）。
-     */
-    @PersistenceContext
-    private EntityManager entityManager;
 
     public ConfirmableNotificationExpiryBatchService(
             ConfirmableNotificationRepository notificationRepository,
@@ -127,18 +116,15 @@ public class ConfirmableNotificationExpiryBatchService {
      */
     public boolean expireOneWithLock(Long notificationId, LocalDateTime now) {
         return Boolean.TRUE.equals(expireOneTxTemplate.execute(status -> {
-            // CI是正3（AC-68）: このトランザクションの物理コネクションに対して、ロック待ちの上限を
-            // 5秒へ短く設定する（SET SESSION はSUPER権限不要。既定の innodb_lock_wait_timeout は
-            // 通常50秒で、1件のロック競合がほかのIDの独立トランザクション処理を長時間巻き込まないため）。
-            entityManager.createNativeQuery("SET SESSION innodb_lock_wait_timeout = 5").executeUpdate();
-            ConfirmableNotificationEntity notification;
-            try {
-                notification = notificationRepository.findByIdForUpdate(notificationId).orElse(null);
-            } finally {
-                // 同じ物理コネクションがコネクションプールへ返却されたあと、無関係な処理が
-                // 5秒制限を引き継がないよう、ロック取得の試行が終わったら既定値へ戻す。
-                entityManager.createNativeQuery("SET SESSION innodb_lock_wait_timeout = DEFAULT").executeUpdate();
-            }
+            // CMP-260920-1040是正（家老の検出・殿の確認）: 従来は SET SESSION で立てて finally で
+            // DEFAULT に戻していたが、「戻す」発行自体が失敗すると5秒制限を持ったままの物理コネクション
+            // がプールへ返却される故障モードがあった。SET_VAR オプティマイザヒントは対象の1文だけに
+            // 効き、文が終われば自動的に元へ戻るため、戻す処理自体（とその失敗）が構造的に無くなる
+            // （findByIdForUpdateWithShortLockWait のJavadoc参照。ロック待ちの上限を5秒へ短く設定する
+            // 目的自体はAC-68のまま: 1件のロック競合がほかのIDの独立トランザクション処理を
+            // 長時間巻き込まないため）。
+            ConfirmableNotificationEntity notification =
+                    notificationRepository.findByIdForUpdateWithShortLockWait(notificationId).orElse(null);
             if (notification == null) {
                 return false;
             }

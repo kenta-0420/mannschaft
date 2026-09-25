@@ -90,10 +90,37 @@ public interface ConfirmableNotificationRepository
     Optional<ConfirmableNotificationEntity> findByIdForUpdate(@Param("id") Long id);
 
     /**
+     * CMP-260920-1040是正（家老の検出・殿の確認）: 期限切れバッチ専用の
+     * {@code FOR UPDATE} 取得。{@link #findByIdForUpdate} と違い、この物理コネクションに
+     * セッション変数を「立てて」「戻す」2回の {@code SET SESSION} を発行しない。
+     *
+     * <p>従来は {@code ConfirmableNotificationExpiryBatchService#expireOneWithLock} が
+     * {@code SET SESSION innodb_lock_wait_timeout = 5} を発行し、{@code finally} で
+     * {@code DEFAULT} に戻していたが、<b>戻す方の発行自体が失敗する</b>と、5秒制限を持ったままの
+     * 物理コネクションがコネクションプールへ返却され、無関係な後続処理を巻き込む（家老の検出）。
+     * MySQL 8.0 のオプティマイザヒント {@code SET_VAR} は当該<b>1文の実行中だけ</b>変数を変え、
+     * 文が終われば自動的に元へ戻る（セッションを汚さない）ため、「戻す」処理自体が無くなり、
+     * その失敗という故障モードごと消える。{@code innodb_lock_wait_timeout} は MySQL 公式マニュアル
+     * 「Optimizer Hints」§8.9.3 の {@code SET_VAR} 対応変数一覧に明記されている
+     * （公式サンプルも {@code SELECT /*+ SET_VAR(innodb_lock_wait_timeout=100) *\/ ... FOR UPDATE}）。</p>
+     *
+     * <p>ネイティブクエリを直接 {@link ConfirmableNotificationEntity} へマッピングする
+     * （{@code SELECT *} は当該エンティティの列とちょうど一致するテーブルであるため、
+     * Spring Data JPA のネイティブ→エンティティ自動マッピングで賄える）。</p>
+     *
+     * @param id 確認通知 ID
+     * @return ロック済みの確認通知（存在しなければ empty）
+     */
+    @Query(value = "SELECT /*+ SET_VAR(innodb_lock_wait_timeout=5) */ * "
+            + "FROM confirmable_notifications WHERE id = :id FOR UPDATE",
+            nativeQuery = true)
+    Optional<ConfirmableNotificationEntity> findByIdForUpdateWithShortLockWait(@Param("id") Long id);
+
+    /**
      * CMP-260920-1040: 期限切れ対象の ID だけを抽出する（軍議第8版確定稿 §11.1 手順1）。
      *
      * <p>エンティティは読み込まない。期限切れバッチが ID 1件ごとに独立したトランザクションで
-     * {@link #findByIdForUpdate} を呼んで再判定するための入力。</p>
+     * {@link #findByIdForUpdateWithShortLockWait} を呼んで再判定するための入力。</p>
      *
      * @param now 現在日時
      * @return 期限切れ対象の確認通知 ID 一覧
