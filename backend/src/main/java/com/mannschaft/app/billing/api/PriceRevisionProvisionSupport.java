@@ -2,6 +2,8 @@ package com.mannschaft.app.billing.api;
 
 import com.mannschaft.app.billing.BillingPriceBandVersionEntity;
 import com.mannschaft.app.billing.BillingPriceProvisionGateway;
+import com.mannschaft.app.billing.BillingPriceSnapshotMatcher;
+import com.mannschaft.app.billing.PriceRevisionErrorCode;
 import com.mannschaft.app.billing.BillingProductKind;
 import com.mannschaft.app.billing.BillingStripeProductEntity;
 import com.mannschaft.app.billing.BillingStripeProductRepository;
@@ -53,9 +55,23 @@ final class PriceRevisionProvisionSupport {
             UUID revisionId, BillingProductKind productKind, String productKey,
             PriceRevisionProvisionStateWriter.BandTarget band, String environmentId) {
         try {
+            // 旧形式の税 snapshot（stripeTaxCode キー欠落）は「税コード未設定」と区別できないため、
+            // Stripe を呼ぶ前に fail-closed で隔離する（黙って tax_code 無しの Product を作らない）。
+            if (BillingTaxMasterSnapshot.isLegacyFormat(band.taxMasterSnapshot())) {
+                return new PriceRevisionProvisionStateWriter.BandOutcome(band.bandId(), null,
+                        PriceRevisionErrorCode.TAX_SNAPSHOT_LEGACY_FORMAT.name());
+            }
             Optional<BillingPriceProvisionGateway.PriceSnapshot> recovered =
                     gateway.findPriceByMetadata(revisionId, band.bandId());
             if (recovered.isPresent()) {
+                // AC-91/AC-97a: metadata 一致だけで採用しない。reconcile と同じ全属性照合を通し、
+                // 食い違う Price は採用せず PROVISION_FAILED＋RECONCILE_ATTRIBUTE_MISMATCH で隔離する
+                // （新規作成もしない。同じ bandId の Price が既にある以上、作り直しは二重作成になる）。
+                if (!BillingPriceSnapshotMatcher.matches(recovered.get(), productKind, productKey,
+                        band.inputAmount(), band.taxBehavior(), band.taxMasterSnapshot(), environmentId)) {
+                    return new PriceRevisionProvisionStateWriter.BandOutcome(band.bandId(), null,
+                            PriceRevisionErrorCode.RECONCILE_ATTRIBUTE_MISMATCH.name());
+                }
                 return new PriceRevisionProvisionStateWriter.BandOutcome(
                         band.bandId(), recovered.get().stripePriceId(), null);
             }

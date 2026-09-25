@@ -44,26 +44,44 @@ public final class BillingTaxMasterSnapshot {
     }
 
     /**
-     * snapshot から Stripe 側税コードを読み出す。未設定（キー無し・null・空白）は {@code null}
-     * （AC-85: Product に {@code tax_code} を設定しない）。
+     * snapshot から Stripe 側税コードを読み出す。キーはあるが値が null・空白なら {@code null}
+     * （マスタに Stripe 用コードが無い＝AC-85: Product に {@code tax_code} を設定しない）。
      *
-     * @throws IllegalStateException snapshot が JSON として壊れている場合（握りつぶさない）
+     * <p><b>キー自体が欠落している旧形式</b>（2026-09-24 の修正前に作られた band）は「未設定」と区別できない
+     * ため null を返さず例外にする（fail-closed。黙って無課税の Product を作らない）。呼び出し元は先に
+     * {@link #isLegacyFormat} で判定し、band を PROVISION_FAILED＋{@code TAX_SNAPSHOT_LEGACY_FORMAT} にする。</p>
+     *
+     * @throws IllegalStateException snapshot が JSON として壊れている・旧形式の場合（握りつぶさない）
      */
     public static String stripeTaxCodeOf(String snapshotJson) {
-        if (snapshotJson == null || snapshotJson.isBlank()) {
-            throw new IllegalStateException("tax_master_snapshot が空です");
-        }
-        JsonNode root;
-        try {
-            root = MAPPER.readTree(snapshotJson);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("tax_master_snapshot が JSON として不正です", e);
+        JsonNode root = parse(snapshotJson);
+        if (!root.has(STRIPE_TAX_CODE)) {
+            throw new IllegalStateException("tax_master_snapshot が旧形式です（stripeTaxCode キーが無い）");
         }
         JsonNode node = root.get(STRIPE_TAX_CODE);
-        if (node == null || node.isNull()) {
+        if (node.isNull()) {
             return null;
         }
         return normalize(node.asText());
+    }
+
+    /**
+     * snapshot が stripeTaxCode キーを持たない旧形式か（修正前に作られた band）。決定8によりマスタから
+     * 再導出はしないため、該当 revision は取り消して（{@code POST /price-revisions/{id}/cancel}）作り直す。
+     */
+    public static boolean isLegacyFormat(String snapshotJson) {
+        return !parse(snapshotJson).has(STRIPE_TAX_CODE);
+    }
+
+    private static JsonNode parse(String snapshotJson) {
+        if (snapshotJson == null || snapshotJson.isBlank()) {
+            throw new IllegalStateException("tax_master_snapshot が空です");
+        }
+        try {
+            return MAPPER.readTree(snapshotJson);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("tax_master_snapshot が JSON として不正です", e);
+        }
     }
 
     private static String normalize(String value) {

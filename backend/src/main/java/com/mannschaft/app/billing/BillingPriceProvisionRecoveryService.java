@@ -5,10 +5,11 @@ import com.mannschaft.app.billing.tax.BillingTaxMasterSnapshot;
 import com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,14 +36,17 @@ public class BillingPriceProvisionRecoveryService {
     private final BillingPriceReconcileStateWriter stateWriter;
     private final BillingPriceProvisionGateway gateway;
     private final StripeEnvironmentIdentifier environmentIdentifier;
+    private final Clock clock;
 
     public BillingPriceProvisionRecoveryService(
             BillingPriceReconcileStateWriter stateWriter,
             BillingPriceProvisionGateway gateway,
-            StripeEnvironmentIdentifier environmentIdentifier) {
+            StripeEnvironmentIdentifier environmentIdentifier,
+            Clock clock) {
         this.stateWriter = stateWriter;
         this.gateway = gateway;
         this.environmentIdentifier = environmentIdentifier;
+        this.clock = clock;
     }
 
     /** AC-99/AC-100: provision系3EPと同一の9分lease猶予。 */
@@ -51,8 +55,11 @@ public class BillingPriceProvisionRecoveryService {
     }
 
     public PriceRevisionResponse reconcileProvision(UUID id, long lockVersion, Long actorId) {
-        // AC-102/AC-103: 404 と lockVersion の CAS。
-        BillingPriceReconcileStateWriter.ReconcilePlan plan = stateWriter.begin(id, lockVersion);
+        // AC-102/AC-103: 404 と lockVersion の CAS。AC-99/AC-100: 注入された Clock を基準に、
+        // PROVISIONING に入ってから staleThreshold（9分）以上経過した band だけを回収する
+        // （それ未満は進行中の provision とみなし 409 PROVISION_IN_PROGRESS で横取りしない）。
+        Instant staleBefore = clock.instant().minus(STALE_THRESHOLD);
+        BillingPriceReconcileStateWriter.ReconcilePlan plan = stateWriter.begin(id, lockVersion, staleBefore);
 
         List<BillingPriceReconcileStateWriter.ReconcileOutcome> outcomes = new ArrayList<>();
         for (BillingPriceReconcileStateWriter.ReconcileTarget band : plan.bands()) {
@@ -68,6 +75,11 @@ public class BillingPriceProvisionRecoveryService {
      */
     private BillingPriceReconcileStateWriter.ReconcileOutcome reconcileBand(
             UUID revisionId, BillingPriceReconcileStateWriter.ReconcileTarget band) {
+        // 旧形式の税 snapshot は Product の tax_code と照合できない（未設定と区別できない）ため fail-closed。
+        if (BillingTaxMasterSnapshot.isLegacyFormat(band.taxMasterSnapshot())) {
+            return new BillingPriceReconcileStateWriter.ReconcileOutcome(
+                    band.bandId(), null, PriceRevisionErrorCode.TAX_SNAPSHOT_LEGACY_FORMAT.name());
+        }
         Optional<BillingPriceProvisionGateway.PriceSnapshot> found =
                 gateway.findPriceByMetadata(revisionId, band.bandId());
         if (found.isEmpty()) {
@@ -76,25 +88,9 @@ public class BillingPriceProvisionRecoveryService {
         }
 
         BillingPriceProvisionGateway.PriceSnapshot snapshot = found.get();
-        boolean matches = snapshot.unitAmount() == band.inputAmount()
-                && "jpy".equalsIgnoreCase(snapshot.currency())
-                && "month".equalsIgnoreCase(snapshot.recurringInterval())
-                && snapshot.recurringIntervalCount() == 1
-                && band.productKind().name().equals(snapshot.productKind())
-                && band.productKey().equals(snapshot.productKey())
-                && band.taxBehavior().name().equalsIgnoreCase(snapshot.taxBehavior())
-                // AC-97a（第5版・重大3の直接反証）: Product 実体の tax_code まで一致しなければ回収しない。
-                // 比較対象は band snapshot の Stripe 側税コード（txcd_...）。内部 code（taxCodeSnapshot）とは
-                // 別概念であり、内部 code と比べると正しく作られた Price も常に不一致になる（決定7）。
-                && Objects.equals(BillingTaxMasterSnapshot.stripeTaxCodeOf(band.taxMasterSnapshot()),
-                        snapshot.productTaxCode())
-                // AC-79: test/live Price 分離。作成時に焼いた環境識別子と現在の実行環境の識別子が
-                // 一致しなければ回収しない（test 環境で作られた Price を live 環境が拾う事故を防ぐ）。
-                // "unknown" 同士は素直な等値比較で一致扱いになる（ローカル開発は両側とも
-                // unknown になるため自然に通る。特別扱いのコードは書かない）。
-                && Objects.equals(environmentIdentifier.environmentId(), snapshot.environmentId());
-
-        if (!matches) {
+        if (!BillingPriceSnapshotMatcher.matches(snapshot, band.productKind(), band.productKey(),
+                band.inputAmount(), band.taxBehavior(), band.taxMasterSnapshot(),
+                environmentIdentifier.environmentId())) {
             return new BillingPriceReconcileStateWriter.ReconcileOutcome(
                     band.bandId(), null, PriceRevisionErrorCode.RECONCILE_ATTRIBUTE_MISMATCH.name());
         }

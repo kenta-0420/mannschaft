@@ -115,7 +115,8 @@ class PriceRevisionProvisionServiceTest {
     }
 
     @Test
-    @DisplayName("AC-68: DBにbandごとPROVISIONINGをcommitした後にのみStripeを呼ぶ（呼び出し順序）")
+    @DisplayName("AC-68（単体・呼び出し順序のみ）: Stripe 呼び出しの時点で band は PROVISIONING に遷移済み。"
+            + "commit 済みであることの実証は PriceRevisionProvisionTransactionIT が実 DB で行う")
     void provisioningIsPersistedBeforeStripeIsCalled() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
         BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_10000000");
@@ -125,7 +126,7 @@ class PriceRevisionProvisionServiceTest {
                 revision.getProductKind(), revision.getProductKey(), "txcd_10000000")).willReturn(Optional.empty());
         given(gateway.resolveOrCreateProduct(any())).willAnswer(invocation -> {
             assertThat(b1.getStatus())
-                    .as("Stripe呼び出し時点でDBはPROVISIONINGへ既にcommitされていなければならない")
+                    .as("Stripe呼び出し時点で band は PROVISIONING に遷移済みでなければならない")
                     .isEqualTo(BillingPriceVersionStatus.PROVISIONING);
             return new BillingPriceProvisionGateway.ProductResolution("prod_1", true);
         });
@@ -133,6 +134,77 @@ class PriceRevisionProvisionServiceTest {
                 new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
 
         service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
+    }
+
+    @Test
+    @DisplayName("AC-101（ABA）: provision の Stripe 呼び出し中に revision が他操作で更新されたら complete は409で結果を反映しない")
+    void provisionCompleteRejectsWhenRevisionChangedDuringStripeCall() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_10000000");
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
+        given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(any(), any(), any()))
+                .willReturn(Optional.empty());
+        given(gateway.resolveOrCreateProduct(any())).willReturn(
+                new BillingPriceProvisionGateway.ProductResolution("prod_1", true));
+        long lockVersionAtRequest = revision.getLockVersion();
+        given(gateway.createPrice(any())).willAnswer(invocation -> {
+            // begin の commit 後、Stripe 呼び出し中に別経路が revision を更新して lockVersion が進んだ状況。
+            revision.setLockVersion(revision.getLockVersion() + 1);
+            return new BillingPriceProvisionGateway.PriceCreationResult("price_raced");
+        });
+
+        assertThatThrownBy(() -> service().provision(revision.getId(), lockVersionAtRequest, 700_001L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(PriceRevisionErrorCode.LOCK_VERSION_CONFLICT);
+        assertThat(b1.getStripePriceRef()).as("競合時は結果を反映しない").isNull();
+        assertThat(b1.getStatus()).isEqualTo(BillingPriceVersionStatus.PROVISIONING);
+    }
+
+    @Test
+    @DisplayName("旧形式 snapshot（stripeTaxCode キー欠落＝修正前に作られた band）は fail-closed:"
+            + " Stripe を呼ばず PROVISION_FAILED＋TAX_SNAPSHOT_LEGACY_FORMAT（黙って無課税の Product を作らない）")
+    void legacyTaxSnapshotFailsClosedWithoutCallingStripe() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_99999999");
+        b1.setTaxMasterSnapshot("{\"code\":\"JP_STANDARD_10\",\"displayName\":\"standard\",\"rateBasisPoints\":1000}");
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
+
+        PriceRevisionResponse response = service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
+
+        assertThat(response.getStatus()).isEqualTo(BillingPriceVersionStatus.PROVISION_FAILED);
+        assertThat(b1.getStatus()).isEqualTo(BillingPriceVersionStatus.PROVISION_FAILED);
+        assertThat(b1.getProvisionErrorCode()).isEqualTo("TAX_SNAPSHOT_LEGACY_FORMAT");
+        verify(gateway, never()).findPriceByMetadata(any(), any());
+        verify(gateway, never()).resolveOrCreateProduct(any());
+        verify(gateway, never()).createPrice(any());
+    }
+
+    @Test
+    @DisplayName("対照: stripeTaxCode キーはあるが値が null（マスタに Stripe 用コードが無い）は未設定として扱い、"
+            + "tax_code 無しで Product を解決する（AC-85）")
+    void explicitNullStripeTaxCodeIsTreatedAsUnset() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.DRAFT);
+        BillingPriceBandVersionEntity b1 = band(revision, 1, "txcd_99999999");
+        b1.setTaxMasterSnapshot("{\"code\":\"JP_STANDARD_10\",\"displayName\":\"standard\","
+                + "\"rateBasisPoints\":1000,\"stripeTaxCode\":null}");
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(b1));
+        given(stripeProductRepository.findByProductKindAndProductKeyAndStripeTaxCode(any(), any(), org.mockito.ArgumentMatchers.isNull()))
+                .willReturn(Optional.empty());
+        given(gateway.resolveOrCreateProduct(any())).willReturn(
+                new BillingPriceProvisionGateway.ProductResolution("prod_notax", true));
+        given(gateway.createPrice(any())).willReturn(new BillingPriceProvisionGateway.PriceCreationResult("price_1"));
+        ArgumentCaptor<BillingPriceProvisionGateway.ProductResolutionCommand> captor =
+                ArgumentCaptor.forClass(BillingPriceProvisionGateway.ProductResolutionCommand.class);
+
+        service().provision(revision.getId(), revision.getLockVersion(), 700_001L);
+
+        verify(gateway).resolveOrCreateProduct(captor.capture());
+        assertThat(captor.getValue().stripeTaxCode()).isNull();
+        assertThat(b1.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
     }
 
     @Test

@@ -60,6 +60,6 @@ public class PriceRevisionProvisionService {
                     environmentIdentifier.environmentId()));
         }
 
-        return stateWriter.complete(id, outcomes, actorId, AuditEventType.PRICE_REVISION_PROVISIONED);
+        return stateWriter.complete(id, plan.lockVersion(), outcomes, actorId, AuditEventType.PRICE_REVISION_PROVISIONED);
     }
 }

@@ -62,8 +62,12 @@ public class PriceRevisionProvisionStateWriter {
     }
 
     /** Stripe 呼び出しの対象（begin の commit 時点の band snapshot）。 */
-    public record ProvisionPlan(
-            UUID revisionId, BillingProductKind productKind, String productKey, List<BandTarget> bands) {
+    /**
+     * @param lockVersion begin の commit 後の revision の lockVersion。complete はこの値のままであることを
+     *                    確かめてから結果を反映する（AC-101: Stripe 呼び出し中の他操作との ABA を防ぐ）
+     */
+    public record ProvisionPlan(UUID revisionId, long lockVersion, BillingProductKind productKind,
+            String productKey, List<BandTarget> bands) {
     }
 
     /** Stripe へ渡す band 1件分の snapshot 値。 */
@@ -116,20 +120,25 @@ public class PriceRevisionProvisionStateWriter {
         versionRepository.save(revision);
         versionRepository.flush();
 
-        return new ProvisionPlan(revision.getId(), revision.getProductKind(), revision.getProductKey(), targets);
+        return new ProvisionPlan(revision.getId(), revision.getLockVersion(), revision.getProductKind(),
+                revision.getProductKey(), targets);
     }
 
     /**
      * Stripe 呼び出しの結果を反映し、revision を終局状態にして commit する。
      *
-     * <p>begin の後に reconcile 等で revision が PROVISIONING でなくなっていれば409（結果は反映しない。
-     * Stripe 側の Price は metadata で後から回収できる）。</p>
+     * <p>begin の後に reconcile 等で revision が更新されていれば（lockVersion が begin 時点から進んでいれば）
+     * 409 {@code LOCK_VERSION_CONFLICT}、PROVISIONING でなくなっていれば409 {@code STATE_CONFLICT} とし、
+     * 結果は反映しない（AC-101。Stripe 側の Price は metadata で後から回収できる）。</p>
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public PriceRevisionResponse complete(UUID id, List<BandOutcome> outcomes, Long actorId,
-            AuditEventType auditEventType) {
+    public PriceRevisionResponse complete(UUID id, long expectedLockVersion, List<BandOutcome> outcomes,
+            Long actorId, AuditEventType auditEventType) {
         BillingPriceVersionEntity revision = versionRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(PriceRevisionErrorCode.REVISION_NOT_FOUND));
+        if (revision.getLockVersion() == null || revision.getLockVersion() != expectedLockVersion) {
+            throw new BusinessException(PriceRevisionErrorCode.LOCK_VERSION_CONFLICT);
+        }
         if (revision.getStatus() != BillingPriceVersionStatus.PROVISIONING) {
             throw new BusinessException(PriceRevisionErrorCode.STATE_CONFLICT);
         }

@@ -150,6 +150,12 @@ class PriceRevisionReconcileTransactionIT extends AbstractMySqlIntegrationTest {
         assertThat(versionRepository.findById(draft.getId()).orElseThrow().getStatus())
                 .as("前提: provision 途中停止で revision が PROVISIONING のまま残る")
                 .isEqualTo(BillingPriceVersionStatus.PROVISIONING);
+        // 停止から staleThreshold（9分）以上経過した状態にする（AC-99: それ未満は進行中として回収しない）。
+        // 時差・ゾーンに依存しないよう DB 側で相対的にずらす。
+        int shifted = jdbcTemplate.update(
+                "UPDATE billing_price_band_versions SET updated_at = updated_at - INTERVAL 1 HOUR "
+                        + "WHERE product_key = ? AND status = 'PROVISIONING'", planKey);
+        assertThat(shifted).as("前提: 停滞させる band が1件ある").isEqualTo(1);
         return draft;
     }
 

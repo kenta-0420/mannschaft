@@ -63,6 +63,9 @@ class PriceRevisionRetryReconcileServiceTest {
     @Mock private com.mannschaft.app.billing.BillingStripeProductRepository stripeProductRepository;
     @Mock private BillingPriceProvisionGateway gateway;
 
+    /** reconcile の staleThreshold 判定に使う時計（テストごとに進められる）。 */
+    private final MutableClock clock = new MutableClock(NOW);
+
     private PriceRevisionRetryProvisionService retryService() {
         return new PriceRevisionRetryProvisionService(
                 new PriceRevisionProvisionStateWriter(versionRepository, bandRepository,
@@ -75,7 +78,7 @@ class PriceRevisionRetryReconcileServiceTest {
         return new BillingPriceProvisionRecoveryService(
                 new com.mannschaft.app.billing.BillingPriceReconcileStateWriter(versionRepository, bandRepository,
                         org.mockito.Mockito.mock(com.mannschaft.app.auth.service.AuditLogService.class)),
-                gateway, com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"));
+                gateway, com.mannschaft.app.payment.stripe.StripeEnvironmentIdentifier.forTesting("test"), clock);
     }
 
     // ═════════ retry-provision ═════════
@@ -262,6 +265,45 @@ class PriceRevisionRetryReconcileServiceTest {
     }
 
     @Test
+    @DisplayName("旧形式 snapshot（stripeTaxCode キー欠落）の band は reconcile でも fail-closed:"
+            + " Stripe の Product に tax_code が無くても READY にせず PROVISION_FAILED＋TAX_SNAPSHOT_LEGACY_FORMAT")
+    void reconcileFailsClosedOnLegacyTaxSnapshot() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISIONING);
+        BillingPriceBandVersionEntity stuckBand = band(revision, 1, BillingPriceVersionStatus.PROVISIONING);
+        stuckBand.setTaxMasterSnapshot("{\"code\":\"JP_STANDARD_10\",\"rateBasisPoints\":1000}");
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(stuckBand));
+        org.mockito.Mockito.lenient().when(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId()))
+                .thenReturn(Optional.of(new BillingPriceProvisionGateway.PriceSnapshot(
+                        "price_notax", stuckBand.getInputAmount(), "jpy", "month", 1,
+                        revision.getProductKind().name(), revision.getProductKey(), null,
+                        stuckBand.getTaxBehavior().name(), "test")));
+
+        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion(), 700_001L);
+
+        assertThat(stuckBand.getStatus()).isEqualTo(BillingPriceVersionStatus.PROVISION_FAILED);
+        assertThat(stuckBand.getStripePriceRef()).isNull();
+        assertThat(stuckBand.getProvisionErrorCode()).isEqualTo("TAX_SNAPSHOT_LEGACY_FORMAT");
+    }
+
+    @Test
+    @DisplayName("旧形式 snapshot（stripeTaxCode キー欠落）の band は retry でも fail-closed（Stripe を呼ばない）")
+    void retryFailsClosedOnLegacyTaxSnapshot() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISION_FAILED);
+        BillingPriceBandVersionEntity failedBand = band(revision, 1, BillingPriceVersionStatus.PROVISION_FAILED);
+        failedBand.setTaxMasterSnapshot("{}");
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(failedBand));
+
+        retryService().retryProvision(revision.getId(), revision.getLockVersion(), 700_001L);
+
+        assertThat(failedBand.getStatus()).isEqualTo(BillingPriceVersionStatus.PROVISION_FAILED);
+        assertThat(failedBand.getProvisionErrorCode()).isEqualTo("TAX_SNAPSHOT_LEGACY_FORMAT");
+        verify(gateway, never()).createPrice(any());
+        verify(gateway, never()).resolveOrCreateProduct(any());
+    }
+
+    @Test
     @DisplayName("AC-98: Stripeに該当Priceが無い場合、reconcileはbandをPROVISION_FAILEDへ落とす")
     void reconcileFailsWhenNoMatchingPriceExistsInStripe() {
         BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISIONING);
@@ -276,9 +318,89 @@ class PriceRevisionRetryReconcileServiceTest {
     }
 
     @Test
-    @DisplayName("AC-99/AC-100: staleThresholdは9分lease（第6版・重大3対応）と整合する（provision系3EPと同一の猶予）")
-    void recoveryStaleThresholdMatchesNineMinuteLease() {
-        assertThat(recoveryService().staleThreshold()).isEqualTo(Duration.ofMinutes(9));
+    @DisplayName("AC-99/AC-100: PROVISIONING に入って9分未満の band は回収しない（409 PROVISION_IN_PROGRESS・Stripe を呼ばない）。"
+            + "時計を9分超へ進めると回収される")
+    void reconcileWaitsForStaleThresholdMeasuredByInjectedClock() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISIONING);
+        BillingPriceBandVersionEntity stuckBand = band(revision, 1, BillingPriceVersionStatus.PROVISIONING);
+        stuckBand.setUpdatedAt(NOW);
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(stuckBand));
+
+        clock.set(NOW.plus(Duration.ofMinutes(9)).minusSeconds(1));
+        assertThatThrownBy(() -> recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion(), 700_001L))
+                .as("staleThreshold（9分）未満は進行中の provision とみなし横取りしない（AC-100）")
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(PriceRevisionErrorCode.PROVISION_IN_PROGRESS);
+        verify(gateway, never()).findPriceByMetadata(any(), any());
+        assertThat(stuckBand.getStatus()).isEqualTo(BillingPriceVersionStatus.PROVISIONING);
+
+        given(gateway.findPriceByMetadata(revision.getId(), stuckBand.getId()))
+                .willReturn(Optional.of(matchingSnapshot(revision, stuckBand, "price_after_stale")));
+        clock.set(NOW.plus(Duration.ofMinutes(9)).plusSeconds(1));
+        recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion(), 700_001L);
+
+        assertThat(stuckBand.getStatus()).isEqualTo(BillingPriceVersionStatus.READY);
+        assertThat(stuckBand.getStripePriceRef()).isEqualTo("price_after_stale");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = BillingPriceVersionStatus.class,
+            names = {"DRAFT", "PROVISION_FAILED", "READY", "SCHEDULED", "ACTIVE", "RETIRED"})
+    @DisplayName("reconcile は PROVISIONING の revision にのみ実行できる（それ以外は409 STATE_CONFLICT・Stripe を呼ばない）")
+    void reconcileRejectsRevisionNotInProvisioning(BillingPriceVersionStatus status) {
+        BillingPriceVersionEntity revision = revision(status);
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+
+        assertThatThrownBy(() -> recoveryService().reconcileProvision(revision.getId(), revision.getLockVersion(), 700_001L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(PriceRevisionErrorCode.STATE_CONFLICT);
+        verify(gateway, never()).findPriceByMetadata(any(), any());
+    }
+
+    @Test
+    @DisplayName("AC-97a（retry 経路）: metadata で見つけた既存 Price でも属性が snapshot と食い違えば採用せず"
+            + " PROVISION_FAILED＋RECONCILE_ATTRIBUTE_MISMATCH にし、Price を新規作成もしない")
+    void retryDoesNotAdoptExistingPriceWhoseAttributesMismatch() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISION_FAILED);
+        BillingPriceBandVersionEntity failedBand = band(revision, 1, BillingPriceVersionStatus.PROVISION_FAILED);
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(failedBand));
+        BillingPriceProvisionGateway.PriceSnapshot wrongAmount = new BillingPriceProvisionGateway.PriceSnapshot(
+                "price_wrong", failedBand.getInputAmount() + 1, "jpy", "month", 1,
+                revision.getProductKind().name(), revision.getProductKey(), STRIPE_TAX_CODE,
+                failedBand.getTaxBehavior().name(), "test");
+        given(gateway.findPriceByMetadata(revision.getId(), failedBand.getId())).willReturn(Optional.of(wrongAmount));
+
+        retryService().retryProvision(revision.getId(), revision.getLockVersion(), 700_001L);
+
+        assertThat(failedBand.getStatus()).isEqualTo(BillingPriceVersionStatus.PROVISION_FAILED);
+        assertThat(failedBand.getStripePriceRef()).isNull();
+        assertThat(failedBand.getProvisionErrorCode()).isEqualTo("RECONCILE_ATTRIBUTE_MISMATCH");
+        verify(gateway, never()).createPrice(any());
+    }
+
+    @Test
+    @DisplayName("AC-101（ABA）: retry の Stripe 呼び出し中に revision が他操作で更新されたら complete は409で結果を反映しない")
+    void retryCompleteRejectsWhenRevisionChangedDuringStripeCall() {
+        BillingPriceVersionEntity revision = revision(BillingPriceVersionStatus.PROVISION_FAILED);
+        BillingPriceBandVersionEntity failedBand = band(revision, 1, BillingPriceVersionStatus.PROVISION_FAILED);
+        given(versionRepository.findByIdAndDeletedAtIsNull(revision.getId())).willReturn(Optional.of(revision));
+        given(bandRepository.findAllByPriceVersionIdForUpdate(revision.getId())).willReturn(List.of(failedBand));
+        long lockVersionAtRequest = revision.getLockVersion();
+        given(gateway.findPriceByMetadata(any(), any())).willAnswer(invocation -> {
+            // 別経路（reconcile 等）が revision を更新して lockVersion が進んだ状況を模擬する。
+            revision.setLockVersion(revision.getLockVersion() + 1);
+            return Optional.of(matchingSnapshot(revision, failedBand, "price_raced"));
+        });
+
+        assertThatThrownBy(() -> retryService().retryProvision(revision.getId(), lockVersionAtRequest, 700_001L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(PriceRevisionErrorCode.LOCK_VERSION_CONFLICT);
+        assertThat(failedBand.getStripePriceRef()).as("競合時は結果を反映しない").isNull();
     }
 
     @Test
@@ -345,7 +467,37 @@ class PriceRevisionRetryReconcileServiceTest {
                 .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL)
                 .build();
         entity.setId(UUID.randomUUID());
+        // 既定は staleThreshold（9分）を十分に超えて停滞している band（reconcile の回収対象）。
+        entity.setUpdatedAt(NOW.minus(Duration.ofMinutes(30)));
         return entity;
+    }
+
+    /** テストから時刻を進められる Clock。 */
+    private static final class MutableClock extends java.time.Clock {
+        private Instant now;
+
+        MutableClock(Instant now) {
+            this.now = now;
+        }
+
+        void set(Instant now) {
+            this.now = now;
+        }
+
+        @Override
+        public java.time.ZoneId getZone() {
+            return java.time.ZoneOffset.UTC;
+        }
+
+        @Override
+        public java.time.Clock withZone(java.time.ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
     }
 
     private static BillingPriceProvisionGateway.PriceSnapshot matchingSnapshot(

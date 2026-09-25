@@ -61,6 +61,6 @@ public class PriceRevisionRetryProvisionService {
                     environmentIdentifier.environmentId()));
         }
 
-        return stateWriter.complete(id, outcomes, actorId, AuditEventType.PRICE_REVISION_RETRY_PROVISIONED);
+        return stateWriter.complete(id, plan.lockVersion(), outcomes, actorId, AuditEventType.PRICE_REVISION_RETRY_PROVISIONED);
     }
 }

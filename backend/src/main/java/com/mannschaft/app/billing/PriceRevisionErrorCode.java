@@ -81,8 +81,18 @@ public enum PriceRevisionErrorCode implements ErrorCode {
      *  {@code PROVISION_FAILED} へ隔離する専用コード。決定3改訂・AC-97/AC-97a。 */
     RECONCILE_ATTRIBUTE_MISMATCH("PRICE_REVISION_019", "Stripe側の価格情報がDBの記録と一致しません", Severity.ERROR),
 
-    /** 冪等 lease 保持中の同時要求 → 409（{@code Retry-After} 付き）。AC-104/AC-131。 */
-    PROVISION_IN_PROGRESS("PRICE_REVISION_020", "同一操作が処理中です。しばらくしてから再試行してください", Severity.WARN);
+    /** 冪等 lease 保持中の同時要求 → 409（{@code Retry-After} 付き）。AC-104/AC-131。
+     *  reconcile で staleThreshold 未満の PROVISIONING（進行中の provision）を横取りしない場合（AC-100）にも使う。 */
+    PROVISION_IN_PROGRESS("PRICE_REVISION_020", "同一操作が処理中です。しばらくしてから再試行してください", Severity.WARN),
+
+    /** 税コードマスタの stripeTaxCode が Stripe の Product tax code 形式（txcd_ + 数字8桁）でない → 400。
+     *  内部 code（JP_STANDARD_10 等）の誤記で Stripe Product 作成が必ず失敗するのを登録時点で止める。 */
+    INVALID_STRIPE_TAX_CODE("PRICE_REVISION_021", "Stripe税コードの形式が不正です（txcd_ に続く数字8桁）", Severity.WARN),
+
+    /** band の税 snapshot が stripeTaxCode キーを持たない旧形式（2026-09-24 の修正前に作成）→ band を
+     *  PROVISION_FAILED に隔離する専用コード（provision/retry/reconcile 共通・fail-closed）。決定8により
+     *  マスタから再導出しないため、回復は取り消し（cancel）→作り直し。 */
+    TAX_SNAPSHOT_LEGACY_FORMAT("PRICE_REVISION_022", "価格帯の税情報が旧形式です。取り消して作り直してください", Severity.WARN);
 
     private final String code;
     private final String message;

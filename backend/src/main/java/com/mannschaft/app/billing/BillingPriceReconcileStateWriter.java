@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,9 @@ import java.util.UUID;
  */
 @Service
 public class BillingPriceReconcileStateWriter {
+
+    /** 1回の reconcile で回収する band の上限（revision の band 上限と同じ10）。AC-99 の件数上限。 */
+    static final int MAX_RECONCILE_BANDS = 10;
 
     private final BillingPriceVersionRepository versionRepository;
     private final BillingPriceBandVersionRepository bandRepository;
@@ -61,21 +66,44 @@ public class BillingPriceReconcileStateWriter {
     public record ReconcileOutcome(UUID bandId, String stripePriceRef, String errorCode) {
     }
 
-    /** CAS（AC-103）の後、PROVISIONING の band を回収対象として返す（DB は変更しない）。 */
+    /**
+     * CAS（AC-103）と状態検査の後、停滞した PROVISIONING の band を回収対象として返す（DB は変更しない）。
+     *
+     * <ul>
+     *   <li>revision が PROVISIONING 以外（DRAFT/PROVISION_FAILED/READY/SCHEDULED/ACTIVE/RETIRED 等）は409
+     *       {@code STATE_CONFLICT}。PROVISION_FAILED の再実行は retry-provision の責務（AC-95 の対）。</li>
+     *   <li>PROVISIONING の band のうち1件でも {@code updated_at >= staleBefore}（＝staleThreshold 未満）なら、
+     *       進行中の provision/retry とみなし409 {@code PROVISION_IN_PROGRESS}（AC-100: 横取りしない）。</li>
+     *   <li>回収対象は古い順（updated_at 昇順）・最大 {@link #MAX_RECONCILE_BANDS} 件（AC-99）。</li>
+     * </ul>
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public ReconcilePlan begin(UUID id, long lockVersion) {
+    public ReconcilePlan begin(UUID id, long lockVersion, Instant staleBefore) {
         BillingPriceVersionEntity revision = versionRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(PriceRevisionErrorCode.REVISION_NOT_FOUND));
         if (!Objects.equals(revision.getLockVersion(), lockVersion)) {
             throw new BusinessException(PriceRevisionErrorCode.LOCK_VERSION_CONFLICT);
         }
+        if (revision.getStatus() != BillingPriceVersionStatus.PROVISIONING) {
+            throw new BusinessException(PriceRevisionErrorCode.STATE_CONFLICT);
+        }
 
-        List<ReconcileTarget> targets = new ArrayList<>();
+        List<BillingPriceBandVersionEntity> provisioning = new ArrayList<>();
         for (BillingPriceBandVersionEntity band : bandRepository.findAllByPriceVersionIdForUpdate(id)) {
             if (band.getStatus() == BillingPriceVersionStatus.PROVISIONING) {
-                targets.add(new ReconcileTarget(band.getId(), band.getProductKind(), band.getProductKey(),
-                        band.getInputAmount(), band.getTaxBehavior(), band.getTaxMasterSnapshot()));
+                if (band.getUpdatedAt() == null || !band.getUpdatedAt().isBefore(staleBefore)) {
+                    throw new BusinessException(PriceRevisionErrorCode.PROVISION_IN_PROGRESS);
+                }
+                provisioning.add(band);
             }
+        }
+        provisioning.sort(Comparator.comparing(BillingPriceBandVersionEntity::getUpdatedAt));
+
+        List<ReconcileTarget> targets = new ArrayList<>();
+        for (BillingPriceBandVersionEntity band : provisioning.subList(0,
+                Math.min(provisioning.size(), MAX_RECONCILE_BANDS))) {
+            targets.add(new ReconcileTarget(band.getId(), band.getProductKind(), band.getProductKey(),
+                    band.getInputAmount(), band.getTaxBehavior(), band.getTaxMasterSnapshot()));
         }
         return new ReconcilePlan(revision.getId(), lockVersion, targets);
     }
@@ -91,6 +119,9 @@ public class BillingPriceReconcileStateWriter {
                 .orElseThrow(() -> new BusinessException(PriceRevisionErrorCode.REVISION_NOT_FOUND));
         if (!Objects.equals(revision.getLockVersion(), expectedLockVersion)) {
             throw new BusinessException(PriceRevisionErrorCode.LOCK_VERSION_CONFLICT);
+        }
+        if (revision.getStatus() != BillingPriceVersionStatus.PROVISIONING) {
+            throw new BusinessException(PriceRevisionErrorCode.STATE_CONFLICT);
         }
 
         Map<UUID, ReconcileOutcome> outcomeByBandId = new HashMap<>();
