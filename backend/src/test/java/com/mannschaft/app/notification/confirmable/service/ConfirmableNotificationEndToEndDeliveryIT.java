@@ -287,6 +287,40 @@ class ConfirmableNotificationEndToEndDeliveryIT extends AbstractMySqlIntegration
                 "SELECT user_id FROM confirmable_notification_recipients WHERE confirmable_notification_id = ?",
                 Long.class, notificationId);
         assertThat(recipients).containsExactlyInAnyOrder(uStaying, uWithdrawing);
+
+        // CMP-260920-1040是正: 確認済み行（confirmed_at あり）を作り、Entity経由で読んだ confirmedAt と
+        // ネイティブ投影経由（/recipients のJSON）の値が一致することを検証する（Timestamp→LocalDateTime
+        // 変換のタイムゾーンずれが無いことの直接検証。native の列は hibernate.jdbc.time_zone: UTC で
+        // UTC として読まれ、toLocalDateTime()でJSTの壁時計になるため、Entity経由の値と一致するはず）。
+        jdbc.update(
+                "UPDATE confirmable_notification_recipients SET is_confirmed = 1, confirmed_at = NOW(), "
+                        + "confirmed_via = 'APP' WHERE confirmable_notification_id = ? AND user_id = ?",
+                notificationId, uStaying);
+
+        var confirmedEntity = recipientRepository
+                .findByConfirmableNotificationIdAndUserId(notificationId, uStaying)
+                .orElseThrow();
+        java.time.LocalDateTime entityConfirmedAt = confirmedEntity.getConfirmedAt();
+        assertThat(entityConfirmedAt).as("E2E-5: フィクスチャ上、確認済み行のconfirmedAtがEntity経由で読める").isNotNull();
+
+        MvcResult confirmedRowResult = mockMvc.perform(get(
+                        "/api/v1/organizations/{orgId}/confirmable-notifications/{id}/recipients", org, notificationId))
+                .andReturn();
+        assertThat(confirmedRowResult.getResponse().getStatus()).isEqualTo(200);
+        var recipientsNode = objectMapper.readTree(confirmedRowResult.getResponse().getContentAsString())
+                .path("data");
+        String projectionConfirmedAt = null;
+        for (var item : recipientsNode) {
+            if (item.path("userId").asLong() == uStaying) {
+                projectionConfirmedAt = item.path("confirmedAt").asText();
+            }
+        }
+        assertThat(projectionConfirmedAt)
+                .as("E2E-5: 射影経由のconfirmedAtがJSONに含まれる")
+                .isNotNull();
+        assertThat(java.time.LocalDateTime.parse(projectionConfirmedAt))
+                .as("E2E-5: ネイティブ投影（Timestamp→LocalDateTime）とEntity経由の値がタイムゾーンずれ無く一致する")
+                .isEqualTo(entityConfirmedAt);
     }
 
     // =====================================================================
@@ -414,11 +448,17 @@ class ConfirmableNotificationEndToEndDeliveryIT extends AbstractMySqlIntegration
         return jdbc.queryForObject("SELECT id FROM organizations WHERE name = ?", Long.class, name);
     }
 
+    /**
+     * CMP-260920-1040是正: テスト用DBは Hibernate が {@code TeamEntity} から作る
+     * （{@code ddl-auto: create}）ため、DDL の {@code DEFAULT} は効かず、{@code columnDefinition}
+     * に既定値を書いていない {@code nullable=false} 列（{@code visibility}・{@code supporter_enabled}）
+     * は明示的に埋めないと 1364（Field doesn't have a default value）で落ちる。
+     */
     private long insertTeam() {
         String name = "E2Eチーム-" + SEQ.incrementAndGet() + "-" + System.nanoTime();
         jdbc.update(
-                "INSERT INTO teams (name, slug, created_at, updated_at) "
-                        + "VALUES (?, CONCAT('cne2e-t-', LEFT(REPLACE(UUID(),'-',''),12)), NOW(), NOW())",
+                "INSERT INTO teams (name, slug, visibility, supporter_enabled, created_at, updated_at) "
+                        + "VALUES (?, CONCAT('cne2e-t-', LEFT(REPLACE(UUID(),'-',''),12)), 'PUBLIC', 1, NOW(), NOW())",
                 name);
         return jdbc.queryForObject("SELECT id FROM teams WHERE name = ?", Long.class, name);
     }
