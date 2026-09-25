@@ -469,6 +469,7 @@
       "errorProvisionInProgress": "同一操作が処理中です。しばらくしてから再試行してください",
       "errorTaxSnapshotLegacy": "Los datos fiscales de esta banda usan un formato antiguo y no se pueden registrar en Stripe. Cancela esta revisión y créala de nuevo.",
       "errorInvalidStripeTaxCode": "Introduce el código fiscal de Stripe como \"txcd_\" seguido de 8 dígitos.",
+      "errorNonexistentDstTime": "Esta fecha y hora no existe debido al cambio de horario de verano. Elige otra hora.",
       "taxCodesTitle": "税コードマスタ",
       "taxCodeCreateAction": "税コードを追加",
       "noPermission": "この画面を表示する権限がありません",

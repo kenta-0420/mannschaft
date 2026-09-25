@@ -469,6 +469,7 @@
       "errorProvisionInProgress": "同一操作が処理中です。しばらくしてから再試行してください",
       "errorTaxSnapshotLegacy": "이 가격대의 세금 정보가 이전 형식이라 Stripe에 등록할 수 없습니다. 이 가격 개정을 취소하고 다시 만드세요.",
       "errorInvalidStripeTaxCode": "Stripe 세금 코드는 \"txcd_\" 뒤에 숫자 8자리로 입력하세요.",
+      "errorNonexistentDstTime": "이 일시는 서머타임 전환으로 인해 존재하지 않습니다. 다른 시간을 지정해 주세요.",
       "taxCodesTitle": "税コードマスタ",
       "taxCodeCreateAction": "税コードを追加",
       "noPermission": "この画面を表示する権限がありません",

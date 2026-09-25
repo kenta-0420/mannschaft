@@ -4,13 +4,18 @@ import { defineComponent, h, nextTick } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 
 /**
- * 価格改定 詳細画面の操作導線（2026-09-24 検分指摘・御裁可分）。
+ * 価格改定 詳細画面の操作導線（2026-09-24 検分指摘・御裁可分。取り消し/Activateの確認手段は
+ * 2026-09-25 Codex 再検分 P2 で window.confirm から PrimeVue useConfirm へ置換）。
  *
  * - 取り消し（cancel）: DRAFT / READY / PROVISION_FAILED のときだけボタンを出し、確認ダイアログを経て
  *   `cancelPriceRevision` を呼ぶ（修復できない失敗で商品の future 枠が永久に塞がるのを解く出口）。
  * - reconcile: 回収は PROVISIONING で停滞した revision 専用（PROVISION_FAILED は retry の責務）。
  *   staleThreshold 未満で BE が 409 PRICE_REVISION_020（PROVISION_IN_PROGRESS）を返したときは
  *   「処理中」の文言を出す（汎用の状態競合文言に潰さない）。
+ * - 確認ダイアログ: `frontend/FRONTEND_CODING_CONVENTION.md:41` は useConfirm()/<ConfirmDialog> を必須と
+ *   するため、window.confirm を直接使わず `useConfirm().require()` 経由であることを固定する
+ *   （accept を拒否すれば API を呼ばない・承認すれば呼ぶ、の両方を検証する。モックは実装に合わせて
+ *   弱めない）。
  */
 
 const getPriceRevision = vi.fn()
@@ -31,6 +36,18 @@ mockNuxtImport('useAuthStore', () => () => ({ isSystemAdmin: true, user: { timez
 mockNuxtImport('useRoute', () => () => ({ params: { id: 'rev-1' }, query: {}, path: '/system-admin/price-revisions/rev-1' }))
 mockNuxtImport('useNotification', () => () => ({ success: notifySuccess, error: notifyError }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: vi.fn() }))
+
+/** useConfirmDialog（useConfirm のラッパー）が呼ぶ require() の accept/reject を捕捉する。 */
+let confirmAcceptCallback: (() => void | Promise<void>) | null = null
+let confirmRejectCallback: (() => void) | null = null
+const mockConfirmRequire = vi.fn((opts: { accept: () => void | Promise<void>; reject?: () => void }) => {
+  confirmAcceptCallback = opts.accept
+  confirmRejectCallback = opts.reject ?? null
+})
+mockNuxtImport('useConfirm', () => () => ({
+  require: mockConfirmRequire,
+  close: vi.fn(),
+}))
 
 const Page = (await import('~/pages/system-admin/price-revisions/[id].vue')).default
 
@@ -69,20 +86,17 @@ beforeEach(() => {
   reconcileProvisionPriceRevision.mockReset()
   notifySuccess.mockReset()
   notifyError.mockReset()
+  mockConfirmRequire.mockClear()
+  confirmAcceptCallback = null
+  confirmRejectCallback = null
 })
 
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
-/** テスト環境の window.confirm は未定義のため、確認ダイアログの応答を差し替える。 */
-function stubConfirm(answer: boolean) {
-  Object.defineProperty(window, 'confirm', { value: vi.fn(() => answer), writable: true, configurable: true })
-}
-
 describe('/system-admin/price-revisions/[id] 取り消し', () => {
-  it.each(['DRAFT', 'READY', 'PROVISION_FAILED'])('%s では取り消しボタンを出し、確認後に lockVersion 付きで取り消す', async (status) => {
-    stubConfirm(true)
+  it.each(['DRAFT', 'READY', 'PROVISION_FAILED'])('%s では取り消しボタンを出し、useConfirm 経由の確認後に lockVersion 付きで取り消す', async (status) => {
     const wrapper = await mountPage(status)
 
     const button = wrapper.find('button[aria-label="cancel-price-revision"]')
@@ -90,16 +104,27 @@ describe('/system-admin/price-revisions/[id] 取り消し', () => {
     await button.trigger('click')
     await flushPromises()
 
-    expect(window.confirm).toHaveBeenCalledTimes(1)
+    // window.confirm ではなく PrimeVue useConfirm().require() 経由であること。
+    expect(mockConfirmRequire).toHaveBeenCalledTimes(1)
+    expect(cancelPriceRevision).not.toHaveBeenCalled()
+
+    // accept を実行して初めて API が呼ばれる。
+    expect(confirmAcceptCallback).not.toBeNull()
+    await confirmAcceptCallback!()
+    await flushPromises()
+
     expect(cancelPriceRevision).toHaveBeenCalledWith('rev-1', 3, expect.any(String))
     expect(notifySuccess).toHaveBeenCalledTimes(1)
   })
 
-  it('確認ダイアログで取り消しを選ばなければ API を呼ばない', async () => {
-    stubConfirm(false)
+  it('確認ダイアログで取り消しを選ばなければ（reject）API を呼ばない', async () => {
     const wrapper = await mountPage('PROVISION_FAILED')
 
     await wrapper.find('button[aria-label="cancel-price-revision"]').trigger('click')
+    await flushPromises()
+
+    expect(mockConfirmRequire).toHaveBeenCalledTimes(1)
+    if (confirmRejectCallback) confirmRejectCallback()
     await flushPromises()
 
     expect(cancelPriceRevision).not.toHaveBeenCalled()
@@ -108,6 +133,20 @@ describe('/system-admin/price-revisions/[id] 取り消し', () => {
   it.each(['PROVISIONING', 'SCHEDULED', 'ACTIVE', 'RETIRED', 'CANCELLED'])('%s では取り消しボタンを出さない', async (status) => {
     const wrapper = await mountPage(status)
     expect(wrapper.find('button[aria-label="cancel-price-revision"]').exists()).toBe(false)
+  })
+})
+
+describe('/system-admin/price-revisions/[id] Activate', () => {
+  it('Activate は useConfirm 経由で確認し、承認後のみ実行する', async () => {
+    const wrapper = await mountPage('READY')
+
+    const button = wrapper.find('button[aria-label="activate-price-revision"]')
+    expect(button.exists()).toBe(true)
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(mockConfirmRequire).toHaveBeenCalledTimes(1)
+    expect(confirmAcceptCallback).not.toBeNull()
   })
 })
 

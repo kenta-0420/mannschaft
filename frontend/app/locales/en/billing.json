@@ -469,6 +469,7 @@
       "errorProvisionInProgress": "The same operation is already in progress. Please retry shortly",
       "errorTaxSnapshotLegacy": "The tax data of this band uses a legacy format and cannot be registered with Stripe. Cancel this revision and create it again.",
       "errorInvalidStripeTaxCode": "Enter the Stripe tax code as \"txcd_\" followed by 8 digits.",
+      "errorNonexistentDstTime": "This date and time doesn't exist due to a daylight saving time transition. Please choose a different time.",
       "taxCodesTitle": "Tax code master",
       "taxCodeCreateAction": "Add tax code",
       "noPermission": "You do not have permission to view this screen",

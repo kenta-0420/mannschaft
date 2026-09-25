@@ -39,9 +39,26 @@ const { formatDateTime, buildOffsetDateTimeFromLocalInput } = useDatetime()
  * オフセット無しのまま送ると Jackson が `Instant` に解釈できず 400 になる。入力値は「画面で指した
  * 壁時計」なので、文字列の成分から直接ユーザーTZのオフセットを付ける（`new Date()` を経由すると
  * ブラウザTZの DST 境界で 1 時間ずれる。`formatDateTime` の表示と往復しても値がずれない）。
+ *
+ * ユーザーTZの DST 開始で**存在しない壁時計**（例: America/New_York の 2026-03-08 02:30）の場合は
+ * `null` を返す（2026-09-24 検分指摘 P2）。呼び出し側は必ず `isNonexistentDstTime` でバリデーション
+ * してから送信すること。
  */
-function toInstantPayload(datetimeLocal: string): string {
+function toInstantPayload(datetimeLocal: string): string | null {
   return buildOffsetDateTimeFromLocalInput(datetimeLocal)
+}
+
+/**
+ * 入力済みの datetime-local 値が、ユーザーTZの DST 開始で存在しない壁時計かどうか。
+ * フォームのバリデーション表示・送信ブロックに使う（黙って1時間ずれた値を送らないため）。
+ */
+function isNonexistentDstTime(datetimeLocal: string): boolean {
+  if (!datetimeLocal) return false
+  try {
+    return buildOffsetDateTimeFromLocalInput(datetimeLocal) === null
+  } catch {
+    return false
+  }
 }
 
 const isAllowed = computed(() => authStore.isSystemAdmin)
@@ -138,10 +155,17 @@ const taxAmountPreview = computed<number>(() => {
 
 const taxIncludedPreview = computed<number>(() => taxExcludedPreview.value + taxAmountPreview.value)
 
+/** effectiveFrom が DST 開始で存在しない壁時計か（AC-158系・2026-09-24 検分指摘 P2）。 */
+const effectiveFromDstInvalid = computed(() => isNonexistentDstTime(form.effectiveFrom))
+/** effectiveUntil が DST 開始で存在しない壁時計か。未入力（任意項目）は無効扱いしない。 */
+const effectiveUntilDstInvalid = computed(() => isNonexistentDstTime(form.effectiveUntil))
+
 const canCreate = computed(() =>
   !creating.value
   && form.productKey.trim().length > 0
   && form.effectiveFrom.length > 0
+  && !effectiveFromDstInvalid.value
+  && !effectiveUntilDstInvalid.value
   && !!taxMode.value
   && !!bandForm.inputAmount
   && bandForm.taxCode.trim().length > 0)
@@ -167,6 +191,13 @@ function onCreateDialogEsc(event: KeyboardEvent) {
 
 async function createPriceRevision() {
   if (!canCreate.value || !taxMode.value || !bandForm.inputAmount) return
+  const effectiveFromInstant = toInstantPayload(form.effectiveFrom)
+  const effectiveUntilInstant = form.effectiveUntil ? toInstantPayload(form.effectiveUntil) : null
+  // canCreate で既に弾いているはずだが、二重送信対策の防御としても null を送らない。
+  if (effectiveFromInstant === null || (form.effectiveUntil && effectiveUntilInstant === null)) {
+    notification.error(t('billing.priceRevisions.errorNonexistentDstTime'))
+    return
+  }
   creating.value = true
   try {
     const bands: PriceRevisionBandInput[] = [{
@@ -181,8 +212,8 @@ async function createPriceRevision() {
       productKind: form.productKind,
       productKey: form.productKey.trim(),
       scopeKind: form.scopeKind,
-      effectiveFrom: toInstantPayload(form.effectiveFrom),
-      effectiveUntil: form.effectiveUntil ? toInstantPayload(form.effectiveUntil) : null,
+      effectiveFrom: effectiveFromInstant,
+      effectiveUntil: effectiveUntilInstant,
       bands,
     })
     notification.success(t('billing.priceRevisions.createSuccess'))
@@ -242,14 +273,29 @@ function openTaxCodesDialog() {
   void loadTaxCodes()
 }
 
+/** 税コード validFrom が DST 開始で存在しない壁時計か。 */
+const taxCodeValidFromDstInvalid = computed(() => isNonexistentDstTime(taxCodeForm.validFrom))
+
+const taxCodeCreateDisabled = computed(() =>
+  taxCodeSaving.value
+  || !taxCodeForm.code.trim()
+  || !taxCodeForm.displayName.trim()
+  || !taxCodeForm.validFrom
+  || taxCodeValidFromDstInvalid.value)
+
 async function submitCreateTaxCode() {
   if (!taxCodeForm.code.trim() || !taxCodeForm.displayName.trim() || !taxCodeForm.validFrom) return
+  const validFromInstant = toInstantPayload(taxCodeForm.validFrom)
+  if (validFromInstant === null) {
+    notification.error(t('billing.priceRevisions.errorNonexistentDstTime'))
+    return
+  }
   taxCodeSaving.value = true
   try {
     await billingApi.createTaxCode({
       ...taxCodeForm,
       code: taxCodeForm.code.trim(),
-      validFrom: toInstantPayload(taxCodeForm.validFrom),
+      validFrom: validFromInstant,
     })
     notification.success(t('billing.priceRevisions.taxCodeCreateSuccess'))
     taxCodeForm.code = ''
@@ -443,6 +489,13 @@ async function deactivateTaxCode(row: BillingTaxCodeResponse) {
         <div>
           <label class="mb-1 block text-xs" for="pr-effective-from">{{ t('billing.priceRevisions.effectiveFrom') }}</label>
           <input id="pr-effective-from" v-model="form.effectiveFrom" type="datetime-local" class="w-full rounded border p-2 text-sm" aria-label="effective-from">
+          <p
+            v-if="effectiveFromDstInvalid"
+            class="mt-1 text-xs text-red-600 dark:text-red-400"
+            aria-label="effective-from-dst-error"
+          >
+            {{ t('billing.priceRevisions.errorNonexistentDstTime') }}
+          </p>
         </div>
         <div class="col-span-2">
           <label class="mb-1 block text-xs" for="pr-tax-mode">{{ t('billing.priceRevisions.taxBehavior') }}</label>
@@ -499,10 +552,20 @@ async function deactivateTaxCode(row: BillingTaxCodeResponse) {
         <InputText v-model="taxCodeForm.code" :placeholder="t('billing.priceRevisions.taxCode')" aria-label="new-tax-code-code" />
         <InputText v-model="taxCodeForm.displayName" :placeholder="t('billing.priceRevisions.taxCode')" aria-label="new-tax-code-display-name" />
         <InputNumber v-model="taxCodeForm.rateBasisPoints" aria-label="new-tax-code-rate" />
-        <input v-model="taxCodeForm.validFrom" type="datetime-local" class="rounded border p-2 text-sm" aria-label="new-tax-code-valid-from">
+        <div>
+          <input v-model="taxCodeForm.validFrom" type="datetime-local" class="w-full rounded border p-2 text-sm" aria-label="new-tax-code-valid-from">
+          <p
+            v-if="taxCodeValidFromDstInvalid"
+            class="mt-1 text-xs text-red-600 dark:text-red-400"
+            aria-label="tax-code-valid-from-dst-error"
+          >
+            {{ t('billing.priceRevisions.errorNonexistentDstTime') }}
+          </p>
+        </div>
         <Button
           :label="t('billing.priceRevisions.taxCodeCreateAction')"
           :loading="taxCodeSaving"
+          :disabled="taxCodeCreateDisabled"
           aria-label="submit-create-tax-code"
           @click="submitCreateTaxCode"
         />

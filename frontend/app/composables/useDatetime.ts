@@ -126,17 +126,35 @@ export function useDatetime() {
    * ブラウザローカルの Date を経由するため同じくずれる（実測: 03:30 になった）。
    * そこで壁時計の文字列はそのまま使い、オフセットだけを `Intl.DateTimeFormat`（ユーザーTZ）から求める。
    *
+   * ## ユーザーTZ自身の DST 境界（2026-09-24 検分指摘 P2）
+   *
+   * ブラウザTZだけでなく、**ユーザーの プロフィールTZ** 自身が DST を持つ場合にも罠がある。例えば
+   * ユーザーTZ=America/New_York で `2026-03-08T02:30`（春・夏時間開始で 02:00→03:00 に飛ぶため
+   * 02:30 という壁時計が実在しない）を渡すと、素朴な変換は「一番近いオフセット」を機械的に付けて
+   * 存在しない瞬間をでっち上げてしまい、再表示すると 01:30 にずれる。これを黙って送らないよう、
+   * 本関数は **候補オフセットで実際にユーザーTZ上の壁時計を再現できるか検証**し、どの候補でも
+   * 再現できない（＝存在しない壁時計）場合は `null` を返す。呼び出し側はこれをバリデーションエラー
+   * として扱い、送信してはならない。
+   *
+   * 逆に秋・夏時間終了（フォールバック）では同じ壁時計が2回現れる（例: America/New_York の
+   * 2026-11-01 01:30 は夏時間側→標準時側の順で2回訪れる）。この**あいまいな時刻は、早い方の出現
+   * （夏時間側・UTC換算で時刻が小さい方）のオフセットを採用する**と決める（ブラウザの `Date` 等が
+   * 採る "compatible" 方式に合わせた規約。どちらを選ぶかは自明ではないため、ここに明記し検体で固定する）。
+   *
    * @throws {RangeError} 形式違反（症状を隠さず失敗させる）
+   * @returns オフセット付き ISO-8601 文字列。ユーザーTZ上で存在しない壁時計（DST開始の欠落時刻）の
+   *   場合は `null`。
    * @example buildOffsetDateTimeFromLocalInput('2026-03-08T02:30') // ユーザーTZ=JST → "2026-03-08T02:30:00+09:00"
+   * @example buildOffsetDateTimeFromLocalInput('2026-03-08T02:30') // ユーザーTZ=America/New_York → null（DSTで存在しない）
    */
-  function buildOffsetDateTimeFromLocalInput(value: string): string {
+  function buildOffsetDateTimeFromLocalInput(value: string): string | null {
     const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value)
     if (!match) throw new RangeError(`invalid datetime-local value: ${value}`)
     const [, y, mo, d, h, mi, sec = '00'] = match
-    // 壁時計を仮に UTC とみなした時刻から、ユーザーTZのオフセットを2段で確定する（ユーザーTZ側の DST にも追従）。
-    const wallAsUtc = Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(sec))
-    const firstOffset = zoneOffsetMinutes(wallAsUtc, userTimezone.value)
-    const offset = zoneOffsetMinutes(wallAsUtc - firstOffset * 60_000, userTimezone.value)
+    const offset = resolveUserTzOffsetMinutes(
+      Number(y), Number(mo), Number(d), Number(h), Number(mi), Number(sec), userTimezone.value,
+    )
+    if (offset === null) return null
     const sign = offset >= 0 ? '+' : '-'
     const abs = Math.abs(offset)
     const hh = String(Math.floor(abs / 60)).padStart(2, '0')
@@ -144,15 +162,63 @@ export function useDatetime() {
     return `${y}-${mo}-${d}T${h}:${mi}:${sec}${sign}${hh}:${mm}`
   }
 
+  /**
+   * 壁時計成分（timeZone のローカル時刻として解釈したい年月日時分秒）から UTCオフセット（分）を求める。
+   *
+   * DST 境界に対応するため、境界を跨ぐ可能性のある複数のオフセット候補を集め、それぞれ「そのオフセット
+   * で UTC 瞬間を組み立て、timeZone で再フォーマットしたら元の壁時計に戻るか」を検証する:
+   * - 検証を通る候補が無い ＝ 存在しない壁時計（春・スプリングフォワードの欠落）→ `null`
+   * - 検証を通る候補が1つ ＝ 通常の一意な時刻 → それを返す
+   * - 検証を通る候補が2つ ＝ 重複する時刻（秋・フォールバック）→ 早い方（UTC瞬間が小さい方＝夏時間側）
+   */
+  function resolveUserTzOffsetMinutes(
+    y: number, mo: number, d: number, h: number, mi: number, sec: number, timeZone: string,
+  ): number | null {
+    const wallAsUtc = Date.UTC(y, mo - 1, d, h, mi, sec)
+    // 素朴な壁時計=UTC近似から得た候補オフセットで UTC 瞬間を仮定し、その前後1日のオフセットも
+    // 候補に加える（近傍の DST 境界の両側の regime を確実に拾うため）。
+    const initialGuess = zoneOffsetMinutes(wallAsUtc, timeZone)
+    const approxUtc = wallAsUtc - initialGuess * 60_000
+    const dayMs = 24 * 3600_000
+    const candidateOffsets = new Set([
+      zoneOffsetMinutes(approxUtc - dayMs, timeZone),
+      zoneOffsetMinutes(approxUtc, timeZone),
+      zoneOffsetMinutes(approxUtc + dayMs, timeZone),
+    ])
+
+    const valid = [...candidateOffsets]
+      .map(offset => ({ offset, utc: wallAsUtc - offset * 60_000 }))
+      .filter(({ utc }) => reproducesWallClock(utc, timeZone, y, mo, d, h, mi, sec))
+
+    if (valid.length === 0) return null
+    valid.sort((a, b) => a.utc - b.utc)
+    return valid[0]!.offset
+  }
+
   /** 指定 UTC 瞬間における timeZone の UTC からのオフセット（分）。ブラウザTZに依存しない。 */
   function zoneOffsetMinutes(utcMillis: number, timeZone: string): number {
+    const parts = wallClockPartsAt(utcMillis, timeZone)
+    const asUtc = Date.UTC(parts.y, parts.mo - 1, parts.d, parts.h, parts.mi, parts.sec)
+    return Math.round((asUtc - Math.floor(utcMillis / 1000) * 1000) / 60_000)
+  }
+
+  /** 指定 UTC 瞬間を timeZone で表示した壁時計が、指定した年月日時分秒と一致するか。 */
+  function reproducesWallClock(
+    utcMillis: number, timeZone: string, y: number, mo: number, d: number, h: number, mi: number, sec: number,
+  ): boolean {
+    const parts = wallClockPartsAt(utcMillis, timeZone)
+    return parts.y === y && parts.mo === mo && parts.d === d
+      && parts.h === h && parts.mi === mi && parts.sec === sec
+  }
+
+  /** 指定 UTC 瞬間を timeZone のローカル壁時計成分（年月日時分秒）に変換する。 */
+  function wallClockPartsAt(utcMillis: number, timeZone: string) {
     const parts = new Intl.DateTimeFormat('en-US', {
       timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     }).formatToParts(new Date(utcMillis))
     const get = (type: string) => Number(parts.find(p => p.type === type)?.value)
-    const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
-    return Math.round((asUtc - Math.floor(utcMillis / 1000) * 1000) / 60_000)
+    return { y: get('year'), mo: get('month'), d: get('day'), h: get('hour'), mi: get('minute'), sec: get('second') }
   }
 
   /**

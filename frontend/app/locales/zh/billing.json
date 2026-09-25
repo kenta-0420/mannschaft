@@ -469,6 +469,7 @@
       "errorProvisionInProgress": "同一操作が処理中です。しばらくしてから再試行してください",
       "errorTaxSnapshotLegacy": "该价格档的税务信息为旧格式，无法登记到 Stripe。请取消此价格修订后重新创建。",
       "errorInvalidStripeTaxCode": "Stripe 税码请输入“txcd_”加 8 位数字。",
+      "errorNonexistentDstTime": "由于夏令时切换，该日期时间不存在。请指定其他时间。",
       "taxCodesTitle": "税コードマスタ",
       "taxCodeCreateAction": "税コードを追加",
       "noPermission": "この画面を表示する権限がありません",

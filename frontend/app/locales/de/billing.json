@@ -469,6 +469,7 @@
       "errorProvisionInProgress": "同一操作が処理中です。しばらくしてから再試行してください",
       "errorTaxSnapshotLegacy": "Die Steuerdaten dieser Preisstufe liegen im alten Format vor und können nicht bei Stripe registriert werden. Stornieren Sie diese Revision und legen Sie sie neu an.",
       "errorInvalidStripeTaxCode": "Geben Sie den Stripe-Steuercode als „txcd_\" gefolgt von 8 Ziffern ein.",
+      "errorNonexistentDstTime": "Diese Uhrzeit existiert aufgrund der Sommerzeitumstellung nicht. Bitte wählen Sie eine andere Uhrzeit.",
       "taxCodesTitle": "税コードマスタ",
       "taxCodeCreateAction": "税コードを追加",
       "noPermission": "この画面を表示する権限がありません",

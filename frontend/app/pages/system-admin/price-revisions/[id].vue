@@ -31,6 +31,7 @@ const billingApi = useBillingApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
 const { formatDateTime } = useDatetime()
+const { confirmAction } = useConfirmDialog()
 const route = useRoute()
 
 const isAllowed = computed(() => authStore.isSystemAdmin)
@@ -256,10 +257,9 @@ async function onReconcileClick() {
   }
 }
 
-/** 取り消し。確認ダイアログを経て、押下ごとに新しい Idempotency-Key で呼ぶ（AC-158 の業務操作と同じ扱い）。 */
-async function onCancelClick() {
+/** 取り消しの実行本体。確認ダイアログの accept から呼ばれる（押下ごとに新しい Idempotency-Key・AC-158）。 */
+async function executeCancel() {
   if (!revision.value || busy.value || !canCancel.value) return
-  if (!window.confirm(t('billing.priceRevisions.confirmCancel'))) return
   cancelling.value = true
   const key = crypto.randomUUID()
   try {
@@ -280,9 +280,17 @@ async function onCancelClick() {
   }
 }
 
-async function onActivateClick() {
+/** 取り消し。PrimeVue の useConfirm 経由で確認を取ってから実行する（FE規約41行: window.confirm 禁止）。 */
+function onCancelClick() {
+  if (!revision.value || busy.value || !canCancel.value) return
+  confirmAction({
+    message: t('billing.priceRevisions.confirmCancel'),
+    onAccept: executeCancel,
+  })
+}
+
+async function executeActivate() {
   if (!revision.value || busy.value || !allBandsReady.value) return
-  if (!window.confirm(t('billing.priceRevisions.confirmActivate'))) return
   activating.value = true
   const key = crypto.randomUUID()
   try {
@@ -301,6 +309,15 @@ async function onActivateClick() {
   } finally {
     activating.value = false
   }
+}
+
+/** Activate。PrimeVue の useConfirm 経由で確認を取ってから実行する（FE規約41行: window.confirm 禁止）。 */
+function onActivateClick() {
+  if (!revision.value || busy.value || !allBandsReady.value) return
+  confirmAction({
+    message: t('billing.priceRevisions.confirmActivate'),
+    onAccept: executeActivate,
+  })
 }
 </script>
 
