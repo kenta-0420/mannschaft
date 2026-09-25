@@ -604,18 +604,25 @@ class ShiftUnpublishedScheduleVisibilityContractIT extends AbstractMySqlIntegrat
             assertAlwaysForbidden(supporterId, fixture);
         }
 
-        @ParameterizedTest(name = "別チームADMIN の {0} は一覧403・秘匿対象の単体404")
+        @ParameterizedTest(name = "別チームADMIN の {0} は一覧403・単体は常に404")
         @EnumSource(Fixture.class)
-        @DisplayName("別 scope の ADMIN は一覧403、未公開の単体参照は404")
+        // CMP-260917-1137: 従来は「公開済みは存在自体が秘匿対象でないため403」としていたが、
+        // これは越境者に対する scheduleId 総当りの存在オラクルそのものだった
+        // （実在ID→403 ／ 不在ID→404 で応答が割れ、存在有無を判別できていた）。
+        // 別チーム ADMIN は当該チームに所属すらしていない（isMember=false）ため、
+        // 公開状態に関わらず単体参照は常に不在時と同一の 404/SHIFT_001 に寄せる。
+        @DisplayName("別 scope の ADMIN は一覧403、単体参照は公開状態に関わらず常に404（存在オラクル解消）")
         void 別チームADMINは常に403(Fixture fixture) throws Exception {
-            assertAlwaysForbidden(otherTeamAdminId, fixture);
+            assertCrossTeamAlwaysNotFound(otherTeamAdminId, fixture);
         }
 
-        @ParameterizedTest(name = "無所属の {0} は一覧403・秘匿対象の単体404")
+        @ParameterizedTest(name = "無所属の {0} は一覧403・単体は常に404")
         @EnumSource(Fixture.class)
-        @DisplayName("無所属ユーザーは一覧403、未公開の単体参照は404")
+        // CMP-260917-1137: 無所属ユーザーも当該チームに所属していない越境と同じ扱いとし、
+        // 公開状態に関わらず単体参照は常に404へ寄せる（理由は別チームADMIN節参照）。
+        @DisplayName("無所属ユーザーは一覧403、単体参照は公開状態に関わらず常に404（存在オラクル解消）")
         void 無所属は常に403(Fixture fixture) throws Exception {
-            assertAlwaysForbidden(outsiderId, fixture);
+            assertCrossTeamAlwaysNotFound(outsiderId, fixture);
         }
     }
 
@@ -645,7 +652,12 @@ class ShiftUnpublishedScheduleVisibilityContractIT extends AbstractMySqlIntegrat
 
     /**
      * 一覧の認可は 403 を維持しつつ、単体参照では未公開の存在を 404 で秘匿する。
-     * 公開済みは存在自体が秘匿対象でないため、従来どおり 403 を返す。
+     *
+     * <p>本メソッドは<b>同一チーム内で権限が足りないだけ</b>の利用者（SUPPORTER）専用。
+     * SUPPORTER は当該チームのメンバーであり存在自体を隠す理由が無いため、
+     * 公開済みは従来どおり 403、未公開だけ {@link #checkScheduleVisible} により 404 となる。
+     * 越境（別チーム/無所属）は {@link #assertCrossTeamAlwaysNotFound} を使うこと
+     * （CMP-260917-1137: 越境と同一メソッドで畳むと存在オラクルが再発する）。</p>
      */
     private void assertAlwaysForbidden(Long userId, Fixture fixture) throws Exception {
         Long scheduleId = scheduleIds.get(fixture);
@@ -662,6 +674,32 @@ class ShiftUnpublishedScheduleVisibilityContractIT extends AbstractMySqlIntegrat
         setAuth(userId);
         mockMvc.perform(get(SCHEDULES_PATH + "/{id}/slots", scheduleId))
                 .andExpect(status().is(detailStatus));
+    }
+
+    /**
+     * 越境（別チーム/無所属＝当該チームに所属すらしていない）利用者向けの検証。
+     *
+     * <p>CMP-260917-1137: 一覧は従来どおり 403（呼び出し元が明示した teamId への認可であり、
+     * scheduleId 推測の攻撃対象にならない）。単体参照（{@code /{id}} と {@code /{id}/slots}）は
+     * <b>公開状態に関わらず常に 404/SHIFT_001</b> とし、不在 ID への応答と完全に一致させる
+     * （応答の違いそのものが scheduleId の存在を漏らす存在オラクルの解消）。</p>
+     */
+    private void assertCrossTeamAlwaysNotFound(Long userId, Fixture fixture) throws Exception {
+        Long scheduleId = scheduleIds.get(fixture);
+
+        setAuth(userId);
+        mockMvc.perform(get(SCHEDULES_PATH).param("teamId", teamId.toString()))
+                .andExpect(status().isForbidden());
+
+        setAuth(userId);
+        mockMvc.perform(get(SCHEDULES_PATH + "/{id}", scheduleId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
+
+        setAuth(userId);
+        mockMvc.perform(get(SCHEDULES_PATH + "/{id}/slots", scheduleId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
     }
 
     private static String title(Fixture fixture) {

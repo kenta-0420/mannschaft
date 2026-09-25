@@ -14,6 +14,7 @@ HTTP|com.mannschaft.app.admin.controller.AdminActionTemplateController|4|4
 HTTP|com.mannschaft.app.admin.controller.AdminBusinessAlertController|1|1
 HTTP|com.mannschaft.app.admin.controller.AdminDashboardController|3|3
 HTTP|com.mannschaft.app.admin.controller.AdminFeedbackController|3|3
+HTTP|com.mannschaft.app.admin.controller.AdminMemberPermissionController|2|2
 HTTP|com.mannschaft.app.admin.controller.AdminModuleController|4|4
 HTTP|com.mannschaft.app.admin.controller.AdminPermissionGroupController|7|7
 HTTP|com.mannschaft.app.admin.controller.FeatureFlagController|0|1

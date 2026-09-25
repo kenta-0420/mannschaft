@@ -90,7 +90,20 @@ public class ShiftRequestService {
      */
     public List<ShiftRequestResponse> listMyRequests(Long userId) {
         List<ShiftRequestEntity> entities = requestRepository.findByUserIdOrderBySlotDateDesc(userId);
-        return shiftMapper.toRequestResponseList(entities);
+        List<ShiftRequestResponse> responses = shiftMapper.toRequestResponseList(entities);
+
+        // 案C（CMP-260917-1136）: 親スケジュールが論理削除済みでも提出履歴は一覧から消さず、
+        // 削除済みフラグだけを立てる（詳細取得は 404 のまま）。
+        java.util.Set<Long> scheduleIds = responses.stream()
+                .map(ShiftRequestResponse::getScheduleId)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> existingScheduleIds = scheduleService.findExistingScheduleIds(scheduleIds);
+
+        return responses.stream()
+                .map(r -> r.toBuilder()
+                        .scheduleDeleted(!existingScheduleIds.contains(r.getScheduleId()))
+                        .build())
+                .toList();
     }
 
     /**
@@ -182,6 +195,10 @@ public class ShiftRequestService {
     public void deleteRequest(Long requestId, Long userId) {
         ShiftRequestEntity entity = findRequestOrThrow(requestId);
         checkOwnerOrTeamAdmin(entity, userId);
+        // 親スケジュールの生存確認（CMP-260917-1136）。checkOwnerOrTeamAdmin は本人一致なら
+        // 親を一度も引かずに return するため、ここで findScheduleOrThrow を必ず通す
+        //（updateRequest と同型。親が論理削除済みなら SHIFT_SCHEDULE_NOT_FOUND / 404）。
+        scheduleService.findScheduleOrThrow(entity.getScheduleId());
         requestRepository.delete(entity);
         log.info("シフト希望削除: id={}", requestId);
     }
@@ -328,11 +345,15 @@ public class ShiftRequestService {
     private void checkScheduleAdminAccess(Long scheduleId, Long userId) {
         // AccessControlService をこのメソッドから直接呼ぶ（番人 AuthzControllerGuardArchTest の
         // 委譲探索は深さ2までのため、認可クラスへの到達を1ホップ内に収める）
+        //
+        // 親スケジュールの生存確認（findScheduleOrThrow）を SYSTEM_ADMIN 短絡より必ず先に行う
+        //（CMP-260917-1136）。短絡を先に置くと SYSTEM_ADMIN だけが親削除済みスケジュールの
+        // 希望一覧・サマリーを取得できてしまう。
+        Long teamId = scheduleService.findScheduleOrThrow(scheduleId).getTeamId();
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
-        accessControlService.checkAdminOrAbove(
-                userId, scheduleService.findScheduleOrThrow(scheduleId).getTeamId(), "TEAM");
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
     }
 
     /**

@@ -13,15 +13,19 @@ const userId = computed(() => Number(route.params.userId))
 
 const items = ref<FamilyPersonalTimetable[]>([])
 const loading = ref(true)
+/** 取得失敗は「登録なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     items.value = await api.list(teamId.value, userId.value)
   }
   catch (e) {
     error(t('personalTimetable.familyView.list_load_error'), String(e))
     items.value = []
+    loadFailed.value = true
   }
   finally {
     loading.value = false
@@ -45,6 +49,12 @@ onMounted(load)
     <div v-if="loading" class="text-center py-12">
       <LoadingBounce />
     </div>
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="family-personal-timetable-error-state"
+      @retry="load"
+    />
 
     <div v-else-if="items.length === 0" class="text-center py-12 text-gray-500">
       {{ t('personalTimetable.familyView.list_empty') }}

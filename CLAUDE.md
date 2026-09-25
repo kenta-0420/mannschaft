@@ -72,6 +72,8 @@
 
 **新規行は必ず表の末尾に追加すること。** 直前に触った行の近くへ挿入すると、同じ ID が別々の位置に入っても git が競合として検知できず、重複したまま静かに main へ入りうる。末尾追記に統一すれば、同時追加は必ず競合として止まる。なお重複したまま main へ入ることは番人 `TaskListCmpIdDuplicateGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）が CI で検出する（新旧両形式に対応）。重複が検出された場合は、後から merge された側が採番し直す。
 
+**表の列は必ず7つ（ID / 戦役 / 状態 / 依存 / 完了条件 / 証拠(PR/テスト) / 台帳）。** 補足事項は新しい列を増やさず既存列（多くは「証拠(PR/テスト)」）へ畳み込むこと。セル内で本物の `|` を使う場合は `\|` へエスケープする（**コードスパン \` ... \` の中でも `\|` エスケープが必要**。GFM の表仕様ではコードスパン内の未エスケープ `|` も列区切りとして扱われる）。列数のズレは同じ番人クラス `TaskListCmpIdDuplicateGuardTest` の `cmpIdの行は列数が7である()` が CI で検出する。
+
 ### Dynamic Workflows との連携（出陣・検分の高速化／コスト最適化）
 
 `/出陣`・`/検分 claude` は Dynamic Workflows で足軽の並列起動を表現できる（`/検分` の既定検分者は `codex` で、Codex による独立検分が走る。Workflow 検分を使うには `claude` を明示する）（オプトイン。機械的タスクは sonnet/haiku・低 effort、難所は opus・high に固定。コミット/マージは `gh`）。詳細: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)。

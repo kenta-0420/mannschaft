@@ -214,6 +214,7 @@ export default {
       "resetButton": "リセット",
       "allCategories": "すべてのカテゴリ",
       "noResults": "条件に合う募集が見つかりませんでした",
+      "loadError": "募集の取得に失敗しました",
       "resultsCount": "{count}件の募集",
       "capacity": "定員",
       "remaining": "残り{count}枠",

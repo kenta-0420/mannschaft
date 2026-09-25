@@ -2488,6 +2488,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "Benutzerdefinierte Felder",
+      "add": "Feld hinzufügen",
+      "loadFailed": "Benutzerdefinierte Felder konnten nicht geladen werden",
+      "retry": "Erneut versuchen",
+      "empty": "Keine benutzerdefinierten Felder",
+      "name": "Feldname",
+      "type": "Typ",
+      "required": "Erforderlich",
+      "active": "Aktiv",
+      "order": "Reihenfolge",
+      "yes": "Ja",
+      "no": "Nein",
+      "typeText": "Text",
+      "typeNumber": "Zahl",
+      "typeDate": "Datum",
+      "typeSelect": "Auswahl",
+      "options": "Optionen (eine pro Zeile)",
+      "createSuccess": "Feld hinzugefügt",
+      "createFailed": "Feld konnte nicht hinzugefügt werden"
+    },
     "loadFailed": "Mitgliederinformationen konnten nicht geladen werden",
     "unavailable": "Diese Funktion ist derzeit nicht verfügbar (in Vorbereitung)",
     "saveFailed": "Speichern fehlgeschlagen",
@@ -2536,5 +2557,25 @@
       "optionsInvalidFormat": "選択肢データの形式が不正です",
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
+  },
+  "memberPermissions": {
+    "title": "Standardberechtigungen für MEMBER",
+    "description": "Konfiguriert die Standardberechtigungen für MEMBER, die diesem Team oder dieser Organisation beitreten.",
+    "sectionTitle": "Standardberechtigungen",
+    "invalidScope": "Bitte zuerst ein Team oder eine Organisation auswählen.",
+    "loadFailed": "Die Standardberechtigungen für MEMBER konnten nicht geladen werden.",
+    "saveSuccess": "Die Standardberechtigungen für MEMBER wurden aktualisiert.",
+    "saveFailed": "Die Standardberechtigungen für MEMBER konnten nicht aktualisiert werden.",
+    "inherited": "Von einer übergeordneten Einstellung geerbt",
+    "accessDenied": "Nur Administratoren können diese Aktion ausführen.",
+    "permissions": {
+      "MANAGE_SCHEDULES": "Termine verwalten",
+      "MANAGE_FILES": "Dateien verwalten",
+      "MANAGE_POSTS": "Beiträge verwalten"
+    }
+  },
+  "loadErrorState": {
+    "message": "Daten konnten nicht geladen werden",
+    "retry": "Wiederholen"
   }
 }

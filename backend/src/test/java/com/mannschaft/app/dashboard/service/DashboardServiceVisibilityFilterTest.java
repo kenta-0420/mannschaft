@@ -5,6 +5,7 @@ import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.dashboard.MinRole;
@@ -86,6 +87,7 @@ class DashboardServiceVisibilityFilterTest {
     @Mock private ChatChannelMemberRepository chatChannelMemberRepository;
     @Mock private PlatformAnnouncementRepository platformAnnouncementRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     @Mock private PaymentGateService paymentGateService;
     @Mock private ScopeWidgetSummaryService scopeWidgetSummaryService;

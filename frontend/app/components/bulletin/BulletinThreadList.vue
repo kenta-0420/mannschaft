@@ -125,7 +125,7 @@ defineExpose({ refresh: () => loadThreads() })
       <div
         v-for="thread in threads"
         :key="thread.id"
-        class="group flex items-start gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 transition-shadow hover:shadow-sm"
+        class="group flex items-start gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 transition-shadow hover:shadow-sm dark:border-surface-700 dark:bg-surface-800"
         :class="!thread.isRead ? 'border-l-4 border-l-primary' : ''"
       >
         <!-- ピン -->

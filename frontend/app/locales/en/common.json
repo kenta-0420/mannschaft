@@ -2488,6 +2488,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "Custom fields",
+      "add": "Add field",
+      "loadFailed": "Could not load custom fields",
+      "retry": "Retry",
+      "empty": "No custom fields",
+      "name": "Field name",
+      "type": "Type",
+      "required": "Required",
+      "active": "Active",
+      "order": "Order",
+      "yes": "Yes",
+      "no": "No",
+      "typeText": "Text",
+      "typeNumber": "Number",
+      "typeDate": "Date",
+      "typeSelect": "Select",
+      "options": "Options (one per line)",
+      "createSuccess": "Field added",
+      "createFailed": "Could not add field"
+    },
     "loadFailed": "Could not load member information",
     "unavailable": "This feature is currently unavailable (coming soon)",
     "saveFailed": "Failed to save",
@@ -2536,5 +2557,25 @@
       "optionsInvalidFormat": "The options data is in an invalid format",
       "optionsLoadFailed": "Failed to load the options data"
     }
+  },
+  "memberPermissions": {
+    "title": "Default MEMBER permissions",
+    "description": "Configure the default permissions for MEMBER users joining this team or organization.",
+    "sectionTitle": "Default permissions",
+    "invalidScope": "Select a team or organization before opening this page.",
+    "loadFailed": "Failed to load default MEMBER permissions.",
+    "saveSuccess": "Default MEMBER permissions updated.",
+    "saveFailed": "Failed to update default MEMBER permissions.",
+    "inherited": "Inherited from a higher-level setting",
+    "accessDenied": "Only administrators can perform this action.",
+    "permissions": {
+      "MANAGE_SCHEDULES": "Manage schedules",
+      "MANAGE_FILES": "Manage files",
+      "MANAGE_POSTS": "Manage posts"
+    }
+  },
+  "loadErrorState": {
+    "message": "Failed to load data",
+    "retry": "Retry"
   }
 }

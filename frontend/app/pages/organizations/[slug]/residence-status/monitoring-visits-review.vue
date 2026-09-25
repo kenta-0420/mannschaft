@@ -20,6 +20,8 @@ const residentRegistryIdInput = ref<string>('')
 const visits = ref<MonitoringVisitResponse[]>([])
 const loading = ref(false)
 const searched = ref(false)
+/** 取得失敗は「該当なし」ではない。検索結果 0 件へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 // ContactResult の Tag severity（dashboard.vue と同じロジック）
 function contactResultSeverity(result: ContactResult): string {
@@ -60,6 +62,7 @@ function truncateMemo(memo: string | null): string {
 async function handleSearch() {
   loading.value = true
   searched.value = true
+  loadFailed.value = false
   try {
     if (filterMode.value === 'committee') {
       if (!committeeIdInput.value) return
@@ -75,6 +78,7 @@ async function handleSearch() {
   catch (e) {
     console.error('訪問履歴取得エラー:', e)
     visits.value = []
+    loadFailed.value = true
   }
   finally {
     loading.value = false
@@ -88,6 +92,7 @@ function handleFilterModeChange(mode: FilterMode) {
   residentRegistryIdInput.value = ''
   visits.value = []
   searched.value = false
+  loadFailed.value = false
 }
 
 // 検索ボタンの有効条件
@@ -193,6 +198,13 @@ function handleBackToDashboard() {
     >
       <LoadingBounce />
     </div>
+
+    <!-- 取得失敗: 空状態とは別に描き分ける -->
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="monitoring-visits-review-error-state"
+      @retry="handleSearch"
+    />
 
     <!-- 一覧テーブル -->
     <DataTable

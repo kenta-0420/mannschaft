@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -90,6 +91,10 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long memberTeamAId;     // TEAM A の非 ADMIN メンバー
     private Long supporterTeamAId;  // TEAM A の SUPPORTER（参照系の下限境界）
     private Long outsiderId;        // どのチームにも属さない認証済みユーザー
+    // CMP-260923-1641 差し戻し対応（Codex 検分指摘）: user_roles に ADMIN ロールを持つが
+    // memberships の在籍行を持たない利用者（開発DB実測: チーム管理者ロール609件中2件が該当）。
+    // isMember を isAdminOrAbove より先に判定すると、この利用者を越境と誤判定して404を返す回帰が生じる。
+    private Long userRolesOnlyAdminTeamAId;
 
     private Long scheduleAId;    // TEAM A のシフトスケジュール（PUBLISHED）
 
@@ -104,6 +109,7 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         memberTeamAId = insertUser("wave3b6-shift-member-team-a@example.com");
         supporterTeamAId = insertUser("wave6-shift-supporter-team-a@example.com");
         outsiderId = insertUser("wave6-shift-outsider@example.com");
+        userRolesOnlyAdminTeamAId = insertUser("wave6-shift-userroles-only-admin-team-a@example.com");
 
         // checkAdminOrAbove（user_roles）と checkMembership（memberships）は別系統のため
         // ADMIN ユーザーにも memberships 行を張る（RepairPlanAuthorizationMatrixTest 踏襲）。
@@ -114,6 +120,8 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, memberTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, supporterTeamAId, ScopeType.TEAM, teamAId, RoleKind.SUPPORTER);
         // outsiderId は意図的にどの memberships / user_roles にも紐付けない
+        // memberships は張らず、user_roles の ADMIN 行のみを持つ利用者（CMP-260923-1641 差し戻し対応）。
+        MembershipTestHelper.insertUserRole(em, userRolesOnlyAdminTeamAId, "ADMIN", teamAId, null);
 
         ShiftScheduleEntity scheduleA = scheduleRepository.save(ShiftScheduleEntity.builder()
                 .teamId(teamAId)
@@ -202,13 +210,17 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更。
+        // teamB の ADMIN は teamA に所属していない（isMember=false）ため「存在自体を隠すべき」側と
+        // 判定し、不在時と同一の SHIFT_001/404 を返す（村の前例 VillageAccessGate に倣う）。
+        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(patch("/api/v1/shifts/schedules/{id}", scheduleAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("title", "更新後"))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -239,11 +251,13 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更（理由は UpdateSchedule 節参照）。
+        @DisplayName("別scope ADMINは404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(delete("/api/v1/shifts/schedules/{id}", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -273,12 +287,14 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINはPUBLISH遷移403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更（理由は UpdateSchedule 節参照）。
+        @DisplayName("別scope ADMINはPUBLISH遷移404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(post("/api/v1/shifts/schedules/{id}/transition", scheduleAId)
                             .param("status", "PUBLISHED"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -308,11 +324,13 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINが複製元(source)のscheduleIdを直接指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: 存在オラクル解消のため 403(BOLA) → 404 へ変更（理由は UpdateSchedule 節参照）。
+        @DisplayName("別scope ADMIN（teamBのADMINが複製元(source)のscheduleIdを直接指定）は404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(post("/api/v1/shifts/schedules/{id}/duplicate", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
@@ -423,15 +441,23 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        // CMP-260917-1137: GET /shifts/schedules/{id} は実機確認済みの存在オラクルだった。
+        // 他テナント（teamBのADMIN）が存在するIDを叩くと403、存在しないIDだと404で応答が割れ、
+        // scheduleId（連番）の総当りでシフトスケジュールの実在を判別できていた。
+        // 村ドメインの VillageAccessGate と同じ作法（不在側のコードそのものを返す）で
+        // 越境を不在時と同一の SHIFT_001/404 に寄せる。
+        @DisplayName("別scope ADMIN（teamBのADMINがscheduleIdを直接指定）は404（存在オラクル解消）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
-        @DisplayName("SUPPORTERは403")
+        // SUPPORTER は teamA に籍を置くメンバー（同一チーム内の権限不足）であり、
+        // 「存在自体を隠すべきか」の基準では隠す必要が無い側 = 403 のまま残す。
+        @DisplayName("SUPPORTERは403（同一チーム内の権限不足のため退行させない）")
         void サポーターは403() throws Exception {
             setAuth(supporterTeamAId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
@@ -439,11 +465,160 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("無所属の認証ユーザーは403")
-        void 無所属ユーザーは403() throws Exception {
+        // CMP-260917-1137: 無所属ユーザーもテナントに属さない越境と同じ扱いとし、404 へ寄せる。
+        @DisplayName("無所属の認証ユーザーは404（存在オラクル解消）")
+        void 無所属ユーザーは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
+        }
+
+        @Test
+        // CMP-260917-1137 の核心: 「存在するが越境」と「存在しない」の応答が
+        // ステータス・エラーコード・本文まで完全に一致し、総当りで存在を判別できないことを固定する。
+        @DisplayName("存在オラクル解消: 越境(存在するID)と不在(存在しないID)の応答が区別できない")
+        void 存在オラクルは解消されている() throws Exception {
+            setAuth(adminTeamBId);
+
+            String crossTenantBody = mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn().getResponse().getContentAsString();
+
+            long nonExistentId = scheduleAId + 999_999L;
+            String notFoundBody = mockMvc.perform(get("/api/v1/shifts/schedules/{id}", nonExistentId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn().getResponse().getContentAsString();
+
+            org.assertj.core.api.Assertions.assertThat(crossTenantBody).isEqualTo(notFoundBody);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 8. user_roles のみに ADMIN ロールを持つ利用者（memberships 在籍行なし）が
+    //    読取系・管理系ともに通れること
+    //    （CMP-260923-1641 差し戻し対応・Codex 検分指摘。開発DB実測: チーム管理者ロール609件中2件該当）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("8. user_rolesのみのADMIN（membershipsの在籍行なし）は読取系・管理系ともに通過できる")
+    class UserRolesOnlyAdmin {
+
+        @Test
+        @DisplayName("GET /schedules/{id}（詳細）は200")
+        void 詳細は200() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("PATCH /schedules/{id}（更新）は200")
+        void 更新は200() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(patch("/api/v1/shifts/schedules/{id}", scheduleAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("title", "更新後"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("POST /schedules/{id}/transition（PUBLISH遷移）は200")
+        void 遷移は200() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/schedules/{id}/transition", scheduleAId)
+                            .param("status", "PUBLISHED"))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("POST /schedules/{id}/duplicate（複製）は201")
+        void 複製は201() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/schedules/{id}/duplicate", scheduleAId))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("DELETE /schedules/{id}（削除）は204")
+        void 削除は204() throws Exception {
+            setAuth(userRolesOnlyAdminTeamAId);
+            mockMvc.perform(delete("/api/v1/shifts/schedules/{id}", scheduleAId))
+                    .andExpect(status().isNoContent());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 9. GET /shifts/schedules?teamId=（一覧・非メンバー応答の不変条件／CMP-260923-1642）
+    //
+    //    経緯: 個別 GET /{id} は CMP-260917-1137 で越境(403)と不在(404)の応答を
+    //    完全一致の 404 へ畳んで存在オラクルを解消した。一覧 GET ?teamId= は
+    //    従来どおり一律 403 のままで、個別と異なるステータスを返す。
+    //
+    //    当初「チームの存在は公開情報だから403のままでよい」としていたが、この前提は誤りだった
+    //    （PublicTeamController は PUBLIC 以外の visibility を一律404で隠しており、
+    //    「チームの存在」自体は非公開の情報になり得る）。
+    //
+    //    それでも一覧が存在オラクルにならないのは、非メンバーへの応答が
+    //    「teamId の実在・visibility に関わらず常に同一の 403」だから。
+    //    本節はその不変条件をステータス・エラーコード・本文（timestamp除く）まで固定する。
+    //    方針の整合は docs/security/01_authorization_baseline.md
+    //    「一覧APIの403が存在オラクルにならない理由」節を参照。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("9. GET /shifts/schedules?teamId=（非メンバー応答の不変条件／CMP-260923-1642）")
+    class ListNonMemberResponseInvariant {
+
+        @Test
+        @DisplayName("非公開チーム(実在)・公開チーム(実在)・存在しないteamIdのいずれも、"
+                + "非メンバーへの応答は同一の403（COMMON_002）になる")
+        void 非メンバーへの応答は実在visibilityに関わらず同一() throws Exception {
+            Long nonPublicTeamId = insertTeam("WAVE8 非公開チーム", "MEMBERS_AND_ABOVE");
+            Long nonExistentTeamId = teamAId + 999_999L;
+
+            // outsiderId はどのチームにも所属しない（teamA/nonPublicTeam いずれにも非メンバー）。
+            setAuth(outsiderId);
+
+            String publicTeamBody = mockMvc.perform(get("/api/v1/shifts/schedules")
+                            .param("teamId", teamAId.toString()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"))
+                    .andReturn().getResponse().getContentAsString();
+
+            String nonPublicTeamBody = mockMvc.perform(get("/api/v1/shifts/schedules")
+                            .param("teamId", nonPublicTeamId.toString()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"))
+                    .andReturn().getResponse().getContentAsString();
+
+            String nonExistentTeamBody = mockMvc.perform(get("/api/v1/shifts/schedules")
+                            .param("teamId", nonExistentTeamId.toString()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"))
+                    .andReturn().getResponse().getContentAsString();
+
+            String publicTeamBodyNormalized = stripTimestamp(publicTeamBody);
+            String nonPublicTeamBodyNormalized = stripTimestamp(nonPublicTeamBody);
+            String nonExistentTeamBodyNormalized = stripTimestamp(nonExistentTeamBody);
+
+            org.assertj.core.api.Assertions.assertThat(nonPublicTeamBodyNormalized)
+                    .isEqualTo(publicTeamBodyNormalized);
+            org.assertj.core.api.Assertions.assertThat(nonExistentTeamBodyNormalized)
+                    .isEqualTo(publicTeamBodyNormalized);
+        }
+
+        /** 応答本文から timestamp フィールド（リクエストごとに変化する）を取り除く。 */
+        private String stripTimestamp(String body) throws Exception {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parsed = objectMapper.readValue(body, Map.class);
+            parsed.remove("timestamp");
+            if (parsed.get("error") instanceof Map) {
+                ((Map<?, ?>) parsed.get("error")).remove("timestamp");
+            }
+            return objectMapper.writeValueAsString(parsed);
         }
     }
 
@@ -479,12 +654,18 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long insertTeam(String name) {
+        return insertTeam(name, "PUBLIC");
+    }
+
+    /** CMP-260923-1642: 非公開 visibility のチームを作るための拡張版。 */
+    private Long insertTeam(String name, String visibility) {
         em.createNativeQuery(
                         "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
                                 + "created_at, updated_at) "
-                                + "VALUES (:name, 'PUBLIC', 1, 0, 0, "
+                                + "VALUES (:name, :visibility, 1, 0, 0, "
                                 + "CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
+                .setParameter("visibility", visibility)
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE name = :name")
                 .setParameter("name", name)

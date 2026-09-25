@@ -703,7 +703,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2065;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2063;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -715,8 +715,13 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値（JUnit XML の
      * AssertionFailedError メッセージ「1505 → 1459 に減少（-46件）」）へ追随。</p>
+     *
+     * <p>CMP-260820-1014 で所属スコープ列挙を正本サービスへ集約後、CIフル解析で実測した
+     * {@code 1450 → 1407}（43件解消）へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1459;
+    // origin/main の CMP-260922-2230（1459→1447、12件解消）は上記1407行版の
+    // 削除集合に全件包含されるため、並行ブランチの削除数を二重加算しない。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1407;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -791,7 +796,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * のみ触れる形に是正し、Repository への直接依存を撤去したため。
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1947;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1938;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
