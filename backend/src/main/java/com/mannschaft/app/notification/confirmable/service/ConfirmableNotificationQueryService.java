@@ -105,17 +105,17 @@ public class ConfirmableNotificationQueryService {
         Object userDeletedAt = row[4];
         boolean withdrawn = userDeletedAt != null || row[2] == null;
         return ConfirmableNotificationRecipientResponse.builder()
-                .id(((Number) row[0]).longValue())
-                .userId(row[1] == null ? null : ((Number) row[1]).longValue())
+                .id(toLong(row[0]))
+                .userId(toLong(row[1]))
                 .displayName(withdrawn ? null : (String) row[2])
                 .avatarUrl(withdrawn ? null : (String) row[3])
                 .withdrawn(withdrawn)
                 .isConfirmed(toBoolean(row[5]))
-                .confirmedAt(maskConfirmationDetails ? null : (java.time.LocalDateTime) row[6])
+                .confirmedAt(maskConfirmationDetails ? null : toLocalDateTime(row[6]))
                 .confirmedVia(maskConfirmationDetails || row[7] == null ? null
                         : com.mannschaft.app.notification.confirmable.entity.ConfirmedVia.valueOf((String) row[7]))
-                .excludedAt(maskConfirmationDetails ? null : (java.time.LocalDateTime) row[8])
-                .createdAt((java.time.LocalDateTime) row[9])
+                .excludedAt(maskConfirmationDetails ? null : toLocalDateTime(row[8]))
+                .createdAt(toLocalDateTime(row[9]))
                 .build();
     }
 
@@ -131,6 +131,40 @@ public class ConfirmableNotificationQueryService {
             return n.intValue() != 0;
         }
         return Boolean.parseBoolean(value.toString());
+    }
+
+    /**
+     * MySQL の JDBC ドライバが BIGINT を {@code java.math.BigInteger}/{@code Long} など揺れた型で
+     * 返すことがあるため、{@code Number} 経由で安全に {@code Long} 化する。
+     */
+    private static Long toLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        return ((Number) value).longValue();
+    }
+
+    /**
+     * CMP-260920-1040是正: ネイティブ投影の日時列は {@code java.sql.Timestamp} で返るため
+     * {@code (LocalDateTime) row[i]} の直接キャストは {@link ClassCastException} になる
+     * （前任のバグ。E2E-5/E2E-6/AC-59/AC-60 が 500 化していた）。
+     * {@code hibernate.jdbc.time_zone: UTC} により Hibernate は UTC で読み書きするため、
+     * native の Timestamp も UTC 起点であり、{@link java.sql.Timestamp#toLocalDateTime()}
+     * はこの JVM の既定タイムゾーン（Asia/Tokyo）で壁時計化する。これは Entity 経由（Hibernate の
+     * {@code UTC} タイムゾーン変換）で読んだ値と一致する。
+     */
+    private static java.time.LocalDateTime toLocalDateTime(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof java.sql.Timestamp ts) {
+            return ts.toLocalDateTime();
+        }
+        if (value instanceof java.time.LocalDateTime ldt) {
+            return ldt;
+        }
+        throw new IllegalArgumentException(
+                "Unsupported datetime projection type: " + value.getClass().getName());
     }
 
     /**
