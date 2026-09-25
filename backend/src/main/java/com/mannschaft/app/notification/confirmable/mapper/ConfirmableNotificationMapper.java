@@ -66,11 +66,14 @@ public abstract class ConfirmableNotificationMapper {
 
     /**
      * 確認通知受信者 Entity → レスポンスDTO に変換する（ADMIN+ 視点・全フィールド）。
+     *
+     * <p><b>CMP-260920-1040:</b> 本メソッドの呼び出し元は自己スコープの保留中一覧（`/api/v1/me/confirmable-notifications/pending`）だけであり、返すのはログイン中の本人の受信者行に限られる。ログインできている本人は退会者ではあり得ないため、withdrawn は常に false で正しい。</p>
      */
     @Named("toRecipientResponseFull")
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "displayName", source = "user.displayName")
     @Mapping(target = "avatarUrl", source = "user.avatarUrl")
+    @Mapping(target = "withdrawn", constant = "false")
     public abstract ConfirmableNotificationRecipientResponse toRecipientResponse(
             ConfirmableNotificationRecipientEntity entity);
 
