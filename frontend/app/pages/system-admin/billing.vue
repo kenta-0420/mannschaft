@@ -155,8 +155,9 @@ async function submitBands() {
   if (!bandsEditingPlanKey.value) return
   bandsSubmitting.value = true
   try {
-    await billingApi.replacePriceBandsAdmin(bandsEditingPlanKey.value, { bands: bandsForm.value })
-    notification.success(t('billing.admin.priceBandsTab.saveSuccess'))
+    // 旧 PUT /plans/{planKey}/price-bands は 410 で廃止済み（AC-140〜142）。
+    // 人数バンド・金額の変更は新しい価格改定画面（/system-admin/price-revisions）で行う。
+    notification.info(t('billing.admin.priceBandsTab.movedToPriceRevisions'))
     bandsDialogVisible.value = false
   }
   catch (err) {

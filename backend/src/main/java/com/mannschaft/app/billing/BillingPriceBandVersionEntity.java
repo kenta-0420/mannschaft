@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -113,9 +114,21 @@ public class BillingPriceBandVersionEntity extends UuidV7Entity {
     @Column(name = "provision_error_code", length = 64)
     private String provisionErrorCode;
 
+    /**
+     * 試練隊（第2陣）出陣時の申し送り: {@code @Builder.Default} が無いと、テストがビルダー経由で
+     * 作った band の {@code provisionAttempts} が null のままとなり、F群の
+     * 「{@code int before = failedBand.getProvisionAttempts();}」が {@link NullPointerException} で
+     * 落ちる（永続化前の Hibernate 既定値 0 をビルダーにも反映する）。
+     */
+    @Builder.Default
+    @Column(name = "provision_attempts", nullable = false)
+    private Integer provisionAttempts = 0;
+
+    /** 同上の理由で {@code lockVersion} にも既定値 0 を反映する（E群/F群/G群のCAS試練対応）。 */
     @Version
+    @Builder.Default
     @Column(name = "lock_version", nullable = false)
-    private Long lockVersion;
+    private Long lockVersion = 0L;
 
     @Column(name = "created_by")
     private Long createdBy;
@@ -127,19 +140,32 @@ public class BillingPriceBandVersionEntity extends UuidV7Entity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
     @PrePersist
     protected void onCreate() {
+        Instant now = Instant.now();
         if (createdAt == null) {
-            createdAt = Instant.now();
+            createdAt = now;
         }
+        updatedAt = now;
         if (currency == null) {
             currency = "JPY";
         }
         if (status == null) {
             status = BillingPriceVersionStatus.DRAFT;
         }
+        if (provisionAttempts == null) {
+            provisionAttempts = 0;
+        }
+    }
+
+    @jakarta.persistence.PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
     }
 }

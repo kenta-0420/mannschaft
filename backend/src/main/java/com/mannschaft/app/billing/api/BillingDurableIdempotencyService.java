@@ -38,6 +38,17 @@ class BillingDurableIdempotencyService {
 
     BillingIdempotencyDecision begin(long actorId, String httpMethod, String requestPath,
                                      String idempotencyKey, String requestHash, String leaseOwner) {
+        return begin(actorId, httpMethod, requestPath, idempotencyKey, requestHash, leaseOwner, LEASE_DURATION);
+    }
+
+    /**
+     * 価格改定戦役（price-revisions）決定9改訂（AC-132）: provision/retry-provision/reconcile-provision の
+     * 3エンドポイントに限り lease 期間を明示できるオーバーロード。それ以外（create/activate等）は
+     * 既定2分の {@link #begin(long, String, String, String, String, String)} を使い続ける限り変更されない。
+     */
+    BillingIdempotencyDecision begin(long actorId, String httpMethod, String requestPath,
+                                     String idempotencyKey, String requestHash, String leaseOwner,
+                                     Duration leaseDuration) {
         Instant now = clock.instant();
         Optional<BillingIdempotencyRecord> existing =
                 repository.find(actorId, httpMethod, requestPath, idempotencyKey);
@@ -46,7 +57,7 @@ class BillingDurableIdempotencyService {
                 BillingIdempotencyRecord reserved = repository.reserve(new BillingIdempotencyRecord(
                         null, actorId, httpMethod, requestPath, idempotencyKey, requestHash,
                         BillingIdempotencyStatus.PROCESSING, null, null, leaseOwner,
-                        now.plus(LEASE_DURATION), now, null, now.plus(RECORD_TTL)));
+                        now.plus(leaseDuration), now, null, now.plus(RECORD_TTL)));
                 return new BillingIdempotencyDecision(BillingIdempotencyDecisionKind.ACQUIRED,
                         reserved == null ? null : reserved.id(), null, null, 0L);
             } catch (DataIntegrityViolationException e) {

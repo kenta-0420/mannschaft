@@ -265,12 +265,16 @@ POST /api/v1/organizations/{orgId}/billing/contracts     # ORG スコープ
 GET/POST/PUT/DELETE /api/v1/system-admin/billing/plans            # plans CRUD（{planKey} 自然キー）
 GET/POST/PUT/DELETE /api/v1/system-admin/billing/features         # feature_catalog CRUD（{featureKey}）
 PUT                 /api/v1/system-admin/billing/plans/{planKey}/features    # plan_features 一括置換
+GET/POST/PUT/DELETE /api/v1/system-admin/billing/tax-codes        # 税コードマスタCRUD（決定6。billing_tax_codes）
 POST                /api/v1/system-admin/billing/price-revisions  # DRAFT revision+bands作成
 GET                 /api/v1/system-admin/billing/price-revisions/{id}
+GET                 /api/v1/system-admin/billing/price-revisions  # 一覧（productKind/productKey/scopeKind/status絞込・page/size）
 POST                /api/v1/system-admin/billing/price-revisions/{id}/provision
 POST                /api/v1/system-admin/billing/price-revisions/{id}/retry-provision
+POST                /api/v1/system-admin/billing/price-revisions/{id}/reconcile-provision  # PROVISIONING停滞の全属性照合回収
 POST                /api/v1/system-admin/billing/price-revisions/{id}/activate
-PUT                 /api/v1/system-admin/billing/plans/{planKey}/price-bands # 互換入力。revision Sagaへ委譲し直接更新しない
+POST                /api/v1/system-admin/billing/price-revisions/{id}/cancel  # 取り消し（DRAFT/READY/PROVISION_FAILED→CANCELLED。future枠を解放）
+PUT                 /api/v1/system-admin/billing/plans/{planKey}/price-bands # 【410封鎖済・出陣隊第4陣】旧API。エンドポイント自体は残すが常に410を返す
 POST                /api/v1/system-admin/billing/grants           # 手動付与（契約行を作って発行）
 GET                 /api/v1/system-admin/billing/contracts?scopeKind=&scopeId=&status=&page=  # 横断検索
 認可: @PreAuthorize("hasRole('SYSTEM_ADMIN')")（全 EP・03 §1）
@@ -280,19 +284,38 @@ GET                 /api/v1/system-admin/billing/contracts?scopeKind=&scopeId=&s
 
 | price revision API | request | response | status |
 |---|---|---|---|
-| `POST /price-revisions` | `Idempotency-Key` + `PriceRevisionCreateRequest` | `PriceRevisionResponse(status='DRAFT')` | 201/400/409 |
+| `POST /price-revisions` | `Idempotency-Key` + `PriceRevisionCreateRequest` | `PriceRevisionResponse(status='DRAFT', lockVersion)` | 201/400/409 |
 | `GET /price-revisions/{id}` | UUIDv7 | `PriceRevisionResponse`（band別Provision state/errorを含む） | 200/404 |
-| `POST /price-revisions/{id}/provision` | `Idempotency-Key` + `{lockVersion:int64}` | `PriceRevisionResponse(status='PROVISIONING')` | 202/404/409/502 |
-| `POST /price-revisions/{id}/retry-provision` | `Idempotency-Key` + `{lockVersion:int64}` | `PriceRevisionResponse(status='PROVISIONING')` | 202/404/409/502 |
-| `POST /price-revisions/{id}/activate` | `Idempotency-Key` + `{lockVersion:int64}` | futureは`SCHEDULED`、即時は`ACTIVE`の`PriceRevisionResponse` | 200/404/409 |
-| 旧 `PUT /plans/{planKey}/price-bands` | legacy `PriceBandsReplaceRequest` | 201 revision Saga委譲結果（直接更新なし） | 201/400/409/410 |
+| `GET /price-revisions` | query params | `PriceRevisionPageResponse`（band明細を含まない要約一覧） | 200 |
+| `POST /price-revisions/{id}/provision` | `Idempotency-Key` + `{lockVersion:int64}` | 同期実行。終局状態（`READY`/`PROVISION_FAILED`）の`PriceRevisionResponse(lockVersion)` | **200**/404/409 |
+| `POST /price-revisions/{id}/retry-provision` | `Idempotency-Key` + `{lockVersion:int64}` | 同上（`PROVISION_FAILED`のbandのみ作り直す。`READY`は変更しない） | 200/404/409 |
+| `POST /price-revisions/{id}/reconcile-provision` | `Idempotency-Key` + `{lockVersion:int64}` | `PROVISIONING`のまま停止したbandをStripe側属性と全照合しREADYへ回収するか隔離。revisionが`PROVISIONING`以外は409（`STATE_CONFLICT`）、PROVISIONINGに入って`staleThreshold`（9分・注入Clock基準）未満のbandがあれば進行中とみなし409（`PROVISION_IN_PROGRESS`=`PRICE_REVISION_020`・AC-99/AC-100） | 200/404/409 |
+| `POST /price-revisions/{id}/activate` | `Idempotency-Key` + `{lockVersion:int64}` | futureは`SCHEDULED`、即時は`ACTIVE`の`PriceRevisionResponse(lockVersion)` | 200/404/409 |
+| `POST /price-revisions/{id}/cancel` | `Idempotency-Key` + `{lockVersion:int64}` | revisionと全bandを`CANCELLED`にした`PriceRevisionResponse(lockVersion)`。取り消せるのは`DRAFT`/`READY`/`PROVISION_FAILED`のみ（`PROVISIONING`/`SCHEDULED`/`ACTIVE`/`RETIRED`/`CANCELLED`は409）。監査`PRICE_REVISION_CANCELLED`。Stripe側で作成済みのPriceには触らない（archiveしない） | 200/404/409 |
+| 旧 `PUT /plans/{planKey}/price-bands` | — | **常に410**（本文なし。revision Sagaへの委譲自体を廃止し、`POST /price-revisions`系列に一本化） | 410 |
 
-すべてSYSTEM_ADMIN限定で、idempotency/`lockVersion`/row lockを必須とする。`catalogRevision`とサーバー採番`revisionNo`は不変で、CAS対象ではない。Provisionの外部Stripe呼出はDBの`PROVISIONING` reservation commit後にのみ行い、Stripe成功後DB失敗はPrice metadataのrevisionId/bandIdで照合して回収する。activateは全band READY以外を409とし、future revisionはSCHEDULED、開始時に旧ACTIVEをRETIRED、新版をACTIVEへ遷移する。旧版を物理更新・削除しない。
+すべてSYSTEM_ADMIN限定で、idempotency/`lockVersion`/row lockを必須とする。`catalogRevision`とサーバー採番`revisionNo`は不変で、CAS対象ではない。
+
+**【出陣隊第4陣・実装から学んだ事実】**
+
+- **`PriceRevisionResponse` は必ず `lockVersion`（`BillingPriceVersionEntity#lockVersion`＝JPA `@Version`）を含む。** create/get/provision/retry-provision/reconcile-provision/activateのいずれのレスポンスも次のCAS呼び出しに使う現在値を返す。呼び出し側（FE・外部クライアント）はこの値をそのまま次のリクエストボディの`lockVersion`に渡す。**当初この項目が欠落しており、1回でも操作した後の後続呼び出しが常に409 LOCK_VERSION_CONFLICTになる欠陥があった**ため、実装時は必ずこのフィールドをレスポンス構築に含めること。またJPA `@Version`はHibernateがflush時にしかインクリメントしないため、`save()`直後に`getLockVersion()`を読んでレスポンスへ渡す実装は、明示的に`flush()`してから読むこと（さもなくば旧値を返す）。
+- **provision/retry-provision/reconcile-provisionはいずれも同期実行で常に200＋終局状態を返す。202は返さない。** DBへband単位で`PROVISIONING`をcommitした後にのみStripeを呼ぶ（fail-forward。1 bandの失敗で以降を中断しない）。外部Stripe呼出後のDB側失敗は、作成したPriceのmetadata（`revisionId`/`bandId`/`environmentId`）で照合して回収する（reconcile-provisionの責務）。
+- **provision/retry-provision のトランザクション境界（2026-09-24 根治）**: エンドポイント本体は `@Transactional` にせず、DB の状態遷移を別 Bean `PriceRevisionProvisionStateWriter` の2つの独立トランザクション（`REQUIRES_NEW`）に分ける。① `begin`: CAS・状態検査の後、revision と対象 band を `PROVISIONING` にして**commit**、② トランザクション外で Stripe を呼ぶ、③ `complete`: band ごとの結果（READY/PROVISION_FAILED・`provisionAttempts`+1）と revision の終局状態を commit し監査を記録する。Stripe 呼び出し中にプロセスが止まっても `PROVISIONING` が DB に残り reconcile-provision で回収できる（当初はメソッド全体が1トランザクションで、途中停止すると DRAFT にロールバックされ Stripe 側にだけ Price が残っていた）。`begin` で revision も `PROVISIONING` にし lockVersion が進むため、同じ lockVersion での並行 provision/retry は409になる。`complete` 時に revision が既に `PROVISIONING` でなければ（reconcile 済み等）409 とし結果を反映しない（Price は metadata で回収可能）。 **reconcile-provision も同型**で、`BillingPriceReconcileStateWriter` の `begin`（CAS・回収対象の読み取りのみ）→ トランザクション外で Stripe 照会・全属性照合 → `complete`（begin 時点の lockVersion のままであることを確かめてから結果を反映。進んでいれば409）に分け、band 行のロックを握ったまま Stripe を待たない（AC-69）。
+- **Stripe Product の税コード**: Product の `tax_code`・Product 解決キーには band の `tax_master_snapshot.stripeTaxCode`（税コードマスタの `stripe_tax_code`）を使う。内部 `taxCode`（`JP_STANDARD_10` 等）は Stripe へ渡さない（01 の band 税 snapshot 注記参照）。reconcile-provision の Product `tax_code` 照合も同じ値と比較する。
+- **旧形式の税 snapshot（fail-closed）**: `stripeTaxCode` キー自体が無い snapshot（2026-09-24 の修正前に作られた band）は「未設定（null）」と区別できないため、provision / retry-provision / reconcile-provision のいずれでも Stripe を呼ばずに band を `PROVISION_FAILED` ＋ `TAX_SNAPSHOT_LEGACY_FORMAT` にする（黙って tax_code 無しの Product を作らない）。決定8によりマスタから再導出しないので、**回復は `POST /price-revisions/{id}/cancel` で取り消してから作り直す**。
+- **metadata で見つけた既存 Price の採用（retry/provision）**: `findPriceByMetadata` で見つけた Price も、reconcile と同じ全属性照合（`BillingPriceSnapshotMatcher`：unit_amount・currency・recurring・Product の productKind/productKey/tax_code・tax_behavior・環境識別子）を通ったときだけ採用する。食い違えば採用も新規作成もせず `PROVISION_FAILED` ＋ `RECONCILE_ATTRIBUTE_MISMATCH`（AC-91/AC-97a）。
+- **complete の CAS（AC-101）**: provision / retry-provision の `complete` は begin 時点の lockVersion のままであることを確かめ、進んでいれば409（`LOCK_VERSION_CONFLICT`）で結果を反映しない（Stripe 呼び出し中の他操作との ABA 防止。reconcile と同じ扱い）。
+- **税コードマスタの `stripeTaxCode` 形式検証**: 登録・更新時に `^txcd_\d{8}$` を検証し、違反は400（`INVALID_STRIPE_TAX_CODE`=`PRICE_REVISION_021`）。null・空白は「未設定」として null で保存する（AC-85）。
+- **管理画面の日時送信**: `effectiveFrom`/`effectiveUntil`/税コード `validFrom` は Java `Instant` のため、`<input type="datetime-local">` の値（オフセット無し）はそのまま送らず `useDatetime().buildOffsetDateTimeStr()` でオフセット付き ISO-8601 に変換して送る（オフセット無しは400）。
+- **Stripeのtest/live Price分離（環境識別子）**: `createPrice`が焼くPrice metadataには`revisionId`/`bandId`に加えて`environmentId`（`test`/`live`/`unknown`）を含める。値は`mannschaft.stripe.secret-key`のプレフィックス（`sk_test_`/`rk_test_`/`sk_live_`/`rk_live_`の前方一致）から起動時に一度だけ導出する（新しい設定項目は増やさない）。reconcile-provisionの全属性照合は、この`environmentId`が現在の実行環境の識別子と一致しない場合も`RECONCILE_ATTRIBUTE_MISMATCH`で隔離する（test環境で作られたPriceをlive環境が誤って回収する事故を防ぐ）。
+- **監査記録（AC-171）**: create/provision/retry-provision/reconcile-provision/activateの5経路すべてで`AuditEventType.PRICE_REVISION_CREATED`/`PROVISIONED`/`RETRY_PROVISIONED`/`RECONCILED`/`ACTIVATED`のいずれかを`AuditLogService`経由で記録する。metadataは`revisionId`/`productKind`/`productKey`/`scopeKind`/`status`のみとし、Stripe Price ID・Product ID・clientSecret・raw payload等は一切含めない（秘密かどうか迷うものは載せない側に倒す）。
+- activateは全band READY以外を409とし、future revisionはSCHEDULED、開始時に旧ACTIVEをRETIRED、新版をACTIVEへ遷移する。旧版を物理更新・削除しない。
 
 - **バリデーション（マスタ整合の一次防御・01 §7）**:
   - `plan_features` 置換: 各 featureKey が `feature_catalog` に実在しなければ 400。
   - `price-bands` 互換入力は `PriceRevisionCreateRequest`（`productKind:'PLAN'|'ADDON'`,`productKey`,`scopeKind`,`effectiveFrom`,`effectiveUntil?`,`bands[]`）に変換し、DRAFT `billing_price_versions`親revision（不変`catalogRevision`/server採番`revisionNo`、可変`lockVersion`）とDRAFT `billing_price_band_versions`子行を一transactionで作る。`PriceBandInput={bandNo:int32,minMembers:int32,maxMembers:int32?,inputAmount:int64,taxBehavior:'INCLUSIVE'|'EXCLUSIVE',taxCode:string}`。taxCodeは必須のTax master snapshotを取得し、JPY端数規則でtax/excluding/includingを導出する。バンドは`band_no`昇順、`min_members = 前band max_members + 1`、最終だけ`max_members=null`、同一product/scopeのeffective interval・人数範囲重複なしをrow lockで検証する。ただしDRAFT/READY future Bは現ACTIVE A open-endedと共存でき、activate transactionがA.effective_until=B.effective_fromを設定する。違反は400/409。clientはStripe Price ref・計算済税額を渡せない。
   - Provision はrevisionごとに非同期で各DRAFT bandのStripe Priceをmetadata照合して作成し、`provisionStatus:'DRAFT'|'PROVISIONING'|'PROVISION_FAILED'|'READY'|'SCHEDULED'|'ACTIVE'|'RETIRED'`、`provisionError?:string`、band別`stripePriceRef?:string`を返す。部分成功はREADYでなくPROVISION_FAILEDのまま、retryは失敗bandだけをidempotency key付きで再実行する。全bandがStripe refと税属性一致した場合だけactivate APIがlockVersion CASし、future BをSCHEDULED、即時BをACTIVEにする。future開始時schedulerがAをRETIRED、BをACTIVEへ遷移し、次のCも同じ境界で予約できる。同時activateは一方409であり、既存契約は保存済bandのまま次周期の価格確定時だけ新ACTIVE revisionを選ぶ。
+    - **【価格改定戦役（price-revisions）第6版・注記】** 上記「次のCも同じ境界で予約できる」は元の要求（BC-18）の記述であり、`POST /price-revisions` は**同一 `(productKind, productKey, scopeKind)` につき同時に存在できる future（DRAFT/PROVISIONING/PROVISION_FAILED/READY/SCHEDULED のいずれか。PROVISIONING・PROVISION_FAILED は DRAFT→READY の途中状態で retry/reconcile により READY へ戻りうるため含める＝2026-09-24 御裁可。DB 側 `uk_bpv_single_future` の生成列 `future_reservation_key` も同じ5状態を対象にする）を1本に限る**。既に future が存在する状態での2本目の `create` は、`effectiveFrom` の値に関わらず 409 を返す。複数 future（A→B→C の同時予約）は本戦役の射程外とし、後続の戦役で扱う。詳細は `05_billing_center.md` BC-18 の注記、および `.claude/campaigns/price-rev-plan-v3.md`（第6版）を参照。
   - `feature_catalog` 更新: `category=REVENUE` かつ `free_for_nonprofit=true` は 400（README 原則「収益機能は区分問わず有料」）。
   - `plans`/`feature_catalog` の DELETE は**参照中（ACTIVE 契約・plan_features 登録あり）なら 409**（`enabled=false` への運用を促す）。
 - 手動付与 `POST grants` Body: `{ scopeKind, scopeId, contractKind, planKey?, featureKey?, note? }` — 処理は §3.1 と同一（`created_by`=シスアド）。ベータ検証・サポート対応用。

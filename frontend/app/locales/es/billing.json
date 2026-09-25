@@ -3,9 +3,18 @@
     "plans": {
       "title": "料金プラン",
       "subtitle": "必要な機能だけを選べます。ベータ期間中はすべて無料でお試しいただけます。",
-      "free": { "name": "フリー", "description": "基本機能を無料で利用できます" },
-      "basic": { "name": "ベーシック", "description": "よく使う機能をまとめたプランです" },
-      "full": { "name": "フル", "description": "すべての機能を利用できるプランです" },
+      "free": {
+        "name": "フリー",
+        "description": "基本機能を無料で利用できます"
+      },
+      "basic": {
+        "name": "ベーシック",
+        "description": "よく使う機能をまとめたプランです"
+      },
+      "full": {
+        "name": "フル",
+        "description": "すべての機能を利用できるプランです"
+      },
       "currentPlan": "現在のプラン",
       "priceUndecided": "価格はベータ終了後に決定",
       "betaFree": "ベータ期間中は無料でお試しいただけます",
@@ -61,11 +70,26 @@
       }
     },
     "features": {
-      "template_premium_modules": { "name": "プレミアムモジュール", "description": "有料モジュールを有効化できます" },
-      "reservation_notification_recipients_extended": { "name": "予約通知宛先の拡張", "description": "予約通知メールの宛先を4件以上登録できます" },
-      "ads_hide": { "name": "広告非表示", "description": "画面内の広告を非表示にします" },
-      "monetization_paywall": { "name": "ペイウォール", "description": "有料コンテンツを開設できます" },
-      "monetization_membership_fee": { "name": "会費徴収", "description": "メンバーからの会費徴収を開設できます" }
+      "template_premium_modules": {
+        "name": "プレミアムモジュール",
+        "description": "有料モジュールを有効化できます"
+      },
+      "reservation_notification_recipients_extended": {
+        "name": "予約通知宛先の拡張",
+        "description": "予約通知メールの宛先を4件以上登録できます"
+      },
+      "ads_hide": {
+        "name": "広告非表示",
+        "description": "画面内の広告を非表示にします"
+      },
+      "monetization_paywall": {
+        "name": "ペイウォール",
+        "description": "有料コンテンツを開設できます"
+      },
+      "monetization_membership_fee": {
+        "name": "会費徴収",
+        "description": "メンバーからの会費徴収を開設できます"
+      }
     },
     "paywall": {
       "title": "Esta función requiere un plan de pago",
@@ -106,7 +130,13 @@
       "cancelReservationBody": "{endDate}まで利用できます。{nextBillingDate}以降は請求されません。",
       "resumeCancelCta": "解約予約を取り消す",
       "resumeSuccess": "解約予約を取り消しました。引き続きご利用いただけます",
-      "sourceBadge": { "plan": "プラン", "addon": "アドオン", "betaGrant": "ベータ特典", "free": "フリー", "nonprofitFree": "非営利無料枠" },
+      "sourceBadge": {
+        "plan": "プラン",
+        "addon": "アドオン",
+        "betaGrant": "ベータ特典",
+        "free": "フリー",
+        "nonprofitFree": "非営利無料枠"
+      },
       "validUntil": "有効期限: {date}",
       "noExpiry": "サービス提供期間中無償",
       "periodEndNotice": "{date}まで利用できます",
@@ -295,7 +325,13 @@
     },
     "admin": {
       "title": "課金マスタ管理",
-      "tabs": { "plans": "プラン", "features": "機能カタログ", "priceBands": "人数バンド", "grants": "手動付与", "contracts": "契約横断検索" },
+      "tabs": {
+        "plans": "プラン",
+        "features": "機能カタログ",
+        "priceBands": "人数バンド",
+        "grants": "手動付与",
+        "contracts": "契約横断検索"
+      },
       "priceWarning": "価格を設定すると、以降の新規契約は決済が必須になります",
       "plansTab": {
         "planKey": "プランキー",
@@ -339,7 +375,8 @@
         "addBand": "バンドを追加",
         "removeBand": "削除",
         "saveSuccess": "人数バンドを保存しました",
-        "validationNote": "バンド番号順に、下限が前バンドの上限+1である必要があります（最終バンドのみ上限を無制限にできます）"
+        "validationNote": "バンド番号順に、下限が前バンドの上限+1である必要があります（最終バンドのみ上限を無制限にできます）",
+        "movedToPriceRevisions": "価格改定は新しい「価格改定」画面（/system-admin/price-revisions）で行ってください"
       },
       "planFeaturesTab": {
         "title": "プランに含める機能",
@@ -388,6 +425,65 @@
       "addonNotAvailable": "この機能は単体追加できません",
       "changeRequiresPayment": "有償プランが関わる変更はできません。一度解約してから新プランを契約してください",
       "generic": "処理に失敗しました。時間をおいて再度お試しください"
+    },
+    "priceRevisions": {
+      "createTitle": "価格改定を作成",
+      "listTitle": "価格改定一覧",
+      "detailTitle": "価格改定の詳細",
+      "productKind": "商品種別",
+      "productKey": "商品キー",
+      "scopeKind": "スコープ",
+      "effectiveFrom": "適用開始日時",
+      "effectiveUntil": "適用終了日時",
+      "status": "状態",
+      "bandNo": "バンド番号",
+      "minMembers": "人数下限",
+      "maxMembers": "人数上限",
+      "inputAmount": "入力金額",
+      "taxBehavior": "税表示方式",
+      "taxCode": "税コード",
+      "amountExcludingTax": "税抜金額",
+      "taxAmount": "税額",
+      "amountIncludingTax": "税込金額",
+      "createAction": "作成",
+      "provisionAction": "Provision実行",
+      "retryProvisionAction": "Provision再試行",
+      "reconcileProvisionAction": "Provision回収",
+      "activateAction": "Activate実行",
+      "createSuccess": "価格改定を作成しました（DRAFT）",
+      "provisionSuccess": "Provisionを実行しました",
+      "retryProvisionSuccess": "Provisionを再試行しました",
+      "reconcileProvisionSuccess": "Provisionを回収しました",
+      "activateSuccess": "価格改定を適用しました",
+      "confirmActivate": "この価格改定を適用しますか？（全バンドがREADYの場合のみ実行できます）",
+      "cancelAction": "Cancelar revisión",
+      "confirmCancel": "¿Cancelar esta revisión de precios? No se puede deshacer (los precios ya creados en Stripe se mantienen).",
+      "cancelSuccess": "Se canceló la revisión de precios",
+      "taxPreviewTitle": "税額プレビュー（確定前確認）",
+      "errorOverlap": "有効期間が既存の価格改定と重複しています",
+      "errorFutureExists": "既に未来日程の価格改定が存在します（同時に1本まで）",
+      "errorLockVersionConflict": "他の操作により更新されています。画面を再読み込みしてください",
+      "errorStateConflict": "現在の状態ではこの操作を実行できません",
+      "errorInvalidTaxCode": "指定された税コードは利用できません",
+      "errorReconcileMismatch": "Stripe側の価格情報がDBの記録と一致しません",
+      "errorProvisionInProgress": "同一操作が処理中です。しばらくしてから再試行してください",
+      "errorTaxSnapshotLegacy": "Los datos fiscales de esta banda usan un formato antiguo y no se pueden registrar en Stripe. Cancela esta revisión y créala de nuevo.",
+      "errorInvalidStripeTaxCode": "Introduce el código fiscal de Stripe como \"txcd_\" seguido de 8 dígitos.",
+      "errorNonexistentDstTime": "Esta fecha y hora no existe debido al cambio de horario de verano. Elige otra hora.",
+      "taxCodesTitle": "税コードマスタ",
+      "taxCodeCreateAction": "税コードを追加",
+      "noPermission": "この画面を表示する権限がありません",
+      "loadFailed": "読み込みに失敗しました",
+      "noData": "データがありません",
+      "taxCodeCreateSuccess": "税コードを登録しました",
+      "attemptCount": "試行回数",
+      "provisionErrorLabel": "エラー内容",
+      "backToList": "一覧に戻る",
+      "activateDisabledReason": "全バンドがREADYになるまでActivateは実行できません",
+      "notice": {
+        "nextCycle": "既存契約は次の請求周期まで現在の価格のままです（即時には変わりません）",
+        "noSaleOnPartialFailure": "一部バンドのProvisionに失敗している間は、その価格帯での新規販売・プラン変更はできません"
+      }
     }
   }
 }

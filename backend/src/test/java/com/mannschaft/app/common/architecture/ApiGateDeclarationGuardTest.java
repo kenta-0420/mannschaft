@@ -42,13 +42,21 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3578);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 = 3578
+                .isEqualTo(3590);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 11 + 1 = 3590
                                     //   main 3566（ブログ・スケジュール画像の完了確認2本を含む）
                                     // + Billing Center PR6a の解約/撤回2エンドポイント（D6・正本 05:334-335）
                                     // + CMP-260912-1525 のメンバー一括取得・チーム時給一括取得の2エンドポイント
                                     // + Billing Center PR6b-1 の見積り/実行/3DS payment-action の3エンドポイント（AC-142/145・第13隊）
                                     // + CMP-011 の会費チェックアウト状態取得・領収書PDF・手数料明細PDFの3エンドポイント
                                     // + CMP-260912-0910 の MEMBER 既定権限取得・更新2エンドポイント
+                                    // + 価格改定（price-revisions）11エンドポイント（出陣隊第4陣・2026-09-23）:
+                                    //   PriceRevisionController 7本（create/get/list/provision/
+                                    //   retry-provision/reconcile-provision/activate）+
+                                    //   SystemAdminTaxCodeController 4本（list/create/update/delete）。
+                                    //   旧 PUT /plans/{planKey}/price-bands は410化のみでマッピング自体は
+                                    //   従来どおり残っているため、この11本は純増分
+                                    // + 価格改定の取り消し POST /price-revisions/{id}/cancel 1本（2026-09-24 御裁可）。
+                                    //   @AlwaysReachable(GATE_CONTROL_PLANE) を宣言済みのため未宣言数は増えない（7|8）
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.STOMP).count())
                 .as("STOMP @MessageMapping の走査総数。Chat 2件と VillageLobbyPresence 3件")
                 .isEqualTo(5);
