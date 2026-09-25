@@ -96,11 +96,18 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
 
     /**
      * スコープに対するアクティブメンバーシップをページング取得する（一覧用）。
+     *
+     * <p>F14.3 AC-701: アーカイブ在籍（{@code archived_at} 非 NULL）は通常一覧から除外する。
+     * {@code MemberQueryDispatcher} の全メソッドがこのクエリを唯一の参照経路とするため、
+     * ここで除外すれば通常の組合員一覧すべてに波及する。
+     * 設計書: docs/features/F14.3_resident_life_events.md §6.3</p>
      */
     @Query(value = "SELECT m FROM MembershipEntity m " +
-            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL",
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL " +
+            "AND m.archivedAt IS NULL",
             countQuery = "SELECT COUNT(m) FROM MembershipEntity m " +
-                    "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL")
+                    "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL " +
+                    "AND m.archivedAt IS NULL")
     Page<MembershipEntity> findByScopeAndActive(
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId,
