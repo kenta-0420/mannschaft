@@ -1,10 +1,24 @@
 package com.mannschaft.app.notification.confirmable.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.fanout.NotificationFanoutWorker;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.RoleRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
+import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
+import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -17,6 +31,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -66,6 +81,18 @@ class ConfirmableNotificationEndToEndDeliveryIT extends AbstractMySqlIntegration
     private ConfirmableNotificationRepository notificationRepository;
     @Autowired
     private ConfirmableNotificationRecipientRepository recipientRepository;
+    @Autowired
+    private OrganizationRepository organizationRepository;
+    @Autowired
+    private TeamRepository teamRepository;
+    @Autowired
+    private TeamOrgMembershipRepository teamOrgMembershipRepository;
+    @Autowired
+    private MembershipRepository membershipRepository;
+    @Autowired
+    private RoleRepository roleRepository;
+    @Autowired
+    private UserRoleRepository userRoleRepository;
     @Autowired
     private JdbcTemplate jdbc;
 
@@ -450,65 +477,84 @@ class ConfirmableNotificationEndToEndDeliveryIT extends AbstractMySqlIntegration
     }
 
     /**
-     * CMP-260920-1040是正（⚔️足軽20）: テスト用DBは Hibernate が {@code OrganizationEntity} から作る
-     * （{@code ddl-auto: create}）ため、DDL の {@code DEFAULT} は {@code @Column(columnDefinition=...)}
-     * に明示的に書かれている列（{@code supporter_name_disclosure}・{@code public_events_enabled} 等）
-     * にしか効かない。{@code columnDefinition} を持たない {@code nullable=false} 列は、1列ずつ場当たり的に
-     * 足すのではなく、{@link OrganizationEntity} の {@code nullable=false}（またはプリミティブ・{@code @Version}）
-     * フィールドを機械的にすべて洗い出して埋める：
-     * slug・name・org_type・visibility・hierarchy_visibility・supporter_enabled・version・lifecycle_status。
-     * （name_trimmed は生成列のため対象外）
+     * CMP-260920-1040是正（⚔️足軽21）: 前例（{@code ConfirmableTargetsFanoutRecipientSourceIT}）に倣い、
+     * 生の SQL ではなく {@link OrganizationRepository#save} で作る。生の SQL は Entity の列と
+     * 1列でもずれると {@code BadSqlGrammarException} で落ちる（team_org_memberships で実際に発生した）
+     * ため、Entity 経由に揃えて同じ穴を塞ぐ。
      */
     private long insertOrganization(Long parentOrgId) {
-        String name = "E2E組織-" + SEQ.incrementAndGet() + "-" + System.nanoTime();
-        jdbc.update(
-                "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, lifecycle_status, slug, parent_organization_id, "
-                        + "created_at, updated_at) "
-                        + "VALUES (?, 'OTHER', 'PUBLIC', 'NONE', 1, 0, 'ACTIVE', "
-                        + "CONCAT('cne2e-', LEFT(REPLACE(UUID(),'-',''),12)), ?, NOW(), NOW())",
-                name, parentOrgId);
-        return jdbc.queryForObject("SELECT id FROM organizations WHERE name = ?", Long.class, name);
+        OrganizationEntity org = organizationRepository.save(OrganizationEntity.builder()
+                .slug("cne2e-o-" + SEQ.incrementAndGet())
+                .name("E2E組織-" + SEQ.get() + "-" + System.nanoTime())
+                .orgType(OrganizationEntity.OrgType.OTHER)
+                .parentOrganizationId(parentOrgId)
+                .visibility(OrganizationEntity.Visibility.PUBLIC)
+                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
+                .supporterEnabled(Boolean.TRUE)
+                .build());
+        return org.getId();
     }
 
     /**
-     * CMP-260920-1040是正（⚔️足軽20）: テスト用DBは Hibernate が {@code TeamEntity} から作る
-     * （{@code ddl-auto: create}）ため、DDL の {@code DEFAULT} は {@code columnDefinition} に明示的に
-     * 書かれている列（{@code timezone}・{@code supporter_name_disclosure}・{@code public_events_enabled}・
-     * {@code timeline_posts_public}）にしか効かない。それ以外の {@code nullable=false} 列は、1列ずつ
-     * 足すのではなく {@link TeamEntity} を機械的に全洗い出しして埋める：
-     * slug・name・visibility・supporter_enabled・lifecycle_status・member_count。
-     * （name_trimmed は生成列のため対象外）
+     * CMP-260920-1040是正（⚔️足軽21）: 前例に倣い {@link TeamRepository#save} で作る（理由は
+     * {@link #insertOrganization(Long)} と同じ）。
      */
     private long insertTeam() {
-        String name = "E2Eチーム-" + SEQ.incrementAndGet() + "-" + System.nanoTime();
-        jdbc.update(
-                "INSERT INTO teams (name, slug, visibility, supporter_enabled, lifecycle_status, "
-                        + "member_count, created_at, updated_at) "
-                        + "VALUES (?, CONCAT('cne2e-t-', LEFT(REPLACE(UUID(),'-',''),12)), 'PUBLIC', 1, "
-                        + "'ACTIVE', 0, NOW(), NOW())",
-                name);
-        return jdbc.queryForObject("SELECT id FROM teams WHERE name = ?", Long.class, name);
+        TeamEntity team = teamRepository.save(TeamEntity.builder()
+                .slug("cne2e-t-" + SEQ.incrementAndGet())
+                .name("E2Eチーム-" + SEQ.get() + "-" + System.nanoTime())
+                .visibility(TeamEntity.Visibility.PUBLIC)
+                .supporterEnabled(Boolean.TRUE)
+                .build());
+        return team.getId();
     }
 
+    /**
+     * CMP-260920-1040是正（⚔️足軽21）: {@code team_org_memberships} への生 SQL は
+     * {@link TeamOrgMembershipEntity} に無い {@code updated_at} 列を指定しており
+     * {@code BadSqlGrammarException} で落ちていた（E2E-1・E2E-3 red の根本原因）。前例
+     * （{@code ConfirmableTargetsFanoutRecipientSourceIT#seedTeamOrgMembership}）と同じく
+     * {@link TeamOrgMembershipRepository#save} に揃える。
+     */
     private void seedTeamOrgMembership(long teamId, long orgId) {
-        jdbc.update("INSERT INTO team_org_memberships (team_id, organization_id, status, created_at, updated_at) "
-                + "VALUES (?, ?, 'ACTIVE', NOW(), NOW())", teamId, orgId);
+        teamOrgMembershipRepository.save(TeamOrgMembershipEntity.builder()
+                .teamId(teamId)
+                .organizationId(orgId)
+                .status(TeamOrgMembershipEntity.Status.ACTIVE)
+                .invitedAt(LocalDateTime.now())
+                .build());
     }
 
+    /** CMP-260920-1040是正（⚔️足軽21）: 前例に倣い {@link MembershipRepository#save} で作る。 */
     private void insertMembership(long userId, String scopeType, long scopeId, String roleKind) {
-        jdbc.update(
-                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at, "
-                        + "created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW(), NOW())",
-                userId, scopeType, scopeId, roleKind);
+        membershipRepository.save(MembershipEntity.builder()
+                .userId(userId)
+                .scopeType(ScopeType.valueOf(scopeType))
+                .scopeId(scopeId)
+                .roleKind(RoleKind.valueOf(roleKind))
+                .joinedAt(LocalDateTime.now())
+                .build());
     }
 
+    /**
+     * CMP-260920-1040是正（⚔️足軽21）: roles/user_roles も {@link RoleRepository}/{@link UserRoleRepository}
+     * 経由に揃える。roles は固定ロール名でのべき等シード（前例には roles シードの用例が無いため、
+     * {@code findByName}→無ければ {@code save} の find-or-create で「INSERT IGNORE」と同じべき等性を
+     * Entity 経由で再現する）。
+     */
     private void grantOrgAdmin(long userId, long orgId) {
-        jdbc.update("INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                + "VALUES ('ADMIN', 'ADMIN', 2, 1, NOW(), NOW())");
-        jdbc.update("INSERT INTO user_roles (user_id, role_id, team_id, organization_id, created_at, updated_at) "
-                        + "SELECT ?, r.id, NULL, ?, NOW(), NOW() FROM roles r WHERE r.name = 'ADMIN'",
-                userId, orgId);
+        RoleEntity adminRole = roleRepository.findByName("ADMIN")
+                .orElseGet(() -> roleRepository.save(RoleEntity.builder()
+                        .name("ADMIN")
+                        .displayName("ADMIN")
+                        .priority(2)
+                        .isSystem(Boolean.TRUE)
+                        .build()));
+        userRoleRepository.save(UserRoleEntity.builder()
+                .userId(userId)
+                .roleId(adminRole.getId())
+                .organizationId(orgId)
+                .build());
         insertMembership(userId, "ORGANIZATION", orgId, "MEMBER");
     }
 }
