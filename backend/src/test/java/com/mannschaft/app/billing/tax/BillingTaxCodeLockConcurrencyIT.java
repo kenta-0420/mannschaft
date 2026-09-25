@@ -80,7 +80,7 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
     }
 
     private void init() {
-        // 根治治療（出陣隊第4陣・実測で確定): __TAX_CODE_LOCK__ 行は V222 migration の seed
+        // 根治治療（出陣隊第4陣・実測で確定): __TAX_CODE_LOCK__ 行は V224 migration の seed
         // INSERT でのみ投入されるが、application-test.yml は flyway.enabled=false・
         // ddl-auto=create のため、本ITのDBには一切適用されない。ロック行が実在しないと
         // lockTaxCodeLockRowForUpdate() は0件を返し、FOR UPDATEは何も掴まず完全に空振りする
@@ -104,7 +104,7 @@ class BillingTaxCodeLockConcurrencyIT extends AbstractMySqlIntegrationTest {
      * 実測で切り分けるための診断: ロック行 {@code __TAX_CODE_LOCK__} が本 IT の DB に
      * 実在するかを直接数える。AC-127 の切り分けで判明済みのとおり、
      * {@code application-test.yml} は {@code flyway.enabled=false}・{@code ddl-auto=create}
-     * であり、V222 migration の seed INSERT（ロック行を含む）はテストDBに一切適用されない。
+     * であり、V224 migration の seed INSERT（ロック行を含む）はテストDBに一切適用されない。
      */
     private long countLockRows() {
         try (java.sql.Connection rootConnection = java.sql.DriverManager.getConnection(
