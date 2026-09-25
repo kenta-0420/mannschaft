@@ -145,6 +145,10 @@
       "invalid_transition": "해당 상태로의 전환은 불가합니다",
       "comment_required": "댓글 내용은 필수입니다"
     },
+    "widget": {
+      "badge_aria_label": "오류 보고 열기",
+      "badge_tooltip": "오류가 발생했습니다. 클릭하면 상세 내용을 볼 수 있습니다"
+    },
     "kanban": {
       "title": "칸반 뷰",
       "load_more": "더 보기...",

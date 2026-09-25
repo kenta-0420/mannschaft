@@ -145,6 +145,10 @@
       "invalid_transition": "そのステータスへの遷移は不可です",
       "comment_required": "コメント本文は必須です"
     },
+    "widget": {
+      "badge_aria_label": "エラー報告を開く",
+      "badge_tooltip": "エラーが発生しました。クリックして詳細を表示"
+    },
     "kanban": {
       "title": "Kanban ビュー",
       "load_more": "もっと表示...",

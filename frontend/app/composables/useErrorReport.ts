@@ -1,5 +1,9 @@
 interface ErrorReportState {
   visible: boolean
+  // true: 詳細パネルを展開表示。false: 右上の小さいバッジのみ（操作要素を塞がないための既定値）。
+  // CMP-260920-1042: 自動展開したパネルが操作ボタンを物理的に覆いクリックを塞いでいたため、
+  // 自動では展開せずバッジのみ表示し、利用者がクリックしたときだけ展開する設計に変更。
+  expanded: boolean
   submitting: boolean
   submitted: boolean
   commentSent: boolean
@@ -18,6 +22,7 @@ let _lastReportShownAt = 0
 export const useErrorReport = () => {
   const state = useState<ErrorReportState>('errorReport', () => ({
     visible: false,
+    expanded: false,
     submitting: false,
     submitted: false,
     commentSent: false,
@@ -52,6 +57,8 @@ export const useErrorReport = () => {
     _lastReportShownAt = Date.now()
     state.value = {
       visible: true,
+      // 自動では展開しない（バッジのみ）。操作ボタンを塞がないための既定挙動。
+      expanded: false,
       submitting: false,
       submitted: false,
       commentSent: false,
@@ -156,9 +163,18 @@ export const useErrorReport = () => {
 
   const close = (): void => {
     state.value.visible = false
+    state.value.expanded = false
     state.value.submitting = false
     state.value.submitted = false
     state.value.commentSent = false
+  }
+
+  const expand = (): void => {
+    state.value.expanded = true
+  }
+
+  const minimize = (): void => {
+    state.value.expanded = false
   }
 
   return {
@@ -167,5 +183,7 @@ export const useErrorReport = () => {
     captureQuiet,
     submitComment,
     close,
+    expand,
+    minimize,
   }
 }

@@ -145,6 +145,10 @@
       "invalid_transition": "Dieser Statusübergang ist nicht erlaubt",
       "comment_required": "Kommentarinhalt ist erforderlich"
     },
+    "widget": {
+      "badge_aria_label": "Fehlerbericht öffnen",
+      "badge_tooltip": "Ein Fehler ist aufgetreten. Klicken Sie, um Details anzuzeigen"
+    },
     "kanban": {
       "title": "Kanban-Ansicht",
       "load_more": "Mehr laden...",

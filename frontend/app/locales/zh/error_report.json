@@ -145,6 +145,10 @@
       "invalid_transition": "不允许该状态转换",
       "comment_required": "评论内容为必填"
     },
+    "widget": {
+      "badge_aria_label": "打开错误报告",
+      "badge_tooltip": "发生了错误。点击查看详情"
+    },
     "kanban": {
       "title": "看板视图",
       "load_more": "加载更多...",
