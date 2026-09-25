@@ -1,9 +1,8 @@
 package com.mannschaft.app.shift.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
@@ -50,8 +49,12 @@ import java.util.Optional;
  *       構造的に自己スコープ</li>
  * </ul>
  *
- * <p>認可失敗は {@code COMMON_002}（403）。同ドメインの {@code ShiftScheduleScopeContractIT} /
- * {@code ShiftSlotScopeContractIT} の規約に揃える。</p>
+ * <p><b>存在秘匿（CMP-260923-0954）:</b> 認可は {@link ScopeConcealingAccessGate} に委ねる。
+ * 越境（当該チームに所属しない利用者）は<b>不在時と完全同一</b>の 404 を返す
+ * （scheduleId 指定系は {@code SHIFT_001}、希望 ID 指定系は {@code SHIFT_003}）。
+ * 同一チーム内の権限不足は従来どおり {@code COMMON_002}（403）。
+ * 親スケジュールの生存確認は認可（SYSTEM_ADMIN 短絡を含む）より先に行う（CMP-260917-1136）。
+ * 契約は {@code ShiftRequestPositionScopeContractIT} が固定する。</p>
  */
 @Slf4j
 @Service
@@ -64,7 +67,7 @@ public class ShiftRequestService {
     private final ShiftScheduleService scheduleService;
     private final ShiftMapper shiftMapper;
     private final UserRoleRepository userRoleRepository;
-    private final AccessControlService accessControlService;
+    private final ScopeConcealingAccessGate accessGate;
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
 
@@ -74,10 +77,12 @@ public class ShiftRequestService {
      * @param scheduleId スケジュールID
      * @param userId     操作者ユーザーID
      * @return シフト希望一覧
-     * @throws BusinessException 当該スケジュールのチームの ADMIN 以上でない場合（COMMON_002 / 403）
+     * @throws BusinessException 不在・越境（SHIFT_001 / 404）、同チームの権限不足（COMMON_002 / 403）
      */
     public List<ShiftRequestResponse> listRequests(Long scheduleId, Long userId) {
-        checkScheduleAdminAccess(scheduleId, userId);
+        ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(scheduleId);
+        accessGate.requireAdminOrConceal(userId, schedule.getTeamId(), "TEAM",
+                ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
         List<ShiftRequestEntity> entities = requestRepository.findByScheduleIdOrderBySlotDateAsc(scheduleId);
         return shiftMapper.toRequestResponseList(entities);
     }
@@ -117,7 +122,9 @@ public class ShiftRequestService {
     @Transactional
     public ShiftRequestResponse submitRequest(CreateShiftRequestRequest req, Long userId) {
         ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(req.getScheduleId());
-        checkTeamMemberAccess(schedule.getTeamId(), userId);
+        // 在籍メンバー（SUPPORTER 除く）のみ提出可。越境は不在と同一の SHIFT_001。
+        accessGate.requireMemberOrConceal(userId, schedule.getTeamId(), "TEAM",
+                ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, true);
         // slotId の実体整合検証は認可（BOLA 封鎖）そのものなので、public 入口のここで行う。
         validateSlotIdentity(req);
         validateCollectingStatus(schedule);
@@ -171,9 +178,10 @@ public class ShiftRequestService {
     @Transactional
     public ShiftRequestResponse updateRequest(Long requestId, UpdateShiftRequestRequest req, Long userId) {
         ShiftRequestEntity entity = findRequestOrThrow(requestId);
-        checkOwnerOrTeamAdmin(entity, userId);
+        ShiftScheduleEntity schedule = findParentScheduleOrConceal(entity);
+        accessGate.requireOwnerOrAdminOrConceal(userId, schedule.getTeamId(), "TEAM", entity.getUserId(),
+                ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND);
 
-        ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(entity.getScheduleId());
         validateCollectingStatus(schedule);
         validateRequestDeadline(schedule);
 
@@ -189,16 +197,15 @@ public class ShiftRequestService {
      *
      * @param requestId リクエストID
      * @param userId    操作者ユーザーID
-     * @throws BusinessException 提出者本人でも当該チームの ADMIN 以上でもない場合（COMMON_002 / 403）
+     * @throws BusinessException 不在・親削除済み・越境（SHIFT_003 / 404）、同チームの権限不足（COMMON_002 / 403）
      */
     @Transactional
     public void deleteRequest(Long requestId, Long userId) {
         ShiftRequestEntity entity = findRequestOrThrow(requestId);
-        checkOwnerOrTeamAdmin(entity, userId);
-        // 親スケジュールの生存確認（CMP-260917-1136）。checkOwnerOrTeamAdmin は本人一致なら
-        // 親を一度も引かずに return するため、ここで findScheduleOrThrow を必ず通す
-        //（updateRequest と同型。親が論理削除済みなら SHIFT_SCHEDULE_NOT_FOUND / 404）。
-        scheduleService.findScheduleOrThrow(entity.getScheduleId());
+        // 親スケジュールの生存確認を認可（本人・SYSTEM_ADMIN の短絡を含む）より先に行う（CMP-260917-1136）。
+        ShiftScheduleEntity schedule = findParentScheduleOrConceal(entity);
+        accessGate.requireOwnerOrAdminOrConceal(userId, schedule.getTeamId(), "TEAM", entity.getUserId(),
+                ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND);
         requestRepository.delete(entity);
         log.info("シフト希望削除: id={}", requestId);
     }
@@ -212,13 +219,14 @@ public class ShiftRequestService {
      * @param scheduleId スケジュールID
      * @param userId     操作者ユーザーID
      * @return 提出サマリー
-     * @throws BusinessException 当該スケジュールのチームの ADMIN 以上でない場合（COMMON_002 / 403）
+     * @throws BusinessException 不在・越境（SHIFT_001 / 404）、同チームの権限不足（COMMON_002 / 403）
      */
     // TODO: shiftドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public ShiftRequestSummaryResponse getRequestSummary(Long scheduleId, Long userId) {
-        checkScheduleAdminAccess(scheduleId, userId);
-        long submittedCount = requestRepository.countDistinctUserIdByScheduleId(scheduleId);
         ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(scheduleId);
+        accessGate.requireAdminOrConceal(userId, schedule.getTeamId(), "TEAM",
+                ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+        long submittedCount = requestRepository.countDistinctUserIdByScheduleId(scheduleId);
         long totalMembers = userRoleRepository.countByTeamId(schedule.getTeamId());
         long pendingCount = Math.max(0, totalMembers - submittedCount);
 
@@ -331,65 +339,15 @@ public class ShiftRequestService {
                 req.getScheduleId(), userId, req.getSlotDate());
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // 認可ヘルパー（認可根治 Wave6）
-    // ═════════════════════════════════════════════════════════════════════
-
     /**
-     * スケジュール実体由来のチームに対する管理操作 per-scope 認可。
+     * 希望の親スケジュールを引く。不在・論理削除済みなら<b>希望の不在コード</b>（SHIFT_003 / 404）で拒否する。
      *
-     * @param scheduleId スケジュールID
-     * @param userId     操作者ユーザーID
-     * @throws BusinessException 権限が無い場合（COMMON_002 / 403）
+     * <p>親のコード（SHIFT_001）を投げると「この希望 ID は実在し、親だけが消えている」ことが
+     * 越境者にも判ってしまう（存在オラクル）。希望 ID 指定系の応答は不在・越境・親削除済みで一致させる。</p>
      */
-    private void checkScheduleAdminAccess(Long scheduleId, Long userId) {
-        // AccessControlService をこのメソッドから直接呼ぶ（番人 AuthzControllerGuardArchTest の
-        // 委譲探索は深さ2までのため、認可クラスへの到達を1ホップ内に収める）
-        //
-        // 親スケジュールの生存確認（findScheduleOrThrow）を SYSTEM_ADMIN 短絡より必ず先に行う
-        //（CMP-260917-1136）。短絡を先に置くと SYSTEM_ADMIN だけが親削除済みスケジュールの
-        // 希望一覧・サマリーを取得できてしまう。
-        Long teamId = scheduleService.findScheduleOrThrow(scheduleId).getTeamId();
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
-    }
-
-    /**
-     * メンバー操作の per-scope 認可（当該チームのメンバー、ただし SUPPORTER は不可）。
-     *
-     * @param teamId 対象チームID
-     * @param userId 操作者ユーザーID
-     * @throws BusinessException メンバーでない場合、または SUPPORTER の場合（COMMON_002 / 403）
-     */
-    private void checkTeamMemberAccess(Long teamId, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        if (!accessControlService.isMember(userId, teamId, "TEAM")
-                || accessControlService.isSupporter(userId, teamId, "TEAM")) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
-    }
-
-    /**
-     * 本人操作の per-scope 認可（提出者本人、または当該チームの ADMIN 以上）。
-     *
-     * @param entity 対象シフト希望
-     * @param userId 操作者ユーザーID
-     * @throws BusinessException 提出者でも当該チームの ADMIN 以上でもない場合（COMMON_002 / 403）
-     */
-    private void checkOwnerOrTeamAdmin(ShiftRequestEntity entity, Long userId) {
-        // AccessControlService をこのメソッドから直接呼ぶ（番人の委譲探索は深さ2までのため）
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        if (entity.getUserId() != null && entity.getUserId().equals(userId)) {
-            return;
-        }
-        accessControlService.checkAdminOrAbove(
-                userId, scheduleService.findScheduleOrThrow(entity.getScheduleId()).getTeamId(), "TEAM");
+    private ShiftScheduleEntity findParentScheduleOrConceal(ShiftRequestEntity entity) {
+        return scheduleService.findSchedule(entity.getScheduleId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
     }
 
     /**
