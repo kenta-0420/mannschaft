@@ -34,7 +34,7 @@
     "loadError": "The guide could not be loaded. Check that you belong to this team or organization.",
     "limitsTitle": "Features, pricing, and storage",
     "optionalLimitQuestion": "How many features are included in the free plan?",
-    "optionalLimitAnswer": "The free plan allows up to {count} optional features at once; {enabled} are currently enabled. Always-on core features do not count toward this limit.",
+    "optionalLimitAnswer": "The free plan allows up to {count} newly enabled optional features. {enabled} currently use this limit. Always-on core features and previously retained features do not count toward it.",
     "optionalLimitUnknown": "The feature limit could not be loaded. Check the plan list for current terms.",
     "paidQuestion": "When is a paid plan needed?",
     "paidAnswer": "Some features require a paid plan. Check the plan list for current terms and prices.",
