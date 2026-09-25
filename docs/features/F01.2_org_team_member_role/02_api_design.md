@@ -72,12 +72,12 @@
 | PATCH | `/api/v1/organizations/{slug}/unarchive` | 必要（ADMIN）| 組織アーカイブ解除（`archived_at = NULL`）|
 | PATCH | `/api/v1/teams/{slug}/restore` | 必要（SYSTEM_ADMIN）| 論理削除済みチームの復元（`deleted_at = NULL`）|
 | PATCH | `/api/v1/organizations/{slug}/restore` | 必要（SYSTEM_ADMIN）| 論理削除済み組織の復元（`deleted_at = NULL`）|
-| POST | `/api/v1/organizations/{slug}/team-invites` | 必要（ADMIN）| 組織からチームへ所属招待を送信（body `{team_slug, group_id?, message?}`。**未実装**・契約は F01.2.1 §6.5/§9）|
+| POST | `/api/v1/organizations/{slug}/team-invites` | 必要（ADMIN）| 組織からチームへ所属招待を送信（body `{team_slug, group_id?, message?}`。**未実装**・契約は F01.2.1 §6.5/§10）|
 | GET | `/api/v1/organizations/{slug}/team-invites` | 必要（ADMIN）| 送信済み招待一覧（PENDING/ORG_INVITE のみ。**未実装**）|
 | DELETE | `/api/v1/organizations/{slug}/team-invites/{teamSlug}` | 必要（ADMIN）| 招待取消（PENDING を削除。**未実装**）|
 | DELETE | `/api/v1/organizations/{slug}/teams/{teamSlug}` | 必要（ADMIN）| 所属チームを除名（ACTIVE を削除。**未実装**）|
 | GET | `/api/v1/organizations/{slug}/teams` | 必要 | 組織に所属するチーム一覧（ACTIVE のみ）。F01.2.1 で `team_group` フィールドと `team_group_id` / `unassigned` 絞り込みを追加予定 |
-| GET | `/api/v1/teams/{slug}/organizations` | 必要 | チームが所属する組織一覧（ACTIVE のみ）。F01.2.1 で `team_group` フィールドを追加予定 |
+| GET | `/api/v1/teams/{slug}/organizations` | 必要 | チームが所属する組織一覧（ACTIVE のみ。1チームは複数の組織に同時加盟でき、全件を返す）。F01.2.1 で `team_group` フィールドを追加予定 |
 | GET | `/api/v1/organizations/{slug}/ancestors` | 任意 | 上位組織チェーン取得（root → 親の順。`hierarchy_visibility` を尊重）|
 | GET | `/api/v1/organizations/{slug}/children` | 任意 | 下位組織一覧（直近の子のみ・`visibility` で可視範囲フィルタ）|
 | GET | `/api/v1/teams/{slug}/org-invites` | 必要（ADMIN）| 受信した組織招待一覧（PENDING/ORG_INVITE のみ。**未実装**）|
@@ -108,7 +108,7 @@
 | DELETE | `/api/v1/teams/{slug}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド削除 |
 | PUT | `/api/v1/teams/{slug}/custom-fields/reorder` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド並び替え |
 
-> **チーム加盟の書き込み API（F01.2.1 で正式化・2026-09-25）**: 上表の招待系に加えて、チーム→組織の加盟申請（`POST/GET /teams/{slug}/org-applications`、`DELETE /teams/{slug}/org-applications/{membershipId}`）、組織側の申請一覧・承認・拒否（`/organizations/{slug}/team-applications/**`）、申請受付設定（`/organizations/{slug}/team-affiliation-settings`）、申請フォーム（`GET /organizations/{slug}/team-application-form`）、再申請の制限一覧・解除、チームグループ（`/organizations/{slug}/team-groups/**`・割当）を定義した。契約（フィールド・型・null 可否・認可・ページング・エラーコード）の正本は [F01.2.1 §9](../F01.2.1_org_team_groups.md) とし、ここには重複して書かない。2026-09-25 時点で加盟の**書き込み API は1本も実装されていない**（参照系の `GET /organizations/{slug}/teams` と `GET /teams/{slug}/organizations` だけが実装済み）。
+> **チーム加盟の書き込み API（F01.2.1 で正式化・2026-09-25）**: 上表の招待系に加えて、チーム→組織の加盟申請（`POST/GET /teams/{slug}/org-applications`、`DELETE /teams/{slug}/org-applications/{membershipId}`）、組織側の申請一覧・承認・拒否（`/organizations/{slug}/team-applications/**`）、申請受付設定（`/organizations/{slug}/team-affiliation-settings`）、申請フォーム（`GET /organizations/{slug}/team-application-form`）、再申請の制限一覧・解除、チームグループ（`/organizations/{slug}/team-groups/**`・割当）を定義した。契約（フィールド・型・null 可否・認可・ページング・エラーコード）の正本は [F01.2.1 §10](../F01.2.1_org_team_groups.md) とし、ここには重複して書かない。2026-09-25 時点で加盟の**書き込み API は1本も実装されていない**（参照系の `GET /organizations/{slug}/teams` と `GET /teams/{slug}/organizations` だけが実装済み）。
 
 ### リクエスト／レスポンス仕様
 

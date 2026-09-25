@@ -17,7 +17,7 @@
 | `ownership_transfer_offers` | オーナー委譲の承諾型オファー（打診→承諾で ADMIN 委譲を実行）。2026-07-18 承諾型化で新設 | なし（status で状態管理）|
 | `team_org_memberships` | チーム↔組織の多対多所属関係（組織からの招待→チームの承諾、またはチームからの申請→組織の承認で成立。`direction` で起点を区別・`group_id` でチームグループに所属。F01.2.1）| なし（物理削除。履歴は audit_logs、再申請の抑止は `team_org_affiliation_restrictions`）|
 | `org_team_groups` | 組織内のチーム区分「チームグループ」（平坦・並び順付き・1組織200件まで）。定義は [F01.2.1 §5.2](../F01.2.1_org_team_groups.md) | `deleted_at`（論理削除）|
-| `team_org_affiliation_restrictions` | 加盟の申請・招待を拒否した後の冷却期間・ブロック。定義は [F01.2.1 §5.4](../F01.2.1_org_team_groups.md) | なし（物理削除。期限切れは夜間バッチで削除）|
+| `team_org_affiliation_restrictions` | 加盟の申請・招待の再送制限（拒否後30日の冷却・ブロック、取下げ・取消後24時間の冷却）。定義は [F01.2.1 §5.4](../F01.2.1_org_team_groups.md) | なし（物理削除。期限切れは夜間バッチで削除）|
 | `team_blocks` | チームのサポーター自己登録ブロックリスト（ADMIN/DEPUTY_ADMIN が管理）| なし |
 | `organization_blocks` | 組織のサポーター自己登録ブロックリスト（ADMIN/DEPUTY_ADMIN が管理）| なし |
 | `organization_officers` | 組織の役員一覧（氏名・役職・並び順・個別表示可否）| なし（物理削除）|
@@ -556,12 +556,15 @@ INDEX idx_ob_organization_id (organization_id)
 UNIQUE KEY uq_team_org (team_id, organization_id)           -- V2.011
 INDEX idx_team_org_memberships_org_status_dir (organization_id, status, direction, invited_at)  -- F01.2.1
 INDEX idx_team_org_memberships_team_status_dir (team_id, status, direction)                    -- F01.2.1
-INDEX idx_team_org_memberships_org_group (organization_id, group_id)                            -- F01.2.1
+INDEX idx_team_org_memberships_org_group_status (organization_id, group_id, status)            -- F01.2.1
+INDEX idx_team_org_memberships_status_invited (status, invited_at)                             -- F01.2.1（PENDING 期限切れバッチ）
 ```
 
 **制約・備考**
 - 物理削除で管理。招待の拒否・招待の取消・申請の拒否・申請の取下げ・チーム離脱・組織除名はいずれも DELETE で終了し、履歴は audit_logs で管理（F01.2.1 §4.2 で見直したうえで維持）
-- 拒否された側は、その向きについて30日（任意で無期限）再申請・再招待できない。判定は `team_org_affiliation_restrictions`（F01.2.1 §5.4）で行う
+- 拒否された側は、その向きについて30日（任意で無期限）再申請・再招待できない。取下げ・取消でも24時間は再送できない（通知の連打防止）。判定は `team_org_affiliation_restrictions`（F01.2.1 §5.4）で行う
+- PENDING は60日応答が無ければ夜間バッチで削除する。組織・チームの削除／アーカイブ時も PENDING を削除する（F01.2.1 §4.5・§6.8）
+- 1チームは複数の組織に同時に ACTIVE で加盟できる。単一の親組織を前提にした読み手は F01.2.1 §9 で改修する
 - 再招待・再申請（取消・取下げ後、または制限の期限後）は新規 INSERT で再開始する（UNIQUE KEY により同一ペアの PENDING/ACTIVE は常に最大1件に限定）
 - 状態を変える更新は条件付き UPDATE／DELETE（`status` と `direction` を WHERE に含める）で行い、影響行数 0 は 409 `TEAM_071`
 - チームは複数の組織に同時所属可能（UNIQUE は (team_id, organization_id) ペアに対してのみ）
