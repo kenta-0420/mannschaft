@@ -24,7 +24,15 @@ public enum ModerationErrorCode implements ErrorCode {
     INVALID_REPORT_STATUS("MODERATION_004", "この操作は現在の通報状態では実行できません", Severity.WARN),
 
     /** 通報対象が見つからない */
-    REPORT_TARGET_NOT_FOUND("MODERATION_005", "通報対象が見つかりません", Severity.WARN);
+    REPORT_TARGET_NOT_FOUND("MODERATION_005", "通報対象が見つかりません", Severity.WARN),
+
+    /**
+     * 通報の宛先スコープを対象から導出できない種別（入力制約 → 既定の 400）。
+     *
+     * <p>USER / SOCIAL_PROFILE はチーム・組織に属さず宛先スコープを導出できないため受け付けない
+     * （CMP-260917-1135）。</p>
+     */
+    REPORT_TARGET_TYPE_NOT_SUPPORTED("MODERATION_006", "この種別のコンテンツは通報できません", Severity.WARN);
 
     private final String code;
     private final String message;

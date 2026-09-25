@@ -63255,17 +63255,11 @@ export interface components {
             data?: string;
         };
         CreateReportRequest: {
-            contentSnapshot?: string;
             description?: string;
             reason?: string;
             /** Format: int64 */
-            scopeId?: number;
-            scopeType?: string;
-            /** Format: int64 */
             targetId: number;
             targetType?: string;
-            /** Format: int64 */
-            targetUserId?: number;
         };
         DisputeNoShowRequest: {
             reason?: string;

@@ -8,6 +8,7 @@ import com.mannschaft.app.moderation.ReportReason;
 import com.mannschaft.app.moderation.ReportStatus;
 import com.mannschaft.app.moderation.ReportTargetType;
 import com.mannschaft.app.moderation.dto.CreateReportRequest;
+import com.mannschaft.app.timeline.service.TimelinePostModerationService;
 import com.mannschaft.app.moderation.dto.ReportResponse;
 import com.mannschaft.app.moderation.entity.ContentReportEntity;
 import com.mannschaft.app.moderation.repository.ContentReportRepository;
@@ -48,6 +49,9 @@ class ContentReportServiceTest {
     @Mock
     private RecruitmentListingModerationService recruitmentListingModerationService;
 
+    @Mock
+    private TimelinePostModerationService timelinePostModerationService;
+
     @InjectMocks
     private ContentReportService contentReportService;
 
@@ -78,7 +82,10 @@ class ContentReportServiceTest {
         void 通報を作成できる() {
             // given
             CreateReportRequest req = new CreateReportRequest("TIMELINE_POST", TARGET_ID, "SPAM",
-                    "スパムです", "TEAM", 10L, null, null);
+                    "スパムです");
+            given(timelinePostModerationService.findReportTarget(TARGET_ID, false, USER_ID)).willReturn(
+                    java.util.Optional.of(new TimelinePostModerationService.PostReportTarget(
+                            "TEAM", 10L, 300L, "本文")));
             ContentReportEntity saved = createReport();
             ReportResponse expected = new ReportResponse(REPORT_ID, "POST", TARGET_ID, USER_ID,
                     "TEAM", 10L, null, "SPAM", "スパムです", null, "PENDING", null, null, null, null);
@@ -99,8 +106,10 @@ class ContentReportServiceTest {
         @DisplayName("異常系: 重複通報の場合はエラー")
         void 重複通報の場合はエラー() {
             // given
-            CreateReportRequest req = new CreateReportRequest("TIMELINE_POST", TARGET_ID, "SPAM",
-                    null, null, null, null, null);
+            CreateReportRequest req = new CreateReportRequest("TIMELINE_POST", TARGET_ID, "SPAM", null);
+            given(timelinePostModerationService.findReportTarget(TARGET_ID, false, USER_ID)).willReturn(
+                    java.util.Optional.of(new TimelinePostModerationService.PostReportTarget(
+                            "TEAM", 10L, 300L, "本文")));
             given(reportRepository.existsByReportedByAndTargetTypeAndTargetId(
                     USER_ID, ReportTargetType.TIMELINE_POST, TARGET_ID)).willReturn(true);
 
@@ -112,10 +121,10 @@ class ContentReportServiceTest {
         }
 
         @Test
-        @DisplayName("募集札はクライアント指定の対象者・スコープを使わずサーバーで導出する")
+        @DisplayName("募集札の宛先・対象者・控えはサーバーで導出する")
         void 募集札はサーバー側で通報対象を導出する() {
             CreateReportRequest req = new CreateReportRequest("RECRUITMENT_LISTING", TARGET_ID, "SPAM",
-                    "説明", "TEAM", 999L, 999L, "改ざん済み");
+                    "説明");
             ContentReportEntity saved = createReport();
             given(reportRepository.existsByReportedByAndTargetTypeAndTargetId(
                     USER_ID, ReportTargetType.RECRUITMENT_LISTING, TARGET_ID)).willReturn(false);
@@ -133,7 +142,69 @@ class ContentReportServiceTest {
             assertThat(captor.getValue().getScopeType()).isEqualTo("PERSONAL");
             assertThat(captor.getValue().getScopeId()).isEqualTo(200L);
             assertThat(captor.getValue().getTargetUserId()).isEqualTo(200L);
-            assertThat(captor.getValue().getContentSnapshot()).isEqualTo("サーバー側の札題名");
+            assertThat(captor.getValue().getContentSnapshot()).isEqualTo("{\"title\":\"サーバー側の札題名\"}");
+        }
+
+        @Test
+        @DisplayName("タイムライン投稿は投稿の宛先・投稿者・本文を控えとして導出する")
+        void 投稿はサーバー側で通報対象を導出する() {
+            CreateReportRequest req = new CreateReportRequest("TIMELINE_COMMENT", TARGET_ID, "SPAM", null);
+            given(timelinePostModerationService.findReportTarget(TARGET_ID, true, USER_ID)).willReturn(
+                    java.util.Optional.of(new TimelinePostModerationService.PostReportTarget(
+                            "ORGANIZATION", 30L, 300L, "返信の本文")));
+            given(reportRepository.save(any(ContentReportEntity.class))).willReturn(createReport());
+
+            contentReportService.createReport(req, USER_ID);
+
+            org.mockito.ArgumentCaptor<ContentReportEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(ContentReportEntity.class);
+            verify(reportRepository).save(captor.capture());
+            assertThat(captor.getValue().getScopeType()).isEqualTo("ORGANIZATION");
+            assertThat(captor.getValue().getScopeId()).isEqualTo(30L);
+            assertThat(captor.getValue().getTargetUserId()).isEqualTo(300L);
+            assertThat(captor.getValue().getContentSnapshot()).isEqualTo("{\"content\":\"返信の本文\"}");
+        }
+
+        @Test
+        @DisplayName("閲覧できない投稿は REPORT_TARGET_NOT_FOUND")
+        void 閲覧できない投稿は対象なし() {
+            CreateReportRequest req = new CreateReportRequest("TIMELINE_POST", TARGET_ID, "SPAM", null);
+            given(timelinePostModerationService.findReportTarget(TARGET_ID, false, USER_ID))
+                    .willReturn(java.util.Optional.empty());
+
+            assertThatThrownBy(() -> contentReportService.createReport(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ModerationErrorCode.REPORT_TARGET_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("控えの本文は 10,000 文字に切り詰める")
+        void 控えの本文は切り詰める() {
+            CreateReportRequest req = new CreateReportRequest("TIMELINE_POST", TARGET_ID, "SPAM", null);
+            given(timelinePostModerationService.findReportTarget(TARGET_ID, false, USER_ID)).willReturn(
+                    java.util.Optional.of(new TimelinePostModerationService.PostReportTarget(
+                            "TEAM", 10L, 300L, "あ".repeat(10_050))));
+            given(reportRepository.save(any(ContentReportEntity.class))).willReturn(createReport());
+
+            contentReportService.createReport(req, USER_ID);
+
+            org.mockito.ArgumentCaptor<ContentReportEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(ContentReportEntity.class);
+            verify(reportRepository).save(captor.capture());
+            assertThat(captor.getValue().getContentSnapshot())
+                    .isEqualTo("{\"content\":\"" + "あ".repeat(10_000) + "\"}");
+        }
+
+        @Test
+        @DisplayName("USER はスコープを導出できないため REPORT_TARGET_TYPE_NOT_SUPPORTED")
+        void USERは導出できない() {
+            CreateReportRequest req = new CreateReportRequest("USER", TARGET_ID, "SPAM", null);
+
+            assertThatThrownBy(() -> contentReportService.createReport(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ModerationErrorCode.REPORT_TARGET_TYPE_NOT_SUPPORTED));
         }
     }
 

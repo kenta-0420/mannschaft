@@ -190229,9 +190229,6 @@
       "CreateReportRequest": {
         "type": "object",
         "properties": {
-          "contentSnapshot": {
-            "type": "string"
-          },
           "description": {
             "type": "string",
             "maxLength": 1000,
@@ -190241,13 +190238,6 @@
             "type": "string",
             "minLength": 1
           },
-          "scopeId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scopeType": {
-            "type": "string"
-          },
           "targetId": {
             "type": "integer",
             "format": "int64"
@@ -190255,10 +190245,6 @@
           "targetType": {
             "type": "string",
             "minLength": 1
-          },
-          "targetUserId": {
-            "type": "integer",
-            "format": "int64"
           }
         },
         "required": [
