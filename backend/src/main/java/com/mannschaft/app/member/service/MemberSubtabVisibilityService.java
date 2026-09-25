@@ -104,9 +104,15 @@ public class MemberSubtabVisibilityService {
             throw new BusinessException(CommonErrorCode.COMMON_001);
         }
 
-        // 認可: スコープ所属＋更新権限（Service 層入口二重防御）
-        accessControlService.checkMembership(currentUserId, scopeId, scopeType.name());
-        checkUpdatePermission(currentUserId, scopeId, scopeType.name());
+        // 認可: SYSTEM_ADMIN は所属の有無を問わず無条件で許可（03_role_authority_model.md §SYSTEM_ADMIN の扱い）。
+        // 検分指摘（4巡目・P2）: 所属のない SYSTEM_ADMIN が checkMembership で 403 になり、
+        // checkUpdatePermission 内の SYSTEM_ADMIN バイパスまで到達できていなかった。
+        // 所属チェックより前段で短絡させる。
+        if (!accessControlService.isSystemAdmin(currentUserId)) {
+            // 認可: スコープ所属＋更新権限（Service 層入口二重防御）
+            accessControlService.checkMembership(currentUserId, scopeId, scopeType.name());
+            checkUpdatePermission(currentUserId, scopeId, scopeType.name());
+        }
 
         List<Map<String, Object>> changes = new ArrayList<>();
         for (UpdateMemberSubtabVisibilityRequest.SubtabVisibilityUpdateItem update : request.getSubtabs()) {

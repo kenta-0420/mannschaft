@@ -1,4 +1,4 @@
--- V219: CMP-260919-1140 Phase 1 MEMBER_SUBTAB_VISIBILITY_MANAGE 権限を追加
+-- V225: CMP-260919-1140 Phase 1 MEMBER_SUBTAB_VISIBILITY_MANAGE 権限を追加
 -- ADMIN にはデフォルト付与、DEPUTY_ADMIN は天井のみ（実付与は ADMIN が permission_groups 経由で行う）
 -- MEMBER / SUPPORTER / GUEST にはエントリなし（絶対に付与不可）
 --

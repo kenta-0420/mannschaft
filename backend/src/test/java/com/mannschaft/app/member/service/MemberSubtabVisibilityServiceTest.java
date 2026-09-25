@@ -191,6 +191,26 @@ class MemberSubtabVisibilityServiceTest {
         }
 
         @Test
+        @DisplayName("検分修正(4巡目・P2): 所属のない SYSTEM_ADMIN は checkMembership の 403 に阻まれず更新できる")
+        void 所属のないSYSTEM_ADMINは更新できる() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+            // checkMembership を呼べば必ず COMMON_002 を投げる非会員状態をスタブし、
+            // それでも到達しないこと（＝ checkMembership 呼び出し自体をスキップすること）を検証する。
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
+            given(repository.findByScopeTypeAndScopeIdAndSubtabKey(
+                    ScopeType.ORGANIZATION, ORG_ID, "member_profiles")).willReturn(Optional.empty());
+
+            UpdateMemberSubtabVisibilityRequest request = buildRequest("member_profiles", MinRole.PUBLIC);
+            service.updateSettings(USER_ID, ScopeType.ORGANIZATION, ORG_ID, request);
+
+            verify(accessControlService, never()).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
+            verify(accessControlService, never())
+                    .checkPermission(USER_ID, ORG_ID, "ORGANIZATION", MemberSubtabVisibilityService.PERMISSION_NAME);
+            verify(repository).save(org.mockito.ArgumentMatchers.any(MemberSubtabRoleVisibilityEntity.class));
+        }
+
+        @Test
         @DisplayName("未知の subtab_key は 400")
         void 未知キー_400() {
             given(accessControlService.isAdmin(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);

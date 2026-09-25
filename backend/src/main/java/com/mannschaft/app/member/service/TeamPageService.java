@@ -353,9 +353,17 @@ public class TeamPageService {
      * 非表示（{@code is_visible = false}）プロフィールの除外要否を切り替えるために公開する。
      * 管理者は編集用途のため非表示行も含めて閲覧できる必要があり、それ以外（会員・非会員問わず）は
      * 非表示行を除外する。</p>
+     *
+     * <p>検分修正（4巡目・P2）: {@code isAdminOrAbove} は SYSTEM_ADMIN を含まない（ADMIN_ROLES =
+     * {@code {"ADMIN","DEPUTY_ADMIN"}}）。{@link #checkPageMembershipOrNotFound} は組織スコープで
+     * SYSTEM_ADMIN を無条件バイパスするのに、本メソッドがバイパスしないと、所属のない SYSTEM_ADMIN は
+     * 一覧で非表示行が欠け、非表示プロフィールの詳細取得が 404 になる（前段の到達判定と矛盾する）。
+     * 同一 PR で新設した SYSTEM_ADMIN バイパス（{@link #listPages}・{@link #checkPageMembershipOrNotFound}）
+     * と扱いを揃える。</p>
      */
     boolean isPageAdmin(Long actorUserId, TeamPageEntity page) {
-        return accessControlService.isAdminOrAbove(actorUserId, resolveScopeId(page), resolveScopeType(page));
+        return accessControlService.isSystemAdmin(actorUserId)
+                || accessControlService.isAdminOrAbove(actorUserId, resolveScopeId(page), resolveScopeType(page));
     }
 
     /**
