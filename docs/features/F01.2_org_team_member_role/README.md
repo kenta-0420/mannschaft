@@ -41,3 +41,4 @@ DEPUTY_ADMIN の細粒度な権限制御は、ADMIN が名前付き「権限グ�
 | [02_api_design.md](02_api_design.md) | §4 API設計 |
 | [03_business_logic.md](03_business_logic.md) | §5 ビジネスロジック |
 | [04_security_operations.md](04_security_operations.md) | §6 セキュリティ / §7 Flyway / §8 未解決事項 / §9 変更履歴 |
+| [05_scope_guides.md](05_scope_guides.md) | チーム・組織別の案内ページと初回権限設定 |
