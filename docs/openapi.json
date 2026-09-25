@@ -279,6 +279,10 @@
       "description": "F05.5 ファイルスター管理"
     },
     {
+      "name": "システム管理 - 価格改定",
+      "description": "価格改定（price-revisions）: create/provision/retry/reconcile/activate/cancel/取得/一覧"
+    },
+    {
       "name": "ナビゲーション設定",
       "description": "F20.1 個人ナビゲーション表示設定"
     },
@@ -1225,6 +1229,10 @@
     {
       "name": "管理 - MEMBER既定権限",
       "description": "F10.1 MEMBER既定権限管理API"
+    },
+    {
+      "name": "システム管理 - 税コード",
+      "description": "価格改定: 税コードマスタ CRUD（SYSTEM_ADMIN専用）"
     },
     {
       "name": "年次更新キャンペーン（F09.16）",
@@ -14841,6 +14849,71 @@
         }
       }
     },
+    "/api/v1/system-admin/billing/tax-codes/{id}": {
+      "put": {
+        "tags": [
+          "システム管理 - 税コード"
+        ],
+        "summary": "税コード更新（表示名・stripeTaxCode・validUntil・enabledのみ）",
+        "operationId": "update_23",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingTaxCodeUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingTaxCodeView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "システム管理 - 税コード"
+        ],
+        "summary": "税コード論理削除",
+        "operationId": "delete_22",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/billing/plans/{planKey}": {
       "get": {
         "tags": [
@@ -14981,8 +15054,8 @@
         "tags": [
           "システム管理 - 課金"
         ],
-        "summary": "人数バンド一括置換",
-        "description": "band_no 昇順・min\u003d前 max+1・最終のみ max\u003dnull 違反は 400。",
+        "summary": "【廃止】人数バンド一括置換",
+        "description": "410 Gone。POST /api/v1/price-revisions を使用すること。",
         "operationId": "replacePriceBands",
         "parameters": [
           {
@@ -15006,7 +15079,14 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -15462,7 +15542,7 @@
         "tags": [
           "affiliate-config-admin-controller"
         ],
-        "operationId": "update_23",
+        "operationId": "update_24",
         "parameters": [
           {
             "name": "id",
@@ -15501,7 +15581,7 @@
         "tags": [
           "affiliate-config-admin-controller"
         ],
-        "operationId": "delete_22",
+        "operationId": "delete_23",
         "parameters": [
           {
             "name": "id",
@@ -17655,7 +17735,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース更新",
-        "operationId": "update_24",
+        "operationId": "update_25",
         "parameters": [
           {
             "name": "organizationId",
@@ -17704,7 +17784,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース削除",
-        "operationId": "delete_23",
+        "operationId": "delete_24",
         "parameters": [
           {
             "name": "organizationId",
@@ -17971,7 +18051,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望更新",
-        "operationId": "update_25",
+        "operationId": "update_26",
         "parameters": [
           {
             "name": "organizationId",
@@ -18020,7 +18100,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望削除",
-        "operationId": "delete_24",
+        "operationId": "delete_25",
         "parameters": [
           {
             "name": "organizationId",
@@ -18528,7 +18608,7 @@
         "tags": [
           "disclosure-form-template-edit-controller"
         ],
-        "operationId": "update_26",
+        "operationId": "update_27",
         "parameters": [
           {
             "name": "organizationId",
@@ -18576,7 +18656,7 @@
         "tags": [
           "disclosure-form-template-edit-controller"
         ],
-        "operationId": "delete_25",
+        "operationId": "delete_26",
         "parameters": [
           {
             "name": "organizationId",
@@ -18647,7 +18727,7 @@
         "tags": [
           "disclosure-form-draft-controller"
         ],
-        "operationId": "update_27",
+        "operationId": "update_28",
         "parameters": [
           {
             "name": "organizationId",
@@ -18695,7 +18775,7 @@
         "tags": [
           "disclosure-form-draft-controller"
         ],
-        "operationId": "delete_26",
+        "operationId": "delete_27",
         "parameters": [
           {
             "name": "organizationId",
@@ -18766,7 +18846,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "update_28",
+        "operationId": "update_29",
         "parameters": [
           {
             "name": "organizationId",
@@ -18814,7 +18894,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "delete_27",
+        "operationId": "delete_28",
         "parameters": [
           {
             "name": "organizationId",
@@ -18984,7 +19064,7 @@
         "tags": [
           "organization-operational-ad-campaign-controller"
         ],
-        "operationId": "update_29",
+        "operationId": "update_30",
         "parameters": [
           {
             "name": "organizationId",
@@ -19034,7 +19114,7 @@
         "tags": [
           "advertiser-ad-creative-controller"
         ],
-        "operationId": "update_30",
+        "operationId": "update_31",
         "parameters": [
           {
             "name": "organizationId",
@@ -19091,7 +19171,7 @@
         "tags": [
           "advertiser-ad-creative-controller"
         ],
-        "operationId": "delete_28",
+        "operationId": "delete_29",
         "parameters": [
           {
             "name": "organizationId",
@@ -19996,7 +20076,7 @@
           "TODO ステータスラベル（組織）"
         ],
         "summary": "組織ステータスラベル更新（ADMIN のみ）",
-        "operationId": "update_31",
+        "operationId": "update_32",
         "parameters": [
           {
             "name": "orgId",
@@ -20045,7 +20125,7 @@
           "TODO ステータスラベル（組織）"
         ],
         "summary": "組織ステータスラベル削除（ADMIN のみ）",
-        "operationId": "delete_29",
+        "operationId": "delete_30",
         "parameters": [
           {
             "name": "orgId",
@@ -20547,7 +20627,7 @@
           "セグメントプリセット（組織）"
         ],
         "summary": "プリセット更新",
-        "operationId": "update_32",
+        "operationId": "update_33",
         "parameters": [
           {
             "name": "orgId",
@@ -20596,7 +20676,7 @@
           "セグメントプリセット（組織）"
         ],
         "summary": "プリセット削除",
-        "operationId": "delete_30",
+        "operationId": "delete_31",
         "parameters": [
           {
             "name": "orgId",
@@ -20630,7 +20710,7 @@
           "居住者管理（組織）"
         ],
         "summary": "居住者更新",
-        "operationId": "update_33",
+        "operationId": "update_34",
         "parameters": [
           {
             "name": "orgId",
@@ -20679,7 +20759,7 @@
           "居住者管理（組織）"
         ],
         "summary": "居住者削除",
-        "operationId": "delete_31",
+        "operationId": "delete_32",
         "parameters": [
           {
             "name": "orgId",
@@ -20854,7 +20934,7 @@
           "物件掲示板（組織）"
         ],
         "summary": "物件更新",
-        "operationId": "update_34",
+        "operationId": "update_35",
         "parameters": [
           {
             "name": "orgId",
@@ -20903,7 +20983,7 @@
           "物件掲示板（組織）"
         ],
         "summary": "物件削除",
-        "operationId": "delete_32",
+        "operationId": "delete_33",
         "parameters": [
           {
             "name": "orgId",
@@ -20976,7 +21056,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "プロモーション更新",
-        "operationId": "update_35",
+        "operationId": "update_36",
         "parameters": [
           {
             "name": "orgId",
@@ -21025,7 +21105,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "プロモーション削除",
-        "operationId": "delete_33",
+        "operationId": "delete_34",
         "parameters": [
           {
             "name": "orgId",
@@ -21112,7 +21192,7 @@
           "プロフィールメディア"
         ],
         "summary": "組織プロフィールメディア削除",
-        "operationId": "delete_34",
+        "operationId": "delete_35",
         "parameters": [
           {
             "name": "orgId",
@@ -21865,7 +21945,7 @@
           "居室管理（組織）"
         ],
         "summary": "居室更新",
-        "operationId": "update_36",
+        "operationId": "update_37",
         "parameters": [
           {
             "name": "orgId",
@@ -21914,7 +21994,7 @@
           "居室管理（組織）"
         ],
         "summary": "居室削除",
-        "operationId": "delete_35",
+        "operationId": "delete_36",
         "parameters": [
           {
             "name": "orgId",
@@ -22160,7 +22240,7 @@
           "クーポン管理（組織）"
         ],
         "summary": "クーポン更新",
-        "operationId": "update_37",
+        "operationId": "update_38",
         "parameters": [
           {
             "name": "orgId",
@@ -22209,7 +22289,7 @@
           "クーポン管理（組織）"
         ],
         "summary": "クーポン削除",
-        "operationId": "delete_36",
+        "operationId": "delete_37",
         "parameters": [
           {
             "name": "orgId",
@@ -22243,7 +22323,7 @@
           "確認通知テンプレート（組織）"
         ],
         "summary": "確認通知テンプレート更新（組織）",
-        "operationId": "update_38",
+        "operationId": "update_39",
         "parameters": [
           {
             "name": "orgId",
@@ -22292,7 +22372,7 @@
           "確認通知テンプレート（組織）"
         ],
         "summary": "確認通知テンプレート削除（論理削除）（組織）",
-        "operationId": "delete_37",
+        "operationId": "delete_38",
         "parameters": [
           {
             "name": "orgId",
@@ -22847,7 +22927,7 @@
         "tags": [
           "onboarding-template-controller"
         ],
-        "operationId": "update_39",
+        "operationId": "update_40",
         "parameters": [
           {
             "name": "templateId",
@@ -22886,7 +22966,7 @@
         "tags": [
           "onboarding-template-controller"
         ],
-        "operationId": "delete_38",
+        "operationId": "delete_39",
         "parameters": [
           {
             "name": "templateId",
@@ -23453,7 +23533,7 @@
         "tags": [
           "return-stay-plan-controller"
         ],
-        "operationId": "update_40",
+        "operationId": "update_41",
         "parameters": [
           {
             "name": "planId",
@@ -23501,7 +23581,7 @@
         "tags": [
           "return-stay-plan-controller"
         ],
-        "operationId": "delete_39",
+        "operationId": "delete_40",
         "parameters": [
           {
             "name": "planId",
@@ -23786,7 +23866,7 @@
           "個人時間割-設定"
         ],
         "summary": "設定更新（UPSERT・部分更新）",
-        "operationId": "update_41",
+        "operationId": "update_42",
         "requestBody": {
           "content": {
             "application/json": {
@@ -26067,7 +26147,7 @@
         "tags": [
           "onboarding-preset-admin-controller"
         ],
-        "operationId": "update_42",
+        "operationId": "update_43",
         "parameters": [
           {
             "name": "presetId",
@@ -26106,7 +26186,7 @@
         "tags": [
           "onboarding-preset-admin-controller"
         ],
-        "operationId": "delete_40",
+        "operationId": "delete_41",
         "parameters": [
           {
             "name": "presetId",
@@ -26169,7 +26249,7 @@
           "管理 - MEMBER既定権限"
         ],
         "summary": "MEMBER既定権限更新",
-        "operationId": "update_43",
+        "operationId": "update_44",
         "parameters": [
           {
             "name": "scopeType",
@@ -26315,7 +26395,7 @@
         ],
         "summary": "年齢区分設定更新",
         "description": "指定した年齢区分の機能設定・テーマ設定を更新する（SYSTEM_ADMIN のみ）",
-        "operationId": "update_44",
+        "operationId": "update_45",
         "parameters": [
           {
             "name": "ageGroup",
@@ -54626,6 +54706,446 @@
         }
       }
     },
+    "/api/v1/system-admin/billing/tax-codes": {
+      "get": {
+        "tags": [
+          "システム管理 - 税コード"
+        ],
+        "summary": "税コード一覧",
+        "operationId": "list_41",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingTaxCodeView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "システム管理 - 税コード"
+        ],
+        "summary": "税コード新規登録",
+        "operationId": "create_40",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingTaxCodeCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingTaxCodeView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/price-revisions": {
+      "get": {
+        "tags": [
+          "システム管理 - 価格改定"
+        ],
+        "summary": "価格改定 revision 一覧",
+        "description": "band明細を含まない要約。既定20件・上限100件。 ソートは effectiveFrom DESC, id DESC 固定。",
+        "operationId": "list_42",
+        "parameters": [
+          {
+            "name": "productKind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PLAN",
+                "ADDON"
+              ]
+            }
+          },
+          {
+            "name": "productKey",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeKind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "USER",
+                "TEAM",
+                "ORG"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePriceRevisionPageResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "システム管理 - 価格改定"
+        ],
+        "summary": "価格改定 revision 作成",
+        "description": "DRAFT状態で作成する。Idempotency-Key 必須。",
+        "operationId": "create_41",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceRevisionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/price-revisions/{id}/retry-provision": {
+      "post": {
+        "tags": [
+          "システム管理 - 価格改定"
+        ],
+        "summary": "Provision再試行",
+        "description": "PROVISION_FAILEDのbandのみ作り直す。READYは変更しない。Idempotency-Key 必須。",
+        "operationId": "retryProvision",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceRevisionLockVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/price-revisions/{id}/reconcile-provision": {
+      "post": {
+        "tags": [
+          "システム管理 - 価格改定"
+        ],
+        "summary": "Provision回収",
+        "description": "PROVISIONINGのまま停止したbandをStripe側属性と全照合しREADYへ回収するか隔離する。Idempotency-Key 必須。",
+        "operationId": "reconcileProvision",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceRevisionLockVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/price-revisions/{id}/provision": {
+      "post": {
+        "tags": [
+          "システム管理 - 価格改定"
+        ],
+        "summary": "Provision実行",
+        "description": "DRAFT band を Stripe へ作成する。同期実行・fail-forward。Idempotency-Key 必須。",
+        "operationId": "provision",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceRevisionLockVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/price-revisions/{id}/cancel": {
+      "post": {
+        "tags": [
+          "システム管理 - 価格改定"
+        ],
+        "summary": "価格改定の取り消し",
+        "description": "DRAFT/READY/PROVISION_FAILED の revision と全 band を CANCELLED にし、future 枠を解放する。それ以外の状態は409。Stripe 側の Price には触らない。Idempotency-Key 必須。",
+        "operationId": "cancelPriceRevision",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceRevisionLockVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/price-revisions/{id}/activate": {
+      "post": {
+        "tags": [
+          "システム管理 - 価格改定"
+        ],
+        "summary": "Activate実行",
+        "description": "全band READY のときのみ成功する。即時ならACTIVE、未来ならSCHEDULEDへ。Idempotency-Key 必須。",
+        "operationId": "activate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceRevisionLockVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/billing/grants": {
       "post": {
         "tags": [
@@ -55208,7 +55728,7 @@
         "tags": [
           "affiliate-config-admin-controller"
         ],
-        "operationId": "list_41",
+        "operationId": "list_43",
         "parameters": [
           {
             "name": "pageable",
@@ -55236,7 +55756,7 @@
         "tags": [
           "affiliate-config-admin-controller"
         ],
-        "operationId": "create_40",
+        "operationId": "create_42",
         "requestBody": {
           "content": {
             "application/json": {
@@ -57790,7 +58310,7 @@
         ],
         "summary": "代理一覧（ADMIN）",
         "description": "F03.10 §4.1: 管理者が代理委任の一覧を取得する",
-        "operationId": "list_42",
+        "operationId": "list_44",
         "parameters": [
           {
             "name": "scheduleId",
@@ -57841,7 +58361,7 @@
         ],
         "summary": "代理指定",
         "description": "F03.10 §4.1: 委任者が代理人を指定する",
-        "operationId": "create_41",
+        "operationId": "create_43",
         "parameters": [
           {
             "name": "scheduleId",
@@ -61333,7 +61853,7 @@
           "組織ウォッチリスト"
         ],
         "summary": "組織ウォッチリスト一覧",
-        "operationId": "list_43",
+        "operationId": "list_45",
         "parameters": [
           {
             "name": "organizationId",
@@ -61363,7 +61883,7 @@
           "組織ウォッチリスト"
         ],
         "summary": "組織ウォッチリスト追加",
-        "operationId": "create_42",
+        "operationId": "create_44",
         "parameters": [
           {
             "name": "organizationId",
@@ -61578,7 +62098,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース一覧",
-        "operationId": "list_44",
+        "operationId": "list_46",
         "parameters": [
           {
             "name": "organizationId",
@@ -61636,7 +62156,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース作成",
-        "operationId": "create_43",
+        "operationId": "create_45",
         "parameters": [
           {
             "name": "organizationId",
@@ -62059,7 +62579,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望一覧",
-        "operationId": "list_45",
+        "operationId": "list_47",
         "parameters": [
           {
             "name": "organizationId",
@@ -62117,7 +62637,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望作成",
-        "operationId": "create_44",
+        "operationId": "create_46",
         "parameters": [
           {
             "name": "organizationId",
@@ -62210,7 +62730,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請一覧",
-        "operationId": "list_46",
+        "operationId": "list_48",
         "parameters": [
           {
             "name": "organizationId",
@@ -62268,7 +62788,7 @@
           "組織区画申請"
         ],
         "summary": "組織区画申請",
-        "operationId": "create_45",
+        "operationId": "create_47",
         "parameters": [
           {
             "name": "organizationId",
@@ -62950,7 +63470,7 @@
         "tags": [
           "disclosure-form-template-edit-controller"
         ],
-        "operationId": "create_46",
+        "operationId": "create_48",
         "parameters": [
           {
             "name": "organizationId",
@@ -63041,7 +63561,7 @@
         "tags": [
           "disclosure-form-draft-controller"
         ],
-        "operationId": "list_47",
+        "operationId": "list_49",
         "parameters": [
           {
             "name": "organizationId",
@@ -63103,7 +63623,7 @@
         "tags": [
           "disclosure-form-draft-controller"
         ],
-        "operationId": "create_47",
+        "operationId": "create_49",
         "parameters": [
           {
             "name": "organizationId",
@@ -63387,7 +63907,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "list_48",
+        "operationId": "list_50",
         "parameters": [
           {
             "name": "organizationId",
@@ -63443,7 +63963,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "create_48",
+        "operationId": "create_50",
         "parameters": [
           {
             "name": "organizationId",
@@ -63824,7 +64344,7 @@
         "tags": [
           "organization-operational-ad-campaign-controller"
         ],
-        "operationId": "list_49",
+        "operationId": "list_51",
         "parameters": [
           {
             "name": "organizationId",
@@ -63888,7 +64408,7 @@
         "tags": [
           "organization-operational-ad-campaign-controller"
         ],
-        "operationId": "create_49",
+        "operationId": "create_51",
         "parameters": [
           {
             "name": "organizationId",
@@ -64089,7 +64609,7 @@
         "tags": [
           "advertiser-ad-creative-controller"
         ],
-        "operationId": "list_50",
+        "operationId": "list_52",
         "parameters": [
           {
             "name": "organizationId",
@@ -64127,7 +64647,7 @@
         "tags": [
           "advertiser-ad-creative-controller"
         ],
-        "operationId": "create_50",
+        "operationId": "create_52",
         "parameters": [
           {
             "name": "organizationId",
@@ -64365,7 +64885,7 @@
           "組織キープ管理"
         ],
         "summary": "組織キープ一覧",
-        "operationId": "list_51",
+        "operationId": "list_53",
         "parameters": [
           {
             "name": "orgPublicId",
@@ -64422,7 +64942,7 @@
           "組織キープ管理"
         ],
         "summary": "組織キープ作成",
-        "operationId": "create_51",
+        "operationId": "create_53",
         "parameters": [
           {
             "name": "orgPublicId",
@@ -67217,7 +67737,7 @@
           "TODO ステータスラベル（組織）"
         ],
         "summary": "組織ステータスラベル一覧（SYSTEM 既定 + 組織スコープ）",
-        "operationId": "list_52",
+        "operationId": "list_54",
         "parameters": [
           {
             "name": "orgId",
@@ -67247,7 +67767,7 @@
           "TODO ステータスラベル（組織）"
         ],
         "summary": "組織ステータスラベル作成（ADMIN/DEPUTY_ADMIN）",
-        "operationId": "create_52",
+        "operationId": "create_54",
         "parameters": [
           {
             "name": "orgId",
@@ -68118,7 +68638,7 @@
           "セグメントプリセット（組織）"
         ],
         "summary": "プリセット一覧",
-        "operationId": "list_53",
+        "operationId": "list_55",
         "parameters": [
           {
             "name": "orgId",
@@ -68148,7 +68668,7 @@
           "セグメントプリセット（組織）"
         ],
         "summary": "プリセット作成",
-        "operationId": "create_53",
+        "operationId": "create_55",
         "parameters": [
           {
             "name": "orgId",
@@ -68307,7 +68827,7 @@
           "居住者書類（組織）"
         ],
         "summary": "書類一覧",
-        "operationId": "list_54",
+        "operationId": "list_56",
         "parameters": [
           {
             "name": "orgId",
@@ -68736,7 +69256,7 @@
           "F03.11 募集型予約 / 募集枠 (組織)"
         ],
         "summary": "組織募集枠一覧",
-        "operationId": "list_55",
+        "operationId": "list_57",
         "parameters": [
           {
             "name": "orgId",
@@ -68794,7 +69314,7 @@
           "F03.11 募集型予約 / 募集枠 (組織)"
         ],
         "summary": "組織募集枠作成 (DRAFT で作成)",
-        "operationId": "create_54",
+        "operationId": "create_56",
         "parameters": [
           {
             "name": "orgId",
@@ -68983,7 +69503,7 @@
           "物件掲示板（組織）"
         ],
         "summary": "物件一覧",
-        "operationId": "list_56",
+        "operationId": "list_58",
         "parameters": [
           {
             "name": "orgId",
@@ -69049,7 +69569,7 @@
           "物件掲示板（組織）"
         ],
         "summary": "物件掲示作成",
-        "operationId": "create_55",
+        "operationId": "create_57",
         "parameters": [
           {
             "name": "orgId",
@@ -69181,7 +69701,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "プロモーション一覧",
-        "operationId": "list_57",
+        "operationId": "list_59",
         "parameters": [
           {
             "name": "orgId",
@@ -69239,7 +69759,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "プロモーション作成",
-        "operationId": "create_56",
+        "operationId": "create_58",
         "parameters": [
           {
             "name": "orgId",
@@ -69861,7 +70381,7 @@
           "協会請求（協会視点）"
         ],
         "summary": "協会の発行請求一覧（status フィルタ・ページング）",
-        "operationId": "list_58",
+        "operationId": "list_60",
         "parameters": [
           {
             "name": "orgId",
@@ -69931,7 +70451,7 @@
           "協会請求（協会視点）"
         ],
         "summary": "協会請求の発行（DRAFT）",
-        "operationId": "create_57",
+        "operationId": "create_59",
         "parameters": [
           {
             "name": "orgId",
@@ -69972,7 +70492,7 @@
         "tags": [
           "org-onboarding-template-controller"
         ],
-        "operationId": "list_59",
+        "operationId": "list_61",
         "parameters": [
           {
             "name": "orgId",
@@ -70001,7 +70521,7 @@
         "tags": [
           "org-onboarding-template-controller"
         ],
-        "operationId": "create_58",
+        "operationId": "create_60",
         "parameters": [
           {
             "name": "orgId",
@@ -70386,7 +70906,7 @@
           "試合局面写真"
         ],
         "summary": "局面写真一覧（閲覧可視性・作成日時昇順）",
-        "operationId": "list_60",
+        "operationId": "list_62",
         "parameters": [
           {
             "name": "orgId",
@@ -71400,7 +71920,7 @@
           "居室管理（組織）"
         ],
         "summary": "居室一覧",
-        "operationId": "list_61",
+        "operationId": "list_63",
         "parameters": [
           {
             "name": "orgId",
@@ -71450,7 +71970,7 @@
           "居室管理（組織）"
         ],
         "summary": "居室作成",
-        "operationId": "create_59",
+        "operationId": "create_61",
         "parameters": [
           {
             "name": "orgId",
@@ -71531,7 +72051,7 @@
           "居住者管理（組織）"
         ],
         "summary": "居住者登録",
-        "operationId": "create_60",
+        "operationId": "create_62",
         "parameters": [
           {
             "name": "orgId",
@@ -72043,7 +72563,7 @@
           "クーポン管理（組織）"
         ],
         "summary": "クーポン一覧",
-        "operationId": "list_62",
+        "operationId": "list_64",
         "parameters": [
           {
             "name": "orgId",
@@ -72093,7 +72613,7 @@
           "クーポン管理（組織）"
         ],
         "summary": "クーポン作成",
-        "operationId": "create_61",
+        "operationId": "create_63",
         "parameters": [
           {
             "name": "orgId",
@@ -72207,7 +72727,7 @@
           "組織確認通知"
         ],
         "summary": "確認通知一覧取得（組織）",
-        "operationId": "list_63",
+        "operationId": "list_65",
         "parameters": [
           {
             "name": "orgId",
@@ -72347,7 +72867,7 @@
           "確認通知テンプレート（組織）"
         ],
         "summary": "確認通知テンプレート一覧取得（組織）",
-        "operationId": "list_64",
+        "operationId": "list_66",
         "parameters": [
           {
             "name": "orgId",
@@ -72377,7 +72897,7 @@
           "確認通知テンプレート（組織）"
         ],
         "summary": "確認通知テンプレート作成（組織）",
-        "operationId": "create_62",
+        "operationId": "create_64",
         "parameters": [
           {
             "name": "orgId",
@@ -72695,7 +73215,7 @@
         "tags": [
           "org-budget-fiscal-year-controller"
         ],
-        "operationId": "list_65",
+        "operationId": "list_67",
         "parameters": [
           {
             "name": "orgId",
@@ -72724,7 +73244,7 @@
         "tags": [
           "org-budget-fiscal-year-controller"
         ],
-        "operationId": "create_63",
+        "operationId": "create_65",
         "parameters": [
           {
             "name": "orgId",
@@ -73598,7 +74118,7 @@
         "tags": [
           "onboarding-template-controller"
         ],
-        "operationId": "activate",
+        "operationId": "activate_1",
         "parameters": [
           {
             "name": "templateId",
@@ -74260,7 +74780,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目一覧",
-        "operationId": "list_66",
+        "operationId": "list_68",
         "responses": {
           "200": {
             "description": "OK",
@@ -74279,7 +74799,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目作成（最大10件）",
-        "operationId": "create_64",
+        "operationId": "create_66",
         "requestBody": {
           "content": {
             "application/json": {
@@ -74641,7 +75161,7 @@
           "個人キープ管理"
         ],
         "summary": "個人キープ一覧",
-        "operationId": "list_67",
+        "operationId": "list_69",
         "parameters": [
           {
             "name": "status",
@@ -74690,7 +75210,7 @@
           "個人キープ管理"
         ],
         "summary": "個人キープ作成",
-        "operationId": "create_65",
+        "operationId": "create_67",
         "requestBody": {
           "content": {
             "application/json": {
@@ -74882,7 +75402,7 @@
         "tags": [
           "return-stay-plan-controller"
         ],
-        "operationId": "list_68",
+        "operationId": "list_70",
         "parameters": [
           {
             "name": "includeEnded",
@@ -74934,7 +75454,7 @@
         "tags": [
           "return-stay-plan-controller"
         ],
-        "operationId": "create_66",
+        "operationId": "create_68",
         "requestBody": {
           "content": {
             "application/json": {
@@ -75162,7 +75682,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割一覧（自分）",
-        "operationId": "list_69",
+        "operationId": "list_71",
         "responses": {
           "200": {
             "description": "OK",
@@ -75181,7 +75701,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割作成（DRAFT）",
-        "operationId": "create_67",
+        "operationId": "create_69",
         "requestBody": {
           "content": {
             "application/json": {
@@ -75212,7 +75732,7 @@
           "個人時間割共有先"
         ],
         "summary": "共有先一覧（自分の個人時間割）",
-        "operationId": "list_70",
+        "operationId": "list_72",
         "parameters": [
           {
             "name": "personalTimetableId",
@@ -75479,7 +75999,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割を有効化（DRAFT → ACTIVE）",
-        "operationId": "activate_1",
+        "operationId": "activate_2",
         "parameters": [
           {
             "name": "id",
@@ -75594,7 +76114,7 @@
           "personal-market-listing-controller"
         ],
         "summary": "個人市で立てた札の履歴を取得",
-        "operationId": "list_71",
+        "operationId": "list_73",
         "parameters": [
           {
             "name": "status",
@@ -75668,7 +76188,7 @@
           "personal-market-listing-controller"
         ],
         "summary": "個人市の札を下書きで作成",
-        "operationId": "create_68",
+        "operationId": "create_70",
         "requestBody": {
           "content": {
             "application/json": {
@@ -76659,7 +77179,7 @@
         ],
         "summary": "広告を通報する",
         "description": "campaignId（メッセージ型）/ operationalCampaignId（運用型）を XOR で指定する。両方指定・両方 null は 400 / AD_032、不存在対象は 404。",
-        "operationId": "create_69",
+        "operationId": "create_71",
         "requestBody": {
           "content": {
             "application/json": {
@@ -79364,7 +79884,7 @@
         ],
         "summary": "代理一覧（ADMIN）",
         "description": "F03.10 §4.2: 管理者が代理委任の一覧を取得する",
-        "operationId": "list_72",
+        "operationId": "list_74",
         "parameters": [
           {
             "name": "eventId",
@@ -79415,7 +79935,7 @@
         ],
         "summary": "代理指定",
         "description": "F03.10 §4.2: 委任者が代理人を指定する",
-        "operationId": "create_70",
+        "operationId": "create_72",
         "parameters": [
           {
             "name": "eventId",
@@ -79561,7 +80081,7 @@
           "エラーレポート"
         ],
         "summary": "エラーレポート送信",
-        "operationId": "create_71",
+        "operationId": "create_73",
         "requestBody": {
           "content": {
             "application/json": {
@@ -82802,7 +83322,7 @@
         "tags": [
           "budget-transaction-controller"
         ],
-        "operationId": "create_72",
+        "operationId": "create_74",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -83094,7 +83614,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "create_73",
+        "operationId": "create_75",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -86124,7 +86644,7 @@
         ],
         "summary": "同義語新規登録",
         "description": "synonymDisplay をサーバー側で正規化して保存。正規化キー UNIQUE 違反時は 409 SYNONYM_DUPLICATE。",
-        "operationId": "create_74",
+        "operationId": "create_76",
         "requestBody": {
           "content": {
             "application/json": {
@@ -86292,7 +86812,7 @@
         "tags": [
           "onboarding-preset-admin-controller"
         ],
-        "operationId": "create_75",
+        "operationId": "create_77",
         "requestBody": {
           "content": {
             "application/json": {
@@ -87925,7 +88445,7 @@
           "修繕計画項目"
         ],
         "summary": "計画項目削除（ADMIN/DEPUTY_ADMIN、If-Match 必須）",
-        "operationId": "delete_41",
+        "operationId": "delete_42",
         "parameters": [
           {
             "name": "scopeType",
@@ -87982,7 +88502,7 @@
           "修繕計画項目"
         ],
         "summary": "計画項目更新（ADMIN/DEPUTY_ADMIN、If-Match 必須）",
-        "operationId": "update_45",
+        "operationId": "update_46",
         "parameters": [
           {
             "name": "scopeType",
@@ -88186,7 +88706,7 @@
           "村機能"
         ],
         "summary": "村論理削除（HEADMAN / SYSTEM_ADMIN）",
-        "operationId": "delete_42",
+        "operationId": "delete_43",
         "parameters": [
           {
             "name": "villageId",
@@ -88209,7 +88729,7 @@
           "村機能"
         ],
         "summary": "村更新（HEADMAN / SYSTEM_ADMIN）",
-        "operationId": "update_46",
+        "operationId": "update_47",
         "parameters": [
           {
             "name": "villageId",
@@ -88391,7 +88911,7 @@
           "寄合 (F17.1 Phase 3-β)"
         ],
         "summary": "寄合を部分更新する（幹事のみ）",
-        "operationId": "update_47",
+        "operationId": "update_48",
         "parameters": [
           {
             "name": "villageId",
@@ -88481,7 +89001,7 @@
           "村練習試合・審判募集 (F17.1)"
         ],
         "summary": "練習試合・審判募集を更新（投稿者本人のみ）",
-        "operationId": "update_48",
+        "operationId": "update_49",
         "parameters": [
           {
             "name": "villageId",
@@ -88571,7 +89091,7 @@
           "村お祭り (F17.1)"
         ],
         "summary": "村のお祭りを部分更新する（HEADMAN / ELDER のみ）",
-        "operationId": "update_49",
+        "operationId": "update_50",
         "parameters": [
           {
             "name": "villageId",
@@ -88703,7 +89223,7 @@
           "村歳時記カレンダー (F17.1)"
         ],
         "summary": "歳時記イベントを論理削除する（HEADMAN / ELDER のみ）",
-        "operationId": "delete_43",
+        "operationId": "delete_44",
         "parameters": [
           {
             "name": "villageId",
@@ -88735,7 +89255,7 @@
           "村歳時記カレンダー (F17.1)"
         ],
         "summary": "歳時記イベントを部分更新する（HEADMAN / ELDER のみ）",
-        "operationId": "update_50",
+        "operationId": "update_51",
         "parameters": [
           {
             "name": "villageId",
@@ -90148,7 +90668,7 @@
           "チームキープ管理"
         ],
         "summary": "チームキープ削除",
-        "operationId": "delete_44",
+        "operationId": "delete_45",
         "parameters": [
           {
             "name": "teamPublicId",
@@ -90179,7 +90699,7 @@
           "チームキープ管理"
         ],
         "summary": "チームキープ更新",
-        "operationId": "update_51",
+        "operationId": "update_52",
         "parameters": [
           {
             "name": "teamPublicId",
@@ -95117,7 +95637,7 @@
         "tags": [
           "team-budget-config-controller"
         ],
-        "operationId": "update_52",
+        "operationId": "update_53",
         "parameters": [
           {
             "name": "teamId",
@@ -96699,7 +97219,7 @@
         ],
         "summary": "セキュリティインシデント更新",
         "description": "ステータス変更・DPA 通知記録を行う。",
-        "operationId": "update_53",
+        "operationId": "update_54",
         "parameters": [
           {
             "name": "id",
@@ -97122,7 +97642,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート更新",
-        "operationId": "update_54",
+        "operationId": "update_55",
         "parameters": [
           {
             "name": "id",
@@ -99006,7 +99526,7 @@
           "F03.11 募集型予約 / 募集枠"
         ],
         "summary": "募集枠編集 (§5.7)",
-        "operationId": "update_55",
+        "operationId": "update_56",
         "parameters": [
           {
             "name": "id",
@@ -101498,7 +102018,7 @@
           "組織キープ管理"
         ],
         "summary": "組織キープ削除",
-        "operationId": "delete_45",
+        "operationId": "delete_46",
         "parameters": [
           {
             "name": "orgPublicId",
@@ -101529,7 +102049,7 @@
           "組織キープ管理"
         ],
         "summary": "組織キープ更新",
-        "operationId": "update_56",
+        "operationId": "update_57",
         "parameters": [
           {
             "name": "orgPublicId",
@@ -103683,7 +104203,7 @@
         "tags": [
           "org-budget-config-controller"
         ],
-        "operationId": "update_57",
+        "operationId": "update_58",
         "parameters": [
           {
             "name": "orgId",
@@ -104064,7 +104584,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目削除",
-        "operationId": "delete_46",
+        "operationId": "delete_47",
         "parameters": [
           {
             "name": "fieldId",
@@ -104087,7 +104607,7 @@
           "個人メモ-カスタム項目"
         ],
         "summary": "カスタム項目更新",
-        "operationId": "update_58",
+        "operationId": "update_59",
         "parameters": [
           {
             "name": "fieldId",
@@ -104263,7 +104783,7 @@
           "個人キープ管理"
         ],
         "summary": "個人キープ削除",
-        "operationId": "delete_47",
+        "operationId": "delete_48",
         "parameters": [
           {
             "name": "keepId",
@@ -104286,7 +104806,7 @@
           "個人キープ管理"
         ],
         "summary": "個人キープ更新",
-        "operationId": "update_59",
+        "operationId": "update_60",
         "parameters": [
           {
             "name": "keepId",
@@ -104520,7 +105040,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割論理削除",
-        "operationId": "delete_48",
+        "operationId": "delete_49",
         "parameters": [
           {
             "name": "id",
@@ -104543,7 +105063,7 @@
           "個人時間割"
         ],
         "summary": "個人時間割メタ情報更新",
-        "operationId": "update_60",
+        "operationId": "update_61",
         "parameters": [
           {
             "name": "id",
@@ -104585,7 +105105,7 @@
           "personal-market-listing-controller"
         ],
         "summary": "個人札のDRAFT編集",
-        "operationId": "update_61",
+        "operationId": "update_62",
         "parameters": [
           {
             "name": "id",
@@ -106471,7 +106991,7 @@
           "F03.11 募集型予約 / キャンセルポリシー"
         ],
         "summary": "ポリシー編集 (is_template_policy\u003dtrue のみ)",
-        "operationId": "update_62",
+        "operationId": "update_63",
         "parameters": [
           {
             "name": "id",
@@ -106667,7 +107187,7 @@
         "tags": [
           "budget-fiscal-year-controller"
         ],
-        "operationId": "delete_49",
+        "operationId": "delete_50",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -106689,7 +107209,7 @@
         "tags": [
           "budget-fiscal-year-controller"
         ],
-        "operationId": "update_63",
+        "operationId": "update_64",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -106730,7 +107250,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "delete_50",
+        "operationId": "delete_51",
         "parameters": [
           {
             "name": "categoryId",
@@ -106769,7 +107289,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "update_64",
+        "operationId": "update_65",
         "parameters": [
           {
             "name": "categoryId",
@@ -107911,7 +108431,7 @@
         ],
         "summary": "同義語削除",
         "description": "物理削除。削除後にキャッシュリビルド。",
-        "operationId": "delete_51",
+        "operationId": "delete_52",
         "parameters": [
           {
             "name": "id",
@@ -107935,7 +108455,7 @@
         ],
         "summary": "同義語編集",
         "description": "synonymDisplay 指定時は再正規化と重複チェックを行う。",
-        "operationId": "update_65",
+        "operationId": "update_66",
         "parameters": [
           {
             "name": "id",
@@ -110606,7 +111126,7 @@
           "村史 (F17.2 Wave2 ⑦)"
         ],
         "summary": "村史（行事アーカイブ）一覧を取得する（archived_at 降順・sourceType 絞り込み可）",
-        "operationId": "list_73",
+        "operationId": "list_75",
         "parameters": [
           {
             "name": "villageId",
@@ -110671,7 +111191,7 @@
           "村史 (F17.1)"
         ],
         "summary": "村の村史一覧（月次ダイジェスト）を取得する",
-        "operationId": "list_74",
+        "operationId": "list_76",
         "parameters": [
           {
             "name": "villageId",
@@ -112594,7 +113114,7 @@
           "タイムラインダイジェスト"
         ],
         "summary": "ダイジェスト履歴一覧取得",
-        "operationId": "list_75",
+        "operationId": "list_77",
         "parameters": [
           {
             "name": "scopeType",
@@ -115334,7 +115854,7 @@
           "協会請求（チーム視点）"
         ],
         "summary": "受信した協会請求の一覧",
-        "operationId": "list_76",
+        "operationId": "list_78",
         "parameters": [
           {
             "name": "teamId",
@@ -115449,7 +115969,7 @@
           "立替/精算（チーム視点）"
         ],
         "summary": "立替/精算記録の一覧",
-        "operationId": "list_77",
+        "operationId": "list_79",
         "parameters": [
           {
             "name": "teamId",
@@ -115841,7 +116361,7 @@
         "tags": [
           "team-onboarding-progress-controller"
         ],
-        "operationId": "list_78",
+        "operationId": "list_80",
         "parameters": [
           {
             "name": "teamId",
@@ -119087,7 +119607,7 @@
         "tags": [
           "team-budget-transaction-controller"
         ],
-        "operationId": "list_79",
+        "operationId": "list_81",
         "parameters": [
           {
             "name": "teamId",
@@ -121676,7 +122196,7 @@
           "販促プロビジョニング（SYSTEM_ADMIN）"
         ],
         "summary": "プロビジョニング招待の一覧を取得する",
-        "operationId": "list_80",
+        "operationId": "list_82",
         "responses": {
           "200": {
             "description": "OK",
@@ -121700,7 +122220,7 @@
           "プロモーション課金（SYSTEM_ADMIN）"
         ],
         "summary": "課金状況一覧",
-        "operationId": "list_81",
+        "operationId": "list_83",
         "parameters": [
           {
             "name": "billingStatus",
@@ -122174,7 +122694,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート一覧取得",
-        "operationId": "list_82",
+        "operationId": "list_84",
         "parameters": [
           {
             "name": "status",
@@ -122646,6 +123166,39 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePageSystemAdminOrganizationSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/price-revisions/{id}": {
+      "get": {
+        "tags": [
+          "システム管理 - 価格改定"
+        ],
+        "summary": "価格改定 revision 取得",
+        "description": "band明細を含む。不在・論理削除済みは404。",
+        "operationId": "get_36",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePriceRevisionResponse"
                 }
               }
             }
@@ -123841,7 +124394,7 @@
         ],
         "summary": "通報一覧",
         "description": "status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。",
-        "operationId": "list_83",
+        "operationId": "list_85",
         "parameters": [
           {
             "name": "status",
@@ -124010,7 +124563,7 @@
         "tags": [
           "system-admin-ad-creative-controller"
         ],
-        "operationId": "list_84",
+        "operationId": "list_86",
         "parameters": [
           {
             "name": "status",
@@ -124090,7 +124643,7 @@
         ],
         "summary": "審査キュー一覧",
         "description": "運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。",
-        "operationId": "list_85",
+        "operationId": "list_87",
         "parameters": [
           {
             "name": "status",
@@ -125262,7 +125815,7 @@
           "シフト予算 失敗イベント (F08.7)"
         ],
         "summary": "失敗イベント一覧を取得 (status で絞り込み可、新しい順)",
-        "operationId": "list_86",
+        "operationId": "list_88",
         "parameters": [
           {
             "name": "X-Organization-Id",
@@ -126509,7 +127062,7 @@
         ],
         "summary": "キャンセル料記録の一覧",
         "description": "受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。ページングはカーソル方式で、続きは meta.nextCursor を cursor に渡して取得する。",
-        "operationId": "list_87",
+        "operationId": "list_89",
         "parameters": [
           {
             "name": "status",
@@ -133383,7 +133936,7 @@
         "tags": [
           "org-onboarding-progress-controller"
         ],
-        "operationId": "list_88",
+        "operationId": "list_90",
         "parameters": [
           {
             "name": "orgId",
@@ -134396,7 +134949,7 @@
         "tags": [
           "org-budget-transaction-controller"
         ],
-        "operationId": "list_89",
+        "operationId": "list_91",
         "parameters": [
           {
             "name": "orgId",
@@ -134877,7 +135430,7 @@
         "tags": [
           "onboarding-me-controller"
         ],
-        "operationId": "list_90",
+        "operationId": "list_92",
         "parameters": [
           {
             "name": "status",
@@ -135662,7 +136215,7 @@
           "村投稿主体 (F17.1)"
         ],
         "summary": "村でなれる投稿主体一覧を取得する（村人のみ）",
-        "operationId": "list_91",
+        "operationId": "list_93",
         "parameters": [
           {
             "name": "villageId",
@@ -135769,7 +136322,7 @@
           "個人メモ-添付"
         ],
         "summary": "メモ添付一覧",
-        "operationId": "list_92",
+        "operationId": "list_94",
         "parameters": [
           {
             "name": "noteId",
@@ -137837,7 +138390,7 @@
         ],
         "summary": "請求書一覧",
         "description": "指定スコープの請求書を period_end 降順で返す。cursor は不透明値。",
-        "operationId": "list_93",
+        "operationId": "list_95",
         "parameters": [
           {
             "name": "scopeKind",
@@ -139053,7 +139606,7 @@
           "家族個人時間割閲覧"
         ],
         "summary": "家族メンバーの個人時間割一覧（status\u003dACTIVE のみ、共有設定済みのみ）",
-        "operationId": "list_94",
+        "operationId": "list_96",
         "parameters": [
           {
             "name": "teamId",
@@ -139754,7 +140307,7 @@
         "tags": [
           "disclosure-form-template-controller"
         ],
-        "operationId": "get_36",
+        "operationId": "get_37",
         "parameters": [
           {
             "name": "templateId",
@@ -141881,7 +142434,7 @@
         "tags": [
           "budget-transaction-controller"
         ],
-        "operationId": "delete_52",
+        "operationId": "delete_53",
         "parameters": [
           {
             "name": "transactionId",
@@ -145679,7 +146232,7 @@
           "居住者書類（チーム）"
         ],
         "summary": "書類削除",
-        "operationId": "delete_53",
+        "operationId": "delete_54",
         "parameters": [
           {
             "name": "teamId",
@@ -145756,7 +146309,7 @@
           "チームウォッチリスト"
         ],
         "summary": "チームウォッチリスト削除",
-        "operationId": "delete_54",
+        "operationId": "delete_55",
         "parameters": [
           {
             "name": "teamId",
@@ -146299,7 +146852,7 @@
         ],
         "summary": "手数料パターン割当解除",
         "description": "割当を解除する（論理削除）。既存課金には影響しない（焼き付け済みで不変）。",
-        "operationId": "delete_55",
+        "operationId": "delete_56",
         "parameters": [
           {
             "name": "id",
@@ -146914,7 +147467,7 @@
           "組織ウォッチリスト"
         ],
         "summary": "組織ウォッチリスト削除",
-        "operationId": "delete_56",
+        "operationId": "delete_57",
         "parameters": [
           {
             "name": "organizationId",
@@ -147310,7 +147863,7 @@
           "居住者書類（組織）"
         ],
         "summary": "書類削除",
-        "operationId": "delete_57",
+        "operationId": "delete_58",
         "parameters": [
           {
             "name": "orgId",
@@ -147353,7 +147906,7 @@
           "試合局面写真"
         ],
         "summary": "局面写真の削除（記録権限・R2 ベストエフォート削除）",
-        "operationId": "delete_58",
+        "operationId": "delete_59",
         "parameters": [
           {
             "name": "orgId",
@@ -147497,7 +148050,7 @@
           "個人メモ"
         ],
         "summary": "個人メモ削除（論理）",
-        "operationId": "delete_59",
+        "operationId": "delete_60",
         "parameters": [
           {
             "name": "noteId",
@@ -147522,7 +148075,7 @@
           "個人メモ-添付"
         ],
         "summary": "添付削除（論理）",
-        "operationId": "delete_60",
+        "operationId": "delete_61",
         "parameters": [
           {
             "name": "attachmentId",
@@ -160341,6 +160894,65 @@
           "updatedBy": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "BillingTaxCodeUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "stripeTaxCode": {
+            "type": "string"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BillingTaxCodeView": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rateBasisPoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stripeTaxCode": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -186672,6 +187284,112 @@
           },
           "teamName": {
             "type": "string"
+          }
+        }
+      },
+      "BillingTaxCodeCreateRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "rateBasisPoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stripeTaxCode": {
+            "type": "string"
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PriceBandInput": {
+        "type": "object",
+        "properties": {
+          "bandNo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "inputAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "maxMembers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "minMembers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "taxBehavior": {
+            "type": "string",
+            "enum": [
+              "INCLUSIVE",
+              "EXCLUSIVE"
+            ]
+          },
+          "taxCode": {
+            "type": "string"
+          }
+        }
+      },
+      "PriceRevisionCreateRequest": {
+        "type": "object",
+        "properties": {
+          "bands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceBandInput"
+            }
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "productKey": {
+            "type": "string"
+          },
+          "productKind": {
+            "type": "string",
+            "enum": [
+              "PLAN",
+              "ADDON"
+            ]
+          },
+          "scopeKind": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "TEAM",
+              "ORG"
+            ]
+          }
+        }
+      },
+      "PriceRevisionLockVersionRequest": {
+        "type": "object",
+        "properties": {
+          "lockVersion": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -223669,6 +224387,228 @@
             "enum": [
               "PUBLIC",
               "PRIVATE"
+            ]
+          }
+        }
+      },
+      "ApiResponsePriceRevisionPageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PriceRevisionPageResponse"
+          }
+        }
+      },
+      "PriceRevisionPageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceRevisionSummaryResponse"
+            }
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PriceRevisionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productKey": {
+            "type": "string"
+          },
+          "productKind": {
+            "type": "string",
+            "enum": [
+              "PLAN",
+              "ADDON"
+            ]
+          },
+          "revisionNo": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeKind": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "TEAM",
+              "ORG"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PROVISIONING",
+              "PROVISION_FAILED",
+              "READY",
+              "SCHEDULED",
+              "ACTIVE",
+              "RETIRED",
+              "CANCELLED"
+            ]
+          }
+        }
+      },
+      "ApiResponsePriceRevisionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PriceRevisionResponse"
+          }
+        }
+      },
+      "PriceRevisionBandResponse": {
+        "type": "object",
+        "properties": {
+          "amountExcludingTax": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amountIncludingTax": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bandNo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inputAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "maxMembers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "minMembers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "provisionAttempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "provisionErrorCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PROVISIONING",
+              "PROVISION_FAILED",
+              "READY",
+              "SCHEDULED",
+              "ACTIVE",
+              "RETIRED",
+              "CANCELLED"
+            ]
+          },
+          "stripePriceRef": {
+            "type": "string"
+          },
+          "taxAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "taxBehavior": {
+            "type": "string",
+            "enum": [
+              "INCLUSIVE",
+              "EXCLUSIVE"
+            ]
+          },
+          "taxCode": {
+            "type": "string"
+          },
+          "taxRateBasisPoints": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PriceRevisionResponse": {
+        "type": "object",
+        "properties": {
+          "bands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriceRevisionBandResponse"
+            }
+          },
+          "catalogRevision": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lockVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "productKey": {
+            "type": "string"
+          },
+          "productKind": {
+            "type": "string",
+            "enum": [
+              "PLAN",
+              "ADDON"
+            ]
+          },
+          "revisionNo": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeKind": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "TEAM",
+              "ORG"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PROVISIONING",
+              "PROVISION_FAILED",
+              "READY",
+              "SCHEDULED",
+              "ACTIVE",
+              "RETIRED",
+              "CANCELLED"
             ]
           }
         }
