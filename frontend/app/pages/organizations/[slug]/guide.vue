@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: ['auth', 'org-role-guard'], layout: 'default' })
+definePageMeta({ middleware: 'auth', layout: 'default' })
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug))
