@@ -8379,7 +8379,28 @@ window.BETA_INVENTORY_DATA = {
       }
     }
   },
-  "b0RunOverlay": null,
+  "b0RunOverlay": {
+    "runId": "CMP019-W6-1790328294335",
+    "recordedAt": "2026-09-25T10:45:00Z",
+    "insights": [
+      {
+        "id": "CMP019-W6-P02-001",
+        "featureKey": "moderation-incident-incident",
+        "featureDetail": "インシデント一覧・詳細",
+        "personaId": "P02",
+        "personaArchetype": "一般利用者・チーム管理者",
+        "journeyId": "CMP019-W6-admin-normal",
+        "priority": "could",
+        "urgency": "when-free",
+        "title": "開発用画面の初回表示が遅い（原因未確定）",
+        "detail": "住民1の独立BrowserContextでは、ダッシュボードが約119秒時点でもloading、約179秒でチーム選択欄を表示した。実BEの関連APIは200。インシデント一覧への通常導線は未到達。開発サーバーと端末負荷の影響を切り分けておらず、製品の性能不備とは未判定。",
+        "page": "/dashboard",
+        "observedAt": "2026-09-25T10:40:00Z",
+        "evidencePath": "docs/prototypes/alicization-cmp019-wave6.md",
+        "screenshotPath": ""
+      }
+    ]
+  },
   "decisions": {
     "schemaVersion": 1,
     "phase": "Phase 2A",

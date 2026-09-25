@@ -35,6 +35,7 @@ const selectedStatus = ref<IncidentStatus>('OPEN')
 const statusComment = ref('')
 const assigneeId = ref<number | undefined>(undefined)
 const submitting = ref(false)
+const loadError = ref<'forbidden' | 'unexpected' | null>(null)
 
 const statusOptions = [
   { label: 'オープン', value: 'OPEN' },
@@ -80,6 +81,9 @@ function getPriorityLabel(priority: string): string {
 
 async function loadIncident() {
   loading.value = true
+  loadError.value = null
+  incident.value = null
+  comments.value = []
   try {
     const [incRes, comRes] = await Promise.all([
       getIncident(props.incidentId),
@@ -87,7 +91,11 @@ async function loadIncident() {
     ])
     incident.value = incRes.data
     comments.value = comRes.data
-  } catch {
+  } catch (error) {
+    const status = (error as { statusCode?: number; status?: number; response?: { status?: number } }).statusCode
+      ?? (error as { status?: number }).status
+      ?? (error as { response?: { status?: number } }).response?.status
+    loadError.value = status === 403 || status === 404 ? 'forbidden' : 'unexpected'
     showError('インシデントの取得に失敗しました')
   } finally {
     loading.value = false
@@ -306,5 +314,18 @@ watch(() => props.incidentId, () => loadIncident())
 
   <div v-else-if="loading" class="flex justify-center py-12">
     <LoadingBounce />
+  </div>
+
+  <div v-else-if="loadError === 'forbidden'" class="py-12 text-center">
+    <p class="mb-4 text-surface-600 dark:text-surface-300">見つからないか閲覧権限がありません</p>
+    <Button label="一覧へ戻る" @click="emit('back')" />
+  </div>
+
+  <div v-else-if="loadError === 'unexpected'" class="py-12 text-center">
+    <p class="mb-4 text-surface-600 dark:text-surface-300">インシデントの取得に失敗しました</p>
+    <div class="flex justify-center gap-2">
+      <Button label="再試行" @click="loadIncident" />
+      <Button label="一覧へ戻る" text @click="emit('back')" />
+    </div>
   </div>
 </template>

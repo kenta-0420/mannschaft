@@ -59,8 +59,18 @@ test.describe('TEAM-080〜093: チーム未テスト画面14ページ表示確�
   })
 
   test('TEAM-083: インシデント管理ページが表示される', async ({ page }) => {
+    let incidentScopeId: string | null = null
+    await page.route('**/api/v1/incidents?**', async (route) => {
+      incidentScopeId = new URL(route.request().url()).searchParams.get('scopeId')
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } }),
+      })
+    })
     await page.goto(`/teams/${TEAM_ID}/incidents`)
     await waitForHydration(page)
+    await expect.poll(() => incidentScopeId).toBe(String(TEAM_ID))
     await expect(page.getByRole('heading', { name: 'インシデント管理' })).toBeVisible({
       timeout: 10_000,
     })
@@ -173,5 +183,18 @@ test.describe('TEAM-080〜093: チーム未テスト画面14ページ表示確�
     await page.goto(`/teams/${TEAM_ID}/workflows/1`)
     await waitForHydration(page)
     await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('TEAM-083-01: incidentId direct link conceals a forbidden incident', async ({ page }) => {
+    await page.route('**/api/v1/incidents/42', async (route) => {
+      await route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({}) })
+    })
+    await page.route('**/api/v1/incidents/42/comments', async (route) => {
+      await route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({}) })
+    })
+    await page.goto(`/teams/${TEAM_ID}/incidents?incidentId=42`)
+    await waitForHydration(page)
+    await expect(page.getByText('見つからないか閲覧権限がありません')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('一覧へ戻る')).toBeVisible()
   })
 })
