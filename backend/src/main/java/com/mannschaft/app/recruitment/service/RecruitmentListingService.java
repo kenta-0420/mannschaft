@@ -2,6 +2,8 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -312,6 +314,12 @@ public class RecruitmentListingService {
         if (template.getScopeType() != scopeType || !template.getScopeId().equals(scopeId)) {
             throw new BusinessException(RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
         }
+        String location = template.getDefaultLocation();
+        if (location == null || location.isBlank()) {
+            throw new BusinessException(CommonErrorCode.COMMON_001, List.of(
+                    new ErrorResponse.FieldError(
+                            "location", "location must not be blank")));
+        }
 
         // キャンセルポリシーが設定されていれば DEEP COPY
         RecruitmentCancellationPolicyEntity copiedPolicy =
@@ -350,7 +358,7 @@ public class RecruitmentListingService {
                 false,
                 template.getDefaultPrice(),
                 template.getDefaultVisibility(),
-                template.getDefaultLocation(),
+                location,
                 template.getDefaultReservationLineId(),
                 template.getDefaultImageUrl(),
                 policyId,

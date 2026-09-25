@@ -26,6 +26,7 @@ import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -92,6 +93,7 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private Long divPubA;
     private Long divPrivB;
+    private Long matchPubA;
     private Long matchdayPubA;
     private Long matchPrivB;
     private Long templateAId;
@@ -372,6 +374,108 @@ class TournamentScopeContractIT extends AbstractMySqlIntegrationTest {
                             .content(objectMapper.writeValueAsString(body)))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("TOUR_003"));
+        }
+
+        @Test
+        @DisplayName("一括スコアのversion欠落は400となり試合を更新しない")
+        void 一括スコアのversion欠落は400で試合を更新しない() throws Exception {
+            prepareBatchScoreFixture();
+            setAuthentication(adminAId);
+            Map<String, Object> body = batchScoreBody(matchPubA, null);
+
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/matchdays/{mdId}/scores/batch",
+                            orgAId, tPubA, divPubA, matchdayPubA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isBadRequest());
+
+            assertFixtureScoreIsUnchanged();
+        }
+
+        @Test
+        @DisplayName("一括スコアのmatchId欠落は400となり試合を更新しない")
+        void 一括スコアのmatchId欠落は400で試合を更新しない() throws Exception {
+            prepareBatchScoreFixture();
+            setAuthentication(adminAId);
+            Map<String, Object> body = batchScoreBody(null, 0L);
+
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/matchdays/{mdId}/scores/batch",
+                            orgAId, tPubA, divPubA, matchdayPubA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isBadRequest());
+
+            assertFixtureScoreIsUnchanged();
+        }
+
+        @Test
+        @DisplayName("一括スコアのnull要素は400となり試合を更新しない")
+        void 一括スコアのnull要素は400で試合を更新しない() throws Exception {
+            prepareBatchScoreFixture();
+            setAuthentication(adminAId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("scores", java.util.Collections.singletonList(null));
+
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/matchdays/{mdId}/scores/batch",
+                            orgAId, tPubA, divPubA, matchdayPubA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isBadRequest());
+
+            assertFixtureScoreIsUnchanged();
+        }
+
+        @Test
+        @DisplayName("一括スコアは現在versionで更新に成功する")
+        void 一括スコアは現在versionで更新に成功する() throws Exception {
+            prepareBatchScoreFixture();
+            setAuthentication(adminAId);
+            Map<String, Object> body = batchScoreBody(matchPubA, 0L);
+
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/matchdays/{mdId}/scores/batch",
+                            orgAId, tPubA, divPubA, matchdayPubA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isNoContent());
+
+            em.flush();
+            em.clear();
+            Object[] row = (Object[]) em.createNativeQuery(
+                            "SELECT home_score, away_score, version FROM tournament_matches WHERE id = :id")
+                    .setParameter("id", matchPubA)
+                    .getSingleResult();
+            assertThat(((Number) row[0]).intValue()).isEqualTo(2);
+            assertThat(((Number) row[1]).intValue()).isEqualTo(1);
+            assertThat(((Number) row[2]).longValue()).isEqualTo(1L);
+        }
+
+        private void prepareBatchScoreFixture() {
+            matchPubA = insertFixture(matchdayPubA);
+            em.flush();
+            em.clear();
+        }
+
+        private Map<String, Object> batchScoreBody(Long matchId, Long version) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("matchId", matchId);
+            entry.put("homeScore", 2);
+            entry.put("awayScore", 1);
+            entry.put("version", version);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("scores", List.of(entry));
+            return body;
+        }
+
+        private void assertFixtureScoreIsUnchanged() {
+            Object homeScore = em.createNativeQuery(
+                            "SELECT home_score FROM tournament_matches WHERE id = :id")
+                    .setParameter("id", matchPubA)
+                    .getSingleResult();
+            assertThat(homeScore).isNull();
         }
     }
 
