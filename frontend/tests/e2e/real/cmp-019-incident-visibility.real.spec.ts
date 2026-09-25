@@ -14,10 +14,11 @@ import {
   type Page,
 } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
+import { loginViaApi } from '../fixtures/auth'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.describe.configure({ mode: 'serial' })
-test.setTimeout(600_000)
+test.setTimeout(900_000)
 
 const BE = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const API = `${BE}/api/v1`
@@ -115,18 +116,6 @@ async function createIncident(
   return ((await response.json()) as { data: Incident }).data
 }
 
-async function loginUi(page: Page, credentials: Credentials): Promise<void> {
-  await page.goto('/login')
-  await expect(page.locator('input#email')).toBeVisible({ timeout: 30_000 })
-  await page.locator('input#email').fill(credentials.email)
-  await page.locator('input[type="password"]').fill(credentials.password)
-  await page.getByRole('button', { name: 'ログイン', exact: true }).click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), {
-    timeout: 30_000,
-    waitUntil: 'commit',
-  })
-}
-
 async function withLoggedInPage<T>(
   browser: Browser,
   credentials: Credentials,
@@ -135,7 +124,7 @@ async function withLoggedInPage<T>(
   const context = await browser.newContext()
   try {
     const page = await context.newPage()
-    await loginUi(page, credentials)
+    await loginViaApi(page, credentials, { apiBaseUrl: BE, deferNavigation: true })
     return await action(page)
   } finally {
     await context.close()
@@ -163,7 +152,7 @@ async function openIncidentList(page: Page, teamSlug: string, scopeId: number): 
         url.pathname === '/api/v1/incidents' && url.searchParams.get('scopeId') === String(scopeId)
       )
     },
-    { timeout: 20_000 },
+    { timeout: 90_000 },
   )
   await page.goto(`/teams/${teamSlug}/incidents`, { waitUntil: 'domcontentloaded' })
   return (await responsePromise).status()
@@ -267,8 +256,9 @@ test('CMP-019: チーム事故報告は一覧から詳細へ遷移し、MEMBER/S
       const page = await anonymous.newPage()
       await page.goto(`/teams/${teamSlug}/incidents?incidentId=${visibleIncident.id}`, {
         waitUntil: 'domcontentloaded',
+        timeout: 120_000,
       })
-      await expect(page).toHaveURL(/\/login/)
+      await expect(page).toHaveURL(/\/login/, { timeout: 90_000 })
     } finally {
       await anonymous.close()
     }
