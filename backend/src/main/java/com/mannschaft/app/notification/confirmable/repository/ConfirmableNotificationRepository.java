@@ -90,37 +90,42 @@ public interface ConfirmableNotificationRepository
     Optional<ConfirmableNotificationEntity> findByIdForUpdate(@Param("id") Long id);
 
     /**
-     * CMP-260920-1040是正（家老の検出・殿の確認）: 期限切れバッチ専用の
-     * {@code FOR UPDATE} 取得。{@link #findByIdForUpdate} と違い、この物理コネクションに
-     * セッション変数を「立てて」「戻す」2回の {@code SET SESSION} を発行しない。
+     * CMP-260920-1040是正（⚔️足軽19・CI是正4）: 期限切れバッチ専用の {@code FOR UPDATE NOWAIT} 取得。
      *
-     * <p>従来は {@code ConfirmableNotificationExpiryBatchService#expireOneWithLock} が
-     * {@code SET SESSION innodb_lock_wait_timeout = 5} を発行し、{@code finally} で
-     * {@code DEFAULT} に戻していたが、<b>戻す方の発行自体が失敗する</b>と、5秒制限を持ったままの
-     * 物理コネクションがコネクションプールへ返却され、無関係な後続処理を巻き込む（家老の検出）。
-     * MySQL 8.0 のオプティマイザヒント {@code SET_VAR} は当該<b>1文の実行中だけ</b>変数を変え、
-     * 文が終われば自動的に元へ戻る（セッションを汚さない）ため、「戻す」処理自体が無くなり、
-     * その失敗という故障モードごと消える。{@code innodb_lock_wait_timeout} は MySQL 公式マニュアル
-     * 「Optimizer Hints」§8.9.3 の {@code SET_VAR} 対応変数一覧に明記されている
-     * （公式サンプルも {@code SELECT /*+ SET_VAR(innodb_lock_wait_timeout=100) *\/ ... FOR UPDATE}）。</p>
+     * <p><b>前任（{@code findByIdForUpdateWithShortLockWait}）の誤り</b>: 「{@code innodb_lock_wait_timeout}
+     * はオプティマイザヒント {@code SET_VAR} の対応変数であり、公式マニュアルにも明記され公式サンプルも
+     * 同じ形だ」と報告していたが、これは誤りだった。MySQL 8.0 公式マニュアル「Optimizer Hints」の
+     * {@code SET_VAR} がサポートするシステム変数の属性表で、{@code innodb_lock_wait_timeout} は
+     * 「SET_VAR Hint Applies: No」であり、ヒントは構文としては受理されるが<b>黙って無視される</b>。
+     * そのため期限切れバッチは他トランザクションのロック中の行に対して、セッション既定値（通常50秒）
+     * のまま待ち続け、AC-68（ロック中の1件がすぐ失敗し、ほかはこの回で EXPIRED になる）が満たせなかった。</p>
      *
-     * <p>ネイティブクエリを直接 {@link ConfirmableNotificationEntity} へマッピングする
-     * （{@code SELECT *} は当該エンティティの列とちょうど一致するテーブルであるため、
-     * Spring Data JPA のネイティブ→エンティティ自動マッピングで賄える）。</p>
+     * <p><b>是正方針</b>: 期限切れバッチは定期的に回るバッチである。ほかのトランザクションがロック中の
+     * 通知は、この回は<b>待たずに</b>諦めて次の回に回せばよい（次の回で必ず再評価される。これは握りつぶし
+     * ではなく正当な制御である）。{@code jakarta.persistence.lock.timeout} を {@code 0} にする
+     * {@code @QueryHint} を JPQL の {@code @Lock(PESSIMISTIC_WRITE)} に付与する。Hibernate の MySQL
+     * 方言はこのヒント値 0 を {@code FOR UPDATE NOWAIT} として SQL に出す（ミリ秒指定の「N秒待つ」表現は
+     * MySQL の構文に無いため、0（NOWAIT）/-2（SKIP LOCKED）以外の値は無視されるが、0 は明示サポートされる）。
+     * ロックが取れなければ即座に {@link jakarta.persistence.PessimisticLockException} 系の例外
+     * （Spring Data JPA 変換後は {@link org.springframework.dao.PessimisticLockingFailureException} /
+     * {@link org.springframework.dao.CannotAcquireLockException}）を投げる。呼び出し元
+     * （{@code ConfirmableNotificationExpiryBatchService}）は1件ごとの独立トランザクションでこれを
+     * catch し、「この回はスキップした」として件数・ログに記録し、ほかの ID の処理は続ける。</p>
      *
      * @param id 確認通知 ID
      * @return ロック済みの確認通知（存在しなければ empty）
      */
-    @Query(value = "SELECT /*+ SET_VAR(innodb_lock_wait_timeout=5) */ * "
-            + "FROM confirmable_notifications WHERE id = :id FOR UPDATE",
-            nativeQuery = true)
-    Optional<ConfirmableNotificationEntity> findByIdForUpdateWithShortLockWait(@Param("id") Long id);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.QueryHints(@jakarta.persistence.QueryHint(
+            name = "jakarta.persistence.lock.timeout", value = "0"))
+    @Query("SELECT n FROM ConfirmableNotificationEntity n WHERE n.id = :id")
+    Optional<ConfirmableNotificationEntity> findByIdForUpdateNoWait(@Param("id") Long id);
 
     /**
      * CMP-260920-1040: 期限切れ対象の ID だけを抽出する（軍議第8版確定稿 §11.1 手順1）。
      *
      * <p>エンティティは読み込まない。期限切れバッチが ID 1件ごとに独立したトランザクションで
-     * {@link #findByIdForUpdateWithShortLockWait} を呼んで再判定するための入力。</p>
+     * {@link #findByIdForUpdateNoWait} を呼んで再判定するための入力。</p>
      *
      * @param now 現在日時
      * @return 期限切れ対象の確認通知 ID 一覧

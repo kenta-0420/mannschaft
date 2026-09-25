@@ -8,6 +8,7 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -74,6 +75,7 @@ public class ConfirmableNotificationExpiryBatchService {
         }
 
         int expiredCount = 0;
+        int lockSkippedCount = 0;
         for (Long notificationId : expiredTargetIds) {
             try {
                 boolean expired = expireOneWithLock(notificationId, now);
@@ -81,6 +83,13 @@ public class ConfirmableNotificationExpiryBatchService {
                     expiredCount++;
                     log.debug("確認通知を期限切れに変更: notificationId={}", notificationId);
                 }
+            } catch (PessimisticLockingFailureException e) {
+                // CMP-260920-1040是正（⚔️足軽19・CI是正4・AC-68）: NOWAIT でロックが取れなかった。
+                // これは握りつぶしではない——期限切れバッチは定期的に回るため、この回はスキップしても
+                // 次の回に必ず同じ条件で再評価される正当な制御である。件数とログに残す。
+                lockSkippedCount++;
+                log.warn("確認通知期限切れ処理: ロック取得できずこの回はスキップ（次回再評価）: "
+                        + "notificationId={}, error={}", notificationId, e.getMessage());
             } catch (Exception e) {
                 // 1件の失敗で他の ID の処理を止めない（AC-68）。握り潰さずログに残す。
                 log.error("確認通知期限切れ処理失敗: notificationId={}, error={}",
@@ -88,7 +97,8 @@ public class ConfirmableNotificationExpiryBatchService {
             }
         }
 
-        log.info("確認通知期限切れバッチ完了: 対象={}, 期限切れ処理={}", expiredTargetIds.size(), expiredCount);
+        log.info("確認通知期限切れバッチ完了: 対象={}, 期限切れ処理={}, ロックスキップ={}",
+                expiredTargetIds.size(), expiredCount, lockSkippedCount);
     }
 
     /**
@@ -116,15 +126,16 @@ public class ConfirmableNotificationExpiryBatchService {
      */
     public boolean expireOneWithLock(Long notificationId, LocalDateTime now) {
         return Boolean.TRUE.equals(expireOneTxTemplate.execute(status -> {
-            // CMP-260920-1040是正（家老の検出・殿の確認）: 従来は SET SESSION で立てて finally で
-            // DEFAULT に戻していたが、「戻す」発行自体が失敗すると5秒制限を持ったままの物理コネクション
-            // がプールへ返却される故障モードがあった。SET_VAR オプティマイザヒントは対象の1文だけに
-            // 効き、文が終われば自動的に元へ戻るため、戻す処理自体（とその失敗）が構造的に無くなる
-            // （findByIdForUpdateWithShortLockWait のJavadoc参照。ロック待ちの上限を5秒へ短く設定する
-            // 目的自体はAC-68のまま: 1件のロック競合がほかのIDの独立トランザクション処理を
-            // 長時間巻き込まないため）。
+            // CMP-260920-1040是正（⚔️足軽19・CI是正4）: 前任は SET_VAR オプティマイザヒントで
+            // innodb_lock_wait_timeout を5秒に絞れると報告していたが誤りだった（MySQL 8.0 公式マニュアル
+            // 「Optimizer Hints」の対応変数属性表で innodb_lock_wait_timeout は「SET_VAR Hint Applies: No」
+            // であり、ヒントは黙って無視され、実際にはセッション既定値＝約50秒待ち続けていた）。
+            // findByIdForUpdateNoWait は代わりに FOR UPDATE NOWAIT を使う。ロックが取れなければ
+            // 即座に PessimisticLockingFailureException/CannotAcquireLockException を投げ、
+            // 呼び出し元（runBatch）がこの回のスキップとして記録し、次の回に再評価させる
+            // （待たずに諦める。詳細は findByIdForUpdateNoWait のJavadoc参照）。
             ConfirmableNotificationEntity notification =
-                    notificationRepository.findByIdForUpdateWithShortLockWait(notificationId).orElse(null);
+                    notificationRepository.findByIdForUpdateNoWait(notificationId).orElse(null);
             if (notification == null) {
                 return false;
             }

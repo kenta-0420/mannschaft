@@ -432,9 +432,9 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
     @DisplayName("AC-68: 期限切れバッチで1件がロック待ちタイムアウトで失敗しても、"
             + "同じ回のほかの通知はEXPIREDになる（1件ごと独立トランザクションの契約）")
     void oneFailureDuringBatchDoesNotBlockOtherExpirations() throws Exception {
-        // 是正（CI DBユーザーにSUPER権限が無くSET GLOBALがBadSqlGrammarExceptionで失敗するため）:
-        // ロック待ちタイムアウトは ConfirmableNotificationRepository#findByIdForUpdate に付けた
-        // jakarta.persistence.lock.timeout ヒント（5秒・本番設定）で実現する。GLOBAL変更は不要。
+        // CMP-260920-1040是正（⚔️足軽19・CI是正4）: 期限切れバッチは
+        // ConfirmableNotificationRepository#findByIdForUpdateNoWait（FOR UPDATE NOWAIT）でロックを
+        // 取る。ロック中の行は待たずに即座に失敗し、次の回に回される（詳細は同メソッドのJavadoc参照）。
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime pastDeadline = now.minusMinutes(10);
         Long n1 = createExpiredActiveNotification(pastDeadline);
@@ -477,15 +477,41 @@ class ConfirmableNotificationLockOrderingConcurrentIT extends AbstractMySqlInteg
                 // （§11.1手順2・3。骨格段階ではfindExpiredIds自体がUOEを投げるため、
                 // ID列挙は直接収集し、対象抽出そのものの検証はfindExpiredIdsの別テストに委ねる）。
                 List<Long> ids = List.of(n1, nLocked, n3);
+                Exception lockedFailure = null;
+                long lockedFailureElapsedMs = -1;
                 for (Long id : ids) {
+                    long start = System.nanoTime();
                     try {
                         expiryBatchService.expireOneWithLock(id, now);
                     } catch (Exception e) {
-                        // 1件の失敗（ロック待ちタイムアウト等）はログに残し、他のIDの処理は続ける
+                        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+                        // 1件の失敗（ロック競合）はログに残し、他のIDの処理は続ける
                         // （§11.1手順3。握りつぶさず、ここでは失敗を許容してループを続けるだけ）。
-                        log.info("[AC-68] notificationId={} の期限切れ処理に失敗（想定内）: {}", id, e.toString());
+                        log.info("[AC-68] notificationId={} の期限切れ処理に失敗（想定内）: {} ({}ms)",
+                                id, e.toString(), elapsedMs);
+                        if (id.equals(nLocked)) {
+                            lockedFailure = e;
+                            lockedFailureElapsedMs = elapsedMs;
+                        }
                     }
                 }
+
+                // AC-68是正（⚔️足軽19・CI是正4）: Hibernate が実際に FOR UPDATE NOWAIT を発行しているか
+                // を、待たずに即座に失敗したこと（経過時間）で検証する。前任の SET_VAR 方式はヒントが
+                // 黙って無視され、innodb_lock_wait_timeout のセッション既定値（通常50秒）のまま待ち
+                // 続けていたため、この検証は前任の実装では失敗する（＝旧実装の欠陥を検出できる）。
+                assertThat(lockedFailure)
+                        .as("AC-68: ロック中のnLockedはexpireOneWithLockで例外になる")
+                        .isNotNull();
+                assertThat(lockedFailure)
+                        .as("AC-68: NOWAITが投げる例外はPessimisticLockingFailureException系である")
+                        .isInstanceOfAny(
+                                org.springframework.dao.PessimisticLockingFailureException.class,
+                                org.springframework.dao.CannotAcquireLockException.class);
+                assertThat(lockedFailureElapsedMs)
+                        .as("AC-68: NOWAITは待たずに即座に失敗する（秒オーダーで待つSET_VAR無視の"
+                                + "旧実装ならここが数秒〜数十秒になる）")
+                        .isLessThan(3000L);
 
                 mayRelease.countDown();
                 lockHolder.get(10, TimeUnit.SECONDS);
