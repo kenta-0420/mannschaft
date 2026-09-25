@@ -214,8 +214,7 @@ class ConfirmableNotificationEndToEndDeliveryIT extends AbstractMySqlIntegration
 
         // 受付後・ワーカー処理前にチームが送信組織のツリーから離脱する（別組織へACTIVE所属を切り替え）。
         jdbc.update("DELETE FROM team_org_memberships WHERE team_id = ? AND organization_id = ?", team, org);
-        jdbc.update("INSERT INTO team_org_memberships (team_id, organization_id, status, created_at, updated_at) "
-                + "VALUES (?, ?, 'ACTIVE', NOW(), NOW())", team, otherOrg);
+        seedTeamOrgMembership(team, otherOrg);
 
         runWorkerUntilDone(notificationId);
 
