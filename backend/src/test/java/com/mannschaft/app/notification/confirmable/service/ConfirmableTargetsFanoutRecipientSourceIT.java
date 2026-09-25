@@ -120,7 +120,7 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedTeamMember(teamUnderGrandchild, uTeam);
         seedOrgDirectMember(root, sender);
 
-        long notificationId = seedConfirmableNotification(sender);
+        long notificationId = seedConfirmableNotification(sender, "ORGANIZATION", root);
         seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, root);
 
         List<Long> collected = collectAll(notificationId, sender);
@@ -172,7 +172,7 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedMembership(uMemberAndSupporter, ScopeType.ORGANIZATION, org, RoleKind.SUPPORTER, null);
         seedMembership(uMemberAndSupporter, ScopeType.ORGANIZATION, org, RoleKind.MEMBER, null);
 
-        long notificationId = seedConfirmableNotification(sender);
+        long notificationId = seedConfirmableNotification(sender, "ORGANIZATION", org);
         seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, org);
 
         List<Long> collected = collectAll(notificationId, sender);
@@ -197,7 +197,7 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedOrgDirectMember(org, other);
         seedOrgDirectMember(org, sender);
 
-        long notificationId = seedConfirmableNotification(sender);
+        long notificationId = seedConfirmableNotification(sender, "ORGANIZATION", org);
         seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, org);
 
         List<Long> collected = collectAll(notificationId, sender);
@@ -229,7 +229,7 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedOrgDirectMember(org, overlapping);
         seedOrgDirectMember(org, sender);
 
-        long notificationId = seedConfirmableNotification(sender);
+        long notificationId = seedConfirmableNotification(sender, "ORGANIZATION", org);
         seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, org);
 
         List<Long> collected = collectAll(notificationId, sender);
@@ -246,8 +246,13 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
     @DisplayName("AC-5 targets=[TEAM(a), ORGANIZATION(child)] はチームaの在籍メンバー∪child配下全員のみ")
     void ac5_mixedTargetsUnion() {
         long seed = 41_005L;
-        long unrelatedOrg = createOrg(null);
-        long child = createOrg(null);
+        // CMP-260920-1040是正（§8.1）: TEAM ターゲットの妥当性は「送信組織ツリー内のいずれかの組織に
+        // 現時点で ACTIVE 所属しているか」で判定されるため、teamA・child のいずれもが同一の送信組織
+        // ツリー（commonRoot 配下）に属する構成へ改める（unrelatedOrg が送信ツリーと無縁のままだと
+        // teamA 自体が是正後は0人展開になり、AC-5 の「和集合」シナリオを検証できなくなるため）。
+        long commonRoot = createOrg(null);
+        long unrelatedOrg = createOrg(commonRoot);
+        long child = createOrg(commonRoot);
         long teamA = 88_006L;
         seedTeamOrgMembership(teamA, unrelatedOrg, TeamOrgMembershipEntity.Status.ACTIVE);
 
@@ -260,7 +265,7 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedOrgDirectMember(unrelatedOrg, uUnrelatedOrgDirect);
         seedOrgDirectMember(child, sender);
 
-        long notificationId = seedConfirmableNotification(sender);
+        long notificationId = seedConfirmableNotification(sender, "ORGANIZATION", commonRoot);
         seedTarget(notificationId, ConfirmableTargetType.TEAM, teamA);
         seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, child);
 
@@ -290,7 +295,7 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedTeamMember(otherTeam, uOtherTeam);
         seedTeamMember(team, sender);
 
-        long notificationId = seedConfirmableNotification(sender);
+        long notificationId = seedConfirmableNotification(sender, "TEAM", team);
         seedTarget(notificationId, ConfirmableTargetType.TEAM, team);
 
         List<Long> collected = collectAll(notificationId, sender);
@@ -320,7 +325,7 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedTeamMember(team, uBeforeRegistration);
         seedTeamMember(team, sender);
 
-        long notificationId = seedConfirmableNotification(sender);
+        long notificationId = seedConfirmableNotification(sender, "TEAM", team);
         seedTarget(notificationId, ConfirmableTargetType.TEAM, team);
 
         // 「グループ登録後にチームへ加わった人」を模してターゲット保存後に加入させる。
@@ -353,7 +358,7 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedTeamMember(leavingTeam, uLeavingTeam);
         seedOrgDirectMember(org, sender);
 
-        long notificationId = seedConfirmableNotification(sender);
+        long notificationId = seedConfirmableNotification(sender, "ORGANIZATION", org);
         seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, org);
 
         // 受付（targets保存）は済んでいるが、ワーカーが処理する前にチームが組織を離脱する
@@ -389,7 +394,7 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedOrgDirectMember(child, uChild);
         seedOrgDirectMember(root, sender);
 
-        long notificationId = seedConfirmableNotification(sender);
+        long notificationId = seedConfirmableNotification(sender, "ORGANIZATION", root);
         seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, root);
 
         // 受付後・処理前に child の親が otherRoot へ変わる（root ツリーの配下から外れる）。
@@ -423,7 +428,7 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
         seedTeamMember(team, uSecondChunk);
         seedOrgDirectMember(org, sender);
 
-        long notificationId = seedConfirmableNotification(sender);
+        long notificationId = seedConfirmableNotification(sender, "ORGANIZATION", org);
         seedTarget(notificationId, ConfirmableTargetType.ORGANIZATION, org);
 
         // 1チャンク目（pageSize=1）を取得する。
@@ -538,14 +543,32 @@ class ConfirmableTargetsFanoutRecipientSourceIT extends AbstractMySqlIntegration
      * test profile は ddl-auto:create でDEFAULTが効かないため、NOT NULL列をすべて明示的に埋める。
      */
     private long seedConfirmableNotification(long senderUserId) {
+        // CMP-260920-1040是正: 従来は scope_type='ORGANIZATION', scope_id=1 固定だったが、
+        // §8.1 是正でターゲット展開が「送信組織（scope_id）を頂点とする現在のツリー」に本当に
+        // 縛られるようになったため、実際に送信スコープが必要な呼び出し元は
+        // {@link #seedConfirmableNotification(long, String, long)} を使う。この引数省略版は
+        // 送信スコープが結果に影響しないテスト専用に残す（現状呼び出し元なし）。
+        return seedConfirmableNotification(senderUserId, "ORGANIZATION", 1L);
+    }
+
+    /**
+     * confirmable_notifications 最小行を1件 INSERT し、生成IDを返す（FK非依存の直接SQL）。
+     * test profile は ddl-auto:create でDEFAULTが効かないため、NOT NULL列をすべて明示的に埋める。
+     *
+     * @param scopeType 送信スコープ種別（{@code ORGANIZATION}/{@code TEAM}）。CMP-260920-1040是正:
+     *                  §8.1 のターゲット展開判定はこの値を実際に参照するため、呼び出し側の
+     *                  シナリオに即した実在の組織/チームIDを渡すこと。
+     * @param scopeId   送信スコープID
+     */
+    private long seedConfirmableNotification(long senderUserId, String scopeType, long scopeId) {
         jdbc.update("INSERT INTO confirmable_notifications "
                         + "(source_type, scope_type, scope_id, title, created_by, priority, status, "
                         + "total_recipient_count, delivery_status, delivered_count, unconfirmed_count, "
                         + "unconfirmed_visibility, created_at, updated_at) "
-                        + "VALUES ('EMERGENCY_CLOSURE', 'ORGANIZATION', 1, 'IT title', ?, 'NORMAL', 'ACTIVE', "
+                        + "VALUES ('EMERGENCY_CLOSURE', ?, ?, 'IT title', ?, 'NORMAL', 'ACTIVE', "
                         + "0, 'DELIVERED', 0, 0, "
                         + "'CREATOR_AND_ADMIN', NOW(), NOW())",
-                senderUserId);
+                scopeType, scopeId, senderUserId);
         Long id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
         return id == null ? 0L : id;
     }

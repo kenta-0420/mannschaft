@@ -58,6 +58,7 @@ public class ConfirmableRecipientPreviewService {
                 .toList();
 
         long count = targetRepository.countAdHocTargetRecipients(
+                scopeType.name(), scopeId,
                 orgIds.isEmpty() ? NONE : orgIds,
                 teamIds.isEmpty() ? NONE : teamIds,
                 false, MAX_ORG_DESCENDANT_DEPTH, requesterUserId);
