@@ -270,11 +270,15 @@ class ShiftRequestPositionScopeContractIT extends AbstractMySqlIntegrationTest {
             // 暖機（初回のみのキャッシュ充填を計測から外す）
             mockMvc.perform(get("/api/v1/shifts/requests").param("scheduleId", scheduleAId.toString()));
 
-            long c0 = countStatements(get("/api/v1/shifts/requests").param("scheduleId", empty.toString()), 0);
-            long c1 = countStatements(get("/api/v1/shifts/requests").param("scheduleId", scheduleAId.toString()), 1);
-            long c3 = countStatements(get("/api/v1/shifts/requests").param("scheduleId", many.toString()), 3);
-            assertThat(c1).as("1件").isEqualTo(c0);
-            assertThat(c3).as("3件").isEqualTo(c0);
+            SqlCount c0 = countStatements(get("/api/v1/shifts/requests").param("scheduleId", empty.toString()), 0);
+            SqlCount c1 = countStatements(get("/api/v1/shifts/requests").param("scheduleId", scheduleAId.toString()), 1);
+            SqlCount c3 = countStatements(get("/api/v1/shifts/requests").param("scheduleId", many.toString()), 3);
+            // 認可はすべてクエリ実行（リポジトリ問い合わせ）なので、その回数が 0・1・3 件で一定であること。
+            assertThat(c1.queries()).as("1件のクエリ実行数").isEqualTo(c0.queries());
+            assertThat(c3.queries()).as("3件のクエリ実行数").isEqualTo(c0.queries());
+            // 発行 SQL 総数も件数に比例しない（N+1 でない）こと。0件→1件では、結果が空でないときだけ
+            // 1 回走るエンティティ読込（認可ではない）が加わるため、比較は 1件と3件で行う。
+            assertThat(c3.prepared()).as("3件の発行SQL数").isEqualTo(c1.prepared());
         }
     }
 
@@ -633,19 +637,19 @@ class ShiftRequestPositionScopeContractIT extends AbstractMySqlIntegrationTest {
         void SQL回数が件数に依存しない() throws Exception {
             setAuth(memberTeamAId);
             mockMvc.perform(get("/api/v1/shifts/positions").param("teamId", teamAId.toString()));
-            long c1 = countStatements(get("/api/v1/shifts/positions").param("teamId", teamAId.toString()), 1);
+            SqlCount c1 = countStatements(get("/api/v1/shifts/positions").param("teamId", teamAId.toString()), 1);
 
             savePosition(teamAId, "ホール", 2);
             savePosition(teamAId, "レジ", 3);
             em.flush();
             em.clear();
-            long c3 = countStatements(get("/api/v1/shifts/positions").param("teamId", teamAId.toString()), 3);
+            SqlCount c3 = countStatements(get("/api/v1/shifts/positions").param("teamId", teamAId.toString()), 3);
 
             em.createNativeQuery("DELETE FROM shift_positions WHERE team_id = :t")
                     .setParameter("t", teamAId).executeUpdate();
             em.flush();
             em.clear();
-            long c0 = countStatements(get("/api/v1/shifts/positions").param("teamId", teamAId.toString()), 0);
+            SqlCount c0 = countStatements(get("/api/v1/shifts/positions").param("teamId", teamAId.toString()), 0);
 
             assertThat(c1).as("1件").isEqualTo(c0);
             assertThat(c3).as("3件").isEqualTo(c0);
@@ -887,7 +891,11 @@ class ShiftRequestPositionScopeContractIT extends AbstractMySqlIntegrationTest {
     private record ErrorView(int status, String code, String message) {
     }
 
-    private long countStatements(RequestBuilder request, int expectedSize) throws Exception {
+    /** 発行 SQL 総数（prepared）とクエリ実行数（queries）。 */
+    private record SqlCount(long prepared, long queries) {
+    }
+
+    private SqlCount countStatements(RequestBuilder request, int expectedSize) throws Exception {
         Statistics stats = em.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
         stats.setStatisticsEnabled(true);
         stats.clear();
@@ -899,8 +907,9 @@ class ShiftRequestPositionScopeContractIT extends AbstractMySqlIntegrationTest {
         System.out.printf("[AC-12] size=%d prepared=%d entityLoad=%d queryExec=%d flush=%d update=%d fetch=%d%n",
                 expectedSize, count, stats.getEntityLoadCount(), stats.getQueryExecutionCount(),
                 stats.getFlushCount(), stats.getEntityUpdateCount(), stats.getEntityFetchCount());
+        long queries = stats.getQueryExecutionCount();
         em.clear();
-        return count;
+        return new SqlCount(count, queries);
     }
 
     private long countRequests() {
