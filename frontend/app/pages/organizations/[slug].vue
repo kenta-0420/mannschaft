@@ -180,6 +180,7 @@ const SHELL_SEGMENTS = new Set([
   'supporters',
   'join-requests',
   'modules',
+  'guide',
   // --- ウィジェット遷移先（ScopeDashboard.vue scopeLinks 正本・組織に実在する 13 セグメント） ---
   'schedule',
   'todos',
@@ -514,5 +515,12 @@ provideOrgShellContext({
         </template>
       </Dialog>
     </template>
+    <MemberPermissionSetupDialog
+      v-if="isShellRoute && org?.numericId && roleName === 'ADMIN'"
+      scope-type="ORGANIZATION"
+      :scope-id="org.numericId"
+      :slug="orgSlug"
+      :role-name="roleName"
+    />
   </div>
 </template>

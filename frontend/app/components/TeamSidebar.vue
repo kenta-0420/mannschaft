@@ -115,6 +115,7 @@ const categories: SidebarCategory[] = [
     labelKey: 'teamSidebar.category.settings',
     icon: 'pi pi-cog',
     items: [
+      { labelKey: 'teamSidebar.item.guide', icon: 'pi pi-book', path: 'guide', moduleSlug: null, requiredRole: 'MEMBER' },
       // F10.1.1 P2a: 管理コンソール（L2 ハブ）への入口。DEPUTY_ADMIN 以上に表示。
       { labelKey: 'teamSidebar.item.adminConsole', icon: 'pi pi-shield', path: 'admin', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
       { labelKey: 'teamSidebar.item.memberPermissions', icon: 'pi pi-user-edit', path: '', absolutePath: '/admin/member-permissions', moduleSlug: null, requiredRole: 'ADMIN' },

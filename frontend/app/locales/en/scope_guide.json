@@ -1,0 +1,61 @@
+{
+  "scopeGuide": {
+    "team": {
+      "title": "Team guide and limits",
+      "intro": "Teams share schedules, matches, tasks, and files. Available features depend on what the team administrator enables.",
+      "featuresTitle": "Features available to this team",
+      "featuresDescription": "Optional team features and their current status. Members can use features enabled by an administrator.",
+      "qaTitle": "Team Q&A",
+      "qa1Question": "Can members manage schedules or posts?",
+      "qa1Answer": "Administrators manage them by default. A team administrator can allow members to manage schedules, files, and posts separately in the default member permissions.",
+      "qa2Question": "Who enables features?",
+      "qa2Answer": "A team administrator chooses features in Feature Settings. Members can see the available features and their status here.",
+      "qa3Question": "How is a team different from an organization?",
+      "qa3Answer": "A team is for day-to-day activities and matches. An organization has a separate feature catalog and storage allowance for wider operations."
+    },
+    "organization": {
+      "title": "Organization guide and limits",
+      "intro": "Organizations share information across teams and support organization-wide operations. Available features depend on what the organization administrator enables.",
+      "featuresTitle": "Features available to this organization",
+      "featuresDescription": "Optional organization features and their current status. The feature catalog differs from a team's.",
+      "qaTitle": "Organization Q&A",
+      "qa1Question": "Who enables organization features?",
+      "qa1Answer": "An organization administrator chooses features in Feature Settings. Members can see the available features and their status here.",
+      "qa2Question": "Is storage shared with teams?",
+      "qa2Answer": "No. Organizations and teams have separate storage allowances. Check Storage Usage to see each allowance.",
+      "qa3Question": "How are member management permissions decided?",
+      "qa3Answer": "Administrators manage things by default. An organization administrator can change default member permissions. Assigned permission groups take precedence."
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "paidRequired": "Paid plan required",
+    "unavailable": "Unavailable for this scope",
+    "noOptionalModules": "There are no optional features yet.",
+    "loadError": "The guide could not be loaded. Check that you belong to this team or organization.",
+    "limitsTitle": "Features, pricing, and storage",
+    "optionalLimitQuestion": "How many features are included in the free plan?",
+    "optionalLimitAnswer": "The free plan allows up to {count} optional features at once; {enabled} are currently enabled. Always-on core features do not count toward this limit.",
+    "optionalLimitUnknown": "The feature limit could not be loaded. Check the plan list for current terms.",
+    "paidQuestion": "When is a paid plan needed?",
+    "paidAnswer": "Some features require a paid plan. Check the plan list for current terms and prices.",
+    "viewPlans": "View plans",
+    "storageQuestion": "What is the storage limit?",
+    "storageUsage": "Current usage is {used}, and the plan includes {included}. The allowance depends on the contract and administrator settings.",
+    "storageMax": "The current maximum capacity is {max}.",
+    "storageDynamic": "The allowance depends on the contract and administrator settings.",
+    "viewStorage": "Check usage",
+    "setup": {
+      "title": "Set initial member permissions",
+      "intro": "Only administrators can manage these activities by default. Allow members only the actions they need. You can save with every switch off.",
+      "MANAGE_SCHEDULES": "Members can create and edit schedules.",
+      "MANAGE_FILES": "Members can manage shared files.",
+      "MANAGE_POSTS": "Members can create posts and edit their own posts.",
+      "note": "You can change permissions later. For details about features and pricing,",
+      "guideLink": "view the guide and limits",
+      "later": "Decide later",
+      "save": "Start with these settings",
+      "saved": "Default member permissions have been set.",
+      "loadFailed": "Initial permissions could not be loaded. Check the existing permissions page."
+    }
+  }
+}
