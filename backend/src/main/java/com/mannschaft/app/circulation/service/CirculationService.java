@@ -40,6 +40,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -288,6 +289,14 @@ public class CirculationService {
         CirculationMode mode = request.getCirculationMode() != null
                 ? EnumInputParser.parse(CirculationMode.class, request.getCirculationMode(), "circulationMode")
                 : CirculationMode.SIMULTANEOUS;
+        // UNKNOWN は CirculationModeConverter が DB の不正値を読み込み時に縮退させるための内部値であり、
+        // 正規の入力選択肢ではない（CMP-260920-1041）。EnumInputParser は enum 定数名を機械的に受理するため、
+        // ここで明示的に弾く。
+        if (mode == CirculationMode.UNKNOWN) {
+            throw new BusinessException(
+                    CommonErrorCode.COMMON_001,
+                    List.of(new ErrorResponse.FieldError("circulationMode", "定義されていない値です")));
+        }
 
         CirculationDocumentEntity.CirculationDocumentEntityBuilder<?, ?> builder =
                 CirculationDocumentEntity.builder()

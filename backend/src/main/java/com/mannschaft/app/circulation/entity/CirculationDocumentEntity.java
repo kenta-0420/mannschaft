@@ -2,11 +2,13 @@ package com.mannschaft.app.circulation.entity;
 
 import com.mannschaft.app.circulation.CirculationExportStatus;
 import com.mannschaft.app.circulation.CirculationMode;
+import com.mannschaft.app.circulation.CirculationModeConverter;
 import com.mannschaft.app.circulation.CirculationPriority;
 import com.mannschaft.app.circulation.CirculationStatus;
 import com.mannschaft.app.circulation.StampDisplayStyle;
 import com.mannschaft.app.common.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -47,8 +49,8 @@ public class CirculationDocumentEntity extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String body;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Convert(converter = CirculationModeConverter.class)
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
     @Builder.Default
     private CirculationMode circulationMode = CirculationMode.SIMULTANEOUS;
 
