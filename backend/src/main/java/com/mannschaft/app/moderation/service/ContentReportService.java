@@ -93,7 +93,23 @@ public class ContentReportService {
 
         log.info("コンテンツ通報作成: id={}, targetType={}, targetId={}, userId={}",
                 report.getId(), req.getTargetType(), req.getTargetId(), userId);
-        return moderationMapper.toReportResponse(report);
+        return withoutDerivedValues(moderationMapper.toReportResponse(report));
+    }
+
+    /**
+     * 通報者向けの作成応答から、対象から導出した値（宛先スコープ・対象ユーザー・控え）を除く。
+     *
+     * <p>これらは運営・管理者のレビュー用に保存するもので、通報者には返さない（通報者が送ったものでもなく、
+     * 画面も作成応答の本文を使っていない。{@code useMarketApi#reportMarketListing}）。管理者向けの
+     * 一覧・詳細 API は同じ {@link ReportResponse} で全項目を返す。</p>
+     */
+    private static ReportResponse withoutDerivedValues(ReportResponse r) {
+        if (r == null) {
+            return null;
+        }
+        return new ReportResponse(r.getId(), r.getTargetType(), r.getTargetId(), r.getReportedBy(),
+                null, null, null, r.getReason(), r.getDescription(), null, r.getStatus(),
+                r.getReviewedBy(), r.getReviewedAt(), r.getCreatedAt(), r.getUpdatedAt());
     }
 
     /**

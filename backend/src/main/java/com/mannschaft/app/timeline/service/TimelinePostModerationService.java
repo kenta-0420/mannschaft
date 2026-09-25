@@ -1,5 +1,6 @@
 package com.mannschaft.app.timeline.service;
 
+import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,8 +27,13 @@ public class TimelinePostModerationService {
     /**
      * 通報対象の投稿（または返信）を、通報者が閲覧できる場合に限り返す。
      *
-     * <p>存在しない・論理削除済み・閲覧できない・種別（投稿か返信か）が食い違う、のいずれも
-     * 区別せず空を返す（呼び出し元は同一応答で拒否し、対象の実在を漏らさない）。</p>
+     * <p>通報者が<b>実際に閲覧できる</b>投稿に限る。{@link TimelinePostVisibilityAccessGuard#isVisible}
+     * はスコープの認可だけを判定し投稿の状態を見ないため、ここで公開中（{@link PostStatus#PUBLISHED}）で
+     * あることも要求する（フィード・一覧のクエリと同じ基準。下書き・予約・非表示・削除済みは、同じ
+     * スコープの利用者にも見えない）。返信は親投稿も同じ基準で閲覧できることを要求する。</p>
+     *
+     * <p>存在しない・論理削除済み・公開中でない・閲覧できない・種別（投稿か返信か）が食い違う、の
+     * いずれも区別せず空を返す（呼び出し元は同一応答で拒否し、対象の実在と本文を漏らさない）。</p>
      *
      * @param postId         投稿 ID
      * @param reply          {@code true} なら返信（{@code parent_id} あり）、{@code false} なら親投稿を期待する
@@ -37,8 +43,17 @@ public class TimelinePostModerationService {
     public Optional<PostReportTarget> findReportTarget(Long postId, boolean reply, Long reporterUserId) {
         return postRepository.findById(postId)
                 .filter(post -> (post.getParentId() != null) == reply)
-                .filter(post -> postVisibilityGuard.isVisible(post, reporterUserId))
+                .filter(post -> isViewable(post, reporterUserId))
+                .filter(post -> !reply || postRepository.findById(post.getParentId())
+                        .filter(parent -> isViewable(parent, reporterUserId))
+                        .isPresent())
                 .map(TimelinePostModerationService::toTarget);
+    }
+
+    /** 公開中で、かつ通報者のスコープから見える投稿か。 */
+    private boolean isViewable(TimelinePostEntity post, Long reporterUserId) {
+        return post.getStatus() == PostStatus.PUBLISHED
+                && postVisibilityGuard.isVisible(post, reporterUserId);
     }
 
     private static PostReportTarget toTarget(TimelinePostEntity post) {

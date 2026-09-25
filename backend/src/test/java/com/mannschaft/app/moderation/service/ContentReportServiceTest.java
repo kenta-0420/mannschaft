@@ -98,8 +98,13 @@ class ContentReportServiceTest {
             // when
             ReportResponse result = contentReportService.createReport(req, USER_ID);
 
-            // then
-            assertThat(result).isEqualTo(expected);
+            // then: 作成応答は導出値（宛先・対象ユーザー・控え）を含めない
+            assertThat(result.getId()).isEqualTo(REPORT_ID);
+            assertThat(result.getReason()).isEqualTo("SPAM");
+            assertThat(result.getScopeType()).isNull();
+            assertThat(result.getScopeId()).isNull();
+            assertThat(result.getTargetUserId()).isNull();
+            assertThat(result.getContentSnapshot()).isNull();
         }
 
         @Test
