@@ -30,3 +30,18 @@ ALTER TABLE billing_price_versions
                  ELSE NULL END
         ) STORED,
     ADD UNIQUE KEY uk_bpv_single_future (future_reservation_key);
+
+-- 取り消し（CANCELLED・2026-09-24 御裁可）: DRAFT/READY/PROVISION_FAILED の revision を取り消して future 枠を
+-- 解放する終端状態。上の生成列 future_reservation_key の対象（5状態）には含めない＝枠を占有しない。
+-- V196 の状態 CHECK（chk_bpv_status / chk_bpbv_status）を CANCELLED 込みで張り直す。
+ALTER TABLE billing_price_versions
+    DROP CHECK chk_bpv_status,
+    ADD CONSTRAINT chk_bpv_status CHECK (
+        status IN ('DRAFT', 'PROVISIONING', 'PROVISION_FAILED', 'READY', 'SCHEDULED', 'ACTIVE', 'RETIRED', 'CANCELLED')
+    );
+
+ALTER TABLE billing_price_band_versions
+    DROP CHECK chk_bpbv_status,
+    ADD CONSTRAINT chk_bpbv_status CHECK (
+        status IN ('DRAFT', 'PROVISIONING', 'PROVISION_FAILED', 'READY', 'SCHEDULED', 'ACTIVE', 'RETIRED', 'CANCELLED')
+    );

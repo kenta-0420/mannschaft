@@ -33,7 +33,8 @@ class PriceRevisionAuditAndSecretExposureGuardTest {
             "PRICE_REVISION_PROVISIONED",
             "PRICE_REVISION_RETRY_PROVISIONED",
             "PRICE_REVISION_RECONCILED",
-            "PRICE_REVISION_ACTIVATED");
+            "PRICE_REVISION_ACTIVATED",
+            "PRICE_REVISION_CANCELLED");
 
     @Test
     @DisplayName("AC-171: 作成・provision・retry・reconcile・activateに対応するAuditEventTypeが存在する")

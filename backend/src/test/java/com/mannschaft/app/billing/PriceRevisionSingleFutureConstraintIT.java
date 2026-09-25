@@ -11,6 +11,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import java.time.Instant;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -47,7 +48,37 @@ class PriceRevisionSingleFutureConstraintIT extends AbstractMySqlIntegrationTest
 
         assertThatThrownBy(() -> versionRepository.saveAndFlush(
                 revision(productKey, 2L, BillingPriceVersionStatus.DRAFT)))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .satisfies(e -> assertThat(rootMessage(e))
+                        .as("単一 future 制限の UNIQUE（uk_bpv_single_future）で拒否されること"
+                                + "（別の制約違反での偶然の赤ではないこと）")
+                        .contains("uk_bpv_single_future"));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = BillingPriceVersionStatus.class,
+            names = {"ACTIVE", "RETIRED", "CANCELLED"})
+    @DisplayName("陰性対照: ACTIVE / RETIRED / CANCELLED の revision は future 枠を占有せず、新規 DRAFT を保存できる")
+    void nonFutureRevisionDoesNotOccupyFutureSlot(BillingPriceVersionStatus existingStatus) {
+        assertSecondDraftAccepted(existingStatus);
+    }
+
+    private void assertSecondDraftAccepted(BillingPriceVersionStatus existingStatus) {
+        String productKey = "SFIT" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        versionRepository.saveAndFlush(revision(productKey, 1L, existingStatus));
+
+        versionRepository.saveAndFlush(revision(productKey, 2L, BillingPriceVersionStatus.DRAFT));
+
+        assertThat(versionRepository.findByProductKindAndProductKeyAndScopeKindAndDeletedAtIsNullOrderByRevisionNoDesc(
+                BillingProductKind.PLAN, productKey, EntitlementScopeKind.TEAM)).hasSize(2);
+    }
+
+    private static String rootMessage(Throwable e) {
+        Throwable root = e;
+        while (root.getCause() != null) {
+            root = root.getCause();
+        }
+        return String.valueOf(root.getMessage());
     }
 
     private static BillingPriceVersionEntity revision(String productKey, long revisionNo,

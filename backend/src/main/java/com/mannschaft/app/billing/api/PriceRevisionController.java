@@ -16,6 +16,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -62,7 +64,7 @@ import java.util.function.Supplier;
  */
 @RestController("priceRevisionController")
 @RequestMapping("/api/v1/system-admin/billing/price-revisions")
-@Tag(name = "システム管理 - 価格改定", description = "価格改定（price-revisions）: create/provision/retry/reconcile/activate/取得/一覧")
+@Tag(name = "システム管理 - 価格改定", description = "価格改定（price-revisions）: create/provision/retry/reconcile/activate/cancel/取得/一覧")
 @RequiredArgsConstructor
 public class PriceRevisionController {
 
@@ -75,6 +77,7 @@ public class PriceRevisionController {
     private final PriceRevisionRetryProvisionService retryProvisionService;
     private final BillingPriceProvisionRecoveryService reconcileService;
     private final PriceRevisionActivationService activationService;
+    private final PriceRevisionCancelService cancelService;
     private final BillingDurableIdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
 
@@ -166,6 +169,23 @@ public class PriceRevisionController {
         String path = BASE_PATH + "/" + id + "/activate";
         return idempotent(actorId, "POST", path, idempotencyKey, body, HttpStatus.OK, null,
                 () -> activationService.activate(id, body.lockVersion(), actorId));
+    }
+
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "修復できない価格改定を取り消して商品の future 枠を解放する運用操作を、Gate状態にかかわらず可能にするため")
+    @Operation(summary = "価格改定の取り消し", description = "DRAFT/READY/PROVISION_FAILED の revision と全 band を CANCELLED にし、"
+            + "future 枠を解放する。それ以外の状態は409。Stripe 側の Price には触らない。Idempotency-Key 必須。")
+    public ResponseEntity<Object> cancel(
+            @PathVariable UUID id,
+            @RequestBody(required = false) PriceRevisionLockVersionRequest request,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 36) String idempotencyKey) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        PriceRevisionLockVersionRequest body = requestOrDefault(request);
+        String path = BASE_PATH + "/" + id + "/cancel";
+        return idempotent(actorId, "POST", path, idempotencyKey, body, HttpStatus.OK, null,
+                () -> cancelService.cancel(id, body.lockVersion(), actorId));
     }
 
     private PriceRevisionLockVersionRequest requestOrDefault(PriceRevisionLockVersionRequest request) {

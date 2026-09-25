@@ -635,7 +635,13 @@ public enum AuditEventType {
      * 価格改定を Activate した（決定4・L群 AC-171）。即時なら ACTIVE・未来予約なら SCHEDULED。
      * metadata に revisionId・status（ACTIVE/SCHEDULED）を含める。
      */
-    PRICE_REVISION_ACTIVATED(AuditEventCategory.BILLING);
+    PRICE_REVISION_ACTIVATED(AuditEventCategory.BILLING),
+
+    /**
+     * 価格改定を取り消した（DRAFT/READY/PROVISION_FAILED → CANCELLED。2026-09-24 御裁可）。
+     * metadata に revisionId・status を含める。Stripe Price/Product ID は含めない（AC-168）。
+     */
+    PRICE_REVISION_CANCELLED(AuditEventCategory.BILLING);
 
     private final AuditEventCategory category;
 }

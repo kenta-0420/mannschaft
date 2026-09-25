@@ -92,6 +92,8 @@ class PriceRevisionControllerIdempotencyTest {
     @MockitoBean
     private PriceRevisionActivationService activationService;
     @MockitoBean
+    private PriceRevisionCancelService cancelService;
+    @MockitoBean
     private BillingDurableIdempotencyService idempotencyService;
 
     @MockitoBean
