@@ -372,6 +372,31 @@ class IncidentScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("EXTERNAL担当のIDと一致するメンバーは詳細を読めずステータスも変更できない")
+        void EXTERNAL担当のID一致では変更不可() throws Exception {
+            Long unrelatedMemberId = insertUser("inc-authz-external-id@example.com");
+            MembershipTestHelper.insertMembership(em, unrelatedMemberId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+            em.flush();
+            Long incidentId = insertIncident(teamAId, memberAId, "REPORTED");
+
+            setAuthentication(adminAId);
+            mockMvc.perform(post("/api/v1/incidents/{id}/assign", incidentId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("assigneeId", unrelatedMemberId, "assigneeType", "EXTERNAL"))))
+                    .andExpect(status().isOk());
+
+            setAuthentication(unrelatedMemberId);
+            mockMvc.perform(get("/api/v1/incidents/{id}", incidentId))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(patch("/api/v1/incidents/{id}/status", incidentId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(statusBody("IN_PROGRESS"))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
         @DisplayName("正当: ADMINのステータス変更は200")
         void ADMINのステータス変更は200() throws Exception {
             Long incidentId = insertIncident(teamAId, memberAId, "REPORTED");

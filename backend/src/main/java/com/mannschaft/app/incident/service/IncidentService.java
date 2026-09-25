@@ -302,7 +302,8 @@ public class IncidentService {
 
         boolean isAdmin = accessControlService.isAdminOrAbove(
                 changedBy, incident.getScopeId(), incident.getScopeType());
-        boolean isAssignee = assignmentRepository.findByIncidentIdAndUserId(id, changedBy).isPresent();
+        boolean isAssignee = assignmentRepository.existsByIncidentIdAndUserIdAndAssigneeType(
+                id, changedBy, "USER");
         if (!isAdmin && !isAssignee) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
