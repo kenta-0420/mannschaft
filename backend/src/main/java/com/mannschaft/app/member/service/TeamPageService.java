@@ -279,7 +279,7 @@ public class TeamPageService {
     /**
      * ページエンティティを取得する。存在しない場合は例外をスローする。
      */
-    public TeamPageEntity findPageOrThrow(Long pageId) {
+    TeamPageEntity findPageOrThrow(Long pageId) {
         return pageRepository.findById(pageId)
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.PAGE_NOT_FOUND));
     }
@@ -354,7 +354,7 @@ public class TeamPageService {
      * 管理者は編集用途のため非表示行も含めて閲覧できる必要があり、それ以外（会員・非会員問わず）は
      * 非表示行を除外する。</p>
      */
-    public boolean isPageAdmin(Long actorUserId, TeamPageEntity page) {
+    boolean isPageAdmin(Long actorUserId, TeamPageEntity page) {
         return accessControlService.isAdminOrAbove(actorUserId, resolveScopeId(page), resolveScopeType(page));
     }
 

@@ -1,4 +1,4 @@
-package com.mannschaft.app.member;
+package com.mannschaft.app.member.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.member.dto.BulkCreateMemberRequest;
@@ -9,8 +9,6 @@ import com.mannschaft.app.member.dto.ReorderRequest;
 import com.mannschaft.app.member.entity.MemberProfileEntity;
 import com.mannschaft.app.member.entity.TeamPageEntity;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
-import com.mannschaft.app.member.service.MemberProfileService;
-import com.mannschaft.app.member.service.TeamPageService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
