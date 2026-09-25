@@ -1,12 +1,10 @@
 package com.mannschaft.app.incident.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.incident.IncidentErrorCode;
 import com.mannschaft.app.incident.entity.IncidentCommentEntity;
 import com.mannschaft.app.incident.entity.IncidentEntity;
-import com.mannschaft.app.incident.repository.IncidentAssignmentRepository;
 import com.mannschaft.app.incident.repository.IncidentCommentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,8 +37,6 @@ class IncidentCommentServiceTest {
 
     @Mock private IncidentService incidentService;
     @Mock private IncidentCommentRepository commentRepository;
-    @Mock private IncidentAssignmentRepository assignmentRepository;
-    @Mock private AccessControlService accessControlService;
     @Mock private IncidentAccessGuard incidentAccessGuard;
     @Mock private NameResolverService nameResolverService;
     @InjectMocks private IncidentCommentService service;
@@ -63,8 +59,6 @@ class IncidentCommentServiceTest {
     @DisplayName("報告者は内部コメントを SQL 段階で除外して作成日時昇順に取得する")
     void listComments_reporter_excludesInternalAtQueryLayer() {
         given(incidentAccessGuard.requireVisibleOrConceal(incident, REPORTER_ID)).willReturn(false);
-        allowMember(REPORTER_ID);
-        given(accessControlService.isAdminOrAbove(REPORTER_ID, SCOPE_ID, "TEAM")).willReturn(false);
         IncidentCommentEntity first = comment(1L, REPORTER_ID, "最初", false);
         IncidentCommentEntity second = comment(2L, ADMIN_ID, "次", false);
         given(commentRepository.findVisibleByIncidentIdOrderByCreatedAtAsc(INCIDENT_ID, false))
@@ -85,8 +79,6 @@ class IncidentCommentServiceTest {
     @DisplayName("ADMIN は内部コメントを含めて取得し、退会済み投稿者は安全な代替表示名にする")
     void listComments_admin_includesInternalAndUsesFallbackName() {
         given(incidentAccessGuard.requireVisibleOrConceal(incident, ADMIN_ID)).willReturn(true);
-        allowMember(ADMIN_ID);
-        given(accessControlService.isAdminOrAbove(ADMIN_ID, SCOPE_ID, "TEAM")).willReturn(true);
         IncidentCommentEntity internal = comment(1L, 999L, "内部引継ぎ", true);
         given(commentRepository.findVisibleByIncidentIdOrderByCreatedAtAsc(INCIDENT_ID, true))
                 .willReturn(List.of(internal));
@@ -105,7 +97,6 @@ class IncidentCommentServiceTest {
     @DisplayName("SYSTEM_ADMIN は所属の有無にかかわらず全コメントを取得する")
     void listComments_systemAdmin_includesInternalWithoutMembership() {
         given(incidentAccessGuard.requireVisibleOrConceal(incident, ADMIN_ID)).willReturn(true);
-        given(accessControlService.isSystemAdmin(ADMIN_ID)).willReturn(true);
         given(commentRepository.findVisibleByIncidentIdOrderByCreatedAtAsc(INCIDENT_ID, true))
                 .willReturn(List.of(comment(1L, REPORTER_ID, "監査", true)));
         given(nameResolverService.resolveUserFullNames(any())).willReturn(Map.of(REPORTER_ID, "報告者"));
@@ -136,10 +127,6 @@ class IncidentCommentServiceTest {
         long unrelatedMemberId = 777L;
         given(incidentAccessGuard.requireVisibleOrConceal(incident, unrelatedMemberId))
                 .willThrow(new BusinessException(IncidentErrorCode.INCIDENT_002));
-        allowMember(unrelatedMemberId);
-        given(accessControlService.isAdminOrAbove(unrelatedMemberId, SCOPE_ID, "TEAM")).willReturn(false);
-        given(assignmentRepository.existsByIncidentIdAndUserIdAndAssigneeType(
-                INCIDENT_ID, unrelatedMemberId, "USER")).willReturn(false);
 
         assertThatThrownBy(() -> service.listComments(INCIDENT_ID, unrelatedMemberId))
                 .isInstanceOf(BusinessException.class)
@@ -153,9 +140,6 @@ class IncidentCommentServiceTest {
     void listComments_supporterReporter_concealsExistence() {
         given(incidentAccessGuard.requireVisibleOrConceal(incident, REPORTER_ID))
                 .willThrow(new BusinessException(IncidentErrorCode.INCIDENT_002));
-        allowMember(REPORTER_ID);
-        given(accessControlService.isAdminOrAbove(REPORTER_ID, SCOPE_ID, "TEAM")).willReturn(false);
-        given(accessControlService.isSupporter(REPORTER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
         assertThatThrownBy(() -> service.listComments(INCIDENT_ID, REPORTER_ID))
                 .isInstanceOf(BusinessException.class)
@@ -165,29 +149,21 @@ class IncidentCommentServiceTest {
     }
 
     @Test
-    @DisplayName("USER 担当が重複していても exists 判定で関係者として取得できる")
-    void listComments_userAssigneeUsesExistsQuery() {
+    @DisplayName("USER 担当者は共通可視性 guard を通過して取得できる")
+    void listComments_userAssigneeIsAllowedByGuard() {
         long assigneeId = 778L;
         given(incidentAccessGuard.requireVisibleOrConceal(incident, assigneeId)).willReturn(false);
-        allowMember(assigneeId);
-        given(accessControlService.isAdminOrAbove(assigneeId, SCOPE_ID, "TEAM")).willReturn(false);
-        given(accessControlService.isSupporter(assigneeId, SCOPE_ID, "TEAM")).willReturn(false);
-        given(assignmentRepository.existsByIncidentIdAndUserIdAndAssigneeType(INCIDENT_ID, assigneeId, "USER"))
-                .willReturn(true);
         given(commentRepository.findVisibleByIncidentIdOrderByCreatedAtAsc(INCIDENT_ID, false))
                 .willReturn(List.of());
         given(nameResolverService.resolveUserFullNames(any())).willReturn(Map.of());
 
         assertThat(service.listComments(INCIDENT_ID, assigneeId)).isEmpty();
-        verify(assignmentRepository).existsByIncidentIdAndUserIdAndAssigneeType(INCIDENT_ID, assigneeId, "USER");
     }
 
     @Test
     @DisplayName("createdAt はサーバー基準ゾーンを明示した OffsetDateTime で返す")
     void listComments_convertsCreatedAtToOffsetDateTime() {
         given(incidentAccessGuard.requireVisibleOrConceal(incident, ADMIN_ID)).willReturn(true);
-        allowMember(ADMIN_ID);
-        given(accessControlService.isAdminOrAbove(ADMIN_ID, SCOPE_ID, "TEAM")).willReturn(true);
         IncidentCommentEntity comment = comment(1L, REPORTER_ID, "timestamp", false).toBuilder()
                 .createdAt(LocalDateTime.of(2026, 9, 14, 10, 30))
                 .build();
@@ -199,10 +175,6 @@ class IncidentCommentServiceTest {
 
         assertThat(result.getFirst().createdAt())
                 .isEqualTo(OffsetDateTime.parse("2026-09-14T10:30:00+09:00"));
-    }
-
-    private void allowMember(long userId) {
-        given(accessControlService.isMember(userId, SCOPE_ID, "TEAM")).willReturn(true);
     }
 
     private IncidentCommentEntity comment(long id, long userId, String body, boolean internal) {
