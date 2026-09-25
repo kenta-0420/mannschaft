@@ -175,7 +175,9 @@ public class PriceRevisionController {
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
             reason = "修復できない価格改定を取り消して商品の future 枠を解放する運用操作を、Gate状態にかかわらず可能にするため")
-    @Operation(summary = "価格改定の取り消し", description = "DRAFT/READY/PROVISION_FAILED の revision と全 band を CANCELLED にし、"
+    // operationId を明示する。既定の "cancel" だと springdoc の重複解消で他ドメインの cancel_N が
+    // 1つずつずれ、無関係な API の生成型まで差分が出る（2026-09-25 openapi 再生成で実測）。
+    @Operation(operationId = "cancelPriceRevision", summary = "価格改定の取り消し", description = "DRAFT/READY/PROVISION_FAILED の revision と全 band を CANCELLED にし、"
             + "future 枠を解放する。それ以外の状態は409。Stripe 側の Price には触らない。Idempotency-Key 必須。")
     public ResponseEntity<Object> cancel(
             @PathVariable UUID id,
