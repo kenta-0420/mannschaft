@@ -55,6 +55,7 @@ const totalRecords = ref(0)
 const currentPage = ref(0)
 const pageSize = 20
 const showCreateDialog = ref(false)
+const showGuide = ref(false)
 
 const { templateLabel } = useScopeLabels()
 const route = useRoute()
@@ -133,23 +134,29 @@ onMounted(() => {
 
 <template>
   <div class="mx-auto max-w-6xl p-6">
-    <div class="mb-6 flex items-center gap-4">
-      <PageHeader :title="$t('teamHub.searchPageTitle')" class="flex-1" back-to="/teams" />
-      <Button
-        :label="$t('teamHub.createTeam')"
-        icon="pi pi-plus"
-        @click="showCreateDialog = true"
-      />
-    </div>
+    <PageHeader
+      :title="$t('teamHub.searchPageTitle')"
+      back-to="/teams"
+      help
+      @help="showGuide = true"
+    >
+      <template #actions>
+        <Button
+          :label="$t('teamHub.createTeam')"
+          icon="pi pi-plus"
+          @click="showCreateDialog = true"
+        />
+      </template>
+    </PageHeader>
 
-    <div class="mb-6">
+    <SectionCard class="mb-6">
       <SearchBar
         :placeholder="$t('teamHub.searchPageTitle')"
         :show-template-filter="true"
         :initial-keyword="initialKeyword"
         @search="onSearch"
       />
-    </div>
+    </SectionCard>
 
     <PageLoading v-if="loading" />
 
@@ -161,10 +168,10 @@ onMounted(() => {
 
     <template v-else>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div
+        <SectionCard
           v-for="team in teams"
           :key="team.id"
-          class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
+          class="cursor-pointer transition-shadow hover:shadow-md"
           @click="team.slug ? navigateTo(`/teams/${team.slug}`) : undefined"
         >
           <div class="mb-3 flex items-center gap-3">
@@ -185,13 +192,15 @@ onMounted(() => {
               />
             </div>
           </div>
-          <div class="flex items-center justify-between text-sm text-gray-500">
+          <div
+            class="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400"
+          >
             <span><i class="pi pi-map-marker mr-1" />{{ formatLocation(team.prefecture, team.city) }}</span>
             <span><i class="pi pi-users mr-1" />{{ $t('teamHub.memberCount', { count: team.memberCount }) }}</span>
           </div>
           <div
             v-if="team.supporterEnabled && !myTeamSlugs.has(team.slug)"
-            class="mt-3 border-t border-surface-100 pt-3"
+            class="mt-3 border-t border-surface-200 pt-3 dark:border-surface-700"
           >
             <span
               v-if="followedTeamIds.includes(team.slug)"
@@ -211,7 +220,7 @@ onMounted(() => {
               @click="followTeam(team.slug, $event)"
             />
           </div>
-        </div>
+        </SectionCard>
       </div>
 
       <div class="mt-6">
@@ -230,5 +239,7 @@ onMounted(() => {
       @update:visible="showCreateDialog = $event"
       @created="onTeamCreated"
     />
+
+    <TeamSearchGuideModal v-model:visible="showGuide" />
   </div>
 </template>
