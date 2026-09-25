@@ -17,7 +17,7 @@ import { execFileSync } from 'node:child_process'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.describe.configure({ mode: 'serial' })
-test.setTimeout(120_000)
+test.setTimeout(600_000)
 
 const BE = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const API = `${BE}/api/v1`
@@ -54,6 +54,15 @@ function headers(token: string): Record<string, string> {
 function mysql(statement: string): void {
   if (!MYSQL_USER || !MYSQL_PASSWORD) {
     throw new Error('CMP-019 real E2Eには E2E_MYSQL_USER/E2E_MYSQL_PASSWORD が必要です')
+  }
+  const jdbcJar = process.env.E2E_MYSQL_JDBC_JAR
+  if (jdbcJar) {
+    execFileSync('java', ['--class-path', jdbcJar, 'tests/e2e/real/MysqlExec.java', statement], {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: 'pipe',
+    })
+    return
   }
   const args = [
     'exec',
