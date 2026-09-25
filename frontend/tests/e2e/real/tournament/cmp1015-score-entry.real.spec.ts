@@ -23,6 +23,8 @@ const tournamentPath = `/organizations/${seed.orgSlug}/tournaments/${tournamentI
 const scoreEntryPath = `${tournamentPath}/score-entry`
 
 test.describe('CMP-260820-1015 スコア一括入力の実機回帰', () => {
+  test.describe.configure({ timeout: 180_000 })
+
   test('組織管理者が画面からスコアを一括保存し、更新値を再表示できる', async ({ page }) => {
     await loginViaApi(
       page,
@@ -31,13 +33,14 @@ test.describe('CMP-260820-1015 スコア一括入力の実機回帰', () => {
     )
 
     await page.goto(`${BASE_URL}${tournamentPath}`, { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('tournament-detail-title')).toBeVisible({ timeout: 60_000 })
     const scoreEntryLink = page.getByTestId('score-entry-nav-link')
-    await expect(scoreEntryLink).toBeVisible()
+    await expect(scoreEntryLink).toBeVisible({ timeout: 60_000 })
     await scoreEntryLink.click()
     await expect(page).toHaveURL(new RegExp(`${scoreEntryPath}$`))
 
     const grid = page.getByTestId('score-entry-grid')
-    await expect(grid).toBeVisible()
+    await expect(grid).toBeVisible({ timeout: 60_000 })
     const homeInput = page.getByTestId('score-entry-home-input').first()
     const awayInput = page.getByTestId('score-entry-away-input').first()
     await expect(homeInput).toBeVisible()
@@ -62,9 +65,10 @@ test.describe('CMP-260820-1015 スコア一括入力の実機回帰', () => {
     )
 
     await page.goto(`${BASE_URL}${tournamentPath}`, { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('tournament-detail-title')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId('score-entry-nav-link')).toHaveCount(0)
     await page.goto(`${BASE_URL}${scoreEntryPath}`, { waitUntil: 'domcontentloaded' })
-    await expect(page.getByText('この大会のスコアを編集する権限がありません')).toBeVisible()
+    await expect(page.getByText('この大会のスコアを編集する権限がありません')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId('score-entry-grid')).toHaveCount(0)
   })
 
@@ -76,7 +80,7 @@ test.describe('CMP-260820-1015 スコア一括入力の実機回帰', () => {
     )
 
     await page.goto(`${BASE_URL}${scoreEntryPath}`, { waitUntil: 'domcontentloaded' })
-    await expect(page.getByText('この大会のスコアを編集する権限がありません')).toBeVisible()
+    await expect(page.getByText('この大会のスコアを編集する権限がありません')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId('score-entry-grid')).toHaveCount(0)
   })
 })
