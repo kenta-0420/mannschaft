@@ -65,8 +65,13 @@ import java.util.stream.Collectors;
  * 403 のまま残すのは「同一チーム内で権限が足りないだけ」の場合のみ
  *（例: 一般メンバーが管理操作を叩く／SUPPORTER が参照する）。この区別は
  * {@link #checkScheduleAdminAccess} / {@link #checkScheduleReadAccess} が
- * {@code isMember} で所属の有無を先に見てから判定することで実現する
+ * 所属・ロールの有無を先に見てから判定することで実現する
  * （村ドメインの {@code VillageAccessGate} と同じ作法。詳しい理由は各メソッドの Javadoc を参照）。
+ * <b>判定順（CMP-260923-1641 是正・Codex 検分指摘）:</b> {@code isAdminOrAbove} を
+ * {@code isMember} より先に評価する。{@code isMember} は {@code memberships} のみを見るのに
+ * 対し {@code isAdminOrAbove} は {@code user_roles}／{@code memberships} の2系統で有効ロールを
+ * 解決するため、{@code isMember} を先に置くと {@code user_roles} にしか ADMIN/DEPUTY_ADMIN を
+ * 持たない利用者（開発DB実測: チーム管理者ロール609件中2件）を越境と誤判定してしまう。
  * {@link #checkTeamReadAccess} / {@link #checkTeamAdminAccess}
  *（{@code listSchedules} 系・{@code createSchedule} の teamId 直接指定経路）は、
  * scheduleId を推測する攻撃の対象にならないため対象外とし、従来どおり 403 のままとする。</p>
@@ -568,7 +573,13 @@ public class ShiftScheduleService {
     /**
      * シフトスケジュールに対する管理操作の per-scope 認可を強制する。
      *
-     * <p>SYSTEM_ADMIN は短絡的に許可する。それ以外は、まず<b>当該スケジュールが属するチームの
+     * <p>SYSTEM_ADMIN は短絡的に許可する。<b>次に {@code isAdminOrAbove} を判定する</b>
+     * （CMP-260923-1641 是正・Codex 検分指摘）。{@code isAdminOrAbove} は有効ロールを
+     * user_roles と memberships の2系統で解決するのに対し、{@code isMember} は memberships のみを
+     * 見る。そのため user_roles に ADMIN/DEPUTY_ADMIN ロールを持ちながら在籍中の memberships 行を
+     * 持たない利用者（開発DB実測: チーム管理者ロール609件中2件）を、{@code isMember} 先判定だと
+     * 「越境」と誤判定して不在応答（404）へ弾いてしまう回帰が生じる。{@code isAdminOrAbove} で
+     * 先に許可した上で、それでも通らない場合にだけ<b>当該スケジュールが属するチームの
      * メンバーかどうか</b>を見る。所属すらしていない（越境／他テナント）場合は、
      * scheduleId 総当りでの存在オラクル（CMP-260917-1137）を塞ぐため
      * {@link #findScheduleOrThrow} の不在応答と同一の {@link ShiftErrorCode#SHIFT_SCHEDULE_NOT_FOUND}
@@ -597,14 +608,19 @@ public class ShiftScheduleService {
             return;
         }
         Long teamId = schedule.getTeamId();
+        // CMP-260923-1641: isAdminOrAbove を isMember より先に判定する（user_roles のみに
+        // ADMIN/DEPUTY_ADMIN を持つ利用者を越境と誤判定しないため。ShiftAvailabilityService
+        // #checkTeamAccess と同一方針）。
+        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
+            return;
+        }
         if (!accessControlService.isMember(userId, teamId, "TEAM")) {
             // 越境（他チーム／無所属）: 存在自体を隠すべき側。不在時と完全同一のコードを投げる。
             throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
         }
-        if (!accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
-            // 同一チーム内の権限不足: 隠す必要が無い側。従来どおり 403。
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        // 同一チーム内の権限不足（メンバーだが ADMIN/DEPUTY_ADMIN ではない）: 隠す必要が無い側。
+        // 従来どおり 403。
+        throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
     /**
@@ -617,6 +633,14 @@ public class ShiftScheduleService {
      * 「この scheduleId は実在する」という答えになってしまう（CMP-260917-1137）。
      * SUPPORTER（同一チーム内の権限不足）は隠す必要が無いため 403 のまま残す。</p>
      *
+     * <p><b>判定順（CMP-260923-1641 是正・Codex 検分指摘）:</b> {@code isAdminOrAbove} を
+     * {@code isMember} より先に評価する。{@code isMember} は memberships のみを見るため、
+     * user_roles にしか ADMIN/DEPUTY_ADMIN ロールを持たない利用者（開発DB実測: チーム管理者ロール
+     * 609件中2件）を、isMember 先判定だと越境と誤判定して不在応答（404）へ弾いてしまう。
+     * 「読める条件（admin ロール or メンバーかつ非 SUPPORTER）」を先に評価し、どちらも満たさない
+     * 場合だけ、所属の有無で 404/403 を作り分ける
+     *（{@code ShiftAvailabilityService#checkTeamAccess} と同一方針）。</p>
+     *
      * @param entity 対象スケジュール
      * @param userId 閲覧者ユーザー ID
      * @throws BusinessException 越境の場合（{@code SHIFT_001}／404）、
@@ -627,6 +651,11 @@ public class ShiftScheduleService {
             return;
         }
         Long teamId = entity.getTeamId();
+        // CMP-260923-1641: isAdminOrAbove を isMember より先に判定する（user_roles のみに
+        // ADMIN/DEPUTY_ADMIN を持つ利用者を越境と誤判定しないため）。
+        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
+            return;
+        }
         if (!accessControlService.isMember(userId, teamId, "TEAM")) {
             throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
         }

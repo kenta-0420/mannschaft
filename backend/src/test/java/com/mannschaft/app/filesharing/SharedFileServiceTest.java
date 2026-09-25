@@ -1,5 +1,6 @@
 package com.mannschaft.app.filesharing;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -22,6 +23,7 @@ import com.mannschaft.app.filesharing.service.SharedFileService;
 import com.mannschaft.app.filesharing.service.SharedFolderQueryService;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
@@ -58,6 +61,11 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SharedFileService 単体テスト")
 class SharedFileServiceTest {
+
+    @BeforeEach
+    void allowExistingAdminPaths() {
+        org.mockito.Mockito.lenient().when(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString())).thenReturn(true);
+    }
 
     @Mock
     private SharedFileRepository fileRepository;
@@ -91,6 +99,9 @@ class SharedFileServiceTest {
     /** download-url 発行時のフォルダスコープ別閲覧認可（漏洩防止の核）。 */
     @Mock
     private SharedFolderQueryService folderQueryService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private SharedFileService sharedFileService;
@@ -174,6 +185,19 @@ class SharedFileServiceTest {
             verify(fileRepository, never()).save(any());
             verify(quotaService, never()).recordFileUpload(any(), anyLong(), anyLong(), anyLong());
         }
+
+        @Test
+        void memberWithoutManageFilesCannotCreateMetadata() {
+            given(accessControlService.isAdminOrAbove(USER_ID, 5L, "TEAM")).willReturn(false);
+            given(accessControlService.resolveEffectiveRoleName(USER_ID, 5L, "TEAM")).willReturn("MEMBER");
+            given(accessControlService.hasPermission(USER_ID, 5L, "TEAM", "MANAGE_FILES")).willReturn(false);
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(buildFolder());
+            CreateFileRequest request = new CreateFileRequest(
+                    FOLDER_ID, "test.pdf", "files/test.pdf", 1024L, "application/pdf", null, null, null);
+            assertThatThrownBy(() -> sharedFileService.createFile(USER_ID, request))
+                    .isInstanceOf(BusinessException.class);
+            verify(fileRepository, never()).save(any());
+        }
     }
 
     // ========================================
@@ -244,6 +268,19 @@ class SharedFileServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
             verify(quotaService, never()).recordFileDeletion(any(), anyLong(), anyLong(), anyLong());
+        }
+
+        @Test
+        void memberWithoutManageFilesCannotDeleteFile() {
+            SharedFileEntity entity = SharedFileEntity.builder().folderId(FOLDER_ID).fileSize(1024L).build();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(buildFolder());
+            given(accessControlService.isAdminOrAbove(USER_ID, 5L, "TEAM")).willReturn(false);
+            given(accessControlService.resolveEffectiveRoleName(USER_ID, 5L, "TEAM")).willReturn("MEMBER");
+            given(accessControlService.hasPermission(USER_ID, 5L, "TEAM", "MANAGE_FILES")).willReturn(false);
+            assertThatThrownBy(() -> sharedFileService.deleteFile(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(fileRepository, never()).save(any());
         }
     }
 

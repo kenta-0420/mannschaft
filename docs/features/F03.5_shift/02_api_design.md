@@ -133,6 +133,24 @@
 |-----------|------|
 | 403 | チームへのアクセス権限がない |
 
+**非メンバー応答の不変条件（CMP-260923-1642 / 2026-09-24 明文化）**
+
+`GET /api/v1/shifts/schedules/{id}` は越境（実在するが非メンバー）と不在（存在しない ID）で
+応答を同一の 404 `SHIFT_001` へ畳んでいる（CMP-260917-1137）のに対し、本エンドポイントは
+非メンバーへ一律 403 `COMMON_002` を返す点でステータスが異なる。この非対称は意図した仕様である
+（判断の理由は `docs/security/01_authorization_baseline.md` §3.3.1 参照）。
+
+| `team_id` の状態 | 非メンバーの応答 |
+|---|---|
+| 実在・`visibility=PUBLIC` | 403 `COMMON_002` |
+| 実在・`visibility` が PUBLIC 以外（GUESTS_AND_ABOVE 等） | 403 `COMMON_002`（PUBLICと本文まで同一） |
+| 存在しない `team_id` | 403 `COMMON_002`（同上、本文まで同一） |
+
+いずれの場合も応答（ステータス・`error.code`・本文）が一致するため、`team_id` の実在・非公開の別を
+一覧 API から読み取ることはできない。契約テストは `ShiftScheduleScopeContractIT` の
+`9. GET /shifts/schedules?teamId=（非メンバー応答の不変条件／CMP-260923-1642）`
+（`ListNonMemberResponseInvariant`）が固定する。
+
 ---
 
 #### `POST /api/v1/shifts/schedules`

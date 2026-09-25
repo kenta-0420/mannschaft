@@ -12,15 +12,19 @@ const { userTimezone } = useDatetime()
 
 const distributions = ref<CommitteeDistributionLog[]>([])
 const loading = ref(true)
+/** 取得失敗は「配布履歴なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 async function loadDistributions() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await committeeApi.listDistributions(committeeId)
     distributions.value = res.data
   } catch (err) {
     handleApiError(err, 'listDistributions')
     distributions.value = []
+    loadFailed.value = true
   } finally {
     loading.value = false
   }
@@ -40,7 +44,11 @@ onMounted(async () => {
   <div v-else>
     <PageHeader :title="$t('committee.distributions.title')" />
 
-    <SectionCard v-if="distributions.length === 0">
+    <SectionCard v-if="loadFailed">
+      <DashboardErrorState testid="committee-distributions-error-state" @retry="loadDistributions" />
+    </SectionCard>
+
+    <SectionCard v-else-if="distributions.length === 0">
       <DashboardEmptyState icon="pi pi-list" :message="$t('committee.distributions.empty')" />
     </SectionCard>
 

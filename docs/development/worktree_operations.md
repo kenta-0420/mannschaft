@@ -68,6 +68,7 @@ node scripts/worktree-cleanup.mjs --days 1 --check --limit 60
 - 新機能・大規模実装を開始する前に、**着手前に必ず専用ブランチを `git worktree add` で物理ディレクトリごと隔離** すること
 - 同じ作業ディレクトリで複数の Claude セッションを動かす運用は **絶対に避ける**（HEAD 衝突で作業が破壊される）
 - worktree 内で commit が完了したら、メインリポジトリに `git merge` でマージする
+- `frontend/node_modules` を junction で共有する場合も、Vite の依存最適化キャッシュは `frontend/nuxt.config.ts` の `cacheDir` により各 worktree の `frontend/.nuxt/vite-cache` に分離する。複数の dev server が共有キャッシュを更新しないようにする。
 
 詳細経緯: memory `feedback_branch_isolation` / `feedback_merge_gh_only_no_honjin_git`。
 

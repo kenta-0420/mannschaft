@@ -9,7 +9,7 @@
 # |---|---|---|
 # | ① リンクが無い | Phase 1〜4 で導線を足した18枚 | 扱う（reachable） |
 # | ② リンクはあるが条件で永久に消える（機能フラグ等） | サイドバー27項目の永久非表示（#3322で根治） | **扱わない**（別番人を後続で作る） |
-# | ③ スコープ配下に同機能ページがある残骸 | /admin/equipment 等4枚（CMP-260917-0041） | 扱う（duplicate-remnant） |
+# | ③ スコープ配下へ機能移植後に残る旧ページ | 旧 /admin/member-profiles（CMP-260917-0041、削除済み） | 削除まで扱う（duplicate-remnant） |
 #
 # 注: /admin/google-calendar（CMP-260912-0911）は当初この台帳にも duplicate-remnant として
 # 載せていたが、本番人の初回実行で「該当ページが実在しない」red を検出した。実測すると
@@ -39,7 +39,7 @@
 # 番人が最初から無効化される（intentional-direct-only 等で無審査に埋めるのも同じ理由で不可）。
 # `/my/`・`/me/`・`/settings/` も同様に今回調査していない他のページを多数含む。
 #
-# そのため本番人は `tracked_paths`（下記の30パスちょうど）に対する **exact-match** で
+# そのため本番人は `tracked_paths`（下記の26パスちょうど）に対する **exact-match** で
 # 網羅性を取る: 「tracked_paths に載っているが pages: に無い」「pages: にあるが実在しない」
 # の両方向で陳腐化を検出する。新規ページの黙った孤立を機械的に防ぐという本来の狙い（対象を
 # 全FEに広げること）はまだ果たせていない — **対象を広げるときは、その prefix 配下を実測してから
@@ -63,8 +63,6 @@ tracked_paths:
   - /profile/following
   - /settings/profile-visibility
   - /parental-consent/manage
-  - /admin/equipment
-  - /admin/member-profiles
   - /admin/campaigns
   - /admin/promotions
   - /admin/packages
@@ -137,15 +135,8 @@ pages:
     classification: reachable
     reason: "Phase 4（PR #3330）で設定ハブへ追加。あわせて pending.vue の承認済み時の逃げ先を manage に修正。実機でクリック到達確認済み"
 
-  # --- 重複残骸5枚（CMP-260917-0041 / CMP-260912-0911）: 削除待ち ---
-  - path: /admin/equipment
-    classification: duplicate-remnant
-    replacement: /teams/[slug]/equipment
-    reason: "CMP-260917-0041①。teams/[slug]/equipment.vue と organizations/[slug]/equipment.vue が同じ useMemberProfileApi系ではなくequipment APIを叩き、両サイドバーに導線あり。teamsを代表としてreplacementに記載（organizations版も別途導線あり）。削除するかどうかは未着手（要確認事項あり）"
-  - path: /admin/member-profiles
-    classification: duplicate-remnant
-    replacement: /organizations/[slug]/member-profiles
-    reason: "CMP-260917-0041②。organizations/[slug]/member-profiles.vue が同一のuseMemberProfileApi().listFields(scopeType, scopeId)を叩き、OrganizationSidebar.vueに導線あり。削除は未着手"
+  # /admin/member-profiles は独自項目の管理機能をチーム・組織の
+  # member-profiles.vue から開く共通部品へ移して削除済み。
 # /admin/reservation-settings は CMP-260909-1141 で削除済み。
 # 予約ライン CRUD は components/reservation/LineManager.vue と重複しており、そちらは
 # teams/[slug]/reservations.vue から健在（管理コンソールカード経由で到達可能）。
@@ -190,9 +181,9 @@ pages:
 # DB変更が要る（F20.1の確定方針を覆す設計変更になる）。削除コードは本PRの親コミットの
 # git 履歴から復元可能。詳細は docs/task-list.md CMP-260909-1141 の項を参照。
   - path: /admin/member-permissions
-    classification: be-pending
+    classification: reachable
     cmp: CMP-260912-0910
-    reason: "2026-09-20 訂正: /{scopeType}s/{scopeId}/role-permissions/member 専用APIがBEに存在しないこと自体は確定（再確認済み）だが、その『実装待ち』という方針自体を見直す必要がある。F01.2設計（docs/features/F01.2_org_team_member_role/README.md L13）は『DEPUTY_ADMIN の細粒度な権限制御は、ADMIN が名前付き「権限グループ」を作成してユーザーへ割り当てる方式で実現する』と明記しており、メンバー個々に権限キーを直接ON/OFFする本ページの方式を設計は採っていない。この権限グループ方式は既に frontend/app/pages/admin/permission-groups.vue と backend の AdminPermissionGroupController（@RequestMapping(\"/api/v1/admin/permission-groups\")）として実装・稼働している。したがって本来の対処は role-permissions/member APIの新規実装ではなく、本ページを権限グループ方式へ統合するか削除するかという設計判断のはず（duplicate-remnant相当）。**ただし /admin/permission-groups 自体も現時点でアプリ内のどこからもリンクされていないことを実査で確認した**（SystemAdminQuickLinks.vue・TeamSidebar.vue・OrganizationSidebar.vue のいずれにも導線が無い）。番人 OrphanPageGuardTest の duplicate-remnant 判定は replacement ページへの実リンクを機械検査するため、導線が無いまま duplicate-remnant へ分類変更するとCIが赤化する。よって本PRでは分類をbe-pendingのまま据え置き、reasonのみ訂正した。導線整備（別戦役）の後にduplicate-remnantへ再分類すること。**現状はcatchで404を握りつぶし「全権限有効」と嘘表示する危険度の高い欠陥が残っている点は変わらず、いずれの対処（実装/統合/削除）を選ぶ場合も必ず除去すること**"
+    reason: "既存画面をチーム・組織の MEMBER 既定権限設定として実装。対象スコープ ADMIN のサイドバーから到達でき、予定・ファイル・投稿の初期 OFF を必要な項目のみ ON にできる。個人別設定は対象外。"
 
   # --- CMP-260909-1141 続報: 旧 /admin/reservation-settings（型③ duplicate-remnant 内、予約ライン CRUD と
   # 確認通知F04.9が無関係に同居する到達不能ページ）のうち、確認通知3コンポーネントの新設移設先。

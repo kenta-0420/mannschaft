@@ -2488,6 +2488,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "カスタム項目",
+      "add": "項目を追加",
+      "loadFailed": "カスタム項目を読み込めませんでした",
+      "retry": "再試行",
+      "empty": "カスタム項目がありません",
+      "name": "項目名",
+      "type": "種類",
+      "required": "必須",
+      "active": "有効",
+      "order": "順序",
+      "yes": "はい",
+      "no": "いいえ",
+      "typeText": "テキスト",
+      "typeNumber": "数値",
+      "typeDate": "日付",
+      "typeSelect": "選択肢",
+      "options": "選択肢（1行に1つ）",
+      "createSuccess": "項目を追加しました",
+      "createFailed": "項目を追加できませんでした"
+    },
     "loadFailed": "メンバー情報を読み込めませんでした",
     "unavailable": "この機能は現在ご利用いただけません（準備中です）",
     "saveFailed": "保存に失敗しました",
@@ -2536,5 +2557,25 @@
       "optionsInvalidFormat": "選択肢データの形式が不正です",
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
+  },
+  "memberPermissions": {
+    "title": "MEMBER既定権限",
+    "description": "このチーム・組織に参加するMEMBERの既定権限を設定します。",
+    "sectionTitle": "既定権限",
+    "invalidScope": "チームまたは組織を選択してから開いてください。",
+    "loadFailed": "MEMBER既定権限の取得に失敗しました。",
+    "saveSuccess": "MEMBER既定権限を更新しました。",
+    "saveFailed": "MEMBER既定権限の更新に失敗しました。",
+    "inherited": "上位設定から継承",
+    "accessDenied": "この操作は管理者だけが行えます。",
+    "permissions": {
+      "MANAGE_SCHEDULES": "スケジュール管理",
+      "MANAGE_FILES": "ファイル管理",
+      "MANAGE_POSTS": "投稿管理"
+    }
+  },
+  "loadErrorState": {
+    "message": "データの取得に失敗しました",
+    "retry": "再試行"
   }
 }

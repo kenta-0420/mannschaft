@@ -1,5 +1,6 @@
 package com.mannschaft.app.membership.service;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.membership.domain.LeaveReason;
@@ -21,7 +22,6 @@ import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.repository.PositionRepository;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.RoleRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.role.service.RolePermissionCleanupService;
 import com.mannschaft.app.team.event.TeamMemberAuditEvent;
@@ -57,9 +57,9 @@ import java.util.Optional;
 public class MembershipService {
 
     private final MembershipRepository membershipRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final MemberPositionRepository memberPositionRepository;
     private final PositionRepository positionRepository;
-    private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -422,17 +422,13 @@ public class MembershipService {
      * @return アクティブに所属するチームの scopeId 一覧（退会済みは除外）
      */
     public List<Long> getActiveTeamIdsByUser(Long userId) {
-        return membershipRepository
-                .findActiveByUserAndScopeType(userId, ScopeType.TEAM)
-                .stream()
-                .map(MembershipEntity::getScopeId)
-                .toList();
+        return membershipScopeQueryService.findCurrentMembershipTeamIds(userId);
     }
 
     public List<Long> getActiveTeamIdsIncludingRoleAssignments(Long userId) {
         return java.util.stream.Stream.concat(
-                        userRoleRepository.findTeamIdsByUserId(userId).stream(),
-                        getActiveTeamIdsByUser(userId).stream())
+                        membershipScopeQueryService.findActiveTeamIds(userId).stream(),
+                        membershipScopeQueryService.findCurrentMembershipTeamIds(userId).stream())
                 .distinct()
                 .toList();
     }
@@ -452,17 +448,13 @@ public class MembershipService {
      * @return アクティブに所属する組織の scopeId 一覧（退会済みは除外）
      */
     public List<Long> getActiveOrgIdsByUser(Long userId) {
-        return membershipRepository
-                .findActiveByUserAndScopeType(userId, ScopeType.ORGANIZATION)
-                .stream()
-                .map(MembershipEntity::getScopeId)
-                .toList();
+        return membershipScopeQueryService.findCurrentMembershipOrganizationIds(userId);
     }
 
     public List<Long> getActiveOrgIdsIncludingRoleAssignments(Long userId) {
         return java.util.stream.Stream.concat(
-                        userRoleRepository.findOrganizationIdsByUserId(userId).stream(),
-                        getActiveOrgIdsByUser(userId).stream())
+                        membershipScopeQueryService.findActiveOrganizationIds(userId).stream(),
+                        membershipScopeQueryService.findCurrentMembershipOrganizationIds(userId).stream())
                 .distinct()
                 .toList();
     }

@@ -23,6 +23,8 @@ interface DropdownOption<T> {
 const props = defineProps<{
   recruits: VillageMatchRecruitResponse[]
   recruitsLoading: boolean
+  /** 取得失敗（権限エラー・通信断等）。空状態とは別にエラー状態を描画する。 */
+  recruitsLoadFailed: boolean
   isVillager: boolean
   categoryFilter: CategoryFilter
   statusFilter: StatusFilter
@@ -33,7 +35,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:categoryFilter', value: CategoryFilter): void
   (e: 'update:statusFilter', value: StatusFilter): void
-  (e: 'create'): void
+  (e: 'create' | 'retry'): void
   (e: 'select', recruit: VillageMatchRecruitResponse): void
 }>()
 
@@ -98,6 +100,11 @@ function severityForStatus(
     <div v-if="recruitsLoading" class="text-center py-12 text-surface-500">
       <i class="pi pi-spin pi-spinner text-2xl" />
     </div>
+    <DashboardErrorState
+      v-else-if="recruitsLoadFailed"
+      testid="village-match-recruits-error-state"
+      @retry="emit('retry')"
+    />
     <DashboardEmptyState
       v-else-if="recruits.length === 0"
       icon="pi pi-flag"
