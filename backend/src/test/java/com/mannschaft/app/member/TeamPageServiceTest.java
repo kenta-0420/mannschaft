@@ -332,6 +332,53 @@ class TeamPageServiceTest {
             assertThat(result.getSlug()).isEqualTo("intro");
             org.mockito.Mockito.verifyNoInteractions(memberSubtabVisibilityService);
         }
+
+        @Test
+        @DisplayName("検分修正(3巡目・P2): 所属のないSYSTEM_ADMINは下書きページも閲覧できる"
+                + "（assertViewableのSYSTEM_ADMINバイパスと揃える。設計書F06.6 §9.1）")
+        void 下書き_SYSTEM_ADMIN_閲覧可() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .organizationId(ORG_ID).title("下書き").slug("draft-page").pageType(PageType.YEARLY)
+                    .build(); // status デフォルト DRAFT
+            given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(true);
+            given(sectionRepository.findByTeamPageIdOrderBySortOrder(1L)).willReturn(List.of());
+            given(profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(1L)).willReturn(List.of());
+            given(memberMapper.toSectionResponseList(any())).willReturn(List.of());
+            given(memberMapper.toMemberProfileResponseList(any())).willReturn(List.of());
+            given(memberMapper.toTeamPageDetailResponse(any(), any(), any())).willReturn(
+                    new TeamPageResponse(1L, null, ORG_ID, "下書き", "draft-page",
+                            "YEARLY", null, null, null, "MEMBERS_ONLY", "DRAFT", false, 0, null, null, null, null, null));
+
+            TeamPageResponse result = service.getPage(ACTOR_ID, 1L);
+            assertThat(result.getSlug()).isEqualTo("draft-page");
+        }
+
+        @Test
+        @DisplayName("検分修正(3巡目・P2): 所属のないSYSTEM_ADMINはMEMBERS_ONLYの公開済みページも閲覧できる"
+                + "（assertViewableのSYSTEM_ADMINバイパスと揃える。設計書F06.6 §9.1）")
+        void 公開済みMEMBERS_ONLY_SYSTEM_ADMIN_閲覧可() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .organizationId(ORG_ID).title("紹介").slug("intro").pageType(PageType.MAIN)
+                    .status(PageStatus.PUBLISHED).visibility(PageVisibility.MEMBERS_ONLY)
+                    .build();
+            given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(true);
+            given(sectionRepository.findByTeamPageIdOrderBySortOrder(1L)).willReturn(List.of());
+            given(profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(1L)).willReturn(List.of());
+            given(memberMapper.toSectionResponseList(any())).willReturn(List.of());
+            given(memberMapper.toMemberProfileResponseList(any())).willReturn(List.of());
+            given(memberMapper.toTeamPageDetailResponse(any(), any(), any())).willReturn(
+                    new TeamPageResponse(1L, null, ORG_ID, "紹介", "intro",
+                            "MAIN", null, null, null, "MEMBERS_ONLY", "PUBLISHED", false, 0, null, null, null, null, null));
+
+            TeamPageResponse result = service.getPage(ACTOR_ID, 1L);
+
+            assertThat(result.getSlug()).isEqualTo("intro");
+            org.mockito.Mockito.verifyNoInteractions(memberSubtabVisibilityService);
+        }
     }
 
     @Nested
@@ -400,6 +447,25 @@ class TeamPageServiceTest {
             verify(pageRepository).findByOrganizationIdOrderBySortOrder(ORG_ID, pageable);
             verify(pageRepository, never())
                     .findByOrganizationIdAndStatusOrderBySortOrder(anyLong(), any(), any());
+        }
+
+        @Test
+        @DisplayName("検分修正(3巡目・P2): 組織スコープ・所属のないSYSTEM_ADMINも下書き含む全ページを取得"
+                + "（assertViewableのSYSTEM_ADMINバイパスと揃える。設計書F06.6 §9.1）")
+        void 組織_SYSTEM_ADMIN_下書き含む全件() {
+            Pageable pageable = PageRequest.of(0, 10);
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(true);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            Page<TeamPageEntity> emptyPage = new PageImpl<>(List.of());
+            given(pageRepository.findByOrganizationIdOrderBySortOrder(ORG_ID, pageable)).willReturn(emptyPage);
+
+            service.listPages(ACTOR_ID, null, ORG_ID, pageable);
+
+            verify(pageRepository).findByOrganizationIdOrderBySortOrder(ORG_ID, pageable);
+            verify(pageRepository, never())
+                    .findByOrganizationIdAndStatusOrderBySortOrder(anyLong(), any(), any());
+            verify(pageRepository, never())
+                    .findByOrganizationIdAndStatusAndVisibilityOrderBySortOrder(anyLong(), any(), any(), any());
         }
     }
 

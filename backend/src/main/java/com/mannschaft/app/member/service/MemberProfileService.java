@@ -49,7 +49,13 @@ public class MemberProfileService {
     public Page<MemberProfileResponse> listProfiles(Long actorUserId, Long teamPageId, Pageable pageable) {
         TeamPageEntity page = pageService.findPageOrThrow(teamPageId);
         pageService.checkPageMembershipOrNotFound(actorUserId, page);
-        Page<MemberProfileEntity> result = profileRepository.findByTeamPageIdOrderBySortOrder(teamPageId, pageable);
+        // 検分修正（3巡目・P1）: checkPageMembershipOrNotFound は「紹介」サブタブ PUBLIC/SUPPORTER 設定で
+        // 通過した非会員も弾かない（外側の門）。ここで管理者かどうかを見て、非管理者には
+        // is_visible=false の行を除外する（内側の扉）。管理者は編集用途のため全件取得する。
+        boolean isAdmin = pageService.isPageAdmin(actorUserId, page);
+        Page<MemberProfileEntity> result = isAdmin
+                ? profileRepository.findByTeamPageIdOrderBySortOrder(teamPageId, pageable)
+                : profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(teamPageId, pageable);
         return result.map(memberMapper::toMemberProfileResponse);
     }
 
@@ -63,6 +69,12 @@ public class MemberProfileService {
         MemberProfileEntity entity = findProfileOrThrow(profileId);
         TeamPageEntity page = pageService.findPageOrThrow(entity.getTeamPageId());
         pageService.checkPageMembershipOrNotFound(actorUserId, page);
+        // 検分修正（3巡目・P1）: 非管理者には非表示（is_visible=false）プロフィールを見せない。
+        // 個別 id を直打ちされても存在を漏らさないため、見つからない場合と同じ 404 秘匿にする
+        // （Wave3-B2 BOLA対策のパターンを踏襲）。
+        if (Boolean.FALSE.equals(entity.getIsVisible()) && !pageService.isPageAdmin(actorUserId, page)) {
+            throw new BusinessException(MemberErrorCode.PROFILE_NOT_FOUND);
+        }
         return memberMapper.toMemberProfileResponse(entity);
     }
 

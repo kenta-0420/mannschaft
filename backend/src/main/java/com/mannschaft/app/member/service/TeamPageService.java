@@ -79,7 +79,12 @@ public class TeamPageService {
         } else {
             memberSubtabVisibilityService.assertViewable(
                     actorUserId, ScopeType.ORGANIZATION, organizationId, MemberSubtabKey.MEMBER_PROFILES);
-            isAdmin = accessControlService.isAdminOrAbove(actorUserId, organizationId, SCOPE_ORGANIZATION);
+            // 検分修正（3巡目・P2）: assertViewable の外側の門は SYSTEM_ADMIN を無条件バイパスする
+            // （設計書 F06.6 §9.1）。一覧の内側の判定も揃え、所属のない SYSTEM_ADMIN を ADMIN 同様に
+            // 下書き含む全件取得させる（isAdminOrAbove だけだと SYSTEM_ADMIN は非会員扱いになり、
+            // 外側の門のバイパスと矛盾して公開済みのみに縮退していた）。
+            isAdmin = accessControlService.isSystemAdmin(actorUserId)
+                    || accessControlService.isAdminOrAbove(actorUserId, organizationId, SCOPE_ORGANIZATION);
             if (!isAdmin) {
                 // 検分指摘A（P1）: isMember() は所属の有無（SUPPORTER も true）を見るだけで、
                 // F06.2 の「MEMBERS_ONLY = MEMBER 以上」という仕様のロール閾値と一致しない。
@@ -274,7 +279,7 @@ public class TeamPageService {
     /**
      * ページエンティティを取得する。存在しない場合は例外をスローする。
      */
-    TeamPageEntity findPageOrThrow(Long pageId) {
+    public TeamPageEntity findPageOrThrow(Long pageId) {
         return pageRepository.findById(pageId)
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.PAGE_NOT_FOUND));
     }
@@ -302,6 +307,14 @@ public class TeamPageService {
         // DRAFT ブロックを全スコープに広げると Wave3-B2 の既存 TEAM スコープ挙動を壊すため、
         // 内側の扉（DRAFT 非表示）は組織スコープ限定で適用する）。
         if (SCOPE_ORGANIZATION.equals(scopeType)) {
+            // 検分修正（3巡目・P2）: assertViewable の外側の門は SYSTEM_ADMIN を無条件バイパスする
+            // （設計書 F06.6 §9.1 に明記）。内側の判定（DRAFT 秘匿・visibility 判定）が
+            // isAdminOrAbove/hasRoleOrAbove のみに基づくと、所属のない SYSTEM_ADMIN がここで
+            // 弾かれ、外側の門のバイパスと矛盾する（一覧は公開済みのみ・詳細は DRAFT が 404 になる）。
+            // SYSTEM_ADMIN は ADMIN と同様に全ページ閲覧可とする。
+            if (accessControlService.isSystemAdmin(actorUserId)) {
+                return;
+            }
             // 内側の扉: 下書き（DRAFT）ページは ADMIN 以外の誰にも見せない（設計書 §5 合成ルール）
             if (page.getStatus() == PageStatus.DRAFT) {
                 throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
@@ -331,6 +344,18 @@ public class TeamPageService {
         if (!accessControlService.isMember(actorUserId, scopeId, scopeType)) {
             throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
         }
+    }
+
+    /**
+     * ページ entity 由来スコープでアクターが ADMIN/DEPUTY_ADMIN 以上かどうかを判定する（真偽値のみ・例外なし）。
+     *
+     * <p>検分修正（3巡目・P1）: {@link MemberProfileService#listProfiles}/{@code getProfile} から、
+     * 非表示（{@code is_visible = false}）プロフィールの除外要否を切り替えるために公開する。
+     * 管理者は編集用途のため非表示行も含めて閲覧できる必要があり、それ以外（会員・非会員問わず）は
+     * 非表示行を除外する。</p>
+     */
+    public boolean isPageAdmin(Long actorUserId, TeamPageEntity page) {
+        return accessControlService.isAdminOrAbove(actorUserId, resolveScopeId(page), resolveScopeType(page));
     }
 
     /**
