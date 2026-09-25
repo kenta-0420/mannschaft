@@ -11,6 +11,7 @@ const PASSWORD = 'TestPass2026!'
 
 type SeedSummary = {
   orgId: number
+  orgSlug: string
   tournaments: Record<string, { tournamentId: number }>
 }
 
@@ -18,7 +19,7 @@ const seed = JSON.parse(
   readFileSync(resolve(process.cwd(), '../backend/scripts/f087-e2e-seed-summary.json'), 'utf8'),
 ) as SeedSummary
 const tournamentId = seed.tournaments.PUBLIC!.tournamentId
-const tournamentPath = `/organizations/${seed.orgId}/tournaments/${tournamentId}`
+const tournamentPath = `/organizations/${seed.orgSlug}/tournaments/${tournamentId}`
 const scoreEntryPath = `${tournamentPath}/score-entry`
 
 test.describe('CMP-260820-1015 スコア一括入力の実機回帰', () => {
