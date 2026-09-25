@@ -13,6 +13,7 @@ import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.timeline.PostScopeType;
+import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import jakarta.persistence.EntityManager;
@@ -22,6 +23,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -294,6 +297,95 @@ class ContentReportDerivationContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Nested
+    @DisplayName("公開中でない対象")
+    class NotPublished {
+
+        @ParameterizedTest(name = "投稿 {0}")
+        @EnumSource(value = PostStatus.class, names = {"DRAFT", "SCHEDULED", "HIDDEN", "DELETED"})
+        @DisplayName("公開中でない投稿は、同スコープのメンバーでも存在しない投稿と同一応答（404 MODERATION_005）")
+        void 公開中でない投稿は不在と同一応答(PostStatus status) throws Exception {
+            Long postId = insertPost(PostScopeType.TEAM, teamId, null, status, "公開前の投稿本文");
+            setAuthentication(MEMBER_USER_ID);
+
+            MvcResult notPublished = perform(bodyWithDeclaredValues("TIMELINE_POST", postId)).andReturn();
+            MvcResult missing = perform(bodyWithDeclaredValues("TIMELINE_POST", NONEXISTENT_ID)).andReturn();
+
+            assertSameRejection(notPublished, missing, 404, "MODERATION_005");
+            assertThat(notPublished.getResponse().getContentAsString()).doesNotContain("公開前の投稿本文");
+            assertThat(countReports()).isZero();
+        }
+
+        @ParameterizedTest(name = "返信 {0}")
+        @EnumSource(value = PostStatus.class, names = {"DRAFT", "SCHEDULED", "HIDDEN", "DELETED"})
+        @DisplayName("公開中でない返信は、同スコープのメンバーでも存在しない返信と同一応答（404 MODERATION_005）")
+        void 公開中でない返信は不在と同一応答(PostStatus status) throws Exception {
+            Long hiddenReplyId = insertPost(PostScopeType.TEAM, teamId, teamPostId, status, "公開前の返信本文");
+            setAuthentication(MEMBER_USER_ID);
+
+            MvcResult notPublished = perform(bodyWithDeclaredValues("TIMELINE_COMMENT", hiddenReplyId)).andReturn();
+            MvcResult missing = perform(bodyWithDeclaredValues("TIMELINE_COMMENT", NONEXISTENT_ID)).andReturn();
+
+            assertSameRejection(notPublished, missing, 404, "MODERATION_005");
+            assertThat(countReports()).isZero();
+        }
+
+        @ParameterizedTest(name = "親投稿 {0}")
+        @EnumSource(value = PostStatus.class, names = {"DRAFT", "SCHEDULED", "HIDDEN", "DELETED"})
+        @DisplayName("親投稿が公開中でない返信は、存在しない返信と同一応答（404 MODERATION_005）")
+        void 親が公開中でない返信は不在と同一応答(PostStatus status) throws Exception {
+            Long parentId = insertPost(PostScopeType.TEAM, teamId, null, status, "公開前の親投稿本文");
+            Long childId = insertPost(PostScopeType.TEAM, teamId, parentId, PostStatus.PUBLISHED, "公開前の親への返信");
+            setAuthentication(MEMBER_USER_ID);
+
+            MvcResult underHiddenParent = perform(bodyWithDeclaredValues("TIMELINE_COMMENT", childId)).andReturn();
+            MvcResult missing = perform(bodyWithDeclaredValues("TIMELINE_COMMENT", NONEXISTENT_ID)).andReturn();
+
+            assertSameRejection(underHiddenParent, missing, 404, "MODERATION_005");
+            assertThat(countReports()).isZero();
+        }
+
+        @Test
+        @DisplayName("下書きの募集は、存在しない募集と同一応答（404 MODERATION_005）で題名を返さない")
+        void 下書きの募集は不在と同一応答() throws Exception {
+            Long draftListingId = insertListing("下書きの募集タイトル", RecruitmentVisibility.PUBLIC,
+                    RecruitmentListingStatus.DRAFT);
+            setAuthentication(OUTSIDER_USER_ID);
+
+            MvcResult draft = perform(bodyWithDeclaredValues("RECRUITMENT_LISTING", draftListingId)).andReturn();
+            MvcResult missing = perform(bodyWithDeclaredValues("RECRUITMENT_LISTING", NONEXISTENT_ID)).andReturn();
+
+            assertSameRejection(draft, missing, 404, "MODERATION_005");
+            assertThat(draft.getResponse().getContentAsString()).doesNotContain("下書きの募集タイトル");
+            assertThat(countReports()).isZero();
+        }
+    }
+
+    @Nested
+    @DisplayName("作成応答")
+    class CreatedResponse {
+
+        @Test
+        @DisplayName("作成応答には対象から導出した控え・対象ユーザー・宛先を含めない（保存はされる）")
+        void 作成応答は導出値を返さない() throws Exception {
+            setAuthentication(MEMBER_USER_ID);
+            MvcResult result = perform(bodyWithDeclaredValues("TIMELINE_POST", teamPostId))
+                    .andExpect(status().isCreated())
+                    .andReturn();
+            JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+            for (String field : List.of("contentSnapshot", "targetUserId", "scopeType", "scopeId")) {
+                assertThat(data.path(field).isNull() || data.path(field).isMissingNode())
+                        .as("作成応答の %s は空であること", field)
+                        .isTrue();
+            }
+            assertThat(result.getResponse().getContentAsString()).doesNotContain(TEAM_POST_CONTENT);
+
+            StoredReport stored = selectReport(readId(result));
+            assertThat(stored.snapshotContent()).isEqualTo(TEAM_POST_CONTENT);
+            assertThat(stored.targetUserId()).isEqualTo(AUTHOR_USER_ID);
+        }
+    }
+
+    @Nested
     @DisplayName("導出できない種別")
     class Underivable {
 
@@ -402,7 +494,26 @@ class ContentReportDerivationContractIT extends AbstractMySqlIntegrationTest {
                 .getSingleResult()).longValue();
     }
 
+    private Long insertPost(PostScopeType scopeType, Long scopeId, Long parentId, PostStatus status,
+                            String content) {
+        Long id = timelinePostRepository.save(TimelinePostEntity.builder()
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .userId(AUTHOR_USER_ID)
+                .parentId(parentId)
+                .status(status)
+                .content(content)
+                .build()).getId();
+        em.flush();
+        em.clear();
+        return id;
+    }
+
     private Long insertListing(String title, RecruitmentVisibility visibility) {
+        return insertListing(title, visibility, RecruitmentListingStatus.OPEN);
+    }
+
+    private Long insertListing(String title, RecruitmentVisibility visibility, RecruitmentListingStatus status) {
         LocalDateTime start = LocalDateTime.now().plusDays(30);
         return listingRepository.save(RecruitmentListingEntity.builder()
                 .scopeType(RecruitmentScopeType.TEAM)
@@ -416,7 +527,7 @@ class ContentReportDerivationContractIT extends AbstractMySqlIntegrationTest {
                 .autoCancelAt(start.minusDays(2))
                 .capacity(10)
                 .minCapacity(1)
-                .status(RecruitmentListingStatus.OPEN)
+                .status(status)
                 .visibility(visibility)
                 .createdBy(LISTING_OWNER_USER_ID)
                 .build()).getId();
