@@ -391,11 +391,8 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
     private void seedUsersAndRoles() {
         TransactionTemplate tx = new TransactionTemplate(txManager);
         tx.execute(status -> {
-            // roles テーブルに MEMBER ロールを挿入（既存の場合は重複 INSERT を無視）
-            em.createNativeQuery(
-                    "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                            + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
-                    .executeUpdate();
+            // roles テーブルに MEMBER ロールを挿入（存在確認してから INSERT。INSERT IGNORE は使用禁止）
+            insertRoleIfAbsent("MEMBER", "メンバー", 4, false);
             em.flush();
 
             memberRoleId = ((Number) em.createNativeQuery(
@@ -412,26 +409,57 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
         });
     }
 
-    private Long insertUser(String email, String lastName, String firstName) {
+    private void insertRoleIfAbsent(String name, String displayName, int priority, boolean isSystem) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。INSERT IGNORE は
+        // 重複キー以外にもデータ切り詰め・NOT NULL違反等の異常を警告に格下げして黙って
+        // 通してしまうため使用禁止。CI shard 再編成で同居テストが変わり得るため
+        // 事前に SELECT で存在確認する）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
         em.createNativeQuery(
-                "INSERT IGNORE INTO users ("
-                        + "email, last_name, first_name, display_name, status, "
-                        + "is_searchable, handle_searchable, contact_approval_required, "
-                        + "online_visibility, dm_receive_from, encryption_key_version, "
-                        + "locale, timezone, reporting_restricted, follow_list_visibility, "
-                        + "care_notification_enabled, offline_only, "
-                        + "created_at, updated_at) "
-                        + "VALUES (:email, :ln, :fn, :dn, 'ACTIVE', "
-                        + "1, 1, 1, "
-                        + "'NOBODY', 'ANYONE', 1, "
-                        + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
-                        + "1, 0, "
-                        + "NOW(), NOW())")
-                .setParameter("email", email)
-                .setParameter("ln", lastName)
-                .setParameter("fn", firstName)
-                .setParameter("dn", lastName + " " + firstName)
+                        "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                                + "VALUES (:name, :dn, :priority, :sys, NOW(), NOW())")
+                .setParameter("name", name)
+                .setParameter("dn", displayName)
+                .setParameter("priority", priority)
+                .setParameter("sys", isSystem ? 1 : 0)
                 .executeUpdate();
+    }
+
+    private Long insertUser(String email, String lastName, String firstName) {
+        // 冪等化: users はテスト間で email が固定文字列のため既存なら再利用する
+        // （同一 email の重複INSERTは uq_users_email 制約違反になる。INSERT IGNORE は
+        // 重複キー以外にもデータ切り詰め・NOT NULL違反等の異常を警告に格下げして黙って
+        // 通してしまうため使用禁止。事前に SELECT で存在確認する）。
+        Number existingUserCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM users WHERE email = :email")
+                .setParameter("email", email)
+                .getSingleResult();
+        if (existingUserCount.longValue() == 0) {
+            em.createNativeQuery(
+                    "INSERT INTO users ("
+                            + "email, last_name, first_name, display_name, status, "
+                            + "is_searchable, handle_searchable, contact_approval_required, "
+                            + "online_visibility, dm_receive_from, encryption_key_version, "
+                            + "locale, timezone, reporting_restricted, follow_list_visibility, "
+                            + "care_notification_enabled, offline_only, "
+                            + "created_at, updated_at) "
+                            + "VALUES (:email, :ln, :fn, :dn, 'ACTIVE', "
+                            + "1, 1, 1, "
+                            + "'NOBODY', 'ANYONE', 1, "
+                            + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
+                            + "1, 0, "
+                            + "NOW(), NOW())")
+                    .setParameter("email", email)
+                    .setParameter("ln", lastName)
+                    .setParameter("fn", firstName)
+                    .setParameter("dn", lastName + " " + firstName)
+                    .executeUpdate();
+        }
         return ((Number) em.createNativeQuery(
                 "SELECT id FROM users WHERE email = :email")
                 .setParameter("email", email)
@@ -439,8 +467,22 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     private void insertUserRole(Long uid, Long roleId, Long teamIdParam, Long orgIdParam) {
+        // 冪等化: user_roles は uq_user_roles_user_scope (user_id, scope_key) の UNIQUE 制約を
+        // 持つため、既存なら再利用し二重INSERTしない（INSERT IGNORE は使用禁止。理由は
+        // insertUser 参照）。scope_key は team_id/organization_id から生成列で決まるため、
+        // 同じ (user_id, team_id, organization_id) の組で存在確認する。
+        Number existingUserRoleCount = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM user_roles WHERE user_id = :uid "
+                                + "AND team_id <=> :tid AND organization_id <=> :oid")
+                .setParameter("uid", uid)
+                .setParameter("tid", teamIdParam)
+                .setParameter("oid", orgIdParam)
+                .getSingleResult();
+        if (existingUserRoleCount.longValue() > 0) {
+            return;
+        }
         em.createNativeQuery(
-                "INSERT IGNORE INTO user_roles (user_id, role_id, team_id, organization_id, created_at, updated_at) "
+                "INSERT INTO user_roles (user_id, role_id, team_id, organization_id, created_at, updated_at) "
                         + "VALUES (:uid, :rid, :tid, :oid, NOW(), NOW())")
                 .setParameter("uid", uid)
                 .setParameter("rid", roleId)
