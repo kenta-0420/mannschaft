@@ -37,8 +37,10 @@ function encryptForTest(plain) {
 
 (async () => {
   const conn = await mysql.createConnection({
-    host: "127.0.0.1", port: 3306,
-    user: "mannschaft", password: "mannschaft", database: "mannschaft",
+    host: "127.0.0.1", port: Number(process.env.E2E_DB_PORT ?? 3306),
+    user: process.env.E2E_DB_USER ?? "mannschaft",
+    password: process.env.E2E_DB_PASSWORD ?? "mannschaft",
+    database: process.env.E2E_DB_NAME ?? "mannschaft",
     charset: "utf8mb4", // 二重エンコード再発防止のため接続文字コードを明示
   });
 
