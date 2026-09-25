@@ -275,6 +275,7 @@ const SHELL_SEGMENTS = new Set([
   'modules',
   'reservations',
   'nav',
+  'guide',
   // --- ウィジェット遷移先（ScopeDashboard.vue scopeLinks 正本・15 セグメント） ---
   'schedule',
   'todos',
@@ -661,5 +662,12 @@ provideTeamShellContext({
         </template>
       </Dialog>
     </template>
+    <MemberPermissionSetupDialog
+      v-if="isShellRoute && team?.numericId && roleName === 'ADMIN'"
+      scope-type="TEAM"
+      :scope-id="team.numericId"
+      :slug="teamSlug"
+      :role-name="roleName"
+    />
   </div>
 </template>
