@@ -11,7 +11,6 @@ import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRe
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationResponse;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationSendAcceptedResponse;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
-import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
@@ -229,11 +228,11 @@ public class TeamConfirmableNotificationController {
             return ResponseEntity.ok(ApiResponse.of(responses));
         }
 
-        // 非 ADMIN は ALL_MEMBERS かつ受信者本人のみ閲覧可（Service 層で認可判定 + マスク前データ取得）
-        List<ConfirmableNotificationRecipientEntity> unconfirmed =
-                notificationService.getRecipientsForMember(notificationId, currentUserId);
+        // 非 ADMIN は ALL_MEMBERS かつ受信者本人のみ閲覧可（Service 層で認可判定 + マスク済みDTO取得）。
+        // CMP-260920-1040是正: getRecipientsForMember はネイティブ投影から直接マスク済みDTOを返すため、
+        // mapper を経由しない（家老の検出・殿の確認。退会者を含んでも500化しない）。
         List<ConfirmableNotificationRecipientResponse> responses =
-                mapper.toRecipientPublicResponseList(unconfirmed);
+                notificationService.getRecipientsForMember(notificationId, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 

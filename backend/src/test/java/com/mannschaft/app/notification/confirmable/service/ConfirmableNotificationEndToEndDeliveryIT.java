@@ -290,6 +290,55 @@ class ConfirmableNotificationEndToEndDeliveryIT extends AbstractMySqlIntegration
     }
 
     // =====================================================================
+    // E2E-6: MEMBER 視点（getRecipientsForMember）でも退会者を含んで500化せず、
+    // withdrawn:true として返る（⚔️足軽16是正）。
+    // =====================================================================
+    @Test
+    @DisplayName("E2E-6: MEMBER視点の/recipientsも退会者を含んで500化せず、200でwithdrawn:trueが返る")
+    void e2e6_memberViewWithdrawnRecipientDoesNotCause500() throws Exception {
+        long org = insertOrganization(null);
+        long sender = insertUser();
+        grantOrgAdmin(sender, org);
+        long uViewer = insertUser();
+        insertMembership(uViewer, "ORGANIZATION", org, "MEMBER");
+        long uWithdrawing = insertUser();
+        insertMembership(uWithdrawing, "ORGANIZATION", org, "MEMBER");
+
+        setAuth(sender);
+        Long notificationId = sendAndAccept(org, Map.of(
+                "title", "E2E-6 MEMBER視点退会者混在",
+                "unconfirmedVisibility", "ALL_MEMBERS"));
+
+        runWorkerUntilDone(notificationId);
+
+        // 配信完了後に受信者の1人が退会する（論理削除）。uViewer自身は未確認のまま生存させる。
+        jdbc.update("UPDATE users SET deleted_at = NOW() WHERE id = ?", uWithdrawing);
+
+        // MEMBER視点（非ADMIN・受信者本人）で /recipients を叩く。
+        setAuth(uViewer);
+        MvcResult memberResult = mockMvc.perform(get(
+                        "/api/v1/organizations/{orgId}/confirmable-notifications/{id}/recipients", org, notificationId))
+                .andReturn();
+        assertThat(memberResult.getResponse().getStatus())
+                .as("E2E-6: MEMBER視点の/recipientsは退会者を含んでも200（是正前は500化していた）")
+                .isEqualTo(200);
+        assertThat(memberResult.getResponse().getContentAsString())
+                .as("E2E-6: MEMBER視点でも退会者の行はwithdrawn:trueで返る")
+                .contains("\"withdrawn\":true");
+
+        var memberNode = objectMapper.readTree(memberResult.getResponse().getContentAsString()).path("data");
+        assertThat(memberNode.isArray()).as("E2E-6: dataは配列").isTrue();
+        for (var item : memberNode) {
+            assertThat(item.path("confirmedAt").isNull())
+                    .as("E2E-6: MEMBER視点はconfirmedAtを常にNULLマスクする").isTrue();
+            assertThat(item.path("confirmedVia").isNull())
+                    .as("E2E-6: MEMBER視点はconfirmedViaを常にNULLマスクする").isTrue();
+            assertThat(item.path("excludedAt").isNull())
+                    .as("E2E-6: MEMBER視点はexcludedAtを常にNULLマスクする").isTrue();
+        }
+    }
+
+    // =====================================================================
     // ヘルパ
     // =====================================================================
 

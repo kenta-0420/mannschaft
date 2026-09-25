@@ -629,15 +629,17 @@ public class ConfirmableNotificationService {
     /**
      * MEMBER 視点で確認通知の未確認者一覧を取得する（F04.9 Phase D）。
      *
-     * <p>実装は {@link ConfirmableNotificationQueryService#getRecipientsForMember(Long, Long)} に委譲。</p>
+     * <p>実装は {@link ConfirmableNotificationQueryService#getRecipientsForMember(Long, Long)} に委譲。
+     * CMP-260920-1040是正: ネイティブ投影から直接 DTO を組み立てて返すため、退会者を含んでも
+     * 500 化しない（表示名・アバターURLはNULL、withdrawn=trueの行として返る）。</p>
      *
      * @param notificationId  確認通知ID
      * @param requesterUserId リクエスト元ユーザーID
-     * @return 未確認受信者エンティティリスト（マスク前）
+     * @return 未確認・非除外の受信者レスポンスリスト（確認状態はマスク済み）
      */
     @Transactional(readOnly = true)
-    public List<ConfirmableNotificationRecipientEntity> getRecipientsForMember(
-            Long notificationId, Long requesterUserId) {
+    public List<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse>
+            getRecipientsForMember(Long notificationId, Long requesterUserId) {
         return queryService.getRecipientsForMember(notificationId, requesterUserId);
     }
 

@@ -143,14 +143,23 @@ public class ConfirmableNotificationQueryService {
      * </ol>
      * いずれかを満たさない場合は {@link CommonErrorCode#COMMON_002}（403）を投げる。</p>
      *
-     * <p>戻り値は <b>未確認かつ非除外</b> の受信者のみ。Mapper の
-     * {@code toRecipientPublicResponseList} で confirmedAt / confirmedVia / excludedAt をマスクして返すこと。</p>
+     * <p>戻り値は <b>未確認かつ非除外</b> の受信者のみ。confirmedAt / confirmedVia / excludedAt は
+     * NULL マスクして返す（{@code toRecipientResponse(row, true)} と同じ MEMBER 視点契約）。</p>
+     *
+     * <p><b>CMP-260920-1040是正</b>: 従来は {@code recipientRepository.findByConfirmableNotificationId}
+     * で Entity を取得し、呼び出し元 Controller が {@code ConfirmableNotificationMapper#toRecipientPublicResponseList}
+     * を通していたが、そのマッピングが LAZY な {@code recipient.getUser()} を関連経由で読むため、
+     * 受信者（呼び出しユーザー自身の受信者判定を含む）に退会者が1人でも含まれると
+     * {@code EntityNotFoundException} になり一覧全体が 500 化していた。
+     * {@link #getRecipients(Long)} と同じネイティブ投影（{@link ConfirmableNotificationRecipientRepository#findRecipientRowsByNotificationId}）
+     * から直接 DTO を組み立てることでこれを根治し、退会者は {@code withdrawn=true}
+     * （表示名・アバターURLはNULL）の行として返す。</p>
      *
      * @param notificationId  確認通知ID
      * @param requesterUserId リクエスト元ユーザーID
-     * @return 未確認受信者エンティティリスト（マスク前）
+     * @return 未確認・非除外の受信者レスポンスリスト（確認状態はマスク済み・退会者は withdrawn=true）
      */
-    public List<ConfirmableNotificationRecipientEntity> getRecipientsForMember(
+    public List<ConfirmableNotificationRecipientResponse> getRecipientsForMember(
             Long notificationId, Long requesterUserId) {
         // 通知の存在確認
         ConfirmableNotificationEntity notification = notificationRepository.findById(notificationId)
@@ -161,19 +170,22 @@ public class ConfirmableNotificationQueryService {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
 
-        // 呼び出しユーザーが受信者かつ非除外であることを確認
-        List<ConfirmableNotificationRecipientEntity> allRecipients =
-                recipientRepository.findByConfirmableNotificationId(notificationId);
-        boolean isRecipient = allRecipients.stream()
-                .anyMatch(r -> r.getUser().getId().equals(requesterUserId) && !r.isExcluded());
+        // ネイティブ投影で全行を取得（@SQLRestriction に左右されない。退会者も行として返る）
+        List<Object[]> allRows = recipientRepository.findRecipientRowsByNotificationId(notificationId);
+
+        // 呼び出しユーザーが受信者かつ非除外であることを確認（row: user_id=[1], excluded_at=[8]）
+        boolean isRecipient = allRows.stream()
+                .anyMatch(row -> requesterUserId.equals(row[1] == null ? null : ((Number) row[1]).longValue())
+                        && row[8] == null);
         if (!isRecipient) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
 
-        // 未確認かつ非除外の受信者のみ返す
-        return allRecipients.stream()
-                .filter(r -> !Boolean.TRUE.equals(r.getIsConfirmed()))
-                .filter(r -> !r.isExcluded())
+        // 未確認かつ非除外の受信者のみ、確認状態をマスクして返す（row: is_confirmed=[5], excluded_at=[8]）
+        return allRows.stream()
+                .filter(row -> !Boolean.TRUE.equals(toBoolean(row[5])))
+                .filter(row -> row[8] == null)
+                .map(row -> toRecipientResponse(row, true))
                 .collect(Collectors.toList());
     }
 

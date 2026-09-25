@@ -81,32 +81,13 @@ public abstract class ConfirmableNotificationMapper {
     public abstract List<ConfirmableNotificationRecipientResponse> toRecipientResponseList(
             List<ConfirmableNotificationRecipientEntity> entities);
 
-    /**
-     * 確認通知受信者 Entity → 公開（MEMBER 視点）DTO に変換する。
-     *
-     * <p>F04.9 Phase D（{@code unconfirmed_visibility = ALL_MEMBERS}）でメンバーがアクセスした場合に使用する。
-     * 未確認者の存在を可視化するが、確認状態の詳細（confirmedAt/confirmedVia/excludedAt）はマスクして返す。</p>
-     *
-     * <p>本メソッドが返すのは未確認者のみという前提で呼び出すこと（フィルタは Service 層で実施）。</p>
+    /*
+     * CMP-260920-1040是正: 公開（MEMBER 視点）変換の toRecipientPublicResponse /
+     * toRecipientPublicResponseList はここにあったが、LAZY な recipient.getUser() を関連経由で
+     * 読むため退会者を含むと EntityNotFoundException になり 500 化していた。呼び出し元
+     * （ConfirmableNotificationQueryService#getRecipientsForMember）をネイティブ投影から直接 DTO を
+     * 組み立てる方式に是正し、本メソッドは呼び出し元が無くなったため削除した。
      */
-    @Named("toRecipientResponsePublic")
-    @Mapping(target = "userId", source = "user.id")
-    @Mapping(target = "displayName", source = "user.displayName")
-    @Mapping(target = "avatarUrl", source = "user.avatarUrl")
-    @Mapping(target = "confirmedAt", ignore = true)
-    @Mapping(target = "confirmedVia", ignore = true)
-    @Mapping(target = "excludedAt", ignore = true)
-    public abstract ConfirmableNotificationRecipientResponse toRecipientPublicResponse(
-            ConfirmableNotificationRecipientEntity entity);
-
-    /**
-     * 確認通知受信者エンティティリスト → 公開（MEMBER 視点）DTO リストに変換する。
-     *
-     * <p>F04.9 Phase D の MEMBER 視点用。confirmedAt / confirmedVia / excludedAt はマスク。</p>
-     */
-    @IterableMapping(qualifiedByName = "toRecipientResponsePublic")
-    public abstract List<ConfirmableNotificationRecipientResponse> toRecipientPublicResponseList(
-            List<ConfirmableNotificationRecipientEntity> entities);
 
     /**
      * 確認通知テンプレート Entity → レスポンスDTO に変換する（AC-32: 削除済み既定グループは NULL）。
