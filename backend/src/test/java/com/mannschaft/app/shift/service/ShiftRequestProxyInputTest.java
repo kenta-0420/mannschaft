@@ -3,7 +3,7 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
-import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPreference;
 import com.mannschaft.app.shift.ShiftScheduleStatus;
@@ -61,7 +61,7 @@ class ShiftRequestProxyInputTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
-    private AccessControlService accessControlService;
+    private ScopeConcealingAccessGate accessGate;
 
     @Mock
     private ProxyInputContext proxyInputContext;
@@ -79,14 +79,9 @@ class ShiftRequestProxyInputTest {
     private static final Long CONSENT_ID = 50L;
     private static final Long PROXY_RECORD_ID = 999L;
 
-    @BeforeEach
-    void setUpAuthzDefaults() {
-        // 認可根治 Wave6: 本 UT の検証対象は代理入力の記録ロジック。per-scope 認可の成否は
-        // 契約IT（ShiftRequestScopeContractIT）で固定するため、ここでは
-        // 「当該チームの一般メンバー」として通す既定値を lenient に置く。
-        lenient().when(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).thenReturn(true);
-        lenient().when(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM")).thenReturn(false);
-    }
+    // 本 UT の検証対象は代理入力の記録ロジック。認可ゲート（ScopeConcealingAccessGate）はモックで素通しとし、
+    // per-scope 認可と存在秘匿の成否は ScopeConcealingAccessGateTest と
+    // 契約IT（ShiftRequestPositionScopeContractIT）で固定する。
 
     private CreateShiftRequestRequest createRequest() {
         return new CreateShiftRequestRequest(

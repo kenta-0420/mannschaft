@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.dto.CreatePositionRequest;
@@ -29,7 +30,11 @@ import java.util.List;
  *   <li><b>作成・更新・削除</b>: ADMIN/DEPUTY_ADMIN 以上（SYSTEM_ADMIN 短絡）</li>
  * </ul>
  *
- * <p>認可失敗は {@code COMMON_002}（403）。同ドメインの {@code ShiftScheduleScopeContractIT} /
+ * <p><b>存在秘匿（CMP-260923-0954）:</b> positionId 指定の更新・削除は {@link ScopeConcealingAccessGate} に委ね、
+ * 越境（当該チームに所属しない利用者）には不在時と完全同一の {@code SHIFT_004}（404）を返す。
+ * {@code ?teamId=} 指定の一覧・作成は非メンバーに常に同一の 403 のまま（01_authorization_baseline.md §3.3.1）。</p>
+ *
+ * <p>同一チーム内の認可失敗は {@code COMMON_002}（403）。同ドメインの {@code ShiftScheduleScopeContractIT} /
  * {@code ShiftSlotScopeContractIT} の規約に揃える。</p>
  */
 @Slf4j
@@ -40,6 +45,7 @@ public class ShiftPositionService {
 
     private final ShiftPositionRepository positionRepository;
     private final AccessControlService accessControlService;
+    private final ScopeConcealingAccessGate accessGate;
     private final ShiftMapper shiftMapper;
 
     /**
@@ -93,12 +99,12 @@ public class ShiftPositionService {
      * @param req        更新リクエスト
      * @param userId     操作者ユーザーID
      * @return 更新されたポジション
-     * @throws BusinessException 当該ポジションが属するチームの ADMIN 以上でない場合（COMMON_002 / 403）
+     * @throws BusinessException 不在・越境（SHIFT_004 / 404）、同チームの権限不足（COMMON_002 / 403）
      */
     @Transactional
     public ShiftPositionResponse updatePosition(Long positionId, UpdatePositionRequest req, Long userId) {
         ShiftPositionEntity entity = findPositionOrThrow(positionId);
-        checkTeamAdminAccess(entity.getTeamId(), userId);
+        accessGate.requireAdminOrConceal(userId, entity.getTeamId(), "TEAM", ShiftErrorCode.SHIFT_POSITION_NOT_FOUND);
 
         if (req.getName() != null) {
             // 名前変更時は重複チェック
@@ -130,12 +136,12 @@ public class ShiftPositionService {
      *
      * @param positionId ポジションID
      * @param userId     操作者ユーザーID
-     * @throws BusinessException 当該ポジションが属するチームの ADMIN 以上でない場合（COMMON_002 / 403）
+     * @throws BusinessException 不在・越境（SHIFT_004 / 404）、同チームの権限不足（COMMON_002 / 403）
      */
     @Transactional
     public void deletePosition(Long positionId, Long userId) {
         ShiftPositionEntity entity = findPositionOrThrow(positionId);
-        checkTeamAdminAccess(entity.getTeamId(), userId);
+        accessGate.requireAdminOrConceal(userId, entity.getTeamId(), "TEAM", ShiftErrorCode.SHIFT_POSITION_NOT_FOUND);
         positionRepository.delete(entity);
         log.info("シフトポジション削除: id={}", positionId);
     }

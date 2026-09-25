@@ -895,6 +895,10 @@ class ShiftRequestPositionScopeContractIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(expectedSize));
         long count = stats.getPrepareStatementCount();
+        // 失敗時の切り分け用に内訳を残す（件数に比例して増えるのが SQL のどの種類かを見る）
+        System.out.printf("[AC-12] size=%d prepared=%d entityLoad=%d queryExec=%d flush=%d update=%d fetch=%d%n",
+                expectedSize, count, stats.getEntityLoadCount(), stats.getQueryExecutionCount(),
+                stats.getFlushCount(), stats.getEntityUpdateCount(), stats.getEntityFetchCount());
         em.clear();
         return count;
     }
