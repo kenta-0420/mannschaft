@@ -197,7 +197,7 @@ class ConfirmableNotificationQueryServiceTest {
 
             given(notificationRepository.findById(NOTIFICATION_ID)).willReturn(Optional.of(notification));
             given(recipientRepository.findRecipientRowsByNotificationId(NOTIFICATION_ID))
-                    .willReturn(List.of(recipientRow(1L, USER_ID_2, false)));
+                    .willReturn(List.<Object[]>of(recipientRow(1L, USER_ID_2, false)));
 
             // when / then: 非受信者の USER_ID_1 が呼ぶと 403
             assertThatThrownBy(() -> queryService.getRecipientsForMember(NOTIFICATION_ID, USER_ID_1))
