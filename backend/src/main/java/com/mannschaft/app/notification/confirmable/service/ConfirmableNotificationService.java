@@ -126,6 +126,10 @@ public class ConfirmableNotificationService {
     /** fan-out ジョブの {@code scope_type}（{@code ConfirmableTargetsFanoutRecipientSource#scopeType()} と一致）。 */
     private static final String CONFIRMABLE_TARGETS_SCOPE_TYPE = "CONFIRMABLE_TARGETS";
 
+    /** fan-out ジョブの {@code source_type}（{@code ConfirmableFanoutChunkSink} の private SOURCE_TYPE と一致させる値。
+     * CMP-260920-1040是正: これまで未設定（null）だったため source_id と併せてここで明示する）。 */
+    private static final String CONFIRMABLE_FANOUT_SOURCE_TYPE = "CONFIRMABLE_NOTIFICATION";
+
     /**
      * CMP-260920-1040: 確認通知「宛先指定」の非同期送信（軍議第8版確定稿 §3.3・AC-16・17・19・20・22・26・28・36・52）。
      *
@@ -269,7 +273,9 @@ public class ConfirmableNotificationService {
                 idempotencyKey,
                 scopeType == ScopeType.ORGANIZATION ? scopeId : null,
                 toNotificationPriority(notification.getPriority()),
-                createdByUserId);
+                createdByUserId,
+                CONFIRMABLE_FANOUT_SOURCE_TYPE,
+                notification.getId());
 
         log.info("確認通知（宛先指定）非同期送信を受け付け: notificationId={}, scopeType={}, scopeId={}, targetCount={}",
                 notification.getId(), scopeType, scopeId, targets.size());
@@ -612,10 +618,11 @@ public class ConfirmableNotificationService {
      * 実装は {@link ConfirmableNotificationQueryService#getRecipients(Long)} に委譲。</p>
      *
      * @param notificationId 確認通知ID
-     * @return 受信者エンティティリスト（除外者・確認済みも含む全件）
+     * @return 受信者レスポンスリスト（除外者・確認済みも含む全件・退会者は withdrawn=true。CMP-260920-1040是正）
      */
     @Transactional(readOnly = true)
-    public List<ConfirmableNotificationRecipientEntity> getRecipients(Long notificationId) {
+    public List<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse>
+            getRecipients(Long notificationId) {
         return queryService.getRecipients(notificationId);
     }
 

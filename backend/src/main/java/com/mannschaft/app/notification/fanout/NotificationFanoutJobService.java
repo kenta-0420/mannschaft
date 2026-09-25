@@ -239,12 +239,17 @@ public class NotificationFanoutJobService {
      * @param organizationId   テナント（組織スコープのみ・チームスコープは NULL）
      * @param priority         優先度（NULL は NORMAL 相当）
      * @param actorId          送信者ユーザーID
+     * @param sourceType       ソース種別（{@code ConfirmableFanoutChunkSink} 等が配信対象を特定するために使う）
+     * @param sourceId         ソースID（{@code NotificationFanoutWorker#processOneWithSink} が
+     *                         {@code sink.processChunk}/{@code finish} へそのまま渡す値。CMP-260920-1040是正:
+     *                         これが null のままだと確認通知IDがワーカーに渡らず配信が成立しない・Codex P1）
      * @return 作成されたジョブのID
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public UUID enqueueInCurrentTransaction(String scopeType, String scopeRef, String notificationType,
                                             UUID idempotencyKey, Long organizationId,
-                                            NotificationPriority priority, Long actorId) {
+                                            NotificationPriority priority, Long actorId,
+                                            String sourceType, Long sourceId) {
         LocalDateTime now = LocalDateTime.now(clock);
         NotificationFanoutJob job = NotificationFanoutJob.builder()
                 .sourceEventUuid(idempotencyKey)
@@ -253,11 +258,14 @@ public class NotificationFanoutJobService {
                 .notificationType(notificationType)
                 .organizationId(organizationId)
                 .priority(priority == null ? NotificationPriority.NORMAL : priority)
-                .sourceType(null)
-                .sourceId(null)
+                .sourceType(sourceType)
+                .sourceId(sourceId)
                 .actionUrl(null)
                 .actorId(actorId)
-                .includeSupporters(true)
+                // 軍議第8版確定稿 §3.2・AC-2: 確認通知は純粋な SUPPORTER（MEMBER を兼ねない）を対象外とする。
+                // includeSupporters=true にすると ConfirmableTargetsFanoutRecipientSource が純粋な SUPPORTER
+                // にも配信してしまう（CMP-260920-1040是正・殿の検出）。
+                .includeSupporters(false)
                 .shardIndex((short) 0)
                 // 軍議第8版確定稿 §3.2・マスター裁可: 1万件超のシャード分割は最初の段階では対応しない。
                 // shard_count=1 に固定し、resolveAndSplitShards の自動評価（0=未評価）を経由させない。
