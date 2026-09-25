@@ -72,7 +72,7 @@ class MemberSubtabVisibilityServiceTest {
         @Test
         @DisplayName("非メンバー(未認証含む)はデフォルト値(MEMBER)を返す・DBは参照しない")
         void 非メンバー_デフォルト値() {
-            given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
 
             MemberSubtabVisibilityResponse response = service.getSettings(USER_ID, ScopeType.ORGANIZATION, ORG_ID);
 
@@ -82,9 +82,25 @@ class MemberSubtabVisibilityServiceTest {
         }
 
         @Test
+        @DisplayName("検分指摘B(2巡目・P2): SUPPORTERはisMember()ではtrueだが、"
+                + "ロール閾値(MEMBER以上)ではデフォルト値を返す・DBは参照しない")
+        void SUPPORTER_デフォルト値_isMemberはtrueでも拒否() {
+            // isMember() は SUPPORTER も所属者として true を返すため、旧実装ではここで実設定が
+            // 漏れていた（検分指摘B）。hasRoleOrAbove(...,"MEMBER") を false のままにしても、
+            // SUPPORTER の isMember() が true になりうる状況を再現するためスタブしておく。
+            given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
+
+            MemberSubtabVisibilityResponse response = service.getSettings(USER_ID, ScopeType.ORGANIZATION, ORG_ID);
+
+            assertThat(response.getSubtabs()).allMatch(item -> item.isDefault() && item.getMinRole() == MinRole.MEMBER);
+            verify(repository, never()).findByScopeTypeAndScopeId(ScopeType.ORGANIZATION, ORG_ID);
+        }
+
+        @Test
         @DisplayName("メンバーは DB 設定 + デフォルトの合成結果を返す")
         void メンバー_合成結果() {
-            given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(true);
             MemberSubtabRoleVisibilityEntity entity = MemberSubtabRoleVisibilityEntity.builder()
                     .scopeType(ScopeType.ORGANIZATION).scopeId(ORG_ID)
                     .subtabKey("member_profiles").minRole(MinRole.PUBLIC).updatedBy(9L)

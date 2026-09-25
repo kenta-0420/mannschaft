@@ -186,7 +186,7 @@ class TeamPageServiceTest {
             given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             // assertViewable は正常時 void（何もしない）
             // ページ個別 visibility=MEMBERS_ONLY を満たすため、メンバーであることをスタブする
-            given(accessControlService.isMember(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(true);
             given(sectionRepository.findByTeamPageIdOrderBySortOrder(1L)).willReturn(List.of());
             given(profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(1L)).willReturn(List.of());
             given(memberMapper.toSectionResponseList(any())).willReturn(List.of());
@@ -231,12 +231,37 @@ class TeamPageServiceTest {
             given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
             given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             // サブタブは PUBLIC 設定 → assertViewable は通過（何もしない）
-            given(accessControlService.isMember(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
 
             assertThatThrownBy(() -> service.getPage(ACTOR_ID, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBER_001"));
+        }
+
+        @Test
+        @DisplayName("検分指摘A(2巡目・P1): SUPPORTER×サブタブSUPPORTER×ページMEMBERS_ONLY → 拒否"
+                + "（isMember()ではなくロール閾値MEMBER以上で判定する回帰）")
+        void サブタブSUPPORTER_ページMEMBERS_ONLY_SUPPORTER_拒否() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .organizationId(ORG_ID).title("紹介").slug("intro").pageType(PageType.MAIN)
+                    .status(PageStatus.PUBLISHED).visibility(PageVisibility.MEMBERS_ONLY)
+                    .build();
+            given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            // サブタブは SUPPORTER 設定 → 外側の門(assertViewable)は SUPPORTER でも通過（何もしない）が、
+            // ページ個別 visibility=MEMBERS_ONLY のロール閾値（MEMBER 以上）で拒否されるべき。
+            // isMember() は SUPPORTER も所属者として true を返すため、ここを isMember() のまま判定すると
+            // 誤って許可してしまう（検分指摘A）。hasRoleOrAbove(...,"MEMBER") で SUPPORTER を除外する。
+            given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER"))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> service.getPage(ACTOR_ID, 1L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("MEMBER_001"));
+            org.mockito.Mockito.verify(accessControlService, never())
+                    .isMember(ACTOR_ID, ORG_ID, "ORGANIZATION");
         }
 
         @Test
@@ -248,7 +273,7 @@ class TeamPageServiceTest {
                     .build();
             given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
             given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
-            given(accessControlService.isMember(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(true);
             given(sectionRepository.findByTeamPageIdOrderBySortOrder(1L)).willReturn(List.of());
             given(profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(1L)).willReturn(List.of());
             given(memberMapper.toSectionResponseList(any())).willReturn(List.of());
@@ -331,7 +356,7 @@ class TeamPageServiceTest {
         void 組織_非管理者_公開済みのみ() {
             Pageable pageable = PageRequest.of(0, 10);
             given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
-            given(accessControlService.isMember(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(true);
             Page<TeamPageEntity> emptyPage = new PageImpl<>(List.of());
             given(pageRepository.findByOrganizationIdAndStatusOrderBySortOrder(ORG_ID, PageStatus.PUBLISHED, pageable))
                     .willReturn(emptyPage);
@@ -347,7 +372,7 @@ class TeamPageServiceTest {
         void 組織_非会員_サブタブPUBLIC通過_PUBLICページのみ() {
             Pageable pageable = PageRequest.of(0, 10);
             given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
-            given(accessControlService.isMember(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
             Page<TeamPageEntity> emptyPage = new PageImpl<>(List.of());
             given(pageRepository.findByOrganizationIdAndStatusAndVisibilityOrderBySortOrder(
                     ORG_ID, PageStatus.PUBLISHED, PageVisibility.PUBLIC, pageable))

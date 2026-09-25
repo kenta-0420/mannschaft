@@ -81,7 +81,11 @@ public class TeamPageService {
                     actorUserId, ScopeType.ORGANIZATION, organizationId, MemberSubtabKey.MEMBER_PROFILES);
             isAdmin = accessControlService.isAdminOrAbove(actorUserId, organizationId, SCOPE_ORGANIZATION);
             if (!isAdmin) {
-                isMember = accessControlService.isMember(actorUserId, organizationId, SCOPE_ORGANIZATION);
+                // 検分指摘A（P1）: isMember() は所属の有無（SUPPORTER も true）を見るだけで、
+                // F06.2 の「MEMBERS_ONLY = MEMBER 以上」という仕様のロール閾値と一致しない。
+                // hasRoleOrAbove(...,"MEMBER") で SUPPORTER を除外する。
+                isMember = accessControlService.hasRoleOrAbove(
+                        actorUserId, organizationId, SCOPE_ORGANIZATION, "MEMBER");
             }
         }
         Page<TeamPageEntity> page;
@@ -313,8 +317,12 @@ public class TeamPageService {
             // ページ個別の visibility（MEMBERS_ONLY）までは緩めない（AND 条件。設計書 F06.2
             // §アクセス制御ロジック 1081-1082 行）。サブタブが PUBLIC 設定でも、ページが
             // MEMBERS_ONLY なら非会員は拒否する。
+            //
+            // 検分指摘A（2巡目・P1）: 判定は isMember()（所属の有無。SUPPORTER も true）ではなく
+            // ロール閾値（MEMBER 以上）で行う。isMember() のままだと SUPPORTER も MEMBERS_ONLY を
+            // 閲覧できてしまい、F06.2 の「MEMBERS_ONLY = MEMBER 以上」仕様に反する。
             if (page.getVisibility() == PageVisibility.MEMBERS_ONLY
-                    && !accessControlService.isMember(actorUserId, scopeId, scopeType)) {
+                    && !accessControlService.hasRoleOrAbove(actorUserId, scopeId, scopeType, "MEMBER")) {
                 throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
             }
             return;

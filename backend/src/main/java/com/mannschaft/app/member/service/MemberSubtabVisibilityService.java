@@ -77,7 +77,11 @@ public class MemberSubtabVisibilityService {
     public MemberSubtabVisibilityResponse getSettings(Long currentUserId, ScopeType scopeType, Long scopeId) {
         validateArgs(scopeType, scopeId);
 
-        if (currentUserId == null || !accessControlService.isMember(currentUserId, scopeId, scopeType.name())) {
+        // 検分指摘B（2巡目・P2）: isMember() は所属の有無（SUPPORTER も true）を見るだけで、
+        // F06.6 §9.1 の認可表（SUPPORTER への応答は既定値、実設定は MEMBER 以上）と食い違う。
+        // hasRoleOrAbove(...,"MEMBER") でロール閾値判定に揃える。
+        if (currentUserId == null
+                || !accessControlService.hasRoleOrAbove(currentUserId, scopeId, scopeType.name(), "MEMBER")) {
             return buildDefaultResponse(scopeType, scopeId);
         }
         return buildResponse(scopeType, scopeId);
