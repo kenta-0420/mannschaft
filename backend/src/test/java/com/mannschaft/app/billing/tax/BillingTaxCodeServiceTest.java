@@ -114,10 +114,10 @@ class BillingTaxCodeServiceTest {
         given(repository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         BillingTaxCodeView updated = service.update(id, new BillingTaxCodeUpdateRequest(
-                "標準税率(改)", "txcd_new", Instant.parse("2027-01-01T00:00:00Z"), false));
+                "標準税率(改)", "txcd_20030000", Instant.parse("2027-01-01T00:00:00Z"), false));
 
         assertThat(updated.displayName()).isEqualTo("標準税率(改)");
-        assertThat(updated.stripeTaxCode()).isEqualTo("txcd_new");
+        assertThat(updated.stripeTaxCode()).isEqualTo("txcd_20030000");
         assertThat(updated.enabled()).isFalse();
         verify(repository, times(1)).lockTaxCodeLockRowForUpdate(any());
 
@@ -248,5 +248,63 @@ class BillingTaxCodeServiceTest {
         assertThatThrownBy(() -> service.resolveEffective("__TAX_CODE_LOCK__", at))
                 .as("ロック行は enabled=false なので通常解決からは常に拒否される")
                 .isInstanceOf(BusinessException.class);
+    }
+
+    // ───────── stripe_tax_code の形式検証（2026-09-24 検分指摘・同梱） ─────────
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"JP_STANDARD_10", "txcd_1234567", "txcd_123456789",
+            "TXCD_12345678", "txcd_1234567a", " txcd_12345678x"})
+    @DisplayName("登録: stripeTaxCode が ^txcd_\\d{8}$ に合わなければ400（INVALID_STRIPE_TAX_CODE）で保存しない")
+    void createRejectsMalformedStripeTaxCode(String malformed) {
+        assertThatThrownBy(() -> service.create(new BillingTaxCodeCreateRequest(
+                "JP_STANDARD_10", "標準税率", 1000, malformed, Instant.EPOCH, null, true)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> String.valueOf(((BusinessException) e).getErrorCode()))
+                .isEqualTo("INVALID_STRIPE_TAX_CODE");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("更新: stripeTaxCode が ^txcd_\\d{8}$ に合わなければ400（INVALID_STRIPE_TAX_CODE）で保存しない")
+    void updateRejectsMalformedStripeTaxCode() {
+        UUID id = UUID.randomUUID();
+        BillingTaxCodeEntity existing = taxCode("JP_STANDARD_10", Instant.EPOCH, null, true);
+        existing.setId(id);
+        lenient().when(repository.findByIdAndDeletedAtIsNull(id)).thenReturn(Optional.of(existing));
+        lenient().when(repository.findOverlapping(anyString(), any(), any())).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.update(id, new BillingTaxCodeUpdateRequest(
+                "標準税率", "JP_STANDARD_10", null, true)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> String.valueOf(((BusinessException) e).getErrorCode()))
+                .isEqualTo("INVALID_STRIPE_TAX_CODE");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("stripeTaxCode の null・空白は「未設定」として受け付け null で保存する（AC-85: tax_code を付けない）")
+    void blankStripeTaxCodeIsStoredAsNull() {
+        given(repository.findByCodeAndValidFromAndDeletedAtIsNull(anyString(), any())).willReturn(Optional.empty());
+        given(repository.findOverlapping(anyString(), any(), any())).willReturn(List.of());
+        given(repository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        BillingTaxCodeView created = service.create(new BillingTaxCodeCreateRequest(
+                "JP_STANDARD_10", "標準税率", 1000, "  ", Instant.EPOCH, null, true));
+
+        assertThat(created.stripeTaxCode()).isNull();
+    }
+
+    @Test
+    @DisplayName("正しい形式（txcd_ + 数字8桁）の stripeTaxCode は受け付ける")
+    void wellFormedStripeTaxCodeIsAccepted() {
+        given(repository.findByCodeAndValidFromAndDeletedAtIsNull(anyString(), any())).willReturn(Optional.empty());
+        given(repository.findOverlapping(anyString(), any(), any())).willReturn(List.of());
+        given(repository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        BillingTaxCodeView created = service.create(new BillingTaxCodeCreateRequest(
+                "JP_STANDARD_10", "標準税率", 1000, "txcd_99999999", Instant.EPOCH, null, true));
+
+        assertThat(created.stripeTaxCode()).isEqualTo("txcd_99999999");
     }
 }

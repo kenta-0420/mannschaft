@@ -25,6 +25,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BillingTaxCodeService {
 
+    /** Stripe の Product tax code 形式（例 txcd_99999999）。 */
+    private static final java.util.regex.Pattern STRIPE_TAX_CODE_PATTERN =
+            java.util.regex.Pattern.compile("^txcd_\\d{8}$");
+
     private static final String LOCK_ROW_CODE = "__TAX_CODE_LOCK__";
 
     /**
@@ -66,6 +70,7 @@ public class BillingTaxCodeService {
      */
     @Transactional
     public BillingTaxCodeView create(BillingTaxCodeCreateRequest request) {
+        normalizeStripeTaxCode(request.stripeTaxCode());
         repository.lockTaxCodeLockRowForUpdate(LOCK_ROW_VALID_FROM);
 
         repository.findByCodeAndValidFromAndDeletedAtIsNull(request.code(), request.validFrom())
@@ -83,7 +88,7 @@ public class BillingTaxCodeService {
                 .code(request.code())
                 .displayName(request.displayName())
                 .rateBasisPoints(request.rateBasisPoints())
-                .stripeTaxCode(request.stripeTaxCode())
+                .stripeTaxCode(normalizeStripeTaxCode(request.stripeTaxCode()))
                 .validFrom(request.validFrom())
                 .validUntil(request.validUntil())
                 .enabled(request.enabled())
@@ -94,6 +99,7 @@ public class BillingTaxCodeService {
     /** AC-6/AC-10: 表示名・stripeTaxCode・validUntil・enabled のみ更新可能。 */
     @Transactional
     public BillingTaxCodeView update(UUID id, BillingTaxCodeUpdateRequest request) {
+        normalizeStripeTaxCode(request.stripeTaxCode());
         repository.lockTaxCodeLockRowForUpdate(LOCK_ROW_VALID_FROM);
 
         BillingTaxCodeEntity existing = repository.findByIdAndDeletedAtIsNull(id)
@@ -109,10 +115,24 @@ public class BillingTaxCodeService {
         }
 
         existing.setDisplayName(request.displayName());
-        existing.setStripeTaxCode(request.stripeTaxCode());
+        existing.setStripeTaxCode(normalizeStripeTaxCode(request.stripeTaxCode()));
         existing.setValidUntil(request.validUntil());
         existing.setEnabled(request.enabled());
         return BillingTaxCodeView.from(repository.save(existing));
+    }
+
+    /**
+     * Stripe 側税コードの形式検証（{@code ^txcd_\d{8}$}）。null・空白は「未設定」として null を返す
+     * （AC-85: Product に tax_code を付けない）。形式違反は400 {@code INVALID_STRIPE_TAX_CODE}。
+     */
+    static String normalizeStripeTaxCode(String stripeTaxCode) {
+        if (stripeTaxCode == null || stripeTaxCode.isBlank()) {
+            return null;
+        }
+        if (!STRIPE_TAX_CODE_PATTERN.matcher(stripeTaxCode).matches()) {
+            throw new BusinessException(PriceRevisionErrorCode.INVALID_STRIPE_TAX_CODE);
+        }
+        return stripeTaxCode;
     }
 
     /** AC-7: 論理削除。 */

@@ -169,7 +169,7 @@ class PriceRevisionReachesPlanChangeIT extends AbstractBillingPlanChangeApiIT {
         // JSON で省略すると欠損値として false にデシリアライズされ、resolveEffective の
         // isEnabled() フィルタで無効扱いになる（TAX_CODE_NOT_FOUND）。明示的に true を渡す。
         MvcResult result = adminPost("/api/v1/system-admin/billing/tax-codes",
-                "{\"code\":\"AC127_TAX\",\"displayName\":\"AC-127検体税\",\"stripeTaxCode\":\"txcd_ac127\","
+                "{\"code\":\"AC127_TAX\",\"displayName\":\"AC-127検体税\",\"stripeTaxCode\":\"txcd_10000000\","
                         + "\"rateBasisPoints\":1000,\"validFrom\":\"2020-01-01T00:00:00Z\",\"enabled\":true}")
                 .andReturn();
         assertThat(result.getResponse().getStatus())
