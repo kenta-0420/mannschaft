@@ -318,9 +318,21 @@ class ConfirmableNotificationEndToEndDeliveryIT extends AbstractMySqlIntegration
         assertThat(projectionConfirmedAt)
                 .as("E2E-5: 射影経由のconfirmedAtがJSONに含まれる")
                 .isNotNull();
-        assertThat(java.time.LocalDateTime.parse(projectionConfirmedAt))
-                .as("E2E-5: ネイティブ投影（Timestamp→LocalDateTime）とEntity経由の値がタイムゾーンずれ無く一致する")
-                .isEqualTo(entityConfirmedAt);
+        // CMP-260920-1040是正（⚔️足軽20）: 送信APIはJSONを瞬間（末尾Zの ISO-8601 UTC instant）で返す。
+        // 一方 Entity 経由の confirmedAt は JVM既定タイムゾーン（Asia/Tokyo）の壁時計 LocalDateTime。
+        // 両者を「時差9時間のずれ無く同じ瞬間を指しているか」で比較するには、Entity側もInstantへ変換
+        // してから比べる必要がある（LocalDateTime同士の比較は文字列のズレを検出できず検証力が落ちる）。
+        // 秒未満の精度差（DB列の精度とJSONシリアライズの精度の違い）を吸収するため秒単位に揃える。
+        java.time.Instant projectionInstant = java.time.Instant.parse(projectionConfirmedAt)
+                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        java.time.Instant entityInstant = entityConfirmedAt
+                .atZone(java.time.ZoneId.systemDefault())
+                .toInstant()
+                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        assertThat(projectionInstant)
+                .as("E2E-5: ネイティブ投影（API JSON・UTC瞬間）とEntity経由の値（JST壁時計→瞬間変換）が"
+                        + "タイムゾーンずれ無く一致する")
+                .isEqualTo(entityInstant);
     }
 
     // =====================================================================
@@ -437,28 +449,44 @@ class ConfirmableNotificationEndToEndDeliveryIT extends AbstractMySqlIntegration
         return jdbc.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, email);
     }
 
+    /**
+     * CMP-260920-1040是正（⚔️足軽20）: テスト用DBは Hibernate が {@code OrganizationEntity} から作る
+     * （{@code ddl-auto: create}）ため、DDL の {@code DEFAULT} は {@code @Column(columnDefinition=...)}
+     * に明示的に書かれている列（{@code supporter_name_disclosure}・{@code public_events_enabled} 等）
+     * にしか効かない。{@code columnDefinition} を持たない {@code nullable=false} 列は、1列ずつ場当たり的に
+     * 足すのではなく、{@link OrganizationEntity} の {@code nullable=false}（またはプリミティブ・{@code @Version}）
+     * フィールドを機械的にすべて洗い出して埋める：
+     * slug・name・org_type・visibility・hierarchy_visibility・supporter_enabled・version・lifecycle_status。
+     * （name_trimmed は生成列のため対象外）
+     */
     private long insertOrganization(Long parentOrgId) {
         String name = "E2E組織-" + SEQ.incrementAndGet() + "-" + System.nanoTime();
         jdbc.update(
                 "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, slug, parent_organization_id, created_at, updated_at) "
-                        + "VALUES (?, 'OTHER', 'PUBLIC', 'NONE', 1, 0, "
+                        + "supporter_enabled, version, lifecycle_status, slug, parent_organization_id, "
+                        + "created_at, updated_at) "
+                        + "VALUES (?, 'OTHER', 'PUBLIC', 'NONE', 1, 0, 'ACTIVE', "
                         + "CONCAT('cne2e-', LEFT(REPLACE(UUID(),'-',''),12)), ?, NOW(), NOW())",
                 name, parentOrgId);
         return jdbc.queryForObject("SELECT id FROM organizations WHERE name = ?", Long.class, name);
     }
 
     /**
-     * CMP-260920-1040是正: テスト用DBは Hibernate が {@code TeamEntity} から作る
-     * （{@code ddl-auto: create}）ため、DDL の {@code DEFAULT} は効かず、{@code columnDefinition}
-     * に既定値を書いていない {@code nullable=false} 列（{@code visibility}・{@code supporter_enabled}）
-     * は明示的に埋めないと 1364（Field doesn't have a default value）で落ちる。
+     * CMP-260920-1040是正（⚔️足軽20）: テスト用DBは Hibernate が {@code TeamEntity} から作る
+     * （{@code ddl-auto: create}）ため、DDL の {@code DEFAULT} は {@code columnDefinition} に明示的に
+     * 書かれている列（{@code timezone}・{@code supporter_name_disclosure}・{@code public_events_enabled}・
+     * {@code timeline_posts_public}）にしか効かない。それ以外の {@code nullable=false} 列は、1列ずつ
+     * 足すのではなく {@link TeamEntity} を機械的に全洗い出しして埋める：
+     * slug・name・visibility・supporter_enabled・lifecycle_status・member_count。
+     * （name_trimmed は生成列のため対象外）
      */
     private long insertTeam() {
         String name = "E2Eチーム-" + SEQ.incrementAndGet() + "-" + System.nanoTime();
         jdbc.update(
-                "INSERT INTO teams (name, slug, visibility, supporter_enabled, created_at, updated_at) "
-                        + "VALUES (?, CONCAT('cne2e-t-', LEFT(REPLACE(UUID(),'-',''),12)), 'PUBLIC', 1, NOW(), NOW())",
+                "INSERT INTO teams (name, slug, visibility, supporter_enabled, lifecycle_status, "
+                        + "member_count, created_at, updated_at) "
+                        + "VALUES (?, CONCAT('cne2e-t-', LEFT(REPLACE(UUID(),'-',''),12)), 'PUBLIC', 1, "
+                        + "'ACTIVE', 0, NOW(), NOW())",
                 name);
         return jdbc.queryForObject("SELECT id FROM teams WHERE name = ?", Long.class, name);
     }
