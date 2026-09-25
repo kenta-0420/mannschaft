@@ -242,7 +242,9 @@ test('CMP-019: チーム事故報告は一覧から詳細へ遷移し、MEMBER/S
 
     await withLoggedInPage(browser, SUPPORTER, async (page) => {
       expect(await openIncidentList(page, teamSlug, team.id), 'SUPPORTERの一覧取得は403').toBe(403)
-      await expect(page.getByText('インシデント一覧の取得に失敗しました')).toBeVisible()
+      await expect(page.getByText('インシデント一覧を表示できませんでした')).toBeVisible()
+      await expect(page.getByText('インシデントがありません')).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'ダッシュボードへ戻る' })).toBeVisible()
       await expect(page.getByText(visibleTitle), 'SUPPORTERの一覧には出ない').toHaveCount(0)
       await openConcealedDetail(page, teamSlug, visibleIncident.id)
     })

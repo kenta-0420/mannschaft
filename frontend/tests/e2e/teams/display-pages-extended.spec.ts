@@ -68,23 +68,12 @@ test.describe('TEAM-080〜093: チーム未テスト画面14ページ表示確�
         body: JSON.stringify({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } }),
       })
     })
-    await page.goto(`/teams/${TEAM_ID}/incidents`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/teams/${TEAM_ID}/incidents`)
     await waitForHydration(page)
     await expect.poll(() => incidentScopeId).toBe(String(TEAM_ID))
     await expect(page.getByRole('heading', { name: 'インシデント管理' })).toBeVisible({
       timeout: 10_000,
     })
-  })
-
-  test('TEAM-083a: 一覧取得失敗を空一覧と誤表示しない', async ({ page }) => {
-    await page.route('**/api/v1/incidents?**', async (route) => {
-      await route.fulfill({ status: 403, contentType: 'application/json', body: '{}' })
-    })
-    await page.goto(`/teams/${TEAM_ID}/incidents`, { waitUntil: 'domcontentloaded' })
-    await waitForHydration(page)
-    await expect(page.getByText('インシデント一覧を表示できませんでした')).toBeVisible()
-    await expect(page.getByText('インシデントがありません')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'ダッシュボードへ戻る' })).toBeVisible()
   })
 
   test('TEAM-084: ナレッジベースページが表示される', async ({ page }) => {
@@ -198,24 +187,14 @@ test.describe('TEAM-080〜093: チーム未テスト画面14ページ表示確�
 
   test('TEAM-083-01: incidentId direct link conceals a forbidden incident', async ({ page }) => {
     await page.route('**/api/v1/incidents/42', async (route) => {
-      await route.fulfill({
-        status: 403,
-        contentType: 'application/json',
-        body: JSON.stringify({}),
-      })
+      await route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({}) })
     })
     await page.route('**/api/v1/incidents/42/comments', async (route) => {
-      await route.fulfill({
-        status: 403,
-        contentType: 'application/json',
-        body: JSON.stringify({}),
-      })
+      await route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({}) })
     })
     await page.goto(`/teams/${TEAM_ID}/incidents?incidentId=42`)
     await waitForHydration(page)
-    await expect(page.getByText('見つからないか閲覧権限がありません')).toBeVisible({
-      timeout: 10_000,
-    })
+    await expect(page.getByText('見つからないか閲覧権限がありません')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText('一覧へ戻る')).toBeVisible()
   })
 })
