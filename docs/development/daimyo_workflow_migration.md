@@ -78,13 +78,15 @@ Workflow は自走するので、`軍議→裁可→出陣→裁可→検分→�
 
 | 用途 | model | effort | 根拠 |
 |---|---|---|---|
-| 殿の main loop（Workflow 起動元） | opus（その時点の最新世代） | — | 采配・最終判断 |
-| 家老（軍議・設計） | opus（その時点の最新世代） | high | 設計の質がボトルネック |
+| 殿の main loop（Workflow 起動元） | opus（Opus 5.5） | medium（途中でモデルを切り替えない） | 采配・最終判断。キャッシュ読取 60% 引きを活かす |
+| 家老（軍議・設計） | sonnet（設計判断が重いときのみ opus） | medium | 偵察・列挙は sonnet で足りる実測（`feedback_model_routing`） |
 | 足軽: 機械的タスク（DTO 量産・i18n・リネーム・getter/setter） | haiku / sonnet | low | 単価が安く、推論浅くて足りる |
 | 足軽: 通常実装 | sonnet | medium | デフォルト |
-| 足軽: 難所（並行制御・認可・複雑ドメイン） | opus | high | 失敗コストが高い |
+| 足軽: 難所（並行制御・認可・複雑ドメイン） | sonnet → 詰まったら opus | opus は medium → さらに詰まったら high | 着手時の予防的格上げはしない |
 | 検分: 一次レビュー（広く拾う） | sonnet | low | 件数を稼ぐ |
-| 検分: 敵対的検証（詰める） | opus | high | 偽陽性/偽陰性を潰す |
+| 検分: 敵対的検証（詰める） | opus | medium | Opus 5.5 は medium で旧 high 相当 |
+
+> effort の `max` は使わない（思考で出力上限 128K を食い潰す）。`xhigh` は理由を明記したときのみ。
 
 > 注意: モデル切替は**トークン削減ではなくコスト削減**。安価モデルは opus より単価が低いだけで、消費トークン量そのものは減らない。期待値を区別すること。
 
@@ -116,7 +118,7 @@ const results = await pipeline(
   // 各 finding を敵対的に検証: opus で詰める（反証を試みさせる）
   review => parallel(review.findings.map(f => () =>
     agent(`次の指摘を敵対的に検証し、本物か反証せよ: ${f.title}\n${f.detail}`,
-          { label: `verify:${f.file}`, phase: 'Verify', model: 'opus', effort: 'high',
+          { label: `verify:${f.file}`, phase: 'Verify', model: 'opus', effort: 'medium',
             schema: VERDICT_SCHEMA })
       .then(v => ({ ...f, verdict: v }))))
 )

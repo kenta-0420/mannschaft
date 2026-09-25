@@ -76,7 +76,11 @@
 
 ### Dynamic Workflows との連携（出陣・検分の高速化／コスト最適化）
 
-`/出陣`・`/検分 claude` は Dynamic Workflows で足軽の並列起動を表現できる（`/検分` の既定検分者は `codex` で、Codex による独立検分が走る。Workflow 検分を使うには `claude` を明示する）（オプトイン。機械的タスクは sonnet/haiku・低 effort、難所は opus・high に固定。コミット/マージは `gh`）。詳細: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)。
+`/出陣`・`/検分 claude` は Dynamic Workflows で足軽の並列起動を表現できる（`/検分` の既定検分者は `codex` で、Codex による独立検分が走る。Workflow 検分を使うには `claude` を明示する）（オプトイン。機械的タスクは sonnet/haiku・低 effort、難所は opus・medium に固定（詰まったら high）。コミット/マージは `gh`）。詳細: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)。
+
+### 文脈を短く保つ（トークン費用の本丸）
+
+実測では費用の98%がプロンプトキャッシュで、出力は3%にすぎない。費用を決めるのはモデル単価や effort より「文脈の長さ × 往復回数」である。殿は文脈30万トークンを目安にタスクの切れ目で `/compact` か `/引継` で区切る。足軽は1体1タスクとし、報告は要点だけ返させる。大きなファイルやログは絞り込んでから読む。詳細: `/役割分担`「文脈を短く保つ」。
 
 ### 横展開型の戦役における担当重複の防止 **【必須】**
 
