@@ -753,7 +753,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 別途 UNIQUE 制約で守る必要が生じ、排他の不変条件の担保が弱くなる。DDL は V196 で確定済みであり
      * 新規 migration での作り直しは行わない。違反隠蔽ではなく設計是認例外の正規登録。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 567;
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 566;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。

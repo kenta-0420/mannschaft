@@ -54,7 +54,10 @@ public enum MemberErrorCode implements ErrorCode {
     BULK_LIMIT_EXCEEDED("MEMBER_014", "一括登録の上限（100件）を超えています", Severity.WARN),
 
     /** プレビュートークン期限切れ */
-    PREVIEW_TOKEN_EXPIRED("MEMBER_015", "プレビュートークンが無効または期限切れです", Severity.WARN);
+    PREVIEW_TOKEN_EXPIRED("MEMBER_015", "プレビュートークンが無効または期限切れです", Severity.WARN),
+
+    /** CMP-260919-1140: 一覧タブへの PUBLIC 設定は不可（氏名・役割等を含むため） */
+    MEMBER_LIST_PUBLIC_NOT_ALLOWED("MEMBER_016", "一覧タブは全体公開（PUBLIC）に設定できません", Severity.WARN);
 
     private final String code;
     private final String message;

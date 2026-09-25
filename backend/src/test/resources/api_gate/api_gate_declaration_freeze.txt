@@ -307,6 +307,7 @@ HTTP|com.mannschaft.app.matching.controller.MatchTemplateController|4|4
 HTTP|com.mannschaft.app.matching.controller.NgTeamController|3|3
 HTTP|com.mannschaft.app.member.controller.MemberProfileController|9|9
 HTTP|com.mannschaft.app.member.controller.MemberProfileFieldController|4|4
+HTTP|com.mannschaft.app.member.controller.MemberSubtabVisibilityController|2|2
 HTTP|com.mannschaft.app.member.controller.TeamPageController|8|8
 HTTP|com.mannschaft.app.member.controller.TeamPageSectionController|4|4
 HTTP|com.mannschaft.app.memberinfo.controller.TeamMemberInfoController|9|9

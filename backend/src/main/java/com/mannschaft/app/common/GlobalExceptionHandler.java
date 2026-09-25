@@ -1570,6 +1570,8 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBER_006", HttpStatus.CONFLICT),                // DUPLICATE_YEAR → 409
             Map.entry("MEMBER_007", HttpStatus.CONFLICT),                // DUPLICATE_MAIN_PAGE → 409
             Map.entry("MEMBER_008", HttpStatus.CONFLICT),                // DUPLICATE_USER → 409
+            // CMP-260919-1140 Phase 1: メンバーサブタブ可視性 — 一覧タブへの PUBLIC 設定は入力検証エラー → 422
+            Map.entry("MEMBER_016", HttpStatus.UNPROCESSABLE_ENTITY),    // MEMBER_LIST_PUBLIC_NOT_ALLOWED → 422
             // 認可根治戦役 Wave3 forms/disclosure BOLA存在秘匿: forms の *_NOT_FOUND は BOLA 存在秘匿のため 404、PDF 権限なしは 403。
             Map.entry("FORM_001", HttpStatus.NOT_FOUND),                 // TEMPLATE_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("FORM_002", HttpStatus.NOT_FOUND),                 // SUBMISSION_NOT_FOUND（IDOR 秘匿 → 404）

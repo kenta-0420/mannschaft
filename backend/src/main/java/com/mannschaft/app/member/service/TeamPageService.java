@@ -3,7 +3,9 @@ package com.mannschaft.app.member.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.member.MemberErrorCode;
+import com.mannschaft.app.member.MemberSubtabKey;
 import com.mannschaft.app.member.MemberMapper;
 import com.mannschaft.app.member.PageStatus;
 import com.mannschaft.app.member.PageType;
@@ -47,6 +49,7 @@ public class TeamPageService {
     private final MemberProfileRepository profileRepository;
     private final MemberMapper memberMapper;
     private final AccessControlService accessControlService;
+    private final MemberSubtabVisibilityService memberSubtabVisibilityService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String SCOPE_TEAM = "TEAM";
@@ -55,18 +58,54 @@ public class TeamPageService {
     /**
      * ページ一覧をページング取得する。teamId/organizationId は呼び出し元が明示的に指定するスコープの
      * ため、非所属者は 403（COMMON_002）で拒否する（Wave3-B2 member 認可根治）。
+     *
+     * <p>CMP-260919-1140 Phase 1: 組織スコープは「紹介」サブタブの外側の門
+     * （{@link MemberSubtabVisibilityService#assertViewable}）で判定する。既定値（MEMBER）は
+     * 従来の {@code checkMembership} と等価。チームスコープは Phase 1 対象外のため従来どおり
+     * {@code checkMembership} を維持する。下書き（DRAFT）ページは ADMIN 以外には一覧に出さない
+     * （内側の扉。設計書 §5 合成ルール）。</p>
+     *
+     * <p>検分修正（P1）: サブタブが PUBLIC 設定でも、それは「サブタブという入口」の可視性に過ぎず、
+     * ページ個別の {@code visibility}（{@link PageVisibility#MEMBERS_ONLY}）までは緩めない（AND 条件。
+     * 設計書 F06.2 §アクセス制御ロジック 1081-1082 行）。非会員（サブタブ門は通過したがスコープの
+     * メンバーではない）には {@code MEMBERS_ONLY} ページを列挙させない。</p>
      */
     public Page<TeamPageResponse> listPages(Long actorUserId, Long teamId, Long organizationId, Pageable pageable) {
+        boolean isAdmin;
+        boolean isMember = false;
         if (teamId != null) {
             accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+            isAdmin = accessControlService.isAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
         } else {
-            accessControlService.checkMembership(actorUserId, organizationId, SCOPE_ORGANIZATION);
+            memberSubtabVisibilityService.assertViewable(
+                    actorUserId, ScopeType.ORGANIZATION, organizationId, MemberSubtabKey.MEMBER_PROFILES);
+            // 検分修正（3巡目・P2）: assertViewable の外側の門は SYSTEM_ADMIN を無条件バイパスする
+            // （設計書 F06.6 §9.1）。一覧の内側の判定も揃え、所属のない SYSTEM_ADMIN を ADMIN 同様に
+            // 下書き含む全件取得させる（isAdminOrAbove だけだと SYSTEM_ADMIN は非会員扱いになり、
+            // 外側の門のバイパスと矛盾して公開済みのみに縮退していた）。
+            isAdmin = accessControlService.isSystemAdmin(actorUserId)
+                    || accessControlService.isAdminOrAbove(actorUserId, organizationId, SCOPE_ORGANIZATION);
+            if (!isAdmin) {
+                // 検分指摘A（P1）: isMember() は所属の有無（SUPPORTER も true）を見るだけで、
+                // F06.2 の「MEMBERS_ONLY = MEMBER 以上」という仕様のロール閾値と一致しない。
+                // hasRoleOrAbove(...,"MEMBER") で SUPPORTER を除外する。
+                isMember = accessControlService.hasRoleOrAbove(
+                        actorUserId, organizationId, SCOPE_ORGANIZATION, "MEMBER");
+            }
         }
         Page<TeamPageEntity> page;
         if (teamId != null) {
             page = pageRepository.findByTeamIdOrderBySortOrder(teamId, pageable);
-        } else {
+        } else if (isAdmin) {
             page = pageRepository.findByOrganizationIdOrderBySortOrder(organizationId, pageable);
+        } else if (isMember) {
+            // 内側の扉: DRAFT ページは非管理者の一覧から除外（組織スコープのみ・Phase 1）
+            page = pageRepository.findByOrganizationIdAndStatusOrderBySortOrder(
+                    organizationId, PageStatus.PUBLISHED, pageable);
+        } else {
+            // 非会員（サブタブ門は通過したがスコープ非所属）: ページ個別 visibility=PUBLIC のみ列挙可
+            page = pageRepository.findByOrganizationIdAndStatusAndVisibilityOrderBySortOrder(
+                    organizationId, PageStatus.PUBLISHED, PageVisibility.PUBLIC, pageable);
         }
         return page.map(memberMapper::toTeamPageResponse);
     }
@@ -256,10 +295,75 @@ public class TeamPageService {
     void checkPageMembershipOrNotFound(Long actorUserId, TeamPageEntity page) {
         Long scopeId = resolveScopeId(page);
         String scopeType = resolveScopeType(page);
-        if (!accessControlService.isMember(actorUserId, scopeId, scopeType)
-                && !accessControlService.isAdminOrAbove(actorUserId, scopeId, scopeType)) {
+
+        // ADMIN/DEPUTY_ADMIN 以上は常に全ページ閲覧可（下書き含む）
+        if (accessControlService.isAdminOrAbove(actorUserId, scopeId, scopeType)) {
+            return;
+        }
+
+        // CMP-260919-1140 Phase 1: 組織スコープは「紹介」サブタブの外側の門（min_role）で判定する。
+        // 既定値（MEMBER）は従来の isMember 判定と等価。両方（外側の門＋内側の扉）を通った人だけ見える。
+        // チームスコープは Phase 1 対象外のため従来どおり isMember のみを維持する（下書き判定も対象外。
+        // DRAFT ブロックを全スコープに広げると Wave3-B2 の既存 TEAM スコープ挙動を壊すため、
+        // 内側の扉（DRAFT 非表示）は組織スコープ限定で適用する）。
+        if (SCOPE_ORGANIZATION.equals(scopeType)) {
+            // 検分修正（3巡目・P2）: assertViewable の外側の門は SYSTEM_ADMIN を無条件バイパスする
+            // （設計書 F06.6 §9.1 に明記）。内側の判定（DRAFT 秘匿・visibility 判定）が
+            // isAdminOrAbove/hasRoleOrAbove のみに基づくと、所属のない SYSTEM_ADMIN がここで
+            // 弾かれ、外側の門のバイパスと矛盾する（一覧は公開済みのみ・詳細は DRAFT が 404 になる）。
+            // SYSTEM_ADMIN は ADMIN と同様に全ページ閲覧可とする。
+            if (accessControlService.isSystemAdmin(actorUserId)) {
+                return;
+            }
+            // 内側の扉: 下書き（DRAFT）ページは ADMIN 以外の誰にも見せない（設計書 §5 合成ルール）
+            if (page.getStatus() == PageStatus.DRAFT) {
+                throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+            }
+            try {
+                memberSubtabVisibilityService.assertViewable(
+                        actorUserId, ScopeType.ORGANIZATION, scopeId, MemberSubtabKey.MEMBER_PROFILES);
+            } catch (BusinessException ex) {
+                // Wave3-B2 member BOLA対策の 404 秘匿パターンを維持（403 ではなく 404 を返す）
+                throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+            }
+            // 検分修正（P1）: サブタブの外側の門（min_role）は「サブタブという入口」の可視性であり、
+            // ページ個別の visibility（MEMBERS_ONLY）までは緩めない（AND 条件。設計書 F06.2
+            // §アクセス制御ロジック 1081-1082 行）。サブタブが PUBLIC 設定でも、ページが
+            // MEMBERS_ONLY なら非会員は拒否する。
+            //
+            // 検分指摘A（2巡目・P1）: 判定は isMember()（所属の有無。SUPPORTER も true）ではなく
+            // ロール閾値（MEMBER 以上）で行う。isMember() のままだと SUPPORTER も MEMBERS_ONLY を
+            // 閲覧できてしまい、F06.2 の「MEMBERS_ONLY = MEMBER 以上」仕様に反する。
+            if (page.getVisibility() == PageVisibility.MEMBERS_ONLY
+                    && !accessControlService.hasRoleOrAbove(actorUserId, scopeId, scopeType, "MEMBER")) {
+                throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+            }
+            return;
+        }
+
+        if (!accessControlService.isMember(actorUserId, scopeId, scopeType)) {
             throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
         }
+    }
+
+    /**
+     * ページ entity 由来スコープでアクターが ADMIN/DEPUTY_ADMIN 以上かどうかを判定する（真偽値のみ・例外なし）。
+     *
+     * <p>検分修正（3巡目・P1）: {@link MemberProfileService#listProfiles}/{@code getProfile} から、
+     * 非表示（{@code is_visible = false}）プロフィールの除外要否を切り替えるために公開する。
+     * 管理者は編集用途のため非表示行も含めて閲覧できる必要があり、それ以外（会員・非会員問わず）は
+     * 非表示行を除外する。</p>
+     *
+     * <p>検分修正（4巡目・P2）: {@code isAdminOrAbove} は SYSTEM_ADMIN を含まない（ADMIN_ROLES =
+     * {@code {"ADMIN","DEPUTY_ADMIN"}}）。{@link #checkPageMembershipOrNotFound} は組織スコープで
+     * SYSTEM_ADMIN を無条件バイパスするのに、本メソッドがバイパスしないと、所属のない SYSTEM_ADMIN は
+     * 一覧で非表示行が欠け、非表示プロフィールの詳細取得が 404 になる（前段の到達判定と矛盾する）。
+     * 同一 PR で新設した SYSTEM_ADMIN バイパス（{@link #listPages}・{@link #checkPageMembershipOrNotFound}）
+     * と扱いを揃える。</p>
+     */
+    boolean isPageAdmin(Long actorUserId, TeamPageEntity page) {
+        return accessControlService.isSystemAdmin(actorUserId)
+                || accessControlService.isAdminOrAbove(actorUserId, resolveScopeId(page), resolveScopeType(page));
     }
 
     /**
