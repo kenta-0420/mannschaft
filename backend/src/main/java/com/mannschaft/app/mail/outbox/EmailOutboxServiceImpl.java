@@ -5,19 +5,24 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.EmailTemplateRenderer;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.UuidV7;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -57,6 +62,24 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
     private final MeterRegistry meterRegistry;
     private final EmailOutboxMicrometerMetrics metrics;
     private final ObjectMapper objectMapper;
+    /** CMP-260920-1040 §12: 多値 INSERT で outbox へ一括登録するための JDBC 直叩き経路。 */
+    private final JdbcTemplate jdbcTemplate;
+
+    /**
+     * CMP-260920-1040 §12: {@code email_outbox} への多値 INSERT の列並び。{@code id} は UUIDv7
+     * （アプリ側で採番。BINARY(16)）。{@code status}/{@code retry_count} は既定値を明示的に束縛する
+     * （多値 INSERT は列指定 DEFAULT に頼らず全列を埋める）。{@code created_at}/{@code updated_at}/
+     * {@code next_attempt_at} は Java の壁時計ではなく SQL リテラル {@code UTC_TIMESTAMP()} に委ねる
+     * （{@code NotificationBulkFanoutService#bulkInsertReturningIds} と同じ理由。本アプリの DB 格納基準は
+     * UTC 壁時計であり、Java 側で LocalDateTime.now() を束縛すると JST 分ずれる）。
+     */
+    private static final String OUTBOX_INSERT_COLUMNS =
+            "id, template_kind, locale, to_address, to_address_hash, payload_json, "
+            + "source_domain, source_event_id, user_id, organization_id, idempotency_key, "
+            + "status, retry_count, next_attempt_at, created_at, updated_at";
+    private static final String OUTBOX_ROW_PLACEHOLDERS =
+            "(?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())";
+    private static final int OUTBOX_COLS_PER_ROW = 13;
 
     // -----------------------------------------------------------------------
     // enqueue
@@ -110,6 +133,78 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
                     ex
             );
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // enqueueAll（CMP-260920-1040 §12）
+    // -----------------------------------------------------------------------
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>呼び出し側（{@code ConfirmableFanoutChunkSink}）の既存トランザクションに<b>参加</b>する
+     * （{@code @Transactional} を付けない。REQUIRES_NEW にすると呼び出し側のチャンクトランザクションと
+     * 別コミットになり、「受信者行 ↔ outbox 行」の両方があるか両方ないかの不変条件（AC-46）が崩れる）。</p>
+     */
+    @Override
+    public List<UUID> enqueueAll(List<EmailOutboxRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+        for (EmailOutboxRequest request : requests) {
+            validateRequest(request);
+        }
+
+        List<UUID> ids = new ArrayList<>(requests.size());
+        StringBuilder sqlBuilder = new StringBuilder(
+                "INSERT INTO email_outbox (" + OUTBOX_INSERT_COLUMNS + ") VALUES ");
+        Object[] args = new Object[requests.size() * OUTBOX_COLS_PER_ROW];
+        int a = 0;
+        for (int i = 0; i < requests.size(); i++) {
+            if (i > 0) {
+                sqlBuilder.append(',');
+            }
+            sqlBuilder.append(OUTBOX_ROW_PLACEHOLDERS);
+
+            EmailOutboxRequest request = requests.get(i);
+            UUID id = UuidV7.generate();
+            ids.add(id);
+
+            byte[] payloadEncrypted = encryptPayload(request.payloadVars());
+            byte[] toAddressEncrypted = encryption.encryptBytes(
+                    request.toAddress().getBytes(StandardCharsets.UTF_8));
+            byte[] toAddressHash = HexFormat.of().parseHex(encryption.hmac(request.toAddress()));
+            String idempotencyKey = request.idempotencyKey() != null
+                    ? request.idempotencyKey()
+                    : keyGen.generate(request.userId(), request.templateKind(), request.sourceEventId());
+
+            args[a++] = uuidToBytes(id);
+            args[a++] = request.templateKind();
+            args[a++] = request.locale();
+            args[a++] = toAddressEncrypted;
+            args[a++] = toAddressHash;
+            args[a++] = payloadEncrypted;
+            args[a++] = request.sourceDomain();
+            args[a++] = request.sourceEventId();
+            args[a++] = request.userId();
+            args[a++] = request.organizationId();
+            args[a++] = idempotencyKey;
+            args[a++] = EmailOutboxStatus.PENDING.name();
+            args[a++] = 0;
+            // next_attempt_at / created_at / updated_at は SQL リテラル UTC_TIMESTAMP() が値を作る（束縛しない）。
+        }
+        jdbcTemplate.update(sqlBuilder.toString(), args);
+
+        meterRegistry.counter("email_outbox.enqueued_bulk").increment(requests.size());
+        return ids;
+    }
+
+    /** UUID を BINARY(16) 用のバイト列（MSB+LSB）へ変換する。 */
+    private static byte[] uuidToBytes(UUID id) {
+        ByteBuffer buffer = ByteBuffer.allocate(16);
+        buffer.putLong(id.getMostSignificantBits());
+        buffer.putLong(id.getLeastSignificantBits());
+        return buffer.array();
     }
 
     // -----------------------------------------------------------------------

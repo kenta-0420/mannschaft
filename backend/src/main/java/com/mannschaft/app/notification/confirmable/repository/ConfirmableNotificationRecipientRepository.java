@@ -1,9 +1,12 @@
 package com.mannschaft.app.notification.confirmable.repository;
 
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -123,4 +126,204 @@ public interface ConfirmableNotificationRecipientRepository
            "WHERE r.confirmableNotification.id = :notificationId AND r.user IS NOT NULL")
     List<Object[]> findUserIdAndConfirmTokenByNotificationId(
             @Param("notificationId") Long notificationId);
+
+    /**
+     * CMP-260920-1040: チャンク内の候補 user_id のうち、既に受信者行がある user_id を求める
+     * （軍議第8版確定稿 §3.4 手順1。再開時の二重防止・AC-23）。
+     *
+     * @param notificationId 確認通知ID
+     * @param userIds        チャンク内の候補 user_id（重複してよい）
+     * @return 既に受信者行がある user_id の集合
+     */
+    @Query("SELECT r.user.id FROM ConfirmableNotificationRecipientEntity r " +
+           "WHERE r.confirmableNotification.id = :notificationId AND r.user.id IN :userIds")
+    List<Long> findExistingUserIds(
+            @Param("notificationId") Long notificationId, @Param("userIds") List<Long> userIds);
+
+    /**
+     * CMP-260920-1040: 通知IDとユーザーIDで受信者行を {@code SELECT ... FOR UPDATE} でロックして読む
+     * （軍議第8版確定稿 §9.2・§11.1・{@code confirm} 用）。
+     *
+     * @param notificationId 確認通知ID
+     * @param userId         受信者ユーザーID
+     * @return ロック済みの受信者（存在しなければ empty）
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ConfirmableNotificationRecipientEntity r " +
+           "WHERE r.confirmableNotification.id = :notificationId AND r.user.id = :userId")
+    Optional<ConfirmableNotificationRecipientEntity> findByNotificationIdAndUserIdForUpdate(
+            @Param("notificationId") Long notificationId, @Param("userId") Long userId);
+
+    /**
+     * CMP-260920-1040: 確認トークンで受信者行を {@code SELECT ... FOR UPDATE} でロックして読む
+     * （軍議第8版確定稿 §10.1 confirmByToken 手順3）。
+     *
+     * <p>この検索自体は「トークンから notification_id を引く」（軍議 §10.1 手順1）用ではない
+     * （不変列だけを読む通常の {@link #findByConfirmToken} を使う）。本メソッドは親のロック
+     * （手順2）の後に、受信者行を確定させるために呼ぶ。</p>
+     *
+     * @param confirmToken 確認トークン
+     * @return ロック済みの受信者（存在しなければ empty）
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ConfirmableNotificationRecipientEntity r WHERE r.confirmToken = :confirmToken")
+    Optional<ConfirmableNotificationRecipientEntity> findByConfirmTokenForUpdate(
+            @Param("confirmToken") String confirmToken);
+
+    /**
+     * CMP-260920-1040: 除外されておらず未確認の受信者数を数える（軍議第8版確定稿 §10.1 の
+     * 不変条件検証用。試練が AC-63 で使う）。
+     *
+     * @param notificationId 確認通知ID
+     * @return 除外されておらず未確認の受信者数
+     */
+    long countByConfirmableNotificationIdAndIsConfirmedFalseAndExcludedAtIsNull(Long notificationId);
+
+    /**
+     * CMP-260920-1040: リマインド候補（未確認・除外なし・1回目未送信）の受信者行を
+     * {@code SELECT ... FOR UPDATE} でロックして読む（軍議第8版確定稿 §9.4 手順1〜2）。
+     *
+     * <p>候補 user_id リストに対し、ロック取得と同時に条件（未確認・除外なし・1回目未送信）を
+     * 満たすものだけを返す。返ってきた行はこのトランザクション内でロック済みであり、確定して
+     * よい（条件付き UPDATE と等価）。</p>
+     *
+     * @param notificationId    確認通知ID
+     * @param candidateUserIds  候補の受信者 user_id
+     * @return ロック済みかつ条件を満たす受信者行
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ConfirmableNotificationRecipientEntity r " +
+           "WHERE r.confirmableNotification.id = :notificationId AND r.user.id IN :candidateUserIds " +
+           "AND r.isConfirmed = false AND r.excludedAt IS NULL AND r.firstReminderSentAt IS NULL")
+    List<ConfirmableNotificationRecipientEntity> findFirstReminderCandidatesForUpdate(
+            @Param("notificationId") Long notificationId, @Param("candidateUserIds") List<Long> candidateUserIds);
+
+    /**
+     * CMP-260920-1040: 2回目リマインド候補（未確認・除外なし・1回目送信済み・2回目未送信）の
+     * 受信者行を {@code SELECT ... FOR UPDATE} でロックして読む（軍議第8版確定稿 §9.4）。
+     *
+     * @param notificationId    確認通知ID
+     * @param candidateUserIds  候補の受信者 user_id
+     * @return ロック済みかつ条件を満たす受信者行
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ConfirmableNotificationRecipientEntity r " +
+           "WHERE r.confirmableNotification.id = :notificationId AND r.user.id IN :candidateUserIds " +
+           "AND r.isConfirmed = false AND r.excludedAt IS NULL " +
+           "AND r.firstReminderSentAt IS NOT NULL AND r.secondReminderSentAt IS NULL")
+    List<ConfirmableNotificationRecipientEntity> findSecondReminderCandidatesForUpdate(
+            @Param("notificationId") Long notificationId, @Param("candidateUserIds") List<Long> candidateUserIds);
+
+    /**
+     * CMP-260920-1040: ACTIVE な通知の未確認かつ除外されていない受信者の user_id だけを
+     * ページングで取得する（軍議第8版確定稿 §9.4。500件ずつバッチ処理するための候補抽出）。
+     *
+     * @param notificationId 確認通知ID
+     * @param pageable       ページング条件（500件想定）
+     * @return 対象 user_id
+     */
+    @Query("SELECT r.user.id FROM ConfirmableNotificationRecipientEntity r " +
+           "JOIN r.confirmableNotification n " +
+           "WHERE n.status = 'ACTIVE' AND n.id = :notificationId " +
+           "AND r.isConfirmed = false AND r.excludedAt IS NULL " +
+           "ORDER BY r.id ASC")
+    List<Long> findActiveUnconfirmedUserIdsByNotificationId(
+            @Param("notificationId") Long notificationId, Pageable pageable);
+
+    // -------------------------------------------------------------------------
+    // CMP-260920-1040: 受信者一覧のページング（軍議第8版確定稿 §9.5・AC-30・AC-59・AC-60）
+    // -------------------------------------------------------------------------
+
+    /**
+     * 通知IDで受信者一覧をページングして取得する（ADMIN+ 視点・全件）。
+     *
+     * @param notificationId 確認通知ID
+     * @param pageable        ページング情報
+     * @return 受信者ページ（作成日時昇順）
+     */
+    Page<ConfirmableNotificationRecipientEntity> findByConfirmableNotificationIdOrderByIdAsc(
+            Long notificationId, Pageable pageable);
+
+    /**
+     * 通知IDで未確認かつ除外されていない受信者一覧をページングして取得する。
+     *
+     * @param notificationId 確認通知ID
+     * @param pageable        ページング情報
+     * @return 未確認受信者ページ（作成日時昇順）
+     */
+    Page<ConfirmableNotificationRecipientEntity> findByConfirmableNotificationIdAndIsConfirmedFalseAndExcludedAtIsNullOrderByIdAsc(
+            Long notificationId, Pageable pageable);
+
+    /**
+     * 通知IDとユーザーIDで受信者1件を取得する（MEMBER 視点の受信者資格確認用）。
+     *
+     * @param notificationId 確認通知ID
+     * @param userId          ユーザーID
+     * @return 受信者（存在しない場合 empty）
+     */
+    Optional<ConfirmableNotificationRecipientEntity> findByConfirmableNotificationIdAndUserId(
+            Long notificationId, Long userId);
+
+    // -------------------------------------------------------------------------
+    // CMP-260920-1040是正: 退会者を含む受信者一覧が500化する欠陥の根治（家老の検出・殿の確認）。
+    //
+    // UserEntity は @SQLRestriction("deleted_at IS NULL") を持つため、受信者の user（LAZY）を
+    // 関連経由で読むと、退会者は EntityNotFoundException になり一覧全体が500化する。
+    // 以下のネイティブ投影は Hibernate のエンティティ読込を経由しない（@SQLRestriction は
+    // エンティティ読込にのみ適用され、素のJOINには影響しない）ため、退会者の行も
+    // 「退会している」ことが分かる形（display_name/avatar_url はNULL、deleted_atで判定）で返せる。
+    // 個人情報保護のため、投影自体にも表示名・メールは退会者ぶんは含めない（display_nameはNULL）。
+    // -------------------------------------------------------------------------
+
+    /** 受信者一覧の投影SELECT列（順序固定）: id, user_id, display_name, avatar_url, user_deleted_at,
+     *  is_confirmed, confirmed_at, confirmed_via, excluded_at, created_at。 */
+    String RECIPIENT_ROW_SELECT =
+            "SELECT r.id, r.user_id, u.display_name, u.avatar_url, u.deleted_at, "
+            + "r.is_confirmed, r.confirmed_at, r.confirmed_via, r.excluded_at, r.created_at "
+            + "FROM confirmable_notification_recipients r "
+            + "LEFT JOIN users u ON u.id = r.user_id ";
+
+    /**
+     * 確認通知の受信者一覧を投影で取得する（ADMIN+ 視点・全件・{@code /recipients}）。
+     * 退会者は {@code EntityNotFoundException} にならず、行として返る（呼び出し側で withdrawn 判定）。
+     *
+     * @param notificationId 確認通知ID
+     * @return 受信者行の投影（id順）
+     */
+    @Query(value = RECIPIENT_ROW_SELECT
+            + "WHERE r.confirmable_notification_id = :notificationId ORDER BY r.id ASC",
+            nativeQuery = true)
+    List<Object[]> findRecipientRowsByNotificationId(@Param("notificationId") Long notificationId);
+
+    /**
+     * 確認通知の受信者一覧を投影でページングして取得する（ADMIN+ 視点・全件・{@code /recipients/page}）。
+     *
+     * @param notificationId 確認通知ID
+     * @param pageable       ページング情報
+     * @return 受信者行の投影ページ（id順）
+     */
+    @Query(value = RECIPIENT_ROW_SELECT
+            + "WHERE r.confirmable_notification_id = :notificationId ORDER BY r.id ASC",
+            countQuery = "SELECT COUNT(*) FROM confirmable_notification_recipients r "
+                    + "WHERE r.confirmable_notification_id = :notificationId",
+            nativeQuery = true)
+    Page<Object[]> findRecipientRowsPage(@Param("notificationId") Long notificationId, Pageable pageable);
+
+    /**
+     * 確認通知の未確認・非除外の受信者一覧を投影でページングして取得する
+     * （MEMBER 視点・{@code unconfirmedOnly=true} の {@code /recipients/page}）。
+     *
+     * @param notificationId 確認通知ID
+     * @param pageable       ページング情報
+     * @return 未確認・非除外の受信者行の投影ページ（id順）
+     */
+    @Query(value = RECIPIENT_ROW_SELECT
+            + "WHERE r.confirmable_notification_id = :notificationId "
+            + "AND r.is_confirmed = 0 AND r.excluded_at IS NULL ORDER BY r.id ASC",
+            countQuery = "SELECT COUNT(*) FROM confirmable_notification_recipients r "
+                    + "WHERE r.confirmable_notification_id = :notificationId "
+                    + "AND r.is_confirmed = 0 AND r.excluded_at IS NULL",
+            nativeQuery = true)
+    Page<Object[]> findUnconfirmedRecipientRowsPage(
+            @Param("notificationId") Long notificationId, Pageable pageable);
 }

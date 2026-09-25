@@ -6,25 +6,40 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationCreateRequest;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationSendAcceptedResponse;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientPreviewRequest;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientPreviewResponse;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableTargetSpec;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationDeliveryStatus;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationSettingsEntity;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTargetEntity;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableTargetType;
 import com.mannschaft.app.notification.confirmable.entity.UnconfirmedVisibility;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.event.ConfirmableNotificationCreatedEvent;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
+import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationTargetRepository;
 import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
 import com.mannschaft.app.notification.credit.service.NotificationCreditService;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -79,6 +94,207 @@ public class ConfirmableNotificationService {
 
     /** リファクタリング第9弾で分離された参照系処理（委譲先） */
     private final ConfirmableNotificationQueryService queryService;
+
+    // -------------------------------------------------------------------------
+    // CMP-260920-1040: 確認通知「宛先指定」非同期送信経路（軍議第8版確定稿 §3.3）
+    // -------------------------------------------------------------------------
+
+    /** 送信時点の宛先ターゲットを凍結保存するリポジトリ（§3.1）。 */
+    private final ConfirmableNotificationTargetRepository targetRepository;
+    /** 甲隊担当（骨格・出陣で実装）: ターゲットが送信スコープの配下かを検証する（AC-12〜14）。 */
+    private final ConfirmableTargetAuthorizationValidator targetAuthorizationValidator;
+    /** 甲隊担当（骨格・出陣で実装）: 宛先入力（targets/recipientGroupId/空配列）の意味を検証する（AC-8〜11）。 */
+    private final ConfirmableTargetSelectionValidator targetSelectionValidator;
+    /** 甲隊担当: 宛先グループを送信スコープに対して解決する（AC-7・AC-15）。 */
+    private final ConfirmableRecipientGroupService recipientGroupService;
+    /** 甲隊担当: 宛先の見込み件数プレビュー（AC-20・AC-35）。 */
+    private final ConfirmableRecipientPreviewService recipientPreviewService;
+    /** チャンク処理は乙隊担当（ワーカー隊）。enqueue のみ本サービス（送信API側）が同一TXで行う（AC-22）。 */
+    private final NotificationFanoutJobService fanoutJobService;
+    /**
+     * CI是正（CMP-260920-1040）: 引数なし {@code LocalDateTime.now()} は番人違反のため注入する
+     * （docs/architecture/datetime_policy_utc_instant_vs_wallclock.md。既存 now() 群と同じゾーン基準）。
+     */
+    @Qualifier("wallClock")
+    private final Clock clock;
+
+    /** {@link com.mannschaft.app.notification.confirmable.service.ConfirmableFanoutChunkSink#NOTIFICATION_TYPE}
+     * と一致させる文字列（クラス参照はワーカー隊の担当パッケージに置かれるため、循環依存を避けここでは
+     * リテラルで持つ。値がずれると番人的に fan-out ワーカーが本通知種別を処理できなくなる）。 */
+    private static final String CONFIRMABLE_FANOUT_NOTIFICATION_TYPE = "CONFIRMABLE_NOTIFICATION_FANOUT";
+
+    /** fan-out ジョブの {@code scope_type}（{@code ConfirmableTargetsFanoutRecipientSource#scopeType()} と一致）。 */
+    private static final String CONFIRMABLE_TARGETS_SCOPE_TYPE = "CONFIRMABLE_TARGETS";
+
+    /** fan-out ジョブの {@code source_type}（{@code ConfirmableFanoutChunkSink} の private SOURCE_TYPE と一致させる値。
+     * CMP-260920-1040是正: これまで未設定（null）だったため source_id と併せてここで明示する）。 */
+    private static final String CONFIRMABLE_FANOUT_SOURCE_TYPE = "CONFIRMABLE_NOTIFICATION";
+
+    /**
+     * CMP-260920-1040: 確認通知「宛先指定」の非同期送信（軍議第8版確定稿 §3.3・AC-16・17・19・20・22・26・28・36・52）。
+     *
+     * <p>1トランザクション内で「本体の INSERT（QUEUED）→ targets の INSERT → fanout ジョブの INSERT」を
+     * 行い、202 Accepted 相当の応答を返す（受信者行は作らない・AC-19）。認可・宛先解決は甲隊担当の
+     * {@link ConfirmableTargetAuthorizationValidator}・{@link ConfirmableTargetSelectionValidator}・
+     * {@link ConfirmableRecipientGroupService#resolveForSend} を、現在のシグネチャのまま呼ぶ。</p>
+     *
+     * @param scopeType       送信スコープ種別
+     * @param scopeId         送信スコープID
+     * @param request         送信リクエスト（targets/recipientGroupId・題名・本文等）
+     * @param createdByUserId 送信者ユーザーID
+     * @return 送信API応答（id・deliveryStatus・estimatedRecipientCount）
+     */
+    @Transactional
+    public ConfirmableNotificationSendAcceptedResponse sendAsync(
+            ScopeType scopeType, Long scopeId, ConfirmableNotificationCreateRequest request, Long createdByUserId) {
+
+        // AC-52: 確認期限が受付の時点で既に過去なら400（何も作らない）。
+        LocalDateTime deadlineAt = request.getDeadlineAtAsJst();
+        if (deadlineAt != null && deadlineAt.isBefore(LocalDateTime.now(clock))) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.DEADLINE_IN_PAST);
+        }
+
+        // AC-8〜11: 宛先入力（targets/recipientGroupId/空配列/recipientUserIds無視）の意味を解決する。
+        // 甲隊担当のバリデータが返す Resolution を以降の唯一の判定材料とする（二重の解決ロジックを持たない）。
+        ConfirmableTargetSelectionValidator.Resolution resolution = targetSelectionValidator.resolve(
+                request.getTargets(), request.getRecipientGroupId(), request.getRecipientUserIds());
+
+        // 宛先の解決: グループ経由 → 直接指定 → 既定（配下すべて）の優先順位（AC-7・AC-8）。
+        List<ConfirmableTargetSpec> effectiveTargets;
+        if (resolution.isGroup()) {
+            // AC-7・AC-15: グループの解決は送信の時点で行う。存在しない/他スコープ/削除済みは404（RECIPIENT_GROUP_NOT_FOUND）。
+            effectiveTargets = recipientGroupService.resolveForSend(scopeType, scopeId, resolution.recipientGroupId());
+        } else if (!resolution.isDefault()) {
+            // AC-12〜14: 直接指定はここで403判定（TARGET_OUT_OF_SCOPE）。
+            targetAuthorizationValidator.validateForSend(scopeType, scopeId, resolution.targets());
+            effectiveTargets = resolution.targets();
+        } else {
+            // AC-8・AC-1・AC-6: 省略時は既定（自スコープ配下すべて）。
+            ConfirmableTargetType defaultType = scopeType == ScopeType.ORGANIZATION
+                    ? ConfirmableTargetType.ORGANIZATION
+                    : ConfirmableTargetType.TEAM;
+            effectiveTargets = List.of(new ConfirmableTargetSpec(defaultType, scopeId));
+        }
+
+        // AC-20: 見込みが0件なら RECIPIENTS_EMPTY（409）で何も作らない。
+        // AC-36: 判定順序は 400（宛先入力）→403（越境）→404（グループ不在）→409（RECIPIENTS_EMPTY）
+        // →CREDIT_INSUFFICIENT の順で固定する（是正: 課金チェックを宛先0件チェックより後に回す。
+        // 従来は課金チェックが先に走り、猶予超過スコープではRECIPIENTS_EMPTYシナリオも
+        // CREDIT_INSUFFICIENTに化けてAC-36のstatus:errorCode相互差異が壊れていた）。
+        ConfirmableRecipientPreviewRequest previewRequest = new ConfirmableRecipientPreviewRequest(
+                resolution.isGroup() ? null : effectiveTargets,
+                resolution.recipientGroupId());
+        ConfirmableRecipientPreviewResponse preview =
+                recipientPreviewService.preview(scopeType, scopeId, createdByUserId, previewRequest);
+        if (preview.getEstimatedRecipientCount() <= 0) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.RECIPIENTS_EMPTY);
+        }
+
+        // AC-26: 受付の時点で既に猶予超過なら CREDIT_INSUFFICIENT を返し、何も作らない（消費はしない）。
+        if (scopeType == ScopeType.ORGANIZATION) {
+            checkCreditNotAlreadyExceeded(scopeId);
+        }
+
+        ConfirmableNotificationSettingsEntity settings = settingsService.getOrCreate(scopeType, scopeId);
+        UnconfirmedVisibility resolvedVisibility = request.getUnconfirmedVisibility() != null
+                ? request.getUnconfirmedVisibility()
+                : (settings.getDefaultUnconfirmedVisibility() != null
+                        ? settings.getDefaultUnconfirmedVisibility()
+                        : UnconfirmedVisibility.CREATOR_AND_ADMIN);
+
+        // AC-22: 本体・targets・fanoutジョブを同一トランザクションで作る（内部メソッドに委譲）。
+        ConfirmableNotificationEntity notification = createQueuedNotificationWithTargetsAndJob(
+                scopeType, scopeId, request.getTitle(), request.getBody(), request.getPriority(),
+                deadlineAt, request.getActionUrl(), request.getTemplateId(), resolvedVisibility,
+                createdByUserId, effectiveTargets);
+
+        return ConfirmableNotificationSendAcceptedResponse.builder()
+                .id(notification.getId())
+                .deliveryStatus(notification.getDeliveryStatus())
+                .estimatedRecipientCount(preview.getEstimatedRecipientCount())
+                .build();
+    }
+
+    /**
+     * CMP-260920-1040 AC-22: 本体（QUEUED）・targets・fanoutジョブの enqueue を<b>同一トランザクション</b>で行う。
+     *
+     * <p>targets の INSERT が失敗すれば本体・ジョブも残らない（enqueue は
+     * {@link NotificationFanoutJobService#enqueueInCurrentTransaction} で {@code Propagation.MANDATORY}
+     * のため、必ずこのメソッドの TX に相乗りする）。パッケージプライベートなのは、認可・宛先解決を経由しない
+     * 直接のトランザクション境界テスト（AC-22 の試練IT）から呼び出せるようにするため。</p>
+     */
+    @Transactional
+    ConfirmableNotificationEntity createQueuedNotificationWithTargetsAndJob(
+            ScopeType scopeType, Long scopeId, String title, String body,
+            ConfirmableNotificationPriority priority, LocalDateTime deadlineAt, String actionUrl,
+            Long templateId, UnconfirmedVisibility unconfirmedVisibility, Long createdByUserId,
+            List<ConfirmableTargetSpec> targets) {
+
+        UserEntity createdByUser = userRepository.findById(createdByUserId).orElse(null);
+
+        ConfirmableNotificationEntity notification = ConfirmableNotificationEntity.builder()
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .title(title)
+                .body(body)
+                .priority(priority != null ? priority : ConfirmableNotificationPriority.NORMAL)
+                .deadlineAt(deadlineAt)
+                .actionUrl(actionUrl)
+                .templateId(templateId)
+                .unconfirmedVisibility(unconfirmedVisibility != null
+                        ? unconfirmedVisibility : UnconfirmedVisibility.CREATOR_AND_ADMIN)
+                .createdBy(createdByUser)
+                .deliveryStatus(ConfirmableNotificationDeliveryStatus.QUEUED)
+                .totalRecipientCount(0)
+                .build();
+        notification = notificationRepository.save(notification);
+        // targets の INSERT で notification.id を使うため、ここで確定させる（後続の失敗時は丸ごとロールバック）。
+        notificationRepository.flush();
+
+        List<ConfirmableNotificationTargetEntity> targetEntities = new ArrayList<>(targets.size());
+        for (ConfirmableTargetSpec target : targets) {
+            targetEntities.add(ConfirmableNotificationTargetEntity.builder()
+                    .confirmableNotificationId(notification.getId())
+                    .targetType(target.getType())
+                    .targetId(target.getId())
+                    .build());
+        }
+        targetRepository.saveAll(targetEntities);
+        // AC-22: ここで DB 制約違反等が起きれば、本メソッドのTXがロールバックされ、
+        // 直前に flush 済みの本体行も、まだ確定していないジョブ行も残らない。
+        targetRepository.flush();
+
+        UUID idempotencyKey = UUID.nameUUIDFromBytes(
+                ("confirmable-notification-" + notification.getId()).getBytes(StandardCharsets.UTF_8));
+        fanoutJobService.enqueueInCurrentTransaction(
+                CONFIRMABLE_TARGETS_SCOPE_TYPE,
+                String.valueOf(notification.getId()),
+                CONFIRMABLE_FANOUT_NOTIFICATION_TYPE,
+                idempotencyKey,
+                scopeType == ScopeType.ORGANIZATION ? scopeId : null,
+                toNotificationPriority(notification.getPriority()),
+                createdByUserId,
+                CONFIRMABLE_FANOUT_SOURCE_TYPE,
+                notification.getId());
+
+        log.info("確認通知（宛先指定）非同期送信を受け付け: notificationId={}, scopeType={}, scopeId={}, targetCount={}",
+                notification.getId(), scopeType, scopeId, targets.size());
+
+        return notification;
+    }
+
+    /**
+     * AC-26: 受付の時点で既に猶予期間（72時間）を超過している組織なら CREDIT_INSUFFICIENT を投げる。
+     * 消費は一切行わない読み取り専用チェック（実際の消費・猶予開始判定はワーカーのチャンク処理が担う）。
+     * 判定は {@link NotificationCreditService#isSendBlocked} に委譲する（猶予期間の定数・残高参照は
+     * notification.credit ドメインの一次情報源に一本化し、複製しない）。
+     */
+    private void checkCreditNotAlreadyExceeded(Long organizationId) {
+        if (notificationCreditService.isSendBlocked(organizationId)) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.CREDIT_INSUFFICIENT);
+        }
+    }
+
 
     /**
      * 確認通知を送信する。
@@ -203,8 +419,11 @@ public class ConfirmableNotificationService {
         if (recipientUserIds == null || recipientUserIds.isEmpty()) {
             throw new BusinessException(ConfirmableNotificationErrorCode.SEND_FAILED);
         }
-        if (recipientUserIds.size() > MAX_RECIPIENT_COUNT) {
-            log.warn("受信者数が上限を超えています: count={}, max={}", recipientUserIds.size(), MAX_RECIPIENT_COUNT);
+        // AC-28: 同じIDを2度渡しても uq_cnr_notification_user 違反で500にならないよう、
+        // 保存・課金・通知のいずれも一意化した後のリストで行う（挿入順を保つため LinkedHashSet）。
+        List<Long> uniqueRecipientUserIds = new ArrayList<>(new LinkedHashSet<>(recipientUserIds));
+        if (uniqueRecipientUserIds.size() > MAX_RECIPIENT_COUNT) {
+            log.warn("受信者数が上限を超えています: count={}, max={}", uniqueRecipientUserIds.size(), MAX_RECIPIENT_COUNT);
             throw new BusinessException(ConfirmableNotificationErrorCode.SEND_FAILED);
         }
 
@@ -256,7 +475,11 @@ public class ConfirmableNotificationService {
                 .templateId(templateId)
                 .unconfirmedVisibility(resolvedVisibility)
                 .createdBy(createdByUser)
-                .totalRecipientCount(recipientUserIds.size());
+                // AC-28: 一意化後の件数で初期化する（同期経路。§10.1 unconfirmed_count は
+                // ロックした親の行の値だけで完了判定に使うため、送信時点で総数と同じ値に揃える）。
+                .totalRecipientCount(uniqueRecipientUserIds.size())
+                .unconfirmedCount(uniqueRecipientUserIds.size())
+                .deliveryStatus(ConfirmableNotificationDeliveryStatus.DELIVERED);
 
         // F22.1 市: 発生元（source_type/source_id）が指定された場合のみ上書きする。
         // 未指定時は @Builder.Default の 'EMERGENCY_CLOSURE' / null を維持（既存呼び出し互換）。
@@ -271,7 +494,7 @@ public class ConfirmableNotificationService {
         ConfirmableNotificationEntity savedNotification = notificationRepository.save(notification);
 
         // 受信者エンティティをバッチ作成（saveAll = batch INSERT）
-        List<ConfirmableNotificationRecipientEntity> recipients = recipientUserIds.stream()
+        List<ConfirmableNotificationRecipientEntity> recipients = uniqueRecipientUserIds.stream()
                 .map(userId -> {
                     UserEntity user = userRepository.getReferenceById(userId);
                     return ConfirmableNotificationRecipientEntity.builder()
@@ -288,19 +511,19 @@ public class ConfirmableNotificationService {
         recipientRepository.saveAll(recipients);
 
         log.info("確認通知送信: notificationId={}, scopeType={}, scopeId={}, recipientCount={}",
-                savedNotification.getId(), scopeType, scopeId, recipientUserIds.size());
+                savedNotification.getId(), scopeType, scopeId, uniqueRecipientUserIds.size());
 
         // F09.13: 確認通知は課金対象（組織スコープのみ）
         // チームスコープの場合は組織IDが不明なためスキップ（将来はteam→org解決を追加）
         if (ScopeType.ORGANIZATION == scopeType) {
-            notificationCreditService.consume(scopeId, recipientUserIds.size(), NotificationSourceType.CONFIRMABLE);
+            notificationCreditService.consume(scopeId, uniqueRecipientUserIds.size(), NotificationSourceType.CONFIRMABLE);
         }
 
         // F04.3 通知基盤へのアプリ内通知（送信者には通知しない）
         NotificationPriority notifPriority = toNotificationPriority(savedNotification.getPriority());
         NotificationScopeType notifScopeType = toNotificationScopeType(scopeType);
         notificationHelper.notifyAll(
-                recipientUserIds,
+                uniqueRecipientUserIds,
                 "CONFIRMABLE_NOTIFICATION",
                 notifPriority,
                 title,
@@ -317,7 +540,7 @@ public class ConfirmableNotificationService {
                 savedNotification.getId(),
                 scopeType,
                 scopeId,
-                recipientUserIds));
+                uniqueRecipientUserIds));
 
         return savedNotification;
     }
@@ -395,26 +618,40 @@ public class ConfirmableNotificationService {
      * 実装は {@link ConfirmableNotificationQueryService#getRecipients(Long)} に委譲。</p>
      *
      * @param notificationId 確認通知ID
-     * @return 受信者エンティティリスト（除外者・確認済みも含む全件）
+     * @return 受信者レスポンスリスト（除外者・確認済みも含む全件・退会者は withdrawn=true。CMP-260920-1040是正）
      */
     @Transactional(readOnly = true)
-    public List<ConfirmableNotificationRecipientEntity> getRecipients(Long notificationId) {
+    public List<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse>
+            getRecipients(Long notificationId) {
         return queryService.getRecipients(notificationId);
     }
 
     /**
      * MEMBER 視点で確認通知の未確認者一覧を取得する（F04.9 Phase D）。
      *
-     * <p>実装は {@link ConfirmableNotificationQueryService#getRecipientsForMember(Long, Long)} に委譲。</p>
+     * <p>実装は {@link ConfirmableNotificationQueryService#getRecipientsForMember(Long, Long)} に委譲。
+     * CMP-260920-1040是正: ネイティブ投影から直接 DTO を組み立てて返すため、退会者を含んでも
+     * 500 化しない（表示名・アバターURLはNULL、withdrawn=trueの行として返る）。</p>
      *
      * @param notificationId  確認通知ID
      * @param requesterUserId リクエスト元ユーザーID
-     * @return 未確認受信者エンティティリスト（マスク前）
+     * @return 未確認・非除外の受信者レスポンスリスト（確認状態はマスク済み）
      */
     @Transactional(readOnly = true)
-    public List<ConfirmableNotificationRecipientEntity> getRecipientsForMember(
-            Long notificationId, Long requesterUserId) {
+    public List<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse>
+            getRecipientsForMember(Long notificationId, Long requesterUserId) {
         return queryService.getRecipientsForMember(notificationId, requesterUserId);
+    }
+
+    /**
+     * CMP-260920-1040: 受信者一覧をページングして取得する（軍議第8版確定稿 §9.5・AC-30・AC-59・AC-60）。
+     *
+     * <p>実装は {@link ConfirmableNotificationQueryService#getRecipientsPage} に委譲。</p>
+     */
+    @Transactional(readOnly = true)
+    public com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientPageResponse
+            getRecipientsPage(Long notificationId, Long requesterUserId, int page, int size, boolean unconfirmedOnly) {
+        return queryService.getRecipientsPage(notificationId, requesterUserId, page, size, unconfirmedOnly);
     }
 
     /**

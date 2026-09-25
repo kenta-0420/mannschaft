@@ -181,10 +181,15 @@ public class ConfirmableNotificationRecipientEntity {
      *   <li>除外されていない</li>
      *   <li>1回目リマインドが未送信</li>
      *   <li>{@code resolvedFirstReminderMinutes} が設定されている</li>
-     *   <li>通知送信時刻 + resolvedFirstReminderMinutes &lt;= now（経過時間チェック）</li>
+     *   <li>受信者行の作成時刻（届いた時刻） + resolvedFirstReminderMinutes &lt;= now（経過時間チェック）</li>
      *   <li>deadline がある場合は期限前</li>
      * </ul>
      * </p>
+     *
+     * <p><b>CMP-260920-1040（軍議第8版確定稿 §8.5）</b>: 起点は本行の {@code created_at}（受信者行が
+     * 届いた時刻）とする。通知の {@code created_at}（親の送信時刻）を起点にすると、非同期 fanout で
+     * 遅れて作られた受信者行に「届いた直後」にリマインドが出てしまうため。同期経路では受信者行の
+     * created_at と通知の created_at が同時刻になるため、値は変わらない。</p>
      *
      * @param now 現在日時
      * @return リマインドが必要な場合 true
@@ -195,9 +200,9 @@ public class ConfirmableNotificationRecipientEntity {
         if (this.firstReminderSentAt != null) return false;
         if (this.resolvedFirstReminderMinutes == null) return false;
 
-        // 通知送信時刻（confirmable_notification.created_at）+ 設定分数を経過していなければスキップ
-        // これにより、送信直後のバッチ実行でリマインドが誤送信されることを防ぐ
-        LocalDateTime triggerTime = this.confirmableNotification.getCreatedAt()
+        // 受信者行の created_at（届いた時刻）+ 設定分数を経過していなければスキップ（§8.5）。
+        // これにより、届いた直後のバッチ実行でリマインドが誤送信されることを防ぐ
+        LocalDateTime triggerTime = this.createdAt
                 .plusMinutes(this.resolvedFirstReminderMinutes);
         if (now.isBefore(triggerTime)) return false;
 

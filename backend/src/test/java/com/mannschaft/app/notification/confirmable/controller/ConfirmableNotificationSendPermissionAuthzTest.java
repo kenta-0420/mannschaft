@@ -167,8 +167,8 @@ class ConfirmableNotificationSendPermissionAuthzTest {
             ConfirmableNotificationCreateRequest request = mock(ConfirmableNotificationCreateRequest.class);
 
             assertForbidden(() -> teamController().send(TEAM_ID, request));
-            verify(notificationService, never()).send(
-                    any(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), any());
+            // CMP-260920-1040: 送信APIは非同期化され sendAsync(scopeType, scopeId, request, userId) になった。
+            verify(notificationService, never()).sendAsync(any(), anyLong(), any(), anyLong());
         }
 
         @Test

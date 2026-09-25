@@ -1,5 +1,6 @@
 package com.mannschaft.app.mail.outbox;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -35,4 +36,19 @@ public interface EmailOutboxService {
      * </ol>
      */
     void processOne(UUID id);
+
+    /**
+     * CMP-260920-1040: 複数件のメール送信を JdbcTemplate による<b>多値 INSERT 1文</b>で outbox に登録する
+     * （軍議第8版確定稿 §12。確認通知の fan-out チャンクが、受信者の数に比例しない INSERT 文数で
+     * outbox 登録するために使う）。
+     *
+     * <p>既存の {@link #enqueue}（1件ずつ saveAndFlush するもの）は既存の呼び出し元のために残す。
+     * 本メソッドは骨格のみ（試練B）。実装は出陣で行う。空リストは何もしない契約とする。</p>
+     *
+     * @param requests 送信リクエストのリスト
+     * @return 作成した outbox.id (UUIDv7) のリスト（requests と同じ順序）
+     */
+    default List<UUID> enqueueAll(List<EmailOutboxRequest> requests) {
+        throw new UnsupportedOperationException("CMP-260920-1040 出陣で実装");
+    }
 }

@@ -74,7 +74,8 @@ class NotificationFanoutJobServiceTest {
                                                            PlatformTransactionManager txm,
                                                            io.micrometer.core.instrument.MeterRegistry registry) {
         return new NotificationFanoutJobService(repo, mock(NotificationFanoutJobMessageRepository.class),
-                stubRenderer(), txm, providerOf(registry), emptyRegistry());
+                stubRenderer(), txm, providerOf(registry), emptyRegistry(),
+                java.time.Clock.systemDefaultZone());
     }
 
     // ===================================================================

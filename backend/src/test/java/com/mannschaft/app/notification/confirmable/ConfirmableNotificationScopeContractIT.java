@@ -275,13 +275,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("正当ADMINは201")
-        void 正当ADMINは201() throws Exception {
+        @DisplayName("正当ADMINは202")
+        void 正当ADMINは202() throws Exception {
             setAuth(orgAdminAId);
             mockMvc.perform(post("/api/v1/organizations/{id}/confirmable-notifications", orgAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(sendBody(orgMemberAId))))
-                    .andExpect(status().isCreated());
+                    .andExpect(status().isAccepted());
         }
 
         private Map<String, Object> sendBody(Long recipientUserId) {
@@ -748,13 +748,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("正当ADMINは201")
-        void 正当ADMINは201() throws Exception {
+        @DisplayName("正当ADMINは202")
+        void 正当ADMINは202() throws Exception {
             setAuth(teamAdminAId);
             mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notifications", teamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(sendBody(teamMemberAId))))
-                    .andExpect(status().isCreated());
+                    .andExpect(status().isAccepted());
         }
 
         private Map<String, Object> sendBody(Long recipientUserId) {

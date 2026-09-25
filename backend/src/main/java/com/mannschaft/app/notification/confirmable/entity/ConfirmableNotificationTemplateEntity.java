@@ -67,6 +67,16 @@ public class ConfirmableNotificationTemplateEntity {
     @Builder.Default
     private ConfirmableNotificationPriority defaultPriority = ConfirmableNotificationPriority.NORMAL;
 
+    /**
+     * CMP-260920-1040: 既定の宛先グループ（軍議第8版確定稿 §3.1）。
+     *
+     * <p>{@link ConfirmableRecipientGroupEntity#getId()} を参照する（クロスドメインではなく
+     * 同一ドメイン内参照だが、削除済みグループを無視して「既定＝配下すべて」へ戻す挙動を
+     * アプリ層で行うため FK は張らない）。NULL 可。</p>
+     */
+    @Column(name = "default_recipient_group_id", columnDefinition = "BINARY(16)")
+    private java.util.UUID defaultRecipientGroupId;
+
     /** テンプレート作成者（退会時 NULL に設定） */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
