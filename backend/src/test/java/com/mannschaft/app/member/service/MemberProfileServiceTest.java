@@ -1,6 +1,7 @@
 package com.mannschaft.app.member.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.member.MemberMapper;
 import com.mannschaft.app.member.dto.BulkCreateMemberRequest;
 import com.mannschaft.app.member.dto.CopyMembersRequest;
 import com.mannschaft.app.member.dto.CreateMemberProfileRequest;
