@@ -653,7 +653,7 @@ NO_ARG_NOW|com.mannschaft.app.schedule.listener.ScheduleKeepScopeDeletedEventLis
 NO_ARG_NOW|com.mannschaft.app.schedule.service.GoogleCalendarService|5
 NO_ARG_NOW|com.mannschaft.app.schedule.service.GoogleCalendarWebhookService|6
 NO_ARG_NOW|com.mannschaft.app.schedule.service.IcalService|5
-NO_ARG_NOW|com.mannschaft.app.schedule.service.ScheduleAttendanceService|2
+NO_ARG_NOW|com.mannschaft.app.schedule.service.ScheduleAttendanceService|1
 NO_ARG_NOW|com.mannschaft.app.schedule.service.ScheduleKeepService|1
 NO_ARG_NOW|com.mannschaft.app.schedule.service.ScheduleMediaQueryService|1
 NO_ARG_NOW|com.mannschaft.app.schedule.service.ScheduleReminderService|1
@@ -697,7 +697,6 @@ NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftRequestEntity|2
 NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftScheduleEntity|2
 NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftSwapRequestEntity|2
 NO_ARG_NOW|com.mannschaft.app.shift.service.ShiftAutoArchiveBatchService|1
-NO_ARG_NOW|com.mannschaft.app.shift.service.ShiftRequestService|1
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.batch.ShiftBudgetRetryBatchJob|1
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.entity.BudgetThresholdAlertEntity|1
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity|1

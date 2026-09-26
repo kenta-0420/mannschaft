@@ -23,10 +23,12 @@ import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.List;
@@ -70,6 +72,8 @@ public class ShiftRequestService {
     private final ScopeConcealingAccessGate accessGate;
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * スケジュールのシフト希望一覧を取得する（他メンバー分を含むため管理者のみ）。
@@ -372,7 +376,7 @@ public class ShiftRequestService {
      */
     private void validateRequestDeadline(ShiftScheduleEntity schedule) {
         if (schedule.getRequestDeadline() != null
-                && LocalDateTime.now().isAfter(schedule.getRequestDeadline())) {
+                && LocalDateTime.now(wallClock).isAfter(schedule.getRequestDeadline())) {
             throw new BusinessException(ShiftErrorCode.REQUEST_DEADLINE_PASSED);
         }
     }

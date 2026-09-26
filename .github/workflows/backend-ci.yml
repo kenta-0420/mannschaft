@@ -301,6 +301,8 @@ jobs:
           -x jacocoTestReport
           --tests "com.mannschaft.app.config.NonJstTimezoneContractTest"
           --tests "com.mannschaft.app.config.JacksonTimeTypeSymmetryGuardTest"
+          --tests "com.mannschaft.app.schedule.ScheduleAttendanceServiceTest"
+          --tests "com.mannschaft.app.shift.service.ShiftRequestServiceTest"
 
   # ---------------------------------------------------------------------------
   # shard: compile + test を 6 並列で実行する（Docker required for Testcontainers）
