@@ -720,7 +720,10 @@
       "deletedToast": "TODO를 삭제했습니다",
       "restoredToast": "TODO를 복원했습니다",
       "deleteFailed": "삭제에 실패했습니다",
-      "restoreFailed": "실행 취소할 수 없습니다"
+      "restoreFailed": "실행 취소할 수 없습니다",
+      "bulkStatusSuccess": "TODO {count}개의 상태를 변경했습니다",
+      "bulkStatusPartial": "{changedCount}개를 변경하고 잠긴 TODO {skippedCount}개를 건너뛰었습니다. 건너뛴 항목은 선택된 상태로 유지됩니다",
+      "bulkStatusAllLocked": "변경하지 않았습니다. TODO {count}개가 모두 잠겨 있습니다. 선택된 상태로 유지됩니다"
     },
     "field": {
       "status": "상태",

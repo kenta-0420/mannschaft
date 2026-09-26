@@ -720,7 +720,10 @@
       "deletedToast": "TODOを削除しました",
       "restoredToast": "TODOを元に戻しました",
       "deleteFailed": "削除に失敗しました",
-      "restoreFailed": "元に戻せませんでした"
+      "restoreFailed": "元に戻せませんでした",
+      "bulkStatusSuccess": "{count}件のステータスを変更しました",
+      "bulkStatusPartial": "{changedCount}件を変更し、ロック中の{skippedCount}件はスキップしました。スキップした項目は選択状態です",
+      "bulkStatusAllLocked": "すべてロック中のため変更できませんでした（{count}件）。項目は選択状態です"
     },
     "field": {
       "status": "ステータス",
