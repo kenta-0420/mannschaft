@@ -258,6 +258,51 @@ jobs:
           -Pshard.total=${{ env.SHARD_TOTAL }}
 
   # ---------------------------------------------------------------------------
+  # non-jst-timezone: CMP-023 の返済済み範囲を非JST JVMで検証する必須ジョブ
+  #
+  # 通常スイートは既存契約を守るため Asia/Tokyo 固定のままにする。一方、このジョブは
+  # America/Los_Angeles で起動し、明示ゾーン化済みの共通基盤だけを green 必須で検証する。
+  # continue-on-error は使わず、CMP-023 の返済ロットごとに --tests の対象を広げる。
+  # ---------------------------------------------------------------------------
+  non-jst-timezone:
+    name: Non-JST timezone contract
+    needs: detect
+    if: needs.detect.outputs.backend_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Set up Gradle（依存＋ビルドキャッシュ）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: 明示ゾーン化済み範囲を America/Los_Angeles で検証
+        run: >-
+          ./gradlew test --no-daemon --build-cache
+          -Ptest.timezone=America/Los_Angeles
+          -x jacocoTestReport
+          --tests "com.mannschaft.app.config.NonJstTimezoneContractTest"
+          --tests "com.mannschaft.app.config.JacksonTimeTypeSymmetryGuardTest"
+
+  # ---------------------------------------------------------------------------
   # shard: compile + test を 6 並列で実行する（Docker required for Testcontainers）
   #
   # matrix で shard=0..5 の 6 ランナーへ分散する。各 shard は build.gradle.kts の
@@ -409,7 +454,7 @@ jobs:
   #   空文字（≠ 'true'）になり、この分岐に落ちて「docs-only だから skip」と誤認して
   #   緑になっていた。この穴は shard-coverage-guard 新設以前から gate に存在していた
   #   既存の弱点であり、今回まとめて是正する。加えて、backend_changed == 'true' の
-  #   経路で shard / lint / shard-coverage-guard が `skipped`（走るべきなのに走らな
+  #   経路で shard / lint / shard-coverage-guard / non-jst-timezone が `skipped`（走るべきなのに走らな
   #   かった）だった場合も、旧ロジックの `!= 'success'` 判定自体は既に fail 側に落ちる
   #   はずだが、detect 失敗経由の誤認 success を防いだ副次効果として、ここでも
   #   明示的に「期待して走るべきジョブが skipped なら失敗」であることをコメントで
@@ -420,7 +465,7 @@ jobs:
   #       → backend_changed の値に関わらず判定不能。fail（exit 1）。
   #   (1) detect.result == 'success' かつ backend_changed != 'true'（docs-only 等）
   #       → shard 系は正しく skip 済み。テスト不要なので success（exit 0）。
-  #   (2) backend_changed == 'true' で 全 shard + lint + shard-coverage-guard が
+  #   (2) backend_changed == 'true' で 全 shard + lint + shard-coverage-guard + non-jst-timezone が
   #       success（skipped/failure/cancelled のいずれでもない）→ success（exit 0）。
   #   (3) それ以外（failure / cancelled / 走るべきなのに skipped 等の異常）
   #       → fail（exit 1）。
@@ -431,7 +476,7 @@ jobs:
   # ---------------------------------------------------------------------------
   gate:
     name: Compile & Test
-    needs: [detect, shard, lint, shard-coverage-guard]
+    needs: [detect, shard, lint, shard-coverage-guard, non-jst-timezone]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -444,11 +489,13 @@ jobs:
           SHARD_RESULT="${{ needs.shard.result }}"
           LINT_RESULT="${{ needs.lint.result }}"
           COVERAGE_GUARD_RESULT="${{ needs.shard-coverage-guard.result }}"
+          NON_JST_RESULT="${{ needs.non-jst-timezone.result }}"
           echo "[INFO] needs.detect.result            = ${DETECT_RESULT}"
           echo "[INFO] detect.backend_changed          = ${CHANGED}"
           echo "[INFO] needs.shard.result              = ${SHARD_RESULT}"
           echo "[INFO] needs.lint.result               = ${LINT_RESULT}"
           echo "[INFO] needs.shard-coverage-guard.result = ${COVERAGE_GUARD_RESULT}"
+          echo "[INFO] needs.non-jst-timezone.result    = ${NON_JST_RESULT}"
 
           # (0) detect 自体が success でない（failure/cancelled/skipped）→ 判定不能につき fail。
           #     ここを通さないと、detect 失敗時に outputs.backend_changed が空文字になり
@@ -457,27 +504,28 @@ jobs:
           #      success になる偽 green 穴。今回まとめて是正）。
           if [ "${DETECT_RESULT}" != "success" ]; then
             echo "[NG] detect が success ではない（結果: ${DETECT_RESULT}）。backend_changed の値は" \
-                 "信頼できず、shard/lint/shard-coverage-guard の要否も判定不能。CI を再実行せよ。"
+                 "信頼できず、shard/lint/shard-coverage-guard/non-jst-timezone の要否も判定不能。CI を再実行せよ。"
             exit 1
           fi
 
-          # (1) detect success かつ backend 無変更（docs-only 等）: shard / lint / shard-coverage-guard は
+          # (1) detect success かつ backend 無変更（docs-only 等）: shard / lint / shard-coverage-guard / non-jst-timezone は
           #     意図的に skip 済み → テスト不要で success
           if [ "${CHANGED}" != "true" ]; then
-            echo "[OK] backend に変更なし（docs-only 等）。shard / lint / shard-coverage-guard をスキップし success とする。"
+            echo "[OK] backend に変更なし（docs-only 等）。shard / lint / shard-coverage-guard / non-jst-timezone をスキップし success とする。"
             exit 0
           fi
 
-          # (2) backend_changed == 'true' の経路: 全 shard + lint + shard-coverage-guard が
+          # (2) backend_changed == 'true' の経路: 全 shard + lint + shard-coverage-guard + non-jst-timezone が
           #     厳密に success（skipped/failure/cancelled のいずれでもない）→ success
-          if [ "${SHARD_RESULT}" = "success" ] && [ "${LINT_RESULT}" = "success" ] && [ "${COVERAGE_GUARD_RESULT}" = "success" ]; then
-            echo "[OK] 全 shard + lint + shard-coverage-guard が success。Compile & Test は success。"
+          if [ "${SHARD_RESULT}" = "success" ] && [ "${LINT_RESULT}" = "success" ] && [ "${COVERAGE_GUARD_RESULT}" = "success" ] && [ "${NON_JST_RESULT}" = "success" ]; then
+            echo "[OK] 全 shard + lint + shard-coverage-guard + non-jst-timezone が success。Compile & Test は success。"
             exit 0
           fi
 
           # (3) それ以外（failure / cancelled / 走るべきなのに skipped 等の異常） → fail
-          #     shard-coverage-guard が skipped のまま緑にはならない（走らない番人は無意味なため）。
-          echo "[NG] shard=${SHARD_RESULT}, lint=${LINT_RESULT}, shard-coverage-guard=${COVERAGE_GUARD_RESULT} — いずれかが success ではない。Compile & Test を失敗とする。"
+          #     shard-coverage-guard / non-jst-timezone が skipped のまま緑にはならない
+          #     （走らない番人は無意味なため）。
+          echo "[NG] shard=${SHARD_RESULT}, lint=${LINT_RESULT}, shard-coverage-guard=${COVERAGE_GUARD_RESULT}, non-jst-timezone=${NON_JST_RESULT} — いずれかが success ではない。Compile & Test を失敗とする。"
           exit 1
 
 # =============================================================================
