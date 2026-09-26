@@ -112531,13 +112531,30 @@
             }
           },
           {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           }
         ],

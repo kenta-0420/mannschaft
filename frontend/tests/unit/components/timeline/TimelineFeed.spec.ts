@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import Menu from 'primevue/menu'
 import TimelineFeed from '~/components/timeline/TimelineFeed.vue'
@@ -66,7 +66,9 @@ mockNuxtImport('useTimelineApi', () => () => ({
   repost: vi.fn(),
   addReaction: vi.fn(),
   removeReaction: vi.fn(),
-  getReplies: vi.fn().mockResolvedValue({ data: { posts: [] }, meta: { nextCursor: null, hasNext: false } }),
+  getReplies: vi
+    .fn()
+    .mockResolvedValue({ data: { posts: [] }, meta: { nextCursor: null, hasNext: false } }),
   createReply: vi.fn(),
 }))
 
@@ -113,10 +115,7 @@ function feedResponse() {
   return {
     data: {
       pinned: [],
-      posts: [
-        makePost(1, 'ORGANIZATION', '5', 'さくら学園'),
-        makePost(2, 'TEAM', '7', '一軍'),
-      ],
+      posts: [makePost(1, 'ORGANIZATION', '5', 'さくら学園'), makePost(2, 'TEAM', '7', '一軍')],
     },
     meta: { nextCursor: null, limit: 20, hasNext: false },
   }
@@ -126,9 +125,9 @@ function feedResponse() {
 function menuModelAt(
   wrapper: Awaited<ReturnType<typeof mountSuspended>>,
   index: number,
-): Array<{ label: string, command: () => void }> {
+): Array<{ label: string; command: () => void }> {
   const menus = wrapper.findAllComponents(Menu)
-  return menus[index]!.props('model') as Array<{ label: string, command: () => void }>
+  return menus[index]!.props('model') as Array<{ label: string; command: () => void }>
 }
 
 describe('TimelineFeed.vue — ミュート導線', () => {
@@ -137,9 +136,11 @@ describe('TimelineFeed.vue — ミュート導線', () => {
     getMyTimeline.mockImplementation(async () => feedResponse())
     getFeed.mockImplementation(async () => feedResponse())
     getMutes.mockResolvedValue({ data: [] })
-    addMute.mockImplementation(async (p: { mutedType: 'TEAM' | 'ORGANIZATION', mutedId: number }) => ({
-      data: makeMute(99, p.mutedType, p.mutedId),
-    }))
+    addMute.mockImplementation(
+      async (p: { mutedType: 'TEAM' | 'ORGANIZATION'; mutedId: number }) => ({
+        data: makeMute(99, p.mutedType, p.mutedId),
+      }),
+    )
     removeMute.mockResolvedValue(undefined)
   })
 
@@ -235,5 +236,118 @@ describe('TimelineFeed.vue — ミュート導線', () => {
     await new Promise((r) => setTimeout(r, 0))
     await wrapper.vm.$nextTick()
     expect(wrapper.findAll('[data-testid="team-timeline-post"]')).toHaveLength(2)
+  })
+})
+
+describe('TimelineFeed.vue — 追加読み込み', () => {
+  let onIntersection: IntersectionObserverCallback
+  const observe = vi.fn()
+  const disconnect = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(callback: IntersectionObserverCallback) {
+          onIntersection = callback
+        }
+
+        observe = observe
+        disconnect = disconnect
+      },
+    )
+    getMutes.mockResolvedValue({ data: [] })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('末尾が見えたらカーソルで次ページを一度だけ取得し、終端で監視を解除する', async () => {
+    getFeed
+      .mockResolvedValueOnce({
+        data: {
+          pinned: [],
+          posts: [makePost(3, 'TEAM', '7', '一軍'), makePost(2, 'TEAM', '7', '一軍')],
+        },
+        meta: { nextCursor: 2, limit: 2, hasNext: true },
+      })
+      .mockResolvedValueOnce({
+        data: { pinned: [], posts: [makePost(1, 'TEAM', '7', '一軍')] },
+        meta: { nextCursor: null, limit: 2, hasNext: false },
+      })
+
+    const wrapper = await mountSuspended(TimelineFeed, {
+      props: { scopeType: 'TEAM', scopeId: '7' },
+    })
+    await vi.waitFor(() => expect(observe).toHaveBeenCalledOnce())
+    const target = wrapper.find('[data-testid="timeline-load-more-target"]')
+    expect(target.exists()).toBe(true)
+    expect(observe).toHaveBeenCalledWith(target.element)
+
+    onIntersection(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+    onIntersection(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+    await vi.waitFor(() => expect(getFeed).toHaveBeenCalledTimes(2))
+    expect(getFeed).toHaveBeenLastCalledWith({ scopeType: 'TEAM', scopeId: '7', cursor: 2 })
+    await vi.waitFor(() =>
+      expect(wrapper.findAll('[data-testid="team-timeline-post"]')).toHaveLength(3),
+    )
+    expect(wrapper.find('[data-testid="timeline-load-more-target"]').exists()).toBe(false)
+    expect(disconnect).toHaveBeenCalled()
+  })
+
+  it('表示上限を指定したウィジェットでは監視も追加取得も行わない', async () => {
+    getFeed.mockResolvedValue({
+      data: {
+        pinned: [],
+        posts: [makePost(3, 'TEAM', '7', '一軍'), makePost(2, 'TEAM', '7', '一軍')],
+      },
+      meta: { nextCursor: 2, limit: 2, hasNext: true },
+    })
+
+    const wrapper = await mountSuspended(TimelineFeed, {
+      props: { scopeType: 'TEAM', scopeId: '7', limit: 1 },
+    })
+    expect(wrapper.findAll('[data-testid="team-timeline-post"]')).toHaveLength(1)
+    expect(wrapper.find('[data-testid="timeline-load-more-target"]').exists()).toBe(false)
+    expect(observe).not.toHaveBeenCalled()
+    expect(getFeed).toHaveBeenCalledTimes(1)
+  })
+
+  it('追加取得に失敗したら自動再試行せず、ボタンで再試行できる', async () => {
+    getFeed
+      .mockResolvedValueOnce({
+        data: { pinned: [], posts: [makePost(3, 'TEAM', '7', '一軍')] },
+        meta: { nextCursor: 3, limit: 1, hasNext: true },
+      })
+      .mockRejectedValueOnce(new Error('temporary failure'))
+      .mockResolvedValueOnce({
+        data: { pinned: [], posts: [makePost(2, 'TEAM', '7', '一軍')] },
+        meta: { nextCursor: null, limit: 1, hasNext: false },
+      })
+
+    const wrapper = await mountSuspended(TimelineFeed, {
+      props: { scopeType: 'TEAM', scopeId: '7' },
+    })
+    await vi.waitFor(() => expect(observe).toHaveBeenCalledOnce())
+    onIntersection([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    await vi.waitFor(() =>
+      expect(wrapper.find('[data-testid="timeline-load-more-target"] button').exists()).toBe(true),
+    )
+    expect(getFeed).toHaveBeenCalledTimes(2)
+
+    onIntersection([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(getFeed).toHaveBeenCalledTimes(2)
+
+    await wrapper.find('[data-testid="timeline-load-more-target"] button').trigger('click')
+    await vi.waitFor(() => expect(getFeed).toHaveBeenCalledTimes(3))
   })
 })
