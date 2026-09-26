@@ -191,6 +191,12 @@ async function runScenario(browser: Browser, scope: Scope): Promise<void> {
     await loginViaApi(page, { email: scope.editor, password: PASSWORD }, { apiBaseUrl: API_BASE })
     await page.goto(pagePath(scope))
     await waitForHydration(page)
+    // TEAM 管理者の初回案内は sessionStorage だけを更新して閉じる。
+    // 共有チームの権限設定は変更しない。
+    const permissionSetup = page.getByTestId('member-permission-setup')
+    if (await permissionSetup.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true, () => false)) {
+      await permissionSetup.getByRole('button', { name: 'あとで決める' }).click()
+    }
     await expect(row(page, openId)).toBeVisible({ timeout: 30_000 })
     await expect(row(page, locked1)).toBeVisible()
     await select(page, openId)

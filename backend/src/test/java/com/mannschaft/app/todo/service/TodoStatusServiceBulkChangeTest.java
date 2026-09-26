@@ -51,7 +51,8 @@ class TodoStatusServiceBulkChangeTest {
         assertThat(new ObjectMapper().valueToTree(result).path("data").isArray()).isTrue();
         assertThat(new ObjectMapper().valueToTree(result).path("skippedLockedIds").isArray()).isTrue();
         verify(todoRepository).save(open);
-        verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any());
+        verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(
+                com.mannschaft.app.todo.event.TodoStatusChangedEvent.class));
     }
 
     @Test

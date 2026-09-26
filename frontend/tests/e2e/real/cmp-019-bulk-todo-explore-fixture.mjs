@@ -38,7 +38,8 @@ async function call(method, path, token, body, expected) {
   if (!expected.includes(response.status)) {
     throw new Error(`${method} ${path}: ${response.status} ${await response.text()}`)
   }
-  return response.status === 204 || response.status === 404 ? undefined : response.json()
+  const text = await response.text()
+  return text ? JSON.parse(text) : undefined
 }
 
 function mysql(sql) {
