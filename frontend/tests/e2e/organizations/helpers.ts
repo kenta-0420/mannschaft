@@ -4,6 +4,7 @@ export const ORG_ID = 1
 
 export const MOCK_ORG = {
   id: ORG_ID,
+  numericId: ORG_ID,
   name: 'テスト組織',
   description: 'E2Eテスト用組織',
   visibility: 'PUBLIC',

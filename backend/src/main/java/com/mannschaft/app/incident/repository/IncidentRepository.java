@@ -37,18 +37,38 @@ public interface IncidentRepository extends JpaRepository<IncidentEntity, Long> 
      * @param pageable  ページング情報
      * @return インシデントのページ
      */
-    @Query("""
+    @Query(value = """
             SELECT i FROM IncidentEntity i
             WHERE i.scopeType = :scopeType
               AND i.scopeId = :scopeId
               AND i.deletedAt IS NULL
               AND (:status IS NULL OR i.status = :status)
+              AND (:canViewAll = true OR i.reportedBy = :userId OR EXISTS (
+                  SELECT 1 FROM IncidentAssignmentEntity assignment
+                  WHERE assignment.incidentId = i.id
+                    AND assignment.userId = :userId
+                    AND assignment.assigneeType = 'USER'
+              ))
             ORDER BY i.createdAt DESC
+            """, countQuery = """
+            SELECT COUNT(i) FROM IncidentEntity i
+            WHERE i.scopeType = :scopeType
+              AND i.scopeId = :scopeId
+              AND i.deletedAt IS NULL
+              AND (:status IS NULL OR i.status = :status)
+              AND (:canViewAll = true OR i.reportedBy = :userId OR EXISTS (
+                  SELECT 1 FROM IncidentAssignmentEntity assignment
+                  WHERE assignment.incidentId = i.id
+                    AND assignment.userId = :userId
+                    AND assignment.assigneeType = 'USER'
+              ))
             """)
-    Page<IncidentEntity> findByScopeTypeAndScopeIdAndStatus(
+    Page<IncidentEntity> findVisibleByScopeTypeAndScopeIdAndStatus(
             @Param("scopeType") String scopeType,
             @Param("scopeId") Long scopeId,
             @Param("status") String status,
+            @Param("userId") Long userId,
+            @Param("canViewAll") boolean canViewAll,
             Pageable pageable);
 
     /**
