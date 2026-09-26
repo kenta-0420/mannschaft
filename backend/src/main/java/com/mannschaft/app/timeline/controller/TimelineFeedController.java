@@ -71,7 +71,8 @@ public class TimelineFeedController {
 
     /** スコープ別フィードのカーソルページ。size は既存クライアント用の別名。 */
     @GetMapping("/feed")
-    @Operation(summary = "タイムラインフィード取得")
+    @Operation(summary = "タイムラインフィード取得", operationId = "getFeed")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<TimelineFeedResponse> getFeedPage(
             @RequestParam(defaultValue = "PUBLIC") String scopeType,
             @RequestParam(defaultValue = "0") String scopeId,
