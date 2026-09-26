@@ -98,7 +98,7 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicOrganizationSearchQueryService.java | 32 | // TODO: publicviewドメインからorganizationドメイン(OrganizationRepository)とcmsドメイン(BlogPostRepository)を | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 46 | // TODO: publicview → cms のクロスドメイン参照。将来はイベント駆動化候補。 | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 48 | // TODO: publicview → auth のクロスドメイン参照。将来はイベント駆動化候補。 | 次陣で仕様化・Issue化 |
-| 性能 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 69 | // TODO: N+1 問題。コメント件数が多い場合は author_id をバルク取得して UserRepository.findAllById で解決すること。 | 次陣で仕様化・Issue化 |
+| 性能 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 69 | // TODO: N+1 問題。コメント件数が多い場合は author_id をバルク取得して UserRepository.findAllById で解決すること。 | Wave 7 Issue #3466: `findNameMapByIdIn` による著者名一括取得へ置換（対象unit test実行待ち） |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 86 | // TODO: publicview → cms / auth クロスドメイン参照。将来はイベント駆動化候補。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 97 | // TODO: チームの supporter_name_disclosure = REAL_NAME の場合、本名スナップショットを設定する | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 151 | // TODO: publicview → cms クロスドメイン参照 | 次陣で仕様化・Issue化 |

@@ -19,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -66,9 +67,18 @@ public class PublicPostCommentService {
         // 投稿の存在確認（public_visible=true かつ visibility=PUBLIC かつ status=PUBLISHED）
         validatePublicPost(postId);
 
-        // TODO: N+1 問題。コメント件数が多い場合は author_id をバルク取得して UserRepository.findAllById で解決すること。
-        return commentRepository.findActiveByPostId(postId, pageable)
-                .map(this::toResponse);
+        Page<PublicPostCommentEntity> comments = commentRepository.findActiveByPostId(postId, pageable);
+        if (comments.isEmpty()) {
+            return comments.map(comment -> toResponse(comment, "退会済みユーザー"));
+        }
+
+        Map<Long, String> authorNames = userRepository.findNameMapByIdIn(comments.stream()
+                .map(PublicPostCommentEntity::getAuthorId)
+                .collect(java.util.stream.Collectors.toSet()));
+        return comments.map(comment -> toResponse(
+                comment,
+                authorNames.getOrDefault(comment.getAuthorId(), "退会済みユーザー")
+        ));
     }
 
     /**
@@ -157,17 +167,6 @@ public class PublicPostCommentService {
                 || !post.isPublicVisible()) {
             throw new BusinessException(PublicViewErrorCode.PUBLIC_008);
         }
-    }
-
-    /**
-     * コメントエンティティをレスポンス DTO に変換する（著者名を別途取得）。
-     *
-     * <p>TODO: N+1 防止のため呼び出し元でバルク取得を検討すること。</p>
-     */
-    private PublicPostCommentResponse toResponse(PublicPostCommentEntity comment) {
-        UserEntity author = userRepository.findById(comment.getAuthorId()).orElse(null);
-        String displayName = author != null ? author.getDisplayName() : "退会済みユーザー";
-        return toResponse(comment, displayName);
     }
 
     /** コメントエンティティをレスポンス DTO に変換する（著者名を引数で受取）。 */
