@@ -126,7 +126,7 @@ watch(loadMoreTarget, (target) => {
   if (!target || typeof IntersectionObserver === 'undefined') return
   loadMoreObserver = new IntersectionObserver(
     (entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) loadMore()
+      if (!loadMoreFailed.value && entries.some((entry) => entry.isIntersecting)) loadMore()
     },
     { rootMargin: '200px' },
   )

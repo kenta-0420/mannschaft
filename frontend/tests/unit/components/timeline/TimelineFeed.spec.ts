@@ -320,4 +320,34 @@ describe('TimelineFeed.vue — 追加読み込み', () => {
     expect(observe).not.toHaveBeenCalled()
     expect(getFeed).toHaveBeenCalledTimes(1)
   })
+
+  it('追加取得に失敗したら自動再試行せず、ボタンで再試行できる', async () => {
+    getFeed
+      .mockResolvedValueOnce({
+        data: { pinned: [], posts: [makePost(3, 'TEAM', '7', '一軍')] },
+        meta: { nextCursor: 3, limit: 1, hasNext: true },
+      })
+      .mockRejectedValueOnce(new Error('temporary failure'))
+      .mockResolvedValueOnce({
+        data: { pinned: [], posts: [makePost(2, 'TEAM', '7', '一軍')] },
+        meta: { nextCursor: null, limit: 1, hasNext: false },
+      })
+
+    const wrapper = await mountSuspended(TimelineFeed, {
+      props: { scopeType: 'TEAM', scopeId: '7' },
+    })
+    await vi.waitFor(() => expect(observe).toHaveBeenCalledOnce())
+    onIntersection([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    await vi.waitFor(() =>
+      expect(wrapper.find('[data-testid="timeline-load-more-target"] button').exists()).toBe(true),
+    )
+    expect(getFeed).toHaveBeenCalledTimes(2)
+
+    onIntersection([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(getFeed).toHaveBeenCalledTimes(2)
+
+    await wrapper.find('[data-testid="timeline-load-more-target"] button').trigger('click')
+    await vi.waitFor(() => expect(getFeed).toHaveBeenCalledTimes(3))
+  })
 })
