@@ -305,7 +305,18 @@
     },
     "reminder": {
       "send": "리마인더 전송",
-      "sent": "리마인더 전송됨"
+      "sent": "리마인더 전송됨",
+      "confirmTitle": "미제출 멤버에게 알림",
+      "confirmMessage": "'{title}' 희망을 아직 제출하지 않은 멤버에게 알림을 보낼까요?",
+      "confirmAccept": "알림 전송",
+      "confirmReject": "취소",
+      "sentTitle": "알림을 전송했습니다",
+      "sentDetail": "{count}명에게 희망 제출을 요청했습니다.",
+      "noRecipientsTitle": "미제출 멤버가 없습니다",
+      "noRecipientsDetail": "알림 대상이 없습니다.",
+      "failedTitle": "알림을 전송하지 못했습니다",
+      "failedDetail": "잠시 후 다시 시도해 주세요.",
+      "targetUnavailable": "이 스케줄을 볼 수 없거나 희망 접수가 종료되었습니다."
     },
     "empty": {
       "noSchedules": "스케줄이 없습니다",

@@ -33,6 +33,7 @@ const { listSlots } = useShiftSlotApi()
 const { listMyRequests, submitRequest, updateRequest } = useShiftRequestApi()
 const { getAvailabilityDefaults } = useShiftAvailabilityDefaultApi()
 const teamStore = useTeamStore()
+const route = useRoute()
 
 const TEAM_FETCH_TIMEOUT_MS = 15_000
 type TeamLoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout'
@@ -71,6 +72,7 @@ const step = ref<Step>('team-select')
 
 // チーム選択
 const selectedTeamId = ref<number | null>(null)
+const loadedScheduleTeamId = ref<number | null>(null)
 
 // スケジュール選択
 const schedules = ref<ShiftScheduleResponse[]>([])
@@ -110,6 +112,8 @@ const bulkDialogVisible = ref(false)
 const submitting = ref(false)
 
 async function selectTeam(id: number) {
+  if (loadedScheduleTeamId.value === id && selectedTeamId.value === id) return
+
   selectedTeamId.value = id
   step.value = 'schedule-select'
   schedulesLoading.value = true
@@ -118,12 +122,44 @@ async function selectTeam(id: number) {
     // 希望を受け付けているシフト表のみ表示（COLLECTING かつ requestDeadline 未経過）。
     // 判定はチームのシフト表一覧と共通の isAcceptingShiftRequests に寄せる（CMP-260908-2118）。
     schedules.value = all.filter(isAcceptingShiftRequests)
+    loadedScheduleTeamId.value = id
   } catch {
+    loadedScheduleTeamId.value = null
     showError(t('shift.notification.errorLoad'))
     step.value = 'team-select'
   } finally {
     schedulesLoading.value = false
   }
+}
+
+function getPositiveQueryId(value: unknown): number | null {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null
+  const id = Number(value)
+  return Number.isSafeInteger(id) ? id : null
+}
+
+async function openReminderTarget() {
+  if (teamLoadStatus.value !== 'success') return
+
+  const teamId = getPositiveQueryId(route.query.teamId)
+  const scheduleId = getPositiveQueryId(route.query.scheduleId)
+  if (teamId === null || scheduleId === null) return
+
+  // URL の ID だけでは schedule 情報を表示しない。本人の認可済みチーム・一覧に
+  // 対象がある場合だけ、通常の選択処理へ進める。
+  const team = teamStore.myTeams.find(candidate => candidate.id === teamId)
+  if (!team) {
+    showError(t('shift.reminder.targetUnavailable'))
+    return
+  }
+
+  await selectTeam(teamId)
+  const schedule = schedules.value.find(candidate => candidate.id === scheduleId)
+  if (!schedule || !isAcceptingShiftRequests(schedule)) {
+    showError(t('shift.reminder.targetUnavailable'))
+    return
+  }
+  await selectSchedule(schedule)
 }
 
 async function selectSchedule(schedule: ShiftScheduleResponse) {
@@ -344,7 +380,10 @@ function formatTime(timeStr: string): string {
   return timeStr.substring(0, 5)
 }
 
-onMounted(loadTeams)
+onMounted(async () => {
+  await loadTeams()
+  await openReminderTarget()
+})
 </script>
 
 <template>
