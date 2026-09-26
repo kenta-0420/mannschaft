@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import CreationRequestsPage from '~/pages/admin/villages/creation-requests.vue'
 
@@ -30,19 +30,26 @@ mockNuxtImport('useAuthStore', () => () => ({ isSystemAdmin: true }))
 
 beforeAll(async () => {
   listAdminCreationRequests.mockResolvedValue({ content: [], totalElements: 0 })
-  const warmup = await mountSuspended(CreationRequestsPage)
+  const warmup = await mountPage()
   warmup.unmount()
 })
 
 describe('pages/admin/villages/creation-requests.vue — 取得失敗時のエラー状態', () => {
+  let wrapper: Awaited<ReturnType<typeof mountPage>> | undefined
+
   beforeEach(() => {
     listAdminCreationRequests.mockReset()
     notificationMock.error.mockClear()
   })
 
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
   it('CR-001: 取得失敗時に creation-requests-error-state が描画される', async () => {
     listAdminCreationRequests.mockRejectedValue(new Error('network error'))
-    const wrapper = await mountSuspended(CreationRequestsPage)
+    wrapper = await mountPage()
     await flushMicrotasks()
 
     expect(wrapper.find('[data-testid="creation-requests-error-state"]').exists()).toBe(true)
@@ -50,7 +57,7 @@ describe('pages/admin/villages/creation-requests.vue — 取得失敗時のエ�
 
   it('CR-002（対照）: 取得成功・0件時はエラー状態を出さない', async () => {
     listAdminCreationRequests.mockResolvedValue({ content: [], totalElements: 0 })
-    const wrapper = await mountSuspended(CreationRequestsPage)
+    wrapper = await mountPage()
     await flushMicrotasks()
 
     expect(wrapper.find('[data-testid="creation-requests-error-state"]').exists()).toBe(false)
@@ -59,7 +66,7 @@ describe('pages/admin/villages/creation-requests.vue — 取得失敗時のエ�
   it('CR-003: 再試行は初回と同じ load() を呼ぶ', async () => {
     listAdminCreationRequests.mockRejectedValueOnce(new Error('network error'))
     listAdminCreationRequests.mockResolvedValueOnce({ content: [], totalElements: 0 })
-    const wrapper = await mountSuspended(CreationRequestsPage)
+    wrapper = await mountPage()
     await flushMicrotasks()
 
     expect(wrapper.find('[data-testid="creation-requests-error-state"]').exists()).toBe(true)
@@ -70,6 +77,14 @@ describe('pages/admin/villages/creation-requests.vue — 取得失敗時のエ�
     expect(wrapper.find('[data-testid="creation-requests-error-state"]').exists()).toBe(false)
   })
 })
+
+async function mountPage() {
+  const wrapper = await mountSuspended(CreationRequestsPage)
+  // PrimeVue TabList は mount の 150 ms 後に updateInkBar を実行し、unmount 時にもタイマーを解除しない。
+  // jsdom の破棄前に実行させ、テスト終了後の未処理例外を防ぐ。
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  return wrapper
+}
 
 async function flushMicrotasks() {
   for (let i = 0; i < 5; i++) {

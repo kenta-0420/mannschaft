@@ -330,6 +330,7 @@ Class <com.mannschaft.app.proxyvote.entity.ProxyVoteEntity> is not assignable to
 Class <com.mannschaft.app.proxyvote.entity.ProxyVoteMotionCommentEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ProxyVoteMotionCommentEntity.java:0)
 Class <com.mannschaft.app.proxyvote.entity.ProxyVoteMotionEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ProxyVoteMotionEntity.java:0)
 Class <com.mannschaft.app.proxyvote.entity.ProxyVoteSessionEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ProxyVoteSessionEntity.java:0)
+Class <com.mannschaft.app.publicview.entity.PublicPostCommentEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (PublicPostCommentEntity.java:0)
 Class <com.mannschaft.app.queue.entity.QueueCategoryEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (QueueCategoryEntity.java:0)
 Class <com.mannschaft.app.queue.entity.QueueCounterEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (QueueCounterEntity.java:0)
 Class <com.mannschaft.app.queue.entity.QueueDailyStatsEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (QueueDailyStatsEntity.java:0)
