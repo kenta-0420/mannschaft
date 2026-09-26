@@ -867,6 +867,28 @@ public class TimelinePostService {
         return enrichPosts(timelineMapper.toPostResponseList(posts));
     }
 
+    /** スコープ別フィードの通常投稿をカーソル方式で取得する（判定用に limit + 1 件）。 */
+    public List<PostResponse> getFeedPage(
+            String scopeType, Long scopeId, UUID scopeVillageId, Long cursor, int limit, Long userId) {
+        int pageSize = limit > 0 ? Math.min(limit, 50) : DEFAULT_FEED_SIZE;
+        PostScopeType scopeTypeEnum = parseScopeType(scopeType);
+        List<TimelinePostEntity> posts;
+        if (scopeTypeEnum == PostScopeType.VILLAGE) {
+            if (scopeVillageId == null) {
+                checkScopeMembership(scopeType, scopeId, userId);
+                return List.of();
+            }
+            requireVillageMember(scopeVillageId, userId);
+            posts = postRepository.findFeedPageByVillageId(
+                    scopeVillageId, cursor, PageRequest.of(0, pageSize + 1));
+        } else {
+            checkScopeMembership(scopeType, scopeId, userId);
+            posts = postRepository.findFeedPageByScopeType(
+                    scopeTypeEnum, scopeId, cursor, PageRequest.of(0, pageSize + 1));
+        }
+        return enrichPosts(timelineMapper.toPostResponseList(posts));
+    }
+
     /**
      * 呼び出し元ユーザーが対象村の現役 USER メンバーであることを検証する（認可根治 Wave3-B7-timeline）。
      * 非メンバーは {@link VillageErrorCode#NOT_MEMBER}（village ドメインの既存 IDOR 対策と同一方針・
