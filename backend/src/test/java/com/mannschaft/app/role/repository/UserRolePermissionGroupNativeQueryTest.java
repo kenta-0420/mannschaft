@@ -460,6 +460,24 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
                 .contains(membershipsOnly);
     }
 
+    @Test
+    @DisplayName("CMP-048: memberships専属SUPPORTERの既定権限を評価する")
+    void cmp048_evaluatesMembershipsOnlySupporterDefaultPermission() {
+        Long orgId = persistOrganization(null);
+        String permissionName = "CMP048_SUPPORTER_PERMISSION";
+        Long supporterRoleId = persistRoleIfNeeded("SUPPORTER", 5);
+        Long permissionId = persistPermission(permissionName);
+        grantRolePermission(supporterRoleId, permissionId, true);
+
+        Long membershipsOnly = persistActiveUser();
+        addMembership(membershipsOnly, ScopeType.ORGANIZATION, orgId, RoleKind.SUPPORTER, null);
+        flushClear();
+
+        assertThat(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(orgId, permissionName))
+                .as("SUPPORTERの既定権限もmemberships由来で評価される")
+                .contains(membershipsOnly);
+    }
+
     // =====================================================================
     // AC-6: 論理削除されたグループ経由の権限は評価されない
     // =====================================================================

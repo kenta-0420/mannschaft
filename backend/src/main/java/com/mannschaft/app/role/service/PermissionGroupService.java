@@ -304,6 +304,8 @@ public class PermissionGroupService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void assignUserPermissionGroups(Long userId, Long scopeId, String scopeType,
                                            UserPermissionGroupAssignRequest req, Long assignedBy) {
+        // CMP-048: 同一 ID は入力順を保って正規化し、割当行・監査情報を重複させない。
+        List<Long> groupIds = req.getGroupIds().stream().distinct().toList();
         // 対象userの存在・所属を参照する前にactorのscope管理権限を確認し、情報漏えいを防ぐ。
         Map<Long, UserRowLockService.UserState> lockedUsers = userRowLockService.lockAll(assignedBy, userId);
         accessControlService.checkAdminOrAbove(assignedBy, scopeId, scopeType);
@@ -314,13 +316,13 @@ public class PermissionGroupService {
         UserRowLockService.UserState userState = lockedUsers
                 .getOrDefault(userId, UserRowLockService.UserState.ABSENT);
         if (userState == UserRowLockService.UserState.ABSENT) {
-            if (req.getGroupIds().isEmpty()) {
+            if (groupIds.isEmpty()) {
                 return;
             }
             throw new BusinessException(RoleErrorCode.ROLE_006);
         }
         if (userState == UserRowLockService.UserState.INELIGIBLE_EXISTING
-                && !req.getGroupIds().isEmpty()) {
+                && !groupIds.isEmpty()) {
             throw new BusinessException(RoleErrorCode.ROLE_006);
         }
         List<PermissionGroupEntity> scopeGroups = findByScope(scopeId, scopeType);
@@ -330,38 +332,38 @@ public class PermissionGroupService {
                 .map(UserPermissionGroupEntity::getGroupId)
                 .filter(scopeGroupIds::contains)
                 .toList();
-        List<Long> requestedScopeGroupIds = req.getGroupIds().stream()
+        List<Long> requestedScopeGroupIds = groupIds.stream()
                 .filter(scopeGroupIds::contains)
                 .toList();
         List<Long> lockGroupIds = union(currentScopeGroupIds, requestedScopeGroupIds).stream()
                 .sorted().toList();
         List<PermissionGroupEntity> lockedGroups = lockGroupIds.isEmpty()
                 ? List.of() : permissionGroupRepository.findByIdInForUpdateOrderByIdAsc(lockGroupIds);
-        if (!req.getGroupIds().isEmpty()) {
-            if (req.getGroupIds().stream().anyMatch(id -> !scopeGroupIds.contains(id))) {
+        if (!groupIds.isEmpty()) {
+            if (groupIds.stream().anyMatch(id -> !scopeGroupIds.contains(id))) {
                 throw new BusinessException(RoleErrorCode.ROLE_006);
             }
-            validateAssignmentTarget(userId, scopeId, scopeType, req.getGroupIds(), lockedGroups);
+            validateAssignmentTarget(userId, scopeId, scopeType, groupIds, lockedGroups);
         }
         List<Long> oldGroupIds = userPermissionGroupRepository.findByUserId(userId).stream()
                 .map(UserPermissionGroupEntity::getGroupId).filter(scopeGroupIds::contains).toList();
         List<Long> oldPermissionIds = oldGroupIds.stream().flatMap(id -> permissionIdsForGroup(id).stream()).toList();
-        List<Long> newPermissionIds = req.getGroupIds().stream().filter(scopeGroupIds::contains)
+        List<Long> newPermissionIds = groupIds.stream().filter(scopeGroupIds::contains)
                 .flatMap(id -> permissionIdsForGroup(id).stream()).toList();
         if (lockedGroups.size() < lockGroupIds.size()
-                && req.getGroupIds().stream().anyMatch(id -> lockedGroups.stream()
+                && groupIds.stream().anyMatch(id -> lockedGroups.stream()
                 .noneMatch(group -> group.getId().equals(id)))) {
             throw new BusinessException(RoleErrorCode.ROLE_006);
         }
         boolean billingProtected = billingPermissionGroupGuard.authorizeAssignment(
-                assignedBy, userId, scopeId, scopeType, oldGroupIds, req.getGroupIds());
+                assignedBy, userId, scopeId, scopeType, oldGroupIds, groupIds);
         requireMutationAuthority(assignedBy, scopeId, scopeType, union(oldPermissionIds, newPermissionIds));
         if (!scopeGroupIds.isEmpty()) {
             userPermissionGroupRepository.deleteByUserIdAndGroupIdIn(userId, scopeGroupIds);
         }
 
         // 新しい割当を作成
-        for (Long groupId : req.getGroupIds()) {
+        for (Long groupId : groupIds) {
             // Issue #2797: 当該スコープに属する group のみ許可（越境付与の遮断）。
             if (!scopeGroupIds.contains(groupId)) {
                 throw new BusinessException(RoleErrorCode.ROLE_006);
@@ -376,7 +378,7 @@ public class PermissionGroupService {
         }
 
         log.info("ユーザー権限グループ割当完了: userId={}, scopeType={}, scopeId={}, groupCount={}",
-                userId, scopeType, scopeId, req.getGroupIds().size());
+                userId, scopeType, scopeId, groupIds.size());
         cacheGenerationService.incrementGeneration(scopeType, scopeId);
         if (billingProtected) {
             billingPermissionGroupGuard.recordSuccess(
