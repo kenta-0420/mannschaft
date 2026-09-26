@@ -61,7 +61,7 @@ class ContentReportControllerTest {
     @DisplayName("createReport は reportedBy に SecurityUtils.getCurrentUserId() のみを渡す")
     void createReport_boundToCurrentUserOnly() {
         CreateReportRequest request = new CreateReportRequest(
-                "TIMELINE_POST", 1L, "SPAM", null, null, null, null, null);
+                "TIMELINE_POST", 1L, "SPAM", null);
         ReportResponse response = Mockito.mock(ReportResponse.class);
         given(reportService.createReport(any(CreateReportRequest.class), eq(USER_ID)))
                 .willReturn(response);

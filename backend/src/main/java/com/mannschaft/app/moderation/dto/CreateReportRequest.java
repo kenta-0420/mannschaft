@@ -8,6 +8,11 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * コンテンツ通報作成リクエストDTO。
+ *
+ * <p>通報の宛先スコープ・対象ユーザー・控え（scope_type / scope_id / target_user_id /
+ * content_snapshot）は BE が対象コンテンツから導出するため、本 DTO には持たない
+ * （CMP-260917-1135・設計書 F10.1 §content_reports）。旧クライアントが送ってきても
+ * Jackson の既定（未知項目は無視）で捨てられる。</p>
  */
 @Getter
 @RequiredArgsConstructor
@@ -24,12 +29,4 @@ public class CreateReportRequest {
 
     @Size(max = 1000)
     private final String description;
-
-    private final String scopeType;
-
-    private final Long scopeId;
-
-    private final Long targetUserId;
-
-    private final String contentSnapshot;
 }
