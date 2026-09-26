@@ -186,6 +186,8 @@ event list/create/stats/complete 系は未確認 ⇒ 大半 🐞、一部 🟡�
 
 実装: `OrganizationController` 系に対応あり可能性。要追加検証。
 
+> **追記（2026-09-25）**: 加盟の書き込み API（`team-invites` の GET/POST/DELETE、`DELETE /organizations/{_}/teams/{_}`、チーム側の `org-invites` 受諾・拒否、離脱）は**未実装**であることを確認した（実装済みは参照系の `GET /organizations/{slug}/teams` と `GET /teams/{slug}/organizations` のみ）。これらはチームからの加盟申請・チームグループとあわせて [F01.2.1](../../features/F01.2.1_org_team_groups.md) で正式に定義し直し、実装は後続の戦役で行う。パスの識別子は slug（`{teamSlug}`）に改めた。
+
 ### A-14. 🐞 偽陽性 — F07.3 備品 (2 件)
 
 設計: F07.3 lines 150, 152

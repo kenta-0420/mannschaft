@@ -147,6 +147,8 @@ slug は既存 BIGINT 主キーテーブル（`teams` / `organizations`）上の
 
 ## 7. Flywayマイグレーション
 
+> **F01.2.1（チーム加盟の双方向化とチームグループ）の migration** は、F01.2.1 §12 に6本の分割と既存データの扱いを定めた。版番号は実装 PR のマージ時に origin/main の最大 major + 1 で確定し、minor はタイムスタンプとする（本書の旧連番方式には従わない）。
+
 ```
 V2.001__create_organizations_table.sql
 V2.002__create_teams_table.sql
@@ -362,6 +364,8 @@ V{major}.{yyyyMMddHHmmss}__create_ownership_transfer_offers_table.sql
 | 2026-04-18 | F04.10 組織委員会機能の追加に伴う追記。組織配下のサブスコープとして Committee を導入（詳細は F04.10_committee.md 参照） |
 | 2026-06-09 | チーム・組織スラッグ移行: `teams`/`organizations` テーブルに `slug VARCHAR(30) NOT NULL UNIQUE` を追加。全 API パスの `{id}`（チーム・組織識別子）を `{slug}` に統一。Flyway V71.20260609001/002 を追加。セキュリティ考慮事項のレートリミット表・optional-auth 注記を slug 表記に更新 |
 | 2026-06-14 | **slug を村方式（ユーザー任意入力）に正準化**（マスター御裁可）: ① §5.9「slug 正準仕様」節を新設（村 `F17.1` と同じくユーザーが作成時に任意 slug を入力・形式 `^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$`・グローバル一意・予約語禁止）。② `name` からの自動生成を「編集可能な提案プレフィル」に降格し、**強制連番付与（`team-000017`）を廃止方針**に。③ `slug-check` API による可用性チェックを正準フローに明記。④ 既存連番 slug の是正方針（一括強制リネームせず、設定画面でユーザー自身が変更可能・連番該当のみ促す）。⑤ slug リネーム時の **301 リダイレクト用履歴**（`team_slug_history` 等・後続 wave 実装予定）。⑥ 予約語（`new`/`search`/`admin`/`settings`/`me`/`public` 等）をマスタ管理。⑦ **public_id（UUID）路線の不採用**と根拠（列挙防御=F00 認可が本丸／SEO 公開と矛盾／非推測化は村方式のユーザー任意入力で担保）を明記。⑧ V71 退行（slug 入力欄喪失→連番 backfill）を「教訓」として記録。⑨ `01_db_design.md` の slug 制約備考・`02_api_design.md` の `POST /teams`（および `POST /organizations`）リクエストボディに `slug` フィールド（誤って欠落していた退行）を復元。slug は既存 BIGINT テーブル上の URL 識別子であり主キー UUIDv7 方針（新規テーブル）とは別軸である旨を補足 |
+| 2026-09-25 | チーム加盟の双方向化とチームグループ（F01.2.1・🟡 設計中）に合わせて改訂: ① `team_org_memberships` に `direction`（ORG_INVITE / TEAM_APPLY）・`group_id`・`message`・`updated_at` を追加（既存行は ORG_INVITE・未分類）② `organizations` に申請受付・グループ機能・申請時グループ選択・案内文の4列を追加 ③ `org_team_groups` と `team_org_affiliation_restrictions` を追加 ④ 加盟の書き込み API（招待・申請・承認・拒否・取下げ・取消・離脱・除名）を slug パスで正式化し、契約の正本を F01.2.1 §10 に置いた（いずれも未実装）⑤ 拒否時の物理削除は見直したうえで維持し、再申請の抑止は制限テーブル（30日の冷却・任意でブロック）で行う設計にした ⑥ 01_db_design の `updated_at` 記載と V2.011 の乖離を注記 |
+| 2026-09-25 | F01.2.1 第1パス精査の反映: ① 1チームの複数組織への同時加盟を正式に保証し、単一親前提の読み手22件（BE 18・FE 4）の改修を F01.2.1 §9 に定義 ② 取下げ・取消に24時間の冷却、PENDING の60日期限、組織・チームの削除／アーカイブ時の PENDING 片付けを追加 ③ 招待先チームの可視性チェック（見えないチームは不在と同じ 404）④ 索引を `(organization_id, group_id, status)` 等に見直し |
 
 ---
 

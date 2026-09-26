@@ -15,7 +15,9 @@
 | `user_permission_groups` | ユーザー↔権限グループ割り当て | なし |
 | `invite_tokens` | 招待URL/QRコード用トークン | なし（revoked_at で失効管理）|
 | `ownership_transfer_offers` | オーナー委譲の承諾型オファー（打診→承諾で ADMIN 委譲を実行）。2026-07-18 承諾型化で新設 | なし（status で状態管理）|
-| `team_org_memberships` | チーム↔組織の多対多所属関係（組織からの招待・チームの承認で成立）| なし（物理削除。履歴は audit_logs で管理）|
+| `team_org_memberships` | チーム↔組織の多対多所属関係（組織からの招待→チームの承諾、またはチームからの申請→組織の承認で成立。`direction` で起点を区別・`group_id` でチームグループに所属。F01.2.1）| なし（物理削除。履歴は audit_logs、再申請の抑止は `team_org_affiliation_restrictions`）|
+| `org_team_groups` | 組織内のチーム区分「チームグループ」（平坦・並び順付き・1組織200件まで）。定義は [F01.2.1 §5.2](../F01.2.1_org_team_groups.md) | `deleted_at`（論理削除）|
+| `team_org_affiliation_restrictions` | 加盟の申請・招待の再送制限（拒否後30日の冷却・ブロック、取下げ・取消後24時間の冷却）。定義は [F01.2.1 §5.4](../F01.2.1_org_team_groups.md) | なし（物理削除。期限切れは夜間バッチで削除）|
 | `team_blocks` | チームのサポーター自己登録ブロックリスト（ADMIN/DEPUTY_ADMIN が管理）| なし |
 | `organization_blocks` | 組織のサポーター自己登録ブロックリスト（ADMIN/DEPUTY_ADMIN が管理）| なし |
 | `organization_officers` | 組織の役員一覧（氏名・役職・並び順・個別表示可否）| なし（物理削除）|
@@ -50,6 +52,10 @@
 | `visibility` | ENUM('PUBLIC', 'PRIVATE') | NO | 'PRIVATE' | 情報公開レベル（外部公開制御）|
 | `hierarchy_visibility` | ENUM('NONE', 'BASIC', 'FULL') | NO | 'NONE' | 子組織・チームのメンバーに対するこの組織の閲覧範囲。NONE=非公開 / BASIC=組織名・説明・アイコンのみ / FULL=visibility 設定範囲内の全コンテンツ |
 | `supporter_enabled` | BOOLEAN | NO | FALSE | サポーター（フォロー）登録機能の有効化フラグ。TRUE かつ visibility=PUBLIC の場合のみ招待コード不要でフォロー可能 |
+| `team_application_enabled` | BOOLEAN | NO | FALSE | チームからの加盟申請を受け付けるか（F01.2.1 §5.5）|
+| `team_groups_enabled` | BOOLEAN | NO | FALSE | チームグループ機能を使うか（F01.2.1 §5.5）|
+| `team_application_group_mode` | VARCHAR(10)（CHECK: OFF/OPTIONAL/REQUIRED） | NO | 'OFF' | 申請時のグループ選択。グループ機能 off のときは実効 OFF（F01.2.1 §5.5）|
+| `team_application_guidance` | VARCHAR(500) | YES | NULL | 申請フォームの案内文（F01.2.1 §5.5）|
 | `supporter_name_disclosure` | ENUM('DISPLAY_NAME','REAL_NAME') | NO | 'DISPLAY_NAME' | サポーター向け氏名表示モード（**実装: F19.1**）。詳細: `F19.1_public_pages_identity_disclosure.md` §5.1.2 |
 | `map_embed_url` | VARCHAR(2048) | YES | NULL | Google Maps 埋め込み URL（**実装: F19.1**） |
 | `archived_at` | DATETIME | YES | NULL | アーカイブ日時（NULL = アクティブ）|
@@ -532,25 +538,35 @@ INDEX idx_ob_organization_id (organization_id)
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
 | `team_id` | BIGINT UNSIGNED | NO | — | FK → teams（ON DELETE CASCADE）|
 | `organization_id` | BIGINT UNSIGNED | NO | — | FK → organizations（ON DELETE CASCADE）|
-| `status` | ENUM('PENDING', 'ACTIVE') | NO | 'PENDING' | PENDING = 承認待ち / ACTIVE = 所属中 |
-| `invited_by` | BIGINT UNSIGNED | YES | NULL | FK → users（招待した組織 ADMIN; SET NULL on delete）|
-| `responded_by` | BIGINT UNSIGNED | YES | NULL | FK → users（承認/拒否したチーム ADMIN; SET NULL on delete）|
-| `invited_at` | DATETIME | NO | CURRENT_TIMESTAMP | 招待日時 |
-| `responded_at` | DATETIME | YES | NULL | 承認または拒否した日時 |
+| `status` | VARCHAR(20)（CHECK: 'PENDING','ACTIVE'） | NO | 'PENDING' | PENDING = 承認（承諾）待ち / ACTIVE = 所属中。終端状態は行として残さない（F01.2.1 §4.2）|
+| `direction` | VARCHAR(20)（CHECK: 'ORG_INVITE','TEAM_APPLY'） | NO | 'ORG_INVITE' | 起点。ORG_INVITE = 組織からの招待 / TEAM_APPLY = チームからの申請（F01.2.1 で追加）|
+| `group_id` | BINARY(16) | YES | NULL | チームグループ（`org_team_groups.id`・organization ドメイン・クロスドメイン FK なし）。NULL = 未分類。PENDING/TEAM_APPLY では希望グループ（F01.2.1 で追加）|
+| `message` | VARCHAR(500) | YES | NULL | 申請・招待の添え書き。ACTIVE 化で NULL に戻す（F01.2.1 で追加）|
+| `invited_by` | BIGINT UNSIGNED | YES | NULL | PENDING を作ったユーザー（招待した組織 ADMIN、または申請したチーム ADMIN）|
+| `responded_by` | BIGINT UNSIGNED | YES | NULL | 承諾・承認したユーザー |
+| `invited_at` | DATETIME | NO | CURRENT_TIMESTAMP | 招待・申請日時 |
+| `responded_at` | DATETIME | YES | NULL | 承諾・承認した日時 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
-| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
+| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | V2.011 には無く、F01.2.1 の移行で追加する |
+
+> クロスドメイン FK（teams / organizations / users）は V62.006〜V62.009 で DROP 済み。
 
 **インデックス**
 ```sql
-UNIQUE KEY uq_tom_team_org (team_id, organization_id)
-INDEX idx_tom_team_id (team_id)
-INDEX idx_tom_org_id (organization_id)
-INDEX idx_tom_status (status)
+UNIQUE KEY uq_team_org (team_id, organization_id)           -- V2.011
+INDEX idx_team_org_memberships_org_status_dir (organization_id, status, direction, invited_at)  -- F01.2.1
+INDEX idx_team_org_memberships_team_status_dir (team_id, status, direction)                    -- F01.2.1
+INDEX idx_team_org_memberships_org_group_status (organization_id, group_id, status)            -- F01.2.1
+INDEX idx_team_org_memberships_status_invited (status, invited_at)                             -- F01.2.1（PENDING 期限切れバッチ）
 ```
 
 **制約・備考**
-- 物理削除で管理。承認拒否・招待取消・チーム離脱・組織除名はいずれも DELETE で終了し、履歴は audit_logs で管理
-- 再招待（拒否・取消後）は新規 INSERT で再開始する（UNIQUE KEY により同一ペアの PENDING/ACTIVE は常に最大1件に限定）
+- 物理削除で管理。招待の拒否・招待の取消・申請の拒否・申請の取下げ・チーム離脱・組織除名はいずれも DELETE で終了し、履歴は audit_logs で管理（F01.2.1 §4.2 で見直したうえで維持）
+- 拒否された側は、その向きについて30日（任意で無期限）再申請・再招待できない。取下げ・取消でも24時間は再送できない（通知の連打防止）。判定は `team_org_affiliation_restrictions`（F01.2.1 §5.4）で行う
+- PENDING は60日応答が無ければ夜間バッチで削除する。組織・チームの削除／アーカイブ時も PENDING を削除する（F01.2.1 §4.5・§6.8）
+- 1チームは複数の組織に同時に ACTIVE で加盟できる。単一の親組織を前提にした読み手は F01.2.1 §9 で改修する
+- 再招待・再申請（取消・取下げ後、または制限の期限後）は新規 INSERT で再開始する（UNIQUE KEY により同一ペアの PENDING/ACTIVE は常に最大1件に限定）
+- 状態を変える更新は条件付き UPDATE／DELETE（`status` と `direction` を WHERE に含める）で行う。影響行数 0 のときは、操作時点で行が無ければ 404 `TEAM_070`、行はあるが状態・向きが前提と違えば 409 `TEAM_071` を返す（F01.2.1 §6.4 の判定表）
 - チームは複数の組織に同時所属可能（UNIQUE は (team_id, organization_id) ペアに対してのみ）
 - 組織の物理削除時: ON DELETE CASCADE により紐付く全レコードが自動削除。論理削除時は ON DELETE CASCADE が発動しないため、アプリ層で明示的に DELETE する（組織論理削除フロー参照）
 

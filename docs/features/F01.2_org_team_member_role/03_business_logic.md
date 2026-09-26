@@ -92,6 +92,20 @@
 
 ### チーム-組織所属招待フロー
 
+> **2026-09-25 改訂（F01.2.1）**: 加盟は双方向になった。組織→チームの招待（本節①〜④）に加えて、チーム→組織の**加盟申請**（組織が受付を許可している場合のみ）と、組織による承認・拒否、チームによる取下げを追加した。状態遷移・拒否後の冷却期間とブロック・承認時のチームグループ確定・申請受付 off 時の PENDING の扱いの正本は [F01.2.1 §4・§6](../F01.2.1_org_team_groups.md) である。本節①〜⑥は次の点を F01.2.1 に合わせて読み替えること。
+>
+> - パスの識別子はすべて slug（`{orgId}` → `{slug}`、`{teamId}` → `{teamSlug}`）。招待の body は `{"teamSlug": ..., "groupId"?: ..., "message"?: ...}`（JSON は camelCase）
+> - ②③⑤（承諾・拒否・離脱）の「チーム ADMIN か → 403」は「チームの加盟操作者（`MANAGE_ORG_AFFILIATION`）か → 403」に読み替える（F01.2.1 §3.2）
+> - `team_org_memberships` に `direction`（ORG_INVITE / TEAM_APPLY）・`group_id`・`message` を追加。①で INSERT する行は `direction = ORG_INVITE`
+> - ① step 4 で、招待する組織 ADMIN から visibility 上**見えないチーム**は、存在しないチームと同じステータス・同じエラーコード（404）を返す（非公開チームの存在・加盟状況を推測させない）
+> - ① step 5 の前に、制限（ORG_INVITE 方向）を確認し、あれば 403 `TEAM_068`。相手チームから申請（PENDING/TEAM_APPLY）が来ていれば 409 `TEAM_066`
+> - ②③④ の対象行の取得は `(id, team_id または organization_id, status=PENDING, direction=ORG_INVITE)` で行い、見つからなければ（他チーム・他組織の ID を含め）404 `TEAM_070`。状態の更新は条件付き UPDATE／DELETE で、影響行数 0 は 409 `TEAM_071`
+> - ③ 拒否では行の削除に加えて、ORG_INVITE 方向に30日の冷却（body `block=true` なら無期限ブロック）を `team_org_affiliation_restrictions` に記録する。④ 取消でも ORG_INVITE 方向に24時間の冷却を記録する（通知の連打防止）
+> - ② 承諾の前に、組織とチームの状態（削除・アーカイブ）を再確認する
+> - PENDING は60日応答が無ければ自動で取り消す。組織・チームの削除／アーカイブ時も PENDING を削除する（F01.2.1 §4.5・§6.8）
+> - 物理削除の方針は見直したうえで維持した（理由は F01.2.1 §4.2）
+> - 2026-09-25 時点で、本節の書き込み API は**すべて未実装**（参照系のみ実装済み）
+
 **① 組織からチームへ招待を送信**
 
 ```
@@ -168,8 +182,19 @@
 7. 204 No Content を返す
 ```
 
-> - 再招待（拒否・取消後）は新規 INSERT で再開始する（UNIQUE KEY により (team_id, organization_id) のエントリは常に最大1件）
-> - 1つのチームが複数組織に同時 ACTIVE 所属することは可能
+> - 再招待（取消後、または拒否後の冷却期間明け）は新規 INSERT で再開始する（UNIQUE KEY により (team_id, organization_id) のエントリは常に最大1件）
+> - 1つのチームが複数組織に同時 ACTIVE 所属することは可能（正式に保証する。単一の親組織を前提にした既存の読み手は F01.2.1 §9 で改修する）
+
+**⑦ チームから組織へ加盟申請／⑧ 組織が承認／⑨ 組織が拒否／⑩ チームが取下げ（F01.2.1 で追加）**
+
+手順の正本は [F01.2.1 §6.1〜§6.4](../F01.2.1_org_team_groups.md)。要点:
+
+- ⑦ `POST /api/v1/teams/{teamSlug}/org-applications`（チームの加盟操作者＝ `MANAGE_ORG_AFFILIATION` を持つ人。チーム ADMIN は常に持ち、DEPUTY・MEMBER は権限グループで付与されたときだけ持つ。F01.2.1 §3.2）。組織の `team_application_enabled` が FALSE なら 403 `TEAM_064`。申請時のチームグループ選択は組織設定（OFF / 任意 / 必須）に従う。1チームの同時申請は10件まで
+- ⑧ `POST /api/v1/organizations/{slug}/team-applications/{membershipId}/approve`（組織 ADMIN）。希望グループを確認・上書きして承認し、承認と同時にそのグループへ所属する
+- ⑨ `POST .../reject`（組織 ADMIN）。行を物理削除し、TEAM_APPLY 方向に30日の冷却（任意で無期限ブロック）を記録。チーム ADMIN に理由付きで通知
+- ⑩ `DELETE /api/v1/teams/{teamSlug}/org-applications/{membershipId}`（チームの加盟操作者）。TEAM_APPLY 方向に24時間の冷却を記録する（取下げと再申請の繰り返しによる通知の連打防止）
+- ⑧ 承認の前に、組織とチームの状態（削除・アーカイブ）を再確認する。承認と取下げが競合したときの応答は F01.2.1 §6.4 の判定表に従う
+- 組織が受付を off にしても、届いている PENDING 申請は残り、承認・拒否できる
 
 ---
 
