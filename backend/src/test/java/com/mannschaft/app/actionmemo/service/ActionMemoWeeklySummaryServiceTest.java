@@ -9,6 +9,8 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.cms.Visibility;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,7 +20,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +35,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -67,12 +73,26 @@ class ActionMemoWeeklySummaryServiceTest {
     @Mock
     private ActionMemoMetrics actionMemoMetrics;
 
+    @Mock
+    private Clock wallClock;
+
     @InjectMocks
     private ActionMemoWeeklySummaryService weeklySummaryService;
 
     private static final Long USER_A = 100L;
     private static final Long USER_B = 200L;
     private static final Long USER_C = 300L;
+    private static final LocalDate TODAY = LocalDate.of(2026, 4, 12);
+    private static final LocalDateTime CURRENT_TIME = TODAY.atTime(21, 0);
+    private static final Instant CURRENT_INSTANT = CURRENT_TIME
+            .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+            .toInstant();
+
+    @BeforeEach
+    void setUpWallClock() {
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
 
     /**
      * 週次バッチ対象メモのヘルパー。
@@ -99,9 +119,9 @@ class ActionMemoWeeklySummaryServiceTest {
         void generateWeeklySummaries_savesPrivateBlogPostForActiveUsers() {
             // USER_A: 3件のメモあり（mood なし）
             List<ActionMemoEntity> memosA = List.of(
-                    memo(USER_A, LocalDate.now().minusDays(2), "朝散歩した", null),
-                    memo(USER_A, LocalDate.now().minusDays(1), "数学ドリル", null),
-                    memo(USER_A, LocalDate.now().minusDays(1), "読書会 発表", null)
+                    memo(USER_A, TODAY.minusDays(2), "朝散歩した", null),
+                    memo(USER_A, TODAY.minusDays(1), "数学ドリル", null),
+                    memo(USER_A, TODAY.minusDays(1), "読書会 発表", null)
             );
             given(memoRepository.findDistinctUserIdsByMemoDateBetween(any(), any()))
                     .willReturn(List.of(USER_A));
@@ -128,7 +148,10 @@ class ActionMemoWeeklySummaryServiceTest {
             assertThat(saved.getBody()).contains("# 週次ふりかえり:");
             assertThat(saved.getBody()).contains("## 📊 今週のサマリー");
             assertThat(saved.getBody()).contains("メモ件数: 3件");
+            assertThat(saved.getPublishedAt()).isEqualTo(CURRENT_TIME);
 
+            verify(memoRepository).findDistinctUserIdsByMemoDateBetween(
+                    TODAY.minusDays(7), TODAY.minusDays(1));
             verify(actionMemoMetrics, times(1)).recordWeeklySummaryGenerated();
             verify(actionMemoMetrics, never()).recordWeeklySummaryFailed();
         }
@@ -187,9 +210,9 @@ class ActionMemoWeeklySummaryServiceTest {
         @DisplayName("その週に mood IS NOT NULL が1件以上あれば気分セクションを含む")
         void generateWeeklySummaries_includesMoodSectionWhenAnyMoodPresent() {
             List<ActionMemoEntity> memos = List.of(
-                    memo(USER_A, LocalDate.now().minusDays(3), "散歩", null),
-                    memo(USER_A, LocalDate.now().minusDays(2), "数学", ActionMemoMood.GOOD),
-                    memo(USER_A, LocalDate.now().minusDays(1), "読書", null)
+                    memo(USER_A, TODAY.minusDays(3), "散歩", null),
+                    memo(USER_A, TODAY.minusDays(2), "数学", ActionMemoMood.GOOD),
+                    memo(USER_A, TODAY.minusDays(1), "読書", null)
             );
             given(memoRepository.findDistinctUserIdsByMemoDateBetween(any(), any()))
                     .willReturn(List.of(USER_A));
@@ -217,8 +240,8 @@ class ActionMemoWeeklySummaryServiceTest {
         @DisplayName("その週の mood がすべて NULL なら気分セクションを含まない")
         void generateWeeklySummaries_omitsMoodSectionWhenAllNull() {
             List<ActionMemoEntity> memos = List.of(
-                    memo(USER_A, LocalDate.now().minusDays(3), "散歩", null),
-                    memo(USER_A, LocalDate.now().minusDays(1), "読書", null)
+                    memo(USER_A, TODAY.minusDays(3), "散歩", null),
+                    memo(USER_A, TODAY.minusDays(1), "読書", null)
             );
             given(memoRepository.findDistinctUserIdsByMemoDateBetween(any(), any()))
                     .willReturn(List.of(USER_A));
@@ -258,11 +281,11 @@ class ActionMemoWeeklySummaryServiceTest {
             // 「現在 OFF」の状態はモックでは表現しないが、mood 入力済みメモだけで
             // 気分セクションが生成されることを検証する。
             List<ActionMemoEntity> memosWithHistoricalMood = List.of(
-                    memo(USER_A, LocalDate.now().minusDays(5), "月曜の記録", ActionMemoMood.GREAT),
-                    memo(USER_A, LocalDate.now().minusDays(4), "火曜の記録", ActionMemoMood.GOOD),
-                    memo(USER_A, LocalDate.now().minusDays(3), "水曜の記録", ActionMemoMood.OK),
-                    memo(USER_A, LocalDate.now().minusDays(2), "木曜の記録", null),
-                    memo(USER_A, LocalDate.now().minusDays(1), "金曜の記録", null)
+                    memo(USER_A, TODAY.minusDays(5), "月曜の記録", ActionMemoMood.GREAT),
+                    memo(USER_A, TODAY.minusDays(4), "火曜の記録", ActionMemoMood.GOOD),
+                    memo(USER_A, TODAY.minusDays(3), "水曜の記録", ActionMemoMood.OK),
+                    memo(USER_A, TODAY.minusDays(2), "木曜の記録", null),
+                    memo(USER_A, TODAY.minusDays(1), "金曜の記録", null)
             );
             given(memoRepository.findDistinctUserIdsByMemoDateBetween(any(), any()))
                     .willReturn(List.of(USER_A));
@@ -304,7 +327,7 @@ class ActionMemoWeeklySummaryServiceTest {
 
             // USER_A: 正常（メモ1件）
             List<ActionMemoEntity> memosA = List.of(
-                    memo(USER_A, LocalDate.now().minusDays(1), "Aのメモ", null)
+                    memo(USER_A, TODAY.minusDays(1), "Aのメモ", null)
             );
             given(memoRepository.findByUserIdAndMemoDateBetweenOrderByMemoDateAscCreatedAtAsc(
                     eq(USER_A), any(), any()))
@@ -317,7 +340,7 @@ class ActionMemoWeeklySummaryServiceTest {
 
             // USER_C: 正常（メモ1件）
             List<ActionMemoEntity> memosC = List.of(
-                    memo(USER_C, LocalDate.now().minusDays(1), "Cのメモ", null)
+                    memo(USER_C, TODAY.minusDays(1), "Cのメモ", null)
             );
             given(memoRepository.findByUserIdAndMemoDateBetweenOrderByMemoDateAscCreatedAtAsc(
                     eq(USER_C), any(), any()))
