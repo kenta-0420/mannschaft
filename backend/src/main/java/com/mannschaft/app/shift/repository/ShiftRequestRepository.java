@@ -52,6 +52,12 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
      */
     long countDistinctUserIdByScheduleId(Long scheduleId);
 
+    /** 現役 MEMBER 候補に含まれる希望提出者だけを数える。 */
+    @Query("SELECT COUNT(DISTINCT r.userId) FROM ShiftRequestEntity r "
+            + "WHERE r.scheduleId = :scheduleId AND r.userId IN :memberIds")
+    long countSubmittedMembersByScheduleId(@Param("scheduleId") Long scheduleId,
+                                           @Param("memberIds") List<Long> memberIds);
+
     /**
      * ユーザーの全希望を取得する。
      */

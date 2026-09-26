@@ -1,5 +1,6 @@
 import type {
   CreateShiftScheduleRequest,
+  ManualRemindResponse,
   ShiftScheduleResponse,
   UpdateShiftScheduleRequest,
 } from '~/types/shift'
@@ -115,6 +116,14 @@ export function useShiftApi() {
     return res.data
   }
 
+  /** 希望未提出者へ手動リマインドを送信する。 */
+  async function remindUnsubmitted(scheduleId: number): Promise<ManualRemindResponse> {
+    const res = await api<{ data: ManualRemindResponse }>(`${BASE}/${scheduleId}/remind`, {
+      method: 'POST',
+    })
+    return res.data
+  }
+
   return {
     listSchedules,
     getSchedule,
@@ -124,5 +133,6 @@ export function useShiftApi() {
     deleteSchedule,
     transitionStatus,
     duplicateSchedule,
+    remindUnsubmitted,
   }
 }

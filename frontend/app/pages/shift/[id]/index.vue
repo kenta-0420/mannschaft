@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ShiftReminderButton from '~/components/shift/ShiftReminderButton.vue'
 import type {
   ShiftScheduleResponse,
   ShiftSlotResponse,
@@ -227,6 +228,7 @@ const tabs = computed(() => {
             :loading="transitioning"
             @click="handleTransition"
           />
+          <ShiftReminderButton :schedule="schedule" :can-manage="canManage" />
         </div>
       </div>
 

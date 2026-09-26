@@ -305,7 +305,18 @@
     },
     "reminder": {
       "send": "Erinnerung senden",
-      "sent": "Erinnerung gesendet"
+      "sent": "Erinnerung gesendet",
+      "confirmTitle": "Mitglieder ohne Abgabe erinnern",
+      "confirmMessage": "Eine Erinnerung an Mitglieder senden, die ihre Wünsche für „{title}“ noch nicht abgegeben haben?",
+      "confirmAccept": "Erinnerung senden",
+      "confirmReject": "Abbrechen",
+      "sentTitle": "Erinnerung gesendet",
+      "sentDetail": "{count} Mitglieder wurden zur Abgabe ihrer Wünsche aufgefordert.",
+      "noRecipientsTitle": "Keine offenen Abgaben",
+      "noRecipientsDetail": "Es gibt niemanden zu erinnern.",
+      "failedTitle": "Erinnerung konnte nicht gesendet werden",
+      "failedDetail": "Bitte versuchen Sie es später erneut.",
+      "targetUnavailable": "Dieser Dienstplan ist nicht verfügbar oder nimmt keine Wünsche mehr an."
     },
     "empty": {
       "noSchedules": "Keine Schichtpläne vorhanden",
