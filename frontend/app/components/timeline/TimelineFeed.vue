@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { TimelinePostResponse, TimelineScopeType, TimelineMute, TimelineMutedType } from '~/types/timeline'
+import type {
+  TimelinePostResponse,
+  TimelineScopeType,
+  TimelineMute,
+  TimelineMutedType,
+} from '~/types/timeline'
 
 const props = defineProps<{
   /**
@@ -18,7 +23,7 @@ const props = defineProps<{
   canDeleteOthers?: boolean
   /**
    * ダッシュボードのウィジェット内など、狭い枠で先頭 N 件だけ表示したい場合の上限。
-   * 指定時は追加ロード（「もっと読む」）を無効化し、一覧ページ側へ委譲する。
+   * 指定時は追加ロードを無効化し、一覧ページ側へ委譲する。
    */
   limit?: number
 }>()
@@ -26,21 +31,21 @@ const props = defineProps<{
 // 投稿カード本体クリックは各カード内の返信アコーディオン開閉に統一済み。
 // 旧 clickPost（詳細遷移）の中継はどのページからも購読されなくなったため撤去した。
 
-const {
-  getFeed,
-  getMyTimeline,
-  addBookmark,
-  removeBookmark,
-  pinPost,
-  deletePost,
-  repost,
-} = useTimelineApi()
+const { getFeed, getMyTimeline, addBookmark, removeBookmark, pinPost, deletePost, repost } =
+  useTimelineApi()
 const { showSuccess, showError } = useNotification()
 const { showUndoToast } = useUndoToast()
 const { t } = useI18n()
 
 // --- ミュート（個人集約フィードのみ・CMP-058） ---
-const { mutes, muteCount, loading: mutesLoading, loadMutes, mute: addMuteEntry, unmute } = useTimelineMutes()
+const {
+  mutes,
+  muteCount,
+  loading: mutesLoading,
+  loadMutes,
+  mute: addMuteEntry,
+  unmute,
+} = useTimelineMutes()
 const mutedListVisible = ref(false)
 /**
  * ミュートした対象の表示名の控え。BE の `MuteResponse` は名前を返さないため、
@@ -70,6 +75,10 @@ const nextCursor = ref<number | null>(null)
 const hasNext = ref(false)
 const loading = ref(false)
 const initialLoaded = ref(false)
+const loadMoreTarget = ref<HTMLElement | null>(null)
+const loadMoreFailed = ref(false)
+const intersectionObserverAvailable = ref(true)
+let loadMoreObserver: IntersectionObserver | null = null
 
 // --- リポスト確認 ---
 const repostTargetId = ref<number | null>(null)
@@ -77,6 +86,7 @@ const repostSubmitting = ref(false)
 
 async function loadFeed(cursor?: number) {
   loading.value = true
+  loadMoreFailed.value = false
   try {
     // myFeed モード: 所属 TEAM/ORGANIZATION/VILLAGE 横断の個人集約タイムライン（pinned は常に空）。
     // 単一スコープモード: 従来通り scopeType/scopeId でフィード取得。
@@ -98,16 +108,30 @@ async function loadFeed(cursor?: number) {
     initialLoaded.value = true
   } catch {
     showError('タイムラインの取得に失敗しました')
+    if (cursor != null) loadMoreFailed.value = true
   } finally {
     loading.value = false
   }
 }
 
 function loadMore() {
-  if (nextCursor.value && !loading.value) {
-    loadFeed(nextCursor.value)
+  if (props.limit == null && hasNext.value && nextCursor.value != null && !loading.value) {
+    void loadFeed(nextCursor.value)
   }
 }
+
+watch(loadMoreTarget, (target) => {
+  loadMoreObserver?.disconnect()
+  loadMoreObserver = null
+  if (!target || typeof IntersectionObserver === 'undefined') return
+  loadMoreObserver = new IntersectionObserver(
+    (entries) => {
+      if (!loadMoreFailed.value && entries.some((entry) => entry.isIntersecting)) loadMore()
+    },
+    { rootMargin: '200px' },
+  )
+  loadMoreObserver.observe(target)
+})
 
 /** 返信アコーディオンで返信が追加されたら返信数を +1（対象 post の shared ref を更新）。 */
 function onReplyAdded(postId: number) {
@@ -201,7 +225,12 @@ function removePostsOfScope(mutedType: TimelineMutedType, mutedId: number) {
  * 「元に戻す」付きトーストで誤タップから復旧できるようにする（ADHD 配慮）。
  * API が失敗した場合は楽観更新を巻き戻し、エラーは useTimelineMutes 側で必ずユーザーに見せる。
  */
-async function onMute(payload: { postId: number, mutedType: TimelineMutedType, mutedId: number, name: string }) {
+async function onMute(payload: {
+  postId: number
+  mutedType: TimelineMutedType
+  mutedId: number
+  name: string
+}) {
   const { mutedType, mutedId, name } = payload
   const removed = [...pinnedPosts.value, ...posts.value].filter(
     (p) => p.scope?.scopeType === mutedType && Number(p.scope.scopeId) === mutedId,
@@ -248,20 +277,21 @@ function refresh() {
 }
 
 onMounted(() => {
+  intersectionObserverAvailable.value = typeof IntersectionObserver !== 'undefined'
   loadFeed()
   // 個人集約フィードのみミュート一覧を取得する（チップ表示・件数の根拠）。
   if (props.myFeed) void loadMutes()
+})
+
+onBeforeUnmount(() => {
+  loadMoreObserver?.disconnect()
 })
 
 defineExpose({ refresh })
 </script>
 
 <template>
-  <div
-    class="flex flex-col gap-3"
-    data-testid="timeline-feed"
-    :data-loaded="initialLoaded"
-  >
+  <div class="flex flex-col gap-3" data-testid="timeline-feed" :data-loaded="initialLoaded">
     <!-- 非表示中チップ（個人集約フィードのみ・0件のときは出さない） -->
     <div v-if="showMutedChip" class="flex justify-end">
       <button
@@ -318,9 +348,21 @@ defineExpose({ refresh })
       <p class="text-surface-400 dark:text-surface-300">まだ投稿がありません</p>
     </div>
 
-    <!-- もっと読む（limit 指定時は追加ロードを無効化し、一覧ページ側へ委譲） -->
-    <div v-if="hasNext && limit == null" class="flex justify-center py-4">
-      <Button label="もっと読む" text :loading="loading" @click="loadMore" />
+    <!-- 表示上限のない一覧だけ、末尾が近づいたら次ページを取得する -->
+    <div
+      v-if="hasNext && limit == null"
+      ref="loadMoreTarget"
+      class="flex justify-center py-4"
+      data-testid="timeline-load-more-target"
+    >
+      <Button
+        v-if="loadMoreFailed || !intersectionObserverAvailable"
+        label="もっと読む"
+        text
+        :loading="loading"
+        @click="loadMore"
+      />
+      <LoadingBounce v-else-if="loading" />
     </div>
 
     <!-- ローディング -->
@@ -345,7 +387,11 @@ defineExpose({ refresh })
     modal
     header="リポスト"
     :style="{ width: '360px' }"
-    @update:visible="(v) => { if (!v) cancelRepost() }"
+    @update:visible="
+      (v) => {
+        if (!v) cancelRepost()
+      }
+    "
   >
     <p class="text-sm text-surface-600 dark:text-surface-300">この投稿をリポストしますか？</p>
     <template #footer>

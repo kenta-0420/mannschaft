@@ -178,6 +178,61 @@ class TimelinePostServiceTest {
                 .build();
     }
 
+    @Nested
+    @DisplayName("getFeedPage - scope cursor pagination")
+    class GetFeedPage {
+
+        @Test
+        @DisplayName("TEAM feedはcursorとlimit+1を使い、membership認可を維持する")
+        void teamFeedUsesCursorAndOneExtraRowAfterMembershipCheck() {
+            Long teamId = 10L;
+            given(postRepository.findFeedPageByScopeType(
+                    eq(PostScopeType.TEAM), eq(teamId), eq(42L), eq(PageRequest.of(0, 3))))
+                    .willReturn(List.of());
+            given(timelineMapper.toPostResponseList(List.of())).willReturn(List.of());
+
+            List<PostResponse> result = timelinePostService.getFeedPage(
+                    "TEAM", teamId, null, 42L, 2, USER_ID);
+
+            assertThat(result).isEmpty();
+            verify(accessControlService).checkMembership(USER_ID, teamId, "TEAM");
+            verify(postRepository).findFeedPageByScopeType(
+                    PostScopeType.TEAM, teamId, 42L, PageRequest.of(0, 3));
+        }
+
+        @Test
+        @DisplayName("VILLAGE feedは村ID・cursor・limit+1で取得し現役メンバーを検証する")
+        void villageFeedUsesVillageIdCursorAndOneExtraRow() {
+            UUID villageId = UUID.randomUUID();
+            given(postingIdentityService.isUserVillageMember(villageId, USER_ID)).willReturn(true);
+            given(postRepository.findFeedPageByVillageId(
+                    villageId, 99L, PageRequest.of(0, 5))).willReturn(List.of());
+            given(timelineMapper.toPostResponseList(List.of())).willReturn(List.of());
+
+            List<PostResponse> result = timelinePostService.getFeedPage(
+                    "VILLAGE", 0L, villageId, 99L, 4, USER_ID);
+
+            assertThat(result).isEmpty();
+            verify(postingIdentityService).isUserVillageMember(villageId, USER_ID);
+            verify(postRepository).findFeedPageByVillageId(villageId, 99L, PageRequest.of(0, 5));
+        }
+
+        @Test
+        @DisplayName("VILLAGE feedは非メンバーを拒否してRepositoryへ進まない")
+        void villageFeedRejectsNonMemberBeforeRepositoryCall() {
+            UUID villageId = UUID.randomUUID();
+            given(postingIdentityService.isUserVillageMember(villageId, USER_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> timelinePostService.getFeedPage(
+                    "VILLAGE", 0L, villageId, null, 20, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(com.mannschaft.app.village.VillageErrorCode.NOT_MEMBER));
+            verify(postRepository, org.mockito.Mockito.never())
+                    .findFeedPageByVillageId(any(), any(), any(PageRequest.class));
+        }
+    }
+
     /**
      * enrich 前の生 PostResponse（生 ID のみ・name/slug/user/postedAs 未設定）を作る共通ヘルパー。
      * getFeed / getPinnedPosts / getReplies / getPostDetail#recentReplies の enrich 検証で使う。

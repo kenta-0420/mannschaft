@@ -46,13 +46,12 @@ public class TimelineFeedResponse {
     /**
      * フィードメタ情報。カーソルページネーション用。
      *
-     * <p>TODO: 無限スクロール本実装時は nextCursor をポスト ID ベースに変更する。
-     * 現在は簡易実装として hasNext のみ判定する（最終ページ判定: posts.size() >= limit）。</p>
+     * <p>次ページがある場合は最後に返した投稿 ID をカーソルとして返す。</p>
      */
     @Getter
     @RequiredArgsConstructor
     public static class FeedMeta {
-        /** 次ページの起点カーソル。未実装のため常に null。 */
+        /** 次ページの起点カーソル。最終ページでは null。 */
         private final Long nextCursor;
         private final int limit;
         private final boolean hasNext;
@@ -70,21 +69,25 @@ public class TimelineFeedResponse {
             List<PostResponse> pinned,
             List<PostResponse> posts,
             int limit) {
-        boolean hasNext = posts.size() >= limit;
-        // TODO: 無限スクロール本実装時は最終投稿 ID をカーソルとして返す
-        FeedData feedData = new FeedData(pinned, posts);
-        FeedMeta feedMeta = new FeedMeta(null, limit, hasNext);
+        int pageSize = limit > 0 ? limit : 20;
+        boolean hasNext = posts.size() > pageSize;
+        List<PostResponse> pagePosts = hasNext ? posts.subList(0, pageSize) : posts;
+        Long nextCursor = hasNext && !pagePosts.isEmpty()
+                ? pagePosts.get(pagePosts.size() - 1).getId()
+                : null;
+        FeedData feedData = new FeedData(pinned, pagePosts);
+        FeedMeta feedMeta = new FeedMeta(nextCursor, pageSize, hasNext);
         return new TimelineFeedResponse(feedData, feedMeta);
     }
 
     /**
      * 個人ダッシュボード集約タイムライン（マイフィード）用のレスポンスを組み立てる。
      *
-     * <p>{@code GET /api/v1/timeline/my} 専用。{@code /feed} のスタブ挙動（{@link #of} の
-     * {@code nextCursor=null}）とは異なり、id キーセットページネーションの実カーソルを埋める:</p>
+     * <p>{@code GET /api/v1/timeline/my} 専用。id キーセットページネーションの
+     * カーソルを埋める:</p>
      * <ul>
      *   <li>{@code pinned} は常に空（殿の確定仕様 c: /my では pinned を出さない）</li>
-     *   <li>{@code hasNext = posts.size() >= limit}</li>
+     *   <li>{@code hasNext = posts.size() > limit}</li>
      *   <li>{@code nextCursor = hasNext ? 最後の post.id : null}（id 降順なので末尾が最小 id）</li>
      * </ul>
      *
