@@ -163,7 +163,7 @@ public class ShiftPreferenceReminderBatchService {
                 unsubmitted, notificationType,
                 "SHIFT_SCHEDULE", schedule.getId(),
                 NotificationScopeType.TEAM, schedule.getTeamId(),
-                "/shifts/schedules/" + schedule.getId(), null,
+                preferenceActionUrl(schedule), null,
                 (userId, locale) -> new NotificationHelper.LocalizedMessage(
                         messageSource.getMessage(titleKey, null, titleDefault, locale),
                         messageSource.getMessage(bodyKey, bodyArgs, bodyDefault, locale)));
@@ -189,6 +189,11 @@ public class ShiftPreferenceReminderBatchService {
                 .stream()
                 .filter(uid -> !submittedUserIds.contains(uid))
                 .toList();
+    }
+
+    private String preferenceActionUrl(ShiftScheduleEntity schedule) {
+        return "/my/shift-request?teamId=" + schedule.getTeamId()
+                + "&scheduleId=" + schedule.getId();
     }
 
     /**
@@ -249,7 +254,7 @@ public class ShiftPreferenceReminderBatchService {
                     "SHIFT_REQUEST_REMINDER_MANUAL",
                     "SHIFT_SCHEDULE", schedule.getId(),
                     NotificationScopeType.TEAM, schedule.getTeamId(),
-                    "/shifts/schedules/" + schedule.getId(), null,
+                    preferenceActionUrl(schedule), null,
                     (recipientId, locale) -> new NotificationHelper.LocalizedMessage(
                             messageSource.getMessage(
                                     "notification.shift.manualReminder.title", null,

@@ -226,8 +226,12 @@ public class ShiftRequestService {
         ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(scheduleId);
         accessGate.requireAdminOrConceal(userId, schedule.getTeamId(), "TEAM",
                 ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
-        long submittedCount = requestRepository.countDistinctUserIdByScheduleId(scheduleId);
-        long totalMembers = userRoleRepository.countByTeamId(schedule.getTeamId());
+        List<Long> memberIds = userRoleRepository.findMemberCandidateIdsByTeam(schedule.getTeamId())
+                .stream().distinct().toList();
+        long submittedCount = memberIds.isEmpty()
+                ? 0
+                : requestRepository.countSubmittedMembersByScheduleId(scheduleId, memberIds);
+        long totalMembers = memberIds.size();
         long pendingCount = Math.max(0, totalMembers - submittedCount);
 
         Map<ShiftPreference, Long> preferenceCounts = aggregatePreferenceCounts(scheduleId);
