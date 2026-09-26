@@ -46,11 +46,16 @@ class UserRoleRepositoryCandidateEligibilityIT extends AbstractMySqlIntegrationT
     private Long activeMemberId;
     private Long deletedMemberId;
     private Long nonMemberDeputyId; // DEPUTY_ADMINロールは持つがmembershipsが非active
+    private Long activeSupporterId;
+    private Long activeGuestId;
+    private Long leftMemberId;
+    private Long otherTeamMemberId;
 
     @BeforeEach
     void setUp() {
         String slug = "urce-team-" + Long.toHexString(System.nanoTime());
         teamId = insertTeam("URCE チーム", slug);
+        Long otherTeamId = insertTeam("URCE 別チーム", slug + "-other");
 
         activeDeputyId = insertUser("urce-active-deputy-" + System.nanoTime() + "@example.com", "ACTIVE", false);
         deletedDeputyId = insertUser("urce-deleted-deputy-" + System.nanoTime() + "@example.com", "ACTIVE", true);
@@ -58,6 +63,10 @@ class UserRoleRepositoryCandidateEligibilityIT extends AbstractMySqlIntegrationT
         activeMemberId = insertUser("urce-active-member-" + System.nanoTime() + "@example.com", "ACTIVE", false);
         deletedMemberId = insertUser("urce-deleted-member-" + System.nanoTime() + "@example.com", "ACTIVE", true);
         nonMemberDeputyId = insertUser("urce-nonmember-deputy-" + System.nanoTime() + "@example.com", "ACTIVE", false);
+        activeSupporterId = insertUser("urce-active-supporter-" + System.nanoTime() + "@example.com", "ACTIVE", false);
+        activeGuestId = insertUser("urce-active-guest-" + System.nanoTime() + "@example.com", "ACTIVE", false);
+        leftMemberId = insertUser("urce-left-member-" + System.nanoTime() + "@example.com", "ACTIVE", false);
+        otherTeamMemberId = insertUser("urce-other-team-member-" + System.nanoTime() + "@example.com", "ACTIVE", false);
 
         // DEPUTY_ADMIN候補: 現役+在籍のみ資格あり
         MembershipTestHelper.insertMembership(em, activeDeputyId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
@@ -75,6 +84,15 @@ class UserRoleRepositoryCandidateEligibilityIT extends AbstractMySqlIntegrationT
         // MEMBER候補
         MembershipTestHelper.insertMembership(em, activeMemberId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, deletedMemberId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, activeSupporterId, ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
+        MembershipTestHelper.insertUserRole(em, activeGuestId, "GUEST", teamId, null);
+        MembershipTestHelper.insertMembership(em, leftMemberId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+        em.createNativeQuery("UPDATE memberships SET left_at = NOW() WHERE user_id = :userId "
+                        + "AND scope_type = 'TEAM' AND scope_id = :teamId AND left_at IS NULL")
+                .setParameter("userId", leftMemberId)
+                .setParameter("teamId", teamId)
+                .executeUpdate();
+        MembershipTestHelper.insertMembership(em, otherTeamMemberId, ScopeType.TEAM, otherTeamId, RoleKind.MEMBER);
 
         em.flush();
         em.clear();
@@ -90,12 +108,14 @@ class UserRoleRepositoryCandidateEligibilityIT extends AbstractMySqlIntegrationT
     }
 
     @Test
-    @DisplayName("P1-2: findMemberCandidateIdsByTeamは現役かつ在籍のMEMBERのみ返す")
-    void MEMBER候補は現役かつ在籍のみ返る() {
+    @DisplayName("P1-2: findMemberCandidateIdsByTeamは現役MEMBER以上のみ返しSUPPORTERとGUESTを除く")
+    void MEMBER以上候補は現役かつ在籍のみ返りSUPPORTERとGUESTは除く() {
         List<Long> candidates = userRoleRepository.findMemberCandidateIdsByTeam(teamId);
 
-        assertThat(candidates).contains(activeMemberId);
-        assertThat(candidates).doesNotContain(deletedMemberId);
+        assertThat(candidates).contains(activeMemberId, activeDeputyId);
+        assertThat(candidates).doesNotContain(
+                deletedMemberId, frozenDeputyId, nonMemberDeputyId, activeSupporterId, activeGuestId,
+                leftMemberId, otherTeamMemberId);
     }
 
     private Long insertUser(String email, String status, boolean deleted) {

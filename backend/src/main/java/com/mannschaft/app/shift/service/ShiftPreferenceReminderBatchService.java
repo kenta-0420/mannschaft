@@ -184,9 +184,8 @@ public class ShiftPreferenceReminderBatchService {
                 .map(ShiftRequestEntity::getUserId)
                 .collect(Collectors.toSet());
 
-        // TODO: SUPPORTER・GUEST を除外するロール別フィルタは Phase 4-1 で実装
         return userRoleRepository
-                .findUserIdsByScope("TEAM", schedule.getTeamId())
+                .findMemberCandidateIdsByTeam(schedule.getTeamId())
                 .stream()
                 .filter(uid -> !submittedUserIds.contains(uid))
                 .toList();

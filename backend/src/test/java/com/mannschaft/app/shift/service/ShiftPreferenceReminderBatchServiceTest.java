@@ -106,7 +106,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             // USER_A が提出済み、USER_B・USER_C は未提出
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of(buildRequest(SCHEDULE_ID, USER_A)));
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID))
                     .willReturn(List.of(USER_A, USER_B, USER_C));
 
             batchService.processReminders();
@@ -131,7 +131,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of(buildRequest(SCHEDULE_ID, USER_A), buildRequest(SCHEDULE_ID, USER_B)));
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID))
                     .willReturn(List.of(USER_A, USER_B));
 
             batchService.processReminders();
@@ -149,7 +149,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of());
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID))
                     .willReturn(List.of(USER_A));
             doThrow(new RuntimeException("通知エラー")).when(notificationHelper)
                     .notifyAllLocalized(any(), any(), any(), any(), any(), any(), any(), any(), any());
@@ -179,7 +179,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of());
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID))
                     .willReturn(List.of(USER_A, USER_B));
 
             batchService.processReminders();
@@ -223,7 +223,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of(buildRequest(SCHEDULE_ID, USER_A)));
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID))
                     .willReturn(List.of(USER_A, USER_B, USER_C));
 
             ManualRemindResponse response = batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID);
@@ -254,7 +254,7 @@ class ShiftPreferenceReminderBatchServiceTest {
                             buildRequest(SCHEDULE_ID, USER_A),
                             buildRequest(SCHEDULE_ID, USER_B),
                             buildRequest(SCHEDULE_ID, USER_C)));
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID))
                     .willReturn(List.of(USER_A, USER_B, USER_C));
 
             ManualRemindResponse response = batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID);
@@ -324,7 +324,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             given(accessControlService.isSystemAdmin(OPERATOR_ID)).willReturn(true);
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
                     .willReturn(List.of(buildRequest(SCHEDULE_ID, USER_A)));
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID))
                     .willReturn(List.of(USER_A, USER_B));
 
             ManualRemindResponse response = batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID);
@@ -418,7 +418,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             given(scheduleRepository.findFor48hReminder(any(), any())).willReturn(List.of(schedule));
             given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID)).willReturn(List.of());
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID)).willReturn(List.of(USER_A));
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(List.of(USER_A));
 
             batchService.processReminders();
 
@@ -449,7 +449,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             given(scheduleRepository.findFor24hReminder(any(), any())).willReturn(List.of(schedule));
             given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID)).willReturn(List.of());
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID)).willReturn(List.of(USER_A));
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(List.of(USER_A));
 
             batchService.processReminders();
 
@@ -473,7 +473,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             given(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class)))
                     .willReturn(Boolean.TRUE);
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID)).willReturn(List.of());
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID)).willReturn(List.of(USER_A));
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(List.of(USER_A));
 
             batchService.triggerManualReminder(SCHEDULE_ID, 999L);
 
@@ -502,7 +502,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             given(scheduleRepository.findFor48hReminder(any(), any())).willReturn(List.of(schedule));
             given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID)).willReturn(List.of());
-            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID))
                     .willReturn(List.of(USER_A, USER_B, USER_C));
 
             batchService.processReminders();
