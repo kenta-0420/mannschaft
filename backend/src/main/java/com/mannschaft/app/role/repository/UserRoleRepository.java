@@ -791,8 +791,8 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      *
      * <p><b>{@code is_default} の扱い</b>: role_permissions 経路は ORGANIZATION 版と同じく
      * {@code rp.is_default = 1} の行のみを実付与とみなす。本リポジトリの権限グループ併用クエリ 3 本のうち
-     * {@link #findDeputyAdminUserIdsByTeamIdAndPermission} だけがこの絞り込みを欠いており
-     * （Issue #2817 / CMP-046 として起票済み）、その非対称をここで再生産しないためである。
+     * {@link #findDeputyAdminUserIdsByTeamIdAndPermission} だけがこの絞り込みを欠いていたが、
+     * Issue #2817 / CMP-046 で是正済みである。その非対称を再生産しないため、ここでも同じ条件を保つ。
      * {@code is_default=0} の「天井登録のみ」を許可すると、権限を個別付与していない副管理者全員が
      * 通ってしまう。</p>
      *
@@ -2508,6 +2508,9 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * 指定チームで特定権限を持つ DEPUTY_ADMIN ユーザー ID 一覧を取得する（F10.7 予約通知用）。
      *
      * <p>権限保有判定は role_permissions（ロール定義）と user_permission_groups（個別付与）を OR で集約する。</p>
+     *
+     * <p><b>{@code is_default} の扱い（Issue #2817 / CMP-046）</b>: role_permissions 経路では
+     * {@code rp.is_default = 1} の行のみを実付与とみなし、天井登録だけの権限を通知条件にしない。</p>
      *
      * <p><b>権限グループ経路のスコープ（Issue #2797）</b>: 割当表 {@code user_permission_groups} は
      * チーム列を持たないため、{@code permission_groups} を JOIN して
