@@ -303,6 +303,7 @@ jobs:
           --tests "com.mannschaft.app.config.JacksonTimeTypeSymmetryGuardTest"
           --tests "com.mannschaft.app.schedule.ScheduleAttendanceServiceTest"
           --tests "com.mannschaft.app.shift.service.ShiftRequestServiceTest"
+          --tests "com.mannschaft.app.ticket.TicketExpiryBatchServiceTest"
 
   # ---------------------------------------------------------------------------
   # shard: compile + test を 6 並列で実行する（Docker required for Testcontainers）
