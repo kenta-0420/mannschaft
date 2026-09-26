@@ -90,6 +90,7 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-building',
     items: [
       { labelKey: 'teamSidebar.item.repair_plan', icon: 'pi pi-wrench', path: 'repair-plan', moduleSlug: 'repair_longterm_plan', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.incidents', icon: 'pi pi-exclamation-triangle', path: 'incidents', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.equipment', icon: 'pi pi-cog', path: 'equipment', moduleSlug: 'equipment', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.parking', icon: 'pi pi-car', path: 'parking', moduleSlug: 'parking', requiredRole: 'MEMBER' },
       // CMP-260909-1141 Phase 3: 業者マスタ（/admin/vendors）は repair_longterm_plan（修繕長期計画）
