@@ -148387,6 +148387,8 @@ export interface operations {
                 scopeType?: string;
                 scopeId?: string;
                 scopeVillageId?: string;
+                cursor?: number;
+                limit?: number;
                 size?: number;
             };
             header?: never;
