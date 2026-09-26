@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -81,6 +82,10 @@ public class MembershipService {
      */
     @Transactional
     public MembershipDto join(MembershipCreateRequest req) {
+        Objects.requireNonNull(req, "req must not be null");
+        Objects.requireNonNull(req.getUserId(), "userId must not be null");
+        Objects.requireNonNull(req.getScopeType(), "scopeType must not be null");
+        Objects.requireNonNull(req.getScopeId(), "scopeId must not be null");
         lockUser(req.getUserId());
         validateScope(req.getScopeType(), req.getScopeId());
 
@@ -156,6 +161,8 @@ public class MembershipService {
      */
     @Transactional
     public MembershipDto leave(Long membershipId, MembershipLeaveRequest req) {
+        Objects.requireNonNull(req, "req must not be null");
+        Objects.requireNonNull(req.getLeaveReason(), "leaveReason must not be null");
         Long userId = membershipRepository.findUserIdById(membershipId)
                 .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_NOT_FOUND));
 
@@ -250,6 +257,7 @@ public class MembershipService {
     @Transactional
     public boolean leaveByUserAndScope(Long userId, ScopeType scopeType, Long scopeId,
                                        LeaveReason leaveReason, Long removedBy) {
+        Objects.requireNonNull(leaveReason, "leaveReason must not be null");
         lockUser(userId);
         Optional<MembershipEntity> active =
                 membershipRepository.findActiveByUserAndScope(userId, scopeType, scopeId);
@@ -301,6 +309,8 @@ public class MembershipService {
      */
     @Transactional
     public MemberPositionDto assignPosition(Long membershipId, AssignPositionRequest req) {
+        Objects.requireNonNull(req, "req must not be null");
+        Objects.requireNonNull(req.getPositionId(), "positionId must not be null");
         MembershipEntity m = membershipRepository.findById(membershipId)
                 .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_NOT_FOUND));
 

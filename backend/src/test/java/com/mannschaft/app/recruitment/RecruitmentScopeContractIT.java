@@ -600,6 +600,35 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                             .content(objectMapper.writeValueAsString(fromTemplateBody(templateAId))))
                     .andExpect(status().isCreated());
         }
+
+        @Test
+        @DisplayName("場所未設定のテンプレートは400となり募集を作成しない")
+        void 場所未設定のテンプレートは400で募集を作成しない() throws Exception {
+            assertInvalidTemplateLocation(null);
+        }
+
+        @Test
+        @DisplayName("場所が空白のテンプレートは400となり募集を作成しない")
+        void 場所が空白のテンプレートは400で募集を作成しない() throws Exception {
+            assertInvalidTemplateLocation("   ");
+        }
+
+        private void assertInvalidTemplateLocation(String location) throws Exception {
+            Long invalidTemplateId = insertTemplate(teamAId, adminAId, location);
+            em.flush();
+            em.clear();
+            long listingCountBefore = listingRepository.count();
+
+            setAuth(adminAId);
+            mockMvc.perform(post("/api/v1/teams/{teamId}/recruitment-listings/from-template", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(fromTemplateBody(invalidTemplateId))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+                    .andExpect(jsonPath("$.error.fieldErrors[0].field").value("location"));
+
+            assertThat(listingRepository.count()).isEqualTo(listingCountBefore);
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -746,12 +775,17 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long insertTemplate(Long teamId, Long createdBy) {
+        return insertTemplate(teamId, createdBy, "Test venue");
+    }
+
+    private Long insertTemplate(Long teamId, Long createdBy, String defaultLocation) {
         return templateRepository.save(RecruitmentTemplateEntity.builder()
                 .scopeType(RecruitmentScopeType.TEAM)
                 .scopeId(teamId)
                 .categoryId(categoryId)
                 .templateName("RCRTSIB テンプレート")
                 .title("RCRTSIB テンプレート募集")
+                .defaultLocation(defaultLocation)
                 .createdBy(createdBy)
                 .build()).getId();
     }

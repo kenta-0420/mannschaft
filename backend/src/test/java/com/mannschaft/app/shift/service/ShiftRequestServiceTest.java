@@ -1,6 +1,6 @@
 package com.mannschaft.app.shift.service;
 
-import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -17,7 +17,6 @@ import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -63,7 +62,7 @@ class ShiftRequestServiceTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
-    private AccessControlService accessControlService;
+    private ScopeConcealingAccessGate accessGate;
 
     @Mock
     private ProxyInputContext proxyInputContext;
@@ -83,15 +82,9 @@ class ShiftRequestServiceTest {
     private static final Long REQUEST_ID = 300L;
     private static final Long TEAM_ID = 1L;
 
-    @BeforeEach
-    void setUpAuthzDefaults() {
-        // 認可根治 Wave6: 本 UT の検証対象は業務ロジック。per-scope 認可そのものの成否は
-        // 契約IT（ShiftRequestScopeContractIT）で固定するため、ここでは
-        // 「当該チームの一般メンバー」として通す既定値を lenient に置く
-        //（メソッドによっては到達しないため strict にすると UnnecessaryStubbing になる）。
-        lenient().when(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).thenReturn(true);
-        lenient().when(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM")).thenReturn(false);
-    }
+    // 本 UT の検証対象は業務ロジック。認可ゲート（ScopeConcealingAccessGate）はモックで素通しとし、
+    // per-scope 認可と存在秘匿の成否は ScopeConcealingAccessGateTest と
+    // 契約IT（ShiftRequestPositionScopeContractIT）で固定する。
 
     private ShiftScheduleEntity createCollectingSchedule() {
         ShiftScheduleEntity entity = ShiftScheduleEntity.builder()
@@ -314,7 +307,7 @@ class ShiftRequestServiceTest {
             ShiftRequestResponse response = createRequestResponse();
 
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
-            given(scheduleService.findScheduleOrThrow(entity.getScheduleId())).willReturn(schedule);
+            given(scheduleService.findSchedule(entity.getScheduleId())).willReturn(Optional.of(schedule));
             given(requestRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toRequestResponse(entity)).willReturn(response);
 
@@ -353,12 +346,30 @@ class ShiftRequestServiceTest {
             // Given
             ShiftRequestEntity entity = createRequestEntity();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(scheduleService.findSchedule(entity.getScheduleId()))
+                    .willReturn(Optional.of(createCollectingSchedule()));
 
             // When
             shiftRequestService.deleteRequest(REQUEST_ID, USER_ID);
 
             // Then
             verify(requestRepository).delete(entity);
+        }
+
+        @Test
+        @DisplayName("シフト希望削除_親スケジュール削除済み_希望の不在コードSHIFT_003で拒否し削除しない")
+        void シフト希望削除_親削除済み_SHIFT_003() {
+            // Given
+            ShiftRequestEntity entity = createRequestEntity();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(scheduleService.findSchedule(entity.getScheduleId())).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> shiftRequestService.deleteRequest(REQUEST_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
+            verify(requestRepository, never()).delete(entity);
         }
 
         @Test
