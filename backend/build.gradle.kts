@@ -321,6 +321,11 @@ object ShardAssignment {
 class ShardCoverageClassFile(val path: String, val topLevelFqcn: String)
 
 tasks.withType<Test> {
+    // 通常スイートは従来どおり JST 固定。CMP-023 の非JST CIだけが
+    // -Ptest.timezone=America/Los_Angeles で明示的に上書きする。
+    // System.getProperty("user.timezone") では Gradle JVM 側の値を拾ってしまうため、
+    // Test ワーカーへ渡す値は Gradle property を唯一の入口にする。
+    val testTimezone = providers.gradleProperty("test.timezone").orElse("Asia/Tokyo").get()
     // =====================================================================
     // @Tag("perf") 運用（β4 fan-out 実測 IT の分離）
     // ---------------------------------------------------------------------
@@ -413,8 +418,8 @@ tasks.withType<Test> {
     //   後に発生）。本フラグで cleanup スレッド自体の起動を抑止し、Hikari に Connection ライフサイクル
     //   を完全に委譲する。これは MySQL Connector/J 公式の HikariCP 連携推奨設定。
     //
-    // -Duser.timezone=Asia/Tokyo:
-    //   テスト JVM のデフォルトタイムゾーンを Asia/Tokyo に明示固定する。
+    // -Duser.timezone=<test.timezone>:
+    //   通常はテスト JVM のデフォルトタイムゾーンを Asia/Tokyo に明示固定する。
     //   forkEvery(100L) でフレッシュ JVM が起動するたび、CI ランナー (UTC) のデフォルト TZ が
     //   採用され、JDBC URL の serverTimezone=Asia/Tokyo と不整合となり、LocalDate が 1 日ずれる
     //   問題が発生していた（ShiftBudgetAllocationRepositoryTest で expected 2026-06-01 / but was
@@ -473,7 +478,9 @@ tasks.withType<Test> {
         "-XX:+HeapDumpOnOutOfMemoryError",
         "-XX:HeapDumpPath=${heapDumpDir.absolutePath}",
         "-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true",
-        "-Duser.timezone=Asia/Tokyo"
+        "-Duser.timezone=$testTimezone",
+        // 非JST契約テストが「指定した値が実際のワーカーへ届いた」ことを検証するための期待値。
+        "-Dmannschaft.test.expected-jvm-timezone=$testTimezone"
     )
 
     // （旧: D-4 CrossDomainForeignKeyArchTest の baseline 再凍結スイッチ archunit.fk.refreeze を
