@@ -34,12 +34,14 @@ import com.mannschaft.app.common.MembershipScopeQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.mannschaft.app.schedule.event.AttendanceSolicitationOpenedEvent;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -89,6 +91,8 @@ public class ScheduleAttendanceService {
      * Bean 不在のテスト構成（Mockito {@code @InjectMocks}）では null 注入され、ガードはスキップされる。
      */
     private final AccessControlService accessControlService;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 出欠回答を行う。期限チェック・コメント必須チェックを実施し、
@@ -893,7 +897,7 @@ public class ScheduleAttendanceService {
      */
     private void validateAttendanceDeadline(ScheduleEntity schedule) {
         if (schedule.getAttendanceDeadline() != null
-                && LocalDateTime.now().isAfter(schedule.getAttendanceDeadline())) {
+                && LocalDateTime.now(wallClock).isAfter(schedule.getAttendanceDeadline())) {
             throw new BusinessException(ScheduleErrorCode.ATTENDANCE_DEADLINE_PASSED);
         }
     }
