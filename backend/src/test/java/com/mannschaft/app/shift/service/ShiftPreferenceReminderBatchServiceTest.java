@@ -117,7 +117,7 @@ class ShiftPreferenceReminderBatchServiceTest {
                     eq("SHIFT_REQUEST_REMINDER_48H"),
                     eq("SHIFT_SCHEDULE"), eq(SCHEDULE_ID),
                     eq(NotificationScopeType.TEAM), eq(TEAM_ID),
-                    anyString(), isNull(), any());
+                    eq("/my/shift-request?teamId=" + TEAM_ID + "&scheduleId=" + SCHEDULE_ID), isNull(), any());
             // フラグが更新される
             verify(scheduleRepository).save(schedule);
         }
@@ -189,7 +189,7 @@ class ShiftPreferenceReminderBatchServiceTest {
                     eq("SHIFT_REQUEST_REMINDER"),
                     eq("SHIFT_SCHEDULE"), eq(SCHEDULE_ID),
                     eq(NotificationScopeType.TEAM), eq(TEAM_ID),
-                    anyString(), isNull(), any());
+                    eq("/my/shift-request?teamId=" + TEAM_ID + "&scheduleId=" + SCHEDULE_ID), isNull(), any());
             verify(scheduleRepository).save(schedule);
         }
     }
@@ -237,7 +237,7 @@ class ShiftPreferenceReminderBatchServiceTest {
                     eq("SHIFT_REQUEST_REMINDER_MANUAL"),
                     eq("SHIFT_SCHEDULE"), eq(SCHEDULE_ID),
                     eq(NotificationScopeType.TEAM), eq(TEAM_ID),
-                    anyString(), isNull(), any());
+                    eq("/my/shift-request?teamId=" + TEAM_ID + "&scheduleId=" + SCHEDULE_ID), isNull(), any());
             verify(auditLogService).record(
                     eq("SHIFT_MANUAL_REMINDER_SENT"),
                     eq(OPERATOR_ID), isNull(), eq(TEAM_ID), isNull(),
