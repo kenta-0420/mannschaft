@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
@@ -12,14 +13,17 @@ import com.mannschaft.app.recruitment.RecruitmentParticipationType;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
+import com.mannschaft.app.recruitment.dto.CreateFromTemplateRequest;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentTemplateEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingAudienceScopeRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentTemplateRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -60,6 +64,12 @@ class RecruitmentListingServiceTest {
 
     @Mock
     private RecruitmentListingRepository listingRepository;
+
+    @Mock
+    private RecruitmentTemplateRepository templateRepository;
+
+    @Mock
+    private RecruitmentTemplateService templateService;
 
     @Mock
     private RecruitmentListingAudienceScopeRepository audienceScopeRepository;
@@ -135,6 +145,59 @@ class RecruitmentListingServiceTest {
     private static final Long LISTING_ID = 200L;
     private static final Long PAYEE_USER_ID = 42L;
     private static final LocalDateTime BASE_TIME = LocalDateTime.now();
+
+    // ========================================
+    // createFromTemplate - internal validation
+    // ========================================
+    @Nested
+    @DisplayName("createFromTemplate - internal validation")
+    class CreateFromTemplateValidation {
+
+        @Test
+        @DisplayName("defaultLocation が null のテンプレートは書込み前に拒否する")
+        void createFromTemplate_defaultLocationがnull_書込み前に拒否する() {
+            assertInvalidTemplateLocation(null);
+        }
+
+        @Test
+        @DisplayName("defaultLocation が空白のテンプレートは書込み前に拒否する")
+        void createFromTemplate_defaultLocationが空白_書込み前に拒否する() {
+            assertInvalidTemplateLocation("   ");
+        }
+
+        private void assertInvalidTemplateLocation(String location) {
+            Long templateId = 300L;
+            RecruitmentTemplateEntity template = RecruitmentTemplateEntity.builder()
+                    .scopeType(RecruitmentScopeType.TEAM)
+                    .scopeId(TEAM_ID)
+                    .categoryId(CATEGORY_ID)
+                    .templateName("template")
+                    .title("listing")
+                    .defaultLocation(location)
+                    .createdBy(USER_ID)
+                    .build();
+            given(templateRepository.findActiveById(templateId)).willReturn(Optional.of(template));
+            CreateFromTemplateRequest request = new CreateFromTemplateRequest(
+                    templateId,
+                    BASE_TIME.plusDays(2),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
+
+            BusinessException error = org.assertj.core.api.Assertions.catchThrowableOfType(
+                    () -> service.createFromTemplate(
+                            RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request),
+                    BusinessException.class);
+
+            assertThat(error.getErrorCode()).isEqualTo(CommonErrorCode.COMMON_001);
+            assertThat(error.getFieldErrors())
+                    .extracting(ErrorResponse.FieldError::getField)
+                    .containsExactly("location");
+            verifyNoInteractions(templateService, listingRepository);
+        }
+    }
 
     // ========================================
     // create - §5.1 バリデーション
