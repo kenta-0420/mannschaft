@@ -566,7 +566,7 @@ INDEX idx_team_org_memberships_status_invited (status, invited_at)              
 - PENDING は60日応答が無ければ夜間バッチで削除する。組織・チームの削除／アーカイブ時も PENDING を削除する（F01.2.1 §4.5・§6.8）
 - 1チームは複数の組織に同時に ACTIVE で加盟できる。単一の親組織を前提にした読み手は F01.2.1 §9 で改修する
 - 再招待・再申請（取消・取下げ後、または制限の期限後）は新規 INSERT で再開始する（UNIQUE KEY により同一ペアの PENDING/ACTIVE は常に最大1件に限定）
-- 状態を変える更新は条件付き UPDATE／DELETE（`status` と `direction` を WHERE に含める）で行い、影響行数 0 は 409 `TEAM_071`
+- 状態を変える更新は条件付き UPDATE／DELETE（`status` と `direction` を WHERE に含める）で行う。影響行数 0 のときは、操作時点で行が無ければ 404 `TEAM_070`、行はあるが状態・向きが前提と違えば 409 `TEAM_071` を返す（F01.2.1 §6.4 の判定表）
 - チームは複数の組織に同時所属可能（UNIQUE は (team_id, organization_id) ペアに対してのみ）
 - 組織の物理削除時: ON DELETE CASCADE により紐付く全レコードが自動削除。論理削除時は ON DELETE CASCADE が発動しないため、アプリ層で明示的に DELETE する（組織論理削除フロー参照）
 

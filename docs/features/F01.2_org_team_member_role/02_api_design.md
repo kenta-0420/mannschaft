@@ -80,10 +80,10 @@
 | GET | `/api/v1/teams/{slug}/organizations` | 必要 | チームが所属する組織一覧（ACTIVE のみ。1チームは複数の組織に同時加盟でき、全件を返す）。F01.2.1 で `team_group` フィールドを追加予定 |
 | GET | `/api/v1/organizations/{slug}/ancestors` | 任意 | 上位組織チェーン取得（root → 親の順。`hierarchy_visibility` を尊重）|
 | GET | `/api/v1/organizations/{slug}/children` | 任意 | 下位組織一覧（直近の子のみ・`visibility` で可視範囲フィルタ）|
-| GET | `/api/v1/teams/{slug}/org-invites` | 必要（ADMIN）| 受信した組織招待一覧（PENDING/ORG_INVITE のみ。**未実装**）|
-| POST | `/api/v1/teams/{slug}/org-invites/{membershipId}/accept` | 必要（ADMIN）| 組織招待を承諾（PENDING → ACTIVE。**未実装**）|
-| POST | `/api/v1/teams/{slug}/org-invites/{membershipId}/reject` | 必要（ADMIN）| 組織招待を拒否（PENDING を削除し、再招待に30日の冷却。body `{block?}`。**未実装**）|
-| DELETE | `/api/v1/teams/{slug}/organizations/{orgSlug}` | 必要（ADMIN）| チームが組織から自主離脱（ACTIVE を削除。**未実装**）|
+| GET | `/api/v1/teams/{slug}/org-invites` | 必要（MANAGE_ORG_AFFILIATION。ADMIN は常に保持）| 受信した組織招待一覧（PENDING/ORG_INVITE のみ。**未実装**）|
+| POST | `/api/v1/teams/{slug}/org-invites/{membershipId}/accept` | 必要（MANAGE_ORG_AFFILIATION）| 組織招待を承諾（PENDING → ACTIVE。**未実装**）|
+| POST | `/api/v1/teams/{slug}/org-invites/{membershipId}/reject` | 必要（MANAGE_ORG_AFFILIATION）| 組織招待を拒否（PENDING を削除し、再招待に30日の冷却。body `{block?}`。**未実装**）|
+| DELETE | `/api/v1/teams/{slug}/organizations/{orgSlug}` | 必要（MANAGE_ORG_AFFILIATION）| チームが組織から自主離脱（ACTIVE を削除。**未実装**）|
 | GET | `/api/v1/invite/{token}/qr` | 不要 | 招待QRコード画像取得（PNG）|
 | PATCH | `/api/v1/organizations/{slug}/profile` | 必要（ADMIN / DEPUTY_ADMIN※）| 組織プロフィール拡張項目の一括更新（homepage_url / established_date / philosophy / profile_visibility）。※MANAGE_ORGANIZATION 権限必要 |
 | PATCH | `/api/v1/teams/{slug}/profile` | 必要（ADMIN / DEPUTY_ADMIN※）| チームプロフィール拡張項目の一括更新。※MANAGE_TEAM 権限必要 |
