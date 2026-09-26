@@ -93,6 +93,7 @@ class ShiftRequestServiceTest {
     private static final Instant CURRENT_INSTANT = CURRENT_TIME
             .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
             .toInstant();
+    private static final List<Long> TEN_MEMBERS = List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L);
 
     @BeforeEach
     void setUpWallClock() {
@@ -417,9 +418,9 @@ class ShiftRequestServiceTest {
         void 希望提出サマリー取得_正常_カウント正確() {
             // Given
             ShiftScheduleEntity schedule = createCollectingSchedule();
-            given(requestRepository.countDistinctUserIdByScheduleId(SCHEDULE_ID)).willReturn(3L);
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(10L);
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(TEN_MEMBERS);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(3L);
             given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
                     .willReturn(List.of());
 
@@ -434,13 +435,28 @@ class ShiftRequestServiceTest {
         }
 
         @Test
+        @DisplayName("希望提出サマリー取得_対象者ゼロなら提出者照会を行わない")
+        void 希望提出サマリー取得_対象者ゼロ() {
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(createCollectingSchedule());
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(List.of());
+            given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID)).willReturn(List.of());
+
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, USER_ID);
+
+            assertThat(result.getTotalMembers()).isZero();
+            assertThat(result.getSubmittedCount()).isZero();
+            assertThat(result.getPendingCount()).isZero();
+            verify(requestRepository, never()).countSubmittedMembersByScheduleId(any(), any());
+        }
+
+        @Test
         @DisplayName("希望提出サマリー取得_5段階preference別集計_正確にカウント")
         void 希望提出サマリー取得_5段階preference別集計_正確にカウント() {
             // Given
             ShiftScheduleEntity schedule = createCollectingSchedule();
-            given(requestRepository.countDistinctUserIdByScheduleId(SCHEDULE_ID)).willReturn(5L);
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(10L);
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(TEN_MEMBERS);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(5L);
             given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
                     .willReturn(List.of(
                             new Object[]{ShiftPreference.PREFERRED, 7L},
@@ -467,9 +483,9 @@ class ShiftRequestServiceTest {
         void 希望提出サマリー取得_一部preferenceのみ_他は0() {
             // Given
             ShiftScheduleEntity schedule = createCollectingSchedule();
-            given(requestRepository.countDistinctUserIdByScheduleId(SCHEDULE_ID)).willReturn(2L);
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(10L);
+            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(TEN_MEMBERS);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(2L);
             given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
                     .willReturn(List.of(
                             new Object[]{ShiftPreference.PREFERRED, 3L},

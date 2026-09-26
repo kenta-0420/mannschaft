@@ -230,7 +230,18 @@
     },
     "reminder": {
       "send": "リマインダーを送信",
-      "sent": "リマインダー送信済み"
+      "sent": "リマインダー送信済み",
+      "confirmTitle": "未提出者へリマインド",
+      "confirmMessage": "「{title}」の希望未提出者へリマインドを送信しますか？",
+      "confirmAccept": "送信する",
+      "confirmReject": "キャンセル",
+      "sentTitle": "リマインドを送信しました",
+      "sentDetail": "{count}人に希望提出を案内しました。",
+      "noRecipientsTitle": "未提出者はいません",
+      "noRecipientsDetail": "リマインドの送信対象はありませんでした。",
+      "failedTitle": "リマインドを送信できませんでした",
+      "failedDetail": "時間をおいて再試行してください。",
+      "targetUnavailable": "このシフト表は表示できないか、希望を受け付けていません。"
     },
     "empty": {
       "noSchedules": "スケジュールがありません",
