@@ -439,7 +439,6 @@ NO_ARG_NOW|com.mannschaft.app.parking.entity.ParkingSubleaseEntity|1
 NO_ARG_NOW|com.mannschaft.app.parking.entity.ParkingSubleasePaymentEntity|1
 NO_ARG_NOW|com.mannschaft.app.parking.entity.ParkingVisitorReservationEntity|1
 NO_ARG_NOW|com.mannschaft.app.parking.entity.RegisteredVehicleEntity|1
-NO_ARG_NOW|com.mannschaft.app.parking.service.ParkingVisitorReservationService|1
 NO_ARG_NOW|com.mannschaft.app.payment.FeePolicyAssignmentEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.FeePolicyEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.StripeWebhookEventEntity|1
@@ -792,7 +791,6 @@ NO_ARG_NOW|com.mannschaft.app.timetable.personal.controller.PersonalTimetableSlo
 NO_ARG_NOW|com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity|1
 NO_ARG_NOW|com.mannschaft.app.timetable.personal.entity.PersonalTimetableSettingsEntity|2
 NO_ARG_NOW|com.mannschaft.app.timetable.personal.entity.PersonalTimetableShareTargetEntity|1
-NO_ARG_NOW|com.mannschaft.app.timetable.personal.service.PersonalTimetableSlotService|1
 NO_ARG_NOW|com.mannschaft.app.timetable.service.TimetableSlotService|1
 NO_ARG_NOW|com.mannschaft.app.todo.batch.TodoDueReminderBatch|3
 NO_ARG_NOW|com.mannschaft.app.todo.entity.ProjectEntity|4
