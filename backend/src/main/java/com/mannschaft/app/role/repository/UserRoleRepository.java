@@ -649,8 +649,8 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN roles candidate_permission_role ON candidate_permission_role.id = rp.role_id " +
             "      JOIN permissions p ON p.id = rp.permission_id " +
             "      WHERE rp.role_id = cand.role_id " +
-            "        AND candidate_permission_role.name IN ('ADMIN', 'MEMBER') " +
-            "        AND (candidate_permission_role.name = 'ADMIN' OR NOT EXISTS ( " +
+            "        AND candidate_permission_role.name IN ('ADMIN', 'MEMBER', 'SUPPORTER') " +
+            "        AND (candidate_permission_role.name IN ('ADMIN', 'SUPPORTER') OR NOT EXISTS ( " +
             "          SELECT 1 FROM user_permission_groups member_override " +
             "          JOIN permission_groups member_override_group ON member_override_group.id = member_override.group_id " +
             "          WHERE member_override.user_id = cand.user_id " +
