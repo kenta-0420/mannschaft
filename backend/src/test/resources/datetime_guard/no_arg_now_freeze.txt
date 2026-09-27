@@ -771,7 +771,6 @@ NO_ARG_NOW|com.mannschaft.app.ticket.entity.TicketPaymentEntity|3
 NO_ARG_NOW|com.mannschaft.app.ticket.entity.TicketProductEntity|1
 NO_ARG_NOW|com.mannschaft.app.ticket.service.StripeTicketServicePlaceholder|1
 NO_ARG_NOW|com.mannschaft.app.ticket.service.TicketBookService|4
-NO_ARG_NOW|com.mannschaft.app.ticket.service.TicketExpiryBatchService|3
 NO_ARG_NOW|com.mannschaft.app.ticket.service.TicketQrService|2
 NO_ARG_NOW|com.mannschaft.app.timeline.entity.TimelineBookmarkEntity|1
 NO_ARG_NOW|com.mannschaft.app.timeline.entity.TimelinePollEntity|2
