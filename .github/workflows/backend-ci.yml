@@ -307,6 +307,7 @@ jobs:
           --tests "com.mannschaft.app.parking.service.ParkingVisitorReservationServiceTest"
           --tests "com.mannschaft.app.timetable.personal.PersonalTimetableSlotServiceTest"
           --tests "com.mannschaft.app.actionmemo.service.ActionMemoWeeklySummaryServiceTest"
+          --tests "com.mannschaft.app.actionmemo.service.ActionMemoServicePublishTest"
 
   # ---------------------------------------------------------------------------
   # shard: compile + test を 6 並列で実行する（Docker required for Testcontainers）
