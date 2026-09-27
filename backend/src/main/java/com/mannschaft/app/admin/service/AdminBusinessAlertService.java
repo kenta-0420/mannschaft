@@ -15,15 +15,16 @@ import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.template.service.ModuleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,8 +55,6 @@ public class AdminBusinessAlertService {
     private static final long CACHE_TTL_SECONDS = 60L;
     private static final String RESERVATION_MODULE_SLUG = "reservation";
     private static final String MANAGE_RESERVATIONS_PERMISSION = "MANAGE_RESERVATIONS";
-    private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
-
     private final UserRoleRepository userRoleRepository;
     private final ReservationRepository reservationRepository;
     private final ChatChannelRepository chatChannelRepository;
@@ -64,6 +63,8 @@ public class AdminBusinessAlertService {
     private final ModuleService moduleService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 業務アラートサマリーを返す。Valkey に 60 秒間キャッシュする。
@@ -175,8 +176,10 @@ public class AdminBusinessAlertService {
 
         if (!reservationCountTargetIds.isEmpty()) {
             // 本日 0:00:00 JST を UTC に変換
-            LocalDateTime todayStartJst = LocalDate.now(JST).atStartOfDay();
-            LocalDateTime todayStartUtc = todayStartJst.atZone(JST).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+            LocalDateTime todayStartUtc = LocalDate.now(wallClock)
+                    .atStartOfDay(wallClock.getZone())
+                    .withZoneSameInstant(ZoneOffset.UTC)
+                    .toLocalDateTime();
 
             List<Object[]> todayConfirmed = reservationRepository
                     .countTodayConfirmedByTeamIds(reservationCountTargetIds, todayStartUtc);
