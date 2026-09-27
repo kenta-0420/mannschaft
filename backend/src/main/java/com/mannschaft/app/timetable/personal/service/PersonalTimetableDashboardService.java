@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.personal.service;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.timetable.TimetableChangeType;
 import com.mannschaft.app.timetable.WeekPattern;
@@ -64,6 +65,7 @@ public class PersonalTimetableDashboardService {
     private final TimetableSlotUserNoteRepository userNoteRepository;
     private final TimetableSlotUserNoteAttachmentRepository attachmentRepository;
     private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final TimetableChangeRepository timetableChangeRepository;
 
     /**
@@ -223,7 +225,7 @@ public class PersonalTimetableDashboardService {
      */
     private List<Long> listJoinedTeamIds(Long userId) {
         // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
-        return userRoleRepository.findTeamIdsByUserId(userId);
+        return membershipScopeQueryService.findActiveTeamIds(userId);
     }
 
     private DashboardTimetableTodayResponse.TimetableTodayItem buildPersonalItem(

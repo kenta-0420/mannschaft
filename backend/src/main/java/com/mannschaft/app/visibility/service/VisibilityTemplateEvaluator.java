@@ -1,5 +1,6 @@
 package com.mannschaft.app.visibility.service;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import com.mannschaft.app.visibility.dto.VisibilityTemplateRuleView;
@@ -38,6 +39,7 @@ public class VisibilityTemplateEvaluator {
     private final VisibilityTemplateRepository visibilityTemplateRepository;
     private final VisibilityTemplateRuleRepository visibilityTemplateRuleRepository;
     private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final TeamFriendRepository teamFriendRepository;
 
     /**
@@ -228,7 +230,7 @@ public class VisibilityTemplateEvaluator {
             // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
             // CMP-050: 本メソッドは ACTIVE な在籍のみを返す。凍結オーナーのテンプレは解決不能となり
             //          false/null（＝非公開）へ倒れるのが期待挙動である（フェイルセーフ）。
-            targetTeamId = userRoleRepository.findTeamIdsByUserId(ownerUserId)
+            targetTeamId = membershipScopeQueryService.findActiveTeamIds(ownerUserId)
                     .stream()
                     .min(Long::compareTo)
                     .orElse(null);
@@ -244,7 +246,7 @@ public class VisibilityTemplateEvaluator {
         }
 
         // viewer が属するチームを取得（CMP-027: user_roles ∪ memberships の在籍チーム ID）
-        List<Long> viewerTeamIds = userRoleRepository.findTeamIdsByUserId(viewerUserId);
+        List<Long> viewerTeamIds = membershipScopeQueryService.findActiveTeamIds(viewerUserId);
         if (viewerTeamIds.isEmpty()) {
             return false;
         }
@@ -325,7 +327,7 @@ public class VisibilityTemplateEvaluator {
             // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
             // CMP-050: 本メソッドは ACTIVE な在籍のみを返す。凍結オーナーのテンプレは解決不能となり
             //          false/null（＝非公開）へ倒れるのが期待挙動である（フェイルセーフ）。
-            Long primaryTeamId = userRoleRepository.findTeamIdsByUserId(ownerUserId)
+            Long primaryTeamId = membershipScopeQueryService.findActiveTeamIds(ownerUserId)
                     .stream()
                     .min(Long::compareTo)
                     .orElse(null);

@@ -17,7 +17,7 @@ const { t } = useI18n()
 
 // F06.2: メンバー紹介はページ（team_pages）単位の二段構え。組織版
 // （organizations/[slug]/member-profiles.vue）と同じ実装パターンをチームスコープに適用する。
-const view = ref<'pages' | 'members'>('pages')
+const view = ref<'pages' | 'members' | 'fields'>('pages')
 const teamId = ref<number | null>(null)
 
 const loading = ref(true)
@@ -281,7 +281,13 @@ onMounted(loadData)
     </div>
 
     <template v-else-if="view === 'pages'">
-      <div v-if="isAdmin" class="mb-4 flex justify-end">
+      <div v-if="isAdmin" class="mb-4 flex justify-end gap-2">
+        <Button
+          :label="t('memberProfile.fields.title')"
+          icon="pi pi-list"
+          severity="secondary"
+          @click="view = 'fields'"
+        />
         <Button
           :label="t('memberProfile.pages.newPage')"
           icon="pi pi-plus"
@@ -342,6 +348,18 @@ onMounted(loadData)
           </template>
         </Card>
       </div>
+    </template>
+
+    <template v-else-if="view === 'fields' && isAdmin && teamId != null">
+      <Button
+        :label="t('memberProfile.members.back')"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        text
+        class="mb-4"
+        @click="view = 'pages'"
+      />
+      <MemberProfileFieldManager scope-type="team" :scope-id="teamId" />
     </template>
 
     <template v-else-if="view === 'members' && selectedPage">

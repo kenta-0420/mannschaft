@@ -214,6 +214,7 @@ export default {
       "resetButton": "Restablecer",
       "allCategories": "Todas las categorías",
       "noResults": "No se encontraron convocatorias con esos criterios",
+      "loadError": "Error al obtener las convocatorias",
       "resultsCount": "{count} convocatorias",
       "capacity": "Capacidad",
       "remaining": "Quedan {count} plazas",
@@ -279,6 +280,7 @@ export default {
       "status": {
         "pending": "Pendiente",
         "confirmed": "Confirmado",
+        "expired": "Plazo de disputa vencido",
         "disputed": "En disputa",
         "revoked": "Revocado",
         "upheld": "Mantenido"

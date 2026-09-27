@@ -7,6 +7,7 @@ import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
@@ -104,6 +105,9 @@ class DashboardServiceTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
+
+    @Mock
     private com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository announcementFeedQueryRepository;
 
     @Mock
@@ -195,14 +199,14 @@ class DashboardServiceTest {
                 .willReturn(new PageImpl<>(List.of()));
         given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
     }
 
     private void stubScopeCoverage() {
-        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
     }
 
     // ========================================
@@ -270,7 +274,7 @@ class DashboardServiceTest {
             given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
                     .willReturn(List.of());
             given(chatChannelMemberRepository.findByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of(77L));
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of(77L));
             given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
                     .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
 
@@ -302,7 +306,7 @@ class DashboardServiceTest {
                     .willReturn(new PageImpl<>(List.of()));
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
             given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
@@ -343,7 +347,7 @@ class DashboardServiceTest {
                     .willReturn(new PageImpl<>(List.of()));
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
             TodoEntity overdueTodo = TodoEntity.builder()
@@ -404,7 +408,7 @@ class DashboardServiceTest {
                     .willReturn(new PageImpl<>(List.of(notification)));
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
             given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
@@ -436,9 +440,9 @@ class DashboardServiceTest {
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
             // 3チーム + 2組織に所属（CMP-027: 在籍列挙は teamId/orgId を返す）
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID))
                     .willReturn(List.of(10L, 11L, 12L));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID))
                     .willReturn(List.of(20L, 21L));
 
             // When

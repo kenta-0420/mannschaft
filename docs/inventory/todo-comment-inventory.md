@@ -98,7 +98,7 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicOrganizationSearchQueryService.java | 32 | // TODO: publicviewドメインからorganizationドメイン(OrganizationRepository)とcmsドメイン(BlogPostRepository)を | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 46 | // TODO: publicview → cms のクロスドメイン参照。将来はイベント駆動化候補。 | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 48 | // TODO: publicview → auth のクロスドメイン参照。将来はイベント駆動化候補。 | 次陣で仕様化・Issue化 |
-| 性能 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 69 | // TODO: N+1 問題。コメント件数が多い場合は author_id をバルク取得して UserRepository.findAllById で解決すること。 | 次陣で仕様化・Issue化 |
+| 性能 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 69 | // TODO: N+1 問題。コメント件数が多い場合は author_id をバルク取得して UserRepository.findAllById で解決すること。 | Wave 7 Issue #3466 / PR #3467 で `findNameMapByIdIn` による著者名一括取得へ置換。test-only red、全CI green、実機E2E、3住民アリシゼーションを確認。 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 86 | // TODO: publicview → cms / auth クロスドメイン参照。将来はイベント駆動化候補。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 97 | // TODO: チームの supporter_name_disclosure = REAL_NAME の場合、本名スナップショットを設定する | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 151 | // TODO: publicview → cms クロスドメイン参照 | 次陣で仕様化・Issue化 |
@@ -111,7 +111,7 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/SupporterNameDisclosureService.java | 44 | // TODO: publicview ドメインが team / organization ドメインの Repository を直接参照。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/ViewerContextBuilder.java | 39 | // TODO: publicview ドメインが role ドメインの Repository を直接参照。将来はイベント駆動化を検討。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/quickmemo/service/QuickMemoConvertToTodoService.java | 70 | // TODO を作成（PERSONAL スコープ） | 次陣で仕様化・Issue化 |
-| 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentNoShowService.java | 106 | // TODO: F04.9 実装後に RECRUITMENT_NO_SHOW_RECORDED 通知を送信 | 次陣で仕様化・Issue化 |
+| 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentNoShowService.java | 106 | // TODO: F04.9 実装後に RECRUITMENT_NO_SHOW_RECORDED 通知を送信 | Wave 12 Issue #3483 / PR #3485 で管理者と自動検出から本人 HIGH 通知へ接続。実機 E2E 2件と3住民アリシゼーションを実施。 |
 | 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentNoShowService.java | 175 | // TODO: F04.9 実装後に主催者へ RECRUITMENT_NO_SHOW_DISPUTE_RAISED 通知 | 次陣で仕様化・Issue化 |
 | 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentPenaltyLiftBatch.java | 58 | // TODO: F04.9 実装後に RECRUITMENT_PENALTY_LIFTED 通知を送信 | 次陣で仕様化・Issue化 |
 | 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentPenaltyRecomputeBatch.java | 133 | // TODO: F04.9 実装後に解除対象ユーザーへ RECRUITMENT_PENALTY_LIFTED 通知 | 次陣で仕様化・Issue化 |
@@ -161,8 +161,8 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/social/announcement/AnnouncementSourceResolver.java | 78 | // TODO / SCHEDULE は F02.8 告知ウィザード専用。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/social/announcement/AnnouncementSyncEventListener.java | 40 | * // TODO: 各 Service から ApplicationEventPublisher.publishEvent() を呼ぶこと。例: | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/social/announcement/AnnouncementSyncEventListener.java | 175 | // TODO: 各 Service から ApplicationEventPublisher.publishEvent() を呼ぶこと。 | 次陣で仕様化・Issue化 |
-| 実装不足 | backend/src/main/java/com/mannschaft/app/social/announcement/controller/PersonalAnnouncementController.java | 51 | // TODO: AnnouncementFeedService.getPersonalFeed 実装後に注入する | 次陣で仕様化・Issue化 |
-| 将来仕様 | backend/src/main/java/com/mannschaft/app/social/announcement/controller/PersonalAnnouncementController.java | 86 | // TODO: AnnouncementFeedService.getPersonalFeed(userId, cursor, limit) を呼ぶ | 次陣で仕様化・Issue化 |
+| 完了 | backend/src/main/java/com/mannschaft/app/social/announcement/controller/PersonalAnnouncementController.java | 51 | AnnouncementFeedService を注入し、個人向けフィード取得へ接続 | Issue #3419 / PR #3420（全必須CI green） |
+| 完了 | backend/src/main/java/com/mannschaft/app/social/announcement/controller/PersonalAnnouncementController.java | 86 | AnnouncementFeedService.getPersonalFeed(userId, cursor, limit) を呼び出す | Issue #3419 / PR #3420（全必須CI green） |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/social/service/FollowService.java | 252 | // TODO: SocialドメインとAuthドメインをまたいでいる。将来はFollowListVisibilityUpdatedEventで分離予定 | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/social/service/FriendNotificationService.java | 106 | // TODO: SocialドメインとNotificationドメイン・Roleドメインをまたいでいる。将来はFriendNotificationDispatchedEventで分離予定 | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/social/service/TeamFriendsService.java | 125 | // TODO: SocialドメインとAuthドメイン・Notificationドメイン・Roleドメイン・Teamドメイン・Timelineドメインをまたいでいる。将来はTeamFriendEstablishedEventで分離予定 | 次陣で仕様化・Issue化 |
@@ -186,7 +186,7 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 非債務（TODO機能語） | backend/src/main/java/com/mannschaft/app/todo/service/TodoScheduleLinkService.java | 87 | // TODO側更新（双方向: linked_schedule_id設定、必要なら親TODO変更） | 対応不要 |
 | 非債務（TODO機能語） | backend/src/main/java/com/mannschaft/app/todo/service/TodoScheduleLinkService.java | 150 | // TODO側にlinked_schedule_idを設定（双方向リンク完成） | 対応不要 |
 | 非債務（TODO機能語） | backend/src/main/java/com/mannschaft/app/todo/service/TodoScheduleLinkService.java | 188 | // TODO側をNULL化 | 対応不要 |
-| 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/todo/service/TodoStatusService.java | 155 | // TODO(F02.7 Phase 15-3 残件): 現在は skippedLockedIds をログ出力のみで、APIレスポンスには含めていない。 | 次陣で仕様化・Issue化 |
+| 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/todo/service/TodoStatusService.java | 155 | // TODO(F02.7 Phase 15-3 残件): 現在は skippedLockedIds をログ出力のみで、APIレスポンスには含めていない。 | Wave 11 Issue #3479 / PR #3481 で応答・画面表示・選択維持へ反映。実 BE/FE/MySQL の TEAM/ORGANIZATION E2E 2件で変更件数・ロックスキップ件数・権限境界を確認。 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/tournament/entry/TournamentEntryMemberService.java | 213 | .orElse("userId=" + userId); // TODO: UserQueryService で解決するまでのプレースホルダー | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/tournament/entry/TournamentEntryMemberService.java | 279 | // TODO: memberQueryDispatcher はチームスコープのメンバーを返すが、 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/tournament/entry/TournamentEntryMemberService.java | 289 | .memberNumber(null)   // TODO: TeamMemberRepository から解決 | 次陣で仕様化・Issue化 |
@@ -207,9 +207,9 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 越境整理 | backend/src/main/java/com/mannschaft/app/village/service/VillageLobbyService.java | 75 | // TODO: chat と village ドメインをまたいでいる。将来 VillageCreatedEvent + ChatProvisioner 分離予定。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/village/service/VillageNewsletterDigestAggregator.java | 49 | // TODO: 将来は VillagePostCreatedEvent を購読するカウンタテーブルへ分離し、read-only 越境を解消する（原則5）。 | 次陣で仕様化・Issue化 |
 | 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/village/service/VillageSerendipityService.java | 190 | // TODO Phase 4: 専用 COUNT クエリ or materialized rank に置換して効率化 | 次陣で仕様化・Issue化 |
-| 実装不足 | frontend/app/components/admin/PublicVisibleToggle.vue | 14 | // TODO: Phase 3 以降で API 実装時にインポートを有効化する | 次陣で仕様化・Issue化 |
-| 既存CMP・Issue候補 | frontend/app/components/admin/PublicVisibleToggle.vue | 63 | // TODO: Phase 3 以降で以下のリクエスト本体を使い API を呼び出す | 次陣で仕様化・Issue化 |
-| 既存CMP・Issue候補 | frontend/app/components/admin/PublicVisibleToggle.vue | 72 | // TODO: Phase 3 以降で以下の API 呼び出しを有効化する | 次陣で仕様化・Issue化 |
+| 完了 | frontend/app/components/admin/PublicVisibleToggle.vue | 14 | 公開表示トグルを実APIへ接続し、成功時反映・失敗時復元・重複送信防止を実装 | Issue #3421 / PR #3430（全必須CI green） |
+| 完了 | frontend/app/components/admin/PublicVisibleToggle.vue | 63 | 公開表示トグルを実APIへ接続し、成功時反映・失敗時復元・重複送信防止を実装 | Issue #3421 / PR #3430（全必須CI green） |
+| 完了 | frontend/app/components/admin/PublicVisibleToggle.vue | 72 | 公開表示トグルを実APIへ接続し、成功時反映・失敗時復元・重複送信防止を実装 | Issue #3421 / PR #3430（全必須CI green） |
 | 将来仕様 | frontend/app/components/dashboard/DashboardActionPanel.vue | 145 | // TODO 期限切れ | 次陣で仕様化・Issue化 |
 | 非債務（TODO機能語） | frontend/app/components/dashboard/DashboardPersonalPanel.vue | 123 | 'todo-countdown',              // TODOカウントダウン | 対応不要 |
 | 実装不足 | frontend/app/components/member/MemberFieldsManager.vue | 67 | // TODO: updateField が useMemberProfileApi に存在しないため編集機能は未実装 | 次陣で仕様化・Issue化 |

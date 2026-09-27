@@ -1,5 +1,6 @@
 package com.mannschaft.app.filesharing;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -20,6 +21,7 @@ import com.mannschaft.app.filesharing.service.SharedFileService;
 import com.mannschaft.app.filesharing.service.SharedFolderQueryService;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +54,18 @@ import static org.mockito.BDDMockito.willThrow;
 @DisplayName("SharedFileService 追加単体テスト")
 class SharedFileServiceAdditionalTest {
 
+    @BeforeEach
+    void stubManagedFolderForFileUpdates() {
+        SharedFolderEntity folder = SharedFolderEntity.builder()
+                .id(FOLDER_ID).scopeType(FileScopeType.TEAM).teamId(5L).build();
+        org.mockito.Mockito.lenient().when(folderService.findFolderOrThrow(anyLong())).thenReturn(folder);
+    }
+
+    @BeforeEach
+    void allowExistingAdminPaths() {
+        org.mockito.Mockito.lenient().when(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString())).thenReturn(true);
+    }
+
     @Mock
     private SharedFileRepository fileRepository;
 
@@ -82,6 +96,9 @@ class SharedFileServiceAdditionalTest {
     /** IDOR 封鎖のためのフォルダスコープ別閲覧認可（一覧・詳細で必ず通す）。void mock は既定で通過する。 */
     @Mock
     private SharedFolderQueryService folderQueryService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private SharedFileService service;
@@ -240,6 +257,21 @@ class SharedFileServiceAdditionalTest {
         }
 
         @Test
+        void memberWithoutManageFilesCannotPresignUpload() {
+            SharedFolderEntity folder = SharedFolderEntity.builder()
+                    .scopeType(FileScopeType.TEAM).teamId(5L).name("folder").build();
+            SharedFilePresignRequest req = new SharedFilePresignRequest(
+                    FOLDER_ID, "document.pdf", "application/pdf", 1024L);
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
+            given(accessControlService.isAdminOrAbove(USER_ID, 5L, "TEAM")).willReturn(false);
+            given(accessControlService.resolveEffectiveRoleName(USER_ID, 5L, "TEAM")).willReturn("MEMBER");
+            given(accessControlService.hasPermission(USER_ID, 5L, "TEAM", "MANAGE_FILES")).willReturn(false);
+
+            assertThatThrownBy(() -> service.presignUpload(FOLDER_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
         @DisplayName("正常系_PERSONALスコープ_新統一パス形式の fileKey が返却される")
         void 正常系_PERSONALスコープ() {
             // Given
@@ -323,6 +355,25 @@ class SharedFileServiceAdditionalTest {
 
             assertThat(entity.getName()).isEqualTo("test.pdf");
             assertThat(entity.getFolderId()).isEqualTo(FOLDER_ID);
+        }
+
+        @Test
+        @DisplayName("MEMBERはMANAGE_FILES権限なしでファイル更新できない")
+        void memberWithoutManageFilesCannotUpdate() {
+            SharedFileEntity entity = createFile();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, 5L, "TEAM")).willReturn(false);
+            given(accessControlService.resolveEffectiveRoleName(USER_ID, 5L, "TEAM")).willReturn("MEMBER");
+            given(accessControlService.hasPermission(USER_ID, 5L, "TEAM", "MANAGE_FILES")).willReturn(false);
+
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> security =
+                         org.mockito.Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                security.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+                assertThatThrownBy(() -> service.updateFile(FILE_ID,
+                        new UpdateFileRequest("renamed.pdf", null, null, null, null)))
+                        .isInstanceOf(BusinessException.class);
+            }
+            org.mockito.Mockito.verify(fileRepository, org.mockito.Mockito.never()).save(any());
         }
     }
 }

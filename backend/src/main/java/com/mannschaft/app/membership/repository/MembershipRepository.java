@@ -25,6 +25,21 @@ import java.util.Optional;
  */
 public interface MembershipRepository extends JpaRepository<MembershipEntity, Long> {
 
+    /**
+     * 個人横断表示で使う現役所属を、最近参加した順に安定取得する。
+     *
+     * <p>{@code memberships} には旧設計の {@code last_accessed_at} が存在しないため、
+     * F22.1 と同じく {@code joined_at} を近似値として用い、同時刻は ID 降順で固定する。</p>
+     */
+    @Query("SELECT m FROM MembershipEntity m " +
+            "WHERE m.userId = :userId AND m.leftAt IS NULL " +
+            "AND m.scopeType IN :scopeTypes " +
+            "ORDER BY m.joinedAt DESC, m.id DESC")
+    List<MembershipEntity> findRecentActiveByUser(
+            @Param("userId") Long userId,
+            @Param("scopeTypes") Collection<ScopeType> scopeTypes,
+            Pageable pageable);
+
     /** 退会処理が user 行を先にロックするために、Entity を管理状態にせず userId だけを取得する。 */
     @Query("SELECT m.userId FROM MembershipEntity m WHERE m.id = :membershipId")
     Optional<Long> findUserIdById(@Param("membershipId") Long membershipId);
@@ -81,11 +96,18 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
 
     /**
      * スコープに対するアクティブメンバーシップをページング取得する（一覧用）。
+     *
+     * <p>F14.3 AC-701: アーカイブ在籍（{@code archived_at} 非 NULL）は通常一覧から除外する。
+     * {@code MemberQueryDispatcher} の全メソッドがこのクエリを唯一の参照経路とするため、
+     * ここで除外すれば通常の組合員一覧すべてに波及する。
+     * 設計書: docs/features/F14.3_resident_life_events.md §6.3</p>
      */
     @Query(value = "SELECT m FROM MembershipEntity m " +
-            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL",
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL " +
+            "AND m.archivedAt IS NULL",
             countQuery = "SELECT COUNT(m) FROM MembershipEntity m " +
-                    "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL")
+                    "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL " +
+                    "AND m.archivedAt IS NULL")
     Page<MembershipEntity> findByScopeAndActive(
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId,

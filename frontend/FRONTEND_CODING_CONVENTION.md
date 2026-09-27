@@ -36,8 +36,13 @@
 | ページ内セクション・カード | `<SectionCard>` | 同上 |
 | ページヘッダー（タイトル+説明） | `<PageHeader>` | `<h1 class="text-2xl font-bold ...">` の直書き |
 | ローディング表示 | `<PageLoading>` | `<ProgressSpinner>` や独自スピナーの直書き |
-| 空状態表示 | `<DashboardEmptyState>` | `flex flex-col items-center text-center ...` の直書き |
+| 空状態表示（取得成功・0件） | `<DashboardEmptyState>` | `flex flex-col items-center text-center ...` の直書き |
+| エラー状態表示（取得失敗） | `<DashboardErrorState>` | 空状態コンポーネントへのフォールバック・エラーの握りつぶし |
 | 削除・操作確認 | `<ConfirmDialog>`（PrimeVue）または `useConfirm()` | ネイティブ `confirm()` の使用禁止 |
+
+> **取得失敗を空状態へフォールバックさせてはならない【必須】**: 一覧・詳細の取得が失敗した場合、`catch` でデータを空にリセットするだけで済ませると、権限エラー・通信断が「未登録」「該当なし」として誤読される（CMP-260922-2045）。取得状態（`loading`/`error`/`empty`/`loaded` 等）を持ち、`catch` では空状態ではなく `<DashboardErrorState>`（再試行ボタン付き）を描画すること。手本: `frontend/app/pages/my/shift-availability.vue`。
+>
+> **`<DashboardErrorState>` の再試行は、初回表示と同じ取得処理を呼ぶこと【必須】**: 初回表示（`onMounted`）が「A取得→成功なら依存するB取得」のように複数の取得を連鎖させている場合、`@retry` が A だけを呼ぶ実装にすると、A失敗→再試行で復旧してもBが未取得のまま欠落する（CMP-260922-2045 検分差し戻し・`teams/[slug]/jobs/[jobId]/index.vue` で発生）。初回と再試行は同じ1つの関数（例: `loadPage`）を通すこと。
 
 ### 共通 Composable（既存）— 新規実装時は必ずこれを使うこと
 

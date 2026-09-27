@@ -720,7 +720,10 @@
       "deletedToast": "已删除待办",
       "restoredToast": "已恢复待办",
       "deleteFailed": "删除失败",
-      "restoreFailed": "无法撤销"
+      "restoreFailed": "无法撤销",
+      "bulkStatusSuccess": "已更改 {count} 项待办的状态",
+      "bulkStatusPartial": "已更改 {changedCount} 项；跳过了 {skippedCount} 项锁定的待办。跳过的项目仍处于选中状态",
+      "bulkStatusAllLocked": "未作任何更改：{count} 项待办均已锁定。它们仍处于选中状态"
     },
     "field": {
       "status": "状态",
@@ -1693,6 +1696,42 @@
     "becomeSupporter": "成为支持者",
     "supporterSuccess": "已注册为支持者",
     "supporterError": "关注失败",
+    "guide": {
+      "title": "团队搜索使用方法",
+      "description": "设置搜索条件以查找公开团队、查看详细信息，并注册成为支持者。",
+      "searchConditions": {
+        "title": "设置搜索条件",
+        "body": "组合关键词、都道府县和团队类别，缩小搜索结果范围。",
+        "steps": {
+          "step1": "输入关键词并选择所需的筛选条件。",
+          "step2": "执行搜索后，符合条件的团队会显示在列表中。"
+        }
+      },
+      "results": {
+        "title": "查看搜索结果",
+        "body": "每张卡片会显示团队名称、类别、活动地区和成员人数。",
+        "steps": {
+          "step1": "从列表中选择感兴趣的团队。",
+          "step2": "打开团队详情页以查看更多信息。"
+        }
+      },
+      "supporter": {
+        "title": "注册成为支持者",
+        "body": "对于您尚未加入且接受支持者的团队，卡片上会显示注册按钮。",
+        "steps": {
+          "step1": "在目标团队的卡片上选择“成为支持者”。",
+          "step2": "注册完成后，卡片会显示已注册状态。"
+        }
+      },
+      "createAndMove": {
+        "title": "创建团队并打开详情页",
+        "body": "您可以通过右上角的按钮创建新团队。创建完成后会打开该团队的详情页。",
+        "steps": {
+          "step1": "选择“创建团队”并填写必要信息。",
+          "step2": "创建完成后会打开新团队的详情页。"
+        }
+      }
+    },
     "folders": "文件夹整理"
   },
   "orgHub": {
@@ -2488,6 +2527,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "自定义字段",
+      "add": "添加字段",
+      "loadFailed": "无法加载自定义字段",
+      "retry": "重试",
+      "empty": "暂无自定义字段",
+      "name": "字段名称",
+      "type": "类型",
+      "required": "必填",
+      "active": "启用",
+      "order": "顺序",
+      "yes": "是",
+      "no": "否",
+      "typeText": "文本",
+      "typeNumber": "数字",
+      "typeDate": "日期",
+      "typeSelect": "选项",
+      "options": "选项（每行一个）",
+      "createSuccess": "字段已添加",
+      "createFailed": "无法添加字段"
+    },
     "loadFailed": "无法加载成员信息",
     "unavailable": "该功能目前尚无法使用（准备中）",
     "saveFailed": "保存失败",
@@ -2535,6 +2595,69 @@
       "customFieldsError": "カスタム項目の読み込みに失敗しました",
       "optionsInvalidFormat": "選択肢データの形式が不正です",
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
+    }
+  },
+  "memberPermissions": {
+    "title": "MEMBER 默认权限",
+    "description": "设置加入此团队或组织的 MEMBER 用户的默认权限。",
+    "sectionTitle": "默认权限",
+    "invalidScope": "请先选择团队或组织。",
+    "loadFailed": "无法加载 MEMBER 默认权限。",
+    "saveSuccess": "已更新 MEMBER 默认权限。",
+    "saveFailed": "无法更新 MEMBER 默认权限。",
+    "inherited": "继承自上级设置",
+    "accessDenied": "只有管理员可以执行此操作。",
+    "permissions": {
+      "MANAGE_SCHEDULES": "管理日程",
+      "MANAGE_FILES": "管理文件",
+      "MANAGE_POSTS": "管理帖子"
+    }
+  },
+  "loadErrorState": {
+    "message": "数据获取失败",
+    "retry": "重试"
+  },
+  "searchBar": {
+    "keyword": "关键词",
+    "defaultPlaceholder": "按名称搜索",
+    "prefecture": "都道府县",
+    "selectPrefecture": "请选择",
+    "filterPrefecture": "搜索都道府县",
+    "genre": "类别",
+    "all": "全部"
+  },
+  "scopeLabels": {
+    "template": {
+      "CLUB": "俱乐部或社团",
+      "CLINIC": "诊所",
+      "CLASS": "课程",
+      "COMMUNITY": "社区",
+      "COMPANY": "企业",
+      "FAMILY": "家庭",
+      "RESTAURANT": "餐饮店",
+      "BEAUTY": "美容院或沙龙",
+      "STORE": "商店或零售",
+      "VOLUNTEER": "志愿服务或非营利组织",
+      "NEIGHBORHOOD": "自治会",
+      "CONDO": "公寓管理委员会",
+      "OTHER": "其他"
+    },
+    "organizationType": {
+      "GOVERNMENT": "政府机关",
+      "MUNICIPALITY": "地方政府",
+      "COMPANY": "公司或企业",
+      "HOSPITAL": "医院或医疗机构",
+      "ASSOCIATION": "协会或联盟",
+      "SCHOOL": "学校或教育机构",
+      "NPO": "非营利组织",
+      "COMMUNITY": "社区",
+      "OTHER": "其他"
+    },
+    "visibility": {
+      "PUBLIC": "公开",
+      "GUESTS_AND_ABOVE": "访客及以上",
+      "SUPPORTERS_AND_ABOVE": "支持者及以上",
+      "MEMBERS_AND_ABOVE": "成员及以上"
     }
   }
 }

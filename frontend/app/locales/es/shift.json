@@ -305,7 +305,18 @@
     },
     "reminder": {
       "send": "Enviar Recordatorio",
-      "sent": "Recordatorio Enviado"
+      "sent": "Recordatorio Enviado",
+      "confirmTitle": "Recordar a quienes no han enviado su preferencia",
+      "confirmMessage": "¿Enviar un recordatorio a quienes no han enviado sus preferencias para «{title}»?",
+      "confirmAccept": "Enviar recordatorio",
+      "confirmReject": "Cancelar",
+      "sentTitle": "Recordatorio enviado",
+      "sentDetail": "Se pidió a {count} personas que envíen sus preferencias.",
+      "noRecipientsTitle": "No hay envíos pendientes",
+      "noRecipientsDetail": "No hay nadie a quien recordar.",
+      "failedTitle": "No se pudo enviar el recordatorio",
+      "failedDetail": "Vuelve a intentarlo más tarde.",
+      "targetUnavailable": "Este horario no está disponible o ya no acepta preferencias."
     },
     "empty": {
       "noSchedules": "No hay horarios",

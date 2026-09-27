@@ -10,6 +10,7 @@ import com.mannschaft.app.performance.dto.TeamStatsResponse;
 import com.mannschaft.app.performance.entity.PerformanceMetricEntity;
 import com.mannschaft.app.performance.entity.PerformanceRecordEntity;
 import com.mannschaft.app.performance.repository.PerformanceRecordRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -44,6 +45,8 @@ class PerformanceStatsServiceTest {
 
     @Mock
     private UserRoleRepository userRoleRepository;
+    @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
 
     @Mock
     private NameResolverService nameResolverService;
@@ -324,7 +327,7 @@ class PerformanceStatsServiceTest {
         @DisplayName("正常系: teamIdがnullで空リストが返る")
         void getMyPerformance_teamIdなし_空リスト() {
             // Given
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID_1)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID_1)).willReturn(List.of());
             given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of());
 
             // When

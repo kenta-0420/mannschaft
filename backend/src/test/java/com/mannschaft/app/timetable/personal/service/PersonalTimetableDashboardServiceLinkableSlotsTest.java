@@ -1,6 +1,6 @@
 package com.mannschaft.app.timetable.personal.service;
 
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.timetable.personal.PersonalTimetableStatus;
 import com.mannschaft.app.timetable.personal.PersonalTimetableVisibility;
 import com.mannschaft.app.timetable.personal.dto.TimetableWeekSlotInfo;
@@ -48,7 +48,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
     @Mock private TimetableSlotRepository teamSlotRepository;
     @Mock private TimetableSlotUserNoteRepository userNoteRepository;
     @Mock private TimetableSlotUserNoteAttachmentRepository attachmentRepository;
-    @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private TimetableChangeRepository timetableChangeRepository;
 
     @InjectMocks private PersonalTimetableDashboardService service;
@@ -129,7 +129,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
                 .willReturn(List.of(slot1, slot2));
         given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(1L))
                 .willReturn(List.of(period(1, "1限")));
-        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
         List<TimetableWeekSlotInfo> result = service.listAllWeekSlots(USER_ID, TODAY);
 
@@ -156,7 +156,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
                 .willReturn(List.of(emptySlot, nullSlot, validSlot));
         given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(1L))
                 .willReturn(List.of());
-        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
         List<TimetableWeekSlotInfo> result = service.listAllWeekSlots(USER_ID, TODAY);
 
@@ -180,7 +180,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
                 .willReturn(List.of(slot1, slot2));
         given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(1L))
                 .willReturn(List.of());
-        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
         List<TimetableWeekSlotInfo> result = service.listAllWeekSlots(USER_ID, TODAY);
 
@@ -196,7 +196,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
         given(personalTimetableRepository.findByUserIdAndStatusAndDeletedAtIsNull(
                 eq(USER_ID), eq(PersonalTimetableStatus.ACTIVE)))
                 .willReturn(List.of());
-        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
         List<TimetableWeekSlotInfo> result = service.listAllWeekSlots(USER_ID, TODAY);
 
@@ -221,7 +221,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
         given(personalTimetableRepository.findByUserIdAndStatusAndDeletedAtIsNull(
                 eq(USER_ID), eq(PersonalTimetableStatus.ACTIVE)))
                 .willReturn(List.of(expired));
-        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
 
         List<TimetableWeekSlotInfo> result = service.listAllWeekSlots(USER_ID, TODAY);
 

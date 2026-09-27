@@ -11,11 +11,14 @@ import com.mannschaft.app.ticket.repository.TicketBookRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -36,6 +39,8 @@ public class TicketExpiryBatchService {
     /** Issue #2715 ロットB: 受信者 locale の解決（D-5: auth の UserRepository を直接呼ばない）。 */
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 期限切れチケットを EXPIRED に遷移する。毎日 00:30 JST に実行。
@@ -48,7 +53,7 @@ public class TicketExpiryBatchService {
     @SchedulerLock(name = "ticketExpiryDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional
     public void expireTickets() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(wallClock);
         List<TicketBookEntity> expiredBooks = bookRepository.findExpiredActiveBooks(now);
 
         if (expiredBooks.isEmpty()) {
@@ -88,7 +93,7 @@ public class TicketExpiryBatchService {
     @SchedulerLock(name = "ticketPendingCleanupDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
     @Transactional
     public void cleanupPendingBooks() {
-        LocalDateTime cutoff = LocalDateTime.now().minusHours(2);
+        LocalDateTime cutoff = LocalDateTime.now(wallClock).minusHours(2);
         List<TicketBookEntity> staleBooks = bookRepository.findStalePendingBooks(cutoff);
 
         if (staleBooks.isEmpty()) {
@@ -115,7 +120,7 @@ public class TicketExpiryBatchService {
     @SchedulerLock(name = "ticketExpiryPreNotificationDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional(readOnly = true)
     public void sendExpiryNotifications() {
-        java.time.LocalDate today = java.time.LocalDate.now();
+        LocalDate today = LocalDate.now(wallClock);
         int[] notificationDays = {30, 7, 3, 1};
 
         for (int days : notificationDays) {

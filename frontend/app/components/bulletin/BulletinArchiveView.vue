@@ -277,7 +277,7 @@ defineExpose({ refresh: () => { loadTree(); loadThreads(currentPage.value) } })
 <template>
   <div class="flex flex-col gap-4 md:flex-row md:items-start">
     <!-- サイドバー: フォルダツリー -->
-    <aside class="w-full shrink-0 rounded-xl border border-surface-200 bg-surface-0 p-3 md:w-64 dark:border-surface-700">
+    <aside class="w-full shrink-0 rounded-xl border border-surface-200 bg-surface-0 p-3 md:w-64 dark:border-surface-700 dark:bg-surface-800">
       <div class="mb-2 flex items-center justify-between">
         <h2 class="text-sm font-semibold text-surface-600 dark:text-surface-300">
           {{ $t('bulletin.archive.folders') }}
@@ -328,7 +328,7 @@ defineExpose({ refresh: () => { loadTree(); loadThreads(currentPage.value) } })
         <div
           v-for="thread in threads"
           :key="thread.id"
-          class="flex items-start gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-700"
+          class="flex items-start gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
         >
           <button
             type="button"

@@ -90,6 +90,7 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-building',
     items: [
       { labelKey: 'teamSidebar.item.repair_plan', icon: 'pi pi-wrench', path: 'repair-plan', moduleSlug: 'repair_longterm_plan', requiredRole: 'MEMBER' },
+      { labelKey: 'teamSidebar.item.incidents', icon: 'pi pi-exclamation-triangle', path: 'incidents', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.equipment', icon: 'pi pi-cog', path: 'equipment', moduleSlug: 'equipment', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.parking', icon: 'pi pi-car', path: 'parking', moduleSlug: 'parking', requiredRole: 'MEMBER' },
       // CMP-260909-1141 Phase 3: 業者マスタ（/admin/vendors）は repair_longterm_plan（修繕長期計画）
@@ -115,8 +116,10 @@ const categories: SidebarCategory[] = [
     labelKey: 'teamSidebar.category.settings',
     icon: 'pi pi-cog',
     items: [
+      { labelKey: 'teamSidebar.item.guide', icon: 'pi pi-book', path: 'guide', moduleSlug: null, requiredRole: 'MEMBER' },
       // F10.1.1 P2a: 管理コンソール（L2 ハブ）への入口。DEPUTY_ADMIN 以上に表示。
       { labelKey: 'teamSidebar.item.adminConsole', icon: 'pi pi-shield', path: 'admin', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'teamSidebar.item.memberPermissions', icon: 'pi pi-user-edit', path: '', absolutePath: '/admin/member-permissions', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'teamSidebar.item.settings', icon: 'pi pi-sliders-h', path: 'settings/shift', moduleSlug: null, requiredRole: 'ADMIN' },
       // CMP-260910-1555: 時給を登録する入口が画面に無く、シフトを公開しても予算の消化額が
       // 0 円のままになっていたため新設。金銭情報なので ADMIN 限定。

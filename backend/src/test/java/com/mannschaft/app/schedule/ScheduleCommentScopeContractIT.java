@@ -429,9 +429,9 @@ class ScheduleCommentScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("AC-16c MANAGE_SCHEDULES を既定で持つ一般 MEMBER の settings は 403、同じ予定の作成者なら 200")
+    @DisplayName("AC-16c MANAGE_SCHEDULES 初期 OFF の一般 MEMBER の settings は 403、同じ予定の作成者なら 200")
     void AC16c_スレッド開閉は作成者かADMINに限られる() throws Exception {
-        // MANAGE_SCHEDULES は MEMBER に既定付与されているため、これを条件にすると
+        // MANAGE_SCHEDULES は MEMBER に後から付与可能なため、これを条件にすると
         // 一般 MEMBER が誰の予定のスレッドでも閉じられてしまう（§2.1.1）。
         Long othersSchedule = saveTeamScheduleCreatedBy(otherMemberId, MinViewRole.MEMBER_PLUS);
 

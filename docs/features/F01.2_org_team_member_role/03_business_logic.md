@@ -395,13 +395,17 @@
 6. ロールが MEMBER →
    a. user_permission_groups（当該ユーザー・スコープ）に割り当てグループが存在するか確認
    b. 割り当てグループなし →
-        role_permissions WHERE role_id = MEMBER AND is_default = TRUE（基本3件）を実効パーミッションとして取得
+        role_permissions WHERE role_id = MEMBER AND is_default = TRUE を基準値として取得し、
+        team_role_permissions WHERE scope_type / scope_id / role_id = MEMBER の ON/OFF を上書きする
+        （スコープ上書き行が無い設定対象3件はグローバル既定値を継承。
+         MANAGE_SCHEDULES / MANAGE_FILES / MANAGE_POSTS はすべて初期 OFF）
    c. 割り当てグループあり（1件以上）→
         is_default を完全に無視し、user_permission_groups
           → permission_groups WHERE target_role = 'MEMBER'（AND team_id/organization_id でスコープ絞り込み）
           → permission_group_permissions → permissions
-        の UNION のみを実効パーミッションとする（グループに基本3件が含まれていなければそれらも失われる）
-        ※ ADMIN がお知らせ権限だけ追加したい場合は MANAGE_SCHEDULES/MANAGE_FILES/MANAGE_POSTS も含むグループを作成する必要がある
+        の UNION のみを実効パーミッションとする（グループに既定権限が含まれていなければそれらも失われる）
+        ※ ADMIN がお知らせ権限だけ追加したい場合は MANAGE_FILES/MANAGE_POSTS も含むグループを作成する必要がある。
+           MANAGE_SCHEDULES を付与する場合はグループにも含める
 7. ロールが SUPPORTER / GUEST → パーミッションなし（ロールチェックのみで制御）
 8. パーミッションセットを元に操作可否を判定
 ```
@@ -418,6 +422,9 @@
 | 値 | パーミッション名の Set（JSON 配列）|
 | TTL | 5分（`app.permission-cache.ttl`）|
 | ストア | Valkey（Spring Cache + `@Cacheable`）|
+
+スコープ既定権限を更新したトランザクション内で `role_permission_cache_generations` の世代を進める。
+キャッシュキーに世代を含めるため、更新前の値は TTL を待たず次の認可判定から到達不能になる。
 
 **キャッシュ無効化タイミング**
 
@@ -627,10 +634,10 @@ README 記載の 3 層制御は DEPUTY_ADMIN と MEMBER の両ロールに適用
 1. **SYSTEM_ADMIN が天井を設定**: `role_permissions WHERE role_id = MEMBER`（is_default 問わず全6件）が権限グループに含められる上限
 2. **ADMIN が権限グループを構成**: `permission_groups（target_role = 'MEMBER', team_id/organization_id = スコープID）` + `permission_group_permissions` で天井内のパーミッションを選択してグループを作成
 3. **ADMIN がユーザーへ割り当て**: `user_permission_groups` で対象 MEMBER と権限グループを紐付け
-   - 未割り当て → `is_default = TRUE` の基本3件のみが実効パーミッション
-   - 1件以上割り当て → グループ内権限の UNION のみが実効パーミッション（基本3件を含むかどうかはグループ定義次第）
+   - 未割り当て → `is_default = TRUE` の権限のみが実効パーミッション（V223 以降の MEMBER は管理権限0件）
+   - 1件以上割り当て → グループ内権限の UNION のみが実効パーミッション（管理権限3件を含むかどうかはグループ定義次第）
 
-> **オーバーライドモデル**: グループが1件以上割り当てられると `is_default` は無視され、グループ内権限のみが実効パーミッションとなる。これにより「ADMIN がグループを割り当てるだけでデフォルト権限を含む完全な権限セットを上書き設定できる」設計になっている。権限を絞りたい場合は基本3件を含まないグループを割り当てればよく、マイナス計算のロジックが不要。
+> **オーバーライドモデル**: グループが1件以上割り当てられると `is_default` は無視され、グループ内権限のみが実効パーミッションとなる。これにより「ADMIN がグループを割り当てるだけでデフォルト権限を含む完全な権限セットを上書き設定できる」設計になっている。権限を絞りたい場合は管理権限3件を含まないグループを割り当てればよく、マイナス計算のロジックが不要。
 >
 > **`DELETE_OTHERS_CONTENT` の扱い**: DEPUTY_ADMIN / MEMBER 双方の天井に含める。いかなるデフォルト権限グループにも含めない。ADMIN が意図的に付与した場合のみ有効。
 
@@ -640,7 +647,7 @@ README 記載の 3 層制御は DEPUTY_ADMIN と MEMBER の両ロールに適用
 ```
 1. ADMIN が MEMBER 用権限グループを作成
    POST /api/v1/teams/{id}/permission-groups  body: { "target_role": "MEMBER", "name": "お知らせ編集担当" }
-2. 権限グループにパーミッションを設定（基本3件 + MANAGE_ANNOUNCEMENTS を含める）
+2. 権限グループにパーミッションを設定（必要な管理権限3件 + MANAGE_ANNOUNCEMENTS を含める）
    PATCH /api/v1/teams/{id}/permission-groups/{groupId}
    body: { "permission_ids": [MANAGE_SCHEDULES, MANAGE_FILES, MANAGE_POSTS, MANAGE_ANNOUNCEMENTS の各 id] }
 3. 対象 MEMBER に権限グループを割り当て

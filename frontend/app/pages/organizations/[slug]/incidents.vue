@@ -1,79 +1,116 @@
 <script setup lang="ts">
-import type { IncidentSummaryResponse } from '~/types/incident'
-
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
 const route = useRoute()
+const router = useRouter()
 const orgSlug = String(route.params.slug)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
+const { resolveOrganizationNumericId } = useOrganizationNumericId()
 
-const selectedIncident = ref<IncidentSummaryResponse | null>(null)
+const scopeId = ref<string | null>(null)
+const scopeLoading = ref(true)
+const scopeLoadFailed = ref(false)
 const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
 const showCategoryManager = ref(false)
 const editId = ref<number | undefined>(undefined)
 const listRef = ref<{ refresh: () => void } | null>(null)
 
+const selectedIncidentId = computed(() => parseIncidentId(route.query.incidentId))
+
+function parseIncidentId(value: unknown): number | null {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null
+  const incidentId = Number(value)
+  return Number.isSafeInteger(incidentId) ? incidentId : null
+}
+
+async function resolveScopeId() {
+  scopeLoading.value = true
+  scopeLoadFailed.value = false
+  try {
+    scopeId.value = await resolveOrganizationNumericId(orgSlug)
+  } catch {
+    scopeLoadFailed.value = true
+  } finally {
+    scopeLoading.value = false
+  }
+}
+
 function onSaved() {
   listRef.value?.refresh()
 }
 
-function onSelect(incident: IncidentSummaryResponse) {
-  selectedIncident.value = incident
+async function onSelect(incidentId: number) {
+  await router.push({ path: route.path, query: { ...route.query, incidentId: String(incidentId) } })
 }
 
-function onBack() {
-  selectedIncident.value = null
+async function onBack() {
+  const query = { ...route.query }
+  delete query.incidentId
+  await router.replace({ path: route.path, query })
   listRef.value?.refresh()
 }
 
-onMounted(() => loadPermissions())
+onMounted(async () => {
+  await Promise.all([loadPermissions(), resolveScopeId()])
+})
 </script>
 
 <template>
   <div>
     <PageHeader title="インシデント管理" />
 
-    <div v-if="selectedIncident" class="mx-auto max-w-3xl">
-      <IncidentDetail
-        :incident-id="selectedIncident.id"
-        :can-manage="isAdminOrDeputy"
-        @back="onBack"
-        @updated="onSaved"
-      />
+    <div v-if="scopeLoading" class="flex justify-center py-12">
+      <LoadingBounce />
     </div>
 
-    <div v-else>
-      <IncidentList
-        ref="listRef"
+    <div v-else-if="scopeLoadFailed" class="py-12 text-center text-surface-500">
+      <p class="mb-4">組織情報の取得に失敗しました。</p>
+      <Button label="再試行" @click="resolveScopeId" />
+    </div>
+
+    <template v-else-if="scopeId">
+      <div v-if="selectedIncidentId" class="mx-auto max-w-3xl">
+        <IncidentDetail
+          :incident-id="selectedIncidentId"
+          :can-manage="isAdminOrDeputy"
+          @back="onBack"
+          @updated="onSaved"
+        />
+      </div>
+
+      <div v-else>
+        <IncidentList
+          ref="listRef"
+          scope-type="ORGANIZATION"
+          :scope-id="scopeId"
+          :can-manage="isAdminOrDeputy"
+          @select="onSelect($event.id)"
+          @create="showCreateDialog = true"
+          @manage-categories="showCategoryManager = true"
+        />
+      </div>
+
+      <IncidentForm
+        v-model:visible="showCreateDialog"
         scope-type="ORGANIZATION"
-        :scope-id="orgSlug"
-        :can-manage="isAdminOrDeputy"
-        @select="onSelect"
-        @create="showCreateDialog = true"
-        @manage-categories="showCategoryManager = true"
+        :scope-id="scopeId"
+        @saved="onSaved"
       />
-    </div>
 
-    <IncidentForm
-      v-model:visible="showCreateDialog"
-      scope-type="ORGANIZATION"
-      :scope-id="orgSlug"
-      @saved="onSaved"
-    />
+      <IncidentForm
+        v-model:visible="showEditDialog"
+        scope-type="ORGANIZATION"
+        :scope-id="scopeId"
+        :edit-id="editId"
+        @saved="onSaved"
+      />
 
-    <IncidentForm
-      v-model:visible="showEditDialog"
-      scope-type="ORGANIZATION"
-      :scope-id="orgSlug"
-      :edit-id="editId"
-      @saved="onSaved"
-    />
-
-    <IncidentCategoryManager
-      v-model:visible="showCategoryManager"
-      scope-type="ORGANIZATION"
-      :scope-id="orgSlug"
-    />
+      <IncidentCategoryManager
+        v-model:visible="showCategoryManager"
+        scope-type="ORGANIZATION"
+        :scope-id="scopeId"
+      />
+    </template>
   </div>
 </template>

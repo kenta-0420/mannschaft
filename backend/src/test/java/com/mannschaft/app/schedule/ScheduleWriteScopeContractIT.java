@@ -33,6 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -134,6 +135,7 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminOrgBId, ScopeType.ORGANIZATION, orgBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminOrgBId, "ADMIN", null, orgBId);
         MembershipTestHelper.insertMembership(em, memberOrgAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
+        seedMemberManagementPermissions();
         // outsiderId / personalOwnerId はどこにも所属させない。
 
         ScheduleEntity teamScheduleA = scheduleRepository.save(ScheduleEntity.builder()
@@ -217,6 +219,77 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createTeamBody())))
                     .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("チームADMINが予定管理をONにするとMEMBERが作成でき、組織には波及しない")
+        void チーム予定管理_ON後にMEMBER作成許可() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(get("/api/v1/admin/member-permissions")
+                            .param("scopeType", "TEAM").param("scopeId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.permissions[0].enabled").value(false))
+                    .andExpect(jsonPath("$.data.permissions[1].enabled").value(false))
+                    .andExpect(jsonPath("$.data.permissions[2].enabled").value(false));
+            setAuth(memberTeamAId);
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules", teamASlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createTeamBody())))
+                    .andExpect(status().isForbidden());
+
+            setAuth(adminTeamAId);
+            mockMvc.perform(put("/api/v1/admin/member-permissions")
+                            .param("scopeType", "TEAM").param("scopeId", teamAId.toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"permissions\":[{\"name\":\"MANAGE_SCHEDULES\",\"enabled\":true},"
+                                    + "{\"name\":\"MANAGE_FILES\",\"enabled\":false},"
+                                    + "{\"name\":\"MANAGE_POSTS\",\"enabled\":false}]}"))
+                    .andExpect(status().isOk());
+
+            setAuth(memberTeamAId);
+            var created = mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules", teamASlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createTeamBody())))
+                    .andExpect(status().isCreated()).andReturn();
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules/{id}/duplicate",
+                            teamASlug, teamScheduleAId))
+                    .andExpect(status().isCreated());
+            mockMvc.perform(delete("/api/v1/teams/{teamPublicId}/schedules/{id}",
+                            teamASlug, teamScheduleAId))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules/{id}/cancel",
+                            teamASlug, teamScheduleAId))
+                    .andExpect(status().isForbidden());
+            long ownScheduleId = objectMapper.readTree(created.getResponse().getContentAsString())
+                    .at("/data/id").asLong();
+            mockMvc.perform(delete("/api/v1/teams/{teamPublicId}/schedules/{id}",
+                            teamASlug, ownScheduleId))
+                    .andExpect(status().isNoContent());
+            mockMvc.perform(patch("/api/v1/teams/{teamPublicId}/schedules/{id}/attendances/bulk",
+                            teamASlug, teamScheduleAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("attendances", List.of(
+                                    Map.of("userId", memberTeamAId, "status", "ATTENDING"))))))
+                    .andExpect(status().isForbidden());
+
+            setAuth(memberOrgAId);
+            mockMvc.perform(post("/api/v1/organizations/{orgPublicId}/schedules", orgASlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createOrgBody())))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("MEMBERは自身の予定管理権限をONにできない")
+        void MEMBERは予定管理を変更できない() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(put("/api/v1/admin/member-permissions")
+                            .param("scopeType", "TEAM").param("scopeId", teamAId.toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"permissions\":[{\"name\":\"MANAGE_SCHEDULES\",\"enabled\":true},"
+                                    + "{\"name\":\"MANAGE_FILES\",\"enabled\":true},"
+                                    + "{\"name\":\"MANAGE_POSTS\",\"enabled\":true}]}"))
+                    .andExpect(status().isForbidden());
         }
 
         @Test
@@ -771,6 +844,28 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    /** この IT は Flyway 無効のため、MEMBER 管理権限3件の初期 OFF をテスト内で再現する。 */
+    private void seedMemberManagementPermissions() {
+        for (String name : List.of("MANAGE_SCHEDULES", "MANAGE_FILES", "MANAGE_POSTS")) {
+            em.createNativeQuery("INSERT INTO permissions (name, display_name, scope, created_at, updated_at) "
+                            + "SELECT :name, :name, 'TEAM', NOW(), NOW() FROM DUAL "
+                            + "WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = :name)")
+                    .setParameter("name", name)
+                    .executeUpdate();
+            em.createNativeQuery("INSERT INTO role_permissions (role_id, permission_id, is_default, created_at) "
+                            + "SELECT r.id, p.id, 0, NOW() FROM roles r CROSS JOIN permissions p "
+                            + "WHERE r.name = 'MEMBER' AND p.name = :name "
+                            + "AND NOT EXISTS (SELECT 1 FROM role_permissions rp "
+                            + "WHERE rp.role_id = r.id AND rp.permission_id = p.id)")
+                    .setParameter("name", name)
+                    .executeUpdate();
+        }
+        em.createNativeQuery("UPDATE role_permissions rp JOIN roles r ON r.id = rp.role_id "
+                        + "JOIN permissions p ON p.id = rp.permission_id SET rp.is_default = 0 "
+                        + "WHERE r.name = 'MEMBER' AND p.name IN ('MANAGE_SCHEDULES', 'MANAGE_FILES', 'MANAGE_POSTS')")
+                .executeUpdate();
+    }
 
     private void setAuth(Long userId) {
         SecurityContextHolder.getContext().setAuthentication(

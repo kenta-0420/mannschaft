@@ -445,7 +445,6 @@ class ShiftScheduleServiceTest {
                     "更新タイトル", null, null, null, null, null, null);
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willReturn(entity);
             given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
@@ -480,7 +479,6 @@ class ShiftScheduleServiceTest {
                     null, null, LocalDate.of(2026, 3, 10), LocalDate.of(2026, 3, 1),
                     null, null, null);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
@@ -544,7 +542,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleResponse response = createScheduleResponse();
 
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(existing));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
@@ -577,7 +574,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleResponse response = createScheduleResponse();
 
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(existing));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
@@ -609,7 +605,6 @@ class ShiftScheduleServiceTest {
             // Given
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
 
@@ -667,7 +662,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
@@ -687,7 +681,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
@@ -706,7 +699,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
@@ -727,7 +719,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
@@ -745,7 +736,6 @@ class ShiftScheduleServiceTest {
             // Given
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
@@ -792,7 +782,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity duplicate = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(source));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willReturn(duplicate);
             given(shiftMapper.toScheduleResponse(duplicate)).willReturn(response);
@@ -851,7 +840,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity schedule = createScheduleEntity();
             ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // ポジション
@@ -925,7 +913,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity schedule = createScheduleEntity();
             ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
                     .willReturn(List.of());

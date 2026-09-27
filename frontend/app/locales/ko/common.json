@@ -720,7 +720,10 @@
       "deletedToast": "TODO를 삭제했습니다",
       "restoredToast": "TODO를 복원했습니다",
       "deleteFailed": "삭제에 실패했습니다",
-      "restoreFailed": "실행 취소할 수 없습니다"
+      "restoreFailed": "실행 취소할 수 없습니다",
+      "bulkStatusSuccess": "TODO {count}개의 상태를 변경했습니다",
+      "bulkStatusPartial": "{changedCount}개를 변경하고 잠긴 TODO {skippedCount}개를 건너뛰었습니다. 건너뛴 항목은 선택된 상태로 유지됩니다",
+      "bulkStatusAllLocked": "변경하지 않았습니다. TODO {count}개가 모두 잠겨 있습니다. 선택된 상태로 유지됩니다"
     },
     "field": {
       "status": "상태",
@@ -1693,6 +1696,42 @@
     "becomeSupporter": "서포터 되기",
     "supporterSuccess": "서포터로 등록했습니다",
     "supporterError": "팔로우에 실패했습니다",
+    "guide": {
+      "title": "팀 검색 이용 방법",
+      "description": "검색 조건을 지정해 공개 팀을 찾고 상세 정보를 확인하거나 서포터로 등록할 수 있습니다.",
+      "searchConditions": {
+        "title": "검색 조건 지정하기",
+        "body": "키워드, 도도부현, 팀 카테고리를 조합해 원하는 팀을 좁혀 보세요.",
+        "steps": {
+          "step1": "검색어를 입력하고 필요한 필터를 선택합니다.",
+          "step2": "검색을 실행하면 조건에 맞는 팀이 목록에 표시됩니다."
+        }
+      },
+      "results": {
+        "title": "검색 결과 확인하기",
+        "body": "각 카드에는 팀 이름, 카테고리, 활동 지역, 멤버 수가 표시됩니다.",
+        "steps": {
+          "step1": "목록에서 관심 있는 팀을 선택합니다.",
+          "step2": "상세 페이지로 이동해 자세한 정보를 확인합니다."
+        }
+      },
+      "supporter": {
+        "title": "서포터로 등록하기",
+        "body": "소속되지 않은 팀 중 서포터를 받는 팀에는 등록 버튼이 표시됩니다.",
+        "steps": {
+          "step1": "대상 팀 카드에서 ‘서포터 되기’를 선택합니다.",
+          "step2": "등록이 완료되면 카드에 등록 상태가 표시됩니다."
+        }
+      },
+      "createAndMove": {
+        "title": "팀을 만들고 상세 페이지 열기",
+        "body": "오른쪽 위의 만들기 버튼으로 새 팀을 만들 수 있습니다. 완료되면 해당 팀의 상세 페이지가 열립니다.",
+        "steps": {
+          "step1": "‘팀 만들기’를 선택하고 필요한 정보를 입력합니다.",
+          "step2": "만들기가 완료되면 새 팀의 상세 페이지가 열립니다."
+        }
+      }
+    },
     "folders": "폴더 정리"
   },
   "orgHub": {
@@ -2488,6 +2527,27 @@
     }
   },
   "memberProfile": {
+    "fields": {
+      "title": "사용자 지정 항목",
+      "add": "항목 추가",
+      "loadFailed": "사용자 지정 항목을 불러오지 못했습니다",
+      "retry": "다시 시도",
+      "empty": "사용자 지정 항목이 없습니다",
+      "name": "항목 이름",
+      "type": "유형",
+      "required": "필수",
+      "active": "활성",
+      "order": "순서",
+      "yes": "예",
+      "no": "아니요",
+      "typeText": "텍스트",
+      "typeNumber": "숫자",
+      "typeDate": "날짜",
+      "typeSelect": "선택",
+      "options": "선택지 (한 줄에 하나씩)",
+      "createSuccess": "항목을 추가했습니다",
+      "createFailed": "항목을 추가하지 못했습니다"
+    },
     "loadFailed": "회원 정보를 불러오지 못했습니다",
     "unavailable": "이 기능은 현재 이용하실 수 없습니다(준비 중)",
     "saveFailed": "저장에 실패했습니다",
@@ -2535,6 +2595,69 @@
       "customFieldsError": "カスタム項目の読み込みに失敗しました",
       "optionsInvalidFormat": "選択肢データの形式が不正です",
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
+    }
+  },
+  "memberPermissions": {
+    "title": "MEMBER 기본 권한",
+    "description": "이 팀 또는 조직에 참여하는 MEMBER 사용자의 기본 권한을 설정합니다.",
+    "sectionTitle": "기본 권한",
+    "invalidScope": "팀 또는 조직을 선택한 후 열어 주세요.",
+    "loadFailed": "MEMBER 기본 권한을 불러오지 못했습니다.",
+    "saveSuccess": "MEMBER 기본 권한을 업데이트했습니다.",
+    "saveFailed": "MEMBER 기본 권한을 업데이트하지 못했습니다.",
+    "inherited": "상위 설정에서 상속됨",
+    "accessDenied": "관리자만 이 작업을 수행할 수 있습니다.",
+    "permissions": {
+      "MANAGE_SCHEDULES": "일정 관리",
+      "MANAGE_FILES": "파일 관리",
+      "MANAGE_POSTS": "게시물 관리"
+    }
+  },
+  "loadErrorState": {
+    "message": "데이터를 가져오지 못했습니다",
+    "retry": "다시 시도"
+  },
+  "searchBar": {
+    "keyword": "키워드",
+    "defaultPlaceholder": "이름으로 검색",
+    "prefecture": "도도부현",
+    "selectPrefecture": "선택해 주세요",
+    "filterPrefecture": "도도부현 검색",
+    "genre": "카테고리",
+    "all": "전체"
+  },
+  "scopeLabels": {
+    "template": {
+      "CLUB": "클럽·동아리",
+      "CLINIC": "클리닉",
+      "CLASS": "클래스",
+      "COMMUNITY": "커뮤니티",
+      "COMPANY": "기업",
+      "FAMILY": "가족",
+      "RESTAURANT": "음식점",
+      "BEAUTY": "미용실·살롱",
+      "STORE": "매장·소매",
+      "VOLUNTEER": "봉사·NPO",
+      "NEIGHBORHOOD": "주민회",
+      "CONDO": "공동주택 관리조합",
+      "OTHER": "기타"
+    },
+    "organizationType": {
+      "GOVERNMENT": "행정·관공서",
+      "MUNICIPALITY": "지방자치단체",
+      "COMPANY": "회사·기업",
+      "HOSPITAL": "병원·의료기관",
+      "ASSOCIATION": "협회·연맹",
+      "SCHOOL": "학교·교육기관",
+      "NPO": "NPO·비영리단체",
+      "COMMUNITY": "커뮤니티",
+      "OTHER": "기타"
+    },
+    "visibility": {
+      "PUBLIC": "공개",
+      "GUESTS_AND_ABOVE": "게스트 이상",
+      "SUPPORTERS_AND_ABOVE": "서포터 이상",
+      "MEMBERS_AND_ABOVE": "멤버 이상"
     }
   }
 }

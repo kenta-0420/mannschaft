@@ -1,6 +1,7 @@
 package com.mannschaft.app.ticket;
 
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.ticket.entity.TicketBookEntity;
 import com.mannschaft.app.ticket.repository.TicketBookRepository;
@@ -15,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,10 +41,17 @@ import static org.mockito.Mockito.verify;
 @DisplayName("TicketExpiryBatchService 単体テスト")
 class TicketExpiryBatchServiceTest {
 
+    private static final LocalDateTime CURRENT_TIME = LocalDateTime.of(2026, 4, 1, 9, 0);
+    private static final LocalDate TODAY = CURRENT_TIME.toLocalDate();
+    private static final Instant CURRENT_INSTANT = CURRENT_TIME
+            .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+            .toInstant();
+
     @Mock private TicketBookRepository bookRepository;
     @Mock private NotificationHelper notificationHelper;
     @Mock private UserLocaleCache userLocaleCache;
     @Mock private MessageSource messageSource;
+    @Mock private Clock wallClock;
 
     @InjectMocks
     private TicketExpiryBatchService service;
@@ -53,6 +63,8 @@ class TicketExpiryBatchServiceTest {
         lenient().when(userLocaleCache.getLocale(org.mockito.ArgumentMatchers.anyLong())).thenReturn("ja");
         lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
                 .thenAnswer(inv -> inv.getArgument(2));
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
 
     @Nested
@@ -66,6 +78,7 @@ class TicketExpiryBatchServiceTest {
 
             service.expireTickets();
 
+            verify(bookRepository).findExpiredActiveBooks(eq(CURRENT_TIME));
             verify(bookRepository, never()).save(any());
         }
 
@@ -120,6 +133,7 @@ class TicketExpiryBatchServiceTest {
 
             service.cleanupPendingBooks();
 
+            verify(bookRepository).findStalePendingBooks(eq(CURRENT_TIME.minusHours(2)));
             verify(bookRepository, never()).save(any());
         }
     }
@@ -141,9 +155,8 @@ class TicketExpiryBatchServiceTest {
             verify(bookRepository, times(4)).findBooksExpiringBetween(any(), any());
 
             // 30 日前区間が [today+30 00:00, today+31 00:00) であることを検証する
-            LocalDate today = LocalDate.now();
-            LocalDateTime from30 = today.plusDays(30).atStartOfDay();
-            LocalDateTime to30 = today.plusDays(31).atStartOfDay();
+            LocalDateTime from30 = TODAY.plusDays(30).atStartOfDay();
+            LocalDateTime to30 = TODAY.plusDays(31).atStartOfDay();
             verify(bookRepository).findBooksExpiringBetween(eq(from30), eq(to30));
             verify(notificationHelper, never())
                     .notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());

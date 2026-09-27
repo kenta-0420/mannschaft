@@ -30,22 +30,56 @@ const advanceNoticesLoading = ref(false)
 
 const showHistory = ref(false)
 
+/**
+ * 点呼候補の取得失敗は「対象者がいません」ではない。空状態へフォールバックせずエラー状態を出す。
+ *
+ * composable の `error` ref は submit / patchEntry など点呼候補取得以外の失敗でも
+ * 更新されるため、それに相乗りすると「送信に失敗しただけ」で一覧ごとエラー状態に
+ * 差し替わってしまう。取得専用の状態としてページ側で独立して持つ。
+ */
+const loadFailed = ref(false)
+
+/**
+ * 【2度目の検分差し戻し対応・CMP-260922-2045】候補取得（loadCandidates）と
+ * 事前連絡取得（loadAdvanceNotices）それぞれの「最新の呼び出しか」を判定する世代番号。
+ *
+ * loadAdvanceNotices を loadCandidates から独立させた結果、初回の候補取得が
+ * 失敗して再試行すると、初回・再試行の2回分の loadAdvanceNotices が同時に
+ * 進行しうる。初回側が後から解決すると、既に再試行側が更新した最新の
+ * advanceNotices を古い結果で上書きしてしまう（遅刻・欠席の件数が消える）。
+ * 呼び出しごとに世代番号を発行し、自分より後の呼び出しが既に走っていたら
+ * 自分の結果（成功・失敗・finally のいずれも）は state に反映しない。
+ * 候補取得側の loadFailed も同じ理由で世代番号を持つ（loadCandidates 自体・
+ * candidates.value の競合は useRollCall composable 内部の責務であり、他画面と
+ * 共有されている composable のため本修正では手を入れず、既知の範囲として報告する）。
+ */
+let candidatesSeq = 0
+let advanceNoticesSeq = 0
+
 async function reload(): Promise<void> {
-  await Promise.all([loadCandidates(), loadAdvanceNotices()])
+  const seq = ++candidatesSeq
+  void loadAdvanceNotices()
+  loadFailed.value = false
+  try {
+    await loadCandidates()
+    if (seq === candidatesSeq) loadFailed.value = false
+  } catch {
+    if (seq === candidatesSeq) loadFailed.value = true
+  }
 }
 
 async function loadAdvanceNotices(): Promise<void> {
+  const seq = ++advanceNoticesSeq
   advanceNoticesLoading.value = true
   try {
-    advanceNotices.value = await advanceNoticeApi.getAdvanceNotices(
-      teamSlug.value,
-      eventId.value,
-    )
+    const res = await advanceNoticeApi.getAdvanceNotices(teamSlug.value, eventId.value)
+    if (seq === advanceNoticesSeq) advanceNotices.value = res
   } catch {
     // サマリーは補助情報なので失敗しても点呼自体は継続できるよう静かに 0 件扱い
-    advanceNotices.value = []
+    // （ただし自分より後の呼び出しが既に走っていれば、その結果は上書きしない）
+    if (seq === advanceNoticesSeq) advanceNotices.value = []
   } finally {
-    advanceNoticesLoading.value = false
+    if (seq === advanceNoticesSeq) advanceNoticesLoading.value = false
   }
 }
 
@@ -84,6 +118,11 @@ onMounted(() => {
 
     <main class="rc-page__main">
       <PageLoading v-if="loading && candidates.length === 0" />
+      <DashboardErrorState
+        v-else-if="loadFailed"
+        testid="roll-call-error-state"
+        @retry="reload"
+      />
       <RollCallSheet
         v-else
         :team-id="teamSlug"

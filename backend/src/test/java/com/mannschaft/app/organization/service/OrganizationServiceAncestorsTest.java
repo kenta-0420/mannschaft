@@ -8,6 +8,7 @@ import com.mannschaft.app.organization.dto.ChildOrganizationResponse;
 import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +60,7 @@ class OrganizationServiceAncestorsTest {
     @Mock private OrganizationRepository organizationRepository;
     @Mock private TeamOrgMembershipRepository teamOrgMembershipRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
@@ -74,8 +76,8 @@ class OrganizationServiceAncestorsTest {
         given(organizationRepository.findParentOrganizationIdById(anyLong())).willReturn(Optional.empty());
 
         // 所属系 stub のデフォルトは「所属なし」
-        given(userRoleRepository.findOrganizationIdsByUserId(anyLong())).willReturn(List.of());
-        given(userRoleRepository.findTeamIdsByUserId(anyLong())).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveOrganizationIds(anyLong())).willReturn(List.of());
+        given(membershipScopeQueryService.findActiveTeamIds(anyLong())).willReturn(List.of());
 
         // 画像 URL 根治 Phase 2: 既存アサーション（iconUrl=生キー値）を温存するため、
         // デフォルトは恒等変換（resolve(key)=key）にしておく。署名 URL 化の検証は専用テストで上書きする。
@@ -174,7 +176,7 @@ class OrganizationServiceAncestorsTest {
             given(userRoleRepository.existsByUserIdAndOrganizationId(REQUESTER_ID, PARENT_ORG_ID)).willReturn(false);
 
             // 子孫メンバー判定: ユーザーは対象組織（PARENT の子）に所属（CMP-027: 在籍組織 ID 列挙）
-            given(userRoleRepository.findOrganizationIdsByUserId(REQUESTER_ID))
+            given(membershipScopeQueryService.findActiveOrganizationIds(REQUESTER_ID))
                     .willReturn(List.of(TARGET_ORG_ID));
             // TARGET_ORG_ID の親 = PARENT_ORG_ID（hasAncestor で参照）
             given(organizationRepository.findParentOrganizationIdById(TARGET_ORG_ID))
@@ -210,7 +212,7 @@ class OrganizationServiceAncestorsTest {
             given(userRoleRepository.existsByUserIdAndOrganizationId(REQUESTER_ID, PARENT_ORG_ID)).willReturn(false);
 
             // CMP-027: 在籍組織 ID 列挙（user_roles ∪ memberships）
-            given(userRoleRepository.findOrganizationIdsByUserId(REQUESTER_ID))
+            given(membershipScopeQueryService.findActiveOrganizationIds(REQUESTER_ID))
                     .willReturn(List.of(TARGET_ORG_ID));
             given(organizationRepository.findParentOrganizationIdById(TARGET_ORG_ID))
                     .willReturn(Optional.of(PARENT_ORG_ID));
@@ -447,7 +449,7 @@ class OrganizationServiceAncestorsTest {
          * 移した結果、Mockito でリポジトリをモックする本 UT には「非公開の子が実際に
          * 除外されるか」を検証する術が原理的に無くなった（モックの戻り値をそのまま
          * 返すだけの主張になってしまうため）。そこで本 UT の役割を
-         * 「サービスが {@code findOrganizationIdsByUserId} の戻り値を
+         * 「サービスが {@code findActiveOrganizationIds} の戻り値を
          * {@code findChildrenPage} の {@code memberOrgIds} 引数へ正しく伝播させるか」
          * （＝可視性判定の材料を正しく Repository へ渡しているか）の検証に絞り込んだ。
          * 「渡した先の SQL が実際に非公開の子を除外するか」は
@@ -455,7 +457,7 @@ class OrganizationServiceAncestorsTest {
          * AC-1/AC-2）が担う。UT と IT で役割を分担している。
          */
         @Test
-        @DisplayName("PRIVATE子除外の材料_findOrganizationIdsByUserIdの戻り値がmemberOrgIdsとしてクエリへ渡る")
+        @DisplayName("PRIVATE子除外の材料_findActiveOrganizationIdsの戻り値がmemberOrgIdsとしてクエリへ渡る")
         @SuppressWarnings("unchecked")
         void PRIVATE子除外の材料_所属組織IDがクエリへ伝播する() {
             OrganizationEntity target = orgBuilder(TARGET_ORG_ID, "親")
@@ -466,7 +468,7 @@ class OrganizationServiceAncestorsTest {
 
             given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
             // 呼び出し者は組織 77L・88L に所属している想定
-            given(userRoleRepository.findOrganizationIdsByUserId(REQUESTER_ID)).willReturn(List.of(77L, 88L));
+            given(membershipScopeQueryService.findActiveOrganizationIds(REQUESTER_ID)).willReturn(List.of(77L, 88L));
             stubChildrenPage(List.of(publicChild));
             given(userRoleRepository.countByOrganizationId(11L)).willReturn(0L);
 
@@ -622,7 +624,7 @@ class OrganizationServiceAncestorsTest {
 
             given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
             // 呼び出し者は所属組織0件（Mockito のデフォルト空リストをそのまま使う）
-            given(userRoleRepository.findOrganizationIdsByUserId(REQUESTER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(REQUESTER_ID)).willReturn(List.of());
             given(userRoleRepository.countByOrganizationId(11L)).willReturn(0L);
             given(organizationRepository.findChildrenPage(
                     eq(TARGET_ORG_ID), any(), any(), any(Pageable.class)))

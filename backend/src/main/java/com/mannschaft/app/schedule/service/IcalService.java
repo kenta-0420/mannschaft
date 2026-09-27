@@ -13,7 +13,7 @@ import com.mannschaft.app.schedule.entity.UserIcalTokenEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.UserIcalTokenRepository;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -60,7 +60,7 @@ public class IcalService {
 
     private final UserIcalTokenRepository icalTokenRepository;
     private final ScheduleRepository scheduleRepository;
-    private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final NameResolverService nameResolverService;
     private final AccessControlService accessControlService;
     private final ContentVisibilityChecker contentVisibilityChecker;
@@ -266,13 +266,13 @@ public class IcalService {
                 scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to));
 
         // CMP-027: user_roles ∪ memberships の在籍チーム（素メンバー/応援者を取りこぼさない）
-        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
+        for (Long teamId : membershipScopeQueryService.findActiveTeamIds(userId)) {
             allSchedules.addAll(scheduleRepository
                     .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to));
         }
 
         // CMP-027: user_roles ∪ memberships の在籍組織
-        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
+        for (Long orgId : membershipScopeQueryService.findActiveOrganizationIds(userId)) {
             allSchedules.addAll(scheduleRepository
                     .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to));
         }
@@ -422,7 +422,7 @@ public class IcalService {
         List<ScopedUrlItem> scopedUrls = new ArrayList<>();
 
         // CMP-027: user_roles ∪ memberships の在籍チーム（素メンバー/応援者を取りこぼさない）
-        Set<Long> teamIds = new java.util.HashSet<>(userRoleRepository.findTeamIdsByUserId(userId));
+        Set<Long> teamIds = new java.util.HashSet<>(membershipScopeQueryService.findActiveTeamIds(userId));
         if (!teamIds.isEmpty()) {
             Map<Long, String> teamNames = nameResolverService.resolveTeamNames(teamIds);
             for (Long teamId : teamIds) {
@@ -434,7 +434,7 @@ public class IcalService {
         }
 
         // CMP-027: user_roles ∪ memberships の在籍組織
-        Set<Long> orgIds = new java.util.HashSet<>(userRoleRepository.findOrganizationIdsByUserId(userId));
+        Set<Long> orgIds = new java.util.HashSet<>(membershipScopeQueryService.findActiveOrganizationIds(userId));
         if (!orgIds.isEmpty()) {
             Map<Long, String> orgNames = nameResolverService.resolveOrganizationNames(orgIds);
             for (Long orgId : orgIds) {

@@ -6,6 +6,8 @@ import type {
 } from '~/types/recruitment'
 
 const api = useRecruitmentApi()
+const { error: showError } = useNotification()
+const { t } = useI18n()
 
 // カテゴリ一覧
 const categories = ref<RecruitmentCategoryResponse[]>([])
@@ -25,6 +27,8 @@ const totalCount = ref(0)
 const currentPage = ref(0)
 const pageSize = 20
 const totalPages = ref(0)
+/** 取得失敗は「該当なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const searchFailed = ref(false)
 
 /**
  * Date を `yyyy-MM-dd` に変換する。
@@ -56,6 +60,7 @@ async function loadCategories() {
 // 検索実行
 async function search(page = 0) {
   loading.value = true
+  searchFailed.value = false
   currentPage.value = page
   try {
     const params: RecruitmentSearchParams = {
@@ -73,10 +78,12 @@ async function search(page = 0) {
     totalCount.value = res.meta.total
     totalPages.value = res.meta.totalPages
   }
-  catch {
+  catch (e) {
+    showError(t('recruitment.search.loadError'), String(e))
     listings.value = []
     totalCount.value = 0
     totalPages.value = 0
+    searchFailed.value = true
   }
   finally {
     loading.value = false
@@ -218,6 +225,14 @@ onMounted(async () => {
 
     <!-- ローディング -->
     <PageLoading v-if="loading" />
+
+    <!-- 取得失敗: 検索結果0件とは別に描き分ける -->
+    <DashboardErrorState
+      v-else-if="searchFailed"
+      :message="t('recruitment.search.loadError')"
+      testid="recruitment-listings-error-state"
+      @retry="search(currentPage)"
+    />
 
     <!-- 検索結果 -->
     <div

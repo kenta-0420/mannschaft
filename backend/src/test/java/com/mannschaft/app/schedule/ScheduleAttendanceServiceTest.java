@@ -3,6 +3,8 @@ package com.mannschaft.app.schedule;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.MembershipScopeQueryService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -20,6 +22,7 @@ import com.mannschaft.app.schedule.service.EventSurveyService;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
 import com.mannschaft.app.schedule.service.ScheduleDelegationService;
 import com.mannschaft.app.schedule.service.ScheduleService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -66,6 +72,9 @@ class ScheduleAttendanceServiceTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
@@ -83,6 +92,9 @@ class ScheduleAttendanceServiceTest {
     @Mock
     private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
 
+    @Mock
+    private Clock wallClock;
+
     @InjectMocks
     private ScheduleAttendanceService attendanceService;
 
@@ -94,9 +106,16 @@ class ScheduleAttendanceServiceTest {
     private static final Long USER_ID = 100L;
     private static final Long TEAM_ID = 10L;
     private static final Long ORG_ID = 20L;
+    private static final Instant CURRENT_INSTANT = Instant.parse("2026-04-01T00:00:00Z");
     private static final LocalDateTime START = LocalDateTime.of(2026, 4, 1, 10, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 4, 1, 12, 0);
     private static final LocalDateTime FUTURE_DEADLINE = LocalDateTime.of(2099, 12, 31, 23, 59);
+
+    @BeforeEach
+    void setUpWallClock() {
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
 
     private ScheduleEntity createScheduleWithAttendance() {
         return ScheduleEntity.builder()
@@ -276,6 +295,8 @@ class ScheduleAttendanceServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.ATTENDANCE_DEADLINE_PASSED);
+            verify(wallClock).instant();
+            verify(wallClock).getZone();
         }
 
         @Test
@@ -967,8 +988,8 @@ class ScheduleAttendanceServiceTest {
         @DisplayName("個人出席統計_出欠なし_出席率0を返す")
         void 個人出席統計_出欠なし_出席率0を返す() {
             // given
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
 
             // when
             AttendanceStatsResponse result = attendanceService.getMyAttendanceStats(USER_ID, START, END);

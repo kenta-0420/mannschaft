@@ -1,5 +1,6 @@
 package com.mannschaft.app.filesharing;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -17,6 +18,7 @@ import com.mannschaft.app.filesharing.service.SharedFileVersionService;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
@@ -48,6 +51,11 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SharedFileVersionService 単体テスト")
 class SharedFileVersionServiceTest {
+
+    @BeforeEach
+    void allowExistingAdminPaths() {
+        org.mockito.Mockito.lenient().when(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString())).thenReturn(true);
+    }
 
     @Mock
     private SharedFileVersionRepository versionRepository;
@@ -69,6 +77,9 @@ class SharedFileVersionServiceTest {
 
     @Mock
     private StorageAclService storageAclService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private SharedFileVersionService sharedFileVersionService;
@@ -236,6 +247,24 @@ class SharedFileVersionServiceTest {
     @Nested
     @DisplayName("createVersion")
     class CreateVersion {
+
+        @Test
+        @DisplayName("MEMBERはMANAGE_FILES権限なしで版を追加できない")
+        void memberWithoutManageFilesCannotCreateVersion() {
+            CreateVersionRequest request = new CreateVersionRequest(
+                    "files/denied.pdf", 1024L, "application/pdf", null);
+            SharedFileEntity fileEntity = createFileEntity(1);
+            SharedFolderEntity folder = buildFolder();
+            given(fileService.findFileOrThrow(FILE_ID)).willReturn(fileEntity);
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
+            given(accessControlService.isAdminOrAbove(USER_ID, 5L, "TEAM")).willReturn(false);
+            given(accessControlService.resolveEffectiveRoleName(USER_ID, 5L, "TEAM")).willReturn("MEMBER");
+            given(accessControlService.hasPermission(USER_ID, 5L, "TEAM", "MANAGE_FILES")).willReturn(false);
+
+            assertThatThrownBy(() -> sharedFileVersionService.createVersion(FILE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class);
+            verify(versionRepository, never()).save(any());
+        }
 
         @Test
         @DisplayName("正常系: 新バージョンが作成される_クォータチェック・加算が呼ばれる")

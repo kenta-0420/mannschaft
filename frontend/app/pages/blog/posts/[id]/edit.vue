@@ -15,10 +15,12 @@ const { buildOffsetDateTimeStr } = useDatetime()
 const title = ref(route.query.title ? String(route.query.title) : '')
 const body = ref('')
 const status = ref('DRAFT')
+const publicVisible = ref(true)
 const scopeType = ref<string | null>(route.query.scopeType ? String(route.query.scopeType) : null)
 const scopeId = ref<string | null>(route.query.scopeId ? String(route.query.scopeId) : null)
 const rejectionReason = ref<string | null>(null)
 const loading = ref(true)
+const loadError = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
 const selfReviewing = ref(false)
@@ -34,6 +36,7 @@ const AUTO_SAVE_INTERVAL_MS = 30_000
 const autoSaveEnabled = ref(true)
 const lastAutoSavedAt = ref<Date | null>(null)
 let autoSaveTimer: ReturnType<typeof setInterval> | null = null
+let disposed = false
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -51,7 +54,7 @@ function onAutoSaveToggle() {
 }
 
 async function runAutoSave() {
-  if (!autoSaveEnabled.value || saving.value || !postId) return
+  if (loadError.value || !autoSaveEnabled.value || saving.value || !postId) return
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
   try {
     await autoSave(postId, { title: title.value, body: body.value || '.', excerpt: null, version: null })
@@ -80,6 +83,7 @@ function publishRedirectPath(): string {
 
 async function load() {
   loading.value = true
+  loadError.value = false
   try {
     const res = await getMyPost(postId)
     const post = res.data
@@ -87,12 +91,14 @@ async function load() {
     const rawBody = post.content?.body ?? ''
     body.value = rawBody === '.' ? '' : rawBody
     status.value = post.meta?.status ?? 'DRAFT'
+    publicVisible.value = resolveBlogPublicVisible(post.meta)
     scopeType.value = post.scope?.organizationId ? 'ORGANIZATION' : post.scope?.teamId ? 'TEAM' : null
     const rawScopeId = post.scope?.organizationId ?? post.scope?.teamId ?? null
     scopeId.value = rawScopeId != null ? String(rawScopeId) : null
     rejectionReason.value = (post as unknown as Record<string, unknown>).rejectionReason as string | null ?? null
   } catch (err) {
     console.error('[blog] 記事読み込みに失敗しました:', err)
+    loadError.value = true
     showError($t('blog.post.loadFailed'))
   } finally {
     loading.value = false
@@ -100,6 +106,7 @@ async function load() {
 }
 
 async function save() {
+  if (loading.value || loadError.value) return
   if (!title.value.trim()) return
   saving.value = true
   try {
@@ -269,8 +276,9 @@ const statusSeverity = computed(() => {
 
 const isAdmin = computed(() => authStore.isSystemAdmin)
 
-onMounted(() => {
-  load()
+onMounted(async () => {
+  await load()
+  if (disposed || loadError.value) return
   if (typeof localStorage !== 'undefined') {
     const stored = localStorage.getItem(AUTO_SAVE_STORAGE_KEY)
     if (stored !== null) autoSaveEnabled.value = stored !== 'false'
@@ -279,6 +287,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  disposed = true
   if (autoSaveTimer !== null) clearInterval(autoSaveTimer)
 })
 </script>
@@ -291,13 +300,13 @@ onUnmounted(() => {
         <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
         <span class="text-base font-semibold text-surface-600">ブログ編集</span>
         <Tag
-          v-if="!loading"
+          v-if="!loading && !loadError"
           :value="statusLabel"
           :severity="statusSeverity"
           rounded
         />
       </div>
-      <div class="flex items-center gap-2">
+      <div v-if="!loading && !loadError" class="flex items-center gap-2">
         <span class="hidden text-xs text-surface-400 lg:block">Ctrl+S で保存</span>
         <Button
           label="保存"
@@ -320,6 +329,15 @@ onUnmounted(() => {
     </div>
 
     <PageLoading v-if="loading" />
+
+    <Message
+      v-else-if="loadError"
+      data-testid="blog-load-error"
+      severity="error"
+      :closable="false"
+    >
+      {{ $t('blog.post.loadFailed') }}
+    </Message>
 
     <div v-else class="flex flex-col gap-4">
       <!-- 却下理由表示 (REJECTED ステータス時) -->
@@ -464,6 +482,17 @@ onUnmounted(() => {
 
       <!-- Markdownエディタ（ツールバー + 編集/プレビュー） -->
       <MarkdownEditor v-model="body" />
+
+      <div class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+        <p class="mb-2 text-sm font-medium">
+          {{ $t('public.admin.publicVisible.toggleAriaLabel') }}
+        </p>
+        <PublicVisibleToggle
+          :post-id="postId"
+          v-model:public-visible="publicVisible"
+          @error="showError"
+        />
+      </div>
 
       <!-- お知らせウィジェット表示フラグ（チーム/組織スコープのみ） -->
       <div v-if="isTeamOrOrgScope" class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">

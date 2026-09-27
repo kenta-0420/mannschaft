@@ -253,19 +253,12 @@ onMounted(async () => {
       <PageLoading v-if="loadState === 'loading'" size="40px" />
 
       <!-- 取得失敗: 空状態とは別コンポーネント・別 data-testid で描き分ける -->
-      <SectionCard v-else-if="loadState === 'error'" data-testid="availability-error-state">
-        <div class="flex flex-col items-center gap-3 py-6 text-center">
-          <i class="pi pi-exclamation-triangle text-2xl text-red-500" />
-          <p class="text-sm text-surface-700">{{ t('shift.availability.loadError') }}</p>
-          <Button
-            :label="t('shift.availability.retry')"
-            icon="pi pi-refresh"
-            severity="secondary"
-            outlined
-            data-testid="availability-error-retry"
-            @click="retryLoad"
-          />
-        </div>
+      <SectionCard v-else-if="loadState === 'error'">
+        <DashboardErrorState
+          :message="t('shift.availability.loadError')"
+          testid="availability-error-state"
+          @retry="retryLoad"
+        />
       </SectionCard>
 
       <template v-else>

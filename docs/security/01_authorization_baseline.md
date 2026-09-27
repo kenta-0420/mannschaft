@@ -161,6 +161,40 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 
 > **DTO に項目を足すときは permitAll の妥当性が崩れうる**。契約テスト `ActivityPublicContractIT`（ホワイトリスト方式）と `SecurityConfigAuthorizationTest` が機械的に守っているため、追加時は必ず両テストと本節を更新すること。設計書: `docs/features/F06.4_activity_records.md`
 
+#### 3.3.1 認証必須 API における一覧応答の存在オラクル契約（CMP-260923-1642）
+
+上記「403 は存在オラクルになるため使わない」は **公開（permitAll）EP** の話であり、**認証必須 API 全般に及ぶ規則ではない**。認証必須 API では、非メンバーへの応答が「リクエストされたリソースの実在・状態によって変わるかどうか」で個別に判断する。
+
+- **個別参照 `GET /api/v1/shifts/schedules/{id}` など scheduleId 直接指定系**: 越境（実在するが非メンバー）と不在（存在しない ID）で応答が **割れていた**（403 と 404）ため、CMP-260917-1137 で不在と完全同一の 404 へ畳んだ。ID は連番で総当りが容易であり、応答の違いがそのまま「この ID は実在する」という1ビットの漏洩になっていた。
+- **一覧 `GET /api/v1/shifts/schedules?teamId=` など teamId 直接指定系**: 非メンバーへの応答は、`teamId` の実在有無・`visibility`（PUBLIC / GUESTS_AND_ABOVE / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE）のいずれであっても **常に同一の 403（`COMMON_002`）**（`ShiftScheduleService#checkTeamReadAccess` は `AccessControlService#isMember` の真偽のみで分岐し、`teamId` の実在を問い合わせていない）。応答から実在・非公開の別が一切読み取れないため、**403 のまま残しても存在オラクルにはならない**。契約は `ShiftScheduleScopeContractIT`（9. 節、`ListNonMemberResponseInvariant`）が固定する。
+
+**判断の軸**: 「403 か 404 か」というステータスの違い自体が問題なのではなく、**同じ入力軸（実在/非実在、公開/非公開）に対して応答が割れるかどうか**が問題。一覧のようにどの軸でも応答が不変であれば、個別参照と異なるステータスを返すこと自体は是正の対象にならない。今後 `teamId` 直接指定系のエンドポイントで同種の疑義が出た場合は、まず「非メンバー応答が実在・visibility で割れるか」を契約テストで実測してから判断すること（実測せずに「403は存在オラクルだから404へ揃えるべき」と早合点しない）。
+
+#### 3.3.2 個別 ID 指定系の秘匿ゲート `ScopeConcealingAccessGate`（CMP-260923-0954）
+
+個別 ID（パスの `{id}`、クエリ・本文の親 ID）でチーム・組織配下のリソースを叩く認証必須 EP は、越境（当該スコープに所属しない利用者）への応答を **不在 ID への応答と完全一致**（status・`error.code`・`error.message`）させる。ステータスだけ揃えて `error.code` が違えば、それ自体が実在の答えになる。共通部品として `com.mannschaft.app.common.ScopeConcealingAccessGate` を置く（語尾 `AccessGate` により `AuthzControllerGuardArchTest` の認可シグナルとして認識される）。
+
+**判定順（入れ替え禁止）**:
+
+1. **親リソースの生存確認を呼び出し側が先に行う**。不在・論理削除済みは、その EP の不在コード（`notFoundCode`）で拒否する。SYSTEM_ADMIN の短絡より前に置く（CMP-260917-1136）。子リソースを ID で引く EP では、親が論理削除済みのときも**子の不在コード**を投げる（親のコードを投げると「子は実在し親が消えている」ことが漏れる）。
+2. SYSTEM_ADMIN は通す。
+3. `isAdminOrAbove`（user_roles と memberships の 2 系統）を `isMember` より**先に**判定する。memberships 行を持たない user_roles のみの ADMIN/DEPUTY_ADMIN を越境と誤判定しないため。
+4. 呼び出し側の許可条件（本人である等）。
+5. 許可されなかったときだけ `isMember` を撃ち、非メンバーなら `notFoundCode`、メンバー（権限不足）なら 403（既定 `COMMON_002`）。**拒否経路でのみ**クエリが増え、許可経路のクエリ回数は変わらない。
+
+**メソッドの選び方**（許可主体は EP ごとに違う。判定順を全 EP に一律適用しない）:
+
+| メソッド | 許可 | 同一スコープの権限不足 | 越境 |
+|---|---|---|---|
+| `requireAdminOrConceal(userId, scopeId, scopeType, notFoundCode)` | SYSTEM_ADMIN / ADMIN・DEPUTY_ADMIN | 403 `COMMON_002` | `notFoundCode` |
+| `requireOwnerOrAdminOrConceal(userId, scopeId, scopeType, ownerId, notFoundCode)` | 上記＋所有者本人（本人判定はクエリを撃たないので管理者判定より先） | 403 `COMMON_002` | `notFoundCode` |
+| `requireMemberOrConceal(userId, scopeId, scopeType, notFoundCode, excludeSupporter)` | SYSTEM_ADMIN / 在籍メンバー（`excludeSupporter` なら SUPPORTER 除く） | 403 `COMMON_002`（user_roles のみの ADMIN も所属者として 403。404 に化けない） | `notFoundCode` |
+| `requireOrConceal(userId, scopeId, scopeType, permitted, notFoundCode, forbiddenCode)` | SYSTEM_ADMIN / ADMIN・DEPUTY_ADMIN / 呼び出し側の条件 | `forbiddenCode` | `notFoundCode` |
+
+- `scopeId` は**リソース実体から解決した値**を渡す（パス・クエリの scope 値を鵜呑みにしない）。
+- 公開されているリソース（PUBLIC のチーム・公開中の募集など）と、§3.3.1 の `?teamId=` 一覧型には使わない（非メンバーに常に同一の 403 のまま）。
+- 採用には、試練の前に「EP 別許可主体表」（EP / 許可主体 / 同一スコープの権限不足 / 越境 / 不在 / ID 省略・null の期待値）を作り、契約 IT で実在 ID と不在 ID の応答を並べて比較する（一致だけでは両方壊れたとき偽 green になるので絶対値も固定する）。初出の適用先はシフト希望・ポジション（`ShiftRequestPositionScopeContractIT`）。
+
 ### 3.4 広告（F09.7 / F09.17・IP レート制限あり）
 `POST /api/v1/ads/*/click`、`GET/POST /api/v1/ads/unsubscribe`、`GET /api/v1/ads/pixels/open`。
 

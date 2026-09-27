@@ -24,6 +24,8 @@ const page = ref(0)
 const size = ref(20)
 const totalElements = ref(0)
 const activeTab = ref<AdMessagingCampaignStatus | 'ALL'>('ALL')
+/** 取得失敗は「キャンペーンなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 const tabs: Array<{ value: AdMessagingCampaignStatus | 'ALL'; labelKey: string }> = [
   { value: 'ALL', labelKey: 'advertising.advertiser_crud.list_tab.all' },
@@ -56,6 +58,7 @@ function statusLabel(status: AdMessagingCampaignStatus): string {
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const status = activeTab.value === 'ALL' ? undefined : activeTab.value
     const res = await api.listCampaigns(scopeType, scopeId, {
@@ -68,6 +71,7 @@ async function load() {
   }
   catch {
     items.value = []
+    loadFailed.value = true
   }
   finally {
     loading.value = false
@@ -122,7 +126,13 @@ onMounted(load)
       />
     </div>
 
-    <SectionCard>
+    <DashboardErrorState
+      v-if="loadFailed"
+      testid="advertiser-messaging-campaigns-error-state"
+      @retry="load"
+    />
+
+    <SectionCard v-else>
       <DataTable
         :value="items"
         :loading="loading"

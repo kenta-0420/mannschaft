@@ -19,14 +19,15 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,8 +76,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ActionMemoWeeklySummaryService {
 
-    private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
-
     /** 週次まとめの集計期間（日数） */
     private static final int SUMMARY_DAYS = 7;
 
@@ -95,6 +94,8 @@ public class ActionMemoWeeklySummaryService {
     private final ActionMemoTagRepository tagRepository;
     private final BlogPostRepository blogPostRepository;
     private final ActionMemoMetrics actionMemoMetrics;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     // ==================================================================
     // エントリポイント（スケジュール起動）
@@ -116,7 +117,7 @@ public class ActionMemoWeeklySummaryService {
     @SchedulerLock(name = "actionMemoWeeklySummary",
             lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     public void generateWeeklySummaries() {
-        LocalDate today = LocalDate.now(ZONE_JST);
+        LocalDate today = LocalDate.now(wallClock);
         LocalDate from = today.minusDays(SUMMARY_DAYS);
         LocalDate to = today.minusDays(1);
 
@@ -210,7 +211,7 @@ public class ActionMemoWeeklySummaryService {
      * Controller / Service で「期間省略時のデフォルト」を共有するため公開している。
      */
     public LocalDate[] currentPeriod() {
-        LocalDate today = LocalDate.now(ZONE_JST);
+        LocalDate today = LocalDate.now(wallClock);
         return new LocalDate[]{today.minusDays(SUMMARY_DAYS), today.minusDays(1)};
     }
 
@@ -262,7 +263,7 @@ public class ActionMemoWeeklySummaryService {
                 .postType(PostType.BLOG)
                 .visibility(Visibility.PRIVATE)
                 .status(PostStatus.PUBLISHED)
-                .publishedAt(LocalDateTime.now())
+                .publishedAt(LocalDateTime.now(wallClock))
                 .crossPostToTimeline(false)
                 .targetType("ALL")
                 .build();

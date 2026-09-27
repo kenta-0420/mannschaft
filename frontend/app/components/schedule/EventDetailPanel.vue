@@ -29,6 +29,7 @@ const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: string
   canEdit: boolean
+  canManageSchedule?: boolean
   skipDelegations?: boolean
   scopeName?: string | null
   scopeIconUrl?: string | null
@@ -201,7 +202,7 @@ onMounted(async () => {
           rounded
         />
       </div>
-      <div v-if="canEdit" class="flex gap-1">
+      <div v-if="canEdit || canManageSchedule" class="flex gap-1">
         <Button icon="pi pi-pencil" text rounded size="small" @click="emit('edit')" />
         <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="emit('delete')" />
       </div>
