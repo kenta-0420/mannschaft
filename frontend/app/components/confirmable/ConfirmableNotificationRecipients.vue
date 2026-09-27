@@ -3,7 +3,6 @@ import type { ConfirmableNotificationRecipientItem, ConfirmableRecipientViewerRo
 const props = defineProps<{ notificationId: number; scopeType: 'TEAM' | 'ORGANIZATION'; scopeId: string }>()
 const { getRecipients, resendReminder } = useConfirmableNotificationApi()
 const { handleApiError } = useErrorHandler()
-const { t } = useI18n()
 const { page, rows, totalRecords, onPage } = usePagination(50)
 const recipients = ref<ConfirmableNotificationRecipientItem[]>([])
 const viewerRole = ref<ConfirmableRecipientViewerRole>('MEMBER')
