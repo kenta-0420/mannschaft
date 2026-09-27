@@ -15,6 +15,8 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const scopeStore = useScopeStore()
 const scopeId = computed(() => scopeStore.current.id ?? '')
+const groupsVersion = ref(0)
+const templatesVersion = ref(0)
 
 const historyRef = ref<{ refresh: () => void } | null>(null)
 function onNotificationSent() {
@@ -40,7 +42,11 @@ function onNotificationSent() {
     <!-- 確認通知送信セクション -->
     <section class="mt-8">
       <h2 class="text-lg font-semibold mb-4">{{ $t('confirmable.recipient_groups') }}</h2>
-      <ConfirmableRecipientGroupManager scope-type="TEAM" :scope-id="scopeId" />
+      <ConfirmableRecipientGroupManager scope-type="TEAM" :scope-id="scopeId" @changed="groupsVersion++" />
+    </section>
+
+    <section class="mt-8">
+      <ConfirmableTemplateManager scope-type="TEAM" :scope-id="scopeId" :groups-version="groupsVersion" @changed="templatesVersion++" />
     </section>
 
     <section class="mt-8">
@@ -48,6 +54,7 @@ function onNotificationSent() {
       <ConfirmableNotificationSender
         scope-type="TEAM"
         :scope-id="scopeId"
+        :groups-version="groupsVersion + templatesVersion"
         @sent="onNotificationSent"
       />
     </section>

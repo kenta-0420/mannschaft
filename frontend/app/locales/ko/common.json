@@ -306,6 +306,14 @@
     "COMMON_002": "이 작업을 수행할 권한이 없습니다",
     "COMMON_003": "다른 사용자가 업데이트했습니다. 화면을 새로고침하세요",
     "COMMON_999": "시스템 오류가 발생했습니다",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "수신 대상을 하나 이상 선택해 주세요",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "개별 대상과 저장된 그룹을 동시에 선택할 수 없습니다",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "선택한 대상에 전송 범위 밖의 조직 또는 팀이 포함되어 있습니다",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "수신자 그룹을 찾을 수 없거나 삭제되었습니다",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "선택한 대상에 해당하는 수신자가 없습니다",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "같은 이름의 수신자 그룹이 이미 있습니다",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "알림 크레딧이 부족합니다",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "확인 기한을 현재보다 이후로 설정해 주세요",
     "AUTH_001": "이메일 주소 또는 비밀번호가 올바르지 않습니다",
     "AUTH_002": "이메일 주소가 아직 확인되지 않았습니다",
     "AUTH_003": "계정이 잠겨 있습니다. 30분 후에 다시 시도해 주세요",
@@ -485,6 +493,11 @@
     }
   },
   "confirmable": {
+    "delivery_stopped": "전송 중지",
+    "templates": "템플릿 관리", "template_name": "템플릿 이름", "default_recipient_group": "기본 수신자 그룹", "deleted_group_fallback": "그룹이 삭제되면 범위 내 모든 구성원을 선택합니다.",
+    "audience_mode": { "DEFAULT": "범위 내 모든 구성원", "TARGETS": "조직 및 팀 선택", "GROUP": "저장된 그룹" }, "select_group": "그룹 선택",
+    "search_targets": "불러온 조직 및 팀 검색", "open_children": "하위 항목 표시", "load_more_targets": "더 불러오기", "previous_targets": "이전 대상", "next_targets": "다음 대상", "no_targets": "대상이 없습니다", "selected_targets": "선택됨: {count}", "targets_required": "수신자를 선택하세요",
+    "preview_loading": "수신자 수 확인 중", "preview_count": "예상 수신자: {count}명", "preview_required": "수신자 수를 확인하세요", "delivered_count": "전송 완료: {count}명",
     "title": "확인 알림",
     "page": {
       "settings_title": "확인 알림 설정",

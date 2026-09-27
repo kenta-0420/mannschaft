@@ -1,7 +1,12 @@
 export type ConfirmableNotificationStatus = 'ACTIVE' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED'
 export type ConfirmableNotificationPriority = 'NORMAL' | 'HIGH' | 'URGENT'
 export type ConfirmableConfirmedVia = 'APP' | 'TOKEN' | 'BULK'
-export type ConfirmableNotificationDeliveryStatus = 'QUEUED' | 'DELIVERING' | 'DELIVERED' | 'PARTIALLY_FAILED'
+export type ConfirmableNotificationDeliveryStatus =
+  | 'QUEUED'
+  | 'DELIVERING'
+  | 'DELIVERED'
+  | 'PARTIALLY_FAILED'
+  | 'STOPPED'
 export type ConfirmableTargetType = 'ORGANIZATION' | 'TEAM'
 export type ConfirmableRecipientViewerRole = 'ADMIN' | 'CREATOR' | 'MEMBER'
 

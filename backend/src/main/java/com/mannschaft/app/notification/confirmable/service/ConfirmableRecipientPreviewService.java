@@ -31,6 +31,19 @@ public class ConfirmableRecipientPreviewService {
 
     private final ConfirmableNotificationTargetRepository targetRepository;
     private final ConfirmableRecipientGroupService recipientGroupService;
+    private final ConfirmableTargetSelectionValidator targetSelectionValidator;
+    private final ConfirmableTargetAuthorizationValidator targetAuthorizationValidator;
+
+    /** 公開 API の宛先入力とスコープを送信 API と同じ規則で検証してから件数を返す。 */
+    public ConfirmableRecipientPreviewResponse previewForPublicRequest(
+            ScopeType scopeType, Long scopeId, Long requesterUserId, ConfirmableRecipientPreviewRequest request) {
+        ConfirmableTargetSelectionValidator.Resolution resolution = targetSelectionValidator.resolve(
+                request.getTargets(), request.getRecipientGroupId(), null);
+        if (!resolution.isDefault() && !resolution.isGroup()) {
+            targetAuthorizationValidator.validateForSend(scopeType, scopeId, resolution.targets());
+        }
+        return preview(scopeType, scopeId, requesterUserId, request);
+    }
 
     public ConfirmableRecipientPreviewResponse preview(
             ScopeType scopeType, Long scopeId, Long requesterUserId, ConfirmableRecipientPreviewRequest request) {

@@ -11,11 +11,14 @@ import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationDe
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationResponse;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationSendAcceptedResponse;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientPreviewRequest;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientPreviewResponse;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableRecipientPreviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,6 +48,7 @@ import java.util.stream.Collectors;
 public class OrgConfirmableNotificationController {
 
     private final ConfirmableNotificationService notificationService;
+    private final ConfirmableRecipientPreviewService recipientPreviewService;
     private final ConfirmableNotificationRecipientRepository recipientRepository;
     private final ConfirmableNotificationMapper mapper;
     private final AccessControlService accessControlService;
@@ -82,6 +86,20 @@ public class OrgConfirmableNotificationController {
         ConfirmableNotificationSendAcceptedResponse response = notificationService.sendAsync(
                 ScopeType.ORGANIZATION, orgId, request, currentUserId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(response));
+    }
+
+    /** 送信前に宛先の見込み件数を取得する。 */
+    @PostMapping("/recipient-preview")
+    @Operation(summary = "確認通知の宛先件数プレビュー（組織）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<ConfirmableRecipientPreviewResponse>> previewRecipients(
+            @PathVariable Long orgId,
+            @Valid @RequestBody ConfirmableRecipientPreviewRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, orgId, ScopeType.ORGANIZATION.name(), SEND_NOTIFICATION);
+        return ResponseEntity.ok(ApiResponse.of(recipientPreviewService.previewForPublicRequest(
+                ScopeType.ORGANIZATION, orgId, currentUserId, request)));
     }
 
     /**

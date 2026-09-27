@@ -306,6 +306,14 @@
     "COMMON_002": "Sie haben keine Berechtigung fur diese Aktion",
     "COMMON_003": "Von einem anderen Benutzer aktualisiert. Bitte aktualisieren Sie die Seite",
     "COMMON_999": "Ein Systemfehler ist aufgetreten",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "Wählen Sie mindestens ein Empfängerziel aus",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "Einzelne Ziele und eine gespeicherte Gruppe können nicht gleichzeitig gewählt werden",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "Die Auswahl enthält eine Organisation oder ein Team außerhalb des Sendebereichs",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "Die Empfängergruppe wurde nicht gefunden oder wurde gelöscht",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "Für die ausgewählten Ziele wurden keine Empfänger gefunden",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "Eine Empfängergruppe mit diesem Namen existiert bereits",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "Es sind nicht genügend Benachrichtigungsguthaben verfügbar",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "Legen Sie die Bestätigungsfrist auf einen zukünftigen Zeitpunkt fest",
     "AUTH_001": "E-Mail-Adresse oder Passwort ist falsch",
     "AUTH_002": "Ihre E-Mail-Adresse wurde noch nicht bestätigt",
     "AUTH_003": "Ihr Konto ist gesperrt. Bitte versuchen Sie es in 30 Minuten erneut",
@@ -485,6 +493,11 @@
     }
   },
   "confirmable": {
+    "delivery_stopped": "Zustellung gestoppt",
+    "templates": "Vorlagen verwalten", "template_name": "Vorlagenname", "default_recipient_group": "Standard-Empfängergruppe", "deleted_group_fallback": "Wenn die Gruppe gelöscht wird, werden alle Mitglieder im Bereich ausgewählt.",
+    "audience_mode": { "DEFAULT": "Alle Mitglieder im Bereich", "TARGETS": "Organisationen und Teams wählen", "GROUP": "Gespeicherte Gruppe" }, "select_group": "Gruppe wählen",
+    "search_targets": "Geladene Organisationen und Teams durchsuchen", "open_children": "Untergruppen anzeigen", "load_more_targets": "Mehr laden", "previous_targets": "Vorherige Ziele", "next_targets": "Nächste Ziele", "no_targets": "Keine Ziele", "selected_targets": "Ausgewählt: {count}", "targets_required": "Empfänger wählen",
+    "preview_loading": "Empfängerzahl wird geprüft", "preview_count": "Geschätzte Empfänger: {count}", "preview_required": "Empfängerzahl prüfen", "delivered_count": "Zugestellt: {count}",
     "title": "Bestätigungsbenachrichtigung",
     "page": {
       "settings_title": "Einstellungen für Bestätigungsbenachrichtigungen",

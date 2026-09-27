@@ -6,6 +6,8 @@ import type {
   ConfirmableNotificationTemplate,
   ConfirmableRecipientGroup,
   ConfirmableNotificationSendAccepted,
+  ConfirmableRecipientPreview,
+  ConfirmableRecipientPreviewRequest,
   CreateConfirmableNotificationRequest,
   CreateConfirmableRecipientGroupRequest,
   UpdateConfirmableNotificationSettingsRequest,
@@ -208,6 +210,16 @@ export function useConfirmableNotificationApi() {
     })
   }
 
+  /** 送信前に同じ宛先展開を行い、重複を除いた見込み人数を取得する。 */
+  async function previewRecipients(
+    scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string,
+    data: ConfirmableRecipientPreviewRequest,
+  ) {
+    return api<{ data: ConfirmableRecipientPreview }>(`${buildBaseUrl(scopeType, scopeId)}/recipient-preview`, {
+      method: 'POST', body: data,
+    })
+  }
+
   async function listRecipientGroups(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string) {
     return api<{ data: ConfirmableRecipientGroup[] }>(buildRecipientGroupBaseUrl(scopeType, scopeId))
   }
@@ -239,6 +251,7 @@ export function useConfirmableNotificationApi() {
     getSettings,
     updateSettings,
     sendNotification,
+    previewRecipients,
     listNotifications,
     getNotificationDetail,
     cancelNotification,

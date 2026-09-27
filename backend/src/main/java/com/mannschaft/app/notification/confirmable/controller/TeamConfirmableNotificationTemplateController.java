@@ -94,6 +94,7 @@ public class TeamConfirmableNotificationTemplateController {
                 request.getTitle(),
                 request.getBody(),
                 request.getDefaultPriority(),
+                request.getDefaultRecipientGroupId(),
                 currentUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.of(mapper.toTemplateResponse(entity)));
@@ -126,7 +127,8 @@ public class TeamConfirmableNotificationTemplateController {
                 request.getName(),
                 request.getTitle(),
                 request.getBody(),
-                request.getDefaultPriority());
+                request.getDefaultPriority(),
+                request.getDefaultRecipientGroupId());
         return ResponseEntity.ok(ApiResponse.of(mapper.toTemplateResponse(entity)));
     }
 

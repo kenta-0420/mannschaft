@@ -306,6 +306,14 @@
     "COMMON_002": "この操作を行う権限がありません",
     "COMMON_003": "他のユーザーによって更新されました。画面を更新してください",
     "COMMON_999": "システムエラーが発生しました",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "宛先を1件以上選択してください",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "個別の宛先と保存済みグループは同時に指定できません",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "選択した宛先に送信範囲外の組織またはチームが含まれています",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "宛先グループが見つからないか、削除されています",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "選択した宛先に受信者がいません",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "同じ名前の宛先グループが既にあります",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "通知クレジットが不足しています",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "確認期限は現在より後に設定してください",
     "AUTH_001": "メールアドレスまたはパスワードが正しくありません",
     "AUTH_002": "メールアドレスがまだ確認されていません",
     "AUTH_003": "アカウントがロックされています。30分後にお試しください",
@@ -485,6 +493,11 @@
     }
   },
   "confirmable": {
+    "delivery_stopped": "配信停止",
+    "templates": "テンプレート管理", "template_name": "テンプレート名", "default_recipient_group": "既定の宛先グループ", "deleted_group_fallback": "グループが削除された場合は配下すべてに送信します。",
+    "audience_mode": { "DEFAULT": "配下すべて", "TARGETS": "組織・チームを選択", "GROUP": "保存済みグループ" }, "select_group": "グループを選択",
+    "search_targets": "読み込んだ組織・チームを検索", "open_children": "配下を表示", "load_more_targets": "さらに読み込む", "previous_targets": "前の候補", "next_targets": "次の候補", "no_targets": "候補がありません", "selected_targets": "選択中: {count}件", "targets_required": "宛先を選択してください",
+    "preview_loading": "宛先人数を確認中", "preview_count": "見込み受信者: {count}人", "preview_required": "宛先人数を確認してください", "delivered_count": "配信済み: {count}人",
     "title": "確認通知",
     "page": {
       "settings_title": "確認通知設定",

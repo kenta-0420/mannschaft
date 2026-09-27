@@ -14,6 +14,7 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableRecipientPreviewService;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationSettingsService;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationTemplateService;
 import org.junit.jupiter.api.AfterEach;
@@ -74,6 +75,7 @@ class ConfirmableNotificationSendPermissionAuthzTest {
 
     private AccessControlService accessControlService;
     private ConfirmableNotificationService notificationService;
+    private ConfirmableRecipientPreviewService recipientPreviewService;
     private ConfirmableNotificationSettingsService settingsService;
     private ConfirmableNotificationTemplateService templateService;
     private ConfirmableNotificationRecipientRepository recipientRepository;
@@ -84,6 +86,7 @@ class ConfirmableNotificationSendPermissionAuthzTest {
     void setUp() {
         accessControlService = mock(AccessControlService.class);
         notificationService = mock(ConfirmableNotificationService.class);
+        recipientPreviewService = mock(ConfirmableRecipientPreviewService.class);
         settingsService = mock(ConfirmableNotificationSettingsService.class);
         templateService = mock(ConfirmableNotificationTemplateService.class);
         recipientRepository = mock(ConfirmableNotificationRecipientRepository.class);
@@ -144,12 +147,12 @@ class ConfirmableNotificationSendPermissionAuthzTest {
 
     private TeamConfirmableNotificationController teamController() {
         return new TeamConfirmableNotificationController(
-                notificationService, recipientRepository, mapper, accessControlService);
+                notificationService, recipientPreviewService, recipientRepository, mapper, accessControlService);
     }
 
     private OrgConfirmableNotificationController orgController() {
         return new OrgConfirmableNotificationController(
-                notificationService, recipientRepository, mapper, accessControlService);
+                notificationService, recipientPreviewService, recipientRepository, mapper, accessControlService);
     }
 
     // =====================================================================
@@ -306,7 +309,7 @@ class ConfirmableNotificationSendPermissionAuthzTest {
             assertForbidden(() -> teamTemplateController().create(
                     TEAM_ID, mock(ConfirmableNotificationTemplateCreateRequest.class)));
             verify(templateService, never())
-                    .create(any(), anyLong(), any(), any(), any(), any(), anyLong());
+                    .create(any(), anyLong(), any(), any(), any(), any(), any(), anyLong());
         }
 
         @Test
@@ -317,7 +320,7 @@ class ConfirmableNotificationSendPermissionAuthzTest {
 
             assertForbidden(() -> teamTemplateController().update(
                     TEAM_ID, TEMPLATE_ID, mock(ConfirmableNotificationTemplateUpdateRequest.class)));
-            verify(templateService, never()).update(anyLong(), any(), any(), any(), any());
+            verify(templateService, never()).update(anyLong(), any(), any(), any(), any(), any());
         }
 
         @Test

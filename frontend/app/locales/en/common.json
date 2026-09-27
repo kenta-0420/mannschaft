@@ -306,6 +306,14 @@
     "COMMON_002": "You do not have permission to perform this action",
     "COMMON_003": "Updated by another user. Please refresh the page",
     "COMMON_999": "A system error occurred",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "Select at least one recipient target",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "Individual targets and a saved group cannot be selected together",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "The selection contains an organization or team outside the sending scope",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "The recipient group was not found or has been deleted",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "No recipients match the selected targets",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "A recipient group with this name already exists",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "There are not enough notification credits",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "Set the confirmation deadline to a future time",
     "AUTH_001": "Invalid email address or password",
     "AUTH_002": "Your email address has not been verified yet",
     "AUTH_003": "Your account is locked. Please try again in 30 minutes",
@@ -485,6 +493,11 @@
     }
   },
   "confirmable": {
+    "delivery_stopped": "Delivery stopped",
+    "templates": "Manage templates", "template_name": "Template name", "default_recipient_group": "Default recipient group", "deleted_group_fallback": "If the group is deleted, all members in the scope are selected.",
+    "audience_mode": { "DEFAULT": "All members in scope", "TARGETS": "Choose organizations and teams", "GROUP": "Saved group" }, "select_group": "Choose a group",
+    "search_targets": "Search loaded organizations and teams", "open_children": "Show children", "load_more_targets": "Load more", "previous_targets": "Previous targets", "next_targets": "Next targets", "no_targets": "No targets", "selected_targets": "Selected: {count}", "targets_required": "Choose recipients",
+    "preview_loading": "Checking recipient count", "preview_count": "Estimated recipients: {count}", "preview_required": "Check the recipient count", "delivered_count": "Delivered: {count}",
     "title": "Confirmation Notice",
     "page": {
       "settings_title": "Confirmation Notice Settings",

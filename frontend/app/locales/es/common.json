@@ -306,6 +306,14 @@
     "COMMON_002": "No tiene permiso para realizar esta accion",
     "COMMON_003": "Actualizado por otro usuario. Por favor, actualice la pagina",
     "COMMON_999": "Se produjo un error del sistema",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "Selecciona al menos un destino de destinatarios",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "No se pueden seleccionar a la vez destinos individuales y un grupo guardado",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "La selección contiene una organización o un equipo fuera del ámbito de envío",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "El grupo de destinatarios no existe o se ha eliminado",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "No hay destinatarios que coincidan con los destinos seleccionados",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "Ya existe un grupo de destinatarios con este nombre",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "No hay suficientes créditos de notificación",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "Establece la fecha límite de confirmación en el futuro",
     "AUTH_001": "Correo electronico o contrasena incorrectos",
     "AUTH_002": "Su correo electrónico aún no ha sido verificado",
     "AUTH_003": "Su cuenta está bloqueada. Inténtelo de nuevo en 30 minutos",
@@ -485,6 +493,11 @@
     }
   },
   "confirmable": {
+    "delivery_stopped": "Entrega detenida",
+    "templates": "Administrar plantillas", "template_name": "Nombre de la plantilla", "default_recipient_group": "Grupo de destinatarios predeterminado", "deleted_group_fallback": "Si se elimina el grupo, se eligen todos los miembros del ámbito.",
+    "audience_mode": { "DEFAULT": "Todos los miembros del ámbito", "TARGETS": "Elegir organizaciones y equipos", "GROUP": "Grupo guardado" }, "select_group": "Elegir grupo",
+    "search_targets": "Buscar organizaciones y equipos cargados", "open_children": "Mostrar subgrupos", "load_more_targets": "Cargar más", "previous_targets": "Destinos anteriores", "next_targets": "Destinos siguientes", "no_targets": "No hay destinos", "selected_targets": "Seleccionados: {count}", "targets_required": "Elija destinatarios",
+    "preview_loading": "Comprobando destinatarios", "preview_count": "Destinatarios estimados: {count}", "preview_required": "Compruebe los destinatarios", "delivered_count": "Entregados: {count}",
     "title": "Notificación de confirmación",
     "page": {
       "settings_title": "Configuración de notificaciones de confirmación",

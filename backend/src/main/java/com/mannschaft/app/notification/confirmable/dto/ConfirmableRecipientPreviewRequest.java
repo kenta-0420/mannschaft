@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.confirmable.dto;
 
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,7 +20,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ConfirmableRecipientPreviewRequest {
 
-    private List<ConfirmableTargetSpec> targets;
+    private List<@Valid ConfirmableTargetSpec> targets;
 
     private UUID recipientGroupId;
 }
