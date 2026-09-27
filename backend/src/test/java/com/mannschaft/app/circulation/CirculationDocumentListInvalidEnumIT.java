@@ -1,7 +1,5 @@
 package com.mannschaft.app.circulation;
 
-import com.mannschaft.app.circulation.dto.DocumentResponse;
-import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -13,15 +11,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * CMP-260920-1041: 回覧一覧APIが不正な circulation_mode 値を持つ 1 行で常時 500 になる欠陥の試練。
@@ -38,24 +39,19 @@ import static org.assertj.core.api.Assertions.assertThat;
  * これにより 1 行の異常が一覧全体を落とさなくなる。</p>
  */
 @Transactional
+@AutoConfigureMockMvc(addFilters = false)
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("回覧一覧: 不正なcirculation_mode値を含む行があっても一覧取得は成功する（CMP-260920-1041）")
 class CirculationDocumentListInvalidEnumIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
-    private CirculationService circulationService;
+    private MockMvc mockMvc;
 
     @PersistenceContext
     private EntityManager em;
 
     private Long teamId;
     private Long memberId;
-    /** 正常な circulation_mode='SIMULTANEOUS' の文書。 */
-    private Long normalDocumentId;
-    private String normalTitle;
-    /** circulation_mode に不正値 'PARALLEL' が入った、アプリが一度も書いたことのない壊れた文書。 */
-    private Long brokenDocumentId;
-    private String brokenTitle;
 
     @BeforeEach
     void setUp() {
@@ -63,11 +59,8 @@ class CirculationDocumentListInvalidEnumIT extends AbstractMySqlIntegrationTest 
         memberId = insertUser("cmp260920-member@example.com");
         MembershipTestHelper.insertMembership(em, memberId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
 
-        normalTitle = "正常な回覧文書 " + System.nanoTime();
-        normalDocumentId = insertDocument(teamId, memberId, normalTitle, "SIMULTANEOUS");
-
-        brokenTitle = "不正enum混入回覧文書 " + System.nanoTime();
-        brokenDocumentId = insertDocument(teamId, memberId, brokenTitle, "PARALLEL");
+        insertDocument(teamId, memberId, "正常な回覧文書 " + System.nanoTime(), "SIMULTANEOUS");
+        insertDocument(teamId, memberId, "不正enum混入回覧文書 " + System.nanoTime(), "PARALLEL");
 
         em.flush();
         em.clear();
@@ -78,27 +71,18 @@ class CirculationDocumentListInvalidEnumIT extends AbstractMySqlIntegrationTest 
 
     @Test
     @DisplayName("不正値の行が混在していても一覧取得は500にならず、正常行は正しく・異常行はUNKNOWNとして返る")
-    void 不正値混在でも一覧取得は成功する() {
-        Page<DocumentResponse> page = circulationService.listDocuments(
-                "TEAM", teamId, null, PageRequest.of(0, 20));
-
-        assertThat(page.getTotalElements()).isEqualTo(2);
-
-        DocumentResponse normal = page.getContent().stream()
-                .filter(d -> d.getId().equals(normalDocumentId))
-                .findFirst()
-                .orElseThrow();
-        assertThat(normal.getCirculationMode()).isEqualTo("SIMULTANEOUS");
-
-        DocumentResponse broken = page.getContent().stream()
-                .filter(d -> d.getId().equals(brokenDocumentId))
-                .findFirst()
-                .orElseThrow();
-        // 異常は握りつぶさず、縮退値 UNKNOWN として可視化される（正規の3値のいずれでもない）。
-        assertThat(broken.getCirculationMode()).isEqualTo("UNKNOWN");
+    void 不正値混在でも一覧取得は成功する() throws Exception {
+        mockMvc.perform(get("/api/v1/teams/{teamId}/circulations", teamId)
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(2))
+                .andExpect(jsonPath("$.data[*].circulationMode",
+                        containsInAnyOrder("SIMULTANEOUS", "UNKNOWN")));
     }
 
-    private Long insertDocument(Long scopeId, Long createdBy, String title, String circulationMode) {
+    /** JPA が拒否する未知の enum 文字列を再現するため、このテストに限り直接 SQL で投入する。 */
+    private void insertDocument(Long scopeId, Long createdBy, String title, String circulationMode) {
         em.createNativeQuery(
                         "INSERT INTO circulation_documents "
                                 + "(scope_type, scope_id, created_by, title, body, "
@@ -118,9 +102,6 @@ class CirculationDocumentListInvalidEnumIT extends AbstractMySqlIntegrationTest 
                 .setParameter("title", title)
                 .setParameter("circulationMode", circulationMode)
                 .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM circulation_documents WHERE title = :title")
-                        .setParameter("title", title)
-                        .getSingleResult()).longValue();
     }
 
     private Long insertUser(String email) {

@@ -17,6 +17,7 @@ import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.UserRepository.MemberSummary;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
@@ -46,6 +47,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link CirculationService} の追加単体テスト。未テストメソッドをカバーする。
@@ -290,6 +292,20 @@ class CirculationServiceAdditionalTest {
             assertThat(captor.getAllValues())
                     .anyMatch(e -> e.getCirculationMode() == CirculationMode.HYBRID
                             && e.getSequentialCount() == 1);
+        }
+
+        @Test
+        @DisplayName("異常系: 縮退表示専用のUNKNOWNは新規作成入力として拒否される")
+        void 文書作成_UNKNOWN指定_バリデーション例外() {
+            CreateDocumentRequest request = new CreateDocumentRequest(
+                    "新文書", "本文", "UNKNOWN", null, null, null, null, null,
+                    List.of(new RecipientEntry(50L, null)), null);
+
+            assertThatThrownBy(() -> service.createDocument(SCOPE_TYPE, SCOPE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_001));
+            verifyNoInteractions(documentRepository, recipientRepository);
         }
 
         @Test

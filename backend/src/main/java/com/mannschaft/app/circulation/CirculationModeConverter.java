@@ -15,9 +15,10 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>本 Converter は読み込み時に未知の値を握りつぶさず {@link #log} に ERROR として残した上で、
  * 縮退値 {@link CirculationMode#UNKNOWN} へ写像する。これにより異常行を含む一覧でも取得自体は
- * 成功し、異常の存在はログから追跡できる。書き込み側は {@code EnumInputParser} が
- * {@code SIMULTANEOUS}/{@code SEQUENTIAL}/{@code HYBRID} 以外を拒否するため、
- * アプリケーション経由で {@code UNKNOWN} や不正値が新たに書き込まれることはない。
+ * 成功し、異常の存在はログから追跡できる。新規作成入力の {@code UNKNOWN} は
+ * {@link com.mannschaft.app.circulation.service.CirculationService#createDocument} が拒否する。
+ * 既存の異常行を更新すると、妥当なモードを推測せず異常の痕跡を保持するため、DB 値は
+ * 明示値 {@code UNKNOWN} へ正規化される。
  */
 @Slf4j
 @Converter(autoApply = false)
