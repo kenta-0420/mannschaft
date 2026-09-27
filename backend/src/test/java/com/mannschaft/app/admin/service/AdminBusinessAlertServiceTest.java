@@ -4,11 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.admin.dto.AdminBusinessAlertSummaryResponse;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.template.service.ModuleService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -65,12 +71,22 @@ class AdminBusinessAlertServiceTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private Clock wallClock;
+
     @InjectMocks
     private AdminBusinessAlertService adminBusinessAlertService;
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final String CACHE_KEY = "admin_alert_summary:" + USER_ID;
+    private static final Instant CURRENT_INSTANT = Instant.parse("2026-04-09T15:30:00Z");
+
+    @BeforeEach
+    void setUpWallClock() {
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
 
     // ========================================
     // getSummary - キャッシュ制御
@@ -214,7 +230,8 @@ class AdminBusinessAlertServiceTest {
             // 本日の確定予約数: 2
             java.util.ArrayList<Object[]> todayConfirmed = new java.util.ArrayList<>();
             todayConfirmed.add(new Object[]{TEAM_ID, 2});
-            given(reservationRepository.countTodayConfirmedByTeamIds(eq(List.of(TEAM_ID)), any()))
+            given(reservationRepository.countTodayConfirmedByTeamIds(
+                    eq(List.of(TEAM_ID)), eq(LocalDateTime.of(2026, 4, 9, 15, 0))))
                     .willReturn(todayConfirmed);
 
             // 承認待ち: 1
