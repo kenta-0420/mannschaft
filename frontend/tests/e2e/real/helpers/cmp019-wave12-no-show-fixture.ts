@@ -132,19 +132,21 @@ export async function createNoShowFixture(
   expect(categoryResponse.status(), '募集カテゴリ取得').toBe(200)
   const categories = ((await categoryResponse.json()) as ApiEnvelope<Array<{ id: number }>>).data
   expect(categories.length, '有効な募集カテゴリ').toBeGreaterThan(0)
+  const category = categories[0]
+  if (!category) throw new Error('有効な募集カテゴリがありません')
 
   const first = await createListing(
     request,
     scope,
     adminToken,
-    categories[0].id,
+    category.id,
     `${runTag}_${scope.type}_A`,
   )
   const second = await createListing(
     request,
     scope,
     adminToken,
-    categories[0].id,
+    category.id,
     `${runTag}_${scope.type}_B`,
   )
   expect(second.scopeId, '2件の試験募集は同一 scope に属する').toBe(first.scopeId)

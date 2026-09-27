@@ -120,7 +120,9 @@ async function expectStableNotification(
       { timeout: 30_000, intervals: [500, 1_000, 2_000] },
     )
     .toBe(1)
-  return matching[0]
+  const notification = matching[0]
+  if (!notification) throw new Error('NO_SHOW 通知が見つかりません')
+  return notification
 }
 
 async function cleanupFixture(
