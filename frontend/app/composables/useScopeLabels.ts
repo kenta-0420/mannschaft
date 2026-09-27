@@ -1,37 +1,91 @@
 export function useScopeLabels() {
+  const { t } = useI18n()
+
   const templateLabel: Record<string, string> = {
-    CLUB: 'クラブ・サークル',
-    CLINIC: 'クリニック',
-    CLASS: 'クラス',
-    COMMUNITY: 'コミュニティ',
-    COMPANY: '企業',
-    FAMILY: '家族',
-    RESTAURANT: '飲食店',
-    BEAUTY: '美容院・サロン',
-    STORE: '店舗・小売',
-    VOLUNTEER: 'ボランティア・NPO',
-    NEIGHBORHOOD: '自治会',
-    CONDO: 'マンション管理組合',
-    OTHER: 'その他',
+    get CLUB() {
+      return t('scopeLabels.template.CLUB')
+    },
+    get CLINIC() {
+      return t('scopeLabels.template.CLINIC')
+    },
+    get CLASS() {
+      return t('scopeLabels.template.CLASS')
+    },
+    get COMMUNITY() {
+      return t('scopeLabels.template.COMMUNITY')
+    },
+    get COMPANY() {
+      return t('scopeLabels.template.COMPANY')
+    },
+    get FAMILY() {
+      return t('scopeLabels.template.FAMILY')
+    },
+    get RESTAURANT() {
+      return t('scopeLabels.template.RESTAURANT')
+    },
+    get BEAUTY() {
+      return t('scopeLabels.template.BEAUTY')
+    },
+    get STORE() {
+      return t('scopeLabels.template.STORE')
+    },
+    get VOLUNTEER() {
+      return t('scopeLabels.template.VOLUNTEER')
+    },
+    get NEIGHBORHOOD() {
+      return t('scopeLabels.template.NEIGHBORHOOD')
+    },
+    get CONDO() {
+      return t('scopeLabels.template.CONDO')
+    },
+    get OTHER() {
+      return t('scopeLabels.template.OTHER')
+    },
   }
 
   const orgTypeLabel: Record<string, string> = {
-    GOVERNMENT: '行政・官公庁',
-    MUNICIPALITY: '自治体（市区町村）',
-    COMPANY: '会社・企業',
-    HOSPITAL: '病院・医療機関',
-    ASSOCIATION: '協会・連盟',
-    SCHOOL: '学校・教育機関',
-    NPO: 'NPO・非営利団体',
-    COMMUNITY: 'コミュニティ',
-    OTHER: 'その他',
+    get GOVERNMENT() {
+      return t('scopeLabels.organizationType.GOVERNMENT')
+    },
+    get MUNICIPALITY() {
+      return t('scopeLabels.organizationType.MUNICIPALITY')
+    },
+    get COMPANY() {
+      return t('scopeLabels.organizationType.COMPANY')
+    },
+    get HOSPITAL() {
+      return t('scopeLabels.organizationType.HOSPITAL')
+    },
+    get ASSOCIATION() {
+      return t('scopeLabels.organizationType.ASSOCIATION')
+    },
+    get SCHOOL() {
+      return t('scopeLabels.organizationType.SCHOOL')
+    },
+    get NPO() {
+      return t('scopeLabels.organizationType.NPO')
+    },
+    get COMMUNITY() {
+      return t('scopeLabels.organizationType.COMMUNITY')
+    },
+    get OTHER() {
+      return t('scopeLabels.organizationType.OTHER')
+    },
   }
 
   const visibilityLabel: Record<string, string> = {
-    PUBLIC: '公開',
-    GUESTS_AND_ABOVE: 'ゲスト以上',
-    SUPPORTERS_AND_ABOVE: 'サポーター以上',
-    MEMBERS_AND_ABOVE: 'メンバー以上',
+    get PUBLIC() {
+      return t('scopeLabels.visibility.PUBLIC')
+    },
+    get GUESTS_AND_ABOVE() {
+      return t('scopeLabels.visibility.GUESTS_AND_ABOVE')
+    },
+    get SUPPORTERS_AND_ABOVE() {
+      return t('scopeLabels.visibility.SUPPORTERS_AND_ABOVE')
+    },
+    get MEMBERS_AND_ABOVE() {
+      return t('scopeLabels.visibility.MEMBERS_AND_ABOVE')
+    },
   }
 
   return { templateLabel, orgTypeLabel, visibilityLabel }
