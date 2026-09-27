@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import ErrorReportDialog from '~/components/ErrorReportDialog.vue'
+import type { ErrorReportState } from '~/composables/useErrorReport'
 
 /**
  * CMP-260920-1042: エラー報告パネルが操作要素を覆い、クリックを物理的に塞ぐ不具合の回帰テスト。
@@ -20,7 +21,7 @@ import ErrorReportDialog from '~/components/ErrorReportDialog.vue'
 describe('ErrorReportDialog', () => {
   beforeEach(() => {
     // useState は Nuxt のアプリ単位シングルトンなので、テストごとに明示的に初期化する
-    const state = useState('errorReport')
+    const state = useState<ErrorReportState>('errorReport')
     state.value = {
       visible: false,
       expanded: false,
@@ -35,6 +36,13 @@ describe('ErrorReportDialog', () => {
       context: '',
     }
     document.body.innerHTML = ''
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({}))
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('エラー未発生時は何も描画しない', async () => {
@@ -43,11 +51,12 @@ describe('ErrorReportDialog', () => {
     expect(document.body.querySelector('.w-80')).toBeNull()
   })
 
-  it('capture 相当（visible=true, expanded=false）ではバッジのみが表示され、幅広パネルは描画されない', async () => {
-    const state = useState('errorReport')
-    state.value = { ...state.value, visible: true, expanded: false, errorMessage: 'boom' }
-
+  it('capture ではバッジのみが表示され、幅広パネルは描画されない', async () => {
     await mountSuspended(ErrorReportDialog)
+
+    const { capture } = useErrorReport()
+    capture(new Error('boom'))
+    await nextTick()
 
     // バッジ（44x44px の丸ボタン）は表示される＝エラー発生自体は利用者に伝わる
     const badge = document.body.querySelector('button[aria-label]')
@@ -58,7 +67,7 @@ describe('ErrorReportDialog', () => {
   })
 
   it('バッジをクリックすると詳細パネルが展開される', async () => {
-    const state = useState('errorReport')
+    const state = useState<ErrorReportState>('errorReport')
     state.value = { ...state.value, visible: true, expanded: false, errorMessage: 'boom' }
 
     await mountSuspended(ErrorReportDialog)
@@ -71,7 +80,7 @@ describe('ErrorReportDialog', () => {
   })
 
   it('バッジ・パネルは画面右下（FABの定位置）ではなく右上に配置される', async () => {
-    const state = useState('errorReport')
+    const state = useState<ErrorReportState>('errorReport')
     state.value = { ...state.value, visible: true, expanded: true, errorMessage: 'boom' }
 
     await mountSuspended(ErrorReportDialog)

@@ -1,4 +1,4 @@
-interface ErrorReportState {
+export interface ErrorReportState {
   visible: boolean
   // true: 詳細パネルを展開表示。false: 右上の小さいバッジのみ（操作要素を塞がないための既定値）。
   // CMP-260920-1042: 自動展開したパネルが操作ボタンを物理的に覆いクリックを塞いでいたため、
