@@ -5,10 +5,12 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentPenaltyLiftedNotificationEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ import java.util.List;
 public class RecruitmentPenaltyLiftBatch {
 
     private final RecruitmentUserPenaltyRepository penaltyRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 毎日 03:00 JST (= 18:00 UTC) に実行。
@@ -55,7 +58,11 @@ public class RecruitmentPenaltyLiftBatch {
         }
         penaltyRepository.saveAll(expired);
 
-        // TODO: F04.9 実装後に RECRUITMENT_PENALTY_LIFTED 通知を送信
+        for (RecruitmentUserPenaltyEntity penalty : expired) {
+            eventPublisher.publishEvent(new RecruitmentPenaltyLiftedNotificationEvent(
+                    penalty.getId(), penalty.getUserId(), penalty.getScopeType(), penalty.getScopeId()));
+        }
+
         log.info("F03.11 Phase5b ペナルティ自動解除バッチ: lifted={}件", lifted);
     }
 }
