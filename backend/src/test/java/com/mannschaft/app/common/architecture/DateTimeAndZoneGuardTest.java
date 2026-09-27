@@ -373,7 +373,7 @@ class DateTimeAndZoneGuardTest {
     private static final int EXPECTED_FROZEN_ZONE_SYSTEM_DEFAULT = 0;
     // 2026-08-13 返済 -1件: UserTimezoneFilter の ZoneId.of("Asia/Tokyo") 重複定義を
     // UserZoneLocalDateTimeParser.SERVER_ZONE 参照へ寄せた（issue #2616 / CMP-023 chip-away）。
-    private static final int EXPECTED_FROZEN_ZONE_LITERAL = 50;
+    private static final int EXPECTED_FROZEN_ZONE_LITERAL = 48;
     private static final int EXPECTED_FROZEN_LOCAL_DATE_TIME_FIELD = 2651;
 
     // ────────────────────────────────────────────────────────────
