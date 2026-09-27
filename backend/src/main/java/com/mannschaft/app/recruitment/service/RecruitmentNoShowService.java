@@ -167,7 +167,7 @@ public class RecruitmentNoShowService {
      * {@link DisputeResolution#REVOKED}（異議認容）を当てる。</p>
      */
     @Transactional
-    public RecruitmentNoShowRecordEntity dispute(Long recordId, Long userId, String disputeReason) {
+    public RecruitmentNoShowRecordResponse dispute(Long recordId, Long userId, String disputeReason) {
         RecruitmentNoShowRecordEntity record = noShowRepository.findByIdForDisputeUpdate(recordId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND));
 
@@ -180,8 +180,8 @@ public class RecruitmentNoShowService {
             throw new BusinessException(RecruitmentErrorCode.ALREADY_DISPUTED);
         }
 
-        if (isDisputeDeadlineExceeded(
-                getDisputeDeadlineAt(record.getId(), record.getRecordedAt()), LocalDateTime.now())) {
+        LocalDateTime disputeDeadlineAt = getDisputeDeadlineAt(record.getId(), record.getRecordedAt());
+        if (isDisputeDeadlineExceeded(disputeDeadlineAt, LocalDateTime.now())) {
             throw new BusinessException(RecruitmentErrorCode.NO_SHOW_DISPUTE_DEADLINE_EXCEEDED);
         }
 
@@ -210,7 +210,15 @@ public class RecruitmentNoShowService {
         }
         log.info("F03.11 Phase5b 異議申立: recordId={}, userId={}", recordId, userId);
 
-        return record;
+        return new RecruitmentNoShowRecordResponse(
+                record.getId(), record.getParticipantId(), record.getListingId(), record.getUserId(),
+                record.getReason() != null ? record.getReason().name() : null,
+                record.isConfirmed(), record.getRecordedAt() != null ? record.getRecordedAt().toString() : null,
+                record.getRecordedBy(), record.isDisputed(), record.getDisputeReason(),
+                record.getDisputeResolution() != null ? record.getDisputeResolution().name() : null,
+                record.getCreatedAt() != null ? record.getCreatedAt().toString() : null,
+                disputeDeadlineAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                        .toOffsetDateTime().toString());
     }
 
     /**

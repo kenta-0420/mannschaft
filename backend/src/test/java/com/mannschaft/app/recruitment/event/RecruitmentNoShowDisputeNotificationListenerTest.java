@@ -1,6 +1,5 @@
 package com.mannschaft.app.recruitment.event;
 
-import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -87,7 +86,7 @@ class RecruitmentNoShowDisputeNotificationListenerTest {
     @Test
     void personalCreatorReceivesNotificationOnlyWhenActive() {
         activeDispute(RecruitmentScopeType.PERSONAL, 8L, 8L);
-        given(userRepository.findStatusById(8L)).willReturn(Optional.of(UserStatus.ACTIVE));
+        given(userRepository.existsActiveById(8L)).willReturn(true);
 
         listener.onDisputeRaised(EVENT);
 
@@ -113,7 +112,7 @@ class RecruitmentNoShowDisputeNotificationListenerTest {
     @Test
     void inactivePersonalCreatorReceivesNoNotification() {
         activeDispute(RecruitmentScopeType.PERSONAL, 8L, 8L);
-        given(userRepository.findStatusById(8L)).willReturn(Optional.of(UserStatus.FROZEN));
+        given(userRepository.existsActiveById(8L)).willReturn(false);
 
         listener.onDisputeRaised(EVENT);
 

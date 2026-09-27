@@ -1,6 +1,5 @@
 package com.mannschaft.app.recruitment.event;
 
-import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
@@ -49,8 +48,7 @@ public class RecruitmentNoShowDisputeNotificationListener {
             }
             List<Long> recipients = switch (listing.getScopeType()) {
                 case PERSONAL -> listing.getCreatedBy().equals(listing.getScopeId())
-                        && userRepository.findStatusById(listing.getCreatedBy())
-                                .filter(status -> status == UserStatus.ACTIVE).isPresent()
+                        && userRepository.existsActiveById(listing.getCreatedBy())
                         ? List.of(listing.getCreatedBy()) : List.of();
                 case TEAM -> Stream.concat(
                         userRoleRepository.findAdminUserIdsByTeamId(listing.getScopeId()).stream(),
