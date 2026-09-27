@@ -720,7 +720,10 @@
       "deletedToast": "TODO gelöscht",
       "restoredToast": "TODO wiederhergestellt",
       "deleteFailed": "Löschen fehlgeschlagen",
-      "restoreFailed": "Rückgängig nicht möglich"
+      "restoreFailed": "Rückgängig nicht möglich",
+      "bulkStatusSuccess": "Status von {count} Aufgaben geändert",
+      "bulkStatusPartial": "{changedCount} geändert; {skippedCount} gesperrte Aufgaben übersprungen. Übersprungene Aufgaben bleiben ausgewählt",
+      "bulkStatusAllLocked": "Keine Änderungen: Alle {count} Aufgaben sind gesperrt. Sie bleiben ausgewählt"
     },
     "field": {
       "status": "Status",

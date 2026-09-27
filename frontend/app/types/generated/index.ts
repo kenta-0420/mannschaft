@@ -68394,8 +68394,9 @@ export interface components {
             status?: string;
             todoIds?: number[];
         };
-        ApiResponseListTodoStatusChangeResponse: {
+        BulkStatusChangeResponse: {
             data?: components["schemas"]["TodoStatusChangeResponse"][];
+            skippedLockedIds?: number[];
         };
         UpdateTimetableRequest: {
             /** Format: date */
@@ -135223,7 +135224,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListTodoStatusChangeResponse"];
+                    "*/*": components["schemas"]["BulkStatusChangeResponse"];
                 };
             };
         };
@@ -142488,7 +142489,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListTodoStatusChangeResponse"];
+                    "*/*": components["schemas"]["BulkStatusChangeResponse"];
                 };
             };
         };

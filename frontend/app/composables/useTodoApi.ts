@@ -1,4 +1,5 @@
 import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
+import type { components } from '~/types/generated'
 import type {
   HandoffApiResponse,
   HandoffHistoryResponse,
@@ -94,6 +95,11 @@ interface CommentList {
     updatedAt: string
   }>
   meta: { page: number; size: number; total: number; totalPages: number }
+}
+
+interface BulkTodoStatusChangeResponse {
+  data: components['schemas']['TodoStatusChangeResponse'][]
+  skippedLockedIds: number[]
 }
 
 export function useTodoApi() {
@@ -241,8 +247,8 @@ export function useTodoApi() {
     scopeId: string,
     todoIds: number[],
     status: string,
-  ) {
-    return api(`${buildBase(scopeType, scopeId)}/todos/bulk-status`, {
+  ): Promise<BulkTodoStatusChangeResponse> {
+    return api<BulkTodoStatusChangeResponse>(`${buildBase(scopeType, scopeId)}/todos/bulk-status`, {
       method: 'PATCH',
       body: { todoIds, status },
     })

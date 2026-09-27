@@ -90585,7 +90585,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListTodoStatusChangeResponse"
+                  "$ref": "#/components/schemas/BulkStatusChangeResponse"
                 }
               }
             }
@@ -102730,7 +102730,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListTodoStatusChangeResponse"
+                  "$ref": "#/components/schemas/BulkStatusChangeResponse"
                 }
               }
             }
@@ -204726,13 +204726,20 @@
           }
         }
       },
-      "ApiResponseListTodoStatusChangeResponse": {
+      "BulkStatusChangeResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TodoStatusChangeResponse"
+            }
+          },
+          "skippedLockedIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
             }
           }
         }

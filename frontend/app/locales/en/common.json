@@ -720,7 +720,10 @@
       "deletedToast": "TODO deleted",
       "restoredToast": "TODO restored",
       "deleteFailed": "Failed to delete",
-      "restoreFailed": "Could not undo"
+      "restoreFailed": "Could not undo",
+      "bulkStatusSuccess": "Changed the status of {count} TODOs",
+      "bulkStatusPartial": "Changed {changedCount}; skipped {skippedCount} locked TODOs. Skipped items remain selected",
+      "bulkStatusAllLocked": "No changes made: all {count} TODOs are locked. They remain selected"
     },
     "field": {
       "status": "Status",
