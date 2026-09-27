@@ -9,6 +9,7 @@ import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
+import com.mannschaft.app.recruitment.dto.RecruitmentNoShowRecordResponse;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
@@ -106,8 +107,10 @@ class RecruitmentNoShowServiceTest {
         given(noShowRepository.findDisputeDaysByRecordIds(List.of(RECORD_ID)))
                 .willReturn(List.of(days));
 
-        assertThat(service.getDisputeDeadlineAt(record)).isEqualTo(record.getRecordedAt().plusDays(5));
-        assertThat(service.getDisputeDeadlineAt(record)).isEqualTo(record.getRecordedAt().plusDays(30));
+        assertThat(service.getDisputeDeadlineAt(RECORD_ID, record.getRecordedAt()))
+                .isEqualTo(record.getRecordedAt().plusDays(5));
+        assertThat(service.getDisputeDeadlineAt(RECORD_ID, record.getRecordedAt()))
+                .isEqualTo(record.getRecordedAt().plusDays(30));
     }
 
     // ========================================
@@ -236,7 +239,7 @@ class RecruitmentNoShowServiceTest {
 
         @Test
         @DisplayName("適正スコープの確定参加者は仮マークされ本人通知を一件予約する")
-        void markNoShow_validParticipantPublishesOnce() {
+        void markNoShow_validParticipantPublishesOnce() throws Exception {
             RecruitmentParticipantEntity participant = RecruitmentParticipantEntity.builder()
                     .id(PARTICIPANT_ID).listingId(LISTING_ID).userId(PENALIZED_USER_ID)
                     .status(RecruitmentParticipantStatus.CONFIRMED).build();
@@ -246,16 +249,27 @@ class RecruitmentNoShowServiceTest {
                     .willReturn(Optional.of(participant));
             given(noShowRepository.findByParticipantId(PARTICIPANT_ID)).willReturn(Optional.empty());
             given(noShowRepository.save(any(RecruitmentNoShowRecordEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
+                    .willAnswer(invocation -> {
+                        RecruitmentNoShowRecordEntity saved = invocation.getArgument(0);
+                        Field idField = RecruitmentNoShowRecordEntity.class.getDeclaredField("id");
+                        idField.setAccessible(true);
+                        idField.set(saved, RECORD_ID);
+                        return saved;
+                    });
+            NoShowDisputeDays days = mock(NoShowDisputeDays.class);
+            given(days.getRecordId()).willReturn(RECORD_ID);
+            given(days.getAllowedDays()).willReturn(30);
+            given(noShowRepository.findDisputeDaysByRecordIds(List.of(RECORD_ID)))
+                    .willReturn(List.of(days));
 
-            RecruitmentNoShowRecordEntity record = service.markNoShow(
+            RecruitmentNoShowRecordResponse record = service.markNoShow(
                     SCOPE_TYPE, SCOPE_ID, LISTING_ID, PARTICIPANT_ID, ADMIN_ID);
 
             assertThat(record.isConfirmed()).isFalse();
             assertThat(participant.getStatus()).isEqualTo(RecruitmentParticipantStatus.NO_SHOW);
             verify(accessControlService).checkAdminOrAbove(ADMIN_ID, SCOPE_ID, "TEAM");
             verify(eventPublisher).publishEvent(new RecruitmentNoShowNotificationEvent(
-                    null, LISTING_ID, PENALIZED_USER_ID));
+                    RECORD_ID, LISTING_ID, PENALIZED_USER_ID));
         }
 
         @Test

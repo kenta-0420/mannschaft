@@ -6,6 +6,7 @@ const API = `${API_BASE}/api/v1`
 export type NoShowScope = {
   type: 'TEAM' | 'ORGANIZATION'
   slug: string
+  numericId: number
 }
 
 export type NoShowFixture = {
@@ -65,7 +66,7 @@ async function createListing(
     return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`
   }
   const path = scope.type === 'TEAM' ? 'teams' : 'organizations'
-  const create = await request.post(`${API}/${path}/${scope.slug}/recruitment-listings`, {
+  const create = await request.post(`${API}/${path}/${scope.numericId}/recruitment-listings`, {
     headers: authHeaders(adminToken),
     data: {
       categoryId,
@@ -85,6 +86,14 @@ async function createListing(
   })
   expect(create.status(), `募集作成: ${await create.text()}`).toBe(201)
   const listing = ((await create.json()) as ApiEnvelope<{ id: number; scopeId: number }>).data
+  const targets = await request.put(
+    `${API}/recruitment-listings/${listing.id}/distribution-targets`,
+    {
+      headers: authHeaders(adminToken),
+      data: { targetTypes: ['PUBLIC_FEED'] },
+    },
+  )
+  expect(targets.status(), `公開フィード配信対象: ${await targets.text()}`).toBe(200)
   const publish = await request.post(`${API}/recruitment-listings/${listing.id}/publish`, {
     headers: authHeaders(adminToken),
   })

@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
@@ -23,6 +25,9 @@ public class RecruitmentNoShowNotificationListener {
     private final RecruitmentListingRepository listingRepository;
     private final NotificationDeliveryRunner deliveryRunner;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "NO_SHOW 記録の確定時から異議申立期限が進むため、保存後に募集 gate が停止しても"
+                    + "本人通知を破棄すると救済の機会を失わせる。確定済み記録の通知だけは配送する")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onNoShowRecorded(RecruitmentNoShowNotificationEvent event) {

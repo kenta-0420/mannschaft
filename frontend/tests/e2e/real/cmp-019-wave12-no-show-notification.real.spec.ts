@@ -7,6 +7,7 @@ import {
   createNoShowFixture,
   loginForNoShow,
   type NoShowFixture,
+  type NoShowCredentials,
   type NoShowScope,
 } from './helpers/cmp019-wave12-no-show-fixture'
 
@@ -17,13 +18,17 @@ test.setTimeout(300_000)
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const API = `${API_BASE}/api/v1`
 const APP_BASE = process.env.BASE_URL ?? 'http://localhost:8081'
-const ADMIN = {
-  email: process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local',
-  password: process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!',
+const TEAM_ADMIN = {
+  email: process.env.TEST_TEAM_ADMIN_EMAIL ?? 'e2e-dummy-1@test.mannschaft.local',
+  password: process.env.TEST_TEAM_ADMIN_PASSWORD ?? 'TestPass2026!',
 }
 const MEMBER = {
   email: process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local',
   password: process.env.TEST_USER_PASSWORD ?? 'TestPass2026!',
+}
+const ORG_MEMBER = {
+  email: process.env.TEST_ORG_MEMBER_EMAIL ?? 'e2e-dummy-6@test.mannschaft.local',
+  password: process.env.TEST_ORG_MEMBER_PASSWORD ?? 'TestPass2026!',
 }
 const OUTSIDER = {
   email: process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-outsider@test.mannschaft.local',
@@ -125,12 +130,23 @@ async function expectStableNotification(
   return notification
 }
 
-async function cleanupFixture(
-  request: APIRequestContext,
-  adminToken: string,
-  fixture: NoShowFixture,
-) {
-  const listingIds = fixture.listingIds.join(',')
+async function cleanupFixture(request: APIRequestContext, adminToken: string, scope: NoShowScope) {
+  const createdIds = mysql(
+    `SELECT id FROM recruitment_listings WHERE title IN ` +
+      `('${RUN_TAG}_${scope.type}_A','${RUN_TAG}_${scope.type}_B')`,
+  )
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map(Number)
+  if (!createdIds.length) return
+  const listingIds = createdIds.join(',')
+  for (const listingId of createdIds) {
+    const archive = await request.post(`${API}/recruitment-listings/${listingId}/archive`, {
+      headers: authHeaders(adminToken),
+    })
+    expect(archive.status(), `作成した募集 ${listingId} をアーカイブ`).toBe(204)
+  }
   const notificationIds = mysql(
     `SELECT id FROM notifications WHERE source_type='RECRUITMENT_LISTING' AND source_id IN (${listingIds})`,
   )
@@ -140,12 +156,6 @@ async function cleanupFixture(
     .map(Number)
   if (notificationIds.length) {
     mysql(`DELETE FROM notifications WHERE id IN (${notificationIds.join(',')})`)
-  }
-  for (const listingId of fixture.listingIds) {
-    const archive = await request.post(`${API}/recruitment-listings/${listingId}/archive`, {
-      headers: authHeaders(adminToken),
-    })
-    expect(archive.status(), `作成した募集 ${listingId} をアーカイブ`).toBe(204)
   }
   // The exact created listing IDs drive this delete; all recruitment child rows cascade from them.
   mysql(`DELETE FROM recruitment_listings WHERE id IN (${listingIds})`)
@@ -184,9 +194,9 @@ async function assertOtherAccountCannotSee(
   }
 }
 
-const scopes: NoShowScope[] = [
-  { type: 'TEAM', slug: 'fc-u-18' },
-  { type: 'ORGANIZATION', slug: 'org-000009' },
+const scopes: Array<NoShowScope & { admin: NoShowCredentials; target: NoShowCredentials }> = [
+  { type: 'TEAM', slug: 'fc-u-18', numericId: 1, admin: TEAM_ADMIN, target: MEMBER },
+  { type: 'ORGANIZATION', slug: 'org-000009', numericId: 9, admin: MEMBER, target: ORG_MEMBER },
 ]
 
 for (const scope of scopes) {
@@ -200,19 +210,18 @@ for (const scope of scopes) {
       '実DB照合には E2E_MYSQL_USER / E2E_MYSQL_PASSWORD が必要です',
     )
 
-    const admin = await loginForNoShow(request, ADMIN)
-    const member = await loginForNoShow(request, MEMBER)
+    const admin = await loginForNoShow(request, scope.admin)
+    const member = await loginForNoShow(request, scope.target)
     const outsider = await loginForNoShow(request, OUTSIDER)
-    const fixture = await createNoShowFixture(
-      request,
-      scope,
-      admin.token,
-      member.token,
-      member.userId,
-      RUN_TAG,
-    )
-
     try {
+      const fixture = await createNoShowFixture(
+        request,
+        scope,
+        admin.token,
+        member.token,
+        member.userId,
+        RUN_TAG,
+      )
       const preMarkDb = readNoShowDb(fixture)
       expect(preMarkDb, '試験用参加者にはまだ NO_SHOW がない').toBe('')
       const notifyBefore = readNotificationDb(fixture)
@@ -233,7 +242,7 @@ for (const scope of scopes) {
           `/recruitment-listings/${fixture.listingId}/participants/${fixture.participantId}/no-show`,
         { headers: authHeaders(admin.token) },
       )
-      expect(wrongScope.status(), '募集と異なる scope の ID を拒否').toBe(404)
+      expect(wrongScope.status(), '募集と異なる scope の ID を拒否').toBe(403)
 
       const wrongParticipant = await request.post(
         `${API}/scopes/${fixture.scopeType}/${fixture.scopeId}` +
@@ -315,7 +324,17 @@ for (const scope of scopes) {
       )
       expect(outsiderNotifications, '通知は対象者以外へ届かない').toHaveLength(0)
 
-      await loginViaApi(page, MEMBER, { apiBaseUrl: API_BASE })
+      const memberHistory = await request.get(`${API}/recruitment/no-shows/me`, {
+        headers: authHeaders(member.token),
+      })
+      expect(memberHistory.status(), '本人の履歴 API').toBe(200)
+      expect(
+        ((await memberHistory.json()) as { data: Array<{ id: number }> }).data.some(
+          (row) => row.id === record.id,
+        ),
+        '本人の履歴 API に仮マークが含まれる',
+      ).toBe(true)
+      await loginViaApi(page, scope.target, { apiBaseUrl: API_BASE })
       await page.goto('/my/no-shows')
       await waitForHydration(page)
       await expect(page.getByText(`listing #${fixture.listingId}`, { exact: true })).toBeVisible({
@@ -347,7 +366,7 @@ for (const scope of scopes) {
       expect(memberNotifications).toHaveLength(1)
       await assertOtherAccountCannotSee(browser, request, outsider.token, fixture)
     } finally {
-      await cleanupFixture(request, admin.token, fixture)
+      await cleanupFixture(request, admin.token, scope)
     }
   })
 }

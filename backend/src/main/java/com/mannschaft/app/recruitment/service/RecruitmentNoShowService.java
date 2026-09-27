@@ -3,12 +3,14 @@ package com.mannschaft.app.recruitment.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.recruitment.DisputeResolution;
 import com.mannschaft.app.recruitment.NoShowReason;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
+import com.mannschaft.app.recruitment.dto.RecruitmentNoShowRecordResponse;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.event.RecruitmentNoShowNotificationEvent;
@@ -78,7 +80,7 @@ public class RecruitmentNoShowService {
      * 24時間後に確定バッチが confirmed=true にする。
      */
     @Transactional
-    public RecruitmentNoShowRecordEntity markNoShow(
+    public RecruitmentNoShowRecordResponse markNoShow(
             RecruitmentScopeType scopeType, Long scopeId, Long listingId,
             Long participantId, Long adminUserId) {
         // 先に URL のスコープ権限を確認し、対象 ID の存在情報を漏らさない。
@@ -130,7 +132,13 @@ public class RecruitmentNoShowService {
         log.info("F03.11 Phase5b NO_SHOW仮マーク: participantId={}, userId={}, recordedBy={}",
                 participantId, participant.getUserId(), adminUserId);
 
-        return saved;
+        LocalDateTime deadline = getDisputeDeadlineAt(saved.getId(), saved.getRecordedAt());
+        return new RecruitmentNoShowRecordResponse(
+                saved.getId(), saved.getParticipantId(), saved.getListingId(), saved.getUserId(),
+                saved.getReason().name(), saved.isConfirmed(), saved.getRecordedAt().toString(),
+                saved.getRecordedBy(), saved.isDisputed(), null,
+                saved.getCreatedAt() != null ? saved.getCreatedAt().toString() : null,
+                deadline.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toOffsetDateTime().toString());
     }
 
     // ===========================================
@@ -171,7 +179,8 @@ public class RecruitmentNoShowService {
             throw new BusinessException(RecruitmentErrorCode.ALREADY_DISPUTED);
         }
 
-        if (isDisputeDeadlineExceeded(getDisputeDeadlineAt(record), LocalDateTime.now())) {
+        if (isDisputeDeadlineExceeded(
+                getDisputeDeadlineAt(record.getId(), record.getRecordedAt()), LocalDateTime.now())) {
             throw new BusinessException(RecruitmentErrorCode.NO_SHOW_DISPUTE_DEADLINE_EXCEEDED);
         }
 
@@ -353,8 +362,8 @@ public class RecruitmentNoShowService {
     }
 
     /** 記録の募集スコープ設定から異議申立期限を算出する。設定が無ければ新規既定の30日。 */
-    public LocalDateTime getDisputeDeadlineAt(RecruitmentNoShowRecordEntity record) {
-        return getDisputeDeadlines(List.of(record)).get(record.getId());
+    public LocalDateTime getDisputeDeadlineAt(Long recordId, LocalDateTime recordedAt) {
+        return getDisputeDeadlines(Map.of(recordId, recordedAt)).get(recordId);
     }
 
     static boolean isDisputeDeadlineExceeded(LocalDateTime deadline, LocalDateTime now) {
@@ -362,23 +371,23 @@ public class RecruitmentNoShowService {
     }
 
     /** 本人履歴や管理者一覧の期限を一括取得し、1件ずつの追加照会を避ける。 */
-    public Map<Long, LocalDateTime> getDisputeDeadlines(List<RecruitmentNoShowRecordEntity> records) {
-        if (records.isEmpty()) {
+    public Map<Long, LocalDateTime> getDisputeDeadlines(Map<Long, LocalDateTime> recordedAtById) {
+        if (recordedAtById.isEmpty()) {
             return Map.of();
         }
         Map<Long, Integer> daysById = noShowRepository.findDisputeDaysByRecordIds(
-                        records.stream().map(RecruitmentNoShowRecordEntity::getId).toList())
+                        List.copyOf(recordedAtById.keySet()))
                 .stream().collect(Collectors.toMap(NoShowDisputeDays::getRecordId,
                         NoShowDisputeDays::getAllowedDays));
-        return records.stream().collect(Collectors.toMap(
-                RecruitmentNoShowRecordEntity::getId,
-                record -> {
-                    Integer days = daysById.get(record.getId());
+        return recordedAtById.entrySet().stream().collect(Collectors.toMap(
+                Map.Entry::getKey,
+                entry -> {
+                    Integer days = daysById.get(entry.getKey());
                     if (days == null) {
                         throw new IllegalStateException("NO_SHOW 記録の期限設定を取得できません: recordId="
-                                + record.getId());
+                                + entry.getKey());
                     }
-                    return record.getRecordedAt().plusDays(days);
+                    return entry.getValue().plusDays(days);
                 }));
     }
 

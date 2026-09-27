@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Locale;
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 /**
  * F03.11 Phase 5b: NO_SHOW マーク・異議申立 Controller (§9.5)。
@@ -55,11 +56,11 @@ public class RecruitmentNoShowController {
             @PathVariable Long scopeId,
             @PathVariable Long listingId,
             @PathVariable Long participantId) {
-        RecruitmentNoShowRecordEntity record = noShowService.markNoShow(
+        RecruitmentNoShowRecordResponse record = noShowService.markNoShow(
                 parseScopeType(scopeType), scopeId,
                 listingId, participantId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(toResponse(record)));
+                .body(ApiResponse.of(record));
     }
 
     /**
@@ -144,11 +145,14 @@ public class RecruitmentNoShowController {
     }
 
     private RecruitmentNoShowRecordResponse toResponse(RecruitmentNoShowRecordEntity entity) {
-        return toResponse(entity, noShowService.getDisputeDeadlineAt(entity));
+        return toResponse(entity, noShowService.getDisputeDeadlineAt(
+                entity.getId(), entity.getRecordedAt()));
     }
 
     private List<RecruitmentNoShowRecordResponse> toResponses(List<RecruitmentNoShowRecordEntity> records) {
-        Map<Long, LocalDateTime> deadlines = noShowService.getDisputeDeadlines(records);
+        Map<Long, LocalDateTime> deadlines = noShowService.getDisputeDeadlines(records.stream()
+                .collect(Collectors.toMap(RecruitmentNoShowRecordEntity::getId,
+                        RecruitmentNoShowRecordEntity::getRecordedAt)));
         return records.stream().map(record -> toResponse(record, deadlines.get(record.getId()))).toList();
     }
 
