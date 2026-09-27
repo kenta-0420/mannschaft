@@ -186,7 +186,7 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 非債務（TODO機能語） | backend/src/main/java/com/mannschaft/app/todo/service/TodoScheduleLinkService.java | 87 | // TODO側更新（双方向: linked_schedule_id設定、必要なら親TODO変更） | 対応不要 |
 | 非債務（TODO機能語） | backend/src/main/java/com/mannschaft/app/todo/service/TodoScheduleLinkService.java | 150 | // TODO側にlinked_schedule_idを設定（双方向リンク完成） | 対応不要 |
 | 非債務（TODO機能語） | backend/src/main/java/com/mannschaft/app/todo/service/TodoScheduleLinkService.java | 188 | // TODO側をNULL化 | 対応不要 |
-| 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/todo/service/TodoStatusService.java | 155 | // TODO(F02.7 Phase 15-3 残件): 現在は skippedLockedIds をログ出力のみで、APIレスポンスには含めていない。 | 次陣で仕様化・Issue化 |
+| 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/todo/service/TodoStatusService.java | 155 | // TODO(F02.7 Phase 15-3 残件): 現在は skippedLockedIds をログ出力のみで、APIレスポンスには含めていない。 | Wave 11 Issue #3479 / PR #3481 で応答・画面表示・選択維持へ反映。実 BE/FE/MySQL の TEAM/ORGANIZATION E2E 2件で変更件数・ロックスキップ件数・権限境界を確認。 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/tournament/entry/TournamentEntryMemberService.java | 213 | .orElse("userId=" + userId); // TODO: UserQueryService で解決するまでのプレースホルダー | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/tournament/entry/TournamentEntryMemberService.java | 279 | // TODO: memberQueryDispatcher はチームスコープのメンバーを返すが、 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/tournament/entry/TournamentEntryMemberService.java | 289 | .memberNumber(null)   // TODO: TeamMemberRepository から解決 | 次陣で仕様化・Issue化 |

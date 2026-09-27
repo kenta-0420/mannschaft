@@ -720,7 +720,10 @@
       "deletedToast": "TODO eliminado",
       "restoredToast": "TODO restaurado",
       "deleteFailed": "Error al eliminar",
-      "restoreFailed": "No se pudo deshacer"
+      "restoreFailed": "No se pudo deshacer",
+      "bulkStatusSuccess": "Se cambió el estado de {count} tareas",
+      "bulkStatusPartial": "Se cambiaron {changedCount}; se omitieron {skippedCount} tareas bloqueadas. Los elementos omitidos siguen seleccionados",
+      "bulkStatusAllLocked": "No se hicieron cambios: las {count} tareas están bloqueadas. Siguen seleccionadas"
     },
     "field": {
       "status": "Estado",

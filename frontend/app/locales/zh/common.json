@@ -720,7 +720,10 @@
       "deletedToast": "已删除待办",
       "restoredToast": "已恢复待办",
       "deleteFailed": "删除失败",
-      "restoreFailed": "无法撤销"
+      "restoreFailed": "无法撤销",
+      "bulkStatusSuccess": "已更改 {count} 项待办的状态",
+      "bulkStatusPartial": "已更改 {changedCount} 项；跳过了 {skippedCount} 项锁定的待办。跳过的项目仍处于选中状态",
+      "bulkStatusAllLocked": "未作任何更改：{count} 项待办均已锁定。它们仍处于选中状态"
     },
     "field": {
       "status": "状态",
