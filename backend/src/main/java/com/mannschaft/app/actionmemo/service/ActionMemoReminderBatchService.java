@@ -8,20 +8,24 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -51,7 +55,7 @@ import java.util.Map;
 public class ActionMemoReminderBatchService {
 
     /** タイムゾーン取得失敗時のフォールバック */
-    private static final ZoneId ZONE_FALLBACK = ZoneId.of("Asia/Tokyo");
+    private static final ZoneId ZONE_FALLBACK = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final UserActionMemoSettingsRepository settingsRepository;
     // TODO: actionmemoドメインとnotificationドメイン・authドメイン(AuditLogService/UserRepository)をまたいでいる。将来はActionMemoReminderTriggeredEventで分離予定
@@ -60,6 +64,8 @@ public class ActionMemoReminderBatchService {
     private final AuditLogService auditLogService;
     private final MessageSource messageSource;
     private final UserLocaleCache userLocaleCache;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * スケジュール起動エントリポイント（毎分実行）。
@@ -74,7 +80,7 @@ public class ActionMemoReminderBatchService {
     @SchedulerLock(name = "actionMemoReminderBatch", lockAtMostFor = "PT3M", lockAtLeastFor = "PT0S")
     @Transactional(readOnly = true)
     public void execute() {
-        ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
+        ZonedDateTime nowUtc = ZonedDateTime.now(wallClock).withZoneSameInstant(ZoneOffset.UTC);
         executeAt(nowUtc);
     }
 
@@ -158,7 +164,7 @@ public class ActionMemoReminderBatchService {
      * @param nowMinute 分単位に切り捨てた現在時刻（JST 固定と仮定）
      */
     void executeAt(LocalTime nowMinute) {
-        executeAt(nowMinute, LocalDate.now(ZONE_FALLBACK));
+        executeAt(nowMinute, LocalDate.now(wallClock));
     }
 
     /**
