@@ -14,7 +14,6 @@ NO_ARG_NOW|com.mannschaft.app.actionmemo.entity.ActionMemoEntity|1
 NO_ARG_NOW|com.mannschaft.app.actionmemo.entity.ActionMemoTagEntity|1
 NO_ARG_NOW|com.mannschaft.app.actionmemo.entity.ActionMemoTagLinkEntity|1
 NO_ARG_NOW|com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity|2
-NO_ARG_NOW|com.mannschaft.app.actionmemo.service.ActionMemoWeeklySummaryService|1
 NO_ARG_NOW|com.mannschaft.app.activity.entity.ActivityCommentEntity|1
 NO_ARG_NOW|com.mannschaft.app.activity.entity.ActivityParticipantEntity|1
 NO_ARG_NOW|com.mannschaft.app.activity.entity.ActivityResultEntity|1
