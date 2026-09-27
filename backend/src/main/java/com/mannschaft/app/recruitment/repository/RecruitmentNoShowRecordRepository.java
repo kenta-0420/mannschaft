@@ -14,6 +14,22 @@ import java.util.Optional;
  */
 public interface RecruitmentNoShowRecordRepository extends JpaRepository<RecruitmentNoShowRecordEntity, Long> {
 
+    /** NO_SHOW 期限の設定値を、論理削除済み募集も含めて一括取得する。 */
+    @Query(value = """
+            SELECT r.id AS recordId, COALESCE(s.dispute_allowed_days, 30) AS allowedDays
+            FROM recruitment_no_show_records r
+            JOIN recruitment_listings l ON l.id = r.listing_id
+            LEFT JOIN recruitment_penalty_settings s
+              ON s.scope_type = l.scope_type AND s.scope_id = l.scope_id
+            WHERE r.id IN (:recordIds)
+            """, nativeQuery = true)
+    List<NoShowDisputeDays> findDisputeDaysByRecordIds(@Param("recordIds") List<Long> recordIds);
+
+    interface NoShowDisputeDays {
+        Long getRecordId();
+        Integer getAllowedDays();
+    }
+
     List<RecruitmentNoShowRecordEntity> findByUserId(Long userId);
 
     Optional<RecruitmentNoShowRecordEntity> findByParticipantId(Long participantId);

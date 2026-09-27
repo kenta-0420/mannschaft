@@ -189678,6 +189678,9 @@
           "createdAt": {
             "type": "string"
           },
+          "disputeDeadlineAt": {
+            "type": "string"
+          },
           "disputeResolution": {
             "type": "string"
           },
