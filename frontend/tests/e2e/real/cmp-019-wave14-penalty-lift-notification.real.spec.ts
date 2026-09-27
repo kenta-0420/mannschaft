@@ -106,13 +106,20 @@ function createExpiredPenalty(userId: number): PenaltyFixture {
   }
   expect(settingId, '試験用ペナルティ設定').toBeGreaterThan(0)
 
-  const penaltyId = insertReturningId(
-    "INSERT INTO recruitment_user_penalties " +
-      "(user_id, scope_type, scope_id, penalty_type, triggered_by_setting_id, triggered_no_show_count, started_at, expires_at) " +
-      `VALUES (${userId}, 'TEAM', 1, 'NO_SHOW', ${settingId}, 3, UTC_TIMESTAMP() - INTERVAL 31 DAY, UTC_TIMESTAMP() - INTERVAL 1 MINUTE)`,
-  )
-  expect(penaltyId, `${RUN_TAG}: 試験用ペナルティ ID`).toBeGreaterThan(0)
-  return { penaltyId, settingId, createdSetting, userId }
+  try {
+    const penaltyId = insertReturningId(
+      "INSERT INTO recruitment_user_penalties " +
+        "(user_id, scope_type, scope_id, penalty_type, triggered_by_setting_id, triggered_no_show_count, started_at, expires_at) " +
+        `VALUES (${userId}, 'TEAM', 1, 'NO_SHOW', ${settingId}, 3, UTC_TIMESTAMP() - INTERVAL 31 DAY, UTC_TIMESTAMP() - INTERVAL 1 MINUTE)`,
+    )
+    expect(penaltyId, `${RUN_TAG}: 試験用ペナルティ ID`).toBeGreaterThan(0)
+    return { penaltyId, settingId, createdSetting, userId }
+  }
+  catch (error) {
+    if (createdSetting)
+      mysql(`DELETE FROM recruitment_penalty_settings WHERE id=${settingId}`)
+    throw error
+  }
 }
 
 function penaltyDbRow(fixture: PenaltyFixture): string {
@@ -170,7 +177,7 @@ function cleanupFixture(fixture: PenaltyFixture | undefined): void {
     `DELETE FROM notifications WHERE notification_type='${NOTIFICATION_TYPE}' ` +
       `AND source_type='${SOURCE_TYPE}' AND source_id=${fixture.penaltyId} AND user_id=${fixture.userId}`,
   )
-  mysql(`DELETE FROM recruitment_user_penalties WHERE id=${fixture.penaltyId}`)
+  mysql(`DELETE FROM recruitment_user_penalties WHERE id=${fixture.penaltyId} AND user_id=${fixture.userId}`)
   if (fixture.createdSetting) {
     mysql(`DELETE FROM recruitment_penalty_settings WHERE id=${fixture.settingId}`)
   }
