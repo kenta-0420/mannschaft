@@ -63038,6 +63038,7 @@ export interface components {
             confirmed?: boolean;
             createdAt?: string;
             disputeDeadlineAt?: string;
+            disputeReason?: string;
             disputeResolution?: string;
             disputed?: boolean;
             /** Format: int64 */

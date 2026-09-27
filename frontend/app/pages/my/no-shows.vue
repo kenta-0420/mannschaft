@@ -142,6 +142,7 @@ onMounted(() => load())
         <Textarea
           v-model="disputeReason"
           :placeholder="t('recruitment.noShow.disputeDialog.reasonPlaceholder')"
+          maxlength="10000"
           rows="4"
           class="w-full"
         />
