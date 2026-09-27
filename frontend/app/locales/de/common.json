@@ -1697,38 +1697,38 @@
     "supporterSuccess": "Als Unterstützer registriert",
     "supporterError": "Folgen fehlgeschlagen",
     "guide": {
-      "title": "チーム検索の使い方",
-      "description": "条件を指定して公開されているチームを探し、詳しい情報の確認やサポーター登録を行えます。",
+      "title": "So funktioniert die Team-Suche",
+      "description": "Legen Sie Suchkriterien fest, um öffentliche Teams zu finden, Details anzusehen und sich als Unterstützer zu registrieren.",
       "searchConditions": {
-        "title": "検索条件を指定する",
-        "body": "キーワード、都道府県、チームの種類を組み合わせて、探したいチームを絞り込めます。",
+        "title": "Suchkriterien festlegen",
+        "body": "Kombinieren Sie Suchbegriff, Präfektur und Teamkategorie, um die Ergebnisse einzugrenzen.",
         "steps": {
-          "step1": "検索欄と必要な絞り込み条件を入力・選択します。",
-          "step2": "検索を実行すると、条件に合うチームが一覧に表示されます。"
+          "step1": "Geben Sie einen Suchbegriff ein und wählen Sie die benötigten Filter.",
+          "step2": "Starten Sie die Suche, um passende Teams anzuzeigen."
         }
       },
       "results": {
-        "title": "検索結果を確認する",
-        "body": "各カードにはチーム名、チームの種類、活動地域、メンバー数が表示されます。",
+        "title": "Suchergebnisse prüfen",
+        "body": "Jede Karte zeigt Teamname, Kategorie, Aktivitätsgebiet und Mitgliederzahl.",
         "steps": {
-          "step1": "一覧から気になるチームを選びます。",
-          "step2": "チームの詳細ページへ移動して、さらに情報を確認します。"
+          "step1": "Wählen Sie ein interessantes Team aus der Liste.",
+          "step2": "Öffnen Sie die Detailseite, um weitere Informationen zu sehen."
         }
       },
       "supporter": {
-        "title": "サポーターとして登録する",
-        "body": "サポーター登録を受け付けている、所属していないチームには登録ボタンが表示されます。",
+        "title": "Als Unterstützer registrieren",
+        "body": "Bei Teams, denen Sie nicht angehören und die Unterstützer akzeptieren, wird eine Schaltfläche zur Registrierung angezeigt.",
         "steps": {
-          "step1": "対象チームのカードで「サポーターになる」を選びます。",
-          "step2": "登録が完了すると、カードに登録済みの表示が出ます。"
+          "step1": "Wählen Sie auf der Teamkarte „Unterstützer werden“.",
+          "step2": "Nach der Registrierung wird der Status auf der Karte angezeigt."
         }
       },
       "createAndMove": {
-        "title": "チームを作成して詳細へ移動する",
-        "body": "右上の作成ボタンから新しいチームを作成できます。作成後はそのチームの詳細ページへ移動します。",
+        "title": "Team erstellen und Details öffnen",
+        "body": "Über die Schaltfläche oben rechts können Sie ein Team erstellen. Danach wird dessen Detailseite geöffnet.",
         "steps": {
-          "step1": "「チームを作成」を選んで必要な情報を入力します。",
-          "step2": "作成が完了すると、新しいチームの詳細ページが開きます。"
+          "step1": "Wählen Sie „Team erstellen“ und geben Sie die erforderlichen Informationen ein.",
+          "step2": "Nach Abschluss öffnet sich die Detailseite des neuen Teams."
         }
       }
     },
@@ -2616,5 +2616,48 @@
   "loadErrorState": {
     "message": "Daten konnten nicht geladen werden",
     "retry": "Wiederholen"
+  },
+  "searchBar": {
+    "keyword": "Suchbegriff",
+    "defaultPlaceholder": "Nach Namen suchen",
+    "prefecture": "Präfektur",
+    "selectPrefecture": "Bitte auswählen",
+    "filterPrefecture": "Präfekturen durchsuchen",
+    "genre": "Kategorie",
+    "all": "Alle"
+  },
+  "scopeLabels": {
+    "template": {
+      "CLUB": "Club oder Verein",
+      "CLINIC": "Klinik",
+      "CLASS": "Kurs",
+      "COMMUNITY": "Gemeinschaft",
+      "COMPANY": "Unternehmen",
+      "FAMILY": "Familie",
+      "RESTAURANT": "Restaurant",
+      "BEAUTY": "Schönheitssalon",
+      "STORE": "Geschäft oder Einzelhandel",
+      "VOLUNTEER": "Ehrenamt oder NPO",
+      "NEIGHBORHOOD": "Nachbarschaftsverein",
+      "CONDO": "Wohnungseigentümergemeinschaft",
+      "OTHER": "Sonstiges"
+    },
+    "organizationType": {
+      "GOVERNMENT": "Behörde",
+      "MUNICIPALITY": "Kommune",
+      "COMPANY": "Unternehmen",
+      "HOSPITAL": "Krankenhaus oder medizinische Einrichtung",
+      "ASSOCIATION": "Verband oder Vereinigung",
+      "SCHOOL": "Schule oder Bildungseinrichtung",
+      "NPO": "NPO oder gemeinnützige Organisation",
+      "COMMUNITY": "Gemeinschaft",
+      "OTHER": "Sonstiges"
+    },
+    "visibility": {
+      "PUBLIC": "Öffentlich",
+      "GUESTS_AND_ABOVE": "Gäste und höher",
+      "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
+      "MEMBERS_AND_ABOVE": "Mitglieder und höher"
+    }
   }
 }
