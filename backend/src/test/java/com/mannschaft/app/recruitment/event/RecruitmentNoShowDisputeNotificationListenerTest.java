@@ -1,6 +1,6 @@
 package com.mannschaft.app.recruitment.event;
 
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserStatusLookupService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
@@ -9,7 +9,7 @@ import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RoleService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -38,9 +38,9 @@ class RecruitmentNoShowDisputeNotificationListenerTest {
     @Mock
     private RecruitmentNoShowRecordRepository noShowRepository;
     @Mock
-    private UserRoleRepository userRoleRepository;
+    private RoleService roleService;
     @Mock
-    private UserRepository userRepository;
+    private UserStatusLookupService userStatusLookupService;
     @Mock
     private NotificationService notificationService;
     @InjectMocks
@@ -52,8 +52,7 @@ class RecruitmentNoShowDisputeNotificationListenerTest {
     @Test
     void teamAdminsReceiveOneInAppNotificationEach() {
         activeDispute(RecruitmentScopeType.TEAM, 7L, 8L);
-        given(userRoleRepository.findAdminUserIdsByTeamId(7L)).willReturn(List.of(21L, 22L));
-        given(userRoleRepository.findAllDeputyAdminUserIdsByTeamId(7L)).willReturn(List.of(22L, 23L));
+        given(roleService.getAdminUserIdsByTeamId(7L)).willReturn(List.of(21L, 22L, 23L));
 
         listener.onDisputeRaised(EVENT);
 
@@ -70,8 +69,7 @@ class RecruitmentNoShowDisputeNotificationListenerTest {
     @Test
     void customTemplateListingStillNotifiesAuthorizedTeamAdmin() {
         activeDispute(RecruitmentScopeType.TEAM, 7L, 8L, RecruitmentVisibility.CUSTOM_TEMPLATE);
-        given(userRoleRepository.findAdminUserIdsByTeamId(7L)).willReturn(List.of(21L));
-        given(userRoleRepository.findAllDeputyAdminUserIdsByTeamId(7L)).willReturn(List.of());
+        given(roleService.getAdminUserIdsByTeamId(7L)).willReturn(List.of(21L));
 
         listener.onDisputeRaised(EVENT);
 
@@ -86,7 +84,7 @@ class RecruitmentNoShowDisputeNotificationListenerTest {
     @Test
     void personalCreatorReceivesNotificationOnlyWhenActive() {
         activeDispute(RecruitmentScopeType.PERSONAL, 8L, 8L);
-        given(userRepository.existsActiveById(8L)).willReturn(true);
+        given(userStatusLookupService.isActive(8L)).willReturn(true);
 
         listener.onDisputeRaised(EVENT);
 
@@ -97,7 +95,7 @@ class RecruitmentNoShowDisputeNotificationListenerTest {
     @Test
     void organizationAdminsReceiveOneNotificationEach() {
         activeDispute(RecruitmentScopeType.ORGANIZATION, 7L, 8L);
-        given(userRoleRepository.findAdminUserIdsByOrganizationId(7L)).willReturn(List.of(31L, 31L, 32L));
+        given(roleService.getAdminUserIdsByOrganizationId(7L)).willReturn(List.of(31L, 32L));
 
         listener.onDisputeRaised(EVENT);
 
@@ -112,7 +110,7 @@ class RecruitmentNoShowDisputeNotificationListenerTest {
     @Test
     void inactivePersonalCreatorReceivesNoNotification() {
         activeDispute(RecruitmentScopeType.PERSONAL, 8L, 8L);
-        given(userRepository.existsActiveById(8L)).willReturn(false);
+        given(userStatusLookupService.isActive(8L)).willReturn(false);
 
         listener.onDisputeRaised(EVENT);
 
@@ -122,8 +120,7 @@ class RecruitmentNoShowDisputeNotificationListenerTest {
     @Test
     void oneRecipientFailureDoesNotBlockOtherOrganizers() {
         activeDispute(RecruitmentScopeType.TEAM, 7L, 8L);
-        given(userRoleRepository.findAdminUserIdsByTeamId(7L)).willReturn(List.of(21L, 22L));
-        given(userRoleRepository.findAllDeputyAdminUserIdsByTeamId(7L)).willReturn(List.of());
+        given(roleService.getAdminUserIdsByTeamId(7L)).willReturn(List.of(21L, 22L));
         given(notificationService.createNotificationPreAuthorized(eq(21L), any(), any(), any(), any(),
                 any(), any(), any(), any(), any(), any()))
                 .willThrow(new IllegalStateException("一人目の通知書き込み失敗"));
@@ -142,7 +139,7 @@ class RecruitmentNoShowDisputeNotificationListenerTest {
 
         listener.onDisputeRaised(EVENT);
 
-        verifyNoInteractions(notificationService, userRoleRepository);
+        verifyNoInteractions(notificationService, roleService);
     }
 
     @Test

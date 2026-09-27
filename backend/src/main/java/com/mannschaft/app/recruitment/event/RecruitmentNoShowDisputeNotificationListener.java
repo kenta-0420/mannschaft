@@ -1,6 +1,6 @@
 package com.mannschaft.app.recruitment.event;
 
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserStatusLookupService;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -10,7 +10,7 @@ import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -20,7 +20,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Stream;
 
 /** 確定した異議申立を、裁定できる主催者へアプリ内で知らせる。 */
 @Slf4j
@@ -30,8 +29,8 @@ public class RecruitmentNoShowDisputeNotificationListener {
 
     private final RecruitmentListingRepository listingRepository;
     private final RecruitmentNoShowRecordRepository noShowRepository;
-    private final UserRoleRepository userRoleRepository;
-    private final UserRepository userRepository;
+    private final RoleService roleService;
+    private final UserStatusLookupService userStatusLookupService;
     private final NotificationService notificationService;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
@@ -48,14 +47,10 @@ public class RecruitmentNoShowDisputeNotificationListener {
             }
             List<Long> recipients = switch (listing.getScopeType()) {
                 case PERSONAL -> listing.getCreatedBy().equals(listing.getScopeId())
-                        && userRepository.existsActiveById(listing.getCreatedBy())
+                        && userStatusLookupService.isActive(listing.getCreatedBy())
                         ? List.of(listing.getCreatedBy()) : List.of();
-                case TEAM -> Stream.concat(
-                        userRoleRepository.findAdminUserIdsByTeamId(listing.getScopeId()).stream(),
-                        userRoleRepository.findAllDeputyAdminUserIdsByTeamId(listing.getScopeId()).stream())
-                        .distinct().toList();
-                case ORGANIZATION -> userRoleRepository
-                        .findAdminUserIdsByOrganizationId(listing.getScopeId()).stream().distinct().toList();
+                case TEAM -> roleService.getAdminUserIdsByTeamId(listing.getScopeId());
+                case ORGANIZATION -> roleService.getAdminUserIdsByOrganizationId(listing.getScopeId());
             };
             NotificationScopeType notificationScope = NotificationScopeType.valueOf(listing.getScopeType().name());
             String actionUrl = "/scopes/" + listing.getScopeType().name().toLowerCase(Locale.ROOT)
