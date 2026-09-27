@@ -61,4 +61,7 @@ public interface ConfirmableNotificationRepository
      */
     boolean existsBySourceTypeAndSourceIdAndStatus(
             String sourceType, Long sourceId, ConfirmableNotificationStatus status);
+
+    /** 発生元のペナルティにつき確認通知が既に作成されているか。確認後も再送しない。 */
+    boolean existsBySourceTypeAndSourceId(String sourceType, Long sourceId);
 }

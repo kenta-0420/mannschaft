@@ -51,6 +51,36 @@ public interface RecruitmentNoShowRecordRepository extends JpaRepository<Recruit
             """)
     long countConfirmedNoShows(@Param("userId") Long userId, @Param("since") LocalDateTime since);
 
+    /** 募集の論理削除状態に依存せず、発動設定の適用範囲で確定 NO_SHOW を数える。 */
+    @Query(value = """
+            SELECT COUNT(*) FROM recruitment_no_show_records r
+            JOIN recruitment_listings l ON l.id = r.listing_id
+            WHERE r.user_id = :userId AND r.confirmed = TRUE
+              AND r.recorded_at >= :since
+              AND (r.dispute_resolution IS NULL OR r.dispute_resolution <> 'REVOKED')
+              AND (:allScopes = TRUE OR (l.scope_type = :scopeType AND l.scope_id = :scopeId))
+            """, nativeQuery = true)
+    long countConfirmedNoShowsForPenalty(
+            @Param("userId") Long userId,
+            @Param("since") LocalDateTime since,
+            @Param("allScopes") boolean allScopes,
+            @Param("scopeType") String scopeType,
+            @Param("scopeId") Long scopeId);
+
+    /** 確定時に元募集のスコープを読む。論理削除・モデレーション非表示も含める。 */
+    @Query(value = """
+            SELECT l.scope_type AS scopeType, CAST(l.scope_id AS SIGNED) AS scopeId
+            FROM recruitment_no_show_records r
+            JOIN recruitment_listings l ON l.id = r.listing_id
+            WHERE r.id = :recordId
+            """, nativeQuery = true)
+    Optional<PenaltySourceScope> findPenaltySourceScope(@Param("recordId") Long recordId);
+
+    interface PenaltySourceScope {
+        String getScopeType();
+        Long getScopeId();
+    }
+
     /** 仮マーク（confirmed=FALSE）かつ指定時間を経過したレコード（確定バッチ用）。 */
     @Query("""
             SELECT r FROM RecruitmentNoShowRecordEntity r
