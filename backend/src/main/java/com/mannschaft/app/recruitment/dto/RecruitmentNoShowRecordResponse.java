@@ -19,6 +19,7 @@ public class RecruitmentNoShowRecordResponse {
     private final String recordedAt;
     private final Long recordedBy;
     private final boolean disputed;
+    private final String disputeReason;
     private final String disputeResolution;
     private final String createdAt;
     private final String disputeDeadlineAt;
