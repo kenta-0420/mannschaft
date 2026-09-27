@@ -128120,6 +128120,7 @@
               "enum": [
                 "TEAM",
                 "ORGANIZATION",
+                "GLOBAL",
                 "PERSONAL"
               ]
             }
