@@ -63037,6 +63037,7 @@ export interface components {
         RecruitmentNoShowRecordResponse: {
             confirmed?: boolean;
             createdAt?: string;
+            disputeDeadlineAt?: string;
             disputeResolution?: string;
             disputed?: boolean;
             /** Format: int64 */

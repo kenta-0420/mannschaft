@@ -111,7 +111,7 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/SupporterNameDisclosureService.java | 44 | // TODO: publicview ドメインが team / organization ドメインの Repository を直接参照。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/ViewerContextBuilder.java | 39 | // TODO: publicview ドメインが role ドメインの Repository を直接参照。将来はイベント駆動化を検討。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/quickmemo/service/QuickMemoConvertToTodoService.java | 70 | // TODO を作成（PERSONAL スコープ） | 次陣で仕様化・Issue化 |
-| 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentNoShowService.java | 106 | // TODO: F04.9 実装後に RECRUITMENT_NO_SHOW_RECORDED 通知を送信 | 次陣で仕様化・Issue化 |
+| 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentNoShowService.java | 106 | // TODO: F04.9 実装後に RECRUITMENT_NO_SHOW_RECORDED 通知を送信 | Wave 12 Issue #3483 / PR #3485 で管理者と自動検出から本人 HIGH 通知へ接続。実機 E2E 2件と3住民アリシゼーションを実施。 |
 | 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentNoShowService.java | 175 | // TODO: F04.9 実装後に主催者へ RECRUITMENT_NO_SHOW_DISPUTE_RAISED 通知 | 次陣で仕様化・Issue化 |
 | 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentPenaltyLiftBatch.java | 58 | // TODO: F04.9 実装後に RECRUITMENT_PENALTY_LIFTED 通知を送信 | 次陣で仕様化・Issue化 |
 | 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentPenaltyRecomputeBatch.java | 133 | // TODO: F04.9 実装後に解除対象ユーザーへ RECRUITMENT_PENALTY_LIFTED 通知 | 次陣で仕様化・Issue化 |
