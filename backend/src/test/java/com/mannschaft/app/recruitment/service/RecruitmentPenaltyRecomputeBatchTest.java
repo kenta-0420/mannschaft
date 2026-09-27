@@ -1,9 +1,11 @@
 package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.recruitment.PenaltyApplyScope;
+import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentPenaltyLiftedNotificationEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentPenaltySettingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
@@ -11,9 +13,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 
 import java.lang.reflect.Field;
@@ -29,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -51,6 +56,9 @@ class RecruitmentPenaltyRecomputeBatchTest {
 
     @Mock
     private RecruitmentNoShowRecordRepository noShowRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private RecruitmentPenaltyRecomputeBatch batch;
@@ -131,6 +139,49 @@ class RecruitmentPenaltyRecomputeBatchTest {
             // 偶数ID(無効設定紐付け)は全て解除されている
             long revokedCount = allPenalties.stream().filter(p -> p.getId() % 2 == 0).filter(p -> p.getLiftedAt() != null).count();
             assertThat(revokedCount).isEqualTo(totalCount / 2);
+
+            ArgumentCaptor<RecruitmentPenaltyLiftedNotificationEvent> events =
+                    ArgumentCaptor.forClass(RecruitmentPenaltyLiftedNotificationEvent.class);
+            verify(eventPublisher, times(totalCount / 2)).publishEvent(events.capture());
+            assertThat(events.getAllValues()).allSatisfy(event ->
+                    assertThat(event.liftReason()).isEqualTo(PenaltyLiftReason.DISPUTE_REVOKED));
+        }
+
+        @Test
+        @DisplayName("解除対象がないと通知を発行しない")
+        void recomputePenalties_withoutRevocation_doesNotPublish() {
+            RecruitmentPenaltySettingEntity enabledSetting = buildSetting(1L, true);
+            RecruitmentUserPenaltyEntity penalty = buildPenalty(10L, enabledSetting.getId());
+            given(penaltyRepository.findActivePenaltiesAfterId(any(), anyLong(), any(Pageable.class)))
+                    .willReturn(List.of(penalty));
+            given(settingRepository.findById(enabledSetting.getId())).willReturn(Optional.of(enabledSetting));
+            given(noShowRepository.countConfirmedNoShows(anyLong(), any())).willReturn(3L);
+
+            batch.recomputePenalties();
+
+            verify(penaltyRepository, never()).saveAll(any());
+            verify(eventPublisher, never()).publishEvent(any());
+            assertThat(penalty.getLiftedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("NO_SHOW 件数が閾値を下回ると本人への解除通知を発行する")
+        void recomputePenalties_belowThreshold_publishesToOwner() {
+            RecruitmentPenaltySettingEntity enabledSetting = buildSetting(1L, true);
+            RecruitmentUserPenaltyEntity penalty = buildPenalty(10L, enabledSetting.getId());
+            given(penaltyRepository.findActivePenaltiesAfterId(any(), anyLong(), any(Pageable.class)))
+                    .willReturn(List.of(penalty));
+            given(settingRepository.findById(enabledSetting.getId())).willReturn(Optional.of(enabledSetting));
+            given(noShowRepository.countConfirmedNoShows(anyLong(), any())).willReturn(2L);
+
+            batch.recomputePenalties();
+
+            assertThat(penalty.getLiftReason()).isEqualTo(PenaltyLiftReason.DISPUTE_REVOKED);
+            ArgumentCaptor<RecruitmentPenaltyLiftedNotificationEvent> events =
+                    ArgumentCaptor.forClass(RecruitmentPenaltyLiftedNotificationEvent.class);
+            verify(eventPublisher).publishEvent(events.capture());
+            assertThat(events.getValue().recipientUserId()).isEqualTo(penalty.getUserId());
+            assertThat(events.getValue().liftReason()).isEqualTo(PenaltyLiftReason.DISPUTE_REVOKED);
         }
     }
 

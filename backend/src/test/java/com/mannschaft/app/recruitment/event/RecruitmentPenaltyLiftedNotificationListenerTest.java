@@ -4,6 +4,7 @@ import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class RecruitmentPenaltyLiftedNotificationListenerTest {
@@ -30,7 +32,7 @@ class RecruitmentPenaltyLiftedNotificationListenerTest {
     @Test
     void sendsNormalNotificationOnlyToPenaltyOwner() {
         listener.onPenaltyLifted(new RecruitmentPenaltyLiftedNotificationEvent(
-                11L, 22L, RecruitmentScopeType.TEAM, 33L));
+                11L, 22L, RecruitmentScopeType.TEAM, 33L, PenaltyLiftReason.AUTO_EXPIRED));
 
         ArgumentCaptor<NotificationDeliveryRequest> captor = ArgumentCaptor.forClass(NotificationDeliveryRequest.class);
         verify(notificationDeliveryRunner).sendOne(captor.capture());
@@ -51,6 +53,24 @@ class RecruitmentPenaltyLiftedNotificationListenerTest {
         given(notificationDeliveryRunner.sendOne(any())).willThrow(new IllegalStateException("delivery failed"));
 
         assertThatCode(() -> listener.onPenaltyLifted(new RecruitmentPenaltyLiftedNotificationEvent(
-                11L, 22L, RecruitmentScopeType.TEAM, 33L))).doesNotThrowAnyException();
+                11L, 22L, RecruitmentScopeType.TEAM, 33L, PenaltyLiftReason.AUTO_EXPIRED))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void includesDisputeRevokedReasonInNotificationBody() {
+        listener.onPenaltyLifted(new RecruitmentPenaltyLiftedNotificationEvent(
+                11L, 22L, RecruitmentScopeType.TEAM, 33L, PenaltyLiftReason.DISPUTE_REVOKED));
+
+        ArgumentCaptor<NotificationDeliveryRequest> captor = ArgumentCaptor.forClass(NotificationDeliveryRequest.class);
+        verify(notificationDeliveryRunner).sendOne(captor.capture());
+        assertThat(captor.getValue().body()).contains("DISPUTE_REVOKED");
+    }
+
+    @Test
+    void ignoresEventWithoutLiftReason() {
+        listener.onPenaltyLifted(new RecruitmentPenaltyLiftedNotificationEvent(
+                11L, 22L, RecruitmentScopeType.TEAM, 33L, null));
+
+        verifyNoInteractions(notificationDeliveryRunner);
     }
 }
