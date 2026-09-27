@@ -163,6 +163,26 @@ class RecruitmentPenaltyRecomputeBatchTest {
             verify(eventPublisher, never()).publishEvent(any());
             assertThat(penalty.getLiftedAt()).isNull();
         }
+
+        @Test
+        @DisplayName("NO_SHOW 件数が閾値を下回ると本人への解除通知を発行する")
+        void recomputePenalties_belowThreshold_publishesToOwner() {
+            RecruitmentPenaltySettingEntity enabledSetting = buildSetting(1L, true);
+            RecruitmentUserPenaltyEntity penalty = buildPenalty(10L, enabledSetting.getId());
+            given(penaltyRepository.findActivePenaltiesAfterId(any(), anyLong(), any(Pageable.class)))
+                    .willReturn(List.of(penalty));
+            given(settingRepository.findById(enabledSetting.getId())).willReturn(Optional.of(enabledSetting));
+            given(noShowRepository.countConfirmedNoShows(anyLong(), any())).willReturn(2L);
+
+            batch.recomputePenalties();
+
+            assertThat(penalty.getLiftReason()).isEqualTo(PenaltyLiftReason.DISPUTE_REVOKED);
+            ArgumentCaptor<RecruitmentPenaltyLiftedNotificationEvent> events =
+                    ArgumentCaptor.forClass(RecruitmentPenaltyLiftedNotificationEvent.class);
+            verify(eventPublisher).publishEvent(events.capture());
+            assertThat(events.getValue().recipientUserId()).isEqualTo(penalty.getUserId());
+            assertThat(events.getValue().liftReason()).isEqualTo(PenaltyLiftReason.DISPUTE_REVOKED);
+        }
     }
 
     // ==========================================================
