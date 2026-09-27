@@ -114,7 +114,7 @@ public class RecruitmentNoShowController {
             @PathVariable Long noShowId,
             @Valid @RequestBody DisputeNoShowRequest request) {
         RecruitmentNoShowRecordEntity record =
-                noShowService.dispute(noShowId, SecurityUtils.getCurrentUserId());
+                noShowService.dispute(noShowId, SecurityUtils.getCurrentUserId(), request.getReason());
         return ResponseEntity.ok(ApiResponse.of(toResponse(record)));
     }
 
@@ -168,6 +168,7 @@ public class RecruitmentNoShowController {
                 entity.getRecordedAt() != null ? entity.getRecordedAt().toString() : null,
                 entity.getRecordedBy(),
                 entity.isDisputed(),
+                entity.getDisputeReason(),
                 entity.getDisputeResolution() != null ? entity.getDisputeResolution().name() : null,
                 entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : null,
                 disputeDeadlineAt

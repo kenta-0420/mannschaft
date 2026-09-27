@@ -444,7 +444,7 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
                 .reason(NoShowReason.ADMIN_MARKED)
                 .recordedBy(userId)
                 .build();
-        record.dispute();
+        record.dispute("異議申立の理由");
         return noShowRepository.save(record).getId();
     }
 
