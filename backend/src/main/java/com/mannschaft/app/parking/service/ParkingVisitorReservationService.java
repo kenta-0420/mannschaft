@@ -17,11 +17,13 @@ import com.mannschaft.app.parking.repository.ParkingSpaceRepository;
 import com.mannschaft.app.parking.repository.ParkingVisitorReservationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -49,6 +51,8 @@ public class ParkingVisitorReservationService {
     private final ParkingSettingsRepository settingsRepository;
     private final ParkingMapper parkingMapper;
     private final AccessControlService accessControlService;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     private static final List<VisitorReservationStatus> EXCLUDE_STATUSES = List.of(
             VisitorReservationStatus.CANCELLED, VisitorReservationStatus.REJECTED, VisitorReservationStatus.NO_SHOW);
@@ -88,7 +92,8 @@ public class ParkingVisitorReservationService {
                 .orElseGet(() -> ParkingSettingsEntity.builder().scopeType(scopeType).scopeId(scopeId).build());
 
         // 日数チェック
-        long daysAhead = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), request.getReservedDate());
+        long daysAhead = java.time.temporal.ChronoUnit.DAYS.between(
+                LocalDate.now(wallClock), request.getReservedDate());
         if (daysAhead > settings.getVisitorReservationMaxDaysAhead()) {
             throw new BusinessException(ParkingErrorCode.VISITOR_RESERVATION_DATE_OUT_OF_RANGE);
         }
