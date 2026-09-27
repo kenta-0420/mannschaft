@@ -376,6 +376,7 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
       { headers: authHeaders(systemAdmin.token) },
     )
     expect(trigger.status(), `24h確認バッチ: ${await trigger.text()}`).toBe(200)
+    expect(((await trigger.json()) as ApiEnvelope<{ status: string }>).data.status).toBe('COMPLETED')
     await expect.poll(
       () => Number(scalar(`SELECT COUNT(*) FROM recruitment_no_show_records WHERE id IN (${recordIdList}) AND confirmed=TRUE`)),
     ).toBe(2)
@@ -484,8 +485,10 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
       `${API}/system-admin/batch/recruitment-no-show-confirm-hourly/trigger?sync=true`,
       { headers: authHeaders(systemAdmin.token) },
     )
-    expect(repeated.status()).toBe(409)
-    expect(((await repeated.json()) as ApiEnvelope<{ status: string }>).data.status).toBe('LOCKED')
+    // e2e プロファイルは自動スケジューラと ShedLock を止めるため、実際の再実行も検証できる。
+    expect([200, 409]).toContain(repeated.status())
+    expect(((await repeated.json()) as ApiEnvelope<{ status: string }>).data.status)
+      .toBe(repeated.status() === 409 ? 'LOCKED' : 'COMPLETED')
     expect(confirmableRows(penaltyId)).toEqual([String(confirmableId)])
     expect(appNotificationRows(confirmableId, member.userId)).toHaveLength(1)
   }
