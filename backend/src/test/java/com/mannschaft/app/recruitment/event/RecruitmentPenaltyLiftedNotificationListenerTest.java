@@ -1,0 +1,56 @@
+package com.mannschaft.app.recruitment.event;
+
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import com.mannschaft.app.recruitment.RecruitmentScopeType;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
+@ExtendWith(MockitoExtension.class)
+class RecruitmentPenaltyLiftedNotificationListenerTest {
+
+    @Mock
+    private NotificationDeliveryRunner notificationDeliveryRunner;
+
+    @InjectMocks
+    private RecruitmentPenaltyLiftedNotificationListener listener;
+
+    @Test
+    void sendsNormalNotificationOnlyToPenaltyOwner() {
+        listener.onPenaltyLifted(new RecruitmentPenaltyLiftedNotificationEvent(
+                11L, 22L, RecruitmentScopeType.TEAM, 33L));
+
+        ArgumentCaptor<NotificationDeliveryRequest> captor = ArgumentCaptor.forClass(NotificationDeliveryRequest.class);
+        verify(notificationDeliveryRunner).sendOne(captor.capture());
+        NotificationDeliveryRequest request = captor.getValue();
+        assertThat(request.recipientUserId()).isEqualTo(22L);
+        assertThat(request.notificationType()).isEqualTo("RECRUITMENT_PENALTY_LIFTED");
+        assertThat(request.priority()).isEqualTo(NotificationPriority.NORMAL);
+        assertThat(request.sourceType()).isEqualTo("RECRUITMENT_PENALTY");
+        assertThat(request.sourceId()).isEqualTo(11L);
+        assertThat(request.scopeType()).isEqualTo(NotificationScopeType.TEAM);
+        assertThat(request.scopeId()).isEqualTo(33L);
+        assertThat(request.actionUrl()).isNull();
+        assertThat(request.body()).contains("AUTO_EXPIRED", "#11", "TEAM #33");
+    }
+
+    @Test
+    void deliveryFailureDoesNotPropagate() {
+        given(notificationDeliveryRunner.sendOne(any())).willThrow(new IllegalStateException("delivery failed"));
+
+        assertThatCode(() -> listener.onPenaltyLifted(new RecruitmentPenaltyLiftedNotificationEvent(
+                11L, 22L, RecruitmentScopeType.TEAM, 33L))).doesNotThrowAnyException();
+    }
+}
