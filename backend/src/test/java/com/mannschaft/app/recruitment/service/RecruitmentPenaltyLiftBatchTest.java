@@ -1,6 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
+import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
 import com.mannschaft.app.recruitment.event.RecruitmentPenaltyLiftedNotificationEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
@@ -46,8 +47,10 @@ class RecruitmentPenaltyLiftBatchTest {
                 ArgumentCaptor.forClass(RecruitmentPenaltyLiftedNotificationEvent.class);
         verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(events.capture());
         assertThat(events.getAllValues()).containsExactly(
-                new RecruitmentPenaltyLiftedNotificationEvent(101L, 201L, RecruitmentScopeType.TEAM, 301L),
-                new RecruitmentPenaltyLiftedNotificationEvent(102L, 202L, RecruitmentScopeType.ORGANIZATION, 302L));
+                new RecruitmentPenaltyLiftedNotificationEvent(101L, 201L, RecruitmentScopeType.TEAM, 301L,
+                        PenaltyLiftReason.AUTO_EXPIRED),
+                new RecruitmentPenaltyLiftedNotificationEvent(102L, 202L, RecruitmentScopeType.ORGANIZATION, 302L,
+                        PenaltyLiftReason.AUTO_EXPIRED));
         assertThat(first.getLiftReason()).isEqualTo(com.mannschaft.app.recruitment.PenaltyLiftReason.AUTO_EXPIRED);
         assertThat(second.getLiftReason()).isEqualTo(com.mannschaft.app.recruitment.PenaltyLiftReason.AUTO_EXPIRED);
     }
