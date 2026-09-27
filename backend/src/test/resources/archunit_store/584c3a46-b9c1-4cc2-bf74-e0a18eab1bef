@@ -318,8 +318,6 @@ com.mannschaft.app.dashboard.service.ChatHubService (domain 'dashboard') depends
 com.mannschaft.app.dashboard.service.ChatHubService (domain 'dashboard') depends on other-domain entity com.mannschaft.app.chat.entity.ChatChannelMemberEntity (domain 'chat')
 com.mannschaft.app.dashboard.service.ChatHubService (domain 'dashboard') depends on other-domain entity com.mannschaft.app.chat.entity.ChatChannelMemberEntity (domain 'chat')
 com.mannschaft.app.dashboard.service.ChatHubService (domain 'dashboard') depends on other-domain entity com.mannschaft.app.chat.entity.ChatChannelMemberEntity (domain 'chat')
-com.mannschaft.app.dashboard.service.DashboardScopeTabService (domain 'dashboard') depends on other-domain entity com.mannschaft.app.membership.entity.MembershipEntity (domain 'membership')
-com.mannschaft.app.dashboard.service.DashboardScopeTabService (domain 'dashboard') depends on other-domain entity com.mannschaft.app.membership.entity.MembershipEntity (domain 'membership')
 com.mannschaft.app.dashboard.service.DashboardScopeTabService (domain 'dashboard') depends on other-domain entity com.mannschaft.app.organization.entity.OrganizationEntity (domain 'organization')
 com.mannschaft.app.dashboard.service.DashboardScopeTabService (domain 'dashboard') depends on other-domain entity com.mannschaft.app.organization.entity.OrganizationEntity (domain 'organization')
 com.mannschaft.app.dashboard.service.DashboardScopeTabService (domain 'dashboard') depends on other-domain entity com.mannschaft.app.organization.entity.OrganizationEntity (domain 'organization')

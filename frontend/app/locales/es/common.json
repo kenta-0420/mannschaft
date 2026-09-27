@@ -720,7 +720,10 @@
       "deletedToast": "TODO eliminado",
       "restoredToast": "TODO restaurado",
       "deleteFailed": "Error al eliminar",
-      "restoreFailed": "No se pudo deshacer"
+      "restoreFailed": "No se pudo deshacer",
+      "bulkStatusSuccess": "Se cambió el estado de {count} tareas",
+      "bulkStatusPartial": "Se cambiaron {changedCount}; se omitieron {skippedCount} tareas bloqueadas. Los elementos omitidos siguen seleccionados",
+      "bulkStatusAllLocked": "No se hicieron cambios: las {count} tareas están bloqueadas. Siguen seleccionadas"
     },
     "field": {
       "status": "Estado",
@@ -1693,6 +1696,42 @@
     "becomeSupporter": "Convertirse en seguidor",
     "supporterSuccess": "Registrado como seguidor",
     "supporterError": "Error al seguir",
+    "guide": {
+      "title": "Cómo buscar equipos",
+      "description": "Define los criterios para encontrar equipos públicos, consultar sus detalles y registrarte como seguidor.",
+      "searchConditions": {
+        "title": "Definir los criterios de búsqueda",
+        "body": "Combina una palabra clave, una prefectura y una categoría de equipo para acotar los resultados.",
+        "steps": {
+          "step1": "Introduce una palabra clave y selecciona los filtros que necesites.",
+          "step2": "Ejecuta la búsqueda para ver los equipos que coinciden."
+        }
+      },
+      "results": {
+        "title": "Revisar los resultados",
+        "body": "Cada tarjeta muestra el nombre, la categoría, la zona de actividad y el número de miembros del equipo.",
+        "steps": {
+          "step1": "Selecciona un equipo que te interese de la lista.",
+          "step2": "Abre su página de detalles para obtener más información."
+        }
+      },
+      "supporter": {
+        "title": "Registrarse como seguidor",
+        "body": "Los equipos a los que no perteneces y que aceptan seguidores muestran un botón de registro.",
+        "steps": {
+          "step1": "Selecciona «Convertirse en seguidor» en la tarjeta del equipo.",
+          "step2": "Tras registrarte, la tarjeta muestra el estado de registro."
+        }
+      },
+      "createAndMove": {
+        "title": "Crear un equipo y abrir sus detalles",
+        "body": "Puedes crear un equipo con el botón de la parte superior derecha. Al terminar, se abrirá su página de detalles.",
+        "steps": {
+          "step1": "Selecciona «Crear equipo» e introduce la información necesaria.",
+          "step2": "Al terminar, se abrirá la página de detalles del nuevo equipo."
+        }
+      }
+    },
     "folders": "Organización de carpetas"
   },
   "orgHub": {
@@ -2558,8 +2597,67 @@
       "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
     }
   },
+  "memberPermissions": {
+    "title": "Permisos predeterminados de MEMBER",
+    "description": "Configura los permisos predeterminados de los usuarios MEMBER que se unan a este equipo u organización.",
+    "sectionTitle": "Permisos predeterminados",
+    "invalidScope": "Selecciona un equipo o una organización antes de abrir esta página.",
+    "loadFailed": "No se pudieron cargar los permisos predeterminados de MEMBER.",
+    "saveSuccess": "Se actualizaron los permisos predeterminados de MEMBER.",
+    "saveFailed": "No se pudieron actualizar los permisos predeterminados de MEMBER.",
+    "inherited": "Heredado de una configuración superior",
+    "accessDenied": "Solo los administradores pueden realizar esta acción.",
+    "permissions": {
+      "MANAGE_SCHEDULES": "Gestionar calendarios",
+      "MANAGE_FILES": "Gestionar archivos",
+      "MANAGE_POSTS": "Gestionar publicaciones"
+    }
+  },
   "loadErrorState": {
     "message": "Error al cargar los datos",
     "retry": "Reintentar"
+  },
+  "searchBar": {
+    "keyword": "Palabra clave",
+    "defaultPlaceholder": "Buscar por nombre",
+    "prefecture": "Prefectura",
+    "selectPrefecture": "Selecciona una prefectura",
+    "filterPrefecture": "Buscar prefecturas",
+    "genre": "Categoría",
+    "all": "Todos"
+  },
+  "scopeLabels": {
+    "template": {
+      "CLUB": "Club o círculo",
+      "CLINIC": "Clínica",
+      "CLASS": "Clase",
+      "COMMUNITY": "Comunidad",
+      "COMPANY": "Empresa",
+      "FAMILY": "Familia",
+      "RESTAURANT": "Restaurante",
+      "BEAUTY": "Salón de belleza",
+      "STORE": "Tienda o comercio",
+      "VOLUNTEER": "Voluntariado u ONG",
+      "NEIGHBORHOOD": "Asociación vecinal",
+      "CONDO": "Comunidad de propietarios",
+      "OTHER": "Otros"
+    },
+    "organizationType": {
+      "GOVERNMENT": "Administración pública",
+      "MUNICIPALITY": "Municipio",
+      "COMPANY": "Empresa",
+      "HOSPITAL": "Hospital o centro médico",
+      "ASSOCIATION": "Asociación o federación",
+      "SCHOOL": "Escuela o centro educativo",
+      "NPO": "ONG o entidad sin ánimo de lucro",
+      "COMMUNITY": "Comunidad",
+      "OTHER": "Otros"
+    },
+    "visibility": {
+      "PUBLIC": "Público",
+      "GUESTS_AND_ABOVE": "Invitados y superiores",
+      "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
+      "MEMBERS_AND_ABOVE": "Miembros y superiores"
+    }
   }
 }

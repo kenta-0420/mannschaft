@@ -14,12 +14,12 @@ const emit = defineEmits<{
 }>()
 
 const { listIncidents } = useIncidentApi()
-const { error: showError } = useNotification()
 const { relativeTime } = useRelativeTime()
 const { formatDateTime } = useDatetime()
 
 const items = ref<IncidentSummaryResponse[]>([])
 const loading = ref(false)
+const loadError = ref(false)
 const filterStatus = ref<IncidentStatus | ''>('')
 const page = ref(0)
 const size = ref(20)
@@ -36,11 +36,16 @@ const statusOptions = [
 
 function getStatusClass(status: IncidentStatus): string {
   switch (status) {
-    case 'OPEN': return 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-    case 'IN_PROGRESS': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
-    case 'RESOLVED': return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-    case 'CLOSED': return 'bg-surface-100 text-surface-500 dark:bg-surface-700 dark:text-surface-400'
-    default: return 'bg-surface-100'
+    case 'OPEN':
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+    case 'IN_PROGRESS':
+      return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
+    case 'RESOLVED':
+      return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+    case 'CLOSED':
+      return 'bg-surface-100 text-surface-500 dark:bg-surface-700 dark:text-surface-400'
+    default:
+      return 'bg-surface-100'
   }
 }
 
@@ -56,11 +61,16 @@ function getStatusLabel(status: IncidentStatus): string {
 
 function getPriorityClass(priority: string): string {
   switch (priority) {
-    case 'LOW': return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-    case 'MEDIUM': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
-    case 'HIGH': return 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
-    case 'CRITICAL': return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-    default: return 'bg-surface-100'
+    case 'LOW':
+      return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+    case 'MEDIUM':
+      return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
+    case 'HIGH':
+      return 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
+    case 'CRITICAL':
+      return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+    default:
+      return 'bg-surface-100'
   }
 }
 
@@ -71,6 +81,7 @@ function getPriorityLabel(priority: string): string {
 
 async function loadItems() {
   loading.value = true
+  loadError.value = false
   try {
     const res = await listIncidents(props.scopeType, props.scopeId, {
       status: filterStatus.value || undefined,
@@ -81,7 +92,10 @@ async function loadItems() {
     totalElements.value = res.meta.total
     totalPages.value = res.meta.totalPages
   } catch {
-    showError('インシデント一覧の取得に失敗しました')
+    items.value = []
+    totalElements.value = 0
+    totalPages.value = 0
+    loadError.value = true
   } finally {
     loading.value = false
   }
@@ -155,6 +169,16 @@ defineExpose({ refresh: loadItems })
       <LoadingBounce />
     </div>
 
+    <div v-else-if="loadError" class="py-12 text-center">
+      <p class="mb-4 text-surface-600 dark:text-surface-300">
+        インシデント一覧を表示できませんでした
+      </p>
+      <div class="flex justify-center gap-2">
+        <Button label="再試行" @click="loadItems" />
+        <Button label="ダッシュボードへ戻る" text @click="navigateTo('/dashboard')" />
+      </div>
+    </div>
+
     <!-- リスト -->
     <div v-else class="flex flex-col gap-3">
       <button
@@ -202,7 +226,7 @@ defineExpose({ refresh: loadItems })
     </div>
 
     <!-- 空表示 -->
-    <div v-if="!loading && items.length === 0" class="py-12 text-center">
+    <div v-if="!loading && !loadError && items.length === 0" class="py-12 text-center">
       <i class="pi pi-shield mb-3 text-4xl text-surface-300" />
       <p class="text-surface-400">インシデントがありません</p>
     </div>

@@ -550,19 +550,18 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("配権AC-6 非退行: 一般 MEMBER の DIRECT（既定）投稿は従来どおり成功する")
-        void directPost_byPlainMember_isStillAccepted() {
+        @DisplayName("一般 MEMBER は初期設定では DIRECT 投稿もできない")
+        void directPost_byPlainMember_isDeniedUntilEnabled() {
             Long member = 92_317L;
             membershipRepository.save(membership(member, ScopeType.ORGANIZATION, parentOrg));
 
             setAuthentication(member);
-            PostResponse created = postService.createPost(new CreatePostRequest(
+            assertThatThrownBy(() -> postService.createPost(new CreatePostRequest(
                     "既定配信の投稿", "ORGANIZATION", parentOrg, "USER",
-                    null, null, null, null, null, null), member);
-
-            assertThat(postRepository.findById(created.getId())).isPresent()
-                    .get().extracting(TimelinePostEntity::getDeliveryScope)
-                    .isEqualTo(PostDeliveryScope.DIRECT);
+                    null, null, null, null, null, null), member))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
         }
 
         @Test

@@ -98,7 +98,7 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicOrganizationSearchQueryService.java | 32 | // TODO: publicviewドメインからorganizationドメイン(OrganizationRepository)とcmsドメイン(BlogPostRepository)を | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 46 | // TODO: publicview → cms のクロスドメイン参照。将来はイベント駆動化候補。 | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 48 | // TODO: publicview → auth のクロスドメイン参照。将来はイベント駆動化候補。 | 次陣で仕様化・Issue化 |
-| 性能 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 69 | // TODO: N+1 問題。コメント件数が多い場合は author_id をバルク取得して UserRepository.findAllById で解決すること。 | 次陣で仕様化・Issue化 |
+| 性能 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 69 | // TODO: N+1 問題。コメント件数が多い場合は author_id をバルク取得して UserRepository.findAllById で解決すること。 | Wave 7 Issue #3466 / PR #3467 で `findNameMapByIdIn` による著者名一括取得へ置換。test-only red、全CI green、実機E2E、3住民アリシゼーションを確認。 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 86 | // TODO: publicview → cms / auth クロスドメイン参照。将来はイベント駆動化候補。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 97 | // TODO: チームの supporter_name_disclosure = REAL_NAME の場合、本名スナップショットを設定する | 次陣で仕様化・Issue化 |
 | 越境整理 | backend/src/main/java/com/mannschaft/app/publicview/service/PublicPostCommentService.java | 151 | // TODO: publicview → cms クロスドメイン参照 | 次陣で仕様化・Issue化 |
@@ -111,7 +111,7 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/SupporterNameDisclosureService.java | 44 | // TODO: publicview ドメインが team / organization ドメインの Repository を直接参照。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/publicview/service/ViewerContextBuilder.java | 39 | // TODO: publicview ドメインが role ドメインの Repository を直接参照。将来はイベント駆動化を検討。 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/quickmemo/service/QuickMemoConvertToTodoService.java | 70 | // TODO を作成（PERSONAL スコープ） | 次陣で仕様化・Issue化 |
-| 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentNoShowService.java | 106 | // TODO: F04.9 実装後に RECRUITMENT_NO_SHOW_RECORDED 通知を送信 | 次陣で仕様化・Issue化 |
+| 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentNoShowService.java | 106 | // TODO: F04.9 実装後に RECRUITMENT_NO_SHOW_RECORDED 通知を送信 | Wave 12 Issue #3483 / PR #3485 で管理者と自動検出から本人 HIGH 通知へ接続。実機 E2E 2件と3住民アリシゼーションを実施。 |
 | 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentNoShowService.java | 175 | // TODO: F04.9 実装後に主催者へ RECRUITMENT_NO_SHOW_DISPUTE_RAISED 通知 | 次陣で仕様化・Issue化 |
 | 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentPenaltyLiftBatch.java | 58 | // TODO: F04.9 実装後に RECRUITMENT_PENALTY_LIFTED 通知を送信 | 次陣で仕様化・Issue化 |
 | 実装不足 | backend/src/main/java/com/mannschaft/app/recruitment/service/RecruitmentPenaltyRecomputeBatch.java | 133 | // TODO: F04.9 実装後に解除対象ユーザーへ RECRUITMENT_PENALTY_LIFTED 通知 | 次陣で仕様化・Issue化 |
@@ -186,7 +186,7 @@ git grep -n -I -E '//[[:space:]]*(TODO|FIXME|HACK|XXX)' origin/main -- backend/s
 | 非債務（TODO機能語） | backend/src/main/java/com/mannschaft/app/todo/service/TodoScheduleLinkService.java | 87 | // TODO側更新（双方向: linked_schedule_id設定、必要なら親TODO変更） | 対応不要 |
 | 非債務（TODO機能語） | backend/src/main/java/com/mannschaft/app/todo/service/TodoScheduleLinkService.java | 150 | // TODO側にlinked_schedule_idを設定（双方向リンク完成） | 対応不要 |
 | 非債務（TODO機能語） | backend/src/main/java/com/mannschaft/app/todo/service/TodoScheduleLinkService.java | 188 | // TODO側をNULL化 | 対応不要 |
-| 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/todo/service/TodoStatusService.java | 155 | // TODO(F02.7 Phase 15-3 残件): 現在は skippedLockedIds をログ出力のみで、APIレスポンスには含めていない。 | 次陣で仕様化・Issue化 |
+| 既存CMP・Issue候補 | backend/src/main/java/com/mannschaft/app/todo/service/TodoStatusService.java | 155 | // TODO(F02.7 Phase 15-3 残件): 現在は skippedLockedIds をログ出力のみで、APIレスポンスには含めていない。 | Wave 11 Issue #3479 / PR #3481 で応答・画面表示・選択維持へ反映。実 BE/FE/MySQL の TEAM/ORGANIZATION E2E 2件で変更件数・ロックスキップ件数・権限境界を確認。 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/tournament/entry/TournamentEntryMemberService.java | 213 | .orElse("userId=" + userId); // TODO: UserQueryService で解決するまでのプレースホルダー | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/tournament/entry/TournamentEntryMemberService.java | 279 | // TODO: memberQueryDispatcher はチームスコープのメンバーを返すが、 | 次陣で仕様化・Issue化 |
 | 将来仕様 | backend/src/main/java/com/mannschaft/app/tournament/entry/TournamentEntryMemberService.java | 289 | .memberNumber(null)   // TODO: TeamMemberRepository から解決 | 次陣で仕様化・Issue化 |

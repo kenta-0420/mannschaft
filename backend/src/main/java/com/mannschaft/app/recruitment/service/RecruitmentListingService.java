@@ -2,6 +2,8 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -45,6 +47,7 @@ import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepositor
 import com.mannschaft.app.recruitment.repository.RecruitmentReminderRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentTemplateRepository;
 import com.mannschaft.app.recruitment.util.LikeEscapeUtil;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.FollowerType;
 import com.mannschaft.app.social.repository.FollowRepository;
@@ -95,6 +98,7 @@ public class RecruitmentListingService {
     private final RecruitmentParticipantRepository participantRepository;
     private final RecruitmentParticipantHistoryRepository participantHistoryRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final UserRoleRepository userRoleRepository;
     private final FollowRepository followRepository;
     private final NotificationHelper notificationHelper;
@@ -310,6 +314,12 @@ public class RecruitmentListingService {
         if (template.getScopeType() != scopeType || !template.getScopeId().equals(scopeId)) {
             throw new BusinessException(RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
         }
+        String location = template.getDefaultLocation();
+        if (location == null || location.isBlank()) {
+            throw new BusinessException(CommonErrorCode.COMMON_001, List.of(
+                    new ErrorResponse.FieldError(
+                            "location", "location must not be blank")));
+        }
 
         // キャンセルポリシーが設定されていれば DEEP COPY
         RecruitmentCancellationPolicyEntity copiedPolicy =
@@ -348,7 +358,7 @@ public class RecruitmentListingService {
                 false,
                 template.getDefaultPrice(),
                 template.getDefaultVisibility(),
-                template.getDefaultLocation(),
+                location,
                 template.getDefaultReservationLineId(),
                 template.getDefaultImageUrl(),
                 policyId,
@@ -679,8 +689,8 @@ public class RecruitmentListingService {
         allScopeIds.addAll(followedOrgIds);
 
         // 自身の所属チーム・組織IDも追加（CMP-027: user_roles ∪ memberships の在籍。SUPPORTER 含む）
-        allScopeIds.addAll(userRoleRepository.findTeamIdsByUserId(userId));
-        allScopeIds.addAll(userRoleRepository.findOrganizationIdsByUserId(userId));
+        allScopeIds.addAll(membershipScopeQueryService.findActiveTeamIds(userId));
+        allScopeIds.addAll(membershipScopeQueryService.findActiveOrganizationIds(userId));
 
         if (allScopeIds.isEmpty()) {
             return List.of();
@@ -1233,9 +1243,9 @@ public class RecruitmentListingService {
             if (requestedScopes.isEmpty()) {
                 throw new BusinessException(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
             }
-            Set<Long> activeTeamIds = new LinkedHashSet<>(userRoleRepository.findTeamIdsByUserId(userId));
+            Set<Long> activeTeamIds = new LinkedHashSet<>(membershipScopeQueryService.findActiveTeamIds(userId));
             Set<Long> activeOrganizationIds = new LinkedHashSet<>(
-                    userRoleRepository.findOrganizationIdsByUserId(userId));
+                    membershipScopeQueryService.findActiveOrganizationIds(userId));
             Set<String> seen = new LinkedHashSet<>();
             for (AudienceScopeRequest scope : requestedScopes) {
                 if (scope == null || scope.scopeType() == null || scope.scopeId() == null

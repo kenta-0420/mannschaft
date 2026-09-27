@@ -703,7 +703,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2065;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2063;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -716,10 +716,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値（JUnit XML の
      * AssertionFailedError メッセージ「1505 → 1459 に減少（-46件）」）へ追随。</p>
      *
-     * <p>1459 → 1447（2026-09-24）: 管理者ロックのドメインサービス委譲と通知クレジットの
-     * トランザクション境界是正で解消済みとなった D-3 違反 12 行へ追随（CMP-260922-2230）。</p>
+     * <p>CMP-260820-1014 で所属スコープ列挙を正本サービスへ集約後、CIフル解析で実測した
+     * {@code 1450 → 1407}（43件解消）へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1447;
+    // origin/main の CMP-260922-2230（1459→1447、12件解消）は上記1407行版の
+    // 削除集合に全件包含されるため、並行ブランチの削除数を二重加算しない。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1407;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -750,8 +752,13 @@ class ArchUnitFreezeStoreIntegrityTest {
      * AUTO_INCREMENT のような中央発番はどこにも現れない）。むしろ代理キーを足すと「1契約1 lease」を
      * 別途 UNIQUE 制約で守る必要が生じ、排他の不変条件の担保が弱くなる。DDL は V196 で確定済みであり
      * 新規 migration での作り直しは行わない。違反隠蔽ではなく設計是認例外の正規登録。</p>
+     *
+     * <p>CMP-019 Wave7: {@code publicview.PublicPostCommentEntity} は既存 DDL の主キーが
+     * {@code CHAR(36)} であり、Hibernate の UUID バイナリバインドでは保存できない。
+     * 既存データを保つため {@code UuidV7CharEntity} に切り替え、567 → 568。
+     * UUIDv7 の採番規約は維持する。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 567;
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 568;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。
@@ -794,7 +801,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * のみ触れる形に是正し、Repository への直接依存を撤去したため。
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1947;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1938;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

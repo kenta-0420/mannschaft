@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.recruitment.RecruitmentDistributionTargetType;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
@@ -76,6 +77,8 @@ class RecruitmentListingServicePhase2Test {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private UserRoleRepository userRoleRepository;
+    @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
     @Mock
     private FollowRepository followRepository;
     @Mock
@@ -331,8 +334,8 @@ class RecruitmentListingServicePhase2Test {
                     FollowerType.USER, USER_ID, FollowerType.TEAM)).willReturn(List.of());
             given(followRepository.findFollowedIdsByFollowerAndType(
                     FollowerType.USER, USER_ID, FollowerType.ORGANIZATION)).willReturn(List.of());
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
 
             List<RecruitmentFeedItemResponse> result = service.getMyFeed(USER_ID);
             assertThat(result).isEmpty();
@@ -345,8 +348,8 @@ class RecruitmentListingServicePhase2Test {
                     FollowerType.USER, USER_ID, FollowerType.TEAM)).willReturn(List.of(TEAM_ID));
             given(followRepository.findFollowedIdsByFollowerAndType(
                     FollowerType.USER, USER_ID, FollowerType.ORGANIZATION)).willReturn(List.of());
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(listingRepository.findOpenByScopeIds(any(), any(Pageable.class)))
                     .willReturn(List.of());
             given(mapper.toFeedItemResponseList(any())).willReturn(List.of());

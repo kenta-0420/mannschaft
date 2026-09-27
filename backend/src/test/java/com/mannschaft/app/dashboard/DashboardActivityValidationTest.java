@@ -1,5 +1,6 @@
 package com.mannschaft.app.dashboard;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
@@ -70,6 +71,7 @@ class DashboardActivityValidationTest {
     @Mock private TimelinePostRepository timelinePostRepository;
     @Mock private ScheduleRepository scheduleRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private BulletinThreadRepository bulletinThreadRepository;
     @Mock private BulletinReadStatusRepository bulletinReadStatusRepository;
     @Mock private ChatChannelMemberRepository chatChannelMemberRepository;
@@ -96,8 +98,8 @@ class DashboardActivityValidationTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
 
-        given(userRoleRepository.findTeamIdsByUserId(anyLong())).willReturn(List.of(10L));
-        given(userRoleRepository.findOrganizationIdsByUserId(anyLong())).willReturn(List.of(20L));
+        given(membershipScopeQueryService.findActiveTeamIds(anyLong())).willReturn(List.of(10L));
+        given(membershipScopeQueryService.findActiveOrganizationIds(anyLong())).willReturn(List.of(20L));
         given(activityFeedService.getActivityFeed(any(), any(), any(), any(), any()))
                 .willReturn(ActivityFeedPageResponse.empty());
 

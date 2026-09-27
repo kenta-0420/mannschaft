@@ -1,6 +1,7 @@
 package com.mannschaft.app.recruitment.visibility;
 
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.ScopeKey;
@@ -69,7 +70,7 @@ class RecruitmentListingVisibilityResolverTest {
     private com.mannschaft.app.recruitment.service.MarketFriendTargetResolver marketFriendTargetResolver;
 
     @Mock
-    private com.mannschaft.app.role.repository.UserRoleRepository userRoleRepository;
+    private MembershipScopeQueryService membershipScopeQueryService;
 
     @Mock
     private RecruitmentListingAudienceScopeRepository audienceScopeRepository;
@@ -88,7 +89,7 @@ class RecruitmentListingVisibilityResolverTest {
                 auditLogService,
                 recruitmentListingRepository,
                 marketFriendTargetResolver,
-                userRoleRepository,
+                membershipScopeQueryService,
                 audienceScopeRepository);
     }
 
@@ -196,10 +197,10 @@ class RecruitmentListingVisibilityResolverTest {
                     .thenReturn(List.of(p));
             when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
-            when(userRoleRepository.findTeamIdsByUserId(5L)).thenReturn(List.of(12L));
-            when(userRoleRepository.findOrganizationIdsByUserId(5L)).thenReturn(List.of());
-            when(userRoleRepository.findTeamIdsByUserId(99L)).thenReturn(List.of(12L));
-            when(userRoleRepository.findOrganizationIdsByUserId(99L)).thenReturn(List.of());
+            when(membershipScopeQueryService.findActiveTeamIds(5L)).thenReturn(List.of(12L));
+            when(membershipScopeQueryService.findActiveOrganizationIds(5L)).thenReturn(List.of());
+            when(membershipScopeQueryService.findActiveTeamIds(99L)).thenReturn(List.of(12L));
+            when(membershipScopeQueryService.findActiveOrganizationIds(99L)).thenReturn(List.of());
             when(audienceScopeRepository.findByListingId(1L)).thenReturn(List.of(
                     RecruitmentListingAudienceScopeEntity.of(
                             1L, RecruitmentAudienceScopeType.TEAM, 12L)));
@@ -218,10 +219,10 @@ class RecruitmentListingVisibilityResolverTest {
                     .thenReturn(List.of(p));
             when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
-            when(userRoleRepository.findTeamIdsByUserId(5L)).thenReturn(List.of(12L));
-            when(userRoleRepository.findOrganizationIdsByUserId(5L)).thenReturn(List.of());
-            when(userRoleRepository.findTeamIdsByUserId(99L)).thenReturn(List.of());
-            when(userRoleRepository.findOrganizationIdsByUserId(99L)).thenReturn(List.of());
+            when(membershipScopeQueryService.findActiveTeamIds(5L)).thenReturn(List.of(12L));
+            when(membershipScopeQueryService.findActiveOrganizationIds(5L)).thenReturn(List.of());
+            when(membershipScopeQueryService.findActiveTeamIds(99L)).thenReturn(List.of());
+            when(membershipScopeQueryService.findActiveOrganizationIds(99L)).thenReturn(List.of());
             when(audienceScopeRepository.findByListingId(1L)).thenReturn(List.of(
                     RecruitmentListingAudienceScopeEntity.of(
                             1L, RecruitmentAudienceScopeType.TEAM, 12L)));

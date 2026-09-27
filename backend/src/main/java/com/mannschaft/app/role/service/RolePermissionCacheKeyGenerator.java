@@ -22,6 +22,7 @@ public class RolePermissionCacheKeyGenerator implements KeyGenerator {
             throw new IllegalArgumentException("role-permissions のキャッシュキー引数が不正です");
         }
         long generation = generationService.currentGeneration(scopeType, scopeId);
-        return "v2:" + scopeType + ":" + scopeId + ":g" + generation + ":" + userId;
+        // MEMBER の管理権限3件を初期 OFF にする前のキャッシュを参照しない。
+        return "v3:" + scopeType + ":" + scopeId + ":g" + generation + ":" + userId;
     }
 }

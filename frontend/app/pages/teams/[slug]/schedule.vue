@@ -12,7 +12,10 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const scheduleApi = useScheduleApi()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
+const { isAdminOrDeputy, roleName, can, loadPermissions } = useRoleAccess('team', teamSlug)
+const canManageSchedule = computed(
+  () => isAdminOrDeputy.value || (roleName.value === 'MEMBER' && can('MANAGE_SCHEDULES')),
+)
 
 const refreshing = ref(false)
 const showCreateDialog = ref(false)
@@ -40,11 +43,13 @@ const sortedEvents = computed(() =>
 )
 
 function onDateClick(date: string) {
+  if (!canManageSchedule.value) return
   selectedDate.value = date
   showCreateDialog.value = true
 }
 
 function onAddButtonClick() {
+  if (!canManageSchedule.value) return
   selectedDate.value = undefined
   showCreateDialog.value = true
 }
@@ -62,11 +67,13 @@ async function onEventClick(eventId: number) {
 }
 
 function onEditEvent() {
+  if (!canManageSchedule.value) return
   showDetailPanel.value = false
   showEditDialog.value = true
 }
 
 async function onDeleteEvent() {
+  if (!canManageSchedule.value) return
   if (!selectedEventId.value || !confirm('このイベントを削除しますか？')) return
   try {
     await scheduleApi.deleteSchedule('team', teamSlug, selectedEventId.value)
@@ -100,7 +107,7 @@ onMounted(async () => {
         <NuxtLink :to="`/teams/${teamSlug}/schedule-keeps`">
           <Button :label="$t('scheduleKeep.title')" icon="pi pi-bookmark" outlined data-testid="schedule-keep-nav-link" />
         </NuxtLink>
-        <Button label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
+        <Button v-if="canManageSchedule" label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
       </div>
     </div>
 
@@ -129,6 +136,7 @@ onMounted(async () => {
           scope-type="team"
           :scope-id="teamSlug"
           :can-edit="isAdminOrDeputy"
+          :can-manage-schedule="canManageSchedule"
           @edit="onEditEvent"
           @delete="onDeleteEvent"
           @responded="refresh"
@@ -161,6 +169,7 @@ onMounted(async () => {
             scope-type="team"
             :scope-id="teamSlug"
             :can-edit="isAdminOrDeputy"
+            :can-manage-schedule="canManageSchedule"
             @edit="onEditEvent"
             @delete="onDeleteEvent"
             @responded="refresh"

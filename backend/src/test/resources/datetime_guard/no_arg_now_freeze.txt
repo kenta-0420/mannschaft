@@ -14,7 +14,6 @@ NO_ARG_NOW|com.mannschaft.app.actionmemo.entity.ActionMemoEntity|1
 NO_ARG_NOW|com.mannschaft.app.actionmemo.entity.ActionMemoTagEntity|1
 NO_ARG_NOW|com.mannschaft.app.actionmemo.entity.ActionMemoTagLinkEntity|1
 NO_ARG_NOW|com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity|2
-NO_ARG_NOW|com.mannschaft.app.actionmemo.service.ActionMemoWeeklySummaryService|1
 NO_ARG_NOW|com.mannschaft.app.activity.entity.ActivityCommentEntity|1
 NO_ARG_NOW|com.mannschaft.app.activity.entity.ActivityParticipantEntity|1
 NO_ARG_NOW|com.mannschaft.app.activity.entity.ActivityResultEntity|1
@@ -439,7 +438,6 @@ NO_ARG_NOW|com.mannschaft.app.parking.entity.ParkingSubleaseEntity|1
 NO_ARG_NOW|com.mannschaft.app.parking.entity.ParkingSubleasePaymentEntity|1
 NO_ARG_NOW|com.mannschaft.app.parking.entity.ParkingVisitorReservationEntity|1
 NO_ARG_NOW|com.mannschaft.app.parking.entity.RegisteredVehicleEntity|1
-NO_ARG_NOW|com.mannschaft.app.parking.service.ParkingVisitorReservationService|1
 NO_ARG_NOW|com.mannschaft.app.payment.FeePolicyAssignmentEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.FeePolicyEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.StripeWebhookEventEntity|1
@@ -653,7 +651,7 @@ NO_ARG_NOW|com.mannschaft.app.schedule.listener.ScheduleKeepScopeDeletedEventLis
 NO_ARG_NOW|com.mannschaft.app.schedule.service.GoogleCalendarService|5
 NO_ARG_NOW|com.mannschaft.app.schedule.service.GoogleCalendarWebhookService|6
 NO_ARG_NOW|com.mannschaft.app.schedule.service.IcalService|5
-NO_ARG_NOW|com.mannschaft.app.schedule.service.ScheduleAttendanceService|2
+NO_ARG_NOW|com.mannschaft.app.schedule.service.ScheduleAttendanceService|1
 NO_ARG_NOW|com.mannschaft.app.schedule.service.ScheduleKeepService|1
 NO_ARG_NOW|com.mannschaft.app.schedule.service.ScheduleMediaQueryService|1
 NO_ARG_NOW|com.mannschaft.app.schedule.service.ScheduleReminderService|1
@@ -697,7 +695,6 @@ NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftRequestEntity|2
 NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftScheduleEntity|2
 NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftSwapRequestEntity|2
 NO_ARG_NOW|com.mannschaft.app.shift.service.ShiftAutoArchiveBatchService|1
-NO_ARG_NOW|com.mannschaft.app.shift.service.ShiftRequestService|1
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.batch.ShiftBudgetRetryBatchJob|1
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.entity.BudgetThresholdAlertEntity|1
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity|1
@@ -772,7 +769,6 @@ NO_ARG_NOW|com.mannschaft.app.ticket.entity.TicketPaymentEntity|3
 NO_ARG_NOW|com.mannschaft.app.ticket.entity.TicketProductEntity|1
 NO_ARG_NOW|com.mannschaft.app.ticket.service.StripeTicketServicePlaceholder|1
 NO_ARG_NOW|com.mannschaft.app.ticket.service.TicketBookService|4
-NO_ARG_NOW|com.mannschaft.app.ticket.service.TicketExpiryBatchService|3
 NO_ARG_NOW|com.mannschaft.app.ticket.service.TicketQrService|2
 NO_ARG_NOW|com.mannschaft.app.timeline.entity.TimelineBookmarkEntity|1
 NO_ARG_NOW|com.mannschaft.app.timeline.entity.TimelinePollEntity|2
@@ -794,7 +790,6 @@ NO_ARG_NOW|com.mannschaft.app.timetable.personal.controller.PersonalTimetableSlo
 NO_ARG_NOW|com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity|1
 NO_ARG_NOW|com.mannschaft.app.timetable.personal.entity.PersonalTimetableSettingsEntity|2
 NO_ARG_NOW|com.mannschaft.app.timetable.personal.entity.PersonalTimetableShareTargetEntity|1
-NO_ARG_NOW|com.mannschaft.app.timetable.personal.service.PersonalTimetableSlotService|1
 NO_ARG_NOW|com.mannschaft.app.timetable.service.TimetableSlotService|1
 NO_ARG_NOW|com.mannschaft.app.todo.batch.TodoDueReminderBatch|3
 NO_ARG_NOW|com.mannschaft.app.todo.entity.ProjectEntity|4

@@ -2,8 +2,8 @@ package com.mannschaft.app.tournament.fee;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.payment.FeePolicy;
 import com.mannschaft.app.payment.FeePolicyResolver;
 import com.mannschaft.app.payment.PaymentFeeCalculator;
@@ -69,6 +69,7 @@ class TournamentFeePaymentServiceTest {
     @Mock private PaymentItemService paymentItemService;
     @Mock private MemberPaymentRepository memberPaymentRepository;
     @Mock private MembershipRepository membershipRepository;
+    @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private TournamentRepository tournamentRepository;
     @Mock private FeePolicyResolver feePolicyResolver;
 
@@ -88,6 +89,7 @@ class TournamentFeePaymentServiceTest {
                 paymentItemService,
                 memberPaymentRepository,
                 membershipRepository,
+                membershipScopeQueryService,
                 tournamentRepository,
                 paymentFeeCalculator,
                 feePolicyResolver);
@@ -96,22 +98,6 @@ class TournamentFeePaymentServiceTest {
     // =========================================================
     // フィクスチャ
     // =========================================================
-
-    private MembershipEntity orgMembership() {
-        return MembershipEntity.builder()
-                .userId(USER_ID)
-                .scopeType(ScopeType.ORGANIZATION)
-                .scopeId(ORG_ID)
-                .build();
-    }
-
-    private MembershipEntity teamMembership() {
-        return MembershipEntity.builder()
-                .userId(USER_ID)
-                .scopeType(ScopeType.TEAM)
-                .scopeId(TEAM_ID)
-                .build();
-    }
 
     private PaymentItemEntity paymentItem() {
         return PaymentItemEntity.builder()
@@ -169,10 +155,8 @@ class TournamentFeePaymentServiceTest {
         void getMyTournamentFees_allTeams_returnsOwnFee() {
             // given
             TournamentFeeEntity fee = allTeamsFee();
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.ORGANIZATION))
-                    .willReturn(List.of(orgMembership()));
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.TEAM))
-                    .willReturn(List.of());
+            given(membershipScopeQueryService.findCurrentMembershipOrganizationIds(USER_ID)).willReturn(List.of(ORG_ID));
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(USER_ID)).willReturn(List.of());
             given(tournamentFeeRepository.findByOrganizationId(ORG_ID))
                     .willReturn(List.of(fee));
             given(tournamentRepository.findAllById(List.of(TOURNAMENT_ID)))
@@ -203,10 +187,8 @@ class TournamentFeePaymentServiceTest {
             // given
             UUID feeId = UUID.randomUUID();
             TournamentFeeEntity fee = specificTeamsFee(feeId);
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.ORGANIZATION))
-                    .willReturn(List.of(orgMembership()));
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.TEAM))
-                    .willReturn(List.of(teamMembership()));
+            given(membershipScopeQueryService.findCurrentMembershipOrganizationIds(USER_ID)).willReturn(List.of(ORG_ID));
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(USER_ID)).willReturn(List.of(TEAM_ID));
             given(tournamentFeeRepository.findByOrganizationId(ORG_ID))
                     .willReturn(List.of(fee));
             given(tournamentFeeTargetRepository.existsByFeeIdAndTeamId(feeId, TEAM_ID))
@@ -234,10 +216,8 @@ class TournamentFeePaymentServiceTest {
             // given
             UUID feeId = UUID.randomUUID();
             TournamentFeeEntity fee = specificTeamsFee(feeId);
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.ORGANIZATION))
-                    .willReturn(List.of(orgMembership()));
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.TEAM))
-                    .willReturn(List.of(teamMembership()));
+            given(membershipScopeQueryService.findCurrentMembershipOrganizationIds(USER_ID)).willReturn(List.of(ORG_ID));
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(USER_ID)).willReturn(List.of(TEAM_ID));
             given(tournamentFeeRepository.findByOrganizationId(ORG_ID))
                     .willReturn(List.of(fee));
             given(tournamentFeeTargetRepository.existsByFeeIdAndTeamId(feeId, TEAM_ID))
@@ -262,10 +242,8 @@ class TournamentFeePaymentServiceTest {
                     .build();
             // リフレクションで paidAt を注入（@Builder ではセッターなし → 新規作成時は @PrePersist で設定）
             // ここでは paidAt=null のまま返しても alreadyPaid=true の確認には十分
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.ORGANIZATION))
-                    .willReturn(List.of(orgMembership()));
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.TEAM))
-                    .willReturn(List.of());
+            given(membershipScopeQueryService.findCurrentMembershipOrganizationIds(USER_ID)).willReturn(List.of(ORG_ID));
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(USER_ID)).willReturn(List.of());
             given(tournamentFeeRepository.findByOrganizationId(ORG_ID))
                     .willReturn(List.of(fee));
             given(tournamentRepository.findAllById(List.of(TOURNAMENT_ID)))
@@ -291,8 +269,7 @@ class TournamentFeePaymentServiceTest {
         @DisplayName("組織所属なしの場合、空リストが返る")
         void getMyTournamentFees_noOrg_returnsEmpty() {
             // given
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.ORGANIZATION))
-                    .willReturn(List.of());
+            given(membershipScopeQueryService.findCurrentMembershipOrganizationIds(USER_ID)).willReturn(List.of());
 
             // when
             MyTournamentFeesResponse response = service.getMyTournamentFees(USER_ID);
@@ -315,10 +292,8 @@ class TournamentFeePaymentServiceTest {
                     .amount(new BigDecimal("10000"))
                     .currency("JPY")
                     .build();
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.ORGANIZATION))
-                    .willReturn(List.of(orgMembership()));
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.TEAM))
-                    .willReturn(List.of());
+            given(membershipScopeQueryService.findCurrentMembershipOrganizationIds(USER_ID)).willReturn(List.of(ORG_ID));
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(USER_ID)).willReturn(List.of());
             given(tournamentFeeRepository.findByOrganizationId(ORG_ID))
                     .willReturn(List.of(fee));
             given(tournamentRepository.findAllById(List.of(TOURNAMENT_ID)))
@@ -453,8 +428,7 @@ class TournamentFeePaymentServiceTest {
             given(tournamentFeeRepository.findById(feeId)).willReturn(Optional.of(fee));
             given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
                     .willReturn(true);
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.TEAM))
-                    .willReturn(List.of(teamMembership()));
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(USER_ID)).willReturn(List.of(TEAM_ID));
             given(tournamentFeeTargetRepository.existsByFeeIdAndTeamId(feeId, TEAM_ID))
                     .willReturn(false);
 
@@ -474,8 +448,7 @@ class TournamentFeePaymentServiceTest {
             given(tournamentFeeRepository.findById(feeId)).willReturn(Optional.of(fee));
             given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
                     .willReturn(true);
-            given(membershipRepository.findActiveByUserAndScopeType(USER_ID, ScopeType.TEAM))
-                    .willReturn(List.of(teamMembership()));
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(USER_ID)).willReturn(List.of(TEAM_ID));
             given(tournamentFeeTargetRepository.existsByFeeIdAndTeamId(feeId, TEAM_ID))
                     .willReturn(true);
             given(memberPaymentService.createConnectCheckout(

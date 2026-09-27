@@ -10,9 +10,7 @@
 # （DateTimeAndZoneGuardTest クラスJavadoc『凍結キーはクラス単位の件数』参照）。
 #
 # 2026-08-12 再凍結（issue #2700 実装・PR #2725 是正時点のスナップショット）。
-ZONE_LITERAL|com.mannschaft.app.actionmemo.service.ActionMemoPublishingService|1
 ZONE_LITERAL|com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService|2
-ZONE_LITERAL|com.mannschaft.app.actionmemo.service.ActionMemoWeeklySummaryService|1
 ZONE_LITERAL|com.mannschaft.app.admin.service.AdminBusinessAlertService|1
 ZONE_LITERAL|com.mannschaft.app.advertising.campaign.service.AdFrequencyCapService|1
 ZONE_LITERAL|com.mannschaft.app.advertising.controller.StripeAdInvoiceWebhookController|1

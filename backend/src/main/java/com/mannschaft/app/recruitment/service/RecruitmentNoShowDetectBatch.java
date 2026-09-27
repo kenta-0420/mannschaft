@@ -7,6 +7,7 @@ import com.mannschaft.app.recruitment.NoShowReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentNoShowNotificationEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentPenaltySettingRepository;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -42,6 +44,7 @@ public class RecruitmentNoShowDetectBatch {
     private final RecruitmentParticipantRepository participantRepository;
     private final RecruitmentNoShowRecordRepository noShowRepository;
     private final RecruitmentPenaltySettingRepository settingRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 毎時30分に実行（confirmバッチと時間をずらす）。
@@ -90,7 +93,9 @@ public class RecruitmentNoShowDetectBatch {
                             .reason(NoShowReason.AUTO_DETECTED)
                             .recordedBy(null)
                             .build();
-                    noShowRepository.save(record);
+                    RecruitmentNoShowRecordEntity saved = noShowRepository.save(record);
+                    eventPublisher.publishEvent(new RecruitmentNoShowNotificationEvent(
+                            saved.getId(), participant.getListingId(), participant.getUserId()));
                     detected++;
                 }
             }

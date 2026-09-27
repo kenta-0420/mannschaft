@@ -19,6 +19,8 @@ const router = useRouter()
 
 const items = ref<OperationalCampaign[]>([])
 const loading = ref(true)
+/** 取得失敗は「審査待ちなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 const page = ref(0)
 const size = ref(20)
 const total = ref(0)
@@ -42,6 +44,7 @@ function formatPeriod(item: { startDate?: string; endDate?: string }): string {
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await api.listQueue({ status: 'PENDING_REVIEW', page: page.value, size: size.value })
     items.value = res.data ?? []
@@ -49,6 +52,7 @@ async function load() {
   }
   catch {
     items.value = []
+    loadFailed.value = true
     toast.error(t('advertising.operational_campaigns.review.load_failed'))
   }
   finally {
@@ -157,7 +161,13 @@ onMounted(load)
       />
     </div>
 
-    <SectionCard>
+    <DashboardErrorState
+      v-if="!loading && loadFailed"
+      testid="operational-queue-error-state"
+      @retry="load"
+    />
+
+    <SectionCard v-else>
       <DataTable
         :value="items"
         :loading="loading"

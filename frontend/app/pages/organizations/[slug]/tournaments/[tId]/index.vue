@@ -286,7 +286,9 @@ onMounted(async () => {
             {{ getFormatLabel(tournament.content?.format ?? '') }}
           </span>
         </div>
-        <h1 class="text-xl font-bold">{{ tournament.content?.name }}</h1>
+        <h1 class="text-xl font-bold" data-testid="tournament-detail-title">
+          {{ tournament.content?.name }}
+        </h1>
         <div class="mt-1 flex flex-wrap items-center gap-3 text-sm text-surface-500">
           <span v-if="tournament.content?.season">{{ tournament.content.season }}</span>
           <span v-if="tournament.content?.startDate || tournament.content?.endDate">

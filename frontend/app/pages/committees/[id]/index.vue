@@ -17,6 +17,8 @@ const committee = ref<CommitteeDetail | null>(null)
 const members = ref<CommitteeMember[]>([])
 const invitations = ref<CommitteeInvitation[]>([])
 const loading = ref(true)
+/** 取得失敗は「委員会なし」ではない。何も描画しない空白へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 const transitioning = ref(false)
 const showInviteDialog = ref(false)
 const inviting = ref(false)
@@ -44,6 +46,7 @@ function statusSeverity(status: CommitteeDetail['status']): string {
 
 async function loadData() {
   loading.value = true
+  loadFailed.value = false
   try {
     const [committeeRes, membersRes] = await Promise.all([
       committeeApi.getCommittee(committeeId),
@@ -62,6 +65,7 @@ async function loadData() {
     }
   } catch (err) {
     handleApiError(err, 'loadCommittee')
+    loadFailed.value = true
   } finally {
     loading.value = false
   }
@@ -148,6 +152,12 @@ onMounted(async () => {
 
 <template>
   <PageLoading v-if="loading" />
+  <DashboardErrorState
+    v-else-if="loadFailed"
+    testid="committee-detail-error-state"
+    class="m-4"
+    @retry="loadData"
+  />
   <div v-else-if="committee">
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">

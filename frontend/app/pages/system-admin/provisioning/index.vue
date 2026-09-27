@@ -36,15 +36,19 @@ const isAllowed = computed(() => authStore.isSystemAdmin)
 
 const invitations = ref<ProvisioningInvitationResponse[]>([])
 const loading = ref(false)
+/** 取得失敗は「招待なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     invitations.value = await provisioningApi.list()
   } catch (err) {
     console.error('system-admin/provisioning/index.vue: load failed', err)
     notification.error(t('provisioning.admin.loadFailed'))
     invitations.value = []
+    loadFailed.value = true
   } finally {
     loading.value = false
   }
@@ -233,8 +237,15 @@ async function cancelInvite(row: ProvisioningInvitationResponse) {
         <h2 class="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-200">
           {{ t('provisioning.admin.invitationsTitle') }}
         </h2>
+        <!-- 取得失敗: 空状態とは別に描き分ける -->
+        <DashboardErrorState
+          v-if="!loading && loadFailed"
+          testid="provisioning-error-state"
+          @retry="load"
+        />
+
         <DataTable
-          v-if="!loading"
+          v-else-if="!loading"
           :value="invitations"
           data-key="id"
           striped-rows

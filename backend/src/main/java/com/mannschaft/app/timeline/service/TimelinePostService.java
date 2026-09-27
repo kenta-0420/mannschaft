@@ -201,6 +201,7 @@ public class TimelinePostService {
         // checkScopeMembership を直接呼ぶ形にフラット化している。
         if (parseScopeType(req.getScopeTypeOrDefault()) != PostScopeType.VILLAGE) {
             checkScopeMembership(req.getScopeTypeOrDefault(), resolvedScopeId, userId);
+            checkCanCreateInManagedScope(req.getScopeTypeOrDefault(), resolvedScopeId, userId);
         }
         // 配下配信（CHILDREN / DESCENDANTS）の送信権限ゲート。
         //
@@ -393,11 +394,27 @@ public class TimelinePostService {
                 // 公開スコープ。誰でも読み書きできるため追加の検証はしない。
             }
             case TEAM -> accessControlService.checkMembership(userId, resolvedScopeId, "TEAM");
-            case ORGANIZATION ->
-                    accessControlService.checkMembership(userId, resolvedScopeId, "ORGANIZATION");
+            case ORGANIZATION -> accessControlService.checkMembership(userId, resolvedScopeId, "ORGANIZATION");
             case PERSONAL -> requireSelfScope(resolvedScopeId, userId);
             case VILLAGE, FRIEND_TEAM, FRIEND_FORWARD, FRIEND_ARCHIVE ->
                     throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    private void checkCanCreateInManagedScope(String scopeType, Long scopeId, Long userId) {
+        if (!("TEAM".equals(scopeType) || "ORGANIZATION".equals(scopeType))) {
+            return;
+        }
+        if (accessControlService.isAdminOrAbove(userId, scopeId, scopeType)) {
+            return;
+        }
+        String roleName = accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType);
+        if ("MEMBER".equals(roleName)
+                && accessControlService.hasPermission(userId, scopeId, scopeType, "MANAGE_POSTS")) {
+            return;
+        }
+        if ("MEMBER".equals(roleName)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }
 
@@ -646,7 +663,7 @@ public class TimelinePostService {
     @Transactional
     public PostResponse updatePost(Long postId, UpdatePostRequest req, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
-        postAccessGuard.checkCanManage(userId, post);
+        postAccessGuard.checkCanEdit(userId, post);
 
         if (req.getContent() == null || req.getContent().isBlank()) {
             throw new BusinessException(TimelineErrorCode.EMPTY_POST_CONTENT);
@@ -847,6 +864,28 @@ public class TimelinePostService {
         }
         // スコープ別フィードにも著者名/アバター・投稿元名/slug・代理主体を enrich する
         // （マイフィードと同じ enrichPosts を通す）。
+        return enrichPosts(timelineMapper.toPostResponseList(posts));
+    }
+
+    /** スコープ別フィードの通常投稿をカーソル方式で取得する（判定用に limit + 1 件）。 */
+    public List<PostResponse> getFeedPage(
+            String scopeType, Long scopeId, UUID scopeVillageId, Long cursor, int limit, Long userId) {
+        int pageSize = limit > 0 ? Math.min(limit, 50) : DEFAULT_FEED_SIZE;
+        PostScopeType scopeTypeEnum = parseScopeType(scopeType);
+        List<TimelinePostEntity> posts;
+        if (scopeTypeEnum == PostScopeType.VILLAGE) {
+            if (scopeVillageId == null) {
+                checkScopeMembership(scopeType, scopeId, userId);
+                return List.of();
+            }
+            requireVillageMember(scopeVillageId, userId);
+            posts = postRepository.findFeedPageByVillageId(
+                    scopeVillageId, cursor, PageRequest.of(0, pageSize + 1));
+        } else {
+            checkScopeMembership(scopeType, scopeId, userId);
+            posts = postRepository.findFeedPageByScopeType(
+                    scopeTypeEnum, scopeId, cursor, PageRequest.of(0, pageSize + 1));
+        }
         return enrichPosts(timelineMapper.toPostResponseList(posts));
     }
 

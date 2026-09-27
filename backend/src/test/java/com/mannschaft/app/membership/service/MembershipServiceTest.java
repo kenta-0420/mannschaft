@@ -1,6 +1,7 @@
 package com.mannschaft.app.membership.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.membership.domain.LeaveReason;
@@ -48,6 +49,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.inOrder;
 
 /**
@@ -71,6 +73,9 @@ class MembershipServiceTest {
 
     @Mock
     private MembershipRepository membershipRepository;
+
+    @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
 
     @Mock
     private MemberPositionRepository memberPositionRepository;
@@ -98,6 +103,33 @@ class MembershipServiceTest {
 
     @InjectMocks
     private MembershipService service;
+
+    @Nested
+    @DisplayName("所属スコープ列挙の互換窓口")
+    class ScopeEnumerationCompatibilityTest {
+
+        @Test
+        @DisplayName("従来のteam getterはmembership直結の正本メソッドへ委譲する")
+        void teamGetterDelegatesToCurrentMembershipQuery() {
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(99L))
+                    .willReturn(List.of(10L, 20L));
+
+            assertThat(service.getActiveTeamIdsByUser(99L)).containsExactly(10L, 20L);
+            verify(membershipScopeQueryService).findCurrentMembershipTeamIds(99L);
+        }
+
+        @Test
+        @DisplayName("IncludingRoleAssignmentsは従来どおりACTIVE UNIONとmembership直結を合成する")
+        void includingRoleAssignmentsPreservesMixedPopulation() {
+            given(membershipScopeQueryService.findActiveTeamIds(99L))
+                    .willReturn(List.of(10L, 20L));
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(99L))
+                    .willReturn(List.of(20L, 30L));
+
+            assertThat(service.getActiveTeamIdsIncludingRoleAssignments(99L))
+                    .containsExactly(10L, 20L, 30L);
+        }
+    }
 
     @Nested
     @DisplayName("join() — 入会")
@@ -192,18 +224,70 @@ class MembershipServiceTest {
         }
 
         @Test
-        @DisplayName("validateScope: scopeId NULL で MEMBERSHIP_INVALID_SCOPE")
-        void invalidScope() {
+        @DisplayName("リクエストNULLは副作用前に拒否する")
+        void nullRequestRejectedBeforeWork() {
+            assertThatThrownBy(() -> service.join(null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("req");
+            verifyNoInteractions(userRowLockService, membershipRepository, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("userId NULLは副作用前に拒否する")
+        void nullUserIdRejectedBeforeWork() {
+            MembershipCreateRequest req = req(null, ScopeType.TEAM, 100L, RoleKind.MEMBER, null);
+            assertThatThrownBy(() -> service.join(req))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("userId");
+            verifyNoInteractions(userRowLockService, membershipRepository, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("scopeType NULLは副作用前に拒否する")
+        void nullScopeTypeRejectedBeforeWork() {
+            MembershipCreateRequest req = req(99L, null, 100L, RoleKind.MEMBER, null);
+            assertThatThrownBy(() -> service.join(req))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("scopeType");
+            verifyNoInteractions(userRowLockService, membershipRepository, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("scopeId NULLは副作用前に拒否する")
+        void nullScopeIdRejectedBeforeWork() {
             MembershipCreateRequest req = req(99L, ScopeType.TEAM, null, RoleKind.MEMBER, null);
             assertThatThrownBy(() -> service.join(req))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", MembershipBasisErrorCode.MEMBERSHIP_INVALID_SCOPE);
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("scopeId");
+            verifyNoInteractions(userRowLockService, membershipRepository, eventPublisher);
         }
     }
 
     @Nested
     @DisplayName("leave() — 退会")
     class LeaveTest {
+        @Test
+        @DisplayName("リクエストNULLは副作用前に拒否する")
+        void nullRequestRejectedBeforeWork() {
+            assertThatThrownBy(() -> service.leave(11L, null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("req");
+            verifyNoInteractions(membershipRepository, userRowLockService, entityManager,
+                    adminRoleMutationLockService, memberPositionRepository,
+                    rolePermissionCleanupService, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("leaveReason NULLは副作用前に拒否する")
+        void nullLeaveReasonRejectedBeforeWork() {
+            MembershipLeaveRequest req = new MembershipLeaveRequest();
+            assertThatThrownBy(() -> service.leave(11L, req))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("leaveReason");
+            verifyNoInteractions(membershipRepository, userRowLockService, entityManager,
+                    adminRoleMutationLockService, memberPositionRepository,
+                    rolePermissionCleanupService, eventPublisher);
+        }
 
         @Test
         @DisplayName("正常系: left_at と leave_reason がセットされる")
@@ -323,6 +407,20 @@ class MembershipServiceTest {
     }
 
     @Nested
+    @DisplayName("leaveByUserAndScope() — 内部退会")
+    class LeaveByUserAndScopeTest {
+
+        @Test
+        @DisplayName("leaveReason NULLは自己呼出の副作用前に拒否する")
+        void nullLeaveReasonRejectedBeforeWork() {
+            assertThatThrownBy(() ->
+                    service.leaveByUserAndScope(99L, ScopeType.TEAM, 100L, null, null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("leaveReason");
+            verifyNoInteractions(userRowLockService, membershipRepository, eventPublisher);
+        }
+    }
+    @Nested
     @DisplayName("leaveMemberByUserAndScope() — user_roles無し会員の自主退会")
     class LeaveMemberByUserAndScopeTest {
 
@@ -381,6 +479,24 @@ class MembershipServiceTest {
     @Nested
     @DisplayName("assignPosition() — 役職割当")
     class AssignPositionTest {
+        @Test
+        @DisplayName("リクエストNULLは副作用前に拒否する")
+        void nullRequestRejectedBeforeWork() {
+            assertThatThrownBy(() -> service.assignPosition(11L, null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("req");
+            verifyNoInteractions(membershipRepository, positionRepository, memberPositionRepository);
+        }
+
+        @Test
+        @DisplayName("positionId NULLは副作用前に拒否する")
+        void nullPositionIdRejectedBeforeWork() {
+            AssignPositionRequest req = new AssignPositionRequest();
+            assertThatThrownBy(() -> service.assignPosition(11L, req))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("positionId");
+            verifyNoInteractions(membershipRepository, positionRepository, memberPositionRepository);
+        }
 
         @Test
         @DisplayName("正常系: 同スコープ内の position を割り当て")

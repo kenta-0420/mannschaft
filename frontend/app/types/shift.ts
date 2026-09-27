@@ -74,6 +74,13 @@ export interface ShiftScheduleResponse {
   }
 }
 
+/** 手動の未提出者リマインド送信結果。 */
+export interface ManualRemindResponse {
+  scheduleId: number
+  remindedCount: number
+  remindedUserIds: number[]
+}
+
 /** シフトポジションレスポンス */
 export interface ShiftPositionResponse {
   id: number

@@ -46,6 +46,8 @@ const archivesLoadingMore = ref(false)
 const archivesPage = ref(0)
 const archivesHasMore = ref(false)
 const sourceTypeFilter = ref<SourceTypeFilter>('ALL')
+/** 取得失敗は「記録なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const archivesLoadFailed = ref(false)
 
 const sourceTypeFilterTabs: { value: SourceTypeFilter, i18nKey: string }[] = [
   { value: 'ALL', i18nKey: 'village.archive.filterAll' },
@@ -65,27 +67,44 @@ function sourceTypeLabel(sourceType: VillageEventArchiveSourceType): string {
   }
 }
 
+/**
+ * フィルタ切り替え連打による取得の重なりを検知する世代番号（reset 呼び出しのみ採番）。
+ *
+ * 新しい reset 取得が成功した直後に古い reset 取得が失敗で返ると、catch がその古い
+ * 応答で `archives`/`archivesLoadFailed` を上書きし、最新の一覧がエラー状態に隠れて
+ * しまう（CMP-260922-2045 第2陣 G2 差し戻し・match-recruits.vue と同型）。
+ */
+let archivesResetSeq = 0
+
 async function loadArchives(opts: { reset: boolean }) {
+  const seq = opts.reset ? ++archivesResetSeq : archivesResetSeq
   const page = opts.reset ? 0 : archivesPage.value + 1
   const loadingRef = opts.reset ? archivesLoading : archivesLoadingMore
   loadingRef.value = true
+  if (opts.reset) archivesLoadFailed.value = false
   try {
     const fetched = await villageApi.listEventArchives(villageId.value, {
       sourceType: sourceTypeFilter.value === 'ALL' ? undefined : sourceTypeFilter.value,
       page,
       size: ARCHIVE_PAGE_SIZE,
     })
+    // reset 呼び出しの応答が届いた時点で、さらに新しい reset が走っていれば古い応答は捨てる。
+    if (opts.reset && seq !== archivesResetSeq) return
     archives.value = opts.reset ? fetched : [...archives.value, ...fetched]
     archivesPage.value = page
     // BE はページ総数を返さない前提のため、直前ページが size 丁度ならまだ続きがあるとみなす。
     archivesHasMore.value = fetched.length === ARCHIVE_PAGE_SIZE
   }
   catch (error) {
-    if (opts.reset) archives.value = []
+    if (opts.reset) {
+      if (seq !== archivesResetSeq) return
+      archives.value = []
+      archivesLoadFailed.value = true
+    }
     handleApiError(error, t('village.archive.loadFailed'))
   }
   finally {
-    loadingRef.value = false
+    if (!opts.reset || seq === archivesResetSeq) loadingRef.value = false
   }
 }
 
@@ -130,6 +149,11 @@ onMounted(() => {
     <div v-if="archivesLoading" class="text-center py-12 text-surface-500">
       <i class="pi pi-spin pi-spinner text-2xl" />
     </div>
+    <DashboardErrorState
+      v-else-if="archivesLoadFailed"
+      testid="village-chronicles-error-state"
+      @retry="loadArchives({ reset: true })"
+    />
     <DashboardEmptyState
       v-else-if="archives.length === 0"
       icon="pi pi-book"

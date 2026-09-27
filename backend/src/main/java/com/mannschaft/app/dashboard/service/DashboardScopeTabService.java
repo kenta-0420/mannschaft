@@ -12,8 +12,7 @@ import com.mannschaft.app.dashboard.dto.ScopeTabOrderUpdateRequest;
 import com.mannschaft.app.dashboard.dto.ScopeTabPageResponse;
 import com.mannschaft.app.dashboard.entity.DashboardScopeTabOrderEntity;
 import com.mannschaft.app.dashboard.repository.DashboardScopeTabOrderRepository;
-import com.mannschaft.app.membership.entity.MembershipEntity;
-import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
@@ -53,7 +52,7 @@ public class DashboardScopeTabService {
     private static final int PAGE_SIZE = 6;
 
     private final DashboardScopeTabOrderRepository scopeTabOrderRepository;
-    private final MembershipRepository membershipRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final MyScopeFolderRepository scopeFolderRepository;
     private final MyScopeFolderItemRepository scopeFolderItemRepository;
     private final TeamRepository teamRepository;
@@ -89,17 +88,17 @@ public class DashboardScopeTabService {
         int safePage = Math.max(0, page);
 
         // ① 現在の所属スコープ集合（真実の源）。退会/権限喪失スコープはここに含まれない。
-        List<MembershipEntity> activeMemberships =
-                membershipRepository.findActiveByUserAndScopeType(
+        List<MembershipScopeQueryService.CurrentMembershipScope> activeMemberships =
+                membershipScopeQueryService.findCurrentMemberships(
                         userId, toMembershipScopeType(scopeType));
 
         // 所属 scope_id の登場順（joined_at 降順）を保持しつつ重複排除する。
         //   1 ユーザー × スコープに複数のアクティブ行が理屈上ありうる（再加入歴）ため LinkedHashSet で de-dup。
         Set<Long> activeScopeIds = new HashSet<>();
         List<Long> membershipOrder = new ArrayList<>();
-        for (MembershipEntity m : activeMemberships) {
-            if (activeScopeIds.add(m.getScopeId())) {
-                membershipOrder.add(m.getScopeId());
+        for (MembershipScopeQueryService.CurrentMembershipScope membership : activeMemberships) {
+            if (activeScopeIds.add(membership.scopeId())) {
+                membershipOrder.add(membership.scopeId());
             }
         }
 

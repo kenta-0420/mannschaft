@@ -319,7 +319,18 @@
     },
     "reminder": {
       "send": "Send Reminder",
-      "sent": "Reminder Sent"
+      "sent": "Reminder Sent",
+      "confirmTitle": "Remind members who have not submitted",
+      "confirmMessage": "Send a reminder to members who have not submitted preferences for “{title}”?",
+      "confirmAccept": "Send reminder",
+      "confirmReject": "Cancel",
+      "sentTitle": "Reminder sent",
+      "sentDetail": "Asked {count} members to submit their preferences.",
+      "noRecipientsTitle": "No pending submissions",
+      "noRecipientsDetail": "There was nobody to remind.",
+      "failedTitle": "Could not send reminder",
+      "failedDetail": "Please try again later.",
+      "targetUnavailable": "This schedule is unavailable or no longer accepting preferences."
     },
     "empty": {
       "noSchedules": "No schedules found",

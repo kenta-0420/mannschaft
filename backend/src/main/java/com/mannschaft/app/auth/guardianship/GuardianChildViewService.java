@@ -9,7 +9,7 @@ import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.proxy.dto.ProxyActionView;
 import com.mannschaft.app.proxy.service.ProxyInputQueryService;
@@ -48,7 +48,7 @@ import java.util.List;
  * </ul>
  *
  * <p><b>ドメイン境界</b>: 他ドメインの Entity を直接参照せず、必ず各ドメインの Service メソッドを
- * ID 経由で呼ぶ（{@link ScheduleQueryService}/{@link ScheduleAttendanceService}/{@link MembershipService}/
+ * ID 経由で呼ぶ（{@link ScheduleQueryService}/{@link ScheduleAttendanceService}/{@link MembershipScopeQueryService}/
  * {@link BulletinThreadService}/{@link ProxyInputQueryService}）。読み取り集約のため
  * {@code @Transactional(readOnly = true)}（{@link GuardianshipSwitchService} と同型・各委譲先が独自 tx を持つ）。</p>
  *
@@ -64,7 +64,7 @@ public class GuardianChildViewService {
     private final GuardianshipSwitchService guardianshipSwitchService;
     private final ScheduleQueryService scheduleQueryService;
     private final ScheduleAttendanceService scheduleAttendanceService;
-    private final MembershipService membershipService;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final NameResolverService nameResolverService;
     private final BulletinThreadService bulletinThreadService;
     private final ProxyInputQueryService proxyInputQueryService;
@@ -117,12 +117,12 @@ public class GuardianChildViewService {
         assertGuardianCanView(guardianUserId, childUserId);
 
         List<GuardianChildMembershipsResponse.ScopeRef> teams =
-                membershipService.getActiveTeamIdsByUser(childUserId).stream()
+                membershipScopeQueryService.findCurrentTeamIdsForAuthorizedGuardianSubject(childUserId).stream()
                         .map(teamId -> new GuardianChildMembershipsResponse.ScopeRef(
                                 teamId, nameResolverService.resolveScopeName(SCOPE_TYPE_TEAM, teamId)))
                         .toList();
         List<GuardianChildMembershipsResponse.ScopeRef> orgs =
-                membershipService.getActiveOrgIdsByUser(childUserId).stream()
+                membershipScopeQueryService.findCurrentOrganizationIdsForAuthorizedGuardianSubject(childUserId).stream()
                         .map(orgId -> new GuardianChildMembershipsResponse.ScopeRef(
                                 orgId, nameResolverService.resolveScopeName(SCOPE_TYPE_ORGANIZATION, orgId)))
                         .toList();
@@ -158,13 +158,15 @@ public class GuardianChildViewService {
         List<ThreadResponse> merged = new ArrayList<>();
         long totalElements = 0L;
 
-        for (Long teamId : membershipService.getActiveTeamIdsByUser(childUserId)) {
+        for (Long teamId : membershipScopeQueryService
+                .findCurrentTeamIdsForAuthorizedGuardianSubject(childUserId)) {
             Page<ThreadResponse> p =
                     bulletinThreadService.listThreads(ScopeType.TEAM, teamId, childUserId, perScope);
             merged.addAll(p.getContent());
             totalElements += p.getTotalElements();
         }
-        for (Long orgId : membershipService.getActiveOrgIdsByUser(childUserId)) {
+        for (Long orgId : membershipScopeQueryService
+                .findCurrentOrganizationIdsForAuthorizedGuardianSubject(childUserId)) {
             Page<ThreadResponse> p =
                     bulletinThreadService.listThreads(ScopeType.ORGANIZATION, orgId, childUserId, perScope);
             merged.addAll(p.getContent());

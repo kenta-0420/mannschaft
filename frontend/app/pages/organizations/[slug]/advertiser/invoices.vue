@@ -11,6 +11,8 @@ const loading = ref(true)
 const selectedInvoice = ref<InvoiceDetailResponse | null>(null)
 const showDetail = ref(false)
 const statusFilter = ref<InvoiceStatus | null>(null)
+/** 取得失敗は「請求書なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 const statusOptions = [
   { label: 'すべて', value: null },
@@ -22,13 +24,17 @@ const statusOptions = [
 
 async function loadInvoices() {
   loading.value = true
+  loadFailed.value = false
   try {
     const params: Record<string, string> = {}
     if (statusFilter.value) params.status = statusFilter.value
     const res = await advertiserApi.getInvoices('ORGANIZATION', orgSlug, params)
     invoices.value = res.data
   }
-  catch { invoices.value = [] }
+  catch {
+    invoices.value = []
+    loadFailed.value = true
+  }
   finally { loading.value = false }
 }
 
@@ -71,6 +77,12 @@ onMounted(loadInvoices)
     </div>
 
     <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="advertiser-invoices-error-state"
+      @retry="loadInvoices"
+    />
 
     <DataTable v-else :value="invoices" striped-rows @row-click="(e: { data: InvoiceSummaryResponse }) => viewDetail(e.data)">
       <Column field="invoiceNumber" header="請求書番号" />

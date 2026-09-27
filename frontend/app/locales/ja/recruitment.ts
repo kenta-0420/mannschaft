@@ -280,6 +280,7 @@ export default {
       "status": {
         "pending": "確認待ち",
         "confirmed": "確定",
+        "expired": "異議申立期限切れ",
         "disputed": "異議申立中",
         "revoked": "取消",
         "upheld": "確定維持"

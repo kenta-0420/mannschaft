@@ -1,5 +1,6 @@
 package com.mannschaft.app.dashboard.controller;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
@@ -31,7 +32,6 @@ import com.mannschaft.app.dashboard.service.DashboardWidgetService;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.service.OrganizationService;
@@ -97,7 +97,7 @@ public class DashboardController {
     private final NotificationRepository notificationRepository;
     private final TimelinePostRepository timelinePostRepository;
     private final ScheduleRepository scheduleRepository;
-    private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final BulletinThreadRepository bulletinThreadRepository;
     private final BulletinReadStatusRepository bulletinReadStatusRepository;
     private final ChatChannelMemberRepository chatChannelMemberRepository;
@@ -298,13 +298,13 @@ public class DashboardController {
         List<ScheduleEntity> personalSchedules = scheduleRepository
                 .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(userId, from, until);
         // 所属チームのスケジュール（CMP-027: user_roles ∪ memberships の在籍チーム）
-        List<Long> teamIdsForSchedule = userRoleRepository.findTeamIdsByUserId(userId);
+        List<Long> teamIdsForSchedule = membershipScopeQueryService.findActiveTeamIds(userId);
         List<ScheduleEntity> teamSchedules = teamIdsForSchedule.stream()
                 .flatMap(teamId -> scheduleRepository
                         .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, until).stream())
                 .toList();
         // 所属組織のスケジュール（CMP-027: user_roles ∪ memberships の在籍組織）
-        List<Long> orgIdsForSchedule = userRoleRepository.findOrganizationIdsByUserId(userId);
+        List<Long> orgIdsForSchedule = membershipScopeQueryService.findActiveOrganizationIds(userId);
         List<ScheduleEntity> orgSchedules = orgIdsForSchedule.stream()
                 .flatMap(orgId -> scheduleRepository
                         .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, until).stream())
@@ -384,7 +384,7 @@ public class DashboardController {
         Long userId = SecurityUtils.getCurrentUserId();
 
         // 掲示板: 所属チームのスレッドで未読のもの（CMP-027: user_roles ∪ memberships の在籍チーム）
-        List<Long> bulletinTeamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        List<Long> bulletinTeamIds = membershipScopeQueryService.findActiveTeamIds(userId);
         long totalUnreadBulletin = 0;
         for (Long teamId : bulletinTeamIds) {
             Page<com.mannschaft.app.bulletin.entity.BulletinThreadEntity> threads =
@@ -414,7 +414,7 @@ public class DashboardController {
     /**
      * 最近のアクティビティ。
      */
-    @SelfScopedEndpoint("スコープIDが userRoleRepository.findTeamIdsByUserId / findOrganizationIdsByUserId"
+    @SelfScopedEndpoint("スコープIDが membershipScopeQueryService.findActiveTeamIds / findActiveOrganizationIds"
             + "（いずれも認証主体の userId のみで絞り込む）から導出された自分の所属チーム・所属組織IDのみで、"
             + "リクエストで他ユーザーの識別子は受け取らない（DashboardController.java:399-419）")
     @GetMapping("/activity")
@@ -434,8 +434,8 @@ public class DashboardController {
         // 所属チームIDと所属組織IDの «両方» をスコープとする（CMP-027: user_roles ∪ memberships の在籍）。
         // 従来はチームIDしか集めておらず、ORGANIZATION スコープの活動が原理的に一件も表示されなかった
         // （SCHEDULE 系だけでなく既存7種別も同じく被害を受けていた）。
-        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
-        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        List<Long> teamIds = membershipScopeQueryService.findActiveTeamIds(userId);
+        List<Long> orgIds = membershipScopeQueryService.findActiveOrganizationIds(userId);
         ActivityFeedPageResponse response =
                 activityFeedService.getActivityFeed(userId, cursor, limit, teamIds, orgIds);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -529,7 +529,7 @@ public class DashboardController {
                 .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, monthEnd);
 
         // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
-        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        List<Long> teamIds = membershipScopeQueryService.findActiveTeamIds(userId);
         List<ScheduleEntity> teamSchedules = teamIds.isEmpty()
                 ? List.of()
                 : scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, monthEnd);

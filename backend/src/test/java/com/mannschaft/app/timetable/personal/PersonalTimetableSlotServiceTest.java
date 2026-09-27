@@ -1,6 +1,7 @@
 package com.mannschaft.app.timetable.personal;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.timetable.WeekPattern;
 import com.mannschaft.app.timetable.personal.dto.PersonalWeeklyViewResponse;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity;
@@ -19,6 +20,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -31,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -44,10 +48,15 @@ class PersonalTimetableSlotServiceTest {
     @Mock private PersonalTimetableRepository timetableRepository;
     @Mock private PersonalTimetableSlotRepository slotRepository;
     @Mock private PersonalTimetablePeriodRepository periodRepository;
+    @Mock private Clock wallClock;
     @InjectMocks private PersonalTimetableSlotService service;
 
     private static final Long USER_ID = 100L;
     private static final Long TIMETABLE_ID = 1L;
+    private static final LocalDate TODAY = LocalDate.of(2026, 4, 6);
+    private static final Instant CURRENT_INSTANT = TODAY
+            .atStartOfDay(UserZoneLocalDateTimeParser.SERVER_ZONE)
+            .toInstant();
 
     private PersonalTimetableEntity draft;
     private PersonalTimetableEntity active;
@@ -55,6 +64,8 @@ class PersonalTimetableSlotServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
         draft = PersonalTimetableEntity.builder()
                 .userId(USER_ID)
                 .name("テスト")
@@ -311,8 +322,7 @@ class PersonalTimetableSlotServiceTest {
     @Test
     @DisplayName("listToday: 今日の曜日でフィルタされ A/B 週も適用される")
     void listToday_曜日とAB適用() {
-        // 環境依存をなくすため、今日の曜日を取得してそれに合わせたモックを構築
-        String todayDow = LocalDate.now().getDayOfWeek().name().substring(0, 3);
+        String todayDow = TODAY.getDayOfWeek().name().substring(0, 3);
         given(timetableRepository.findByIdAndUserIdAndDeletedAtIsNull(TIMETABLE_ID, USER_ID))
                 .willReturn(Optional.of(draft));  // weekPatternEnabled=false → EVERY のみ通る
 

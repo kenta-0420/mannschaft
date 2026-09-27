@@ -1,5 +1,6 @@
 package com.mannschaft.app.organization.service;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.CursorPagedResponse;
@@ -47,6 +48,7 @@ public class OrganizationHierarchyService {
 
     private final OrganizationRepository organizationRepository;
     private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final MediaUrlResolver mediaUrlResolver;
 
@@ -201,7 +203,7 @@ public class OrganizationHierarchyService {
 
         // 可視性を SQL へ降ろすため、呼び出し者が直接所属する組織 ID 集合を事前取得する。
         // 空コレクションは JPQL の IN () で構文エラーになるためセンチネルへ差し替える。
-        List<Long> memberOrgIds = userRoleRepository.findOrganizationIdsByUserId(requesterId);
+        List<Long> memberOrgIds = membershipScopeQueryService.findActiveOrganizationIds(requesterId);
         List<Long> memberOrgIdsForQuery = memberOrgIds.isEmpty()
                 ? List.of(NO_MEMBERSHIP_SENTINEL_ORG_ID)
                 : memberOrgIds;
@@ -340,7 +342,7 @@ public class OrganizationHierarchyService {
     private boolean isDescendantMember(Long requesterId, Long targetOrgId) {
         // ユーザー所属組織のうち、祖先に targetOrgId を含むものがあれば true
         // CMP-027: user_roles ∪ memberships の在籍組織（素メンバー/応援者を取りこぼさない）
-        for (Long memberOrgId : userRoleRepository.findOrganizationIdsByUserId(requesterId)) {
+        for (Long memberOrgId : membershipScopeQueryService.findActiveOrganizationIds(requesterId)) {
             if (memberOrgId == null) continue;
             if (memberOrgId.equals(targetOrgId)) continue; // 直接所属は別判定なので除外
             if (hasAncestor(memberOrgId, targetOrgId)) return true;
@@ -348,7 +350,7 @@ public class OrganizationHierarchyService {
 
         // ユーザー所属チームの所属組織を起点に祖先を辿る
         // CMP-027: user_roles ∪ memberships の在籍チーム
-        for (Long teamId : userRoleRepository.findTeamIdsByUserId(requesterId)) {
+        for (Long teamId : membershipScopeQueryService.findActiveTeamIds(requesterId)) {
             if (teamId == null) continue;
             List<TeamOrgMembershipEntity> memberships = teamOrgMembershipRepository
                     .findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE);

@@ -54,6 +54,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  *       AUTO_INCREMENT のような中央発番はどこにも現れない）。むしろ代理キーを足すと
  *       「1 契約 1 lease」を別途 UNIQUE 制約で守る必要が生じ、排他の担保が弱くなる。
  *       V196 で確定済みの DDL であり、新規 migration での作り直しは行わない。</li>
+ *   <li>{@code publicview.PublicPostCommentEntity}（CMP-019 Wave7）— 既存 DDL の主キーが
+ *       {@code CHAR(36)} のため、同じ UUIDv7 を文字列で保存する
+ *       {@code UuidV7CharEntity} を継承する。既存行を保つための互換例外。</li>
  * </ul>
  */
 @AnalyzeClasses(

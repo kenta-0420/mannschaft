@@ -1,5 +1,6 @@
 package com.mannschaft.app.inbox.service.adapter;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.inbox.InboxPriority;
@@ -10,7 +11,6 @@ import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.service.InboxDedupeKeyResolver;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
 import com.mannschaft.app.inbox.service.InboxSourceAdapter;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedRepository;
@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AnnouncementInboxAdapter implements InboxSourceAdapter {
 
-    private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final RoleResolver roleResolver;
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     private final AnnouncementFeedRepository announcementFeedRepository;
@@ -183,7 +183,7 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
         Map<ScopeKey, String> result = new LinkedHashMap<>();
 
         // チームスコープ（CMP-027: user_roles ∪ memberships の在籍チーム）
-        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
+        for (Long teamId : membershipScopeQueryService.findActiveTeamIds(userId)) {
             ScopeKey key = new ScopeKey(AnnouncementScopeType.TEAM, teamId);
             if (result.containsKey(key)) {
                 continue;
@@ -193,7 +193,7 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
         }
 
         // 組織スコープ（CMP-027: user_roles ∪ memberships の在籍組織）
-        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
+        for (Long orgId : membershipScopeQueryService.findActiveOrganizationIds(userId)) {
             ScopeKey key = new ScopeKey(AnnouncementScopeType.ORGANIZATION, orgId);
             if (result.containsKey(key)) {
                 continue;

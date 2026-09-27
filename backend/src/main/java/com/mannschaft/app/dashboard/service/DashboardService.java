@@ -1,5 +1,6 @@
 package com.mannschaft.app.dashboard.service;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.admin.entity.PlatformAnnouncementEntity;
 import com.mannschaft.app.admin.repository.PlatformAnnouncementRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
@@ -88,6 +89,7 @@ public class DashboardService {
     private final ChatChannelMemberRepository chatChannelMemberRepository;
     private final PlatformAnnouncementRepository platformAnnouncementRepository;
     private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final PaymentGateService paymentGateService;
@@ -142,7 +144,7 @@ public class DashboardService {
                 .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, now, weekLater);
         // 所属チームのスケジュールも取得（N+1 解消: チーム ID を IN 句で一括取得）
         // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
-        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        List<Long> teamIds = membershipScopeQueryService.findActiveTeamIds(userId);
         List<ScheduleEntity> teamSchedules = teamIds.isEmpty()
                 ? List.of()
                 : scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, now, weekLater);
@@ -199,7 +201,7 @@ public class DashboardService {
             final List<Long> finalTeamIds = teamIds;
             // F03.18: アクティビティフィードは所属組織スコープの行も対象とする。
             // 従来はチームIDしか渡しておらず ORGANIZATION スコープの活動が原理的に0件だった。
-            final List<Long> finalOrgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+            final List<Long> finalOrgIds = membershipScopeQueryService.findActiveOrganizationIds(userId);
             // TimezoneContextHolder は inheritable=false の ThreadLocal のため、リクエストスレッドで
             // 取得した ZoneId を future へ明示的に引き渡す（async ワーカーでは UTC に化けるのを防ぐ。
             // チームダッシュボードの buildCalendarSummary と同じ作法）。
@@ -497,7 +499,7 @@ public class DashboardService {
 
         // F02.8: 親組織の告知フィードを取得（target_team_ids フィルタ付き）
         // CMP-027: user_roles ∪ memberships の在籍組織 ID（素メンバー/応援者を取りこぼさない）
-        List<Long> feedOrgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        List<Long> feedOrgIds = membershipScopeQueryService.findActiveOrganizationIds(userId);
         // 多重 org ロール行に対する防御的な feedId 重複排除（findOrganizationIdsByUserId は既に DISTINCT だが
         // インボックス（AnnouncementInboxAdapter の feedById.putIfAbsent）と同等に feedId で先勝ち dedup する）。
         List<AnnouncementFeedEntity> orgAnnouncementFeeds = new ArrayList<>(feedOrgIds.stream()
@@ -766,8 +768,8 @@ public class DashboardService {
     private ScopeCoverageResponse buildScopeCoverage(Long userId) {
         // チーム所属 + 組織所属の合計をスコープ数とする
         // CMP-027: user_roles ∪ memberships の在籍スコープ数（素メンバー/応援者を取りこぼさない）
-        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
-        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        List<Long> teamIds = membershipScopeQueryService.findActiveTeamIds(userId);
+        List<Long> orgIds = membershipScopeQueryService.findActiveOrganizationIds(userId);
         int totalScopes = teamIds.size() + orgIds.size();
         int displayedScopes = Math.min(totalScopes, MAX_DISPLAY_SCOPES);
         boolean hasHiddenScopes = totalScopes > MAX_DISPLAY_SCOPES;
