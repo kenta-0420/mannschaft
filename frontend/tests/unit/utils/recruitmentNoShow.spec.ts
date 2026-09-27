@@ -13,6 +13,7 @@ const record = (overrides: Partial<RecruitmentNoShowRecordResponse> = {}): Recru
   disputeDeadlineAt: '2026-10-01T10:00:00Z',
   recordedBy: 5,
   disputed: false,
+  disputeReason: null,
   disputeResolution: null,
   createdAt: '2026-09-01T10:00:00Z',
   ...overrides,

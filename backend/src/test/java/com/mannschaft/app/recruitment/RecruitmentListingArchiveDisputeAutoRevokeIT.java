@@ -521,7 +521,7 @@ class RecruitmentListingArchiveDisputeAutoRevokeIT extends AbstractMySqlIntegrat
                 .build();
         record.confirm();
         if (disputed) {
-            record.dispute();
+            record.dispute("異議申立の理由");
         }
         if (resolution != null) {
             record.resolveDispute(resolution);
