@@ -145,6 +145,10 @@
       "invalid_transition": "This status transition is not allowed",
       "comment_required": "Comment body is required"
     },
+    "widget": {
+      "badge_aria_label": "Open error report",
+      "badge_tooltip": "An error occurred. Click to view details"
+    },
     "kanban": {
       "title": "Kanban View",
       "load_more": "Load more...",
