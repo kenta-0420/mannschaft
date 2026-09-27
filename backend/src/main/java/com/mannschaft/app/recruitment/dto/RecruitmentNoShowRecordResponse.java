@@ -21,4 +21,5 @@ public class RecruitmentNoShowRecordResponse {
     private final boolean disputed;
     private final String disputeResolution;
     private final String createdAt;
+    private final String disputeDeadlineAt;
 }

@@ -1,13 +1,9 @@
 package com.mannschaft.app.incident.service;
 
-import com.mannschaft.app.common.AccessControlService;
-import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
-import com.mannschaft.app.incident.IncidentErrorCode;
 import com.mannschaft.app.incident.entity.IncidentCommentEntity;
 import com.mannschaft.app.incident.entity.IncidentEntity;
-import com.mannschaft.app.incident.repository.IncidentAssignmentRepository;
 import com.mannschaft.app.incident.repository.IncidentCommentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,8 +24,7 @@ public class IncidentCommentService {
 
     private final IncidentService incidentService;
     private final IncidentCommentRepository commentRepository;
-    private final IncidentAssignmentRepository assignmentRepository;
-    private final AccessControlService accessControlService;
+    private final IncidentAccessGuard incidentAccessGuard;
     private final NameResolverService nameResolverService;
 
     /**
@@ -44,7 +39,7 @@ public class IncidentCommentService {
      */
     public List<IncidentCommentResponse> listComments(Long incidentId, Long userId) {
         IncidentEntity incident = incidentService.findIncidentOrThrow(incidentId);
-        boolean includeInternal = requireVisibleOrConceal(incident, userId);
+        boolean includeInternal = incidentAccessGuard.requireVisibleOrConceal(incident, userId);
         List<IncidentCommentEntity> comments = commentRepository
                 .findVisibleByIncidentIdOrderByCreatedAtAsc(incidentId, includeInternal);
 
@@ -58,28 +53,6 @@ public class IncidentCommentService {
                         comment,
                         displayNames.getOrDefault(comment.getUserId(), UNKNOWN_USER_DISPLAY_NAME)))
                 .toList();
-    }
-
-    private boolean requireVisibleOrConceal(IncidentEntity incident, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return true;
-        }
-        if (!accessControlService.isMember(userId, incident.getScopeId(), incident.getScopeType())) {
-            throw new BusinessException(IncidentErrorCode.INCIDENT_002);
-        }
-        if (accessControlService.isAdminOrAbove(userId, incident.getScopeId(), incident.getScopeType())) {
-            return true;
-        }
-        if (accessControlService.isSupporter(userId, incident.getScopeId(), incident.getScopeType())) {
-            throw new BusinessException(IncidentErrorCode.INCIDENT_002);
-        }
-        boolean isReporter = userId.equals(incident.getReportedBy());
-        boolean isAssignee = assignmentRepository
-                .existsByIncidentIdAndUserIdAndAssigneeType(incident.getId(), userId, "USER");
-        if (!isReporter && !isAssignee) {
-            throw new BusinessException(IncidentErrorCode.INCIDENT_002);
-        }
-        return false;
     }
 
     /** コメント一覧の API レスポンス。添付ファイルは AWS 連携実装まで返さない。 */

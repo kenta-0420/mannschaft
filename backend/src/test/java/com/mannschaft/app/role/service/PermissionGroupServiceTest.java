@@ -368,6 +368,22 @@ class PermissionGroupServiceTest {
         }
 
         @Test
+        @DisplayName("CMP-048: 空配列は対象スコープの割当を全解除する")
+        void assignUserPermissionGroups_empty_unassignsAll() {
+            PermissionGroupEntity group = createGroupEntity(GROUP_ID, "解除対象");
+            given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(group));
+            given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(
+                    UserPermissionGroupEntity.builder().userId(USER_ID).groupId(GROUP_ID).build()));
+
+            permissionGroupService.assignUserPermissionGroups(
+                    USER_ID, SCOPE_ID, "TEAM", new UserPermissionGroupAssignRequest(List.of()), CREATED_BY);
+
+            verify(userPermissionGroupRepository).deleteByUserIdAndGroupIdIn(USER_ID, List.of(GROUP_ID));
+            verify(userPermissionGroupRepository, never()).save(any(UserPermissionGroupEntity.class));
+            verify(cacheGenerationService).incrementGeneration("TEAM", SCOPE_ID);
+        }
+
+        @Test
         @DisplayName("異常系: スコープ内に存在しないグループIDでROLE_006例外")
         void assignUserPermissionGroups_グループ不在_ROLE006例外() {
             // Given

@@ -735,7 +735,10 @@
       "deletedToast": "TODO deleted",
       "restoredToast": "TODO restored",
       "deleteFailed": "Failed to delete",
-      "restoreFailed": "Could not undo"
+      "restoreFailed": "Could not undo",
+      "bulkStatusSuccess": "Changed the status of {count} TODOs",
+      "bulkStatusPartial": "Changed {changedCount}; skipped {skippedCount} locked TODOs. Skipped items remain selected",
+      "bulkStatusAllLocked": "No changes made: all {count} TODOs are locked. They remain selected"
     },
     "field": {
       "status": "Status",
@@ -1708,6 +1711,42 @@
     "becomeSupporter": "Become a supporter",
     "supporterSuccess": "Registered as a supporter",
     "supporterError": "Failed to follow",
+    "guide": {
+      "title": "How to search for teams",
+      "description": "Set your criteria to find public teams, view their details, and register as a supporter.",
+      "searchConditions": {
+        "title": "Set search criteria",
+        "body": "Combine a keyword, prefecture, and team category to narrow the results.",
+        "steps": {
+          "step1": "Enter a keyword and select any filters you need.",
+          "step2": "Run the search to see teams that match your criteria."
+        }
+      },
+      "results": {
+        "title": "Review the results",
+        "body": "Each card shows the team name, category, activity area, and number of members.",
+        "steps": {
+          "step1": "Select a team that interests you from the list.",
+          "step2": "Open its details page to learn more."
+        }
+      },
+      "supporter": {
+        "title": "Register as a supporter",
+        "body": "A registration button appears for teams you do not belong to that accept supporters.",
+        "steps": {
+          "step1": "Select “Become a supporter” on the team card.",
+          "step2": "After registration, the card shows that you are registered."
+        }
+      },
+      "createAndMove": {
+        "title": "Create a team and open its details",
+        "body": "Use the button at the top right to create a team. Its details page opens when creation is complete.",
+        "steps": {
+          "step1": "Select “Create Team” and enter the required information.",
+          "step2": "When creation is complete, the new team’s details page opens."
+        }
+      }
+    },
     "folders": "Folder Organization"
   },
   "orgHub": {
@@ -2592,5 +2631,48 @@
   "loadErrorState": {
     "message": "Failed to load data",
     "retry": "Retry"
+  },
+  "searchBar": {
+    "keyword": "Keyword",
+    "defaultPlaceholder": "Search by name",
+    "prefecture": "Prefecture",
+    "selectPrefecture": "Select a prefecture",
+    "filterPrefecture": "Search prefectures",
+    "genre": "Category",
+    "all": "All"
+  },
+  "scopeLabels": {
+    "template": {
+      "CLUB": "Club or Circle",
+      "CLINIC": "Clinic",
+      "CLASS": "Class",
+      "COMMUNITY": "Community",
+      "COMPANY": "Company",
+      "FAMILY": "Family",
+      "RESTAURANT": "Restaurant",
+      "BEAUTY": "Beauty Salon",
+      "STORE": "Store or Retail",
+      "VOLUNTEER": "Volunteer or NPO",
+      "NEIGHBORHOOD": "Neighborhood Association",
+      "CONDO": "Condominium Association",
+      "OTHER": "Other"
+    },
+    "organizationType": {
+      "GOVERNMENT": "Government Agency",
+      "MUNICIPALITY": "Municipality",
+      "COMPANY": "Company",
+      "HOSPITAL": "Hospital or Medical Institution",
+      "ASSOCIATION": "Association or Federation",
+      "SCHOOL": "School or Educational Institution",
+      "NPO": "NPO or Nonprofit",
+      "COMMUNITY": "Community",
+      "OTHER": "Other"
+    },
+    "visibility": {
+      "PUBLIC": "Public",
+      "GUESTS_AND_ABOVE": "Guests and above",
+      "SUPPORTERS_AND_ABOVE": "Supporters and above",
+      "MEMBERS_AND_ABOVE": "Members and above"
+    }
   }
 }

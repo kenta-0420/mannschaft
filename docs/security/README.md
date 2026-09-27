@@ -123,7 +123,7 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 **ルール**:
 
 1. 新しい権限名を書くときは、**同じ PR に `permissions` への登録マイグレーションを含める**。ロール別デフォルト保有は機能設計書のロール・権限マトリクスに従う。
-2. **`role_permissions` の `is_default` は経路によって意味が違う。** `checkAdminOrHasPermission` は `is_default = 1` の行のみを自動付与とみなすが、`checkPermission`（TEAM 経路）は `is_default` で絞らず全行を権限として数える。したがって **TEAM スコープで使う権限を DEPUTY_ADMIN の `role_permissions` に「天井」として登録してはならない**（個別付与していない副管理者全員に権限が渡る）。DEPUTY_ADMIN への付与は `permission_groups` 経由に一本化する。
+2. **`role_permissions` の `is_default` は経路によって意味が違う。** `checkAdminOrHasPermission` は `is_default = 1` の行のみを自動付与とみなすが、`checkPermission`（TEAM 経路）は `is_default` で絞らず全行を権限として数える。したがって **TEAM スコープで使う権限を DEPUTY_ADMIN の `role_permissions` に「天井」として登録してはならない**（個別付与していない副管理者全員に権限が渡る）。DEPUTY_ADMIN への付与は `permission_groups` 経由に一本化する。通知宛先を選ぶ `findDeputyAdminUserIdsByTeamIdAndPermission` も自動付与だけを対象とし、`role_permissions` 経路では `is_default = 1`、`permission_groups` 経路では対象チームとの一致を必須とする。
 3. `permissions.name` は UNIQUE で `scope` は 1 値しか持てない。`scope` 列は**認可判定では参照されない**（権限一覧 UI 向けの分類列）ため、TEAM と ORGANIZATION の両方で使う権限は主たるスコープ 1 値で登録してよい。
 4. ユニットテストは `AccessControlService` をモックするため、この欠陥を**構造的に検出できない**。また通常の統合テスト基底は `spring.flyway.enabled=false` / `ddl-auto=create` で動くため `permissions` は空表になる。検証するには `spring.flyway.enabled=true` / `ddl-auto=none` をクラス単位で上書きした IT が要る（手本: `ManageRecruitmentsPermissionFlywayIT`）。
 

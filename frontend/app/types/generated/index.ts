@@ -63204,6 +63204,7 @@ export interface components {
         RecruitmentNoShowRecordResponse: {
             confirmed?: boolean;
             createdAt?: string;
+            disputeDeadlineAt?: string;
             disputeResolution?: string;
             disputed?: boolean;
             /** Format: int64 */
@@ -68561,8 +68562,9 @@ export interface components {
             status?: string;
             todoIds?: number[];
         };
-        ApiResponseListTodoStatusChangeResponse: {
+        BulkStatusChangeResponse: {
             data?: components["schemas"]["TodoStatusChangeResponse"][];
+            skippedLockedIds?: number[];
         };
         UpdateTimetableRequest: {
             /** Format: date */
@@ -135679,7 +135681,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListTodoStatusChangeResponse"];
+                    "*/*": components["schemas"]["BulkStatusChangeResponse"];
                 };
             };
         };
@@ -142944,7 +142946,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListTodoStatusChangeResponse"];
+                    "*/*": components["schemas"]["BulkStatusChangeResponse"];
                 };
             };
         };
@@ -148843,6 +148845,8 @@ export interface operations {
                 scopeType?: string;
                 scopeId?: string;
                 scopeVillageId?: string;
+                cursor?: number;
+                limit?: number;
                 size?: number;
             };
             header?: never;

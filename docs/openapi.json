@@ -90987,7 +90987,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListTodoStatusChangeResponse"
+                  "$ref": "#/components/schemas/BulkStatusChangeResponse"
                 }
               }
             }
@@ -103132,7 +103132,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListTodoStatusChangeResponse"
+                  "$ref": "#/components/schemas/BulkStatusChangeResponse"
                 }
               }
             }
@@ -112933,13 +112933,30 @@
             }
           },
           {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "format": "int32",
-              "default": 20
+              "format": "int32"
             }
           }
         ],
@@ -190279,6 +190296,9 @@
           "createdAt": {
             "type": "string"
           },
+          "disputeDeadlineAt": {
+            "type": "string"
+          },
           "disputeResolution": {
             "type": "string"
           },
@@ -205327,13 +205347,20 @@
           }
         }
       },
-      "ApiResponseListTodoStatusChangeResponse": {
+      "BulkStatusChangeResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TodoStatusChangeResponse"
+            }
+          },
+          "skippedLockedIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
             }
           }
         }
