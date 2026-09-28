@@ -58,7 +58,6 @@ NO_ARG_NOW|com.mannschaft.app.advertising.campaign.service.AdMessagingCampaignTr
 NO_ARG_NOW|com.mannschaft.app.advertising.campaign.service.AdPushChannelService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.campaign.service.UserAdPreferenceService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.controller.AdClickController|1
-NO_ARG_NOW|com.mannschaft.app.advertising.controller.StripeAdInvoiceWebhookController|1
 NO_ARG_NOW|com.mannschaft.app.advertising.entity.AdClickEntity|3
 NO_ARG_NOW|com.mannschaft.app.advertising.entity.AdCreditLimitRequestEntity|2
 NO_ARG_NOW|com.mannschaft.app.advertising.entity.AdImpressionEntity|3
