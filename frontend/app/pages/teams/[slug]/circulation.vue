@@ -123,8 +123,13 @@ onBeforeUnmount(clearWatchdog)
   <!-- 成功パス（従来どおり） -->
   <div v-else>
     <div class="mb-4 flex items-center gap-3">
-      <PageHeader title="回覧板" />
+      <PageHeader :title="t('confirmable.guide.circulation.title')" />
     </div>
+    <ConfirmableCirculationGuide
+      v-if="isAdminOrDeputy"
+      current-feature="circulation"
+      :target-path="`/teams/${teamSlug}/settings/confirmable-notifications`"
+    />
     <CirculationList
       ref="listRef"
       scope-type="TEAM"

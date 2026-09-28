@@ -485,13 +485,13 @@
     }
   },
   "confirmable": {
-    "title": "확인 알림",
+    "title": "빠른 확인",
     "page": {
-      "settings_title": "확인 알림 설정",
-      "settings_subtitle": "확인 알림의 설정, 발송, 발송 기록을 관리합니다"
+      "settings_title": "빠른 확인",
+      "settings_subtitle": "짧은 안내를 보내고 확인 현황과 미확인자를 빠르게 파악합니다"
     },
-    "settings": "확인 알림 설정",
-    "send": "확인 알림 보내기",
+    "settings": "빠른 확인 설정",
+    "send": "빠른 확인 보내기",
     "history": "발송 기록",
     "recipients": "수신자 목록",
     "status": {
@@ -543,7 +543,18 @@
       "ALL_MEMBERS": "모든 멤버에게 공개"
     },
     "unconfirmed_count": "미확인: {count}명",
-    "unconfirmed_list": "미확인자 목록"
+    "unconfirmed_list": "미확인자 목록",
+    "guide": {
+      "quickConfirm": {
+        "description": "짧은 안내의 확인을 받는 기능입니다. 문서 날인이나 회람 순서가 필요하면 회람판을 사용하세요.",
+        "link": "회람판 열기"
+      },
+      "circulation": {
+        "title": "회람판",
+        "description": "문서 날인과 회람 순서를 관리하는 기능입니다. 짧은 안내의 확인만 받으려면 빠른 확인을 사용하세요.",
+        "link": "빠른 확인 열기"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "동영상 처리 중...",
@@ -929,10 +940,10 @@
         }
       },
       "confirm": {
-        "title": "確認通知",
+        "title": "빠른 확인",
         "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step1": "빠른 확인（背景色が付いた通知）の内容を読みます",
           "step2": "「確認する」ボタンを押して確認済みにします",
           "step3": "確認後は「確認済み」ラベルに変わります"
         }

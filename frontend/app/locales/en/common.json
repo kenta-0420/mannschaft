@@ -485,13 +485,13 @@
     }
   },
   "confirmable": {
-    "title": "Confirmation Notice",
+    "title": "Quick Confirm",
     "page": {
-      "settings_title": "Confirmation Notice Settings",
-      "settings_subtitle": "Manage confirmation notice settings, sending, and history"
+      "settings_title": "Quick Confirm",
+      "settings_subtitle": "Send a short message and quickly track acknowledgements and pending recipients"
     },
-    "settings": "Confirmation Notice Settings",
-    "send": "Send Confirmation Notice",
+    "settings": "Quick Confirm settings",
+    "send": "Send a Quick Confirm",
     "history": "History",
     "recipients": "Recipients",
     "status": {
@@ -543,7 +543,18 @@
       "ALL_MEMBERS": "All members"
     },
     "unconfirmed_count": "Unconfirmed: {count}",
-    "unconfirmed_list": "Unconfirmed users"
+    "unconfirmed_list": "Unconfirmed users",
+    "guide": {
+      "quickConfirm": {
+        "description": "Use this for short messages and acknowledgements. Use Circulation for documents that require stamps or a routing order.",
+        "link": "Open Circulation"
+      },
+      "circulation": {
+        "title": "Circulation",
+        "description": "Use this for documents that require stamps or a routing order. For a short message and acknowledgement, use Quick Confirm.",
+        "link": "Open Quick Confirm"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "Processing video...",
@@ -929,10 +940,10 @@
         }
       },
       "confirm": {
-        "title": "確認通知",
+        "title": "Quick Confirm",
         "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step1": "Quick Confirm（背景色が付いた通知）の内容を読みます",
           "step2": "「確認する」ボタンを押して確認済みにします",
           "step3": "確認後は「確認済み」ラベルに変わります"
         }

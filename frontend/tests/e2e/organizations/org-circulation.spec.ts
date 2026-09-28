@@ -22,6 +22,10 @@ test.describe('ORG-FEAT-034〜037: 組織回覧板', () => {
     await page.goto(`/organizations/${ORG_ID}/circulation`)
     await waitForHydration(page)
     await expect(page.getByRole('heading', { name: '回覧板' })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('link', { name: 'クイック確認を開く' })).toHaveAttribute(
+      'href',
+      `/organizations/${ORG_ID}/settings/confirmable-notifications`,
+    )
   })
 
   test('ORG-FEAT-035: 回覧が一覧に表示される', async ({ page }) => {

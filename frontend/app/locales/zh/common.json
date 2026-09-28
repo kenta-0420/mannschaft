@@ -485,13 +485,13 @@
     }
   },
   "confirmable": {
-    "title": "确认通知",
+    "title": "快速确认",
     "page": {
-      "settings_title": "确认通知设置",
-      "settings_subtitle": "管理确认通知的设置、发送与发送历史"
+      "settings_title": "快速确认",
+      "settings_subtitle": "发送简短消息，快速掌握确认情况和未确认人员"
     },
-    "settings": "确认通知设置",
-    "send": "发送确认通知",
+    "settings": "快速确认设置",
+    "send": "发送快速确认",
     "history": "发送历史",
     "recipients": "接收者列表",
     "status": {
@@ -543,7 +543,18 @@
       "ALL_MEMBERS": "向所有成员公开"
     },
     "unconfirmed_count": "未确认: {count}名",
-    "unconfirmed_list": "未确认者列表"
+    "unconfirmed_list": "未确认者列表",
+    "guide": {
+      "quickConfirm": {
+        "description": "用于收集简短消息的确认。如需文件盖章或按顺序传阅，请使用传阅板。",
+        "link": "打开传阅板"
+      },
+      "circulation": {
+        "title": "传阅板",
+        "description": "用于管理文件盖章和传阅顺序。如只需收集简短消息的确认，请使用快速确认。",
+        "link": "打开快速确认"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "视频处理中...",
@@ -929,10 +940,10 @@
         }
       },
       "confirm": {
-        "title": "確認通知",
+        "title": "快速确认",
         "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step1": "快速确认（背景色が付いた通知）の内容を読みます",
           "step2": "「確認する」ボタンを押して確認済みにします",
           "step3": "確認後は「確認済み」ラベルに変わります"
         }

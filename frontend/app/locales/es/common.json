@@ -485,13 +485,13 @@
     }
   },
   "confirmable": {
-    "title": "Notificación de confirmación",
+    "title": "Confirmación rápida",
     "page": {
-      "settings_title": "Configuración de notificaciones de confirmación",
-      "settings_subtitle": "Gestiona la configuración, el envío y el historial de notificaciones de confirmación"
+      "settings_title": "Confirmación rápida",
+      "settings_subtitle": "Envía un mensaje breve y consulta rápidamente las confirmaciones pendientes"
     },
-    "settings": "Configuración de notificaciones de confirmación",
-    "send": "Enviar notificación de confirmación",
+    "settings": "Configuración de Confirmación rápida",
+    "send": "Enviar una Confirmación rápida",
     "history": "Historial de envíos",
     "recipients": "Lista de destinatarios",
     "status": {
@@ -543,7 +543,18 @@
       "ALL_MEMBERS": "Todos los miembros"
     },
     "unconfirmed_count": "Sin confirmar: {count}",
-    "unconfirmed_list": "Usuarios no confirmados"
+    "unconfirmed_list": "Usuarios no confirmados",
+    "guide": {
+      "quickConfirm": {
+        "description": "Úsala para mensajes breves y acuses de recibo. Usa Circulares para documentos que requieren sellos u orden de circulación.",
+        "link": "Abrir Circulares"
+      },
+      "circulation": {
+        "title": "Circulares",
+        "description": "Úsalas para documentos que requieren sellos u orden de circulación. Para un mensaje breve y su confirmación, usa Confirmación rápida.",
+        "link": "Abrir Confirmación rápida"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "Procesando video...",
@@ -929,10 +940,10 @@
         }
       },
       "confirm": {
-        "title": "確認通知",
+        "title": "Confirmación rápida",
         "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step1": "Confirmación rápida（背景色が付いた通知）の内容を読みます",
           "step2": "「確認する」ボタンを押して確認済みにします",
           "step3": "確認後は「確認済み」ラベルに変わります"
         }
