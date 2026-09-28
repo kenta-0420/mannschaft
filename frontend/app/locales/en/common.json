@@ -494,11 +494,29 @@
   },
   "confirmable": {
     "delivery_stopped": "Delivery stopped",
-    "templates": "Manage templates", "template_name": "Template name", "default_recipient_group": "Default recipient group", "deleted_group_fallback": "If the group is deleted, all members in the scope are selected.",
-    "audience_mode": { "DEFAULT": "All members in scope", "TARGETS": "Choose organizations and teams", "GROUP": "Saved group" }, "select_group": "Choose a group",
-    "search_targets": "Search loaded organizations and teams", "open_children": "Show children", "load_more_targets": "Load more", "previous_targets": "Previous targets", "next_targets": "Next targets", "no_targets": "No targets", "selected_targets": "Selected: {count}", "targets_required": "Choose recipients",
-    "preview_loading": "Checking recipient count", "preview_count": "Estimated recipients: {count}", "preview_required": "Check the recipient count", "delivered_count": "Delivered: {count}",
-    "title": "Confirmation Notice",
+    "templates": "Manage templates",
+    "template_name": "Template name",
+    "default_recipient_group": "Default recipient group",
+    "deleted_group_fallback": "If the group is deleted, all members in the scope are selected.",
+    "audience_mode": {
+      "DEFAULT": "All members in scope",
+      "TARGETS": "Choose organizations and teams",
+      "GROUP": "Saved group"
+    },
+    "select_group": "Choose a group",
+    "search_targets": "Search loaded organizations and teams",
+    "open_children": "Show children",
+    "load_more_targets": "Load more",
+    "previous_targets": "Previous targets",
+    "next_targets": "Next targets",
+    "no_targets": "No targets",
+    "selected_targets": "Selected: {count}",
+    "targets_required": "Choose recipients",
+    "preview_loading": "Checking recipient count",
+    "preview_count": "Estimated recipients: {count}",
+    "preview_required": "Check the recipient count",
+    "delivered_count": "Delivered: {count}",
+    "title": "Quick Confirm",
     "page": {
       "settings_title": "Confirmation Notice Settings",
       "settings_subtitle": "Manage confirmation notice settings, sending, and history"
@@ -556,9 +574,50 @@
       "ALL_MEMBERS": "All members"
     },
     "unconfirmed_count": "Unconfirmed: {count}",
-    "unconfirmed_list": "Unconfirmed users"
-  ,
-    "recipient_groups": "Recipient groups", "recipient_groups_help": "Save organizations or teams as notification recipients.", "group_name": "Group name", "targets": "Targets", "target_id": "Target ID", "target_type": { "ORGANIZATION": "Organization", "TEAM": "Team" }, "template": "Template", "audience": "Audience", "current_scope": "This organization or team", "current_scope_help": "Send to active members of the current scope.", "group_audience_help": "Send to the saved recipient group.", "message_title": "Title", "message_body": "Message", "priority_label": "Priority", "accepted": "Delivery accepted", "accepted_count": "Delivery accepted (estimated recipients: {count})", "recipient": "Recipient", "withdrawn": "Withdrawn", "withdrawn_user": "Withdrawn user", "unknown_recipient": "Unknown recipient", "unconfirmed": "Unconfirmed", "unconfirmed_only": "Unconfirmed only", "delivery_status": { "QUEUED": "Queued", "DELIVERING": "Delivering", "DELIVERED": "Delivered", "PARTIALLY_FAILED": "Partially failed" }, "help": { "title": "Using confirmation notifications", "body": "Choose a recipient group or the current scope. Delivery runs asynchronously; track delivery and confirmations in history." }
+    "unconfirmed_list": "Unconfirmed users",
+    "recipient_groups": "Recipient groups",
+    "recipient_groups_help": "Save organizations or teams as notification recipients.",
+    "group_name": "Group name",
+    "targets": "Targets",
+    "target_id": "Target ID",
+    "target_type": { "ORGANIZATION": "Organization", "TEAM": "Team" },
+    "template": "Template",
+    "audience": "Audience",
+    "current_scope": "This organization or team",
+    "current_scope_help": "Send to active members of the current scope.",
+    "group_audience_help": "Send to the saved recipient group.",
+    "message_title": "Title",
+    "message_body": "Message",
+    "priority_label": "Priority",
+    "accepted": "Delivery accepted",
+    "accepted_count": "Delivery accepted (estimated recipients: {count})",
+    "recipient": "Recipient",
+    "withdrawn": "Withdrawn",
+    "withdrawn_user": "Withdrawn user",
+    "unknown_recipient": "Unknown recipient",
+    "unconfirmed": "Unconfirmed",
+    "unconfirmed_only": "Unconfirmed only",
+    "delivery_status": {
+      "QUEUED": "Queued",
+      "DELIVERING": "Delivering",
+      "DELIVERED": "Delivered",
+      "PARTIALLY_FAILED": "Partially failed"
+    },
+    "help": {
+      "title": "Using confirmation notifications",
+      "body": "Choose a recipient group or the current scope. Delivery runs asynchronously; track delivery and confirmations in history."
+    },
+    "guide": {
+      "quickConfirm": {
+        "description": "Use this for short messages and acknowledgements. Use Circulation for documents that require stamps or a routing order.",
+        "link": "Open Circulation"
+      },
+      "circulation": {
+        "title": "Circulation",
+        "description": "Use this for documents that require stamps or a routing order. For a short message and acknowledgement, use Quick Confirm.",
+        "link": "Open Quick Confirm"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "Processing video...",

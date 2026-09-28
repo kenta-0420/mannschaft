@@ -206,6 +206,11 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query("SELECT u.status FROM UserEntity u WHERE u.id = :userId")
     Optional<UserStatus> findStatusById(@Param("userId") Long userId);
 
+    /** 他ドメインから Entity 内 enum を参照せず、有効な本人宛先を判定する。 */
+    @Query(value = "SELECT EXISTS(SELECT 1 FROM users WHERE id = :userId AND status = 'ACTIVE' AND deleted_at IS NULL)",
+            nativeQuery = true)
+    boolean existsActiveById(@Param("userId") Long userId);
+
     long countByLastLoginAtAfterAndStatusAndDeletedAtIsNull(LocalDateTime since, UserEntity.UserStatus status);
 
     // === Analytics 集計用クエリ ===

@@ -379,6 +379,7 @@ export interface RecruitmentNoShowRecordResponse {
   disputeDeadlineAt: string | null
   recordedBy: number | null
   disputed: boolean
+  disputeReason: string | null
   disputeResolution: string | null
   createdAt: string
 }

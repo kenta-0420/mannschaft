@@ -494,11 +494,29 @@
   },
   "confirmable": {
     "delivery_stopped": "发送已停止",
-    "templates": "模板管理", "template_name": "模板名称", "default_recipient_group": "默认收件人群组", "deleted_group_fallback": "群组删除后将选择范围内所有成员。",
-    "audience_mode": { "DEFAULT": "范围内所有成员", "TARGETS": "选择组织和团队", "GROUP": "已保存的群组" }, "select_group": "选择群组",
-    "search_targets": "搜索已加载的组织和团队", "open_children": "显示下级", "load_more_targets": "加载更多", "previous_targets": "上一页", "next_targets": "下一页", "no_targets": "没有候选目标", "selected_targets": "已选择：{count}", "targets_required": "请选择收件人",
-    "preview_loading": "正在检查收件人数", "preview_count": "预计收件人：{count}", "preview_required": "请检查收件人数", "delivered_count": "已送达：{count}",
-    "title": "确认通知",
+    "templates": "模板管理",
+    "template_name": "模板名称",
+    "default_recipient_group": "默认收件人群组",
+    "deleted_group_fallback": "群组删除后将选择范围内所有成员。",
+    "audience_mode": {
+      "DEFAULT": "范围内所有成员",
+      "TARGETS": "选择组织和团队",
+      "GROUP": "已保存的群组"
+    },
+    "select_group": "选择群组",
+    "search_targets": "搜索已加载的组织和团队",
+    "open_children": "显示下级",
+    "load_more_targets": "加载更多",
+    "previous_targets": "上一页",
+    "next_targets": "下一页",
+    "no_targets": "没有候选目标",
+    "selected_targets": "已选择：{count}",
+    "targets_required": "请选择收件人",
+    "preview_loading": "正在检查收件人数",
+    "preview_count": "预计收件人：{count}",
+    "preview_required": "请检查收件人数",
+    "delivered_count": "已送达：{count}",
+    "title": "快速确认",
     "page": {
       "settings_title": "确认通知设置",
       "settings_subtitle": "管理确认通知的设置、发送与发送历史"
@@ -556,9 +574,50 @@
       "ALL_MEMBERS": "向所有成员公开"
     },
     "unconfirmed_count": "未确认: {count}名",
-    "unconfirmed_list": "未确认者列表"
-  ,
-    "recipient_groups": "收件人群组", "recipient_groups_help": "将组织或团队保存为通知收件人。", "group_name": "群组名称", "targets": "目标", "target_id": "目标 ID", "target_type": { "ORGANIZATION": "组织", "TEAM": "团队" }, "template": "模板", "audience": "收件人", "current_scope": "当前组织或团队", "current_scope_help": "发送给当前范围内的活跃成员。", "group_audience_help": "发送给已保存的收件人群组。", "message_title": "标题", "message_body": "正文", "priority_label": "优先级", "accepted": "已接受发送", "accepted_count": "已接受发送（预计收件人：{count}）", "recipient": "收件人", "withdrawn": "已退出", "withdrawn_user": "已退出用户", "unknown_recipient": "未知收件人", "unconfirmed": "未确认", "unconfirmed_only": "仅未确认", "delivery_status": { "QUEUED": "等待发送", "DELIVERING": "发送中", "DELIVERED": "已送达", "PARTIALLY_FAILED": "部分失败" }, "help": { "title": "确认通知使用方法", "body": "选择收件人群组或当前范围。发送将异步进行，可在历史记录中查看。" }
+    "unconfirmed_list": "未确认者列表",
+    "recipient_groups": "收件人群组",
+    "recipient_groups_help": "将组织或团队保存为通知收件人。",
+    "group_name": "群组名称",
+    "targets": "目标",
+    "target_id": "目标 ID",
+    "target_type": { "ORGANIZATION": "组织", "TEAM": "团队" },
+    "template": "模板",
+    "audience": "收件人",
+    "current_scope": "当前组织或团队",
+    "current_scope_help": "发送给当前范围内的活跃成员。",
+    "group_audience_help": "发送给已保存的收件人群组。",
+    "message_title": "标题",
+    "message_body": "正文",
+    "priority_label": "优先级",
+    "accepted": "已接受发送",
+    "accepted_count": "已接受发送（预计收件人：{count}）",
+    "recipient": "收件人",
+    "withdrawn": "已退出",
+    "withdrawn_user": "已退出用户",
+    "unknown_recipient": "未知收件人",
+    "unconfirmed": "未确认",
+    "unconfirmed_only": "仅未确认",
+    "delivery_status": {
+      "QUEUED": "等待发送",
+      "DELIVERING": "发送中",
+      "DELIVERED": "已送达",
+      "PARTIALLY_FAILED": "部分失败"
+    },
+    "help": {
+      "title": "确认通知使用方法",
+      "body": "选择收件人群组或当前范围。发送将异步进行，可在历史记录中查看。"
+    },
+    "guide": {
+      "quickConfirm": {
+        "description": "用于收集简短消息的确认。如需文件盖章或按顺序传阅，请使用传阅板。",
+        "link": "打开传阅板"
+      },
+      "circulation": {
+        "title": "传阅板",
+        "description": "用于管理文件盖章和传阅顺序。如只需收集简短消息的确认，请使用快速确认。",
+        "link": "打开快速确认"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "视频处理中...",

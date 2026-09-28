@@ -427,11 +427,21 @@ public class AccessControlService {
     }
 
     /**
-     * ユーザーがADMINまたはDEPUTY_ADMINかどうかを返す。
+     * ユーザーが当該スコープのADMINまたはDEPUTY_ADMINかどうかを返す。
+     *
+     * <p>CMP-260920-1043: {@link #getRoleName} は表示・可視性向けにプラットフォームロールの
+     * SYSTEM_ADMINを最優先で返す。その値をスコープ認可へ流用すると、SYSTEM_ADMINと当該スコープの
+     * ADMINを兼任する利用者まで403になるため、ここではスコープ付き{@code user_roles}だけを判定する。
+     * SYSTEM_ADMIN単独をテナント管理者として扱わない既存契約は維持する。</p>
      */
     public boolean isAdminOrAbove(Long userId, Long scopeId, String scopeType) {
-        String roleName = getRoleName(userId, scopeId, scopeType);
-        return roleName != null && ADMIN_ROLES.contains(roleName);
+        if (!userRoleRepository.isActiveUser(userId)) {
+            return false;
+        }
+        return findUserRole(userId, scopeId, scopeType)
+                .flatMap(userRole -> roleRepository.findById(userRole.getRoleId()))
+                .map(role -> ADMIN_ROLES.contains(role.getName()))
+                .orElse(false);
     }
 
     /**

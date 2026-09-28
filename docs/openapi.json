@@ -190299,6 +190299,9 @@
           "disputeDeadlineAt": {
             "type": "string"
           },
+          "disputeReason": {
+            "type": "string"
+          },
           "disputeResolution": {
             "type": "string"
           },
@@ -190908,7 +190911,8 @@
         "properties": {
           "reason": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 10000,
+            "minLength": 0
           }
         }
       },

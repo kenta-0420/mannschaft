@@ -17,6 +17,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -111,7 +112,7 @@ class AdFrequencyCapIntegrationTest {
         userRepository = mock(UserRepository.class);
         lenient().when(userRepository.findTimezoneById(anyLong())).thenReturn(Optional.of("Asia/Tokyo"));
 
-        service = new AdFrequencyCapService(redisTemplate, userRepository, config);
+        service = new AdFrequencyCapService(redisTemplate, userRepository, config, Clock.systemUTC());
 
         counterRepository = mock(UserAdDeliveryCounterRepository.class);
         // upsert 用: 常に「未存在」を返してテストでは新規作成として扱う
@@ -141,7 +142,7 @@ class AdFrequencyCapIntegrationTest {
         assertThat(service.tryConsume(userId, adv4, UUID.randomUUID())).isFalse();
 
         // Valkey 上の個人合計カウンタは 3 で確定（ロールバック済み）
-        LocalDate weekStart = AdFrequencyCapService.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
+        LocalDate weekStart = service.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
         assertThat(service.getCurrentCount(userId, weekStart)).isEqualTo(3);
     }
 
@@ -160,7 +161,7 @@ class AdFrequencyCapIntegrationTest {
         assertThat(service.tryConsume(userId, 101L, UUID.randomUUID())).isTrue();
 
         // 個人合計は 2（広告主 100 の 1 件 + 広告主 101 の 1 件）
-        LocalDate weekStart = AdFrequencyCapService.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
+        LocalDate weekStart = service.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
         assertThat(service.getCurrentCount(userId, weekStart)).isEqualTo(2);
     }
 
@@ -197,7 +198,7 @@ class AdFrequencyCapIntegrationTest {
             // weeklyPerAdvertiser=1 のため、20 並行呼び出しのうち成功は 1 回のみ
             assertThat(successCount).isEqualTo(1L);
 
-            LocalDate weekStart = AdFrequencyCapService.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
+            LocalDate weekStart = service.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
             String perAdvKey = AdFrequencyCapService.buildPerAdvertiserKey(advertiser, userId, weekStart);
             // ロールバックが正しく効いていれば、失敗した 19 回分は増減が相殺され最終値は 1
             String raw = redisTemplate.opsForValue().get(perAdvKey);
@@ -213,7 +214,7 @@ class AdFrequencyCapIntegrationTest {
         Long userId = 5003L;
         service.tryConsume(userId, 200L, UUID.randomUUID());
 
-        LocalDate weekStart = AdFrequencyCapService.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
+        LocalDate weekStart = service.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
         String key = AdFrequencyCapService.buildTotalKey(userId, weekStart);
         Long ttl = redisTemplate.getExpire(key, TimeUnit.SECONDS);
 
