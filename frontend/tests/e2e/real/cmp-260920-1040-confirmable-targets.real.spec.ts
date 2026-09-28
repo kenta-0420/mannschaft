@@ -43,7 +43,7 @@ test('管理者が宛先グループを画面で作成し、送信前の見込�
   try {
     await page.goto(SETTINGS_PATH, { waitUntil: 'commit' })
     await waitForPageHydration(page)
-    await expect(page.getByRole('heading', { name: 'クイック確認', level: 1 })).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByRole('heading', { name: '確認通知設定', level: 1 })).toBeVisible({ timeout: 60_000 })
 
     await page.getByTestId('recipient-group-name').fill(groupName)
     await page.getByTestId('confirmable-target-picker').first().locator('input[type="checkbox"]').first().check()
@@ -101,6 +101,6 @@ for (const [label, email] of [['一般メンバー', MEMBER], ['他テナント�
 
     await page.goto(SETTINGS_PATH, { waitUntil: 'commit' })
     await waitForPageHydration(page)
-    await expect(page.getByRole('heading', { name: 'クイック確認' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: '確認通知設定' })).toHaveCount(0)
   })
 }
