@@ -2,6 +2,9 @@ package com.mannschaft.app.shift.repository;
 
 import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -20,6 +23,16 @@ import java.util.List;
  * <b>意図的に置いていない</b>。追加する場合は正本の役割分担を崩さないか確認すること。</p>
  */
 public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignmentEntity, Long> {
+
+    /** 削除済み枠を含む親配下の全履歴を保全したまま論理削除する。 */
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_assignments a JOIN shift_slots s ON s.id = a.slot_id
+            JOIN shift_schedules sc ON sc.id = s.schedule_id
+            SET a.deleted_at = sc.deleted_at, a.updated_at = a.updated_at
+            WHERE sc.id = :scheduleId AND sc.deleted_at IS NOT NULL AND a.deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
 
     /**
      * 実行履歴IDに紐づく割当一覧を取得する。

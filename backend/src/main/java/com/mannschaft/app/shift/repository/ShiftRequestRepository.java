@@ -63,6 +63,20 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
      */
     List<ShiftRequestEntity> findByUserIdOrderBySlotDateDesc(Long userId);
 
+    /** 認証主体の提出履歴専用。削除済みも含むが、必ず本人のIDへ束縛する。 */
+    @Query(value = "SELECT r.* FROM shift_requests r WHERE r.user_id = :userId ORDER BY r.slot_date DESC",
+            nativeQuery = true)
+    List<ShiftRequestEntity> findHistoryByUserIdIncludingDeleted(@Param("userId") Long userId);
+
+    /** 親削除のみの連鎖。提出日時・希望値・更新日時は保持する。 */
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_requests r JOIN shift_schedules sc ON sc.id = r.schedule_id
+            SET r.deleted_at = sc.deleted_at, r.updated_at = r.updated_at
+            WHERE sc.id = :scheduleId AND sc.deleted_at IS NOT NULL AND r.deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
+
     /**
      * スケジュールと preference で希望件数を集計する（v2: 5 段階集計用）。
      */

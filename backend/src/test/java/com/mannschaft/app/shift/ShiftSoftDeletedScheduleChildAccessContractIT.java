@@ -4,9 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
+import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
+import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
+import com.mannschaft.app.shift.service.ShiftScheduleService;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -29,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -42,9 +46,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 親スケジュール論理削除時の子（枠／希望）アクセス契約テスト（試練 / red 先行・CMP-260917-1136）。
  *
- * <p>シフトスケジュールは論理削除（{@code deleted_at} ＋ {@code @SQLRestriction}）だが、子（
- * {@code shift_slots} / {@code shift_requests}）は論理削除を持たないため、親削除後も物理的には残り続ける
- *（実データで孤児枠421件・割当225件・希望13件を確認済み）。</p>
+ * <p>CMP-260923-0953 では親削除を子3テーブルへ論理削除で連鎖させる。
+ * 行・ID・業務値を保持し、通常 ORM と native の現在状態読取からは除外する。
+ * 本人の提出履歴だけは削除済みも認可済みの経路で表示する。</p>
  *
  * <p><b>不具合(a)</b>: {@code ShiftSlotService#checkScheduleAdminAccess} / {@code checkScheduleReadAccess} は
  * SYSTEM_ADMIN を親の生存確認より先に短絡させていたため、<b>SYSTEM_ADMIN だけが親削除済みの枠を
@@ -75,6 +79,12 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
 
     @Autowired
     private ShiftRequestRepository requestRepository;
+
+    @Autowired
+    private ShiftAssignmentRepository assignmentRepository;
+
+    @Autowired
+    private ShiftScheduleService scheduleService;
 
     @PersistenceContext
     private EntityManager em;
@@ -161,8 +171,7 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
         orphanRequestId = orphanRequest.getId();
 
         // 親を論理削除する（@SQLRestriction により以降 findById 等は見えなくなる）。
-        deletedSchedule.softDelete();
-        scheduleRepository.save(deletedSchedule);
+        scheduleService.deleteSchedule(deletedScheduleId, adminId);
 
         em.flush();
         em.clear();
@@ -237,7 +246,8 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
 
             // 対処療法（例外を握りつぶして何もしない）でないことも実データで裏取りする:
             // 行は消えていないはず（404 は認可・存在確認の結果であり、削除処理自体は走っていない）。
-            assertThat(requestRepository.findById(orphanRequestId)).isPresent();
+            assertThat(em.createNativeQuery("SELECT COUNT(*) FROM shift_requests WHERE id = :id")
+                    .setParameter("id", orphanRequestId).getSingleResult()).isEqualTo(1L);
         }
     }
 
@@ -263,6 +273,174 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("親DELETEは枠・希望・割当を同じ削除日時で残し通常読取から隠す（CMP-260923-0953）")
+    void 親削除が全子へ論理削除を連鎖する() throws Exception {
+        slotRepository.findById(liveSlotId).orElseThrow()
+                .updateAssignedUserIds("[" + memberId + "]");
+        ShiftRequestEntity request = requestRepository.save(ShiftRequestEntity.builder()
+                .scheduleId(liveScheduleId).userId(memberId).slotId(liveSlotId)
+                .slotDate(LocalDate.of(2026, 4, 2)).preference(ShiftPreference.PREFERRED)
+                .note("保持する希望").build());
+        ShiftAssignmentEntity assignment = assignmentRepository.save(ShiftAssignmentEntity.builder()
+                .slotId(liveSlotId).userId(memberId).assignedBy(adminId)
+                .status(ShiftAssignmentStatus.CONFIRMED).note("保持する割当").build());
+        Long requestId = request.getId();
+        Long assignmentId = assignment.getId();
+        em.flush();
+        em.clear();
+
+        setAuth(adminId);
+        mockMvc.perform(delete("/api/v1/shifts/schedules/{id}", liveScheduleId))
+                .andExpect(status().isNoContent());
+        em.flush();
+        em.clear();
+
+        Object deletedAt = em.createNativeQuery("SELECT deleted_at FROM shift_schedules WHERE id = :id")
+                .setParameter("id", liveScheduleId).getSingleResult();
+        assertThat(deletedAt).isNotNull();
+        for (Map.Entry<String, Long> row : Map.of("shift_slots", liveSlotId,
+                "shift_requests", requestId, "shift_assignments", assignmentId).entrySet()) {
+            assertThat(em.createNativeQuery("SELECT deleted_at FROM " + row.getKey() + " WHERE id = :id")
+                    .setParameter("id", row.getValue()).getSingleResult()).isEqualTo(deletedAt);
+        }
+        assertThat(slotRepository.findById(liveSlotId)).isEmpty();
+        assertThat(requestRepository.findById(requestId)).isEmpty();
+        assertThat(assignmentRepository.findById(assignmentId)).isEmpty();
+        assertThat(em.createNativeQuery("SELECT assigned_user_ids FROM shift_slots WHERE id = :id")
+                .setParameter("id", liveSlotId).getSingleResult()).isEqualTo("[" + memberId + "]");
+        assertThat(em.createNativeQuery("SELECT status FROM shift_assignments WHERE id = :id")
+                .setParameter("id", assignmentId).getSingleResult()).isEqualTo("CONFIRMED");
+        assertThat(em.createNativeQuery("SELECT note FROM shift_requests WHERE id = :id")
+                .setParameter("id", requestId).getSingleResult()).isEqualTo("保持する希望");
+        assertThat(em.createNativeQuery("SELECT note FROM shift_assignments WHERE id = :id")
+                .setParameter("id", assignmentId).getSingleResult()).isEqualTo("保持する割当");
+        setAuth(memberId);
+        mockMvc.perform(get("/api/v1/shifts/my/requests"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(requestId))
+                .andExpect(jsonPath("$.data[0].scheduleDeleted").value(true));
+        setAuth(systemAdminId);
+        mockMvc.perform(get("/api/v1/shifts/my/requests"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    @Test
+    void 子がゼロの親も削除でき他の親の子を変更しない() throws Exception {
+        Long otherTeamId = insertTeam("CMP-260923-0953 別チーム");
+        ShiftScheduleEntity otherParent = scheduleRepository.save(ShiftScheduleEntity.builder()
+                .teamId(otherTeamId).title("別チームの保持親").periodType(ShiftPeriodType.WEEKLY)
+                .startDate(LocalDate.of(2026, 4, 1)).endDate(LocalDate.of(2026, 4, 7))
+                .status(ShiftScheduleStatus.DRAFT).createdBy(adminId).build());
+        ShiftSlotEntity otherSlot = slotRepository.save(ShiftSlotEntity.builder()
+                .scheduleId(otherParent.getId()).slotDate(LocalDate.of(2026, 4, 2))
+                .startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(17, 0)).build());
+        ShiftRequestEntity otherRequest = requestRepository.save(ShiftRequestEntity.builder()
+                .scheduleId(otherParent.getId()).userId(memberId).slotDate(LocalDate.of(2026, 4, 2))
+                .preference(ShiftPreference.AVAILABLE).build());
+        ShiftAssignmentEntity otherAssignment = assignmentRepository.save(ShiftAssignmentEntity.builder()
+                .slotId(otherSlot.getId()).userId(memberId).assignedBy(adminId).build());
+        Long otherSlotId = otherSlot.getId();
+        Long otherRequestId = otherRequest.getId();
+        Long otherAssignmentId = otherAssignment.getId();
+        ShiftScheduleEntity empty = scheduleRepository.save(ShiftScheduleEntity.builder()
+                .teamId(teamId).title("子なし").periodType(ShiftPeriodType.WEEKLY)
+                .startDate(LocalDate.of(2026, 4, 1)).endDate(LocalDate.of(2026, 4, 7))
+                .status(ShiftScheduleStatus.DRAFT).createdBy(adminId).build());
+        em.flush();
+        Long emptyId = empty.getId();
+        em.clear();
+        setAuth(adminId);
+
+        mockMvc.perform(delete("/api/v1/shifts/schedules/{id}", emptyId))
+                .andExpect(status().isNoContent());
+        em.flush();
+        em.clear();
+
+        assertThat(scheduleRepository.findById(emptyId)).isEmpty();
+        assertThat(slotRepository.findById(liveSlotId)).isPresent();
+        assertThat(slotRepository.findById(otherSlotId)).isPresent();
+        assertThat(requestRepository.findById(otherRequestId)).isPresent();
+        assertThat(assignmentRepository.findById(otherAssignmentId)).isPresent();
+        assertThat(em.createNativeQuery("SELECT deleted_at FROM shift_slots WHERE id = :id")
+                .setParameter("id", liveSlotId).getSingleResult()).isNull();
+    }
+
+    @Test
+    void 複数の子を削除し既設定の削除日時と再削除時の日時を保持する() throws Exception {
+        ShiftSlotEntity secondSlot = slotRepository.save(ShiftSlotEntity.builder()
+                .scheduleId(liveScheduleId).slotDate(LocalDate.of(2026, 4, 3))
+                .startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(17, 0)).build());
+        Long secondId = secondSlot.getId();
+        em.flush();
+        em.createNativeQuery("UPDATE shift_slots SET deleted_at = '2020-01-01 00:00:00' WHERE id = :id")
+                .setParameter("id", secondId).executeUpdate();
+        // 既に削除済みの枠にも履歴が残り得るため、枠の通常フィルタにcascade対象を依存させない。
+        ShiftAssignmentEntity assignment = assignmentRepository.save(ShiftAssignmentEntity.builder()
+                .slotId(secondId).userId(memberId).assignedBy(adminId)
+                .status(ShiftAssignmentStatus.CONFIRMED).build());
+        Long assignmentId = assignment.getId();
+        ShiftAssignmentEntity retainedAssignment = assignmentRepository.save(ShiftAssignmentEntity.builder()
+                .slotId(liveSlotId).userId(memberId).assignedBy(adminId)
+                .status(ShiftAssignmentStatus.CONFIRMED)
+                .deletedAt(LocalDateTime.of(2020, 1, 1, 0, 0)).build());
+        ShiftRequestEntity retainedRequest = requestRepository.save(ShiftRequestEntity.builder()
+                .scheduleId(liveScheduleId).userId(memberId).slotDate(LocalDate.of(2026, 4, 3))
+                .preference(ShiftPreference.AVAILABLE)
+                .deletedAt(LocalDateTime.of(2020, 1, 1, 0, 0)).build());
+        Map<String, Long> retainedRows = Map.of("shift_slots", secondId,
+                "shift_requests", retainedRequest.getId(), "shift_assignments", retainedAssignment.getId());
+        em.flush();
+        em.clear();
+        Map<String, Object> retainedTimestamps = new LinkedHashMap<>();
+        for (Map.Entry<String, Long> row : retainedRows.entrySet()) {
+            retainedTimestamps.put(row.getKey(), em.createNativeQuery(
+                            "SELECT deleted_at FROM " + row.getKey() + " WHERE id = :id")
+                    .setParameter("id", row.getValue()).getSingleResult());
+        }
+        setAuth(adminId);
+
+        mockMvc.perform(delete("/api/v1/shifts/schedules/{id}", liveScheduleId))
+                .andExpect(status().isNoContent());
+        em.flush();
+        em.clear();
+
+        Object parentDeletedAt = em.createNativeQuery("SELECT deleted_at FROM shift_schedules WHERE id = :id")
+                .setParameter("id", liveScheduleId).getSingleResult();
+        for (Map.Entry<String, Long> row : retainedRows.entrySet()) {
+            assertThat(em.createNativeQuery("SELECT deleted_at FROM " + row.getKey() + " WHERE id = :id")
+                    .setParameter("id", row.getValue()).getSingleResult())
+                    .as("既設定の削除日時を保持する: %s", row.getKey())
+                    .isEqualTo(retainedTimestamps.get(row.getKey()));
+        }
+        assertThat(em.createNativeQuery("SELECT deleted_at FROM shift_assignments WHERE id = :id")
+                .setParameter("id", assignmentId).getSingleResult()).isEqualTo(parentDeletedAt);
+        mockMvc.perform(delete("/api/v1/shifts/schedules/{id}", liveScheduleId))
+                .andExpect(status().isNotFound());
+        assertThat(em.createNativeQuery("SELECT deleted_at FROM shift_schedules WHERE id = :id")
+                .setParameter("id", liveScheduleId).getSingleResult()).isEqualTo(parentDeletedAt);
+    }
+
+    @Test
+    void 生存親でも削除済み枠はネイティブ読取から除外する() {
+        ShiftSlotEntity hidden = slotRepository.save(ShiftSlotEntity.builder()
+                .scheduleId(liveScheduleId).slotDate(LocalDate.of(2026, 4, 4))
+                .startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(17, 0))
+                .assignedUserIds("[" + memberId + "]")
+                .deletedAt(LocalDateTime.of(2026, 3, 1, 0, 0)).build());
+        Long hiddenId = hidden.getId();
+        em.flush();
+        em.clear();
+
+        assertThat(slotRepository.findById(hiddenId)).isEmpty();
+        assertThat(slotRepository.findAllAssignedToUser(memberId)).isEmpty();
+        assertThat(slotRepository.findUpcomingAssignedByUserIdBetween(
+                memberId, LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 8))).isEmpty();
+        assertThat(em.createNativeQuery("SELECT assigned_user_ids FROM shift_slots WHERE id = :id")
+                .setParameter("id", hiddenId).getSingleResult()).isEqualTo("[" + memberId + "]");
+    }
 
     private void setAuth(Long userId) {
         SecurityContextHolder.getContext().setAuthentication(

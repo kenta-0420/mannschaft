@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -35,6 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -95,6 +97,8 @@ class ShiftSlotServiceTest {
                 com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder()
                         .teamId(1L)
                         .build()));
+        lenient().when(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).thenReturn(Optional.of(
+                com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder().teamId(1L).build()));
     }
 
     private ShiftSlotEntity createSlotEntity() {
@@ -228,7 +232,9 @@ class ShiftSlotServiceTest {
 
             // Then
             assertThat(result).isNotNull();
-            verify(slotRepository).save(any(ShiftSlotEntity.class));
+            InOrder order = inOrder(scheduleRepository, slotRepository);
+            order.verify(scheduleRepository).findByIdForUpdate(SCHEDULE_ID);
+            order.verify(slotRepository).save(any(ShiftSlotEntity.class));
         }
 
         @Test

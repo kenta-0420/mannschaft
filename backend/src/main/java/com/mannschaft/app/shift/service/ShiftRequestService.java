@@ -98,7 +98,7 @@ public class ShiftRequestService {
      * @return シフト希望一覧
      */
     public List<ShiftRequestResponse> listMyRequests(Long userId) {
-        List<ShiftRequestEntity> entities = requestRepository.findByUserIdOrderBySlotDateDesc(userId);
+        List<ShiftRequestEntity> entities = requestRepository.findHistoryByUserIdIncludingDeleted(userId);
         List<ShiftRequestResponse> responses = shiftMapper.toRequestResponseList(entities);
 
         // 案C（CMP-260917-1136）: 親スケジュールが論理削除済みでも提出履歴は一覧から消さず、
@@ -125,7 +125,7 @@ public class ShiftRequestService {
     // TODO: shiftドメインとproxyドメインをまたいでいる（ProxyInputRecordRepositoryを直接参照）。将来はProxyInputServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Transactional
     public ShiftRequestResponse submitRequest(CreateShiftRequestRequest req, Long userId) {
-        ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(req.getScheduleId());
+        ShiftScheduleEntity schedule = scheduleService.findScheduleForUpdateOrThrow(req.getScheduleId());
         // 在籍メンバー（SUPPORTER 除く）のみ提出可。越境は不在と同一の SHIFT_001。
         accessGate.requireMemberOrConceal(userId, schedule.getTeamId(), "TEAM",
                 ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, true);
@@ -354,7 +354,7 @@ public class ShiftRequestService {
      * 越境者にも判ってしまう（存在オラクル）。希望 ID 指定系の応答は不在・越境・親削除済みで一致させる。</p>
      */
     private ShiftScheduleEntity findParentScheduleOrConceal(ShiftRequestEntity entity) {
-        return scheduleService.findSchedule(entity.getScheduleId())
+        return scheduleService.findScheduleForUpdate(entity.getScheduleId())
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
     }
 

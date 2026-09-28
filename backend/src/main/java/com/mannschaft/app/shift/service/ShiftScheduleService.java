@@ -23,6 +23,7 @@ import com.mannschaft.app.shift.event.ShiftPublishedEvent;
 import com.mannschaft.app.shift.event.ShiftScheduleCloseReason;
 import com.mannschaft.app.shift.event.ShiftScheduleClosedEvent;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
+import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -87,6 +88,7 @@ public class ShiftScheduleService {
     private final ShiftChangeRequestRepository changeRequestRepository;
     private final ShiftSlotRepository slotRepository;
     private final ShiftRequestRepository requestRepository;
+    private final ShiftAssignmentRepository assignmentRepository;
     private final ShiftPositionRepository positionRepository;
     private final ShiftMapper shiftMapper;
     private final DomainEventPublisher eventPublisher;
@@ -240,11 +242,17 @@ public class ShiftScheduleService {
      */
     @Transactional
     public void deleteSchedule(Long id, Long userId) {
-        ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        ShiftScheduleEntity entity = findScheduleForUpdateOrThrow(id);
         checkScheduleAdminAccess(entity, userId);
         boolean wasLive = entity.getDeletedAt() == null;
-        entity.softDelete();
-        scheduleRepository.save(entity);
+        LocalDateTime deletedAt = LocalDateTime.now(wallClock);
+        entity.softDelete(deletedAt);
+        // ORM による日時変換を確定し、native SQL は親の DB 値をコピーする。
+        // 同一トランザクションなので子更新の失敗時には親の更新もロールバックする。
+        scheduleRepository.saveAndFlush(entity);
+        assignmentRepository.softDeleteByScheduleId(id);
+        requestRepository.softDeleteByScheduleId(id);
+        slotRepository.softDeleteByScheduleId(id);
 
         // CMP-260909-1445: 論理削除でもシフト予算の PLANNED 消化を取り消す。
         // 取消理由 enum に SHIFT_DELETED が用意されているとおり、削除で取り消すのが元々の設計意図。
@@ -551,6 +559,17 @@ public class ShiftScheduleService {
     ShiftScheduleEntity findScheduleOrThrow(Long id) {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+    }
+
+    /** 子の変更と親削除の競合を防ぐ更新用取得。 */
+    ShiftScheduleEntity findScheduleForUpdateOrThrow(Long id) {
+        return findScheduleForUpdate(id)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+    }
+
+    /** 子の不在コードへ畳む経路でも同じ親行をロックする。 */
+    Optional<ShiftScheduleEntity> findScheduleForUpdate(Long id) {
+        return scheduleRepository.findByIdForUpdate(id);
     }
 
     /**

@@ -10,19 +10,26 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
  * シフト枠エンティティ。特定日時のシフト枠を管理する。
  */
 @Entity
+@SQLRestriction("deleted_at IS NULL")
 @Table(name = "shift_slots")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
 public class ShiftSlotEntity extends BaseEntity {
+
+    /** 親シフト表の削除日時。単独削除の物理削除契約は維持する。 */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @Column(nullable = false)
     private Long scheduleId;

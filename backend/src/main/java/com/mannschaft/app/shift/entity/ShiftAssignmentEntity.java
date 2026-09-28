@@ -17,6 +17,7 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -25,11 +26,16 @@ import java.time.LocalDateTime;
  * シフト割当エンティティ。スロットへの割当（提案・確定・取消）を管理する。
  */
 @Entity
+@SQLRestriction("deleted_at IS NULL")
 @Table(name = "shift_assignments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
 public class ShiftAssignmentEntity {
+
+    /** 親シフト表の削除日時。割当の業務値は変更しない。 */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -453,10 +453,12 @@ public class ShiftSlotService {
      */
     private void checkScheduleAdminAccess(Long scheduleId, Long userId, ShiftErrorCode notFoundCode) {
         // 親スケジュールの生存確認を SYSTEM_ADMIN 短絡より必ず先に行う（CMP-260917-1136）。
-        // resolveTeamId は論理削除済みスケジュールに対して SHIFT_SCHEDULE_NOT_FOUND を投げる。
         // 短絡を先に置くと SYSTEM_ADMIN だけが亡霊枠（親削除済み）を編集・削除できてしまい、
-        // 一般 ADMIN（resolveTeamId で 404 になる）と挙動が食い違う。
-        Long teamId = resolveTeamId(scheduleId);
+        // 一般 ADMIN（親が不在なら 404）と挙動が食い違う。
+        // 親削除と同じ行を先にロックし、確認後に子だけが作成・更新される競合を防ぐ。
+        Long teamId = scheduleRepository.findByIdForUpdate(scheduleId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
+                .getTeamId();
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }
