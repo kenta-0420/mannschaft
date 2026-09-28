@@ -1,5 +1,6 @@
 package com.mannschaft.app.shiftbudget.controller;
 
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.shiftbudget.dto.RequiredSlotsRequest;
 import com.mannschaft.app.shiftbudget.dto.RequiredSlotsResponse;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>必要権限: {@code MANAGE_SHIFTS} (TEAM スコープ)</p>
  */
 @RestController
+@RequireFeature("FEATURE_SHIFT_ENABLED")
 @RequestMapping("/api/v1/shift-budget")
 @Tag(name = "シフト予算 (F08.7)",
      description = "Phase 9-α: 予算→必要シフト枠数の逆算 API (ステートレス)")

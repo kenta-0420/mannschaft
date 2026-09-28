@@ -1,5 +1,6 @@
 package com.mannschaft.app.shiftbudget.controller;
 
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.shiftbudget.dto.AlertAcknowledgeRequest;
 import com.mannschaft.app.shiftbudget.dto.AlertResponse;
@@ -33,6 +34,7 @@ import java.util.List;
  * <p>共通: {@code X-Organization-Id} ヘッダで組織スコープを強制（多テナント分離）。</p>
  */
 @RestController
+@RequireFeature("FEATURE_SHIFT_ENABLED")
 @RequestMapping("/api/v1/shift-budget/alerts")
 @Tag(name = "シフト予算 警告 (F08.7)",
      description = "Phase 9-δ 第2段: 閾値超過警告 (80/100/120%) 一覧 + 承認応答 API")
