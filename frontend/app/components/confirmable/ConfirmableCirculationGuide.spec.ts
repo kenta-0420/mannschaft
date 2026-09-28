@@ -11,9 +11,9 @@ describe('ConfirmableCirculationGuide', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('短い連絡への確認を集める機能です')
+    expect(wrapper.text()).toContain('Use this for short messages and acknowledgements.')
     expect(wrapper.get('a').attributes('href')).toBe('/teams/team-a/circulation')
-    expect(wrapper.text()).toContain('回覧板を開く')
+    expect(wrapper.text()).toContain('Open Circulation')
   })
 
   it('回覧板からクイック確認への用途説明とリンクを表示する', async () => {
@@ -24,8 +24,8 @@ describe('ConfirmableCirculationGuide', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('文書への押印や回覧順序を管理する機能です')
+    expect(wrapper.text()).toContain('Use this for documents that require stamps or a routing order.')
     expect(wrapper.get('a').attributes('href')).toBe('/organizations/org-a/settings/confirmable-notifications')
-    expect(wrapper.text()).toContain('クイック確認を開く')
+    expect(wrapper.text()).toContain('Open Quick Confirm')
   })
 })
