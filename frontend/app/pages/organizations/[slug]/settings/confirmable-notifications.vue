@@ -5,10 +5,12 @@
  * teams/[slug]/settings/confirmable-notifications.vue の組織版。
  * 背景・移設理由はそちらの Javadoc コメントを参照。
  */
-definePageMeta({ layout: 'organization', middleware: ['auth', 'org-role-guard'] })
+definePageMeta({ layout: 'organization', middleware: ['auth', 'confirmable-notification-guard'] })
 
-const scopeStore = useScopeStore()
-const scopeId = computed(() => scopeStore.current.id ?? '')
+const { org } = useOrgShellContext()
+const scopeId = computed(() => org.value?.numericId ? String(org.value.numericId) : '')
+const groupsVersion = ref(0)
+const templatesVersion = ref(0)
 const route = useRoute()
 const circulationPath = computed(() => `/organizations/${String(route.params.slug)}/circulation`)
 
@@ -32,6 +34,7 @@ function onNotificationSent() {
       <ConfirmableNotificationSender
         scope-type="ORGANIZATION"
         :scope-id="scopeId"
+        :groups-version="groupsVersion + templatesVersion"
         @sent="onNotificationSent"
       />
     </section>
@@ -46,11 +49,17 @@ function onNotificationSent() {
     </section>
 
     <section class="mt-8">
+      <h2 class="mb-4 text-lg font-semibold">{{ $t('confirmable.recipient_groups') }}</h2>
+      <ConfirmableRecipientGroupManager scope-type="ORGANIZATION" :scope-id="scopeId" @changed="groupsVersion++" />
+    </section>
+
+    <section class="mt-8">
+      <ConfirmableTemplateManager scope-type="ORGANIZATION" :scope-id="scopeId" :groups-version="groupsVersion" @changed="templatesVersion++" />
+    </section>
+
+    <section class="mt-8">
       <h2 class="mb-4 text-lg font-semibold">{{ $t('confirmable.settings') }}</h2>
-      <ConfirmableNotificationSettings
-        scope-type="ORGANIZATION"
-        :scope-id="scopeId"
-      />
+      <ConfirmableNotificationSettings scope-type="ORGANIZATION" :scope-id="scopeId" />
     </section>
   </div>
 </template>
