@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process'
-import { expect, test, type APIRequestContext } from '@playwright/test'
+import { appendFileSync, mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 import {
@@ -29,6 +31,10 @@ const MEMBER = {
   email: process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local',
   password: process.env.TEST_USER_PASSWORD ?? 'TestPass2026!',
 }
+const ORG_MEMBER = {
+  email: process.env.TEST_ORG_MEMBER_EMAIL ?? 'e2e-dummy-6@test.mannschaft.local',
+  password: process.env.TEST_ORG_MEMBER_PASSWORD ?? 'TestPass2026!',
+}
 const OUTSIDER = {
   email: process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-outsider@test.mannschaft.local',
   password: process.env.TEST_OUTSIDER_PASSWORD ?? 'TestPass2026!',
@@ -36,9 +42,71 @@ const OUTSIDER = {
 const MYSQL_USER = process.env.E2E_MYSQL_USER ?? ''
 const MYSQL_PASSWORD = process.env.E2E_MYSQL_PASSWORD ?? ''
 const RUN_TAG = `CMP019_W16_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+const STAGE_LEDGER_PATH = resolve(process.cwd(), '.nuxt/wave16-e2e-stage-ledger.jsonl')
+let stageLedgerFailure: unknown
 const CONFIRMABLE_SOURCE = 'RECRUITMENT_PENALTY'
 const APP_NOTIFICATION_TYPE = 'RECRUITMENT_PENALTY_APPLIED'
 const APP_NOTIFICATION_SOURCE = 'CONFIRMABLE_NOTIFICATION'
+
+function redactDiagnosticText(value: string): string {
+  return value
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email]')
+    .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
+    .replace(
+      /(["']?(?:password|token|cookie|authorization|secret)["']?\s*[:=]\s*["']?)[^\s,"'}]+["']?/gi,
+      '$1[redacted]',
+    )
+    .replace(/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '[jwt]')
+    .replace(/Response text:.*$/gim, 'Response text: [omitted]')
+    .slice(0, 12_000)
+}
+
+function diagnosticError(error: unknown): Record<string, unknown> {
+  if (error instanceof AggregateError) {
+    return {
+      name: error.name,
+      message: redactDiagnosticText(error.message),
+      errors: [...error.errors].map(diagnosticError),
+      locations: error.stack
+        ?.split(/\r?\n/)
+        .filter((line) => /cmp-019-wave16-no-show-confirm-penalty\.real\.spec\.ts:\d+:\d+/.test(line))
+        .slice(0, 8),
+    }
+  }
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: redactDiagnosticText(error.message),
+      locations: error.stack
+        ?.split(/\r?\n/)
+        .filter((line) => /cmp-019-wave16-no-show-confirm-penalty\.real\.spec\.ts:\d+:\d+/.test(line))
+        .slice(0, 8),
+    }
+  }
+  return { name: typeof error, message: '非Error値の詳細は記録しません' }
+}
+
+function recordStage(
+  scenario: 'TEAM' | 'ORGANIZATION',
+  stage: string,
+  owned: Record<string, unknown> = {},
+  error?: unknown,
+) {
+  const entry = {
+    recordedAt: new Date().toISOString(),
+    runTag: RUN_TAG,
+    scenario,
+    stage,
+    owned,
+    ...(error === undefined ? {} : { error: diagnosticError(error) }),
+  }
+  try {
+    mkdirSync(dirname(STAGE_LEDGER_PATH), { recursive: true })
+    appendFileSync(STAGE_LEDGER_PATH, `${JSON.stringify(entry)}\n`, 'utf8')
+  } catch (ledgerError) {
+    stageLedgerFailure = ledgerError
+  }
+}
 
 type ApiEnvelope<T> = { data: T }
 type ConfirmableNotification = {
@@ -226,12 +294,82 @@ function appNotificationRows(confirmableId: number, userId: number): string[] {
   )
 }
 
+async function findNotificationRow(page: Page, body: string) {
+  const row = page.getByRole('button').filter({ hasText: body }).first()
+  const loadMore = page.getByRole('button', { name: '\u3082\u3063\u3068\u8aad\u3080' })
+  const markAllRead = page.getByRole('button', {
+    name: '\u3059\u3079\u3066\u65e2\u8aad\u306b\u3059\u308b',
+  })
+  const emptyState = page.getByText('\u901a\u77e5\u306f\u3042\u308a\u307e\u305b\u3093', {
+    exact: true,
+  })
+  await expect(markAllRead).toBeVisible({ timeout: 30_000 })
+  await expect
+    .poll(
+      async () =>
+        (await row.count()) > 0 || (await loadMore.isVisible()) || (await emptyState.isVisible()),
+    )
+    .toBe(true)
+  for (let pageIndex = 0; pageIndex < 50; pageIndex++) {
+    if (await row.count()) {
+      await expect(row).toBeVisible({ timeout: 30_000 })
+      return row
+    }
+    if (!(await loadMore.isVisible())) break
+    const nextPageResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return (
+        url.pathname === '/api/v1/notifications' &&
+        url.searchParams.get('page') !== '0' &&
+        response.request().method() === 'GET'
+      )
+    })
+    await loadMore.click()
+    const response = await nextPageResponse
+    expect(response.status()).toBe(200)
+  }
+  throw new Error('対象の確認通知が通知一覧の読み込み範囲内にありません')
+}
+
+async function expectNotificationAbsentFromLoadedPages(
+  page: Page,
+  body: string,
+  scenario: 'TEAM' | 'ORGANIZATION',
+) {
+  const row = page.getByRole('button').filter({ hasText: body })
+  const loadMore = page.getByRole('button', { name: '\u3082\u3063\u3068\u8aad\u3080' })
+  for (let pageIndex = 0; pageIndex < 50; pageIndex++) {
+    await expect(row).toHaveCount(0)
+    if (!(await loadMore.isVisible())) break
+    recordStage(scenario, 'outsider-load-more-clicked', { pageIndex: pageIndex + 1 })
+    const nextPageResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return (
+        url.pathname === '/api/v1/notifications' &&
+        url.searchParams.get('page') !== '0' &&
+        response.request().method() === 'GET'
+      )
+    })
+    await loadMore.click()
+    const response = await nextPageResponse
+    expect(response.status()).toBe(200)
+    recordStage(scenario, 'outsider-next-page-loaded', {
+      pageIndex: pageIndex + 1,
+      status: response.status(),
+    })
+  }
+  if (await loadMore.isVisible()) {
+    throw new Error('50ページを超えたため全通知の非表示を確認できません')
+  }
+  await expect(row).toHaveCount(0)
+}
+
 async function cleanup(
   request: APIRequestContext,
-  teamOwnerToken: string,
-  createdTeamSlugs: string[],
+  ownerToken: string,
+  createdScopes: NoShowScope[],
   scope: NoShowScope | undefined,
-  teamScopeIds: number[],
+  ownedScopes: NoShowScope[],
   fixture: NoShowFixture | undefined,
   crossScopeListingId: number | undefined,
   appliedSettingId: number | undefined,
@@ -269,7 +407,8 @@ async function cleanup(
 
   const ownedListingIds = rows(
     `SELECT id FROM recruitment_listings WHERE title IN (` +
-      `'${RUN_TAG}_TEAM_A','${RUN_TAG}_TEAM_B','${RUN_TAG}_CROSS_SCOPE_LISTING')`,
+      `'${RUN_TAG}_TEAM_A','${RUN_TAG}_TEAM_B','${RUN_TAG}_ORGANIZATION_A',` +
+      `'${RUN_TAG}_ORGANIZATION_B','${RUN_TAG}_CROSS_SCOPE_LISTING')`,
   ).map(Number)
   const listings = [
     ...new Set([
@@ -296,7 +435,7 @@ async function cleanup(
     }
     for (const listingId of listings) {
       const archived = await request.post(`${API}/recruitment-listings/${listingId}/archive`, {
-        headers: authHeaders(teamOwnerToken),
+        headers: authHeaders(ownerToken),
       })
       const archiveBody = await archived.text()
       expect(
@@ -314,45 +453,54 @@ async function cleanup(
   if (appliedSettingId !== undefined && scope !== undefined) {
     mysql(
       `DELETE FROM recruitment_penalty_settings WHERE id=${appliedSettingId} ` +
-        `AND scope_type='TEAM' AND scope_id=${scope.numericId}`,
+        `AND scope_type='${scope.type}' AND scope_id=${scope.numericId}`,
     )
   }
-  for (const teamScopeId of teamScopeIds) {
+  for (const ownedScope of ownedScopes) {
     const scopeSettingIds = rows(
-      `SELECT id FROM recruitment_penalty_settings WHERE scope_type='TEAM' AND scope_id=${teamScopeId}`,
+      `SELECT id FROM recruitment_penalty_settings WHERE scope_type='${ownedScope.type}' ` +
+        `AND scope_id=${ownedScope.numericId}`,
     )
     for (const id of scopeSettingIds) {
       mysql(
-        `DELETE FROM recruitment_penalty_settings WHERE id=${Number(id)} AND scope_type='TEAM' AND scope_id=${teamScopeId}`,
+        `DELETE FROM recruitment_penalty_settings WHERE id=${Number(id)} ` +
+          `AND scope_type='${ownedScope.type}' AND scope_id=${ownedScope.numericId}`,
       )
     }
     mysql(
-      `DELETE FROM confirmable_notification_settings WHERE scope_type='TEAM' AND scope_id=${teamScopeId}`,
+      `DELETE FROM confirmable_notification_settings WHERE scope_type='${ownedScope.type}' ` +
+        `AND scope_id=${ownedScope.numericId}`,
     )
     if (userId !== undefined && ownerUserId !== undefined) {
       mysql(
         `DELETE FROM notifications WHERE notification_type IN ('JOIN_REQUEST_RECEIVED','JOIN_REQUEST_APPROVED') ` +
-          `AND source_type='USER' AND scope_type='TEAM' AND scope_id=${teamScopeId} ` +
+          `AND source_type='USER' AND scope_type='${ownedScope.type}' ` +
+          `AND scope_id=${ownedScope.numericId} ` +
           `AND user_id IN (${userId},${ownerUserId})`,
       )
     }
   }
-  for (const teamSlug of [...createdTeamSlugs].reverse()) {
-    const deletedTeam = await request.delete(`${API}/teams/${teamSlug}`, {
-      headers: authHeaders(teamOwnerToken),
+  for (const createdScope of [...createdScopes].reverse()) {
+    const path = createdScope.type === 'TEAM' ? 'teams' : 'organizations'
+    const deletedScope = await request.delete(`${API}/${path}/${createdScope.slug}`, {
+      headers: authHeaders(ownerToken),
     })
-    const deleteBody = await deletedTeam.text()
+    const deleteBody = await deletedScope.text()
     expect(
-      deletedTeam.status(),
-      `試験チーム ${teamSlug} の削除: status=${deletedTeam.status()}, body=${deleteBody}`,
+      deletedScope.status(),
+      `試験スコープ ${createdScope.slug} の削除: ` +
+        `status=${deletedScope.status()}, body=${deleteBody}`,
     ).toBe(204)
   }
 }
 
 test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナルティと本人確認通知を1件ずつ作成する', async ({
   page,
+  browser,
   request,
 }) => {
+  recordStage('TEAM', 'scenario-start')
+  test.setTimeout(600_000)
   test.skip(
     !MYSQL_USER || !MYSQL_PASSWORD,
     '実機DB照合には E2E_MYSQL_USER / E2E_MYSQL_PASSWORD が必要です',
@@ -405,8 +553,8 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
   const thresholdCount = confirmedBefore + 2
 
   let scope: NoShowScope | undefined
-  const createdTeamSlugs: string[] = []
-  const teamScopeIds: number[] = []
+  const createdScopes: NoShowScope[] = []
+  const ownedScopes: NoShowScope[] = []
   let crossScope: NoShowScope | undefined
   let crossScopeListingId: number | undefined
   let fixture: NoShowFixture | undefined
@@ -422,7 +570,8 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
     })
     expect(createTeam.status(), `専用試験チーム作成: ${await createTeam.text()}`).toBe(201)
     const createdSlug = ((await createTeam.json()) as ApiEnvelope<{ slug: string }>).data.slug
-    createdTeamSlugs.push(createdSlug)
+    createdScopes.push({ type: 'TEAM', slug: createdSlug, numericId: 0 })
+    recordStage('TEAM', 'team-api-created', { scopes: createdScopes })
     const myTeams = await request.get(`${API}/me/teams?limit=200`, {
       headers: authHeaders(teamOwner.token),
     })
@@ -432,7 +581,8 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
     ).data.find((row) => row.slug === createdSlug)
     expect(team, 'TEAM_OWNERのチーム一覧に専用チームがある').toBeTruthy()
     scope = { type: 'TEAM', slug: createdSlug, numericId: team!.id }
-    teamScopeIds.push(scope.numericId)
+    ownedScopes.push(scope)
+    recordStage('TEAM', 'owned-team-created', { scopes: ownedScopes })
     const joinRequest = await request.post(`${API}/teams/${scope.numericId}/join-requests`, {
       headers: authHeaders(member.token),
       data: { message: RUN_TAG },
@@ -463,7 +613,8 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
     )
     const crossTeamSlug = ((await crossTeamCreate.json()) as ApiEnvelope<{ slug: string }>).data
       .slug
-    createdTeamSlugs.push(crossTeamSlug)
+    createdScopes.push({ type: 'TEAM', slug: crossTeamSlug, numericId: 0 })
+    recordStage('TEAM', 'cross-scope-team-api-created', { scopes: createdScopes })
     const refreshOwnerTeams = await request.get(`${API}/me/teams?limit=200`, {
       headers: authHeaders(teamOwner.token),
     })
@@ -473,7 +624,8 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
     ).data.find((row) => row.slug === crossTeamSlug)
     expect(crossTeam, 'TEAM_OWNERが別スコープTEAMを所有する').toBeTruthy()
     crossScope = { type: 'TEAM', slug: crossTeamSlug, numericId: crossTeam!.id }
-    teamScopeIds.push(crossScope.numericId)
+    ownedScopes.push(crossScope)
+    recordStage('TEAM', 'cross-scope-team-created', { scopes: ownedScopes })
     const crossJoin = await request.post(`${API}/teams/${crossScope.numericId}/join-requests`, {
       headers: authHeaders(member.token),
       data: { message: `${RUN_TAG}_CROSS_SCOPE` },
@@ -503,6 +655,10 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
       teamOwner.token,
       `${RUN_TAG}_CROSS_SCOPE_LISTING`,
     )
+    recordStage('TEAM', 'cross-scope-listing-created', {
+      scopes: ownedScopes,
+      listingIds: [crossScopeListingId],
+    })
     const visibleCrossListing = await request.get(
       `${API}/public/market/listings/${crossScopeListingId}`,
       { headers: authHeaders(member.token) },
@@ -543,6 +699,10 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
     )
     expect(setting.status(), `専用スコープの試験設定: ${await setting.text()}`).toBe(200)
     settingAppliedId = ((await setting.json()) as ApiEnvelope<{ id: number }>).data.id
+    recordStage('TEAM', 'penalty-setting-created', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+    })
 
     fixture = await createNoShowFixture(
       request,
@@ -552,11 +712,23 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
       member.userId,
       RUN_TAG,
     )
+    recordStage('TEAM', 'no-show-fixture-created', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      participantIds: fixture.participantIds,
+    })
     const recordIds = [
       await markNoShow(request, teamOwner.token, fixture, 0),
       await markNoShow(request, teamOwner.token, fixture, 1),
     ]
     expect(recordIds).toHaveLength(2)
+    recordStage('TEAM', 'no-show-records-created', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      noShowIds: recordIds,
+    })
     const recordIdList = recordIds.join(',')
     mysql(
       `UPDATE recruitment_no_show_records SET recorded_at=UTC_TIMESTAMP(6) - INTERVAL 48 HOUR ` +
@@ -597,6 +769,13 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
     )
     expect(penalties, '2件の確定NO_SHOWからGLOBALペナルティは1件').toHaveLength(1)
     penaltyId = Number(penalties[0])
+    recordStage('TEAM', 'penalty-created', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      noShowIds: recordIds,
+      penaltyId,
+    })
     expect(
       scalar(
         `SELECT triggered_no_show_count FROM recruitment_user_penalties WHERE id=${penaltyId}`,
@@ -605,6 +784,14 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
 
     await expect.poll(() => confirmableRows(penaltyId!)).toHaveLength(1)
     confirmableId = Number(confirmableRows(penaltyId)[0])
+    recordStage('TEAM', 'confirmable-created', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      noShowIds: recordIds,
+      penaltyId,
+      confirmableId,
+    })
     const confirmableQuery = await request.get(`${API}/me/confirmable-notifications/pending`, {
       headers: authHeaders(member.token),
     })
@@ -706,7 +893,7 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
       `${API}/teams/${scope.numericId}/confirmable-notifications/${confirmableId}`,
       { headers: authHeaders(outsider.token) },
     )
-    expect(outsiderDetail.status(), '他アカウントの確認通知ID直指定').toBe(404)
+    expect(outsiderDetail.status(), '他アカウントの確認通知ID直指定').toBe(403)
     const outsiderConfirm = await request.post(
       `${API}/me/confirmable-notifications/${confirmableId}/confirm`,
       { headers: authHeaders(outsider.token) },
@@ -719,11 +906,53 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
       ),
     ).toBe('0')
 
-    await loginViaApi(page, OUTSIDER, { apiBaseUrl: API_BASE })
-    await page.goto('/notifications')
-    await waitForHydration(page)
-    await expect(page).toHaveURL(/\/notifications$/)
-    await expect(page.getByText(memberNotification.body, { exact: true })).toHaveCount(0)
+    recordStage('TEAM', 'outsider-ui-start', {
+      confirmableId,
+      appNotificationIds: appNotificationRows(confirmableId, member.userId).map((row) =>
+        Number(row.split('\t')[0]),
+      ),
+    })
+    const outsiderContext = await browser.newContext({
+      baseURL: APP_BASE,
+      locale: 'ja-JP',
+      timezoneId: 'Asia/Tokyo',
+    })
+    try {
+      const outsiderPage = await outsiderContext.newPage()
+      await loginViaApi(outsiderPage, OUTSIDER, { apiBaseUrl: API_BASE })
+      const outsiderListResponse = outsiderPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname.endsWith('/api/v1/notifications'),
+      )
+      await outsiderPage.goto('/notifications')
+      await waitForHydration(outsiderPage)
+      await expect(outsiderPage).toHaveURL(/\/notifications$/)
+      expect((await outsiderListResponse).status(), '対象外画面の通知一覧APIが正常応答').toBe(200)
+      recordStage('TEAM', 'outsider-list-api-200')
+      await expect(
+        outsiderPage.getByRole('button', { name: 'すべて既読にする' }),
+        '通知一覧ツールバーが表示される',
+      ).toBeVisible()
+      recordStage('TEAM', 'outsider-list-rendered')
+      if (outsiderNotifications.length > 0) {
+        const firstOwnBody = outsiderNotifications[0]?.body
+        expect(firstOwnBody, '対象外自身の既存通知に本文がある').toBeTruthy()
+        await expect(
+          outsiderPage.getByRole('button').filter({ hasText: firstOwnBody! }).first(),
+        ).toBeVisible()
+      } else {
+        await expect(outsiderPage.getByText('通知はありません', { exact: true })).toBeVisible()
+      }
+      await expectNotificationAbsentFromLoadedPages(
+        outsiderPage,
+        memberNotification.body,
+        'TEAM',
+      )
+      recordStage('TEAM', 'outsider-target-notification-absent')
+    } finally {
+      await outsiderContext.close()
+    }
 
     await loginViaApi(page, MEMBER, { apiBaseUrl: API_BASE })
     await page.goto(`/market/listings/${crossScopeListingId}`)
@@ -747,14 +976,53 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
     await expect(page.getByTestId('market-detail-page')).toBeVisible()
     expect(page.url()).toContain(`/market/listings/${crossScopeListingId}`)
 
+    const initialNotifications = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return (
+        url.pathname === '/api/v1/notifications' &&
+        url.searchParams.get('page') === '0' &&
+        response.request().method() === 'GET'
+      )
+    })
     await page.goto('/notifications')
     await waitForHydration(page)
-    const notificationRow = page
-      .getByRole('button')
-      .filter({ hasText: memberNotification.body })
-      .first()
-    await expect(notificationRow).toBeVisible({ timeout: 30_000 })
-    await notificationRow.getByRole('button', { name: '確認する' }).click()
+    expect((await initialNotifications).status()).toBe(200)
+    const notificationRow = await findNotificationRow(page, memberNotification.body)
+    const notificationContent = notificationRow.locator('.min-w-0.flex-1')
+    const appNotificationId = Number(
+      appNotificationRows(confirmableId!, member.userId)[0]?.split('\t')[0],
+    )
+    recordStage('TEAM', 'member-notification-ui-start', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      penaltyId,
+      confirmableId,
+      appNotificationId,
+    })
+    expect(appNotificationId).toBeGreaterThan(0)
+    const readResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/v1/notifications/${appNotificationId}/read`) &&
+        response.request().method() === 'POST',
+    )
+    await notificationRow.getByText(memberNotification.body, { exact: true }).click()
+    expect((await readResponse).status()).toBe(200)
+    await expect
+      .poll(() => appNotificationRows(confirmableId!, member.userId)[0]?.endsWith('\t1'))
+      .toBe(true)
+    await expect
+      .poll(() =>
+        scalar(
+          `SELECT is_confirmed FROM confirmable_notification_recipients ` +
+            `WHERE confirmable_notification_id=${confirmableId} AND user_id=${member.userId}`,
+        ),
+      )
+      .toBe('0')
+    const confirmButton = notificationContent.getByRole('button')
+    await expect(confirmButton).toBeVisible()
+    await confirmButton.click()
+    await expect(page.getByText('確認しました', { exact: true })).toBeVisible()
     await expect
       .poll(() =>
         scalar(
@@ -765,16 +1033,68 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
       .toBe('1')
     await expect.poll(() => appNotificationRows(confirmableId!, member.userId)).toHaveLength(1)
     expect(appNotificationRows(confirmableId, member.userId)[0]).toContain('\t1')
-    await expect(page.getByText('確認しました', { exact: true })).toBeVisible()
+    await expect(
+      notificationContent.getByText('\u78ba\u8a8d\u6e08\u307f', { exact: true }),
+    ).toBeVisible()
+    await expect(notificationContent.getByRole('button')).toHaveCount(0)
+
+    const reloadedNotifications = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return (
+        url.pathname === '/api/v1/notifications' &&
+        url.searchParams.get('page') === '0' &&
+        response.request().method() === 'GET'
+      )
+    })
+    await page.reload()
+    await waitForHydration(page)
+    expect((await reloadedNotifications).status()).toBe(200)
+    const persistedNotificationRow = await findNotificationRow(page, memberNotification.body)
+    const persistedNotificationContent = persistedNotificationRow.locator('.min-w-0.flex-1')
+    await expect(
+      persistedNotificationContent.getByText('\u78ba\u8a8d\u6e08\u307f', { exact: true }),
+    ).toBeVisible()
+    await expect(persistedNotificationContent.getByRole('button')).toHaveCount(0)
+    recordStage('TEAM', 'member-notification-ui-confirmed', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      penaltyId,
+      confirmableId,
+      appNotificationId,
+    })
+
+    const unreadResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/v1/notifications/${appNotificationId}/unread`) &&
+        response.request().method() === 'POST',
+    )
+    await persistedNotificationRow.locator('button:has(i.pi-envelope)').click()
+    expect((await unreadResponse).status()).toBe(200)
+    await expect
+      .poll(() => appNotificationRows(confirmableId!, member.userId)[0]?.endsWith('\t0'))
+      .toBe(true)
+    await expect
+      .poll(() =>
+        scalar(
+          `SELECT is_confirmed FROM confirmable_notification_recipients ` +
+            `WHERE confirmable_notification_id=${confirmableId} AND user_id=${member.userId}`,
+        ),
+      )
+      .toBe('1')
+    await expect(
+      persistedNotificationContent.getByText('\u78ba\u8a8d\u6e08\u307f', { exact: true }),
+    ).toBeVisible()
+    await expect(persistedNotificationContent.getByRole('button')).toHaveCount(0)
 
     const repeated = await request.post(
       `${API}/system-admin/batch/recruitment-no-show-confirm-hourly/trigger?sync=true`,
       { headers: authHeaders(systemAdmin.token) },
     )
     // e2e プロファイルは自動スケジューラと ShedLock を止めるため、実際の再実行も検証できる。
-    expect([200, 409]).toContain(repeated.status())
+    expect(repeated.status()).toBe(200)
     expect(((await repeated.json()) as ApiEnvelope<{ status: string }>).data.status).toBe(
-      repeated.status() === 409 ? 'LOCKED' : 'COMPLETED',
+      'COMPLETED',
     )
     expect(confirmableRows(penaltyId)).toEqual([String(confirmableId)])
     expect(appNotificationRows(confirmableId, member.userId)).toHaveLength(1)
@@ -828,16 +1148,31 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
   } catch (error) {
     hasScenarioFailure = true
     scenarioFailure = error
+    recordStage(
+      'TEAM',
+      'scenario-failed',
+      { scopes: ownedScopes, fixtureListingIds: fixture?.listingIds, crossScopeListingId, settingId: settingAppliedId, penaltyId, confirmableId },
+      error,
+    )
   }
 
   let cleanupFailure: unknown
   try {
+    recordStage('TEAM', 'cleanup-started', {
+      scopes: [...createdScopes],
+      ownedScopes,
+      fixtureListingIds: fixture?.listingIds,
+      crossScopeListingId,
+      settingId: settingAppliedId,
+      penaltyId,
+      confirmableId,
+    })
     await cleanup(
       request,
       teamOwner.token,
-      createdTeamSlugs,
+      createdScopes,
       scope,
-      teamScopeIds,
+      ownedScopes,
       fixture,
       crossScopeListingId,
       settingAppliedId,
@@ -846,19 +1181,545 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
       member.userId,
       teamOwner.userId,
     )
+    recordStage('TEAM', 'cleanup-completed')
   } catch (error) {
     cleanupFailure = error
+    recordStage(
+      'TEAM',
+      'cleanup-failed',
+      { scopes: [...createdScopes], ownedScopes, fixtureListingIds: fixture?.listingIds, crossScopeListingId, settingId: settingAppliedId, penaltyId, confirmableId },
+      error,
+    )
   }
-  if (cleanupFailure !== undefined) {
-    if (hasScenarioFailure) {
-      throw new AggregateError(
-        [scenarioFailure, cleanupFailure],
-        'Wave16 scenario failed and fixture cleanup also failed; see both errors for the primary cause and cleanup response body.',
-      )
+  const failures: unknown[] = []
+  if (hasScenarioFailure) failures.push(scenarioFailure)
+  if (cleanupFailure !== undefined) failures.push(cleanupFailure)
+  if (stageLedgerFailure !== undefined) failures.push(stageLedgerFailure)
+  if (failures.length === 1) throw failures[0]
+  if (failures.length > 1) {
+    throw new AggregateError(failures, 'Wave16のシナリオ・cleanup・診断記録で複数の失敗が発生しました。')
+  }
+
+  const finalUrl = new URL(page.url())
+  expect(finalUrl.origin).toBe(APP_BASE)
+  expect(finalUrl.pathname).toBe('/notifications')
+})
+
+test('CMP-019 Wave16: 専用組織のTHIS_SCOPE_ONLYで本人確認と対象外境界を実証する', async ({
+  page,
+  browser,
+  request,
+}) => {
+  recordStage('ORGANIZATION', 'scenario-start')
+  test.setTimeout(600_000)
+  test.skip(
+    !MYSQL_USER || !MYSQL_PASSWORD,
+    '実DB照合には E2E_MYSQL_USER / E2E_MYSQL_PASSWORD が必要です',
+  )
+
+  const systemAdmin = await loginForNoShow(request, SYSTEM_ADMIN)
+  const owner = await loginForNoShow(request, TEAM_OWNER)
+  const member = await loginForNoShow(request, ORG_MEMBER)
+  const outsider = await loginForNoShow(request, OUTSIDER)
+  const staleBefore = Number(
+    scalar(
+      'SELECT COUNT(*) FROM recruitment_no_show_records ' +
+        'WHERE confirmed=FALSE AND recorded_at <= UTC_TIMESTAMP(6) - INTERVAL 24 HOUR',
+    ),
+  )
+  test.skip(
+    staleBefore > 0,
+    '共有DBに既存の24時間経過NO_SHOWがあり、全体バッチへの影響を避けるためスキップします',
+  )
+  const activeBefore = Number(
+    scalar(
+      `SELECT COUNT(*) FROM recruitment_user_penalties WHERE user_id=${member.userId} ` +
+        'AND lifted_at IS NULL AND expires_at > UTC_TIMESTAMP(6)',
+    ),
+  )
+  test.skip(activeBefore > 0, '対象会員に有効なペナルティがあり専用シナリオを分離できません')
+  const batchLocked = Number(
+    scalar(
+      "SELECT COUNT(*) FROM shedlock WHERE name='recruitment-no-show-confirm-batch' " +
+        'AND lock_until > UTC_TIMESTAMP(6)',
+    ),
+  )
+  test.skip(batchLocked > 0, 'NO_SHOW確定バッチがロック中のためスキップします')
+  const confirmedBefore = Number(
+    scalar(
+      `SELECT COUNT(*) FROM recruitment_no_show_records WHERE user_id=${member.userId} ` +
+        'AND confirmed=TRUE AND recorded_at >= UTC_TIMESTAMP(6) - INTERVAL 180 DAY ' +
+        "AND (dispute_resolution IS NULL OR dispute_resolution <> 'REVOKED')",
+    ),
+  )
+  test.skip(
+    confirmedBefore > 8,
+    '対象会員の既存NO_SHOW数が閾値上限に近く試験条件を安全に作れません',
+  )
+  const thresholdCount = confirmedBefore + 2
+
+  let scope: NoShowScope | undefined
+  const createdScopes: NoShowScope[] = []
+  const ownedScopes: NoShowScope[] = []
+  let fixture: NoShowFixture | undefined
+  let settingAppliedId: number | undefined
+  let penaltyId: number | undefined
+  let confirmableId: number | undefined
+  let scenarioFailure: unknown
+  let hasScenarioFailure = false
+  try {
+    const createOrganization = await request.post(`${API}/organizations`, {
+      headers: authHeaders(owner.token),
+      data: {
+        name: `${RUN_TAG}_ORGANIZATION`,
+        orgType: 'OTHER',
+        visibility: 'PUBLIC',
+      },
+    })
+    expect(createOrganization.status(), `専用組織の作成: ${await createOrganization.text()}`).toBe(
+      201,
+    )
+    const createdOrg = (
+      (await createOrganization.json()) as ApiEnvelope<{
+        numericId: number
+        slug: string
+      }>
+    ).data
+    scope = {
+      type: 'ORGANIZATION',
+      slug: createdOrg.slug,
+      numericId: createdOrg.numericId,
     }
-    throw cleanupFailure
+    createdScopes.push(scope)
+    ownedScopes.push(scope)
+    recordStage('ORGANIZATION', 'owned-organization-created', { scopes: ownedScopes })
+
+    expect(
+      Number(
+        scalar(
+          `SELECT COUNT(*) FROM recruitment_penalty_settings ` +
+            `WHERE scope_type='ORGANIZATION' AND scope_id=${scope.numericId}`,
+        ),
+      ),
+      '専用組織に既存設定がないこと（既存設定は変更しない）',
+    ).toBe(0)
+    const setting = await request.put(
+      `${API}/scopes/ORGANIZATION/${scope.numericId}/penalty-settings`,
+      {
+        headers: authHeaders(owner.token),
+        data: {
+          isEnabled: true,
+          thresholdCount,
+          thresholdPeriodDays: 180,
+          penaltyDurationDays: 30,
+          applyScope: 'THIS_SCOPE_ONLY',
+          autoNoShowDetection: false,
+          disputeAllowedDays: 14,
+        },
+      },
+    )
+    expect(setting.status(), `組織専用設定: ${await setting.text()}`).toBe(200)
+    settingAppliedId = ((await setting.json()) as ApiEnvelope<{ id: number }>).data.id
+    recordStage('ORGANIZATION', 'penalty-setting-created', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+    })
+
+    fixture = await createNoShowFixture(
+      request,
+      scope,
+      owner.token,
+      member.token,
+      member.userId,
+      RUN_TAG,
+    )
+    recordStage('ORGANIZATION', 'no-show-fixture-created', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      participantIds: fixture.participantIds,
+    })
+    const recordIds = [
+      await markNoShow(request, owner.token, fixture, 0),
+      await markNoShow(request, owner.token, fixture, 1),
+    ]
+    const recordIdList = recordIds.join(',')
+    recordStage('ORGANIZATION', 'no-show-records-created', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      noShowIds: recordIds,
+    })
+    mysql(
+      `UPDATE recruitment_no_show_records SET recorded_at=UTC_TIMESTAMP(6) - INTERVAL 48 HOUR ` +
+        `WHERE id IN (${recordIdList}) AND user_id=${member.userId} AND confirmed=FALSE`,
+    )
+    expect(
+      Number(
+        scalar(
+          `SELECT COUNT(*) FROM recruitment_no_show_records WHERE id IN (${recordIdList}) ` +
+            `AND user_id=${member.userId} AND confirmed=FALSE ` +
+            'AND recorded_at <= UTC_TIMESTAMP(6) - INTERVAL 24 HOUR',
+        ),
+      ),
+      '組織募集由来の2件を24時間経過状態にする',
+    ).toBe(2)
+
+    const trigger = await request.post(
+      `${API}/system-admin/batch/recruitment-no-show-confirm-hourly/trigger?sync=true`,
+      { headers: authHeaders(systemAdmin.token) },
+    )
+    expect(trigger.status(), `24時間確定バッチ: ${await trigger.text()}`).toBe(200)
+    expect(((await trigger.json()) as ApiEnvelope<{ status: string }>).data.status).toBe(
+      'COMPLETED',
+    )
+    expect(
+      Number(
+        scalar(
+          `SELECT COUNT(*) FROM recruitment_no_show_records WHERE id IN (${recordIdList}) ` +
+            'AND confirmed=TRUE',
+        ),
+      ),
+    ).toBe(2)
+
+    const penalties = rows(
+      `SELECT id FROM recruitment_user_penalties WHERE user_id=${member.userId} ` +
+        `AND triggered_by_setting_id=${settingAppliedId} ` +
+        `AND scope_type='ORGANIZATION' AND scope_id=${scope.numericId} ` +
+        'AND lifted_at IS NULL AND expires_at > UTC_TIMESTAMP(6)',
+    )
+    expect(penalties, '組織スコープのペナルティが1件だけ作成される').toHaveLength(1)
+    penaltyId = Number(penalties[0])
+    recordStage('ORGANIZATION', 'penalty-created', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      noShowIds: recordIds,
+      penaltyId,
+    })
+    expect(
+      scalar(
+        `SELECT triggered_no_show_count FROM recruitment_user_penalties WHERE id=${penaltyId}`,
+      ),
+    ).toBe(String(thresholdCount))
+    await expect.poll(() => confirmableRows(penaltyId!)).toHaveLength(1)
+    confirmableId = Number(confirmableRows(penaltyId)[0])
+    recordStage('ORGANIZATION', 'confirmable-created', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      noShowIds: recordIds,
+      penaltyId,
+      confirmableId,
+    })
+
+    const pendingResponse = await request.get(`${API}/me/confirmable-notifications/pending`, {
+      headers: authHeaders(member.token),
+    })
+    expect(pendingResponse.status(), '本人の確認待ち一覧').toBe(200)
+    const recipientId = Number(
+      scalar(
+        `SELECT id FROM confirmable_notification_recipients ` +
+          `WHERE confirmable_notification_id=${confirmableId} AND user_id=${member.userId}`,
+      ),
+    )
+    const pending = (
+      (await pendingResponse.json()) as ApiEnvelope<Array<{ id: number; isConfirmed: boolean }>>
+    ).data
+    expect(pending).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: recipientId, isConfirmed: false })]),
+    )
+    const organizationDetail = await request.get(
+      `${API}/organizations/${scope.numericId}/confirmable-notifications/${confirmableId}`,
+      { headers: authHeaders(owner.token) },
+    )
+    expect(
+      organizationDetail.status(),
+      `組織管理者による専用通知の確認: ${await organizationDetail.text()}`,
+    ).toBe(200)
+    const detail = ((await organizationDetail.json()) as ApiEnvelope<ConfirmableNotification>).data
+    expect(detail.scopeType).toBe('ORGANIZATION')
+    expect(detail.scopeId).toBe(scope.numericId)
+    expect(detail.priority).toBe('URGENT')
+    expect(detail.totalRecipientCount).toBe(1)
+    expect(confirmableRows(penaltyId), 'RECRUITMENT_PENALTY由来の確認通知が重複しない').toEqual([
+      String(confirmableId),
+    ])
+    await expect.poll(() => appNotificationRows(confirmableId!, member.userId)).toHaveLength(1)
+    expect(appNotificationRows(confirmableId, member.userId)[0]).toContain(
+      `${member.userId}\t${APP_NOTIFICATION_TYPE}\tURGENT\t${APP_NOTIFICATION_SOURCE}\t${confirmableId}\t0`,
+    )
+
+    const memberNotifications = await notifications(request, member.token)
+    const memberNotification = memberNotifications.find(
+      (row) =>
+        row.notificationType === APP_NOTIFICATION_TYPE &&
+        row.sourceType === APP_NOTIFICATION_SOURCE &&
+        row.sourceId === confirmableId,
+    )
+    expect(memberNotification, '本人の通知一覧にURGENT通知が1件表示される').toBeTruthy()
+    expect(
+      memberNotifications.filter(
+        (row) =>
+          row.notificationType === APP_NOTIFICATION_TYPE &&
+          row.sourceType === APP_NOTIFICATION_SOURCE &&
+          row.sourceId === confirmableId,
+      ),
+    ).toHaveLength(1)
+
+    const outsiderNotifications = await notifications(request, outsider.token)
+    expect(
+      outsiderNotifications.some(
+        (row) =>
+          row.notificationType === APP_NOTIFICATION_TYPE &&
+          row.sourceType === APP_NOTIFICATION_SOURCE &&
+          row.sourceId === confirmableId,
+      ),
+      '対象外会員の通知一覧に専用通知が出ない',
+    ).toBe(false)
+    const outsiderDetail = await request.get(
+      `${API}/organizations/${scope.numericId}/confirmable-notifications/${confirmableId}`,
+      { headers: authHeaders(outsider.token) },
+    )
+    expect(outsiderDetail.status(), '対象外会員による通知ID直指定').toBe(403)
+    const outsiderConfirm = await request.post(
+      `${API}/me/confirmable-notifications/${confirmableId}/confirm`,
+      { headers: authHeaders(outsider.token) },
+    )
+    expect(outsiderConfirm.status(), '対象外会員による確認API直指定').toBe(404)
+    expect(
+      scalar(
+        `SELECT is_confirmed FROM confirmable_notification_recipients ` +
+          `WHERE confirmable_notification_id=${confirmableId} AND user_id=${member.userId}`,
+      ),
+    ).toBe('0')
+
+    recordStage('ORGANIZATION', 'outsider-ui-start', {
+      confirmableId,
+      appNotificationIds: appNotificationRows(confirmableId, member.userId).map((row) =>
+        Number(row.split('\t')[0]),
+      ),
+    })
+    const outsiderContext = await browser.newContext({
+      baseURL: APP_BASE,
+      locale: 'ja-JP',
+      timezoneId: 'Asia/Tokyo',
+    })
+    try {
+      const outsiderPage = await outsiderContext.newPage()
+      await loginViaApi(outsiderPage, OUTSIDER, { apiBaseUrl: API_BASE })
+      const outsiderListResponse = outsiderPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname.endsWith('/api/v1/notifications'),
+      )
+      await outsiderPage.goto('/notifications')
+      await waitForHydration(outsiderPage)
+      await expect(outsiderPage).toHaveURL(/\/notifications$/)
+      expect((await outsiderListResponse).status(), '対象外画面の通知一覧APIが正常応答').toBe(200)
+      recordStage('ORGANIZATION', 'outsider-list-api-200')
+      await expect(
+        outsiderPage.getByRole('button', { name: 'すべて既読にする' }),
+        '通知一覧ツールバーが表示される',
+      ).toBeVisible()
+      recordStage('ORGANIZATION', 'outsider-list-rendered')
+      if (outsiderNotifications.length > 0) {
+        const firstOwnBody = outsiderNotifications[0]?.body
+        expect(firstOwnBody, '対象外自身の既存通知に本文がある').toBeTruthy()
+        await expect(
+          outsiderPage.getByRole('button').filter({ hasText: firstOwnBody! }).first(),
+        ).toBeVisible()
+      } else {
+        await expect(outsiderPage.getByText('通知はありません', { exact: true })).toBeVisible()
+      }
+      if (memberNotification) {
+        await expectNotificationAbsentFromLoadedPages(
+          outsiderPage,
+          memberNotification.body,
+          'ORGANIZATION',
+        )
+      }
+      recordStage('ORGANIZATION', 'outsider-target-notification-absent')
+    } finally {
+      await outsiderContext.close()
+    }
+
+    await loginViaApi(page, ORG_MEMBER, { apiBaseUrl: API_BASE })
+    const initialNotifications = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return (
+        url.pathname === '/api/v1/notifications' &&
+        url.searchParams.get('page') === '0' &&
+        response.request().method() === 'GET'
+      )
+    })
+    await page.goto('/notifications')
+    await waitForHydration(page)
+    expect((await initialNotifications).status()).toBe(200)
+    if (!memberNotification) throw new Error('??????????')
+    const notificationRow = await findNotificationRow(page, memberNotification.body)
+    const notificationContent = notificationRow.locator('.min-w-0.flex-1')
+    const appNotificationId = Number(
+      appNotificationRows(confirmableId!, member.userId)[0]?.split('\t')[0],
+    )
+    recordStage('ORGANIZATION', 'member-notification-ui-start', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      penaltyId,
+      confirmableId,
+      appNotificationId,
+    })
+    expect(appNotificationId).toBeGreaterThan(0)
+    const readResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/v1/notifications/${appNotificationId}/read`) &&
+        response.request().method() === 'POST',
+    )
+    await notificationRow.getByText(memberNotification.body, { exact: true }).click()
+    expect((await readResponse).status()).toBe(200)
+    await expect
+      .poll(() => appNotificationRows(confirmableId!, member.userId)[0]?.endsWith('\t1'))
+      .toBe(true)
+    await expect
+      .poll(() =>
+        scalar(
+          `SELECT is_confirmed FROM confirmable_notification_recipients ` +
+            `WHERE confirmable_notification_id=${confirmableId} AND user_id=${member.userId}`,
+        ),
+      )
+      .toBe('0')
+    const confirmButton = notificationContent.getByRole('button')
+    await expect(confirmButton).toBeVisible()
+    await confirmButton.click()
+    await expect(page.getByText('確認しました', { exact: true })).toBeVisible()
+    await expect
+      .poll(() =>
+        scalar(
+          `SELECT is_confirmed FROM confirmable_notification_recipients ` +
+            `WHERE confirmable_notification_id=${confirmableId} AND user_id=${member.userId}`,
+        ),
+      )
+      .toBe('1')
+    await expect.poll(() => appNotificationRows(confirmableId!, member.userId)).toHaveLength(1)
+    expect(appNotificationRows(confirmableId, member.userId)[0]).toContain('\t1')
+    await expect(
+      notificationContent.getByText('\u78ba\u8a8d\u6e08\u307f', { exact: true }),
+    ).toBeVisible()
+    await expect(notificationContent.getByRole('button')).toHaveCount(0)
+
+    const reloadedNotifications = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return (
+        url.pathname === '/api/v1/notifications' &&
+        url.searchParams.get('page') === '0' &&
+        response.request().method() === 'GET'
+      )
+    })
+    await page.reload()
+    await waitForHydration(page)
+    expect((await reloadedNotifications).status()).toBe(200)
+    const persistedNotificationRow = await findNotificationRow(page, memberNotification.body)
+    const persistedNotificationContent = persistedNotificationRow.locator('.min-w-0.flex-1')
+    await expect(
+      persistedNotificationContent.getByText('\u78ba\u8a8d\u6e08\u307f', { exact: true }),
+    ).toBeVisible()
+    await expect(persistedNotificationContent.getByRole('button')).toHaveCount(0)
+    recordStage('ORGANIZATION', 'member-notification-ui-confirmed', {
+      scopes: ownedScopes,
+      settingId: settingAppliedId,
+      listingIds: fixture.listingIds,
+      penaltyId,
+      confirmableId,
+      appNotificationId,
+    })
+
+    const unreadResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/v1/notifications/${appNotificationId}/unread`) &&
+        response.request().method() === 'POST',
+    )
+    await persistedNotificationRow.locator('button:has(i.pi-envelope)').click()
+    expect((await unreadResponse).status()).toBe(200)
+    await expect
+      .poll(() => appNotificationRows(confirmableId!, member.userId)[0]?.endsWith('\t0'))
+      .toBe(true)
+    await expect
+      .poll(() =>
+        scalar(
+          `SELECT is_confirmed FROM confirmable_notification_recipients ` +
+            `WHERE confirmable_notification_id=${confirmableId} AND user_id=${member.userId}`,
+        ),
+      )
+      .toBe('1')
+    await expect(
+      persistedNotificationContent.getByText('\u78ba\u8a8d\u6e08\u307f', { exact: true }),
+    ).toBeVisible()
+    await expect(persistedNotificationContent.getByRole('button')).toHaveCount(0)
+
+    const repeated = await request.post(
+      `${API}/system-admin/batch/recruitment-no-show-confirm-hourly/trigger?sync=true`,
+      { headers: authHeaders(systemAdmin.token) },
+    )
+    expect(repeated.status()).toBe(200)
+    expect(((await repeated.json()) as ApiEnvelope<{ status: string }>).data.status).toBe(
+      'COMPLETED',
+    )
+    expect(confirmableRows(penaltyId)).toEqual([String(confirmableId)])
+    expect(appNotificationRows(confirmableId, member.userId)).toHaveLength(1)
+  } catch (error) {
+    hasScenarioFailure = true
+    scenarioFailure = error
+    recordStage(
+      'ORGANIZATION',
+      'scenario-failed',
+      { scopes: ownedScopes, fixtureListingIds: fixture?.listingIds, settingId: settingAppliedId, penaltyId, confirmableId },
+      error,
+    )
   }
-  if (hasScenarioFailure) throw scenarioFailure
+
+  let cleanupFailure: unknown
+  try {
+    recordStage('ORGANIZATION', 'cleanup-started', {
+      scopes: [...createdScopes],
+      ownedScopes,
+      fixtureListingIds: fixture?.listingIds,
+      settingId: settingAppliedId,
+      penaltyId,
+      confirmableId,
+    })
+    await cleanup(
+      request,
+      owner.token,
+      createdScopes,
+      scope,
+      ownedScopes,
+      fixture,
+      undefined,
+      settingAppliedId,
+      penaltyId,
+      confirmableId,
+      member.userId,
+      owner.userId,
+    )
+    recordStage('ORGANIZATION', 'cleanup-completed')
+  } catch (error) {
+    cleanupFailure = error
+    recordStage(
+      'ORGANIZATION',
+      'cleanup-failed',
+      { scopes: [...createdScopes], ownedScopes, fixtureListingIds: fixture?.listingIds, settingId: settingAppliedId, penaltyId, confirmableId },
+      error,
+    )
+  }
+  const failures: unknown[] = []
+  if (hasScenarioFailure) failures.push(scenarioFailure)
+  if (cleanupFailure !== undefined) failures.push(cleanupFailure)
+  if (stageLedgerFailure !== undefined) failures.push(stageLedgerFailure)
+  if (failures.length === 1) throw failures[0]
+  if (failures.length > 1) {
+    throw new AggregateError(failures, 'Wave16のシナリオ・cleanup・診断記録で複数の失敗が発生しました。')
+  }
 
   const finalUrl = new URL(page.url())
   expect(finalUrl.origin).toBe(APP_BASE)

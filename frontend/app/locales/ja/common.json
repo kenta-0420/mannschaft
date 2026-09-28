@@ -485,13 +485,13 @@
     }
   },
   "confirmable": {
-    "title": "確認通知",
+    "title": "クイック確認",
     "page": {
-      "settings_title": "確認通知設定",
-      "settings_subtitle": "確認通知の設定・送信・発信履歴を管理します"
+      "settings_title": "クイック確認",
+      "settings_subtitle": "短い連絡を送り、確認状況と未確認者をすばやく把握します"
     },
-    "settings": "確認通知設定",
-    "send": "確認通知を送信",
+    "settings": "クイック確認の設定",
+    "send": "クイック確認を送る",
     "history": "発信履歴",
     "recipients": "受信者一覧",
     "status": {
@@ -543,7 +543,18 @@
       "ALL_MEMBERS": "全員に公開"
     },
     "unconfirmed_count": "未確認: {count}名",
-    "unconfirmed_list": "未確認者一覧"
+    "unconfirmed_list": "未確認者一覧",
+    "guide": {
+      "quickConfirm": {
+        "description": "短い連絡への確認を集める機能です。文書への押印や回覧順序が必要な場合は回覧板を使います。",
+        "link": "回覧板を開く"
+      },
+      "circulation": {
+        "title": "回覧板",
+        "description": "文書への押印や回覧順序を管理する機能です。短い連絡への確認だけを集める場合はクイック確認を使います。",
+        "link": "クイック確認を開く"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "動画を処理中...",
@@ -929,10 +940,10 @@
         }
       },
       "confirm": {
-        "title": "確認通知",
+        "title": "クイック確認",
         "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step1": "クイック確認（背景色が付いた通知）の内容を読みます",
           "step2": "「確認する」ボタンを押して確認済みにします",
           "step3": "確認後は「確認済み」ラベルに変わります"
         }

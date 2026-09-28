@@ -42,6 +42,7 @@ test.describe('CIRC-REAL: 回覧ページ実機（無限loading リグレッシ�
 
     // --- ページ門番が解除され「回覧板」見出しが出ること（無限 loading でないこと） ---
     await expect(page.getByRole('heading', { name: '回覧板' })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('link', { name: 'クイック確認を開く' })).toHaveCount(0)
 
     // --- 一覧 EP も settle すること ---
     expect(listResp.status(), `一覧取得失敗: ${await listResp.text()}`).toBe(200)
