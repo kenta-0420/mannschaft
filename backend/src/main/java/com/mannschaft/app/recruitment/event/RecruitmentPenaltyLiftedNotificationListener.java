@@ -8,6 +8,7 @@ import com.mannschaft.app.notification.NotificationType;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -29,11 +30,19 @@ public class RecruitmentPenaltyLiftedNotificationListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPenaltyLifted(RecruitmentPenaltyLiftedNotificationEvent event) {
         if (event.penaltyId() == null || event.recipientUserId() == null
-                || event.scopeType() == null || event.scopeId() == null) {
+                || event.scopeType() == null || event.scopeId() == null || event.liftReason() == null) {
             log.warn("募集ペナルティ解除通知をスキップ: penaltyId={}, recipientUserId={}",
                     event.penaltyId(), event.recipientUserId());
             return;
         }
+
+        String body = event.liftReason() == PenaltyLiftReason.AUTO_EXPIRED
+                ? "ペナルティ #" + event.penaltyId() + "（"
+                        + event.scopeType().name() + " #" + event.scopeId()
+                        + "）は、期限到来（AUTO_EXPIRED）により自動解除されました。"
+                : "ペナルティ #" + event.penaltyId() + "（"
+                        + event.scopeType().name() + " #" + event.scopeId()
+                        + "）は、再計算（" + event.liftReason().name() + "）により解除されました。";
 
         try {
             NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(
@@ -41,9 +50,7 @@ public class RecruitmentPenaltyLiftedNotificationListener {
                             event.recipientUserId(), NotificationType.RECRUITMENT_PENALTY_LIFTED.name(),
                             NotificationPriority.NORMAL,
                             "募集ペナルティが解除されました",
-                            "ペナルティ #" + event.penaltyId() + "（"
-                                    + event.scopeType().name() + " #" + event.scopeId()
-                                    + "）は、期限到来（AUTO_EXPIRED）により自動解除されました。",
+                            body,
                             "RECRUITMENT_PENALTY", event.penaltyId(),
                             NotificationScopeType.valueOf(event.scopeType().name()), event.scopeId(),
                             null, null));
