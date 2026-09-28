@@ -86,10 +86,20 @@ test('管理者が宛先グループを画面で作成し、送信前の見込�
   }
 })
 
-test('一般メンバーは自分の未確認通知一覧を取得できる', async ({ page }) => {
+test('一般メンバーは実画面から通知一覧を開ける', async ({ page }) => {
   await loginForRealDevice(page, MEMBER)
-  const response = await page.request.get(`${API_BASE}/api/v1/me/confirmable-notifications/pending`)
-  expect(response.status(), `pending API: ${await response.text()}`).toBe(200)
+  const notificationsResponse = page.waitForResponse(response =>
+    response.request().method() === 'GET'
+    && new URL(response.url()).pathname === '/api/v1/notifications',
+  )
+
+  await page.goto('/notifications', { waitUntil: 'commit' })
+  await waitForPageHydration(page)
+  const response = await notificationsResponse
+
+  expect(response.status(), `通知一覧API: ${await response.text()}`).toBe(200)
+  await expect(page).toHaveURL(/\/notifications$/)
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 })
 
 for (const [label, email] of [['一般メンバー', MEMBER], ['他テナント利用者', OUTSIDER]] as const) {
