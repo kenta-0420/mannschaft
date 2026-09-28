@@ -2041,7 +2041,7 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(get("/test/recruitment-penalty-blocked"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("RECRUITMENT_300"))
-                .andExpect(jsonPath("$.error.details.expiresAt").value("2026-09-28T12:30:00"))
+                .andExpect(jsonPath("$.error.details.expiresAt").value("2026-09-28T12:30:00Z"))
                 .andExpect(jsonPath("$.error.fieldErrors").isArray());
     }
 
@@ -2049,7 +2049,7 @@ class GlobalExceptionHandlerTest {
     static class PenaltyBlockedController {
         @org.springframework.web.bind.annotation.GetMapping("/test/recruitment-penalty-blocked")
         void blocked() {
-            throw new RecruitmentPenaltyActiveException(LocalDateTime.of(2026, 9, 28, 12, 30));
+            throw new RecruitmentPenaltyActiveException(java.time.Instant.parse("2026-09-28T12:30:00Z"));
         }
     }
 }

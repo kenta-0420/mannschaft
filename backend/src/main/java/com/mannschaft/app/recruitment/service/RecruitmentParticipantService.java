@@ -9,6 +9,7 @@ import com.mannschaft.app.recruitment.CancellationSource;
 import com.mannschaft.app.recruitment.ParticipantHistoryReason;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentPenaltyActiveException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentMapper;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
@@ -126,9 +127,11 @@ public class RecruitmentParticipantService {
 
         // §5.2 step4: GLOBAL またはこの募集スコープの有効ペナルティ中は申込を拒否する。
         LocalDateTime penaltyExpiresAt = penaltyRepository.findApplicableActivePenaltyExpiry(
-                userId, listing.getScopeType(), listing.getScopeId(), LocalDateTime.now());
+                userId, listing.getScopeType(), listing.getScopeId(),
+                LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE));
         if (penaltyExpiresAt != null) {
-            throw new RecruitmentPenaltyActiveException(penaltyExpiresAt);
+            throw new RecruitmentPenaltyActiveException(
+                    penaltyExpiresAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
         }
 
         // §5.2 step6 participation_type 整合

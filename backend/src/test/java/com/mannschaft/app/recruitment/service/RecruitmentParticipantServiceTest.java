@@ -240,7 +240,8 @@ class RecruitmentParticipantServiceTest {
                     new ApplyToRecruitmentRequest(RecruitmentParticipantType.USER, null, null)))
                     .isInstanceOfSatisfying(RecruitmentPenaltyActiveException.class, ex -> {
                         assertThat(ex.getErrorCode()).isEqualTo(RecruitmentErrorCode.PENALTY_ACTIVE);
-                        assertThat(ex.getExpiresAt()).isEqualTo(expiresAt);
+                        assertThat(ex.getExpiresAt()).isEqualTo(expiresAt.atZone(
+                                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
                     });
             verify(participantRepository, never()).save(any());
         }

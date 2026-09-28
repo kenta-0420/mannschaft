@@ -56,13 +56,13 @@ public interface RecruitmentNoShowRecordRepository extends JpaRepository<Recruit
             SELECT COUNT(*) FROM recruitment_no_show_records r
             JOIN recruitment_listings l ON l.id = r.listing_id
             WHERE r.user_id = :userId AND r.confirmed = TRUE
-              AND r.recorded_at >= :since
+              AND r.recorded_at >= DATE_SUB(UTC_TIMESTAMP(6), INTERVAL :periodDays DAY)
               AND (r.dispute_resolution IS NULL OR r.dispute_resolution <> 'REVOKED')
               AND (:allScopes = TRUE OR (l.scope_type = :scopeType AND l.scope_id = :scopeId))
             """, nativeQuery = true)
     long countConfirmedNoShowsForPenalty(
             @Param("userId") Long userId,
-            @Param("since") LocalDateTime since,
+            @Param("periodDays") int periodDays,
             @Param("allScopes") boolean allScopes,
             @Param("scopeType") String scopeType,
             @Param("scopeId") Long scopeId);

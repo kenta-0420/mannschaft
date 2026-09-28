@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.recruitment.PenaltyApplyScope;
 import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
@@ -69,10 +70,9 @@ public class RecruitmentPenaltyService {
         }
 
         // 集計期間内の確定 NO_SHOW 件数
-        LocalDateTime since = LocalDateTime.now().minusDays(setting.getThresholdPeriodDays());
         boolean allScopes = setting.getApplyScope() == PenaltyApplyScope.ALL_SCOPES;
         long noShowCount = noShowRepository.countConfirmedNoShowsForPenalty(
-                userId, since, allScopes, scopeType.name(), scopeId);
+                userId, setting.getThresholdPeriodDays(), allScopes, scopeType.name(), scopeId);
 
         if (noShowCount < setting.getThresholdCount()) {
             return Optional.empty();
@@ -80,7 +80,7 @@ public class RecruitmentPenaltyService {
 
         RecruitmentScopeType effectiveScopeType = allScopes ? RecruitmentScopeType.GLOBAL : scopeType;
         Long effectiveScopeId = allScopes ? null : scopeId;
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE);
 
         // 未解除行をロックする。期限切れ行は UNIQUE のスロットを解放してから新規作成する。
         Optional<RecruitmentUserPenaltyEntity> existing = penaltyRepository
@@ -117,7 +117,8 @@ public class RecruitmentPenaltyService {
         RecruitmentUserPenaltyEntity saved = penaltyRepository.saveAndFlush(penalty);
 
         eventPublisher.publishEvent(new RecruitmentPenaltyAppliedNotificationEvent(
-                saved.getId(), userId, scopeType, scopeId, saved.getExpiresAt()));
+                saved.getId(), userId, scopeType, scopeId,
+                saved.getExpiresAt().atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()));
         log.warn("F03.11 Phase5b ペナルティ発動: userId={}, scope={}/{}, noShowCount={}, expires={}",
                 userId, scopeType, scopeId, noShowCount, saved.getExpiresAt());
 
@@ -164,7 +165,8 @@ public class RecruitmentPenaltyService {
     public List<RecruitmentUserPenaltyEntity> getActivePenalties(
             RecruitmentScopeType scopeType, Long scopeId, Long adminUserId) {
         accessControlService.checkAdminOrAbove(adminUserId, scopeId, scopeType.name());
-        return penaltyRepository.findActivePenaltiesByScope(scopeType, scopeId, LocalDateTime.now());
+        return penaltyRepository.findActivePenaltiesByScope(
+                scopeType, scopeId, LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE));
     }
 
     /** ユーザー自身のペナルティ履歴。 */

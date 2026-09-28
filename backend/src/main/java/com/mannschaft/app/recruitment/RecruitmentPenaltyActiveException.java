@@ -1,19 +1,19 @@
 package com.mannschaft.app.recruitment;
 
 import com.mannschaft.app.common.BusinessException;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** 募集申込を阻むペナルティと、その解除予定時刻。 */
 public class RecruitmentPenaltyActiveException extends BusinessException {
 
-    private final LocalDateTime expiresAt;
+    private final Instant expiresAt;
 
-    public RecruitmentPenaltyActiveException(LocalDateTime expiresAt) {
+    public RecruitmentPenaltyActiveException(Instant expiresAt) {
         super(RecruitmentErrorCode.PENALTY_ACTIVE);
         this.expiresAt = expiresAt;
     }
 
-    public LocalDateTime getExpiresAt() {
+    public Instant getExpiresAt() {
         return expiresAt;
     }
 }

@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -117,7 +118,7 @@ class RecruitmentPenaltyRecomputeBatchTest {
             given(settingRepository.findById(disabledSetting.getId())).willReturn(Optional.of(disabledSetting));
             given(settingRepository.findById(enabledSetting.getId())).willReturn(Optional.of(enabledSetting));
             // 奇数ID側（有効設定）は閾値を下回らない前提（解除されない）
-            given(noShowRepository.countConfirmedNoShowsForPenalty(any(), any(), anyBoolean(), anyString(), anyLong())).willReturn(99L);
+            given(noShowRepository.countConfirmedNoShowsForPenalty(any(), anyInt(), anyBoolean(), anyString(), anyLong())).willReturn(99L);
 
             FakePenaltyStore store = new FakePenaltyStore(allPenalties);
             given(penaltyRepository.findActivePenaltiesAfterId(any(), any(Long.class), any(Pageable.class)))
@@ -157,7 +158,7 @@ class RecruitmentPenaltyRecomputeBatchTest {
             given(penaltyRepository.findActivePenaltiesAfterId(any(), anyLong(), any(Pageable.class)))
                     .willReturn(List.of(penalty));
             given(settingRepository.findById(enabledSetting.getId())).willReturn(Optional.of(enabledSetting));
-            given(noShowRepository.countConfirmedNoShowsForPenalty(anyLong(), any(), anyBoolean(), anyString(), anyLong())).willReturn(3L);
+            given(noShowRepository.countConfirmedNoShowsForPenalty(anyLong(), anyInt(), anyBoolean(), anyString(), anyLong())).willReturn(3L);
 
             batch.recomputePenalties();
 
@@ -174,7 +175,7 @@ class RecruitmentPenaltyRecomputeBatchTest {
             given(penaltyRepository.findActivePenaltiesAfterId(any(), anyLong(), any(Pageable.class)))
                     .willReturn(List.of(penalty));
             given(settingRepository.findById(enabledSetting.getId())).willReturn(Optional.of(enabledSetting));
-            given(noShowRepository.countConfirmedNoShowsForPenalty(anyLong(), any(), anyBoolean(), anyString(), anyLong())).willReturn(2L);
+            given(noShowRepository.countConfirmedNoShowsForPenalty(anyLong(), anyInt(), anyBoolean(), anyString(), anyLong())).willReturn(2L);
 
             batch.recomputePenalties();
 

@@ -115,7 +115,7 @@ class RecruitmentPenaltyServiceTest {
                     .willReturn(Optional.of(setting));
             // 件数 2 < 閾値 3
             given(noShowRepository.countConfirmedNoShowsForPenalty(
-                    eq(USER_ID), any(LocalDateTime.class), anyBoolean(), anyString(), eq(SCOPE_ID)))
+                    eq(USER_ID), eq(180), anyBoolean(), anyString(), eq(SCOPE_ID)))
                     .willReturn(2L);
 
             Optional<RecruitmentUserPenaltyEntity> result =
@@ -134,7 +134,7 @@ class RecruitmentPenaltyServiceTest {
             given(settingRepository.findByScopeForUpdate(SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(setting));
             given(noShowRepository.countConfirmedNoShowsForPenalty(
-                    eq(USER_ID), any(LocalDateTime.class), eq(true), eq("TEAM"), eq(SCOPE_ID)))
+                    eq(USER_ID), eq(180), eq(true), eq("TEAM"), eq(SCOPE_ID)))
                     .willReturn(3L);
             given(penaltyRepository.saveAndFlush(any(RecruitmentUserPenaltyEntity.class)))
                     .willAnswer(invocation -> {
@@ -149,7 +149,9 @@ class RecruitmentPenaltyServiceTest {
             assertThat(result.getScopeType()).isEqualTo(RecruitmentScopeType.GLOBAL);
             assertThat(result.getScopeId()).isNull();
             verify(eventPublisher).publishEvent(new RecruitmentPenaltyAppliedNotificationEvent(
-                    PENALTY_ID, USER_ID, SCOPE_TYPE, SCOPE_ID, result.getExpiresAt()));
+                    PENALTY_ID, USER_ID, SCOPE_TYPE, SCOPE_ID,
+                    result.getExpiresAt().atZone(
+                            com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()));
         }
 
         @Test
@@ -165,7 +167,7 @@ class RecruitmentPenaltyServiceTest {
             given(settingRepository.findByScopeForUpdate(SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(setting));
             given(noShowRepository.countConfirmedNoShowsForPenalty(
-                    eq(USER_ID), any(LocalDateTime.class), eq(true), eq("TEAM"), eq(SCOPE_ID)))
+                    eq(USER_ID), eq(180), eq(true), eq("TEAM"), eq(SCOPE_ID)))
                     .willReturn(3L);
             given(penaltyRepository.findUnliftedPenaltyForUpdate(
                     USER_ID, RecruitmentScopeType.GLOBAL, null)).willReturn(Optional.of(existing));

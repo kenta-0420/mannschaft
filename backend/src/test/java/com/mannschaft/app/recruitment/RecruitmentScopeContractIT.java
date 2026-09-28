@@ -6,12 +6,14 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentCategoryEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentSubcategoryEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentTemplateEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentPenaltySettingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentSubcategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentTemplateRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
@@ -64,7 +66,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       スコープ突合（{@code TEMPLATE_SCOPE_MISMATCH}）で対象を絞る。越境 ID は
  *       {@code RECRUITMENT_*}（＝<b>404</b>・不在と同一ステータスで存在秘匿）に畳み込まれる。</li>
  *   <li><b>エンティティ由来型</b>（{@code lift} / {@code confirm}）:
- *       まず対象レコードを引き、<b>そのレコード自身の scope</b> に対して {@code checkAdminOrAbove} する。
+ *       まず対象レコードを引き、<b>レコードから辿った scope</b> に対して {@code checkAdminOrAbove} する。
+ *       ペナルティは発動元設定の scope（GLOBAL でも TEAM/ORGANIZATION）を使う。
  *       URL の {@code scopeType}/{@code scopeId}・{@code listingId} は認可に使われない（＝飾り）。
  *       他テナントのレコード ID を差し込んでも、認可が被害者テナント側で評価されるため
  *       攻撃者は管理者ではなく <b>403</b>（{@code COMMON_002}）で弾かれる。</li>
@@ -120,6 +123,9 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private RecruitmentUserPenaltyRepository penaltyRepository;
+
+    @Autowired
+    private RecruitmentPenaltySettingRepository penaltySettingRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -381,8 +387,8 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
          * AC-R7: 別スコープの penaltyId を自スコープ URL に差し込んでも越境解除は成立しない。
          *
          * <p>{@code RecruitmentPenaltyService#liftPenalty} は URL の {@code scopeType}/{@code scopeId} を
-         * 使わず、ペナルティ自身の {@code scopeId}/{@code scopeType} に対して {@code checkAdminOrAbove}
-         * するエンティティ由来型。よって越境は 403 で弾かれる。</p>
+         * 使わず、ペナルティの発動元設定に保存されたスコープへ {@code checkAdminOrAbove}
+         * する。GLOBAL ペナルティも同じ発動元スコープで認可し、越境は 403 で弾かれる。</p>
          */
         @Test
         @DisplayName("AC-R7: 正当ADMINが別スコープのpenaltyIdを差し込むと403（エンティティ由来認可）")
@@ -448,6 +454,45 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(liftBody())))
                     .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("GLOBAL ペナルティは発動元スコープのADMINが解除できる")
+        void global_発動元ADMINは200() throws Exception {
+            Long globalPenaltyId = insertPenalty(memberAId, teamAId, true);
+            em.flush();
+            em.clear();
+
+            setAuth(adminAId);
+            mockMvc.perform(post("/api/v1/scopes/{scopeType}/{scopeId}/penalties/{penaltyId}/lift",
+                            "TEAM", teamAId, globalPenaltyId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(liftBody())))
+                    .andExpect(status().isOk());
+
+            em.flush();
+            em.clear();
+            assertThat(penaltyRepository.findById(globalPenaltyId).orElseThrow().getLiftReason())
+                    .isEqualTo(PenaltyLiftReason.ADMIN_MANUAL);
+        }
+
+        @Test
+        @DisplayName("GLOBAL ペナルティは別スコープADMINのURL差し替えでも解除されない")
+        void global_別スコープADMINは403で不変() throws Exception {
+            Long globalPenaltyId = insertPenalty(memberAId, teamAId, true);
+            em.flush();
+            em.clear();
+
+            setAuth(adminBId);
+            mockMvc.perform(post("/api/v1/scopes/{scopeType}/{scopeId}/penalties/{penaltyId}/lift",
+                            "TEAM", teamBId, globalPenaltyId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(liftBody())))
+                    .andExpect(status().isForbidden());
+
+            em.flush();
+            em.clear();
+            assertThat(penaltyRepository.findById(globalPenaltyId).orElseThrow().getLiftedAt()).isNull();
         }
     }
 
@@ -791,11 +836,20 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long insertPenalty(Long userId, Long teamId) {
+        return insertPenalty(userId, teamId, false);
+    }
+
+    private Long insertPenalty(Long userId, Long teamId, boolean global) {
+        // 実DBは同ドメインFKで発動元設定の存在を要求する。固定IDの架空設定を使わない。
+        RecruitmentPenaltySettingEntity setting = penaltySettingRepository
+                .findByScopeTypeAndScopeId(RecruitmentScopeType.TEAM, teamId)
+                .orElseGet(() -> penaltySettingRepository.save(RecruitmentPenaltySettingEntity.builder()
+                        .scopeType(RecruitmentScopeType.TEAM).scopeId(teamId).build()));
         return penaltyRepository.save(RecruitmentUserPenaltyEntity.builder()
                 .userId(userId)
-                .scopeType(RecruitmentScopeType.TEAM)
-                .scopeId(teamId)
-                .triggeredBySettingId(1L)
+                .scopeType(global ? RecruitmentScopeType.GLOBAL : RecruitmentScopeType.TEAM)
+                .scopeId(global ? null : teamId)
+                .triggeredBySettingId(setting.getId())
                 .triggeredNoShowCount(3)
                 .startedAt(LocalDateTime.now().minusDays(1))
                 .expiresAt(LocalDateTime.now().plusDays(30))

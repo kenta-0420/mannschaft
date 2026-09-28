@@ -156964,7 +156964,7 @@ export interface operations {
                 prefecture?: string;
                 city?: string;
                 category_id?: number;
-                owner_type?: "TEAM" | "ORGANIZATION" | "PERSONAL";
+                owner_type?: "TEAM" | "ORGANIZATION" | "GLOBAL" | "PERSONAL";
                 keyword?: string;
                 include_region_none?: boolean;
                 sort?: "START_AT_ASC" | "DEADLINE_ASC" | "DEADLINE_DESC";

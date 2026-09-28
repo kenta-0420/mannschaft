@@ -104,9 +104,8 @@ public class RecruitmentPenaltyRecomputeBatch {
                 }
 
                 // 集計期間内の有効 NO_SHOW 件数を再計算
-                LocalDateTime since = now.minusDays(setting.getThresholdPeriodDays());
                 long currentCount = noShowRepository.countConfirmedNoShowsForPenalty(
-                        penalty.getUserId(), since,
+                        penalty.getUserId(), setting.getThresholdPeriodDays(),
                         penalty.getScopeType() == RecruitmentScopeType.GLOBAL,
                         setting.getScopeType().name(), setting.getScopeId());
 

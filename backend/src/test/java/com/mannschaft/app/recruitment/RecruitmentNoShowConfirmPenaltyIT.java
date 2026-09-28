@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
@@ -80,7 +81,8 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
 
         transactionTemplate.executeWithoutResult(status -> target.confirmNoShows());
 
-        assertThat(noShowRepository.findById(recordId).orElseThrow().isConfirmed()).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT confirmed FROM recruitment_no_show_records WHERE id = ?", Boolean.class, recordId)).isTrue();
         List<RecruitmentUserPenaltyEntity> penalties = penaltyRepository.findByUserIdOrderByCreatedAtDesc(userId);
         assertThat(penalties).hasSize(1);
         RecruitmentUserPenaltyEntity penalty = penalties.getFirst();
@@ -88,7 +90,8 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
         assertThat(penalty.getScopeType()).isEqualTo(RecruitmentScopeType.GLOBAL);
         assertThat(penalty.getScopeId()).isNull();
         assertThat(penaltyRepository.findApplicableActivePenaltyExpiry(
-                userId, RecruitmentScopeType.ORGANIZATION, 999_999_999L, LocalDateTime.now()))
+                userId, RecruitmentScopeType.ORGANIZATION, 999_999_999L,
+                LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE)))
                 .isEqualTo(penalty.getExpiresAt());
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -108,7 +111,8 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
             status.setRollbackOnly();
         });
 
-        assertThat(noShowRepository.findById(recordId).orElseThrow().isConfirmed()).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT confirmed FROM recruitment_no_show_records WHERE id = ?", Boolean.class, recordId)).isFalse();
         assertThat(penaltyRepository.findByUserIdOrderByCreatedAtDesc(userId)).isEmpty();
         assertThat(countConfirmableNotificationsForUser()).isZero();
     }
@@ -122,14 +126,14 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
                     dm_receive_from, encryption_key_version, locale, timezone, reporting_restricted,
                     follow_list_visibility, care_notification_enabled, offline_only, created_at, updated_at)
                 VALUES (?, 'CMP019', 'Wave16', 'CMP019 Wave16', 'ACTIVE',
-                    1, 1, 1, 'NOBODY', 'ANYONE', 1, 'ja', 'Asia/Tokyo', 0, 'PUBLIC', 1, 0, NOW(), NOW())
+                    1, 1, 1, 'NOBODY', 'ANYONE', 1, 'ja', 'Asia/Tokyo', 0, 'PUBLIC', 1, 0, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
                 """, email);
         userId = jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, email);
 
         String slug = "cmp019-wave16-" + suffix;
         jdbcTemplate.update("""
                 INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, created_at, updated_at)
-                VALUES (?, 'PUBLIC', 1, 0, 0, ?, NOW(), NOW())
+                VALUES (?, 'PUBLIC', 1, 0, 0, ?, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
                 """, "CMP019 Wave16 " + suffix, slug);
         teamId = jdbcTemplate.queryForObject("SELECT id FROM teams WHERE slug = ?", Long.class, slug);
 
@@ -138,7 +142,7 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
         setting.update(true, 1, 180, 30, PenaltyApplyScope.ALL_SCOPES, false, 30);
         settingId = settingRepository.save(setting).getId();
 
-        LocalDateTime start = LocalDateTime.now().plusDays(10).withNano(0);
+        LocalDateTime start = LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE).plusDays(10).withNano(0);
         listingId = transactionTemplate.execute(status -> listingRepository.save(RecruitmentListingEntity.builder()
                 .scopeType(RecruitmentScopeType.TEAM).scopeId(teamId).categoryId(1L)
                 .title("CMP-019 Wave16 NO_SHOW penalty")
@@ -152,7 +156,7 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
             entityManager.createNativeQuery("""
                     INSERT INTO recruitment_participants
                         (listing_id, participant_type, user_id, applied_by, status, applied_at, status_changed_at)
-                    VALUES (:listingId, 'USER', :userId, :userId, 'CONFIRMED', NOW(), NOW())
+                    VALUES (:listingId, 'USER', :userId, :userId, 'CONFIRMED', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
                     """)
                     .setParameter("listingId", listingId).setParameter("userId", userId).executeUpdate();
             return ((Number) entityManager.createNativeQuery("""
@@ -164,8 +168,21 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
         recordId = noShowRepository.save(RecruitmentNoShowRecordEntity.builder()
                 .participantId(participantId).listingId(listingId).userId(userId)
                 .reason(NoShowReason.ADMIN_MARKED).recordedBy(userId).build()).getId();
-        jdbcTemplate.update("UPDATE recruitment_no_show_records SET recorded_at = ? WHERE id = ?",
-                LocalDateTime.now().minusHours(25), recordId);
+        // 生 JDBC は Hibernate の UTC 変換を通らないため、DB の UTC 壁時計で経過時間を作る。
+        jdbcTemplate.update("""
+                UPDATE recruitment_no_show_records
+                SET recorded_at = DATE_SUB(UTC_TIMESTAMP(6), INTERVAL 25 HOUR) WHERE id = ?
+                """, recordId);
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT TIMESTAMPDIFF(HOUR, recorded_at, UTC_TIMESTAMP(6))
+                FROM recruitment_no_show_records WHERE id = ?
+                """, Long.class, recordId)).isGreaterThanOrEqualTo(25);
+        transactionTemplate.executeWithoutResult(status -> {
+            entityManager.clear();
+            assertThat(noShowRepository.findUnconfirmedBefore(
+                    LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE).minusHours(24)))
+                    .extracting(RecruitmentNoShowRecordEntity::getId).contains(recordId);
+        });
     }
 
     private int countConfirmableNotifications() {

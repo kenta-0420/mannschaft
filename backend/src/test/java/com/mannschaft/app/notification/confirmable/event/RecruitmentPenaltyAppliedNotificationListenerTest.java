@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.confirmable.event;
 
 import com.mannschaft.app.common.SystemUsers;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
@@ -13,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -35,7 +37,7 @@ class RecruitmentPenaltyAppliedNotificationListenerTest {
     @InjectMocks
     private RecruitmentPenaltyAppliedNotificationListener listener;
 
-    private final LocalDateTime expiresAt = LocalDateTime.of(2026, 10, 28, 12, 0);
+    private final Instant expiresAt = Instant.parse("2026-10-28T12:00:00Z");
 
     @Test
     void sendsUrgentConfirmationToPenaltyOwnerFromSystemUser() {
@@ -44,7 +46,8 @@ class RecruitmentPenaltyAppliedNotificationListenerTest {
 
         verify(confirmableNotificationService).sendFromSource(
                 eq("RECRUITMENT_PENALTY"), eq(11L), eq(ScopeType.ORGANIZATION), eq(33L),
-                any(), any(), eq(ConfirmableNotificationPriority.URGENT), eq(expiresAt),
+                any(), any(), eq(ConfirmableNotificationPriority.URGENT),
+                eq(LocalDateTime.ofInstant(expiresAt, UserZoneLocalDateTimeParser.SERVER_ZONE)),
                 eq("/notifications"), eq(SystemUsers.SYSTEM_USER_ID), eq(List.of(22L)));
     }
 

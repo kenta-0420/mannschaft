@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.confirmable.event;
 
 import com.mannschaft.app.common.SystemUsers;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.membership.ScopeType;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /** 確定した募集ペナルティについて、本人へ緊急の確認通知を送る。 */
@@ -54,7 +56,7 @@ public class RecruitmentPenaltyAppliedNotificationListener {
                     "無断キャンセルの記録が設定された回数に達したため、募集への申込が制限されました。"
                             + "解除予定: " + event.expiresAt() + "。内容を確認してください。",
                     ConfirmableNotificationPriority.URGENT,
-                    event.expiresAt(),
+                    LocalDateTime.ofInstant(event.expiresAt(), UserZoneLocalDateTimeParser.SERVER_ZONE),
                     "/notifications",
                     SystemUsers.SYSTEM_USER_ID,
                     List.of(event.recipientUserId()));
