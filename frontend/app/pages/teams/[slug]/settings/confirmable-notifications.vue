@@ -26,9 +26,10 @@ function onNotificationSent() {
 
 <template>
   <div class="mx-auto max-w-4xl p-4">
-    <PageHeader :title="$t('confirmable.page.settings_title')">
-      <p class="text-sm text-surface-500">{{ $t('confirmable.page.settings_subtitle') }}</p>
-    </PageHeader>
+    <PageHeader :title="$t('confirmable.page.settings_title')" />
+    <p class="-mt-3 mb-5 text-sm text-surface-500">
+      {{ $t('confirmable.page.settings_subtitle') }}
+    </p>
     <ConfirmableCirculationGuide current-feature="quickConfirm" :target-path="circulationPath" />
 
     <!-- 日常操作を先に、低頻度の設定を最後に表示する。 -->
