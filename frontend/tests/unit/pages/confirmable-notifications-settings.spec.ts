@@ -89,7 +89,9 @@ describe('クイック確認ページへの日常導線（サイドバー）', (
     const quickConfirm = wrapper.get('a[href="/teams/team-1/settings/confirmable-notifications"]')
     expect(circulation.element.parentElement).toBe(quickConfirm.element.parentElement)
     const links = [...circulation.element.parentElement!.querySelectorAll('a')]
-    expect(links.indexOf(quickConfirm.element)).toBe(links.indexOf(circulation.element) + 1)
+    expect(links.indexOf(quickConfirm.element as HTMLAnchorElement)).toBe(
+      links.indexOf(circulation.element as HTMLAnchorElement) + 1,
+    )
   })
 
   it('CN-SIDEBAR-002: OrganizationSidebar で回覧板の直後から到達できる（DEPUTY_ADMIN）', async () => {
@@ -100,7 +102,9 @@ describe('クイック確認ページへの日常導線（サイドバー）', (
     const quickConfirm = wrapper.get('a[href="/organizations/org-1/settings/confirmable-notifications"]')
     expect(circulation.element.parentElement).toBe(quickConfirm.element.parentElement)
     const links = [...circulation.element.parentElement!.querySelectorAll('a')]
-    expect(links.indexOf(quickConfirm.element)).toBe(links.indexOf(circulation.element) + 1)
+    expect(links.indexOf(quickConfirm.element as HTMLAnchorElement)).toBe(
+      links.indexOf(circulation.element as HTMLAnchorElement) + 1,
+    )
   })
 
   it('CN-SIDEBAR-003: MEMBER には TeamSidebar から表示されない', async () => {
