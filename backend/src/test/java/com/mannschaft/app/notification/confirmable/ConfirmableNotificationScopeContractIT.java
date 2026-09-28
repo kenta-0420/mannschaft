@@ -4,9 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTemplateEntity;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse;
+import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationTemplateRepository;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -27,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -34,6 +39,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 認可根治戦役 Wave3 バッチB12-notification — notification/confirmable（F04.9 確認通知）
@@ -86,6 +92,12 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
 
     @Autowired
     private ConfirmableNotificationTemplateRepository templateRepository;
+
+    @Autowired
+    private ConfirmableNotificationService notificationService;
+
+    @Autowired
+    private ConfirmableNotificationMapper notificationMapper;
 
     @PersistenceContext
     private EntityManager em;
@@ -239,6 +251,59 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
     // ═════════════════════════════════════════════════════════════════════
     // 組織スコープ（OrgConfirmableNotificationController）
     // ═════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("永続化コンテキスト終了後も本人の未確認通知を表示名付きで変換できる")
+    void listPendingFetchesUserBeforeMappingOutsidePersistenceContext() {
+        Long ownPendingId = insertRecipient(teamNotifAId, teamMemberAId, false, false);
+        insertRecipient(teamNotifAId, teamOutsiderId, false, false);
+        Long confirmedNotificationId = insertTeamNotification("CNAUTHZ 確認済み境界テスト");
+        insertRecipient(confirmedNotificationId, teamMemberAId, true, false);
+        Long excludedNotificationId = insertTeamNotification("CNAUTHZ 除外済み境界テスト");
+        insertRecipient(excludedNotificationId, teamMemberAId, false, true);
+        em.flush();
+        em.clear();
+        String expectedDisplayName = (String) em.createNativeQuery(
+                        "SELECT display_name FROM users WHERE id = :userId")
+                .setParameter("userId", teamMemberAId)
+                .getSingleResult();
+        em.clear();
+
+        List<ConfirmableNotificationRecipientEntity> pending = notificationService.listPending(teamMemberAId);
+
+        // service transaction 終了後に controller へ返るときと同じ、detach 済み境界を作る。
+        em.clear();
+        List<ConfirmableNotificationRecipientResponse> responses =
+                notificationMapper.toRecipientResponseList(pending);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).getId()).isEqualTo(ownPendingId);
+        assertThat(responses.get(0).getUserId()).isEqualTo(teamMemberAId);
+        assertThat(responses.get(0).getDisplayName()).isEqualTo(expectedDisplayName);
+    }
+
+    private Long insertTeamNotification(String title) {
+        return notificationRepository.save(ConfirmableNotificationEntity.builder()
+                        .scopeType(ScopeType.TEAM)
+                        .scopeId(teamAId)
+                        .title(title)
+                        .priority(ConfirmableNotificationPriority.NORMAL)
+                        .totalRecipientCount(1)
+                        .build())
+                .getId();
+    }
+
+    private Long insertRecipient(Long notificationId, Long userId, boolean confirmed, boolean excluded) {
+        ConfirmableNotificationRecipientEntity recipient = ConfirmableNotificationRecipientEntity.builder()
+                .confirmableNotification(em.getReference(ConfirmableNotificationEntity.class, notificationId))
+                .user(em.getReference(com.mannschaft.app.auth.entity.UserEntity.class, userId))
+                .confirmToken(UUID.randomUUID().toString())
+                .isConfirmed(confirmed)
+                .excludedAt(excluded ? java.time.LocalDateTime.now() : null)
+                .build();
+        em.persist(recipient);
+        return recipient.getId();
+    }
 
     @Nested
     @DisplayName("組織スコープ 1. POST .../confirmable-notifications（送信: checkAdminOrAbove）")

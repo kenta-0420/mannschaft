@@ -38,6 +38,7 @@ public interface ConfirmableNotificationRecipientRepository
      * @param userId 対象ユーザーID
      * @return 未確認受信者リスト（作成日時降順）
      */
+    @EntityGraph(attributePaths = "user")
     List<ConfirmableNotificationRecipientEntity> findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull(Long userId);
 
     /**
