@@ -60,7 +60,8 @@ public class RecruitmentPenaltyLiftBatch {
 
         for (RecruitmentUserPenaltyEntity penalty : expired) {
             eventPublisher.publishEvent(new RecruitmentPenaltyLiftedNotificationEvent(
-                    penalty.getId(), penalty.getUserId(), penalty.getScopeType(), penalty.getScopeId()));
+                    penalty.getId(), penalty.getUserId(), penalty.getScopeType(), penalty.getScopeId(),
+                    PenaltyLiftReason.AUTO_EXPIRED));
         }
 
         log.info("F03.11 Phase5b ペナルティ自動解除バッチ: lifted={}件", lifted);

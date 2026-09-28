@@ -6,6 +6,7 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentPenaltyLiftedNotificationEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentPenaltySettingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +60,7 @@ public class RecruitmentPenaltyRecomputeBatch {
     private final RecruitmentUserPenaltyRepository penaltyRepository;
     private final RecruitmentPenaltySettingRepository settingRepository;
     private final RecruitmentNoShowRecordRepository noShowRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 毎日 04:00 JST (= 19:00 UTC) に実行。
@@ -115,6 +118,11 @@ public class RecruitmentPenaltyRecomputeBatch {
 
             if (!toSave.isEmpty()) {
                 penaltyRepository.saveAll(toSave);
+                for (RecruitmentUserPenaltyEntity penalty : toSave) {
+                    eventPublisher.publishEvent(new RecruitmentPenaltyLiftedNotificationEvent(
+                            penalty.getId(), penalty.getUserId(), penalty.getScopeType(), penalty.getScopeId(),
+                            PenaltyLiftReason.DISPUTE_REVOKED));
+                }
             }
 
             // カーソルを直前チャンクの最終 id まで前進させる（キーセットページング）
