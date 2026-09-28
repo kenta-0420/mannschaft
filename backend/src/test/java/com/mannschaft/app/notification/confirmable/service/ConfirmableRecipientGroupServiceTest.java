@@ -91,6 +91,31 @@ class ConfirmableRecipientGroupServiceTest extends AbstractMySqlIntegrationTest 
     }
 
     @Test
+    @DisplayName("AC-31: 同じ宛先を残した名称変更が一意制約違反にならない")
+    void ac31_同じ宛先のまま名称を更新できる() {
+        long orgId = createOrg();
+        ConfirmableTargetSpec target = new ConfirmableTargetSpec(
+                ConfirmableTargetType.ORGANIZATION, orgId);
+        ConfirmableRecipientGroupResponse created = service.create(
+                ScopeType.ORGANIZATION,
+                orgId,
+                1L,
+                buildRequest("更新前-" + System.nanoTime(), List.of(target)));
+
+        ConfirmableRecipientGroupResponse updated = service.update(
+                ScopeType.ORGANIZATION,
+                orgId,
+                created.getId(),
+                buildRequest("更新後-" + System.nanoTime(), List.of(target)));
+
+        assertThat(updated.getName()).startsWith("更新後-");
+        assertThat(updated.getTargets())
+                .extracting(ConfirmableTargetSpec::getType, ConfirmableTargetSpec::getId)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(
+                        ConfirmableTargetType.ORGANIZATION, orgId));
+    }
+
+    @Test
     @DisplayName("AC-31: 同じスコープで名前が重複すると409 GROUP_NAME_DUPLICATEになる")
     void ac31_同名グループは409になる() {
         long orgId = createOrg();

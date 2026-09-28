@@ -59,10 +59,23 @@ test('管理者が宛先グループを画面で作成し、送信前の見込�
     groupCollectionUrl = response.url()
     await expect(page.getByText(groupName, { exact: true })).toBeVisible()
 
+    const editedGroupName = `${groupName}_edited`
+    const groupRow = page.getByRole('row').filter({ hasText: groupName })
+    await groupRow.getByRole('button').first().click()
+    await page.getByTestId('recipient-group-name').fill(editedGroupName)
+    const updatedResponse = page.waitForResponse(candidate =>
+      candidate.request().method() === 'PUT'
+      && new URL(candidate.url()).pathname === `${new URL(groupCollectionUrl).pathname}/${groupId}`,
+    )
+    await page.getByTestId('recipient-group-save').click()
+    const update = await updatedResponse
+    expect(update.status(), `宛先グループ更新: ${await update.text()}`).toBe(200)
+    await expect(page.getByText(editedGroupName, { exact: true })).toBeVisible()
+
     await page.getByTestId('sender-audience-mode-select').click()
     await page.getByRole('option', { name: '保存済みグループ', exact: true }).click()
     await page.getByTestId('sender-group-select').click()
-    await page.getByRole('option', { name: groupName, exact: true }).click()
+    await page.getByRole('option', { name: editedGroupName, exact: true }).click()
 
     await expect(page.getByText(/見込み受信者: [1-9]\d*人/)).toBeVisible({ timeout: 30_000 })
   } finally {
@@ -71,6 +84,12 @@ test('管理者が宛先グループを画面で作成し、送信前の見込�
       expect(deleted.status(), `宛先グループ ${groupId} の後始末`).toBeLessThan(300)
     }
   }
+})
+
+test('一般メンバーは自分の未確認通知一覧を取得できる', async ({ page }) => {
+  await loginForRealDevice(page, MEMBER)
+  const response = await page.request.get(`${API_BASE}/api/v1/me/confirmable-notifications/pending`)
+  expect(response.status(), `pending API: ${await response.text()}`).toBe(200)
 })
 
 for (const [label, email] of [['一般メンバー', MEMBER], ['他テナント利用者', OUTSIDER]] as const) {

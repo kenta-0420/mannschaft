@@ -90,6 +90,9 @@ public class ConfirmableRecipientGroupService {
 
         group.rename(request.getName());
         groupTargetRepository.deleteByGroupId(groupId);
+        // 同じターゲットを残したまま名称だけ変更する場合でも、一意制約に触れないよう
+        // 既存行の DELETE を新規行の INSERT より先に確定させる。
+        groupTargetRepository.flush();
         saveTargets(groupId, request.getTargets());
         return toResponse(group, request.getTargets());
     }
