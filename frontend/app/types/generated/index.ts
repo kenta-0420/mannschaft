@@ -65001,6 +65001,8 @@ export interface components {
             createdAt?: string;
             /** Format: int64 */
             id?: number;
+            /** @description 本人の確認通知受信者状態。対象外はnull */
+            isConfirmed?: boolean | null;
             isRead?: boolean;
             notificationType?: string;
             priority?: string;
