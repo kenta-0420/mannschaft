@@ -485,13 +485,13 @@
     }
   },
   "confirmable": {
-    "title": "Bestätigungsbenachrichtigung",
+    "title": "Schnellbestätigung",
     "page": {
-      "settings_title": "Einstellungen für Bestätigungsbenachrichtigungen",
-      "settings_subtitle": "Verwalten Sie Einstellungen, Versand und Verlauf von Bestätigungsbenachrichtigungen"
+      "settings_title": "Schnellbestätigung",
+      "settings_subtitle": "Kurze Nachricht senden und Bestätigungen sowie offene Empfänger schnell überblicken"
     },
-    "settings": "Einstellungen für Bestätigungsbenachrichtigungen",
-    "send": "Bestätigungsbenachrichtigung senden",
+    "settings": "Einstellungen für Schnellbestätigung",
+    "send": "Schnellbestätigung senden",
     "history": "Sendungsverlauf",
     "recipients": "Empfängerliste",
     "status": {
@@ -543,7 +543,18 @@
       "ALL_MEMBERS": "Fuer alle Mitglieder"
     },
     "unconfirmed_count": "Nicht bestaetigt: {count}",
-    "unconfirmed_list": "Nicht bestaetigte Empfaenger"
+    "unconfirmed_list": "Nicht bestaetigte Empfaenger",
+    "guide": {
+      "quickConfirm": {
+        "description": "Für kurze Nachrichten und Empfangsbestätigungen. Für Dokumente mit Stempel oder Umlaufreihenfolge den Umlauf verwenden.",
+        "link": "Umlauf öffnen"
+      },
+      "circulation": {
+        "title": "Umlauf",
+        "description": "Für Dokumente mit Stempel oder Umlaufreihenfolge. Für eine kurze Nachricht mit Bestätigung die Schnellbestätigung verwenden.",
+        "link": "Schnellbestätigung öffnen"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "Video wird verarbeitet...",
@@ -929,10 +940,10 @@
         }
       },
       "confirm": {
-        "title": "確認通知",
+        "title": "Schnellbestätigung",
         "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step1": "Schnellbestätigung（背景色が付いた通知）の内容を読みます",
           "step2": "「確認する」ボタンを押して確認済みにします",
           "step3": "確認後は「確認済み」ラベルに変わります"
         }

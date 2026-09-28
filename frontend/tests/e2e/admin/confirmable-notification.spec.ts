@@ -79,7 +79,7 @@ test.describe('ADMIN-018〜021: 確認通知システム', () => {
     await waitForHydration(page)
 
     // ページタイトルが表示される
-    await expect(page.getByRole('heading', { name: '確認通知設定' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'クイック確認' })).toBeVisible({
       timeout: 10_000,
     })
   })

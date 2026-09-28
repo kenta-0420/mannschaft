@@ -15,6 +15,8 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const scopeStore = useScopeStore()
 const scopeId = computed(() => scopeStore.current.id ?? '')
+const route = useRoute()
+const circulationPath = computed(() => `/teams/${String(route.params.slug)}/circulation`)
 
 const historyRef = ref<{ refresh: () => void } | null>(null)
 function onNotificationSent() {
@@ -27,19 +29,11 @@ function onNotificationSent() {
     <PageHeader :title="$t('confirmable.page.settings_title')">
       <p class="text-sm text-surface-500">{{ $t('confirmable.page.settings_subtitle') }}</p>
     </PageHeader>
+    <ConfirmableCirculationGuide current-feature="quickConfirm" :target-path="circulationPath" />
 
-    <!-- 確認通知設定セクション -->
+    <!-- 日常操作を先に、低頻度の設定を最後に表示する。 -->
     <section class="mt-8">
-      <h2 class="text-lg font-semibold mb-4">{{ $t('confirmable.settings') }}</h2>
-      <ConfirmableNotificationSettings
-        scope-type="TEAM"
-        :scope-id="scopeId"
-      />
-    </section>
-
-    <!-- 確認通知送信セクション -->
-    <section class="mt-8">
-      <h2 class="text-lg font-semibold mb-4">{{ $t('confirmable.send') }}</h2>
+      <h2 class="mb-4 text-lg font-semibold">{{ $t('confirmable.send') }}</h2>
       <ConfirmableNotificationSender
         scope-type="TEAM"
         :scope-id="scopeId"
@@ -47,11 +41,18 @@ function onNotificationSent() {
       />
     </section>
 
-    <!-- 発信履歴セクション -->
     <section class="mt-8">
-      <h2 class="text-lg font-semibold mb-4">{{ $t('confirmable.history') }}</h2>
+      <h2 class="mb-4 text-lg font-semibold">{{ $t('confirmable.history') }}</h2>
       <ConfirmableNotificationHistory
         ref="historyRef"
+        scope-type="TEAM"
+        :scope-id="scopeId"
+      />
+    </section>
+
+    <section class="mt-8">
+      <h2 class="mb-4 text-lg font-semibold">{{ $t('confirmable.settings') }}</h2>
+      <ConfirmableNotificationSettings
         scope-type="TEAM"
         :scope-id="scopeId"
       />

@@ -250,8 +250,8 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await page.goto(`/teams/${TEAM_ID}/settings/confirmable-notifications`)
     await waitForHydration(page)
 
-    // 「確認通知を送信」セクション見出しを確認
-    await expect(page.getByRole('heading', { name: '確認通知を送信', level: 2 })).toBeVisible({
+    // 「クイック確認を送る」セクション見出しを確認
+    await expect(page.getByRole('heading', { name: 'クイック確認を送る', level: 2 })).toBeVisible({
       timeout: 10_000,
     })
 
@@ -369,8 +369,8 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await page.goto(`/teams/${TEAM_ID}/settings/confirmable-notifications`)
     await waitForHydration(page)
 
-    // 「確認通知を送信」セクション見出しを確認
-    await expect(page.getByRole('heading', { name: '確認通知を送信', level: 2 })).toBeVisible({
+    // 「クイック確認を送る」セクション見出しを確認
+    await expect(page.getByRole('heading', { name: 'クイック確認を送る', level: 2 })).toBeVisible({
       timeout: 10_000,
     })
 
@@ -500,8 +500,8 @@ test.describe('VISIBILITY-001〜004: 未確認者一覧の可視化（F04.9 §13
     await page.goto(`/teams/${TEAM_ID}/settings/confirmable-notifications`)
     await waitForHydration(page)
 
-    // 「確認通知を送信」セクション見出しを確認
-    await expect(page.getByRole('heading', { name: '確認通知を送信', level: 2 })).toBeVisible({
+    // 「クイック確認を送る」セクション見出しを確認
+    await expect(page.getByRole('heading', { name: 'クイック確認を送る', level: 2 })).toBeVisible({
       timeout: 10_000,
     })
 
