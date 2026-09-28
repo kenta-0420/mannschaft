@@ -817,7 +817,8 @@ records:
       route_keywords: ["recruit"]
     blockers:
       - "β公開前に FEATURE_RECRUITMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
-    notes: null
+      - "Issue #3503: F03.11 §5.12の管理者手動ペナルティ解除で、権限カタログ、150文字以上のnotes保存、監査、24時間制限、3回反復の濫用検知が未実装。SYSTEM_ADMIN／DEPUTY_ADMINの許可範囲は同節内に差異があり、実装前に解釈判断が必要。Issue #3502の通知TODOとは別件。"
+    notes: "手動ペナルティ解除の通知TODO（Issue #3502）は未実装。Wave 16のRECRUITMENT_PENALTY_APPLIED通知はコード修正済みだが、CI・実機E2E・3住民アリシゼーションの最終検証中。"
 
   - feature_key: succession-proxy
     name: 事業承継・代理投票
