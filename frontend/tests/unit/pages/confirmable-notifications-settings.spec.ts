@@ -57,6 +57,20 @@ const currentScope = ref<{ type: 'personal' | 'team' | 'organization', id: strin
 vi.mock('~/stores/useScopeStore', () => ({
   useScopeStore: () => ({
     current: currentScope.value,
+    loadFromStorage: vi.fn(),
+  }),
+}))
+
+const teamNumericId = ref(123)
+const getTeam = vi.fn(async () => ({ data: { numericId: teamNumericId.value } }))
+vi.mock('~/composables/useTeamApi', () => ({
+  useTeamApi: () => ({ getTeam }),
+}))
+
+const orgNumericId = ref(456)
+vi.mock('~/composables/useOrgShellContext', () => ({
+  useOrgShellContext: () => ({
+    org: computed(() => ({ numericId: orgNumericId.value })),
   }),
 }))
 
@@ -146,17 +160,21 @@ const HistoryStub = defineComponent({
 describe('クイック確認ページ: props の受け渡し', () => {
   beforeEach(() => {
     currentScope.value = { type: 'personal', id: null, name: '個人' }
+    teamNumericId.value = 123
+    orgNumericId.value = 456
   })
 
   it('CN-PAGE-001: TEAM スコープでは scope-type=TEAM・scope-id=現在の team id が渡る', async () => {
-    currentScope.value = { type: 'team', id: '123', name: 'テストチーム' }
-
     const wrapper = await mountSuspended(TeamConfirmableNotificationsPage, {
+      route: '/teams/team-123/settings/confirmable-notifications',
       global: {
         stubs: {
           ConfirmableNotificationSettings: SettingsStub,
           ConfirmableNotificationSender: SenderStub,
           ConfirmableNotificationHistory: HistoryStub,
+          ConfirmableRecipientGroupManager: true,
+          ConfirmableTemplateManager: true,
+          ConfirmableCirculationGuide: true,
         },
       },
     })
@@ -176,14 +194,16 @@ describe('クイック確認ページ: props の受け渡し', () => {
   })
 
   it('CN-PAGE-002: ORGANIZATION スコープでは scope-type=ORGANIZATION・scope-id=現在の org id が渡る', async () => {
-    currentScope.value = { type: 'organization', id: '456', name: 'テスト組織' }
-
     const wrapper = await mountSuspended(OrgConfirmableNotificationsPage, {
+      route: '/organizations/org-456/settings/confirmable-notifications',
       global: {
         stubs: {
           ConfirmableNotificationSettings: SettingsStub,
           ConfirmableNotificationSender: SenderStub,
           ConfirmableNotificationHistory: HistoryStub,
+          ConfirmableRecipientGroupManager: true,
+          ConfirmableTemplateManager: true,
+          ConfirmableCirculationGuide: true,
         },
       },
     })

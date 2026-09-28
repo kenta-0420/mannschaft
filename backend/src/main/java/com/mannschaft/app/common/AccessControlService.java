@@ -445,11 +445,21 @@ public class AccessControlService {
     }
 
     /**
-     * ユーザーがADMINかどうかを返す。
+     * ユーザーが指定スコープの ADMIN かどうかを返す。
+     *
+     * <p>{@link #getRoleName} は SYSTEM_ADMIN を最強ロールとして返すため、SYSTEM_ADMIN と
+     * スコープ ADMIN を併有する利用者を厳密一致で判定すると ADMIN 資格を取りこぼす。
+     * ADMIN 判定ではプラットフォームロールを混ぜず、指定スコープの割当を直接確認する。</p>
      */
     public boolean isAdmin(Long userId, Long scopeId, String scopeType) {
-        String roleName = getRoleName(userId, scopeId, scopeType);
-        return "ADMIN".equals(roleName);
+        if (!userRoleRepository.isActiveUser(userId)) {
+            return false;
+        }
+        return findUserRole(userId, scopeId, scopeType)
+                .flatMap(userRole -> roleRepository.findById(userRole.getRoleId()))
+                .map(RoleEntity::getName)
+                .filter("ADMIN"::equals)
+                .isPresent();
     }
 
     /**

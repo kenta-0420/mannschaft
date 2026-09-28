@@ -306,6 +306,14 @@
     "COMMON_002": "您没有执行此操作的权限",
     "COMMON_003": "已被其他用户更新，请刷新页面",
     "COMMON_999": "发生系统错误",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "请至少选择一个接收目标",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "不能同时选择单独目标和已保存群组",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "所选目标包含发送范围之外的组织或团队",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "找不到接收者群组，或该群组已被删除",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "所选目标中没有符合条件的接收者",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "已存在同名的接收者群组",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "通知额度不足",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "请将确认截止时间设置为将来时间",
     "AUTH_001": "邮箱或密码不正确",
     "AUTH_002": "邮箱尚未验证",
     "AUTH_003": "账户已被锁定，请在30分钟后重试",
@@ -485,13 +493,36 @@
     }
   },
   "confirmable": {
+    "delivery_stopped": "发送已停止",
+    "templates": "模板管理",
+    "template_name": "模板名称",
+    "default_recipient_group": "默认收件人群组",
+    "deleted_group_fallback": "群组删除后将选择范围内所有成员。",
+    "audience_mode": {
+      "DEFAULT": "范围内所有成员",
+      "TARGETS": "选择组织和团队",
+      "GROUP": "已保存的群组"
+    },
+    "select_group": "选择群组",
+    "search_targets": "搜索已加载的组织和团队",
+    "open_children": "显示下级",
+    "load_more_targets": "加载更多",
+    "previous_targets": "上一页",
+    "next_targets": "下一页",
+    "no_targets": "没有候选目标",
+    "selected_targets": "已选择：{count}",
+    "targets_required": "请选择收件人",
+    "preview_loading": "正在检查收件人数",
+    "preview_count": "预计收件人：{count}",
+    "preview_required": "请检查收件人数",
+    "delivered_count": "已送达：{count}",
     "title": "快速确认",
     "page": {
-      "settings_title": "快速确认",
-      "settings_subtitle": "发送简短消息，快速掌握确认情况和未确认人员"
+      "settings_title": "确认通知设置",
+      "settings_subtitle": "管理确认通知的设置、发送与发送历史"
     },
-    "settings": "快速确认设置",
-    "send": "发送快速确认",
+    "settings": "确认通知设置",
+    "send": "发送确认通知",
     "history": "发送历史",
     "recipients": "接收者列表",
     "status": {
@@ -544,6 +575,38 @@
     },
     "unconfirmed_count": "未确认: {count}名",
     "unconfirmed_list": "未确认者列表",
+    "recipient_groups": "收件人群组",
+    "recipient_groups_help": "将组织或团队保存为通知收件人。",
+    "group_name": "群组名称",
+    "targets": "目标",
+    "target_id": "目标 ID",
+    "target_type": { "ORGANIZATION": "组织", "TEAM": "团队" },
+    "template": "模板",
+    "audience": "收件人",
+    "current_scope": "当前组织或团队",
+    "current_scope_help": "发送给当前范围内的活跃成员。",
+    "group_audience_help": "发送给已保存的收件人群组。",
+    "message_title": "标题",
+    "message_body": "正文",
+    "priority_label": "优先级",
+    "accepted": "已接受发送",
+    "accepted_count": "已接受发送（预计收件人：{count}）",
+    "recipient": "收件人",
+    "withdrawn": "已退出",
+    "withdrawn_user": "已退出用户",
+    "unknown_recipient": "未知收件人",
+    "unconfirmed": "未确认",
+    "unconfirmed_only": "仅未确认",
+    "delivery_status": {
+      "QUEUED": "等待发送",
+      "DELIVERING": "发送中",
+      "DELIVERED": "已送达",
+      "PARTIALLY_FAILED": "部分失败"
+    },
+    "help": {
+      "title": "确认通知使用方法",
+      "body": "选择收件人群组或当前范围。发送将异步进行，可在历史记录中查看。"
+    },
     "guide": {
       "quickConfirm": {
         "description": "用于收集简短消息的确认。如需文件盖章或按顺序传阅，请使用传阅板。",
@@ -940,10 +1003,10 @@
         }
       },
       "confirm": {
-        "title": "快速确认",
+        "title": "確認通知",
         "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
         "steps": {
-          "step1": "快速确认（背景色が付いた通知）の内容を読みます",
+          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
           "step2": "「確認する」ボタンを押して確認済みにします",
           "step3": "確認後は「確認済み」ラベルに変わります"
         }

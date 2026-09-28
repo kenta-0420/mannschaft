@@ -28,8 +28,14 @@ import java.util.stream.Collectors;
 /**
  * F04.9 確認通知の確認・キャンセル・リマインド再送を担当するサービス。
  *
- * <p>ファサード {@link ConfirmableNotificationService} から委譲される確認系処理を実装する。
- * ロジック・例外条件・イベント発行は分割前の {@code ConfirmableNotificationService} と同一。</p>
+ * <p>ファサード {@link ConfirmableNotificationService} から委譲される確認系処理を実装する。</p>
+ *
+ * <p><b>CMP-260920-1040（軍議第8版確定稿 §8.2・§9.2・§9.3・§10・§11.1）</b>: 親行を扱うすべての操作は、
+ * そのトランザクションで最初に親を読む操作を {@code findByIdForUpdate} にする（ロック順序は
+ * 「親の行 → 受信者の行」）。完了判定は受信者を全件読み込む COUNT/List 走査ではなく、ロックした
+ * 親行の {@code unconfirmedCount} カウンタだけで行う（confirm 1回あたりのクエリ数が受信者数に
+ * 比例しないようにする・AC-42）。confirm と confirmByToken は本質的に同じ判定ロジックを共有する
+ * （private {@link #doConfirm} に集約・§9.3）。</p>
  */
 @Slf4j
 @Service
@@ -50,43 +56,22 @@ public class ConfirmableNotificationConfirmService {
      */
     @Transactional
     public void confirm(Long notificationId, Long userId) {
-        // 通知の存在チェック
-        ConfirmableNotificationEntity notification = notificationRepository.findById(notificationId)
+        // §11.1: このトランザクションで最初に親を読む操作を findByIdForUpdate にする。
+        ConfirmableNotificationEntity notification = notificationRepository.findByIdForUpdate(notificationId)
                 .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND));
 
-        // ACTIVE 状態チェック（キャンセル・期限切れ・完了済みは確認不可）
         if (!notification.isActive()) {
             throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
         }
 
-        // 受信者レコードの取得
-        List<ConfirmableNotificationRecipientEntity> allRecipients =
-                recipientRepository.findByConfirmableNotificationId(notificationId);
-        ConfirmableNotificationRecipientEntity recipient = allRecipients.stream()
-                .filter(r -> r.getUser().getId().equals(userId))
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_NOT_FOUND));
+        ConfirmableNotificationRecipientEntity recipient =
+                recipientRepository.findByNotificationIdAndUserIdForUpdate(notificationId, userId)
+                        .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_NOT_FOUND));
 
-        // 除外済みチェック
-        if (recipient.isExcluded()) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_NOT_FOUND);
-        }
-
-        // 二重確認チェック
-        if (Boolean.TRUE.equals(recipient.getIsConfirmed())) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CONFIRMED);
-        }
-
-        // アプリ内確認として記録
-        recipient.confirm(ConfirmedVia.APP);
-        recipientRepository.save(recipient);
+        doConfirm(notification, recipient, ConfirmedVia.APP);
 
         log.info("確認通知確認（APP）: notificationId={}, userId={}", notificationId, userId);
 
-        // 全受信者（除外者を除く）が確認済みになった場合は通知を完了状態にする
-        checkAndCompleteIfAllConfirmed(notification, allRecipients, recipient);
-
-        // ConfirmableNotificationConfirmedEvent を発行（AFTER_COMMIT でリスナーが受け取る）
         eventPublisher.publishEvent(new ConfirmableNotificationConfirmedEvent(
                 notificationId, userId, recipient.getConfirmedAt()));
     }
@@ -94,45 +79,44 @@ public class ConfirmableNotificationConfirmService {
     /**
      * トークンURL経由で確認通知を確認する（認証不要）。
      *
+     * <p>軍議第8版確定稿 §10.1 confirmByToken の手順:
+     * <ol>
+     *   <li>トークンから notification_id を引く（不変列のみ・通常の SELECT でよい）</li>
+     *   <li>親の行を FOR UPDATE でロックする</li>
+     *   <li>受信者の行をトークンで FOR UPDATE して読み直す</li>
+     *   <li>確認済みにし、カウンタを減らす</li>
+     *   <li>完了を判定する</li>
+     * </ol>
+     * ロック順序は「親の行 → 受信者の行」で §9.2 の規約と揃える。</p>
+     *
      * @param confirmToken 確認トークン（UUID文字列）
      */
     @Transactional
     public void confirmByToken(String confirmToken) {
-        // トークンで受信者を検索
-        ConfirmableNotificationRecipientEntity recipient =
+        // 手順1: トークンから notification_id を引く（不変列のみ）。
+        ConfirmableNotificationRecipientEntity unlockedRecipient =
                 recipientRepository.findByConfirmToken(confirmToken)
                         .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.INVALID_TOKEN));
+        Long notificationId = unlockedRecipient.getConfirmableNotification().getId();
 
-        // 除外済みチェック
-        if (recipient.isExcluded()) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.INVALID_TOKEN);
-        }
+        // 手順2: 親の行を FOR UPDATE でロックする。
+        ConfirmableNotificationEntity notification = notificationRepository.findByIdForUpdate(notificationId)
+                .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND));
 
-        // 二重確認チェック
-        if (Boolean.TRUE.equals(recipient.getIsConfirmed())) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CONFIRMED);
-        }
-
-        ConfirmableNotificationEntity notification = recipient.getConfirmableNotification();
-
-        // ACTIVE 状態チェック
         if (!notification.isActive()) {
             throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
         }
 
-        // トークン経由での確認として記録
-        recipient.confirm(ConfirmedVia.TOKEN);
-        recipientRepository.save(recipient);
+        // 手順3: 受信者の行をトークンで FOR UPDATE して読み直す（ロック取得前の読み取りは使い回さない）。
+        ConfirmableNotificationRecipientEntity recipient =
+                recipientRepository.findByConfirmTokenForUpdate(confirmToken)
+                        .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.INVALID_TOKEN));
+
+        doConfirm(notification, recipient, ConfirmedVia.TOKEN);
 
         log.info("確認通知確認（TOKEN）: notificationId={}, userId={}",
                 notification.getId(), recipient.getUser().getId());
 
-        // 全受信者確認済み判定
-        List<ConfirmableNotificationRecipientEntity> allRecipients =
-                recipientRepository.findByConfirmableNotificationId(notification.getId());
-        checkAndCompleteIfAllConfirmed(notification, allRecipients, recipient);
-
-        // イベント発行
         eventPublisher.publishEvent(new ConfirmableNotificationConfirmedEvent(
                 notification.getId(),
                 recipient.getUser().getId(),
@@ -140,22 +124,51 @@ public class ConfirmableNotificationConfirmService {
     }
 
     /**
+     * confirm / confirmByToken 共通の確認処理（§9.3）。
+     *
+     * <p>手順4〜5に相当: 除外・二重確認チェック → 確認記録 → unconfirmed_count 減算 →
+     * 配信中（delivery_status != DELIVERED）は完了判定を保留する（§8.2）。</p>
+     */
+    private void doConfirm(ConfirmableNotificationEntity notification,
+            ConfirmableNotificationRecipientEntity recipient, ConfirmedVia via) {
+        if (recipient.isExcluded()) {
+            throw new BusinessException(via == ConfirmedVia.TOKEN
+                    ? ConfirmableNotificationErrorCode.INVALID_TOKEN
+                    : ConfirmableNotificationErrorCode.RECIPIENT_NOT_FOUND);
+        }
+        if (Boolean.TRUE.equals(recipient.getIsConfirmed())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CONFIRMED);
+        }
+
+        recipient.confirm(via);
+        recipientRepository.save(recipient);
+
+        // §10.1: カウンタはロックした親行に対してのみ更新する。
+        notification.decrementUnconfirmedCount();
+
+        // §8.2: 配信が終わる（DELIVERED）まで完了判定を保留する。
+        if (notification.isReadyToComplete()) {
+            notification.complete();
+            log.info("確認通知完了（全員確認）: notificationId={}", notification.getId());
+        }
+        notificationRepository.save(notification);
+    }
+
+    /**
      * 確認通知をキャンセルする（ADMIN操作）。
+     *
+     * <p>§10.2: 親の行を FOR UPDATE でロックしてから status を読み直し、ACTIVE のときだけ遷移させる
+     * （§9.2 の finish 等と同じロック順序に統一。AC-45・AC-64・AC-66）。</p>
      *
      * @param notificationId    確認通知ID
      * @param cancelledByUserId キャンセル実行者のユーザーID
      */
     @Transactional
     public void cancel(Long notificationId, Long cancelledByUserId) {
-        ConfirmableNotificationEntity notification = notificationRepository.findById(notificationId)
+        ConfirmableNotificationEntity notification = notificationRepository.findByIdForUpdate(notificationId)
                 .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND));
 
-        // 既にキャンセル済みの場合はエラー
-        if (notification.getStatus() == ConfirmableNotificationStatus.CANCELLED) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
-        }
-
-        // ACTIVE 以外（COMPLETED / EXPIRED）もキャンセル不可
+        // ロック取得後に再判定する。ACTIVE 以外（CANCELLED / COMPLETED / EXPIRED）はすべて拒否。
         if (!notification.isActive()) {
             throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
         }
@@ -214,36 +227,6 @@ public class ConfirmableNotificationConfirmService {
                 null);
 
         log.info("手動リマインド再送: notificationId={}, targetCount={}", notificationId, targetUserIds.size());
-    }
-
-    /**
-     * 全受信者（除外者を除く）が確認済みの場合は通知を完了状態にする。
-     *
-     * @param notification   対象確認通知
-     * @param allRecipients  全受信者リスト
-     * @param justConfirmed  今回確認された受信者（already-confirmed 状態に反映済み）
-     */
-    private void checkAndCompleteIfAllConfirmed(
-            ConfirmableNotificationEntity notification,
-            List<ConfirmableNotificationRecipientEntity> allRecipients,
-            ConfirmableNotificationRecipientEntity justConfirmed) {
-
-        // 除外者を除いた受信者の中に未確認者が残っていないか確認
-        boolean allConfirmed = allRecipients.stream()
-                .filter(r -> !r.isExcluded())
-                .allMatch(r -> {
-                    // 今回確認されたレシピエントは確認済みとして扱う（save前でも）
-                    if (r.getId().equals(justConfirmed.getId())) {
-                        return true;
-                    }
-                    return Boolean.TRUE.equals(r.getIsConfirmed());
-                });
-
-        if (allConfirmed) {
-            notification.complete();
-            notificationRepository.save(notification);
-            log.info("確認通知完了（全員確認）: notificationId={}", notification.getId());
-        }
     }
 
     /**

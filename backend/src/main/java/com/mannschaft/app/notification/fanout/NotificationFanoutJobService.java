@@ -5,6 +5,7 @@ import java.util.Map;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -73,13 +75,20 @@ public class NotificationFanoutJobService {
     private final ObjectProvider<MeterRegistry> meterRegistryProvider;
     /** 自動シャード数算出のため scope_type から受信者ソース（{@code countRecipients}）を引くレジストリ（CMP-001⑤）。 */
     private final FanoutRecipientSourceRegistry recipientSourceRegistry;
+    /**
+     * CMP-260920-1040是正: 新規追加メソッドは引数なし {@code LocalDateTime.now()} を使わず、
+     * 注入した {@link Clock} を明示的に渡す（docs/architecture/datetime_policy_utc_instant_vs_wallclock.md）。
+     * 既存メソッド群の引数なし {@code now()} は凍結台帳の対象のため、本是正では触れない。
+     */
+    private final Clock clock;
 
     public NotificationFanoutJobService(NotificationFanoutJobRepository jobRepository,
                                         NotificationFanoutJobMessageRepository jobMessageRepository,
                                         FanoutMessageRenderer messageRenderer,
                                         PlatformTransactionManager transactionManager,
                                         ObjectProvider<MeterRegistry> meterRegistryProvider,
-                                        FanoutRecipientSourceRegistry recipientSourceRegistry) {
+                                        FanoutRecipientSourceRegistry recipientSourceRegistry,
+                                        @Qualifier("wallClock") Clock clock) {
         this.jobRepository = jobRepository;
         this.jobMessageRepository = jobMessageRepository;
         this.messageRenderer = messageRenderer;
@@ -87,6 +96,7 @@ public class NotificationFanoutJobService {
         this.enqueueTxTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.meterRegistryProvider = meterRegistryProvider;
         this.recipientSourceRegistry = recipientSourceRegistry;
+        this.clock = clock;
     }
 
     /**
@@ -206,6 +216,71 @@ public class NotificationFanoutJobService {
             log.debug("fan-out ジョブは既に登録済み（冪等 skip）: scopeType={} scopeRef={} type={} sourceEvent={}",
                     scopeType, scopeRef, notificationType, sourceEventUuid);
         }
+    }
+
+    /**
+     * CMP-260920-1040: 呼び出し側の進行中トランザクションに<b>同じ TX で</b> fan-out ジョブを1件 enqueue する
+     * （軍議第8版確定稿 §3.3「送信 API」・AC-22）。
+     *
+     * <p>{@link #enqueue}（12/13引数版）は enqueue を呼び出し側 TX から隔離した独立コミット（REQUIRES_NEW）
+     * にする設計だが、確認通知「宛先指定」の送信 API は「本体の INSERT（QUEUED）→ targets の INSERT →
+     * fanout ジョブの INSERT」を<b>同一トランザクション</b>で行い、targets の INSERT が失敗すればジョブも
+     * 本体も残らないことを要求する（AC-22）。そのため {@link Propagation#MANDATORY} とし、呼び出し側が
+     * 既にトランザクション内であることを要求する（トランザクション外からの誤呼び出しはこの場で例外にする）。</p>
+     *
+     * <p>Issue #2871 の文面レンダリング（{@link FanoutMessageKind}・ジョブ文面子表）は使わない。
+     * 確認通知はチャンク側（{@code ConfirmableFanoutChunkSink}）が
+     * {@code confirmable_notifications.title/body} を直接読んで配信するため、ジョブ表への文面複製は不要。</p>
+     *
+     * @param scopeType        受信者解決の戦略キー（{@code CONFIRMABLE_TARGETS}）
+     * @param scopeRef         確認通知ID（文字列化）
+     * @param notificationType 通知種別（{@code ConfirmableFanoutChunkSink#NOTIFICATION_TYPE}）
+     * @param idempotencyKey   冪等キー（確認通知IDから導出した UUID）
+     * @param organizationId   テナント（組織スコープのみ・チームスコープは NULL）
+     * @param priority         優先度（NULL は NORMAL 相当）
+     * @param actorId          送信者ユーザーID
+     * @param sourceType       ソース種別（{@code ConfirmableFanoutChunkSink} 等が配信対象を特定するために使う）
+     * @param sourceId         ソースID（{@code NotificationFanoutWorker#processOneWithSink} が
+     *                         {@code sink.processChunk}/{@code finish} へそのまま渡す値。CMP-260920-1040是正:
+     *                         これが null のままだと確認通知IDがワーカーに渡らず配信が成立しない・Codex P1）
+     * @return 作成されたジョブのID
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public UUID enqueueInCurrentTransaction(String scopeType, String scopeRef, String notificationType,
+                                            UUID idempotencyKey, Long organizationId,
+                                            NotificationPriority priority, Long actorId,
+                                            String sourceType, Long sourceId) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        NotificationFanoutJob job = NotificationFanoutJob.builder()
+                .sourceEventUuid(idempotencyKey)
+                .scopeType(scopeType)
+                .scopeRef(scopeRef)
+                .notificationType(notificationType)
+                .organizationId(organizationId)
+                .priority(priority == null ? NotificationPriority.NORMAL : priority)
+                .sourceType(sourceType)
+                .sourceId(sourceId)
+                .actionUrl(null)
+                .actorId(actorId)
+                // 軍議第8版確定稿 §3.2・AC-2: 確認通知は純粋な SUPPORTER（MEMBER を兼ねない）を対象外とする。
+                // includeSupporters=true にすると ConfirmableTargetsFanoutRecipientSource が純粋な SUPPORTER
+                // にも配信してしまう（CMP-260920-1040是正・殿の検出）。
+                .includeSupporters(false)
+                .shardIndex((short) 0)
+                // 軍議第8版確定稿 §3.2・マスター裁可: 1万件超のシャード分割は最初の段階では対応しない。
+                // shard_count=1 に固定し、resolveAndSplitShards の自動評価（0=未評価）を経由させない。
+                .shardCount((short) 1)
+                .status(NotificationFanoutJobStatus.PENDING)
+                .cursorSubjectId(0L)
+                .insertedCount(0L)
+                .retryCount(0)
+                .nextAttemptAt(now)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        jobRepository.save(job);
+        jobRepository.flush();
+        return job.getId();
     }
 
     /** 描画済み文面 Map をジョブ配下の子エンティティ群へ写す（配信ロケール数ぶん＝6 行）。 */
@@ -388,6 +463,24 @@ public class NotificationFanoutJobService {
         NotificationFanoutJob job = jobRepository.findById(jobId).orElseThrow();
         job.setStatus(NotificationFanoutJobStatus.DONE);
         job.setUpdatedAt(LocalDateTime.now());
+        jobRepository.save(job);
+    }
+
+    /**
+     * CMP-260920-1040: {@code DONE} に遷移させる（呼び出し側のトランザクションに<b>参加</b>する版）。
+     *
+     * <p>{@link #markDone} は {@code REQUIRES_NEW} で独立コミットするが、確認通知の fan-out は
+     * 「親の行のロック解除・delivery_status 確定・ジョブ DONE 化」を<b>同一トランザクション</b>で
+     * 行う必要がある（軍議第8版確定稿 §9.2 の「関所」）。{@code ConfirmableFanoutChunkSink#finish}
+     * のようにすでに {@code @Transactional} な呼び出し元から呼ぶことを前提とし、本メソッド自体は
+     * トランザクション境界を持たない（呼び出し元の TX に暗黙に参加する）。</p>
+     *
+     * @param jobId fan-out ジョブ ID
+     */
+    public void markDoneInCallerTransaction(UUID jobId) {
+        NotificationFanoutJob job = jobRepository.findById(jobId).orElseThrow();
+        job.setStatus(NotificationFanoutJobStatus.DONE);
+        job.setUpdatedAt(LocalDateTime.now(clock));
         jobRepository.save(job);
     }
 

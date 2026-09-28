@@ -135,6 +135,11 @@ defineExpose({ refresh: () => loadNotifications() })
                   :value="$t(`confirmable.priority.${notif.priority}`)"
                   :severity="notif.priority === 'URGENT' ? 'danger' : notif.priority === 'HIGH' ? 'warn' : 'secondary'"
                 />
+                <Tag
+                  v-if="notif.deliveryStatus"
+                  :value="notif.deliveryStatus === 'STOPPED' ? (notif.status === 'CANCELLED' || notif.status === 'EXPIRED' ? $t(`confirmable.status.${notif.status}`) : $t('confirmable.delivery_stopped')) : $t(`confirmable.delivery_status.${notif.deliveryStatus}`)"
+                  :severity="notif.deliveryStatus === 'PARTIALLY_FAILED' ? 'warn' : 'secondary'"
+                />
               </div>
 
               <!-- 確認率プログレスバー -->
@@ -152,6 +157,7 @@ defineExpose({ refresh: () => loadNotifications() })
 
               <!-- メタ情報 -->
               <div class="flex flex-wrap gap-3 text-xs text-surface-400">
+                <span v-if="notif.deliveredCount !== undefined">{{ $t('confirmable.delivered_count', { count: notif.deliveredCount }) }}</span>
                 <span v-if="notif.deadlineAt">
                   <i class="pi pi-clock mr-1" />
                   {{ $t('confirmable.deadline') }}: {{ relativeTime(notif.deadlineAt) }}

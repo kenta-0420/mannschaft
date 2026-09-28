@@ -1,5 +1,7 @@
 package com.mannschaft.app.corkboard.controller;
 
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.corkboard.dto.CorkboardDetailResponse;
@@ -35,6 +37,8 @@ public class OrganizationCorkboardController {
     /**
      * 組織ボード一覧を取得する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @GetMapping
     @Operation(summary = "組織コルクボード一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -47,6 +51,8 @@ public class OrganizationCorkboardController {
     /**
      * 組織ボードを作成する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PostMapping
     @Operation(summary = "組織コルクボード作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
@@ -60,6 +66,8 @@ public class OrganizationCorkboardController {
     /**
      * 組織ボード詳細を取得する（カード・セクション含む）。組織所属チェックを実施する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @GetMapping("/{boardId}")
     @Operation(summary = "組織コルクボード詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

@@ -306,6 +306,14 @@
     "COMMON_002": "No tiene permiso para realizar esta accion",
     "COMMON_003": "Actualizado por otro usuario. Por favor, actualice la pagina",
     "COMMON_999": "Se produjo un error del sistema",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "Selecciona al menos un destino de destinatarios",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "No se pueden seleccionar a la vez destinos individuales y un grupo guardado",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "La selección contiene una organización o un equipo fuera del ámbito de envío",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "El grupo de destinatarios no existe o se ha eliminado",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "No hay destinatarios que coincidan con los destinos seleccionados",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "Ya existe un grupo de destinatarios con este nombre",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "No hay suficientes créditos de notificación",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "Establece la fecha límite de confirmación en el futuro",
     "AUTH_001": "Correo electronico o contrasena incorrectos",
     "AUTH_002": "Su correo electrónico aún no ha sido verificado",
     "AUTH_003": "Su cuenta está bloqueada. Inténtelo de nuevo en 30 minutos",
@@ -485,13 +493,36 @@
     }
   },
   "confirmable": {
+    "delivery_stopped": "Entrega detenida",
+    "templates": "Administrar plantillas",
+    "template_name": "Nombre de la plantilla",
+    "default_recipient_group": "Grupo de destinatarios predeterminado",
+    "deleted_group_fallback": "Si se elimina el grupo, se eligen todos los miembros del ámbito.",
+    "audience_mode": {
+      "DEFAULT": "Todos los miembros del ámbito",
+      "TARGETS": "Elegir organizaciones y equipos",
+      "GROUP": "Grupo guardado"
+    },
+    "select_group": "Elegir grupo",
+    "search_targets": "Buscar organizaciones y equipos cargados",
+    "open_children": "Mostrar subgrupos",
+    "load_more_targets": "Cargar más",
+    "previous_targets": "Destinos anteriores",
+    "next_targets": "Destinos siguientes",
+    "no_targets": "No hay destinos",
+    "selected_targets": "Seleccionados: {count}",
+    "targets_required": "Elija destinatarios",
+    "preview_loading": "Comprobando destinatarios",
+    "preview_count": "Destinatarios estimados: {count}",
+    "preview_required": "Compruebe los destinatarios",
+    "delivered_count": "Entregados: {count}",
     "title": "Confirmación rápida",
     "page": {
-      "settings_title": "Confirmación rápida",
-      "settings_subtitle": "Envía un mensaje breve y consulta rápidamente las confirmaciones pendientes"
+      "settings_title": "Configuración de notificaciones de confirmación",
+      "settings_subtitle": "Gestiona la configuración, el envío y el historial de notificaciones de confirmación"
     },
-    "settings": "Configuración de Confirmación rápida",
-    "send": "Enviar una Confirmación rápida",
+    "settings": "Configuración de notificaciones de confirmación",
+    "send": "Enviar notificación de confirmación",
     "history": "Historial de envíos",
     "recipients": "Lista de destinatarios",
     "status": {
@@ -544,6 +575,38 @@
     },
     "unconfirmed_count": "Sin confirmar: {count}",
     "unconfirmed_list": "Usuarios no confirmados",
+    "recipient_groups": "Grupos de destinatarios",
+    "recipient_groups_help": "Guarde organizaciones o equipos como destinatarios.",
+    "group_name": "Nombre del grupo",
+    "targets": "Destinos",
+    "target_id": "ID de destino",
+    "target_type": { "ORGANIZATION": "Organización", "TEAM": "Equipo" },
+    "template": "Plantilla",
+    "audience": "Destinatarios",
+    "current_scope": "Esta organización o equipo",
+    "current_scope_help": "Enviar a miembros activos del ámbito actual.",
+    "group_audience_help": "Enviar al grupo de destinatarios guardado.",
+    "message_title": "Título",
+    "message_body": "Mensaje",
+    "priority_label": "Prioridad",
+    "accepted": "Entrega aceptada",
+    "accepted_count": "Entrega aceptada (destinatarios estimados: {count})",
+    "recipient": "Destinatario",
+    "withdrawn": "Retirado",
+    "withdrawn_user": "Usuario retirado",
+    "unknown_recipient": "Destinatario desconocido",
+    "unconfirmed": "Sin confirmar",
+    "unconfirmed_only": "Solo sin confirmar",
+    "delivery_status": {
+      "QUEUED": "En cola",
+      "DELIVERING": "Enviando",
+      "DELIVERED": "Entregado",
+      "PARTIALLY_FAILED": "Parcialmente fallido"
+    },
+    "help": {
+      "title": "Notificaciones de confirmación",
+      "body": "Elija un grupo de destinatarios o el ámbito actual. La entrega es asíncrona; consulte el historial."
+    },
     "guide": {
       "quickConfirm": {
         "description": "Úsala para mensajes breves y acuses de recibo. Usa Circulares para documentos que requieren sellos u orden de circulación.",
@@ -940,10 +1003,10 @@
         }
       },
       "confirm": {
-        "title": "Confirmación rápida",
+        "title": "確認通知",
         "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
         "steps": {
-          "step1": "Confirmación rápida（背景色が付いた通知）の内容を読みます",
+          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
           "step2": "「確認する」ボタンを押して確認済みにします",
           "step3": "確認後は「確認済み」ラベルに変わります"
         }
