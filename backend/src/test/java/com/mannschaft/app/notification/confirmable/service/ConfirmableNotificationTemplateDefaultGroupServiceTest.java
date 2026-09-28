@@ -3,6 +3,7 @@ package com.mannschaft.app.notification.confirmable.service;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.ScopeType;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationTemplateResponse;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTemplateEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableRecipientGroupEntity;
@@ -48,7 +49,7 @@ class ConfirmableNotificationTemplateDefaultGroupServiceTest {
         when(userRepository.findById(7L)).thenReturn(Optional.empty());
         when(templateRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ConfirmableNotificationTemplateEntity created = service.create(
+        ConfirmableNotificationTemplateResponse created = service.create(
                 ScopeType.TEAM, 10L, "定例", "確認", null,
                 ConfirmableNotificationPriority.NORMAL, groupId, 7L);
 
@@ -81,7 +82,7 @@ class ConfirmableNotificationTemplateDefaultGroupServiceTest {
         when(templateRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(existing));
         when(templateRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ConfirmableNotificationTemplateEntity updated = service.update(
+        ConfirmableNotificationTemplateResponse updated = service.update(
                 1L, "新名", "新題", null, ConfirmableNotificationPriority.HIGH, null);
 
         assertThat(updated.getDefaultRecipientGroupId()).isNull();

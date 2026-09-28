@@ -48,10 +48,10 @@ watch(() => props.scopeId, load, { immediate: true })
   <SectionCard :title="$t('confirmable.recipient_groups')">
     <div class="flex flex-col gap-3">
       <p class="text-sm text-surface-500">{{ $t('confirmable.recipient_groups_help') }}</p>
-      <InputText v-model="name" :placeholder="$t('confirmable.group_name')" />
+      <InputText v-model="name" data-testid="recipient-group-name" :placeholder="$t('confirmable.group_name')" />
       <ConfirmableTargetPicker v-model="targets" :scope-type="scopeType" :scope-id="scopeId" />
       <div class="flex gap-2">
-        <Button :label="editingId ? $t('button.save') : $t('button.create')" :loading="saving" :disabled="!name.trim() || !targets.length" @click="save" />
+        <Button data-testid="recipient-group-save" :label="editingId ? $t('button.save') : $t('button.create')" :loading="saving" :disabled="!name.trim() || !targets.length" @click="save" />
         <Button v-if="editingId" :label="$t('button.cancel')" text @click="reset" />
       </div>
       <PageLoading v-if="loading" size="28px" />

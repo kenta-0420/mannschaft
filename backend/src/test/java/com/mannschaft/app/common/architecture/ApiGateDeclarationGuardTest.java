@@ -42,7 +42,7 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3588);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 10 = 3588
+                .isEqualTo(3590);   // CMP-260920-1040: TEAM/ORGANIZATION の宛先プレビュー各1件を追加
                                     //   main 3566（ブログ・スケジュール画像の完了確認2本を含む）
                                     // + Billing Center PR6a の解約/撤回2エンドポイント（D6・正本 05:334-335）
                                     // + CMP-260912-1525 のメンバー一括取得・チーム時給一括取得の2エンドポイント

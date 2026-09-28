@@ -7,14 +7,15 @@
  * 各コンポーネントは既にスコープ汎用（scopeType/scopeId を props で受け取るだけで
  * useScopeStore を直接読まない）ため、設定/配下へそのまま移設する。
  *
- * scopeId の解決方式は移設元と同じく useScopeStore().current を使う
- * （/teams/[slug]/... 配下では plugins/scope.client.ts が URL の slug から
- * 数値 team id を解決し、ページマウント時点で current に反映済み）。
+ * scopeId はチームシェルが解決した数値IDを使う。グローバルスコープストアは
+ * この設定ページへ遷移した時点で未確定の場合があるため、依存しない。
  */
-definePageMeta({ layout: 'team', middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: ['auth', 'confirmable-notification-guard'] })
 
-const scopeStore = useScopeStore()
-const scopeId = computed(() => scopeStore.current.id ?? '')
+const route = useRoute()
+const teamApi = useTeamApi()
+const scopeId = ref('')
+const scopeLoading = ref(true)
 const groupsVersion = ref(0)
 const templatesVersion = ref(0)
 
@@ -22,6 +23,21 @@ const historyRef = ref<{ refresh: () => void } | null>(null)
 function onNotificationSent() {
   historyRef.value?.refresh()
 }
+
+onMounted(async () => {
+  try {
+    const response = await teamApi.getTeam(String(route.params.slug))
+    const numericId = Number(response.data.numericId)
+    if (!Number.isSafeInteger(numericId) || numericId <= 0) throw new Error('team_numeric_id_missing')
+    scopeId.value = String(numericId)
+  }
+  catch {
+    showError(createError({ statusCode: 503, statusMessage: 'Service Unavailable', fatal: true }))
+  }
+  finally {
+    scopeLoading.value = false
+  }
+})
 </script>
 
 <template>
@@ -29,6 +45,9 @@ function onNotificationSent() {
     <PageHeader :title="$t('confirmable.page.settings_title')">
       <p class="text-sm text-surface-500">{{ $t('confirmable.page.settings_subtitle') }}</p>
     </PageHeader>
+
+    <PageLoading v-if="scopeLoading" />
+    <template v-else-if="scopeId">
 
     <!-- 確認通知設定セクション -->
     <section class="mt-8">
@@ -68,5 +87,6 @@ function onNotificationSent() {
         :scope-id="scopeId"
       />
     </section>
+    </template>
   </div>
 </template>

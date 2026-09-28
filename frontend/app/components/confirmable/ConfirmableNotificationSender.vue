@@ -105,10 +105,10 @@ onMounted(async () => {
       <div class="flex flex-col gap-1"><label>{{ $t('confirmable.template') }}</label><Select v-model="selectedTemplateId" :options="templateOptions" option-label="label" option-value="value" @change="applyTemplate(selectedTemplateId)" /></div>
       <div class="flex flex-col gap-1">
         <label>{{ $t('confirmable.audience') }}</label>
-        <Select v-model="audienceMode" :options="audienceModeOptions" option-label="label" option-value="value" />
+        <Select v-model="audienceMode" data-testid="sender-audience-mode-select" :options="audienceModeOptions" option-label="label" option-value="value" />
         <small v-if="audienceMode === 'DEFAULT'">{{ $t('confirmable.current_scope_help') }}</small>
         <ConfirmableTargetPicker v-if="audienceMode === 'TARGETS'" v-model="selectedTargets" :scope-type="scopeType" :scope-id="scopeId" />
-        <Select v-if="audienceMode === 'GROUP'" v-model="selectedGroupId" :options="groupOptions.filter(option => option.value !== null)" option-label="label" option-value="value" :placeholder="$t('confirmable.select_group')" />
+        <Select v-if="audienceMode === 'GROUP'" v-model="selectedGroupId" data-testid="sender-group-select" :options="groupOptions.filter(option => option.value !== null)" option-label="label" option-value="value" :placeholder="$t('confirmable.select_group')" />
       </div>
       <Message v-if="previewing" severity="info" :closable="false">{{ $t('confirmable.preview_loading') }}</Message>
       <Message v-else-if="estimatedCount !== null" :severity="estimatedCount ? 'info' : 'warn'" :closable="false">{{ $t('confirmable.preview_count', { count: estimatedCount }) }}</Message>

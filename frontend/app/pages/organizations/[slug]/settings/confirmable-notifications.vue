@@ -5,10 +5,10 @@
  * teams/[slug]/settings/confirmable-notifications.vue の組織版。
  * 背景・移設理由はそちらの Javadoc コメントを参照。
  */
-definePageMeta({ layout: 'organization', middleware: ['auth', 'org-role-guard'] })
+definePageMeta({ layout: 'organization', middleware: ['auth', 'confirmable-notification-guard'] })
 
-const scopeStore = useScopeStore()
-const scopeId = computed(() => scopeStore.current.id ?? '')
+const { org } = useOrgShellContext()
+const scopeId = computed(() => org.value?.numericId ? String(org.value.numericId) : '')
 const groupsVersion = ref(0)
 const templatesVersion = ref(0)
 

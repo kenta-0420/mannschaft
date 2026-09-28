@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.ScopeType;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationTemplateResponse;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTemplateEntity;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
@@ -67,10 +68,10 @@ public class ConfirmableNotificationTemplateService {
      * @param body            テンプレート本文（任意）
      * @param defaultPriority デフォルト優先度（NULL の場合は NORMAL）
      * @param createdByUserId 作成者ユーザーID
-     * @return 作成されたテンプレートエンティティ
+     * @return 作成されたテンプレートのレスポンス
      */
     @Transactional
-    public ConfirmableNotificationTemplateEntity create(
+    public ConfirmableNotificationTemplateResponse create(
             ScopeType scopeType,
             Long scopeId,
             String name,
@@ -101,7 +102,7 @@ public class ConfirmableNotificationTemplateService {
         ConfirmableNotificationTemplateEntity saved = templateRepository.save(template);
         log.info("確認通知テンプレート作成: templateId={}, scopeType={}, scopeId={}",
                 saved.getId(), scopeType, scopeId);
-        return saved;
+        return toResponse(saved);
     }
 
     /**
@@ -112,11 +113,11 @@ public class ConfirmableNotificationTemplateService {
      * @param title           テンプレートタイトル
      * @param body            テンプレート本文（任意）
      * @param defaultPriority デフォルト優先度
-     * @return 更新されたテンプレートエンティティ
+     * @return 更新されたテンプレートのレスポンス
      * @throws BusinessException テンプレートが存在しないまたは削除済みの場合
      */
     @Transactional
-    public ConfirmableNotificationTemplateEntity update(
+    public ConfirmableNotificationTemplateResponse update(
             Long templateId,
             String name,
             String title,
@@ -140,7 +141,22 @@ public class ConfirmableNotificationTemplateService {
 
         ConfirmableNotificationTemplateEntity saved = templateRepository.save(updated);
         log.info("確認通知テンプレート更新: templateId={}", templateId);
-        return saved;
+        return toResponse(saved);
+    }
+
+    private ConfirmableNotificationTemplateResponse toResponse(
+            ConfirmableNotificationTemplateEntity template) {
+        return ConfirmableNotificationTemplateResponse.builder()
+                .id(template.getId())
+                .scopeType(template.getScopeType())
+                .scopeId(template.getScopeId())
+                .name(template.getName())
+                .title(template.getTitle())
+                .body(template.getBody())
+                .defaultPriority(template.getDefaultPriority())
+                .defaultRecipientGroupId(template.getDefaultRecipientGroupId())
+                .createdAt(template.getCreatedAt())
+                .build();
     }
 
     private void validateDefaultRecipientGroup(

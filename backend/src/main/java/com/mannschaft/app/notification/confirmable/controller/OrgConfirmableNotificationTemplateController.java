@@ -87,7 +87,7 @@ public class OrgConfirmableNotificationTemplateController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrHasPermissionInScope(
                 currentUserId, orgId, ScopeType.ORGANIZATION.name(), SEND_NOTIFICATION);
-        ConfirmableNotificationTemplateEntity entity = templateService.create(
+        ConfirmableNotificationTemplateResponse response = templateService.create(
                 ScopeType.ORGANIZATION,
                 orgId,
                 request.getName(),
@@ -97,7 +97,7 @@ public class OrgConfirmableNotificationTemplateController {
                 request.getDefaultRecipientGroupId(),
                 currentUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(mapper.toTemplateResponse(entity)));
+                .body(ApiResponse.of(response));
     }
 
     /**
@@ -122,14 +122,14 @@ public class OrgConfirmableNotificationTemplateController {
         }
         accessControlService.checkAdminOrHasPermissionInScope(
                 currentUserId, orgId, ScopeType.ORGANIZATION.name(), SEND_NOTIFICATION);
-        ConfirmableNotificationTemplateEntity entity = templateService.update(
+        ConfirmableNotificationTemplateResponse response = templateService.update(
                 templateId,
                 request.getName(),
                 request.getTitle(),
                 request.getBody(),
                 request.getDefaultPriority(),
                 request.getDefaultRecipientGroupId());
-        return ResponseEntity.ok(ApiResponse.of(mapper.toTemplateResponse(entity)));
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

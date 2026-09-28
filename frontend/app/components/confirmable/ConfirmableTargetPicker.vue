@@ -27,7 +27,21 @@ const keyword = ref('')
 const currentPage = ref(0)
 const pageSize = 20
 
-const filtered = computed(() => options.value.filter(option => option.name.toLocaleLowerCase().includes(keyword.value.trim().toLocaleLowerCase())))
+const currentScopeOption = computed<TargetOption | null>(() => {
+  const id = Number(props.scopeId)
+  if (!Number.isSafeInteger(id) || id <= 0) return null
+  return {
+    target: { type: props.scopeType, id },
+    name: t('confirmable.current_scope'),
+    depth: 0,
+  }
+})
+const availableOptions = computed(() => {
+  const current = currentScopeOption.value
+  if (!current) return options.value
+  return [current, ...options.value.filter(option => key(option.target) !== key(current.target))]
+})
+const filtered = computed(() => availableOptions.value.filter(option => option.name.toLocaleLowerCase().includes(keyword.value.trim().toLocaleLowerCase())))
 const pageCount = computed(() => Math.ceil(filtered.value.length / pageSize))
 const visible = computed(() => filtered.value.slice(currentPage.value * pageSize, (currentPage.value + 1) * pageSize))
 
@@ -62,7 +76,7 @@ async function loadOrganization(orgId: number, depth: number) {
 }
 function expand(option: TargetOption) { return loadOrganization(option.target.id, option.depth) }
 function loadMore(orgId: number) {
-  const parent = options.value.find(option => option.target.type === 'ORGANIZATION' && option.target.id === orgId)
+  const parent = availableOptions.value.find(option => option.target.type === 'ORGANIZATION' && option.target.id === orgId)
   if (parent) return loadOrganization(orgId, parent.depth)
 }
 watch(keyword, () => { currentPage.value = 0 })
@@ -70,7 +84,6 @@ watch(() => [props.scopeType, props.scopeId] as const, async () => {
   options.value = []; cursors.value = {}; hasMore.value = {}; opened.value = {}; currentPage.value = 0
   const id = Number(props.scopeId)
   if (!Number.isSafeInteger(id) || id <= 0) return
-  addOption({ type: props.scopeType, id }, t('confirmable.current_scope'), 0)
   if (props.scopeType === 'ORGANIZATION') await loadOrganization(id, 0)
 }, { immediate: true })
 </script>
