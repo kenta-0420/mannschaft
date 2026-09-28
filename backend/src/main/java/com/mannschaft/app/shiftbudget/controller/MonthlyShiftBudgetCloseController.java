@@ -1,5 +1,6 @@
 package com.mannschaft.app.shiftbudget.controller;
 
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.shiftbudget.dto.MonthlyCloseRequest;
 import com.mannschaft.app.shiftbudget.dto.MonthlyCloseResponse;
@@ -34,6 +35,7 @@ import java.util.List;
  * （単一組織 close では {@code processed_organization_ids} のみセット、他は空配列）。</p>
  */
 @RestController
+@RequireFeature("FEATURE_SHIFT_ENABLED")
 @RequestMapping("/api/v1/shift-budget/monthly-close")
 @Tag(name = "シフト予算 月次締め (F08.7)",
      description = "Phase 9-δ 第2段: 月次締めバッチの手動起動 API (BUDGET_ADMIN 必須)")
