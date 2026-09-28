@@ -660,6 +660,20 @@ class AccessControlServiceTest {
         }
 
         @Test
+        @DisplayName("正常系: スコープADMIN判定はプラットフォームロール解決に依存しない")
+        void checkAdminOrAbove_スコープADMINを直接評価() {
+            UserRoleEntity userRole = createUserRole(ROLE_ID);
+            RoleEntity role = createRole("ADMIN", 2);
+            given(userRoleRepository.findByUserIdAndTeamId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(userRole));
+            given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(role));
+
+            accessControlService.checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+
+            verify(userRoleRepository, never()).existsSystemAdminByUserId(USER_ID);
+        }
+
+        @Test
         @DisplayName("異常系: MEMBERロールでCOMMON_002例外")
         void checkAdminOrAbove_MEMBERロール_COMMON002例外() {
             // Given
