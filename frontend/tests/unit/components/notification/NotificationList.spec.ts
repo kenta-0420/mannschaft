@@ -119,7 +119,11 @@ const stubs = {
   LoadingBounce: { template: '<div />' },
 }
 
-const i18n = createI18n({ legacy: false, locale: 'ja', messages: { ja: {} } })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: {}, en: {}, zh: {}, ko: {}, es: {}, de: {} },
+})
 const router = createRouter({ history: createMemoryHistory(), routes: [] })
 
 async function mountList(row: ConfirmableNotificationFixture) {
@@ -152,7 +156,7 @@ describe('通知の既読と確認状態', () => {
   it('既読状態にかかわらず未確認だけ確認ボタン、確認済みだけ確認済み表示を出す', async () => {
     const unconfirmedRead = await mountList(notification(false, true))
     await flushPromises()
-    expect(unconfirmedRead.get(`button[data-label="${confirmButtonLabel}"]`).exists()).toBe(true)
+    expect(unconfirmedRead.findAll(`button[data-label="${confirmButtonLabel}"]`)).toHaveLength(1)
     unconfirmedRead.unmount()
 
     const confirmedUnread = await mountList(notification(true, false))
@@ -182,12 +186,12 @@ describe('通知の既読と確認状態', () => {
 
     await rowElement.get('button[title]:not([aria-label])').trigger('click')
     await flushPromises()
-    expect(wrapper.get(`button[data-label="${confirmButtonLabel}"]`).exists()).toBe(true)
+    expect(wrapper.findAll(`button[data-label="${confirmButtonLabel}"]`)).toHaveLength(1)
     expect(wrapper.text()).toContain(confirmButtonLabel)
 
     await wrapper.get('[data-testid="mark-all-read"]').trigger('click')
     await flushPromises()
-    expect(wrapper.get(`button[data-label="${confirmButtonLabel}"]`).exists()).toBe(true)
+    expect(wrapper.findAll(`button[data-label="${confirmButtonLabel}"]`)).toHaveLength(1)
     expect(wrapper.text()).toContain(confirmButtonLabel)
 
     await wrapper.get(`button[data-label="${confirmButtonLabel}"]`).trigger('click')
@@ -245,7 +249,7 @@ describe('通知の既読と確認状態', () => {
     await wrapper.get(`button[data-label="${confirmButtonLabel}"]`).trigger('click')
     await flushPromises()
 
-    expect(wrapper.get(`button[data-label="${confirmButtonLabel}"]`).exists()).toBe(true)
+    expect(wrapper.findAll(`button[data-label="${confirmButtonLabel}"]`)).toHaveLength(1)
     expect(wrapper.text()).not.toContain(confirmedLabel)
     expect(mocks.notificationApi.markAsRead).not.toHaveBeenCalled()
     wrapper.unmount()
