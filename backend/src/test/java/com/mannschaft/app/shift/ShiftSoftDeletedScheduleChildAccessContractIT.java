@@ -331,6 +331,38 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
                 .setParameter("id", dayRequestId).getSingleResult()).isNull();
     }
 
+    @Test
+    @DisplayName("希望取り下げ後は同じ枠へ再提出でき有効行は1件だけになる")
+    void 希望取り下げ後に再提出できる() throws Exception {
+        ShiftRequestEntity first = requestRepository.save(ShiftRequestEntity.builder()
+                .scheduleId(liveScheduleId).userId(memberId).slotId(liveSlotId)
+                .slotDate(LocalDate.of(2026, 4, 2)).preference(ShiftPreference.PREFERRED).build());
+        em.flush();
+        Long firstId = first.getId();
+        em.clear();
+        setAuth(memberId);
+
+        mockMvc.perform(delete("/api/v1/shifts/requests/{id}", firstId))
+                .andExpect(status().isNoContent());
+        ShiftRequestEntity second = requestRepository.saveAndFlush(ShiftRequestEntity.builder()
+                .scheduleId(liveScheduleId).userId(memberId).slotId(liveSlotId)
+                .slotDate(LocalDate.of(2026, 4, 2)).preference(ShiftPreference.AVAILABLE).build());
+        em.clear();
+
+        assertThat(second.getId()).isNotEqualTo(firstId);
+        assertThat(em.createNativeQuery("""
+                SELECT COUNT(*) FROM shift_requests
+                WHERE schedule_id = :scheduleId AND user_id = :userId AND slot_id = :slotId
+                """).setParameter("scheduleId", liveScheduleId).setParameter("userId", memberId)
+                .setParameter("slotId", liveSlotId).getSingleResult()).isEqualTo(2L);
+        assertThat(em.createNativeQuery("""
+                SELECT COUNT(*) FROM shift_requests
+                WHERE schedule_id = :scheduleId AND user_id = :userId AND slot_id = :slotId
+                  AND deleted_at IS NULL
+                """).setParameter("scheduleId", liveScheduleId).setParameter("userId", memberId)
+                .setParameter("slotId", liveSlotId).getSingleResult()).isEqualTo(1L);
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════

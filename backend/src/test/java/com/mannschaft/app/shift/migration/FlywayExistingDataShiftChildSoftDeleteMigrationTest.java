@@ -93,6 +93,19 @@ class FlywayExistingDataShiftChildSoftDeleteMigrationTest {
                 assertThat(request.getString("delete_reason")).isEqualTo("PARENT_DELETED");
                 assertThat(request.getObject("active_uq")).isNull();
             }
+            try (ResultSet indexes = statement.executeQuery("""
+                    SELECT index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS columns_csv
+                    FROM information_schema.statistics
+                    WHERE table_schema = DATABASE() AND table_name = 'shift_requests'
+                      AND index_name IN ('uq_sr_schedule_user_slot', 'uq_sr_schedule_user_slot_active')
+                    GROUP BY index_name
+                    """)) {
+                assertThat(indexes.next()).isTrue();
+                assertThat(indexes.getString("index_name")).isEqualTo("uq_sr_schedule_user_slot_active");
+                assertThat(indexes.getString("columns_csv"))
+                        .isEqualTo("schedule_id,user_id,slot_id_uq,slot_date_uq,active_uq");
+                assertThat(indexes.next()).isFalse();
+            }
         }
 
         Flyway latest = Flyway.configure().dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
