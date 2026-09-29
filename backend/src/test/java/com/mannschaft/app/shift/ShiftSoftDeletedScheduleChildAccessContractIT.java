@@ -29,6 +29,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -385,11 +386,11 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
         ShiftAssignmentEntity retainedAssignment = assignmentRepository.save(ShiftAssignmentEntity.builder()
                 .slotId(liveSlotId).userId(memberId).assignedBy(adminId)
                 .status(ShiftAssignmentStatus.CONFIRMED)
-                .deletedAt(LocalDateTime.of(2020, 1, 1, 0, 0)).build());
+                .deletedAt(Instant.parse("2020-01-01T00:00:00Z")).build());
         ShiftRequestEntity retainedRequest = requestRepository.save(ShiftRequestEntity.builder()
                 .scheduleId(liveScheduleId).userId(memberId).slotDate(LocalDate.of(2026, 4, 3))
                 .preference(ShiftPreference.AVAILABLE)
-                .deletedAt(LocalDateTime.of(2020, 1, 1, 0, 0)).build());
+                .deletedAt(Instant.parse("2020-01-01T00:00:00Z")).build());
         Map<String, Long> retainedRows = Map.of("shift_slots", secondId,
                 "shift_requests", retainedRequest.getId(), "shift_assignments", retainedAssignment.getId());
         em.flush();
@@ -429,7 +430,7 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
                 .scheduleId(liveScheduleId).slotDate(LocalDate.of(2026, 4, 4))
                 .startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(17, 0))
                 .assignedUserIds("[" + memberId + "]")
-                .deletedAt(LocalDateTime.of(2026, 3, 1, 0, 0)).build());
+                .deletedAt(Instant.parse("2026-03-01T00:00:00Z")).build());
         Long hiddenId = hidden.getId();
         em.flush();
         em.clear();

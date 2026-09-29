@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -39,7 +40,7 @@ public class ShiftRequestEntity {
 
     /** 親シフト表の削除日時。単独削除の物理削除契約は維持する。 */
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

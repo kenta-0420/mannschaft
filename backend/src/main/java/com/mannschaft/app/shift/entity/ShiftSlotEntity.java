@@ -12,8 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
@@ -29,7 +29,7 @@ public class ShiftSlotEntity extends BaseEntity {
 
     /** 親シフト表の削除日時。単独削除の物理削除契約は維持する。 */
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     @Column(nullable = false)
     private Long scheduleId;

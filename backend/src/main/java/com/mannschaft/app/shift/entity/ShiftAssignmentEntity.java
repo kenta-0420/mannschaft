@@ -20,6 +20,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -35,7 +36,7 @@ public class ShiftAssignmentEntity {
 
     /** 親シフト表の削除日時。割当の業務値は変更しない。 */
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
