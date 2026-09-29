@@ -470,6 +470,119 @@ class TeamPageServiceTest {
     }
 
     @Nested
+    @DisplayName("PR #3387 試練: getPage（V1）のロール × ページ状態")
+    class GetPageRoleMatrix {
+
+        private TeamPageResponse stubDetail(TeamPageEntity entity) {
+            given(pageRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(sectionRepository.findByTeamPageIdOrderBySortOrder(1L)).willReturn(List.of());
+            given(profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(1L)).willReturn(List.of());
+            given(memberMapper.toSectionResponseList(any())).willReturn(List.of());
+            given(memberMapper.toMemberProfileResponseList(any())).willReturn(List.of());
+            TeamPageResponse response = new TeamPageResponse(1L, entity.getTeamId(), entity.getOrganizationId(),
+                    "紹介", "intro", "MAIN", null, null, null, "MEMBERS_ONLY", "PUBLISHED", false, 0,
+                    null, null, null, List.of(), List.of());
+            given(memberMapper.toTeamPageDetailResponse(any(), any(), any())).willReturn(response);
+            return response;
+        }
+
+        @Test
+        @DisplayName("AC-19: TEAM・MEMBER は DRAFT ページでも V1 200、サブタブ判定を呼ばない")
+        void AC19_TEAM_MEMBER_下書き_200() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .teamId(1L).title("紹介").slug("intro").pageType(PageType.MAIN)
+                    .build(); // DRAFT・MEMBERS_ONLY
+            stubDetail(entity);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, 1L, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(ACTOR_ID, 1L, "TEAM")).willReturn(true);
+
+            assertThat(service.getPage(ACTOR_ID, 1L)).isNotNull();
+            org.mockito.Mockito.verifyNoInteractions(memberSubtabVisibilityService);
+        }
+
+        @Test
+        @DisplayName("AC-19: TEAM・SUPPORTER（isMember=true・MEMBER 未満）は MEMBERS_ONLY ページでも V1 200")
+        void AC19_TEAM_SUPPORTER_会員限定_200() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .teamId(1L).title("紹介").slug("intro").pageType(PageType.MAIN)
+                    .status(PageStatus.PUBLISHED).visibility(PageVisibility.MEMBERS_ONLY).build();
+            stubDetail(entity);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, 1L, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(ACTOR_ID, 1L, "TEAM")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(ACTOR_ID, 1L, "TEAM", "MEMBER")).willReturn(false);
+
+            assertThat(service.getPage(ACTOR_ID, 1L)).isNotNull();
+            org.mockito.Mockito.verifyNoInteractions(memberSubtabVisibilityService);
+        }
+
+        @Test
+        @DisplayName("AC-19: TEAM・未所属者は V1 404(MEMBER_001)")
+        void AC19_TEAM_未所属者_404() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .teamId(1L).title("紹介").slug("intro").pageType(PageType.MAIN)
+                    .status(PageStatus.PUBLISHED).visibility(PageVisibility.PUBLIC).build();
+            stubDetail(entity);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, 1L, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(ACTOR_ID, 1L, "TEAM")).willReturn(false);
+
+            assertThatThrownBy(() -> service.getPage(ACTOR_ID, 1L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("MEMBER_001"));
+            org.mockito.Mockito.verifyNoInteractions(memberSubtabVisibilityService);
+        }
+
+        @Test
+        @DisplayName("AC-19: TEAM・所属のない SYSTEM_ADMIN は V1 404(MEMBER_001)")
+        void AC19_TEAM_所属のないSYSTEM_ADMIN_404() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .teamId(1L).title("紹介").slug("intro").pageType(PageType.MAIN)
+                    .status(PageStatus.PUBLISHED).visibility(PageVisibility.PUBLIC).build();
+            stubDetail(entity);
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(true);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, 1L, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(ACTOR_ID, 1L, "TEAM")).willReturn(false);
+
+            assertThatThrownBy(() -> service.getPage(ACTOR_ID, 1L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("MEMBER_001"));
+        }
+
+        @Test
+        @DisplayName("AC-02: ORG・OUT・サブタブPUBLIC・PUB の V1 は表示中プロフィールだけを読む（全件取得メソッドを呼ばない）")
+        void AC02_ORG_非会員_公開ページ_表示中のみ() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .organizationId(ORG_ID).title("紹介").slug("intro").pageType(PageType.MAIN)
+                    .status(PageStatus.PUBLISHED).visibility(PageVisibility.PUBLIC).build();
+            stubDetail(entity);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
+
+            service.getPage(ACTOR_ID, 1L);
+
+            verify(profileRepository).findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(1L);
+            verify(profileRepository, never()).findByTeamPageIdOrderBySortOrder(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("AC-28: V1 はセクション0件・表示中プロフィール0件でも 200 で、双方空配列を組み立てに渡す")
+        void AC28_V1_セクション0件_プロフィール0件_空配列() {
+            TeamPageEntity entity = TeamPageEntity.builder()
+                    .organizationId(ORG_ID).title("紹介").slug("intro").pageType(PageType.MAIN)
+                    .status(PageStatus.PUBLISHED).visibility(PageVisibility.MEMBERS_ONLY).build();
+            TeamPageResponse expected = stubDetail(entity);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(true);
+
+            TeamPageResponse result = service.getPage(ACTOR_ID, 1L);
+
+            assertThat(result).isSameAs(expected);
+            verify(memberMapper).toTeamPageDetailResponse(entity, List.of(), List.of());
+        }
+    }
+
+    @Nested
     @DisplayName("deletePage")
     class DeletePage {
 
