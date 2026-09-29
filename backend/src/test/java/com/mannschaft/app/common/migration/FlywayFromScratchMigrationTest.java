@@ -127,7 +127,7 @@ class FlywayFromScratchMigrationTest {
      *       （旧 3 件・2026-09-29 に CMP-260924-0010 で返済）</b> —
      *       V9.175 のコメントは「V9.171 で追加済み」と書いているが、
      *       V9.171 は {@code create_name_disclosure_change_logs} で無関係。実際にはどこにも存在しなかった。
-     *       V227（{@code add_skip_columns_to_circulation_recipients}）で列を追加した。</li>
+     *       V228（{@code add_skip_columns_to_circulation_recipients}）で列を追加した。</li>
      *   <li><b>{@code tournament_entry_members.member_number}・
      *       {@code tournament_entry_template_members.created_at/updated_at}（旧 4 件・うち
      *       {@code content_reports.content_hidden} は 2026-09-22 に CMP-260920-0705 で返済、
@@ -136,7 +136,7 @@ class FlywayFromScratchMigrationTest {
      *       {@code content_reports.content_hidden} は本番相当環境で
      *       {@code Unknown column 'cre1_0.content_hidden'} により運営の通報一覧
      *       {@code GET /api/v1/admin/moderation/reports} が常時 500 になっており、
-     *       V220 で列を追加して台帳から削除した。残る 3 件は V227 で列を追加した。</li>
+     *       V220 で列を追加して台帳から削除した。残る 3 件は V228 で列を追加した。</li>
      *   <li><b>{@code shift_budget_allocations} の {@code *_uq}（旧 3 件・2026-09-09 に返済）</b> —
      *       Entity が {@code @GeneratedColumn} で生成カラムを宣言していたが、Flyway（V11.030）は
      *       MySQL 8.0 の制約（FK ベースカラムに STORED 生成カラム不可、Error 3192）により
@@ -150,7 +150,7 @@ class FlywayFromScratchMigrationTest {
      *       {@link com.mannschaft.app.common.BaseEntity} は全継承 Entity に
      *       {@code createdAt} / {@code updatedAt} を持たせ、{@code @PrePersist} /
      *       {@code @PreUpdate} で必ず書き込むが、これらのテーブルの CREATE TABLE は
-     *       片方または両方を作っていなかった。V227（{@code add_missing_base_entity_timestamps}）で
+     *       片方または両方を作っていなかった。V228（{@code add_missing_base_entity_timestamps}）で
      *       列を追加し、既存行は元の日時列（{@code created_at} / {@code recorded_at} / {@code voted_at}）
      *       から埋め戻した。{@code committee_distribution_logs} の Entity が
      *       {@code updated_at} を {@code @AttributeOverride} で書き込み不可にしていた回避策も撤去した。</li>

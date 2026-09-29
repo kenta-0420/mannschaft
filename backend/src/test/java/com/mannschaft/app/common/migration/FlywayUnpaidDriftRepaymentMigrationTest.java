@@ -59,7 +59,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * <b>凍結台帳 {@code KNOWN_UNPAID_DRIFT} 22 列の返済 migration（V227 の 3 本）の番人テスト</b>
+ * <b>凍結台帳 {@code KNOWN_UNPAID_DRIFT} 22 列の返済 migration（V228 の 3 本）の番人テスト</b>
  * （CMP-260924-0010）。
  *
  * <h2>なぜ別クラスが要るのか</h2>
@@ -83,15 +83,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIf("com.mannschaft.app.common.migration.FlywayUnpaidDriftRepaymentMigrationTest#isDockerAvailable")
-@DisplayName("凍結台帳22列の返済 migration（V227）番人テスト")
+@DisplayName("凍結台帳22列の返済 migration（V228）番人テスト")
 class FlywayUnpaidDriftRepaymentMigrationTest {
 
     /** U1 回覧受信者のスキップ 3 列。返済 migration 3 本のうち最初のもの。 */
-    private static final String U1_VERSION = "227.20260929072008";
+    private static final String U1_VERSION = "228.20260929072008";
     /** U2 大会エントリーメンバーの列。 */
-    private static final String U2_VERSION = "227.20260929072009";
+    private static final String U2_VERSION = "228.20260929072009";
     /** U3 BaseEntity 系 15 テーブルの created_at / updated_at。 */
-    private static final String U3_VERSION = "227.20260929072010";
+    private static final String U3_VERSION = "228.20260929072010";
 
     /** シード行の元日時（DEFAULT CURRENT_TIMESTAMP と区別できる過去の固定値）。 */
     private static final String SEED_CREATED_AT = "2020-01-02 03:04:05";

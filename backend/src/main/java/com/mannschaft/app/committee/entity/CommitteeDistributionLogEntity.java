@@ -16,7 +16,7 @@ import lombok.experimental.SuperBuilder;
  * F04.10 委員会伝達処理ログエンティティ。
  *
  * <p>委員会からの伝達（お知らせ配信・確認通知送信）の実行履歴を記録する。
- * updated_at 列は V227（CMP-260924-0010）で追加したため、BaseEntity の updatedAt を
+ * updated_at 列は V228（CMP-260924-0010）で追加したため、BaseEntity の updatedAt を
  * そのまま読み書きする（以前は列が無く、書き込み不可の上書きで回避していたが、
  * SELECT には列が含まれるため Flyway 構築環境では Unknown column で失敗していた）。</p>
  */
