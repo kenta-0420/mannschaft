@@ -3,8 +3,9 @@
 ## 判定とコミット
 
 - 過去統合HEADは `1a71a3718623791c673db0798c1d9233583471bf`、統合元mainは `7fa5f00d25`。
-- 最新統合HEADは `73beedc1108707add928f91c4117c11cb9f281d2`、統合元mainは `06324ca71d`。競合なし、actual merge exit 0。runtime BE `f82b5fee7c6dd6670faaa68ff76b28b8e0dd09e2` とrecruitment/notificationの実装差分は0。GlobalExceptionHandlerにはPRICE_REVISION_001/002/013/014/016/017/018/020のmap追加と既存`resolveHttpStatus`からstatic `resolveStatus`への委譲があるため、同ファイルの差分0は主張しない。最終CIは次のpush後のPR #3499最新チェックを参照する。
+- 直前の統合HEADは `73beedc1108707add928f91c4117c11cb9f281d2`、統合元mainは `06324ca71d`。競合なし、actual merge exit 0。runtime BE `f82b5fee7c6dd6670faaa68ff76b28b8e0dd09e2` とrecruitment/notificationの実装差分は0。GlobalExceptionHandlerにはPRICE_REVISION_001/002/013/014/016/017/018/020のmap追加と既存`resolveHttpStatus`からstatic `resolveStatus`への委譲があるため、同ファイルの差分0は主張しない。最終検証はPR #3499最新HEADのchecksを参照する。
 - f82の10 workflowはsuccess（OpenAPI `36499471665`、Frontend `36499471559`、Backend `36499471788`、Generated Types `36499471571`、Smoke `36499471555`、Lighthouse `36499471621`、API `36499471833`、cleanup `36499471842`、lock `36499471909`、gitleaks `36499471619`）。現在の判定はPR #3499の最新チェックと検分を参照する。
+- #3510 を最新main `61ced1509f`から統合し、統合HEADは `39be6833346c4edd1cc9cc1ff069fa0bebe19dd6`。actual merge exit 0、競合なし。最終HEADは固定せず、最終検証はPR #3499最新HEADのchecksを参照する。
 - Wave 16実装は実機E2Eとcontrolled UI再実証まで確認済み。ただしB0-J5全体はpartialであり、CMP-019、F03.11、Issue #3502、Issue #3503の完了を示さない。
 
 ## 実機E2E
@@ -49,6 +50,11 @@
 | rollback・after-commit配送失敗 | `RecruitmentNoShowConfirmPenaltyIT#rollbackKeepsNoShowUnconfirmedAndCreatesNeitherPenaltyNorNotification`、`RecruitmentPenaltyAppliedNotificationListenerTest#deliveryFailureDoesNotChangeCommittedPenalty`。 | testのgreenはPR #3499最終CIを参照 |
 | TEAM/ORGANIZATIONと権限境界 | 実機2ケース、本人確認、outsider正規GET 403本文非読。正規UI direct gotoは未証明。 | 部分実証 |
 
+## 最終CIの再試験状況
+
+- PR #3499のrun `36543134366` shard 3で`RecruitmentNoShowConfirmPenaltyIT#concurrentGlobalEvaluationFromDifferentTeamsCreatesOnePenaltyAndOneDeliveredNotification`は、`prepareCompetingGlobalSetting`の`teams.slug`列長超過による`DataIntegrityViolationException`で失敗した。並行評価の実行前にfixtureが失敗しており、製品バグやOOMではない。
+- 制約正本は`V71.20260609125251`の`teams.slug VARCHAR(30)`である。対象fixtureはprefixを`c19w16-c-`（9文字）へ短縮し、suffixを含むslug全体を最大22文字にする1行だけを修正した。`RecruitmentNoShowConfirmPenaltyIT`は実MySQLで3件すべてgreen（failures/errors/skipped=0）、最新mainの`com.mannschaft.app.common.architecture.CrossDomainTransactionalTransitiveArchTest`も1件green（failures/errors/skipped=0）を実測した。最終検証はPR #3499最新HEADのchecksを参照する。
+
 ## B0-J5とデータ取扱い
 
 - B0-J5（capabilities: `notification-inbox-notification-delivery`、`notification-inbox-inbox`）はpartialを維持する。fresh3の未達・未操作とcontrolled再実証を区別する。
@@ -59,5 +65,5 @@
 
 - 最終List SHA-256: `4a17cf4b2f0bb11596021202bf89537ffdb93728865e334ab8b5cc6b2bce3d63`。画面撮影時のList SHA-256は `a43aed545d02ef47cc44bfc8c6bcf902e30667e8f7d74be77bfb9ad93358c7ea`（Git blob SHA-1 `4cc363`）であり、この取得事実は新ハッシュへ書き換えない。
 - 撮影後、lint `@typescript-eslint/no-dynamic-delete` に合わせて対象summary cache削除だけを同義の書式へ変更した。CSS/表示と通知loaded pages保持は変更しておらず、同じ回帰testは次HEADの最終CIで検証する。f82 runtimeと画像取得sourceは変更していない。
-- HEAD `6a864c94c04206b1545851a3504534a044e70fbc` のFrontend CIはLint failure（`NotificationList.vue:286:39`）で、Type check/Vitestはskip。これをgreen扱いせず、次HEADのPR #3499最新checksを参照する。
+- HEAD `6a864c94c04206b1545851a3504534a044e70fbc` のFrontend CIはLint failure（`NotificationList.vue:286:39`）で、Type check/Vitestはskip。これをgreen扱いしない。通知UI lint修正コミット6fの最終検証はPR #3499最新HEADのchecksを参照する。
 - runtime owned PID 113980/102760/105496/118416/119308は停止actual exit 0、root signal 0、照合残存0。非秘密証跡は `.claude/handoffs/cmp019-wave16-evidence-20260929/runtime-teardown-proof.json`。

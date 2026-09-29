@@ -262,7 +262,7 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
 
     private void prepareCompetingGlobalSetting() {
         String suffix = Long.toUnsignedString(System.nanoTime(), 36);
-        String slug = "cmp019-wave16-competitor-" + suffix;
+        String slug = "c19w16-c-" + suffix;
         jdbcTemplate.update("""
                 INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, created_at, updated_at)
                 VALUES (?, 'PUBLIC', 1, 0, 0, ?, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
