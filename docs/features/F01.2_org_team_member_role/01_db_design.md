@@ -536,20 +536,20 @@ INDEX idx_ob_organization_id (organization_id)
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
-| `team_id` | BIGINT UNSIGNED | NO | — | FK → teams（ON DELETE CASCADE）|
-| `organization_id` | BIGINT UNSIGNED | NO | — | FK → organizations（ON DELETE CASCADE）|
+| `team_id` | BIGINT UNSIGNED | NO | — | チーム ID（FK なし。V62.006〜V62.009 で DROP 済み）|
+| `organization_id` | BIGINT UNSIGNED | NO | — | 組織 ID（FK なし。同上）|
 | `status` | VARCHAR(20)（CHECK: 'PENDING','ACTIVE'） | NO | 'PENDING' | PENDING = 承認（承諾）待ち / ACTIVE = 所属中。終端状態は行として残さない（F01.2.1 §4.2）|
 | `direction` | VARCHAR(20)（CHECK: 'ORG_INVITE','TEAM_APPLY'） | NO | 'ORG_INVITE' | 起点。ORG_INVITE = 組織からの招待 / TEAM_APPLY = チームからの申請（F01.2.1 で追加）|
 | `group_id` | BINARY(16) | YES | NULL | チームグループ（`org_team_groups.id`・organization ドメイン・クロスドメイン FK なし）。NULL = 未分類。PENDING/TEAM_APPLY では希望グループ（F01.2.1 で追加）|
 | `message` | VARCHAR(500) | YES | NULL | 申請・招待の添え書き。ACTIVE 化で NULL に戻す（F01.2.1 で追加）|
-| `invited_by` | BIGINT UNSIGNED | YES | NULL | PENDING を作ったユーザー（招待した組織 ADMIN、または申請したチーム ADMIN）|
+| `invited_by` | BIGINT UNSIGNED | YES | NULL | PENDING を作成した加盟操作者（組織 ADMIN、または `MANAGE_ORG_AFFILIATION` を持つチームユーザー。F01.2.1 §3.2・§5.3）|
 | `responded_by` | BIGINT UNSIGNED | YES | NULL | 承諾・承認したユーザー |
 | `invited_at` | DATETIME | NO | CURRENT_TIMESTAMP | 招待・申請日時 |
 | `responded_at` | DATETIME | YES | NULL | 承諾・承認した日時 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | V2.011 には無く、F01.2.1 の移行で追加する |
 
-> クロスドメイン FK（teams / organizations / users）は V62.006〜V62.009 で DROP 済み。
+> クロスドメイン FK（teams / organizations / users）は V62.006〜V62.009 で DROP 済みであり、`ON DELETE CASCADE` も働かない。行の削除はすべてアプリ層で行う（下記「制約・備考」）。
 
 **インデックス**
 ```sql
@@ -568,7 +568,7 @@ INDEX idx_team_org_memberships_status_invited (status, invited_at)              
 - 再招待・再申請（取消・取下げ後、または制限の期限後）は新規 INSERT で再開始する（UNIQUE KEY により同一ペアの PENDING/ACTIVE は常に最大1件に限定）
 - 状態を変える更新は条件付き UPDATE／DELETE（`status` と `direction` を WHERE に含める）で行う。影響行数 0 のときは、操作時点で行が無ければ 404 `TEAM_070`、行はあるが状態・向きが前提と違えば 409 `TEAM_071` を返す（F01.2.1 §6.4 の判定表）
 - チームは複数の組織に同時所属可能（UNIQUE は (team_id, organization_id) ペアに対してのみ）
-- 組織の物理削除時: ON DELETE CASCADE により紐付く全レコードが自動削除。論理削除時は ON DELETE CASCADE が発動しないため、アプリ層で明示的に DELETE する（組織論理削除フロー参照）
+- 組織・チームの削除時の片付けは、DB の FK・CASCADE ではなくアプリ層で行う（FK は V62.006〜V62.009 で DROP 済み）。組織の論理削除はフロー内で明示的に DELETE する（組織論理削除フロー step 5）。チームの論理削除・組織とチームのアーカイブは、それぞれのイベント（`TeamDeletedEvent`・`OrganizationArchivedEvent`・`TeamArchivedEvent`、AFTER_COMMIT）を受けた team ドメインの cleanup service が削除し、取りこぼしは修復バッチ `TeamOrgLifecycleCleanupBatch` が拾う（F01.2.1 §4.5・§6.8）
 
 ---
 
@@ -701,8 +701,8 @@ users (N) ──── (M) permission_groups            ※ via user_permission_
 teams / organizations (1) ──── (N) invite_tokens
 teams (1) ──── (N) team_blocks              ※ supporter_enabled チームのブロックリスト
 organizations (1) ──── (N) organization_blocks  ※ supporter_enabled 組織のブロックリスト
-teams (1) ──── (N) team_org_memberships
-organizations (1) ──── (N) team_org_memberships
+teams (1) ──── (N) team_org_memberships        ※ FK なし（アプリ層で削除）
+organizations (1) ──── (N) team_org_memberships  ※ FK なし（アプリ層で削除）
 organizations (1) ──── (N) organization_officers       ※ ON DELETE CASCADE
 teams (1) ──── (N) team_officers                       ※ ON DELETE CASCADE
 organizations (1) ──── (N) organization_custom_fields  ※ ON DELETE CASCADE
