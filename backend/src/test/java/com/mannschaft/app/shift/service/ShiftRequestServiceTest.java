@@ -374,7 +374,7 @@ class ShiftRequestServiceTest {
             shiftRequestService.deleteRequest(REQUEST_ID, USER_ID);
 
             // Then
-            verify(requestRepository).softDeleteById(REQUEST_ID, CURRENT_INSTANT);
+            verify(requestRepository).softDeleteById(REQUEST_ID, CURRENT_TIME);
             verify(requestRepository, never()).delete(entity);
         }
 

@@ -92,7 +92,7 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
             WHERE slot_id = :slotId AND deleted_at IS NULL
             """, nativeQuery = true)
     int softDeleteBySlotId(@Param("slotId") Long slotId,
-                           @Param("deletedAt") java.time.Instant deletedAt);
+                           @Param("deletedAt") java.time.LocalDateTime deletedAt);
 
     @Modifying(flushAutomatically = true)
     @Query(value = """
@@ -101,7 +101,7 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
             WHERE id = :requestId AND deleted_at IS NULL
             """, nativeQuery = true)
     int softDeleteById(@Param("requestId") Long requestId,
-                       @Param("deletedAt") java.time.Instant deletedAt);
+                       @Param("deletedAt") java.time.LocalDateTime deletedAt);
 
     /**
      * スケジュールと preference で希望件数を集計する（v2: 5 段階集計用）。

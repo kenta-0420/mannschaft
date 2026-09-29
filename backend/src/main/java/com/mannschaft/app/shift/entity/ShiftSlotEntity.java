@@ -12,8 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
@@ -29,7 +29,7 @@ public class ShiftSlotEntity extends BaseEntity {
 
     /** 論理削除日時。native UPDATE だけが書き込み、古い実体の save では蘇生させない。 */
     @Column(name = "deleted_at", insertable = false, updatable = false)
-    private Instant deletedAt;
+    private LocalDateTime deletedAt;
 
     @Column(nullable = false)
     private Long scheduleId;

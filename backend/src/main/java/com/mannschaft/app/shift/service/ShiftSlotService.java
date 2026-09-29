@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -365,7 +366,8 @@ public class ShiftSlotService {
     public void deleteSlot(Long slotId, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
         checkScheduleAdminAccess(entity.getScheduleId(), userId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
-        java.time.Instant deletedAt = wallClock.instant().truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        LocalDateTime deletedAt = LocalDateTime.now(wallClock)
+                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
         assignmentRepository.softDeleteBySlotId(slotId, deletedAt);
         requestRepository.softDeleteBySlotId(slotId, deletedAt);
         if (slotRepository.softDeleteById(slotId, deletedAt) != 1) {

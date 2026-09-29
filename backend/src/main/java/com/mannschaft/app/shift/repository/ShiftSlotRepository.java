@@ -33,7 +33,7 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
             WHERE id = :slotId AND deleted_at IS NULL
             """, nativeQuery = true)
     int softDeleteById(@Param("slotId") Long slotId,
-                       @Param("deletedAt") java.time.Instant deletedAt);
+                       @Param("deletedAt") java.time.LocalDateTime deletedAt);
 
     /**
      * スケジュールの全シフト枠を日付・開始時刻順で取得する。

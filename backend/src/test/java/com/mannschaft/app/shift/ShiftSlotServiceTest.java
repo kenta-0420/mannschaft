@@ -30,6 +30,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -102,6 +103,7 @@ class ShiftSlotServiceTest {
     @BeforeEach
     void setUpAuthz() {
         lenient().when(wallClock.instant()).thenReturn(Instant.parse("2026-09-29T12:00:00Z"));
+        lenient().when(wallClock.getZone()).thenReturn(ZoneId.of("Asia/Tokyo"));
         lenient().when(accessControlService.isSystemAdmin(ACTOR)).thenReturn(true);
         lenient().when(scheduleRepository.findById(SCHEDULE_ID)).thenReturn(Optional.of(
                 com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder()

@@ -41,7 +41,7 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
             WHERE slot_id = :slotId AND deleted_at IS NULL
             """, nativeQuery = true)
     int softDeleteBySlotId(@Param("slotId") Long slotId,
-                           @Param("deletedAt") java.time.Instant deletedAt);
+                           @Param("deletedAt") java.time.LocalDateTime deletedAt);
 
     /**
      * 実行履歴IDに紐づく割当一覧を取得する。
