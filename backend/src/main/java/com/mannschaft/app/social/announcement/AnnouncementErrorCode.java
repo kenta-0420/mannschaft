@@ -58,7 +58,31 @@ public enum AnnouncementErrorCode implements ErrorCode {
     ANNOUNCE_009("ANNOUNCE_009", "テンプレートの操作には ADMIN 権限が必要です", Severity.WARN),
 
     /** テンプレート上限超過（409） */
-    ANNOUNCE_010("ANNOUNCE_010", "テンプレートの上限（20件）に達しました", Severity.WARN);
+    ANNOUNCE_010("ANNOUNCE_010", "テンプレートの上限（20件）に達しました", Severity.WARN),
+
+    /** 指定したチームグループは選択できません（400） */
+    BROADCAST_006("BROADCAST_006", "指定したチームグループは選択できません", Severity.WARN),
+
+    /** この組織ではチームグループ機能が無効です（400） */
+    BROADCAST_007("BROADCAST_007", "この組織ではチームグループ機能が無効です", Severity.WARN),
+
+    /** 範囲の指定が正しくありません（開始が終了より後ろです）（400） */
+    BROADCAST_008("BROADCAST_008", "範囲の指定が正しくありません（開始が終了より後ろです）", Severity.WARN),
+
+    /** 対象になる人がいません（400） */
+    BROADCAST_009("BROADCAST_009", "対象になる人がいません", Severity.WARN),
+
+    /** 個別に選べるチームは5,000までです。「すべてのチーム」かチームグループを使ってください（400） */
+    BROADCAST_010("BROADCAST_010", "個別に選べるチームは5,000までです。「すべてのチーム」かチームグループを使ってください", Severity.WARN),
+
+    /** チームの個別指定とチームグループ指定は同時に使えません（400） */
+    BROADCAST_011("BROADCAST_011", "チームの個別指定とチームグループ指定は同時に使えません", Severity.WARN),
+
+    /** チームの告知ではチームグループを指定できません（400） */
+    BROADCAST_012("BROADCAST_012", "チームの告知ではチームグループを指定できません", Severity.WARN),
+
+    /** テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください（400） */
+    BROADCAST_013("BROADCAST_013", "テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください", Severity.WARN);
 
     private final String code;
     private final String message;

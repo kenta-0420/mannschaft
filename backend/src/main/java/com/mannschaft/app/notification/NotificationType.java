@@ -86,7 +86,18 @@ public enum NotificationType {
     JOIN_REQUEST_REJECTED(NotificationPriority.NORMAL, "USER"),
     NEW_DEVICE_LOGIN(NotificationPriority.HIGH, "USER"),
 
-    RECRUITMENT_PENALTY_LIFTED(NotificationPriority.NORMAL, "RECRUITMENT_PENALTY");
+    RECRUITMENT_PENALTY_LIFTED(NotificationPriority.NORMAL, "RECRUITMENT_PENALTY"),
+
+    /** F01.2.1 §6.7: チーム加盟（申請・招待・離脱・除名等）の通知。sourceType は TEAM_ORG_MEMBERSHIP。 */
+    TEAM_ORG_APPLICATION_RECEIVED(NotificationPriority.NORMAL, "TEAM_ORG_MEMBERSHIP"),
+    TEAM_ORG_APPLICATION_APPROVED(NotificationPriority.NORMAL, "TEAM_ORG_MEMBERSHIP"),
+    TEAM_ORG_APPLICATION_REJECTED(NotificationPriority.NORMAL, "TEAM_ORG_MEMBERSHIP"),
+    TEAM_ORG_INVITE_RECEIVED(NotificationPriority.NORMAL, "TEAM_ORG_MEMBERSHIP"),
+    TEAM_ORG_INVITE_ACCEPTED(NotificationPriority.NORMAL, "TEAM_ORG_MEMBERSHIP"),
+    TEAM_ORG_PENDING_EXPIRED(NotificationPriority.NORMAL, "TEAM_ORG_MEMBERSHIP"),
+    TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM(NotificationPriority.NORMAL, "TEAM_ORG_MEMBERSHIP"),
+    TEAM_ORG_MEMBERSHIP_LEFT(NotificationPriority.NORMAL, "TEAM_ORG_MEMBERSHIP"),
+    TEAM_ORG_MEMBERSHIP_REMOVED(NotificationPriority.NORMAL, "TEAM_ORG_MEMBERSHIP");
 
     private final NotificationPriority priority;
     private final String sourceType;
