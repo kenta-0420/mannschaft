@@ -45,8 +45,13 @@ public class PermissionGroupService {
     private final UserRowLockService userRowLockService;
     private final BillingPermissionGroupGuard billingPermissionGroupGuard;
 
-    private static final List<String> F0914_SENSITIVE_PERMISSIONS =
-            List.of("SEND_PAID_TIMELINE", "VIEW_TIMELINE_COST");
+    /**
+     * ADMIN のみが権限グループへ含めて操作できる権限。含まれる場合、DEPUTY_ADMIN 以下は
+     * 作成・更新・複製・削除・割当のいずれも 403（変更前後の権限の和集合で判定。自己昇格も封じる）。
+     * F09.14 の有料配信権限と、F01.2.1 の加盟操作権限（MANAGE_ORG_AFFILIATION）。
+     */
+    private static final List<String> ADMIN_ONLY_GRANTABLE_PERMISSIONS =
+            List.of("SEND_PAID_TIMELINE", "VIEW_TIMELINE_COST", "MANAGE_ORG_AFFILIATION");
 
     /**
      * 権限グループを作成する。
@@ -407,7 +412,7 @@ public class PermissionGroupService {
 
     private void requireMutationAuthority(Long actorUserId, Long scopeId, String scopeType,
                                           List<Long> permissionIds) {
-        if (containsF0914Permission(permissionIds)) {
+        if (containsAdminOnlyPermission(permissionIds)) {
             accessControlService.checkScopeAdminOnly(actorUserId, scopeId, scopeType);
         } else {
             accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
@@ -421,11 +426,11 @@ public class PermissionGroupService {
         requireMutationAuthority(actorUserId, scopeId, scopeType, permissionIds);
     }
 
-    private boolean containsF0914Permission(List<Long> permissionIds) {
+    private boolean containsAdminOnlyPermission(List<Long> permissionIds) {
         if (permissionIds == null || permissionIds.isEmpty()) return false;
         return permissionRepository.findByIdIn(permissionIds).stream()
                 .map(PermissionEntity::getName)
-                .anyMatch(F0914_SENSITIVE_PERMISSIONS::contains);
+                .anyMatch(ADMIN_ONLY_GRANTABLE_PERMISSIONS::contains);
     }
 
     private List<Long> permissionIdsForGroup(Long groupId) {

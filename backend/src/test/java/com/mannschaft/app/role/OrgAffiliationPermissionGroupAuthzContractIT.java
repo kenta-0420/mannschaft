@@ -53,7 +53,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <h2>red の理由（実装前の既知の欠陥）</h2>
  * <p>{@code PermissionGroupService#requireMutationAuthority} は ADMIN 専用権限の一覧
- * {@code F0914_SENSITIVE_PERMISSIONS}（SEND_PAID_TIMELINE / VIEW_TIMELINE_COST）に
+ * {@code ADMIN_ONLY_GRANTABLE_PERMISSIONS}（SEND_PAID_TIMELINE / VIEW_TIMELINE_COST）に
  * {@code MANAGE_ORG_AFFILIATION} を含んでいないため、この権限を含む権限グループの
  * 作成・更新・複製・削除・ユーザー割当が {@code checkAdminOrAbove}（DEPUTY_ADMIN も通る）で判定され、
  * DEPUTY_ADMIN が自己昇格できてしまう（201/200/204 が返る）。</p>
