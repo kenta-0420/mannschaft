@@ -57,4 +57,7 @@
 
 ## ハッシュ
 
-- 最終List SHA-256: `a43aed545d02ef47cc44bfc8c6bcf902e30667e8f7d74be77bfb9ad93358c7ea`（Git blob SHA-1 `4cc363`）。`AF3D95...`はpre-CSS Listの当時ハッシュであり最終ハッシュではない。
+- 最終List SHA-256: `4a17cf4b2f0bb11596021202bf89537ffdb93728865e334ab8b5cc6b2bce3d63`。画面撮影時のList SHA-256は `a43aed545d02ef47cc44bfc8c6bcf902e30667e8f7d74be77bfb9ad93358c7ea`（Git blob SHA-1 `4cc363`）であり、この取得事実は新ハッシュへ書き換えない。
+- 撮影後、lint `@typescript-eslint/no-dynamic-delete` に合わせて対象summary cache削除だけを同義の書式へ変更した。CSS/表示と通知loaded pages保持は変更しておらず、同じ回帰testは次HEADの最終CIで検証する。f82 runtimeと画像取得sourceは変更していない。
+- HEAD `6a864c94c04206b1545851a3504534a044e70fbc` のFrontend CIはLint failure（`NotificationList.vue:286:39`）で、Type check/Vitestはskip。これをgreen扱いせず、次HEADのPR #3499最新checksを参照する。
+- runtime owned PID 113980/102760/105496/118416/119308は停止actual exit 0、root signal 0、照合残存0。非秘密証跡は `.claude/handoffs/cmp019-wave16-evidence-20260929/runtime-teardown-proof.json`。

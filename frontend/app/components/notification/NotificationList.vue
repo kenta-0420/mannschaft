@@ -283,7 +283,11 @@ async function onConfirmNotification(notif: NotificationResponse) {
     }
     toast.add({ severity: 'success', summary: '確認しました', life: 3000 })
     // 追加読み込み済みの通知を保持したまま、対象通知のサマリだけを更新する。
-    delete confirmableSummaries.value[notif.sourceId]
+    confirmableSummaries.value = Object.fromEntries(
+      Object.entries(confirmableSummaries.value).filter(
+        ([sourceId]) => sourceId !== String(notif.sourceId),
+      ),
+    )
     await loadConfirmableSummary(notif)
   } catch {
     showError('確認処理に失敗しました')
