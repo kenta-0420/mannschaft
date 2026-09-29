@@ -8,6 +8,7 @@ import com.mannschaft.app.advertising.campaign.enums.AdChannelType;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignChannelRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +16,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -36,6 +40,8 @@ import static org.mockito.Mockito.verify;
 @DisplayName("AdCampaignDeliveryDispatcher 単体テスト")
 class AdCampaignDeliveryDispatcherTest {
 
+    private static final LocalDate WEEK_START = LocalDate.of(2026, 5, 11);
+
     @Mock private UserAdPreferenceService userAdPreferenceService;
     @Mock private AdFrequencyCapService frequencyCapService;
     @Mock private AdCampaignDeliveryClaimService claimService;
@@ -46,6 +52,12 @@ class AdCampaignDeliveryDispatcherTest {
     @Mock private AdPushChannelService pushChannelService;
     @Mock private AdBannerChannelService bannerChannelService;
     @InjectMocks private AdCampaignDeliveryDispatcher dispatcher;
+
+    @BeforeEach
+    void setUpWeekBoundary() {
+        lenient().when(frequencyCapService.resolveUserZone(anyLong())).thenReturn(ZoneId.of("Asia/Tokyo"));
+        lenient().when(frequencyCapService.currentWeekStart(any(ZoneId.class))).thenReturn(WEEK_START);
+    }
 
     private AdMessagingCampaign buildCampaign() {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
@@ -198,10 +210,8 @@ class AdCampaignDeliveryDispatcherTest {
         AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
 
         assertThat(result).isEqualTo(AdDeliveryOutcome.SKIPPED);
-        java.time.LocalDate expectedWeek = AdFrequencyCapService
-                .currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
-        verify(frequencyCapService, times(1)).releaseSlot(42L, 100L, expectedWeek);
-        verify(claimService, times(1)).releaseClaim(campaign.getId(), 42L, expectedWeek);
+        verify(frequencyCapService, times(1)).releaseSlot(42L, 100L, WEEK_START);
+        verify(claimService, times(1)).releaseClaim(campaign.getId(), 42L, WEEK_START);
     }
 
     @Test

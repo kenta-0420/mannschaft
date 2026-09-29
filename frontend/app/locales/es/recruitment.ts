@@ -280,6 +280,7 @@ export default {
       "status": {
         "pending": "Pendiente",
         "confirmed": "Confirmado",
+        "expired": "Plazo de disputa vencido",
         "disputed": "En disputa",
         "revoked": "Revocado",
         "upheld": "Mantenido"

@@ -18,6 +18,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
@@ -27,6 +29,10 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * {@link TimelineFeedController} の単体テスト。
@@ -54,11 +60,71 @@ class TimelineFeedControllerTest {
     private static final Long USER_ID = 100L;
 
     private MockedStatic<SecurityUtils> securityUtils;
+    private MockMvc mockMvc;
 
     @BeforeEach
     void setUpSecurityUtils() {
         securityUtils = Mockito.mockStatic(SecurityUtils.class);
         securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    }
+
+    @Nested
+    @DisplayName("getFeedPage - cursor/limit HTTP契約")
+    class GetFeedPageHttpContract {
+
+        @Test
+        @DisplayName("limitをsizeより優先し、次ページではpinnedを再取得しない")
+        void limitWinsOverSizeAndCursorSkipsPinnedLookup() throws Exception {
+            given(scopeIdResolver.resolve("TEAM", TEAM_SLUG)).willReturn(TEAM_INTERNAL_ID);
+            given(postService.getFeedPage("TEAM", TEAM_INTERNAL_ID, null, 42L, 3, USER_ID))
+                    .willReturn(List.of());
+
+            mockMvc.perform(get("/api/v1/timeline/feed")
+                            .param("scopeType", "TEAM")
+                            .param("scopeId", TEAM_SLUG)
+                            .param("cursor", "42")
+                            .param("limit", "3")
+                            .param("size", "7"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.pinned").isEmpty())
+                    .andExpect(jsonPath("$.meta.limit").value(3))
+                    .andExpect(jsonPath("$.meta.hasNext").value(false));
+
+            verify(postService).getFeedPage("TEAM", TEAM_INTERNAL_ID, null, 42L, 3, USER_ID);
+            verify(postService, never()).getPinnedPosts("TEAM", TEAM_INTERNAL_ID, null, USER_ID);
+        }
+
+        @Test
+        @DisplayName("size別名を使い、上限50へ制限する")
+        void sizeAliasIsCappedAtFifty() throws Exception {
+            given(scopeIdResolver.resolve("PUBLIC", "0")).willReturn(0L);
+            given(postService.getFeedPage("PUBLIC", 0L, null, null, 50, USER_ID))
+                    .willReturn(List.of());
+            given(postService.getPinnedPosts("PUBLIC", 0L, null, USER_ID)).willReturn(List.of());
+
+            mockMvc.perform(get("/api/v1/timeline/feed").param("size", "80"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.meta.limit").value(50));
+
+            verify(postService).getFeedPage("PUBLIC", 0L, null, null, 50, USER_ID);
+            verify(postService).getPinnedPosts("PUBLIC", 0L, null, USER_ID);
+        }
+
+        @Test
+        @DisplayName("0以下のlimitは既定20へ正規化する")
+        void nonPositiveLimitUsesDefault() throws Exception {
+            given(scopeIdResolver.resolve("PUBLIC", "0")).willReturn(0L);
+            given(postService.getFeedPage("PUBLIC", 0L, null, null, 20, USER_ID))
+                    .willReturn(List.of());
+            given(postService.getPinnedPosts("PUBLIC", 0L, null, USER_ID)).willReturn(List.of());
+
+            mockMvc.perform(get("/api/v1/timeline/feed").param("limit", "0"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.meta.limit").value(20));
+
+            verify(postService).getFeedPage("PUBLIC", 0L, null, null, 20, USER_ID);
+        }
     }
 
     @AfterEach

@@ -190,7 +190,7 @@ pages:
   # 移設元ページ自体は上記のとおり本PRで削除済み。
   - path: /teams/[slug]/settings/confirmable-notifications
     classification: reachable
-    reason: "CMP-260909-1141。旧 /admin/reservation-settings.vue（サイドバー導線が無く URL 直打ちでしか開けなかった）から確認通知3コンポーネント（ConfirmableNotificationSettings/Sender/History）を移設。TeamSidebar.vue の settings カテゴリへ path: 'settings/confirmable-notifications' で追加"
+    reason: "CMP-260909-1141。旧 /admin/reservation-settings.vue（サイドバー導線が無く URL 直打ちでしか開けなかった）から確認通知3コンポーネント（ConfirmableNotificationSettings/Sender/History）を移設。TeamSidebar.vue の日常導線で回覧板の直後へ path: 'settings/confirmable-notifications' のまま配置（旧URL互換）"
   - path: /organizations/[slug]/settings/confirmable-notifications
     classification: reachable
-    reason: "CMP-260909-1141。上記のOrganization版。OrganizationSidebar.vue の settings カテゴリへ path: 'settings/confirmable-notifications' で追加"
+    reason: "CMP-260909-1141。上記のOrganization版。OrganizationSidebar.vue の日常導線で回覧板の直後へ path: 'settings/confirmable-notifications' のまま配置（旧URL互換）"

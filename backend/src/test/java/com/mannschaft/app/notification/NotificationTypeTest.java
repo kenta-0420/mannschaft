@@ -22,7 +22,7 @@ class NotificationTypeTest {
         //       ＋ CMP-260901-1538 柱③-A「MEMBER 参加申請」の JOIN_REQUEST_RECEIVED /
         //         _APPROVED / _REJECTED（3種）
         //       = 計 37 種別。
-        assertThat(NotificationType.values()).hasSize(38);
+        assertThat(NotificationType.values()).hasSize(39);
         assertThat(NotificationType.values())
                 .contains(NotificationType.BETA_PERK_GRANTED, NotificationType.BETA_PERK_REVOKED,
                         NotificationType.BETA_PERK_EXTENDED, NotificationType.BETA_PERK_REVIEW_FLAGGED,
@@ -33,7 +33,8 @@ class NotificationTypeTest {
                         NotificationType.JOIN_REQUEST_RECEIVED,
                         NotificationType.JOIN_REQUEST_APPROVED,
                         NotificationType.JOIN_REQUEST_REJECTED,
-                        NotificationType.NEW_DEVICE_LOGIN);
+                        NotificationType.NEW_DEVICE_LOGIN,
+                        NotificationType.RECRUITMENT_PENALTY_LIFTED);
     }
 
     @Test

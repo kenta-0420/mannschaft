@@ -1,7 +1,9 @@
 package com.mannschaft.app.recruitment.repository;
 
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -13,6 +15,27 @@ import java.util.Optional;
  * F03.11 Phase 5b: 無断キャンセル記録リポジトリ。
  */
 public interface RecruitmentNoShowRecordRepository extends JpaRepository<RecruitmentNoShowRecordEntity, Long> {
+
+    /** 同時の二重申立で通知を重複させないため、申立判定中は記録行をロックする。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM RecruitmentNoShowRecordEntity r WHERE r.id = :recordId")
+    Optional<RecruitmentNoShowRecordEntity> findByIdForDisputeUpdate(@Param("recordId") Long recordId);
+
+    /** NO_SHOW 期限の設定値を、論理削除済み募集も含めて一括取得する。 */
+    @Query(value = """
+            SELECT r.id AS recordId, COALESCE(s.dispute_allowed_days, 30) AS allowedDays
+            FROM recruitment_no_show_records r
+            JOIN recruitment_listings l ON l.id = r.listing_id
+            LEFT JOIN recruitment_penalty_settings s
+              ON s.scope_type = l.scope_type AND s.scope_id = l.scope_id
+            WHERE r.id IN (:recordIds)
+            """, nativeQuery = true)
+    List<NoShowDisputeDays> findDisputeDaysByRecordIds(@Param("recordIds") List<Long> recordIds);
+
+    interface NoShowDisputeDays {
+        Long getRecordId();
+        Integer getAllowedDays();
+    }
 
     List<RecruitmentNoShowRecordEntity> findByUserId(Long userId);
 
@@ -66,6 +89,17 @@ public interface RecruitmentNoShowRecordRepository extends JpaRepository<Recruit
             @Param("scopeType") com.mannschaft.app.recruitment.RecruitmentScopeType scopeType,
             @Param("scopeId") Long scopeId);
 
+    /** PERSONAL の所有者本人が作成した募集枠の記録だけを返す。 */
+    @Query("""
+            SELECT r FROM RecruitmentNoShowRecordEntity r
+            JOIN RecruitmentListingEntity l ON l.id = r.listingId
+            WHERE l.scopeType = :scopeType AND l.scopeId = :scopeId AND l.createdBy = :createdBy
+            ORDER BY r.recordedAt DESC
+            """)
+    List<RecruitmentNoShowRecordEntity> findByScopeTypeAndScopeIdAndCreatedBy(
+            @Param("scopeType") com.mannschaft.app.recruitment.RecruitmentScopeType scopeType,
+            @Param("scopeId") Long scopeId, @Param("createdBy") Long createdBy);
+
     /**
      * スコープ帰属を検証しながら NO_SHOW 記録を 1 件取得する（管理操作用）。
      *
@@ -91,4 +125,16 @@ public interface RecruitmentNoShowRecordRepository extends JpaRepository<Recruit
             @Param("recordId") Long recordId,
             @Param("scopeType") com.mannschaft.app.recruitment.RecruitmentScopeType scopeType,
             @Param("scopeId") Long scopeId);
+
+    /** PERSONAL 裁定時の作成者検証を JOIN 条件に含める。 */
+    @Query("""
+            SELECT r FROM RecruitmentNoShowRecordEntity r
+            JOIN RecruitmentListingEntity l ON l.id = r.listingId
+            WHERE r.id = :recordId AND l.scopeType = :scopeType
+              AND l.scopeId = :scopeId AND l.createdBy = :createdBy
+            """)
+    Optional<RecruitmentNoShowRecordEntity> findByIdAndScopeTypeAndScopeIdAndCreatedBy(
+            @Param("recordId") Long recordId,
+            @Param("scopeType") com.mannschaft.app.recruitment.RecruitmentScopeType scopeType,
+            @Param("scopeId") Long scopeId, @Param("createdBy") Long createdBy);
 }

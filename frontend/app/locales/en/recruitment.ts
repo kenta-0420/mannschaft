@@ -280,6 +280,7 @@ export default {
       "status": {
         "pending": "Pending",
         "confirmed": "Confirmed",
+        "expired": "Dispute deadline passed",
         "disputed": "Disputed",
         "revoked": "Revoked",
         "upheld": "Upheld"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import type { RecruitmentNoShowRecordResponse, DisputeNoShowRequest } from '~/types/recruitment'
+import { canDisputeNoShow, isNoShowDisputeExpired } from '~/utils/recruitmentNoShow'
 
 const { t } = useI18n()
 const api = useRecruitmentApi()
@@ -35,6 +36,7 @@ function statusLabel(record: RecruitmentNoShowRecordResponse): string {
     if (record.disputeResolution === 'UPHELD') return t('recruitment.noShow.status.upheld')
     return t('recruitment.noShow.status.disputed')
   }
+  if (isNoShowDisputeExpired(record)) return t('recruitment.noShow.status.expired')
   if (record.confirmed) return t('recruitment.noShow.status.confirmed')
   return t('recruitment.noShow.status.pending')
 }
@@ -47,10 +49,6 @@ function statusSeverity(record: RecruitmentNoShowRecordResponse): string {
   }
   if (record.confirmed) return 'danger'
   return 'secondary'
-}
-
-function canDispute(record: RecruitmentNoShowRecordResponse): boolean {
-  return record.confirmed && !record.disputed
 }
 
 function openDisputeDialog(record: RecruitmentNoShowRecordResponse) {
@@ -120,7 +118,7 @@ onMounted(() => load())
             </div>
           </div>
           <Button
-            v-if="canDispute(record)"
+            v-if="canDisputeNoShow(record)"
             :label="t('recruitment.noShow.disputeButton')"
             severity="warning"
             size="small"
@@ -144,6 +142,7 @@ onMounted(() => load())
         <Textarea
           v-model="disputeReason"
           :placeholder="t('recruitment.noShow.disputeDialog.reasonPlaceholder')"
+          maxlength="10000"
           rows="4"
           class="w-full"
         />

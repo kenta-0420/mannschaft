@@ -1,5 +1,7 @@
 package com.mannschaft.app.corkboard.controller;
 
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.corkboard.dto.CorkboardDetailResponse;
@@ -38,6 +40,8 @@ public class TeamCorkboardController {
     /**
      * チームボード一覧を取得する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @GetMapping
     @Operation(summary = "チームコルクボード一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -50,6 +54,8 @@ public class TeamCorkboardController {
     /**
      * チームボードを作成する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PostMapping
     @Operation(summary = "チームコルクボード作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
@@ -63,6 +69,8 @@ public class TeamCorkboardController {
     /**
      * チームボード詳細を取得する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @GetMapping("/{id}")
     @Operation(summary = "チームコルクボード詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -77,6 +85,8 @@ public class TeamCorkboardController {
     /**
      * チームボードを更新する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PutMapping("/{id}")
     @Operation(summary = "チームコルクボード更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
@@ -91,6 +101,8 @@ public class TeamCorkboardController {
     /**
      * チームボードを削除する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @DeleteMapping("/{id}")
     @Operation(summary = "チームコルクボード削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")

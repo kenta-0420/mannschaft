@@ -724,6 +724,15 @@ class ArchUnitFreezeStoreIntegrityTest {
     private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1407;
 
     /**
+     * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
+     * CMP-260820-1016 の未絞り込み全量解析に先立ち、同一の本番クラス集合を読むD-3T単体で
+     * 初回生成したストア（{@code 296295dd-06cf-4f7b-bf82-315ba12ff501}）を実測。
+     * PR #3462 の main 追従で追加された27件を再凍結し、期待件数へ反映した。
+     * PR #3447 の main 追従で追加された5件も同様に反映した。
+     */
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7684;
+
+    /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
      * 更新手順は {@link #EXPECTED_LINES_AUTHZ_WAVE4} と同様（対象ファイル:
      * {@code 2c0ba995-682e-4f80-a5a5-f68c835b720d}）。
@@ -752,8 +761,16 @@ class ArchUnitFreezeStoreIntegrityTest {
      * AUTO_INCREMENT のような中央発番はどこにも現れない）。むしろ代理キーを足すと「1契約1 lease」を
      * 別途 UNIQUE 制約で守る必要が生じ、排他の不変条件の担保が弱くなる。DDL は V196 で確定済みであり
      * 新規 migration での作り直しは行わない。違反隠蔽ではなく設計是認例外の正規登録。</p>
+     *
+     * <p>CMP-019 Wave7: {@code publicview.PublicPostCommentEntity} は既存 DDL の主キーが
+     * {@code CHAR(36)} であり、Hibernate の UUID バイナリバインドでは保存できない。
+     * 既存データを保つため {@code UuidV7CharEntity} に切り替え、567 → 568。
+     * UUIDv7 の採番規約は維持する。</p>
+     *
+     * <p>ScheduleMediaUploadEntity が {@code UuidV7Entity} を継承済みとなり、凍結ストアから解消行 1 件が
+     * 自動で縮退したため 568 → 567（PR #3387 の main 追従で反映）。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 566;
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 567;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。
@@ -812,6 +829,10 @@ class ArchUnitFreezeStoreIntegrityTest {
             "transactional should not span other-domain repositories (D-3)",
             "f14374b1-655e-4df2-8e82-2d79c8df9174",
             EXPECTED_LINES_CROSS_DOMAIN_TX_D3),
+        new FrozenStoreExpectation(
+            "transactional entry should not transitively reach other-domain repositories (D-3T)",
+            "296295dd-06cf-4f7b-bf82-315ba12ff501",
+            EXPECTED_LINES_CROSS_DOMAIN_TX_D3T),
         new FrozenStoreExpectation(
             "entities should extend UuidV7Entity (D-2b)",
             "2c0ba995-682e-4f80-a5a5-f68c835b720d",

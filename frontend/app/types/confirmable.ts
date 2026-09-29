@@ -1,6 +1,19 @@
 export type ConfirmableNotificationStatus = 'ACTIVE' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED'
 export type ConfirmableNotificationPriority = 'NORMAL' | 'HIGH' | 'URGENT'
 export type ConfirmableConfirmedVia = 'APP' | 'TOKEN' | 'BULK'
+export type ConfirmableNotificationDeliveryStatus =
+  | 'QUEUED'
+  | 'DELIVERING'
+  | 'DELIVERED'
+  | 'PARTIALLY_FAILED'
+  | 'STOPPED'
+export type ConfirmableTargetType = 'ORGANIZATION' | 'TEAM'
+export type ConfirmableRecipientViewerRole = 'ADMIN' | 'CREATOR' | 'MEMBER'
+
+export interface ConfirmableTarget {
+  type: ConfirmableTargetType
+  id: number
+}
 
 /**
  * 未確認者リストの公開範囲
@@ -34,6 +47,8 @@ export interface ConfirmableNotificationSummary {
   createdAt: string
   /** この通知における未確認者リストの公開範囲 */
   unconfirmedVisibility: UnconfirmedVisibility
+  deliveryStatus?: ConfirmableNotificationDeliveryStatus
+  deliveredCount?: number
 }
 
 export interface ConfirmableNotificationDetail extends ConfirmableNotificationSummary {
@@ -57,6 +72,26 @@ export interface ConfirmableNotificationRecipientItem {
   secondReminderSentAt: string | null
   excludedAt: string | null
   createdAt: string
+  displayName: string | null
+  avatarUrl: string | null
+  withdrawn: boolean
+}
+
+export interface ConfirmableNotificationRecipientPage {
+  items: ConfirmableNotificationRecipientItem[]
+  page: number
+  size: number
+  totalElements: number
+  confirmedCount: number
+  unconfirmedCount: number
+  viewerRole: ConfirmableRecipientViewerRole
+}
+
+export interface ConfirmableRecipientGroup {
+  id: string
+  name: string
+  targets: ConfirmableTarget[]
+  createdAt: string
 }
 
 export interface ConfirmableNotificationTemplate {
@@ -67,6 +102,7 @@ export interface ConfirmableNotificationTemplate {
   title: string
   body: string | null
   defaultPriority: ConfirmableNotificationPriority
+  defaultRecipientGroupId: string | null
   createdAt: string
 }
 
@@ -79,9 +115,30 @@ export interface CreateConfirmableNotificationRequest {
   secondReminderMinutes?: number
   actionUrl?: string
   templateId?: number
-  recipientUserIds: number[]
+  targets?: ConfirmableTarget[]
+  recipientGroupId?: string
   /** 未確認者リストの公開範囲（未指定時はサーバ側でスコープ設定にフォールバック） */
   unconfirmedVisibility?: UnconfirmedVisibility | null
+}
+
+export interface ConfirmableNotificationSendAccepted {
+  id: number
+  deliveryStatus: ConfirmableNotificationDeliveryStatus
+  estimatedRecipientCount: number
+}
+
+export interface ConfirmableRecipientPreviewRequest {
+  targets?: ConfirmableTarget[]
+  recipientGroupId?: string
+}
+
+export interface ConfirmableRecipientPreview {
+  estimatedRecipientCount: number
+}
+
+export interface CreateConfirmableRecipientGroupRequest {
+  name: string
+  targets: ConfirmableTarget[]
 }
 
 export interface UpdateConfirmableNotificationSettingsRequest {
@@ -97,4 +154,5 @@ export interface CreateConfirmableNotificationTemplateRequest {
   title: string
   body?: string
   defaultPriority: ConfirmableNotificationPriority
+  defaultRecipientGroupId?: string | null
 }

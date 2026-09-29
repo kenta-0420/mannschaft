@@ -1,5 +1,7 @@
 package com.mannschaft.app.corkboard.controller;
 
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.corkboard.dto.PinnedCardListResponse;
@@ -36,6 +38,8 @@ public class MyPinnedCardsController {
      * @param limit  取得件数（省略時は 20、最大 50。範囲外は丸める）
      * @param cursor 前回レスポンスの {@code nextCursor}（初回は省略）
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @GetMapping("/pinned-cards")
     @Operation(summary = "ピン止めカード横断取得（ダッシュボード用）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

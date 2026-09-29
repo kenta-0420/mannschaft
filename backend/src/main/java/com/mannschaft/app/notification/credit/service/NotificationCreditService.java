@@ -18,10 +18,12 @@ import com.mannschaft.app.notification.credit.repository.NotificationMonthlyUsag
 import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -64,6 +66,14 @@ public class NotificationCreditService {
      * {@code NotificationCreditFreeQuotaAlertListener} が配送する（原則5）。
      */
     private final ApplicationEventPublisher eventPublisher;
+    /**
+     * CMP-260920-1040是正: 新規追加メソッド（{@link #isSendBlocked}）は引数なし
+     * {@code LocalDateTime.now()} を使わず、注入した {@link Clock} を明示的に渡す
+     * （docs/architecture/datetime_policy_utc_instant_vs_wallclock.md）。既存メソッドの
+     * 引数なし {@code now()} は凍結台帳の対象のため、本是正では触れない。
+     */
+    @Qualifier("wallClock")
+    private final Clock clock;
 
 
     // ─────────────────────────────────────────────────────────
@@ -230,6 +240,26 @@ public class NotificationCreditService {
      * @param organizationId 組織ID
      * @return 残高レスポンス
      */
+    /**
+     * CMP-260920-1040: 受付の時点で猶予期間を既に超過しているかを、消費を伴わずに判定する
+     * （軍議第8版確定稿 §3.3・AC-26。確認通知の送信APIが受付時の事前チェックに使う）。
+     *
+     * <p>{@link #consume} と同じ猶予期間の判定基準（{@link #GRACE_PERIOD_HOURS}）を用いるが、
+     * 残高の取得・更新は一切行わない読み取り専用の判定である。</p>
+     *
+     * @param organizationId 組織ID
+     * @return 猶予期間を超過していて送信をブロックすべきなら true
+     */
+    public boolean isSendBlocked(Long organizationId) {
+        return balanceRepository.findByOrganizationId(organizationId)
+                .map(balance -> {
+                    LocalDateTime graceStart = balance.getGracePeriodStartAt();
+                    return graceStart != null
+                            && LocalDateTime.now(clock).isAfter(graceStart.plusHours(GRACE_PERIOD_HOURS));
+                })
+                .orElse(false);
+    }
+
     public NotificationCreditBalanceResponse getBalance(Long organizationId) {
         Optional<OrganizationNotificationBalanceEntity> balanceOpt =
                 balanceRepository.findByOrganizationId(organizationId);

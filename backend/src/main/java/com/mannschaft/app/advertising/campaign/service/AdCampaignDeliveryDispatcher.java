@@ -122,7 +122,7 @@ public class AdCampaignDeliveryDispatcher {
 
         // 2.5) DB claim 確保（claim-then-act）。FreqCap と同一の週定義を用いる。
         ZoneId userZone = frequencyCapService.resolveUserZone(userId);
-        LocalDate weekStart = AdFrequencyCapService.currentWeekStart(userZone);
+        LocalDate weekStart = frequencyCapService.currentWeekStart(userZone);
         boolean claimed = claimService.tryClaim(campaign.getId(), userId, weekStart);
         if (!claimed) {
             // 既に他の実行（並行 or 再試行）が確保済み → FreqCap を返却してスキップ

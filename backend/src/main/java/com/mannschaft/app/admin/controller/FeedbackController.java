@@ -38,9 +38,12 @@ public class FeedbackController {
 
     /**
      * フィードバックを投稿する。
+     *
+     * <p>本文の宛先（scopeType / scopeId）を受け取るため自己スコープ EP ではない。
+     * TEAM / ORGANIZATION 宛ては {@code FeedbackService#createFeedback} が
+     * {@code AccessControlService#checkMembership} で投稿者の在籍を検証し、GENERAL（運営宛て）は
+     * 認証済みの誰でも投稿できる（CMP-260917-1135）。</p>
      */
-    @SelfScopedEndpoint("FeedbackService#createFeedback は SecurityUtils.getCurrentUserId() を"
-        + "submittedBy として新規保存するのみで他人のデータに触れない")
     @PostMapping
     @Operation(summary = "フィードバック投稿")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投稿成功")

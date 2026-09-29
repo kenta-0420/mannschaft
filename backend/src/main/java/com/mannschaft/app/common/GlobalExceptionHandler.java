@@ -2527,7 +2527,27 @@ public class GlobalExceptionHandler {
             // （PARKING_020・PROV_001/009/010 と同じ流儀）。申請自体が見つからない場合
             // （IDOR 対策で scope 不一致も含む）も同様に 404。
             Map.entry("JOIN_REQUEST_001", HttpStatus.NOT_FOUND),
-            Map.entry("JOIN_REQUEST_003", HttpStatus.NOT_FOUND)
+            Map.entry("JOIN_REQUEST_003", HttpStatus.NOT_FOUND),
+
+            // 価格改定戦役（price-revisions）出陣隊（第3陣）D/E/F/G/J群: PriceRevisionErrorCode の
+            // 宣言どおりの status（正本 .claude/campaigns/price-rev-plan-v3.md）。
+            Map.entry("PRICE_REVISION_001", HttpStatus.CONFLICT),   // TAX_CODE_DUPLICATE AC-9
+            Map.entry("PRICE_REVISION_002", HttpStatus.CONFLICT),   // TAX_CODE_OVERLAP AC-10
+            Map.entry("PRICE_REVISION_013", HttpStatus.CONFLICT),   // FUTURE_REVISION_ALREADY_EXISTS AC-176
+            Map.entry("PRICE_REVISION_014", HttpStatus.CONFLICT),   // REVISION_OVERLAP AC-46/AC-49
+            Map.entry("PRICE_REVISION_016", HttpStatus.NOT_FOUND),  // REVISION_NOT_FOUND AC-55/56/102
+            Map.entry("PRICE_REVISION_017", HttpStatus.CONFLICT),   // LOCK_VERSION_CONFLICT AC-76/103/115
+            Map.entry("PRICE_REVISION_018", HttpStatus.CONFLICT),   // STATE_CONFLICT AC-77/78/94/95/105/106/116
+            Map.entry("PRICE_REVISION_020", HttpStatus.CONFLICT),   // PROVISION_IN_PROGRESS AC-104/131
+            // CMP-260920-1040 F04.9 確認通知「宛先指定」（軍議第8版確定稿 §3.3・§4・AC-36）。
+            // TARGETS_EMPTY / TARGETS_AND_GROUP_BOTH_SPECIFIED / DEADLINE_IN_PAST は
+            // Severity.WARN 既定の 400 のまま（登録不要）。
+            Map.entry("CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE", HttpStatus.FORBIDDEN),
+            Map.entry("CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND", HttpStatus.NOT_FOUND),
+            Map.entry("CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY", HttpStatus.CONFLICT),
+            Map.entry("CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE", HttpStatus.CONFLICT),
+            // NC_002（NotificationCreditErrorCode.CREDIT_INSUFFICIENT）と同じ 402 課金ゲートに統一する。
+            Map.entry("CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT", HttpStatus.PAYMENT_REQUIRED)
     );
 
     /**
@@ -3136,6 +3156,16 @@ public class GlobalExceptionHandler {
      * @return 対応する HttpStatus
      */
     protected HttpStatus resolveHttpStatus(ErrorCode errorCode) {
+        return resolveStatus(errorCode);
+    }
+
+    /**
+     * {@link #resolveHttpStatus(ErrorCode)} の static 版。価格改定戦役（price-revisions）
+     * 出陣隊（第3陣）D/I群: Controller 側で「業務上想定される4xx（400/404/409）は冪等台帳へ
+     * complete として保存し再送で再生する・真に予期しない例外だけ fail() する」を判定するために、
+     * インスタンスを介さず ErrorCode → HttpStatus を解決できる必要がある（決定2b）。
+     */
+    public static HttpStatus resolveStatus(ErrorCode errorCode) {
         // 個別マッピングを優先
         HttpStatus mapped = ERROR_CODE_STATUS_MAP.get(errorCode.getCode());
         if (mapped != null) {

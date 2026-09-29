@@ -14,6 +14,7 @@ import com.stripe.model.Invoice;
 import com.stripe.net.Webhook;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,9 +24,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Map;
 
 /**
@@ -47,6 +48,8 @@ public class StripeAdInvoiceWebhookController {
 
     private final AdInvoiceRepository adInvoiceRepository;
     private final ApplicationEventPublisher eventPublisher;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     @Value("${mannschaft.stripe.webhook-secret.ad-invoices:}")
     private String webhookSecret;
@@ -110,10 +113,10 @@ public class StripeAdInvoiceWebhookController {
                     log.info("重複イベント（冪等性）: invoiceId={}", invoice.getId());
                     return ResponseEntity.ok(Map.of("status", "already_processed"));
                 }
-                LocalDateTime paidAt = stripeInvoice.getStatusTransitions() != null
-                        && stripeInvoice.getStatusTransitions().getPaidAt() != null
-                        ? LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.getStatusTransitions().getPaidAt()), ZoneId.of("Asia/Tokyo"))
-                        : LocalDateTime.now();
+                Long paidAtEpochSeconds = stripeInvoice.getStatusTransitions() != null
+                        ? stripeInvoice.getStatusTransitions().getPaidAt()
+                        : null;
+                LocalDateTime paidAt = resolvePaidAt(paidAtEpochSeconds);
                 invoice.markPaid(paidAt, null);
                 // 運営領収書の発行契機（F08.12 §5.2）。markPaid は Webhook と手動確認の
                 // 唯一の合流点だが、Webhook はこの Controller で直接呼ぶため両方から publish する。
@@ -131,6 +134,12 @@ public class StripeAdInvoiceWebhookController {
         }
 
         return ResponseEntity.ok(Map.of("status", "processed"));
+    }
+
+    LocalDateTime resolvePaidAt(Long paidAtEpochSeconds) {
+        return paidAtEpochSeconds != null
+                ? LocalDateTime.ofInstant(Instant.ofEpochSecond(paidAtEpochSeconds), wallClock.getZone())
+                : LocalDateTime.now(wallClock);
     }
 
 }
