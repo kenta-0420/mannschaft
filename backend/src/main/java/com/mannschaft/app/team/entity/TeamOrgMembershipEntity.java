@@ -54,6 +54,23 @@ public class TeamOrgMembershipEntity {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** 起点（F01.2.1 §5.3）。既存フローは組織からの招待だけだったため既定は ORG_INVITE。 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @lombok.Builder.Default
+    private TeamOrgAffiliationDirection direction = TeamOrgAffiliationDirection.ORG_INVITE;
+
+    /** チームグループID（org_team_groups.id・クロスドメインFKなし）。NULL=未分類。 */
+    @Column(name = "group_id")
+    private java.util.UUID groupId;
+
+    /** 申請・招待時の添え書き（PENDING の間だけ意味を持つ）。 */
+    @Column(length = 500)
+    private String message;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
     /**
      * チーム−組織所属ステータス
      */
@@ -65,6 +82,12 @@ public class TeamOrgMembershipEntity {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = this.createdAt;
+    }
+
+    @jakarta.persistence.PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     /**
