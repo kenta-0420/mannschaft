@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-09-29T07:22:38+00:00",
+  "generatedAt": "2026-09-29T07:26:09+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -7,8 +7,8 @@ window.BETA_INVENTORY_DATA = {
     "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
-    "inventoryCommit": "c5d9c472ed36566368025eb80bcb966b76f7da4d",
-    "taskListCommit": "c5e9ba912fb4a199a4896f64a7331811fd2f9f67",
+    "inventoryCommit": "52148dcce54bfa31eda8b1bb5fd963a424bbb115",
+    "taskListCommit": "52148dcce54bfa31eda8b1bb5fd963a424bbb115",
     "inventorySha256": "216afbc9cdeb56a877564615ed47cf94912d2e383136aad610698a108a04f15c",
     "taskListSha256": "a00bea5ecd732e46e46fb9370c29947a6e17687866230b98eb30655ad25d1d8c",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
