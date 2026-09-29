@@ -283,6 +283,24 @@ public class NotificationFanoutJobService {
         return job.getId();
     }
 
+    /**
+     * F01.2.1 §6.7: 呼び出し側の進行中トランザクションに参加して fan-out ジョブを冪等に enqueue する（新版）。
+     *
+     * <p>文面の描画・{@code action_url}・シャードの扱い（{@code FIXED_SINGLE} / {@code AUTO}）を持ち、
+     * ジョブ行と文面行を {@code INSERT ... ON DUPLICATE KEY UPDATE id = id} で登録したうえで、
+     * 冪等キーで再読込したジョブ行を返す（同じキーの2回目は例外を投げず既存行を返す・AC-E11）。
+     * 既存の9引数版には委譲しない（AC-E12）。</p>
+     *
+     * <p>試練（red）段階の骨格。出陣で実装する。</p>
+     *
+     * @param command enqueue の引数一式
+     * @return 登録済み（新規または既存）の親ジョブ行
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public NotificationFanoutJob enqueueInCurrentTransaction(FanoutEnqueueCommand command) {
+        throw new UnsupportedOperationException("F01.2.1 6-D: 出陣で実装する");
+    }
+
     /** 描画済み文面 Map をジョブ配下の子エンティティ群へ写す（配信ロケール数ぶん＝6 行）。 */
     private static List<NotificationFanoutJobMessage> buildMessages(
             UUID jobId, Map<String, FanoutMessageRenderer.RenderedMessage> messages) {
