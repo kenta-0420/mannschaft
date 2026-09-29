@@ -1,7 +1,12 @@
 package com.mannschaft.app.member;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,6 +54,7 @@ class OrgMemberProfileCopyRollbackIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private JdbcTemplate jdbc;
+    @PersistenceContext private EntityManager em;
 
     private final String nonce = UUID.randomUUID().toString().substring(0, 8);
     private Long orgId;
@@ -77,12 +83,11 @@ class OrgMemberProfileCopyRollbackIT extends AbstractMySqlIntegrationTest {
                 + "'NOBODY', 'ANYONE', 1, 'ja', 'Asia/Tokyo', 0, 'PUBLIC', 1, 0, NOW(), NOW())", email);
         adminId = jdbc.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, email);
 
-        // ADMIN は user_roles、所属は memberships（別系統のため両方張る。MemberScopeContractIT:121 の地雷）
-        jdbc.update("INSERT INTO user_roles (user_id, role_id, team_id, organization_id, created_at, updated_at) "
-                + "SELECT ?, r.id, NULL, ?, NOW(), NOW() FROM roles r WHERE r.name = 'ADMIN'", adminId, orgId);
-        jdbc.update("INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at, "
-                + "created_at, updated_at) VALUES (?, 'ORGANIZATION', ?, 'MEMBER', NOW(), NOW(), NOW())",
-                adminId, orgId);
+        // ADMIN は user_roles、所属は memberships（別系統のため両方張る。MemberScopeContractIT:121 の地雷）。
+        // 生 INSERT ではなく MembershipTestHelper を使う（UserRolesMembershipRoleInsertGuardTest 対応）。
+        MembershipTestHelper.insertUserRole(em, adminId, "ADMIN", null, orgId);
+        MembershipTestHelper.insertMembership(em, adminId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
+        em.flush();
 
         sourcePageId = insertPage("AC27 コピー元", "PUBLISHED");
         targetPageId = insertPage("AC27 コピー先", "DRAFT");

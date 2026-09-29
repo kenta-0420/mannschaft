@@ -198,6 +198,12 @@ public class MemberProfileService {
         TeamPageEntity targetPage = pageService.findPageOrThrow(targetPageId);
         pageService.checkPageAdminOrNotFound(actorUserId, targetPage);
 
+        // AC-29: 同一ページをコピー元にすることは常に無意味な操作であり、コピー元の読み出し（存在確認・
+        // スコープ照合・MEMBER 以上検証）より前に弾く（コピー元へは一切アクセスしない）。
+        if (targetPageId.equals(request.getSourcePageId())) {
+            throw new BusinessException(MemberErrorCode.INVALID_SOURCE_PAGE);
+        }
+
         // コピー元ページ存在確認。PR #3387 裁可1: コピー元はコピー先と同じスコープ（scopeType・scopeId が
         // 一致）のページに限る。別スコープのページは存在を明かさず 404（PAGE_NOT_FOUND）で拒否する
         // （他スコープの会員情報を複製で持ち出すデータ流出経路を塞ぐ）。
@@ -207,10 +213,6 @@ public class MemberProfileService {
         }
         // コピー元は MEMBER 以上であること（業務操作のため、サブタブ公開設定の緩和は効かせない）
         pageService.checkPageMemberRoleOrNotFound(actorUserId, sourcePage);
-
-        if (targetPageId.equals(request.getSourcePageId())) {
-            throw new BusinessException(MemberErrorCode.INVALID_SOURCE_PAGE);
-        }
 
         List<MemberProfileEntity> sourceMembers =
                 profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(request.getSourcePageId());

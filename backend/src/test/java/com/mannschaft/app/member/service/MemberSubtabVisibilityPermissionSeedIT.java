@@ -3,7 +3,10 @@ package com.mannschaft.app.member.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -216,21 +219,18 @@ class MemberSubtabVisibilityPermissionSeedIT extends AbstractMySqlIntegrationTes
     }
 
     private void grantRole(Long userId, String roleName, Long orgIdParam) {
-        em.createNativeQuery(
-                "INSERT INTO user_roles (user_id, role_id, team_id, organization_id, created_at, updated_at) "
-                        + "SELECT :uid, r.id, NULL, :oid, NOW(), NOW() FROM roles r WHERE r.name = :role")
+        // 権限ロール（ADMIN/DEPUTY_ADMIN）は user_roles、所属は memberships（別系統）。
+        // 生 INSERT ではなく MembershipTestHelper を使う（UserRolesMembershipRoleInsertGuardTest 対応）。
+        MembershipTestHelper.insertUserRole(em, userId, roleName, null, orgIdParam);
+        Number existing = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM memberships WHERE user_id = :uid "
+                                + "AND scope_type = 'ORGANIZATION' AND scope_id = :oid AND left_at IS NULL")
                 .setParameter("uid", userId)
                 .setParameter("oid", orgIdParam)
-                .setParameter("role", roleName)
-                .executeUpdate();
-        em.createNativeQuery(
-                "INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at, created_at, updated_at) "
-                        + "SELECT :uid, 'ORGANIZATION', :oid, 'MEMBER', NOW(), NOW(), NOW() "
-                        + "WHERE NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = :uid "
-                        + "AND m.scope_type = 'ORGANIZATION' AND m.scope_id = :oid AND m.left_at IS NULL)")
-                .setParameter("uid", userId)
-                .setParameter("oid", orgIdParam)
-                .executeUpdate();
+                .getSingleResult();
+        if (existing.longValue() == 0) {
+            MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, orgIdParam, RoleKind.MEMBER);
+        }
     }
 
     private Long insertPermissionGroup(Long orgIdParam) {
