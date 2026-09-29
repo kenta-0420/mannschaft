@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -550,6 +551,14 @@ public class ShiftScheduleService {
     ShiftScheduleEntity findScheduleOrThrow(Long id) {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+    }
+
+    /**
+     * スケジュールを引く（論理削除済みは {@code @SQLRestriction} により空）。
+     * 子リソース側が「親の不在」を子の不在コードで返すために使う（CMP-260923-0954）。
+     */
+    Optional<ShiftScheduleEntity> findSchedule(Long id) {
+        return scheduleRepository.findById(id);
     }
 
     /**

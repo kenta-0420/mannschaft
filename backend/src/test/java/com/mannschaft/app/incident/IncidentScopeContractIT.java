@@ -166,6 +166,38 @@ class IncidentScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("同一チームの無関係 MEMBER はインシデント詳細を 404 で秘匿される")
+        void 無関係メンバーの取得は404() throws Exception {
+            Long incidentId = insertIncident(teamAId, memberAId, "REPORTED");
+            Long unrelatedMemberId = insertUser("inc-detail-unrelated@example.com");
+            MembershipTestHelper.insertMembership(em, unrelatedMemberId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+            em.flush();
+
+            setAuthentication(unrelatedMemberId);
+            mockMvc.perform(get("/api/v1/incidents/{id}", incidentId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("INCIDENT_002"));
+        }
+
+        @Test
+        @DisplayName("USER 担当者と scope DEPUTY_ADMIN は詳細を取得できる")
+        void 担当者と副管理者の取得は200() throws Exception {
+            insertRoleIfAbsent("DEPUTY_ADMIN", "副管理者", 3);
+            Long deputyId = insertUser("inc-deputy@example.com");
+            MembershipTestHelper.insertUserRole(em, deputyId, "DEPUTY_ADMIN", teamAId, null);
+            MembershipTestHelper.insertMembership(em, deputyId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+            Long assigneeId = insertUser("inc-detail-assignee@example.com");
+            MembershipTestHelper.insertMembership(em, assigneeId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+            Long incidentId = insertIncident(teamAId, memberAId, "REPORTED");
+            insertIncidentAssignment(incidentId, assigneeId);
+            em.flush();
+            setAuthentication(deputyId);
+            mockMvc.perform(get("/api/v1/incidents/{id}", incidentId)).andExpect(status().isOk());
+            setAuthentication(assigneeId);
+            mockMvc.perform(get("/api/v1/incidents/{id}", incidentId)).andExpect(status().isOk());
+        }
+
+        @Test
         @DisplayName("不在IDの取得は404（INCIDENT_002の存在秘匿）")
         void 不在IDの取得は404() throws Exception {
             setAuthentication(adminAId);
@@ -206,6 +238,38 @@ class IncidentScopeContractIT extends AbstractMySqlIntegrationTest {
                             .param("scopeType", "TEAM")
                             .param("scopeId", teamAId.toString()))
                     .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("一般 MEMBER の一覧は報告または USER 担当のインシデントだけを返す")
+        void 一般メンバーの一覧は関係インシデントだけを返す() throws Exception {
+            insertIncident(teamAId, adminAId, "REPORTED");
+            Long reportedIncidentId = insertIncident(teamAId, memberAId, "REPORTED");
+            em.flush();
+
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/incidents")
+                            .param("scopeType", "TEAM")
+                            .param("scopeId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].id").value(reportedIncidentId))
+                    .andExpect(jsonPath("$.meta.total").value(1));
+        }
+
+        @Test
+        @DisplayName("別scope MEMBER と同scope SUPPORTER の一覧は403、詳細は404")
+        void 越境メンバーとsupporterは拒否される() throws Exception {
+            Long incidentId = insertIncident(teamAId, memberAId, "REPORTED");
+            Long supporterId = insertUser("inc-list-supporter@example.com");
+            MembershipTestHelper.insertMembership(em, supporterId, ScopeType.TEAM, teamAId, RoleKind.SUPPORTER);
+            em.flush();
+            setAuthentication(adminBId);
+            mockMvc.perform(get("/api/v1/incidents/{id}", incidentId)).andExpect(status().isNotFound());
+            mockMvc.perform(get("/api/v1/incidents").param("scopeType", "TEAM").param("scopeId", teamAId.toString())).andExpect(status().isForbidden());
+            setAuthentication(supporterId);
+            mockMvc.perform(get("/api/v1/incidents/{id}", incidentId)).andExpect(status().isNotFound());
+            mockMvc.perform(get("/api/v1/incidents").param("scopeType", "TEAM").param("scopeId", teamAId.toString())).andExpect(status().isForbidden());
         }
     }
 
@@ -303,6 +367,31 @@ class IncidentScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(patch("/api/v1/incidents/{id}/status", incidentId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(statusBody("ACKNOWLEDGED"))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("EXTERNAL担当のIDと一致するメンバーは詳細を読めずステータスも変更できない")
+        void EXTERNAL担当のID一致では変更不可() throws Exception {
+            Long unrelatedMemberId = insertUser("inc-authz-external-id@example.com");
+            MembershipTestHelper.insertMembership(em, unrelatedMemberId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+            em.flush();
+            Long incidentId = insertIncident(teamAId, memberAId, "REPORTED");
+
+            setAuthentication(adminAId);
+            mockMvc.perform(post("/api/v1/incidents/{id}/assign", incidentId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("assigneeId", unrelatedMemberId, "assigneeType", "EXTERNAL"))))
+                    .andExpect(status().isOk());
+
+            setAuthentication(unrelatedMemberId);
+            mockMvc.perform(get("/api/v1/incidents/{id}", incidentId))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(patch("/api/v1/incidents/{id}/status", incidentId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(statusBody("IN_PROGRESS"))))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         }

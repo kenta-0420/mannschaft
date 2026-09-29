@@ -1,10 +1,13 @@
 package com.mannschaft.app.advertising.campaign.service;
 
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -49,19 +52,22 @@ public class AdFrequencyCapService {
     static final String KEY_PREFIX_PER_ADV = "mannschaft:ad:freq-adv:";
 
     /** ユーザー TZ 取得失敗時のフォールバック。 */
-    private static final ZoneId FALLBACK_ZONE = ZoneId.of("Asia/Tokyo");
+    private static final ZoneId FALLBACK_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final StringRedisTemplate redisTemplate;
     private final UserRepository userRepository;
     private final AdFrequencyCapConfig config;
+    private final Clock clock;
 
     public AdFrequencyCapService(
             StringRedisTemplate redisTemplate,
             UserRepository userRepository,
-            AdFrequencyCapConfig config) {
+            AdFrequencyCapConfig config,
+            @Qualifier("utcClock") Clock clock) {
         this.redisTemplate = redisTemplate;
         this.userRepository = userRepository;
         this.config = config;
+        this.clock = clock;
     }
 
     /**
@@ -263,20 +269,16 @@ public class AdFrequencyCapService {
     /**
      * 指定 TZ における「今週の月曜日」を返す。
      */
-    static LocalDate currentWeekStart(ZoneId zone) {
-        LocalDate today = LocalDate.now(zone);
-        if (today.getDayOfWeek() == DayOfWeek.MONDAY) {
-            return today;
-        }
-        return today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    LocalDate currentWeekStart(ZoneId zone) {
+        return weekStartOf(LocalDate.now(clock.withZone(zone)));
     }
 
     /**
      * 「次週月曜 00:00（ユーザー TZ）」までの残秒を返す。
      */
-    static long secondsUntilNextWeekStart(ZoneId zone) {
-        ZonedDateTime now = ZonedDateTime.now(zone);
-        LocalDate nextMonday = currentWeekStart(zone).plusWeeks(1);
+    long secondsUntilNextWeekStart(ZoneId zone) {
+        ZonedDateTime now = ZonedDateTime.now(clock.withZone(zone));
+        LocalDate nextMonday = weekStartOf(now.toLocalDate()).plusWeeks(1);
         ZonedDateTime nextWeekStart = LocalDateTime.of(nextMonday, java.time.LocalTime.MIDNIGHT).atZone(zone);
         long seconds = java.time.Duration.between(now, nextWeekStart).getSeconds();
         // クロックずれ等で 0 以下になる場合の保護

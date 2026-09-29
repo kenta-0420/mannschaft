@@ -13,7 +13,7 @@ import OrgConfirmableNotificationsPage from '~/pages/organizations/[slug]/settin
  * へ移設したことの回帰テスト。
  *
  * 検証観点:
- *  CN-SIDEBAR-001/002: 両サイドバーの settings カテゴリから新ページへ到達できること
+ *  CN-SIDEBAR-001/002: 両サイドバーの日常導線で回覧板の直後から既存URLへ到達できること
  *    （DEPUTY_ADMIN 以上に表示。BE の checkAdminOrAbove に合わせた権限）
  *  CN-SIDEBAR-003/004: MEMBER には表示されないこと（金銭・通知送信操作のため）
  *  CN-PAGE-001/002: 新ページが3コンポーネントへ正しい scope-type/scope-id を渡すこと
@@ -57,6 +57,20 @@ const currentScope = ref<{ type: 'personal' | 'team' | 'organization', id: strin
 vi.mock('~/stores/useScopeStore', () => ({
   useScopeStore: () => ({
     current: currentScope.value,
+    loadFromStorage: vi.fn(),
+  }),
+}))
+
+const teamNumericId = ref(123)
+const getTeam = vi.fn(async () => ({ data: { numericId: teamNumericId.value } }))
+vi.mock('~/composables/useTeamApi', () => ({
+  useTeamApi: () => ({ getTeam }),
+}))
+
+const orgNumericId = ref(456)
+vi.mock('~/composables/useOrgShellContext', () => ({
+  useOrgShellContext: () => ({
+    org: computed(() => ({ numericId: orgNumericId.value })),
   }),
 }))
 
@@ -74,23 +88,37 @@ async function mountOrgSidebar() {
   return wrapper
 }
 
-describe('確認通知設定ページへの導線（サイドバー）', () => {
+describe('クイック確認ページへの日常導線（サイドバー）', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     roleName.value = 'ADMIN'
     enabledModules.value = []
   })
 
-  it('CN-SIDEBAR-001: TeamSidebar の settings カテゴリから到達できる（DEPUTY_ADMIN）', async () => {
+  it('CN-SIDEBAR-001: TeamSidebar で回覧板の直後から到達できる（DEPUTY_ADMIN）', async () => {
     roleName.value = 'DEPUTY_ADMIN'
+    enabledModules.value = [{ moduleSlug: 'circulation', isEnabled: true }]
     const wrapper = await mountTeamSidebar()
-    expect(wrapper.html()).toContain('/teams/team-1/settings/confirmable-notifications')
+    const circulation = wrapper.get('a[href="/teams/team-1/circulation"]')
+    const quickConfirm = wrapper.get('a[href="/teams/team-1/settings/confirmable-notifications"]')
+    expect(circulation.element.parentElement).toBe(quickConfirm.element.parentElement)
+    const links = [...circulation.element.parentElement!.querySelectorAll('a')]
+    expect(links.indexOf(quickConfirm.element as HTMLAnchorElement)).toBe(
+      links.indexOf(circulation.element as HTMLAnchorElement) + 1,
+    )
   })
 
-  it('CN-SIDEBAR-002: OrganizationSidebar の settings カテゴリから到達できる（DEPUTY_ADMIN）', async () => {
+  it('CN-SIDEBAR-002: OrganizationSidebar で回覧板の直後から到達できる（DEPUTY_ADMIN）', async () => {
     roleName.value = 'DEPUTY_ADMIN'
+    enabledModules.value = [{ moduleSlug: 'circular', isEnabled: true }]
     const wrapper = await mountOrgSidebar()
-    expect(wrapper.html()).toContain('/organizations/org-1/settings/confirmable-notifications')
+    const circulation = wrapper.get('a[href="/organizations/org-1/circulation"]')
+    const quickConfirm = wrapper.get('a[href="/organizations/org-1/settings/confirmable-notifications"]')
+    expect(circulation.element.parentElement).toBe(quickConfirm.element.parentElement)
+    const links = [...circulation.element.parentElement!.querySelectorAll('a')]
+    expect(links.indexOf(quickConfirm.element as HTMLAnchorElement)).toBe(
+      links.indexOf(circulation.element as HTMLAnchorElement) + 1,
+    )
   })
 
   it('CN-SIDEBAR-003: MEMBER には TeamSidebar から表示されない', async () => {
@@ -129,20 +157,24 @@ const HistoryStub = defineComponent({
   },
 })
 
-describe('確認通知設定ページ: props の受け渡し', () => {
+describe('クイック確認ページ: props の受け渡し', () => {
   beforeEach(() => {
     currentScope.value = { type: 'personal', id: null, name: '個人' }
+    teamNumericId.value = 123
+    orgNumericId.value = 456
   })
 
   it('CN-PAGE-001: TEAM スコープでは scope-type=TEAM・scope-id=現在の team id が渡る', async () => {
-    currentScope.value = { type: 'team', id: '123', name: 'テストチーム' }
-
     const wrapper = await mountSuspended(TeamConfirmableNotificationsPage, {
+      route: '/teams/team-123/settings/confirmable-notifications',
       global: {
         stubs: {
           ConfirmableNotificationSettings: SettingsStub,
           ConfirmableNotificationSender: SenderStub,
           ConfirmableNotificationHistory: HistoryStub,
+          ConfirmableRecipientGroupManager: true,
+          ConfirmableTemplateManager: true,
+          ConfirmableCirculationGuide: true,
         },
       },
     })
@@ -162,14 +194,16 @@ describe('確認通知設定ページ: props の受け渡し', () => {
   })
 
   it('CN-PAGE-002: ORGANIZATION スコープでは scope-type=ORGANIZATION・scope-id=現在の org id が渡る', async () => {
-    currentScope.value = { type: 'organization', id: '456', name: 'テスト組織' }
-
     const wrapper = await mountSuspended(OrgConfirmableNotificationsPage, {
+      route: '/organizations/org-456/settings/confirmable-notifications',
       global: {
         stubs: {
           ConfirmableNotificationSettings: SettingsStub,
           ConfirmableNotificationSender: SenderStub,
           ConfirmableNotificationHistory: HistoryStub,
+          ConfirmableRecipientGroupManager: true,
+          ConfirmableTemplateManager: true,
+          ConfirmableCirculationGuide: true,
         },
       },
     })

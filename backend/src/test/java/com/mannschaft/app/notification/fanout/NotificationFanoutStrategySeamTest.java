@@ -91,8 +91,11 @@ class NotificationFanoutStrategySeamTest {
         given(jobMessageRepository.findByJobId(org.mockito.ArgumentMatchers.any()))
                 .willReturn(List.of(NotificationFanoutJobMessage.builder()
                         .locale("ja").title("擬似 scope 配信").body(null).build()));
+        // CMP-260920-1040: chunkSinks は本テストの scope（TEST_SCOPE/TEST_TYPE）に一致する実装が無いため、
+        // 空リストを渡す＝resolveChunkSink が null を返し、従来の bulkFanoutService 経路のまま配信される
+        // （このテストの意図＝村実装非依存の seam 経路を保つ）。
         NotificationFanoutWorker worker =
-                new NotificationFanoutWorker(registry, jobService, bulkFanoutService, jobMessageRepository);
+                new NotificationFanoutWorker(registry, jobService, bulkFanoutService, List.of(), jobMessageRepository);
 
         NotificationFanoutJob job = NotificationFanoutJob.builder()
                 .sourceEventUuid(UUID.randomUUID())

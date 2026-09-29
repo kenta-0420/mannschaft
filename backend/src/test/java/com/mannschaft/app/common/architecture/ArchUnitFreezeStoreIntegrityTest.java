@@ -752,8 +752,13 @@ class ArchUnitFreezeStoreIntegrityTest {
      * AUTO_INCREMENT のような中央発番はどこにも現れない）。むしろ代理キーを足すと「1契約1 lease」を
      * 別途 UNIQUE 制約で守る必要が生じ、排他の不変条件の担保が弱くなる。DDL は V196 で確定済みであり
      * 新規 migration での作り直しは行わない。違反隠蔽ではなく設計是認例外の正規登録。</p>
+     *
+     * <p>CMP-019 Wave7: {@code publicview.PublicPostCommentEntity} は既存 DDL の主キーが
+     * {@code CHAR(36)} であり、Hibernate の UUID バイナリバインドでは保存できない。
+     * 既存データを保つため {@code UuidV7CharEntity} に切り替え、567 → 568。
+     * UUIDv7 の採番規約は維持する。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 567;
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 568;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。

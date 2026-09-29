@@ -12,6 +12,10 @@ test.describe('TEAM-027〜028: 回覧板', () => {
     await page.goto(`/teams/${TEAM_ID}/circulation`)
     await waitForHydration(page)
     await expect(page.getByRole('heading', { name: '回覧板' })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('link', { name: 'クイック確認を開く' })).toHaveAttribute(
+      'href',
+      `/teams/${TEAM_ID}/settings/confirmable-notifications`,
+    )
   })
 
   test('TEAM-028: 回覧板ページが正常にロードされる', async ({ page }) => {

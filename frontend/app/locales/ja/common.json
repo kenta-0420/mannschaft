@@ -306,6 +306,14 @@
     "COMMON_002": "この操作を行う権限がありません",
     "COMMON_003": "他のユーザーによって更新されました。画面を更新してください",
     "COMMON_999": "システムエラーが発生しました",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "宛先を1件以上選択してください",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "個別の宛先と保存済みグループは同時に指定できません",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "選択した宛先に送信範囲外の組織またはチームが含まれています",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "宛先グループが見つからないか、削除されています",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "選択した宛先に受信者がいません",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "同じ名前の宛先グループが既にあります",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "通知クレジットが不足しています",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "確認期限は現在より後に設定してください",
     "AUTH_001": "メールアドレスまたはパスワードが正しくありません",
     "AUTH_002": "メールアドレスがまだ確認されていません",
     "AUTH_003": "アカウントがロックされています。30分後にお試しください",
@@ -485,7 +493,30 @@
     }
   },
   "confirmable": {
-    "title": "確認通知",
+    "delivery_stopped": "配信停止",
+    "templates": "テンプレート管理",
+    "template_name": "テンプレート名",
+    "default_recipient_group": "既定の宛先グループ",
+    "deleted_group_fallback": "グループが削除された場合は配下すべてに送信します。",
+    "audience_mode": {
+      "DEFAULT": "配下すべて",
+      "TARGETS": "組織・チームを選択",
+      "GROUP": "保存済みグループ"
+    },
+    "select_group": "グループを選択",
+    "search_targets": "読み込んだ組織・チームを検索",
+    "open_children": "配下を表示",
+    "load_more_targets": "さらに読み込む",
+    "previous_targets": "前の候補",
+    "next_targets": "次の候補",
+    "no_targets": "候補がありません",
+    "selected_targets": "選択中: {count}件",
+    "targets_required": "宛先を選択してください",
+    "preview_loading": "宛先人数を確認中",
+    "preview_count": "見込み受信者: {count}人",
+    "preview_required": "宛先人数を確認してください",
+    "delivered_count": "配信済み: {count}人",
+    "title": "クイック確認",
     "page": {
       "settings_title": "確認通知設定",
       "settings_subtitle": "確認通知の設定・送信・発信履歴を管理します"
@@ -543,7 +574,50 @@
       "ALL_MEMBERS": "全員に公開"
     },
     "unconfirmed_count": "未確認: {count}名",
-    "unconfirmed_list": "未確認者一覧"
+    "unconfirmed_list": "未確認者一覧",
+    "recipient_groups": "宛先グループ",
+    "recipient_groups_help": "通知の宛先として組織またはチームを保存します。",
+    "group_name": "グループ名",
+    "targets": "対象",
+    "target_id": "対象ID",
+    "target_type": { "ORGANIZATION": "組織", "TEAM": "チーム" },
+    "template": "テンプレート",
+    "audience": "宛先",
+    "current_scope": "この組織・チーム",
+    "current_scope_help": "現在の組織またはチームの有効なメンバーへ送信します。",
+    "group_audience_help": "保存済みの宛先グループへ送信します。",
+    "message_title": "タイトル",
+    "message_body": "本文",
+    "priority_label": "優先度",
+    "accepted": "配信を受け付けました",
+    "accepted_count": "配信を受け付けました（予定受信者: {count}人）",
+    "recipient": "受信者",
+    "withdrawn": "退会済み",
+    "withdrawn_user": "退会済みユーザー",
+    "unknown_recipient": "不明な受信者",
+    "unconfirmed": "未確認",
+    "unconfirmed_only": "未確認のみ",
+    "delivery_status": {
+      "QUEUED": "配信待ち",
+      "DELIVERING": "配信中",
+      "DELIVERED": "配信完了",
+      "PARTIALLY_FAILED": "一部失敗"
+    },
+    "help": {
+      "title": "確認通知の使い方",
+      "body": "宛先グループまたは現在の組織・チームを選ぶと、対象の有効なメンバーへ非同期で配信されます。配信状況と確認状況は履歴で確認できます。"
+    },
+    "guide": {
+      "quickConfirm": {
+        "description": "短い連絡への確認を集める機能です。文書への押印や回覧順序が必要な場合は回覧板を使います。",
+        "link": "回覧板を開く"
+      },
+      "circulation": {
+        "title": "回覧板",
+        "description": "文書への押印や回覧順序を管理する機能です。短い連絡への確認だけを集める場合はクイック確認を使います。",
+        "link": "クイック確認を開く"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "動画を処理中...",
@@ -720,7 +794,10 @@
       "deletedToast": "TODOを削除しました",
       "restoredToast": "TODOを元に戻しました",
       "deleteFailed": "削除に失敗しました",
-      "restoreFailed": "元に戻せませんでした"
+      "restoreFailed": "元に戻せませんでした",
+      "bulkStatusSuccess": "{count}件のステータスを変更しました",
+      "bulkStatusPartial": "{changedCount}件を変更し、ロック中の{skippedCount}件はスキップしました。スキップした項目は選択状態です",
+      "bulkStatusAllLocked": "すべてロック中のため変更できませんでした（{count}件）。項目は選択状態です"
     },
     "field": {
       "status": "ステータス",
@@ -2613,5 +2690,48 @@
   "loadErrorState": {
     "message": "データの取得に失敗しました",
     "retry": "再試行"
+  },
+  "searchBar": {
+    "keyword": "キーワード",
+    "defaultPlaceholder": "名前で検索",
+    "prefecture": "都道府県",
+    "selectPrefecture": "選択してください",
+    "filterPrefecture": "都道府県を検索",
+    "genre": "ジャンル",
+    "all": "全て"
+  },
+  "scopeLabels": {
+    "template": {
+      "CLUB": "クラブ・サークル",
+      "CLINIC": "クリニック",
+      "CLASS": "クラス",
+      "COMMUNITY": "コミュニティ",
+      "COMPANY": "企業",
+      "FAMILY": "家族",
+      "RESTAURANT": "飲食店",
+      "BEAUTY": "美容院・サロン",
+      "STORE": "店舗・小売",
+      "VOLUNTEER": "ボランティア・NPO",
+      "NEIGHBORHOOD": "自治会",
+      "CONDO": "マンション管理組合",
+      "OTHER": "その他"
+    },
+    "organizationType": {
+      "GOVERNMENT": "行政・官公庁",
+      "MUNICIPALITY": "自治体（市区町村）",
+      "COMPANY": "会社・企業",
+      "HOSPITAL": "病院・医療機関",
+      "ASSOCIATION": "協会・連盟",
+      "SCHOOL": "学校・教育機関",
+      "NPO": "NPO・非営利団体",
+      "COMMUNITY": "コミュニティ",
+      "OTHER": "その他"
+    },
+    "visibility": {
+      "PUBLIC": "公開",
+      "GUESTS_AND_ABOVE": "ゲスト以上",
+      "SUPPORTERS_AND_ABOVE": "サポーター以上",
+      "MEMBERS_AND_ABOVE": "メンバー以上"
+    }
   }
 }

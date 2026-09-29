@@ -306,6 +306,14 @@
     "COMMON_002": "No tiene permiso para realizar esta accion",
     "COMMON_003": "Actualizado por otro usuario. Por favor, actualice la pagina",
     "COMMON_999": "Se produjo un error del sistema",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "Selecciona al menos un destino de destinatarios",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "No se pueden seleccionar a la vez destinos individuales y un grupo guardado",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "La selección contiene una organización o un equipo fuera del ámbito de envío",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "El grupo de destinatarios no existe o se ha eliminado",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "No hay destinatarios que coincidan con los destinos seleccionados",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "Ya existe un grupo de destinatarios con este nombre",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "No hay suficientes créditos de notificación",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "Establece la fecha límite de confirmación en el futuro",
     "AUTH_001": "Correo electronico o contrasena incorrectos",
     "AUTH_002": "Su correo electrónico aún no ha sido verificado",
     "AUTH_003": "Su cuenta está bloqueada. Inténtelo de nuevo en 30 minutos",
@@ -485,7 +493,30 @@
     }
   },
   "confirmable": {
-    "title": "Notificación de confirmación",
+    "delivery_stopped": "Entrega detenida",
+    "templates": "Administrar plantillas",
+    "template_name": "Nombre de la plantilla",
+    "default_recipient_group": "Grupo de destinatarios predeterminado",
+    "deleted_group_fallback": "Si se elimina el grupo, se eligen todos los miembros del ámbito.",
+    "audience_mode": {
+      "DEFAULT": "Todos los miembros del ámbito",
+      "TARGETS": "Elegir organizaciones y equipos",
+      "GROUP": "Grupo guardado"
+    },
+    "select_group": "Elegir grupo",
+    "search_targets": "Buscar organizaciones y equipos cargados",
+    "open_children": "Mostrar subgrupos",
+    "load_more_targets": "Cargar más",
+    "previous_targets": "Destinos anteriores",
+    "next_targets": "Destinos siguientes",
+    "no_targets": "No hay destinos",
+    "selected_targets": "Seleccionados: {count}",
+    "targets_required": "Elija destinatarios",
+    "preview_loading": "Comprobando destinatarios",
+    "preview_count": "Destinatarios estimados: {count}",
+    "preview_required": "Compruebe los destinatarios",
+    "delivered_count": "Entregados: {count}",
+    "title": "Confirmación rápida",
     "page": {
       "settings_title": "Configuración de notificaciones de confirmación",
       "settings_subtitle": "Gestiona la configuración, el envío y el historial de notificaciones de confirmación"
@@ -543,7 +574,50 @@
       "ALL_MEMBERS": "Todos los miembros"
     },
     "unconfirmed_count": "Sin confirmar: {count}",
-    "unconfirmed_list": "Usuarios no confirmados"
+    "unconfirmed_list": "Usuarios no confirmados",
+    "recipient_groups": "Grupos de destinatarios",
+    "recipient_groups_help": "Guarde organizaciones o equipos como destinatarios.",
+    "group_name": "Nombre del grupo",
+    "targets": "Destinos",
+    "target_id": "ID de destino",
+    "target_type": { "ORGANIZATION": "Organización", "TEAM": "Equipo" },
+    "template": "Plantilla",
+    "audience": "Destinatarios",
+    "current_scope": "Esta organización o equipo",
+    "current_scope_help": "Enviar a miembros activos del ámbito actual.",
+    "group_audience_help": "Enviar al grupo de destinatarios guardado.",
+    "message_title": "Título",
+    "message_body": "Mensaje",
+    "priority_label": "Prioridad",
+    "accepted": "Entrega aceptada",
+    "accepted_count": "Entrega aceptada (destinatarios estimados: {count})",
+    "recipient": "Destinatario",
+    "withdrawn": "Retirado",
+    "withdrawn_user": "Usuario retirado",
+    "unknown_recipient": "Destinatario desconocido",
+    "unconfirmed": "Sin confirmar",
+    "unconfirmed_only": "Solo sin confirmar",
+    "delivery_status": {
+      "QUEUED": "En cola",
+      "DELIVERING": "Enviando",
+      "DELIVERED": "Entregado",
+      "PARTIALLY_FAILED": "Parcialmente fallido"
+    },
+    "help": {
+      "title": "Notificaciones de confirmación",
+      "body": "Elija un grupo de destinatarios o el ámbito actual. La entrega es asíncrona; consulte el historial."
+    },
+    "guide": {
+      "quickConfirm": {
+        "description": "Úsala para mensajes breves y acuses de recibo. Usa Circulares para documentos que requieren sellos u orden de circulación.",
+        "link": "Abrir Circulares"
+      },
+      "circulation": {
+        "title": "Circulares",
+        "description": "Úsalas para documentos que requieren sellos u orden de circulación. Para un mensaje breve y su confirmación, usa Confirmación rápida.",
+        "link": "Abrir Confirmación rápida"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "Procesando video...",
@@ -720,7 +794,10 @@
       "deletedToast": "TODO eliminado",
       "restoredToast": "TODO restaurado",
       "deleteFailed": "Error al eliminar",
-      "restoreFailed": "No se pudo deshacer"
+      "restoreFailed": "No se pudo deshacer",
+      "bulkStatusSuccess": "Se cambió el estado de {count} tareas",
+      "bulkStatusPartial": "Se cambiaron {changedCount}; se omitieron {skippedCount} tareas bloqueadas. Los elementos omitidos siguen seleccionados",
+      "bulkStatusAllLocked": "No se hicieron cambios: las {count} tareas están bloqueadas. Siguen seleccionadas"
     },
     "field": {
       "status": "Estado",
@@ -1694,38 +1771,38 @@
     "supporterSuccess": "Registrado como seguidor",
     "supporterError": "Error al seguir",
     "guide": {
-      "title": "チーム検索の使い方",
-      "description": "条件を指定して公開されているチームを探し、詳しい情報の確認やサポーター登録を行えます。",
+      "title": "Cómo buscar equipos",
+      "description": "Define los criterios para encontrar equipos públicos, consultar sus detalles y registrarte como seguidor.",
       "searchConditions": {
-        "title": "検索条件を指定する",
-        "body": "キーワード、都道府県、チームの種類を組み合わせて、探したいチームを絞り込めます。",
+        "title": "Definir los criterios de búsqueda",
+        "body": "Combina una palabra clave, una prefectura y una categoría de equipo para acotar los resultados.",
         "steps": {
-          "step1": "検索欄と必要な絞り込み条件を入力・選択します。",
-          "step2": "検索を実行すると、条件に合うチームが一覧に表示されます。"
+          "step1": "Introduce una palabra clave y selecciona los filtros que necesites.",
+          "step2": "Ejecuta la búsqueda para ver los equipos que coinciden."
         }
       },
       "results": {
-        "title": "検索結果を確認する",
-        "body": "各カードにはチーム名、チームの種類、活動地域、メンバー数が表示されます。",
+        "title": "Revisar los resultados",
+        "body": "Cada tarjeta muestra el nombre, la categoría, la zona de actividad y el número de miembros del equipo.",
         "steps": {
-          "step1": "一覧から気になるチームを選びます。",
-          "step2": "チームの詳細ページへ移動して、さらに情報を確認します。"
+          "step1": "Selecciona un equipo que te interese de la lista.",
+          "step2": "Abre su página de detalles para obtener más información."
         }
       },
       "supporter": {
-        "title": "サポーターとして登録する",
-        "body": "サポーター登録を受け付けている、所属していないチームには登録ボタンが表示されます。",
+        "title": "Registrarse como seguidor",
+        "body": "Los equipos a los que no perteneces y que aceptan seguidores muestran un botón de registro.",
         "steps": {
-          "step1": "対象チームのカードで「サポーターになる」を選びます。",
-          "step2": "登録が完了すると、カードに登録済みの表示が出ます。"
+          "step1": "Selecciona «Convertirse en seguidor» en la tarjeta del equipo.",
+          "step2": "Tras registrarte, la tarjeta muestra el estado de registro."
         }
       },
       "createAndMove": {
-        "title": "チームを作成して詳細へ移動する",
-        "body": "右上の作成ボタンから新しいチームを作成できます。作成後はそのチームの詳細ページへ移動します。",
+        "title": "Crear un equipo y abrir sus detalles",
+        "body": "Puedes crear un equipo con el botón de la parte superior derecha. Al terminar, se abrirá su página de detalles.",
         "steps": {
-          "step1": "「チームを作成」を選んで必要な情報を入力します。",
-          "step2": "作成が完了すると、新しいチームの詳細ページが開きます。"
+          "step1": "Selecciona «Crear equipo» e introduce la información necesaria.",
+          "step2": "Al terminar, se abrirá la página de detalles del nuevo equipo."
         }
       }
     },
@@ -2613,5 +2690,48 @@
   "loadErrorState": {
     "message": "Error al cargar los datos",
     "retry": "Reintentar"
+  },
+  "searchBar": {
+    "keyword": "Palabra clave",
+    "defaultPlaceholder": "Buscar por nombre",
+    "prefecture": "Prefectura",
+    "selectPrefecture": "Selecciona una prefectura",
+    "filterPrefecture": "Buscar prefecturas",
+    "genre": "Categoría",
+    "all": "Todos"
+  },
+  "scopeLabels": {
+    "template": {
+      "CLUB": "Club o círculo",
+      "CLINIC": "Clínica",
+      "CLASS": "Clase",
+      "COMMUNITY": "Comunidad",
+      "COMPANY": "Empresa",
+      "FAMILY": "Familia",
+      "RESTAURANT": "Restaurante",
+      "BEAUTY": "Salón de belleza",
+      "STORE": "Tienda o comercio",
+      "VOLUNTEER": "Voluntariado u ONG",
+      "NEIGHBORHOOD": "Asociación vecinal",
+      "CONDO": "Comunidad de propietarios",
+      "OTHER": "Otros"
+    },
+    "organizationType": {
+      "GOVERNMENT": "Administración pública",
+      "MUNICIPALITY": "Municipio",
+      "COMPANY": "Empresa",
+      "HOSPITAL": "Hospital o centro médico",
+      "ASSOCIATION": "Asociación o federación",
+      "SCHOOL": "Escuela o centro educativo",
+      "NPO": "ONG o entidad sin ánimo de lucro",
+      "COMMUNITY": "Comunidad",
+      "OTHER": "Otros"
+    },
+    "visibility": {
+      "PUBLIC": "Público",
+      "GUESTS_AND_ABOVE": "Invitados y superiores",
+      "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
+      "MEMBERS_AND_ABOVE": "Miembros y superiores"
+    }
   }
 }

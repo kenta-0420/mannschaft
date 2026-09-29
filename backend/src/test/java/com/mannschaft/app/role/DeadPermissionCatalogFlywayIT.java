@@ -3,12 +3,19 @@ package com.mannschaft.app.role;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.role.entity.PermissionEntity;
+import com.mannschaft.app.role.entity.PermissionGroupEntity;
+import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
+import com.mannschaft.app.role.entity.RolePermissionEntity;
+import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -16,7 +23,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -56,7 +62,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *       肯定側だけでは「判定が常に true」でも緑になるため対で置く。</li>
  * </ol>
  *
- * <p>Docker 未起動環境では {@code @EnabledIf} によりスキップされる。</p>
+ * <p><b>CMP-047</b>: PR #2816 で是正した権限グループ系 native query 3 本を、
+ * Entity 生成ではなく本クラスの Flyway 実スキーマ上で発行する。Docker 不在時は
+ * silent skip せずクラス初期化を失敗させ、契約テストが走らない状態を成功扱いしない。</p>
  */
 @SpringBootTest(properties = {
         "spring.flyway.enabled=true",
@@ -67,8 +75,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ActiveProfiles("test")
 @Testcontainers
 @Transactional
-@EnabledIf("com.mannschaft.app.role.DeadPermissionCatalogFlywayIT#isDockerAvailable")
-@DisplayName("VIEW_ATTENDANCE / MANAGE_COMMITTEE / jobs.manage の権限カタログ登録と実効性（Flyway 実スキーマ）")
+@DisplayName("権限カタログと native query の契約（Flyway 実スキーマ）")
 class DeadPermissionCatalogFlywayIT {
 
     private static final String PERMISSION_VIEW_ATTENDANCE = "VIEW_ATTENDANCE";
@@ -87,6 +94,13 @@ class DeadPermissionCatalogFlywayIT {
     private static final long MEMBER_USER_ID = 910_003L;
     private static final long OUTSIDER_USER_ID = 910_004L;
 
+    private static final long CMP047_MEMBER_USER_ID = 920_001L;
+    private static final long CMP047_ORG_DEPUTY_USER_ID = 920_002L;
+    private static final long CMP047_TEAM_DEPUTY_USER_ID = 920_003L;
+    private static final long CMP047_ORGANIZATION_ID = 987_654_330L;
+    private static final long CMP047_DEPUTY_ORGANIZATION_ID = 987_654_331L;
+    private static final long CMP047_TEAM_ID = 987_654_332L;
+
     /** Flyway スキーマ適用用 MySQL コンテナ（tmpfs で WSL2 VHD 遅延を回避）。 */
     @SuppressWarnings("resource")
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
@@ -97,9 +111,7 @@ class DeadPermissionCatalogFlywayIT {
             .withCommand("--log_bin_trust_function_creators=1");
 
     static {
-        if (isDockerAvailable()) {
-            MYSQL.start();
-        }
+        MYSQL.start();
     }
 
     /** Redis は外部依存のためモック化。 */
@@ -113,19 +125,122 @@ class DeadPermissionCatalogFlywayIT {
         registry.add("spring.datasource.password", MYSQL::getPassword);
     }
 
-    public static boolean isDockerAvailable() {
-        try {
-            return DockerClientFactory.instance().isDockerAvailable();
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     @Autowired
     private AccessControlService accessControlService;
 
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
     @PersistenceContext
     private EntityManager em;
+
+    @Test
+    @DisplayName("CMP-047: Flyway適用履歴とpermission_groupsのCHECK制約が実在する")
+    void cmp047_flyway適用履歴とCheck制約が実在する() {
+        Number migrationCount = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1")
+                .getSingleResult();
+        Number checkCount = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM information_schema.table_constraints "
+                                + "WHERE constraint_schema = DATABASE() "
+                                + "AND table_name = 'permission_groups' "
+                                + "AND constraint_name = 'chk_permission_groups_scope' "
+                                + "AND constraint_type = 'CHECK'")
+                .getSingleResult();
+
+        assertThat(migrationCount.longValue())
+                .as("Hibernate生成ではなくFlywayが1件以上適用された実スキーマであること")
+                .isPositive();
+        assertThat(checkCount.longValue())
+                .as("Entity生成では表現できないpermission_groupsのスコープ排他CHECKが実在すること")
+                .isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("CMP-047: native queryで比較するENUMとVARCHARの照合順序が一致する")
+    void cmp047_nativeQuery比較列の照合順序が一致する() {
+        @SuppressWarnings("unchecked")
+        List<String> collations = em.createNativeQuery(
+                        "SELECT DISTINCT collation_name FROM information_schema.columns "
+                                + "WHERE table_schema = DATABASE() AND ("
+                                + "(table_name = 'memberships' AND column_name = 'role_kind') OR "
+                                + "(table_name = 'roles' AND column_name = 'name') OR "
+                                + "(table_name = 'permissions' AND column_name = 'name') OR "
+                                + "(table_name = 'permission_groups' AND column_name = 'target_role')"
+                                + ")")
+                .getResultList();
+
+        assertThat(collations)
+                .as("3本のnative queryが比較するENUM/VARCHAR列は同一collationであること")
+                .doesNotContainNull()
+                .hasSize(1);
+    }
+
+    @Test
+    @DisplayName("CMP-047: 組織権限保有者一覧queryがFlyway実スキーマでmemberships専属者を返す")
+    void cmp047_組織権限保有者一覧QueryをFlyway実スキーマで実行する() {
+        disableForeignKeyChecks();
+        try {
+            MembershipTestHelper.insertActiveUser(em, CMP047_MEMBER_USER_ID);
+            MembershipTestHelper.insertMembership(em, CMP047_MEMBER_USER_ID,
+                    ScopeType.ORGANIZATION, CMP047_ORGANIZATION_ID, RoleKind.MEMBER);
+            Long permissionId = persistPermission("CMP047_ORG_LIST_PERMISSION");
+            grantRolePermission("MEMBER", permissionId);
+            flushClear();
+        } finally {
+            enableForeignKeyChecks();
+        }
+
+        assertThat(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(
+                CMP047_ORGANIZATION_ID, "CMP047_ORG_LIST_PERMISSION"))
+                .containsExactly(CMP047_MEMBER_USER_ID);
+    }
+
+    @Test
+    @DisplayName("CMP-047: 組織DEPUTY_ADMIN判定queryがFlyway実スキーマで権限グループを評価する")
+    void cmp047_組織DeputyAdmin判定QueryをFlyway実スキーマで実行する() {
+        disableForeignKeyChecks();
+        try {
+            MembershipTestHelper.insertActiveUser(em, CMP047_ORG_DEPUTY_USER_ID);
+            MembershipTestHelper.insertUserRole(em, CMP047_ORG_DEPUTY_USER_ID, "DEPUTY_ADMIN",
+                    null, CMP047_DEPUTY_ORGANIZATION_ID);
+            MembershipTestHelper.insertMembership(em, CMP047_ORG_DEPUTY_USER_ID,
+                    ScopeType.ORGANIZATION, CMP047_DEPUTY_ORGANIZATION_ID, RoleKind.MEMBER);
+            Long permissionId = persistPermission("CMP047_ORG_DEPUTY_PERMISSION");
+            assignPermissionGroup(CMP047_ORG_DEPUTY_USER_ID, permissionId,
+                    CMP047_DEPUTY_ORGANIZATION_ID, null);
+            flushClear();
+        } finally {
+            enableForeignKeyChecks();
+        }
+
+        assertThat(userRoleRepository.existsDeputyAdminWithPermissionInOrganization(
+                CMP047_ORG_DEPUTY_USER_ID, CMP047_DEPUTY_ORGANIZATION_ID,
+                "CMP047_ORG_DEPUTY_PERMISSION"))
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("CMP-047: チーム通知宛先queryがFlyway実スキーマで権限グループを評価する")
+    void cmp047_チーム通知宛先QueryをFlyway実スキーマで実行する() {
+        disableForeignKeyChecks();
+        try {
+            MembershipTestHelper.insertActiveUser(em, CMP047_TEAM_DEPUTY_USER_ID);
+            MembershipTestHelper.insertUserRole(em, CMP047_TEAM_DEPUTY_USER_ID, "DEPUTY_ADMIN",
+                    CMP047_TEAM_ID, null);
+            MembershipTestHelper.insertMembership(em, CMP047_TEAM_DEPUTY_USER_ID,
+                    ScopeType.TEAM, CMP047_TEAM_ID, RoleKind.MEMBER);
+            Long permissionId = persistPermission("CMP047_TEAM_DEPUTY_PERMISSION");
+            assignPermissionGroup(CMP047_TEAM_DEPUTY_USER_ID, permissionId, null, CMP047_TEAM_ID);
+            flushClear();
+        } finally {
+            enableForeignKeyChecks();
+        }
+
+        assertThat(userRoleRepository.findDeputyAdminUserIdsByTeamIdAndPermission(
+                CMP047_TEAM_ID, "CMP047_TEAM_DEPUTY_PERMISSION"))
+                .containsExactly(CMP047_TEAM_DEPUTY_USER_ID);
+    }
 
     @Test
     @DisplayName("permissions カタログに 3 件が存在し、いずれも ADMIN のみ is_default=1 で保持する")
@@ -261,6 +376,61 @@ class DeadPermissionCatalogFlywayIT {
                 .setParameter("scopeId", scopeId)
                 .setParameter("roleName", roleName)
                 .executeUpdate();
+    }
+
+    private Long persistPermission(String name) {
+        PermissionEntity permission = PermissionEntity.builder()
+                .name(name)
+                .displayName(name)
+                .scope(PermissionEntity.Scope.ORGANIZATION)
+                .build();
+        em.persist(permission);
+        em.flush();
+        return permission.getId();
+    }
+
+    private void grantRolePermission(String roleName, Long permissionId) {
+        Number roleId = (Number) em.createNativeQuery("SELECT id FROM roles WHERE name = :name")
+                .setParameter("name", roleName)
+                .getSingleResult();
+        em.persist(RolePermissionEntity.builder()
+                .roleId(roleId.longValue())
+                .permissionId(permissionId)
+                .isDefault(true)
+                .build());
+    }
+
+    private void assignPermissionGroup(Long userId, Long permissionId,
+                                       Long organizationId, Long teamId) {
+        PermissionGroupEntity group = PermissionGroupEntity.builder()
+                .organizationId(organizationId)
+                .teamId(teamId)
+                .targetRole(PermissionGroupEntity.TargetRole.DEPUTY_ADMIN)
+                .name("CMP047権限グループ" + userId)
+                .build();
+        em.persist(group);
+        em.flush();
+        em.persist(PermissionGroupPermissionEntity.builder()
+                .groupId(group.getId())
+                .permissionId(permissionId)
+                .build());
+        em.persist(UserPermissionGroupEntity.builder()
+                .userId(userId)
+                .groupId(group.getId())
+                .build());
+    }
+
+    private void disableForeignKeyChecks() {
+        em.createNativeQuery("SET FOREIGN_KEY_CHECKS = 0").executeUpdate();
+    }
+
+    private void enableForeignKeyChecks() {
+        em.createNativeQuery("SET FOREIGN_KEY_CHECKS = 1").executeUpdate();
+    }
+
+    private void flushClear() {
+        em.flush();
+        em.clear();
     }
 
     /** MySQL Connector/J は TINYINT(1) を Boolean でも Number でも返しうるため両対応で正規化する。 */

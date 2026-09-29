@@ -173,9 +173,9 @@ class BillingPlanChangeGuardExistenceRedIT extends AbstractMySqlIntegrationTest 
             "V206.20260909102921__add_billing_payer_handover_failing_cleanup_status.sql",
             "V207.20260909111023__add_billing_payer_handover_cleanup_policy.sql",
             // 価格改定戦役（price-revisions・陣立て書 決定5）で正当に追加した3本。
-            "V224.20260925042211__create_billing_tax_codes.sql",
-            "V224.20260925042212__add_billing_price_band_provision_tracking.sql",
-            "V224.20260925042213__create_billing_stripe_products.sql",
+            "V227.20260929040838__create_billing_tax_codes.sql",
+            "V227.20260929040839__add_billing_price_band_provision_tracking.sql",
+            "V227.20260929040840__create_billing_stripe_products.sql",
             "V9.027__create_promotion_billing_records_table.sql");
 
     @Test

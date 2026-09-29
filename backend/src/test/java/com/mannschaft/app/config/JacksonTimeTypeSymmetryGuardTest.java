@@ -4,9 +4,8 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.config.jackson.LocalDateTimeTimezoneDeserializer;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
@@ -61,9 +60,9 @@ import static org.junit.jupiter.api.Assertions.fail;
  *   <li><b>AC-9-2</b>: 出力をカスタムした型には検体（サンプル値）が登録されていること。
  *       検体の無い型を黙って検査対象外にしない（＝番人の空洞化を防ぐ）。</li>
  *   <li><b>AC-9-3</b>: {@code LocalDateTimeTimezoneDeserializer.SERVER_ZONE} と、対になる
- *       {@code LocalDateTimeTimezoneSerializer} が見る {@code ZoneId.systemDefault()} が一致すること。
- *       片方が定数・片方が JVM 既定という<b>非対称な参照</b>になっているため、
- *       {@link TimeZoneConfig} が動くとシリアライザだけ追従して往復が静かに壊れる。</li>
+ *       {@code LocalDateTimeTimezoneSerializer} が同じ明示定数
+ *       {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を使い、JVM 既定ゾーンが非JSTでも
+ *       往復が成立すること。</li>
  * </ul>
  *
  * <h2>なぜ「登録の有無」ではなく「往復できること」を検査するのか</h2>
@@ -121,20 +120,6 @@ class JacksonTimeTypeSymmetryGuardTest {
      * ここに理由を書いて初めて番人を通れる。理由を書かずに通す抜け道は用意しない。</p>
      */
     private static final Map<Class<?>, String> ASYMMETRY_ALLOWED = Map.of();
-
-    private TimeZone originalTimeZone;
-
-    @BeforeEach
-    void setUp() {
-        // TimeZoneConfig と同じ状態を作る（本番の JVM 既定 TZ）
-        originalTimeZone = TimeZone.getDefault();
-        new TimeZoneConfig().initTimeZone();
-    }
-
-    @AfterEach
-    void tearDown() {
-        TimeZone.setDefault(originalTimeZone);
-    }
 
     // ============================================================
     // AC-9-1 / AC-9-2
@@ -221,32 +206,34 @@ class JacksonTimeTypeSymmetryGuardTest {
     // ============================================================
 
     @Test
-    @DisplayName("AC-9-3: デシリアライザの SERVER_ZONE と シリアライザが見る systemDefault が一致する")
+    @DisplayName("AC-9-3: デシリアライザの SERVER_ZONE は共通の明示定数と一致する")
     void 対になる二つの基準TZ参照が一致している() {
-        // シリアライザは ZoneId.systemDefault() を、デシリアライザは定数 SERVER_ZONE を見ている。
-        // 参照元が非対称なので、TimeZoneConfig が動くとシリアライザだけが追従して往復が壊れる。
-        assertThat(ZoneId.systemDefault())
+        // シリアライザは UserZoneLocalDateTimeParser.SERVER_ZONE を直接参照する。
+        // JVM 既定ゾーンから独立していることは、非JST CIで AC-9-1 の往復を再実行して固定する。
+        assertThat(LocalDateTimeTimezoneDeserializer.SERVER_ZONE)
                 .as("""
-                    LocalDateTimeTimezoneSerializer が見る ZoneId.systemDefault() と、
-                    LocalDateTimeTimezoneDeserializer.SERVER_ZONE が食い違っている。
+                    LocalDateTimeTimezoneDeserializer.SERVER_ZONE と共通の基準ゾーンが食い違っている。
 
-                    この 2 つは「アプリ層が LocalDateTime をどの壁時計で保持するか」という
-                    同一の事実を指しているが、参照元が非対称（JVM 既定 vs 定数）である。
-                    TimeZoneConfig の設定値を変えるなら SERVER_ZONE も同時に変えること。
-                    片方だけ動かすと、送信は新 TZ・受信は旧 TZ となり往復の対称性が静かに壊れる
-                    （日本のユーザーだけ差が 0 になるため発覚が遅れる。Issue #2508 と同じ罠）。""")
-                .isEqualTo(LocalDateTimeTimezoneDeserializer.SERVER_ZONE);
+                    入出力は「アプリ層が LocalDateTime をどの壁時計で保持するか」という
+                    同一の事実を UserZoneLocalDateTimeParser.SERVER_ZONE から参照すること。
+                    片方だけ別の定数へ動かすと往復の対称性が静かに壊れる。""")
+                .isEqualTo(UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
 
     @Test
     @DisplayName("AC-9-3補: TimeZoneConfig はアプリ層の基準 TZ を SERVER_ZONE と同じ値に設定する")
     void TimeZoneConfigの設定値がSERVER_ZONEと一致する() {
-        // setUp で new TimeZoneConfig().initTimeZone() を実行済み。
-        // 「規約ドキュメントの文字列」ではなく実際に設定される値を検査する
-        assertThat(TimeZone.getDefault().toZoneId())
-                .as("TimeZoneConfig が設定する JVM 既定 TZ は LocalDateTimeTimezoneDeserializer.SERVER_ZONE と"
-                        + "同じでなければならない（.claudecode.md §20 アプリ層＝JST 壁時計）")
-                .isEqualTo(LocalDateTimeTimezoneDeserializer.SERVER_ZONE);
+        TimeZone original = TimeZone.getDefault();
+        try {
+            new TimeZoneConfig().initTimeZone();
+            // 「規約ドキュメントの文字列」ではなく実際に設定される値を検査する
+            assertThat(TimeZone.getDefault().toZoneId())
+                    .as("TimeZoneConfig が設定する JVM 既定 TZ は LocalDateTimeTimezoneDeserializer.SERVER_ZONE と"
+                            + "同じでなければならない（.claudecode.md §20 アプリ層＝JST 壁時計）")
+                    .isEqualTo(LocalDateTimeTimezoneDeserializer.SERVER_ZONE);
+        } finally {
+            TimeZone.setDefault(original);
+        }
     }
 
     // ============================================================

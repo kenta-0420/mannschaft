@@ -3,7 +3,8 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
-import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPreference;
 import com.mannschaft.app.shift.ShiftScheduleStatus;
@@ -25,6 +26,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Method;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -61,13 +64,16 @@ class ShiftRequestProxyInputTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
-    private AccessControlService accessControlService;
+    private ScopeConcealingAccessGate accessGate;
 
     @Mock
     private ProxyInputContext proxyInputContext;
 
     @Mock
     private ProxyInputRecordRepository proxyInputRecordRepository;
+
+    @Mock
+    private Clock wallClock;
 
     @InjectMocks
     private ShiftRequestService shiftRequestService;
@@ -78,15 +84,20 @@ class ShiftRequestProxyInputTest {
     private static final Long TEAM_ID = 1L;
     private static final Long CONSENT_ID = 50L;
     private static final Long PROXY_RECORD_ID = 999L;
+    private static final LocalDateTime CURRENT_TIME = LocalDateTime.of(2026, 2, 1, 12, 0);
+    private static final Instant CURRENT_INSTANT = CURRENT_TIME
+            .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+            .toInstant();
 
     @BeforeEach
-    void setUpAuthzDefaults() {
-        // 認可根治 Wave6: 本 UT の検証対象は代理入力の記録ロジック。per-scope 認可の成否は
-        // 契約IT（ShiftRequestScopeContractIT）で固定するため、ここでは
-        // 「当該チームの一般メンバー」として通す既定値を lenient に置く。
-        lenient().when(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).thenReturn(true);
-        lenient().when(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM")).thenReturn(false);
+    void setUpWallClock() {
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
+
+    // 本 UT の検証対象は代理入力の記録ロジック。認可ゲート（ScopeConcealingAccessGate）はモックで素通しとし、
+    // per-scope 認可と存在秘匿の成否は ScopeConcealingAccessGateTest と
+    // 契約IT（ShiftRequestPositionScopeContractIT）で固定する。
 
     private CreateShiftRequestRequest createRequest() {
         return new CreateShiftRequestRequest(
@@ -100,7 +111,7 @@ class ShiftRequestProxyInputTest {
                 .startDate(LocalDate.of(2026, 3, 1))
                 .endDate(LocalDate.of(2026, 3, 7))
                 .status(ShiftScheduleStatus.COLLECTING)
-                .requestDeadline(LocalDateTime.now().plusDays(7))
+                .requestDeadline(CURRENT_TIME.plusDays(7))
                 .build();
     }
 
@@ -154,7 +165,7 @@ class ShiftRequestProxyInputTest {
             ShiftRequestEntity savedEntity = createSavedEntityWithId(REQUEST_ID);
             ShiftRequestResponse response = new ShiftRequestResponse(
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
-                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now(), false);
+                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", CURRENT_TIME, false);
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
@@ -182,7 +193,7 @@ class ShiftRequestProxyInputTest {
             ShiftRequestEntity savedEntity = createSavedEntityWithId(REQUEST_ID);
             ShiftRequestResponse response = new ShiftRequestResponse(
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
-                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now(), false);
+                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", CURRENT_TIME, false);
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
@@ -257,7 +268,7 @@ class ShiftRequestProxyInputTest {
 
             ShiftRequestResponse response = new ShiftRequestResponse(
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
-                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now(), false);
+                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", CURRENT_TIME, false);
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
@@ -321,7 +332,7 @@ class ShiftRequestProxyInputTest {
 
             ShiftRequestResponse response = new ShiftRequestResponse(
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
-                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", LocalDateTime.now(), false);
+                    LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", CURRENT_TIME, false);
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(

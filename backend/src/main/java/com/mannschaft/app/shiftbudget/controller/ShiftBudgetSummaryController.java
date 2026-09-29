@@ -1,5 +1,6 @@
 package com.mannschaft.app.shiftbudget.controller;
 
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.shiftbudget.dto.ConsumptionSummaryResponse;
@@ -39,6 +40,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
+@RequireFeature("FEATURE_SHIFT_ENABLED")
 @RequestMapping("/api/v1/shift-budget/allocations")
 @Tag(name = "シフト予算 集計 (F08.7)",
      description = "Phase 9-δ 第3段: 消化サマリ API (BUDGET_ADMIN/VIEW で View 切替)")

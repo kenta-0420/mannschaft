@@ -1,5 +1,6 @@
 package com.mannschaft.app.shiftbudget.controller;
 
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.shiftbudget.dto.TodoBudgetLinkCreateRequest;
 import com.mannschaft.app.shiftbudget.dto.TodoBudgetLinkResponse;
@@ -36,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
  * </ul>
  */
 @RestController
+@RequireFeature("FEATURE_SHIFT_ENABLED")
 @RequestMapping("/api/v1/todo-budget/links")
 @Tag(name = "TODO 予算紐付 (F08.7)",
      description = "Phase 9-γ: TODO/プロジェクトと予算割当の紐付 API")

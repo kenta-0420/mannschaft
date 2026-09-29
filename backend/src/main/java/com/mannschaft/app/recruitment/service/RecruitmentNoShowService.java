@@ -3,31 +3,40 @@ package com.mannschaft.app.recruitment.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.recruitment.DisputeResolution;
 import com.mannschaft.app.recruitment.NoShowReason;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
+import com.mannschaft.app.recruitment.dto.RecruitmentNoShowRecordResponse;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentNoShowNotificationEvent;
+import com.mannschaft.app.recruitment.event.RecruitmentNoShowDisputeNotificationEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository.ArchivedListingScope;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository.NoShowDisputeDays;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * F03.11 Phase 5b: NO_SHOW マーク・異議申立サービス。
  *
  * 設計書 §5.8 (NO_SHOW フロー) を参照。
- * 通知は F04.9 実装後に統合予定（現在はログ出力のみ）。
+ * NO_SHOW 記録と異議申立の通知は業務トランザクションのコミット後に配送する。
  */
 @Slf4j
 @Service
@@ -61,6 +70,7 @@ public class RecruitmentNoShowService {
     private final RecruitmentListingRepository listingRepository;
     /** 監査ログサービス（#2497 自動取下げの記録用）。 */
     private final AuditLogService auditLogService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ===========================================
     // 管理者による NO_SHOW マーク
@@ -71,13 +81,28 @@ public class RecruitmentNoShowService {
      * 24時間後に確定バッチが confirmed=true にする。
      */
     @Transactional
-    public RecruitmentNoShowRecordEntity markNoShow(Long participantId, Long adminUserId) {
-        RecruitmentParticipantEntity participant = participantRepository.findById(participantId)
-                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+    public RecruitmentNoShowRecordResponse markNoShow(
+            RecruitmentScopeType scopeType, Long scopeId, Long listingId,
+            Long participantId, Long adminUserId) {
+        // 先に URL のスコープ権限を確認し、対象 ID の存在情報を漏らさない。
+        if (scopeType == RecruitmentScopeType.PERSONAL) {
+            if (!scopeId.equals(adminUserId)) {
+                throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
+            }
+        } else {
+            accessControlService.checkAdminOrAbove(adminUserId, scopeId, scopeType.name());
+        }
 
-        // 権限チェック: 対象募集のスコープ管理者であること
-        accessControlService.checkAdminOrAbove(
-                adminUserId, participant.getListingId(), "RECRUITMENT");
+        RecruitmentListingEntity listing = listingRepository
+                .findByIdAndScopeTypeAndScopeId(listingId, scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        if (scopeType == RecruitmentScopeType.PERSONAL
+                && !adminUserId.equals(listing.getCreatedBy())) {
+            throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        }
+        RecruitmentParticipantEntity participant = participantRepository
+                .findByIdAndListingId(participantId, listingId)
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
 
         // CONFIRMED のみマーク可能
         if (participant.getStatus() != RecruitmentParticipantStatus.CONFIRMED) {
@@ -103,11 +128,18 @@ public class RecruitmentNoShowService {
                 .build();
         RecruitmentNoShowRecordEntity saved = noShowRepository.save(record);
 
-        // TODO: F04.9 実装後に RECRUITMENT_NO_SHOW_RECORDED 通知を送信
+        eventPublisher.publishEvent(new RecruitmentNoShowNotificationEvent(
+                saved.getId(), listingId, participant.getUserId()));
         log.info("F03.11 Phase5b NO_SHOW仮マーク: participantId={}, userId={}, recordedBy={}",
                 participantId, participant.getUserId(), adminUserId);
 
-        return saved;
+        LocalDateTime deadline = getDisputeDeadlineAt(saved.getId(), saved.getRecordedAt());
+        return new RecruitmentNoShowRecordResponse(
+                saved.getId(), saved.getParticipantId(), saved.getListingId(), saved.getUserId(),
+                saved.getReason().name(), saved.isConfirmed(), saved.getRecordedAt().toString(),
+                saved.getRecordedBy(), saved.isDisputed(), null, null,
+                saved.getCreatedAt() != null ? saved.getCreatedAt().toString() : null,
+                deadline.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toOffsetDateTime().toString());
     }
 
     // ===========================================
@@ -127,7 +159,7 @@ public class RecruitmentNoShowService {
      * {@code findByIdAndScopeTypeAndScopeId} は募集枠を JOIN するため
      * <b>永久に裁定不能</b>になり、{@code countConfirmedNoShows} には算入され続ける。
      * これは #2497 と時間軸がずれただけの同一の実害であり、
-     * 「archive 時点で未申立 かつ 申立期限（14 日）内」という決して稀でない窓で成立する。</p>
+     * 「archive 時点で未申立 かつ 申立期限内」という窓で成立する。</p>
      *
      * <p><b>申立を拒否する</b>のではなく<b>受け付けたうえで即時に取り下げる</b>のは、
      * 拒否が利用者から救済手段を奪うためである。裁定の根拠（募集枠）を消したのは団体側であり、
@@ -135,8 +167,8 @@ public class RecruitmentNoShowService {
      * {@link DisputeResolution#REVOKED}（異議認容）を当てる。</p>
      */
     @Transactional
-    public RecruitmentNoShowRecordEntity dispute(Long recordId, Long userId) {
-        RecruitmentNoShowRecordEntity record = noShowRepository.findById(recordId)
+    public RecruitmentNoShowRecordResponse dispute(Long recordId, Long userId, String disputeReason) {
+        RecruitmentNoShowRecordEntity record = noShowRepository.findByIdForDisputeUpdate(recordId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND));
 
         // 本人チェック
@@ -148,12 +180,12 @@ public class RecruitmentNoShowService {
             throw new BusinessException(RecruitmentErrorCode.ALREADY_DISPUTED);
         }
 
-        // 14日以内（固定値、設定から取れる場合は将来改善）
-        if (record.getRecordedAt().plusDays(14).isBefore(LocalDateTime.now())) {
+        LocalDateTime disputeDeadlineAt = getDisputeDeadlineAt(record.getId(), record.getRecordedAt());
+        if (isDisputeDeadlineExceeded(disputeDeadlineAt, LocalDateTime.now())) {
             throw new BusinessException(RecruitmentErrorCode.NO_SHOW_DISPUTE_DEADLINE_EXCEEDED);
         }
 
-        record.dispute();
+        record.dispute(disputeReason);
 
         // #2497: 募集枠が archive 済みなら裁定経路が塞がっているため、その場で取り下げる。
         // 戻り値が存在すること自体が「archive 済み」の信号（生存中なら空）。
@@ -172,10 +204,21 @@ public class RecruitmentNoShowService {
                     recordId, userId, record.getListingId());
         });
 
-        // TODO: F04.9 実装後に主催者へ RECRUITMENT_NO_SHOW_DISPUTE_RAISED 通知
+        if (archivedScope.isEmpty()) {
+            eventPublisher.publishEvent(new RecruitmentNoShowDisputeNotificationEvent(
+                    recordId, record.getListingId(), userId));
+        }
         log.info("F03.11 Phase5b 異議申立: recordId={}, userId={}", recordId, userId);
 
-        return record;
+        return new RecruitmentNoShowRecordResponse(
+                record.getId(), record.getParticipantId(), record.getListingId(), record.getUserId(),
+                record.getReason() != null ? record.getReason().name() : null,
+                record.isConfirmed(), record.getRecordedAt() != null ? record.getRecordedAt().toString() : null,
+                record.getRecordedBy(), record.isDisputed(), record.getDisputeReason(),
+                record.getDisputeResolution() != null ? record.getDisputeResolution().name() : null,
+                record.getCreatedAt() != null ? record.getCreatedAt().toString() : null,
+                disputeDeadlineAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                        .toOffsetDateTime().toString());
     }
 
     /**
@@ -184,7 +227,7 @@ public class RecruitmentNoShowService {
      *
      * <p><b>認可は二段構え</b>（裏目付C）:</p>
      * <ol>
-     *   <li>パス由来の親スコープに対する管理者権限（{@code checkAdminOrAbove}）</li>
+     *   <li>パス由来の親スコープに対する管理者権限（PERSONAL は作成者本人）</li>
      *   <li>対象記録が<b>当該スコープに帰属するか</b>（{@code findByIdAndScopeTypeAndScopeId}）</li>
      * </ol>
      *
@@ -201,11 +244,13 @@ public class RecruitmentNoShowService {
             RecruitmentScopeType scopeType, Long scopeId,
             DisputeResolution resolution) {
         // §13 認可 (1/2): 当該スコープの管理者権限を確認
-        accessControlService.checkAdminOrAbove(adminUserId, scopeId, scopeType.name());
+        checkNoShowManager(scopeType, scopeId, adminUserId);
 
         // §13 認可 (2/2): 対象記録が当該スコープに帰属することを検証（テナント越境の封鎖）
-        RecruitmentNoShowRecordEntity record = noShowRepository
-                .findByIdAndScopeTypeAndScopeId(recordId, scopeType, scopeId)
+        RecruitmentNoShowRecordEntity record = (scopeType == RecruitmentScopeType.PERSONAL
+                ? noShowRepository.findByIdAndScopeTypeAndScopeIdAndCreatedBy(
+                        recordId, scopeType, scopeId, adminUserId)
+                : noShowRepository.findByIdAndScopeTypeAndScopeId(recordId, scopeType, scopeId))
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND));
 
         if (!record.isDisputed()) {
@@ -330,10 +375,53 @@ public class RecruitmentNoShowService {
         return noShowRepository.findByUserId(userId);
     }
 
+    /** 記録の募集スコープ設定から異議申立期限を算出する。設定が無ければ新規既定の30日。 */
+    public LocalDateTime getDisputeDeadlineAt(Long recordId, LocalDateTime recordedAt) {
+        return getDisputeDeadlines(Map.of(recordId, recordedAt)).get(recordId);
+    }
+
+    static boolean isDisputeDeadlineExceeded(LocalDateTime deadline, LocalDateTime now) {
+        return !deadline.isAfter(now);
+    }
+
+    /** 本人履歴や管理者一覧の期限を一括取得し、1件ずつの追加照会を避ける。 */
+    public Map<Long, LocalDateTime> getDisputeDeadlines(Map<Long, LocalDateTime> recordedAtById) {
+        if (recordedAtById.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Integer> daysById = noShowRepository.findDisputeDaysByRecordIds(
+                        List.copyOf(recordedAtById.keySet()))
+                .stream().collect(Collectors.toMap(NoShowDisputeDays::getRecordId,
+                        NoShowDisputeDays::getAllowedDays));
+        return recordedAtById.entrySet().stream().collect(Collectors.toMap(
+                Map.Entry::getKey,
+                entry -> {
+                    Integer days = daysById.get(entry.getKey());
+                    if (days == null) {
+                        throw new IllegalStateException("NO_SHOW 記録の期限設定を取得できません: recordId="
+                                + entry.getKey());
+                    }
+                    return entry.getValue().plusDays(days);
+                }));
+    }
+
     /** スコープの NO_SHOW 記録一覧（管理者用）。 */
     public List<RecruitmentNoShowRecordEntity> getNoShowsByScope(
             com.mannschaft.app.recruitment.RecruitmentScopeType scopeType, Long scopeId, Long adminUserId) {
-        accessControlService.checkAdminOrAbove(adminUserId, scopeId, scopeType.name());
+        checkNoShowManager(scopeType, scopeId, adminUserId);
+        if (scopeType == RecruitmentScopeType.PERSONAL) {
+            return noShowRepository.findByScopeTypeAndScopeIdAndCreatedBy(scopeType, scopeId, adminUserId);
+        }
         return noShowRepository.findByScopeTypeAndScopeId(scopeType, scopeId);
+    }
+
+    private void checkNoShowManager(RecruitmentScopeType scopeType, Long scopeId, Long userId) {
+        if (scopeType == RecruitmentScopeType.PERSONAL) {
+            if (!scopeId.equals(userId)) {
+                throw new BusinessException(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND);
+            }
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
     }
 }

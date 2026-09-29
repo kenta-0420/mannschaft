@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.dto.CreatePositionRequest;
 import com.mannschaft.app.shift.dto.ShiftPositionResponse;
@@ -40,6 +41,9 @@ class ShiftPositionServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private ScopeConcealingAccessGate accessGate;
 
     @Mock
     private ShiftMapper shiftMapper;

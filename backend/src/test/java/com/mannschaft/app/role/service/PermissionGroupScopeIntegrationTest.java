@@ -366,6 +366,29 @@ class PermissionGroupScopeIntegrationTest extends AbstractMySqlIntegrationTest {
                 .isEqualTo(1L);
     }
 
+    @Test
+    @DisplayName("CMP-048: 重複したグループIDは1行だけ割り当てる")
+    void cmp048_duplicateGroupIdsCreateOneAssignment() {
+        Long orgId = persistOrganization();
+        Long admin = persistActiveUser();
+        grantOrgRole(admin, orgId, "ADMIN", 2);
+        Long targetUser = persistActiveUser();
+        grantOrgRole(targetUser, orgId, "DEPUTY_ADMIN", 3);
+        Long groupId = persistOrgPermissionGroup(orgId);
+        flushClear();
+
+        permissionGroupService.assignUserPermissionGroups(targetUser, orgId, "ORGANIZATION",
+                new UserPermissionGroupAssignRequest(List.of(groupId, groupId)), admin);
+        flushClear();
+
+        Long assigned = ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM user_permission_groups WHERE user_id = :uid AND group_id = :gid")
+                .setParameter("uid", targetUser)
+                .setParameter("gid", groupId)
+                .getSingleResult()).longValue();
+        assertThat(assigned).isEqualTo(1L);
+    }
+
     // =====================================================================
     // AC-13: 越境付与の拒否が既存の正当な割当を巻き添えにしない（番人）
     // =====================================================================

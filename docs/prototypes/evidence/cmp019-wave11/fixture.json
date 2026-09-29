@@ -1,0 +1,76 @@
+{
+  "runTag": "CMP019_W11_EXPLORE_1790461402446",
+  "createdAt": "2026-09-26T22:23:22.446Z",
+  "scopes": [
+    {
+      "type": "team",
+      "slug": "fc-u-18",
+      "numericId": 1,
+      "editor": "e2e-dummy-1@test.mannschaft.local",
+      "projectId": 19,
+      "milestoneIds": [
+        10,
+        11
+      ],
+      "todos": {
+        "open": {
+          "id": 533,
+          "title": "CMP019_W11_EXPLORE_1790461402446_team_open"
+        },
+        "guard": {
+          "id": 534,
+          "title": "CMP019_W11_EXPLORE_1790461402446_team_guard"
+        },
+        "locked1": {
+          "id": 535,
+          "title": "CMP019_W11_EXPLORE_1790461402446_team_locked1"
+        },
+        "locked2": {
+          "id": 536,
+          "title": "CMP019_W11_EXPLORE_1790461402446_team_locked2"
+        }
+      },
+      "lockVerifiedAt": "2026-09-26T22:23:28.406Z"
+    },
+    {
+      "type": "organization",
+      "slug": "org-000009",
+      "numericId": 9,
+      "editor": "e2e-admin@test.mannschaft.local",
+      "projectId": 20,
+      "milestoneIds": [
+        12,
+        13
+      ],
+      "todos": {
+        "open": {
+          "id": 537,
+          "title": "CMP019_W11_EXPLORE_1790461402446_organization_open"
+        },
+        "guard": {
+          "id": 538,
+          "title": "CMP019_W11_EXPLORE_1790461402446_organization_guard"
+        },
+        "locked1": {
+          "id": 539,
+          "title": "CMP019_W11_EXPLORE_1790461402446_organization_locked1"
+        },
+        "locked2": {
+          "id": 540,
+          "title": "CMP019_W11_EXPLORE_1790461402446_organization_locked2"
+        }
+      },
+      "lockVerifiedAt": "2026-09-26T22:23:36.446Z"
+    }
+  ],
+  "cleanedAt": "2026-09-26T23:12:00.191Z",
+  "cleanupVerification": {
+    "method": "ID 限定 API DELETE 後に実 MySQL を読み取り確認",
+    "todoIds": [533, 534, 535, 536, 537, 538, 539, 540],
+    "milestoneIds": [10, 11, 12, 13],
+    "projectIds": [19, 20],
+    "activeTodoCount": 0,
+    "milestoneRowCount": 0,
+    "activeProjectCount": 0
+  }
+}
