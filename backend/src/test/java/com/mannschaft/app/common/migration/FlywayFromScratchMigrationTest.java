@@ -106,19 +106,16 @@ class FlywayFromScratchMigrationTest {
     private static final String ENTITY_BASE_PACKAGE = "com.mannschaft.app";
 
     /**
-     * <b>既知の未返済ドリフト台帳（2026-07-28 凍結）</b>
+     * <b>既知の未返済ドリフト台帳 — 空であること（2026-09-29 全額返済・CMP-260924-0010）</b>
      *
-     * <p>{@code queue_tickets.guest_phone} の欠落（本 PR で是正）を調査した際、
-     * 同型の乖離が他ドメインにも既に存在することが判明した。
-     * これらは各々「Entity 側に {@code @Column(name=...)} を足す」のか
-     * 「Flyway 側に列を足す」のかがドメインごとの設計判断になるため、
-     * 本 PR では是正せず<b>凍結して番人を先に導入する</b>。</p>
+     * <p>この台帳は<b>空でなければならない</b>。Entity に列を足したら同じ PR で
+     * migration（{@code ALTER TABLE ... ADD COLUMN}）も足すこと。
+     * 番人が赤くなったとき、ここへ列を<b>追記して黙らせてはならない</b>。
+     * 凍結は技術的負債であり免罪符ではない（2026-07-28 に 22 件を凍結して導入したが、
+     * 凍結された列は本番相当環境で {@code Unknown column} により当該 API を 500 にし続けていた）。
+     * 増やさず、migration で返済せよ。</p>
      *
-     * <p>凍結は技術的負債であり免罪符ではない。<b>このリストは増やしてはならない</b>
-     * （新規ドリフトは即座に fail させるのが本テストの存在意義）。
-     * 返済のたびに該当行を削除し、最終的に空にすること。</p>
-     *
-     * <p>乖離の内訳（左が Hibernate が発行する列名、括弧内が Flyway 実列名）:</p>
+     * <p>返済の履歴（左が Hibernate が発行する列名、括弧内が Flyway 実列名）:</p>
      * <ul>
      *   <li><b>命名戦略の数字 / 末尾大文字の罠（旧 11 件・2026-08-20 に Issue #2856 で全額返済）</b> —
      *       {@code s3Key} → {@code s3key} / {@code positionX} → {@code positionx} /
@@ -126,17 +123,20 @@ class FlywayFromScratchMigrationTest {
      *       いずれも Entity 側に {@code @Column(name=...)} を明示して是正済みのため台帳から削除した。
      *       再発は {@code common.architecture.EntityDigitBoundaryColumnNameGuardTest}（静的走査）と
      *       {@code common.schema.EntityDigitBoundaryColumnFlywaySchemaIT}（実 Flyway スキーマ）が防ぐ。</li>
-     *   <li><b>{@code circulation_recipients}（3 件）</b> —
+     *   <li><b>{@code circulation_recipients} の {@code skip_reason / skipped_by / skipped_at}
+     *       （旧 3 件・2026-09-29 に CMP-260924-0010 で返済）</b> —
      *       V9.175 のコメントは「V9.171 で追加済み」と書いているが、
-     *       V9.171 は {@code create_name_disclosure_change_logs} で無関係。実際にはどこにも存在しない。</li>
+     *       V9.171 は {@code create_name_disclosure_change_logs} で無関係。実際にはどこにも存在しなかった。
+     *       V227（{@code add_skip_columns_to_circulation_recipients}）で列を追加した。</li>
      *   <li><b>{@code tournament_entry_members.member_number}・
      *       {@code tournament_entry_template_members.created_at/updated_at}（旧 4 件・うち
-     *       {@code content_reports.content_hidden} は 2026-09-22 に CMP-260920-0705 で返済）</b> —
+     *       {@code content_reports.content_hidden} は 2026-09-22 に CMP-260920-0705 で返済、
+     *       残る 3 件は 2026-09-29 に CMP-260924-0010 で返済）</b> —
      *       {@code queue_tickets.guest_phone} と同型（Entity にだけ足して migration を忘れた）。
      *       {@code content_reports.content_hidden} は本番相当環境で
      *       {@code Unknown column 'cre1_0.content_hidden'} により運営の通報一覧
      *       {@code GET /api/v1/admin/moderation/reports} が常時 500 になっており、
-     *       V220 で列を追加して台帳から削除した。</li>
+     *       V220 で列を追加して台帳から削除した。残る 3 件は V227 で列を追加した。</li>
      *   <li><b>{@code shift_budget_allocations} の {@code *_uq}（旧 3 件・2026-09-09 に返済）</b> —
      *       Entity が {@code @GeneratedColumn} で生成カラムを宣言していたが、Flyway（V11.030）は
      *       MySQL 8.0 の制約（FK ベースカラムに STORED 生成カラム不可、Error 3192）により
@@ -145,39 +145,21 @@ class FlywayFromScratchMigrationTest {
      *       F08.7 シフト予算 API が全て 500 になっていた）。
      *       DB 側の一意性が残っていることは
      *       {@link #shift_budget_allocationsの一意性が関数インデックスで担保されている()} が守る。</li>
-     *   <li><b>{@code BaseEntity} の {@code created_at} / {@code updated_at}（17 件）</b> —
+     *   <li><b>{@code BaseEntity} の {@code created_at} / {@code updated_at}（旧 16 件・
+     *       2026-09-29 に CMP-260924-0010 で返済。凍結時の Javadoc は「17 件」と書いていたが実数は 16）</b> —
      *       {@link com.mannschaft.app.common.BaseEntity} は全継承 Entity に
      *       {@code createdAt} / {@code updatedAt} を持たせ、{@code @PrePersist} /
      *       {@code @PreUpdate} で必ず書き込むが、これらのテーブルの CREATE TABLE は
-     *       片方または両方を作っていない。</li>
+     *       片方または両方を作っていなかった。V227（{@code add_missing_base_entity_timestamps}）で
+     *       列を追加し、既存行は元の日時列（{@code created_at} / {@code recorded_at} / {@code voted_at}）
+     *       から埋め戻した。{@code committee_distribution_logs} の Entity が
+     *       {@code updated_at} を {@code @AttributeOverride} で書き込み不可にしていた回避策も撤去した。</li>
      * </ul>
+     *
+     * <p>返済 migration の既存データ経路・冪等性・Entity との整合は
+     * {@link FlywayUnpaidDriftRepaymentMigrationTest} が守る。</p>
      */
-    private static final Set<String> KNOWN_UNPAID_DRIFT = Set.of(
-        // --- migration そのものが存在しない（Flyway 側に列を足すのが正解）---
-        "circulation_recipients.skip_reason",
-        "circulation_recipients.skipped_by",
-        "circulation_recipients.skipped_at",
-        "tournament_entry_members.member_number",
-        "tournament_entry_template_members.created_at",
-        "tournament_entry_template_members.updated_at",
-        // --- BaseEntity の created_at / updated_at を CREATE TABLE が作っていない ---
-        "ad_conversions.updated_at",
-        "analytics_alert_history.updated_at",
-        "attendance_transition_alerts.updated_at",
-        "budget_transaction_attachments.updated_at",
-        "chart_body_marks.updated_at",
-        "chart_photos.updated_at",
-        "committee_distribution_logs.updated_at",
-        "daily_attendance_records.created_at",
-        "job_check_ins.updated_at",
-        "line_message_logs.updated_at",
-        "onboarding_step_completions.updated_at",
-        "parking_applications.updated_at",
-        "period_attendance_records.created_at",
-        "proxy_votes.created_at",
-        "proxy_votes.updated_at",
-        "webhook_event_subscriptions.updated_at"
-    );
+    private static final Set<String> KNOWN_UNPAID_DRIFT = Set.of();
 
     /**
      * fresh DB 検証用の MySQL コンテナ。
