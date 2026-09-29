@@ -76,13 +76,14 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
     /** 親削除のみの連鎖。提出日時・希望値・更新日時は保持する。 */
     @Modifying(flushAutomatically = true)
     @Query(value = """
-            UPDATE shift_requests r JOIN shift_schedules sc ON sc.id = r.schedule_id
-            SET r.deleted_at = sc.deleted_at,
+            UPDATE shift_requests r
+            SET r.deleted_at = :deletedAt,
                 r.delete_reason = 'PARENT_DELETED',
                 r.updated_at = r.updated_at
-            WHERE sc.id = :scheduleId AND sc.deleted_at IS NOT NULL AND r.deleted_at IS NULL
+            WHERE r.schedule_id = :scheduleId AND r.deleted_at IS NULL
             """, nativeQuery = true)
-    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
+    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId,
+                               @Param("deletedAt") java.time.LocalDateTime deletedAt);
 
     @Modifying(flushAutomatically = true)
     @Query(value = """

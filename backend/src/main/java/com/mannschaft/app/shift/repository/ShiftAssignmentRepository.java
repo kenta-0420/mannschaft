@@ -28,11 +28,11 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
     @Modifying(flushAutomatically = true)
     @Query(value = """
             UPDATE shift_assignments a JOIN shift_slots s ON s.id = a.slot_id
-            JOIN shift_schedules sc ON sc.id = s.schedule_id
-            SET a.deleted_at = sc.deleted_at, a.version = a.version + 1, a.updated_at = a.updated_at
-            WHERE sc.id = :scheduleId AND sc.deleted_at IS NOT NULL AND a.deleted_at IS NULL
+            SET a.deleted_at = :deletedAt, a.version = a.version + 1, a.updated_at = a.updated_at
+            WHERE s.schedule_id = :scheduleId AND a.deleted_at IS NULL
             """, nativeQuery = true)
-    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
+    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId,
+                               @Param("deletedAt") java.time.LocalDateTime deletedAt);
 
     @Modifying(flushAutomatically = true)
     @Query(value = """

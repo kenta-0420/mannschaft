@@ -1,21 +1,28 @@
 package com.mannschaft.app.shift;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.shift.entity.ShiftRequestEntity;
+import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
 import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
+import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
-import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
-import com.mannschaft.app.shift.service.ShiftScheduleService;
+import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
+import com.mannschaft.app.shift.service.ShiftCleanupBatchService;
+import com.mannschaft.app.shift.service.ShiftScheduleService;
+import com.mannschaft.app.shift.service.ShiftSlotService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.PersistenceContext;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,10 +31,15 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,8 +47,16 @@ import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -71,20 +91,29 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Autowired
+    @MockitoSpyBean
     private ShiftScheduleRepository scheduleRepository;
 
-    @Autowired
+    @MockitoSpyBean
     private ShiftSlotRepository slotRepository;
 
-    @Autowired
+    @MockitoSpyBean
     private ShiftRequestRepository requestRepository;
 
-    @Autowired
+    @MockitoSpyBean
     private ShiftAssignmentRepository assignmentRepository;
 
     @Autowired
     private ShiftScheduleService scheduleService;
+
+    @Autowired
+    private ShiftSlotService slotService;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private ShiftCleanupBatchService cleanupBatchService;
 
     @PersistenceContext
     private EntityManager em;
@@ -104,11 +133,12 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
 
     @BeforeEach
     void setUp() {
-        teamId = insertTeam("CMP-260917-1136 チーム");
+        String fixtureSuffix = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
+        teamId = insertTeam("CMP-260917-1136 チーム-" + fixtureSuffix);
 
-        systemAdminId = insertUser("cmp260917-system-admin@example.com");
-        adminId = insertUser("cmp260917-admin@example.com");
-        memberId = insertUser("cmp260917-member@example.com");
+        systemAdminId = insertUser("cmp260917-system-admin-" + fixtureSuffix + "@example.com");
+        adminId = insertUser("cmp260917-admin-" + fixtureSuffix + "@example.com");
+        memberId = insertUser("cmp260917-member-" + fixtureSuffix + "@example.com");
 
         // SYSTEM_ADMIN はプラットフォーム級。当該チームの memberships は敢えて張らない
         // （ShiftUnpublishedScheduleVisibilityContractIT 踏襲）。
@@ -421,6 +451,113 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
     }
 
     @Test
+    @DisplayName("枠一括更新が失敗すると親と子3種を実DBでロールバックする")
+    void 枠連鎖失敗時は親子を全てロールバックする() {
+        ShiftRequestEntity request = requestRepository.save(ShiftRequestEntity.builder()
+                .scheduleId(liveScheduleId).userId(memberId).slotId(liveSlotId)
+                .slotDate(LocalDate.of(2026, 4, 2)).preference(ShiftPreference.PREFERRED).build());
+        ShiftAssignmentEntity assignment = assignmentRepository.save(ShiftAssignmentEntity.builder()
+                .slotId(liveSlotId).userId(memberId).assignedBy(adminId).build());
+        Long requestId = request.getId();
+        Long assignmentId = assignment.getId();
+        em.flush();
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+
+        willThrow(new RuntimeException("AC-3 枠更新失敗"))
+                .given(slotRepository).softDeleteByScheduleId(
+                        org.mockito.ArgumentMatchers.eq(liveScheduleId),
+                        org.mockito.ArgumentMatchers.any(LocalDateTime.class));
+        TestTransaction.start();
+        assertThatThrownBy(() -> scheduleService.deleteSchedule(liveScheduleId, adminId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("AC-3 枠更新失敗");
+        TestTransaction.end();
+
+        TestTransaction.start();
+        assertThat(em.createNativeQuery("SELECT deleted_at FROM shift_schedules WHERE id = :id")
+                .setParameter("id", liveScheduleId).getSingleResult()).isNull();
+        assertThat(em.createNativeQuery("SELECT deleted_at FROM shift_slots WHERE id = :id")
+                .setParameter("id", liveSlotId).getSingleResult()).isNull();
+        assertThat(em.createNativeQuery("SELECT deleted_at FROM shift_requests WHERE id = :id")
+                .setParameter("id", requestId).getSingleResult()).isNull();
+        assertThat(em.createNativeQuery("SELECT deleted_at FROM shift_assignments WHERE id = :id")
+                .setParameter("id", assignmentId).getSingleResult()).isNull();
+    }
+
+    @Test
+    @DisplayName("親削除と枠作成が競合しても削除完了後に有効な枠を残さない")
+    void 親削除と枠作成を親行ロックで直列化する() throws Exception {
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        CountDownLatch parentLocked = new CountDownLatch(1);
+        CountDownLatch createAttempted = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> deletion = executor.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
+                scheduleRepository.findByIdForUpdate(liveScheduleId).orElseThrow();
+                parentLocked.countDown();
+                try {
+                    if (!createAttempted.await(5, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("枠作成スレッドが開始しない");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+                scheduleService.deleteSchedule(liveScheduleId, adminId);
+            }));
+            Future<?> creation = executor.submit(() -> {
+                assertThat(parentLocked.await(5, TimeUnit.SECONDS)).isTrue();
+                createAttempted.countDown();
+                return new TransactionTemplate(transactionManager).execute(tx -> {
+                    try {
+                        return slotService.createSlot(liveScheduleId,
+                                new CreateShiftSlotRequest(LocalDate.of(2026, 4, 3),
+                                        LocalTime.of(10, 0), LocalTime.of(12, 0), null, 1, "競合作成"), adminId);
+                    } catch (BusinessException expected) {
+                        return null;
+                    }
+                });
+            });
+            deletion.get(10, TimeUnit.SECONDS);
+            creation.get(10, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        TestTransaction.start();
+        assertThat(em.createNativeQuery("""
+                SELECT COUNT(*) FROM shift_slots WHERE schedule_id = :scheduleId AND deleted_at IS NULL
+                """).setParameter("scheduleId", liveScheduleId).getSingleResult()).isEqualTo(0L);
+    }
+
+    @Test
+    @DisplayName("希望が残るARCHIVED親101件を複数回の実行で全て物理削除する")
+    void cleanupは百一件を複数回で完掃する() {
+        for (int i = 0; i < 101; i++) {
+            ShiftScheduleEntity schedule = scheduleRepository.save(ShiftScheduleEntity.builder()
+                    .teamId(teamId).title("cleanup-" + i).periodType(ShiftPeriodType.WEEKLY)
+                    .startDate(LocalDate.of(2025, 1, 1)).endDate(LocalDate.of(2025, 1, 7))
+                    .status(ShiftScheduleStatus.ARCHIVED).createdBy(adminId).build());
+            requestRepository.save(ShiftRequestEntity.builder().scheduleId(schedule.getId()).userId(memberId)
+                    .slotDate(LocalDate.of(2025, 1, 2)).preference(ShiftPreference.AVAILABLE).build());
+        }
+        em.flush();
+        em.createNativeQuery("UPDATE shift_schedules SET updated_at = '2025-01-01 00:00:00' "
+                + "WHERE title LIKE 'cleanup-%'").executeUpdate();
+        em.clear();
+
+        cleanupBatchService.runRequestCleanup();
+        cleanupBatchService.runRequestCleanup();
+
+        assertThat(em.createNativeQuery("""
+                SELECT COUNT(*) FROM shift_requests r JOIN shift_schedules s ON s.id = r.schedule_id
+                WHERE s.title LIKE 'cleanup-%'
+                """).getSingleResult()).isEqualTo(0L);
+    }
+
+    @Test
     void 子がゼロの親も削除でき他の親の子を変更しない() throws Exception {
         Long otherTeamId = insertTeam("CMP-260923-0953 別チーム");
         ShiftScheduleEntity otherParent = scheduleRepository.save(ShiftScheduleEntity.builder()
@@ -521,23 +658,182 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
     }
 
     @Test
+    @DisplayName("AC-9a〜l 生存親配下の削除済み枠・希望は全読取材料から除外する")
     void 生存親でも削除済み枠はネイティブ読取から除外する() {
         ShiftSlotEntity hidden = slotRepository.save(ShiftSlotEntity.builder()
                 .scheduleId(liveScheduleId).slotDate(LocalDate.of(2026, 4, 4))
                 .startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(17, 0))
                 .assignedUserIds("[" + memberId + "]").build());
+        ShiftRequestEntity hiddenRequest = requestRepository.save(ShiftRequestEntity.builder()
+                .scheduleId(liveScheduleId).userId(memberId).slotId(hidden.getId())
+                .slotDate(LocalDate.of(2026, 4, 4)).preference(ShiftPreference.PREFERRED).build());
         Long hiddenId = hidden.getId();
+        Long hiddenRequestId = hiddenRequest.getId();
         em.flush();
         em.createNativeQuery("UPDATE shift_slots SET deleted_at = '2026-03-01 00:00:00' WHERE id = :id")
                 .setParameter("id", hiddenId).executeUpdate();
+        em.createNativeQuery("""
+                UPDATE shift_requests
+                SET deleted_at = '2026-03-01 00:00:00', delete_reason = 'SLOT_DELETED'
+                WHERE id = :id
+                """).setParameter("id", hiddenRequestId).executeUpdate();
         em.clear();
 
         assertThat(slotRepository.findById(hiddenId)).isEmpty();
+        assertThat(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(liveScheduleId))
+                .extracting(ShiftSlotEntity::getId).doesNotContain(hiddenId);
+        assertThat(slotRepository.findByScheduleIdAndSlotDateOrderByStartTimeAsc(
+                liveScheduleId, LocalDate.of(2026, 4, 4))).isEmpty();
+        assertThat(slotRepository.findAllByIdIn(List.of(hiddenId))).isEmpty();
+        assertThat(slotRepository.countByScheduleId(liveScheduleId)).isEqualTo(1L);
         assertThat(slotRepository.findAllAssignedToUser(memberId)).isEmpty();
         assertThat(slotRepository.findUpcomingAssignedByUserIdBetween(
                 memberId, LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 8))).isEmpty();
+        assertThat(requestRepository.findById(hiddenRequestId)).isEmpty();
+        assertThat(requestRepository.findByScheduleIdOrderBySlotDateAsc(liveScheduleId)).isEmpty();
+        assertThat(requestRepository.findByScheduleIdAndUserId(liveScheduleId, memberId)).isEmpty();
+        assertThat(requestRepository.findByScheduleIdAndSlotDate(
+                liveScheduleId, LocalDate.of(2026, 4, 4))).isEmpty();
+        assertThat(requestRepository.findByScheduleIdAndUserIdAndSlotId(
+                liveScheduleId, memberId, hiddenId)).isEmpty();
+        assertThat(requestRepository.countDistinctUserIdByScheduleId(liveScheduleId)).isZero();
+        assertThat(requestRepository.countSubmittedMembersByScheduleId(
+                liveScheduleId, List.of(memberId))).isZero();
+        assertThat(requestRepository.findByUserIdOrderBySlotDateDesc(memberId)).isEmpty();
+        assertThat(requestRepository.countByScheduleIdAndPreference(
+                liveScheduleId, ShiftPreference.PREFERRED)).isZero();
+        assertThat(requestRepository.countByPreferenceForSchedule(liveScheduleId)).isEmpty();
         assertThat(em.createNativeQuery("SELECT assigned_user_ids FROM shift_slots WHERE id = :id")
                 .setParameter("id", hiddenId).getSingleResult()).isEqualTo("[" + memberId + "]");
+    }
+
+    @Test
+    @DisplayName("子1件と200件で親削除のSQL数は同じで更新は4文、連鎖更新は索引を使う")
+    void 親削除は子件数に比例せず四更新文と索引で実行する() {
+        Long oneChildSchedule = createScheduleWithChildren("AC-15-one", 1);
+        Long twoHundredChildSchedule = createScheduleWithChildren("AC-15-two-hundred", 200);
+        em.flush();
+        em.clear();
+
+        Statistics statistics = em.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+        scheduleService.deleteSchedule(oneChildSchedule, systemAdminId);
+        em.flush();
+        long oneChildStatements = statistics.getPrepareStatementCount();
+
+        em.clear();
+        statistics.clear();
+        clearInvocations(scheduleRepository, assignmentRepository, requestRepository, slotRepository);
+        scheduleService.deleteSchedule(twoHundredChildSchedule, systemAdminId);
+        em.flush();
+        long twoHundredChildStatements = statistics.getPrepareStatementCount();
+
+        assertThat(twoHundredChildStatements)
+                .as("子1件=%d文、子200件=%d文", oneChildStatements, twoHundredChildStatements)
+                .isEqualTo(oneChildStatements);
+        assertThat(statistics.getEntityUpdateCount()).as("親のORM UPDATEは1文").isEqualTo(1L);
+        verify(assignmentRepository).softDeleteByScheduleId(
+                org.mockito.ArgumentMatchers.eq(twoHundredChildSchedule),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class));
+        verify(requestRepository).softDeleteByScheduleId(
+                org.mockito.ArgumentMatchers.eq(twoHundredChildSchedule),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class));
+        verify(slotRepository).softDeleteByScheduleId(
+                org.mockito.ArgumentMatchers.eq(twoHundredChildSchedule),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class));
+        verify(scheduleRepository).saveAndFlush(org.mockito.ArgumentMatchers.any(ShiftScheduleEntity.class));
+
+        Map<String, String> slotPlan = explainKeys("""
+                EXPLAIN UPDATE shift_slots s
+                SET s.deleted_at = :deletedAt, s.version = s.version + 1, s.updated_at = s.updated_at
+                WHERE s.schedule_id = :scheduleId AND s.deleted_at IS NULL
+                """, twoHundredChildSchedule);
+        Map<String, String> assignmentPlan = explainKeys("""
+                EXPLAIN UPDATE shift_assignments a JOIN shift_slots s ON s.id = a.slot_id
+                SET a.deleted_at = :deletedAt, a.version = a.version + 1, a.updated_at = a.updated_at
+                WHERE s.schedule_id = :scheduleId AND a.deleted_at IS NULL
+                """, twoHundredChildSchedule);
+        assertThat(slotPlan.get("s")).isEqualTo("idx_sslot_schedule_date");
+        assertThat(assignmentPlan.get("a")).isEqualTo("idx_shift_assignments_slot_id");
+    }
+
+    @Test
+    @DisplayName("親削除後の古い枠・希望・割当をsaveAndFlushしても蘇生しない")
+    void 古いdetached子実体の保存でdeletedAtはnullへ戻らない() {
+        ShiftRequestEntity request = requestRepository.save(ShiftRequestEntity.builder()
+                .scheduleId(liveScheduleId).userId(memberId).slotId(liveSlotId)
+                .slotDate(LocalDate.of(2026, 4, 2)).preference(ShiftPreference.PREFERRED).build());
+        ShiftAssignmentEntity assignment = assignmentRepository.save(ShiftAssignmentEntity.builder()
+                .slotId(liveSlotId).userId(memberId).assignedBy(adminId).build());
+        ShiftSlotEntity staleSlot = slotRepository.findById(liveSlotId).orElseThrow();
+        ShiftRequestEntity staleRequest = requestRepository.findById(request.getId()).orElseThrow();
+        ShiftAssignmentEntity staleAssignment = assignmentRepository.findById(assignment.getId()).orElseThrow();
+        Long requestId = staleRequest.getId();
+        Long assignmentId = staleAssignment.getId();
+        em.flush();
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(
+                status -> scheduleService.deleteSchedule(liveScheduleId, adminId));
+
+        assertThatThrownBy(() -> new TransactionTemplate(transactionManager).executeWithoutResult(
+                status -> slotRepository.saveAndFlush(staleSlot)))
+                .isInstanceOfAny(ObjectOptimisticLockingFailureException.class, OptimisticLockException.class);
+        tryStaleSave(() -> requestRepository.saveAndFlush(staleRequest));
+        tryStaleSave(() -> assignmentRepository.saveAndFlush(staleAssignment));
+
+        TestTransaction.start();
+        for (Map.Entry<String, Long> row : Map.of(
+                "shift_slots", liveSlotId,
+                "shift_requests", requestId,
+                "shift_assignments", assignmentId).entrySet()) {
+            assertThat(em.createNativeQuery("SELECT deleted_at FROM " + row.getKey() + " WHERE id = :id")
+                    .setParameter("id", row.getValue()).getSingleResult())
+                    .as("stale save後も削除日時を保持する: %s", row.getKey()).isNotNull();
+        }
+    }
+
+    private Long createScheduleWithChildren(String title, int childCount) {
+        ShiftScheduleEntity schedule = scheduleRepository.save(ShiftScheduleEntity.builder()
+                .teamId(teamId).title(title).periodType(ShiftPeriodType.WEEKLY)
+                .startDate(LocalDate.of(2026, 6, 1)).endDate(LocalDate.of(2026, 12, 31))
+                .status(ShiftScheduleStatus.DRAFT).createdBy(adminId).build());
+        for (int i = 0; i < childCount; i++) {
+            LocalDate date = LocalDate.of(2026, 6, 1).plusDays(i);
+            ShiftSlotEntity slot = slotRepository.save(ShiftSlotEntity.builder()
+                    .scheduleId(schedule.getId()).slotDate(date)
+                    .startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(17, 0)).build());
+            requestRepository.save(ShiftRequestEntity.builder()
+                    .scheduleId(schedule.getId()).userId(memberId).slotId(slot.getId())
+                    .slotDate(date).preference(ShiftPreference.AVAILABLE).build());
+            assignmentRepository.save(ShiftAssignmentEntity.builder()
+                    .slotId(slot.getId()).userId(memberId).assignedBy(adminId).build());
+        }
+        return schedule.getId();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> explainKeys(String sql, Long scheduleId) {
+        Map<String, String> keys = new java.util.HashMap<>();
+        List<Object[]> rows = em.createNativeQuery(sql)
+                .setParameter("scheduleId", scheduleId)
+                .setParameter("deletedAt", LocalDateTime.of(2026, 1, 1, 0, 0))
+                .getResultList();
+        for (Object[] row : rows) {
+            keys.put(String.valueOf(row[2]), row[6] == null ? null : String.valueOf(row[6]));
+        }
+        return keys;
+    }
+
+    private void tryStaleSave(Runnable save) {
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> save.run());
+        } catch (RuntimeException expected) {
+            // @SQLRestriction 配下の merge は楽観ロックまたは既存PKへの再INSERTで失敗してよい。
+            // 契約は、どちらの場合でも deleted_at が NULL に戻らないことである。
+        }
     }
 
     private void setAuth(Long userId) {

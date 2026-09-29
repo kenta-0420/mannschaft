@@ -119,7 +119,13 @@ test('ADMINがUIから削除し、MEMBER履歴を保持して他テナントへ�
 
     const request = await api.post(`${API}/shifts/requests`, {
       headers: headers(member.token),
-      data: { slotId, preference: 'AVAILABLE', note: RUN_TAG },
+      data: {
+        scheduleId,
+        slotId,
+        slotDate: startDate,
+        preference: 'AVAILABLE',
+        note: RUN_TAG,
+      },
     })
     expect(request.status(), `MEMBERの希望作成: ${await request.text()}`).toBe(201)
     const requestId = ((await request.json()) as { data: { id: number } }).data.id

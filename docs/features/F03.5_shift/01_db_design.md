@@ -58,7 +58,7 @@ INDEX idx_shift_schedules_period (start_date, end_date)         -- 期間指定�
 **制約・備考**
 - `status` のライフサイクル: `DRAFT` → `COLLECTING`（希望収集開始）→ `ADJUSTING`（希望締切後、管理者調整中）→ `PUBLISHED`（確定・公開）→ `ARCHIVED`（期間終了後）
 - `COLLECTING` 状態の `shift_schedules` は同一チーム内で同時に複数存在可能（複数週分の希望を並行収集）
-- 論理削除時: 親を JPA で論理削除して flush し、配下の `shift_assignments` → `shift_requests` → `shift_slots` へ親の DB 上の `deleted_at` をコピーする。全更新は同一トランザクションで、子更新の失敗時には親もロールバックする。native SQL に Java 日時を束縛しない。行・ID・業務値は保持し、通常読取では `@SQLRestriction` で非表示とする（CMP-260923-0953）。復元機能は設けない。
+- 論理削除時: 親行を排他ロックし、壁時計から得た秒精度の同一削除日時を `shift_assignments` → `shift_requests` → `shift_slots` → 親 `shift_schedules` の固定4更新で設定する。全更新は同一トランザクションで、子更新の失敗時には親の更新SQLを実行せず全体をロールバックする。行・ID・業務値は保持し、通常読取では `@SQLRestriction` で非表示とする（CMP-260923-0953）。復元機能は設けない。
 - 子の作成・更新と親削除は親行の排他ロックで直列化する。削除コミット後の子追加を拒否し、削除途中の失敗は親子ともロールバックする。
 - 既存の削除済み親配下の子は移行時に親の `deleted_at` をコピーする。既に子へ削除日時が設定されている場合は保持する。件数を固定せず、ID・希望・割当状態・JSON・操作者を変更しない。
 - `GET /shifts/my/requests` の提出履歴は本人の `user_id` を条件に削除済み子も取得し、`scheduleDeleted=true` で表示する。子詳細・更新へのアクセスは404とする。

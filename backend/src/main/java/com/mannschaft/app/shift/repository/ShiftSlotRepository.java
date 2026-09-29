@@ -19,11 +19,12 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
     /** 親削除のみの連鎖。割当JSON・業務値・更新日時は保持する。 */
     @Modifying(flushAutomatically = true)
     @Query(value = """
-            UPDATE shift_slots s JOIN shift_schedules sc ON sc.id = s.schedule_id
-            SET s.deleted_at = sc.deleted_at, s.version = s.version + 1, s.updated_at = s.updated_at
-            WHERE sc.id = :scheduleId AND sc.deleted_at IS NOT NULL AND s.deleted_at IS NULL
+            UPDATE shift_slots s
+            SET s.deleted_at = :deletedAt, s.version = s.version + 1, s.updated_at = s.updated_at
+            WHERE s.schedule_id = :scheduleId AND s.deleted_at IS NULL
             """, nativeQuery = true)
-    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
+    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId,
+                               @Param("deletedAt") java.time.LocalDateTime deletedAt);
 
     @Modifying(flushAutomatically = true)
     @Query(value = """
