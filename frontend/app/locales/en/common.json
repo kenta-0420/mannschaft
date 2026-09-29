@@ -971,7 +971,29 @@
       "title": "A TODO was passed to you",
       "body": "{from} passed \"{title}\" to you (status: {label})"
     },
-    "pageTitle": "通知",
+    "pageTitle": "Notifications",
+    "list": {
+      "all": "All",
+      "unread": "Unread",
+      "markAllRead": "Mark all as read",
+      "markUnread": "Mark as unread",
+      "markRead": "Mark as read",
+      "empty": "No notifications",
+      "loadMore": "Load more",
+      "loadError": "Failed to load notifications",
+      "actionError": "Failed to complete the action",
+      "markAllReadError": "Failed to mark all notifications as read",
+      "confirmInfoMissing": "Confirmation details are missing",
+      "invalidScope": "The scope is invalid",
+      "confirmed": "Confirmed",
+      "confirmError": "Failed to confirm"
+    },
+    "bell": {
+      "notification": "Notifications",
+      "chat": "Chat",
+      "mention": "Mentions",
+      "none": "None"
+    },
     "guide": {
       "title": "通知の使い方",
       "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",

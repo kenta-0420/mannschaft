@@ -112,7 +112,7 @@ const stubs = {
     props: ['label'],
     emits: ['click'],
     template:
-      '<button type="button" :data-label="label" :data-testid="label === \'\\u3059\\u3079\\u3066\\u65E2\\u8AAD\\u306B\\u3059\\u308B\' ? \'mark-all-read\' : undefined" @click="$emit(\'click\', $event)">{{ label }}</button>',
+      '<button type="button" :data-label="label" :data-testid="label === \'notification.list.markAllRead\' ? \'mark-all-read\' : undefined" @click="$emit(\'click\', $event)">{{ label }}</button>',
   },
   SelectButton: { template: '<div />' },
   Menu: { template: '<div />' },
@@ -184,7 +184,7 @@ describe('通知の既読と確認状態', () => {
     expect(row.isConfirmed).toBe(false)
     expect(wrapper.text()).toContain(confirmButtonLabel)
 
-    await rowElement.get('button[title]:not([aria-label])').trigger('click')
+    await rowElement.get('button[aria-label="notification.list.markUnread"]').trigger('click')
     await flushPromises()
     expect(wrapper.findAll(`button[data-label="${confirmButtonLabel}"]`)).toHaveLength(1)
     expect(wrapper.text()).toContain(confirmButtonLabel)
@@ -212,12 +212,12 @@ describe('通知の既読と確認状態', () => {
     const rowElement = wrapper.get('[role="button"]')
     expect(wrapper.text()).toContain(confirmedLabel)
 
-    await rowElement.get('button[title]:not([aria-label])').trigger('click')
+    await rowElement.get('button[aria-label="notification.list.markRead"]').trigger('click')
     await flushPromises()
     expect(mocks.notificationApi.markAsRead).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain(confirmedLabel)
 
-    await rowElement.get('button[title]:not([aria-label])').trigger('click')
+    await rowElement.get('button[aria-label="notification.list.markUnread"]').trigger('click')
     await flushPromises()
     expect(mocks.notificationApi.markAsUnread).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain(confirmedLabel)
@@ -263,7 +263,7 @@ describe('通知の既読と確認状態', () => {
       },
     })
     await flushPromises()
-    await wrapper.get('button[data-label="もっと読む"]').trigger('click')
+    await wrapper.get('button[data-label="notification.list.loadMore"]').trigger('click')
     await flushPromises()
 
     const target = wrapper.get('[data-notification-id="3255966"]')
@@ -277,12 +277,12 @@ describe('通知の既読と確認状態', () => {
     expect(mocks.notificationApi.getNotifications).toHaveBeenCalledTimes(2)
     expect(mocks.confirmableApi.getNotificationDetail).toHaveBeenCalledTimes(2)
 
-    await wrapper.get('button[data-label="もっと読む"]').trigger('click')
+    await wrapper.get('button[data-label="notification.list.loadMore"]').trigger('click')
     await flushPromises()
     expect(wrapper.findAll('[data-notification-id]')).toHaveLength(3)
     expect(mocks.notificationApi.getNotifications).toHaveBeenCalledTimes(3)
 
-    await target.get('button[title]:not([aria-label])').trigger('click')
+    await target.get('button[aria-label="notification.list.markUnread"]').trigger('click')
     await flushPromises()
     expect(mocks.notificationApi.markAsUnread).toHaveBeenCalledTimes(1)
     expect(target.text()).toContain(confirmedLabel)

@@ -101,7 +101,7 @@ async function loadNotifications(page = 0) {
     // 確認通知のサマリ（未確認件数等）を並列取得（権限が無いものは静かにスキップ）
     await loadConfirmableSummariesForList()
   } catch {
-    showError('通知の取得に失敗しました')
+    showError(t('notification.list.loadError'))
   } finally {
     loading.value = false
   }
@@ -117,7 +117,7 @@ async function onToggleRead(notif: NotificationResponse) {
       notif.isRead = true
     }
   } catch {
-    showError('操作に失敗しました')
+    showError(t('notification.list.actionError'))
   }
 }
 
@@ -127,7 +127,7 @@ async function onMarkAllRead() {
     notifications.value.forEach((n) => (n.isRead = true))
     notifBadgeCount.value = 0 // ベルバッジを即時リセット
   } catch {
-    showError('一括既読に失敗しました')
+    showError(t('notification.list.markAllReadError'))
   }
 }
 
@@ -254,12 +254,12 @@ function getConfirmableSummary(notif: NotificationResponse): UnconfirmedSummary 
 /** 確認通知の「確認する」ボタンをクリックした時の処理 */
 async function onConfirmNotification(notif: NotificationResponse) {
   if (!notif.scopeType || !notif.sourceId) {
-    showError('確認通知の情報が不足しています')
+    showError(t('notification.list.confirmInfoMissing'))
     return
   }
   const scopeType = notif.scopeType
   if (scopeType !== 'TEAM' && scopeType !== 'ORGANIZATION' && scopeType !== 'SYSTEM') {
-    showError('スコープが不正です')
+    showError(t('notification.list.invalidScope'))
     return
   }
   try {
@@ -267,7 +267,7 @@ async function onConfirmNotification(notif: NotificationResponse) {
       await confirmPersonalNotification(notif.sourceId)
     } else {
       if (!notif.scopeId) {
-        showError('確認通知の情報が不足しています')
+        showError(t('notification.list.confirmInfoMissing'))
         return
       }
       await confirmNotification(scopeType, notif.scopeId, notif.sourceId)
@@ -281,7 +281,7 @@ async function onConfirmNotification(notif: NotificationResponse) {
         showError(t('inbox.action.readFailed'))
       }
     }
-    toast.add({ severity: 'success', summary: '確認しました', life: 3000 })
+    toast.add({ severity: 'success', summary: t('notification.list.confirmed'), life: 3000 })
     // 追加読み込み済みの通知を保持したまま、対象通知のサマリだけを更新する。
     confirmableSummaries.value = Object.fromEntries(
       Object.entries(confirmableSummaries.value).filter(
@@ -290,7 +290,7 @@ async function onConfirmNotification(notif: NotificationResponse) {
     )
     await loadConfirmableSummary(notif)
   } catch {
-    showError('確認処理に失敗しました')
+    showError(t('notification.list.confirmError'))
   }
 }
 
@@ -303,19 +303,26 @@ defineExpose({ refresh: () => loadNotifications() })
 <template>
   <div>
     <!-- ヘッダー -->
-    <div class="mb-4 flex items-center justify-between">
+    <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div class="flex items-center gap-2">
         <SelectButton
           v-model="filter"
+          class="notification-filter"
           :options="[
-            { label: 'すべて', value: 'all' },
-            { label: '未読', value: 'unread' },
+            { label: $t('notification.list.all'), value: 'all' },
+            { label: $t('notification.list.unread'), value: 'unread' },
           ]"
           option-label="label"
           option-value="value"
         />
       </div>
-      <Button label="すべて既読にする" text size="small" @click="onMarkAllRead" />
+      <Button
+        :label="$t('notification.list.markAllRead')"
+        class="min-h-11 w-full sm:w-auto"
+        text
+        size="small"
+        @click="onMarkAllRead"
+      />
     </div>
 
     <!-- 通知一覧 -->
@@ -437,10 +444,10 @@ defineExpose({ refresh: () => loadNotifications() })
           <div v-if="isConfirmableNotification(notif) && notif.isConfirmed === false" class="mt-2">
             <Button
               :label="$t('confirmable.confirm_button')"
+              class="min-h-11"
               size="small"
               severity="warn"
               icon="pi pi-check"
-              class="!min-h-11"
               @click.stop="onConfirmNotification(notif)"
             />
           </div>
@@ -460,6 +467,7 @@ defineExpose({ refresh: () => loadNotifications() })
           <div v-if="isEmergencyClosureNotification(notif) && !notif.isRead" class="mt-2">
             <Button
               :label="$t('emergency_closure.confirm_button')"
+              class="min-h-11"
               size="small"
               severity="danger"
               icon="pi pi-check"
@@ -503,7 +511,12 @@ defineExpose({ refresh: () => loadNotifications() })
           <!-- 既読/未読トグル（ヒット領域44x44。アイコン視覚サイズはtext-xsのまま維持） -->
           <button
             class="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-surface-300 hover:text-surface-600"
-            :title="notif.isRead ? '未読にする' : '既読にする'"
+            :aria-label="
+              notif.isRead ? $t('notification.list.markUnread') : $t('notification.list.markRead')
+            "
+            :title="
+              notif.isRead ? $t('notification.list.markUnread') : $t('notification.list.markRead')
+            "
             @click.stop="onToggleRead(notif)"
           >
             <i :class="notif.isRead ? 'pi pi-envelope' : 'pi pi-check'" class="text-xs" />
@@ -515,12 +528,18 @@ defineExpose({ refresh: () => loadNotifications() })
     <!-- 空状態 -->
     <div v-if="!loading && notifications.length === 0" class="py-12 text-center">
       <i class="pi pi-bell-slash mb-3 text-4xl text-surface-300" />
-      <p class="text-surface-400">通知はありません</p>
+      <p class="text-surface-400">{{ $t('notification.list.empty') }}</p>
     </div>
 
     <!-- もっと読む -->
     <div v-if="hasNext" class="flex justify-center py-4">
-      <Button label="もっと読む" text :loading="loading" @click="loadNotifications(nextPage)" />
+      <Button
+        :label="$t('notification.list.loadMore')"
+        class="min-h-11"
+        text
+        :loading="loading"
+        @click="loadNotifications(nextPage)"
+      />
     </div>
 
     <div v-if="loading && notifications.length === 0" class="flex justify-center py-8">
@@ -528,3 +547,10 @@ defineExpose({ refresh: () => loadNotifications() })
     </div>
   </div>
 </template>
+
+<style scoped>
+:deep(.notification-filter .p-togglebutton) {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+</style>
