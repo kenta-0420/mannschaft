@@ -149,7 +149,7 @@ class AffiliationFanoutRecipientSourcesIT extends AbstractMySqlIntegrationTest {
                         notificationType, UUID.randomUUID(), f.orgId, NotificationPriority.NORMAL, null,
                         "TEAM_ORG_MEMBERSHIP", 1L, actionUrl, false,
                         FanoutMessageKind.SURVEY_PUBLISHED, List.of("G117"),
-                        FanoutEnqueueCommand.ShardMode.FIXED_SINGLE)).getId());
+                        FanoutEnqueueCommand.ShardMode.FIXED_SINGLE)).jobId());
 
         worker.processOne(jobRepository.findById(jobId).orElseThrow());
 

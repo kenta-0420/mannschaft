@@ -14,7 +14,7 @@ import java.util.UUID;
  * 本 record を受ける新版は、文面の描画・{@code action_url}・シャードの扱いを持ち、ジョブ行と文面行を
  * 冪等 SQL で登録する。</p>
  *
- * <p>試練（red）段階の骨格。値の検証は出陣で実装する。</p>
+ * <p>戻り値は Entity ではなく {@link FanoutEnqueueResult}（Service API の Entity 境界規約）。</p>
  *
  * @param scopeType         受信者解決の戦略キー（20文字以内）
  * @param scopeRef          多型スコープ参照

@@ -102,9 +102,9 @@ class NotificationFanoutEnqueueCommandIT extends AbstractMySqlIntegrationTest {
         assertThatCode(() -> tx.executeWithoutResult(status -> {
             insertBusinessRow(businessName);
             returned[0] = jobService.enqueueInCurrentTransaction(command(NOOP_SCOPE, scopeRef, key,
-                    FanoutEnqueueCommand.ShardMode.FIXED_SINGLE)).getId();
+                    FanoutEnqueueCommand.ShardMode.FIXED_SINGLE)).jobId();
             returned[1] = jobService.enqueueInCurrentTransaction(command(NOOP_SCOPE, scopeRef, key,
-                    FanoutEnqueueCommand.ShardMode.FIXED_SINGLE)).getId();
+                    FanoutEnqueueCommand.ShardMode.FIXED_SINGLE)).jobId();
         })).as("AC-E11: 2回目の enqueue は例外を投げず no-op で確定する").doesNotThrowAnyException();
 
         assertThat(countJobs(NOOP_SCOPE, scopeRef, "F0121_IT_E11", key)).as("AC-E11: ジョブ行は1件のまま").isEqualTo(1L);
@@ -198,7 +198,7 @@ class NotificationFanoutEnqueueCommandIT extends AbstractMySqlIntegrationTest {
         UUID jobId = tx.execute(status -> {
             insertBusinessRow(businessName);
             return jobService.enqueueInCurrentTransaction(command(FAIL_SCOPE, scopeRef, key,
-                    FanoutEnqueueCommand.ShardMode.FIXED_SINGLE)).getId();
+                    FanoutEnqueueCommand.ShardMode.FIXED_SINGLE)).jobId();
         });
         assertThat(countBusinessRows(businessName)).as("AC-B18: enqueue した業務はコミットされる").isEqualTo(1L);
 
@@ -230,7 +230,7 @@ class NotificationFanoutEnqueueCommandIT extends AbstractMySqlIntegrationTest {
                 NOOP_SCOPE, scopeRef, "F0121_IT_TEXT", key, 42L, NotificationPriority.HIGH, 7L,
                 "TEAM_ORG_MEMBERSHIP", 99L, actionUrl, false,
                 FanoutMessageKind.SURVEY_PUBLISHED, List.of("加盟アンケートX"),
-                FanoutEnqueueCommand.ShardMode.FIXED_SINGLE)).getId());
+                FanoutEnqueueCommand.ShardMode.FIXED_SINGLE)).jobId());
 
         NotificationFanoutJob job = jobRepository.findById(jobId).orElseThrow();
         assertThat(job.getActionUrl()).as("action_url が保存される").isEqualTo(actionUrl);
@@ -266,7 +266,7 @@ class NotificationFanoutEnqueueCommandIT extends AbstractMySqlIntegrationTest {
                 AUTO_SCOPE, scopeRef, "F0121_IT_AUTO", key, null, NotificationPriority.NORMAL, null,
                 null, null, actionUrl, true,
                 FanoutMessageKind.SURVEY_PUBLISHED, List.of("AUTOアンケート"),
-                FanoutEnqueueCommand.ShardMode.AUTO)).getId());
+                FanoutEnqueueCommand.ShardMode.AUTO)).jobId());
 
         NotificationFanoutJob parent = jobRepository.findById(parentId).orElseThrow();
         assertThat(parent.getShardCount()).as("AUTO は shard_count=0（未評価）で登録する").isEqualTo((short) 0);
