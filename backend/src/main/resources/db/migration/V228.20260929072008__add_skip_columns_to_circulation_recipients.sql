@@ -12,7 +12,7 @@
 --
 -- 冪等: 途中まで列が足された環境でも完遂できるよう、列ごとに information_schema で存在を確かめてから足す
 -- （MySQL 8.0 は ADD COLUMN IF NOT EXISTS 非対応のため PREPARE/EXECUTE。手本は V18.030）。
--- 注意: 番人テスト FlywayUnpaidDriftRepaymentMigrationTest が本ファイルを ; で分割して再実行するため、
+-- 注意: 番人（FlywayFromScratchMigrationTest の UnpaidDriftRepaymentFixture）が本ファイルを ; で分割して再実行するため、
 -- 文字列リテラル内に ; を書かないこと。
 
 SET @c1 = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'circulation_recipients' AND COLUMN_NAME = 'skip_reason');

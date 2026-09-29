@@ -1,11 +1,20 @@
 package com.mannschaft.app.common.migration;
 
+import com.mannschaft.app.circulation.RecipientStatus;
+import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
+import com.mannschaft.app.committee.entity.CommitteeDistributionLogEntity;
+import com.mannschaft.app.committee.entity.ConfirmationMode;
+import com.mannschaft.app.committee.entity.DistributionScope;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Converter;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.MappedSuperclass;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy;
@@ -37,6 +46,8 @@ import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -156,8 +167,8 @@ class FlywayFromScratchMigrationTest {
      *       {@code updated_at} を {@code @AttributeOverride} で書き込み不可にしていた回避策も撤去した。</li>
      * </ul>
      *
-     * <p>返済 migration の既存データ経路・冪等性・Entity との整合は
-     * {@link FlywayUnpaidDriftRepaymentMigrationTest} が守る。</p>
+     * <p>返済 migration の既存データ経路・冪等性・Entity との整合は、本クラスの「返済AC-*」テストと
+     * {@link UnpaidDriftRepaymentFixture}（migrate 中の Callback）が守る。</p>
      */
     private static final Set<String> KNOWN_UNPAID_DRIFT = Set.of();
 
@@ -361,12 +372,257 @@ class FlywayFromScratchMigrationTest {
                 .contains("coalesce(`deleted_at`,");
     }
 
-    /** 本番の fresh 構築と同条件（out-of-order 無効）で全マイグレーションを適用する。冪等。 */
+    // ==================================================================
+    // 凍結台帳 22 列の返済 migration（V228・CMP-260924-0010）の番人
+    // 既存データ経路の検査は migrate 中の Callback（UnpaidDriftRepaymentFixture）が行い、
+    // ここでは AC ごとにその結果を報告する。最終スキーマを要する検査はここで直接行う。
+    // ==================================================================
+
+    @Test
+    @Order(10)
+    @DisplayName("返済AC-3: 返済22列の型・長さ・NULL可否がEntityマッピングと整合する")
+    void 返済列の型と長さとNULL可否がEntityと整合する() throws Exception {
+        migrateFromScratch();
+        try (Connection conn = connect()) {
+            assertThat(UnpaidDriftRepaymentFixture.columnDefinitionViolations(conn))
+                    .as("返済 22 列の定義違反").isEmpty();
+        }
+    }
+
+    @Test
+    @Order(11)
+    @DisplayName("返済AC-4: 既存行の updated_at は created_at から・出欠の created_at は recorded_at から・proxy_votes は voted_at から埋め戻される")
+    void 返済migrationで既存行の新列が元の日時列から埋め戻される() throws Throwable {
+        migrateFromScratch();
+        UnpaidDriftRepaymentFixture.assertPassed("AC-4");
+    }
+
+    @Test
+    @Order(12)
+    @DisplayName("返済AC-5a: 途中まで列が足された状態から完遂し、V228 の3本を再実行しても成功して列定義と値が変わらない")
+    void 返済migrationは途中状態からも再実行でも完遂する() throws Throwable {
+        migrateFromScratch();
+        UnpaidDriftRepaymentFixture.assertPassed("AC-5a");
+    }
+
+    @Test
+    @Order(13)
+    @DisplayName("返済AC-5b: 途中状態で既に在った列の番兵値は返済 migration で上書きされない")
+    void 返済migrationは既に在った列の値を上書きしない() throws Throwable {
+        migrateFromScratch();
+        UnpaidDriftRepaymentFixture.assertPassed("AC-5b");
+    }
+
+    @Test
+    @Order(14)
+    @DisplayName("返済AC-6: committee_distribution_logs を Entity で保存→取得でき、更新で updated_at が進む")
+    void 委員会伝達ログをEntityで保存取得更新できる() throws Exception {
+        migrateFromScratch();
+        // 構造: updated_at を書き込み不可にしていた回避策（@AttributeOverride）が撤去されていること
+        assertThat(CommitteeDistributionLogEntity.class.getAnnotation(AttributeOverrides.class))
+                .as("CommitteeDistributionLogEntity に @AttributeOverrides が残っていないこと").isNull();
+        assertThat(CommitteeDistributionLogEntity.class.getAnnotation(AttributeOverride.class))
+                .as("CommitteeDistributionLogEntity に @AttributeOverride が残っていないこと").isNull();
+
+        try (SessionFactory sf = sessionFactory(CommitteeDistributionLogEntity.class)) {
+            Long id;
+            try (Session s = sf.openSession()) {
+                s.beginTransaction();
+                CommitteeDistributionLogEntity log = CommitteeDistributionLogEntity.builder()
+                        .committeeId(1L)
+                        .contentType("CUSTOM_MESSAGE")
+                        .customTitle("返済検証")
+                        .targetScope(DistributionScope.COMMITTEE_ONLY)
+                        .announcementEnabled(false)
+                        .confirmationMode(ConfirmationMode.NONE)
+                        .createdBy(1L)
+                        .build();
+                s.persist(log);
+                s.getTransaction().commit();
+                id = log.getId();
+            }
+            assertThat(id).isNotNull();
+
+            LocalDateTime firstUpdatedAt;
+            try (Session s = sf.openSession()) {
+                CommitteeDistributionLogEntity found = s.find(CommitteeDistributionLogEntity.class, id);
+                assertThat(found).as("findById で取得できること").isNotNull();
+                assertThat(found.getUpdatedAt()).as("updated_at が読めること").isNotNull();
+                firstUpdatedAt = found.getUpdatedAt();
+            }
+            try (Connection conn = connect()) {
+                assertThat(UnpaidDriftRepaymentFixture.queryLong(conn,
+                        "SELECT COUNT(*) FROM committee_distribution_logs WHERE id = " + id
+                                + " AND updated_at = created_at"))
+                        .as("保存時に Entity が updated_at を created_at と同じ値で書き込むこと").isEqualTo(1L);
+            }
+
+            Thread.sleep(1_500); // DATETIME は秒精度のため 1 秒以上空ける
+
+            try (Session s = sf.openSession()) {
+                s.beginTransaction();
+                s.find(CommitteeDistributionLogEntity.class, id).applyGeneratedIds("[1]", null);
+                s.getTransaction().commit();
+            }
+            try (Session s = sf.openSession()) {
+                CommitteeDistributionLogEntity found = s.find(CommitteeDistributionLogEntity.class, id);
+                assertThat(found.getAnnouncementFeedIds()).isEqualTo("[1]");
+                assertThat(found.getUpdatedAt()).as("更新で updated_at が進むこと").isAfter(firstUpdatedAt);
+            }
+        }
+    }
+
+    @Test
+    @Order(15)
+    @DisplayName("返済AC-7a: 本人スキップは skipped_at だけを保存し skip_reason / skipped_by は null")
+    void 本人スキップはskipped_atのみ保存される() throws Exception {
+        migrateFromScratch();
+        try (SessionFactory sf = sessionFactory(CirculationRecipientEntity.class)) {
+            Long id = persistRecipient(sf, 800_701L);
+            try (Session s = sf.openSession()) {
+                s.beginTransaction();
+                s.find(CirculationRecipientEntity.class, id).skip();
+                s.getTransaction().commit();
+            }
+            try (Session s = sf.openSession()) {
+                CirculationRecipientEntity r = s.find(CirculationRecipientEntity.class, id);
+                assertThat(r.getStatus()).isEqualTo(RecipientStatus.SKIPPED);
+                assertThat(r.getSkippedAt()).as("skipped_at が保存されること").isNotNull();
+                assertThat(r.getSkipReason()).as("本人スキップは skip_reason が null").isNull();
+                assertThat(r.getSkippedBy()).as("本人スキップは skipped_by が null").isNull();
+            }
+        }
+    }
+
+    @Test
+    @Order(16)
+    @DisplayName("返済AC-7b: 管理者スキップは skip_reason / skipped_by / skipped_at の3列すべてを保存する")
+    void 管理者スキップは3列すべて保存される() throws Exception {
+        migrateFromScratch();
+        try (SessionFactory sf = sessionFactory(CirculationRecipientEntity.class)) {
+            Long id = persistRecipient(sf, 800_702L);
+            try (Session s = sf.openSession()) {
+                s.beginTransaction();
+                s.find(CirculationRecipientEntity.class, id).adminSkip(1L, "長期不在のため");
+                s.getTransaction().commit();
+            }
+            try (Session s = sf.openSession()) {
+                CirculationRecipientEntity r = s.find(CirculationRecipientEntity.class, id);
+                assertThat(r.getStatus()).isEqualTo(RecipientStatus.SKIPPED);
+                assertThat(r.getSkipReason()).isEqualTo("長期不在のため");
+                assertThat(r.getSkippedBy()).isEqualTo(1L);
+                assertThat(r.getSkippedAt()).isNotNull();
+            }
+        }
+    }
+
+    @Test
+    @Order(17)
+    @DisplayName("返済AC-7c: 返済前から在る回覧受信者行の skip 系3列は null のまま、Entity でも読める")
+    void 既存の回覧受信者行はskip系3列がnullのまま読める() throws Throwable {
+        migrateFromScratch();
+        // V228 適用直後に、返済前にシードした行で検査済み（シード行は検査後に削除される）
+        UnpaidDriftRepaymentFixture.assertPassed("AC-7c");
+
+        // 最終スキーマでも、返済前の列だけで書かれた行（skip 系 3 列を知らない INSERT）を Entity で読める
+        long id;
+        try (Connection conn = connect(); Statement st = conn.createStatement()) {
+            st.execute("SET FOREIGN_KEY_CHECKS = 0");
+            st.executeUpdate("INSERT INTO circulation_recipients (document_id, user_id, sort_order, status, "
+                    + "tilt_angle, is_flipped) VALUES (800703, 1, 0, 'PENDING', 0, 0)");
+            id = UnpaidDriftRepaymentFixture.queryLong(conn,
+                    "SELECT id FROM circulation_recipients WHERE document_id = 800703");
+        }
+        try (SessionFactory sf = sessionFactory(CirculationRecipientEntity.class);
+             Session s = sf.openSession()) {
+            CirculationRecipientEntity r = s.find(CirculationRecipientEntity.class, id);
+            assertThat(r).as("既存形の行を Entity で読めること").isNotNull();
+            assertThat(r.getSkipReason()).isNull();
+            assertThat(r.getSkippedBy()).isNull();
+            assertThat(r.getSkippedAt()).isNull();
+        }
+    }
+
+    @Test
+    @Order(18)
+    @DisplayName("返済AC-8: proxy_votes / daily_attendance_records / tournament_entry_members / tournament_entry_template_members に Entity と同じ列で INSERT・SELECT できる")
+    void 返済対象テーブルにEntityと同じ列でINSERTとSELECTができる() throws Exception {
+        migrateFromScratch();
+        String ts = "2024-05-06 07:08:09";
+        try (Connection conn = connect(); Statement st = conn.createStatement()) {
+            st.execute("SET FOREIGN_KEY_CHECKS = 0");
+
+            st.executeUpdate("INSERT INTO proxy_votes (motion_id, user_id, vote_type, is_proxy_vote, delegation_id, "
+                    + "voted_at, created_at, updated_at) VALUES (800801, 1, 'APPROVE', 0, NULL, "
+                    + "'" + ts + "', '" + ts + "', '" + ts + "')");
+            assertThat(UnpaidDriftRepaymentFixture.queryLong(conn, "SELECT COUNT(*) FROM proxy_votes "
+                    + "WHERE motion_id = 800801 AND created_at = '" + ts + "' AND updated_at = '" + ts + "'"))
+                    .isEqualTo(1L);
+
+            st.executeUpdate("INSERT INTO daily_attendance_records (team_id, student_user_id, attendance_date, status, "
+                    + "recorded_by, recorded_at, created_at, updated_at) VALUES (800802, 1, '2024-05-06', 'ATTENDING', 1, "
+                    + "'" + ts + "', '" + ts + "', '" + ts + "')");
+            assertThat(UnpaidDriftRepaymentFixture.queryLong(conn, "SELECT COUNT(*) FROM daily_attendance_records "
+                    + "WHERE team_id = 800802 AND created_at = '" + ts + "' AND updated_at = '" + ts + "'"))
+                    .isEqualTo(1L);
+
+            String memberNumber = "M".repeat(50); // Entity の length=50 いっぱい
+            st.executeUpdate("INSERT INTO tournament_entry_members (id, participant_id, user_id, member_number, "
+                    + "sort_order, created_at, updated_at) VALUES ('ac8-tem', 800803, 1, '" + memberNumber + "', 0, "
+                    + "'" + ts + "', '" + ts + "')");
+            assertThat(UnpaidDriftRepaymentFixture.queryString(conn,
+                    "SELECT member_number FROM tournament_entry_members WHERE id = 'ac8-tem'"))
+                    .isEqualTo(memberNumber);
+
+            st.executeUpdate("INSERT INTO tournament_entry_template_members (id, template_id, user_id, sort_order, "
+                    + "created_at, updated_at) VALUES ('ac8-tetm', 'ac8-template', 1, 0, '" + ts + "', '" + ts + "')");
+            assertThat(UnpaidDriftRepaymentFixture.queryLong(conn, "SELECT COUNT(*) FROM "
+                    + "tournament_entry_template_members WHERE id = 'ac8-tetm' "
+                    + "AND created_at = '" + ts + "' AND updated_at = '" + ts + "'")).isEqualTo(1L);
+
+            // 日時を省略した INSERT でも DEFAULT で埋まる（Entity を経由しない経路の保険）
+            st.executeUpdate("INSERT INTO tournament_entry_template_members (id, template_id, user_id, sort_order) "
+                    + "VALUES ('ac8-tetm-default', 'ac8-template', 2, 0)");
+            assertThat(UnpaidDriftRepaymentFixture.queryLong(conn, "SELECT COUNT(*) FROM "
+                    + "tournament_entry_template_members WHERE id = 'ac8-tetm-default' "
+                    + "AND created_at IS NOT NULL AND updated_at IS NOT NULL")).isEqualTo(1L);
+        }
+    }
+
+    private static Connection connect() throws SQLException {
+        return DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+    }
+
+    private static SessionFactory sessionFactory(Class<?> entity) {
+        return UnpaidDriftRepaymentFixture.buildSessionFactory(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword(), entity);
+    }
+
+    private static Long persistRecipient(SessionFactory sf, long documentId) {
+        try (Session s = sf.openSession()) {
+            s.beginTransaction();
+            CirculationRecipientEntity recipient = CirculationRecipientEntity.builder()
+                    .documentId(documentId)
+                    .userId(1L)
+                    .build();
+            s.persist(recipient);
+            s.getTransaction().commit();
+            return recipient.getId();
+        }
+    }
+
+    /**
+     * 本番の fresh 構築と同条件（out-of-order 無効）で全マイグレーションを適用する。冪等。
+     *
+     * <p>{@link UnpaidDriftRepaymentFixture} を Callback として登録し、V228（返済 migration）の
+     * 直前に既存行をシード・直後に既存データ経路を検査する（初回の from-scratch 適用でだけ発火する）。</p>
+     */
     private static MigrateResult migrateFromScratch() {
         Flyway flyway = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
                 .outOfOrder(false)
+                .callbacks(new UnpaidDriftRepaymentFixture())
                 .load();
         return flyway.migrate();
     }

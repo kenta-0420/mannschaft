@@ -24,7 +24,7 @@
 --   ON UPDATE CURRENT_TIMESTAMP が発火し、既存の updated_at が migration 実行時刻に書き換わる。
 --
 -- 冪等: 列ごとに information_schema で存在を確かめてから足す（手本は V18.030）。
--- 注意: 番人テスト FlywayUnpaidDriftRepaymentMigrationTest が本ファイルを ; で分割して再実行するため、
+-- 注意: 番人（FlywayFromScratchMigrationTest の UnpaidDriftRepaymentFixture）が本ファイルを ; で分割して再実行するため、
 -- 文字列リテラル内に ; を書かないこと。
 -- ad_conversions.updated_at（created_at から埋め戻し）
 SET @c1 = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ad_conversions' AND COLUMN_NAME = 'updated_at');

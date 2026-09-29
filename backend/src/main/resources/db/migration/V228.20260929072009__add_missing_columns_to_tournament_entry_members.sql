@@ -12,7 +12,7 @@
 -- 型ずれは本 migration の対象外（CMP-260929-0654 で扱う）。
 --
 -- 冪等: 列ごとに information_schema で存在を確かめてから足す（手本は V18.030）。
--- 注意: 番人テスト FlywayUnpaidDriftRepaymentMigrationTest が本ファイルを ; で分割して再実行するため、
+-- 注意: 番人（FlywayFromScratchMigrationTest の UnpaidDriftRepaymentFixture）が本ファイルを ; で分割して再実行するため、
 -- 文字列リテラル内に ; を書かないこと。
 
 SET @c1 = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_members' AND COLUMN_NAME = 'member_number');
