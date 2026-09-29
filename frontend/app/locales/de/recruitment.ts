@@ -280,6 +280,7 @@ export default {
       "status": {
         "pending": "Ausstehend",
         "confirmed": "Bestätigt",
+        "expired": "Einspruchsfrist abgelaufen",
         "disputed": "Einspruch läuft",
         "revoked": "Widerrufen",
         "upheld": "Aufrechterhalten"

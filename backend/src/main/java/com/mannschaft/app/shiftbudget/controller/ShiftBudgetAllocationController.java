@@ -1,5 +1,6 @@
 package com.mannschaft.app.shiftbudget.controller;
 
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.shiftbudget.dto.AllocationCreateRequest;
 import com.mannschaft.app.shiftbudget.dto.AllocationListResponse;
@@ -47,6 +48,7 @@ import org.springframework.web.bind.annotation.RestController;
  * </ul>
  */
 @RestController
+@RequireFeature("FEATURE_SHIFT_ENABLED")
 @RequestMapping("/api/v1/shift-budget/allocations")
 @Tag(name = "シフト予算割当 (F08.7)",
      description = "Phase 9-β: シフト予算割当 CRUD API")

@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -23,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -91,7 +93,8 @@ class ScheduleAttendanceSolicitationServiceTest {
                 scheduleDelegationService,
                 scheduleTargetRepository,
                 organizationMembershipService,
-                accessControlService);
+                accessControlService,
+                Clock.system(UserZoneLocalDateTimeParser.SERVER_ZONE));
     }
 
     private ScheduleEntity teamSchedule() {

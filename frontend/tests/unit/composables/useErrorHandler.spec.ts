@@ -14,6 +14,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
  *  EH-006: handleApiError — BE message 無しのエラーは i18n キー解決文言にフォールバックする（AC-2）
  *  EH-007: handleApiError — ENTITLEMENT_003 は従来どおり通知をスキップする（既存挙動の回帰なし）
  *  EH-008: getFieldErrors — 既存の FIELD_ERROR_PATTERNS マッチングは resolveMessage 変更の影響を受けない
+ *  EH-009: 確認通知は BE の日本語 message より errorCode のロケール文言を優先する（AC-36）
  */
 
 // ============================================================
@@ -21,10 +22,11 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 // error.COMMON_001 のみ翻訳キーが存在する想定にし、
 // error.COMMON_999_UNKNOWN_KEY は存在しないキーとして扱う。
 // ============================================================
-const KNOWN_KEYS = new Set(['error.COMMON_001', 'error.unknown', 'error.server', 'error.server_retry', 'dialog.error', 'invalid_format', 'required'])
+const KNOWN_KEYS = new Set(['error.COMMON_001', 'error.CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY', 'error.unknown', 'error.server', 'error.server_retry', 'dialog.error', 'invalid_format', 'required'])
 
 const tMock = vi.fn((key: string): string => {
   if (key === 'error.COMMON_001') return 'よくあるエラーです（キー解決）'
+  if (key === 'error.CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY') return '選択した宛先に受信者がいません'
   if (key === 'error.unknown') return 'エラーが発生しました'
   if (key === 'error.server') return 'サーバーエラー'
   if (key === 'error.server_retry') return 'しばらくしてから再度お試しください'
@@ -101,6 +103,17 @@ describe('useErrorHandler', () => {
       const result = resolveMessage('COMMON_999_UNKNOWN_KEY', undefined)
 
       expect(result).toBe('エラーが発生しました')
+    })
+
+    it('EH-009: 確認通知は BE message より errorCode のロケール文言を優先する', () => {
+      const { resolveMessage } = useErrorHandler()
+
+      const result = resolveMessage(
+        'CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY',
+        '宛先に該当する受信者がいません',
+      )
+
+      expect(result).toBe('選択した宛先に受信者がいません')
     })
   })
 

@@ -52,6 +52,10 @@ public class RecruitmentNoShowRecordEntity {
     @Column(nullable = false)
     private boolean disputed = false;
 
+    /** 異議申立時に本人が入力した理由。既存の記録では null。 */
+    @Column(name = "dispute_reason", columnDefinition = "TEXT")
+    private String disputeReason;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "dispute_resolution", length = 10)
     private DisputeResolution disputeResolution;
@@ -78,8 +82,9 @@ public class RecruitmentNoShowRecordEntity {
     }
 
     /** ユーザーが異議申立を行う。 */
-    public void dispute() {
+    public void dispute(String disputeReason) {
         this.disputed = true;
+        this.disputeReason = disputeReason;
     }
 
     /** 管理者が異議申立を解決する。 */

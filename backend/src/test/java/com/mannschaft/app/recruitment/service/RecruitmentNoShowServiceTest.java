@@ -9,11 +9,17 @@ import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
+import com.mannschaft.app.recruitment.dto.RecruitmentNoShowRecordResponse;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository.NoShowDisputeDays;
+import com.mannschaft.app.recruitment.event.RecruitmentNoShowNotificationEvent;
+import com.mannschaft.app.recruitment.event.RecruitmentNoShowDisputeNotificationEvent;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,10 +27,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,6 +43,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -61,6 +70,9 @@ class RecruitmentNoShowServiceTest {
     @Mock
     private AuditLogService auditLogService;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private RecruitmentNoShowService service;
 
@@ -72,6 +84,36 @@ class RecruitmentNoShowServiceTest {
     private static final Long PENALIZED_USER_ID = 999L;
     private static final RecruitmentScopeType SCOPE_TYPE = RecruitmentScopeType.TEAM;
 
+    @Test
+    @DisplayName("申立期限ちょうどは期限切れとして拒否する")
+    void disputeDeadline_equalInstantIsExpired() {
+        LocalDateTime deadline = LocalDateTime.of(2026, 9, 27, 10, 0);
+        assertThat(RecruitmentNoShowService.isDisputeDeadlineExceeded(deadline, deadline)).isTrue();
+        assertThat(RecruitmentNoShowService.isDisputeDeadlineExceeded(deadline, deadline.minusNanos(1)))
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("異議申立期限は募集スコープの設定値を使い、設定不在なら30日")
+    void disputeDeadline_usesScopeSettingOrDefault() throws Exception {
+        RecruitmentNoShowRecordEntity record = RecruitmentNoShowRecordEntity.builder()
+                .participantId(PARTICIPANT_ID).listingId(LISTING_ID).userId(PENALIZED_USER_ID)
+                .build();
+        Field idField = RecruitmentNoShowRecordEntity.class.getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(record, RECORD_ID);
+        NoShowDisputeDays days = mock(NoShowDisputeDays.class);
+        given(days.getRecordId()).willReturn(RECORD_ID);
+        given(days.getAllowedDays()).willReturn(5, 30);
+        given(noShowRepository.findDisputeDaysByRecordIds(List.of(RECORD_ID)))
+                .willReturn(List.of(days));
+
+        assertThat(service.getDisputeDeadlineAt(RECORD_ID, record.getRecordedAt()))
+                .isEqualTo(record.getRecordedAt().plusDays(5));
+        assertThat(service.getDisputeDeadlineAt(RECORD_ID, record.getRecordedAt()))
+                .isEqualTo(record.getRecordedAt().plusDays(30));
+    }
+
     // ========================================
     // resolveDispute - §5.8 異議申立解決
     // ========================================
@@ -79,6 +121,31 @@ class RecruitmentNoShowServiceTest {
     @Nested
     @DisplayName("resolveDispute - §5.8 異議申立解決")
     class ResolveDispute {
+
+        @Test
+        @DisplayName("PERSONAL は作成者本人と募集枠帰属の両方を確認して裁定する")
+        void personalCreatorCanResolveOwnListingOnly() throws Exception {
+            RecruitmentNoShowRecordEntity record = buildRecord(true);
+            given(noShowRepository.findByIdAndScopeTypeAndScopeIdAndCreatedBy(
+                    RECORD_ID, RecruitmentScopeType.PERSONAL, ADMIN_ID, ADMIN_ID))
+                    .willReturn(Optional.of(record));
+            service.resolveDispute(RECORD_ID, ADMIN_ID, RecruitmentScopeType.PERSONAL,
+                    ADMIN_ID, DisputeResolution.UPHELD);
+            assertThat(record.getDisputeResolution()).isEqualTo(DisputeResolution.UPHELD);
+            verifyNoInteractions(accessControlService);
+        }
+
+        @Test
+        @DisplayName("PERSONAL の他人スコープは記録の存在を秘匿する")
+        void personalOtherUserCannotResolve() {
+            assertThatThrownBy(() -> service.resolveDispute(
+                    RECORD_ID, ADMIN_ID, RecruitmentScopeType.PERSONAL, SCOPE_ID,
+                    DisputeResolution.UPHELD))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND);
+            verifyNoInteractions(noShowRepository);
+        }
 
         @Test
         @DisplayName("認可チェック失敗 → BusinessException が伝播")
@@ -151,6 +218,14 @@ class RecruitmentNoShowServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("PERSONAL の NO_SHOW 一覧は作成者で絞り込む")
+    void personalListChecksCreator() {
+        service.getNoShowsByScope(RecruitmentScopeType.PERSONAL, ADMIN_ID, ADMIN_ID);
+        verify(noShowRepository).findByScopeTypeAndScopeIdAndCreatedBy(
+                RecruitmentScopeType.PERSONAL, ADMIN_ID, ADMIN_ID);
+    }
+
     // ========================================
     // markNoShow - §5.8 NO_SHOW マーク
     // ========================================
@@ -160,11 +235,108 @@ class RecruitmentNoShowServiceTest {
     class MarkNoShow {
 
         @Test
+        @DisplayName("管理権限がない場合は対象を検索せず通知もしない")
+        void markNoShow_nonAdminRejectsBeforeLookup() {
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(ADMIN_ID, SCOPE_ID, SCOPE_TYPE.name());
+            assertThatThrownBy(() -> service.markNoShow(
+                    SCOPE_TYPE, SCOPE_ID, LISTING_ID, PARTICIPANT_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verifyNoInteractions(listingRepository, participantRepository, noShowRepository, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("別募集の参加者IDは存在を秘匿し、通知しない")
+        void markNoShow_wrongListingRejectsWithoutNotification() {
+            given(listingRepository.findByIdAndScopeTypeAndScopeId(LISTING_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(RecruitmentListingEntity.builder().build()));
+            assertThatThrownBy(() -> service.markNoShow(
+                    SCOPE_TYPE, SCOPE_ID, LISTING_ID, PARTICIPANT_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+            verifyNoInteractions(eventPublisher, noShowRepository);
+        }
+
+        @Test
+        @DisplayName("PERSONAL の他人は募集の存在を秘匿する")
+        void markNoShow_personalOtherUserRejects() {
+            assertThatThrownBy(() -> service.markNoShow(
+                    RecruitmentScopeType.PERSONAL, SCOPE_ID, LISTING_ID, PARTICIPANT_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+            verifyNoInteractions(listingRepository, participantRepository, noShowRepository, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("適正スコープの確定参加者は仮マークされ本人通知を一件予約する")
+        void markNoShow_validParticipantPublishesOnce() throws Exception {
+            RecruitmentParticipantEntity participant = RecruitmentParticipantEntity.builder()
+                    .id(PARTICIPANT_ID).listingId(LISTING_ID).userId(PENALIZED_USER_ID)
+                    .status(RecruitmentParticipantStatus.CONFIRMED).build();
+            given(listingRepository.findByIdAndScopeTypeAndScopeId(LISTING_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(RecruitmentListingEntity.builder().build()));
+            given(participantRepository.findByIdAndListingId(PARTICIPANT_ID, LISTING_ID))
+                    .willReturn(Optional.of(participant));
+            given(noShowRepository.findByParticipantId(PARTICIPANT_ID)).willReturn(Optional.empty());
+            given(noShowRepository.save(any(RecruitmentNoShowRecordEntity.class)))
+                    .willAnswer(invocation -> {
+                        RecruitmentNoShowRecordEntity saved = invocation.getArgument(0);
+                        Field idField = RecruitmentNoShowRecordEntity.class.getDeclaredField("id");
+                        idField.setAccessible(true);
+                        idField.set(saved, RECORD_ID);
+                        return saved;
+                    });
+            NoShowDisputeDays days = mock(NoShowDisputeDays.class);
+            given(days.getRecordId()).willReturn(RECORD_ID);
+            given(days.getAllowedDays()).willReturn(30);
+            given(noShowRepository.findDisputeDaysByRecordIds(List.of(RECORD_ID)))
+                    .willReturn(List.of(days));
+
+            RecruitmentNoShowRecordResponse record = service.markNoShow(
+                    SCOPE_TYPE, SCOPE_ID, LISTING_ID, PARTICIPANT_ID, ADMIN_ID);
+
+            assertThat(record.isConfirmed()).isFalse();
+            assertThat(participant.getStatus()).isEqualTo(RecruitmentParticipantStatus.NO_SHOW);
+            verify(accessControlService).checkAdminOrAbove(ADMIN_ID, SCOPE_ID, "TEAM");
+            verify(eventPublisher).publishEvent(new RecruitmentNoShowNotificationEvent(
+                    RECORD_ID, LISTING_ID, PENALIZED_USER_ID));
+        }
+
+        @Test
+        @DisplayName("既存NO_SHOW記録では二重通知しない")
+        void markNoShow_existingRecordDoesNotPublish() {
+            RecruitmentParticipantEntity participant = RecruitmentParticipantEntity.builder()
+                    .id(PARTICIPANT_ID).listingId(LISTING_ID).userId(PENALIZED_USER_ID)
+                    .status(RecruitmentParticipantStatus.CONFIRMED).build();
+            given(listingRepository.findByIdAndScopeTypeAndScopeId(LISTING_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(RecruitmentListingEntity.builder().build()));
+            given(participantRepository.findByIdAndListingId(PARTICIPANT_ID, LISTING_ID))
+                    .willReturn(Optional.of(participant));
+            given(noShowRepository.findByParticipantId(PARTICIPANT_ID)).willReturn(Optional.of(
+                    RecruitmentNoShowRecordEntity.builder().participantId(PARTICIPANT_ID)
+                            .listingId(LISTING_ID).userId(PENALIZED_USER_ID).build()));
+
+            assertThatThrownBy(() -> service.markNoShow(
+                    SCOPE_TYPE, SCOPE_ID, LISTING_ID, PARTICIPANT_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class);
+            assertThat(participant.getStatus()).isEqualTo(RecruitmentParticipantStatus.CONFIRMED);
+            verifyNoInteractions(eventPublisher);
+        }
+
+        @Test
         @DisplayName("対象参加者が存在しない → LISTING_NOT_FOUND")
         void markNoShow_participantNotFound_throws() {
-            given(participantRepository.findById(PARTICIPANT_ID)).willReturn(Optional.empty());
+            given(listingRepository.findByIdAndScopeTypeAndScopeId(LISTING_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(RecruitmentListingEntity.builder().build()));
+            given(participantRepository.findByIdAndListingId(PARTICIPANT_ID, LISTING_ID))
+                    .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.markNoShow(PARTICIPANT_ID, ADMIN_ID))
+            assertThatThrownBy(() -> service.markNoShow(
+                    SCOPE_TYPE, SCOPE_ID, LISTING_ID, PARTICIPANT_ID, ADMIN_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
@@ -186,15 +358,24 @@ class RecruitmentNoShowServiceTest {
     @DisplayName("dispute - #2497 archive 済み募集枠への新規申立は即時取下げ")
     class DisputeAfterListingArchived {
 
+        @BeforeEach
+        void setUpDeadline() {
+            NoShowDisputeDays days = mock(NoShowDisputeDays.class);
+            given(days.getRecordId()).willReturn(RECORD_ID);
+            given(days.getAllowedDays()).willReturn(30);
+            given(noShowRepository.findDisputeDaysByRecordIds(List.of(RECORD_ID)))
+                    .willReturn(List.of(days));
+        }
+
         @Test
         @DisplayName("archive 済みなら申立を受け付けたうえで即座に REVOKED を当てる")
         void archive済みなら即時REVOKED() throws Exception {
             RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
-            given(noShowRepository.findById(RECORD_ID)).willReturn(Optional.of(record));
+            given(noShowRepository.findByIdForDisputeUpdate(RECORD_ID)).willReturn(Optional.of(record));
             given(listingRepository.findArchivedScopeById(LISTING_ID))
                     .willReturn(Optional.of(archivedScope(RecruitmentScopeType.TEAM, SCOPE_ID)));
 
-            service.dispute(RECORD_ID, PENALIZED_USER_ID);
+            service.dispute(RECORD_ID, PENALIZED_USER_ID, "異議申立の理由");
 
             assertThat(record.isDisputed())
                     .as("申立自体は受け付ける（拒否は利用者から救済手段を奪う）")
@@ -202,17 +383,18 @@ class RecruitmentNoShowServiceTest {
             assertThat(record.getDisputeResolution())
                     .as("裁定経路が塞がっている以上、その場で認容（REVOKED）として取り下げる")
                     .isEqualTo(DisputeResolution.REVOKED);
+            verify(eventPublisher, never()).publishEvent(any(RecruitmentNoShowDisputeNotificationEvent.class));
         }
 
         @Test
         @DisplayName("archive 済みの取下げは trigger=DISPUTED_AFTER_LISTING_ARCHIVED で監査に残る")
         void archive済みの取下げは監査に残る() throws Exception {
             RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
-            given(noShowRepository.findById(RECORD_ID)).willReturn(Optional.of(record));
+            given(noShowRepository.findByIdForDisputeUpdate(RECORD_ID)).willReturn(Optional.of(record));
             given(listingRepository.findArchivedScopeById(LISTING_ID))
                     .willReturn(Optional.of(archivedScope(RecruitmentScopeType.TEAM, SCOPE_ID)));
 
-            service.dispute(RECORD_ID, PENALIZED_USER_ID);
+            service.dispute(RECORD_ID, PENALIZED_USER_ID, "異議申立の理由");
 
             ArgumentCaptor<String> metadata = ArgumentCaptor.forClass(String.class);
             verify(auditLogService).record(
@@ -233,11 +415,11 @@ class RecruitmentNoShowServiceTest {
         @DisplayName("ORGANIZATION スコープでも監査の organizationId 側に振り分けられる")
         void archive済みORGANIZATIONスコープの振り分け() throws Exception {
             RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
-            given(noShowRepository.findById(RECORD_ID)).willReturn(Optional.of(record));
+            given(noShowRepository.findByIdForDisputeUpdate(RECORD_ID)).willReturn(Optional.of(record));
             given(listingRepository.findArchivedScopeById(LISTING_ID))
                     .willReturn(Optional.of(archivedScope(RecruitmentScopeType.ORGANIZATION, SCOPE_ID)));
 
-            service.dispute(RECORD_ID, PENALIZED_USER_ID);
+            service.dispute(RECORD_ID, PENALIZED_USER_ID, "異議申立の理由");
 
             verify(auditLogService).record(
                     eq("RECRUITMENT_NO_SHOW_DISPUTE_AUTO_REVOKED"),
@@ -251,15 +433,18 @@ class RecruitmentNoShowServiceTest {
         @DisplayName("生存中の募集枠なら従来どおり disputed=true / resolution=null・監査も打たない（非回帰）")
         void 生存中なら従来どおり() throws Exception {
             RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
-            given(noShowRepository.findById(RECORD_ID)).willReturn(Optional.of(record));
+            given(noShowRepository.findByIdForDisputeUpdate(RECORD_ID)).willReturn(Optional.of(record));
             given(listingRepository.findArchivedScopeById(LISTING_ID)).willReturn(Optional.empty());
 
-            service.dispute(RECORD_ID, PENALIZED_USER_ID);
+            service.dispute(RECORD_ID, PENALIZED_USER_ID, "異議申立の理由");
 
             assertThat(record.isDisputed()).isTrue();
+            assertThat(record.getDisputeReason()).isEqualTo("異議申立の理由");
             assertThat(record.getDisputeResolution())
                     .as("生存中なら管理者が裁定できるので自動取下げしてはならない")
                     .isNull();
+            verify(eventPublisher).publishEvent(new RecruitmentNoShowDisputeNotificationEvent(
+                    RECORD_ID, LISTING_ID, PENALIZED_USER_ID));
             verifyNoInteractions(auditLogService);
         }
     }
@@ -417,7 +602,7 @@ class RecruitmentNoShowServiceTest {
                 .listingId(LISTING_ID)
                 .userId(PENALIZED_USER_ID)
                 .build();
-        record.dispute();
+        record.dispute("異議申立の理由");
         // 監査ログの metadata 検証用に id を差し込む（IDENTITY 採番の代替）
         Field idField = RecruitmentNoShowRecordEntity.class.getDeclaredField("id");
         idField.setAccessible(true);

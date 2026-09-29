@@ -112,10 +112,21 @@ async function onBulkStatusChange(status: string) {
   const ids = selectedTodos.value.map(t => t.id)
   if (ids.length === 0) return
   try {
-    await todoApi.bulkChangeTodoStatus(props.scopeType, props.scopeId, ids, status)
-    notification.success(`${ids.length}件のステータスを変更しました`)
-    selectedTodos.value = []
+    const result = await todoApi.bulkChangeTodoStatus(props.scopeType, props.scopeId, ids, status)
+    const changedCount = result.data.length
+    const skippedCount = result.skippedLockedIds.length
+    if (changedCount === 0 && skippedCount > 0) {
+      notification.warn(t('todo.list.bulkStatusAllLocked', { count: skippedCount }))
+    }
+    else if (skippedCount > 0) {
+      notification.warn(t('todo.list.bulkStatusPartial', { changedCount, skippedCount }))
+    }
+    else {
+      notification.success(t('todo.list.bulkStatusSuccess', { count: changedCount }))
+    }
     await loadTodos()
+    const skippedIds = new Set(result.skippedLockedIds)
+    selectedTodos.value = todos.value.filter(todo => skippedIds.has(todo.id))
   }
   catch { notification.error('一括変更に失敗しました') }
 }

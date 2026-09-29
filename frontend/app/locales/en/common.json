@@ -306,6 +306,14 @@
     "COMMON_002": "You do not have permission to perform this action",
     "COMMON_003": "Updated by another user. Please refresh the page",
     "COMMON_999": "A system error occurred",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "Select at least one recipient target",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "Individual targets and a saved group cannot be selected together",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "The selection contains an organization or team outside the sending scope",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "The recipient group was not found or has been deleted",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "No recipients match the selected targets",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "A recipient group with this name already exists",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "There are not enough notification credits",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "Set the confirmation deadline to a future time",
     "AUTH_001": "Invalid email address or password",
     "AUTH_002": "Your email address has not been verified yet",
     "AUTH_003": "Your account is locked. Please try again in 30 minutes",
@@ -485,7 +493,30 @@
     }
   },
   "confirmable": {
-    "title": "Confirmation Notice",
+    "delivery_stopped": "Delivery stopped",
+    "templates": "Manage templates",
+    "template_name": "Template name",
+    "default_recipient_group": "Default recipient group",
+    "deleted_group_fallback": "If the group is deleted, all members in the scope are selected.",
+    "audience_mode": {
+      "DEFAULT": "All members in scope",
+      "TARGETS": "Choose organizations and teams",
+      "GROUP": "Saved group"
+    },
+    "select_group": "Choose a group",
+    "search_targets": "Search loaded organizations and teams",
+    "open_children": "Show children",
+    "load_more_targets": "Load more",
+    "previous_targets": "Previous targets",
+    "next_targets": "Next targets",
+    "no_targets": "No targets",
+    "selected_targets": "Selected: {count}",
+    "targets_required": "Choose recipients",
+    "preview_loading": "Checking recipient count",
+    "preview_count": "Estimated recipients: {count}",
+    "preview_required": "Check the recipient count",
+    "delivered_count": "Delivered: {count}",
+    "title": "Quick Confirm",
     "page": {
       "settings_title": "Confirmation Notice Settings",
       "settings_subtitle": "Manage confirmation notice settings, sending, and history"
@@ -543,7 +574,50 @@
       "ALL_MEMBERS": "All members"
     },
     "unconfirmed_count": "Unconfirmed: {count}",
-    "unconfirmed_list": "Unconfirmed users"
+    "unconfirmed_list": "Unconfirmed users",
+    "recipient_groups": "Recipient groups",
+    "recipient_groups_help": "Save organizations or teams as notification recipients.",
+    "group_name": "Group name",
+    "targets": "Targets",
+    "target_id": "Target ID",
+    "target_type": { "ORGANIZATION": "Organization", "TEAM": "Team" },
+    "template": "Template",
+    "audience": "Audience",
+    "current_scope": "This organization or team",
+    "current_scope_help": "Send to active members of the current scope.",
+    "group_audience_help": "Send to the saved recipient group.",
+    "message_title": "Title",
+    "message_body": "Message",
+    "priority_label": "Priority",
+    "accepted": "Delivery accepted",
+    "accepted_count": "Delivery accepted (estimated recipients: {count})",
+    "recipient": "Recipient",
+    "withdrawn": "Withdrawn",
+    "withdrawn_user": "Withdrawn user",
+    "unknown_recipient": "Unknown recipient",
+    "unconfirmed": "Unconfirmed",
+    "unconfirmed_only": "Unconfirmed only",
+    "delivery_status": {
+      "QUEUED": "Queued",
+      "DELIVERING": "Delivering",
+      "DELIVERED": "Delivered",
+      "PARTIALLY_FAILED": "Partially failed"
+    },
+    "help": {
+      "title": "Using confirmation notifications",
+      "body": "Choose a recipient group or the current scope. Delivery runs asynchronously; track delivery and confirmations in history."
+    },
+    "guide": {
+      "quickConfirm": {
+        "description": "Use this for short messages and acknowledgements. Use Circulation for documents that require stamps or a routing order.",
+        "link": "Open Circulation"
+      },
+      "circulation": {
+        "title": "Circulation",
+        "description": "Use this for documents that require stamps or a routing order. For a short message and acknowledgement, use Quick Confirm.",
+        "link": "Open Quick Confirm"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "Processing video...",
@@ -720,7 +794,10 @@
       "deletedToast": "TODO deleted",
       "restoredToast": "TODO restored",
       "deleteFailed": "Failed to delete",
-      "restoreFailed": "Could not undo"
+      "restoreFailed": "Could not undo",
+      "bulkStatusSuccess": "Changed the status of {count} TODOs",
+      "bulkStatusPartial": "Changed {changedCount}; skipped {skippedCount} locked TODOs. Skipped items remain selected",
+      "bulkStatusAllLocked": "No changes made: all {count} TODOs are locked. They remain selected"
     },
     "field": {
       "status": "Status",
@@ -1694,38 +1771,38 @@
     "supporterSuccess": "Registered as a supporter",
     "supporterError": "Failed to follow",
     "guide": {
-      "title": "チーム検索の使い方",
-      "description": "条件を指定して公開されているチームを探し、詳しい情報の確認やサポーター登録を行えます。",
+      "title": "How to search for teams",
+      "description": "Set your criteria to find public teams, view their details, and register as a supporter.",
       "searchConditions": {
-        "title": "検索条件を指定する",
-        "body": "キーワード、都道府県、チームの種類を組み合わせて、探したいチームを絞り込めます。",
+        "title": "Set search criteria",
+        "body": "Combine a keyword, prefecture, and team category to narrow the results.",
         "steps": {
-          "step1": "検索欄と必要な絞り込み条件を入力・選択します。",
-          "step2": "検索を実行すると、条件に合うチームが一覧に表示されます。"
+          "step1": "Enter a keyword and select any filters you need.",
+          "step2": "Run the search to see teams that match your criteria."
         }
       },
       "results": {
-        "title": "検索結果を確認する",
-        "body": "各カードにはチーム名、チームの種類、活動地域、メンバー数が表示されます。",
+        "title": "Review the results",
+        "body": "Each card shows the team name, category, activity area, and number of members.",
         "steps": {
-          "step1": "一覧から気になるチームを選びます。",
-          "step2": "チームの詳細ページへ移動して、さらに情報を確認します。"
+          "step1": "Select a team that interests you from the list.",
+          "step2": "Open its details page to learn more."
         }
       },
       "supporter": {
-        "title": "サポーターとして登録する",
-        "body": "サポーター登録を受け付けている、所属していないチームには登録ボタンが表示されます。",
+        "title": "Register as a supporter",
+        "body": "A registration button appears for teams you do not belong to that accept supporters.",
         "steps": {
-          "step1": "対象チームのカードで「サポーターになる」を選びます。",
-          "step2": "登録が完了すると、カードに登録済みの表示が出ます。"
+          "step1": "Select “Become a supporter” on the team card.",
+          "step2": "After registration, the card shows that you are registered."
         }
       },
       "createAndMove": {
-        "title": "チームを作成して詳細へ移動する",
-        "body": "右上の作成ボタンから新しいチームを作成できます。作成後はそのチームの詳細ページへ移動します。",
+        "title": "Create a team and open its details",
+        "body": "Use the button at the top right to create a team. Its details page opens when creation is complete.",
         "steps": {
-          "step1": "「チームを作成」を選んで必要な情報を入力します。",
-          "step2": "作成が完了すると、新しいチームの詳細ページが開きます。"
+          "step1": "Select “Create Team” and enter the required information.",
+          "step2": "When creation is complete, the new team’s details page opens."
         }
       }
     },
@@ -2613,5 +2690,48 @@
   "loadErrorState": {
     "message": "Failed to load data",
     "retry": "Retry"
+  },
+  "searchBar": {
+    "keyword": "Keyword",
+    "defaultPlaceholder": "Search by name",
+    "prefecture": "Prefecture",
+    "selectPrefecture": "Select a prefecture",
+    "filterPrefecture": "Search prefectures",
+    "genre": "Category",
+    "all": "All"
+  },
+  "scopeLabels": {
+    "template": {
+      "CLUB": "Club or Circle",
+      "CLINIC": "Clinic",
+      "CLASS": "Class",
+      "COMMUNITY": "Community",
+      "COMPANY": "Company",
+      "FAMILY": "Family",
+      "RESTAURANT": "Restaurant",
+      "BEAUTY": "Beauty Salon",
+      "STORE": "Store or Retail",
+      "VOLUNTEER": "Volunteer or NPO",
+      "NEIGHBORHOOD": "Neighborhood Association",
+      "CONDO": "Condominium Association",
+      "OTHER": "Other"
+    },
+    "organizationType": {
+      "GOVERNMENT": "Government Agency",
+      "MUNICIPALITY": "Municipality",
+      "COMPANY": "Company",
+      "HOSPITAL": "Hospital or Medical Institution",
+      "ASSOCIATION": "Association or Federation",
+      "SCHOOL": "School or Educational Institution",
+      "NPO": "NPO or Nonprofit",
+      "COMMUNITY": "Community",
+      "OTHER": "Other"
+    },
+    "visibility": {
+      "PUBLIC": "Public",
+      "GUESTS_AND_ABOVE": "Guests and above",
+      "SUPPORTERS_AND_ABOVE": "Supporters and above",
+      "MEMBERS_AND_ABOVE": "Members and above"
+    }
   }
 }

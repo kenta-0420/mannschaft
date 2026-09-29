@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ShiftReminderButton from './ShiftReminderButton.vue'
 import type { ShiftScheduleResponse } from '~/types/shift'
 import { isAcceptingShiftRequests } from '~/utils/shiftStatus'
 
@@ -199,6 +200,7 @@ onMounted(load)
             outlined
             @click="goToBoard(s.id)"
           />
+          <ShiftReminderButton :schedule="s" :can-manage="canManage" />
         </div>
       </div>
     </div>
