@@ -400,9 +400,10 @@ test('L13-02: 権限あり（組織 ADMIN）は警告履歴画面で当該警告
     })
 
     // 行の同定は Allocation ID セルの完全一致で行う（部分一致は閾値 % 等と衝突するため使わない）
-    const row = page
-      .getByRole('row')
-      .filter({ has: page.getByRole('cell', { name: String(allocationId), exact: true }) })
+    const allocationIdCell = page.locator('td:nth-child(2)', {
+      hasText: new RegExp(`^\\s*${allocationId}\\s*$`),
+    })
+    const row = page.locator('tbody tr', { has: allocationIdCell })
     await expect(row, '当該割当の警告行が 1 行ある').toHaveCount(1)
     await expect(row.getByText(`${EXPECTED_THRESHOLD}%`, { exact: true })).toBeVisible()
     await expect(row.getByText('未承認', { exact: true })).toBeVisible()
