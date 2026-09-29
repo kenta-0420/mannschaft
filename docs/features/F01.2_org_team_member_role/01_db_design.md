@@ -568,7 +568,7 @@ INDEX idx_team_org_memberships_status_invited (status, invited_at)              
 - 再招待・再申請（取消・取下げ後、または制限の期限後）は新規 INSERT で再開始する（UNIQUE KEY により同一ペアの PENDING/ACTIVE は常に最大1件に限定）
 - 状態を変える更新は条件付き UPDATE／DELETE（`status` と `direction` を WHERE に含める）で行う。影響行数 0 のときは、操作時点で行が無ければ 404 `TEAM_070`、行はあるが状態・向きが前提と違えば 409 `TEAM_071` を返す（F01.2.1 §6.4 の判定表）
 - チームは複数の組織に同時所属可能（UNIQUE は (team_id, organization_id) ペアに対してのみ）
-- 組織・チームの削除時の片付けは、DB の FK・CASCADE ではなくアプリ層で行う（FK は V62.006〜V62.009 で DROP 済み）。組織の論理削除はフロー内で明示的に DELETE する（組織論理削除フロー step 5）。チームの論理削除・組織とチームのアーカイブは、それぞれのイベント（`TeamDeletedEvent`・`OrganizationArchivedEvent`・`TeamArchivedEvent`、AFTER_COMMIT）を受けた team ドメインの cleanup service が削除し、取りこぼしは修復バッチ `TeamOrgLifecycleCleanupBatch` が拾う（F01.2.1 §4.5・§6.8）
+- 組織・チームの削除時の片付けは、DB の FK・CASCADE ではなくアプリ層で行う（FK は V62.006〜V62.009 で DROP 済み）。組織の論理削除はフロー内で明示的に DELETE する（組織論理削除フロー step 5）。チームのアーカイブは同じ team ドメインなので `TeamService.archiveTeam` の同じトランザクションで PENDING を削除する。チームの論理削除と組織のアーカイブは、それぞれのイベント（`TeamDeletedEvent`・`OrganizationArchivedEvent`、AFTER_COMMIT）を受けた team ドメインの cleanup service が削除し、取りこぼしは修復バッチ `TeamOrgLifecycleCleanupBatch` が拾う。申請・招待の作成はチーム行 → 組織行の固定順で行ロックを取り、アーカイブと直列化する（F01.2.1 §4.5・§6.8・§6.9）
 
 ---
 
