@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * PR #3387 検分（4巡目・P1）: V225 seed（{@code MEMBER_SUBTAB_VISIBILITY_MANAGE}）の
+ * PR #3387 検分（4巡目・P1）: V228 seed（{@code MEMBER_SUBTAB_VISIBILITY_MANAGE}）の
  * DEPUTY_ADMIN 天井行（{@code is_default=0}）が、個別付与なしの DEPUTY_ADMIN に
  * 実際に権限を漏らしていないかを実 DB（Testcontainers）で検証する。
  *
@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * （{@code RoleService.java} 647-649 行）は {@code role_permissions} 由来の {@code rolePermissions}
  * を一切参照せず、権限グループ由来の {@code groupPermissions} のみを返す（{@code is_default} の値に
  * 関わらず、DEPUTY_ADMIN は role_permissions 経由での自動付与を一切受けない設計）。
- * よって V225 の天井行（is_default=0）の存在自体は、この判定経路に対して無害である。
+ * よって V228 の天井行（is_default=0）の存在自体は、この判定経路に対して無害である。
  * 本テストはこれを実 DB で裏取りする（推測ではなく実測。CLAUDE.md「経験的検出が一次」）。</p>
  */
 @Transactional
@@ -46,7 +46,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class MemberSubtabVisibilityPermissionSeedIT extends AbstractMySqlIntegrationTest {
 
     private static final String MIGRATION_RESOURCE =
-            "db/migration/V225.20260926162744__seed_member_subtab_visibility_permission.sql";
+            "db/migration/V228.20260929094716__seed_member_subtab_visibility_permission.sql";
     private static final String PERMISSION = "MEMBER_SUBTAB_VISIBILITY_MANAGE";
     private static final String ORGANIZATION = "ORGANIZATION";
 
@@ -77,7 +77,7 @@ class MemberSubtabVisibilityPermissionSeedIT extends AbstractMySqlIntegrationTes
         em.flush();
         em.clear();
 
-        // 自己検証: V225 由来の DEPUTY_ADMIN 天井行(is_default=0)が実在すること
+        // 自己検証: V228 由来の DEPUTY_ADMIN 天井行(is_default=0)が実在すること
         Number ceilingRows = (Number) em.createNativeQuery(
                 "SELECT COUNT(*) FROM role_permissions rp "
                         + "JOIN roles r ON r.id = rp.role_id "
