@@ -225,6 +225,71 @@ describe('通知の既読と確認状態', () => {
     wrapper.unmount()
   })
 
+  it('追加読み込みした通知の確認後も全ページを保持し、サマリと既読状態を更新する', async () => {
+    const firstPageRow = {
+      ...notification(null, true),
+      id: 3255965,
+      sourceType: 'USER',
+      sourceId: 3,
+    }
+    const secondPageRow = { ...notification(false, false), id: 3255966 }
+    const thirdPageRow = {
+      ...notification(null, true),
+      id: 3255967,
+      sourceType: 'USER',
+      sourceId: 4,
+    }
+    mocks.notificationApi.getNotifications.mockImplementation(
+      async ({ page }: { page: number }) => ({
+        data: page === 0 ? [firstPageRow] : page === 1 ? [secondPageRow] : [thirdPageRow],
+        meta: { total: 3, page, size: 1, totalPages: 3 },
+      }),
+    )
+    mocks.confirmableApi.getNotificationDetail
+      .mockResolvedValueOnce({
+        data: { totalRecipientCount: 1, confirmedCount: 0, unconfirmedVisibility: 'ALL_MEMBERS' },
+      })
+      .mockResolvedValueOnce({
+        data: { totalRecipientCount: 1, confirmedCount: 1, unconfirmedVisibility: 'ALL_MEMBERS' },
+      })
+    const wrapper = mount(NotificationList, {
+      global: {
+        stubs,
+        plugins: [i18n, router],
+        mocks: {
+          $t: (key: string, params?: Record<string, unknown>) =>
+            key === 'confirmable.unconfirmed_count' ? `未確認:${String(params?.count)}` : key,
+        },
+      },
+    })
+    await flushPromises()
+    await wrapper.get('button[data-label="もっと読む"]').trigger('click')
+    await flushPromises()
+
+    const target = wrapper.get('[data-notification-id="3255966"]')
+    expect(target.text()).toContain('未確認:1')
+    await target.get(`button[data-label="${confirmButtonLabel}"]`).trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-notification-id]')).toHaveLength(2)
+    expect(target.text()).toContain(confirmedLabel)
+    expect(target.text()).toContain('未確認:0')
+    expect(mocks.notificationApi.getNotifications).toHaveBeenCalledTimes(2)
+    expect(mocks.confirmableApi.getNotificationDetail).toHaveBeenCalledTimes(2)
+
+    await wrapper.get('button[data-label="もっと読む"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('[data-notification-id]')).toHaveLength(3)
+    expect(mocks.notificationApi.getNotifications).toHaveBeenCalledTimes(3)
+
+    await target.get('button[title]:not([aria-label])').trigger('click')
+    await flushPromises()
+    expect(mocks.notificationApi.markAsUnread).toHaveBeenCalledTimes(1)
+    expect(target.text()).toContain(confirmedLabel)
+    expect(wrapper.findAll('[data-notification-id]')).toHaveLength(3)
+    wrapper.unmount()
+  })
+
   it('確認後の既読更新に失敗しても確認済み状態を保ち、確認失敗とは表示しない', async () => {
     mocks.notificationApi.markAsRead.mockRejectedValue(new Error('read failed'))
     const wrapper = await mountList(notification(false, false))

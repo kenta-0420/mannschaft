@@ -818,7 +818,7 @@ records:
     blockers:
       - "β公開前に FEATURE_RECRUITMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "Issue #3503: F03.11 §5.12の管理者手動ペナルティ解除で、権限カタログ、150文字以上のnotes保存、監査、24時間制限、3回反復の濫用検知が未実装。SYSTEM_ADMIN／DEPUTY_ADMINの許可範囲は同節内に差異があり、実装前に解釈判断が必要。Issue #3502の通知TODOとは別件。"
-    notes: "手動ペナルティ解除の通知TODO（Issue #3502）は未実装。Wave 16のRECRUITMENT_PENALTY_APPLIED通知はコード修正済みだが、CI・実機E2E・3住民アリシゼーションの最終検証中。"
+    notes: "手動ペナルティ解除の通知TODO（Issue #3502）は未実装。Wave 16のRECRUITMENT_PENALTY_APPLIED通知は、実BE 8081・FE 3004・MySQLのretest10でTEAM/ORGANIZATION 2/2 passを確認し、controlled UI再実証でmobileの本文・確認操作と管理画面の正規通知を確認した。別BrowserContextの3住民アリシゼーションは実施済みだが、admin初期設定モーダルによる管理確認未達、mobile自由探索での対象未操作を含むB0-J5全体はpartialである。未実証のmobile候補はinsightに留める。最終判定はPR #3499の最新チェック、検分、実証記録で行う。Issue #3503のF03.11手動解除全体は未完了。"
 
   - feature_key: succession-proxy
     name: 事業承継・代理投票

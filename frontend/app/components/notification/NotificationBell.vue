@@ -90,11 +90,13 @@ defineExpose({ refresh: fetchCounts })
 <template>
   <div class="relative">
     <Button
-      v-tooltip.bottom="'通知'"
+      v-tooltip.bottom="$t('notification.pageTitle')"
+      :aria-label="$t('notification.pageTitle')"
       icon="pi pi-bell"
       text
       rounded
       severity="secondary"
+      class="!h-11 !min-h-11 !w-11 !min-w-11"
       @click="popover?.toggle($event)"
     />
     <Badge

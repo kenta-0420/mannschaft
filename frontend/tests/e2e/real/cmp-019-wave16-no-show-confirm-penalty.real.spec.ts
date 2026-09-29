@@ -153,6 +153,23 @@ function scalar(sql: string): string {
   return mysql(sql).trim()
 }
 
+function isNoShowConfirmBatchLocked(): boolean {
+  return Number(
+    scalar(
+      "SELECT COUNT(*) FROM shedlock WHERE name='recruitment-no-show-confirm-batch' " +
+        'AND lock_until > UTC_TIMESTAMP(6)',
+    ),
+  ) > 0
+}
+
+async function waitForNoShowConfirmBatchUnlock(maxWaitMs = 180_000): Promise<boolean> {
+  const deadline = Date.now() + maxWaitMs
+  while (isNoShowConfirmBatchLocked() && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, Math.min(5_000, deadline - Date.now())))
+  }
+  return isNoShowConfirmBatchLocked()
+}
+
 function mysqlUtcDateTimeForInstant(instant: string): string {
   const match = instant.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?Z$/)
   if (!match) throw new Error(`expiresAtがUTC Instant形式ではありません: ${instant}`)
@@ -294,8 +311,8 @@ function appNotificationRows(confirmableId: number, userId: number): string[] {
   )
 }
 
-async function findNotificationRow(page: Page, body: string) {
-  const row = page.getByRole('button').filter({ hasText: body }).first()
+async function findNotificationRow(page: Page, notificationId: number) {
+  const row = page.locator(`[data-notification-id="${notificationId}"]`)
   const loadMore = page.getByRole('button', { name: '\u3082\u3063\u3068\u8aad\u3080' })
   const markAllRead = page.getByRole('button', {
     name: '\u3059\u3079\u3066\u65e2\u8aad\u306b\u3059\u308b',
@@ -510,6 +527,7 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
   const teamOwner = await loginForNoShow(request, TEAM_OWNER)
   const member = await loginForNoShow(request, MEMBER)
   const outsider = await loginForNoShow(request, OUTSIDER)
+  const batchLocked = await waitForNoShowConfirmBatchUnlock()
   const staleBefore = Number(
     scalar(
       'SELECT COUNT(*) FROM recruitment_no_show_records ' +
@@ -531,13 +549,7 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
     activeBefore > 0,
     '対象会員に既存の有効ペナルティがあるため専用シナリオをスキップします',
   )
-  const batchLocked = Number(
-    scalar(
-      "SELECT COUNT(*) FROM shedlock WHERE name='recruitment-no-show-confirm-batch' " +
-        'AND lock_until > UTC_TIMESTAMP(6)',
-    ),
-  )
-  test.skip(batchLocked > 0, 'NO_SHOW確定バッチが既にロック中のため専用シナリオをスキップします')
+  test.skip(batchLocked, 'NO_SHOW確定バッチが既にロック中のため専用シナリオをスキップします')
 
   const confirmedBefore = Number(
     scalar(
@@ -987,11 +999,11 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
     await page.goto('/notifications')
     await waitForHydration(page)
     expect((await initialNotifications).status()).toBe(200)
-    const notificationRow = await findNotificationRow(page, memberNotification.body)
-    const notificationContent = notificationRow.locator('.min-w-0.flex-1')
     const appNotificationId = Number(
       appNotificationRows(confirmableId!, member.userId)[0]?.split('\t')[0],
     )
+    const notificationRow = await findNotificationRow(page, appNotificationId)
+    const notificationContent = notificationRow.locator('.min-w-0.flex-1')
     recordStage('TEAM', 'member-notification-ui-start', {
       scopes: ownedScopes,
       settingId: settingAppliedId,
@@ -1049,7 +1061,7 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
     await page.reload()
     await waitForHydration(page)
     expect((await reloadedNotifications).status()).toBe(200)
-    const persistedNotificationRow = await findNotificationRow(page, memberNotification.body)
+    const persistedNotificationRow = await findNotificationRow(page, appNotificationId)
     const persistedNotificationContent = persistedNotificationRow.locator('.min-w-0.flex-1')
     await expect(
       persistedNotificationContent.getByText('\u78ba\u8a8d\u6e08\u307f', { exact: true }),
@@ -1141,10 +1153,21 @@ test('CMP-019 Wave16: 24時間経過したNO_SHOWを確定し、GLOBALペナル�
       ),
       '期限切れ後は専用別スコープ募集への応募が1件だけ永続化される',
     ).toBe('1')
-    await expect(page.getByText('申込済み', { exact: true })).toBeVisible()
+    const expectedParticipantStatusLabel =
+      allowedParticipant.status === 'CONFIRMED' ? '確定' : '申込済み'
+    await expect(
+      page
+        .getByTestId('market-detail-apply-area')
+        .getByText(expectedParticipantStatusLabel, { exact: true }),
+    ).toBeVisible()
     await page.goto('/notifications')
     await waitForHydration(page)
-    await expect(page.getByText(memberNotification.body, { exact: true })).toBeVisible()
+    const returnedNotificationRow = await findNotificationRow(page, appNotificationId)
+    await expect(
+      returnedNotificationRow
+        .locator('.min-w-0.flex-1')
+        .getByText(memberNotification.body, { exact: true }),
+    ).toBeVisible()
   } catch (error) {
     hasScenarioFailure = true
     scenarioFailure = error
@@ -1221,6 +1244,7 @@ test('CMP-019 Wave16: 専用組織のTHIS_SCOPE_ONLYで本人確認と対象外�
   const owner = await loginForNoShow(request, TEAM_OWNER)
   const member = await loginForNoShow(request, ORG_MEMBER)
   const outsider = await loginForNoShow(request, OUTSIDER)
+  const batchLocked = await waitForNoShowConfirmBatchUnlock()
   const staleBefore = Number(
     scalar(
       'SELECT COUNT(*) FROM recruitment_no_show_records ' +
@@ -1238,13 +1262,7 @@ test('CMP-019 Wave16: 専用組織のTHIS_SCOPE_ONLYで本人確認と対象外�
     ),
   )
   test.skip(activeBefore > 0, '対象会員に有効なペナルティがあり専用シナリオを分離できません')
-  const batchLocked = Number(
-    scalar(
-      "SELECT COUNT(*) FROM shedlock WHERE name='recruitment-no-show-confirm-batch' " +
-        'AND lock_until > UTC_TIMESTAMP(6)',
-    ),
-  )
-  test.skip(batchLocked > 0, 'NO_SHOW確定バッチがロック中のためスキップします')
+  test.skip(batchLocked, 'NO_SHOW確定バッチがロック中のためスキップします')
   const confirmedBefore = Number(
     scalar(
       `SELECT COUNT(*) FROM recruitment_no_show_records WHERE user_id=${member.userId} ` +
@@ -1557,11 +1575,11 @@ test('CMP-019 Wave16: 専用組織のTHIS_SCOPE_ONLYで本人確認と対象外�
     await waitForHydration(page)
     expect((await initialNotifications).status()).toBe(200)
     if (!memberNotification) throw new Error('??????????')
-    const notificationRow = await findNotificationRow(page, memberNotification.body)
-    const notificationContent = notificationRow.locator('.min-w-0.flex-1')
     const appNotificationId = Number(
       appNotificationRows(confirmableId!, member.userId)[0]?.split('\t')[0],
     )
+    const notificationRow = await findNotificationRow(page, appNotificationId)
+    const notificationContent = notificationRow.locator('.min-w-0.flex-1')
     recordStage('ORGANIZATION', 'member-notification-ui-start', {
       scopes: ownedScopes,
       settingId: settingAppliedId,
@@ -1619,7 +1637,7 @@ test('CMP-019 Wave16: 専用組織のTHIS_SCOPE_ONLYで本人確認と対象外�
     await page.reload()
     await waitForHydration(page)
     expect((await reloadedNotifications).status()).toBe(200)
-    const persistedNotificationRow = await findNotificationRow(page, memberNotification.body)
+    const persistedNotificationRow = await findNotificationRow(page, appNotificationId)
     const persistedNotificationContent = persistedNotificationRow.locator('.min-w-0.flex-1')
     await expect(
       persistedNotificationContent.getByText('\u78ba\u8a8d\u6e08\u307f', { exact: true }),

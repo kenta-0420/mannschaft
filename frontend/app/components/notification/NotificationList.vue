@@ -282,8 +282,9 @@ async function onConfirmNotification(notif: NotificationResponse) {
       }
     }
     toast.add({ severity: 'success', summary: '確認しました', life: 3000 })
-    // 一覧を再取得
-    await loadNotifications()
+    // 追加読み込み済みの通知を保持したまま、対象通知のサマリだけを更新する。
+    delete confirmableSummaries.value[notif.sourceId]
+    await loadConfirmableSummary(notif)
   } catch {
     showError('確認処理に失敗しました')
   }
@@ -324,9 +325,10 @@ defineExpose({ refresh: () => loadNotifications() })
       <div
         v-for="notif in notifications"
         :key="notif.id"
+        :data-notification-id="notif.id"
         role="button"
         tabindex="0"
-        class="flex items-start gap-3 border-b border-surface-100 px-4 py-3 text-left transition-colors hover:bg-surface-50"
+        class="grid grid-cols-[8px_32px_minmax(0,1fr)] items-start gap-x-3 border-b border-surface-100 px-4 py-3 text-left transition-colors hover:bg-surface-50 sm:flex sm:gap-3"
         :class="[
           notif.isRead ? 'opacity-60' : '',
           isConfirmableNotification(notif) ? 'bg-amber-50 hover:bg-amber-100' : '',
@@ -368,8 +370,11 @@ defineExpose({ refresh: () => loadNotifications() })
 
         <!-- 内容 -->
         <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2">
-            <p class="text-sm font-medium" :class="getPriorityColor(notif.priority)">
+          <div class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+            <p
+              class="min-w-0 break-words text-sm font-medium"
+              :class="getPriorityColor(notif.priority)"
+            >
               {{ notif.title }}
             </p>
             <span
@@ -393,10 +398,13 @@ defineExpose({ refresh: () => loadNotifications() })
               {{ $t('emergency_closure.badge') }}
             </span>
           </div>
-          <p v-if="notif.body" class="mt-0.5 truncate text-xs text-surface-400">
+          <p
+            v-if="notif.body"
+            class="mt-0.5 break-words whitespace-normal text-xs text-surface-400 sm:truncate"
+          >
             {{ notif.body }}
           </p>
-          <div class="mt-1 flex items-center gap-2 text-xs text-surface-400">
+          <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-surface-400">
             <span v-if="notif.actor">{{ notif.actor.displayName }}</span>
             <span>{{ relativeTime(notif.createdAt) }}</span>
             <!-- 期限カウントダウン（将来的にAPIにdeadlineAtが追加された場合に対応） -->
@@ -428,6 +436,7 @@ defineExpose({ refresh: () => loadNotifications() })
               size="small"
               severity="warn"
               icon="pi pi-check"
+              class="!min-h-11"
               @click.stop="onConfirmNotification(notif)"
             />
           </div>
@@ -464,7 +473,7 @@ defineExpose({ refresh: () => loadNotifications() })
         </div>
 
         <!-- アクションボタン群（スヌーズ + 既読トグル）-->
-        <div class="mt-1 flex shrink-0 items-center gap-1">
+        <div class="col-start-3 mt-2 flex shrink-0 items-center gap-1 sm:col-auto sm:mt-1">
           <!-- スヌーズボタン（ヒット領域44x44。アイコン視覚サイズはtext-xsのまま維持） -->
           <button
             class="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-surface-300 hover:text-primary"

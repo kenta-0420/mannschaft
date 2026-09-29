@@ -10,11 +10,16 @@ import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordReposito
 import com.mannschaft.app.recruitment.repository.RecruitmentPenaltySettingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
 import com.mannschaft.app.recruitment.service.RecruitmentNoShowConfirmBatch;
+import com.mannschaft.app.recruitment.service.RecruitmentPenaltyService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +27,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.AopTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,11 +40,13 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
     private static final String SOURCE_TYPE = "RECRUITMENT_PENALTY";
 
     @Autowired private RecruitmentNoShowConfirmBatch batch;
+    @Autowired private RecruitmentPenaltyService penaltyService;
     @Autowired private RecruitmentNoShowRecordRepository noShowRepository;
     @Autowired private RecruitmentListingRepository listingRepository;
     @Autowired private RecruitmentPenaltySettingRepository settingRepository;
     @Autowired private RecruitmentUserPenaltyRepository penaltyRepository;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private JdbcTemplate jdbcTemplate;
     @PersistenceContext private EntityManager entityManager;
 
@@ -48,6 +56,8 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
     private Long participantId;
     private Long recordId;
     private Long settingId;
+    private Long competingTeamId;
+    private Long competingSettingId;
     private Long penaltyId;
 
     @AfterEach
@@ -66,7 +76,13 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
         if (recordId != null) noShowRepository.deleteById(recordId);
         if (participantId != null) jdbcTemplate.update("DELETE FROM recruitment_participants WHERE id = ?", participantId);
         if (listingId != null) listingRepository.deleteById(listingId);
+        if (competingSettingId != null) settingRepository.deleteById(competingSettingId);
         if (settingId != null) settingRepository.deleteById(settingId);
+        if (competingTeamId != null) {
+            jdbcTemplate.update("DELETE FROM confirmable_notification_settings WHERE scope_type = 'TEAM' AND scope_id = ?",
+                    competingTeamId);
+            jdbcTemplate.update("DELETE FROM teams WHERE id = ?", competingTeamId);
+        }
         if (teamId != null) {
             jdbcTemplate.update("DELETE FROM confirmable_notification_settings WHERE scope_type = 'TEAM' AND scope_id = ?", teamId);
             jdbcTemplate.update("DELETE FROM teams WHERE id = ?", teamId);
@@ -99,6 +115,65 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
         transactionTemplate.executeWithoutResult(status -> target.confirmNoShows());
         assertThat(penaltyRepository.findByUserIdOrderByCreatedAtDesc(userId)).hasSize(1);
         assertThat(countConfirmableNotifications()).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentGlobalEvaluationFromDifferentTeamsCreatesOnePenaltyAndOneDeliveredNotification() throws Exception {
+        prepareNoShow();
+        prepareCompetingGlobalSetting();
+        transactionTemplate.executeWithoutResult(status -> {
+            RecruitmentNoShowRecordEntity record = noShowRepository.findById(recordId).orElseThrow();
+            record.confirm();
+            noShowRepository.saveAndFlush(record);
+        });
+
+        jdbcTemplate.update(
+                "UPDATE recruitment_no_show_records SET dispute_resolution = 'REVOKED' WHERE id = ?", recordId);
+        assertThat(noShowRepository.countConfirmedNoShowsForPenalty(
+                userId, 180, true, RecruitmentScopeType.TEAM.name(), teamId)).isZero();
+        jdbcTemplate.update(
+                "UPDATE recruitment_no_show_records SET dispute_resolution = NULL WHERE id = ?", recordId);
+        assertThat(noShowRepository.countConfirmedNoShowsForPenalty(
+                userId, 180, true, RecruitmentScopeType.TEAM.name(), teamId)).isEqualTo(1);
+
+        TransactionTemplate firstTransaction = new TransactionTemplate(transactionManager);
+        TransactionTemplate secondTransaction = new TransactionTemplate(transactionManager);
+        CyclicBarrier startBarrier = new CyclicBarrier(2);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = executor.submit(() -> {
+                startBarrier.await(10, TimeUnit.SECONDS);
+                firstTransaction.executeWithoutResult(status ->
+                        penaltyService.evaluateAndApplyPenalty(userId, RecruitmentScopeType.TEAM, teamId));
+                return null;
+            });
+            Future<?> second = executor.submit(() -> {
+                startBarrier.await(10, TimeUnit.SECONDS);
+                secondTransaction.executeWithoutResult(status ->
+                        penaltyService.evaluateAndApplyPenalty(
+                                userId, RecruitmentScopeType.TEAM, competingTeamId));
+                return null;
+            });
+
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+
+        List<RecruitmentUserPenaltyEntity> penalties = penaltyRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        assertThat(penalties).hasSize(1);
+        RecruitmentUserPenaltyEntity penalty = penalties.getFirst();
+        penaltyId = penalty.getId();
+        assertThat(penalty.getScopeType()).isEqualTo(RecruitmentScopeType.GLOBAL);
+        assertThat(penalty.getScopeId()).isNull();
+
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
+            assertThat(countConfirmableNotifications()).isEqualTo(1);
+            assertThat(countConfirmableNotificationRecipients()).isEqualTo(1);
+            assertThat(countDeliveredNotifications()).isEqualTo(1);
+        });
     }
 
     @Test
@@ -185,10 +260,43 @@ class RecruitmentNoShowConfirmPenaltyIT extends AbstractMySqlIntegrationTest {
         });
     }
 
+    private void prepareCompetingGlobalSetting() {
+        String suffix = Long.toUnsignedString(System.nanoTime(), 36);
+        String slug = "cmp019-wave16-competitor-" + suffix;
+        jdbcTemplate.update("""
+                INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, created_at, updated_at)
+                VALUES (?, 'PUBLIC', 1, 0, 0, ?, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
+                """, "CMP019 Wave16 competitor " + suffix, slug);
+        competingTeamId = jdbcTemplate.queryForObject(
+                "SELECT id FROM teams WHERE slug = ?", Long.class, slug);
+
+        RecruitmentPenaltySettingEntity setting = RecruitmentPenaltySettingEntity.builder()
+                .scopeType(RecruitmentScopeType.TEAM).scopeId(competingTeamId).build();
+        setting.update(true, 1, 180, 30, PenaltyApplyScope.ALL_SCOPES, false, 30);
+        competingSettingId = settingRepository.save(setting).getId();
+    }
+
     private int countConfirmableNotifications() {
         return jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM confirmable_notifications
                 WHERE source_type = ? AND source_id = ?
+                """, Integer.class, SOURCE_TYPE, penaltyId);
+    }
+
+    private int countConfirmableNotificationRecipients() {
+        return jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM confirmable_notification_recipients r
+                JOIN confirmable_notifications c ON c.id = r.confirmable_notification_id
+                WHERE c.source_type = ? AND c.source_id = ? AND r.user_id = ?
+                """, Integer.class, SOURCE_TYPE, penaltyId, userId);
+    }
+
+    private int countDeliveredNotifications() {
+        return jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM notifications
+                WHERE source_type = 'CONFIRMABLE_NOTIFICATION'
+                  AND source_id IN (
+                      SELECT id FROM confirmable_notifications WHERE source_type = ? AND source_id = ?)
                 """, Integer.class, SOURCE_TYPE, penaltyId);
     }
 

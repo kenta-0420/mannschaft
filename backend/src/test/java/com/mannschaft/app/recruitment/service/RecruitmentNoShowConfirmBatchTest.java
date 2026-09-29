@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.recruitment.DisputeResolution;
 import com.mannschaft.app.recruitment.NoShowReason;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
@@ -46,6 +47,33 @@ class RecruitmentNoShowConfirmBatchTest {
         assertThat(first.isConfirmed()).isTrue();
         assertThat(second.isConfirmed()).isTrue();
         verify(penaltyService, times(1)).evaluateAndApplyPenalty(7L, RecruitmentScopeType.TEAM, 55L);
+    }
+
+    @Test
+    void PERSONALは確定しても発動判定しない() {
+        RecruitmentNoShowRecordEntity personal = record(101L, 7L, 11L);
+        given(noShowRepository.findUnconfirmedBefore(any())).willReturn(List.of(personal));
+        PenaltySourceScope scope = mock(PenaltySourceScope.class);
+        given(scope.getScopeType()).willReturn("PERSONAL");
+        given(noShowRepository.findPenaltySourceScope(101L)).willReturn(Optional.of(scope));
+
+        batch.confirmNoShows();
+
+        assertThat(personal.isConfirmed()).isTrue();
+        verifyNoInteractions(penaltyService);
+    }
+
+    @Test
+    void REVOKEDは確定しても発動判定しない() {
+        RecruitmentNoShowRecordEntity revoked = record(101L, 7L, 11L);
+        revoked.dispute("本人異議");
+        revoked.resolveDispute(DisputeResolution.REVOKED);
+        given(noShowRepository.findUnconfirmedBefore(any())).willReturn(List.of(revoked));
+
+        batch.confirmNoShows();
+
+        assertThat(revoked.isConfirmed()).isTrue();
+        verifyNoInteractions(penaltyService);
     }
 
     @Test
