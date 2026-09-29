@@ -39,7 +39,15 @@ public enum AdminFeedbackErrorCode implements ErrorCode {
     PERMISSION_GROUP_NOT_FOUND("ADMIN_FB_009", "権限グループが見つかりません", Severity.WARN),
 
     /** 権限グループ名が重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
-    PERMISSION_GROUP_NAME_DUPLICATE("ADMIN_FB_010", "同名の権限グループが既に存在します", Severity.WARN);
+    PERMISSION_GROUP_NAME_DUPLICATE("ADMIN_FB_010", "同名の権限グループが既に存在します", Severity.WARN),
+
+    /**
+     * フィードバックの宛先の組み合わせが不正（入力制約 → 既定の 400）。
+     *
+     * <p>宛先種別が GENERAL / TEAM / ORGANIZATION 以外、GENERAL に scopeId を伴う、
+     * TEAM / ORGANIZATION に scopeId が無い（null・0 以下）のいずれか（CMP-260917-1135）。</p>
+     */
+    INVALID_FEEDBACK_DESTINATION("ADMIN_FB_011", "フィードバックの宛先が不正です", Severity.WARN);
 
     private final String code;
     private final String message;
