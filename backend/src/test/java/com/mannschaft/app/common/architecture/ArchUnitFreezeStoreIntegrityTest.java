@@ -727,8 +727,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
      * CMP-260820-1016 の未絞り込み全量解析に先立ち、同一の本番クラス集合を読むD-3T単体で
      * 初回生成したストア（{@code 296295dd-06cf-4f7b-bf82-315ba12ff501}）を実測。
+     * PR #3462 の main 追従で追加された27件を再凍結し、期待件数へ反映した。
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7652;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7679;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
