@@ -118,6 +118,22 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     }
 
     /**
+     * チーム ID 集合に対応する ACTIVE な親組織 ID を、チームごとに<strong>全件</strong>バルク取得する
+     * （F01.2.1 §9.2 #1。複数組織への同時加盟に対応する）。
+     *
+     * <p>{@link #findOrganizationIdByTeamIdIn(Set)} は {@code HashMap.put} の後勝ちで
+     * 任意の1件に潰れるため、本メソッドへ置き換える（旧メソッドは 3-F で削除する）。</p>
+     *
+     * <p>試練（3-A）時点のスケルトン。実装は出陣で行う。</p>
+     *
+     * @param teamIds 対象チーム ID 集合（空・null なら SQL を発行せず空 Map）
+     * @return チーム ID → ACTIVE な親組織 ID 集合のマップ
+     */
+    default Map<Long, Set<Long>> findOrganizationIdsByTeamIdIn(Set<Long> teamIds) {
+        throw new UnsupportedOperationException("F01.2.1 3-A: 未実装（試練スケルトン）");
+    }
+
+    /**
      * {@link #findOrganizationIdByTeamIdIn(Set)} の内部 JPQL 実装。
      * 空集合チェックは default メソッド側で行うため、本メソッドは {@code teamIds}
      * 非空でのみ呼び出される。
