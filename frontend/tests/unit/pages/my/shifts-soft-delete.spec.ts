@@ -41,7 +41,7 @@ describe('自分のシフト希望履歴 — 親シフト表の削除', () => {
     const wrapper = await mountPage([request({ scheduleDeleted: true })])
 
     expect(wrapper.get('[data-testid="my-shift-schedule-deleted-701"]').text()).toContain(
-      'シフト表は削除済みです',
+      'Shift schedule deleted',
     )
     expect(wrapper.find('a[href="/shift/91"]').exists()).toBe(false)
   })

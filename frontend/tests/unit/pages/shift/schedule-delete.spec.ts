@@ -38,7 +38,7 @@ mockNuxtImport('useConfirm', () => () => ({
     acceptDelete = options.accept
   },
 }))
-mockNuxtImport('navigateTo', () => navigateTo)
+mockNuxtImport('navigateTo', () => (...args: unknown[]) => navigateTo(...args))
 
 const schedule: ShiftScheduleResponse = {
   id: 91,
