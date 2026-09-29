@@ -2,7 +2,8 @@
 
 ## 判定とコミット
 
-- 統合HEADは `1a71a3718623791c673db0798c1d9233583471bf`、統合元mainは `7fa5f00d25`。runtime BEは `f82b5fee7c6dd6670faaa68ff76b28b8e0dd09e2`であり、recruitment/notification/GlobalExceptionHandlerのf82対HEAD差分は0、actual差分も0である。
+- 過去統合HEADは `1a71a3718623791c673db0798c1d9233583471bf`、統合元mainは `7fa5f00d25`。
+- 最新統合HEADは `73beedc1108707add928f91c4117c11cb9f281d2`、統合元mainは `06324ca71d`。競合なし、actual merge exit 0。runtime BE `f82b5fee7c6dd6670faaa68ff76b28b8e0dd09e2` とrecruitment/notificationの実装差分は0。GlobalExceptionHandlerにはPRICE_REVISION_001/002/013/014/016/017/018/020のmap追加と既存`resolveHttpStatus`からstatic `resolveStatus`への委譲があるため、同ファイルの差分0は主張しない。最終CIは次のpush後のPR #3499最新チェックを参照する。
 - f82の10 workflowはsuccess（OpenAPI `36499471665`、Frontend `36499471559`、Backend `36499471788`、Generated Types `36499471571`、Smoke `36499471555`、Lighthouse `36499471621`、API `36499471833`、cleanup `36499471842`、lock `36499471909`、gitleaks `36499471619`）。現在の判定はPR #3499の最新チェックと検分を参照する。
 - Wave 16実装は実機E2Eとcontrolled UI再実証まで確認済み。ただしB0-J5全体はpartialであり、CMP-019、F03.11、Issue #3502、Issue #3503の完了を示さない。
 
@@ -25,6 +26,13 @@
 - mobile `W16-RESIDENT-1790664134734-8d3rpj`はsession `56570`、actual CLI exit 0、1 passed（06:42:14.880Z–06:48:20.934Z）。390/360でtitle 2行、body全文5行、width 262/232、height 100、CTA 100.875×44、viewport overflow 0。実UIで「確認する」後に未確認1→0、離脱復帰後も確認済み保持を確認した。
 - admin `W16-RESIDENT-1790664536894-e8qqvv`はsession `67281`、actual CLI exit 0、1 passed（06:48:57.255Z–06:52:17.895Z）。正規GET 67=200でID/title一致、安定した「確認通知設定」で履歴先頭のowned通知完了1/1（100%）を確認。1920×1080と1152×720でoverflow 0、card 862×155。1152×720は125%相当viewportでありbrowser zoomの実測ではない。
 - 画像とmetricsは `.claude/handoffs/cmp019-wave16-evidence-20260929/mobile-stable/`、`admin-stable/`、`stable-ui-manifest.json`および`controlled-ui-summary.json`を参照する。6 PNGはactual view済みでLoadingはない。
+
+## readonly current viewport補足
+
+- 既存seedをreadonlyで再撮影した。mobile `W16-RESIDENT-1790667320993-4pe0iu` はsession `39392`、07:35:21.384Z–07:41:18.681Z、actual CLI exit 0、1 passed。390×844と360×800でcontrols 44px、Loading・横overflowなし。
+- admin `W16-RESIDENT-1790667994924-2eslrf` はsession `87433`、07:46:35.197Z–07:51:18.293Z、actual CLI exit 0、1 passed。1920×1080、1280×720、1440×900、1024×576、1152×720の全viewportでLoading・横overflowなし。管理者発信履歴のheadingとfirst card全体（862×155）が可視。1152×720は125%相当viewportであり実browser zoomではない。
+- rootは7 PNGをactual view済み。画像・metricsは `.claude/handoffs/cmp019-wave16-evidence-20260929/readonly-current-viewport/{member,admin}/` と `readonly-current-viewport-manifest.json`（9 files/7 PNG）を参照し、B0 overlayは `b0-run-overlay.json`に保全済み。
+- DML、確認、既読操作は行っていない。この補足はowned確認操作や自由探索の代替ではない。初回goto timeoutとprobe配置failureは不合格のまま保持し、最後の限定再実行だけがgreen。全contextは正常teardownし、個別bridge closeの架空証跡はない。
 
 ## UI-only synthetic DB証跡
 
