@@ -19,6 +19,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -54,6 +56,7 @@ class OrgMemberProfileCopyRollbackIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private PlatformTransactionManager transactionManager;
     @PersistenceContext private EntityManager em;
 
     private final String nonce = UUID.randomUUID().toString().substring(0, 8);
@@ -85,9 +88,15 @@ class OrgMemberProfileCopyRollbackIT extends AbstractMySqlIntegrationTest {
 
         // ADMIN は user_roles、所属は memberships（別系統のため両方張る。MemberScopeContractIT:121 の地雷）。
         // 生 INSERT ではなく MembershipTestHelper を使う（UserRolesMembershipRoleInsertGuardTest 対応）。
-        MembershipTestHelper.insertUserRole(em, adminId, "ADMIN", null, orgId);
-        MembershipTestHelper.insertMembership(em, adminId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
-        em.flush();
+        // このクラスは本体のロールバック観測のためクラスに @Transactional を付けない（クラス Javadoc 参照）。
+        // MembershipTestHelper は EntityManager のネイティブ更新であり能動的なトランザクションを要求する
+        // ため、setUp 内のフィクスチャ確定だけ REQUIRES_NEW で明示的に包む（本体の実行とは独立）。
+        TransactionTemplate fixtureTx = new TransactionTemplate(transactionManager);
+        fixtureTx.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
+        fixtureTx.executeWithoutResult(status -> {
+            MembershipTestHelper.insertUserRole(em, adminId, "ADMIN", null, orgId);
+            MembershipTestHelper.insertMembership(em, adminId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
+        });
 
         sourcePageId = insertPage("AC27 コピー元", "PUBLISHED");
         targetPageId = insertPage("AC27 コピー先", "DRAFT");
