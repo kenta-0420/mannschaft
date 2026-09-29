@@ -3,7 +3,6 @@ package com.mannschaft.app.resident.transitivetx;
 import com.mannschaft.app.common.transitivetx.CommonConstructorBridge;
 import com.mannschaft.app.membership.transitivetx.MembershipBridge;
 import com.mannschaft.app.proxy.repository.InheritedProxyRepository;
-import com.mannschaft.app.proxy.repository.TransitiveProxyRepository;
 import com.mannschaft.app.resident.repository.TransitiveResidentRepository;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +18,7 @@ public class TransitiveTransactionalFixture {
 
     @Transactional
     public void constructThroughCommon() {
-        new CommonConstructorBridge(new TransitiveProxyRepository());
+        new CommonConstructorBridge();
     }
 
     @Transactional
