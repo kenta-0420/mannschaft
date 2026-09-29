@@ -47,7 +47,7 @@ class CrossDomainTransactionalTransitiveGuardConditionTest {
             .singleElement()
             .satisfies(v -> assertThat(v.diagnosticPath())
                 .contains("CommonConstructorBridge.<init>()")
-                .contains("TransitiveProxyRepository.save()"));
+                .contains("TransitiveProxyRepository.<init>()"));
     }
 
     @Test
