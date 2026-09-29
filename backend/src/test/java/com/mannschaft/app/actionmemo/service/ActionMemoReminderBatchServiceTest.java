@@ -4,12 +4,14 @@ import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,6 +19,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -28,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -57,22 +62,27 @@ class ActionMemoReminderBatchServiceTest {
     /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
     @Mock private UserLocaleCache userLocaleCache;
     @Mock private MessageSource messageSource;
+    @Mock private Clock wallClock;
 
     @InjectMocks
     private ActionMemoReminderBatchService service;
+
+    private static final Instant CURRENT_INSTANT = Instant.parse("2026-06-03T15:00:00Z");
 
     /**
      * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
      * title/body. Return the supplied default message so existing assertions keep working.
      */
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void stubI18nMessageSource() {
-        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+        lenient().when(messageSource.getMessage(
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.any(),
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.any()))
                 .thenAnswer(inv -> inv.getArgument(2));
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
 
     // ================================================================
@@ -216,6 +226,27 @@ class ActionMemoReminderBatchServiceTest {
         /** UTC 00:00 = JST 09:00 */
         private static final ZonedDateTime NOW_UTC_MIDNIGHT =
                 ZonedDateTime.of(2026, 6, 4, 0, 0, 0, 0, ZoneId.of("UTC"));
+
+        @Test
+        @DisplayName("execute_wallClockの瞬間をユーザーTZへ変換して通知日付を決定する")
+        void execute_usesWallClockInstantAndUserTimezone() {
+            UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
+                    .userId(50L)
+                    .reminderEnabled(true)
+                    .reminderTime(LocalTime.MIDNIGHT)
+                    .build();
+
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of(settings));
+            given(userRepository.findTimezoneById(50L))
+                    .willReturn(Optional.of("Asia/Tokyo"));
+
+            service.execute();
+
+            verify(notificationService).createNotification(
+                    eq(50L), eq("ACTION_MEMO_REMINDER"), any(), any(), any(), any(), any(), any(),
+                    eq(50L), contains("/action-memo?date=2026-06-04"), eq(null));
+        }
 
         @Test
         @DisplayName("JSTユーザー_UTC00:00はJST09:00_reminder_time=09:00_通知が送られる")

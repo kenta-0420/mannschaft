@@ -305,7 +305,18 @@
     },
     "reminder": {
       "send": "发送提醒",
-      "sent": "提醒已发送"
+      "sent": "提醒已发送",
+      "confirmTitle": "提醒尚未提交的成员",
+      "confirmMessage": "向尚未提交“{title}”偏好的成员发送提醒吗？",
+      "confirmAccept": "发送提醒",
+      "confirmReject": "取消",
+      "sentTitle": "提醒已发送",
+      "sentDetail": "已提醒 {count} 位成员提交偏好。",
+      "noRecipientsTitle": "没有待提交成员",
+      "noRecipientsDetail": "没有需要提醒的成员。",
+      "failedTitle": "无法发送提醒",
+      "failedDetail": "请稍后重试。",
+      "targetUnavailable": "此排班不可用或已停止接收偏好。"
     },
     "empty": {
       "noSchedules": "暂无排班",

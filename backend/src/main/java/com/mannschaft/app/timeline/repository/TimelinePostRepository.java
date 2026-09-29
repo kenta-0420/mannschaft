@@ -83,6 +83,22 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             @Param("scopeId") Long scopeId,
             Pageable pageable);
 
+    /** スコープ別フィードの通常投稿を ID 降順のカーソルで取得する。 */
+    @Query("""
+            SELECT p FROM TimelinePostEntity p
+            WHERE p.scopeType = :scopeType AND p.scopeId = :scopeId
+              AND p.parentId IS NULL
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+              AND p.isPinned = false
+              AND (:cursor IS NULL OR p.id < :cursor)
+            ORDER BY p.id DESC
+            """)
+    List<TimelinePostEntity> findFeedPageByScopeType(
+            @Param("scopeType") PostScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("cursor") Long cursor,
+            Pageable pageable);
+
     /**
      * 個人ダッシュボード集約タイムライン（マイフィード）を取得する。
      *
@@ -442,6 +458,22 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             """)
     List<TimelinePostEntity> findFeedByVillageId(
             @Param("villageId") UUID villageId,
+            Pageable pageable);
+
+    /** 村フィードの通常投稿を ID 降順のカーソルで取得する。 */
+    @Query("""
+            SELECT p FROM TimelinePostEntity p
+            WHERE p.scopeType = com.mannschaft.app.timeline.PostScopeType.VILLAGE
+              AND p.scopeVillageId = :villageId
+              AND p.parentId IS NULL
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+              AND p.isPinned = false
+              AND (:cursor IS NULL OR p.id < :cursor)
+            ORDER BY p.id DESC
+            """)
+    List<TimelinePostEntity> findFeedPageByVillageId(
+            @Param("villageId") UUID villageId,
+            @Param("cursor") Long cursor,
             Pageable pageable);
 
     // ====================================================================

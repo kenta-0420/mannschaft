@@ -25,7 +25,7 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
    *
    * 既存呼び出し元は戻り値を無視すれば従来どおり動作する（後方互換）。
    */
-  async function loadPermissions(): Promise<{ ok: boolean }> {
+  async function loadPermissions(): Promise<{ ok: true } | { ok: false; error: unknown }> {
     // scopeId 未確定時は取得を行わない。判定材料が無いだけで「失敗」ではないため ok: true。
     if (!resolvedId.value) return { ok: true }
     loading.value = true
@@ -38,11 +38,11 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
       roleName.value = response.data.roleName
       return { ok: true }
     }
-    catch {
+    catch (error) {
       // 取得失敗。権限なしに倒さず、roleName=null かつ ok=false を返す（症状を隠さない）。
       permissions.value = []
       roleName.value = null
-      return { ok: false }
+      return { ok: false, error }
     }
     finally {
       loading.value = false

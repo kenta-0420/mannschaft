@@ -51,7 +51,6 @@ public class TimelineFeedController {
      *
      * <p>レスポンス形式: {@code { "data": { "pinned": [...], "posts": [...] }, "meta": { ... } }}</p>
      */
-    @GetMapping("/feed")
     @Operation(summary = "タイムラインフィード取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<TimelineFeedResponse> getFeed(
@@ -68,6 +67,29 @@ public class TimelineFeedController {
                 postService.getPinnedPosts(scopeType, resolvedScopeId, scopeVillageId, userId);
         TimelineFeedResponse response = TimelineFeedResponse.of(pinned, posts, size);
         return ResponseEntity.ok(response);
+    }
+
+    /** スコープ別フィードのカーソルページ。size は既存クライアント用の別名。 */
+    @GetMapping("/feed")
+    @Operation(summary = "タイムラインフィード取得", operationId = "getFeed")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<TimelineFeedResponse> getFeedPage(
+            @RequestParam(defaultValue = "PUBLIC") String scopeType,
+            @RequestParam(defaultValue = "0") String scopeId,
+            @RequestParam(required = false) UUID scopeVillageId,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) Integer size) {
+        int requestedLimit = limit != null ? limit : size != null ? size : 20;
+        int pageSize = requestedLimit > 0 ? Math.min(requestedLimit, 50) : 20;
+        Long userId = SecurityUtils.getCurrentUserId();
+        Long resolvedScopeId = scopeIdResolver.resolve(scopeType, scopeId);
+        List<PostResponse> posts = postService.getFeedPage(
+                scopeType, resolvedScopeId, scopeVillageId, cursor, pageSize, userId);
+        List<PostResponse> pinned = cursor == null
+                ? postService.getPinnedPosts(scopeType, resolvedScopeId, scopeVillageId, userId)
+                : List.of();
+        return ResponseEntity.ok(TimelineFeedResponse.of(pinned, posts, pageSize));
     }
 
     /**

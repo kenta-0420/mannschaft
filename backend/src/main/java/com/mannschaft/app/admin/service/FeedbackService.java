@@ -10,6 +10,7 @@ import com.mannschaft.app.admin.entity.FeedbackSubmissionEntity;
 import com.mannschaft.app.admin.entity.FeedbackVoteEntity;
 import com.mannschaft.app.admin.repository.FeedbackSubmissionRepository;
 import com.mannschaft.app.admin.repository.FeedbackVoteRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -32,8 +34,15 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class FeedbackService {
 
+    /** 運営（プラットフォーム全体）宛ての宛先種別。scopeId を持たない。 */
+    private static final String GENERAL_SCOPE_TYPE = "GENERAL";
+
+    /** 在籍メンバーだけが投稿できる宛先種別。 */
+    private static final Set<String> MEMBER_SCOPE_TYPES = Set.of("TEAM", "ORGANIZATION");
+
     private final FeedbackSubmissionRepository feedbackRepository;
     private final FeedbackVoteRepository voteRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * フィードバックが属するスコープ（entity 由来）。
@@ -70,12 +79,26 @@ public class FeedbackService {
     /**
      * フィードバックを投稿する。
      *
+     * <p>宛先（CMP-260917-1135・設計書 F10.1 §feedback_submissions）:</p>
+     * <ul>
+     *   <li>GENERAL（運営宛て）: 誰でも投稿できる。scopeId を伴えば 400</li>
+     *   <li>TEAM / ORGANIZATION: scopeId 必須（null・0 以下は 400）。そのスコープの在籍メンバー
+     *       （{@link AccessControlService#checkMembership}）だけが投稿できる。非メンバーと存在しない
+     *       scopeId は同一応答（403 COMMON_002）で、宛先の実在を区別しない</li>
+     *   <li>それ以外の種別: 400</li>
+     * </ul>
+     *
      * @param req    作成リクエスト
      * @param userId 投稿者ID
      * @return 作成されたフィードバック
+     * @throws BusinessException {@code ADMIN_FB_011}: 宛先の組み合わせが不正 /
+     *                           {@code COMMON_002}: 宛先スコープの在籍メンバーではない
      */
     @Transactional
     public FeedbackResponse createFeedback(CreateFeedbackRequest req, Long userId) {
+        if (requiresMembership(req.getScopeType(), req.getScopeId())) {
+            accessControlService.checkMembership(userId, req.getScopeId(), req.getScopeType());
+        }
         FeedbackSubmissionEntity entity = FeedbackSubmissionEntity.builder()
                 .scopeType(req.getScopeType())
                 .scopeId(req.getScopeId())
@@ -124,9 +147,9 @@ public class FeedbackService {
         Page<FeedbackSubmissionEntity> page;
         if (status != null && !status.isBlank()) {
             page = feedbackRepository.findByScopeTypeAndScopeIdIsNullAndStatusOrderByCreatedAtDesc(
-                    "GENERAL", parseFeedbackStatus(status), pageable);
+                    GENERAL_SCOPE_TYPE, parseFeedbackStatus(status), pageable);
         } else {
-            page = feedbackRepository.findByScopeTypeAndScopeIdIsNullOrderByCreatedAtDesc("GENERAL", pageable);
+            page = feedbackRepository.findByScopeTypeAndScopeIdIsNullOrderByCreatedAtDesc(GENERAL_SCOPE_TYPE, pageable);
         }
         return toResponsePageWithVoteCounts(page);
     }
@@ -224,6 +247,25 @@ public class FeedbackService {
         }
         voteRepository.deleteByFeedbackIdAndUserId(feedbackId, userId);
         log.info("フィードバック投票取消: feedbackId={}, userId={}", feedbackId, userId);
+    }
+
+    /**
+     * 宛先の組み合わせを検証し、投稿者の在籍検証が要るかを返す。
+     *
+     * @return TEAM / ORGANIZATION 宛てなら true（在籍検証が要る）、GENERAL なら false
+     * @throws BusinessException {@code ADMIN_FB_011}: 宛先の組み合わせが不正
+     */
+    private boolean requiresMembership(String scopeType, @Nullable Long scopeId) {
+        if (GENERAL_SCOPE_TYPE.equals(scopeType)) {
+            if (scopeId != null) {
+                throw new BusinessException(AdminFeedbackErrorCode.INVALID_FEEDBACK_DESTINATION);
+            }
+            return false;
+        }
+        if (!MEMBER_SCOPE_TYPES.contains(scopeType) || scopeId == null || scopeId <= 0) {
+            throw new BusinessException(AdminFeedbackErrorCode.INVALID_FEEDBACK_DESTINATION);
+        }
+        return true;
     }
 
     private FeedbackStatus parseFeedbackStatus(String status) {

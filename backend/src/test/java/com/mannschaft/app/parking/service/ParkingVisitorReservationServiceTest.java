@@ -2,6 +2,7 @@ package com.mannschaft.app.parking.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.parking.ParkingMapper;
 import com.mannschaft.app.parking.SpaceType;
 import com.mannschaft.app.parking.VisitorReservationStatus;
@@ -14,6 +15,7 @@ import com.mannschaft.app.parking.entity.ParkingVisitorReservationEntity;
 import com.mannschaft.app.parking.repository.ParkingSettingsRepository;
 import com.mannschaft.app.parking.repository.ParkingSpaceRepository;
 import com.mannschaft.app.parking.repository.ParkingVisitorReservationRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -35,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -60,6 +65,9 @@ class ParkingVisitorReservationServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private Clock wallClock;
+
     @InjectMocks
     private ParkingVisitorReservationService parkingVisitorReservationService;
 
@@ -73,7 +81,17 @@ class ParkingVisitorReservationServiceTest {
     private static final Long RESERVATION_ID = 20L;
     private static final Long APPROVER_ID = 50L;
     private static final String SCOPE_TYPE = "TEAM";
+    private static final LocalDate TODAY = LocalDate.of(2026, 3, 15);
+    private static final Instant CURRENT_INSTANT = TODAY
+            .atStartOfDay(UserZoneLocalDateTimeParser.SERVER_ZONE)
+            .toInstant();
     private static final LocalDate RESERVED_DATE = LocalDate.of(2026, 4, 1);
+
+    @BeforeEach
+    void setUpWallClock() {
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
 
     private ParkingSettingsEntity createDefaultSettings() {
         return ParkingSettingsEntity.builder()

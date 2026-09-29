@@ -27,6 +27,7 @@ const emit = defineEmits<{
 }>()
 
 const { getPrefectures } = useMatchingApi()
+const { t } = useI18n()
 
 const keyword = ref(props.initialKeyword ?? '')
 
@@ -55,35 +56,49 @@ onMounted(async () => {
 const prefecture = computed(() => selectedPref.value?.name ?? '')
 const prefectureCode = computed(() => selectedPref.value?.code ?? '')
 
-const templateOptions = [
-  { label: '全て', value: '' },
-  { label: 'クラブ・サークル', value: 'CLUB' },
-  { label: 'クリニック', value: 'CLINIC' },
-  { label: 'クラス', value: 'CLASS' },
-  { label: 'コミュニティ', value: 'COMMUNITY' },
-  { label: '企業', value: 'COMPANY' },
-  { label: '家族', value: 'FAMILY' },
-  { label: '飲食店', value: 'RESTAURANT' },
-  { label: '美容院・サロン', value: 'BEAUTY' },
-  { label: '店舗・小売', value: 'STORE' },
-  { label: 'ボランティア・NPO', value: 'VOLUNTEER' },
-  { label: '自治会', value: 'NEIGHBORHOOD' },
-  { label: 'マンション管理組合', value: 'CONDO' },
-  { label: 'その他', value: 'OTHER' },
-]
+const templateValues = [
+  'CLUB',
+  'CLINIC',
+  'CLASS',
+  'COMMUNITY',
+  'COMPANY',
+  'FAMILY',
+  'RESTAURANT',
+  'BEAUTY',
+  'STORE',
+  'VOLUNTEER',
+  'NEIGHBORHOOD',
+  'CONDO',
+  'OTHER',
+] as const
 
-const orgTypeOptions = [
-  { label: '全て', value: '' },
-  { label: '行政・官公庁', value: 'GOVERNMENT' },
-  { label: '自治体（市区町村）', value: 'MUNICIPALITY' },
-  { label: '会社・企業', value: 'COMPANY' },
-  { label: '病院・医療機関', value: 'HOSPITAL' },
-  { label: '協会・連盟', value: 'ASSOCIATION' },
-  { label: '学校・教育機関', value: 'SCHOOL' },
-  { label: 'NPO・非営利団体', value: 'NPO' },
-  { label: 'コミュニティ', value: 'COMMUNITY' },
-  { label: 'その他', value: 'OTHER' },
-]
+const organizationTypeValues = [
+  'GOVERNMENT',
+  'MUNICIPALITY',
+  'COMPANY',
+  'HOSPITAL',
+  'ASSOCIATION',
+  'SCHOOL',
+  'NPO',
+  'COMMUNITY',
+  'OTHER',
+] as const
+
+const templateOptions = computed(() => [
+  { label: t('searchBar.all'), value: '' },
+  ...templateValues.map((value) => ({
+    label: t(`scopeLabels.template.${value}`),
+    value,
+  })),
+])
+
+const orgTypeOptions = computed(() => [
+  { label: t('searchBar.all'), value: '' },
+  ...organizationTypeValues.map((value) => ({
+    label: t(`scopeLabels.organizationType.${value}`),
+    value,
+  })),
+])
 
 function onSearch() {
   emit('search', {
@@ -99,32 +114,32 @@ function onSearch() {
 <template>
   <div class="flex flex-wrap items-end gap-3">
     <div class="min-w-48 flex-1">
-      <label class="mb-1 block text-sm font-medium">キーワード</label>
+      <label class="mb-1 block text-sm font-medium">{{ t('searchBar.keyword') }}</label>
       <IconField>
         <InputIcon class="pi pi-search" />
         <InputText
           v-model="keyword"
-          :placeholder="placeholder ?? '名前で検索'"
+          :placeholder="placeholder ?? t('searchBar.defaultPlaceholder')"
           class="w-full"
           @keyup.enter="onSearch"
         />
       </IconField>
     </div>
     <div class="w-44">
-      <label class="mb-1 block text-sm font-medium">都道府県</label>
+      <label class="mb-1 block text-sm font-medium">{{ t('searchBar.prefecture') }}</label>
       <Select
         v-model="selectedPref"
         :options="prefectures"
         option-label="name"
-        placeholder="選択してください"
+        :placeholder="t('searchBar.selectPrefecture')"
         filter
-        filter-placeholder="都道府県を検索"
+        :filter-placeholder="t('searchBar.filterPrefecture')"
         show-clear
         class="w-full"
       />
     </div>
     <div v-if="showTemplateFilter" class="w-40">
-      <label class="mb-1 block text-sm font-medium">ジャンル</label>
+      <label class="mb-1 block text-sm font-medium">{{ t('searchBar.genre') }}</label>
       <Select
         v-model="template"
         :options="templateOptions"
@@ -134,7 +149,7 @@ function onSearch() {
       />
     </div>
     <div v-if="showOrgTypeFilter" class="w-44">
-      <label class="mb-1 block text-sm font-medium">ジャンル</label>
+      <label class="mb-1 block text-sm font-medium">{{ t('searchBar.genre') }}</label>
       <Select
         v-model="orgType"
         :options="orgTypeOptions"
@@ -143,6 +158,6 @@ function onSearch() {
         class="w-full"
       />
     </div>
-    <Button label="検索" icon="pi pi-search" @click="onSearch" />
+    <Button :label="t('button.search')" icon="pi pi-search" @click="onSearch" />
   </div>
 </template>

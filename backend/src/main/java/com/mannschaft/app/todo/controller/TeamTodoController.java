@@ -7,6 +7,7 @@ import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.dto.AddAssigneeRequest;
 import com.mannschaft.app.todo.dto.AssigneeResponse;
 import com.mannschaft.app.todo.dto.BulkStatusChangeRequest;
+import com.mannschaft.app.todo.dto.BulkStatusChangeResponse;
 import com.mannschaft.app.todo.dto.CommentResponse;
 import com.mannschaft.app.todo.dto.CreateCommentRequest;
 import com.mannschaft.app.todo.dto.CreateTodoRequest;
@@ -215,7 +216,7 @@ public class TeamTodoController {
     @PatchMapping("/bulk-status")
     @Operation(summary = "TODO一括ステータス変更")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変更成功")
-    public ResponseEntity<ApiResponse<List<TodoStatusChangeResponse>>> bulkChangeStatus(
+    public ResponseEntity<BulkStatusChangeResponse> bulkChangeStatus(
             @PathVariable String teamId,
             @Valid @RequestBody BulkStatusChangeRequest request) {
         Long internalTeamId = teamService.resolveTeamId(teamId);

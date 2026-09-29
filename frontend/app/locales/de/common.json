@@ -306,6 +306,14 @@
     "COMMON_002": "Sie haben keine Berechtigung fur diese Aktion",
     "COMMON_003": "Von einem anderen Benutzer aktualisiert. Bitte aktualisieren Sie die Seite",
     "COMMON_999": "Ein Systemfehler ist aufgetreten",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "Wählen Sie mindestens ein Empfängerziel aus",
+    "CONFIRMABLE_NOTIFICATION_TARGETS_AND_GROUP_BOTH_SPECIFIED": "Einzelne Ziele und eine gespeicherte Gruppe können nicht gleichzeitig gewählt werden",
+    "CONFIRMABLE_NOTIFICATION_TARGET_OUT_OF_SCOPE": "Die Auswahl enthält eine Organisation oder ein Team außerhalb des Sendebereichs",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENT_GROUP_NOT_FOUND": "Die Empfängergruppe wurde nicht gefunden oder wurde gelöscht",
+    "CONFIRMABLE_NOTIFICATION_RECIPIENTS_EMPTY": "Für die ausgewählten Ziele wurden keine Empfänger gefunden",
+    "CONFIRMABLE_NOTIFICATION_GROUP_NAME_DUPLICATE": "Eine Empfängergruppe mit diesem Namen existiert bereits",
+    "CONFIRMABLE_NOTIFICATION_CREDIT_INSUFFICIENT": "Es sind nicht genügend Benachrichtigungsguthaben verfügbar",
+    "CONFIRMABLE_NOTIFICATION_DEADLINE_IN_PAST": "Legen Sie die Bestätigungsfrist auf einen zukünftigen Zeitpunkt fest",
     "AUTH_001": "E-Mail-Adresse oder Passwort ist falsch",
     "AUTH_002": "Ihre E-Mail-Adresse wurde noch nicht bestätigt",
     "AUTH_003": "Ihr Konto ist gesperrt. Bitte versuchen Sie es in 30 Minuten erneut",
@@ -485,7 +493,30 @@
     }
   },
   "confirmable": {
-    "title": "Bestätigungsbenachrichtigung",
+    "delivery_stopped": "Zustellung gestoppt",
+    "templates": "Vorlagen verwalten",
+    "template_name": "Vorlagenname",
+    "default_recipient_group": "Standard-Empfängergruppe",
+    "deleted_group_fallback": "Wenn die Gruppe gelöscht wird, werden alle Mitglieder im Bereich ausgewählt.",
+    "audience_mode": {
+      "DEFAULT": "Alle Mitglieder im Bereich",
+      "TARGETS": "Organisationen und Teams wählen",
+      "GROUP": "Gespeicherte Gruppe"
+    },
+    "select_group": "Gruppe wählen",
+    "search_targets": "Geladene Organisationen und Teams durchsuchen",
+    "open_children": "Untergruppen anzeigen",
+    "load_more_targets": "Mehr laden",
+    "previous_targets": "Vorherige Ziele",
+    "next_targets": "Nächste Ziele",
+    "no_targets": "Keine Ziele",
+    "selected_targets": "Ausgewählt: {count}",
+    "targets_required": "Empfänger wählen",
+    "preview_loading": "Empfängerzahl wird geprüft",
+    "preview_count": "Geschätzte Empfänger: {count}",
+    "preview_required": "Empfängerzahl prüfen",
+    "delivered_count": "Zugestellt: {count}",
+    "title": "Schnellbestätigung",
     "page": {
       "settings_title": "Einstellungen für Bestätigungsbenachrichtigungen",
       "settings_subtitle": "Verwalten Sie Einstellungen, Versand und Verlauf von Bestätigungsbenachrichtigungen"
@@ -543,7 +574,50 @@
       "ALL_MEMBERS": "Fuer alle Mitglieder"
     },
     "unconfirmed_count": "Nicht bestaetigt: {count}",
-    "unconfirmed_list": "Nicht bestaetigte Empfaenger"
+    "unconfirmed_list": "Nicht bestaetigte Empfaenger",
+    "recipient_groups": "Empfängergruppen",
+    "recipient_groups_help": "Organisationen oder Teams als Empfänger speichern.",
+    "group_name": "Gruppenname",
+    "targets": "Ziele",
+    "target_id": "Ziel-ID",
+    "target_type": { "ORGANIZATION": "Organisation", "TEAM": "Team" },
+    "template": "Vorlage",
+    "audience": "Empfänger",
+    "current_scope": "Diese Organisation oder dieses Team",
+    "current_scope_help": "An aktive Mitglieder des aktuellen Bereichs senden.",
+    "group_audience_help": "An die gespeicherte Empfängergruppe senden.",
+    "message_title": "Titel",
+    "message_body": "Nachricht",
+    "priority_label": "Priorität",
+    "accepted": "Versand angenommen",
+    "accepted_count": "Versand angenommen (geschätzte Empfänger: {count})",
+    "recipient": "Empfänger",
+    "withdrawn": "Ausgetreten",
+    "withdrawn_user": "Ausgetretener Benutzer",
+    "unknown_recipient": "Unbekannter Empfänger",
+    "unconfirmed": "Unbestätigt",
+    "unconfirmed_only": "Nur unbestätigte",
+    "delivery_status": {
+      "QUEUED": "Wartend",
+      "DELIVERING": "Wird zugestellt",
+      "DELIVERED": "Zugestellt",
+      "PARTIALLY_FAILED": "Teilweise fehlgeschlagen"
+    },
+    "help": {
+      "title": "Bestätigungsbenachrichtigungen",
+      "body": "Wählen Sie eine Empfängergruppe oder den aktuellen Bereich. Die Zustellung läuft asynchron; verfolgen Sie sie im Verlauf."
+    },
+    "guide": {
+      "quickConfirm": {
+        "description": "Für kurze Nachrichten und Empfangsbestätigungen. Für Dokumente mit Stempel oder Umlaufreihenfolge den Umlauf verwenden.",
+        "link": "Umlauf öffnen"
+      },
+      "circulation": {
+        "title": "Umlauf",
+        "description": "Für Dokumente mit Stempel oder Umlaufreihenfolge. Für eine kurze Nachricht mit Bestätigung die Schnellbestätigung verwenden.",
+        "link": "Schnellbestätigung öffnen"
+      }
+    }
   },
   "timeline": {
     "videoProcessing": "Video wird verarbeitet...",
@@ -720,7 +794,10 @@
       "deletedToast": "TODO gelöscht",
       "restoredToast": "TODO wiederhergestellt",
       "deleteFailed": "Löschen fehlgeschlagen",
-      "restoreFailed": "Rückgängig nicht möglich"
+      "restoreFailed": "Rückgängig nicht möglich",
+      "bulkStatusSuccess": "Status von {count} Aufgaben geändert",
+      "bulkStatusPartial": "{changedCount} geändert; {skippedCount} gesperrte Aufgaben übersprungen. Übersprungene Aufgaben bleiben ausgewählt",
+      "bulkStatusAllLocked": "Keine Änderungen: Alle {count} Aufgaben sind gesperrt. Sie bleiben ausgewählt"
     },
     "field": {
       "status": "Status",
@@ -1694,38 +1771,38 @@
     "supporterSuccess": "Als Unterstützer registriert",
     "supporterError": "Folgen fehlgeschlagen",
     "guide": {
-      "title": "チーム検索の使い方",
-      "description": "条件を指定して公開されているチームを探し、詳しい情報の確認やサポーター登録を行えます。",
+      "title": "So funktioniert die Team-Suche",
+      "description": "Legen Sie Suchkriterien fest, um öffentliche Teams zu finden, Details anzusehen und sich als Unterstützer zu registrieren.",
       "searchConditions": {
-        "title": "検索条件を指定する",
-        "body": "キーワード、都道府県、チームの種類を組み合わせて、探したいチームを絞り込めます。",
+        "title": "Suchkriterien festlegen",
+        "body": "Kombinieren Sie Suchbegriff, Präfektur und Teamkategorie, um die Ergebnisse einzugrenzen.",
         "steps": {
-          "step1": "検索欄と必要な絞り込み条件を入力・選択します。",
-          "step2": "検索を実行すると、条件に合うチームが一覧に表示されます。"
+          "step1": "Geben Sie einen Suchbegriff ein und wählen Sie die benötigten Filter.",
+          "step2": "Starten Sie die Suche, um passende Teams anzuzeigen."
         }
       },
       "results": {
-        "title": "検索結果を確認する",
-        "body": "各カードにはチーム名、チームの種類、活動地域、メンバー数が表示されます。",
+        "title": "Suchergebnisse prüfen",
+        "body": "Jede Karte zeigt Teamname, Kategorie, Aktivitätsgebiet und Mitgliederzahl.",
         "steps": {
-          "step1": "一覧から気になるチームを選びます。",
-          "step2": "チームの詳細ページへ移動して、さらに情報を確認します。"
+          "step1": "Wählen Sie ein interessantes Team aus der Liste.",
+          "step2": "Öffnen Sie die Detailseite, um weitere Informationen zu sehen."
         }
       },
       "supporter": {
-        "title": "サポーターとして登録する",
-        "body": "サポーター登録を受け付けている、所属していないチームには登録ボタンが表示されます。",
+        "title": "Als Unterstützer registrieren",
+        "body": "Bei Teams, denen Sie nicht angehören und die Unterstützer akzeptieren, wird eine Schaltfläche zur Registrierung angezeigt.",
         "steps": {
-          "step1": "対象チームのカードで「サポーターになる」を選びます。",
-          "step2": "登録が完了すると、カードに登録済みの表示が出ます。"
+          "step1": "Wählen Sie auf der Teamkarte „Unterstützer werden“.",
+          "step2": "Nach der Registrierung wird der Status auf der Karte angezeigt."
         }
       },
       "createAndMove": {
-        "title": "チームを作成して詳細へ移動する",
-        "body": "右上の作成ボタンから新しいチームを作成できます。作成後はそのチームの詳細ページへ移動します。",
+        "title": "Team erstellen und Details öffnen",
+        "body": "Über die Schaltfläche oben rechts können Sie ein Team erstellen. Danach wird dessen Detailseite geöffnet.",
         "steps": {
-          "step1": "「チームを作成」を選んで必要な情報を入力します。",
-          "step2": "作成が完了すると、新しいチームの詳細ページが開きます。"
+          "step1": "Wählen Sie „Team erstellen“ und geben Sie die erforderlichen Informationen ein.",
+          "step2": "Nach Abschluss öffnet sich die Detailseite des neuen Teams."
         }
       }
     },
@@ -2613,5 +2690,48 @@
   "loadErrorState": {
     "message": "Daten konnten nicht geladen werden",
     "retry": "Wiederholen"
+  },
+  "searchBar": {
+    "keyword": "Suchbegriff",
+    "defaultPlaceholder": "Nach Namen suchen",
+    "prefecture": "Präfektur",
+    "selectPrefecture": "Bitte auswählen",
+    "filterPrefecture": "Präfekturen durchsuchen",
+    "genre": "Kategorie",
+    "all": "Alle"
+  },
+  "scopeLabels": {
+    "template": {
+      "CLUB": "Club oder Verein",
+      "CLINIC": "Klinik",
+      "CLASS": "Kurs",
+      "COMMUNITY": "Gemeinschaft",
+      "COMPANY": "Unternehmen",
+      "FAMILY": "Familie",
+      "RESTAURANT": "Restaurant",
+      "BEAUTY": "Schönheitssalon",
+      "STORE": "Geschäft oder Einzelhandel",
+      "VOLUNTEER": "Ehrenamt oder NPO",
+      "NEIGHBORHOOD": "Nachbarschaftsverein",
+      "CONDO": "Wohnungseigentümergemeinschaft",
+      "OTHER": "Sonstiges"
+    },
+    "organizationType": {
+      "GOVERNMENT": "Behörde",
+      "MUNICIPALITY": "Kommune",
+      "COMPANY": "Unternehmen",
+      "HOSPITAL": "Krankenhaus oder medizinische Einrichtung",
+      "ASSOCIATION": "Verband oder Vereinigung",
+      "SCHOOL": "Schule oder Bildungseinrichtung",
+      "NPO": "NPO oder gemeinnützige Organisation",
+      "COMMUNITY": "Gemeinschaft",
+      "OTHER": "Sonstiges"
+    },
+    "visibility": {
+      "PUBLIC": "Öffentlich",
+      "GUESTS_AND_ABOVE": "Gäste und höher",
+      "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
+      "MEMBERS_AND_ABOVE": "Mitglieder und höher"
+    }
   }
 }

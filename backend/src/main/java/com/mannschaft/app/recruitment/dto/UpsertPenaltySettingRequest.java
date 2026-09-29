@@ -33,5 +33,5 @@ public class UpsertPenaltySettingRequest {
 
     @Min(0)
     @Max(30)
-    private int disputeAllowedDays = 14;
+    private int disputeAllowedDays = 30;
 }

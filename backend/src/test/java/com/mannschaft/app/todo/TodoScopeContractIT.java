@@ -38,6 +38,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * 認可根治戦役 Wave5 — todo 硬化 PR-A（{@link com.mannschaft.app.todo.security.TodoAccessGuard}）
@@ -634,7 +635,9 @@ class TodoScopeContractIT extends AbstractMySqlIntegrationTest {
                             .content(json(Map.of(
                                     "todoIds", List.of(todoTeamAId, todoTeamBId),
                                     "status", "IN_PROGRESS"))))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[0].id").value(todoTeamAId.intValue()))
+                    .andExpect(jsonPath("$.skippedLockedIds.length()").value(0));
 
             em.flush();
             em.clear();
@@ -644,6 +647,48 @@ class TodoScopeContractIT extends AbstractMySqlIntegrationTest {
             // 他 scope（teamB）の todo は scope 絞りで対象外 → 変更されない（OPEN のまま）。
             assertThat(todoRepository.findById(todoTeamBId).orElseThrow().getStatus())
                     .isEqualTo(TodoStatus.OPEN);
+        }
+
+        @Test
+        @DisplayName("ロック済みだけ返し、越境と論理削除 ID は応答に漏らさない")
+        void ロック済みと越境と論理削除は区別される() throws Exception {
+            TodoEntity locked = todoRepository.findById(todoTeamAId).orElseThrow();
+            locked.lockByMilestone();
+            todoRepository.saveAndFlush(locked);
+            setAuth(ownerTeamAId);
+
+            mockMvc.perform(patch("/api/v1/teams/{teamId}/todos/bulk-status", teamASlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("todoIds", List.of(todoTeamAId, todoTeamBId,
+                                            deletedTodoTeamAId), "status", "IN_PROGRESS"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(0))
+                    .andExpect(jsonPath("$.skippedLockedIds.length()").value(1))
+                    .andExpect(jsonPath("$.skippedLockedIds[0]").value(todoTeamAId.intValue()));
+
+            em.flush();
+            em.clear();
+            assertThat(todoRepository.findById(todoTeamAId).orElseThrow().getStatus())
+                    .isEqualTo(TodoStatus.OPEN);
+            assertThat(todoRepository.findById(todoTeamBId).orElseThrow().getStatus())
+                    .isEqualTo(TodoStatus.OPEN);
+        }
+
+        @Test
+        @DisplayName("組織一括変更もロック済み ID を返す")
+        void 組織一括変更も同じ応答形式() throws Exception {
+            TodoEntity locked = todoRepository.findById(todoOrgAId).orElseThrow();
+            locked.lockByMilestone();
+            todoRepository.saveAndFlush(locked);
+            setAuth(ownerOrgAId);
+
+            mockMvc.perform(patch("/api/v1/organizations/{orgId}/todos/bulk-status", orgAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("todoIds", List.of(todoOrgAId),
+                                    "status", "IN_PROGRESS"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(0))
+                    .andExpect(jsonPath("$.skippedLockedIds[0]").value(todoOrgAId.intValue()));
         }
     }
 

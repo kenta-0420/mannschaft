@@ -8,6 +8,7 @@ import com.mannschaft.app.todo.TodoErrorCode;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.dto.BulkStatusChangeRequest;
+import com.mannschaft.app.todo.dto.BulkStatusChangeResponse;
 import com.mannschaft.app.todo.dto.ProjectResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
@@ -134,10 +135,10 @@ public class TodoStatusService {
      * @param scopeId   スコープID
      * @param request   一括ステータス変更リクエスト
      * @param userId    操作ユーザーID
-     * @return 変更結果リスト
+     * @return 変更結果とロックによりスキップした ID
      */
     @Transactional
-    public ApiResponse<List<TodoStatusChangeResponse>> bulkChangeStatus(
+    public BulkStatusChangeResponse bulkChangeStatus(
             TodoScopeType scopeType, Long scopeId, BulkStatusChangeRequest request, Long userId) {
         if (request.getTodoIds().size() > MAX_BULK_SIZE) {
             throw new BusinessException(TodoErrorCode.BULK_SIZE_EXCEEDED);
@@ -153,10 +154,6 @@ public class TodoStatusService {
                 .toList();
 
         // F02.7: ロック中 TODO をスキップする。
-        // TODO(F02.7 Phase 15-3 残件): 現在は skippedLockedIds をログ出力のみで、APIレスポンスには含めていない。
-        //   レスポンス DTO（List<TodoStatusChangeResponse>）を BulkStatusChangeResponse（skippedLockedIds を含む）に
-        //   差し替えるには、既存の呼び出し側（TeamTodoController / PersonalTodoController）とシグネチャ変更を要する。
-        //   破壊的変更を避けるため Phase 15-4 以降で対応予定。
         List<Long> skippedLockedIds = new ArrayList<>();
         List<TodoEntity> processable = new ArrayList<>();
         for (TodoEntity t : todos) {
@@ -203,6 +200,6 @@ public class TodoStatusService {
                     completedByInfo, projectProgress);
         }).toList();
 
-        return ApiResponse.of(responses);
+        return new BulkStatusChangeResponse(responses, skippedLockedIds);
     }
 }
