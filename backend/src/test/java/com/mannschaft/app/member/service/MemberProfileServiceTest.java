@@ -39,6 +39,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -274,7 +275,6 @@ class MemberProfileServiceTest {
     // PR #3387 試練（判定分離）: 軍議書 gungi-3387.md の受け入れ条件に対応する。
     // pageService は LENIENT モックのため判定の中身では落ちない。どの判定を呼ぶか（配線）を
     // verify で固定し、判定の中身は TeamPageServiceIsPageAdminTest と結合テストで担保する。
-    // 未実装の判定メソッドは PageAuthzProbe（リフレクション）経由で扱う。
     // ═════════════════════════════════════════════════════════════════════
 
     private static final Long ACTOR = 999L;
@@ -307,7 +307,7 @@ class MemberProfileServiceTest {
 
             service.getProfile(ACTOR, 1L);
 
-            PageAuthzProbe.verifyCalled(pageService, times(1), PageAuthzProbe.VIEWABLE, ACTOR, page);
+            verify(pageService, times(1)).checkPageViewableOrNotFound(ACTOR, page);
         }
 
         @Test
@@ -332,8 +332,8 @@ class MemberProfileServiceTest {
                     .teamPageId(10L).displayName("表示太郎").isVisible(true).build();
             given(profileRepository.findById(1L)).willReturn(Optional.of(entity));
             given(pageService.findPageOrThrow(10L)).willReturn(page);
-            PageAuthzProbe.stubThrow(pageService, new BusinessException(com.mannschaft.app.member.MemberErrorCode.PAGE_NOT_FOUND),
-                    PageAuthzProbe.VIEWABLE, ACTOR, page);
+            doThrow(new BusinessException(com.mannschaft.app.member.MemberErrorCode.PAGE_NOT_FOUND))
+                    .when(pageService).checkPageViewableOrNotFound(ACTOR, page);
 
             assertThatThrownBy(() -> service.getProfile(ACTOR, 1L))
                     .satisfies(ex -> assertCode(ex, "MEMBER_001"));
@@ -388,7 +388,7 @@ class MemberProfileServiceTest {
 
             service.listProfiles(ACTOR, 10L, pageable);
 
-            PageAuthzProbe.verifyCalled(pageService, times(1), PageAuthzProbe.VIEWABLE, ACTOR, page);
+            verify(pageService, times(1)).checkPageViewableOrNotFound(ACTOR, page);
         }
 
         @Test
@@ -479,7 +479,7 @@ class MemberProfileServiceTest {
 
             service.lookupMembers(ACTOR, 10L, "選手", 10);
 
-            PageAuthzProbe.verifyCalled(pageService, times(1), PageAuthzProbe.MEMBER_ROLE, ACTOR, page);
+            verify(pageService, times(1)).checkPageMemberRoleOrNotFound(ACTOR, page);
         }
 
         @Test
@@ -492,7 +492,7 @@ class MemberProfileServiceTest {
 
             service.lookupMembers(ACTOR, 10L, "選手", 10);
 
-            PageAuthzProbe.verifyCalled(pageService, never(), PageAuthzProbe.VIEWABLE, ACTOR, page);
+            verify(pageService, never()).checkPageViewableOrNotFound(ACTOR, page);
         }
 
         @Test
@@ -513,8 +513,8 @@ class MemberProfileServiceTest {
         void AC12_O1_判定失敗なら検索しない() {
             TeamPageEntity page = orgPage(500L);
             given(pageService.findPageOrThrow(10L)).willReturn(page);
-            PageAuthzProbe.stubThrow(pageService, new BusinessException(com.mannschaft.app.member.MemberErrorCode.PAGE_NOT_FOUND),
-                    PageAuthzProbe.MEMBER_ROLE, ACTOR, page);
+            doThrow(new BusinessException(com.mannschaft.app.member.MemberErrorCode.PAGE_NOT_FOUND))
+                    .when(pageService).checkPageMemberRoleOrNotFound(ACTOR, page);
 
             assertThatThrownBy(() -> service.lookupMembers(ACTOR, 10L, "選手", 10))
                     .satisfies(ex -> assertCode(ex, "MEMBER_001"));
@@ -578,7 +578,7 @@ class MemberProfileServiceTest {
 
             service.copyMembers(ACTOR, 1L, new CopyMembersRequest(2L));
 
-            PageAuthzProbe.verifyCalled(pageService, times(1), PageAuthzProbe.MEMBER_ROLE, ACTOR, source);
+            verify(pageService, times(1)).checkPageMemberRoleOrNotFound(ACTOR, source);
             verify(pageService).checkPageAdminOrNotFound(ACTOR, target);
         }
 
@@ -592,7 +592,7 @@ class MemberProfileServiceTest {
 
             service.copyMembers(ACTOR, 1L, new CopyMembersRequest(2L));
 
-            PageAuthzProbe.verifyCalled(pageService, never(), PageAuthzProbe.VIEWABLE, ACTOR, source);
+            verify(pageService, never()).checkPageViewableOrNotFound(ACTOR, source);
             verify(pageService, never()).checkPageMembershipOrNotFound(ACTOR, source);
         }
 
@@ -631,8 +631,8 @@ class MemberProfileServiceTest {
             TeamPageEntity target = orgPage(500L);
             TeamPageEntity source = orgPage(500L);
             stubPages(target, source);
-            PageAuthzProbe.stubThrow(pageService, new BusinessException(com.mannschaft.app.member.MemberErrorCode.PAGE_NOT_FOUND),
-                    PageAuthzProbe.MEMBER_ROLE, ACTOR, source);
+            doThrow(new BusinessException(com.mannschaft.app.member.MemberErrorCode.PAGE_NOT_FOUND))
+                    .when(pageService).checkPageMemberRoleOrNotFound(ACTOR, source);
 
             assertThatThrownBy(() -> service.copyMembers(ACTOR, 1L, new CopyMembersRequest(2L)))
                     .satisfies(ex -> assertCode(ex, "MEMBER_001"));

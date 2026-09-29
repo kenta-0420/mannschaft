@@ -50,7 +50,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * このメソッドへアクセスできず、これまで直接のテストが存在しなかった）。
  *
  * <p>検分指摘: {@code isPageAdmin} は {@code isAdminOrAbove} のみを見ており SYSTEM_ADMIN を含まない。
- * 一方 {@link TeamPageService#checkPageMembershipOrNotFound} は組織スコープで SYSTEM_ADMIN を
+ * 一方 {@link TeamPageService#checkPageViewableOrNotFound} は組織スコープで SYSTEM_ADMIN を
  * 無条件バイパスするため、所属のない SYSTEM_ADMIN が「閲覧はできるが非表示行が欠ける／
  * 非表示プロフィールの詳細が 404 になる」という矛盾を起こす。</p>
  */
@@ -72,7 +72,7 @@ class TeamPageServiceIsPageAdminTest {
 
     @Test
     @DisplayName("所属のない SYSTEM_ADMIN は isPageAdmin=true になる"
-            + "（checkPageMembershipOrNotFound の SYSTEM_ADMIN バイパスと矛盾させない）")
+            + "（checkPageViewableOrNotFound の SYSTEM_ADMIN バイパスと矛盾させない）")
     void 所属のないSYSTEM_ADMINはページ管理者扱いになる() {
         TeamPageEntity page = TeamPageEntity.builder()
                 .organizationId(ORG_ID).title("テスト").slug("test").pageType(PageType.MAIN).build();
@@ -113,7 +113,6 @@ class TeamPageServiceIsPageAdminTest {
     // ═════════════════════════════════════════════════════════════════════
     // PR #3387 試練（判定分離）: 以下は軍議書 gungi-3387.md の受け入れ条件に対応する。
     // 判定メソッドは package-private のため、このクラス（同一パッケージ）で直接検証する。
-    // 未実装メソッドは PageAuthzProbe（リフレクション）経由で呼ぶ。
     // ═════════════════════════════════════════════════════════════════════
 
     private static final Long TEAM_ID = 70L;
@@ -199,7 +198,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
 
-            assertThatCode(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatCode(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .doesNotThrowAnyException();
             verify(memberSubtabVisibilityService).assertViewable(
                     ACTOR_ID, ScopeType.ORGANIZATION, ORG_ID, MemberSubtabKey.MEMBER_PROFILES);
@@ -212,7 +211,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
 
-            assertThatThrownBy(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatThrownBy(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .satisfies(TeamPageServiceIsPageAdminTest::assertMember001);
         }
 
@@ -225,7 +224,7 @@ class TeamPageServiceIsPageAdminTest {
                     .given(memberSubtabVisibilityService)
                     .assertViewable(ACTOR_ID, ScopeType.ORGANIZATION, ORG_ID, MemberSubtabKey.MEMBER_PROFILES);
 
-            assertThatThrownBy(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatThrownBy(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .satisfies(TeamPageServiceIsPageAdminTest::assertMember001);
         }
 
@@ -237,7 +236,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isMember(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
             given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
 
-            assertThatThrownBy(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatThrownBy(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .satisfies(TeamPageServiceIsPageAdminTest::assertMember001);
         }
 
@@ -248,7 +247,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(true);
 
-            assertThatCode(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatCode(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .doesNotThrowAnyException();
         }
 
@@ -260,7 +259,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isMember(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
             given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(true);
 
-            assertThatThrownBy(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatThrownBy(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .satisfies(TeamPageServiceIsPageAdminTest::assertMember001);
         }
 
@@ -270,7 +269,7 @@ class TeamPageServiceIsPageAdminTest {
             TeamPageEntity page = orgPage(PageStatus.DRAFT, PageVisibility.MEMBERS_ONLY);
             given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
 
-            assertThatCode(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatCode(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .doesNotThrowAnyException();
             verifyNoInteractions(memberSubtabVisibilityService);
         }
@@ -282,7 +281,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isAdminOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(true);
 
-            assertThatCode(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatCode(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .doesNotThrowAnyException();
         }
 
@@ -293,7 +292,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isMember(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
 
-            assertThatCode(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatCode(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .doesNotThrowAnyException();
             verifyNoInteractions(memberSubtabVisibilityService);
         }
@@ -305,7 +304,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isMember(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(false);
 
-            assertThatThrownBy(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatThrownBy(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .satisfies(TeamPageServiceIsPageAdminTest::assertMember001);
             verifyNoInteractions(memberSubtabVisibilityService);
         }
@@ -318,7 +317,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isMember(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(false);
 
-            assertThatThrownBy(() -> PageAuthzProbe.call(service, PageAuthzProbe.VIEWABLE, ACTOR_ID, page))
+            assertThatThrownBy(() -> service.checkPageViewableOrNotFound(ACTOR_ID, page))
                     .satisfies(TeamPageServiceIsPageAdminTest::assertMember001);
         }
     }
@@ -333,7 +332,7 @@ class TeamPageServiceIsPageAdminTest {
             TeamPageEntity page = orgPage(PageStatus.PUBLISHED, PageVisibility.PUBLIC);
             given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(true);
 
-            assertThatCode(() -> PageAuthzProbe.call(service, PageAuthzProbe.MEMBER_ROLE, ACTOR_ID, page))
+            assertThatCode(() -> service.checkPageMemberRoleOrNotFound(ACTOR_ID, page))
                     .doesNotThrowAnyException();
             verifyNoInteractions(memberSubtabVisibilityService);
         }
@@ -345,7 +344,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isMember(ACTOR_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
             given(accessControlService.hasRoleOrAbove(ACTOR_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
 
-            assertThatThrownBy(() -> PageAuthzProbe.call(service, PageAuthzProbe.MEMBER_ROLE, ACTOR_ID, page))
+            assertThatThrownBy(() -> service.checkPageMemberRoleOrNotFound(ACTOR_ID, page))
                     .satisfies(TeamPageServiceIsPageAdminTest::assertMember001);
             verifyNoInteractions(memberSubtabVisibilityService);
         }
@@ -357,7 +356,7 @@ class TeamPageServiceIsPageAdminTest {
             given(accessControlService.isMember(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.hasRoleOrAbove(ACTOR_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(false);
 
-            assertThatThrownBy(() -> PageAuthzProbe.call(service, PageAuthzProbe.MEMBER_ROLE, ACTOR_ID, page))
+            assertThatThrownBy(() -> service.checkPageMemberRoleOrNotFound(ACTOR_ID, page))
                     .satisfies(TeamPageServiceIsPageAdminTest::assertMember001);
         }
     }
@@ -368,9 +367,10 @@ class TeamPageServiceIsPageAdminTest {
 
         @Test
         @DisplayName("AC-22: 3つの判定メソッドはすべて package-private（D-1 番人の対象外に置く）")
-        void AC22_判定メソッドはpackage_private() {
-            for (String name : List.of(PageAuthzProbe.MEMBERSHIP, PageAuthzProbe.VIEWABLE, PageAuthzProbe.MEMBER_ROLE)) {
-                Method m = PageAuthzProbe.find(name);
+        void AC22_判定メソッドはpackage_private() throws NoSuchMethodException {
+            for (String name : List.of("checkPageMembershipOrNotFound", "checkPageViewableOrNotFound",
+                    "checkPageMemberRoleOrNotFound")) {
+                Method m = TeamPageService.class.getDeclaredMethod(name, Long.class, TeamPageEntity.class);
                 int mod = m.getModifiers();
                 assertThat(Modifier.isPublic(mod) || Modifier.isProtected(mod) || Modifier.isPrivate(mod))
                         .as(name + " は package-private であること")
@@ -396,7 +396,7 @@ class TeamPageServiceIsPageAdminTest {
 
             spied.getPage(ACTOR_ID, 1L);
 
-            PageAuthzProbe.verifyCalled(spied, times(1), PageAuthzProbe.VIEWABLE, ACTOR_ID, page);
+            verify(spied, times(1)).checkPageViewableOrNotFound(ACTOR_ID, page);
             verify(spied, never()).checkPageMembershipOrNotFound(ACTOR_ID, page);
         }
     }

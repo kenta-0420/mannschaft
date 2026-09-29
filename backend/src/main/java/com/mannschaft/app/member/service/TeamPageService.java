@@ -118,7 +118,7 @@ public class TeamPageService {
      */
     public TeamPageResponse getPage(Long actorUserId, Long pageId) {
         TeamPageEntity entity = findPageOrThrow(pageId);
-        checkPageMembershipOrNotFound(actorUserId, entity);
+        checkPageViewableOrNotFound(actorUserId, entity);
         List<TeamPageSectionEntity> sections = sectionRepository.findByTeamPageIdOrderBySortOrder(pageId);
         List<MemberProfileEntity> members = profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(pageId);
 
@@ -285,14 +285,37 @@ public class TeamPageService {
     }
 
     /**
-     * ページ entity 由来スコープでメンバー（または ADMIN 以上）であることを検証する（閲覧系）。
+     * ページ entity 由来スコープでメンバー（または ADMIN 以上）であることを検証する（base 同一の会員確認）。
+     *
+     * <p><b>操作系・業務用の読み出し専用。公開閲覧の緩和（「紹介」サブタブの min_role・SYSTEM_ADMIN
+     * バイパス等）を入れてはならない。</b>閲覧経路（getPage・listSections・listProfiles・getProfile）は
+     * {@link #checkPageViewableOrNotFound}、MEMBER 以上を要する操作経路（lookupMembers・copyMembers の
+     * コピー元）は {@link #checkPageMemberRoleOrNotFound} を使う（PR #3387 判定分離）。</p>
      *
      * <p>URL に teamId/organizationId を含まない bare id エンドポイント向け。checkMembership の
      * ような 403（COMMON_002）ではなく、非所属者には 404（PAGE_NOT_FOUND）で存在秘匿する
-     * （Wave3-B2 member BOLA対策。workflow ドメイン {@code WorkflowApprovalService#decide} 踏襲）。
-     * {@link TeamPageSectionService}/{@link MemberProfileService} からも再利用する（同一パッケージ）。</p>
+     * （Wave3-B2 member BOLA対策。workflow ドメイン {@code WorkflowApprovalService#decide} 踏襲）。</p>
      */
     void checkPageMembershipOrNotFound(Long actorUserId, TeamPageEntity page) {
+        Long scopeId = resolveScopeId(page);
+        String scopeType = resolveScopeType(page);
+        if (!accessControlService.isMember(actorUserId, scopeId, scopeType)
+                && !accessControlService.isAdminOrAbove(actorUserId, scopeId, scopeType)) {
+            throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+        }
+    }
+
+    /**
+     * 閲覧経路（getPage・listSections・listProfiles・getProfile）の判定。見られない場合は 404
+     * （PAGE_NOT_FOUND）で存在秘匿する。
+     *
+     * <p>CMP-260919-1140 Phase 1: 組織スコープは「紹介」サブタブの外側の門（min_role）と、ページ個別の
+     * 内側の扉（DRAFT 秘匿・MEMBERS_ONLY）の AND で判定する。サブタブの公開設定による緩和は閲覧だけに
+     * 効かせるため、操作系の判定（{@link #checkPageMembershipOrNotFound}・
+     * {@link #checkPageMemberRoleOrNotFound}）とは分けている（PR #3387 判定分離）。
+     * チームスコープは Phase 1 対象外のため従来どおりの会員確認を維持する。</p>
+     */
+    void checkPageViewableOrNotFound(Long actorUserId, TeamPageEntity page) {
         Long scopeId = resolveScopeId(page);
         String scopeType = resolveScopeType(page);
 
@@ -347,6 +370,21 @@ public class TeamPageService {
     }
 
     /**
+     * 操作経路（lookupMembers・copyMembers のコピー元）の判定。スコープで MEMBER 以上でなければ 404
+     * （PAGE_NOT_FOUND）で存在秘匿する。
+     *
+     * <p>サブタブの公開設定による緩和は効かせない（SUPPORTER・非会員は公開ページでも拒否する）。
+     * 会員の番号・氏名を引き当てる検索や、他ページへの複製は業務操作であり、閲覧の緩和と
+     * 同じ門で通してはならない（PR #3387 判定分離）。</p>
+     */
+    void checkPageMemberRoleOrNotFound(Long actorUserId, TeamPageEntity page) {
+        if (!accessControlService.hasRoleOrAbove(
+                actorUserId, resolveScopeId(page), resolveScopeType(page), "MEMBER")) {
+            throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+        }
+    }
+
+    /**
      * ページ entity 由来スコープでアクターが ADMIN/DEPUTY_ADMIN 以上かどうかを判定する（真偽値のみ・例外なし）。
      *
      * <p>検分修正（3巡目・P1）: {@link MemberProfileService#listProfiles}/{@code getProfile} から、
@@ -355,10 +393,10 @@ public class TeamPageService {
      * 非表示行を除外する。</p>
      *
      * <p>検分修正（4巡目・P2）: {@code isAdminOrAbove} は SYSTEM_ADMIN を含まない（ADMIN_ROLES =
-     * {@code {"ADMIN","DEPUTY_ADMIN"}}）。{@link #checkPageMembershipOrNotFound} は組織スコープで
+     * {@code {"ADMIN","DEPUTY_ADMIN"}}）。{@link #checkPageViewableOrNotFound} は組織スコープで
      * SYSTEM_ADMIN を無条件バイパスするのに、本メソッドがバイパスしないと、所属のない SYSTEM_ADMIN は
      * 一覧で非表示行が欠け、非表示プロフィールの詳細取得が 404 になる（前段の到達判定と矛盾する）。
-     * 同一 PR で新設した SYSTEM_ADMIN バイパス（{@link #listPages}・{@link #checkPageMembershipOrNotFound}）
+     * 同一 PR で新設した SYSTEM_ADMIN バイパス（{@link #listPages}・{@link #checkPageViewableOrNotFound}）
      * と扱いを揃える。</p>
      */
     boolean isPageAdmin(Long actorUserId, TeamPageEntity page) {

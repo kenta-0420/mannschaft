@@ -37,7 +37,7 @@ public class TeamPageSectionService {
     public List<SectionResponse> listSections(Long actorUserId, Long pageId) {
         // ページ存在確認 + entity 由来スコープでメンバー検証（Wave3-B2 member 認可根治）
         TeamPageEntity page = pageService.findPageOrThrow(pageId);
-        pageService.checkPageMembershipOrNotFound(actorUserId, page);
+        pageService.checkPageViewableOrNotFound(actorUserId, page);
         List<TeamPageSectionEntity> entities = sectionRepository.findByTeamPageIdOrderBySortOrder(pageId);
         return memberMapper.toSectionResponseList(entities);
     }

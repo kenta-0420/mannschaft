@@ -90,7 +90,7 @@ class TeamPageSectionServiceTest {
 
             service.listSections(999L, 10L);
 
-            PageAuthzProbe.verifyCalled(pageService, times(1), PageAuthzProbe.VIEWABLE, 999L, page);
+            verify(pageService, times(1)).checkPageViewableOrNotFound(999L, page);
         }
 
         @Test
@@ -103,7 +103,7 @@ class TeamPageSectionServiceTest {
 
             service.listSections(999L, 10L);
 
-            PageAuthzProbe.verifyCalled(pageService, never(), PageAuthzProbe.MEMBERSHIP, 999L, page);
+            verify(pageService, never()).checkPageMembershipOrNotFound(999L, page);
         }
 
         @Test
