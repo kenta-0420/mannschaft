@@ -724,6 +724,13 @@ class ArchUnitFreezeStoreIntegrityTest {
     private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1407;
 
     /**
+     * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
+     * CMP-260820-1016 の未絞り込み全量解析に先立ち、同一の本番クラス集合を読むD-3T単体で
+     * 初回生成したストア（{@code 296295dd-06cf-4f7b-bf82-315ba12ff501}）を実測。
+     */
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7652;
+
+    /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
      * 更新手順は {@link #EXPECTED_LINES_AUTHZ_WAVE4} と同様（対象ファイル:
      * {@code 2c0ba995-682e-4f80-a5a5-f68c835b720d}）。
@@ -817,6 +824,10 @@ class ArchUnitFreezeStoreIntegrityTest {
             "transactional should not span other-domain repositories (D-3)",
             "f14374b1-655e-4df2-8e82-2d79c8df9174",
             EXPECTED_LINES_CROSS_DOMAIN_TX_D3),
+        new FrozenStoreExpectation(
+            "transactional entry should not transitively reach other-domain repositories (D-3T)",
+            "296295dd-06cf-4f7b-bf82-315ba12ff501",
+            EXPECTED_LINES_CROSS_DOMAIN_TX_D3T),
         new FrozenStoreExpectation(
             "entities should extend UuidV7Entity (D-2b)",
             "2c0ba995-682e-4f80-a5a5-f68c835b720d",
