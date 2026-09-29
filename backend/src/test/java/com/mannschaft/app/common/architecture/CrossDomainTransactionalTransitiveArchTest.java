@@ -83,7 +83,7 @@ class CrossDomainTransactionalTransitiveArchTest {
 
     private static List<TransactionalEntry> transactionalEntries(JavaClass clazz) {
         boolean classTransactional = clazz.isAnnotatedWith(Transactional.class);
-        return clazz.getMethods().stream()
+        return clazz.getAllMethods().stream()
             .filter(method -> method.getOwner().getPackageName()
                 .startsWith(DomainPackages.ROOT_PACKAGE + "."))
             .filter(method -> classTransactional
