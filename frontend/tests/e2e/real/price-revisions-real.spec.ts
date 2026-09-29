@@ -217,9 +217,11 @@ test('PR-01 導線: システム管理画面のメニューから価格改定一
     const onBilling = await page.locator('a[href*="/system-admin/price-revisions"]').count()
     await note(testInfo, 'price-revisions への a[href] の数', { '/system-admin': onTop, '/system-admin/billing': onBilling })
 
-    expect(onTop + onBilling, '/system-admin または /system-admin/billing に価格改定一覧へのリンクがある').toBeGreaterThan(0)
+    expect(onTop, '/system-admin の管理メニューに価格改定一覧へのリンクがある').toBeGreaterThan(0)
+    expect(onBilling, '/system-admin/billing（課金マスタ管理）にも価格改定一覧へのリンクがある').toBeGreaterThan(0)
 
-    // リンクを辿って一覧 → 税コードマスタ（一覧画面のボタン）まで到達する
+    // トップの管理メニューのリンクを辿って一覧 → 税コードマスタ（一覧画面のボタン）まで到達する
+    await gotoAndSettle(page, '/system-admin')
     const link = page.locator('a[href*="/system-admin/price-revisions"]').first()
     await link.click()
     await page.waitForURL(/\/system-admin\/price-revisions$/)
@@ -247,8 +249,7 @@ test('PR-02a 税コード: 画面から税コードを登録できる', async ({
     await dialog.getByLabel('new-tax-code-code').fill(code)
     await dialog.getByLabel('new-tax-code-display-name').fill('E2E 実機 標準10%')
     await dialog.locator('input[aria-label="new-tax-code-valid-from"]').fill(jstLocalAfterMinutes(-60 * 24))
-    const stripeInput = dialog.locator('input[aria-label*="stripe" i], input[placeholder*="txcd" i]')
-    if (await stripeInput.count()) await stripeInput.first().fill('txcd_10000000')
+    await dialog.getByLabel('new-tax-code-stripe-tax-code').fill('txcd_10000000')
 
     const [res] = await Promise.all([
       page.waitForResponse((r) => r.url() === TAX_API && r.request().method() === 'POST'),
@@ -258,7 +259,11 @@ test('PR-02a 税コード: 画面から税コードを登録できる', async ({
     await note(testInfo, 'POST tax-codes', { status: res.status(), body, requestBody: res.request().postData() })
     await shot(page, testInfo, 'tax-code-after-submit')
     expect(res.status(), '税コード登録 API は 201/200').toBeLessThan(300)
+    expect(JSON.parse(res.request().postData() ?? '{}').stripeTaxCode, '入力した Stripe 税コードが送られる').toBe('txcd_10000000')
     await expect(dialog.getByRole('cell', { name: code, exact: true })).toBeVisible()
+    // 一覧にも Stripe 税コードが表示される（null で保存されていないこと）
+    const createdRow = dialog.getByRole('row').filter({ has: page.getByRole('cell', { name: code, exact: true }) })
+    await expect(createdRow).toContainText('txcd_10000000')
 
     // 後始末: 登録した税コードを画面の無効化ボタンで無効化する
     const created = JSON.parse(body) as { id?: string; data?: { id: string } }
@@ -288,7 +293,7 @@ test('PR-02b 税コード: Stripe 税コードを入力でき、形式違反（t
       els.map((e) => ({ type: (e as HTMLInputElement).type, aria: e.getAttribute('aria-label'), placeholder: e.getAttribute('placeholder') })))
     await note(testInfo, '税コードダイアログの入力欄', inputs)
 
-    const stripeInput = dialog.locator('input[aria-label*="stripe" i], input[placeholder*="txcd" i], input[placeholder*="Stripe" i]')
+    const stripeInput = dialog.getByLabel('new-tax-code-stripe-tax-code')
     await expect(stripeInput, 'Stripe 税コード（txcd_XXXXXXXX）の入力欄がある').toHaveCount(1, { timeout: 3_000 })
 
     const code = `E2E_PR_BAD_${Date.now()}`
@@ -296,12 +301,15 @@ test('PR-02b 税コード: Stripe 税コードを入力でき、形式違反（t
     await dialog.getByLabel('new-tax-code-display-name').fill('E2E 形式違反')
     await dialog.locator('input[aria-label="new-tax-code-valid-from"]').fill(jstLocalAfterMinutes(-60 * 24))
     await stripeInput.fill('txcd_bad')
-    const resPromise = page.waitForResponse((r) => r.url() === TAX_API && r.request().method() === 'POST', { timeout: 10_000 }).catch(() => null)
-    await dialog.getByRole('button', { name: 'submit-create-tax-code' }).click()
-    const res = await resPromise
-    if (res) await note(testInfo, 'POST tax-codes (txcd_bad)', { status: res.status(), body: await res.text() })
-    await expect(page.getByText('Stripe税コードは「txcd_」に続く数字8桁で入力してください。')).toBeVisible()
+    // 形式違反は画面で弾く（BE の PRICE_REVISION_021 と同じ文言）。登録ボタンは押せない＝API へ送らない。
+    await expect(dialog.getByLabel('stripe-tax-code-format-error')).toHaveText('Stripe税コードの形式が不正です（txcd_ に続く数字8桁）')
+    await expect(dialog.getByRole('button', { name: 'submit-create-tax-code' })).toBeDisabled()
     await shot(page, testInfo, 'tax-code-bad-format')
+
+    // 正しい形式に直せばエラーが消え、登録ボタンが押せるようになる（登録はしない）
+    await stripeInput.fill('txcd_10000000')
+    await expect(dialog.getByLabel('stripe-tax-code-format-error')).toHaveCount(0)
+    await expect(dialog.getByRole('button', { name: 'submit-create-tax-code' })).toBeEnabled()
   } finally {
     await context.close()
   }
@@ -389,6 +397,7 @@ test('PR-07 取り消し: DRAFT を確認ダイアログ経由で取り消すと
     await page.waitForTimeout(1_000)
     await note(testInfo, '取り消し後のトースト・状態', { toasts: await page.locator('.p-toast-message').allInnerTexts(), status: await detailStatus(page) })
     await shot(page, testInfo, 'draftA-after-cancel')
+    // 実機E2E（2026-09-29）では chk_bpbv_active 違反（SQL Error 3819）で常に 500 だった。
     expect(res.status(), 'DRAFT の取り消し API は 200').toBe(200)
     await expect.poll(() => detailStatus(page)).toBe('CANCELLED')
     await expect(page.getByRole('button', { name: 'cancel-price-revision', exact: true })).toHaveCount(0)
@@ -453,10 +462,9 @@ test('PR-04 provision: 詳細画面から provision し READY（Stripe Price/Pro
       writeState({ revisionBStatus: await detailStatus(page) })
     }
     expect(await detailStatus(page)).toBe('READY')
-    // Stripe の Price / Product ID が画面に表示される
-    const pageText = await page.locator('main, body').first().innerText()
-    expect(pageText, 'Stripe Price ID（price_…）が表示される').toMatch(/price_[A-Za-z0-9]+/)
-    expect(pageText, 'Stripe Product ID（prod_…）が表示される').toMatch(/prod_[A-Za-z0-9]+/)
+    // band ごとに Stripe の Price ID が画面に表示される。
+    // Product ID は API 応答（PriceBandVersionResponse）に含まれない設計（02_api_design.md）のため検証しない。
+    await expect(page.getByLabel('band-stripe-price-ref-1'), 'Stripe Price ID（price_…）が表示される').toHaveText(/^price_[A-Za-z0-9]+$/)
   } finally {
     await context.close()
   }

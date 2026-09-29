@@ -407,7 +407,8 @@
         "priceFree": "無償",
         "empty": "該当する契約はありません"
       },
-      "loadError": "マスタ情報の取得に失敗しました"
+      "loadError": "マスタ情報の取得に失敗しました",
+      "goToPriceRevisions": "価格改定・税コードマスタへ"
     },
     "lp": {
       "heading": "料金プラン",
@@ -468,7 +469,7 @@
       "errorReconcileMismatch": "Stripe側の価格情報がDBの記録と一致しません",
       "errorProvisionInProgress": "同一操作が処理中です。しばらくしてから再試行してください",
       "errorTaxSnapshotLegacy": "価格帯の税情報が旧形式のため、Stripe に登録できません。この価格改定を取り消して作り直してください。",
-      "errorInvalidStripeTaxCode": "Stripe税コードは「txcd_」に続く数字8桁で入力してください。",
+      "errorInvalidStripeTaxCode": "Stripe税コードの形式が不正です（txcd_ に続く数字8桁）",
       "errorNonexistentDstTime": "この日時は夏時間の切り替えにより存在しません。別の時刻を指定してください",
       "taxCodesTitle": "税コードマスタ",
       "taxCodeCreateAction": "税コードを追加",
@@ -483,7 +484,16 @@
       "notice": {
         "nextCycle": "既存契約は次の請求周期まで現在の価格のままです（即時には変わりません）",
         "noSaleOnPartialFailure": "一部バンドのProvisionに失敗している間は、その価格帯での新規販売・プラン変更はできません"
-      }
+      },
+      "errorUnknown": "操作に失敗しました。時間をおいて再度お試しください",
+      "stripePriceRef": "Stripe Price ID",
+      "stripePriceRefUnset": "未作成",
+      "stripeTaxCode": "Stripe税コード",
+      "stripeTaxCodeUnset": "未設定",
+      "stripeTaxCodePlaceholder": "Stripe税コード（任意・例 txcd_10000000）",
+      "taxCodeDisplayName": "表示名",
+      "taxCodeRate": "税率（basis points）",
+      "taxCodeEnabled": "有効"
     }
   }
 }

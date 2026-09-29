@@ -407,7 +407,8 @@
         "priceFree": "無償",
         "empty": "該当する契約はありません"
       },
-      "loadError": "マスタ情報の取得に失敗しました"
+      "loadError": "マスタ情報の取得に失敗しました",
+      "goToPriceRevisions": "가격 개정・세금 코드 마스터로"
     },
     "lp": {
       "heading": "料金プラン",
@@ -468,7 +469,7 @@
       "errorReconcileMismatch": "Stripe側の価格情報がDBの記録と一致しません",
       "errorProvisionInProgress": "同一操作が処理中です。しばらくしてから再試行してください",
       "errorTaxSnapshotLegacy": "이 가격대의 세금 정보가 이전 형식이라 Stripe에 등록할 수 없습니다. 이 가격 개정을 취소하고 다시 만드세요.",
-      "errorInvalidStripeTaxCode": "Stripe 세금 코드는 \"txcd_\" 뒤에 숫자 8자리로 입력하세요.",
+      "errorInvalidStripeTaxCode": "Stripe 세금 코드 형식이 올바르지 않습니다(txcd_ 뒤에 숫자 8자리)",
       "errorNonexistentDstTime": "이 일시는 서머타임 전환으로 인해 존재하지 않습니다. 다른 시간을 지정해 주세요.",
       "taxCodesTitle": "税コードマスタ",
       "taxCodeCreateAction": "税コードを追加",
@@ -483,7 +484,16 @@
       "notice": {
         "nextCycle": "既存契約は次の請求周期まで現在の価格のままです（即時には変わりません）",
         "noSaleOnPartialFailure": "一部バンドのProvisionに失敗している間は、その価格帯での新規販売・プラン変更はできません"
-      }
+      },
+      "errorUnknown": "작업에 실패했습니다. 잠시 후 다시 시도하세요",
+      "stripePriceRef": "Stripe Price ID",
+      "stripePriceRefUnset": "미생성",
+      "stripeTaxCode": "Stripe 세금 코드",
+      "stripeTaxCodeUnset": "미설정",
+      "stripeTaxCodePlaceholder": "Stripe 세금 코드(선택, 예 txcd_10000000)",
+      "taxCodeDisplayName": "표시 이름",
+      "taxCodeRate": "세율(베이시스 포인트)",
+      "taxCodeEnabled": "사용"
     }
   }
 }
