@@ -13,7 +13,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /** {@link BillingPriceVersionEntity} の永続化・catalog revision 検索。 */
-public interface BillingPriceVersionRepository extends JpaRepository<BillingPriceVersionEntity, UUID> {
+public interface BillingPriceVersionRepository
+        extends JpaRepository<BillingPriceVersionEntity, UUID>, BillingPriceVersionRepositoryCustom {
 
     Optional<BillingPriceVersionEntity> findByIdAndDeletedAtIsNull(UUID id);
 
