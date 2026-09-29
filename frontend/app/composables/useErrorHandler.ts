@@ -21,8 +21,11 @@ export const useErrorHandler = () => {
   // 汎用 i18n キー（例: error.COMMON_001）で上書きして理由を握りつぶさない。
   // BE message を最優先し、無ければ従来どおり i18n キー→汎用文言にフォールバックする。
   const resolveMessage = (code: string, fallback?: string): string => {
-    if (fallback) return fallback
     const key = `error.${code}`
+    // CMP-260920-1040 AC-36: 確認通知は errorCode ごとの6言語文言を表示する。
+    // BE の message は日本語固定なので、このドメインだけ登録済み i18n を優先する。
+    if (code.startsWith('CONFIRMABLE_NOTIFICATION_') && te(key)) return t(key)
+    if (fallback) return fallback
     if (te(key)) return t(key)
     return t('error.unknown')
   }

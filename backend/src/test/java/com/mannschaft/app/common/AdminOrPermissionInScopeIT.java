@@ -241,6 +241,24 @@ class AdminOrPermissionInScopeIT extends AbstractMySqlIntegrationTest {
                 .isEqualTo(accessControlService.isAdminOrAbove(sysAdmin, orgId, ORGANIZATION));
     }
 
+    @Test
+    @DisplayName("AC-11b: SYSTEM_ADMINを併有してもスコープADMIN資格は失われない")
+    void ac11b_SYSTEM_ADMINとスコープADMINの併有を許可する() {
+        Long userId = insertUser();
+        grantRole(userId, "SYSTEM_ADMIN", null, null);
+        grantRole(userId, "ADMIN", teamId, null);
+        grantRole(userId, "ADMIN", null, orgId);
+        em.flush();
+        em.clear();
+
+        assertThat(accessControlService.hasAdminOrPermissionInScope(userId, teamId, TEAM, PERMISSION))
+                .as("SYSTEM_ADMIN が有効ロール表示を上書きしても TEAM ADMIN の割当を認識する")
+                .isTrue();
+        assertThat(accessControlService.hasAdminOrPermissionInScope(userId, orgId, ORGANIZATION, PERMISSION))
+                .as("SYSTEM_ADMIN が有効ロール表示を上書きしても ORGANIZATION ADMIN の割当を認識する")
+                .isTrue();
+    }
+
     // =====================================================================
     // AC-12（権限グループ経由）
     // =====================================================================

@@ -280,6 +280,7 @@ export default {
       "status": {
         "pending": "확인 대기",
         "confirmed": "확정",
+        "expired": "이의 신청 기한 만료",
         "disputed": "이의 신청 중",
         "revoked": "취소",
         "upheld": "유지"

@@ -21,6 +21,7 @@ import com.mannschaft.app.actionmemo.repository.ActionMemoTagLinkRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -37,6 +38,7 @@ import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import com.mannschaft.app.todo.service.TodoService;
 import com.mannschaft.app.todo.service.TodoStatusService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -49,6 +51,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -119,6 +123,9 @@ class ActionMemoServicePublishTest {
     @Mock
     private OrganizationRepository organizationRepository;
 
+    @Mock
+    private Clock wallClock;
+
     @InjectMocks
     private ActionMemoService actionMemoService;
 
@@ -134,6 +141,14 @@ class ActionMemoServicePublishTest {
     private static final Long USER_ID = 100L;
     private static final Long OTHER_USER_ID = 999L;
     private static final Long MEMO_ID = 1L;
+    private static final Instant CURRENT_INSTANT = Instant.parse("2026-04-09T15:30:00Z");
+    private static final LocalDate CURRENT_DATE = LocalDate.of(2026, 4, 10);
+
+    @BeforeEach
+    void setUpWallClock() {
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
 
     /**
      * id と createdAt を設定済みの ActionMemoEntity を生成する。
@@ -218,6 +233,22 @@ class ActionMemoServicePublishTest {
     class PublishDailyTest {
 
         private static final LocalDate TARGET_DATE = LocalDate.of(2026, 4, 9);
+
+        @Test
+        @DisplayName("memoDate 省略時は wallClock の業務日を使用する")
+        void publishDaily_usesWallClockDateWhenMemoDateIsNull() {
+            given(memoRepository.findByUserIdAndMemoDate(USER_ID, CURRENT_DATE))
+                    .willReturn(List.of());
+
+            PublishDailyRequest req = new PublishDailyRequest();
+
+            assertThatThrownBy(() -> actionMemoPublishingService.publishDaily(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode",
+                            ActionMemoErrorCode.ACTION_MEMO_NO_MEMOS_FOR_DATE);
+
+            verify(memoRepository).findByUserIdAndMemoDate(USER_ID, CURRENT_DATE);
+        }
 
         @Test
         @DisplayName("正常系: 3件のメモ → PERSONAL タイムラインに1件 INSERT、各メモの timelinePostId を更新")
@@ -569,16 +600,16 @@ class ActionMemoServicePublishTest {
         void publishDailyToTeam_filtersWorkAndUnposted() {
             // findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull が
             // WORK & postedTeamId=null のメモを返すことを mock で表現
-            ActionMemoEntity m1 = phase3Memo(11L, USER_ID, LocalDate.now(),
+            ActionMemoEntity m1 = phase3Memo(11L, USER_ID, CURRENT_DATE,
                     "メモ1", ActionMemoCategory.WORK, null, null, null, false,
                     LocalDateTime.of(2026, 4, 27, 9, 0));
-            ActionMemoEntity m2 = phase3Memo(12L, USER_ID, LocalDate.now(),
+            ActionMemoEntity m2 = phase3Memo(12L, USER_ID, CURRENT_DATE,
                     "メモ2", ActionMemoCategory.WORK, null, null, null, false,
                     LocalDateTime.of(2026, 4, 27, 10, 0));
 
             given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(true);
             given(memoRepository.findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
-                    eq(USER_ID), any(LocalDate.class), eq(ActionMemoCategory.WORK)))
+                    eq(USER_ID), eq(CURRENT_DATE), eq(ActionMemoCategory.WORK)))
                     .willReturn(List.of(m1, m2));
             // publishToTeam の中で findByIdAndUserId が呼ばれる
             given(memoRepository.findByIdAndUserId(11L, USER_ID)).willReturn(Optional.of(m1));
@@ -604,13 +635,13 @@ class ActionMemoServicePublishTest {
         void publishDailyToTeam_skipsAlreadyPosted() {
             // 既投稿メモ (postedTeamId != null) は repository 側で除外される設計のため、
             // mock の返却値には未投稿メモのみを含める。
-            ActionMemoEntity unpostedWork = phase3Memo(11L, USER_ID, LocalDate.now(),
+            ActionMemoEntity unpostedWork = phase3Memo(11L, USER_ID, CURRENT_DATE,
                     "未投稿WORK", ActionMemoCategory.WORK, null, null, null, false,
                     LocalDateTime.of(2026, 4, 27, 9, 0));
 
             given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(true);
             given(memoRepository.findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
-                    eq(USER_ID), any(LocalDate.class), eq(ActionMemoCategory.WORK)))
+                    eq(USER_ID), eq(CURRENT_DATE), eq(ActionMemoCategory.WORK)))
                     .willReturn(List.of(unpostedWork));
             given(memoRepository.findByIdAndUserId(11L, USER_ID))
                     .willReturn(Optional.of(unpostedWork));
@@ -635,7 +666,7 @@ class ActionMemoServicePublishTest {
         void publishDailyToTeam_zeroWorkMemos_throws_NO_WORK_MEMO_TODAY() {
             given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(true);
             given(memoRepository.findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
-                    eq(USER_ID), any(LocalDate.class), eq(ActionMemoCategory.WORK)))
+                    eq(USER_ID), eq(CURRENT_DATE), eq(ActionMemoCategory.WORK)))
                     .willReturn(List.of());
 
             PublishDailyToTeamRequest req = new PublishDailyToTeamRequest(42L);
@@ -649,19 +680,19 @@ class ActionMemoServicePublishTest {
         @Test
         @DisplayName("postedCount は実際に投稿したメモ数と一致する")
         void publishDailyToTeam_postedCountMatches() {
-            ActionMemoEntity m1 = phase3Memo(11L, USER_ID, LocalDate.now(),
+            ActionMemoEntity m1 = phase3Memo(11L, USER_ID, CURRENT_DATE,
                     "M1", ActionMemoCategory.WORK, null, null, null, false,
                     LocalDateTime.of(2026, 4, 27, 9, 0));
-            ActionMemoEntity m2 = phase3Memo(12L, USER_ID, LocalDate.now(),
+            ActionMemoEntity m2 = phase3Memo(12L, USER_ID, CURRENT_DATE,
                     "M2", ActionMemoCategory.WORK, null, null, null, false,
                     LocalDateTime.of(2026, 4, 27, 10, 0));
-            ActionMemoEntity m3 = phase3Memo(13L, USER_ID, LocalDate.now(),
+            ActionMemoEntity m3 = phase3Memo(13L, USER_ID, CURRENT_DATE,
                     "M3", ActionMemoCategory.WORK, null, null, null, false,
                     LocalDateTime.of(2026, 4, 27, 11, 0));
 
             given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, 42L)).willReturn(true);
             given(memoRepository.findByUserIdAndMemoDateAndCategoryAndPostedTeamIdIsNull(
-                    eq(USER_ID), any(LocalDate.class), eq(ActionMemoCategory.WORK)))
+                    eq(USER_ID), eq(CURRENT_DATE), eq(ActionMemoCategory.WORK)))
                     .willReturn(List.of(m1, m2, m3));
             given(memoRepository.findByIdAndUserId(11L, USER_ID)).willReturn(Optional.of(m1));
             given(memoRepository.findByIdAndUserId(12L, USER_ID)).willReturn(Optional.of(m2));

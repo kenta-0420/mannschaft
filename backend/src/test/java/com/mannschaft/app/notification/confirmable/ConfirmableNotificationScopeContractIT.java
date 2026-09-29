@@ -33,6 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -236,6 +237,82 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         em.clear();
     }
 
+    @Nested
+    @DisplayName("CMP-260920-1040 宛先件数プレビューの HTTP・認可契約")
+    class RecipientPreview {
+
+        @Test
+        @DisplayName("チーム ADMIN は 200 と送信者を除いた見込み件数を得る")
+        void チームADMINは見込み件数を得る() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notifications/recipient-preview", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.estimatedRecipientCount").value(1));
+        }
+
+        @Test
+        @DisplayName("組織 ADMIN は 200 と見込み件数を得る")
+        void 組織ADMINは見込み件数を得る() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(post("/api/v1/organizations/{id}/confirmable-notifications/recipient-preview", orgAId)
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.estimatedRecipientCount").isNumber());
+        }
+
+        @Test
+        @DisplayName("チームの非 ADMIN メンバーと非メンバーは 403")
+        void チーム権限なしは403() throws Exception {
+            for (Long userId : List.of(teamMemberAId, teamOutsiderId, teamAdminBId)) {
+                setAuth(userId);
+                mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notifications/recipient-preview", teamAId)
+                                .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                        .andExpect(status().isForbidden());
+            }
+        }
+
+        @Test
+        @DisplayName("組織の非 ADMIN メンバーと非メンバーは 403")
+        void 組織権限なしは403() throws Exception {
+            for (Long userId : List.of(orgMemberAId, orgOutsiderId, orgAdminBId)) {
+                setAuth(userId);
+                mockMvc.perform(post("/api/v1/organizations/{id}/confirmable-notifications/recipient-preview", orgAId)
+                                .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                        .andExpect(status().isForbidden());
+            }
+        }
+
+        @Test
+        @DisplayName("空 targets と targets・group 同時指定は 400")
+        void 宛先入力違反は400() throws Exception {
+            setAuth(teamAdminAId);
+            for (String body : List.of("{\"targets\":[]}",
+                    "{\"targets\":[{\"type\":\"TEAM\",\"id\":" + teamAId
+                            + "}],\"recipientGroupId\":\"00000000-0000-0000-0000-000000000001\"}")) {
+                mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notifications/recipient-preview", teamAId)
+                                .contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isBadRequest());
+            }
+        }
+
+        @Test
+        @DisplayName("スコープ外 target はチーム・組織とも 403")
+        void 越境ターゲットは403() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notifications/recipient-preview", teamAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targets\":[{\"type\":\"TEAM\",\"id\":" + teamBId + "}]}"))
+                    .andExpect(status().isForbidden());
+
+            setAuth(orgAdminAId);
+            mockMvc.perform(post("/api/v1/organizations/{id}/confirmable-notifications/recipient-preview", orgAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"targets\":[{\"type\":\"ORGANIZATION\",\"id\":" + orgBId + "}]}"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // 組織スコープ（OrgConfirmableNotificationController）
     // ═════════════════════════════════════════════════════════════════════
@@ -275,13 +352,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("正当ADMINは201")
-        void 正当ADMINは201() throws Exception {
+        @DisplayName("正当ADMINは202")
+        void 正当ADMINは202() throws Exception {
             setAuth(orgAdminAId);
             mockMvc.perform(post("/api/v1/organizations/{id}/confirmable-notifications", orgAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(sendBody(orgMemberAId))))
-                    .andExpect(status().isCreated());
+                    .andExpect(status().isAccepted());
         }
 
         private Map<String, Object> sendBody(Long recipientUserId) {
@@ -748,13 +825,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("正当ADMINは201")
-        void 正当ADMINは201() throws Exception {
+        @DisplayName("正当ADMINは202")
+        void 正当ADMINは202() throws Exception {
             setAuth(teamAdminAId);
             mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notifications", teamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(sendBody(teamMemberAId))))
-                    .andExpect(status().isCreated());
+                    .andExpect(status().isAccepted());
         }
 
         private Map<String, Object> sendBody(Long recipientUserId) {

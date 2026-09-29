@@ -73,9 +73,11 @@ class CmsSeriesTagScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long adminBId;
     private Long memberAId;
     private Long outsiderId;
+    private Long systemAdminAndAdminAId;
 
     @BeforeEach
     void setUp() {
+        insertRoleIfAbsent("SYSTEM_ADMIN", "システム管理者", 1);
         insertRoleIfAbsent("ADMIN", "管理者", 2);
 
         teamAId = insertTeam("CMS-STG認可契約チームA");
@@ -85,12 +87,17 @@ class CmsSeriesTagScopeContractIT extends AbstractMySqlIntegrationTest {
         adminBId = insertUser("cms-stg-authz-admin-b@example.com");
         memberAId = insertUser("cms-stg-authz-member-a@example.com");
         outsiderId = insertUser("cms-stg-authz-outsider@example.com");
+        systemAdminAndAdminAId = insertUser("cms-stg-authz-system-admin-and-admin-a@example.com");
 
         MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
         MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", teamBId, null);
         MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertUserRole(em, systemAdminAndAdminAId, "SYSTEM_ADMIN", null, null);
+        MembershipTestHelper.insertUserRole(em, systemAdminAndAdminAId, "ADMIN", teamAId, null);
+        MembershipTestHelper.insertMembership(
+                em, systemAdminAndAdminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
 
         em.flush();
         em.clear();
@@ -313,6 +320,16 @@ class CmsSeriesTagScopeContractIT extends AbstractMySqlIntegrationTest {
             Long tagId = createTagAsAdminA();
 
             setAuthentication(adminAId);
+            mockMvc.perform(delete("/api/v1/blog/tags/{id}", tagId))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN兼当該チームADMINの削除は204")
+        void SYSTEM_ADMIN兼当該チームADMINの削除は204() throws Exception {
+            Long tagId = createTagAsAdminA();
+
+            setAuthentication(systemAdminAndAdminAId);
             mockMvc.perform(delete("/api/v1/blog/tags/{id}", tagId))
                     .andExpect(status().isNoContent());
         }

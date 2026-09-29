@@ -213,11 +213,11 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
         return permission.getId();
     }
 
-    private void grantRolePermission(Long roleId, Long permissionId) {
+    private void grantRolePermission(Long roleId, Long permissionId, boolean isDefault) {
         RolePermissionEntity rp = RolePermissionEntity.builder()
                 .roleId(roleId)
                 .permissionId(permissionId)
-                .isDefault(true)
+                .isDefault(isDefault)
                 .build();
         em.persist(rp);
         em.flush();
@@ -416,7 +416,7 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
         String permissionName = "I2786_ADMIN_PERMISSION";
         Long adminRoleId = persistRoleIfNeeded("ADMIN", 2);
         Long permissionId = persistPermission(permissionName);
-        grantRolePermission(adminRoleId, permissionId);
+        grantRolePermission(adminRoleId, permissionId, true);
 
         Long admin = persistActiveUser();
         grantOrgRole(admin, orgId, "ADMIN", 2);
@@ -449,7 +449,7 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
         String permissionName = "I2786_TEST_PERMISSION";
         Long memberRoleId = persistRoleIfNeeded("MEMBER", 4);
         Long permissionId = persistPermission(permissionName);
-        grantRolePermission(memberRoleId, permissionId);
+        grantRolePermission(memberRoleId, permissionId, true);
 
         Long membershipsOnly = persistActiveUser();
         addMembership(membershipsOnly, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER, null);
@@ -457,6 +457,24 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
 
         assertThat(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(orgId, permissionName))
                 .as("MEMBER ロール既定の権限は memberships 専属の一般メンバーにも評価されるべきである")
+                .contains(membershipsOnly);
+    }
+
+    @Test
+    @DisplayName("CMP-048: memberships専属SUPPORTERの既定権限を評価する")
+    void cmp048_evaluatesMembershipsOnlySupporterDefaultPermission() {
+        Long orgId = persistOrganization(null);
+        String permissionName = "CMP048_SUPPORTER_PERMISSION";
+        Long supporterRoleId = persistRoleIfNeeded("SUPPORTER", 5);
+        Long permissionId = persistPermission(permissionName);
+        grantRolePermission(supporterRoleId, permissionId, true);
+
+        Long membershipsOnly = persistActiveUser();
+        addMembership(membershipsOnly, ScopeType.ORGANIZATION, orgId, RoleKind.SUPPORTER, null);
+        flushClear();
+
+        assertThat(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(orgId, permissionName))
+                .as("SUPPORTERの既定権限もmemberships由来で評価される")
                 .contains(membershipsOnly);
     }
 
@@ -640,6 +658,42 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
     }
 
     @Test
+    @DisplayName("CMP-046: 天井登録のみのDEPUTY_ADMINはチーム通知宛先に含めない")
+    void cmp046_天井登録のみのDeputyAdminはチーム通知宛先に含めない() {
+        Long teamId = nextTeamId();
+        String permissionName = "CMP046_CEILING_ONLY_PERMISSION";
+        Long permissionId = persistPermission(permissionName);
+        Long deputyRoleId = persistRoleIfNeeded("DEPUTY_ADMIN", 3);
+        grantRolePermission(deputyRoleId, permissionId, false);
+
+        Long deputy = persistActiveUser();
+        grantTeamRole(deputy, teamId, "DEPUTY_ADMIN", 3);
+        flushClear();
+
+        assertThat(userRoleRepository.findDeputyAdminUserIdsByTeamIdAndPermission(teamId, permissionName))
+                .as("is_default=false の天井登録だけでは通知対象にしてはならない")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("CMP-046: 既定付与されたDEPUTY_ADMINはチーム通知宛先に含める")
+    void cmp046_既定付与されたDeputyAdminはチーム通知宛先に含める() {
+        Long teamId = nextTeamId();
+        String permissionName = "CMP046_DEFAULT_PERMISSION";
+        Long permissionId = persistPermission(permissionName);
+        Long deputyRoleId = persistRoleIfNeeded("DEPUTY_ADMIN", 3);
+        grantRolePermission(deputyRoleId, permissionId, true);
+
+        Long deputy = persistActiveUser();
+        grantTeamRole(deputy, teamId, "DEPUTY_ADMIN", 3);
+        flushClear();
+
+        assertThat(userRoleRepository.findDeputyAdminUserIdsByTeamIdAndPermission(teamId, permissionName))
+                .as("is_default=true の既定付与は従来どおり通知対象にする")
+                .containsExactly(deputy);
+    }
+
+    @Test
     @DisplayName("F09.14: 一般候補queryはactive direct membershipとeffective role一致を要求する")
     void f0914_一般候補queryはactiveMembershipとeffectiveRoleが一致したgroupだけ返す() {
         Long orgId = persistOrganization(null);
@@ -669,7 +723,7 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
         assignGroupToUser(memberWithDeputyGroup, mismatchedGroup);
 
         Long memberRoleId = persistRoleIfNeeded("MEMBER", 4);
-        grantRolePermission(memberRoleId, permissionId);
+        grantRolePermission(memberRoleId, permissionId, true);
         Long memberWithEmptyMatchingGroup = persistActiveUser();
         addMembership(memberWithEmptyMatchingGroup, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER, null);
         PermissionGroupEntity emptyMemberGroup = PermissionGroupEntity.builder()
