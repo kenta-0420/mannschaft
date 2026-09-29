@@ -18,13 +18,16 @@ import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
+import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -87,7 +90,10 @@ public class ShiftSlotService {
     private final ShiftScheduleRepository scheduleRepository;
     /** 手動割当の操作履歴（誰がいつ割り当て・解除したか）を記録するための履歴表。 */
     private final ShiftAssignmentRepository assignmentRepository;
+    private final ShiftRequestRepository requestRepository;
     private final AccessControlService accessControlService;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * スケジュールのシフト枠一覧を取得する。
@@ -359,7 +365,12 @@ public class ShiftSlotService {
     public void deleteSlot(Long slotId, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
         checkScheduleAdminAccess(entity.getScheduleId(), userId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
-        slotRepository.delete(entity);
+        java.time.Instant deletedAt = wallClock.instant().truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        assignmentRepository.softDeleteBySlotId(slotId, deletedAt);
+        requestRepository.softDeleteBySlotId(slotId, deletedAt);
+        if (slotRepository.softDeleteById(slotId, deletedAt) != 1) {
+            throw new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+        }
         log.info("シフト枠削除: id={}", slotId);
     }
 

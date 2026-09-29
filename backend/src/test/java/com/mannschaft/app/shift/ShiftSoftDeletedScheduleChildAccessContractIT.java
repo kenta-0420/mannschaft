@@ -29,7 +29,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -269,6 +268,67 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
                     .andExpect(jsonPath("$.data[0].id").value(orphanRequestId))
                     .andExpect(jsonPath("$.data[0].scheduleDeleted").value(true));
         }
+
+        @Test
+        @DisplayName("本人が取り下げた希望は同じ秒に親削除されても履歴へ出ない")
+        void 本人取り下げは親削除履歴へ混入しない() throws Exception {
+            ShiftRequestEntity withdrawn = requestRepository.save(ShiftRequestEntity.builder()
+                    .scheduleId(liveScheduleId).userId(memberId).slotId(liveSlotId)
+                    .slotDate(LocalDate.of(2026, 4, 2)).preference(ShiftPreference.AVAILABLE).build());
+            em.flush();
+            Long withdrawnId = withdrawn.getId();
+            setAuth(memberId);
+
+            mockMvc.perform(delete("/api/v1/shifts/requests/{id}", withdrawnId))
+                    .andExpect(status().isNoContent());
+            setAuth(adminId);
+            mockMvc.perform(delete("/api/v1/shifts/schedules/{id}", liveScheduleId))
+                    .andExpect(status().isNoContent());
+            em.flush();
+            em.clear();
+
+            assertThat(em.createNativeQuery("SELECT delete_reason FROM shift_requests WHERE id = :id")
+                    .setParameter("id", withdrawnId).getSingleResult()).isEqualTo("WITHDRAWN");
+            setAuth(memberId);
+            mockMvc.perform(get("/api/v1/shifts/my/requests"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id == " + withdrawnId + ")]").isEmpty());
+        }
+    }
+
+    @Test
+    @DisplayName("枠DELETEは行を残し割当と枠指定希望だけを論理削除する")
+    void 枠単体削除は対象の子だけへ連鎖する() throws Exception {
+        ShiftRequestEntity slotRequest = requestRepository.save(ShiftRequestEntity.builder()
+                .scheduleId(liveScheduleId).userId(memberId).slotId(liveSlotId)
+                .slotDate(LocalDate.of(2026, 4, 2)).preference(ShiftPreference.PREFERRED).build());
+        ShiftRequestEntity dayRequest = requestRepository.save(ShiftRequestEntity.builder()
+                .scheduleId(liveScheduleId).userId(memberId).slotDate(LocalDate.of(2026, 4, 2))
+                .preference(ShiftPreference.AVAILABLE).build());
+        ShiftAssignmentEntity assignment = assignmentRepository.save(ShiftAssignmentEntity.builder()
+                .slotId(liveSlotId).userId(memberId).assignedBy(adminId)
+                .status(ShiftAssignmentStatus.CONFIRMED).build());
+        em.flush();
+        Long slotRequestId = slotRequest.getId();
+        Long dayRequestId = dayRequest.getId();
+        Long assignmentId = assignment.getId();
+        em.clear();
+        setAuth(adminId);
+
+        mockMvc.perform(delete("/api/v1/shifts/slots/{id}", liveSlotId))
+                .andExpect(status().isNoContent());
+        em.flush();
+        em.clear();
+
+        assertThat(slotRepository.findById(liveSlotId)).isEmpty();
+        assertThat(em.createNativeQuery("SELECT COUNT(*) FROM shift_slots WHERE id = :id")
+                .setParameter("id", liveSlotId).getSingleResult()).isEqualTo(1L);
+        assertThat(em.createNativeQuery("SELECT delete_reason FROM shift_requests WHERE id = :id")
+                .setParameter("id", slotRequestId).getSingleResult()).isEqualTo("SLOT_DELETED");
+        assertThat(em.createNativeQuery("SELECT deleted_at FROM shift_assignments WHERE id = :id")
+                .setParameter("id", assignmentId).getSingleResult()).isNotNull();
+        assertThat(em.createNativeQuery("SELECT deleted_at FROM shift_requests WHERE id = :id")
+                .setParameter("id", dayRequestId).getSingleResult()).isNull();
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -385,15 +445,19 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
         Long assignmentId = assignment.getId();
         ShiftAssignmentEntity retainedAssignment = assignmentRepository.save(ShiftAssignmentEntity.builder()
                 .slotId(liveSlotId).userId(memberId).assignedBy(adminId)
-                .status(ShiftAssignmentStatus.CONFIRMED)
-                .deletedAt(Instant.parse("2020-01-01T00:00:00Z")).build());
+                .status(ShiftAssignmentStatus.CONFIRMED).build());
         ShiftRequestEntity retainedRequest = requestRepository.save(ShiftRequestEntity.builder()
                 .scheduleId(liveScheduleId).userId(memberId).slotDate(LocalDate.of(2026, 4, 3))
-                .preference(ShiftPreference.AVAILABLE)
-                .deletedAt(Instant.parse("2020-01-01T00:00:00Z")).build());
+                .preference(ShiftPreference.AVAILABLE).build());
         Map<String, Long> retainedRows = Map.of("shift_slots", secondId,
                 "shift_requests", retainedRequest.getId(), "shift_assignments", retainedAssignment.getId());
         em.flush();
+        em.createNativeQuery("UPDATE shift_assignments SET deleted_at = '2020-01-01 00:00:00' WHERE id = :id")
+                .setParameter("id", retainedAssignment.getId()).executeUpdate();
+        em.createNativeQuery("""
+                UPDATE shift_requests SET deleted_at = '2020-01-01 00:00:00', delete_reason = 'WITHDRAWN'
+                WHERE id = :id
+                """).setParameter("id", retainedRequest.getId()).executeUpdate();
         em.clear();
         Map<String, Object> retainedTimestamps = new LinkedHashMap<>();
         for (Map.Entry<String, Long> row : retainedRows.entrySet()) {
@@ -429,10 +493,11 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
         ShiftSlotEntity hidden = slotRepository.save(ShiftSlotEntity.builder()
                 .scheduleId(liveScheduleId).slotDate(LocalDate.of(2026, 4, 4))
                 .startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(17, 0))
-                .assignedUserIds("[" + memberId + "]")
-                .deletedAt(Instant.parse("2026-03-01T00:00:00Z")).build());
+                .assignedUserIds("[" + memberId + "]").build());
         Long hiddenId = hidden.getId();
         em.flush();
+        em.createNativeQuery("UPDATE shift_slots SET deleted_at = '2026-03-01 00:00:00' WHERE id = :id")
+                .setParameter("id", hiddenId).executeUpdate();
         em.clear();
 
         assertThat(slotRepository.findById(hiddenId)).isEmpty();

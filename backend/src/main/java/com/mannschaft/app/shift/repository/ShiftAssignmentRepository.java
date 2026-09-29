@@ -29,10 +29,19 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
     @Query(value = """
             UPDATE shift_assignments a JOIN shift_slots s ON s.id = a.slot_id
             JOIN shift_schedules sc ON sc.id = s.schedule_id
-            SET a.deleted_at = sc.deleted_at, a.updated_at = a.updated_at
+            SET a.deleted_at = sc.deleted_at, a.version = a.version + 1, a.updated_at = a.updated_at
             WHERE sc.id = :scheduleId AND sc.deleted_at IS NOT NULL AND a.deleted_at IS NULL
             """, nativeQuery = true)
     int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_assignments
+            SET deleted_at = :deletedAt, version = version + 1, updated_at = updated_at
+            WHERE slot_id = :slotId AND deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteBySlotId(@Param("slotId") Long slotId,
+                           @Param("deletedAt") java.time.Instant deletedAt);
 
     /**
      * 実行履歴IDに紐づく割当一覧を取得する。

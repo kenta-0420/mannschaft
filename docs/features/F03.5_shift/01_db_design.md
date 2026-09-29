@@ -128,7 +128,7 @@ INDEX idx_shift_slots_schedule_position (schedule_id, position_id, slot_date)  -
 - **時間帯分割（v2）**: 同一 `schedule_id + slot_date + position_id` に対し複数レコードを INSERT することで、時間帯別の必要人数設定を実現する。UNIQUE 制約は敢えて設けない（同日同ポジションで時間帯違いの複数枠を許容するため）。時間帯の重複は Service 層で検証し、完全重複（`start_time` と `end_time` が同一）は 409 エラー、部分重複は警告のみ（意図的な重複配置を許容。例: フル出勤者と短時間出勤者を同枠に配置）
 - `assigned_user_ids` は JSON 配列で管理。正規化テーブルも検討したが、シフト枠あたりの割り当て人数が少数（通常1〜5人）のため JSON で十分。配列内の各 user_id はチームメンバーであることを Service 層で検証する。`GET /shifts/my` での検索（`JSON_CONTAINS`）はインデックスが効かないため、パフォーマンスが課題になった場合は Valkey キャッシュ（`mannschaft:cache:user-shifts:{userId}`、TTL 30分、シフト公開・変更時に無効化）で対応する
 - `position_id`: FK → shift_positions。ポジションマスターから選択。`ON DELETE SET NULL` によりポジション削除時もスロットは保持（ポジション無指定扱いになる）。API レスポンスでは `position` オブジェクト（`{ "id": 1, "name": "ホール" }`）として返却
-- 単独のスロット削除は従来どおり物理削除する。親シフト表の削除時だけ `deleted_at DATETIME NULL` を設定して保持する。同一ドメイン内の `ON DELETE CASCADE` は物理削除用として維持する。
+- 単独のスロット削除も `deleted_at DATETIME NULL` による論理削除とし、枠に紐づく割当と枠指定希望へ同じ削除日時を連鎖する。日単位希望は巻き込まない。親シフト表の削除時は全子へ親と同じ削除日時を連鎖する。
 - `required_count` と `assigned_user_ids` の要素数が一致しない場合は「欠員」として UI で表示する
 - `version`: 楽観的ロック。複数の ADMIN/DEPUTY_ADMIN が同一スロットの `assigned_user_ids` を同時編集する競合を防止。PUT 更新時に競合検出、409 Conflict を返却
 - **既存スロットの移行（v2）**: v1 時点で存在する単一時間帯スロットはそのまま有効。v2 UI は同一日の複数スロットを時間軸に沿ってタイムラインで描画する
@@ -137,7 +137,7 @@ INDEX idx_shift_slots_schedule_position (schedule_id, position_id, slot_date)  -
 
 メンバーのシフト希望。希望収集フェーズ（`COLLECTING`）中にメンバーが提出する。
 
-単独の希望取り下げと `ARCHIVED` 後30日経過の cleanup は既存の物理削除を維持する。親削除のみ論理削除を連鎖させ、一意制約と再提出の契約を変えない。
+単独の希望取り下げは `delete_reason=WITHDRAWN` の論理削除、枠削除の連鎖は `SLOT_DELETED`、親削除の連鎖は `PARENT_DELETED` とする。本人履歴に復元表示するのは `PARENT_DELETED` だけである。`active_uq` 生成列を一意制約へ含めるため、取り下げ後は同じ希望を再提出できる。`ARCHIVED` 後30日経過の cleanup は削除理由を問わず物理削除する。
 
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
@@ -149,12 +149,14 @@ INDEX idx_shift_slots_schedule_position (schedule_id, position_id, slot_date)  -
 | `preference` | VARCHAR(20) | NO | — | 希望度（**v2 5段階**: PREFERRED / AVAILABLE / WEAK_REST / STRONG_REST / ABSOLUTE_REST） |
 | `note` | VARCHAR(200) | YES | NULL | 補足コメント（例: 「午後なら可」「早番希望」） |
 | `submitted_at` | DATETIME | NO | CURRENT_TIMESTAMP | 提出日時 |
-| `deleted_at` | DATETIME | YES | NULL | 親削除時の論理削除日時。本人の提出履歴では削除済みも表示する |
+| `deleted_at` | DATETIME | YES | NULL | 論理削除日時 |
+| `delete_reason` | VARCHAR(20) | YES | NULL | `WITHDRAWN` / `PARENT_DELETED` / `SLOT_DELETED`。NULL は有効行 |
+| `active_uq` | TINYINT（生成列） | YES | — | `IF(deleted_at IS NULL, 1, NULL)`。有効行だけ一意制約の対象にする |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
 **インデックス**
 ```sql
-UNIQUE KEY uq_shift_requests_user_slot (schedule_id, user_id, slot_id, slot_date)  -- 同一ユーザーの同一枠の重複防止（※ slot_id が NULL の場合 MySQL の NULL!=NULL により制約が効かないため、Service 層で追加バリデーション必須）
+UNIQUE KEY uq_sr_schedule_user_slot_active (schedule_id, user_id, slot_id_uq, slot_date_uq, active_uq)  -- 有効な同一希望の重複防止。削除後の再提出は許可
 INDEX idx_shift_requests_schedule_user (schedule_id, user_id)                       -- ユーザー別の希望一覧
 INDEX idx_shift_requests_schedule_date (schedule_id, slot_date)                     -- 日付別の希望集計
 ```

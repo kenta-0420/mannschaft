@@ -49,7 +49,7 @@ class FlywayExistingDataShiftChildSoftDeleteMigrationTest {
         String deletedParentTimestamp;
         Flyway.configure().dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
-                .target(MigrationVersion.fromVersion("226.20260927065806")).load().migrate();
+                .target(MigrationVersion.fromVersion("227.20260929040840")).load().migrate();
         try (Connection connection = DriverManager.getConnection(
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
              Statement statement = connection.createStatement()) {
@@ -86,6 +86,12 @@ class FlywayExistingDataShiftChildSoftDeleteMigrationTest {
             }
             for (String table : CHILD_TABLES) {
                 before.put(table, snapshotBusinessRows(statement, table));
+            }
+            try (ResultSet request = statement.executeQuery(
+                    "SELECT delete_reason, active_uq FROM shift_requests WHERE id = 900001")) {
+                assertThat(request.next()).isTrue();
+                assertThat(request.getString("delete_reason")).isEqualTo("PARENT_DELETED");
+                assertThat(request.getObject("active_uq")).isNull();
             }
         }
 
@@ -133,7 +139,8 @@ class FlywayExistingDataShiftChildSoftDeleteMigrationTest {
             while (rows.next()) {
                 List<String> values = new ArrayList<>();
                 for (int column = 1; column <= rows.getMetaData().getColumnCount(); column++) {
-                    if (!rows.getMetaData().getColumnName(column).equals("deleted_at")) {
+                    String columnName = rows.getMetaData().getColumnName(column);
+                    if (!List.of("deleted_at", "delete_reason", "active_uq").contains(columnName)) {
                         values.add(rows.getString(column));
                     }
                 }

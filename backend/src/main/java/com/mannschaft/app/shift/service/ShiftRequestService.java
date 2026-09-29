@@ -210,7 +210,8 @@ public class ShiftRequestService {
         ShiftScheduleEntity schedule = findParentScheduleOrConceal(entity);
         accessGate.requireOwnerOrAdminOrConceal(userId, schedule.getTeamId(), "TEAM", entity.getUserId(),
                 ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND);
-        requestRepository.delete(entity);
+        requestRepository.softDeleteById(requestId,
+                wallClock.instant().truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
         log.info("シフト希望削除: id={}", requestId);
     }
 

@@ -362,8 +362,8 @@ class ShiftRequestServiceTest {
     class DeleteRequest {
 
         @Test
-        @DisplayName("シフト希望削除_正常_deleteが呼ばれる")
-        void シフト希望削除_正常_deleteが呼ばれる() {
+        @DisplayName("シフト希望削除_正常_WITHDRAWNで論理削除される")
+        void シフト希望削除_正常_論理削除が呼ばれる() {
             // Given
             ShiftRequestEntity entity = createRequestEntity();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
@@ -374,7 +374,8 @@ class ShiftRequestServiceTest {
             shiftRequestService.deleteRequest(REQUEST_ID, USER_ID);
 
             // Then
-            verify(requestRepository).delete(entity);
+            verify(requestRepository).softDeleteById(REQUEST_ID, CURRENT_INSTANT);
+            verify(requestRepository, never()).delete(entity);
         }
 
         @Test
@@ -390,7 +391,7 @@ class ShiftRequestServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
                             .isEqualTo(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
-            verify(requestRepository, never()).delete(entity);
+            verify(requestRepository, never()).softDeleteById(any(), any());
         }
 
         @Test

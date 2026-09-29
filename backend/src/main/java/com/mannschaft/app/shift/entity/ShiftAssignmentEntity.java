@@ -35,7 +35,7 @@ import java.time.LocalDateTime;
 public class ShiftAssignmentEntity {
 
     /** 親シフト表の削除日時。割当の業務値は変更しない。 */
-    @Column(name = "deleted_at")
+    @Column(name = "deleted_at", insertable = false, updatable = false)
     private Instant deletedAt;
 
     @Id

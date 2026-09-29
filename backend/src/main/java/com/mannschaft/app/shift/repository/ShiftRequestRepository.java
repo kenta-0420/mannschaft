@@ -64,7 +64,12 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
     List<ShiftRequestEntity> findByUserIdOrderBySlotDateDesc(Long userId);
 
     /** 認証主体の提出履歴専用。削除済みも含むが、必ず本人のIDへ束縛する。 */
-    @Query(value = "SELECT r.* FROM shift_requests r WHERE r.user_id = :userId ORDER BY r.slot_date DESC",
+    @Query(value = """
+            SELECT r.* FROM shift_requests r
+            WHERE r.user_id = :userId
+              AND (r.deleted_at IS NULL OR r.delete_reason = 'PARENT_DELETED')
+            ORDER BY r.slot_date DESC
+            """,
             nativeQuery = true)
     List<ShiftRequestEntity> findHistoryByUserIdIncludingDeleted(@Param("userId") Long userId);
 
@@ -72,10 +77,30 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
     @Modifying(flushAutomatically = true)
     @Query(value = """
             UPDATE shift_requests r JOIN shift_schedules sc ON sc.id = r.schedule_id
-            SET r.deleted_at = sc.deleted_at, r.updated_at = r.updated_at
+            SET r.deleted_at = sc.deleted_at,
+                r.delete_reason = 'PARENT_DELETED',
+                r.updated_at = r.updated_at
             WHERE sc.id = :scheduleId AND sc.deleted_at IS NOT NULL AND r.deleted_at IS NULL
             """, nativeQuery = true)
     int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_requests
+            SET deleted_at = :deletedAt, delete_reason = 'SLOT_DELETED', updated_at = updated_at
+            WHERE slot_id = :slotId AND deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteBySlotId(@Param("slotId") Long slotId,
+                           @Param("deletedAt") java.time.Instant deletedAt);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_requests
+            SET deleted_at = :deletedAt, delete_reason = 'WITHDRAWN', updated_at = updated_at
+            WHERE id = :requestId AND deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteById(@Param("requestId") Long requestId,
+                       @Param("deletedAt") java.time.Instant deletedAt);
 
     /**
      * スケジュールと preference で希望件数を集計する（v2: 5 段階集計用）。
@@ -98,6 +123,6 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
      * 指定スケジュール ID の希望を物理削除する（ARCHIVED 30 日後クリーンアップ用）。
      */
     @Modifying
-    @Query("DELETE FROM ShiftRequestEntity r WHERE r.scheduleId IN :scheduleIds")
+    @Query(value = "DELETE FROM shift_requests WHERE schedule_id IN (:scheduleIds)", nativeQuery = true)
     int deleteByScheduleIds(@Param("scheduleIds") List<Long> scheduleIds);
 }

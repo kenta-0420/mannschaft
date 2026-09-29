@@ -27,8 +27,8 @@ import java.time.LocalTime;
 @SuperBuilder(toBuilder = true)
 public class ShiftSlotEntity extends BaseEntity {
 
-    /** 親シフト表の削除日時。単独削除の物理削除契約は維持する。 */
-    @Column(name = "deleted_at")
+    /** 論理削除日時。native UPDATE だけが書き込み、古い実体の save では蘇生させない。 */
+    @Column(name = "deleted_at", insertable = false, updatable = false)
     private Instant deletedAt;
 
     @Column(nullable = false)

@@ -11,6 +11,7 @@ import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.service.ShiftSlotService;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -64,6 +67,12 @@ class ShiftSlotServiceTest {
     @Mock
     private com.mannschaft.app.shift.repository.ShiftAssignmentRepository assignmentRepository;
 
+    @Mock
+    private ShiftRequestRepository requestRepository;
+
+    @Mock
+    private Clock wallClock;
+
     @InjectMocks
     private ShiftSlotService shiftSlotService;
 
@@ -92,6 +101,7 @@ class ShiftSlotServiceTest {
      */
     @BeforeEach
     void setUpAuthz() {
+        lenient().when(wallClock.instant()).thenReturn(Instant.parse("2026-09-29T12:00:00Z"));
         lenient().when(accessControlService.isSystemAdmin(ACTOR)).thenReturn(true);
         lenient().when(scheduleRepository.findById(SCHEDULE_ID)).thenReturn(Optional.of(
                 com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder()
@@ -558,17 +568,22 @@ class ShiftSlotServiceTest {
     class DeleteSlot {
 
         @Test
-        @DisplayName("シフト枠削除_正常_deleteが呼ばれる")
-        void シフト枠削除_正常_deleteが呼ばれる() {
+        @DisplayName("シフト枠削除_正常_割当と枠指定希望と枠が論理削除される")
+        void シフト枠削除_正常_子を連鎖論理削除する() {
             // Given
             ShiftSlotEntity entity = createSlotEntity();
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(entity));
+            given(slotRepository.softDeleteById(org.mockito.ArgumentMatchers.eq(SLOT_ID), any()))
+                    .willReturn(1);
 
             // When
             shiftSlotService.deleteSlot(SLOT_ID, ACTOR);
 
             // Then
-            verify(slotRepository).delete(entity);
+            verify(assignmentRepository).softDeleteBySlotId(org.mockito.ArgumentMatchers.eq(SLOT_ID), any());
+            verify(requestRepository).softDeleteBySlotId(org.mockito.ArgumentMatchers.eq(SLOT_ID), any());
+            verify(slotRepository).softDeleteById(org.mockito.ArgumentMatchers.eq(SLOT_ID), any());
+            verify(slotRepository, never()).delete(entity);
         }
 
         @Test

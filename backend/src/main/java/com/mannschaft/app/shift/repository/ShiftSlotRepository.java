@@ -20,10 +20,19 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
     @Modifying(flushAutomatically = true)
     @Query(value = """
             UPDATE shift_slots s JOIN shift_schedules sc ON sc.id = s.schedule_id
-            SET s.deleted_at = sc.deleted_at, s.updated_at = s.updated_at
+            SET s.deleted_at = sc.deleted_at, s.version = s.version + 1, s.updated_at = s.updated_at
             WHERE sc.id = :scheduleId AND sc.deleted_at IS NOT NULL AND s.deleted_at IS NULL
             """, nativeQuery = true)
     int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_slots
+            SET deleted_at = :deletedAt, version = version + 1, updated_at = updated_at
+            WHERE id = :slotId AND deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteById(@Param("slotId") Long slotId,
+                       @Param("deletedAt") java.time.Instant deletedAt);
 
     /**
      * スケジュールの全シフト枠を日付・開始時刻順で取得する。
@@ -39,11 +48,6 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
      * ID一覧でシフト枠を一括取得する（N+1 防止用）。
      */
     List<ShiftSlotEntity> findAllByIdIn(Collection<Long> ids);
-
-    /**
-     * スケジュールIDで全シフト枠を削除する。
-     */
-    void deleteByScheduleId(Long scheduleId);
 
     /**
      * スケジュールのシフト枠数を取得する。
