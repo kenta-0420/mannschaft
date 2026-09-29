@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -28,7 +29,9 @@ import java.time.LocalDateTime;
  */
 @Entity
 @SQLRestriction("deleted_at IS NULL")
-@Table(name = "shift_assignments")
+@Table(name = "shift_assignments", indexes = {
+        @Index(name = "idx_shift_assignments_slot_id", columnList = "slot_id")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
