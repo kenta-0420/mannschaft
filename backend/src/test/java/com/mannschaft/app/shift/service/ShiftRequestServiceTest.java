@@ -374,7 +374,7 @@ class ShiftRequestServiceTest {
             shiftRequestService.deleteRequest(REQUEST_ID, USER_ID);
 
             // Then
-            verify(requestRepository).softDeleteById(REQUEST_ID, CURRENT_TIME);
+            verify(requestRepository).softDeleteById(REQUEST_ID);
             verify(requestRepository, never()).delete(entity);
         }
 
@@ -391,7 +391,7 @@ class ShiftRequestServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
                             .isEqualTo(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
-            verify(requestRepository, never()).softDeleteById(any(), any());
+            verify(requestRepository, never()).softDeleteById(any());
         }
 
         @Test

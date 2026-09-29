@@ -247,13 +247,13 @@ public class ShiftScheduleService {
         boolean wasLive = entity.getDeletedAt() == null;
         LocalDateTime deletedAt = LocalDateTime.now(wallClock)
                 .truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
-        // 親行のロックを保持したまま、裁可済みの固定順（子3種→親）で同じ削除日時を入れる。
-        assignmentRepository.softDeleteByScheduleId(id, deletedAt);
-        requestRepository.softDeleteByScheduleId(id, deletedAt);
-        slotRepository.softDeleteByScheduleId(id, deletedAt);
+        // 親行のロックを保持したまま親の削除日時を確定し、子3種へ同じDB値をコピーする。
         entity.softDelete(deletedAt);
-        // 子更新の失敗時にはここへ到達せず、同一トランザクションで全更新をロールバックする。
         scheduleRepository.saveAndFlush(entity);
+        assignmentRepository.softDeleteByScheduleId(id);
+        requestRepository.softDeleteByScheduleId(id);
+        slotRepository.softDeleteByScheduleId(id);
+        // 子更新の失敗時は同一トランザクションで親更新もロールバックする。
 
         // CMP-260909-1445: 論理削除でもシフト予算の PLANNED 消化を取り消す。
         // 取消理由 enum に SHIFT_DELETED が用意されているとおり、削除で取り消すのが元々の設計意図。

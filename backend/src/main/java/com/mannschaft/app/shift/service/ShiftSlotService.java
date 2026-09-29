@@ -23,12 +23,9 @@ import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -93,8 +90,6 @@ public class ShiftSlotService {
     private final ShiftAssignmentRepository assignmentRepository;
     private final ShiftRequestRepository requestRepository;
     private final AccessControlService accessControlService;
-    @Qualifier("wallClock")
-    private final Clock wallClock;
 
     /**
      * スケジュールのシフト枠一覧を取得する。
@@ -366,13 +361,12 @@ public class ShiftSlotService {
     public void deleteSlot(Long slotId, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
         checkScheduleAdminAccess(entity.getScheduleId(), userId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
-        LocalDateTime deletedAt = LocalDateTime.now(wallClock)
-                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
-        assignmentRepository.softDeleteBySlotId(slotId, deletedAt);
-        requestRepository.softDeleteBySlotId(slotId, deletedAt);
-        if (slotRepository.softDeleteById(slotId, deletedAt) != 1) {
+        // 枠で削除日時を一度だけ確定し、配下の希望・割当へ同じDB値をコピーする。
+        if (slotRepository.softDeleteById(slotId) != 1) {
             throw new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
         }
+        assignmentRepository.softDeleteBySlotId(slotId);
+        requestRepository.softDeleteBySlotId(slotId);
         log.info("シフト枠削除: id={}", slotId);
     }
 

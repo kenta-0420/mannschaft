@@ -27,21 +27,23 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
     /** 削除済み枠を含む親配下の全履歴を保全したまま論理削除する。 */
     @Modifying(flushAutomatically = true)
     @Query(value = """
-            UPDATE shift_assignments a JOIN shift_slots s ON s.id = a.slot_id
-            SET a.deleted_at = :deletedAt, a.version = a.version + 1, a.updated_at = a.updated_at
+            UPDATE shift_assignments a
+            JOIN shift_slots s ON s.id = a.slot_id
+            SET a.deleted_at = (SELECT sc.deleted_at FROM shift_schedules sc WHERE sc.id = :scheduleId),
+                a.version = a.version + 1,
+                a.updated_at = a.updated_at
             WHERE s.schedule_id = :scheduleId AND a.deleted_at IS NULL
             """, nativeQuery = true)
-    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId,
-                               @Param("deletedAt") java.time.LocalDateTime deletedAt);
+    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
 
     @Modifying(flushAutomatically = true)
     @Query(value = """
-            UPDATE shift_assignments
-            SET deleted_at = :deletedAt, version = version + 1, updated_at = updated_at
-            WHERE slot_id = :slotId AND deleted_at IS NULL
+            UPDATE shift_assignments a
+            JOIN shift_slots s ON s.id = a.slot_id
+            SET a.deleted_at = s.deleted_at, a.version = a.version + 1, a.updated_at = a.updated_at
+            WHERE a.slot_id = :slotId AND a.deleted_at IS NULL
             """, nativeQuery = true)
-    int softDeleteBySlotId(@Param("slotId") Long slotId,
-                           @Param("deletedAt") java.time.LocalDateTime deletedAt);
+    int softDeleteBySlotId(@Param("slotId") Long slotId);
 
     /**
      * 実行履歴IDに紐づく割当一覧を取得する。

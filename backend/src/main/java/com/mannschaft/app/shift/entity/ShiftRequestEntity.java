@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -40,7 +41,7 @@ public class ShiftRequestEntity {
 
     /** 論理削除日時。native UPDATE だけが書き込み、古い実体の save では蘇生させない。 */
     @Column(name = "deleted_at", insertable = false, updatable = false)
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "delete_reason", length = 20, insertable = false, updatable = false)

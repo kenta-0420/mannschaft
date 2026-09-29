@@ -575,16 +575,16 @@ class ShiftSlotServiceTest {
             // Given
             ShiftSlotEntity entity = createSlotEntity();
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(entity));
-            given(slotRepository.softDeleteById(org.mockito.ArgumentMatchers.eq(SLOT_ID), any()))
+            given(slotRepository.softDeleteById(SLOT_ID))
                     .willReturn(1);
 
             // When
             shiftSlotService.deleteSlot(SLOT_ID, ACTOR);
 
             // Then
-            verify(assignmentRepository).softDeleteBySlotId(org.mockito.ArgumentMatchers.eq(SLOT_ID), any());
-            verify(requestRepository).softDeleteBySlotId(org.mockito.ArgumentMatchers.eq(SLOT_ID), any());
-            verify(slotRepository).softDeleteById(org.mockito.ArgumentMatchers.eq(SLOT_ID), any());
+            verify(slotRepository).softDeleteById(SLOT_ID);
+            verify(assignmentRepository).softDeleteBySlotId(SLOT_ID);
+            verify(requestRepository).softDeleteBySlotId(SLOT_ID);
             verify(slotRepository, never()).delete(entity);
         }
 

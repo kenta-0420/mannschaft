@@ -87,25 +87,6 @@ class FlywayExistingDataShiftChildSoftDeleteMigrationTest {
             for (String table : CHILD_TABLES) {
                 before.put(table, snapshotBusinessRows(statement, table));
             }
-            try (ResultSet request = statement.executeQuery(
-                    "SELECT delete_reason, active_uq FROM shift_requests WHERE id = 900001")) {
-                assertThat(request.next()).isTrue();
-                assertThat(request.getString("delete_reason")).isEqualTo("PARENT_DELETED");
-                assertThat(request.getObject("active_uq")).isNull();
-            }
-            try (ResultSet indexes = statement.executeQuery("""
-                    SELECT index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS columns_csv
-                    FROM information_schema.statistics
-                    WHERE table_schema = DATABASE() AND table_name = 'shift_requests'
-                      AND index_name IN ('uq_sr_schedule_user_slot', 'uq_sr_schedule_user_slot_active')
-                    GROUP BY index_name
-                    """)) {
-                assertThat(indexes.next()).isTrue();
-                assertThat(indexes.getString("index_name")).isEqualTo("uq_sr_schedule_user_slot_active");
-                assertThat(indexes.getString("columns_csv"))
-                        .isEqualTo("schedule_id,user_id,slot_id_uq,slot_date_uq,active_uq");
-                assertThat(indexes.next()).isFalse();
-            }
         }
 
         Flyway latest = Flyway.configure().dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
@@ -127,6 +108,25 @@ class FlywayExistingDataShiftChildSoftDeleteMigrationTest {
                     assertThat(rows.getString("deleted_at")).isNull();
                     assertThat(rows.next()).isFalse();
                 }
+            }
+            try (ResultSet request = statement.executeQuery(
+                    "SELECT delete_reason, active_uq FROM shift_requests WHERE id = 900001")) {
+                assertThat(request.next()).isTrue();
+                assertThat(request.getString("delete_reason")).isEqualTo("PARENT_DELETED");
+                assertThat(request.getObject("active_uq")).isNull();
+            }
+            try (ResultSet indexes = statement.executeQuery("""
+                    SELECT index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS columns_csv
+                    FROM information_schema.statistics
+                    WHERE table_schema = DATABASE() AND table_name = 'shift_requests'
+                      AND index_name IN ('uq_sr_schedule_user_slot', 'uq_sr_schedule_user_slot_active')
+                    GROUP BY index_name
+                    """)) {
+                assertThat(indexes.next()).isTrue();
+                assertThat(indexes.getString("index_name")).isEqualTo("uq_sr_schedule_user_slot_active");
+                assertThat(indexes.getString("columns_csv"))
+                        .isEqualTo("schedule_id,user_id,slot_id_uq,slot_date_uq,active_uq");
+                assertThat(indexes.next()).isFalse();
             }
             try (ResultSet row = statement.executeQuery("""
                     SELECT a.status, a.assigned_by, a.note, s.assigned_user_ids, r.preference, r.note

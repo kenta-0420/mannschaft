@@ -77,31 +77,29 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
     @Modifying(flushAutomatically = true)
     @Query(value = """
             UPDATE shift_requests r
-            SET r.deleted_at = :deletedAt,
+            SET r.deleted_at = (SELECT sc.deleted_at FROM shift_schedules sc WHERE sc.id = :scheduleId),
                 r.delete_reason = 'PARENT_DELETED',
                 r.updated_at = r.updated_at
             WHERE r.schedule_id = :scheduleId AND r.deleted_at IS NULL
             """, nativeQuery = true)
-    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId,
-                               @Param("deletedAt") java.time.LocalDateTime deletedAt);
+    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
 
     @Modifying(flushAutomatically = true)
     @Query(value = """
-            UPDATE shift_requests
-            SET deleted_at = :deletedAt, delete_reason = 'SLOT_DELETED', updated_at = updated_at
-            WHERE slot_id = :slotId AND deleted_at IS NULL
+            UPDATE shift_requests r
+            JOIN shift_slots s ON s.id = r.slot_id
+            SET r.deleted_at = s.deleted_at, r.delete_reason = 'SLOT_DELETED', r.updated_at = r.updated_at
+            WHERE r.slot_id = :slotId AND r.deleted_at IS NULL
             """, nativeQuery = true)
-    int softDeleteBySlotId(@Param("slotId") Long slotId,
-                           @Param("deletedAt") java.time.LocalDateTime deletedAt);
+    int softDeleteBySlotId(@Param("slotId") Long slotId);
 
     @Modifying(flushAutomatically = true)
     @Query(value = """
             UPDATE shift_requests
-            SET deleted_at = :deletedAt, delete_reason = 'WITHDRAWN', updated_at = updated_at
+            SET deleted_at = UTC_TIMESTAMP(), delete_reason = 'WITHDRAWN', updated_at = updated_at
             WHERE id = :requestId AND deleted_at IS NULL
             """, nativeQuery = true)
-    int softDeleteById(@Param("requestId") Long requestId,
-                       @Param("deletedAt") java.time.LocalDateTime deletedAt);
+    int softDeleteById(@Param("requestId") Long requestId);
 
     /**
      * スケジュールと preference で希望件数を集計する（v2: 5 段階集計用）。

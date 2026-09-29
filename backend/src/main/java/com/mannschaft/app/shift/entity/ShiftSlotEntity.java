@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.entity;
 import com.mannschaft.app.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
@@ -13,7 +14,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.LocalTime;
 
 /**
@@ -21,7 +22,9 @@ import java.time.LocalTime;
  */
 @Entity
 @SQLRestriction("deleted_at IS NULL")
-@Table(name = "shift_slots")
+@Table(name = "shift_slots", indexes = {
+        @Index(name = "idx_sslot_schedule_date", columnList = "schedule_id, slot_date, start_time")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
@@ -29,7 +32,7 @@ public class ShiftSlotEntity extends BaseEntity {
 
     /** 論理削除日時。native UPDATE だけが書き込み、古い実体の save では蘇生させない。 */
     @Column(name = "deleted_at", insertable = false, updatable = false)
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     @Column(nullable = false)
     private Long scheduleId;

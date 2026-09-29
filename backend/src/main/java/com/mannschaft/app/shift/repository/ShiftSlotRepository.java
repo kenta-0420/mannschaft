@@ -19,21 +19,21 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
     /** 親削除のみの連鎖。割当JSON・業務値・更新日時は保持する。 */
     @Modifying(flushAutomatically = true)
     @Query(value = """
-            UPDATE shift_slots s
-            SET s.deleted_at = :deletedAt, s.version = s.version + 1, s.updated_at = s.updated_at
+            UPDATE shift_slots s FORCE INDEX (idx_sslot_schedule_date)
+            SET s.deleted_at = (SELECT sc.deleted_at FROM shift_schedules sc WHERE sc.id = :scheduleId),
+                s.version = s.version + 1,
+                s.updated_at = s.updated_at
             WHERE s.schedule_id = :scheduleId AND s.deleted_at IS NULL
             """, nativeQuery = true)
-    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId,
-                               @Param("deletedAt") java.time.LocalDateTime deletedAt);
+    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
 
     @Modifying(flushAutomatically = true)
     @Query(value = """
             UPDATE shift_slots
-            SET deleted_at = :deletedAt, version = version + 1, updated_at = updated_at
+            SET deleted_at = UTC_TIMESTAMP(), version = version + 1, updated_at = updated_at
             WHERE id = :slotId AND deleted_at IS NULL
             """, nativeQuery = true)
-    int softDeleteById(@Param("slotId") Long slotId,
-                       @Param("deletedAt") java.time.LocalDateTime deletedAt);
+    int softDeleteById(@Param("slotId") Long slotId);
 
     /**
      * スケジュールの全シフト枠を日付・開始時刻順で取得する。

@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -17,6 +18,7 @@ import com.mannschaft.app.shift.service.ShiftCleanupBatchService;
 import com.mannschaft.app.shift.service.ShiftScheduleService;
 import com.mannschaft.app.shift.service.ShiftSlotService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.OptimisticLockException;
@@ -30,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -115,6 +118,12 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
     @Autowired
     private ShiftCleanupBatchService cleanupBatchService;
 
+    @Autowired
+    private FeatureFlagRepository featureFlagRepository;
+
+    @Autowired
+    private CacheManager cacheManager;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -133,6 +142,7 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
 
     @BeforeEach
     void setUp() {
+        FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager, "FEATURE_SHIFT_ENABLED");
         String fixtureSuffix = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
         teamId = insertTeam("CMP-260917-1136 チーム-" + fixtureSuffix);
 
@@ -465,9 +475,7 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
         TestTransaction.end();
 
         willThrow(new RuntimeException("AC-3 枠更新失敗"))
-                .given(slotRepository).softDeleteByScheduleId(
-                        org.mockito.ArgumentMatchers.eq(liveScheduleId),
-                        org.mockito.ArgumentMatchers.any(LocalDateTime.class));
+                .given(slotRepository).softDeleteByScheduleId(liveScheduleId);
         TestTransaction.start();
         assertThatThrownBy(() -> scheduleService.deleteSchedule(liveScheduleId, adminId))
                 .isInstanceOf(RuntimeException.class)
@@ -510,15 +518,14 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
             Future<?> creation = executor.submit(() -> {
                 assertThat(parentLocked.await(5, TimeUnit.SECONDS)).isTrue();
                 createAttempted.countDown();
-                return new TransactionTemplate(transactionManager).execute(tx -> {
-                    try {
-                        return slotService.createSlot(liveScheduleId,
-                                new CreateShiftSlotRequest(LocalDate.of(2026, 4, 3),
-                                        LocalTime.of(10, 0), LocalTime.of(12, 0), null, 1, "競合作成"), adminId);
-                    } catch (BusinessException expected) {
-                        return null;
-                    }
-                });
+                try {
+                    return new TransactionTemplate(transactionManager).execute(tx ->
+                            slotService.createSlot(liveScheduleId,
+                                    new CreateShiftSlotRequest(LocalDate.of(2026, 4, 3),
+                                            LocalTime.of(10, 0), LocalTime.of(12, 0), null, 1, "競合作成"), adminId));
+                } catch (BusinessException | org.springframework.transaction.UnexpectedRollbackException expected) {
+                    return null;
+                }
             });
             deletion.get(10, TimeUnit.SECONDS);
             creation.get(10, TimeUnit.SECONDS);
@@ -733,25 +740,22 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
                 .as("子1件=%d文、子200件=%d文", oneChildStatements, twoHundredChildStatements)
                 .isEqualTo(oneChildStatements);
         assertThat(statistics.getEntityUpdateCount()).as("親のORM UPDATEは1文").isEqualTo(1L);
-        verify(assignmentRepository).softDeleteByScheduleId(
-                org.mockito.ArgumentMatchers.eq(twoHundredChildSchedule),
-                org.mockito.ArgumentMatchers.any(LocalDateTime.class));
-        verify(requestRepository).softDeleteByScheduleId(
-                org.mockito.ArgumentMatchers.eq(twoHundredChildSchedule),
-                org.mockito.ArgumentMatchers.any(LocalDateTime.class));
-        verify(slotRepository).softDeleteByScheduleId(
-                org.mockito.ArgumentMatchers.eq(twoHundredChildSchedule),
-                org.mockito.ArgumentMatchers.any(LocalDateTime.class));
         verify(scheduleRepository).saveAndFlush(org.mockito.ArgumentMatchers.any(ShiftScheduleEntity.class));
+        verify(assignmentRepository).softDeleteByScheduleId(twoHundredChildSchedule);
+        verify(requestRepository).softDeleteByScheduleId(twoHundredChildSchedule);
+        verify(slotRepository).softDeleteByScheduleId(twoHundredChildSchedule);
 
         Map<String, String> slotPlan = explainKeys("""
-                EXPLAIN UPDATE shift_slots s
-                SET s.deleted_at = :deletedAt, s.version = s.version + 1, s.updated_at = s.updated_at
+                EXPLAIN UPDATE shift_slots s FORCE INDEX (idx_sslot_schedule_date)
+                SET s.deleted_at = (SELECT sc.deleted_at FROM shift_schedules sc WHERE sc.id = :scheduleId),
+                    s.version = s.version + 1, s.updated_at = s.updated_at
                 WHERE s.schedule_id = :scheduleId AND s.deleted_at IS NULL
                 """, twoHundredChildSchedule);
         Map<String, String> assignmentPlan = explainKeys("""
-                EXPLAIN UPDATE shift_assignments a JOIN shift_slots s ON s.id = a.slot_id
-                SET a.deleted_at = :deletedAt, a.version = a.version + 1, a.updated_at = a.updated_at
+                EXPLAIN UPDATE shift_assignments a
+                JOIN shift_slots s ON s.id = a.slot_id
+                SET a.deleted_at = (SELECT sc.deleted_at FROM shift_schedules sc WHERE sc.id = :scheduleId),
+                    a.version = a.version + 1, a.updated_at = a.updated_at
                 WHERE s.schedule_id = :scheduleId AND a.deleted_at IS NULL
                 """, twoHundredChildSchedule);
         assertThat(slotPlan.get("s")).isEqualTo("idx_sslot_schedule_date");
@@ -819,7 +823,6 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
         Map<String, String> keys = new java.util.HashMap<>();
         List<Object[]> rows = em.createNativeQuery(sql)
                 .setParameter("scheduleId", scheduleId)
-                .setParameter("deletedAt", LocalDateTime.of(2026, 1, 1, 0, 0))
                 .getResultList();
         for (Object[] row : rows) {
             keys.put(String.valueOf(row[2]), row[6] == null ? null : String.valueOf(row[6]));

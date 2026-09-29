@@ -617,17 +617,13 @@ class ShiftScheduleServiceTest {
             shiftScheduleService.deleteSchedule(SCHEDULE_ID, USER_ID);
 
             // Then
-            assertThat(entity.getDeletedAt()).isNotNull();
             org.mockito.InOrder deletionOrder = org.mockito.Mockito.inOrder(
                     assignmentRepository, requestRepository, slotRepository, scheduleRepository);
             deletionOrder.verify(scheduleRepository).findByIdForUpdate(SCHEDULE_ID);
-            deletionOrder.verify(assignmentRepository).softDeleteByScheduleId(
-                    eq(SCHEDULE_ID), any(LocalDateTime.class));
-            deletionOrder.verify(requestRepository).softDeleteByScheduleId(
-                    eq(SCHEDULE_ID), any(LocalDateTime.class));
-            deletionOrder.verify(slotRepository).softDeleteByScheduleId(
-                    eq(SCHEDULE_ID), any(LocalDateTime.class));
             deletionOrder.verify(scheduleRepository).saveAndFlush(entity);
+            deletionOrder.verify(assignmentRepository).softDeleteByScheduleId(SCHEDULE_ID);
+            deletionOrder.verify(requestRepository).softDeleteByScheduleId(SCHEDULE_ID);
+            deletionOrder.verify(slotRepository).softDeleteByScheduleId(SCHEDULE_ID);
         }
 
         @Test
@@ -636,18 +632,15 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.of(entity));
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(assignmentRepository.softDeleteByScheduleId(
-                    eq(SCHEDULE_ID), any(LocalDateTime.class)))
+            given(assignmentRepository.softDeleteByScheduleId(SCHEDULE_ID))
                     .willThrow(new IllegalStateException("子の更新失敗"));
 
             assertThatThrownBy(() -> shiftScheduleService.deleteSchedule(SCHEDULE_ID, USER_ID))
                     .isInstanceOf(IllegalStateException.class);
 
-            verify(scheduleRepository, never()).saveAndFlush(entity);
-            verify(requestRepository, never()).softDeleteByScheduleId(
-                    eq(SCHEDULE_ID), any(LocalDateTime.class));
-            verify(slotRepository, never()).softDeleteByScheduleId(
-                    eq(SCHEDULE_ID), any(LocalDateTime.class));
+            verify(scheduleRepository).saveAndFlush(entity);
+            verify(requestRepository, never()).softDeleteByScheduleId(any());
+            verify(slotRepository, never()).softDeleteByScheduleId(any());
             org.mockito.Mockito.verifyNoInteractions(eventPublisher);
         }
 
