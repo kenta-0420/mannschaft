@@ -129,6 +129,23 @@ public interface ConfirmableNotificationRecipientRepository
             @Param("notificationId") Long notificationId);
 
     /**
+     * 指定ユーザー自身の確認通知状態を、通知ID集合に対して一括で射影する。
+     *
+     * <p>通常通知一覧のページ結果に確認状態を補充するために使用する。受信者エンティティを
+     * 復元せず、確認通知IDと確認済みフラグだけを返す。{@code userId} を必須条件にして
+     * 他ユーザーの確認状態を返さず、確認免除済み受信者も除外する。</p>
+     *
+     * @param userId 本人ユーザーID
+     * @param notificationIds 確認通知ID集合
+     * @return {@code [confirmableNotificationId, isConfirmed]} の行
+     */
+    @Query("SELECT r.confirmableNotification.id, r.isConfirmed FROM ConfirmableNotificationRecipientEntity r " +
+           "WHERE r.user.id = :userId AND r.confirmableNotification.id IN :notificationIds " +
+           "AND r.excludedAt IS NULL")
+    List<Object[]> findConfirmationStatesByUserIdAndNotificationIdIn(
+            @Param("userId") Long userId,
+            @Param("notificationIds") List<Long> notificationIds);
+    /**
      * CMP-260920-1040: チャンク内の候補 user_id のうち、既に受信者行がある user_id を求める
      * （軍議第8版確定稿 §3.4 手順1。再開時の二重防止・AC-23）。
      *

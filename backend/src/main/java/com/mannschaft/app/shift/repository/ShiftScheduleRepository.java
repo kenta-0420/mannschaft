@@ -2,8 +2,10 @@ package com.mannschaft.app.shift.repository;
 
 import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +18,11 @@ import java.util.Optional;
  * シフトスケジュールリポジトリ。
  */
 public interface ShiftScheduleRepository extends JpaRepository<ShiftScheduleEntity, Long> {
+
+    /** 親削除と子の作成・更新を同じ親行のロックで直列化する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM ShiftScheduleEntity s WHERE s.id = :id")
+    Optional<ShiftScheduleEntity> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * チームのシフトスケジュール一覧を開始日降順で取得する。
@@ -127,7 +134,8 @@ public interface ShiftScheduleRepository extends JpaRepository<ShiftScheduleEnti
             SELECT s.id FROM ShiftScheduleEntity s
             WHERE s.status = 'ARCHIVED'
               AND s.updatedAt < :cutoff
-              AND s.deletedAt IS NULL
+              AND EXISTS (SELECT r.id FROM ShiftRequestEntity r WHERE r.scheduleId = s.id)
+            ORDER BY s.id
             """)
     List<Long> findArchivedScheduleIdsOlderThan(
             @Param("cutoff") LocalDateTime cutoff,

@@ -192,7 +192,7 @@ class JobPostingVisibilityResolverTest {
                     .thenReturn(List.of(p));
             UserScopeRoleSnapshot snap = new UserScopeRoleSnapshot(false,
                     Map.of(),
-                    Map.of(TEAM_SCOPE, 200L),
+                    Map.of(TEAM_SCOPE, Set.of(200L)),
                     Set.of(new ScopeKey("ORGANIZATION", 200L)),
                     Set.of());
             when(membershipBatchQueryService.snapshotForUser(eq(VIEWER_ID), anySet(), anySet()))

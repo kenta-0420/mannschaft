@@ -54,20 +54,27 @@ onMounted(() => load())
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
-      <SectionCard
-        v-for="s in shifts"
-        :key="s.id"
-      >
+      <SectionCard v-for="s in shifts" :key="s.id" :data-testid="`my-shift-request-${s.id}`">
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold">{{ s.slotDate }}</h3>
-          <span :class="getStatusClass(s.preference)" class="rounded px-2 py-0.5 text-xs font-medium">{{
-            s.preference
-          }}</span>
+          <span
+            :class="getStatusClass(s.preference)"
+            class="rounded px-2 py-0.5 text-xs font-medium"
+            >{{ s.preference }}</span
+          >
         </div>
         <p v-if="s.note" class="mt-1 text-xs text-surface-400">{{ s.note }}</p>
+        <p
+          v-if="s.scheduleDeleted"
+          class="mt-2 inline-flex items-center gap-1 text-xs text-surface-500"
+          :data-testid="`my-shift-schedule-deleted-${s.id}`"
+        >
+          <i class="pi pi-trash text-xs" />
+          {{ $t('shift.myShifts.scheduleDeleted') }}
+        </p>
         <!-- スケジュール ID がある場合は変更依頼リンクを表示 -->
         <NuxtLink
-          v-if="s.scheduleId"
+          v-if="s.scheduleId && !s.scheduleDeleted"
           :to="`/shift/${s.scheduleId}`"
           class="mt-2 inline-flex items-center gap-1 text-xs text-primary-600 hover:underline"
         >
@@ -75,7 +82,11 @@ onMounted(() => load())
           {{ $t('shift.changeRequest.submit') }}
         </NuxtLink>
       </SectionCard>
-      <DashboardEmptyState v-if="shifts.length === 0" icon="pi-clock" :message="$t('shift.myShifts.empty')" />
+      <DashboardEmptyState
+        v-if="shifts.length === 0"
+        icon="pi-clock"
+        :message="$t('shift.myShifts.empty')"
+      />
     </div>
   </div>
 </template>

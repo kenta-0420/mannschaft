@@ -12,8 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NotificationTypeTest {
 
     @Test
-    @DisplayName("通知種別が全て定義されている（既存31種別 + OWNERSHIP_TRANSFER_* 2種 + ADMIN_SUCCESSION_FORCED 1種 + JOIN_REQUEST_* 3種 = 37）")
-    void 全37種別が定義() {
+    @DisplayName("通知種別が全て定義されている（40種別 + TEAM_ORG_* 9種 = 49）")
+    void 全49種別が定義() {
         // 内訳: 設計書§5 の通知種別（F03.4.5 §6.1 の RESERVATION_WAITLIST_OPENING を含む 25 種別）
         //       ＋ TODO_HANDED_OFF（後付け）＋ F20.3 ベータ特典の BETA_PERK_GRANTED/_REVOKED/_EXTENDED/
         //       _REVIEW_FLAGGED（4 種）＋ F03.4.5 §6.3 の RESERVATION_PENDING_EXPIRED（仮押さえ自動失効）
@@ -21,8 +21,10 @@ class NotificationTypeTest {
         //       ＋ 柱①ADMINゼロ根治の ADMIN_SUCCESSION_FORCED（強制承継通知、1種）
         //       ＋ CMP-260901-1538 柱③-A「MEMBER 参加申請」の JOIN_REQUEST_RECEIVED /
         //         _APPROVED / _REJECTED（3種）
-        //       = 計 37 種別。
-        assertThat(NotificationType.values()).hasSize(39);
+        //       ＋ 新規端末ログイン、募集ペナルティ解除・適用（3種）
+        //       ＋ F01.2.1 §6.7 チーム加盟の TEAM_ORG_*（9種）
+        //       = 計 49 種別。
+        assertThat(NotificationType.values()).hasSize(49);
         assertThat(NotificationType.values())
                 .contains(NotificationType.BETA_PERK_GRANTED, NotificationType.BETA_PERK_REVOKED,
                         NotificationType.BETA_PERK_EXTENDED, NotificationType.BETA_PERK_REVIEW_FLAGGED,
@@ -34,7 +36,17 @@ class NotificationTypeTest {
                         NotificationType.JOIN_REQUEST_APPROVED,
                         NotificationType.JOIN_REQUEST_REJECTED,
                         NotificationType.NEW_DEVICE_LOGIN,
-                        NotificationType.RECRUITMENT_PENALTY_LIFTED);
+                        NotificationType.RECRUITMENT_PENALTY_LIFTED,
+                        NotificationType.RECRUITMENT_PENALTY_APPLIED,
+                        NotificationType.TEAM_ORG_APPLICATION_RECEIVED,
+                        NotificationType.TEAM_ORG_APPLICATION_APPROVED,
+                        NotificationType.TEAM_ORG_APPLICATION_REJECTED,
+                        NotificationType.TEAM_ORG_INVITE_RECEIVED,
+                        NotificationType.TEAM_ORG_INVITE_ACCEPTED,
+                        NotificationType.TEAM_ORG_PENDING_EXPIRED,
+                        NotificationType.TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM,
+                        NotificationType.TEAM_ORG_MEMBERSHIP_LEFT,
+                        NotificationType.TEAM_ORG_MEMBERSHIP_REMOVED);
     }
 
     @Test

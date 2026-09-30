@@ -82,7 +82,8 @@
       "title": "Mis solicitudes de turno",
       "empty": "No hay turnos",
       "fetchError": "Error al obtener la información de turnos",
-      "description": "Solicitudes enviadas y su estado de aprobación"
+      "description": "Solicitudes enviadas y su estado de aprobación",
+      "scheduleDeleted": "El cuadrante ha sido eliminado"
     },
     "page": {
       "title": "Turno",
@@ -134,6 +135,9 @@
       "archive": "Archivar",
       "transitionSuccess": "Estado cambiado",
       "saveSuccess": "Guardado",
+      "deleteTitle": "Eliminar cuadrante",
+      "deleteConfirm": "¿Eliminar este cuadrante? Las solicitudes enviadas permanecerán en el historial de cada miembro.",
+      "deleteSuccess": "Cuadrante eliminado",
       "calendarView": "Vista de calendario",
       "noDate": "Sin fecha",
       "colDate": "Fecha",
