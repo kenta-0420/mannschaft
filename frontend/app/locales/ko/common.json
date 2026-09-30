@@ -971,7 +971,29 @@
       "title": "할 일이 넘겨졌습니다",
       "body": "{from}님으로부터 「{title}」을（를） 받았습니다（상태: {label}）"
     },
-    "pageTitle": "通知",
+    "pageTitle": "알림",
+    "list": {
+      "all": "전체",
+      "unread": "읽지 않음",
+      "markAllRead": "모두 읽음으로 표시",
+      "markUnread": "읽지 않음으로 표시",
+      "markRead": "읽음으로 표시",
+      "empty": "알림이 없습니다",
+      "loadMore": "더 보기",
+      "loadError": "알림을 불러오지 못했습니다",
+      "actionError": "작업에 실패했습니다",
+      "markAllReadError": "모두 읽음 처리에 실패했습니다",
+      "confirmInfoMissing": "확인 알림 정보가 부족합니다",
+      "invalidScope": "범위가 올바르지 않습니다",
+      "confirmed": "확인했습니다",
+      "confirmError": "확인 처리에 실패했습니다"
+    },
+    "bell": {
+      "notification": "알림",
+      "chat": "채팅",
+      "mention": "멘션",
+      "none": "없음"
+    },
     "guide": {
       "title": "通知の使い方",
       "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",

@@ -41,6 +41,7 @@ public interface NotificationMapper {
                 .readAt(entity.getReadAt())
                 .channelsSent(entity.getChannelsSent())
                 .snoozedUntil(entity.getSnoozedUntil())
+                .isConfirmed(null)
                 .createdAt(entity.getCreatedAt())
                 .build();
     }

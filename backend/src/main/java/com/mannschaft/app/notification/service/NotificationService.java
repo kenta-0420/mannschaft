@@ -13,6 +13,7 @@ import com.mannschaft.app.notification.dto.NotificationStatsResponse;
 import com.mannschaft.app.notification.dto.SnoozeRequest;
 import com.mannschaft.app.notification.dto.UnreadCountResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
 import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
@@ -21,6 +22,7 @@ import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 通知サービス。通知のCRUD・既読管理・スヌーズを担当する。
@@ -42,6 +46,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final PushSubscriptionRepository pushSubscriptionRepository;
     private final NotificationMapper notificationMapper;
+    private final ConfirmableNotificationRecipientRepository confirmableNotificationRecipientRepository;
 
     /**
      * F00 Phase F セキュリティ漏れ修正で導入。通知発行先ユーザーが
@@ -68,7 +73,7 @@ public class NotificationService {
     @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "NotificationService.listNotifications"})
     public Page<NotificationResponse> listNotifications(Long userId, Pageable pageable) {
         Page<NotificationEntity> page = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
-        return page.map(notificationMapper::toNotificationResponse);
+        return enrichConfirmationStates(userId, page.map(notificationMapper::toNotificationResponse), pageable);
     }
 
     /**
@@ -106,7 +111,7 @@ public class NotificationService {
         Page<NotificationEntity> page = notificationRepository
                 .findByUserIdAndScopeTypeAndScopeIdInOrderByCreatedAtDesc(
                         userId, toNotificationScopeType(scopeType), scopeIds, pageable);
-        return page.map(notificationMapper::toNotificationResponse);
+        return enrichConfirmationStates(userId, page.map(notificationMapper::toNotificationResponse), pageable);
     }
 
     /**
@@ -185,7 +190,7 @@ public class NotificationService {
         entity.markAsRead();
         NotificationEntity saved = notificationRepository.save(entity);
         log.info("通知既読: userId={}, notificationId={}", userId, notificationId);
-        return notificationMapper.toNotificationResponse(saved);
+        return enrichConfirmationState(userId, notificationMapper.toNotificationResponse(saved));
     }
 
     /**
@@ -206,7 +211,7 @@ public class NotificationService {
         entity.markAsUnread();
         NotificationEntity saved = notificationRepository.save(entity);
         log.info("通知未読戻し: userId={}, notificationId={}", userId, notificationId);
-        return notificationMapper.toNotificationResponse(saved);
+        return enrichConfirmationState(userId, notificationMapper.toNotificationResponse(saved));
     }
 
     /**
@@ -233,7 +238,7 @@ public class NotificationService {
         entity.snooze(snoozedUntilJst);
         NotificationEntity saved = notificationRepository.save(entity);
         log.info("通知スヌーズ: userId={}, notificationId={}, until={}", userId, notificationId, snoozedUntilJst);
-        return notificationMapper.toNotificationResponse(saved);
+        return enrichConfirmationState(userId, notificationMapper.toNotificationResponse(saved));
     }
 
     /**
@@ -435,6 +440,34 @@ public class NotificationService {
         long read = total - unread;
 
         return new NotificationStatsResponse(total, unread, read, totalSubscriptions);
+    }
+
+    private Page<NotificationResponse> enrichConfirmationStates(
+            Long userId, Page<NotificationResponse> page, Pageable pageable) {
+        List<NotificationResponse> enriched = enrichConfirmationStates(userId, page.getContent());
+        return new PageImpl<>(enriched, pageable, page.getTotalElements());
+    }
+
+    private NotificationResponse enrichConfirmationState(Long userId, NotificationResponse response) {
+        return enrichConfirmationStates(userId, List.of(response)).getFirst();
+    }
+
+    private List<NotificationResponse> enrichConfirmationStates(Long userId, List<NotificationResponse> responses) {
+        List<Long> ids = responses.stream()
+                .filter(response -> "CONFIRMABLE_NOTIFICATION".equals(response.getSourceType()))
+                .map(NotificationResponse::getSourceId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return responses;
+        }
+        Map<Long, Boolean> states = confirmableNotificationRecipientRepository
+                .findConfirmationStatesByUserIdAndNotificationIdIn(userId, ids).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Boolean) row[1]));
+        return responses.stream().map(response -> "CONFIRMABLE_NOTIFICATION".equals(response.getSourceType())
+                ? response.toBuilder().isConfirmed(states.get(response.getSourceId())).build()
+                : response).toList();
     }
 
     /**

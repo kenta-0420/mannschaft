@@ -1,12 +1,20 @@
 package com.mannschaft.app.notification.confirmable;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTemplateEntity;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse;
+import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationTemplateRepository;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -27,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,6 +44,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 認可根治戦役 Wave3 バッチB12-notification — notification/confirmable（F04.9 確認通知）
@@ -87,6 +98,12 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
 
     @Autowired
     private ConfirmableNotificationTemplateRepository templateRepository;
+
+    @Autowired
+    private ConfirmableNotificationService notificationService;
+
+    @Autowired
+    private ConfirmableNotificationMapper notificationMapper;
 
     @PersistenceContext
     private EntityManager em;
@@ -316,6 +333,174 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
     // ═════════════════════════════════════════════════════════════════════
     // 組織スコープ（OrgConfirmableNotificationController）
     // ═════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("永続化コンテキスト終了後も本人の未確認通知を表示名付きで変換できる")
+    void listPendingFetchesUserBeforeMappingOutsidePersistenceContext() {
+        Long ownPendingId = insertRecipient(teamNotifAId, teamMemberAId, false, false);
+        insertRecipient(teamNotifAId, teamOutsiderId, false, false);
+        Long confirmedNotificationId = insertTeamNotification("CNAUTHZ 確認済み境界テスト");
+        insertRecipient(confirmedNotificationId, teamMemberAId, true, false);
+        Long excludedNotificationId = insertTeamNotification("CNAUTHZ 除外済み境界テスト");
+        insertRecipient(excludedNotificationId, teamMemberAId, false, true);
+        em.flush();
+        em.clear();
+        String expectedDisplayName = (String) em.createNativeQuery(
+                        "SELECT display_name FROM users WHERE id = :userId")
+                .setParameter("userId", teamMemberAId)
+                .getSingleResult();
+        em.clear();
+
+        List<ConfirmableNotificationRecipientEntity> pending = notificationService.listPending(teamMemberAId);
+
+        // service transaction 終了後に controller へ返るときと同じ、detach 済み境界を作る。
+        em.clear();
+        List<ConfirmableNotificationRecipientResponse> responses =
+                notificationMapper.toRecipientResponseList(pending);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).getId()).isEqualTo(ownPendingId);
+        assertThat(responses.get(0).getUserId()).isEqualTo(teamMemberAId);
+        assertThat(responses.get(0).getDisplayName()).isEqualTo(expectedDisplayName);
+    }
+
+    private Long insertTeamNotification(String title) {
+        return notificationRepository.save(ConfirmableNotificationEntity.builder()
+                        .scopeType(ScopeType.TEAM)
+                        .scopeId(teamAId)
+                        .title(title)
+                        .priority(ConfirmableNotificationPriority.NORMAL)
+                        .totalRecipientCount(1)
+                        .build())
+                .getId();
+    }
+
+    private Long insertRecipient(Long notificationId, Long userId, boolean confirmed, boolean excluded) {
+        ConfirmableNotificationRecipientEntity recipient = ConfirmableNotificationRecipientEntity.builder()
+                .confirmableNotification(em.getReference(ConfirmableNotificationEntity.class, notificationId))
+                .user(em.getReference(com.mannschaft.app.auth.entity.UserEntity.class, userId))
+                .confirmToken(UUID.randomUUID().toString())
+                .isConfirmed(confirmed)
+                .excludedAt(excluded ? java.time.LocalDateTime.now() : null)
+                .build();
+        em.persist(recipient);
+        return recipient.getId();
+    }
+
+    @Nested
+    @DisplayName("NotificationController の本人確認状態（実MySQL・HTTP）")
+    class InboxConfirmationState {
+
+        @Test
+        @DisplayName("本人のfalseは既読でもfalse、明示確認でtrue、未読戻し後もtrue")
+        void 既読と確認状態を独立して保持する() throws Exception {
+            Long recipientId = insertRecipient(teamNotifAId, teamMemberAId, false, false);
+            // 同じ確認通知に別人のtrueを併存させ、本人の行だけを選ぶ契約も固定する。
+            insertRecipient(teamNotifAId, teamOutsiderId, true, false);
+            Long inboxId = insertInboxNotification(teamMemberAId, "CONFIRMABLE_NOTIFICATION", teamNotifAId);
+            em.flush();
+            em.clear();
+            setAuth(teamMemberAId);
+
+            assertConfirmation(inboxNotification(inboxId), false);
+            mockMvc.perform(post("/api/v1/notifications/{id}/read", inboxId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isRead").value(true))
+                    .andExpect(jsonPath("$.data.isConfirmed").value(false));
+            em.flush();
+            em.clear();
+            assertThat(em.find(ConfirmableNotificationRecipientEntity.class, recipientId).getIsConfirmed()).isFalse();
+            assertConfirmation(inboxNotification(inboxId), false);
+
+            mockMvc.perform(post("/api/v1/me/confirmable-notifications/{id}/confirm", teamNotifAId))
+                    .andExpect(status().isNoContent());
+            em.flush();
+            em.clear();
+            assertThat(em.find(ConfirmableNotificationRecipientEntity.class, recipientId).getIsConfirmed()).isTrue();
+            assertConfirmation(inboxNotification(inboxId), true);
+
+            mockMvc.perform(post("/api/v1/notifications/{id}/unread", inboxId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.isRead").value(false))
+                    .andExpect(jsonPath("$.data.isConfirmed").value(true));
+            em.flush();
+            em.clear();
+            JsonNode unread = inboxNotification(inboxId);
+            assertThat(unread.path("isRead").booleanValue()).isFalse();
+            assertConfirmation(unread, true);
+            assertThat(em.find(ConfirmableNotificationRecipientEntity.class, recipientId).getIsConfirmed()).isTrue();
+        }
+
+        @Test
+        @DisplayName("通常通知・本人行なし・別人のみ・除外済みはnullで他人宛通知も漏れない")
+        void 本人の有効受信者行以外の確認状態を公開しない() throws Exception {
+            Long normalId = insertInboxNotification(teamMemberAId, "SYSTEM", teamNotifAId);
+            Long missingId = insertInboxNotification(teamMemberAId, "CONFIRMABLE_NOTIFICATION", teamNotifAId);
+            Long foreignSourceId = insertTeamNotification("別人だけが受信する確認通知");
+            insertRecipient(foreignSourceId, teamOutsiderId, true, false);
+            Long foreignId = insertInboxNotification(teamMemberAId, "CONFIRMABLE_NOTIFICATION", foreignSourceId);
+            Long excludedSourceId = insertTeamNotification("本人が除外済みの確認通知");
+            insertRecipient(excludedSourceId, teamMemberAId, true, true);
+            Long excludedId = insertInboxNotification(teamMemberAId, "CONFIRMABLE_NOTIFICATION", excludedSourceId);
+            Long othersInboxId = insertInboxNotification(teamOutsiderId, "CONFIRMABLE_NOTIFICATION", foreignSourceId);
+            em.flush();
+            em.clear();
+            setAuth(teamMemberAId);
+
+            JsonNode inbox = inbox();
+            assertThat(inbox.size()).isEqualTo(4);
+            for (Long id : List.of(normalId, missingId, foreignId, excludedId)) {
+                JsonNode notification = notificationById(inbox, id);
+                assertThat(notification.has("isConfirmed")).isTrue();
+                assertThat(notification.get("isConfirmed").isNull()).isTrue();
+            }
+            assertThat(inbox.findValues("id")).noneMatch(id -> id.longValue() == othersInboxId);
+            mockMvc.perform(post("/api/v1/notifications/{id}/read", othersInboxId))
+                    .andExpect(status().isNotFound());
+        }
+
+        private JsonNode inbox() throws Exception {
+            String body = mockMvc.perform(get("/api/v1/notifications").param("size", "20"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            return objectMapper.readTree(body).path("data");
+        }
+
+        private JsonNode inboxNotification(Long id) throws Exception {
+            return notificationById(inbox(), id);
+        }
+
+        private void assertConfirmation(JsonNode notification, boolean confirmed) {
+            assertThat(notification.path("isConfirmed").isBoolean()).isTrue();
+            assertThat(notification.path("isConfirmed").booleanValue()).isEqualTo(confirmed);
+        }
+
+        private JsonNode notificationById(JsonNode inbox, Long id) {
+            for (JsonNode notification : inbox) {
+                if (notification.path("id").longValue() == id) {
+                    // 欠落フィールドをfalseと読み違えて偽greenにしない。
+                    assertThat(notification.path("isConfirmed").isMissingNode()).isFalse();
+                    return notification;
+                }
+            }
+            throw new AssertionError("本人の通知が一覧にありません: " + id);
+        }
+
+        private Long insertInboxNotification(Long userId, String sourceType, Long sourceId) {
+            NotificationEntity notification = NotificationEntity.builder()
+                    .userId(userId)
+                    .notificationType("RECRUITMENT_PENALTY_APPLIED")
+                    .priority(NotificationPriority.URGENT)
+                    .title("確認状態の契約テスト")
+                    .body("本文")
+                    .sourceType(sourceType)
+                    .sourceId(sourceId)
+                    .scopeType(NotificationScopeType.TEAM)
+                    .scopeId(teamAId)
+                    .build();
+            em.persist(notification);
+            return notification.getId();
+        }
+    }
 
     @Nested
     @DisplayName("組織スコープ 1. POST .../confirmable-notifications（送信: checkAdminOrAbove）")

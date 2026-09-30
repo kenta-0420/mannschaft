@@ -29,7 +29,8 @@
       "archived": "In Archiv verschoben",
       "unarchived": "In Posteingang verschoben",
       "unsnoozed": "Zurückstellung aufgehoben",
-      "snoozeFailed": "Zurückstellen fehlgeschlagen"
+      "snoozeFailed": "Zurückstellen fehlgeschlagen",
+      "readFailed": "Benachrichtigung konnte nicht als gelesen markiert werden"
     },
     "snoozePreset": {
       "in3h": "In 3 Stunden",
