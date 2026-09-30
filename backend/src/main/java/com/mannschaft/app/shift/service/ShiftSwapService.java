@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.SwapRequestStatus;
@@ -41,9 +42,12 @@ import java.util.List;
  *       これに加えて当該チームのメンバーであることを前置きで検証する。</li>
  * </ul>
  *
- * <p>認可失敗は {@code COMMON_002}（403）とする。越境を 404 に寄せず 403 とするのは、
- * 同ドメインの既存契約テスト {@code ShiftScheduleScopeContractIT}（Wave3-B6）および
- * {@code ShiftSlotScopeContractIT} が別 scope ADMIN に 403 を期待しており、そちらへ揃えるため。</p>
+ * <p><b>存在オラクル是正（CMP-260923-0954 W2）:</b> {@code ?teamId=} の一覧（{@link #listSwapRequests}）は
+ * チーム自体の存在有無が応答で割れないため 403（{@code COMMON_002}）のまま。一方 swapId・slotId など
+ * <b>個別リソース ID を叩く EP</b>（作成・承諾・承認/却下・取消）は、他チームの実在 ID を叩いた応答と
+ * 不在 ID を叩いた応答が {@code status}/{@code error.code} で割れていた（403 vs 404）ため、
+ * {@link ScopeConcealingAccessGate} を用いて越境時は不在時と同一コードへ畳む。
+ * 同一チーム内の権限不足（SUPPORTER・非ADMIN・非申請者）は従来どおり 403 のまま隠さない。</p>
  */
 @Slf4j
 @Service
@@ -58,6 +62,7 @@ public class ShiftSwapService {
     private final ShiftSlotRepository slotRepository;
     private final ShiftScheduleRepository scheduleRepository;
     private final AccessControlService accessControlService;
+    private final ScopeConcealingAccessGate accessGate;
     private final ShiftMapper shiftMapper;
     private final ObjectMapper objectMapper;
 
@@ -130,8 +135,13 @@ public class ShiftSwapService {
      */
     @Transactional
     public SwapRequestResponse createSwapRequest(CreateSwapRequestRequest req, Long userId) {
-        // 対象シフト枠の属するチームのメンバーのみ申請できる（SUPPORTER 不可）
-        checkTeamMemberAccess(resolveTeamIdBySlotId(req.getSlotId()), userId);
+        // 対象シフト枠の属するチームのメンバーのみ申請できる（SUPPORTER 不可）。
+        // 存在オラクル是正（CMP-260923-0954 W2）: 越境（他チームの slotId）は不在と同一応答
+        // （SHIFT_SLOT_NOT_FOUND）に畳む。従来は同一チーム内権限不足と同じ COMMON_002 を返していたため、
+        // 「slotId が実在するが他チーム」と「slotId が実在しない」が判別できてしまっていた。
+        accessGate.requireMemberOrConceal(
+                userId, resolveTeamIdBySlotId(req.getSlotId()), "TEAM",
+                ShiftErrorCode.SHIFT_SLOT_NOT_FOUND, true);
 
         // 受信者モードの決定
         String recipientMode = req.isOpenCall() ? "OPEN_CALL" : "SPECIFIC";
@@ -169,7 +179,10 @@ public class ShiftSwapService {
     @Transactional
     public SwapRequestResponse acceptSwapRequest(Long swapId, Long accepterId) {
         ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
-        checkTeamMemberAccess(resolveTeamIdBySwap(entity), accepterId);
+        // 存在オラクル是正（W2）: 越境（他チームの swapId）は不在と同一応答（SWAP_REQUEST_NOT_FOUND）。
+        accessGate.requireMemberOrConceal(
+                accepterId, resolveTeamIdBySwap(entity), "TEAM",
+                ShiftErrorCode.SWAP_REQUEST_NOT_FOUND, true);
         validatePendingStatus(entity);
 
         if (entity.getRequesterId().equals(accepterId)) {
@@ -194,7 +207,9 @@ public class ShiftSwapService {
     @Transactional
     public SwapRequestResponse resolveSwapRequest(Long swapId, ResolveSwapRequestRequest req, Long adminId) {
         ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
-        checkTeamAdminAccess(resolveTeamIdBySwap(entity), adminId);
+        // 存在オラクル是正（W2）: 越境（他チームの swapId）は不在と同一応答（SWAP_REQUEST_NOT_FOUND）。
+        accessGate.requireAdminOrConceal(
+                adminId, resolveTeamIdBySwap(entity), "TEAM", ShiftErrorCode.SWAP_REQUEST_NOT_FOUND);
 
         if (entity.getStatus() != SwapRequestStatus.ACCEPTED) {
             throw new BusinessException(ShiftErrorCode.INVALID_SWAP_STATUS);
@@ -220,7 +235,14 @@ public class ShiftSwapService {
     @Transactional
     public void cancelSwapRequest(Long swapId, Long userId) {
         ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
-        checkRequesterOrTeamAdmin(entity, userId);
+        // 存在オラクル是正（W2）: 申請者本人は所属を問わず許可、それ以外は当該チームの ADMIN 以上のみ。
+        // 越境（申請者でも当該チーム ADMIN でもない）は不在と同一応答（SWAP_REQUEST_NOT_FOUND）。
+        // 申請者本人の経路では scope 解決（slot→schedule の 2 クエリ）を行わず、是正前と同じクエリ数に保つ。
+        if (!entity.getRequesterId().equals(userId)) {
+            accessGate.requireOwnerOrAdminOrConceal(
+                    userId, resolveTeamIdBySwap(entity), "TEAM", entity.getRequesterId(),
+                    ShiftErrorCode.SWAP_REQUEST_NOT_FOUND);
+        }
         validatePendingStatus(entity);
 
         entity.cancel();
@@ -279,7 +301,7 @@ public class ShiftSwapService {
             return true;
         }
         // 一般メンバー（SUPPORTER は不可）。承諾できる立場と同じ条件に揃える
-        //（checkTeamMemberAccess と同一方針）。
+        //（Gate の requireMemberOrConceal(excludeSupporter=true) と同一方針）。
         if (!accessControlService.isMember(userId, teamId, "TEAM")
                 || accessControlService.isSupporter(userId, teamId, "TEAM")) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
@@ -337,59 +359,6 @@ public class ShiftSwapService {
             log.warn("targetUserIds の JSON 解析に失敗しました: {}", e.getMessage());
             return List.of();
         }
-    }
-
-    /**
-     * 管理操作の per-scope 認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）。
-     *
-     * @param teamId 対象チーム ID
-     * @param userId 操作者ユーザー ID
-     * @throws BusinessException 権限が無い場合（COMMON_002 / 403）
-     */
-    private void checkTeamAdminAccess(Long teamId, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
-    }
-
-    /**
-     * メンバー操作の per-scope 認可（当該チームのメンバー、ただし SUPPORTER は不可）。
-     *
-     * <p>SUPPORTER を除外するのは、同ドメインの {@code ShiftSlotService#checkScheduleReadAccess} /
-     * {@code ShiftPdfService} と同一方針（シフト枠の割当情報を SUPPORTER に見せない）。</p>
-     *
-     * @param teamId 対象チーム ID
-     * @param userId 操作者ユーザー ID
-     * @throws BusinessException メンバーでない場合、または SUPPORTER の場合（COMMON_002 / 403）
-     */
-    private void checkTeamMemberAccess(Long teamId, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        if (!accessControlService.isMember(userId, teamId, "TEAM")
-                || accessControlService.isSupporter(userId, teamId, "TEAM")) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
-    }
-
-    /**
-     * 本人操作の per-scope 認可（申請者本人、または当該チームの ADMIN 以上）。
-     *
-     * @param entity 交代リクエスト
-     * @param userId 操作者ユーザー ID
-     * @throws BusinessException 申請者でも当該チームの ADMIN 以上でもない場合（COMMON_002 / 403）
-     */
-    private void checkRequesterOrTeamAdmin(ShiftSwapRequestEntity entity, Long userId) {
-        // AccessControlService をこのメソッドから直接呼ぶ（番人 AuthzControllerGuardArchTest の
-        // 委譲探索は深さ2までのため、認可クラスへの到達を1ホップ内に収める）
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        if (entity.getRequesterId().equals(userId)) {
-            return;
-        }
-        accessControlService.checkAdminOrAbove(userId, resolveTeamIdBySwap(entity), "TEAM");
     }
 
     /**

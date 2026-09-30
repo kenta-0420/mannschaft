@@ -2,6 +2,7 @@ package com.mannschaft.app.shift;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.dto.CreateSwapRequestRequest;
 import com.mannschaft.app.shift.dto.ResolveSwapRequestRequest;
@@ -17,7 +18,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -65,8 +65,19 @@ class ShiftSwapServiceTest {
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    @InjectMocks
     private ShiftSwapService shiftSwapService;
+
+    /**
+     * Gate は本物（{@link ScopeConcealingAccessGate}）を、その下の {@link AccessControlService} だけモックにして組む。
+     * 存在オラクル是正（CMP-260923-0954 W2）で認可判定の中身が Gate へ移ったため、
+     * サービスへは Gate を注入する。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpService() {
+        shiftSwapService = new ShiftSwapService(swapRepository, slotRepository, scheduleRepository,
+                accessControlService, new ScopeConcealingAccessGate(accessControlService),
+                shiftMapper, objectMapper);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー
@@ -106,10 +117,12 @@ class ShiftSwapServiceTest {
         given(accessControlService.isSupporter(userId, TEAM_ID, "TEAM")).willReturn(false);
     }
 
-    /** 当該ユーザーを「当該チームの ADMIN」として認可を通す（checkAdminOrAbove は void で何もしない）。 */
+    /** 当該ユーザーを「当該チームの ADMIN」として認可を通す（Gate は isAdminOrAbove を見る）。 */
     private void givenTeamAdmin(Long userId) {
         givenScopeResolvable();
         given(accessControlService.isSystemAdmin(userId)).willReturn(false);
+        org.mockito.Mockito.lenient().when(accessControlService.isAdminOrAbove(userId, TEAM_ID, "TEAM"))
+                .thenReturn(true);
     }
 
     private ShiftSwapRequestEntity createPendingSwap() {
@@ -608,9 +621,9 @@ class ShiftSwapServiceTest {
             given(swapRepository.findById(SWAP_ID)).willReturn(Optional.of(entity));
             givenScopeResolvable();
             given(accessControlService.isSystemAdmin(ACCEPTER_ID)).willReturn(false);
-            org.mockito.BDDMockito.willThrow(
-                            new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(ACCEPTER_ID, TEAM_ID, "TEAM");
+            // 同一チームの所属者だが ADMIN ではない（Gate は 403 COMMON_002 を返す）
+            given(accessControlService.isAdminOrAbove(ACCEPTER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(ACCEPTER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
             assertThatThrownBy(() -> shiftSwapService.resolveSwapRequest(SWAP_ID, req, ACCEPTER_ID))
@@ -676,9 +689,9 @@ class ShiftSwapServiceTest {
             given(swapRepository.findById(SWAP_ID)).willReturn(Optional.of(entity));
             givenScopeResolvable();
             given(accessControlService.isSystemAdmin(ACCEPTER_ID)).willReturn(false);
-            org.mockito.BDDMockito.willThrow(
-                            new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(ACCEPTER_ID, TEAM_ID, "TEAM");
+            // 同一チームの所属者だが ADMIN ではない（Gate は 403 COMMON_002 を返す）
+            given(accessControlService.isAdminOrAbove(ACCEPTER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(ACCEPTER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
             assertThatThrownBy(() -> shiftSwapService.cancelSwapRequest(SWAP_ID, ACCEPTER_ID))

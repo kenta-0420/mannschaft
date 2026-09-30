@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.shift.AssignmentStrategyType;
 import com.mannschaft.app.shift.ShiftAssignmentRunStatus;
 import com.mannschaft.app.shift.ShiftAssignmentStatus;
@@ -44,7 +45,7 @@ import java.util.stream.Collectors;
 /**
  * シフト自動割当サービス。割当アルゴリズムの実行・確定・取消・履歴管理を担当する。
  *
- * <p><b>認可（認可根治 Wave7）:</b> {@link AccessControlService} を用いて全 public 入口に
+ * <p><b>認可（認可根治 Wave7）:</b> {@code AccessControlService} を用いて全 public 入口に
  * per-scope 認可を敷設した。方針は同ドメインの兄弟
  * {@code ShiftScheduleService#checkScheduleAdminAccess} / {@code ShiftSlotService#checkScheduleAdminAccess}
  * と同一（SYSTEM_ADMIN 短絡許可 → 当該チームの ADMIN/DEPUTY_ADMIN のみ）。</p>
@@ -69,6 +70,7 @@ public class ShiftAutoAssignService {
     private final List<ShiftAssignmentStrategy> strategies;
     private final ObjectMapper objectMapper;
     private final AccessControlService accessControlService;
+    private final ScopeConcealingAccessGate accessGate;
 
     /**
      * 自動割当を実行する。
@@ -342,7 +344,7 @@ public class ShiftAutoAssignService {
      *
      * <p>判定内容は {@code ShiftScheduleService#checkScheduleAdminAccess} /
      * {@code ShiftSlotService#checkScheduleAdminAccess} と同一。ArchUnit 認可番人の委譲追跡は
-     * 2 ホップまで（{@code MAX_DELEGATION_DEPTH=2}）のため、{@link AccessControlService} を
+     * 2 ホップまで（{@code MAX_DELEGATION_DEPTH=2}）のため、{@code AccessControlService} を
      * <b>本メソッドから直接</b>呼んでフラット化してある（更に委譲すると番人から見えなくなる）。</p>
      *
      * @param schedule 対象スケジュール（scope は実体由来＝BOLA 封鎖）
@@ -350,10 +352,12 @@ public class ShiftAutoAssignService {
      * @throws BusinessException 権限がない場合（COMMON_002 / 403）
      */
     private void checkScheduleAdminAccess(ShiftScheduleEntity schedule, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
+        // 存在オラクル是正（CMP-260923-0954 W2）: 兄弟の ShiftScheduleService#checkScheduleAdminAccess は
+        // 既に越境を不在（SHIFT_SCHEDULE_NOT_FOUND）と同一応答へ畳んでいる。本クラスの旧実装は
+        // COMMON_002（403）のままだったため、「scheduleId が実在するが他チーム」と「実在しない」が
+        // 判別できていた（兄弟間オラクル）。Gate で揃える。
+        accessGate.requireAdminOrConceal(
+                userId, schedule.getTeamId(), "TEAM", ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
     }
 
     /**
@@ -364,7 +368,7 @@ public class ShiftAutoAssignService {
      * （{@code ASSIGNMENT_RUN_NOT_FOUND}）を返す。403 と 404 を撃ち分けると
      * 他チームの runId の存在有無が観測できてしまうため、越境時は未存在と同じ応答に寄せる。</p>
      *
-     * <p>{@link #checkScheduleAdminAccess} へ委譲せず {@link AccessControlService} を直接呼ぶのは
+     * <p>{@link #checkScheduleAdminAccess} へ委譲せず {@code AccessControlService} を直接呼ぶのは
      * ArchUnit 認可番人の委譲追跡上限（2 ホップ）に収めるため。</p>
      *
      * @param run                対象の実行ログ
@@ -378,10 +382,11 @@ public class ShiftAutoAssignService {
         }
         ShiftScheduleEntity schedule = scheduleRepository.findById(run.getScheduleId())
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
+        // 存在オラクル是正（W2）: 旧実装は権限不足を COMMON_002（403）で返していたため、
+        // 「run が実在し scheduleId も一致するが他チーム」と「run が不在（上の分岐）」が判別できていた。
+        // 両方とも ASSIGNMENT_RUN_NOT_FOUND に揃える。
+        accessGate.requireAdminOrConceal(
+                userId, schedule.getTeamId(), "TEAM", ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND);
     }
 
     /**
@@ -402,6 +407,8 @@ public class ShiftAutoAssignService {
     private void checkRunAdminAccessConcealed(ShiftAssignmentRunEntity run, Long userId) {
         ShiftScheduleEntity schedule = scheduleRepository.findById(run.getScheduleId())
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND));
+        // 本 EP は「同チームの非 ADMIN も不在と同じ 404」が仕様（EP 別許可主体表）。Gate は同チームの権限不足を
+        // 403 で返す設計なので使わず、isAdminOrAbove の真偽だけで 404 に統一する（是正前から不変）。
         if (accessControlService.isSystemAdmin(userId)) {
             return;
         }

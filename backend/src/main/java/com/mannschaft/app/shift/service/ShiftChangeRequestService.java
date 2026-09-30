@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.shift.ChangeRequestStatus;
 import com.mannschaft.app.shift.ChangeRequestType;
 import com.mannschaft.app.shift.ShiftErrorCode;
@@ -39,6 +40,7 @@ public class ShiftChangeRequestService {
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftSlotRepository slotRepository;
     private final AccessControlService accessControlService;
+    private final ScopeConcealingAccessGate accessGate;
 
     /**
      * 変更依頼を作成する。
@@ -62,7 +64,11 @@ public class ShiftChangeRequestService {
         // スケジュール存在チェック＋所属チーム解決（scope はクライアント入力でなく実体由来）
         ShiftScheduleEntity schedule = scheduleRepository.findById(request.scheduleId())
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
-        checkRequesterMembership(schedule.getTeamId(), userId);
+        // 存在オラクル是正（CMP-260923-0954 W2）: 越境（他チームの scheduleId）は不在と同一応答
+        // （SHIFT_SCHEDULE_NOT_FOUND）に畳む。checkMembership は SYSTEM_ADMIN も素通しにしないため
+        // Gate（requireMemberOrConceal）に置き換える。
+        accessGate.requireMemberOrConceal(
+                userId, schedule.getTeamId(), "TEAM", ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, false);
         checkSlotBelongsToSchedule(request.slotId(), request.scheduleId());
 
         // オープンコールの月次上限チェック
@@ -110,13 +116,19 @@ public class ShiftChangeRequestService {
     public List<ChangeRequestResponse> list(Long scheduleId, Long userId) {
         Long teamId = resolveTeamId(scheduleId);
 
+        // 存在オラクル是正（W2）: 越境（非メンバーが他チームの scheduleId を指定）は不在と同一応答
+        // （SHIFT_SCHEDULE_NOT_FOUND）に畳む。同一チーム内は admin/member どちらでも許可されるため、
+        // Gate の permitted 条件に isMember を渡し、拒否経路でのみ越境判定を行わせる。
+        accessGate.requireOrConceal(
+                userId, teamId, "TEAM",
+                () -> accessControlService.isMember(userId, teamId, "TEAM"),
+                ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, CommonErrorCode.COMMON_002);
+
         List<ShiftChangeRequestEntity> entities;
         if (isScopeAdmin(userId, teamId)) {
             entities = changeRequestRepository.findAllByScheduleIdOrderByCreatedAtDesc(scheduleId);
-        } else if (accessControlService.isMember(userId, teamId, "TEAM")) {
-            entities = changeRequestRepository.findAllByRequestedByAndScheduleId(userId, scheduleId);
         } else {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
+            entities = changeRequestRepository.findAllByRequestedByAndScheduleId(userId, scheduleId);
         }
         return entities.stream().map(this::toResponse).toList();
     }
@@ -197,9 +209,7 @@ public class ShiftChangeRequestService {
     public void withdraw(Long id, Long userId) {
         ShiftChangeRequestEntity entity = findOrThrow(id);
 
-        if (!entity.getRequestedBy().equals(userId)) {
-            throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
-        }
+        checkWithdrawAccess(entity, userId);
 
         if (entity.getStatus() != ChangeRequestStatus.OPEN) {
             throw new BusinessException(ShiftErrorCode.INVALID_CHANGE_REQUEST_STATUS);
@@ -223,28 +233,38 @@ public class ShiftChangeRequestService {
      * @param userId 審査者ユーザー ID
      */
     private void checkReviewerScopeAdminAccess(ShiftChangeRequestEntity entity, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
         Long teamId = scheduleRepository.findById(entity.getScheduleId())
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
                 .getTeamId();
-        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+        accessGate.requireAdminOrConceal(userId, teamId, "TEAM", ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND);
     }
 
     /**
-     * 変更依頼の申請者が当該チームのメンバーであることを強制する（認可根治 Wave7）。
+     * 変更依頼の取下げに対する per-scope 認可を強制する（存在オラクル是正 W2）。
      *
-     * <p>粒度は「メンバー」。変更依頼は一般メンバーの日常操作であり管理者に絞る性質のものではない。
-     * 非メンバーは {@code COMMON_002}（403）で弾く（{@code list} と同一方針）。
-     * ArchUnit 認可番人の委譲追跡上限（2 ホップ）に収めるため
-     * {@link AccessControlService} を本メソッドから直接呼ぶ。</p>
+     * <p>取下げは依頼者本人のみ許可する（管理者による代理取下げは対象外・従来どおり）。
+     * 本人でない場合、当該チームの所属者（user_roles のみの管理者を含む）には従来どおり
+     * {@code ACCESS_DENIED}（403 / SHIFT_019）を返す。所属しない越境の場合のみ、不在と
+     * 同一応答（{@code CHANGE_REQUEST_NOT_FOUND}）に畳む。Gate は forbidden コードを
+     * {@code COMMON_002} 固定で持つため、SHIFT_019 を維持する本メソッドは
+     * 同ゲートの判定順（SYSTEM_ADMIN → isAdminOrAbove → isMember）だけを踏襲する。</p>
      *
-     * @param teamId スケジュール実体から解決したチーム ID
-     * @param userId 申請者ユーザー ID
+     * @param entity 変更依頼
+     * @param userId 操作者ユーザー ID
      */
-    private void checkRequesterMembership(Long teamId, Long userId) {
-        accessControlService.checkMembership(userId, teamId, "TEAM");
+    private void checkWithdrawAccess(ShiftChangeRequestEntity entity, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (entity.getRequestedBy().equals(userId)) {
+            return;
+        }
+        Long teamId = resolveTeamId(entity.getScheduleId());
+        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")
+                || accessControlService.isMember(userId, teamId, "TEAM")) {
+            throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
+        }
+        throw new BusinessException(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND);
     }
 
     /**
