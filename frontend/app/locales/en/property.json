@@ -146,6 +146,30 @@
       "back": "Back to list",
       "changeStatus": "Change status"
     },
+    "residents": {
+      "title": "Resident registry",
+      "create": "Add dwelling unit",
+      "createTitle": "Add dwelling unit",
+      "unitNumber": "Unit number",
+      "unitNumberPlaceholder": "e.g. 101",
+      "floor": "Floor",
+      "unitType": "Unit type",
+      "layout": "Layout",
+      "areaSqm": "Area",
+      "notes": "Notes",
+      "residentCount": "{count} residents",
+      "occupied": "Occupied",
+      "vacant": "Vacant",
+      "empty": "No dwelling units found",
+      "createSuccess": "Dwelling unit added",
+      "createFailed": "Failed to add dwelling unit",
+      "validation": {
+        "unitNumberRequired": "Enter a unit number",
+        "unitNumberMax": "Unit number must be 50 characters or fewer",
+        "unitTypeMax": "Unit type must be 20 characters or fewer",
+        "layoutMax": "Layout must be 20 characters or fewer"
+      }
+    },
     "errors": {
       "loadFailed": "Failed to load",
       "saveFailed": "Failed to save",
