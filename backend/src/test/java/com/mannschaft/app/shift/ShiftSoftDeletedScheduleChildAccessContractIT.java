@@ -752,8 +752,8 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
                 WHERE s.schedule_id = :scheduleId AND s.deleted_at IS NULL
                 """, twoHundredChildSchedule);
         Map<String, String> assignmentPlan = explainKeys("""
-                EXPLAIN UPDATE shift_assignments a
-                JOIN shift_slots s ON s.id = a.slot_id
+                EXPLAIN UPDATE shift_slots s FORCE INDEX (idx_sslot_schedule_date)
+                STRAIGHT_JOIN shift_assignments a FORCE INDEX (idx_shift_assignments_slot_id) ON a.slot_id = s.id
                 SET a.deleted_at = (SELECT sc.deleted_at FROM shift_schedules sc WHERE sc.id = :scheduleId),
                     a.version = a.version + 1, a.updated_at = a.updated_at
                 WHERE s.schedule_id = :scheduleId AND a.deleted_at IS NULL

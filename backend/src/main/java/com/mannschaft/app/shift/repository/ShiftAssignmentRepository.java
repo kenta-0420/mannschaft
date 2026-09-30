@@ -27,8 +27,8 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
     /** 削除済み枠を含む親配下の全履歴を保全したまま論理削除する。 */
     @Modifying(flushAutomatically = true)
     @Query(value = """
-            UPDATE shift_assignments a
-            JOIN shift_slots s ON s.id = a.slot_id
+            UPDATE shift_slots s FORCE INDEX (idx_sslot_schedule_date)
+            STRAIGHT_JOIN shift_assignments a FORCE INDEX (idx_shift_assignments_slot_id) ON a.slot_id = s.id
             SET a.deleted_at = (SELECT sc.deleted_at FROM shift_schedules sc WHERE sc.id = :scheduleId),
                 a.version = a.version + 1,
                 a.updated_at = a.updated_at
