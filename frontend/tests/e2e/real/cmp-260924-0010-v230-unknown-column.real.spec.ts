@@ -173,7 +173,9 @@ test.describe.serial('CMP-260924-0010 V230 欠落列 実機E2E', () => {
   test('E3 代理投票: 投票が 201 で通り結果に反映（権限なし・他テナントは 403）', async ({ browser }) => {
     const user = await newPage(browser, userCred)
     const session = await api(user.request, 'get', `/api/v1/proxy-votes/${proxyId}`)
-    const motionId = (session.body.data?.motions as { id: number }[])[0].id
+    const motions = session.body.data?.motions as { id: number }[] | undefined
+    const motionId = motions?.[0]?.id
+    expect(motionId, '代理投票セッションに議案が存在すること').toBeDefined()
     const cast = await api(user.request, 'post', `/api/v1/proxy-votes/${proxyId}/cast`, {
       votes: [{ motionId, voteType: 'APPROVE' }],
     })
