@@ -128550,7 +128550,7 @@
         }
       }
     },
-    "/api/v1/public/organizations/{orgId}/timeline-posts": {
+    "/api/v1/public/organizations/{slug}/timeline-posts": {
       "get": {
         "tags": [
           "公開タイムライン投稿 API (F19.1 Phase 7)"
@@ -128560,12 +128560,11 @@
         "operationId": "listOrganizationTimelinePosts",
         "parameters": [
           {
-            "name": "orgId",
+            "name": "slug",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -128603,7 +128602,7 @@
         }
       }
     },
-    "/api/v1/public/organizations/{orgId}/posts": {
+    "/api/v1/public/organizations/{slug}/posts": {
       "get": {
         "tags": [
           "公開組織投稿 API (F19.1)"
@@ -128613,12 +128612,11 @@
         "operationId": "listPublicPosts_1",
         "parameters": [
           {
-            "name": "orgId",
+            "name": "slug",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -128656,7 +128654,7 @@
         }
       }
     },
-    "/api/v1/public/organizations/{orgId}/posts/{postId}": {
+    "/api/v1/public/organizations/{slug}/posts/{postId}": {
       "get": {
         "tags": [
           "公開組織投稿 API (F19.1)"
@@ -128666,12 +128664,11 @@
         "operationId": "getPublicPostDetail_1",
         "parameters": [
           {
-            "name": "orgId",
+            "name": "slug",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -128698,7 +128695,7 @@
         }
       }
     },
-    "/api/v1/public/organizations/{orgId}/faqs": {
+    "/api/v1/public/organizations/{slug}/faqs": {
       "get": {
         "tags": [
           "公開FAQ API (F21.1 §5.5)"
@@ -128708,12 +128705,11 @@
         "operationId": "getOrganizationFaqs_1",
         "parameters": [
           {
-            "name": "orgId",
+            "name": "slug",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -128734,7 +128730,7 @@
         }
       }
     },
-    "/api/v1/public/organizations/{orgId}/events": {
+    "/api/v1/public/organizations/{slug}/events": {
       "get": {
         "tags": [
           "公開イベント API (F19.1 Phase 7)"
@@ -128744,12 +128740,11 @@
         "operationId": "listOrganizationEvents",
         "parameters": [
           {
-            "name": "orgId",
+            "name": "slug",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -128787,7 +128782,7 @@
         }
       }
     },
-    "/api/v1/public/organizations/{orgId}/activities": {
+    "/api/v1/public/organizations/{slug}/activities": {
       "get": {
         "tags": [
           "公開活動記録"
@@ -128796,12 +128791,11 @@
         "operationId": "listOrgPublicActivities",
         "parameters": [
           {
-            "name": "orgId",
+            "name": "slug",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -128850,7 +128844,7 @@
         }
       }
     },
-    "/api/v1/public/organizations/{orgId}/activities/{id}": {
+    "/api/v1/public/organizations/{slug}/activities/{id}": {
       "get": {
         "tags": [
           "公開活動記録"
@@ -128859,12 +128853,11 @@
         "operationId": "getOrgPublicActivity",
         "parameters": [
           {
-            "name": "orgId",
+            "name": "slug",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {

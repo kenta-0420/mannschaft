@@ -69,11 +69,11 @@ export function useActivityPublicApi() {
    * 組織配下の公開活動記録一覧を取得する。挙動は {@link fetchPublicTeamActivities} と同じ。
    */
   async function fetchPublicOrgActivities(
-    orgId: string,
+    orgSlug: string,
     page = 0,
     limit = 20,
   ): Promise<PublicActivitySummaryResponse[] | null> {
-    return fetchPublicActivityList(`/api/v1/public/organizations/${orgId}/activities`, page, limit)
+    return fetchPublicActivityList(`/api/v1/public/organizations/${encodeURIComponent(orgSlug)}/activities`, page, limit)
   }
 
   async function fetchPublicActivityList(

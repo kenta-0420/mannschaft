@@ -54,6 +54,19 @@ class PublicFaqControllerTest {
 
     private static final Long TEAM_ID = 100L;
     private static final Long ORG_ID = 200L;
+    private static final String ORG_SLUG = "public-org-a";
+
+    /** 親の slug 解決（公開組織 → ID）。子 API は slug を受けて ID に解決してから下位 Service を呼ぶ。 */
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.mannschaft.app.publicview.service.PublicOrganizationQueryService publicOrganizationQueryService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubOrganizationSlugResolution() {
+        org.mockito.BDDMockito.given(publicOrganizationQueryService.getPublicOrganization(ORG_SLUG))
+                .willReturn(new com.mannschaft.app.publicview.dto.PublicOrganizationResponse(
+                        ORG_ID, "サンプル組織", null, null, null, "COMPANY", null, null, null, null,
+                        null, null, null, null, null));
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -150,7 +163,7 @@ class PublicFaqControllerTest {
                 .willReturn(List.of(
                         new PublicFaqResponse(FixedFaqQuestion.HEALTH_SERVICE.name(), null, "内科を診療")));
 
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/faqs", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/faqs", ORG_SLUG))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].questionKey").value(FixedFaqQuestion.HEALTH_SERVICE.name()))
@@ -163,7 +176,7 @@ class PublicFaqControllerTest {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_001))
                 .given(publicFaqQueryService).getPublicOrganizationFaqs(eq(ORG_ID));
 
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/faqs", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/faqs", ORG_SLUG))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PUBLIC_001"));
     }

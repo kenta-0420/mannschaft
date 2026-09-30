@@ -38832,7 +38832,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/organizations/{orgId}/timeline-posts": {
+    "/api/v1/public/organizations/{slug}/timeline-posts": {
         parameters: {
             query?: never;
             header?: never;
@@ -38852,7 +38852,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/organizations/{orgId}/posts": {
+    "/api/v1/public/organizations/{slug}/posts": {
         parameters: {
             query?: never;
             header?: never;
@@ -38872,7 +38872,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/organizations/{orgId}/posts/{postId}": {
+    "/api/v1/public/organizations/{slug}/posts/{postId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -38892,7 +38892,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/organizations/{orgId}/faqs": {
+    "/api/v1/public/organizations/{slug}/faqs": {
         parameters: {
             query?: never;
             header?: never;
@@ -38912,7 +38912,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/organizations/{orgId}/events": {
+    "/api/v1/public/organizations/{slug}/events": {
         parameters: {
             query?: never;
             header?: never;
@@ -38932,7 +38932,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/organizations/{orgId}/activities": {
+    "/api/v1/public/organizations/{slug}/activities": {
         parameters: {
             query?: never;
             header?: never;
@@ -38949,7 +38949,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/organizations/{orgId}/activities/{id}": {
+    "/api/v1/public/organizations/{slug}/activities/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -157773,7 +157773,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157798,7 +157798,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157820,7 +157820,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
+                slug: string;
                 postId: number;
             };
             cookie?: never;
@@ -157843,7 +157843,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157868,7 +157868,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157893,7 +157893,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157924,7 +157924,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
+                slug: string;
                 id: number;
             };
             cookie?: never;
