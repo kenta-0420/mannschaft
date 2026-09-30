@@ -26,7 +26,7 @@ CREATE TABLE announcement_feed_group_snapshots (
 CREATE TABLE notification_fanout_audiences (
     audience_snapshot_id BINARY(16)      NOT NULL COMMENT '宛先集合のID（送信時に確定。ジョブ行の scope_ref に UUID 文字列で入る）',
     organization_id      BIGINT UNSIGNED NOT NULL COMMENT '宛先の組織ID（直属メンバーの解決と加盟の再確認に使う。クロスドメインFKなし）',
-    created_at           DATETIME(6)     NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_at           DATETIME(6)     NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
     PRIMARY KEY (audience_snapshot_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='ORGANIZATION_TEAMS fan-out の宛先集合の見出し（送信時点で固定）';

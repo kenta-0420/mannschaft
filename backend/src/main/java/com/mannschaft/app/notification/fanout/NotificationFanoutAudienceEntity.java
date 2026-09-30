@@ -39,8 +39,12 @@ public class NotificationFanoutAudienceEntity extends UuidV7Entity {
     @Column(name = "organization_id", nullable = false)
     private Long organizationId;
 
-    /** 作成した瞬間（UTC の Instant）。 */
+    /**
+     * 作成した瞬間（UTC の Instant）。DDL の既定値 {@code DEFAULT (UTC_TIMESTAMP(6))} を写す
+     * （Flyway と Entity 由来スキーマを一致させる。時刻の番人に従い CURRENT_TIMESTAMP は使わない）。
+     */
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false,
+            columnDefinition = "DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6))")
     private Instant createdAt;
 }
