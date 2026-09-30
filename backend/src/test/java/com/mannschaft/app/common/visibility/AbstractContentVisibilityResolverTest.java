@@ -831,7 +831,7 @@ class AbstractContentVisibilityResolverTest {
             ScopeKey team2 = new ScopeKey("TEAM", 200L);
             when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
                     .thenReturn(new UserScopeRoleSnapshot(false,
-                            Map.of(team1, "MEMBER"), Map.of(team2, 10L),
+                            Map.of(team1, "MEMBER"), Map.of(team2, Set.of(10L)),
                             Set.of(new ScopeKey("ORGANIZATION", 10L)), Set.of()));
 
             Set<Long> result = resolver.filterAccessible(List.of(1L, 2L, 3L), 5L);

@@ -196,7 +196,7 @@ class MembershipBatchQueryServiceTest {
 
             UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
 
-            assertThat(result.parentOrgByScope()).containsEntry(TEAM_1, 10L);
+            assertThat(result.parentOrgByScope()).containsEntry(TEAM_1, Set.of(10L));
             assertThat(result.orgMemberOf()).containsExactly(ORG_10);
             assertThat(result.suspendedOrgIds()).isEmpty();
             assertThat(result.isMemberOfParentOrg(TEAM_1)).isTrue();

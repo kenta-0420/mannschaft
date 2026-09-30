@@ -327,7 +327,7 @@ class ScheduleVisibilityResolverTest {
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             directRole != null ? Map.of(orgScope, directRole) : Map.of(),
-                            Map.of(orgScope, organizationId),
+                            Map.of(orgScope, Set.of(organizationId)),
                             Set.of(),
                             Set.of(),
                             Set.of(organizationId),
