@@ -533,24 +533,56 @@ test('PR-05 activate: 確認ダイアログを経て SCHEDULED/ACTIVE になる'
 //   依存する検証だけを PR-06b（test.fail、CMP-260930-1931）に切り出す。
 test('PR-06a 下流: テナント ADMIN が Billing Center に到達し、カタログ API・画面が壊れずに応答する', async ({ browser }, testInfo) => {
   const state = readState()
+  expect(state.revisionBId, 'PR-07 で作った改定 B の ID').toBeTruthy()
+  const id = state.revisionBId!
+
+  // Codex 再検分 P2-1: PR-05 は SCHEDULED/ACTIVE のどちらも正常として state に保存する
+  // （即時適用の判定タイミング次第で SCHEDULED のまま保存されることがある）。
+  // ここで ACTIVE を即要求すると、正常な SCHEDULED を偽失敗として扱ってしまうため、
+  // ADMIN 権限で改定の実際の状態を GET し、ACTIVE になるまでポーリングする
+  // （十分なタイムアウト後もならなければ、それは本当の失敗として落とす）。
+  {
+    const { context: adminContext, page: adminPage } = await newLoggedInPage(browser, ADMIN)
+    try {
+      await expect
+        .poll(
+          async () => {
+            const res = await adminPage.request.get(`${PR_API}/${id}`)
+            const json = (await res.json()) as { data: { status: string } }
+            return json.data.status
+          },
+          { message: '改定 B が ACTIVE になるまで待つ（PR-05 は SCHEDULED/ACTIVE いずれも正常として保存する）', timeout: 120_000 },
+        )
+        .toBe('ACTIVE')
+    } finally {
+      await adminContext.close()
+    }
+  }
+
   const { context, page } = await newLoggedInPage(browser, USER)
   try {
-    // カタログ API 自体は 200 で応答する（新価格が反映されるかは PR-06b の検証範囲）
+    // カタログ API 自体は 200 で応答し、対象プラン・対象バンドが存在すること
+    // （価格の値は既知の欠陥のため PR-06b の検証範囲。ここでは存在のみを主張する）
     const catalog = await page.request.get(`${BE}/api/v1/billing/plans`)
     const catalogJson = (await catalog.json()) as { data: { plans: { planKey: string; priceBands: { scopeKind: string; bandNo: number; monthlyPriceJpy: number | null }[] }[] } }
-    const fullTeam = catalogJson.data.plans.find((p) => p.planKey === PRODUCT_KEY)?.priceBands.filter((b) => b.scopeKind === SCOPE_KIND)
-    await note(testInfo, `GET /billing/plans ${PRODUCT_KEY}/${SCOPE_KIND} バンド`, { status: catalog.status(), revisionBStatus: state.revisionBStatus, bands: fullTeam })
+    const targetPlan = catalogJson.data.plans.find((p) => p.planKey === PRODUCT_KEY)
+    const fullTeam = targetPlan?.priceBands.filter((b) => b.scopeKind === SCOPE_KIND)
+    await note(testInfo, `GET /billing/plans ${PRODUCT_KEY}/${SCOPE_KIND} バンド`, { status: catalog.status(), bands: fullTeam })
     expect(catalog.status(), 'カタログ API は 200 で応答する').toBe(200)
-    expect(state.revisionBStatus, 'PR-05 で ACTIVE になっている').toBe('ACTIVE')
+    expect(targetPlan, `カタログに対象プラン ${PRODUCT_KEY} が存在する`).toBeTruthy()
+    expect(fullTeam?.find((b) => b.bandNo === 1), `カタログに対象バンド（${SCOPE_KIND} bandNo=1）が存在する`).toBeTruthy()
 
     await gotoAndSettle(page, `/organizations/${USER_ORG_SLUG}/settings/billing`)
     await page.waitForTimeout(2_000)
     await shot(page, testInfo, 'tenant-billing-center')
     const text = await page.locator('main, body').first().innerText()
-    await note(testInfo, 'Billing Center 本文（先頭 1500 字）', text.slice(0, 1500))
+    await note(testInfo, 'Billing Center 本文（先頭 1500 字）・到達 URL', { text: text.slice(0, 1500), url: page.url() })
+    // Codex 再検分 P2-3: 「プラン」を含む文言だけではサイドバーの導線見出しにも一致し、
+    // 別画面へリダイレクトされても素通りしてしまう。最終 URL とページ固有の見出しで到達を確認する。
+    expect(page.url(), 'リダイレクトされず組織の課金設定ページに到達する').toContain(`/organizations/${USER_ORG_SLUG}/settings/billing`)
     // 画面が例外で落ちずに描画されていること（内容がプラン新価格を反映しているかは PR-06b）
     await expect(page.locator('main, body').first()).not.toContainText('エラーが発生しました')
-    await expect(page.getByText(/Billing Center|お支払い|プラン/).first()).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('heading', { name: '組織の課金・プラン管理' })).toBeVisible({ timeout: 5_000 })
   } finally {
     await context.close()
   }
