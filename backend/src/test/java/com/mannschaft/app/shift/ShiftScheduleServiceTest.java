@@ -14,6 +14,7 @@ import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
+import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -42,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
@@ -71,6 +73,9 @@ class ShiftScheduleServiceTest {
 
     @Mock
     private ShiftRequestRepository requestRepository;
+
+    @Mock
+    private ShiftAssignmentRepository assignmentRepository;
 
     @Mock
     private ShiftPositionRepository positionRepository;
@@ -604,23 +609,46 @@ class ShiftScheduleServiceTest {
         void スケジュール論理削除_正常_softDeleteが呼ばれる() {
             // Given
             ShiftScheduleEntity entity = createScheduleEntity();
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.of(entity));
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(scheduleRepository.save(entity)).willReturn(entity);
+            given(scheduleRepository.saveAndFlush(entity)).willReturn(entity);
 
             // When
             shiftScheduleService.deleteSchedule(SCHEDULE_ID, USER_ID);
 
             // Then
-            assertThat(entity.getDeletedAt()).isNotNull();
-            verify(scheduleRepository).save(entity);
+            org.mockito.InOrder deletionOrder = org.mockito.Mockito.inOrder(
+                    assignmentRepository, requestRepository, slotRepository, scheduleRepository);
+            deletionOrder.verify(scheduleRepository).findByIdForUpdate(SCHEDULE_ID);
+            deletionOrder.verify(scheduleRepository).saveAndFlush(entity);
+            deletionOrder.verify(assignmentRepository).softDeleteByScheduleId(SCHEDULE_ID);
+            deletionOrder.verify(requestRepository).softDeleteByScheduleId(SCHEDULE_ID);
+            deletionOrder.verify(slotRepository).softDeleteByScheduleId(SCHEDULE_ID);
+        }
+
+        @Test
+        @DisplayName("子の更新失敗時は後続の削除と予算取消イベントを実行しない")
+        void 子の更新失敗時は後続の削除と予算取消イベントを実行しない() {
+            ShiftScheduleEntity entity = createScheduleEntity();
+            given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(assignmentRepository.softDeleteByScheduleId(SCHEDULE_ID))
+                    .willThrow(new IllegalStateException("子の更新失敗"));
+
+            assertThatThrownBy(() -> shiftScheduleService.deleteSchedule(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(IllegalStateException.class);
+
+            verify(scheduleRepository).saveAndFlush(entity);
+            verify(requestRepository, never()).softDeleteByScheduleId(any());
+            verify(slotRepository, never()).softDeleteByScheduleId(any());
+            org.mockito.Mockito.verifyNoInteractions(eventPublisher);
         }
 
         @Test
         @DisplayName("スケジュール論理削除_存在しない_BusinessException")
         void スケジュール論理削除_存在しない_BusinessException() {
             // Given
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
+            given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.empty());
 
             // When & Then
             assertThatThrownBy(() -> shiftScheduleService.deleteSchedule(SCHEDULE_ID, USER_ID))
@@ -632,7 +660,7 @@ class ShiftScheduleServiceTest {
         void スケジュール論理削除_非権限者_COMMON_002() {
             // Given
             ShiftScheduleEntity entity = createScheduleEntity();
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.of(entity));
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
             // CMP-260917-1137: 同一チーム内の権限不足は隠す必要が無いため従来どおり 403。
             given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
