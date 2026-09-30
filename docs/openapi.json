@@ -128901,22 +128901,21 @@
         }
       }
     },
-    "/api/v1/public/organizations/{id}": {
+    "/api/v1/public/organizations/{slug}": {
       "get": {
         "tags": [
           "公開組織ページ API (F19.1)"
         ],
         "summary": "組織詳細（未ログイン公開）",
-        "description": "未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。",
+        "description": "組織を slug で指定する（数値 ID は受けない）。未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。",
         "operationId": "getPublicOrganization",
         "parameters": [
           {
-            "name": "id",
+            "name": "slug",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],

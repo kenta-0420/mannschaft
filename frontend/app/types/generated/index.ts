@@ -38966,7 +38966,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/organizations/{id}": {
+    "/api/v1/public/organizations/{slug}": {
         parameters: {
             query?: never;
             header?: never;
@@ -38975,7 +38975,7 @@ export interface paths {
         };
         /**
          * 組織詳細（未ログイン公開）
-         * @description 未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。
+         * @description 組織を slug で指定する（数値 ID は受けない）。未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。
          */
         get: operations["getPublicOrganization"];
         put?: never;
@@ -157956,7 +157956,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: number;
+                slug: string;
             };
             cookie?: never;
         };

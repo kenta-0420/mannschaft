@@ -59,6 +59,7 @@ class PublicOrganizationControllerTest {
     };
 
     private static final Long ORG_ID = 200L;
+    private static final String ORG_SLUG = "public-org-a";
 
     @Autowired
     private MockMvc mockMvc;
@@ -86,12 +87,12 @@ class PublicOrganizationControllerTest {
     }
 
     @Test
-    @DisplayName("GET /public/organizations/{id} 200: PUBLIC 組織で抑制 DTO が返る")
+    @DisplayName("GET /public/organizations/{slug} 200: PUBLIC 組織で抑制 DTO が返る")
     void getPublicOrganization_public_returns200() throws Exception {
-        given(publicOrganizationQueryService.getPublicOrganization(eq(ORG_ID)))
+        given(publicOrganizationQueryService.getPublicOrganization(eq(ORG_SLUG)))
                 .willReturn(sampleResponse());
 
-        mockMvc.perform(get("/api/v1/public/organizations/{id}", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}", ORG_SLUG))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(ORG_ID))
                 .andExpect(jsonPath("$.name").value("公開組織 A"))
@@ -102,42 +103,42 @@ class PublicOrganizationControllerTest {
     }
 
     @Test
-    @DisplayName("GET /public/organizations/{id} 404: 不在組織")
+    @DisplayName("GET /public/organizations/{slug} 404: 不在組織")
     void getPublicOrganization_notFound_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_001))
-                .given(publicOrganizationQueryService).getPublicOrganization(eq(ORG_ID));
+                .given(publicOrganizationQueryService).getPublicOrganization(eq(ORG_SLUG));
 
-        mockMvc.perform(get("/api/v1/public/organizations/{id}", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}", ORG_SLUG))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    @DisplayName("GET /public/organizations/{id} 404: 論理削除済み（PUBLIC_001 にマッピング）")
+    @DisplayName("GET /public/organizations/{slug} 404: 論理削除済み（PUBLIC_001 にマッピング）")
     void getPublicOrganization_deleted_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_001))
-                .given(publicOrganizationQueryService).getPublicOrganization(eq(ORG_ID));
+                .given(publicOrganizationQueryService).getPublicOrganization(eq(ORG_SLUG));
 
-        mockMvc.perform(get("/api/v1/public/organizations/{id}", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}", ORG_SLUG))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    @DisplayName("GET /public/organizations/{id} 404: archived 組織（マスター裁可: 一律 404）")
+    @DisplayName("GET /public/organizations/{slug} 404: archived 組織（マスター裁可: 一律 404）")
     void getPublicOrganization_archived_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_001))
-                .given(publicOrganizationQueryService).getPublicOrganization(eq(ORG_ID));
+                .given(publicOrganizationQueryService).getPublicOrganization(eq(ORG_SLUG));
 
-        mockMvc.perform(get("/api/v1/public/organizations/{id}", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}", ORG_SLUG))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    @DisplayName("GET /public/organizations/{id} 404: visibility=PRIVATE")
+    @DisplayName("GET /public/organizations/{slug} 404: visibility=PRIVATE")
     void getPublicOrganization_private_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_001))
-                .given(publicOrganizationQueryService).getPublicOrganization(eq(ORG_ID));
+                .given(publicOrganizationQueryService).getPublicOrganization(eq(ORG_SLUG));
 
-        mockMvc.perform(get("/api/v1/public/organizations/{id}", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}", ORG_SLUG))
                 .andExpect(status().isNotFound());
     }
 
@@ -145,20 +146,20 @@ class PublicOrganizationControllerTest {
     @DisplayName("未ログインでも Controller に到達できる")
     void getPublicOrganization_anonymous_canReachController() throws Exception {
         SecurityContextHolder.clearContext();
-        given(publicOrganizationQueryService.getPublicOrganization(eq(ORG_ID)))
+        given(publicOrganizationQueryService.getPublicOrganization(eq(ORG_SLUG)))
                 .willReturn(sampleResponse());
 
-        mockMvc.perform(get("/api/v1/public/organizations/{id}", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}", ORG_SLUG))
                 .andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("抑制 DTO に禁則ワードが漏洩していないこと（個人情報 / 内部状態 / 楽観ロック token）")
     void publicOrganizationResponse_doesNotLeakSensitiveFields() throws Exception {
-        given(publicOrganizationQueryService.getPublicOrganization(eq(ORG_ID)))
+        given(publicOrganizationQueryService.getPublicOrganization(eq(ORG_SLUG)))
                 .willReturn(sampleResponse());
 
-        MvcResult result = mockMvc.perform(get("/api/v1/public/organizations/{id}", ORG_ID))
+        MvcResult result = mockMvc.perform(get("/api/v1/public/organizations/{slug}", ORG_SLUG))
                 .andExpect(status().isOk())
                 .andReturn();
 

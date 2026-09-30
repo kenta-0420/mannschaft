@@ -33,9 +33,9 @@ export function usePublicApi() {
     return api<PublicTeamResponse>(`/api/v1/public/teams/${teamId}`)
   }
 
-  /** 公開組織詳細を取得する。 */
-  async function fetchPublicOrganization(orgId: string): Promise<PublicOrganizationResponse> {
-    return api<PublicOrganizationResponse>(`/api/v1/public/organizations/${orgId}`)
+  /** 公開組織詳細を取得する。組織は slug で指定する（数値 ID は受け付けない。F01.2.1 AC-A13）。 */
+  async function fetchPublicOrganization(orgSlug: string): Promise<PublicOrganizationResponse> {
+    return api<PublicOrganizationResponse>(`/api/v1/public/organizations/${encodeURIComponent(orgSlug)}`)
   }
 
   /**
