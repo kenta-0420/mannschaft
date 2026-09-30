@@ -117,6 +117,11 @@ async function newLoggedInPage(
 async function gotoAndSettle(page: Page, url: string): Promise<void> {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180_000 })
   await waitForHydration(page)
+  // PageLoading コンポーネント（PrimeVue ProgressSpinner）が消えるまで待つ。
+  // .pi-spin は一覧・詳細内の個別スピナーで、画面全体のローディングシェルは
+  // p-progressspinner を使う（adhd-ux-flows.spec.ts 等と同じ作法）。
+  // eslint-disable-next-line no-restricted-syntax -- スピナーが初めから存在しないページでは待つ対象が無いだけ（失敗要因ではない）
+  await page.locator('.p-progressspinner').first().waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
   // eslint-disable-next-line no-restricted-syntax -- スピナーが初めから存在しないページでは待つ対象が無いだけ（失敗要因ではない）
   await page.locator('.pi-spin').first().waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
 }
@@ -212,9 +217,12 @@ test('PR-01 導線: システム管理画面のメニューから価格改定一
   const { context, page } = await newLoggedInPage(browser, ADMIN)
   try {
     await gotoAndSettle(page, '/system-admin')
+    // 描画が完了してからリンクを数える（無ければ本当に欠陥として失敗させる。握りつぶさない）
+    await page.locator('a[href*="/system-admin/price-revisions"]').first().waitFor({ state: 'visible', timeout: 30_000 })
     await shot(page, testInfo, 'system-admin-top')
     const onTop = await page.locator('a[href*="/system-admin/price-revisions"]').count()
     await gotoAndSettle(page, '/system-admin/billing')
+    await page.locator('a[href*="/system-admin/price-revisions"]').first().waitFor({ state: 'visible', timeout: 30_000 })
     await shot(page, testInfo, 'system-admin-billing')
     const onBilling = await page.locator('a[href*="/system-admin/price-revisions"]').count()
     await note(testInfo, 'price-revisions への a[href] の数', { '/system-admin': onTop, '/system-admin/billing': onBilling })
@@ -514,7 +522,12 @@ test('PR-05 activate: 確認ダイアログを経て SCHEDULED/ACTIVE になる'
 // ===========================================================================
 // PR-06 下流（テナント側のプラン変更プレビュー）
 // ===========================================================================
-test('PR-06 下流: テナント ADMIN の Billing Center で新価格がプラン変更プレビューに出る', async ({ browser }, testInfo) => {
+// 既知の欠陥（CMP-260930-1931）: 料金表のカタログ API（GET /api/v1/billing/plans）が
+// 旧 plan_price_bands を読み続けており、ACTIVATE した新価格（本テストの改定 B）が
+// カタログ・Billing Center のプラン変更プレビューへ反映されない。マスター裁可により
+// 別戦役として切り出し済みのため、ここでは test.fail() で「失敗する」ことを明示する
+// （直った場合は逆に緑→赤の反転で気付ける。skip にはしない）。
+test.fail('PR-06 下流: テナント ADMIN の Billing Center で新価格がプラン変更プレビューに出る', async ({ browser }, testInfo) => {
   const state = readState()
   const { context, page } = await newLoggedInPage(browser, USER)
   try {
