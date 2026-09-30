@@ -1,6 +1,5 @@
 package com.mannschaft.app.role.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
 import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
@@ -24,26 +23,25 @@ public class RolePermissionCleanupService {
     private final UserPermissionGroupRepository userPermissionGroupRepository;
     private final PermissionGroupPermissionRepository permissionGroupPermissionRepository;
     private final PermissionRepository permissionRepository;
-    private final AccessControlService accessControlService;
 
     /**
-     * ロール変更で外れる割当の中に ADMIN 専用権限（{@link PermissionGroupService#ADMIN_ONLY_GRANTABLE_PERMISSIONS}）を
-     * 含むグループがある場合、操作者が当該スコープの ADMIN でなければ拒否する（PermissionGroupService の
-     * ADMIN 専用判定と同じ {@code checkScopeAdminOnly}）。剥奪は権限グループ割当の解除と等価なため、
-     * この経路で ADMIN 専用判定を迂回させない。削除（{@link #removeMismatched}）より前＝副作用前に呼ぶこと。
+     * ロール変更で外れる割当（{@link #removeMismatched} が削除するもの）の中に、ADMIN 専用権限
+     * （{@link PermissionGroupService#ADMIN_ONLY_GRANTABLE_PERMISSIONS}）を含むグループがあるかを返す。
+     * 判定結果の扱い（ADMIN 以外の拒否）は呼び出し側（RoleService）が担う。削除より前に呼ぶこと。
+     * 本クラスは AccessControlService（→ RoleService に依存）を持たない。依存の向きを保つため。
      */
-    public void requireAdminIfAdminOnlyAssignmentsWouldBeRemoved(Long userId, Long scopeId, String scopeType,
-                                                                  String effectiveRoleName, Long actorUserId) {
+    public boolean wouldRemoveAdminOnlyAssignments(Long userId, Long scopeId, String scopeType,
+                                                    String effectiveRoleName) {
         List<Long> removedGroupIds = mismatchedGroupIds(scopeId, scopeType, effectiveRoleName);
         if (removedGroupIds.isEmpty()) {
-            return;
+            return false;
         }
         List<Long> assigned = userPermissionGroupRepository.findByUserId(userId).stream()
                 .map(UserPermissionGroupEntity::getGroupId)
                 .filter(removedGroupIds::contains)
                 .toList();
         if (assigned.isEmpty()) {
-            return;
+            return false;
         }
         List<Long> permissionIds = assigned.stream()
                 .flatMap(id -> permissionGroupPermissionRepository.findByGroupId(id).stream())
@@ -51,14 +49,11 @@ public class RolePermissionCleanupService {
                 .distinct()
                 .toList();
         if (permissionIds.isEmpty()) {
-            return;
+            return false;
         }
-        boolean adminOnly = permissionRepository.findByIdIn(permissionIds).stream()
+        return permissionRepository.findByIdIn(permissionIds).stream()
                 .map(PermissionEntity::getName)
                 .anyMatch(PermissionGroupService.ADMIN_ONLY_GRANTABLE_PERMISSIONS::contains);
-        if (adminOnly) {
-            accessControlService.checkScopeAdminOnly(actorUserId, scopeId, scopeType);
-        }
     }
 
     private List<Long> mismatchedGroupIds(Long scopeId, String scopeType, String effectiveRoleName) {

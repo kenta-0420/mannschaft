@@ -105,6 +105,18 @@ public class RoleService {
      * @param actorUserId 操作者ユーザー ID
      * @throws BusinessException 操作者が ADMIN/DEPUTY_ADMIN でない場合（COMMON_002）
      */
+    private void requireActorScopeAdminOnly(Long scopeId, String scopeType, Long actorUserId) {
+        boolean isAdmin = userRoleRepository.isActiveUser(actorUserId)
+                && findUserRole(actorUserId, scopeId, scopeType)
+                .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
+                .map(RoleEntity::getName)
+                .filter("ADMIN"::equals)
+                .isPresent();
+        if (!isAdmin) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
     private void requireActorAdmin(Long scopeId, String scopeType, Long actorUserId) {
         boolean isAdmin = userRoleRepository.isActiveUser(actorUserId)
                 && findUserRole(actorUserId, scopeId, scopeType)
@@ -262,8 +274,12 @@ public class RoleService {
 
         // F01.2.1 5-A（AC-P11）: ロール変更で外れる割当に ADMIN 専用権限を含むグループがあれば ADMIN のみ許可。
         // 剥奪は権限グループ割当の解除と等価なので、副作用（delete / 割当除去）より前に判定する。
-        rolePermissionCleanupService.requireAdminIfAdminOnlyAssignmentsWouldBeRemoved(
-                targetUserId, scopeId, scopeType, requestedRole.getName(), changedBy);
+        // AccessControlService は RoleService に依存するため注入できない（循環）。ADMIN 判定は
+        // AccessControlService#checkScopeAdminOnly と同じ意味（ADMIN ロールのみ・同じ COMMON_002）を本クラスで行う。
+        if (rolePermissionCleanupService.wouldRemoveAdminOnlyAssignments(
+                targetUserId, scopeId, scopeType, requestedRole.getName())) {
+            requireActorScopeAdminOnly(scopeId, scopeType, changedBy);
+        }
 
         // 既存を削除して新規作成
         // 根治: delete 直後に flush して DELETE を先に DB へ確定させる。
