@@ -173,10 +173,13 @@ class PriceRevisionCancelFlywayIT {
     @DisplayName("状態を列挙する CHECK（chk_bpv_status / chk_bpbv_status / chk_bpbv_active）は enum の全状態に言及する")
     void statusChecksMentionEveryEnumValue() {
         for (String constraint : List.of("chk_bpv_status", "chk_bpbv_status", "chk_bpbv_active")) {
-            String clause = jdbcTemplate.queryForObject(
+            String rawClause = jdbcTemplate.queryForObject(
                     "SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS "
                             + "WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = ?",
                     String.class, constraint);
+            // MySQL は information_schema.CHECK_CONSTRAINTS.CHECK_CLAUSE のクォートを `\'` にエスケープして返すため、
+            // 素の `'` に正規化してから enum 全値への言及を検査する（検証の厳密さは変えない）。
+            String clause = rawClause.replace("\\'", "'");
             for (BillingPriceVersionStatus status : BillingPriceVersionStatus.values()) {
                 assertThat(clause).as("%s が状態 %s に言及していること", constraint, status)
                         .contains("'" + status.name() + "'");

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { defineComponent, h, nextTick } from 'vue'
 import { flushPromises } from '@vue/test-utils'
+import { createJaLocaleT } from '../../helpers/localeJson'
 
 /**
  * 価格改定 一覧画面（税コードマスタ）— 実機E2E（2026-09-29）で見つかった欠陥の検体。
@@ -41,13 +42,12 @@ mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: vi.fn() }))
  * detectBrowserLanguage がこれを拾って defaultLocale('ja') より優先してしまう
  * （本番はブラウザの Accept-Language/Cookie を見る正しい挙動なのでバグではないが、
  * ユニットテストでは日本語文言の一致を検証したいので `t` を固定する）。
- * 値は `app/locales/ja/billing.json` と同じ（キーが増減したら両方を合わせて直す）。
+ *
+ * `t` は手書き辞書ではなく `app/locales/ja/billing.json` を実際に読んで解決する
+ * （キーが locale.json から消えたら throw で赤化させ、モックがコードを追認しないようにする）。
  */
-const JA_MESSAGES: Record<string, string> = {
-  'billing.priceRevisions.noPermission': 'この画面を表示する権限がありません',
-  'billing.priceRevisions.errorInvalidStripeTaxCode': 'Stripe税コードの形式が不正です（txcd_ に続く数字8桁）',
-}
-mockNuxtImport('useI18n', () => () => ({ t: (key: string) => JA_MESSAGES[key] ?? key }))
+const jaT = createJaLocaleT(['billing'])
+mockNuxtImport('useI18n', () => () => ({ t: jaT }))
 
 const Page = (await import('~/pages/system-admin/price-revisions/index.vue')).default
 

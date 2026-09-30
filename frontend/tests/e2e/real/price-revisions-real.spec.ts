@@ -83,6 +83,7 @@ function readState(): State {
   try {
     return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) as State
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- 初回実行では状態ファイルがまだ無いだけ（失敗要因ではない）
     return {}
   }
 }
@@ -344,6 +345,7 @@ test('PR-03 作成: DRAFT が作られ、詳細で値（適用開始日時）が
     writeState({ draftAId: id, draftAEffectiveLocal: effective, revisionBId: id, revisionBEffectiveLocal: effective, revisionBStatus: 'DRAFT' })
 
     await page.waitForURL(new RegExp(`/system-admin/price-revisions/${id}$`))
+    // eslint-disable-next-line no-restricted-syntax -- スピナーが初めから存在しないページでは待つ対象が無いだけ（失敗要因ではない）
     await page.locator('.pi-spin').first().waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
     await expect(page.getByRole('heading', { name: '価格改定の詳細' })).toBeVisible()
     await shot(page, testInfo, 'detail-draft')
@@ -361,6 +363,7 @@ test('PR-03 作成: DRAFT が作られ、詳細で値（適用開始日時）が
     // 一覧に DRAFT で出る
     await page.getByRole('button', { name: 'back-to-list' }).click()
     await page.waitForURL(/\/system-admin\/price-revisions$/)
+    // eslint-disable-next-line no-restricted-syntax -- スピナーが初めから存在しないページでは待つ対象が無いだけ（失敗要因ではない）
     await page.locator('.pi-spin').first().waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
     const row = page.getByRole('row').filter({ has: page.getByRole('button', { name: `detail-${id}` }) })
     await expect(row).toBeVisible()
@@ -416,6 +419,7 @@ test('PR-07 取り消し: DRAFT を確認ダイアログ経由で取り消すと
     const idB = (JSON.parse(body2) as { data: { id: string } }).data.id
     writeState({ revisionBId: idB, revisionBEffectiveLocal: effective, revisionBStatus: 'DRAFT' })
     await page.waitForURL(new RegExp(`/system-admin/price-revisions/${idB}$`))
+    // eslint-disable-next-line no-restricted-syntax -- スピナーが初めから存在しないページでは待つ対象が無いだけ（失敗要因ではない）
     await page.locator('.pi-spin').first().waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
     expect(await detailStatus(page)).toBe('DRAFT')
     await shot(page, testInfo, 'revisionB-draft')

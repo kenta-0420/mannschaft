@@ -2,17 +2,19 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { createJaLocaleT } from '../helpers/localeJson'
 
 /**
  * テスト環境（jsdom）は navigator.language が既定で 'en-US' になり、@nuxtjs/i18n の
  * detectBrowserLanguage がこれを拾って defaultLocale('ja') より優先してしまう
  * （本番はブラウザの Accept-Language/Cookie を見る正しい挙動なのでバグではないが、
  * ユニットテストでは日本語ラベルの一致を検証したいので `t` を固定する）。
- * 値は `app/locales/ja/common.json` の `admin.quickLinks.priceRevisions` と同じ。
+ *
+ * `t` は手書き辞書ではなく `app/locales/ja/common.json` を実際に読んで解決する
+ * （キーが locale.json から消えたら throw で赤化させ、モックがコードを追認しないようにする）。
  */
-mockNuxtImport('useI18n', () => () => ({
-  t: (key: string) => (key === 'admin.quickLinks.priceRevisions' ? '価格改定' : key),
-}))
+const jaT = createJaLocaleT(['common'])
+mockNuxtImport('useI18n', () => () => ({ t: jaT }))
 
 /**
  * 欠陥3（実機E2E 2026-09-29）: システム管理のメニューから価格改定一覧 /system-admin/price-revisions へ
