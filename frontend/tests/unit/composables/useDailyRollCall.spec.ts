@@ -47,6 +47,17 @@ describe('useDailyRollCall', () => {
     expect(handleApiError.mock.calls[0]![0]).toBe(err)
   })
 
+  it('例外後に submitting が false へ戻る（再提出できる）', async () => {
+    mockSubmitRollCall.mockRejectedValueOnce(new Error('boom'))
+    mockSubmitRollCall.mockResolvedValueOnce({ total: 1 })
+    const { submitRollCall, submitting } = useDailyRollCall(ref('t1'))
+    await submitRollCall('2026-09-30', entries)
+    expect(submitting.value).toBe(false)
+    const again = await submitRollCall('2026-09-30', entries)
+    expect(again).not.toBeNull()
+    expect(mockSubmitRollCall).toHaveBeenCalledTimes(2)
+  })
+
   it('提出中の二重呼び出しは API を1回しか叩かない', async () => {
     let resolveFn: (v: unknown) => void = () => {}
     mockSubmitRollCall.mockReturnValue(new Promise((r) => (resolveFn = r)))

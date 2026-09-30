@@ -148,15 +148,8 @@ export interface StudentTimelineResponse {
 
 export type FamilyNoticeType = 'ABSENCE' | 'LATE' | 'EARLY_LEAVE' | 'OTHER'
 
-export type FamilyNoticeReason =
-  | 'SICK'
-  | 'INJURY'
-  | 'FAMILY_REASON'
-  | 'BEREAVEMENT'
-  | 'INFECTIOUS_DISEASE'
-  | 'MENTAL_HEALTH'
-  | 'OFFICIAL_BUSINESS'
-  | 'OTHER'
+/** BE FamilyAttendanceNoticeRequest#reason も同じ AbsenceReason。 */
+export type FamilyNoticeReason = AbsenceReason
 
 export type FamilyNoticeStatus = 'PENDING' | 'ACKNOWLEDGED' | 'APPLIED'
 

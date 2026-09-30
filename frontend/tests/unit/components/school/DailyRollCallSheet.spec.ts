@@ -2,23 +2,26 @@ import { describe, it, expect } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import Select from 'primevue/select'
 import DailyRollCallSheet from '~/components/school/DailyRollCallSheet.vue'
+import PeriodAttendanceSheet from '~/components/school/PeriodAttendanceSheet.vue'
+import FamilyAbsenceNoticeForm from '~/components/school/FamilyAbsenceNoticeForm.vue'
+import { readBeAbsenceReasons } from '../../helpers/beAbsenceReasons'
 
 /**
- * CMP-260930-1532: 欠席理由の選択肢が BE の AbsenceReason 8値と一致すること。
+ * CMP-260930-1532: 欠席理由の選択肢が BE の AbsenceReason（正本を直接読む）と一致すること。
+ * 日次点呼・時限点呼・保護者連絡フォームの3画面すべてを検証する。
  */
-const BE_ABSENCE_REASONS = [
-  'SICK',
-  'INJURY',
-  'FAMILY_REASON',
-  'BEREAVEMENT',
-  'INFECTIOUS_DISEASE',
-  'MENTAL_HEALTH',
-  'OFFICIAL_BUSINESS',
-  'OTHER',
-]
+const BE_ABSENCE_REASONS = readBeAbsenceReasons()
 
-describe('DailyRollCallSheet 欠席理由の選択肢', () => {
-  it('ABSENT 行の理由 Select が BE の8値を持ち、ラベルは文字列で解決される', async () => {
+function expectBeReasons(options: Array<{ value: string; label: unknown }>): void {
+  expect(BE_ABSENCE_REASONS.length).toBeGreaterThan(0)
+  expect(options.map((o) => o.value).sort()).toEqual([...BE_ABSENCE_REASONS].sort())
+  for (const o of options) {
+    expect(typeof o.label).toBe('string')
+  }
+}
+
+describe('欠席理由の選択肢', () => {
+  it('DailyRollCallSheet: ABSENT 行の理由 Select が BE の値を持つ', async () => {
     const wrapper = await mountSuspended(DailyRollCallSheet, {
       props: {
         date: '2026-09-30',
@@ -27,10 +30,33 @@ describe('DailyRollCallSheet 欠席理由の選択肢', () => {
     })
     const select = wrapper.findComponent(Select)
     expect(select.exists()).toBe(true)
-    const options = select.props('options') as Array<{ value: string; label: unknown }>
-    expect(options.map((o) => o.value).sort()).toEqual([...BE_ABSENCE_REASONS].sort())
-    for (const o of options) {
-      expect(typeof o.label).toBe('string')
-    }
+    expectBeReasons(select.props('options') as Array<{ value: string; label: unknown }>)
+  })
+
+  it('PeriodAttendanceSheet: ABSENT 行の理由 Select が BE の値を持つ', async () => {
+    const wrapper = await mountSuspended(PeriodAttendanceSheet, {
+      props: {
+        periodNumber: 1,
+        date: '2026-09-30',
+        candidates: [],
+        entries: [
+          { studentUserId: 1, displayName: '1', status: 'ABSENT', dailyStatus: 'ATTENDING' },
+        ],
+      },
+    })
+    const select = wrapper.findComponent(Select)
+    expect(select.exists()).toBe(true)
+    expectBeReasons(select.props('options') as Array<{ value: string; label: unknown }>)
+  })
+
+  it('FamilyAbsenceNoticeForm: 理由 Select が BE の値を持つ', async () => {
+    const wrapper = await mountSuspended(FamilyAbsenceNoticeForm, {
+      props: { teamId: 't1', studentUserId: 1 },
+    })
+    const select = wrapper
+      .findAllComponents(Select)
+      .find((c) => (c.props('options') as Array<{ value: string }>).some((o) => o.value === 'SICK'))
+    expect(select).toBeDefined()
+    expectBeReasons(select!.props('options') as Array<{ value: string; label: unknown }>)
   })
 })
