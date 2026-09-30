@@ -9,7 +9,7 @@ import enMessages from '~/locales/en/common.json'
 const i18n = createI18n({
   legacy: false,
   locale: 'en',
-  messages: { en: enMessages },
+  messages: { ja: {}, en: enMessages, zh: {}, ko: {}, es: {}, de: {} },
 })
 
 const ButtonStub = {
