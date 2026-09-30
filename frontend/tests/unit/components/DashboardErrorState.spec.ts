@@ -1,56 +1,75 @@
-import { describe, it, expect, beforeAll } from 'vitest'
-import { mountSuspended } from '@nuxt/test-utils/runtime'
+// @vitest-environment happy-dom
+
+import { describe, expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
+import { createI18n } from 'vue-i18n'
 import DashboardErrorState from '~/components/DashboardErrorState.vue'
+import enMessages from '~/locales/en/common.json'
 
-/**
- * DashboardErrorState.vue のユニットテスト（CMP-260922-2045）。
- *
- * 取得失敗を「未登録」の空状態（DashboardEmptyState）へフォールバックさせず、
- * 権限エラー・通信断であることが分かるエラー状態として描画するための共通部品。
- */
-
-beforeAll(async () => {
-  const warmup = await mountSuspended(DashboardErrorState)
-  warmup.unmount()
+const i18n = createI18n({
+  legacy: false,
+  locale: 'en',
+  messages: { ja: {}, en: enMessages, zh: {}, ko: {}, es: {}, de: {} },
 })
 
+const ButtonStub = {
+  props: ['label'],
+  emits: ['click'],
+  template:
+    '<button type="button" v-bind="$attrs" @click="$emit(\'click\')">{{ label }}</button>',
+}
+
+function mountErrorState(props: Record<string, unknown> = {}) {
+  return mount(DashboardErrorState, {
+    props,
+    global: {
+      plugins: [i18n],
+      stubs: { Button: ButtonStub },
+    },
+  })
+}
+
 describe('DashboardErrorState.vue', () => {
-  it('message 未指定時は汎用の既定文言（i18n）を表示する', async () => {
-    const wrapper = await mountSuspended(DashboardErrorState)
-    // ロケールに依存せず「既定文言が出ている」ことだけを確認する
-    // （テスト環境の既定ロケールは en。文言自体は6言語の common.json#loadErrorState.message）
-    expect(wrapper.text()).toContain('Failed to load data')
+  it('既定では一時的な取得失敗をやわらかく案内して再試行を表示する', () => {
+    const wrapper = mountErrorState()
+
+    expect(wrapper.text()).toContain("We can't load the data right now")
+    expect(wrapper.text()).toContain('This may be a temporary issue')
+    expect(wrapper.find('[data-testid="load-error-state-retry"]').exists()).toBe(true)
   })
 
-  it('message 指定時はそのメッセージを表示する', async () => {
-    const wrapper = await mountSuspended(DashboardErrorState, {
-      props: { message: 'カスタムエラーメッセージ' },
+  it.each([
+    [{ statusCode: 403 }, "This page isn't available for this account"],
+    [{ response: { status: 404 } }, "We couldn't display what you're looking for"],
+  ])('403/404 は安全な案内へ分けて再試行を表示しない', (error, expectedTitle) => {
+    const wrapper = mountErrorState({ error, testid: 'classified-error' })
+
+    expect(wrapper.text()).toContain(expectedTitle)
+    expect(wrapper.find('[data-testid="classified-error-retry"]').exists()).toBe(false)
+  })
+
+  it('通信断は接続確認を案内して再試行を表示する', () => {
+    const wrapper = mountErrorState({
+      error: new TypeError('Failed to fetch'),
+      testid: 'network-error',
     })
-    expect(wrapper.text()).toContain('カスタムエラーメッセージ')
-    expect(wrapper.text()).not.toContain('Failed to load data')
+
+    expect(wrapper.text()).toContain("It looks like the connection didn't work")
+    expect(wrapper.find('[data-testid="network-error-retry"]').exists()).toBe(true)
   })
 
-  it('既定では再試行ボタンを表示し、クリックで retry を emit する', async () => {
-    const wrapper = await mountSuspended(DashboardErrorState, {
-      props: { testid: 'my-error-state' },
+  it('個別文言と再試行表示の明示指定を優先する', async () => {
+    const wrapper = mountErrorState({
+      error: { statusCode: 403 },
+      title: 'Custom title',
+      message: 'Custom message',
+      showRetry: true,
+      testid: 'custom-error',
     })
-    const retryButton = wrapper.find('[data-testid="my-error-state-retry"]')
-    expect(retryButton.exists()).toBe(true)
 
-    await retryButton.trigger('click')
-    expect(wrapper.emitted('retry')).toBeTruthy()
-    expect(wrapper.emitted('retry')?.length).toBe(1)
-  })
-
-  it('showRetry=false で再試行ボタンを表示しない', async () => {
-    const wrapper = await mountSuspended(DashboardErrorState, {
-      props: { showRetry: false, testid: 'no-retry-error-state' },
-    })
-    expect(wrapper.find('[data-testid="no-retry-error-state-retry"]').exists()).toBe(false)
-  })
-
-  it('既定の data-testid は load-error-state', async () => {
-    const wrapper = await mountSuspended(DashboardErrorState)
-    expect(wrapper.find('[data-testid="load-error-state"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Custom title')
+    expect(wrapper.text()).toContain('Custom message')
+    await wrapper.get('[data-testid="custom-error-retry"]').trigger('click')
+    expect(wrapper.emitted('retry')).toHaveLength(1)
   })
 })
