@@ -2712,7 +2712,28 @@
     }
   },
   "loadErrorState": {
-    "message": "Daten konnten nicht geladen werden",
+    "states": {
+      "generic": {
+        "title": "Die Daten können derzeit nicht geladen werden",
+        "message": "Möglicherweise liegt ein vorübergehendes Problem vor. Bitte warten Sie einen Moment und versuchen Sie es erneut."
+      },
+      "forbidden": {
+        "title": "Diese Seite ist für dieses Konto nicht verfügbar",
+        "message": "Wenn Sie Zugriff benötigen, wenden Sie sich bitte an die Administration."
+      },
+      "notFoundOrForbidden": {
+        "title": "Die gesuchten Informationen konnten nicht angezeigt werden",
+        "message": "Sie sind möglicherweise nicht mehr verfügbar oder ihre Sichtbarkeit hat sich geändert."
+      },
+      "network": {
+        "title": "Die Verbindung scheint nicht funktioniert zu haben",
+        "message": "Bitte prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut."
+      },
+      "server": {
+        "title": "Die Daten können derzeit nicht geladen werden",
+        "message": "Möglicherweise liegt ein vorübergehendes Problem vor. Bitte warten Sie einen Moment und versuchen Sie es erneut."
+      }
+    },
     "retry": "Wiederholen"
   },
   "searchBar": {

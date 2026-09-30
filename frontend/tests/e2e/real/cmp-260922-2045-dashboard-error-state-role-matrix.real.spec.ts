@@ -172,7 +172,8 @@ for (const screen of ADMIN_ONLY_SCREENS) {
       await expect(errorState, `${screen.name}: MEMBERでerror-stateが出なかった`).toBeVisible({
         timeout: 10_000,
       })
-      await expect(errorState).toContainText('データの取得に失敗しました')
+      await expect(errorState).toContainText('この画面をご利用いただけません')
+      await expect(page.getByTestId(`${screen.errorTestId}-retry`)).toHaveCount(0)
 
       // SSR経由で観測できたレスポンスがあれば、ステータスも403/404であることを確認する
       if (responses.length > 0) {
@@ -250,7 +251,7 @@ test.describe('villages/[id]/admin/recruit-categories', () => {
     await expect(errorState, '他村URL直打ちでerror-stateが出なかった').toBeVisible({
       timeout: 10_000,
     })
-    await expect(errorState).toContainText('データの取得に失敗しました')
+    await expect(errorState).toContainText('お探しの情報を表示できませんでした')
 
     if (responses.length > 0) {
       for (const r of responses) {
@@ -266,19 +267,7 @@ test.describe('villages/[id]/admin/recruit-categories', () => {
       fullPage: true,
     })
 
-    const retryButton = page.getByTestId('recruit-category-error-state-retry')
-    await expect(retryButton).toBeVisible()
-    const retryResponsePromise = page.waitForResponse(
-      (res) => res.url().includes(otherApiPath),
-      { timeout: 15_000 },
-    )
-    await retryButton.click()
-    const retryRes = await retryResponsePromise
-    expect(retryRes.url()).toContain(otherApiPath)
-    expect(
-      [403, 404].includes(retryRes.status()),
-      `他村recruit-categories: 再試行時ステータス=${retryRes.status()}（403/404を期待）`,
-    ).toBeTruthy()
+    await expect(page.getByTestId('recruit-category-error-state-retry')).toHaveCount(0)
   })
 })
 
@@ -321,7 +310,7 @@ test.describe('villages/[id]/calendar', () => {
     await expect(errorState, '他村カレンダーURL直打ちでerror-stateが出なかった').toBeVisible({
       timeout: 10_000,
     })
-    await expect(errorState).toContainText('データの取得に失敗しました')
+    await expect(errorState).toContainText('お探しの情報を表示できませんでした')
 
     if (responses.length > 0) {
       for (const r of responses) {
@@ -337,19 +326,7 @@ test.describe('villages/[id]/calendar', () => {
       fullPage: true,
     })
 
-    const retryButton = page.getByTestId('village-calendar-error-state-retry')
-    await expect(retryButton).toBeVisible()
-    const retryResponsePromise = page.waitForResponse(
-      (res) => res.url().includes(otherApiPath),
-      { timeout: 15_000 },
-    )
-    await retryButton.click()
-    const retryRes = await retryResponsePromise
-    expect(retryRes.url()).toContain(otherApiPath)
-    expect(
-      [403, 404].includes(retryRes.status()),
-      `他村calendar-events: 再試行時ステータス=${retryRes.status()}（403/404を期待）`,
-    ).toBeTruthy()
+    await expect(page.getByTestId('village-calendar-error-state-retry')).toHaveCount(0)
   })
 })
 
