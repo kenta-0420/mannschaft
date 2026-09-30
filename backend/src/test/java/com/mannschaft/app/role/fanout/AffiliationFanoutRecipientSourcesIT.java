@@ -176,7 +176,24 @@ class AffiliationFanoutRecipientSourcesIT extends AbstractMySqlIntegrationTest {
                                long deletedAdmin, long deletedGroupMember) {
     }
 
+    /**
+     * roles はグローバル参照テーブルで、IT のスキーマは Hibernate 生成のため初期行が無い。
+     * 既存なら再利用し、無ければ入れる（同一 name の二重 INSERT は UNIQUE 違反になるため冪等化する）。
+     */
+    private void ensureRoles() {
+        int[] priorities = {1, 2, 3};
+        String[] names = {"ADMIN", "DEPUTY_ADMIN", "MEMBER"};
+        for (int i = 0; i < names.length; i++) {
+            Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM roles WHERE name = ?", Integer.class, names[i]);
+            if (count == null || count == 0) {
+                jdbc.update("INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, 1, NOW(), NOW())", names[i], names[i], priorities[i]);
+            }
+        }
+    }
+
     private OrgFixture seedOrganization() {
+        ensureRoles();
         long orgId = insertOrganization();
         long otherOrgId = insertOrganization();
         long admin1 = insertUser(false);
@@ -195,6 +212,7 @@ class AffiliationFanoutRecipientSourcesIT extends AbstractMySqlIntegrationTest {
     }
 
     private TeamFixture seedTeam() {
+        ensureRoles();
         long teamId = insertTeam();
         long otherTeamId = insertTeam();
         long affiliationPermission = ensurePermission(MANAGE_ORG_AFFILIATION);
