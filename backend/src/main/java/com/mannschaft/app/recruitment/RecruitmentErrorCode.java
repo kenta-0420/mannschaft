@@ -104,6 +104,9 @@ public enum RecruitmentErrorCode implements ErrorCode {
     // 15.4 ペナルティ・キャンセル料エラー (300〜399)
     // ========================================
 
+    /** 有効な募集ペナルティによる申込拒否 */
+    PENALTY_ACTIVE("RECRUITMENT_300", "ペナルティ期間中のため申込できません", Severity.WARN),
+
     /** キャンセル料の決済失敗 */
     CANCELLATION_PAYMENT_FAILED("RECRUITMENT_301", "キャンセル料の決済に失敗しました", Severity.WARN),
 

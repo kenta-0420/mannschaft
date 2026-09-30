@@ -51,6 +51,7 @@ public class RecruitmentNoShowDisputeNotificationListener {
                         ? List.of(listing.getCreatedBy()) : List.of();
                 case TEAM -> roleService.getAdminUserIdsByTeamId(listing.getScopeId());
                 case ORGANIZATION -> roleService.getAdminUserIdsByOrganizationId(listing.getScopeId());
+                case GLOBAL -> List.of(); // GLOBAL はペナルティ専用で募集枠には存在しない。
             };
             NotificationScopeType notificationScope = NotificationScopeType.valueOf(listing.getScopeType().name());
             String actionUrl = "/scopes/" + listing.getScopeType().name().toLowerCase(Locale.ROOT)
