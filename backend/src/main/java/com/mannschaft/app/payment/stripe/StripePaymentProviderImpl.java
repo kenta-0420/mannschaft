@@ -7,6 +7,7 @@ import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.stripe.exception.InvalidRequestException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Account;
@@ -39,9 +40,11 @@ import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.PaymentIntentRetrieveParams;
 import com.stripe.param.PaymentMethodAttachParams;
 import com.stripe.param.PriceCreateParams;
+import com.stripe.param.PriceSearchParams;
 import com.stripe.param.PriceUpdateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.ProductUpdateParams;
+import com.stripe.model.PriceSearchResult;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.SetupIntentCreateParams;
 import com.stripe.param.InvoiceCreatePreviewParams;
@@ -203,6 +206,122 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             return new PriceInfo(stripePriceId, price.getProduct(), unitAmount, currency);
         } catch (StripeException e) {
             log.error("Stripe Price 取得失敗: priceId={}", stripePriceId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    /**
+     * 価格改定戦役（price-revisions）決定9改訂・決定10。
+     *
+     * <p>{@code deterministicProductId} を Stripe Product の {@code id} に指定して create する。
+     * 同時作成競合（{@code resource_already_exists}）のときのみ retrieve へ収束する
+     * （AC-88c）。既存 Product の {@code tax_code} を上書きすることはない（AC-75。既存に対しては
+     * create 自体を試みないため、上書き経路が存在しない）。</p>
+     */
+    @Override
+    public ProductResolutionInfo resolveOrCreateProduct(String deterministicProductId, String productName,
+                                                          Map<String, String> metadata, String taxCode,
+                                                          String idempotencyKey) {
+        try {
+            ProductCreateParams.Builder builder = ProductCreateParams.builder()
+                    .setId(deterministicProductId)
+                    .setName(productName)
+                    .putAllMetadata(metadata == null ? Map.of() : metadata);
+            if (taxCode != null && !taxCode.isBlank()) {
+                builder.setTaxCode(taxCode);
+            }
+            RequestOptions options = RequestOptions.builder().setIdempotencyKey(idempotencyKey).build();
+            Product product = Product.create(builder.build(), options);
+            log.info("価格改定 Stripe Product 新規作成: id={}, name={}", product.getId(), productName);
+            return new ProductResolutionInfo(product.getId(), true);
+        } catch (InvalidRequestException e) {
+            if (isResourceAlreadyExists(e)) {
+                try {
+                    Product existing = Product.retrieve(deterministicProductId);
+                    log.info("価格改定 Stripe Product 解決（競合によりretrieveへ収束）: id={}", existing.getId());
+                    return new ProductResolutionInfo(existing.getId(), false);
+                } catch (StripeException retrieveError) {
+                    log.error("価格改定 Stripe Product retrieve失敗（競合後）: id={}", deterministicProductId,
+                            retrieveError);
+                    throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+                }
+            }
+            log.error("価格改定 Stripe Product 解決失敗: id={}", deterministicProductId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        } catch (StripeException e) {
+            log.error("価格改定 Stripe Product 解決失敗: id={}", deterministicProductId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    /** {@code resource_already_exists} は決定的 ID の同時作成競合を示す唯一の合図である。 */
+    private boolean isResourceAlreadyExists(InvalidRequestException e) {
+        return e.getStripeError() != null && "resource_already_exists".equals(e.getStripeError().getCode());
+    }
+
+    /** 価格改定戦役 E群・F群: band snapshot から Stripe Price を作成する（決定10）。 */
+    @Override
+    public String createPriceForRevision(String stripeProductId, long unitAmount, String currency,
+                                          String recurringInterval, int recurringIntervalCount,
+                                          String taxBehavior, Map<String, String> metadata,
+                                          String idempotencyKey) {
+        try {
+            PriceCreateParams.Recurring.Interval interval = "year".equalsIgnoreCase(recurringInterval)
+                    ? PriceCreateParams.Recurring.Interval.YEAR
+                    : PriceCreateParams.Recurring.Interval.MONTH;
+            PriceCreateParams.TaxBehavior behavior = "INCLUSIVE".equalsIgnoreCase(taxBehavior)
+                    ? PriceCreateParams.TaxBehavior.INCLUSIVE
+                    : PriceCreateParams.TaxBehavior.EXCLUSIVE;
+            PriceCreateParams params = PriceCreateParams.builder()
+                    .setProduct(stripeProductId)
+                    .setUnitAmount(unitAmount)
+                    .setCurrency(currency.toLowerCase())
+                    .setTaxBehavior(behavior)
+                    .setRecurring(PriceCreateParams.Recurring.builder()
+                            .setInterval(interval)
+                            .setIntervalCount((long) recurringIntervalCount)
+                            .build())
+                    .putAllMetadata(metadata == null ? Map.of() : metadata)
+                    .build();
+            RequestOptions options = RequestOptions.builder().setIdempotencyKey(idempotencyKey).build();
+            Price price = Price.create(params, options);
+            log.info("価格改定 Stripe Price 作成: id={}, productId={}, unitAmount={}",
+                    price.getId(), stripeProductId, unitAmount);
+            return price.getId();
+        } catch (StripeException e) {
+            log.error("価格改定 Stripe Price 作成失敗: productId={}, unitAmount={}", stripeProductId, unitAmount, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    /**
+     * 価格改定戦役 F群（決定3改訂）: metadata（revisionId/bandId）で既存 Price を検索し、
+     * Product の tax_code まで含めて snapshot へ写す。
+     */
+    @Override
+    public java.util.Optional<PriceMetadataSnapshot> findPriceByRevisionAndBandMetadata(
+            String revisionId, String bandId) {
+        try {
+            String query = "metadata['revisionId']:'" + revisionId + "' AND metadata['bandId']:'" + bandId + "'";
+            PriceSearchParams params = PriceSearchParams.builder().setQuery(query).setLimit(1L).build();
+            PriceSearchResult result = Price.search(params);
+            if (result.getData().isEmpty()) {
+                return java.util.Optional.empty();
+            }
+            Price price = result.getData().get(0);
+            Product product = Product.retrieve(price.getProduct());
+            Price.Recurring recurring = price.getRecurring();
+            long unitAmount = price.getUnitAmount() == null ? 0L : price.getUnitAmount();
+            int intervalCount = recurring == null || recurring.getIntervalCount() == null
+                    ? 1 : recurring.getIntervalCount().intValue();
+            Map<String, String> productMetadata = product.getMetadata() == null ? Map.of() : product.getMetadata();
+            Map<String, String> priceMetadata = price.getMetadata() == null ? Map.of() : price.getMetadata();
+            return java.util.Optional.of(new PriceMetadataSnapshot(
+                    price.getId(), unitAmount, price.getCurrency(),
+                    recurring == null ? null : recurring.getInterval(), intervalCount,
+                    product.getTaxCode(), price.getTaxBehavior(), productMetadata, priceMetadata));
+        } catch (StripeException e) {
+            log.error("価格改定 Stripe Price metadata検索失敗: revisionId={}, bandId={}", revisionId, bandId, e);
             throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
         }
     }

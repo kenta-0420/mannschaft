@@ -319,6 +319,8 @@ public void applyUpdate(UpdateMyRequest request) {
 
 #### `toBuilder()` / `builder()` が許可される用途
 
+**限定例外（CMP-260820-1017）**: `ResidentRegistryEntity` は、新規登録の安全な16入力だけを受け取る private constructor に `@Builder` を付ける。公開 builder に死亡・転出・論理削除・監査・派生状態や継承 ID／日時を含めず、`toBuilder()` は提供しない。初期状態は Entity 内で定め、更新は既存の業務メソッドで managed entity に直接行う。JPA 用の protected 無引数 constructor は維持する。
+
 以下の用途では `id` 消失の問題が発生しないため、引き続き使用してよい。
 
 | 用途 | 説明 |
