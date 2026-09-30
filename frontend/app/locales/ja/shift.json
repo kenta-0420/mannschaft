@@ -59,6 +59,9 @@
       "archive": "アーカイブ",
       "transitionSuccess": "ステータスを変更しました",
       "saveSuccess": "保存しました",
+      "deleteTitle": "シフト表を削除",
+      "deleteConfirm": "このシフト表を削除しますか？提出済みの希望は履歴として保持されます。",
+      "deleteSuccess": "シフト表を削除しました",
       "calendarView": "カレンダー表示",
       "noDate": "日付未設定",
       "colDate": "日付",
@@ -367,7 +370,8 @@
       "title": "シフト希望の提出状況",
       "empty": "シフトがありません",
       "fetchError": "シフト情報の取得に失敗しました",
-      "description": "提出した希望と審査状況（承認・却下）の確認"
+      "description": "提出した希望と審査状況（承認・却下）の確認",
+      "scheduleDeleted": "シフト表は削除済みです"
     },
     "myShift": {
       "confirmedTitle": "確定シフト",

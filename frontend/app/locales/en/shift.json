@@ -82,7 +82,8 @@
       "title": "My Shift Requests",
       "empty": "No shifts found",
       "fetchError": "Failed to fetch shift information",
-      "description": "Submitted requests and their approval status"
+      "description": "Submitted requests and their approval status",
+      "scheduleDeleted": "Shift schedule deleted"
     },
     "myShift": {
       "confirmedTitle": "Confirmed Shifts",
@@ -148,6 +149,9 @@
       "archive": "Archive",
       "transitionSuccess": "Status changed",
       "saveSuccess": "Saved",
+      "deleteTitle": "Delete shift schedule",
+      "deleteConfirm": "Delete this shift schedule? Submitted requests will remain in each member's history.",
+      "deleteSuccess": "Shift schedule deleted",
       "calendarView": "Calendar view",
       "noDate": "No date",
       "colDate": "Date",

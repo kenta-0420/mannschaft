@@ -17,12 +17,7 @@ export type ShiftPreference =
   | 'ABSOLUTE_REST'
 
 /** シフトスケジュールのライフサイクルステータス */
-export type ShiftScheduleStatus =
-  | 'DRAFT'
-  | 'COLLECTING'
-  | 'ADJUSTING'
-  | 'PUBLISHED'
-  | 'ARCHIVED'
+export type ShiftScheduleStatus = 'DRAFT' | 'COLLECTING' | 'ADJUSTING' | 'PUBLISHED' | 'ARCHIVED'
 
 /** シフト交代リクエストのステータス（v2.1 拡張含む） */
 export type SwapRequestStatus =
@@ -137,6 +132,8 @@ export interface ShiftRequestResponse {
   preference: ShiftPreference
   note: string | null
   submittedAt: string
+  /** 親シフト表が削除済みでも、本人の提出履歴として返された行。 */
+  scheduleDeleted?: boolean
 }
 
 /**

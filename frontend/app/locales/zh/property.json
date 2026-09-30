@@ -146,6 +146,30 @@
       "back": "返回列表",
       "changeStatus": "更改状态"
     },
+    "residents": {
+      "title": "住民名册",
+      "create": "添加住户",
+      "createTitle": "添加住户",
+      "unitNumber": "房号",
+      "unitNumberPlaceholder": "例如：101",
+      "floor": "楼层",
+      "unitType": "户型类别",
+      "layout": "户型",
+      "areaSqm": "面积",
+      "notes": "备注",
+      "residentCount": "{count} 位住户",
+      "occupied": "已入住",
+      "vacant": "空房",
+      "empty": "暂无住户信息",
+      "createSuccess": "已添加住户",
+      "createFailed": "添加住户失败",
+      "validation": {
+        "unitNumberRequired": "请输入房号",
+        "unitNumberMax": "房号不能超过50个字符",
+        "unitTypeMax": "户型类别不能超过20个字符",
+        "layoutMax": "户型不能超过20个字符"
+      }
+    },
     "errors": {
       "loadFailed": "载入失败",
       "saveFailed": "保存失败",
