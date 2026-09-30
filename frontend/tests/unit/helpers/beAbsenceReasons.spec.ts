@@ -65,6 +65,28 @@ describe('parseJavaEnumConstants', () => {
     expect(parse('@Deprecated A, @Foo(x = 1) B')).toEqual(['A', 'B'])
   })
 
+  it('注釈引数の中の括弧・引用符・カンマを読み飛ばす', () => {
+    expect(parse('@Foo(value = ")") A, B')).toEqual(['A', 'B'])
+    expect(parse("@Foo(value = ')') A, B")).toEqual(['A', 'B'])
+    expect(parse('@Foo(value = ",") A, B')).toEqual(['A', 'B'])
+    expect(parse("@Foo(value = '\\'') A, B")).toEqual(['A', 'B'])
+    expect(parse('@a.b.Foo(x = "(") A, @Bar B')).toEqual(['A', 'B'])
+  })
+
+  it('定数引数の中の文字列・char・テキストブロック', () => {
+    expect(parse('A("a,b(c"), B(\',\'), C(\'(\'), D("x")')).toEqual(['A', 'B', 'C', 'D'])
+    expect(parse('A("""\n  ), }, ;\n  """), B')).toEqual(['A', 'B'])
+  })
+
+  it('ジェネリクス・ネスト型・コメント内の括弧', () => {
+    expect(parse('A(List.<String, Integer>of()), B(new HashMap<String, List<Integer>>())')).toEqual([
+      'A',
+      'B',
+    ])
+    expect(parse('A, B; enum Inner { X, Y } static class N<T, U> { }')).toEqual(['A', 'B'])
+    expect(parse('A( /* ) } ; */ 1), // ) , }\n B')).toEqual(['A', 'B'])
+  })
+
   it('対象 enum が無ければ空配列', () => {
     expect(parseJavaEnumConstants('class X {}', 'E')).toEqual([])
   })

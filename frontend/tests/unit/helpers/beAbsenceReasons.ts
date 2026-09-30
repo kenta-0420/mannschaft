@@ -11,94 +11,101 @@ const BE_ABSENCE_REASON_PATH = resolve(
   '../../../../backend/src/main/java/com/mannschaft/app/school/entity/AbsenceReason.java',
 )
 
-/** コメントを除去する（文字列・文字リテラル内の `//` `/*` は保持する）。 */
-export function stripJavaComments(src: string): string {
-  let out = ''
+export interface JavaToken {
+  kind: 'str' | 'id' | 'p'
+  text: string
+}
+
+/**
+ * Java ソースの単一トークン走査。コメントは捨て、文字列（テキストブロック含む）と
+ * char リテラルは1トークンとして丸ごと読み飛ばす。括弧の深さ計算などは必ずこのトークン列の上で行う。
+ */
+export function tokenizeJava(src: string): JavaToken[] {
+  const tokens: JavaToken[] = []
   let i = 0
   while (i < src.length) {
     const c = src[i]!
-    const n = src[i + 1]
-    if (c === '"' || c === "'") {
-      let j = i + 1
-      while (j < src.length && src[j] !== c) j += src[j] === '\\' ? 2 : 1
-      out += src.slice(i, j + 1)
-      i = j + 1
-    } else if (c === '/' && n === '/') {
+    if (/\s/.test(c)) {
+      i++
+    } else if (c === '/' && src[i + 1] === '/') {
       while (i < src.length && src[i] !== '\n') i++
-    } else if (c === '/' && n === '*') {
+    } else if (c === '/' && src[i + 1] === '*') {
       const end = src.indexOf('*/', i + 2)
       i = end < 0 ? src.length : end + 2
-      out += ' '
+    } else if (src.startsWith('"""', i)) {
+      let j = i + 3
+      while (j < src.length && !src.startsWith('"""', j)) j += src[j] === '\\' ? 2 : 1
+      tokens.push({ kind: 'str', text: src.slice(i, j + 3) })
+      i = j + 3
+    } else if (c === '"' || c === "'") {
+      let j = i + 1
+      while (j < src.length && src[j] !== c) j += src[j] === '\\' ? 2 : 1
+      tokens.push({ kind: 'str', text: src.slice(i, j + 1) })
+      i = j + 1
+    } else if (/[A-Za-z_$]/.test(c)) {
+      let j = i + 1
+      while (j < src.length && /[\w$]/.test(src[j]!)) j++
+      tokens.push({ kind: 'id', text: src.slice(i, j) })
+      i = j
     } else {
-      out += c
+      tokens.push({ kind: 'p', text: c })
       i++
     }
   }
-  return out
+  return tokens
 }
+
+const OPEN = new Set(['(', '{', '['])
+const CLOSE = new Set([')', '}', ']'])
 
 /**
  * Java ソースから指定 enum の定数名を抜き出す。
  * 定数宣言部（最初のトップレベル `;`、無ければ本体の閉じ `}` まで）を、
- * 括弧・波括弧・角括弧の深さ0のカンマで分割し、各要素の先頭の識別子を定数名とする。
+ * 深さ0のカンマで分割し、各要素の先頭の識別子（注釈は読み飛ばす）を定数名とする。
  */
 export function parseJavaEnumConstants(source: string, enumName: string): string[] {
-  const src = stripJavaComments(source)
-  const head = new RegExp(`\\benum\\s+${enumName}\\b[^{]*\\{`).exec(src)
-  if (!head) return []
-  const body = src.slice(head.index + head[0].length)
+  const tokens = tokenizeJava(source)
+  let i = tokens.findIndex(
+    (t, k) => t.kind === 'id' && t.text === 'enum' && tokens[k + 1]?.text === enumName,
+  )
+  if (i < 0) return []
+  while (i < tokens.length && tokens[i]!.text !== '{') i++
+  i++
 
-  const parts: string[] = []
+  const elements: JavaToken[][] = [[]]
   let depth = 0
-  let current = ''
-  let i = 0
-  scan: while (i < body.length) {
-    const c = body[i]!
-    if (c === '"' || c === "'") {
-      let j = i + 1
-      while (j < body.length && body[j] !== c) j += body[j] === '\\' ? 2 : 1
-      current += body.slice(i, j + 1)
-      i = j + 1
-      continue
+  for (; i < tokens.length; i++) {
+    const t = tokens[i]!
+    if (t.kind === 'p') {
+      if (depth === 0 && (t.text === ';' || t.text === '}')) break
+      if (depth === 0 && t.text === ',') {
+        elements.push([])
+        continue
+      }
+      if (OPEN.has(t.text)) depth++
+      else if (CLOSE.has(t.text)) depth--
     }
-    if (c === '(' || c === '{' || c === '[') depth++
-    else if (c === ')' || c === ']') depth--
-    else if (c === '}') {
-      if (depth === 0) break scan // enum 本体の終わり
-      depth--
-    } else if (depth === 0 && c === ';') {
-      break scan // 定数宣言部の終わり
-    } else if (depth === 0 && c === ',') {
-      parts.push(current)
-      current = ''
-      i++
-      continue
-    }
-    current += c
-    i++
+    elements[elements.length - 1]!.push(t)
   }
-  parts.push(current)
 
   const names: string[] = []
-  for (const part of parts) {
-    // 先頭の注釈（@Foo / @Foo(...)）を読み飛ばす
-    let rest = part.trim()
-    for (;;) {
-      const ann = /^@[A-Za-z_$][\w$.]*\s*/.exec(rest)
-      if (!ann) break
-      rest = rest.slice(ann[0].length)
-      if (rest.startsWith('(')) {
+  for (const el of elements) {
+    let k = 0
+    while (el[k]?.text === '@') {
+      k++
+      while (el[k]?.kind === 'id' && el[k + 1]?.text === '.') k += 2
+      k++ // 注釈名
+      if (el[k]?.text === '(') {
         let d = 0
-        let k = 0
-        for (; k < rest.length; k++) {
-          if (rest[k] === '(') d++
-          else if (rest[k] === ')' && --d === 0) break
+        for (; k < el.length; k++) {
+          if (el[k]!.kind !== 'p') continue
+          if (el[k]!.text === '(') d++
+          else if (el[k]!.text === ')' && --d === 0) break
         }
-        rest = rest.slice(k + 1).trim()
+        k++
       }
     }
-    const m = /^[A-Za-z_$][\w$]*/.exec(rest)
-    if (m) names.push(m[0])
+    if (el[k]?.kind === 'id') names.push(el[k]!.text)
   }
   return names
 }
