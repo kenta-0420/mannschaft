@@ -82,7 +82,8 @@
       "title": "我的排班申请",
       "empty": "没有班次",
       "fetchError": "排班信息获取失败",
-      "description": "查看已提交的申请及其审核状态"
+      "description": "查看已提交的申请及其审核状态",
+      "scheduleDeleted": "排班表已删除"
     },
     "page": {
       "title": "班次",
@@ -134,6 +135,9 @@
       "archive": "归档",
       "transitionSuccess": "状态已变更",
       "saveSuccess": "已保存",
+      "deleteTitle": "删除排班表",
+      "deleteConfirm": "确定删除此排班表吗？已提交的申请将保留在每位成员的历史记录中。",
+      "deleteSuccess": "排班表已删除",
       "calendarView": "日历视图",
       "noDate": "未设置日期",
       "colDate": "日期",

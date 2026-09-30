@@ -1646,6 +1646,7 @@
     "search": "Suchen",
     "edit": "Bearbeiten",
     "save": "Speichern",
+    "detail": "Details",
     "resume": {
       "title": "Lebenslauf und Berufserfahrung",
       "listTitle": "Lebenslauf-Versionen",
@@ -1936,6 +1937,7 @@
       "gdprPurge": "DSGVO Bereinigungsstatus",
       "feedbackInbox": "Feedback-Posteingang (Global)",
       "billing": "Abrechnungs-Stammdaten",
+      "priceRevisions": "Preisänderungen",
       "betaPerks": "ベータ特典管理",
       "villageCreationRequests": "村作成申請",
       "seasonalWallpapers": "季節壁紙",
