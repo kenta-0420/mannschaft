@@ -87,6 +87,8 @@ public enum NotificationType {
     NEW_DEVICE_LOGIN(NotificationPriority.HIGH, "USER"),
 
     RECRUITMENT_PENALTY_LIFTED(NotificationPriority.NORMAL, "RECRUITMENT_PENALTY"),
+    /** F03.11: ペナルティ発動時に本人が確認する緊急通知。 */
+    RECRUITMENT_PENALTY_APPLIED(NotificationPriority.URGENT, "CONFIRMABLE_NOTIFICATION"),
 
     /** F01.2.1 §6.7: チーム加盟（申請・招待・離脱・除名等）の通知。sourceType は TEAM_ORG_MEMBERSHIP。 */
     TEAM_ORG_APPLICATION_RECEIVED(NotificationPriority.NORMAL, "TEAM_ORG_MEMBERSHIP"),

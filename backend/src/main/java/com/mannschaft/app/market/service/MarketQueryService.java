@@ -222,6 +222,7 @@ public class MarketQueryService {
                     case TEAM -> teamIds.add(e.getScopeId());
                     case ORGANIZATION -> orgIds.add(e.getScopeId());
                     case PERSONAL -> personalOwnerIds.add(e.getScopeId());
+                    case GLOBAL -> throw new IllegalStateException("GLOBAL は募集枠のスコープではありません");
                 }
             }
             // 旧単一列（代表・後方互換）由来のコード。
@@ -352,6 +353,7 @@ public class MarketQueryService {
                         ? owner.fullName() : owner.displayName();
                 yield new MarketOwnerDto("PERSONAL", null, displayName, owner.avatarUrl());
             }
+            case GLOBAL -> throw new IllegalStateException("GLOBAL は募集枠のスコープではありません");
         };
     }
 

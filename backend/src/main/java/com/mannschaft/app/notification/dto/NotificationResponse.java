@@ -2,6 +2,7 @@ package com.mannschaft.app.notification.dto;
 
 import lombok.Builder;
 import lombok.Getter;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
@@ -39,6 +40,12 @@ public class NotificationResponse {
     LocalDateTime readAt;
     String        channelsSent;
     LocalDateTime snoozedUntil;
+
+    /**
+     * 本人の確認通知受信者状態。通常通知、対象外、確認免除済みは null。
+     */
+    @Schema(types = {"boolean", "null"}, nullable = true, description = "本人の確認通知受信者状態。対象外はnull")
+    Boolean       isConfirmed;
 
     LocalDateTime createdAt;
 }
