@@ -1,5 +1,11 @@
 export type NotificationPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
-export type NotificationScopeType = 'TEAM' | 'ORGANIZATION' | 'PERSONAL' | 'SYSTEM' | 'FRIEND_TEAM' | 'FRIEND_FOLDER'
+export type NotificationScopeType =
+  | 'TEAM'
+  | 'ORGANIZATION'
+  | 'PERSONAL'
+  | 'SYSTEM'
+  | 'FRIEND_TEAM'
+  | 'FRIEND_FOLDER'
 
 export interface NotificationActor {
   id: number
@@ -21,6 +27,8 @@ export interface NotificationResponse {
   actionUrl: string | null
   actor: NotificationActor | null
   isRead: boolean
+  /** 本人が確認通知を確認済みなら true、未確認なら false、対象外は null または省略。 */
+  isConfirmed?: boolean | null
   readAt: string | null
   snoozedUntil: string | null
   createdAt: string
