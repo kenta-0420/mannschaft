@@ -1,10 +1,11 @@
 package com.mannschaft.app.member.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.event.DomainEvent;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
@@ -12,12 +13,14 @@ import com.mannschaft.app.member.MemberSubtabKey;
 import com.mannschaft.app.member.dto.MemberSubtabVisibilityResponse;
 import com.mannschaft.app.member.dto.UpdateMemberSubtabVisibilityRequest;
 import com.mannschaft.app.member.entity.MemberSubtabRoleVisibilityEntity;
+import com.mannschaft.app.member.event.MemberSubtabVisibilityUpdatedEvent;
 import com.mannschaft.app.member.repository.MemberSubtabRoleVisibilityRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -48,7 +51,7 @@ class MemberSubtabVisibilityServiceTest {
     @Mock
     private AccessControlService accessControlService;
     @Mock
-    private AuditLogService auditLogService;
+    private DomainEventPublisher domainEventPublisher;
     @Mock
     private NameResolverService nameResolverService;
 
@@ -61,8 +64,12 @@ class MemberSubtabVisibilityServiceTest {
 
     @BeforeEach
     void setUp() {
+        // PR #3387 D-3T 根治: 更新は書き込み専用 Bean（writer）の TX に閉じ、監査はイベント発行へ移した
+        // （軍議書 gungi-3387-d3t.md §2.1(c)(d)）。writer は実物を組み、repository の mock を共有する。
+        MemberSubtabVisibilityWriter writer =
+                new MemberSubtabVisibilityWriter(repository, domainEventPublisher, objectMapper);
         service = new MemberSubtabVisibilityService(
-                repository, accessControlService, auditLogService, nameResolverService, objectMapper);
+                repository, accessControlService, nameResolverService, writer);
     }
 
     @Nested
@@ -147,16 +154,16 @@ class MemberSubtabVisibilityServiceTest {
             service.updateSettings(USER_ID, ScopeType.ORGANIZATION, ORG_ID, request);
 
             verify(repository).save(org.mockito.ArgumentMatchers.any(MemberSubtabRoleVisibilityEntity.class));
-            verify(auditLogService).record(
-                    org.mockito.ArgumentMatchers.eq(MemberSubtabVisibilityService.AUDIT_EVENT_TYPE),
-                    org.mockito.ArgumentMatchers.eq(USER_ID),
-                    org.mockito.ArgumentMatchers.isNull(),
-                    org.mockito.ArgumentMatchers.isNull(),
-                    org.mockito.ArgumentMatchers.eq(ORG_ID),
-                    org.mockito.ArgumentMatchers.isNull(),
-                    org.mockito.ArgumentMatchers.isNull(),
-                    org.mockito.ArgumentMatchers.isNull(),
-                    anyString());
+            // 判断点4: 監査は record 直呼びから「writer 経由の監査イベント発行」へ（期待値変更はこの1箇所のみ）。
+            // 旧 verify と同じ値（actor=USER_ID・teamId=null・organizationId=ORG_ID・metadata 非null）を固定する。
+            ArgumentCaptor<DomainEvent> captor = ArgumentCaptor.forClass(DomainEvent.class);
+            verify(domainEventPublisher).publish(captor.capture());
+            assertThat(captor.getValue()).isInstanceOfSatisfying(MemberSubtabVisibilityUpdatedEvent.class, event -> {
+                assertThat(event.getActorUserId()).isEqualTo(USER_ID);
+                assertThat(event.getTeamId()).isNull();
+                assertThat(event.getOrganizationId()).isEqualTo(ORG_ID);
+                assertThat(event.getMetadataJson()).isNotNull();
+            });
         }
 
         @Test

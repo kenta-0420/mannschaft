@@ -40,19 +40,20 @@ class MemberReadQueryCountIT extends MemberTxBoundaryITSupport {
      *
      * <p>実測: 本修正の直前の PR HEAD {@code 3bc428174c}（main 取り込みマージ {@code 4903b319e8} 上。
      * member／AccessControlService／NameResolverService の本番コードは {@code 3bc428174c} と差分なし）、
-     * 2026-09-30、本クラスを {@code ./scripts/gradle-turnstile.sh ./gradlew test --tests <FQCN>} で実行。
+     * 2026-09-30、CI（GitHub Actions run 36666196989）で本クラスを実行し、標準出力の
+     * {@code prepareStatementCount} を転記した。
      * main を基準にしない理由は軍議書 AC-11（PR 自身が判定クエリを意図的に追加しているため）。</p>
      */
     enum MeasuredPath {
-        GET_PAGE_MEM(-1),
-        LIST_SECTIONS_MEM(-1),
-        LIST_PROFILES_MEM(-1),
-        GET_PROFILE_MEM(-1),
-        LOOKUP_MEM(-1),
-        LIST_ORG_PAGES_MEM(-1),
-        GET_SETTINGS_MEM(-1),
-        PUT_SETTINGS_DIFF_ADM(-1),
-        PUT_SETTINGS_NO_DIFF_ADM(-1);
+        GET_PAGE_MEM(15),
+        LIST_SECTIONS_MEM(14),
+        LIST_PROFILES_MEM(17),
+        GET_PROFILE_MEM(14),
+        LOOKUP_MEM(8),
+        LIST_ORG_PAGES_MEM(19),
+        GET_SETTINGS_MEM(9),
+        PUT_SETTINGS_DIFF_ADM(11),
+        PUT_SETTINGS_NO_DIFF_ADM(8);
 
         final long baselinePrepareStatements;
 
