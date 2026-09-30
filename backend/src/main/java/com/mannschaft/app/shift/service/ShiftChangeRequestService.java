@@ -242,22 +242,23 @@ public class ShiftChangeRequestService {
     /**
      * 変更依頼の取下げに対する per-scope 認可を強制する（存在オラクル是正 W2）。
      *
-     * <p>取下げは依頼者本人のみ許可する（管理者による代理取下げは対象外・従来どおり）。
-     * 本人でない場合、当該チームの所属者（user_roles のみの管理者を含む）には従来どおり
+     * <p>取下げは依頼者本人のみ許可する（SYSTEM_ADMIN・管理者による代理取下げは対象外・従来どおり）。
+     * 本人でない場合、SYSTEM_ADMIN および当該チームの所属者（user_roles のみの管理者を含む）には従来どおり
      * {@code ACCESS_DENIED}（403 / SHIFT_019）を返す。所属しない越境の場合のみ、不在と
      * 同一応答（{@code CHANGE_REQUEST_NOT_FOUND}）に畳む。Gate は forbidden コードを
      * {@code COMMON_002} 固定で持つため、SHIFT_019 を維持する本メソッドは
-     * 同ゲートの判定順（SYSTEM_ADMIN → isAdminOrAbove → isMember）だけを踏襲する。</p>
+     * 同ゲートの判定対象（SYSTEM_ADMIN / isAdminOrAbove / isMember）だけを踏襲し、いずれも 403 とする。</p>
      *
      * @param entity 変更依頼
      * @param userId 操作者ユーザー ID
      */
     private void checkWithdrawAccess(ShiftChangeRequestEntity entity, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
         if (entity.getRequestedBy().equals(userId)) {
             return;
+        }
+        // SYSTEM_ADMIN も本人でなければ取下げ不可（従来どおり 403）。404 に畳まず ACCESS_DENIED を返す。
+        if (accessControlService.isSystemAdmin(userId)) {
+            throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
         }
         Long teamId = resolveTeamId(entity.getScheduleId());
         if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")
