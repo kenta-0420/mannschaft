@@ -159,10 +159,12 @@ public class OrganizationEntity extends BaseEntity {
     private Boolean teamGroupsEnabled = false;
 
     /** F01.2.1 §5.5: 申請時のグループ選択（OFF / OPTIONAL / REQUIRED。既定 OFF）。 */
+    @Enumerated(EnumType.STRING)
     @Column(name = "team_application_group_mode", nullable = false, length = 10,
             columnDefinition = "VARCHAR(10) NOT NULL DEFAULT 'OFF'")
     @Builder.Default
-    private String teamApplicationGroupMode = "OFF";
+    private com.mannschaft.app.organization.TeamApplicationGroupMode teamApplicationGroupMode =
+            com.mannschaft.app.organization.TeamApplicationGroupMode.OFF;
 
     /** F01.2.1 §5.5: 申請フォームに表示する案内文（最大500文字）。 */
     @Column(name = "team_application_guidance", length = 500)

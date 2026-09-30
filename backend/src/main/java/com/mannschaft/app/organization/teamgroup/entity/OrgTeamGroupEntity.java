@@ -5,7 +5,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -19,7 +21,11 @@ import java.time.LocalDateTime;
  * チームグループ（F01.2.1 §5.2）。組織に加盟するチームを区分する平坦・並び順付きの論理削除エンティティ。
  */
 @Entity
-@Table(name = "org_team_groups")
+@Table(name = "org_team_groups",
+        uniqueConstraints = @UniqueConstraint(name = "uq_org_team_groups_org_active_name",
+                columnNames = {"organization_id", "active_name"}),
+        indexes = @Index(name = "idx_org_team_groups_org_sort",
+                columnList = "organization_id, deleted_at, sort_order"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -55,7 +61,8 @@ public class OrgTeamGroupEntity extends UuidV7Entity {
     private LocalDateTime deletedAt;
 
     /** 生存行だけの名前（生成列。削除済みは NULL）。DB が計算するため読み取り専用。 */
-    @Column(name = "active_name", insertable = false, updatable = false)
+    @Column(name = "active_name", insertable = false, updatable = false,
+            columnDefinition = "VARCHAR(50) GENERATED ALWAYS AS (IF(deleted_at IS NULL, name, NULL)) STORED")
     private String activeName;
 
     @PrePersist

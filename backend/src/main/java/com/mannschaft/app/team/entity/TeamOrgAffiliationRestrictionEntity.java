@@ -7,7 +7,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.Check;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -23,7 +26,17 @@ import java.time.LocalDateTime;
  * <p>UNIQUE (organization_id, team_id, direction)。物理削除で管理する（deleted_at なし）。</p>
  */
 @Entity
-@Table(name = "team_org_affiliation_restrictions")
+@Table(name = "team_org_affiliation_restrictions",
+        uniqueConstraints = @UniqueConstraint(name = "uq_toar_org_team_dir",
+                columnNames = {"organization_id", "team_id", "direction"}),
+        indexes = {
+                @Index(name = "idx_toar_team_dir", columnList = "team_id, direction"),
+                @Index(name = "idx_toar_kind_until", columnList = "kind, restricted_until")
+        })
+@Check(name = "chk_toar_direction", constraints = "direction IN ('TEAM_APPLY','ORG_INVITE')")
+@Check(name = "chk_toar_kind", constraints = "kind IN ('COOLDOWN','BLOCK')")
+@Check(name = "chk_toar_reason", constraints = "reason IN ('REJECTED','DECLINED','WITHDRAWN','CANCELLED')")
+@Check(name = "chk_toar_until", constraints = "(kind = 'BLOCK' AND restricted_until IS NULL) OR (kind = 'COOLDOWN' AND restricted_until IS NOT NULL)")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

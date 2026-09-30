@@ -7,8 +7,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.Check;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,7 +23,14 @@ import java.time.LocalDateTime;
  * チーム−組織所属エンティティ。チームと組織の関連付けを管理する。
  */
 @Entity
-@Table(name = "team_org_memberships")
+@Table(name = "team_org_memberships", indexes = {
+        @Index(name = "idx_team_org_memberships_org_status_dir",
+                columnList = "organization_id, status, direction, invited_at"),
+        @Index(name = "idx_team_org_memberships_team_status_dir", columnList = "team_id, status, direction"),
+        @Index(name = "idx_team_org_memberships_org_group_status", columnList = "organization_id, group_id, status"),
+        @Index(name = "idx_team_org_memberships_status_invited", columnList = "status, invited_at")
+})
+@Check(name = "chk_team_org_memberships_direction", constraints = "direction IN ('ORG_INVITE','TEAM_APPLY')")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -70,7 +79,7 @@ public class TeamOrgMembershipEntity {
     private String message;
 
     @Column(name = "updated_at", nullable = false,
-            columnDefinition = "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+            columnDefinition = "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     private LocalDateTime updatedAt;
 
     /**
