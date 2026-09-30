@@ -2833,7 +2833,9 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * 権限グループを付与された一般メンバーを取りこぼす。在籍（{@code left_at IS NULL}）を必須とすることで、
      * 退会済みなのに {@code user_roles} や権限グループの割当が残った人も除外する
      * （既存の権限保持者クエリ {@code findUserIdsWithPermissionInOrganization} と同じ作法）。
-     * ADMIN は {@code user_roles} で判定する。権限グループは論理削除されていない当該チームのものに限る
+     * ADMIN は {@code user_roles} で判定する。権限グループは論理削除されていない当該チームのもので、かつ
+     * {@code target_role} が利用者の実効ロール（ADMIN > DEPUTY_ADMIN > MEMBER。user_roles と memberships.role_kind から解決）と
+     * 一致する割当だけを数える。当該チームのものに限る
      * （{@code @SQLRestriction} は native に効かないため {@code pg.deleted_at IS NULL} を明示）。</p>
      *
      * @return {@code [user_id, locale]} を昇順に最大 limit 件
@@ -2855,7 +2857,20 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN permission_group_permissions pgp ON pgp.group_id = pg.id " +
             "      JOIN permissions p ON p.id = pgp.permission_id " +
             "      WHERE upg.user_id = ms.user_id AND pg.team_id = :teamId AND pg.deleted_at IS NULL " +
-            "        AND p.name = 'MANAGE_ORG_AFFILIATION' ) ) " +
+            "        AND p.name = 'MANAGE_ORG_AFFILIATION' " +
+            // 権限グループは target_role が利用者の実効ロール（強いロール優先: ADMIN > DEPUTY_ADMIN > MEMBER）と
+            // 一致する割当だけを有効とする（RoleService.resolveEffectivePermissions と同じ扱い）。
+            "        AND pg.target_role = ( CASE " +
+            "          WHEN EXISTS ( SELECT 1 FROM user_roles ea " +
+            "            JOIN roles ear ON ear.id = ea.role_id " +
+            "            WHERE ea.user_id = ms.user_id AND ea.team_id = :teamId AND ear.name = 'ADMIN' ) THEN 'ADMIN' " +
+            "          WHEN EXISTS ( SELECT 1 FROM user_roles ed " +
+            "            JOIN roles edr ON edr.id = ed.role_id " +
+            "            WHERE ed.user_id = ms.user_id AND ed.team_id = :teamId AND edr.name = 'DEPUTY_ADMIN' ) THEN 'DEPUTY_ADMIN' " +
+            "          WHEN EXISTS ( SELECT 1 FROM memberships em " +
+            "            WHERE em.user_id = ms.user_id AND em.scope_type = 'TEAM' AND em.scope_id = :teamId " +
+            "              AND em.role_kind = 'MEMBER' AND em.left_at IS NULL ) THEN 'MEMBER' " +
+            "        END ) ) ) " +
             "ORDER BY uid ASC LIMIT :limit",
             nativeQuery = true)
     List<Object[]> findTeamAffiliationOperatorUserIdsKeyset(

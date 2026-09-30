@@ -202,6 +202,37 @@ class AffiliationFanoutRecipientSourcesIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("TEAM_AFFILIATION_OPS: 権限グループの target_role が実効ロールと一致しない割当を持つ人は返らない")
+    void チーム加盟操作者はtarget_role不一致の割当では返らない() {
+        long teamId = insertTeam();
+        long permissionId = ensurePermission(MANAGE_ORG_AFFILIATION);
+        ensureRoles();
+        long matchedMember = insertUser(false);
+        long mismatchedMember = insertUser(false);
+        long matchedDeputy = insertUser(false);
+        long mismatchedDeputy = insertUser(false);
+
+        insertMembership(matchedMember, "TEAM", teamId);
+        insertMembership(mismatchedMember, "TEAM", teamId);
+        grantTeamRole(matchedDeputy, teamId, "DEPUTY_ADMIN");
+        grantTeamRole(mismatchedDeputy, teamId, "DEPUTY_ADMIN");
+
+        long memberGroup = insertPermissionGroup(teamId, "MEMBER", false, permissionId);
+        long deputyGroup = insertPermissionGroup(teamId, "DEPUTY_ADMIN", false, permissionId);
+        assignGroup(matchedMember, memberGroup);
+        assignGroup(matchedDeputy, deputyGroup);
+        // MEMBER なのに DEPUTY_ADMIN 向けグループ、DEPUTY_ADMIN なのに MEMBER 向けグループ（割当後にグループの対象を変えた状態）
+        assignGroup(mismatchedMember, deputyGroup);
+        assignGroup(mismatchedDeputy, memberGroup);
+
+        List<Long> ids = userIds(teamAffiliationOpsSource.nextPage(page(teamId, 0L, 100)));
+
+        assertThat(ids).as("実効ロールと target_role が一致する割当だけが有効").containsExactly(matchedMember, matchedDeputy);
+        assertThat(ids).as("target_role 不一致の割当は無効扱い（resolveEffectivePermissions と同じ）")
+                .doesNotContain(mismatchedMember, mismatchedDeputy);
+    }
+
+    @Test
     @DisplayName("ORGANIZATION_ADMINS: 退会済み（memberships.left_at あり）の ADMIN は user_roles が残っていても返らない")
     void 組織ADMINSは退会済みのADMINを返さない() {
         ensureRoles();
