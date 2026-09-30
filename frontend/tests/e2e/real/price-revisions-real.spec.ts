@@ -524,10 +524,42 @@ test('PR-05 activate: 確認ダイアログを経て SCHEDULED/ACTIVE になる'
 // ===========================================================================
 // 既知の欠陥（CMP-260930-1931）: 料金表のカタログ API（GET /api/v1/billing/plans）が
 // 旧 plan_price_bands を読み続けており、ACTIVATE した新価格（本テストの改定 B）が
-// カタログ・Billing Center のプラン変更プレビューへ反映されない。マスター裁可により
-// 別戦役として切り出し済みのため、ここでは test.fail() で「失敗する」ことを明示する
+// カタログ・Billing Center のプラン変更プレビューへ反映されない。
+//
+// Codex 検分（P2）指摘: 旧 PR-06 は下流全体を test.fail() していたため、既知の欠陥に
+// 無関係な失敗（ログイン・API 応答形式・Billing Center への到達・画面の描画）まで
+// 「期待どおりの失敗」として success 扱いになり、回帰を検出できなかった。
+// → 既知の欠陥に依存しない検証は PR-06a（通常テスト）に残し、既知の欠陥に直接・必然的に
+//   依存する検証だけを PR-06b（test.fail、CMP-260930-1931）に切り出す。
+test('PR-06a 下流: テナント ADMIN が Billing Center に到達し、カタログ API・画面が壊れずに応答する', async ({ browser }, testInfo) => {
+  const state = readState()
+  const { context, page } = await newLoggedInPage(browser, USER)
+  try {
+    // カタログ API 自体は 200 で応答する（新価格が反映されるかは PR-06b の検証範囲）
+    const catalog = await page.request.get(`${BE}/api/v1/billing/plans`)
+    const catalogJson = (await catalog.json()) as { data: { plans: { planKey: string; priceBands: { scopeKind: string; bandNo: number; monthlyPriceJpy: number | null }[] }[] } }
+    const fullTeam = catalogJson.data.plans.find((p) => p.planKey === PRODUCT_KEY)?.priceBands.filter((b) => b.scopeKind === SCOPE_KIND)
+    await note(testInfo, `GET /billing/plans ${PRODUCT_KEY}/${SCOPE_KIND} バンド`, { status: catalog.status(), revisionBStatus: state.revisionBStatus, bands: fullTeam })
+    expect(catalog.status(), 'カタログ API は 200 で応答する').toBe(200)
+    expect(state.revisionBStatus, 'PR-05 で ACTIVE になっている').toBe('ACTIVE')
+
+    await gotoAndSettle(page, `/organizations/${USER_ORG_SLUG}/settings/billing`)
+    await page.waitForTimeout(2_000)
+    await shot(page, testInfo, 'tenant-billing-center')
+    const text = await page.locator('main, body').first().innerText()
+    await note(testInfo, 'Billing Center 本文（先頭 1500 字）', text.slice(0, 1500))
+    // 画面が例外で落ちずに描画されていること（内容がプラン新価格を反映しているかは PR-06b）
+    await expect(page.locator('main, body').first()).not.toContainText('エラーが発生しました')
+    await expect(page.getByText(/Billing Center|お支払い|プラン/).first()).toBeVisible({ timeout: 5_000 })
+  } finally {
+    await context.close()
+  }
+})
+
+// 既知の欠陥（CMP-260930-1931）に直接・必然的に依存する検証のみをここに置く。マスター裁可により
+// 別戦役として切り出し済みのため、test.fail() で「失敗する」ことを明示する
 // （直った場合は逆に緑→赤の反転で気付ける。skip にはしない）。
-test.fail('PR-06 下流: テナント ADMIN の Billing Center で新価格がプラン変更プレビューに出る', async ({ browser }, testInfo) => {
+test.fail('PR-06b 下流: Billing Center のプラン変更プレビューに新価格が出る（既知の欠陥 CMP-260930-1931）', async ({ browser }, testInfo) => {
   const state = readState()
   const { context, page } = await newLoggedInPage(browser, USER)
   try {
@@ -536,16 +568,15 @@ test.fail('PR-06 下流: テナント ADMIN の Billing Center で新価格が�
     const catalogJson = (await catalog.json()) as { data: { plans: { planKey: string; priceBands: { scopeKind: string; bandNo: number; monthlyPriceJpy: number | null }[] }[] } }
     const fullTeam = catalogJson.data.plans.find((p) => p.planKey === PRODUCT_KEY)?.priceBands.filter((b) => b.scopeKind === SCOPE_KIND)
     await note(testInfo, `GET /billing/plans ${PRODUCT_KEY}/${SCOPE_KIND} バンド`, { status: catalog.status(), revisionBStatus: state.revisionBStatus, bands: fullTeam })
-    expect.soft(state.revisionBStatus, 'PR-05 で ACTIVE になっている').toBe('ACTIVE')
-    expect.soft(fullTeam?.find((b) => b.bandNo === 1)?.monthlyPriceJpy, 'カタログのバンド1に新価格（税込 3630）が出る').toBe(3630)
+    expect(fullTeam?.find((b) => b.bandNo === 1)?.monthlyPriceJpy, 'カタログのバンド1に新価格（税込 3630）が出る').toBe(3630)
 
     await gotoAndSettle(page, `/organizations/${USER_ORG_SLUG}/settings/billing`)
     await page.waitForTimeout(2_000)
-    await shot(page, testInfo, 'tenant-billing-center')
-    const text = await page.locator('main, body').first().innerText()
-    await note(testInfo, 'Billing Center 本文（先頭 1500 字）', text.slice(0, 1500))
+    await shot(page, testInfo, 'tenant-billing-center-preview')
     const changeButtons = page.getByRole('button', { name: /プラン.*変更|変更/ })
     await note(testInfo, 'プラン変更ボタン数', await changeButtons.count())
+    // カタログのバンド価格が null のままだと、契約中プランが「フリー」表示になりボタンが0件になる
+    // （実機E2E 2026-09-30 実測）。この可視性検証は新価格反映に必然的に依存する。
     await expect(changeButtons.first(), 'プラン変更の導線がある').toBeVisible({ timeout: 5_000 })
     await changeButtons.first().click()
     const dialog = page.getByTestId('billing-plan-change-dialog')
