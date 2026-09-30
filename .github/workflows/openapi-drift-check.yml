@@ -208,6 +208,20 @@ jobs:
           fi
           echo "docs/openapi.json は BE の現状と同期しています。"
 
+      # ドリフト検査が失敗したときだけ、CI が生成した openapi.json を artifact に残す。
+      # 上の検査ログは差分の先頭 100 行しか出さないため、生成物そのものを取れないと
+      # 「CI が生成した内容に docs/openapi.json を合わせる」修繕ができない
+      # （ローカルでの再生成は turnstile 待ちで長時間かかりうる）。
+      # artifact をダウンロードして docs/openapi.json へ置き、`npm run generate:types` で生成型を作り直す。
+      - name: Upload generated openapi.json（ドリフト検出時のみ）
+        if: failure() && steps.changes.outputs.openapi_related == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-openapi-json
+          path: docs/openapi.json
+          if-no-files-found: warn
+          retention-days: 7
+
       # 関連変更が無い PR はここで明示的に「スキップした」旨を残して success で終わる。
       # これにより required status check「OpenAPI Drift Check」が必ず結果を報告し、
       # 永久 pending → BLOCKED を構造的に防ぐ。
