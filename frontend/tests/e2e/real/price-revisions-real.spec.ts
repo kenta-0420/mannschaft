@@ -536,22 +536,31 @@ test('PR-06a 下流: テナント ADMIN が Billing Center に到達し、カタ
   expect(state.revisionBId, 'PR-07 で作った改定 B の ID').toBeTruthy()
   const id = state.revisionBId!
 
-  // Codex 再検分 P2-1: PR-05 は SCHEDULED/ACTIVE のどちらも正常として state に保存する
-  // （即時適用の判定タイミング次第で SCHEDULED のまま保存されることがある）。
-  // ここで ACTIVE を即要求すると、正常な SCHEDULED を偽失敗として扱ってしまうため、
-  // ADMIN 権限で改定の実際の状態を GET し、ACTIVE になるまでポーリングする
-  // （十分なタイムアウト後もならなければ、それは本当の失敗として落とす）。
+  // Codex 再検分 P2-1（4巡目）: PR-05 は SCHEDULED/ACTIVE のどちらも正常として state に保存する
+  // （即時適用の判定タイミング次第で SCHEDULED のまま保存されることがある）が、SCHEDULED→ACTIVE の
+  // 昇格は BillingPriceSelector.selectNow() → BillingPricePromotionService.promoteDue()（遅延昇格）
+  // を通る「販売価格の参照」でしか起きない（backend/src/main/java/com/mannschaft/app/billing/
+  // BillingPriceSelector.java:27）。system-admin の詳細 GET は状態を読むだけで selectNow を呼ばないため
+  // （PriceRevisionActivationService.java:28,93 のコメントの通り、詳細 GET・activate は promoteDue を
+  // 一切呼ばない設計）、これだけをポーリングしても昇格せず必ずタイムアウトする。
+  // selectNow を実際に呼ぶ経路は、未認証の公開カタログ GET /api/v1/public/billing/plans
+  // （backend/src/main/java/com/mannschaft/app/billing/api/BillingPublicCatalogController.java:35 →
+  // BillingPublicCatalogQueryService.java:104）のみ（副作用は価格版ステータスの遷移だけで、
+  // 課金・契約の確定は一切行わない読み取り専用 API）。ポーリングの各回でこの参照を発火してから
+  // 実際の状態を GET する。
   {
     const { context: adminContext, page: adminPage } = await newLoggedInPage(browser, ADMIN)
     try {
       await expect
         .poll(
           async () => {
+            // 遅延昇格の唯一のトリガー（副作用: 価格版ステータス遷移のみ。課金・契約の確定はしない）
+            await adminPage.request.get(`${BE}/api/v1/public/billing/plans?scopeKind=${SCOPE_KIND}`)
             const res = await adminPage.request.get(`${PR_API}/${id}`)
             const json = (await res.json()) as { data: { status: string } }
             return json.data.status
           },
-          { message: '改定 B が ACTIVE になるまで待つ（PR-05 は SCHEDULED/ACTIVE いずれも正常として保存する）', timeout: 120_000 },
+          { message: '改定 B が ACTIVE になるまで待つ（PR-05 は SCHEDULED/ACTIVE いずれも正常として保存する。ACTIVE への昇格は公開カタログ GET の遅延昇格でのみ起きる）', timeout: 120_000 },
         )
         .toBe('ACTIVE')
     } finally {
