@@ -234,7 +234,8 @@ class PublicUserProfileControllerTest {
                 "TEAM",
                 "テストチーム",
                 "200",
-                LocalDateTime.of(2024, 1, 15, 10, 0)
+                LocalDateTime.of(2024, 1, 15, 10, 0),
+                null
         );
     }
 }
