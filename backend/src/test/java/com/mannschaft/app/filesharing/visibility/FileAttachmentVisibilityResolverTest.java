@@ -198,7 +198,7 @@ class FileAttachmentVisibilityResolverTest {
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             Map.of(),
-                            Map.of(orgScope, 20L),
+                            Map.of(orgScope, Set.of(20L)),
                             Set.of(orgScope),
                             Set.of()));
 
