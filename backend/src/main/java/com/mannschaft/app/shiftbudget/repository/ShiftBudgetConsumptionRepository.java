@@ -77,6 +77,22 @@ public interface ShiftBudgetConsumptionRepository
             nativeQuery = true)
     List<OrphanConsumptionShiftRow> findShiftsWithOrphanPlannedConsumptions(@Param("limit") int limit);
 
+    /**
+     * 指定シフトの消化行が計上されている割当の組織 ID を返す（昇順・重複なし）。
+     *
+     * <p>F01.2.1 AC-G125: 取消（#15）・照合バッチ（#16）は、チームの親組織を再解決せず、
+     * 計上時に消化行が紐づけた割当（{@code allocation_id}）の組織を使う。消化行には organization_id の
+     * 列が無いため、割当を引いて得る（DDL は変えない）。取消後（CANCELLED）の行も対象にするので、
+     * 取消の前後どちらで呼んでも同じ結果になる。</p>
+     */
+    @Query(value =
+            "SELECT DISTINCT a.organization_id FROM shift_budget_consumptions c "
+                    + "INNER JOIN shift_budget_allocations a ON a.id = c.allocation_id "
+                    + "WHERE c.shift_id = :shiftId AND c.deleted_at IS NULL "
+                    + "ORDER BY a.organization_id",
+            nativeQuery = true)
+    List<Long> findAccountingOrganizationIdsByShiftId(@Param("shiftId") Long shiftId);
+
     /** {@link #findShiftsWithOrphanPlannedConsumptions(int)} の射影。 */
     interface OrphanConsumptionShiftRow {
         Long getShiftId();

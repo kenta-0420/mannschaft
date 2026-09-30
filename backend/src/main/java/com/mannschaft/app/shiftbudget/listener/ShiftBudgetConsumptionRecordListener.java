@@ -87,22 +87,12 @@ public class ShiftBudgetConsumptionRecordListener {
         Long scheduleId = event.getScheduleId();
         Long teamId = event.getTeamId();
 
+        // 計上先の組織（F01.2.1 §9.2 #14）。チームは複数の組織に加盟しうるため、チームから組織を
+        // 推測せず、スロットごとに「そのチーム・日付に予算割当を持つ組織」を割当から解決する。
+        // 最初に計上先が確定した組織を、監査ログ・通知・失敗イベントの代表とする。
+        Long primaryOrganizationId = null;
         try {
-            // team_id → organization_id 解決
-            Optional<Long> orgIdOpt = rateQueryRepository.findOrganizationIdByTeamId(teamId);
-            if (orgIdOpt.isEmpty()) {
-                log.warn("F08.7 hook: organization_id を解決できないためスキップ: scheduleId={}, teamId={}",
-                        scheduleId, teamId);
-                return;
-            }
-            Long organizationId = orgIdOpt.get();
-
-            // フィーチャーフラグ判定（OFF なら何もせず終了。既存シフト機能を阻害しない）
-            if (!featureService.isEnabled(organizationId)) {
-                log.debug("F08.7 hook: フィーチャーフラグ OFF のためスキップ: organizationId={}",
-                        organizationId);
-                return;
-            }
+            Map<Long, Boolean> featureEnabledByOrg = new java.util.HashMap<>();
 
             int recordedCount = 0;
             int skippedCount = 0;
@@ -114,17 +104,27 @@ public class ShiftBudgetConsumptionRecordListener {
                     slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(scheduleId);
 
             for (ShiftSlotEntity slot : slots) {
-                // 当月 allocation を解決（teamId / NULL の両系で検索）
-                Optional<ShiftBudgetAllocationEntity> allocOpt = resolveAllocationForSlot(
-                        organizationId, teamId, slot);
+                // 当日の allocation を解決（割当を持つ組織 → その組織の allocation）
+                Optional<ShiftBudgetAllocationEntity> allocOpt = resolveAllocationForSlot(teamId, slot);
                 if (allocOpt.isEmpty()) {
-                    log.warn("F08.7 hook: 該当 allocation 不在（事前作成漏れの可能性）: "
-                                    + "organizationId={}, teamId={}, slotDate={}, slotId={}",
-                            organizationId, teamId, slot.getSlotDate(), slot.getId());
+                    log.warn("F08.7 hook: 該当 allocation 不在または計上先の組織を一意に決められない"
+                                    + "（事前作成漏れの可能性）: teamId={}, slotDate={}, slotId={}",
+                            teamId, slot.getSlotDate(), slot.getId());
                     skippedCount++;
                     continue;
                 }
                 ShiftBudgetAllocationEntity allocation = allocOpt.get();
+                Long organizationId = allocation.getOrganizationId();
+
+                // フィーチャーフラグ判定（計上先の組織で判定。OFF なら何もせず既存シフト機能を阻害しない）
+                if (!featureEnabledByOrg.computeIfAbsent(organizationId, featureService::isEnabled)) {
+                    log.debug("F08.7 hook: フィーチャーフラグ OFF のためスキップ: organizationId={}",
+                            organizationId);
+                    continue;
+                }
+                if (primaryOrganizationId == null) {
+                    primaryOrganizationId = organizationId;
+                }
 
                 List<Long> assignedUserIds = parseAssignedUserIds(slot.getAssignedUserIds());
                 if (assignedUserIds.isEmpty()) {
@@ -197,6 +197,12 @@ public class ShiftBudgetConsumptionRecordListener {
                 }
             }
 
+            if (primaryOrganizationId == null && skippedCount == 0) {
+                // 計上先の組織が 1 つも確定せず、スキップもしていない（全スロットがフラグ OFF の組織、
+                // またはスロット無し）。既存シフト機能を阻害しないよう何も記録せず終える。
+                return;
+            }
+
             log.info("F08.7 hook: シフト公開→消化記録完了: scheduleId={}, recorded={}, skipped={}, "
                             + "missingHourlyRateUsers={}",
                     scheduleId, recordedCount, skippedCount, missingRateUserIds.size());
@@ -204,7 +210,7 @@ public class ShiftBudgetConsumptionRecordListener {
             auditLogService.record(
                     "SHIFT_BUDGET_CONSUMPTION_RECORDED",
                     event.getTriggeredByUserId(), null,
-                    teamId, organizationId,
+                    teamId, primaryOrganizationId,
                     null, null, null,
                     String.format("{\"shift_schedule_id\":%d,\"recorded_count\":%d,\"skipped_count\":%d,"
                                     + "\"missing_hourly_rate_count\":%d}",
@@ -216,7 +222,7 @@ public class ShiftBudgetConsumptionRecordListener {
             if (!missingRateUserIds.isEmpty()) {
                 try {
                     eventPublisher.publishEvent(new ShiftBudgetHourlyRateMissingEvent(
-                            organizationId, teamId,
+                            primaryOrganizationId, teamId,
                             rateQueryRepository.findTeamSlugByTeamId(teamId).orElse(null),
                             scheduleId, List.copyOf(missingRateUserIds)));
                 } catch (Exception notifyEx) {
@@ -242,13 +248,11 @@ public class ShiftBudgetConsumptionRecordListener {
             } catch (Exception ignore) {
                 // 監査ログ書き込みも失敗した場合は諦める（メイン処理は既に完了済み）
             }
-            // Phase 10-β: organization_id が解決できていれば failed_events にも記録。
-            // 解決できていない（hook 入口で例外）場合は記録不可
+            // Phase 10-β: 計上先の組織が確定していれば failed_events にも記録。
+            // 確定前（hook 入口で例外）は組織が無いため記録不可（チームから組織を推測して記録しない）。
             try {
-                Long orgIdForFailure = rateQueryRepository.findOrganizationIdByTeamId(teamId)
-                        .orElse(null);
-                if (orgIdForFailure != null) {
-                    recordFailureSafe(orgIdForFailure,
+                if (primaryOrganizationId != null) {
+                    recordFailureSafe(primaryOrganizationId,
                             ShiftBudgetFailedEventType.CONSUMPTION_RECORD,
                             scheduleId,
                             Map.of(
@@ -281,19 +285,34 @@ public class ShiftBudgetConsumptionRecordListener {
     }
 
     /**
-     * スロット日付に該当する allocation を解決する。
-     * <p>1. teamId スコープ → 2. 組織全体 (teamId=NULL) スコープ の順で探索。</p>
+     * スロット日付に該当する allocation を、計上先の組織から解決する（F01.2.1 §9.2 #14）。
+     *
+     * <ol>
+     *   <li>チーム個別の割当（{@code team_id = T}）を持ち、T が ACTIVE 加盟している組織。作成時に
+     *       重なる期間は 1 組織に限られるので通常 1 件。複数なら決められないのでスキップ</li>
+     *   <li>無ければ、T が ACTIVE 加盟している組織のうち、組織全体割当（{@code team_id IS NULL}）を持つ組織。
+     *       ちょうど 1 件のときだけ採用する。複数の親が組織全体割当を持つ場合は計上先を決められないため、
+     *       任意の 1 件に計上せずスキップする</li>
+     * </ol>
      */
-    private Optional<ShiftBudgetAllocationEntity> resolveAllocationForSlot(
-            Long organizationId, Long teamId, ShiftSlotEntity slot) {
-        Optional<ShiftBudgetAllocationEntity> teamScope = allocationRepository.findContainingPeriod(
-                organizationId, teamId, slot.getSlotDate());
-        if (teamScope.isPresent()) {
-            return teamScope;
+    private Optional<ShiftBudgetAllocationEntity> resolveAllocationForSlot(Long teamId, ShiftSlotEntity slot) {
+        List<Long> teamScopeOrgIds = allocationRepository
+                .findOrganizationIdsWithTeamAllocationContaining(teamId, slot.getSlotDate());
+        if (teamScopeOrgIds.size() > 1) {
+            log.error("F08.7 hook: 同じチーム・日付に複数の組織が割当を持つ（重複禁止の破れ）。計上しない: "
+                    + "teamId={}, slotDate={}, organizationIds={}", teamId, slot.getSlotDate(), teamScopeOrgIds);
+            return Optional.empty();
         }
-        // チーム個別が無ければ組織全体の枠にフォールバック
-        return allocationRepository.findContainingPeriod(
-                organizationId, null, slot.getSlotDate());
+        if (teamScopeOrgIds.size() == 1) {
+            return allocationRepository.findContainingPeriod(
+                    teamScopeOrgIds.get(0), teamId, slot.getSlotDate());
+        }
+        List<Long> orgWideOrgIds = allocationRepository
+                .findOrganizationIdsWithOrgWideAllocationContaining(teamId, slot.getSlotDate());
+        if (orgWideOrgIds.size() == 1) {
+            return allocationRepository.findContainingPeriod(orgWideOrgIds.get(0), null, slot.getSlotDate());
+        }
+        return Optional.empty();
     }
 
     /**

@@ -8,7 +8,6 @@ import com.mannschaft.app.shift.event.ShiftScheduleClosedEvent;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFeatureService;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
-import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
 import com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService;
@@ -20,8 +19,8 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -39,7 +38,6 @@ import java.util.Set;
 public class ShiftBudgetConsumptionCancelListener {
 
     private final ShiftBudgetFeatureService featureService;
-    private final ShiftBudgetRateQueryRepository rateQueryRepository;
     private final ShiftBudgetConsumptionService consumptionService;
     private final ShiftBudgetConsumptionRepository consumptionRepository;
     private final AuditLogService auditLogService;
@@ -80,17 +78,30 @@ public class ShiftBudgetConsumptionCancelListener {
      * @param actorUserId 操作者ID。バッチ等の自動処理では null
      */
     private void cancelConsumptions(Long scheduleId, Long teamId, Long actorUserId) {
+        // 取消先の組織（F01.2.1 AC-G125 / §9.2 #15）。チームの親組織は再解決しない。
+        // チームは複数の組織に加盟しうる上、計上後に加盟先が変わっても取消は計上時の組織で行うべきなので、
+        // 消化行が紐づく割当（allocation_id）の組織を使う。
+        Long organizationId = null;
         try {
-            Optional<Long> orgIdOpt = rateQueryRepository.findOrganizationIdByTeamId(teamId);
-            if (orgIdOpt.isEmpty()) {
-                log.debug("F08.7 cancel hook: organization_id 不在のためスキップ: scheduleId={}", scheduleId);
+            List<Long> accountingOrgIds =
+                    consumptionRepository.findAccountingOrganizationIdsByShiftId(scheduleId);
+            if (accountingOrgIds.isEmpty()) {
+                log.debug("F08.7 cancel hook: 計上された消化が無いためスキップ: scheduleId={}", scheduleId);
                 return;
             }
-            Long organizationId = orgIdOpt.get();
+            organizationId = accountingOrgIds.get(0);
 
-            if (!featureService.isEnabled(organizationId)) {
-                log.debug("F08.7 cancel hook: フィーチャーフラグ OFF のためスキップ: organizationId={}",
-                        organizationId);
+            // フィーチャーフラグは計上時の組織で判定する。計上先の組織がすべて OFF なら何もしない。
+            boolean anyEnabled = false;
+            for (Long orgId : accountingOrgIds) {
+                if (featureService.isEnabled(orgId)) {
+                    anyEnabled = true;
+                    break;
+                }
+            }
+            if (!anyEnabled) {
+                log.debug("F08.7 cancel hook: フィーチャーフラグ OFF のためスキップ: organizationIds={}",
+                        accountingOrgIds);
                 return;
             }
 
@@ -135,12 +146,10 @@ public class ShiftBudgetConsumptionCancelListener {
             }
         } catch (Exception e) {
             log.error("F08.7 cancel hook: シフトアーカイブ消化キャンセルの致命的失敗: scheduleId={}", scheduleId, e);
-            // Phase 10-β: organization_id が解決できていれば failed_events にも記録
+            // Phase 10-β: 計上時の組織が確定していれば failed_events にも記録（確定前は組織が無いため記録不可）
             try {
-                Long orgIdForFailure = rateQueryRepository.findOrganizationIdByTeamId(teamId)
-                        .orElse(null);
-                if (orgIdForFailure != null) {
-                    recordFailureSafe(orgIdForFailure,
+                if (organizationId != null) {
+                    recordFailureSafe(organizationId,
                             ShiftBudgetFailedEventType.CONSUMPTION_CANCEL,
                             scheduleId,
                             Map.of(

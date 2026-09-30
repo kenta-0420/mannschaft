@@ -108,7 +108,7 @@ class ShiftBudgetCalcControllerIntegrationTest {
                     "floor(300000 / (1200 * 4.0)) = 62",
                     List.of(),
                     null);
-            given(calcService.calculateRequiredSlots(any())).willReturn(stub);
+            given(calcService.calculateRequiredSlots(any(), any())).willReturn(stub);
 
             RequiredSlotsRequest req = new RequiredSlotsRequest(
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),
@@ -137,7 +137,7 @@ class ShiftBudgetCalcControllerIntegrationTest {
                     "floor(300000 / (1500 * 4.0)) = 50",
                     List.of(),
                     null);
-            given(calcService.calculateRequiredSlots(any())).willReturn(stub);
+            given(calcService.calculateRequiredSlots(any(), any())).willReturn(stub);
 
             RequiredSlotsRequest req = new RequiredSlotsRequest(
                     null, new BigDecimal("300000"), new BigDecimal("4.0"),
@@ -164,7 +164,7 @@ class ShiftBudgetCalcControllerIntegrationTest {
                             new com.mannschaft.app.shiftbudget.dto.PositionBreakdown(
                                     1L, new BigDecimal("1200"), 1, 5)
                     ));
-            given(calcService.calculateRequiredSlots(any())).willReturn(stub);
+            given(calcService.calculateRequiredSlots(any(), any())).willReturn(stub);
 
             RequiredSlotsRequest req = new RequiredSlotsRequest(
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),

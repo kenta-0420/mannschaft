@@ -5,7 +5,6 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
-import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +56,6 @@ public class ShiftBudgetConsumptionReconcileBatchService {
 
     private final ShiftBudgetConsumptionRepository consumptionRepository;
     private final ShiftBudgetConsumptionService consumptionService;
-    private final ShiftBudgetRateQueryRepository rateQueryRepository;
     private final AuditLogService auditLogService;
 
     /**
@@ -99,6 +97,10 @@ public class ShiftBudgetConsumptionReconcileBatchService {
             Long shiftId = orphan.getShiftId();
             Long teamId = orphan.getTeamId();
             try {
+                // F01.2.1 AC-G125: 監査ログの組織は、チームの親組織を再解決せず、消化行が紐づく割当の組織
+                // （計上時の組織）を使う。取消より前に引く（取消後も引けるが意図を明示する）。
+                List<Long> accountingOrgIds =
+                        consumptionRepository.findAccountingOrganizationIdsByShiftId(shiftId);
                 int cancelled = consumptionService.cancelAllForShift(shiftId);
                 if (cancelled == 0) {
                     // 直前に別経路（リスナー・並行実行）が取り消し済み。競合であって異常ではない。
@@ -106,7 +108,7 @@ public class ShiftBudgetConsumptionReconcileBatchService {
                     continue;
                 }
                 cancelledTotal += cancelled;
-                Long organizationId = rateQueryRepository.findOrganizationIdByTeamId(teamId).orElse(null);
+                Long organizationId = accountingOrgIds.isEmpty() ? null : accountingOrgIds.get(0);
                 auditLogService.record(
                         "SHIFT_BUDGET_CONSUMPTION_CANCELLED",
                         null, null,

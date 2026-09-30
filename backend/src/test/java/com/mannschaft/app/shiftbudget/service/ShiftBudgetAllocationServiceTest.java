@@ -138,6 +138,7 @@ class ShiftBudgetAllocationServiceTest {
         void 正常系_作成成功() {
             givenBudgetManageAllowed();
             given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
+            given(rateQueryRepository.lockTeamForUpdate(TEAM_ID)).willReturn(Optional.of(TEAM_ID));
             given(allocationRepository.findLiveByScope(eq(ORG_ID), eq(TEAM_ID), eq(null),
                     eq(17L), any(LocalDate.class), any(LocalDate.class)))
                     .willReturn(Optional.empty());
@@ -163,6 +164,7 @@ class ShiftBudgetAllocationServiceTest {
         void 重複_409() {
             givenBudgetManageAllowed();
             given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
+            given(rateQueryRepository.lockTeamForUpdate(TEAM_ID)).willReturn(Optional.of(TEAM_ID));
             given(allocationRepository.findLiveByScope(any(), any(), any(), any(), any(), any()))
                     .willReturn(Optional.of(sampleEntity()));
 
@@ -209,6 +211,7 @@ class ShiftBudgetAllocationServiceTest {
         void 別組織のteam_404() {
             givenBudgetManageAllowed();
             given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(0L);
+            given(rateQueryRepository.lockTeamForUpdate(TEAM_ID)).willReturn(Optional.of(TEAM_ID));
 
             assertThatThrownBy(() -> service.createAllocation(ORG_ID, sampleCreateRequest()))
                     .isInstanceOf(BusinessException.class)
@@ -439,6 +442,7 @@ class ShiftBudgetAllocationServiceTest {
         void 同一スコープ並行Create_例外() {
             givenBudgetManageAllowed();
             given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
+            given(rateQueryRepository.lockTeamForUpdate(TEAM_ID)).willReturn(Optional.of(TEAM_ID));
 
             // 1回目: 重複なし → 成功
             given(allocationRepository.findLiveByScope(eq(ORG_ID), eq(TEAM_ID), eq(null),
@@ -467,6 +471,7 @@ class ShiftBudgetAllocationServiceTest {
         void project_id指定_正常作成() {
             givenBudgetManageAllowed();
             given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
+            given(rateQueryRepository.lockTeamForUpdate(TEAM_ID)).willReturn(Optional.of(TEAM_ID));
             // ProjectRepository は実体を返す必要はなく、存在することのみを確認する
             given(projectRepository.findByIdAndDeletedAtIsNull(eq(99L)))
                     .willReturn(Optional.of(org.mockito.Mockito.mock(
@@ -495,6 +500,7 @@ class ShiftBudgetAllocationServiceTest {
         void project_id指定_存在しない_404() {
             givenBudgetManageAllowed();
             given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
+            given(rateQueryRepository.lockTeamForUpdate(TEAM_ID)).willReturn(Optional.of(TEAM_ID));
             given(projectRepository.findByIdAndDeletedAtIsNull(eq(99L)))
                     .willReturn(Optional.empty());
 

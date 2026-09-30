@@ -133,21 +133,31 @@ class ShiftBudgetPublishedEventListenerTest {
     }
 
     @Test
-    @DisplayName("フィーチャーフラグ OFF → 何もしない (Listener early return)")
+    @DisplayName("計上先の組織のフラグ OFF → 消化を記録しない・監査も残さない")
     void フラグOFF_no_op() {
-        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.of(ORG_ID));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of(ORG_ID));
         given(featureService.isEnabled(ORG_ID)).willReturn(false);
+        given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                .willReturn(List.of(sampleSlotWithUser(7L, USER_ID)));
+        given(allocationRepository.findContainingPeriod(eq(ORG_ID), eq(TEAM_ID), any()))
+                .willReturn(Optional.of(allocationWithId()));
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
-        verify(slotRepository, never()).findByScheduleIdOrderBySlotDateAscStartTimeAsc(anyLong());
         verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
+        verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("organization_id 解決不可 → 何もしない")
-    void org解決不可_no_op() {
-        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.empty());
+    @DisplayName("複数の親が組織全体割当を持ち計上先を一意に決められない → 任意の 1 件に計上しない")
+    void 計上先が一意に決まらない_no_op() {
+        given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                .willReturn(List.of(sampleSlotWithUser(7L, USER_ID)));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of());
+        given(allocationRepository.findOrganizationIdsWithOrgWideAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of(ORG_ID, ORG_ID + 1));
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
@@ -158,30 +168,29 @@ class ShiftBudgetPublishedEventListenerTest {
     @Test
     @DisplayName("当月 allocation 不在 → WARN+no-op (Q3 御裁可)")
     void allocation不在_no_op() {
-        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.of(ORG_ID));
-        given(featureService.isEnabled(ORG_ID)).willReturn(true);
         ShiftSlotEntity slot = sampleSlotWithUser(7L, USER_ID);
         given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
                 .willReturn(List.of(slot));
-        given(allocationRepository.findContainingPeriod(eq(ORG_ID), eq(TEAM_ID), any()))
-                .willReturn(Optional.empty());
-        given(allocationRepository.findContainingPeriod(eq(ORG_ID), eq(null), any()))
-                .willReturn(Optional.empty());
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of());
+        given(allocationRepository.findOrganizationIdsWithOrgWideAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of());
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         // 消化記録は呼ばない（no-op）
         verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
-        // 監査ログには 0/1 件として記録される
+        // 監査ログには 0/1 件として記録される（計上先の組織は確定しないので null）
         verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
-                eq(USER_ID), eq(null), eq(TEAM_ID), eq(ORG_ID),
+                eq(USER_ID), eq(null), eq(TEAM_ID), eq(null),
                 any(), any(), any(), any());
     }
 
     @Test
     @DisplayName("正常系: 各 (slot,user) で recordSingleConsumption を呼ぶ")
     void 正常系_記録呼出() {
-        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.of(ORG_ID));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of(ORG_ID));
         given(featureService.isEnabled(ORG_ID)).willReturn(true);
         ShiftSlotEntity slot = sampleSlotWithUser(7L, USER_ID);
         given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
@@ -220,7 +229,8 @@ class ShiftBudgetPublishedEventListenerTest {
     @Test
     @DisplayName("個別 (slot,user) が IllegalStateException → 残り継続")
     void 個別エラー_継続() {
-        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.of(ORG_ID));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of(ORG_ID));
         given(featureService.isEnabled(ORG_ID)).willReturn(true);
         ShiftSlotEntity slot = sampleSlotWithUser(7L, USER_ID);
         given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
@@ -269,7 +279,8 @@ class ShiftBudgetPublishedEventListenerTest {
 
     /** 時給未設定シナリオの共通スタブ（org 解決 → フラグ ON → slot 1 件 → allocation あり → 時給なし）。 */
     private void givenMissingHourlyRate() {
-        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.of(ORG_ID));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of(ORG_ID));
         given(featureService.isEnabled(ORG_ID)).willReturn(true);
         given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
                 .willReturn(List.of(sampleSlotWithUser(7L, USER_ID)));
@@ -310,7 +321,8 @@ class ShiftBudgetPublishedEventListenerTest {
     @Test
     @DisplayName("CMP-260910-1555: 時給が引けたときはイベントを publish しない（誤報を出さない）")
     void 時給設定済_通知しない() {
-        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.of(ORG_ID));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(eq(TEAM_ID), any()))
+                .willReturn(List.of(ORG_ID));
         given(featureService.isEnabled(ORG_ID)).willReturn(true);
         given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
                 .willReturn(List.of(sampleSlotWithUser(7L, USER_ID)));
