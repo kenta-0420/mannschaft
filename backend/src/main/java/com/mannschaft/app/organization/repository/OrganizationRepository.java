@@ -373,6 +373,17 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     Optional<OrganizationEntity> findPublicOrganizationBySlug(@Param("slug") String slug);
 
     /**
+     * 公開ページのリンク生成用に、PUBLIC 組織を ID 群で一括取得する。
+     * 判定条件は {@link #findPublicOrganizationById(Long)} と同一。条件を満たさない組織は結果に含まれない。
+     */
+    @Query("SELECT o FROM OrganizationEntity o " +
+           "WHERE o.id IN :ids " +
+           "AND o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC " +
+           "AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE " +
+           "AND o.archivedAt IS NULL")
+    List<OrganizationEntity> findPublicOrganizationsByIds(@Param("ids") Collection<Long> ids);
+
+    /**
      * F19.1 Phase 3 sitemap.xml 用: PUBLIC かつ未アーカイブの組織を全件取得する。
      *
      * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。</p>

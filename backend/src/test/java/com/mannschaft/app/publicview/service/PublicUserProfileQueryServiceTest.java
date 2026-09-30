@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.publicview.dto.PublicUserPostSummaryResponse;
 import com.mannschaft.app.publicview.dto.PublicUserProfileResponse;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -41,7 +42,7 @@ class PublicUserProfileQueryServiceTest {
     @Mock private BlogPostRepository blogPostRepository;
     @Mock private TeamRepository teamRepository;
     @Mock private MediaUrlResolver mediaUrlResolver;
-    @Mock private PublicOrganizationQueryService publicOrganizationQueryService;
+    @Mock private OrganizationService organizationService;
     @InjectMocks private PublicUserProfileQueryService service;
 
     @Test
@@ -85,7 +86,7 @@ class PublicUserProfileQueryServiceTest {
                 org.mockito.ArgumentMatchers.any()))
                 .willReturn(new PageImpl<>(List.of(publicOrgPost, privateOrgPost), PageRequest.of(0, 20), 2));
         // 200 は公開組織、300 は非公開（解決結果に含まれない）
-        given(publicOrganizationQueryService.findPublicSlugsByIds(Set.of(200L, 300L)))
+        given(organizationService.findPublicOrganizationSlugsByIds(Set.of(200L, 300L)))
                 .willReturn(Map.of(200L, "org-two-hundred"));
 
         List<PublicUserPostSummaryResponse> content =

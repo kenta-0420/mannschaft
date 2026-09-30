@@ -292,6 +292,27 @@ public class OrganizationService {
     }
 
     /**
+     * 公開ページのリンク生成用に、公開してよい組織の ID → slug を一括で引く横断 SPI。
+     *
+     * <p>公開ページの URL 識別子は slug に一本化されている（F01.2.1 AC-A13）。数値 ID から
+     * 公開ページ URL を作らせないため、呼び出し側（公開ユーザー投稿一覧など）は本メソッドで slug を得る。
+     * 判定条件は {@link #findPublicOrganizationNameById(Long)} と同一（PUBLIC・ACTIVE・未 archive・未削除）。
+     * 非公開 / 凍結 / 削除済み / 不在の組織はマップに含めない（存在オラクルを作らない）。</p>
+     *
+     * @param orgIds 対象組織 ID 群
+     * @return 公開してよい組織の ID → slug
+     */
+    public Map<Long, String> findPublicOrganizationSlugsByIds(Collection<Long> orgIds) {
+        if (orgIds == null || orgIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        organizationRepository.findPublicOrganizationsByIds(orgIds)
+                .forEach(o -> result.put(o.getId(), o.getSlug()));
+        return result;
+    }
+
+    /**
      * 組織がサポーター受け入れを有効化していることを表明する。
      *
      * <p>{@code supporter_enabled} は「この組織がサポーター登録を受け付けるか」を表す

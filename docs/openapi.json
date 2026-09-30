@@ -228620,6 +228620,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "orgSlug": {
+            "type": "string"
+          },
           "postId": {
             "type": "integer",
             "format": "int64"

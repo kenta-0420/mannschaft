@@ -108,9 +108,14 @@ public class SitemapXmlGenerator {
                     formatDate(t)
             });
         }
+        // 組織の公開ページ URL は slug に一本化（数値 ID の URL は BE が不在扱いにするため出さない。
+        // slug を持たないエントリは載せない）。F01.2.1 AC-A13
         for (SitemapEntry o : orgs) {
+            if (o.slug() == null) {
+                continue;
+            }
             entries.add(new String[]{
-                    baseUrl + "/public/organizations/" + o.id(),
+                    baseUrl + "/public/organizations/" + o.slug(),
                     formatDate(o)
             });
         }
@@ -121,8 +126,11 @@ public class SitemapXmlGenerator {
             });
         }
         for (SitemapPostEntry op : orgPosts) {
+            if (op.scopeSlug() == null) {
+                continue;
+            }
             entries.add(new String[]{
-                    baseUrl + "/public/organizations/" + op.scopeId() + "/posts/" + op.postId(),
+                    baseUrl + "/public/organizations/" + op.scopeSlug() + "/posts/" + op.postId(),
                     formatDate(op)
             });
         }

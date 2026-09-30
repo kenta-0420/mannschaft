@@ -77256,6 +77256,7 @@ export interface components {
         PublicUserPostSummaryResponse: {
             /** Format: date-time */
             createdAt?: string;
+            orgSlug?: string;
             /** Format: int64 */
             postId?: number;
             scopeId?: string;
