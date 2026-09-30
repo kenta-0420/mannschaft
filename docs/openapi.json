@@ -58076,6 +58076,17 @@
         "summary": "シフト枠数を予算から逆算 (Phase 9-α)",
         "description": "ステートレス計算 API。MEMBER_AVG/POSITION_AVG/EXPLICIT の 3 モード対応。",
         "operationId": "calculateRequiredSlots",
+        "parameters": [
+          {
+            "name": "X-Organization-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
