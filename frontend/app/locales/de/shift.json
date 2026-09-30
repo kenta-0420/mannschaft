@@ -82,7 +82,8 @@
       "title": "Meine Schichtanfragen",
       "empty": "Keine Schichten gefunden",
       "fetchError": "Schichtinformationen konnten nicht abgerufen werden",
-      "description": "Eingereichte Anfragen und ihr Genehmigungsstatus"
+      "description": "Eingereichte Anfragen und ihr Genehmigungsstatus",
+      "scheduleDeleted": "Schichtplan wurde gelöscht"
     },
     "page": {
       "title": "Schicht",
@@ -134,6 +135,9 @@
       "archive": "Archivieren",
       "transitionSuccess": "Status geändert",
       "saveSuccess": "Gespeichert",
+      "deleteTitle": "Schichtplan löschen",
+      "deleteConfirm": "Diesen Schichtplan löschen? Eingereichte Wünsche bleiben im Verlauf der Mitglieder erhalten.",
+      "deleteSuccess": "Schichtplan gelöscht",
       "calendarView": "Kalenderansicht",
       "noDate": "Kein Datum",
       "colDate": "Datum",

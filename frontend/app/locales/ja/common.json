@@ -1646,6 +1646,7 @@
     "search": "検索",
     "edit": "編集",
     "save": "保存",
+    "detail": "詳細",
     "resume": {
       "title": "履歴書・職務経歴書",
       "listTitle": "履歴書バージョン一覧",
@@ -1936,6 +1937,7 @@
       "gdprPurge": "GDPR パージ状況",
       "feedbackInbox": "目安箱（全体）",
       "billing": "課金マスタ管理",
+      "priceRevisions": "価格改定",
       "betaPerks": "ベータ特典管理",
       "villageCreationRequests": "村作成申請",
       "seasonalWallpapers": "季節壁紙",

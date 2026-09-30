@@ -10,8 +10,10 @@
  * 自動再送（autoResendOnNetworkError）は、同一操作の識別を壊さないよう同じ key を使い回す。
  *
  * AC-159: Stripe の生応答や決済用の一時シークレット等の秘密は画面・DOM・browser storage のどこにも
- * 保持・表示しない。band の表示に使うのは BE が返す安全なフィールド（status/errorCode/attempts等）
- * のみで、Stripe レスポンスをそのまま持ち回らない。
+ * 保持・表示しない。band の表示に使うのは BE が返す安全なフィールド（status/errorCode/attempts/
+ * stripePriceRef 等）のみで、Stripe レスポンスをそのまま持ち回らない。Price ID（`price_...`）は秘密ではなく、
+ * 運用者が Stripe ダッシュボードと突き合わせるための識別子なので band ごとに表示する
+ * （Product ID は API 応答 `PriceBandVersionResponse` に含まれない設計＝02_api_design.md のため表示しない）。
  */
 import Button from 'primevue/button'
 import Column from 'primevue/column'
@@ -58,7 +60,11 @@ async function load() {
   }
 }
 
-onMounted(load)
+// 権限が無ければ詳細 API を呼ばない（呼ぶと 403 を受けて「読み込みに失敗しました」のトーストまで出てしまい、
+// 権限なし表示と二重に知らせることになる）。
+onMounted(() => {
+  if (isAllowed.value) void load()
+})
 
 function backToList() {
   navigateTo('/system-admin/price-revisions')
@@ -123,7 +129,12 @@ function bandErrorMessage(code?: string | null): string {
   if (code.includes('PROCESSING') || code.includes('PROVISION_IN_PROGRESS')) {
     return t('billing.priceRevisions.errorProvisionInProgress')
   }
-  return t('billing.priceRevisions.errorStateConflict')
+  if (code.includes('STATE_CONFLICT')) {
+    return t('billing.priceRevisions.errorStateConflict')
+  }
+  // 未知のコードを「状態の衝突」に寄せると、実際には別の失敗（Stripe 側の拒否・サーバーエラー等）なのに
+  // 「現在の状態ではこの操作を実行できません」と誤った案内になる。汎用の失敗文言にする。
+  return t('billing.priceRevisions.errorUnknown')
 }
 
 /**
@@ -140,13 +151,39 @@ const API_ERROR_CODE_MESSAGE_KEYS: Record<string, string> = {
   PRICE_REVISION_020: 'billing.priceRevisions.errorProvisionInProgress',
 }
 
-/** API 呼び出し失敗時（トースト表示用）の振り分け。 */
+/**
+ * API 呼び出し失敗時（トースト表示用）の振り分け。価格改定の既知コードだけを専用文言にし、
+ * 未知のコード（COMMON_999 等）は null を返して共通のエラー処理（{@link notifyActionError}）へ委ねる。
+ */
 function apiErrorMessage(err: unknown): string | null {
   const apiError = err as { data?: { error?: { code?: string } } }
   const code = apiError?.data?.error?.code
   if (!code) return null
   const key = API_ERROR_CODE_MESSAGE_KEYS[code]
-  return key ? t(key) : bandErrorMessage(code)
+  return key ? t(key) : null
+}
+
+/** HTTP 5xx か。5xx は useApi の共通ハンドラが「サーバーエラー」のトーストを既に出している。 */
+function isServerError(err: unknown): boolean {
+  const apiError = err as { statusCode?: number; status?: number }
+  const status = apiError?.statusCode ?? apiError?.status
+  return typeof status === 'number' && status >= 500
+}
+
+/**
+ * 操作（provision/retry/reconcile/cancel/activate）の失敗を1回だけ知らせる。
+ * - 価格改定の既知コード → 専用文言
+ * - 5xx → useApi の共通ハンドラがトースト済みのため、ここでは重ねて出さない（二重表示の防止）
+ * - それ以外 → useErrorHandler.handleApiError（BE の message / 汎用文言）
+ */
+function notifyActionError(err: unknown, context: string) {
+  const mapped = apiErrorMessage(err)
+  if (mapped) {
+    notification.error(mapped)
+    return
+  }
+  if (isServerError(err)) return
+  handleApiError(err, context)
 }
 
 // ============================================================
@@ -204,9 +241,7 @@ async function onProvisionClick() {
     notification.success(t('billing.priceRevisions.provisionSuccess'))
   } catch (err) {
     console.error('price-revisions/[id].vue: provision failed', err)
-    const mapped = apiErrorMessage(err)
-    if (mapped) notification.error(mapped)
-    else handleApiError(err, 'price-revisions-provision')
+    notifyActionError(err, 'price-revisions-provision')
   } finally {
     provisioning.value = false
   }
@@ -227,9 +262,7 @@ async function onRetryProvisionClick() {
     notification.success(t('billing.priceRevisions.retryProvisionSuccess'))
   } catch (err) {
     console.error('price-revisions/[id].vue: retry-provision failed', err)
-    const mapped = apiErrorMessage(err)
-    if (mapped) notification.error(mapped)
-    else handleApiError(err, 'price-revisions-retry-provision')
+    notifyActionError(err, 'price-revisions-retry-provision')
   } finally {
     retrying.value = false
   }
@@ -249,9 +282,7 @@ async function onReconcileClick() {
     notification.success(t('billing.priceRevisions.reconcileProvisionSuccess'))
   } catch (err) {
     console.error('price-revisions/[id].vue: reconcile-provision failed', err)
-    const mapped = apiErrorMessage(err)
-    if (mapped) notification.error(mapped)
-    else handleApiError(err, 'price-revisions-reconcile-provision')
+    notifyActionError(err, 'price-revisions-reconcile-provision')
   } finally {
     reconciling.value = false
   }
@@ -272,9 +303,7 @@ async function executeCancel() {
     notification.success(t('billing.priceRevisions.cancelSuccess'))
   } catch (err) {
     console.error('price-revisions/[id].vue: cancel failed', err)
-    const mapped = apiErrorMessage(err)
-    if (mapped) notification.error(mapped)
-    else handleApiError(err, 'price-revisions-cancel')
+    notifyActionError(err, 'price-revisions-cancel')
   } finally {
     cancelling.value = false
   }
@@ -303,9 +332,7 @@ async function executeActivate() {
     notification.success(t('billing.priceRevisions.activateSuccess'))
   } catch (err) {
     console.error('price-revisions/[id].vue: activate failed', err)
-    const mapped = apiErrorMessage(err)
-    if (mapped) notification.error(mapped)
-    else handleApiError(err, 'price-revisions-activate')
+    notifyActionError(err, 'price-revisions-activate')
   } finally {
     activating.value = false
   }
@@ -383,6 +410,18 @@ function onActivateClick() {
             </template>
           </Column>
           <Column :header="t('billing.priceRevisions.amountIncludingTax')" field="amountIncludingTax" />
+          <Column :header="t('billing.priceRevisions.stripePriceRef')">
+            <template #body="{ data: row }: { data: PriceRevisionBandResponse }">
+              <code
+                v-if="row.stripePriceRef"
+                class="break-all text-xs"
+                :aria-label="`band-stripe-price-ref-${row.bandNo}`"
+              >{{ row.stripePriceRef }}</code>
+              <span v-else class="text-xs text-surface-400" :aria-label="`band-stripe-price-ref-${row.bandNo}`">
+                {{ t('billing.priceRevisions.stripePriceRefUnset') }}
+              </span>
+            </template>
+          </Column>
           <Column :header="t('billing.priceRevisions.attemptCount')">
             <template #body="{ data: row }: { data: PriceRevisionBandResponse }">
               <span data-testid="band-attempt-count">{{ row.provisionAttempts }}</span>
