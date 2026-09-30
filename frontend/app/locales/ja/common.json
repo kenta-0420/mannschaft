@@ -972,6 +972,28 @@
       "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
     },
     "pageTitle": "通知",
+    "list": {
+      "all": "すべて",
+      "unread": "未読",
+      "markAllRead": "すべて既読にする",
+      "markUnread": "未読にする",
+      "markRead": "既読にする",
+      "empty": "通知はありません",
+      "loadMore": "もっと読む",
+      "loadError": "通知の取得に失敗しました",
+      "actionError": "操作に失敗しました",
+      "markAllReadError": "一括既読に失敗しました",
+      "confirmInfoMissing": "確認通知の情報が不足しています",
+      "invalidScope": "スコープが不正です",
+      "confirmed": "確認しました",
+      "confirmError": "確認処理に失敗しました"
+    },
+    "bell": {
+      "notification": "通知",
+      "chat": "チャット",
+      "mention": "メンション",
+      "none": "なし"
+    },
     "guide": {
       "title": "通知の使い方",
       "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",

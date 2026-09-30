@@ -972,6 +972,28 @@
       "body": "{from} 将「{title}」传递给您（状态：{label}）"
     },
     "pageTitle": "通知",
+    "list": {
+      "all": "全部",
+      "unread": "未读",
+      "markAllRead": "全部标为已读",
+      "markUnread": "标为未读",
+      "markRead": "标为已读",
+      "empty": "暂无通知",
+      "loadMore": "加载更多",
+      "loadError": "无法加载通知",
+      "actionError": "操作失败",
+      "markAllReadError": "无法全部标为已读",
+      "confirmInfoMissing": "确认通知信息不完整",
+      "invalidScope": "范围无效",
+      "confirmed": "已确认",
+      "confirmError": "确认失败"
+    },
+    "bell": {
+      "notification": "通知",
+      "chat": "聊天",
+      "mention": "提及",
+      "none": "无"
+    },
     "guide": {
       "title": "通知の使い方",
       "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
