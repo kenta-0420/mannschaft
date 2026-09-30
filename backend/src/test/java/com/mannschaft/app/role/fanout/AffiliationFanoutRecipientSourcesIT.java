@@ -164,6 +164,60 @@ class AffiliationFanoutRecipientSourcesIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
+    // 本番の在籍の形（V60.010 以降: 一般 MEMBER は memberships にしか居ない・退会は left_at）
+    // =====================================================================
+
+    @Test
+    @DisplayName("TEAM_AFFILIATION_OPS: user_roles 行が無く memberships だけの MEMBER に権限を付与しても返る（退会済みは返らない）")
+    void チーム加盟操作者はmembershipsのみのMEMBERにも権限付与で返り退会済みは返らない() {
+        long teamId = insertTeam();
+        long permissionId = ensurePermission(MANAGE_ORG_AFFILIATION);
+        ensureRoles();
+        long admin = insertUser(false);
+        long leftAdmin = insertUser(false);
+        long membershipOnlyGranted = insertUser(false);
+        long membershipOnlyPlain = insertUser(false);
+        long leftGranted = insertUser(false);
+
+        grantTeamRole(admin, teamId, "ADMIN");
+        grantTeamRole(leftAdmin, teamId, "ADMIN");
+        markMembershipLeft(leftAdmin, "TEAM", teamId);
+        insertMembership(membershipOnlyGranted, "TEAM", teamId);
+        insertMembership(membershipOnlyPlain, "TEAM", teamId);
+        insertMembership(leftGranted, "TEAM", teamId);
+        markMembershipLeft(leftGranted, "TEAM", teamId);
+
+        long memberGroup = insertPermissionGroup(teamId, "MEMBER", false, permissionId);
+        assignGroup(membershipOnlyGranted, memberGroup);
+        assignGroup(leftGranted, memberGroup);
+
+        List<Long> ids = userIds(teamAffiliationOpsSource.nextPage(page(teamId, 0L, 100)));
+
+        assertThat(ids).as("ADMIN と、memberships のみで権限付与された MEMBER だけが返る")
+                .containsExactly(admin, membershipOnlyGranted);
+        assertThat(ids).as("退会済み（left_at あり）の ADMIN・権限付与済みメンバーは user_roles や割当が残っても返らない")
+                .doesNotContain(leftAdmin, leftGranted);
+        assertThat(ids).as("権限を付与されていない memberships のみの MEMBER は返らない")
+                .doesNotContain(membershipOnlyPlain);
+    }
+
+    @Test
+    @DisplayName("ORGANIZATION_ADMINS: 退会済み（memberships.left_at あり）の ADMIN は user_roles が残っていても返らない")
+    void 組織ADMINSは退会済みのADMINを返さない() {
+        ensureRoles();
+        long orgId = insertOrganization();
+        long admin = insertUser(false);
+        long leftAdmin = insertUser(false);
+        grantOrgRole(admin, orgId, "ADMIN");
+        grantOrgRole(leftAdmin, orgId, "ADMIN");
+        markMembershipLeft(leftAdmin, "ORGANIZATION", orgId);
+
+        List<Long> ids = userIds(organizationAdminsSource.nextPage(page(orgId, 0L, 100)));
+
+        assertThat(ids).containsExactly(admin);
+    }
+
+    // =====================================================================
     // フィクスチャ
     // =====================================================================
 
@@ -306,6 +360,12 @@ class AffiliationFanoutRecipientSourcesIT extends AbstractMySqlIntegrationTest {
     private void insertMembership(long userId, String scopeType, long scopeId) {
         jdbc.update("INSERT INTO memberships (user_id, scope_type, scope_id, role_kind, joined_at, created_at, updated_at) "
                 + "VALUES (?, ?, ?, 'MEMBER', NOW(), NOW(), NOW())", userId, scopeType, scopeId);
+    }
+
+    /** 退会させる（memberships.left_at と leave_reason を同時に入れる。CHECK 制約 chk_memberships_left_reason）。 */
+    private void markMembershipLeft(long userId, String scopeType, long scopeId) {
+        jdbc.update("UPDATE memberships SET left_at = DATE_ADD(joined_at, INTERVAL 1 SECOND), leave_reason = 'SELF' "
+                + "WHERE user_id = ? AND scope_type = ? AND scope_id = ?", userId, scopeType, scopeId);
     }
 
     /** 権限行を用意する（5-A の Flyway が入った後も重複しないよう INSERT IGNORE）。 */
