@@ -605,6 +605,65 @@ class OrgAffiliationPermissionGroupAuthzContractIT extends AbstractMySqlIntegrat
         return group.getId();
     }
 
+    // ═════════════════════════════════════════════════════════════════════
+    // AC-P11: ロール変更による間接的な剥奪（RolePermissionCleanupService 経路）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("AC-P11 ロール変更による間接剥奪")
+    class RoleChangeIndirectRemoval {
+
+        private static final Long TX = 930529005L;
+
+        private Long seedDeputyHolding(Long groupId) {
+            MembershipTestHelper.insertActiveUser(em, TX);
+            MembershipTestHelper.insertMembership(em, TX, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, TX, "DEPUTY_ADMIN", teamId, null);
+            assignDirectly(TX, groupId);
+            em.flush();
+            em.clear();
+            return ((Number) em.createNativeQuery("SELECT id FROM roles WHERE name = 'MEMBER'")
+                    .getSingleResult()).longValue();
+        }
+
+        private ResultActions changeRoleToMember(Long actor, Long memberRoleId) throws Exception {
+            return mockMvc.perform(patch("/api/v1/teams/{slug}/members/{userId}/role", teamSlug, TX)
+                    .with(user(actor.toString()))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"roleId\":" + memberRoleId + "}"));
+        }
+
+        @Test
+        @DisplayName("AC-P11(a): TD が加盟権限付き割当を持つ対象のロールを変えると 403 で、割当は残る")
+        void deputyChangeRoleRemovingAffiliationAssignment_forbidden() throws Exception {
+            Long memberRoleId = seedDeputyHolding(affDeputyGroupId);
+
+            forbidden(changeRoleToMember(TD, memberRoleId));
+
+            assertThat(assignedGroupIds(TX)).contains(affDeputyGroupId);
+        }
+
+        @Test
+        @DisplayName("AC-P11(b): TA が同じ操作をすると 200 で、割当は自動で外れる")
+        void adminChangeRoleRemovingAffiliationAssignment_ok() throws Exception {
+            Long memberRoleId = seedDeputyHolding(affDeputyGroupId);
+
+            changeRoleToMember(TA, memberRoleId).andExpect(status().isOk());
+
+            assertThat(assignedGroupIds(TX)).doesNotContain(affDeputyGroupId);
+        }
+
+        @Test
+        @DisplayName("AC-P11(c): 加盟権限を含まない割当なら TD でも従来どおり 200 で割当が外れる")
+        void deputyChangeRoleRemovingPlainAssignment_ok() throws Exception {
+            Long memberRoleId = seedDeputyHolding(plainDeputyGroupId);
+
+            changeRoleToMember(TD, memberRoleId).andExpect(status().isOk());
+
+            assertThat(assignedGroupIds(TX)).doesNotContain(plainDeputyGroupId);
+        }
+    }
+
     private void assignDirectly(Long userId, Long groupId) {
         userPermissionGroupRepository.save(UserPermissionGroupEntity.builder()
                 .userId(userId)

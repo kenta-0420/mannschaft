@@ -260,6 +260,11 @@ public class RoleService {
             throw new BusinessException(RoleErrorCode.ROLE_001);
         }
 
+        // F01.2.1 5-A（AC-P11）: ロール変更で外れる割当に ADMIN 専用権限を含むグループがあれば ADMIN のみ許可。
+        // 剥奪は権限グループ割当の解除と等価なので、副作用（delete / 割当除去）より前に判定する。
+        rolePermissionCleanupService.requireAdminIfAdminOnlyAssignmentsWouldBeRemoved(
+                targetUserId, scopeId, scopeType, requestedRole.getName(), changedBy);
+
         // 既存を削除して新規作成
         // 根治: delete 直後に flush して DELETE を先に DB へ確定させる。
         //   user_roles には uq_user_roles_user_scope(user_id, scope_key) のユニーク制約がある
