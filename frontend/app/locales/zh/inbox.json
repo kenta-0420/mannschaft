@@ -29,7 +29,8 @@
       "archived": "已移至归档",
       "unarchived": "已移至收件箱",
       "unsnoozed": "已取消延后",
-      "snoozeFailed": "延后处理失败"
+      "snoozeFailed": "延后处理失败",
+      "readFailed": "无法将通知标记为已读"
     },
     "snoozePreset": {
       "in3h": "3小时后",

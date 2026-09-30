@@ -29,7 +29,8 @@
       "archived": "保管庫へ移動しました",
       "unarchived": "受信箱へ戻しました",
       "unsnoozed": "スヌーズを解除しました",
-      "snoozeFailed": "スヌーズに失敗しました"
+      "snoozeFailed": "スヌーズに失敗しました",
+      "readFailed": "通知を既読にできませんでした"
     },
     "snoozePreset": {
       "in3h": "3時間後",

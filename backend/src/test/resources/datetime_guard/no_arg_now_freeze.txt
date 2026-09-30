@@ -548,7 +548,6 @@ NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentNoShowService|1
 NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentParticipantService|3
 NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentPenaltyLiftBatch|1
 NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentPenaltyRecomputeBatch|1
-NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentPenaltyService|4
 NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentReminderBatch|1
 NO_ARG_NOW|com.mannschaft.app.reflection.controller.ReflectionLinkableSlotController|1
 NO_ARG_NOW|com.mannschaft.app.reflection.entity.RecallAttemptEntity|1
