@@ -15,6 +15,8 @@
  *
  * 各テストは前のテストが作ったデータ（改定 ID など）を使うため、状態を一時ファイルへ書き出して
  * 引き継ぐ（1件の失敗で後続が skip されて「未検証なのに緑」に見えないよう、serial にはしない）。
+ * 後始末（PR-10）はこの実行が作成した ID（State に記録済みのもの）に限る。商品枠は共有 DB であり、
+ * 一覧に出る他人・運用者の未適用改定を状態だけで無差別に取り消してはならない。
  *
  * 実行方法:
  *   BASE_URL=http://localhost:3001 API_BASE_URL=http://localhost:8080 \
@@ -636,21 +638,29 @@ test('PR-09c 他テナント ADMIN: メニュー導線が無く、直打ちは�
 })
 
 // ===========================================================================
-// PR-10 後始末: 残った改定を列挙（取り消せるものは画面で取り消す）
+// PR-10 後始末: このテストが作った改定のみ画面で取り消す（共有DBの他人の改定には触れない）
 // ===========================================================================
-test('PR-10 後始末: 取り消せる改定は画面で取り消し、取り消せない改定を列挙する', async ({ browser }, testInfo) => {
+test('PR-10 後始末: 自テストが作成した改定に限り、取り消せるものを画面で取り消す', async ({ browser }, testInfo) => {
+  const state = readState()
+  // このテスト実行が作成した ID のみを後始末対象にする（一覧 API は現在の状態を知るためだけに使う）。
+  const alreadyCancelled = new Set(state.cancelledIds ?? [])
+  const ownIds = [...new Set([state.draftAId, state.revisionBId, ...(state.leftovers ?? []).map((l) => l.id)]
+    .filter((id): id is string => !!id && !alreadyCancelled.has(id)))]
   const { context, page } = await newLoggedInPage(browser, ADMIN)
   try {
     const list = await page.request.get(`${PR_API}?size=100`)
     const items = ((await list.json()) as { data: { items: { id: string; status: string; scopeKind: string }[] } }).data.items
-    for (const it of items.filter((i) => ['DRAFT', 'READY', 'PROVISION_FAILED'].includes(i.status))) {
+    const ownItems = items.filter((i) => ownIds.includes(i.id))
+    for (const it of ownItems.filter((i) => ['DRAFT', 'READY', 'PROVISION_FAILED'].includes(i.status))) {
       const res = await cancelViaUi(page, it.id, testInfo, `cleanup-${it.id}`)
       expect(res.status()).toBe(200)
     }
     const after = await page.request.get(`${PR_API}?size=100`)
-    const remaining = ((await after.json()) as { data: { items: { id: string; status: string; scopeKind: string; effectiveFrom: string }[] } }).data.items
-    await note(testInfo, '残存する改定（全件）', remaining)
-    expect(remaining.filter((i) => ['DRAFT', 'READY', 'PROVISION_FAILED'].includes(i.status))).toHaveLength(0)
+    const allRemaining = ((await after.json()) as { data: { items: { id: string; status: string; scopeKind: string; effectiveFrom: string }[] } }).data.items
+    const ownRemaining = allRemaining.filter((i) => ownIds.includes(i.id))
+    await note(testInfo, '自テストが作成した改定のうち残存するもの', ownRemaining)
+    await note(testInfo, '一覧の全件数（他人・運用者の改定を含む。参考のみ）', allRemaining.length)
+    expect(ownRemaining.filter((i) => ['DRAFT', 'READY', 'PROVISION_FAILED'].includes(i.status))).toHaveLength(0)
   } finally {
     await context.close()
   }
