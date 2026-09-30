@@ -74,6 +74,29 @@ class PublicOrganizationSlugIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("AC-A13: 応答に timelinePostsPublic / publicEventsEnabled が含まれ、組織の公開設定を写す（FE は真のときだけタブを出し子 API を呼ぶ）")
+    void publicOrganization_carriesTabVisibilityFlags() throws Exception {
+        // 既定（設定なし）は両方 false
+        mockMvc.perform(get(PATH, publicSlug))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.timelinePostsPublic").value(false))
+                .andExpect(jsonPath("$.publicEventsEnabled").value(false));
+
+        // 公開設定をした組織は true で返る
+        String enabledSlug = "slug-enabled-" + nonce;
+        Long enabledId = insertOrganization("設定済み組織" + nonce, enabledSlug, "PUBLIC", false, false);
+        em.createNativeQuery("UPDATE organizations SET timeline_posts_public = 1, public_events_enabled = 1 "
+                        + "WHERE id = :id")
+                .setParameter("id", enabledId)
+                .executeUpdate();
+
+        mockMvc.perform(get(PATH, enabledSlug))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.timelinePostsPublic").value(true))
+                .andExpect(jsonPath("$.publicEventsEnabled").value(true));
+    }
+
+    @Test
     @DisplayName("AC-A13: 非公開・archived・削除済み・不在の slug は、すべて同じステータス・同じエラーコード（PUBLIC_001 / 404）")
     void nonPublicAndAbsent_returnIdenticalNotFound() throws Exception {
         MvcResult absent = mockMvc.perform(get(PATH, absentSlug))
