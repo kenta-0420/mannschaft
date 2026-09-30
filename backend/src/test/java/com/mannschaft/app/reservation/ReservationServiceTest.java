@@ -385,8 +385,51 @@ class ReservationServiceTest {
                          org.mockito.Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
                 mocked.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId).thenReturn(OTHER_USER_ID);
                 given(accessControlService.isAdminOrAbove(OTHER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+                given(accessControlService.isMember(OTHER_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
                 // When / Then
+                assertThatThrownBy(() -> service.getReservation(TEAM_ID, RESERVATION_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .extracting(e -> ((BusinessException) e).getErrorCode())
+                        .isEqualTo(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+            }
+        }
+
+        @Test
+        @DisplayName("異常系: 越境（非メンバー）は不在と同じ RESERVATION_NOT_FOUND（404）に畳まれる")
+        void 予約詳細_越境_404() {
+            ReservationEntity entity = createReservationEntity();
+            given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> mocked =
+                         org.mockito.Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                mocked.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId).thenReturn(OTHER_USER_ID);
+                given(accessControlService.isAdminOrAbove(OTHER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+                given(accessControlService.isMember(OTHER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+                given(accessControlService.isSystemAdmin(OTHER_USER_ID)).willReturn(false);
+
+                assertThatThrownBy(() -> service.getReservation(TEAM_ID, RESERVATION_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .extracting(e -> ((BusinessException) e).getErrorCode())
+                        .isEqualTo(ReservationErrorCode.RESERVATION_NOT_FOUND);
+            }
+        }
+
+        @Test
+        @DisplayName("異常系: SYSTEM_ADMIN（非メンバー・非本人）は是正前どおり RESERVATION_PERMISSION_DENIED（403）")
+        void 予約詳細_SYSTEM_ADMIN_403のまま() {
+            ReservationEntity entity = createReservationEntity();
+            given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> mocked =
+                         org.mockito.Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                mocked.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId).thenReturn(OTHER_USER_ID);
+                given(accessControlService.isAdminOrAbove(OTHER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+                given(accessControlService.isMember(OTHER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+                given(accessControlService.isSystemAdmin(OTHER_USER_ID)).willReturn(true);
+
                 assertThatThrownBy(() -> service.getReservation(TEAM_ID, RESERVATION_ID))
                         .isInstanceOf(BusinessException.class)
                         .extracting(e -> ((BusinessException) e).getErrorCode())

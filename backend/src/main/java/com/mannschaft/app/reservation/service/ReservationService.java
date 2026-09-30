@@ -140,9 +140,31 @@ public class ReservationService {
         boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, teamId, "TEAM");
         boolean isOwner = currentUserId.equals(entity.getUserId());
         if (!isAdmin && !isOwner) {
-            throw new BusinessException(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+            throw denyDetailView(currentUserId, teamId);
         }
         return enrich(entity);
+    }
+
+    /**
+     * 予約詳細の閲覧拒否を、越境か同チーム内の権限不足かで作り分ける（存在オラクル封鎖・CMP-260923-0954 W3a）。
+     *
+     * <ul>
+     *   <li>チームの在籍者（memberships）: 予約の存在は既知なので従来どおり
+     *       {@link ReservationErrorCode#RESERVATION_PERMISSION_DENIED}（403）。</li>
+     *   <li>SYSTEM_ADMIN（非在籍）: 是正前から拒否していた主体であり、新規に許可も 404 化もしない
+     *       （マスター裁可 2026-09-30）。従来どおり 403。</li>
+     *   <li>それ以外の越境: 不在時と完全同一の {@link ReservationErrorCode#RESERVATION_NOT_FOUND}（404）。</li>
+     * </ul>
+     *
+     * <p>共通 Gate（ScopeConcealingAccessGate）は SYSTEM_ADMIN を無条件に通し、拒否コードも
+     * COMMON_002 固定のため使わない。{@code isMember} は拒否経路でのみ引くので許可経路のクエリは増えない。</p>
+     */
+    private BusinessException denyDetailView(Long currentUserId, Long teamId) {
+        if (accessControlService.isMember(currentUserId, teamId, "TEAM")
+                || accessControlService.isSystemAdmin(currentUserId)) {
+            return new BusinessException(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+        }
+        return new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND);
     }
 
     /**
