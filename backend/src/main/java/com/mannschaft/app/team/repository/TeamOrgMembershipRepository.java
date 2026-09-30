@@ -141,12 +141,12 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     }
 
     /**
-     * チームの ACTIVE な加盟を {@code responded_at} 昇順・{@code organization_id} 昇順で取得する
+     * チームの ACTIVE な加盟を {@code responded_at} 昇順（NULL は {@code created_at} で代替）・{@code organization_id} 昇順で取得する
      * （代表親組織 §9.3 の決定用。{@code findFirstBy...} を増やさないため List で返し先頭を使う）。
      */
     @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.teamId = :teamId "
         + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
-        + "ORDER BY m.respondedAt ASC, m.organizationId ASC")
+        + "ORDER BY COALESCE(m.respondedAt, m.createdAt) ASC, m.organizationId ASC")
     List<TeamOrgMembershipEntity> findActiveByTeamIdOrderByRespondedAtAndOrganizationId(@Param("teamId") Long teamId);
 
     /**

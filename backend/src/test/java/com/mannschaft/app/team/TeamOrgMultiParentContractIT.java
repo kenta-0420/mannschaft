@@ -200,6 +200,27 @@ class TeamOrgMultiParentContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("§9.3 responded_at が NULL の ACTIVE 加盟は created_at で代替して比べる（NULL を最初の加盟扱いにしない）")
+    void respondedAtがNULLならcreatedAtで代替() {
+        String sfx = String.valueOf(System.nanoTime());
+        Long nullOrg = insertOrganization("MP契約 NULL側 " + sfx, "mpc-n1-" + sfx);
+        Long setOrg = insertOrganization("MP契約 非NULL側 " + sfx, "mpc-n2-" + sfx);
+        Long lateNull = insertTeam("MP契約 NULL後 " + sfx, "mpc-nt1-" + sfx);
+        Long earlyNull = insertTeam("MP契約 NULL先 " + sfx, "mpc-nt2-" + sfx);
+        // NULL 行の created_at が非 NULL 行の responded_at より後 → 非 NULL 側が先に成立した加盟。
+        insertActiveMembershipWithNullRespondedAt(lateNull, nullOrg, LocalDateTime.of(2026, 5, 10, 9, 0));
+        insertMembership(lateNull, setOrg, "ACTIVE", LocalDateTime.of(2026, 5, 1, 9, 0));
+        // NULL 行の created_at が非 NULL 行の responded_at より前 → NULL 側（created_at）が先。
+        insertActiveMembershipWithNullRespondedAt(earlyNull, nullOrg, LocalDateTime.of(2026, 4, 1, 9, 0));
+        insertMembership(earlyNull, setOrg, "ACTIVE", LocalDateTime.of(2026, 5, 1, 9, 0));
+        em.flush();
+        em.clear();
+
+        assertThat(teamOrgMembershipQueryService.findPrimaryParentOrganizationId(lateNull)).contains(setOrg);
+        assertThat(teamOrgMembershipQueryService.findPrimaryParentOrganizationId(earlyNull)).contains(nullOrg);
+    }
+
+    @Test
     @DisplayName("AC-G131 親組織が0件のチームの代表親組織は空（例外にならない）")
     void 親組織0件なら代表は空() {
         assertThat(teamOrgMembershipQueryService.findPrimaryParentOrganizationId(teamOrphan)).isEmpty();
@@ -246,6 +267,17 @@ class TeamOrgMultiParentContractIT extends AbstractMySqlIntegrationTest {
     }
 
     /** 書き込み API が未実装のため、加盟行を直接 INSERT する（responded_at = 加盟の成立時刻）。 */
+    private void insertActiveMembershipWithNullRespondedAt(Long teamId, Long orgId, LocalDateTime createdAt) {
+        em.createNativeQuery(
+                        "INSERT INTO team_org_memberships ("
+                                + "team_id, organization_id, status, invited_at, responded_at, created_at) "
+                                + "VALUES (:tid, :oid, 'ACTIVE', :created, NULL, :created)")
+                .setParameter("tid", teamId)
+                .setParameter("oid", orgId)
+                .setParameter("created", createdAt)
+                .executeUpdate();
+    }
+
     private void insertMembership(Long teamId, Long orgId, String status, LocalDateTime respondedAt) {
         em.createNativeQuery(
                         "INSERT INTO team_org_memberships ("
