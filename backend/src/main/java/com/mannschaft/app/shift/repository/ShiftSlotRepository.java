@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.repository;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,6 +15,25 @@ import java.util.List;
  * シフト枠リポジトリ。
  */
 public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long> {
+
+    /** 親削除のみの連鎖。割当JSON・業務値・更新日時は保持する。 */
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_slots s FORCE INDEX (idx_sslot_schedule_date)
+            SET s.deleted_at = (SELECT sc.deleted_at FROM shift_schedules sc WHERE sc.id = :scheduleId),
+                s.version = s.version + 1,
+                s.updated_at = s.updated_at
+            WHERE s.schedule_id = :scheduleId AND s.deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_slots
+            SET deleted_at = UTC_TIMESTAMP(), version = version + 1, updated_at = updated_at
+            WHERE id = :slotId AND deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteById(@Param("slotId") Long slotId);
 
     /**
      * スケジュールの全シフト枠を日付・開始時刻順で取得する。
@@ -29,11 +49,6 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
      * ID一覧でシフト枠を一括取得する（N+1 防止用）。
      */
     List<ShiftSlotEntity> findAllByIdIn(Collection<Long> ids);
-
-    /**
-     * スケジュールIDで全シフト枠を削除する。
-     */
-    void deleteByScheduleId(Long scheduleId);
 
     /**
      * スケジュールのシフト枠数を取得する。
@@ -63,6 +78,7 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
     @Query(value = "SELECT s.* FROM shift_slots s "
             + "JOIN shift_schedules sc ON sc.id = s.schedule_id "
             + "WHERE sc.deleted_at IS NULL "
+            + "AND s.deleted_at IS NULL "
             + "AND JSON_CONTAINS(s.assigned_user_ids, CAST(:userId AS JSON))",
             nativeQuery = true)
     List<ShiftSlotEntity> findAllAssignedToUser(@Param("userId") Long userId);
@@ -94,6 +110,7 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
             + "FROM shift_slots s "
             + "JOIN shift_schedules sc ON sc.id = s.schedule_id "
             + "WHERE JSON_CONTAINS(s.assigned_user_ids, CAST(:userId AS JSON)) "
+            + "AND s.deleted_at IS NULL "
             + "AND " + ShiftScheduleEntity.FULLY_VISIBLE_SQL + " "
             + "AND s.slot_date >= :fromDate AND s.slot_date < :untilDate "
             + "ORDER BY s.slot_date ASC, s.start_time ASC",

@@ -288,7 +288,7 @@ class MembershipBatchQueryServiceIntegrationTest extends AbstractMySqlIntegratio
         assertThat(snapshot.isMemberOf(new ScopeKey("TEAM", teamId1))).isFalse();
         // 親 ORG (ORG1) のメンバーである → ORGANIZATION_WIDE 公開ならアクセス可
         assertThat(snapshot.parentOrgByScope())
-                .containsEntry(new ScopeKey("TEAM", teamId1), orgId1);
+                .containsEntry(new ScopeKey("TEAM", teamId1), Set.of(orgId1));
         assertThat(snapshot.orgMemberOf())
                 .contains(new ScopeKey("ORGANIZATION", orgId1));
         assertThat(snapshot.isMemberOfParentOrg(new ScopeKey("TEAM", teamId1))).isTrue();
@@ -311,7 +311,7 @@ class MembershipBatchQueryServiceIntegrationTest extends AbstractMySqlIntegratio
 
         // TEAM2 → ORG2 (削除済) が parentOrgByScope に登録されている
         assertThat(snapshot.parentOrgByScope())
-                .containsEntry(new ScopeKey("TEAM", teamId2), orgId2);
+                .containsEntry(new ScopeKey("TEAM", teamId2), Set.of(orgId2));
         // ORG2 は削除済 → suspendedOrgIds に含まれる
         assertThat(snapshot.suspendedOrgIds()).contains(orgId2);
         assertThat(snapshot.isParentOrgInactive(new ScopeKey("TEAM", teamId2))).isTrue();

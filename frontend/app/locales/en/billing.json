@@ -407,7 +407,8 @@
         "priceFree": "Free",
         "empty": "No matching contracts"
       },
-      "loadError": "Failed to load master data"
+      "loadError": "Failed to load master data",
+      "goToPriceRevisions": "Go to Price Revisions / Tax Codes"
     },
     "lp": {
       "heading": "Pricing",
@@ -468,7 +469,7 @@
       "errorReconcileMismatch": "The Stripe-side price information does not match the DB record",
       "errorProvisionInProgress": "The same operation is already in progress. Please retry shortly",
       "errorTaxSnapshotLegacy": "The tax data of this band uses a legacy format and cannot be registered with Stripe. Cancel this revision and create it again.",
-      "errorInvalidStripeTaxCode": "Enter the Stripe tax code as \"txcd_\" followed by 8 digits.",
+      "errorInvalidStripeTaxCode": "The Stripe tax code format is invalid (txcd_ followed by 8 digits)",
       "errorNonexistentDstTime": "This date and time doesn't exist due to a daylight saving time transition. Please choose a different time.",
       "taxCodesTitle": "Tax code master",
       "taxCodeCreateAction": "Add tax code",
@@ -483,7 +484,16 @@
       "notice": {
         "nextCycle": "Existing contracts keep their current price until the next billing cycle (no immediate change)",
         "noSaleOnPartialFailure": "While any band's provisioning has failed, that price cannot be sold or used for plan changes"
-      }
+      },
+      "errorUnknown": "The operation failed. Please try again later",
+      "stripePriceRef": "Stripe Price ID",
+      "stripePriceRefUnset": "Not created",
+      "stripeTaxCode": "Stripe tax code",
+      "stripeTaxCodeUnset": "Not set",
+      "stripeTaxCodePlaceholder": "Stripe tax code (optional, e.g. txcd_10000000)",
+      "taxCodeDisplayName": "Display name",
+      "taxCodeRate": "Rate (basis points)",
+      "taxCodeEnabled": "Enabled"
     }
   }
 }
