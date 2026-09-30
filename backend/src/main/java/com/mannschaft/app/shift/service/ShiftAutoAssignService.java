@@ -84,7 +84,8 @@ public class ShiftAutoAssignService {
     @Transactional
     public AssignmentRunResponse runAutoAssign(Long scheduleId, AutoAssignRequest request, Long triggeredBy) {
         // スケジュール存在チェック
-        ShiftScheduleEntity schedule = findScheduleOrThrow(scheduleId);
+        ShiftScheduleEntity schedule = scheduleRepository.findByIdForUpdate(scheduleId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
         // 認可（Wave7）: scope は実体（schedule.teamId）由来。
         checkScheduleAdminAccess(schedule, triggeredBy);
 
@@ -376,7 +377,7 @@ public class ShiftAutoAssignService {
             // パスのスケジュールに属さない run は「存在しない」と同じ応答に寄せる。
             throw new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND);
         }
-        ShiftScheduleEntity schedule = scheduleRepository.findById(run.getScheduleId())
+        ShiftScheduleEntity schedule = scheduleRepository.findByIdForUpdate(run.getScheduleId())
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
         if (accessControlService.isSystemAdmin(userId)) {
             return;

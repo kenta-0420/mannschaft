@@ -82,7 +82,8 @@
       "title": "내 근무 희망 신청",
       "empty": "근무가 없습니다",
       "fetchError": "근무 정보 조회에 실패했습니다",
-      "description": "제출한 희망과 심사 상태 확인"
+      "description": "제출한 희망과 심사 상태 확인",
+      "scheduleDeleted": "근무표가 삭제되었습니다"
     },
     "page": {
       "title": "근무",
@@ -134,6 +135,9 @@
       "archive": "보관",
       "transitionSuccess": "상태를 변경했습니다",
       "saveSuccess": "저장했습니다",
+      "deleteTitle": "근무표 삭제",
+      "deleteConfirm": "이 근무표를 삭제하시겠습니까? 제출된 희망은 각 구성원의 이력에 유지됩니다.",
+      "deleteSuccess": "근무표를 삭제했습니다",
       "calendarView": "달력 보기",
       "noDate": "날짜 없음",
       "colDate": "날짜",
