@@ -48,7 +48,7 @@ const currentMonth = ref<number>(dayjs().tz(userTimezone.value).month() + 1)
 const events = ref<VillageCalendarEventResponse[]>([])
 const eventsLoading = ref(false)
 /** 取得失敗は「行事なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
-const eventsLoadFailed = ref(false)
+const eventsLoadError = ref<unknown>(null)
 
 const canManage = computed(() => perms.value.isAdmin)
 const isVillager = computed(() => perms.value.isMember)
@@ -66,7 +66,7 @@ function formatYmd(y: number, m: number, d: number): string {
  * 月送り連打による取得の重なりを検知する世代番号。
  *
  * 新しい月の取得が成功した直後に古い月の取得が失敗で返ると、catch がその古い応答で
- * `events`/`eventsLoadFailed` を上書きし、最新の一覧がエラー状態に隠れてしまう
+ * `events`/`eventsLoadError` を上書きし、最新の一覧がエラー状態に隠れてしまう
  * （CMP-260922-2045 第2陣 G2 差し戻し・match-recruits.vue と同型）。
  */
 let eventsRequestSeq = 0
@@ -74,7 +74,7 @@ let eventsRequestSeq = 0
 async function loadEvents() {
   const seq = ++eventsRequestSeq
   eventsLoading.value = true
-  eventsLoadFailed.value = false
+  eventsLoadError.value = null
   try {
     // BE の @RequestParam は year/month のみ（from/to は存在しない。年中行事は月のみで判定するため）
     const result = await villageApi.listCalendarEvents(villageId.value, {
@@ -87,7 +87,7 @@ async function loadEvents() {
   catch (error) {
     if (seq !== eventsRequestSeq) return
     events.value = []
-    eventsLoadFailed.value = true
+    eventsLoadError.value = error
     handleApiError(error, t('village.calendar.loadFailed'))
   }
   finally {
@@ -400,7 +400,8 @@ onMounted(() => {
       <i class="pi pi-spin pi-spinner text-2xl" />
     </div>
     <DashboardErrorState
-      v-else-if="eventsLoadFailed"
+      v-else-if="eventsLoadError"
+      :error="eventsLoadError"
       testid="village-calendar-error-state"
       @retry="loadEvents"
     />
