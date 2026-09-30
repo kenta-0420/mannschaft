@@ -29,7 +29,8 @@
       "archived": "Movido al archivo",
       "unarchived": "Movido a la bandeja de entrada",
       "unsnoozed": "Posposición cancelada",
-      "snoozeFailed": "Error al posponer"
+      "snoozeFailed": "Error al posponer",
+      "readFailed": "No se pudo marcar la notificación como leída"
     },
     "snoozePreset": {
       "in3h": "En 3 horas",

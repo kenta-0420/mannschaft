@@ -76,6 +76,7 @@ public class MarketFinalizeService {
             case PERSONAL -> ScopeType.PLATFORM;
             case TEAM -> ScopeType.TEAM;
             case ORGANIZATION -> ScopeType.ORGANIZATION;
+            case GLOBAL -> throw new IllegalArgumentException("募集枠に GLOBAL スコープは使用できません");
         };
 
         // 札主 scope の ADMIN を受信者にする。ADMIN 不在なら作成者本人にフォールバック。
