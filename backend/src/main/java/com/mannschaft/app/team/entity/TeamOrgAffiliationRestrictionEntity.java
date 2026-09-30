@@ -18,7 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * チーム加盟の申請・招待の再送制限（F01.2.1 §5.4）。
@@ -66,20 +66,20 @@ public class TeamOrgAffiliationRestrictionEntity extends UuidV7Entity {
     private TeamOrgAffiliationRestrictionReason reason;
 
     @Column(name = "restricted_until")
-    private LocalDateTime restrictedUntil;
+    private Instant restrictedUntil;
 
     @Column(name = "created_by")
     private Long createdBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -88,6 +88,6 @@ public class TeamOrgAffiliationRestrictionEntity extends UuidV7Entity {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 }

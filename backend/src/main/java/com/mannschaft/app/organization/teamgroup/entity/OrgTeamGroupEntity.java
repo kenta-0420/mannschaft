@@ -15,7 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * チームグループ（F01.2.1 §5.2）。組織に加盟するチームを区分する平坦・並び順付きの論理削除エンティティ。
@@ -52,13 +52,13 @@ public class OrgTeamGroupEntity extends UuidV7Entity {
     private Long updatedBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     /** 生存行だけの名前（生成列。削除済みは NULL）。DB が計算するため読み取り専用。 */
     @Column(name = "active_name", insertable = false, updatable = false,
@@ -67,7 +67,7 @@ public class OrgTeamGroupEntity extends UuidV7Entity {
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -76,6 +76,6 @@ public class OrgTeamGroupEntity extends UuidV7Entity {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 }

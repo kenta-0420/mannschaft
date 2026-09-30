@@ -79,8 +79,8 @@ public class TeamOrgMembershipEntity {
     private String message;
 
     @Column(name = "updated_at", nullable = false,
-            columnDefinition = "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-    private LocalDateTime updatedAt;
+            columnDefinition = "DATETIME NOT NULL DEFAULT (UTC_TIMESTAMP())")
+    private java.time.Instant updatedAt;
 
     /**
      * チーム−組織所属ステータス
@@ -93,12 +93,12 @@ public class TeamOrgMembershipEntity {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
-        this.updatedAt = this.createdAt;
+        this.updatedAt = java.time.Instant.now();
     }
 
     @jakarta.persistence.PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = java.time.Instant.now();
     }
 
     /**

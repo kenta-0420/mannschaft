@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -54,7 +54,7 @@ class TeamOrgAffiliationHibernateSchemaConstraintIT extends AbstractMySqlIntegra
     @DisplayName("論理削除したグループと同名のグループは作成できる")
     void 論理削除後は同名を作れる() {
         OrgTeamGroupEntity first = groupRepository.saveAndFlush(group(9102L, "再利用名"));
-        groupRepository.saveAndFlush(first.toBuilder().deletedAt(LocalDateTime.of(2026, 9, 1, 0, 0)).build());
+        groupRepository.saveAndFlush(first.toBuilder().deletedAt(Instant.parse("2026-09-01T00:00:00Z")).build());
         em.clear();
 
         OrgTeamGroupEntity second = groupRepository.saveAndFlush(group(9102L, "再利用名"));

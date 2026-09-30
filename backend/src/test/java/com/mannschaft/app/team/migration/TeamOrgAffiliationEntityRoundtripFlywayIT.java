@@ -28,7 +28,7 @@ import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -208,7 +208,7 @@ class TeamOrgAffiliationEntityRoundtripFlywayIT {
     void グループのテナントスコープ検索は論理削除を除外する() {
         OrgTeamGroupEntity alive = groupRepository.saveAndFlush(group(7501L, "生存", 0));
         OrgTeamGroupEntity deleted = groupRepository.saveAndFlush(
-                group(7501L, "削除済み", 1).toBuilder().deletedAt(LocalDateTime.of(2026, 9, 1, 0, 0)).build());
+                group(7501L, "削除済み", 1).toBuilder().deletedAt(Instant.parse("2026-09-01T00:00:00Z")).build());
         groupRepository.saveAndFlush(group(7502L, "他組織", 0));
         em.clear();
 
@@ -236,7 +236,7 @@ class TeamOrgAffiliationEntityRoundtripFlywayIT {
     @DisplayName("グループ: 論理削除後は同名を再作成でき、削除済み行の active_name は NULL になる")
     void 論理削除後は同名を再作成できる() {
         OrgTeamGroupEntity first = groupRepository.saveAndFlush(group(7701L, "再利用名", 0));
-        groupRepository.saveAndFlush(first.toBuilder().deletedAt(LocalDateTime.of(2026, 9, 1, 0, 0)).build());
+        groupRepository.saveAndFlush(first.toBuilder().deletedAt(Instant.parse("2026-09-01T00:00:00Z")).build());
         em.clear();
 
         OrgTeamGroupEntity second = groupRepository.saveAndFlush(group(7701L, "再利用名", 0));
@@ -256,7 +256,7 @@ class TeamOrgAffiliationEntityRoundtripFlywayIT {
     @Test
     @DisplayName("制限: COOLDOWN と BLOCK の全項目が保存→再読込で保持される")
     void 制限が往復する() {
-        LocalDateTime until = LocalDateTime.of(2026, 10, 29, 12, 0);
+        Instant until = Instant.parse("2026-10-29T12:00:00Z");
         TeamOrgAffiliationRestrictionEntity cooldown = restrictionRepository.saveAndFlush(
                 restriction(6301L, 5301L, TeamOrgAffiliationDirection.TEAM_APPLY,
                         TeamOrgAffiliationRestrictionKind.COOLDOWN,
@@ -296,7 +296,7 @@ class TeamOrgAffiliationEntityRoundtripFlywayIT {
 
         assertThatThrownBy(() -> restrictionRepository.saveAndFlush(restriction(6401L, 5401L,
                 TeamOrgAffiliationDirection.TEAM_APPLY, TeamOrgAffiliationRestrictionKind.COOLDOWN,
-                TeamOrgAffiliationRestrictionReason.WITHDRAWN, LocalDateTime.of(2026, 12, 31, 0, 0))))
+                TeamOrgAffiliationRestrictionReason.WITHDRAWN, Instant.parse("2026-12-31T00:00:00Z"))))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -305,7 +305,7 @@ class TeamOrgAffiliationEntityRoundtripFlywayIT {
     void 制限のCHECK違反() {
         assertThatThrownBy(() -> restrictionRepository.saveAndFlush(restriction(6501L, 5501L,
                 TeamOrgAffiliationDirection.TEAM_APPLY, TeamOrgAffiliationRestrictionKind.BLOCK,
-                TeamOrgAffiliationRestrictionReason.REJECTED, LocalDateTime.of(2026, 12, 31, 0, 0))))
+                TeamOrgAffiliationRestrictionReason.REJECTED, Instant.parse("2026-12-31T00:00:00Z"))))
                 .isInstanceOf(DataAccessException.class)
                 .hasMessageContaining("chk_toar_until");
     }
@@ -327,7 +327,7 @@ class TeamOrgAffiliationEntityRoundtripFlywayIT {
 
     private static TeamOrgAffiliationRestrictionEntity restriction(long orgId, long teamId,
             TeamOrgAffiliationDirection direction, TeamOrgAffiliationRestrictionKind kind,
-            TeamOrgAffiliationRestrictionReason reason, LocalDateTime until) {
+            TeamOrgAffiliationRestrictionReason reason, Instant until) {
         return TeamOrgAffiliationRestrictionEntity.builder()
                 .organizationId(orgId)
                 .teamId(teamId)
