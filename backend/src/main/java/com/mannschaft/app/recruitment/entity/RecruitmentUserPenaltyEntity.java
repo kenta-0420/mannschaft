@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 /**
  * F03.11 Phase 5b: ユーザーペナルティ状態エンティティ。
  * recruitment_user_penalties テーブルに対応する。
- * アクティブペナルティの重複はサービス層の PESSIMISTIC_WRITE で防止する。
+ * アクティブペナルティの重複はサービス層の行ロックと DB 一意制約で防止する。
  */
 @Entity
 @Table(name = "recruitment_user_penalties")
@@ -33,7 +33,7 @@ public class RecruitmentUserPenaltyEntity {
     @Column(name = "scope_type", nullable = false, length = 20)
     private RecruitmentScopeType scopeType;
 
-    @Column(name = "scope_id", nullable = false)
+    @Column(name = "scope_id")
     private Long scopeId;
 
     /** 現状は NO_SHOW のみ。将来の拡張用に ENUM 化。 */

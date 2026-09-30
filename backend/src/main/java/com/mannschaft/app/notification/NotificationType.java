@@ -86,7 +86,9 @@ public enum NotificationType {
     JOIN_REQUEST_REJECTED(NotificationPriority.NORMAL, "USER"),
     NEW_DEVICE_LOGIN(NotificationPriority.HIGH, "USER"),
 
-    RECRUITMENT_PENALTY_LIFTED(NotificationPriority.NORMAL, "RECRUITMENT_PENALTY");
+    RECRUITMENT_PENALTY_LIFTED(NotificationPriority.NORMAL, "RECRUITMENT_PENALTY"),
+    /** F03.11: ペナルティ発動時に本人が確認する緊急通知。 */
+    RECRUITMENT_PENALTY_APPLIED(NotificationPriority.URGENT, "CONFIRMABLE_NOTIFICATION");
 
     private final NotificationPriority priority;
     private final String sourceType;

@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
+import com.mannschaft.app.recruitment.RecruitmentPenaltyActiveException;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentMapper;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
@@ -20,6 +21,7 @@ import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRe
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -63,6 +66,9 @@ class RecruitmentParticipantServiceTest {
 
     @Mock
     private RecruitmentCancellationRecordRepository cancellationRecordRepository;
+
+    @Mock
+    private RecruitmentUserPenaltyRepository penaltyRepository;
 
     @Mock
     private RecruitmentCancellationPolicyService policyService;
@@ -218,6 +224,26 @@ class RecruitmentParticipantServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.DEADLINE_EXCEEDED);
+        }
+
+        @Test
+        @DisplayName("有効なローカルまたは GLOBAL ペナルティ中は募集への申込を拒否する")
+        void apply_activePenalty_throws300() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            LocalDateTime expiresAt = LocalDateTime.now().plusDays(5);
+            given(penaltyRepository.findApplicableActivePenaltyExpiry(
+                    eq(USER_ID), eq(listing.getScopeType()), eq(listing.getScopeId()),
+                    any(LocalDateTime.class))).willReturn(expiresAt);
+
+            assertThatThrownBy(() -> service.apply(LISTING_ID, USER_ID,
+                    new ApplyToRecruitmentRequest(RecruitmentParticipantType.USER, null, null)))
+                    .isInstanceOfSatisfying(RecruitmentPenaltyActiveException.class, ex -> {
+                        assertThat(ex.getErrorCode()).isEqualTo(RecruitmentErrorCode.PENALTY_ACTIVE);
+                        assertThat(ex.getExpiresAt()).isEqualTo(expiresAt.atZone(
+                                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
+                    });
+            verify(participantRepository, never()).save(any());
         }
 
         @Test
