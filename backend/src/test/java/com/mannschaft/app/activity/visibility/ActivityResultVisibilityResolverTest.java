@@ -291,7 +291,7 @@ class ActivityResultVisibilityResolverTest {
         UserScopeRoleSnapshot snapshot = new UserScopeRoleSnapshot(
                 false,
                 Map.of(teamScope, "MEMBER"),
-                Map.of(teamScope, 500L),     // 親 ORG = 500
+                Map.of(teamScope, Set.of(500L)),     // 親 ORG = 500
                 Set.of(),
                 Set.of(500L));               // 500 は SUSPENDED
 
