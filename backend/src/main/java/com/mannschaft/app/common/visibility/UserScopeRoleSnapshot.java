@@ -14,8 +14,9 @@ import java.util.Set;
  *
  * @param systemAdmin              SystemAdmin ロール保有
  * @param roleByScope             direct メンバーシップにおけるスコープ → ロール名のマップ
- * @param parentOrgByScope        TEAM スコープ → 親 ORGANIZATION ID のマップ
- *                                （ORGANIZATION スコープは自身が ORG として entry を持つ）
+ * @param parentOrgByScope        TEAM スコープ → ACTIVE な親 ORGANIZATION ID の<strong>集合</strong>のマップ
+ *                                （F01.2.1 §9.2 #2〜#6: 複数の親組織に対応。
+ *                                ORGANIZATION スコープは自身のみの集合として entry を持つ）
  * @param orgMemberOf             親 ORG での所属を示す {@code ORGANIZATION} スコープ集合
  *                                （= 直接所属。{@code ORGANIZATION_WIDE}（上向き 1 段）判定に用いる）
  * @param suspendedOrgIds         非アクティブ（削除済 / SUSPENDED）と判定された
@@ -42,7 +43,7 @@ import java.util.Set;
 public record UserScopeRoleSnapshot(
         boolean systemAdmin,
         Map<ScopeKey, String> roleByScope,
-        Map<ScopeKey, Long> parentOrgByScope,
+        Map<ScopeKey, Set<Long>> parentOrgByScope,
         Set<ScopeKey> orgMemberOf,
         Set<Long> suspendedOrgIds,
         Set<Long> descendantMemberOfOrgIds,
@@ -70,7 +71,7 @@ public record UserScopeRoleSnapshot(
     public UserScopeRoleSnapshot(
             boolean systemAdmin,
             Map<ScopeKey, String> roleByScope,
-            Map<ScopeKey, Long> parentOrgByScope,
+            Map<ScopeKey, Set<Long>> parentOrgByScope,
             Set<ScopeKey> orgMemberOf,
             Set<Long> suspendedOrgIds,
             Set<Long> descendantMemberOfOrgIds,
@@ -86,7 +87,7 @@ public record UserScopeRoleSnapshot(
     public UserScopeRoleSnapshot(
             boolean systemAdmin,
             Map<ScopeKey, String> roleByScope,
-            Map<ScopeKey, Long> parentOrgByScope,
+            Map<ScopeKey, Set<Long>> parentOrgByScope,
             Set<ScopeKey> orgMemberOf,
             Set<Long> suspendedOrgIds,
             Set<Long> descendantMemberOfOrgIds) {
@@ -104,7 +105,7 @@ public record UserScopeRoleSnapshot(
     public UserScopeRoleSnapshot(
             boolean systemAdmin,
             Map<ScopeKey, String> roleByScope,
-            Map<ScopeKey, Long> parentOrgByScope,
+            Map<ScopeKey, Set<Long>> parentOrgByScope,
             Set<ScopeKey> orgMemberOf,
             Set<Long> suspendedOrgIds) {
         this(systemAdmin, roleByScope, parentOrgByScope, orgMemberOf, suspendedOrgIds,
@@ -181,11 +182,13 @@ public record UserScopeRoleSnapshot(
         if (scope == null) {
             return false;
         }
-        Long parentOrg = parentOrgByScope.get(scope);
-        if (parentOrg == null) {
-            return false;
+        // 複数の親組織: 停止中でない親のうちいずれかのメンバーなら真（OR）。停止中の親を経由する権利は数えない。
+        for (Long parentOrg : activeParentOrgs(scope)) {
+            if (orgMemberOf.contains(new ScopeKey("ORGANIZATION", parentOrg))) {
+                return true;
+            }
         }
-        return orgMemberOf.contains(new ScopeKey("ORGANIZATION", parentOrg));
+        return false;
     }
 
     /**
@@ -213,16 +216,21 @@ public record UserScopeRoleSnapshot(
         if (scope == null) {
             return false;
         }
-        Long parentOrg = parentOrgByScope.get(scope);
-        if (parentOrg == null) {
-            return false;
+        // 複数の親組織: 停止中でない親のうちいずれかで必要ロール以上なら真（OR）。
+        for (Long parentOrg : activeParentOrgs(scope)) {
+            String role = orgRoleByScope.get(new ScopeKey("ORGANIZATION", parentOrg));
+            if (role != null && RolePriority.isAtLeast(role, required)) {
+                return true;
+            }
         }
-        String role = orgRoleByScope.get(new ScopeKey("ORGANIZATION", parentOrg));
-        return role != null && RolePriority.isAtLeast(role, required);
+        return false;
     }
 
     /**
      * 親 ORG が削除済 / SUSPENDED 状態かを返す。
+     * 複数の親組織を持つ場合は<strong>すべての親</strong>が非アクティブのときだけ true
+     * （一部の親が停止中でも、アクティブな親を経由する経路が残るため。停止中の親を経由する権利は
+     * {@link #isMemberOfParentOrg} / {@link #hasParentOrgRoleOrAbove} 側で数えない）。
      * 親 ORG が判定不能（マッピング無し）の場合は false。
      * 設計書 §11.6 連鎖ルール: 非アクティブ親 ORG 配下の TEAM コンテンツは
      * SystemAdmin 以外不可視（fail-closed）。
@@ -231,8 +239,19 @@ public record UserScopeRoleSnapshot(
         if (scope == null) {
             return false;
         }
-        Long parent = parentOrgByScope.get(scope);
-        return parent != null && suspendedOrgIds.contains(parent);
+        Set<Long> parents = parentOrgByScope.get(scope);
+        return parents != null && !parents.isEmpty() && suspendedOrgIds.containsAll(parents);
+    }
+
+    /** スコープの親組織のうち、停止中（非アクティブ）でないものを返す（F01.2.1 §9.2 #6）。 */
+    private Set<Long> activeParentOrgs(ScopeKey scope) {
+        Set<Long> parents = parentOrgByScope.get(scope);
+        if (parents == null || parents.isEmpty()) {
+            return Set.of();
+        }
+        Set<Long> active = new java.util.HashSet<>(parents);
+        active.removeAll(suspendedOrgIds);
+        return active;
     }
 
     /**

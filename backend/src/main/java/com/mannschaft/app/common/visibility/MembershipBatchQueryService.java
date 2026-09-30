@@ -130,7 +130,7 @@ public class MembershipBatchQueryService {
         List<UserRoleProjection> directRoles = fetchDirectRoles(userId, safeDirect);
 
         // SQL 3 (orgWideScopes が非空のみ): TEAM → 親 ORG 解決
-        Map<ScopeKey, Long> parentOrgs = safeOrgWide.isEmpty()
+        Map<ScopeKey, Set<Long>> parentOrgs = safeOrgWide.isEmpty()
                 ? new HashMap<>()
                 : new HashMap<>(scopeAncestorResolver.resolveParentOrgIds(safeOrgWide));
 
@@ -139,16 +139,15 @@ public class MembershipBatchQueryService {
         // §11.6 鏡像: 新段の根 ORG 自身の非アクティブ判定のため parentOrgs に自身を合流させる
         //（ORG スコープは parentOrg=自身。ScopeAncestorResolver と同じ規約）。
         for (Long rootOrgId : descendantRootOrgIds) {
-            parentOrgs.putIfAbsent(new ScopeKey("ORGANIZATION", rootOrgId), rootOrgId);
+            parentOrgs.putIfAbsent(new ScopeKey("ORGANIZATION", rootOrgId), Set.of(rootOrgId));
         }
 
         // SQL 4 (direct or 親 ORG が非空のみ): memberships の role_kind（MEMBER / SUPPORTER）を
         //        「direct スコープ ＋ 親 ORG」まとめて 1 バッチで取得する（F00.5 SQL 回帰根治）。
         //        direct 解決と org 解決で個別に membership を引くと snapshot あたり 2 SQL になり
         //        結合テストの SQL 数番人が回帰検知するため、ここで 1 SQL に統合し結果を使い回す。
-        Set<Long> parentOrgIds = parentOrgs.isEmpty()
-                ? Set.of()
-                : new HashSet<>(parentOrgs.values());
+        // 複数の親組織（F01.2.1 §9.2 #3）: 全親組織の和集合を 1 つの IN 句に載せる（SQL 本数は増えない）
+        Set<Long> parentOrgIds = flattenOrgIds(parentOrgs);
         List<MembershipScopeRoleProjection> membershipRoleKinds =
                 fetchMembershipRoleKinds(userId, safeDirect, parentOrgIds);
 
@@ -656,6 +655,15 @@ public class MembershipBatchQueryService {
         return Set.copyOf(result);
     }
 
+    /** 親 ORG マップ（スコープ → 親組織 ID 集合）の全値を 1 つの集合へ平坦化する。 */
+    private static Set<Long> flattenOrgIds(Map<ScopeKey, Set<Long>> parentOrgs) {
+        Set<Long> ids = new HashSet<>();
+        for (Set<Long> orgIds : parentOrgs.values()) {
+            ids.addAll(orgIds);
+        }
+        return ids;
+    }
+
     /**
      * 親 ORG マップから「非アクティブな組織 ID」集合を返す（§11.6）。
      *
@@ -664,11 +672,11 @@ public class MembershipBatchQueryService {
      * SUSPENDED 概念が DB に追加されたら、{@code OrganizationRepository.findInactiveIdsByIdIn}
      * のクエリ側で OR 条件を追加すれば本サービスは無改修で追従する。</p>
      */
-    private Set<Long> resolveInactiveParentOrgs(Map<ScopeKey, Long> parentOrgs) {
+    private Set<Long> resolveInactiveParentOrgs(Map<ScopeKey, Set<Long>> parentOrgs) {
         if (parentOrgs.isEmpty()) {
             return Set.of();
         }
-        Set<Long> parentOrgIds = new HashSet<>(parentOrgs.values());
+        Set<Long> parentOrgIds = flattenOrgIds(parentOrgs);
         if (parentOrgIds.isEmpty()) {
             return Set.of();
         }
