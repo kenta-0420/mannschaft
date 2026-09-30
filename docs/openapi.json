@@ -128247,152 +128247,22 @@
         }
       }
     },
-    "/api/v1/public/organizations/{orgId}/tournaments": {
+    "/api/v1/public/organizations/{slug}": {
       "get": {
         "tags": [
-          "公開大会API"
+          "公開組織ページ API (F19.1)"
         ],
-        "summary": "公開大会一覧",
-        "operationId": "listPublicTournaments",
+        "summary": "組織詳細（未ログイン公開）",
+        "description": "組織を slug で指定する（数値 ID は受けない）。未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。",
+        "operationId": "getPublicOrganization",
         "parameters": [
           {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 20
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PagedResponseTournamentResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/tournaments/{tId}": {
-      "get": {
-        "tags": [
-          "公開大会API"
-        ],
-        "summary": "公開大会詳細",
-        "operationId": "getPublicTournament",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "tId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseTournamentResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/rankings/{statKey}": {
-      "get": {
-        "tags": [
-          "公開大会API"
-        ],
-        "summary": "公開個人ランキング",
-        "operationId": "getPublicRankings",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "tId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "statKey",
+            "name": "slug",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 50
-            }
           }
         ],
         "responses": {
@@ -128401,148 +128271,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseIndividualRankingResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/standings": {
-      "get": {
-        "tags": [
-          "公開大会API"
-        ],
-        "summary": "公開順位表",
-        "operationId": "getPublicStandings",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "tId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "divId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListStandingResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/matrix": {
-      "get": {
-        "tags": [
-          "公開大会API"
-        ],
-        "summary": "公開対戦マトリクス",
-        "operationId": "getPublicMatrix",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "tId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "divId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMatrixResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/bracket": {
-      "get": {
-        "tags": [
-          "公開大会API"
-        ],
-        "summary": "公開トーナメント表",
-        "operationId": "getPublicBracket",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "tId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListFixtureResponse"
+                  "$ref": "#/components/schemas/PublicOrganizationResponse"
                 }
               }
             }
@@ -128894,21 +128623,41 @@
         }
       }
     },
-    "/api/v1/public/organizations/{slug}": {
+    "/api/v1/public/organizations/{orgId}/tournaments": {
       "get": {
         "tags": [
-          "公開組織ページ API (F19.1)"
+          "公開大会API"
         ],
-        "summary": "組織詳細（未ログイン公開）",
-        "description": "組織を slug で指定する（数値 ID は受けない）。未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。",
-        "operationId": "getPublicOrganization",
+        "summary": "公開大会一覧",
+        "operationId": "listPublicTournaments",
         "parameters": [
           {
-            "name": "slug",
+            "name": "orgId",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
             }
           }
         ],
@@ -128918,7 +128667,258 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicOrganizationResponse"
+                  "$ref": "#/components/schemas/PagedResponseTournamentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{orgId}/tournaments/{tId}": {
+      "get": {
+        "tags": [
+          "公開大会API"
+        ],
+        "summary": "公開大会詳細",
+        "operationId": "getPublicTournament",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTournamentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/rankings/{statKey}": {
+      "get": {
+        "tags": [
+          "公開大会API"
+        ],
+        "summary": "公開個人ランキング",
+        "operationId": "getPublicRankings",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "statKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseIndividualRankingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/standings": {
+      "get": {
+        "tags": [
+          "公開大会API"
+        ],
+        "summary": "公開順位表",
+        "operationId": "getPublicStandings",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "divId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListStandingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/matrix": {
+      "get": {
+        "tags": [
+          "公開大会API"
+        ],
+        "summary": "公開対戦マトリクス",
+        "operationId": "getPublicMatrix",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "divId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatrixResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/bracket": {
+      "get": {
+        "tags": [
+          "公開大会API"
+        ],
+        "summary": "公開トーナメント表",
+        "operationId": "getPublicBracket",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListFixtureResponse"
                 }
               }
             }
@@ -229232,6 +229232,58 @@
           }
         }
       },
+      "PublicOrganizationResponse": {
+        "type": "object",
+        "properties": {
+          "bannerUrl": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "establishedDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "establishedDatePrecision": {
+            "type": "string"
+          },
+          "homepageUrl": {
+            "type": "string"
+          },
+          "iconUrl": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "mapEmbedUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nameKana": {
+            "type": "string"
+          },
+          "nickname1": {
+            "type": "string"
+          },
+          "nickname2": {
+            "type": "string"
+          },
+          "orgType": {
+            "type": "string"
+          },
+          "philosophy": {
+            "type": "string"
+          },
+          "prefecture": {
+            "type": "string"
+          }
+        }
+      },
       "PagedResponseTournamentResponse": {
         "type": "object",
         "properties": {
@@ -229537,58 +229589,6 @@
             "items": {
               "$ref": "#/components/schemas/FixtureResponse"
             }
-          }
-        }
-      },
-      "PublicOrganizationResponse": {
-        "type": "object",
-        "properties": {
-          "bannerUrl": {
-            "type": "string"
-          },
-          "city": {
-            "type": "string"
-          },
-          "establishedDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "establishedDatePrecision": {
-            "type": "string"
-          },
-          "homepageUrl": {
-            "type": "string"
-          },
-          "iconUrl": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "mapEmbedUrl": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "nameKana": {
-            "type": "string"
-          },
-          "nickname1": {
-            "type": "string"
-          },
-          "nickname2": {
-            "type": "string"
-          },
-          "orgType": {
-            "type": "string"
-          },
-          "philosophy": {
-            "type": "string"
-          },
-          "prefecture": {
-            "type": "string"
           }
         }
       },

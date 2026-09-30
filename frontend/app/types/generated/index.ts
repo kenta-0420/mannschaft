@@ -38730,100 +38730,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/organizations/{orgId}/tournaments": {
+    "/api/v1/public/organizations/{slug}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** 公開大会一覧 */
-        get: operations["listPublicTournaments"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/tournaments/{tId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 公開大会詳細 */
-        get: operations["getPublicTournament"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/rankings/{statKey}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 公開個人ランキング */
-        get: operations["getPublicRankings"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/standings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 公開順位表 */
-        get: operations["getPublicStandings"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/matrix": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 公開対戦マトリクス */
-        get: operations["getPublicMatrix"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/bracket": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 公開トーナメント表 */
-        get: operations["getPublicBracket"];
+        /**
+         * 組織詳細（未ログイン公開）
+         * @description 組織を slug で指定する（数値 ID は受けない）。未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。
+         */
+        get: operations["getPublicOrganization"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38966,18 +38884,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/organizations/{slug}": {
+    "/api/v1/public/organizations/{orgId}/tournaments": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * 組織詳細（未ログイン公開）
-         * @description 組織を slug で指定する（数値 ID は受けない）。未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。
-         */
-        get: operations["getPublicOrganization"];
+        /** 公開大会一覧 */
+        get: operations["listPublicTournaments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{orgId}/tournaments/{tId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開大会詳細 */
+        get: operations["getPublicTournament"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/rankings/{statKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開個人ランキング */
+        get: operations["getPublicRankings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/standings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開順位表 */
+        get: operations["getPublicStandings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/matrix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開対戦マトリクス */
+        get: operations["getPublicMatrix"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{orgId}/tournaments/{tId}/bracket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開トーナメント表 */
+        get: operations["getPublicBracket"];
         put?: never;
         post?: never;
         delete?: never;
@@ -77498,6 +77498,25 @@ export interface components {
             /** Format: int64 */
             totalUsers?: number;
         };
+        PublicOrganizationResponse: {
+            bannerUrl?: string;
+            city?: string;
+            /** Format: date */
+            establishedDate?: string;
+            establishedDatePrecision?: string;
+            homepageUrl?: string;
+            iconUrl?: string;
+            /** Format: int64 */
+            id?: number;
+            mapEmbedUrl?: string;
+            name?: string;
+            nameKana?: string;
+            nickname1?: string;
+            nickname2?: string;
+            orgType?: string;
+            philosophy?: string;
+            prefecture?: string;
+        };
         PagedResponseTournamentResponse: {
             data?: components["schemas"]["TournamentResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -77622,25 +77641,6 @@ export interface components {
         };
         ApiResponseListFixtureResponse: {
             data?: components["schemas"]["FixtureResponse"][];
-        };
-        PublicOrganizationResponse: {
-            bannerUrl?: string;
-            city?: string;
-            /** Format: date */
-            establishedDate?: string;
-            establishedDatePrecision?: string;
-            homepageUrl?: string;
-            iconUrl?: string;
-            /** Format: int64 */
-            id?: number;
-            mapEmbedUrl?: string;
-            name?: string;
-            nameKana?: string;
-            nickname1?: string;
-            nickname2?: string;
-            orgType?: string;
-            philosophy?: string;
-            prefecture?: string;
         };
         PagePublicOrganizationSearchResultResponse: {
             content?: components["schemas"]["PublicOrganizationSearchResultResponse"][];
@@ -157620,38 +157620,12 @@ export interface operations {
             };
         };
     };
-    listPublicTournaments: {
-        parameters: {
-            query?: {
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagedResponseTournamentResponse"];
-                };
-            };
-        };
-    };
-    getPublicTournament: {
+    getPublicOrganization: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                tId: number;
+                slug: string;
             };
             cookie?: never;
         };
@@ -157663,105 +157637,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseTournamentResponse"];
-                };
-            };
-        };
-    };
-    getPublicRankings: {
-        parameters: {
-            query?: {
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-                tId: number;
-                statKey: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagedResponseIndividualRankingResponse"];
-                };
-            };
-        };
-    };
-    getPublicStandings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                tId: number;
-                divId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseListStandingResponse"];
-                };
-            };
-        };
-    };
-    getPublicMatrix: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                tId: number;
-                divId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatrixResponse"];
-                };
-            };
-        };
-    };
-    getPublicBracket: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                tId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseListFixtureResponse"];
+                    "*/*": components["schemas"]["PublicOrganizationResponse"];
                 };
             };
         };
@@ -157952,12 +157828,15 @@ export interface operations {
             };
         };
     };
-    getPublicOrganization: {
+    listPublicTournaments: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                size?: number;
+            };
             header?: never;
             path: {
-                slug: string;
+                orgId: number;
             };
             cookie?: never;
         };
@@ -157969,7 +157848,128 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PublicOrganizationResponse"];
+                    "*/*": components["schemas"]["PagedResponseTournamentResponse"];
+                };
+            };
+        };
+    };
+    getPublicTournament: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTournamentResponse"];
+                };
+            };
+        };
+    };
+    getPublicRankings: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+                statKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseIndividualRankingResponse"];
+                };
+            };
+        };
+    };
+    getPublicStandings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+                divId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListStandingResponse"];
+                };
+            };
+        };
+    };
+    getPublicMatrix: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+                divId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatrixResponse"];
+                };
+            };
+        };
+    };
+    getPublicBracket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListFixtureResponse"];
                 };
             };
         };
