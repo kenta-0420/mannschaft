@@ -56,7 +56,8 @@ public class TeamOrgMembershipEntity {
 
     /** 起点（F01.2.1 §5.3）。既存フローは組織からの招待だけだったため既定は ORG_INVITE。 */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "direction", nullable = false, length = 20,
+            columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'ORG_INVITE'")
     @lombok.Builder.Default
     private TeamOrgAffiliationDirection direction = TeamOrgAffiliationDirection.ORG_INVITE;
 
@@ -68,7 +69,8 @@ public class TeamOrgMembershipEntity {
     @Column(length = 500)
     private String message;
 
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false,
+            columnDefinition = "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime updatedAt;
 
     /**

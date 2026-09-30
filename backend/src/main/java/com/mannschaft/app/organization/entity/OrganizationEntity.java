@@ -147,17 +147,20 @@ public class OrganizationEntity extends BaseEntity {
     private String mapEmbedUrl;
 
     /** F01.2.1 §5.5: チームからの加盟申請を受け付けるか（既定 off）。 */
-    @Column(name = "team_application_enabled", nullable = false)
+    @Column(name = "team_application_enabled", nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
     @Builder.Default
     private Boolean teamApplicationEnabled = false;
 
     /** F01.2.1 §5.5: チームグループ機能を使うか（既定 off）。 */
-    @Column(name = "team_groups_enabled", nullable = false)
+    @Column(name = "team_groups_enabled", nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
     @Builder.Default
     private Boolean teamGroupsEnabled = false;
 
     /** F01.2.1 §5.5: 申請時のグループ選択（OFF / OPTIONAL / REQUIRED。既定 OFF）。 */
-    @Column(name = "team_application_group_mode", nullable = false, length = 10)
+    @Column(name = "team_application_group_mode", nullable = false, length = 10,
+            columnDefinition = "VARCHAR(10) NOT NULL DEFAULT 'OFF'")
     @Builder.Default
     private String teamApplicationGroupMode = "OFF";
 
