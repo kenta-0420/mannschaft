@@ -67,6 +67,11 @@ public class ShiftChangeRequestService {
         // 存在オラクル是正（CMP-260923-0954 W2）: 越境（他チームの scheduleId）は不在と同一応答
         // （SHIFT_SCHEDULE_NOT_FOUND）に畳む。checkMembership は SYSTEM_ADMIN も素通しにしないため
         // Gate（requireMemberOrConceal）に置き換える。
+        // Gate は冒頭で SYSTEM_ADMIN を通すが、是正前は checkMembership（memberships のみ）で
+        // 非メンバーの SYSTEM_ADMIN も 403 COMMON_002 だった。挙動を変えないため先に弾く。
+        if (accessControlService.isSystemAdmin(userId)) {
+            accessControlService.checkMembership(userId, schedule.getTeamId(), "TEAM");
+        }
         accessGate.requireMemberOrConceal(
                 userId, schedule.getTeamId(), "TEAM", ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, false);
         checkSlotBelongsToSchedule(request.slotId(), request.scheduleId());
