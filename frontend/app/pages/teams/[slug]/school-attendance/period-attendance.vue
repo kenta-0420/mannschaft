@@ -151,7 +151,7 @@ onMounted(() => {
           <Button
             :label="$t('school.attendance.period.submit')"
             :loading="submitting"
-            :disabled="entries.length === 0"
+            :disabled="entries.length === 0 || submitting"
             class="w-full"
             data-testid="period-attendance-submit"
             @click="onSubmit"

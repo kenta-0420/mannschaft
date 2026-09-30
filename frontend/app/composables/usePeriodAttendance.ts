@@ -7,7 +7,8 @@ import type {
 
 export function usePeriodAttendance(teamId: Ref<string>) {
   const api = usePeriodAttendanceApi()
-  const { error: notifyError, success: notifySuccess } = useNotification()
+  const { success: notifySuccess } = useNotification()
+  const { handleApiError } = useErrorHandler()
   const { t } = useI18n()
 
   const candidates = ref<CandidateItem[]>([])
@@ -20,8 +21,8 @@ export function usePeriodAttendance(teamId: Ref<string>) {
     try {
       const res = await api.getPeriodCandidates(teamId.value, periodNumber, date)
       candidates.value = res.candidates
-    } catch {
-      notifyError(t('school.attendance.period.title'))
+    } catch (e) {
+      handleApiError(e, 'school.attendance.period.load')
     } finally {
       loading.value = false
     }
@@ -32,6 +33,8 @@ export function usePeriodAttendance(teamId: Ref<string>) {
     date: string,
     entries: PeriodAttendanceEntry[],
   ): Promise<PeriodAttendanceSummary | null> {
+    // 二重送信防止: 提出中の再呼び出しは API を叩かない
+    if (submitting.value) return null
     submitting.value = true
     try {
       const summary = await api.submitPeriodAttendance(teamId.value, periodNumber, {
@@ -41,8 +44,8 @@ export function usePeriodAttendance(teamId: Ref<string>) {
       lastSummary.value = summary
       notifySuccess(t('school.attendance.period.submitSuccess'))
       return summary
-    } catch {
-      notifyError(t('school.attendance.period.title'))
+    } catch (e) {
+      handleApiError(e, 'school.attendance.period.submit')
       return null
     } finally {
       submitting.value = false

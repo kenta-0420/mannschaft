@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { ABSENCE_REASONS } from '~/constants/absenceReason'
 import type { CandidateItem, PeriodAttendanceEntry } from '~/types/school'
 
 interface PeriodEntry extends PeriodAttendanceEntry {
@@ -27,12 +29,12 @@ const STATUS_OPTIONS = [
   { value: 'UNDECIDED', label: () => t('school.attendance.status.UNDECIDED') },
 ]
 
-const REASON_OPTIONS = [
-  { value: 'ILLNESS', label: () => t('school.attendance.absenceReason.ILLNESS') },
-  { value: 'INJURY', label: () => t('school.attendance.absenceReason.INJURY') },
-  { value: 'FAMILY', label: () => t('school.attendance.absenceReason.FAMILY') },
-  { value: 'OTHER', label: () => t('school.attendance.absenceReason.OTHER') },
-]
+const REASON_OPTIONS = computed(() =>
+  ABSENCE_REASONS.map((value) => ({
+    value,
+    label: t(`school.attendance.absenceReason.${value}`),
+  })),
+)
 
 function updateEntry(index: number, patch: Partial<PeriodEntry>): void {
   const updated = props.entries.map((e, i) => (i === index ? { ...e, ...patch } : e))

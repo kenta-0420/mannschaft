@@ -1,5 +1,8 @@
+import type { AbsenceReasonValue } from '~/constants/absenceReason'
+
 export type AttendanceStatus = 'ATTENDING' | 'PARTIAL' | 'ABSENT' | 'UNDECIDED'
-export type AbsenceReason = 'ILLNESS' | 'INJURY' | 'FAMILY' | 'OTHER'
+/** BE `AbsenceReason` と同値（constants/absenceReason.ts が正本）。 */
+export type AbsenceReason = AbsenceReasonValue
 
 export interface DailyAttendanceResponse {
   id: number
