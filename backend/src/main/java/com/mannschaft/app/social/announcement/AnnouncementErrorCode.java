@@ -72,8 +72,8 @@ public enum AnnouncementErrorCode implements ErrorCode {
     /** 対象になる人がいません（400） */
     BROADCAST_009("BROADCAST_009", "対象になる人がいません", Severity.WARN),
 
-    /** 個別に選べるチームは5,000までです。「すべてのチーム」かチームグループを使ってください（400） */
-    BROADCAST_010("BROADCAST_010", "個別に選べるチームは5,000までです。「すべてのチーム」かチームグループを使ってください", Severity.WARN),
+    /** 個別に選べるチームは500までです。「すべてのチーム」かチームグループを使ってください（400） */
+    BROADCAST_010("BROADCAST_010", "個別に選べるチームは500までです。「すべてのチーム」かチームグループを使ってください", Severity.WARN),
 
     /** チームの個別指定とチームグループ指定は同時に使えません（400） */
     BROADCAST_011("BROADCAST_011", "チームの個別指定とチームグループ指定は同時に使えません", Severity.WARN),

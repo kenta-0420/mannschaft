@@ -36,7 +36,7 @@ class OrgTeamGroupErrorCodeContractTest {
     private static final List<Spec> SPECS = List.of(
             new Spec(ORG, "ORG_064", HttpStatus.NOT_FOUND, "チームグループが見つかりません"),
             new Spec(ORG, "ORG_065", HttpStatus.CONFLICT, "同じ名前のチームグループがすでにあります"),
-            new Spec(ORG, "ORG_066", HttpStatus.UNPROCESSABLE_ENTITY, "チームグループは1組織あたり200件までです"),
+            new Spec(ORG, "ORG_066", HttpStatus.UNPROCESSABLE_ENTITY, "チームグループは1組織あたり100件までです"),
             new Spec(ORG, "ORG_067", HttpStatus.CONFLICT, "この組織ではチームグループ機能が無効です"),
             new Spec(ORG, "ORG_068", HttpStatus.CONFLICT, "チームグループの構成が変わっています。画面を更新してください"),
             new Spec(ORG, "ORG_069", HttpStatus.BAD_REQUEST, "この組織に加盟していないチームが含まれています"),
@@ -56,7 +56,7 @@ class OrgTeamGroupErrorCodeContractTest {
             new Spec(BROADCAST, "BROADCAST_008", HttpStatus.BAD_REQUEST, "範囲の指定が正しくありません（開始が終了より後ろです）"),
             new Spec(BROADCAST, "BROADCAST_009", HttpStatus.BAD_REQUEST, "対象になる人がいません"),
             new Spec(BROADCAST, "BROADCAST_010", HttpStatus.BAD_REQUEST,
-                    "個別に選べるチームは5,000までです。「すべてのチーム」かチームグループを使ってください"),
+                    "個別に選べるチームは500までです。「すべてのチーム」かチームグループを使ってください"),
             new Spec(BROADCAST, "BROADCAST_011", HttpStatus.BAD_REQUEST, "チームの個別指定とチームグループ指定は同時に使えません"),
             new Spec(BROADCAST, "BROADCAST_012", HttpStatus.BAD_REQUEST, "チームの告知ではチームグループを指定できません"),
             new Spec(BROADCAST, "BROADCAST_013", HttpStatus.BAD_REQUEST,

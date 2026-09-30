@@ -1827,7 +1827,7 @@ public class GlobalExceptionHandler {
             Map.entry("BROADCAST_003", HttpStatus.NOT_FOUND),            // 一斉配信テンプレート不在 → 404
             Map.entry("ORG_064", HttpStatus.NOT_FOUND), // F01.2.1 §11 チームグループが見つかりません
             Map.entry("ORG_065", HttpStatus.CONFLICT), // F01.2.1 §11 同じ名前のチームグループがすでにあります
-            Map.entry("ORG_066", HttpStatus.UNPROCESSABLE_ENTITY), // F01.2.1 §11 チームグループは1組織あたり200件までです
+            Map.entry("ORG_066", HttpStatus.UNPROCESSABLE_ENTITY), // F01.2.1 §11 チームグループは1組織あたり100件までです
             Map.entry("ORG_067", HttpStatus.CONFLICT), // F01.2.1 §11 この組織ではチームグループ機能が無効です
             Map.entry("ORG_068", HttpStatus.CONFLICT), // F01.2.1 §11 チームグループの構成が変わっています。画面を更新してください
             Map.entry("ORG_069", HttpStatus.BAD_REQUEST), // F01.2.1 §11 この組織に加盟していないチームが含まれています
@@ -1845,7 +1845,7 @@ public class GlobalExceptionHandler {
             Map.entry("BROADCAST_007", HttpStatus.BAD_REQUEST), // F01.2.1 §11 この組織ではチームグループ機能が無効です
             Map.entry("BROADCAST_008", HttpStatus.BAD_REQUEST), // F01.2.1 §11 範囲の指定が正しくありません（開始が終了より後ろです）
             Map.entry("BROADCAST_009", HttpStatus.BAD_REQUEST), // F01.2.1 §11 対象になる人がいません
-            Map.entry("BROADCAST_010", HttpStatus.BAD_REQUEST), // F01.2.1 §11 個別に選べるチームは5,000までです。「すべてのチーム」かチームグループを使ってください
+            Map.entry("BROADCAST_010", HttpStatus.BAD_REQUEST), // F01.2.1 §11 個別に選べるチームは500までです。「すべてのチーム」かチームグループを使ってください
             Map.entry("BROADCAST_011", HttpStatus.BAD_REQUEST), // F01.2.1 §11 チームの個別指定とチームグループ指定は同時に使えません
             Map.entry("BROADCAST_012", HttpStatus.BAD_REQUEST), // F01.2.1 §11 チームの告知ではチームグループを指定できません
             Map.entry("BROADCAST_013", HttpStatus.BAD_REQUEST), // F01.2.1 §11 テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください
