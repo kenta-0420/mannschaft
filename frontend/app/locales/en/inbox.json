@@ -29,7 +29,8 @@
       "archived": "Moved to archive",
       "unarchived": "Moved to inbox",
       "unsnoozed": "Snooze cancelled",
-      "snoozeFailed": "Failed to snooze"
+      "snoozeFailed": "Failed to snooze",
+      "readFailed": "Failed to mark the notification as read"
     },
     "snoozePreset": {
       "in3h": "In 3 hours",

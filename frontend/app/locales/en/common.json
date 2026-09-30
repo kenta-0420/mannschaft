@@ -971,7 +971,29 @@
       "title": "A TODO was passed to you",
       "body": "{from} passed \"{title}\" to you (status: {label})"
     },
-    "pageTitle": "通知",
+    "pageTitle": "Notifications",
+    "list": {
+      "all": "All",
+      "unread": "Unread",
+      "markAllRead": "Mark all as read",
+      "markUnread": "Mark as unread",
+      "markRead": "Mark as read",
+      "empty": "No notifications",
+      "loadMore": "Load more",
+      "loadError": "Failed to load notifications",
+      "actionError": "Failed to complete the action",
+      "markAllReadError": "Failed to mark all notifications as read",
+      "confirmInfoMissing": "Confirmation details are missing",
+      "invalidScope": "The scope is invalid",
+      "confirmed": "Confirmed",
+      "confirmError": "Failed to confirm"
+    },
+    "bell": {
+      "notification": "Notifications",
+      "chat": "Chat",
+      "mention": "Mentions",
+      "none": "None"
+    },
     "guide": {
       "title": "通知の使い方",
       "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
@@ -1624,6 +1646,7 @@
     "search": "Search",
     "edit": "Edit",
     "save": "Save",
+    "detail": "Details",
     "resume": {
       "title": "Resume & Work History",
       "listTitle": "Resume Versions",
@@ -1914,6 +1937,7 @@
       "gdprPurge": "GDPR Purge Status",
       "feedbackInbox": "Feedback Inbox (Global)",
       "billing": "Billing master data",
+      "priceRevisions": "Price Revisions",
       "betaPerks": "Beta perk management",
       "villageCreationRequests": "Village Creation Requests",
       "seasonalWallpapers": "Seasonal Wallpapers",
@@ -2688,7 +2712,28 @@
     }
   },
   "loadErrorState": {
-    "message": "Failed to load data",
+    "states": {
+      "generic": {
+        "title": "We can't load the data right now",
+        "message": "This may be a temporary issue. Please wait a moment and try again."
+      },
+      "forbidden": {
+        "title": "This page isn't available for this account",
+        "message": "If you need access, please check with an administrator."
+      },
+      "notFoundOrForbidden": {
+        "title": "We couldn't display what you're looking for",
+        "message": "It may no longer be available, or its visibility may have changed."
+      },
+      "network": {
+        "title": "It looks like the connection didn't work",
+        "message": "Please check your internet connection and try again."
+      },
+      "server": {
+        "title": "We can't load the data right now",
+        "message": "This may be a temporary issue. Please wait a moment and try again."
+      }
+    },
     "retry": "Retry"
   },
   "searchBar": {

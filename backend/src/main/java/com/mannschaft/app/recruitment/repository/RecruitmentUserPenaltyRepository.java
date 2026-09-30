@@ -18,12 +18,16 @@ import java.util.Optional;
  */
 public interface RecruitmentUserPenaltyRepository extends JpaRepository<RecruitmentUserPenaltyEntity, Long> {
 
+    /** 異なる発動元の ALL_SCOPES 判定もユーザー単位で直列化する。 */
+    @Query(value = "SELECT id FROM users WHERE id = :userId FOR UPDATE", nativeQuery = true)
+    Long lockUserForPenalty(@Param("userId") Long userId);
+
     /** アクティブペナルティの取得（liftedAt IS NULL かつ expiresAt 未来）。 */
     @Query("""
             SELECT p FROM RecruitmentUserPenaltyEntity p
             WHERE p.userId = :userId
               AND p.scopeType = :scopeType
-              AND p.scopeId = :scopeId
+              AND ((:scopeId IS NULL AND p.scopeId IS NULL) OR p.scopeId = :scopeId)
               AND p.liftedAt IS NULL
               AND p.expiresAt > :now
             """)
@@ -39,11 +43,37 @@ public interface RecruitmentUserPenaltyRepository extends JpaRepository<Recruitm
             SELECT p FROM RecruitmentUserPenaltyEntity p
             WHERE p.userId = :userId
               AND p.scopeType = :scopeType
-              AND p.scopeId = :scopeId
+              AND ((:scopeId IS NULL AND p.scopeId IS NULL) OR p.scopeId = :scopeId)
               AND p.liftedAt IS NULL
               AND p.expiresAt > :now
             """)
     Optional<RecruitmentUserPenaltyEntity> findActivePenaltyForUpdate(
+            @Param("userId") Long userId,
+            @Param("scopeType") RecruitmentScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("now") LocalDateTime now);
+
+    /** 一意制約上の未解除行を取得。期限切れ行は新規発動の前に解除する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT p FROM RecruitmentUserPenaltyEntity p
+            WHERE p.userId = :userId AND p.scopeType = :scopeType
+              AND ((:scopeId IS NULL AND p.scopeId IS NULL) OR p.scopeId = :scopeId)
+              AND p.liftedAt IS NULL
+            """)
+    Optional<RecruitmentUserPenaltyEntity> findUnliftedPenaltyForUpdate(
+            @Param("userId") Long userId,
+            @Param("scopeType") RecruitmentScopeType scopeType,
+            @Param("scopeId") Long scopeId);
+
+    /** 申込先に適用される全ペナルティが消える時刻。該当行がなければ null。 */
+    @Query("""
+            SELECT MAX(p.expiresAt) FROM RecruitmentUserPenaltyEntity p
+            WHERE p.userId = :userId AND p.liftedAt IS NULL AND p.expiresAt > :now
+              AND (p.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.GLOBAL
+                   OR (p.scopeType = :scopeType AND p.scopeId = :scopeId))
+            """)
+    LocalDateTime findApplicableActivePenaltyExpiry(
             @Param("userId") Long userId,
             @Param("scopeType") RecruitmentScopeType scopeType,
             @Param("scopeId") Long scopeId,
@@ -89,8 +119,11 @@ public interface RecruitmentUserPenaltyRepository extends JpaRepository<Recruitm
     /** スコープ内のアクティブペナルティ一覧（管理者用）。 */
     @Query("""
             SELECT p FROM RecruitmentUserPenaltyEntity p
-            WHERE p.scopeType = :scopeType
-              AND p.scopeId = :scopeId
+            WHERE ((p.scopeType = :scopeType AND p.scopeId = :scopeId)
+                 OR (p.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.GLOBAL
+                     AND p.triggeredBySettingId IN
+                         (SELECT s.id FROM RecruitmentPenaltySettingEntity s
+                          WHERE s.scopeType = :scopeType AND s.scopeId = :scopeId)))
               AND p.liftedAt IS NULL
               AND p.expiresAt > :now
             ORDER BY p.createdAt DESC

@@ -971,7 +971,29 @@
       "title": "Aufgabe wurde weitergegeben",
       "body": "{from} hat \"{title}\" an dich weitergegeben (Status: {label})"
     },
-    "pageTitle": "通知",
+    "pageTitle": "Benachrichtigungen",
+    "list": {
+      "all": "Alle",
+      "unread": "Ungelesen",
+      "markAllRead": "Alle als gelesen markieren",
+      "markUnread": "Als ungelesen markieren",
+      "markRead": "Als gelesen markieren",
+      "empty": "Keine Benachrichtigungen",
+      "loadMore": "Mehr laden",
+      "loadError": "Benachrichtigungen konnten nicht geladen werden",
+      "actionError": "Aktion fehlgeschlagen",
+      "markAllReadError": "Nicht alle Benachrichtigungen konnten als gelesen markiert werden",
+      "confirmInfoMissing": "Angaben zur Bestätigung fehlen",
+      "invalidScope": "Der Bereich ist ungültig",
+      "confirmed": "Bestätigt",
+      "confirmError": "Bestätigung fehlgeschlagen"
+    },
+    "bell": {
+      "notification": "Benachrichtigungen",
+      "chat": "Chat",
+      "mention": "Erwähnungen",
+      "none": "Keine"
+    },
     "guide": {
       "title": "通知の使い方",
       "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
@@ -1624,6 +1646,7 @@
     "search": "Suchen",
     "edit": "Bearbeiten",
     "save": "Speichern",
+    "detail": "Details",
     "resume": {
       "title": "Lebenslauf und Berufserfahrung",
       "listTitle": "Lebenslauf-Versionen",
@@ -1914,6 +1937,7 @@
       "gdprPurge": "DSGVO Bereinigungsstatus",
       "feedbackInbox": "Feedback-Posteingang (Global)",
       "billing": "Abrechnungs-Stammdaten",
+      "priceRevisions": "Preisänderungen",
       "betaPerks": "ベータ特典管理",
       "villageCreationRequests": "村作成申請",
       "seasonalWallpapers": "季節壁紙",
@@ -2688,7 +2712,28 @@
     }
   },
   "loadErrorState": {
-    "message": "Daten konnten nicht geladen werden",
+    "states": {
+      "generic": {
+        "title": "Die Daten können derzeit nicht geladen werden",
+        "message": "Möglicherweise liegt ein vorübergehendes Problem vor. Bitte warten Sie einen Moment und versuchen Sie es erneut."
+      },
+      "forbidden": {
+        "title": "Diese Seite ist für dieses Konto nicht verfügbar",
+        "message": "Wenn Sie Zugriff benötigen, wenden Sie sich bitte an die Administration."
+      },
+      "notFoundOrForbidden": {
+        "title": "Die gesuchten Informationen konnten nicht angezeigt werden",
+        "message": "Sie sind möglicherweise nicht mehr verfügbar oder ihre Sichtbarkeit hat sich geändert."
+      },
+      "network": {
+        "title": "Die Verbindung scheint nicht funktioniert zu haben",
+        "message": "Bitte prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut."
+      },
+      "server": {
+        "title": "Die Daten können derzeit nicht geladen werden",
+        "message": "Möglicherweise liegt ein vorübergehendes Problem vor. Bitte warten Sie einen Moment und versuchen Sie es erneut."
+      }
+    },
     "retry": "Wiederholen"
   },
   "searchBar": {

@@ -10,6 +10,8 @@ import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequired
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.recruitment.RecruitmentPenaltyActiveException;
+import com.mannschaft.app.recruitment.dto.RecruitmentPenaltyActiveErrorResponse;
 import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
@@ -1799,6 +1801,7 @@ public class GlobalExceptionHandler {
             // F03.11 市（募集）§5.2 / §17.5: 未払いのキャンセル料が残っている状態での申込は
             // 設計書が 402 Payment Required を契約として明示している（未払い決済リンクを返す前提）。
             // Severity.ERROR 既定の 500 のままでは「サーバ障害」に見え、支払い導線に繋がらなかった。
+            Map.entry("RECRUITMENT_300", HttpStatus.FORBIDDEN),          // PENALTY_ACTIVE（募集ペナルティによる申込ブロック）
             Map.entry("RECRUITMENT_301", HttpStatus.PAYMENT_REQUIRED),   // CANCELLATION_PAYMENT_FAILED（未払いキャンセル料による申込ブロック）
             // ─────────────────────────────────────────────────────────────
             // 宣言と実挙動の一致（2026-07-30・#2468 / 番人 ErrorCodeHttpStatusDeclarationGuardTest）
@@ -1822,6 +1825,30 @@ public class GlobalExceptionHandler {
             Map.entry("ANNOUNCE_009", HttpStatus.FORBIDDEN),             // テンプレート操作権限なし → 403
             Map.entry("ANNOUNCE_010", HttpStatus.CONFLICT),              // テンプレート上限超過 → 409
             Map.entry("BROADCAST_003", HttpStatus.NOT_FOUND),            // 一斉配信テンプレート不在 → 404
+            Map.entry("ORG_064", HttpStatus.NOT_FOUND), // F01.2.1 §11 チームグループが見つかりません
+            Map.entry("ORG_065", HttpStatus.CONFLICT), // F01.2.1 §11 同じ名前のチームグループがすでにあります
+            Map.entry("ORG_066", HttpStatus.UNPROCESSABLE_ENTITY), // F01.2.1 §11 チームグループは1組織あたり100件までです
+            Map.entry("ORG_067", HttpStatus.CONFLICT), // F01.2.1 §11 この組織ではチームグループ機能が無効です
+            Map.entry("ORG_068", HttpStatus.CONFLICT), // F01.2.1 §11 チームグループの構成が変わっています。画面を更新してください
+            Map.entry("ORG_069", HttpStatus.BAD_REQUEST), // F01.2.1 §11 この組織に加盟していないチームが含まれています
+            Map.entry("ORG_070", HttpStatus.UNPROCESSABLE_ENTITY), // F01.2.1 §11 グループ選択を必須にするには、グループ機能を有効にしてグループを1件以上作成してください
+            Map.entry("TEAM_064", HttpStatus.FORBIDDEN), // F01.2.1 §11 この組織はチームからの加盟申請を受け付けていません
+            Map.entry("TEAM_065", HttpStatus.CONFLICT), // F01.2.1 §11 このチームはすでにこの組織に加盟しています
+            Map.entry("TEAM_066", HttpStatus.CONFLICT), // F01.2.1 §11 このチームとこの組織の間には、処理中の申請または招待があります
+            Map.entry("TEAM_067", HttpStatus.BAD_REQUEST), // F01.2.1 §11 この組織への申請にはチームグループの選択が必要です
+            Map.entry("TEAM_068", HttpStatus.FORBIDDEN), // F01.2.1 §11 現在この組織には申請（招待）できません
+            Map.entry("TEAM_069", HttpStatus.UNPROCESSABLE_ENTITY), // F01.2.1 §11 同時に申請できる組織は10件までです
+            Map.entry("TEAM_070", HttpStatus.NOT_FOUND), // F01.2.1 §11 申請・招待・加盟が見つかりません
+            Map.entry("TEAM_071", HttpStatus.CONFLICT), // F01.2.1 §11 この申請・招待はすでに処理されています
+            Map.entry("TEAM_072", HttpStatus.BAD_REQUEST), // F01.2.1 §11 指定したチームグループは選択できません
+            Map.entry("BROADCAST_006", HttpStatus.BAD_REQUEST), // F01.2.1 §11 指定したチームグループは選択できません
+            Map.entry("BROADCAST_007", HttpStatus.BAD_REQUEST), // F01.2.1 §11 この組織ではチームグループ機能が無効です
+            Map.entry("BROADCAST_008", HttpStatus.BAD_REQUEST), // F01.2.1 §11 範囲の指定が正しくありません（開始が終了より後ろです）
+            Map.entry("BROADCAST_009", HttpStatus.BAD_REQUEST), // F01.2.1 §11 対象になる人がいません
+            Map.entry("BROADCAST_010", HttpStatus.BAD_REQUEST), // F01.2.1 §11 個別に選べるチームは500までです。「すべてのチーム」かチームグループを使ってください
+            Map.entry("BROADCAST_011", HttpStatus.BAD_REQUEST), // F01.2.1 §11 チームの個別指定とチームグループ指定は同時に使えません
+            Map.entry("BROADCAST_012", HttpStatus.BAD_REQUEST), // F01.2.1 §11 チームの告知ではチームグループを指定できません
+            Map.entry("BROADCAST_013", HttpStatus.BAD_REQUEST), // F01.2.1 §11 テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください
             // 405 は handleMethodNotSupported が直接返しており本表を経由しないが、
             // BusinessException 経路で投げられた場合にも宣言どおり 405 になるよう登録する
             //（兄弟の COMMON_005 も同じ理由で登録済み）。
@@ -2556,6 +2583,14 @@ public class GlobalExceptionHandler {
      * 個別マッピングが存在しないか 500 を返す場合）のみ error_reports に severity=MEDIUM で
      * 記録する。4xx を返す通常の業務エラーは記録しない（設計書 §5.2）。</p>
      */
+    @ExceptionHandler(RecruitmentPenaltyActiveException.class)
+    public ResponseEntity<RecruitmentPenaltyActiveErrorResponse> handleRecruitmentPenaltyActive(
+            RecruitmentPenaltyActiveException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new RecruitmentPenaltyActiveErrorResponse(
+                        ex.getErrorCode().getCode(), resolveMessage(ex.getErrorCode()), ex.getExpiresAt()));
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex,
                                                                   HttpServletRequest request) {

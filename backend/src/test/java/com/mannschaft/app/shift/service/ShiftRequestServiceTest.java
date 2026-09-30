@@ -208,7 +208,7 @@ class ShiftRequestServiceTest {
             // Given
             ShiftRequestEntity entity = createRequestEntity();
             ShiftRequestResponse response = createRequestResponse();
-            given(requestRepository.findByUserIdOrderBySlotDateDesc(USER_ID))
+            given(requestRepository.findHistoryByUserIdIncludingDeleted(USER_ID))
                     .willReturn(List.of(entity));
             given(shiftMapper.toRequestResponseList(List.of(entity)))
                     .willReturn(List.of(response));
@@ -239,7 +239,7 @@ class ShiftRequestServiceTest {
             ShiftRequestEntity savedEntity = createRequestEntity();
             ShiftRequestResponse response = createRequestResponse();
 
-            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.empty());
@@ -261,7 +261,7 @@ class ShiftRequestServiceTest {
             CreateShiftRequestRequest req = new CreateShiftRequestRequest(
                     SCHEDULE_ID, null, LocalDate.of(2026, 3, 2), "PREFERRED", null);
             ShiftScheduleEntity schedule = createDraftSchedule();
-            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
 
             // When & Then
             assertThatThrownBy(() -> shiftRequestService.submitRequest(req, USER_ID))
@@ -277,7 +277,7 @@ class ShiftRequestServiceTest {
             CreateShiftRequestRequest req = new CreateShiftRequestRequest(
                     SCHEDULE_ID, null, LocalDate.of(2026, 3, 2), "PREFERRED", null);
             ShiftScheduleEntity schedule = createExpiredSchedule();
-            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
 
             // When & Then
             assertThatThrownBy(() -> shiftRequestService.submitRequest(req, USER_ID))
@@ -297,7 +297,7 @@ class ShiftRequestServiceTest {
             ShiftScheduleEntity schedule = createCollectingSchedule();
             ShiftRequestEntity existing = createRequestEntity();
 
-            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.of(existing));
@@ -328,7 +328,7 @@ class ShiftRequestServiceTest {
             ShiftRequestResponse response = createRequestResponse();
 
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
-            given(scheduleService.findSchedule(entity.getScheduleId())).willReturn(Optional.of(schedule));
+            given(scheduleService.findScheduleForUpdate(entity.getScheduleId())).willReturn(Optional.of(schedule));
             given(requestRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toRequestResponse(entity)).willReturn(response);
 
@@ -362,19 +362,20 @@ class ShiftRequestServiceTest {
     class DeleteRequest {
 
         @Test
-        @DisplayName("シフト希望削除_正常_deleteが呼ばれる")
-        void シフト希望削除_正常_deleteが呼ばれる() {
+        @DisplayName("シフト希望削除_正常_WITHDRAWNで論理削除される")
+        void シフト希望削除_正常_論理削除が呼ばれる() {
             // Given
             ShiftRequestEntity entity = createRequestEntity();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
-            given(scheduleService.findSchedule(entity.getScheduleId()))
+            given(scheduleService.findScheduleForUpdate(entity.getScheduleId()))
                     .willReturn(Optional.of(createCollectingSchedule()));
 
             // When
             shiftRequestService.deleteRequest(REQUEST_ID, USER_ID);
 
             // Then
-            verify(requestRepository).delete(entity);
+            verify(requestRepository).softDeleteById(REQUEST_ID);
+            verify(requestRepository, never()).delete(entity);
         }
 
         @Test
@@ -383,14 +384,14 @@ class ShiftRequestServiceTest {
             // Given
             ShiftRequestEntity entity = createRequestEntity();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
-            given(scheduleService.findSchedule(entity.getScheduleId())).willReturn(Optional.empty());
+            given(scheduleService.findScheduleForUpdate(entity.getScheduleId())).willReturn(Optional.empty());
 
             // When & Then
             assertThatThrownBy(() -> shiftRequestService.deleteRequest(REQUEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
                             .isEqualTo(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
-            verify(requestRepository, never()).delete(entity);
+            verify(requestRepository, never()).softDeleteById(any());
         }
 
         @Test
