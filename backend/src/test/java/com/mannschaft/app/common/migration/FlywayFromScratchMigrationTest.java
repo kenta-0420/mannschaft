@@ -138,7 +138,7 @@ class FlywayFromScratchMigrationTest {
      *       （旧 3 件・2026-09-29 に CMP-260924-0010 で返済）</b> —
      *       V9.175 のコメントは「V9.171 で追加済み」と書いているが、
      *       V9.171 は {@code create_name_disclosure_change_logs} で無関係。実際にはどこにも存在しなかった。
-     *       V228（{@code add_skip_columns_to_circulation_recipients}）で列を追加した。</li>
+     *       V230（{@code add_skip_columns_to_circulation_recipients}）で列を追加した。</li>
      *   <li><b>{@code tournament_entry_members.member_number}・
      *       {@code tournament_entry_template_members.created_at/updated_at}（旧 4 件・うち
      *       {@code content_reports.content_hidden} は 2026-09-22 に CMP-260920-0705 で返済、
@@ -147,7 +147,7 @@ class FlywayFromScratchMigrationTest {
      *       {@code content_reports.content_hidden} は本番相当環境で
      *       {@code Unknown column 'cre1_0.content_hidden'} により運営の通報一覧
      *       {@code GET /api/v1/admin/moderation/reports} が常時 500 になっており、
-     *       V220 で列を追加して台帳から削除した。残る 3 件は V228 で列を追加した。</li>
+     *       V220 で列を追加して台帳から削除した。残る 3 件は V230 で列を追加した。</li>
      *   <li><b>{@code shift_budget_allocations} の {@code *_uq}（旧 3 件・2026-09-09 に返済）</b> —
      *       Entity が {@code @GeneratedColumn} で生成カラムを宣言していたが、Flyway（V11.030）は
      *       MySQL 8.0 の制約（FK ベースカラムに STORED 生成カラム不可、Error 3192）により
@@ -161,7 +161,7 @@ class FlywayFromScratchMigrationTest {
      *       {@link com.mannschaft.app.common.BaseEntity} は全継承 Entity に
      *       {@code createdAt} / {@code updatedAt} を持たせ、{@code @PrePersist} /
      *       {@code @PreUpdate} で必ず書き込むが、これらのテーブルの CREATE TABLE は
-     *       片方または両方を作っていなかった。V228（{@code add_missing_base_entity_timestamps}）で
+     *       片方または両方を作っていなかった。V230（{@code add_missing_base_entity_timestamps}）で
      *       列を追加し、既存行は元の日時列（{@code created_at} / {@code recorded_at} / {@code voted_at}）
      *       から埋め戻した。{@code committee_distribution_logs} の Entity が
      *       {@code updated_at} を {@code @AttributeOverride} で書き込み不可にしていた回避策も撤去した。</li>
@@ -373,7 +373,7 @@ class FlywayFromScratchMigrationTest {
     }
 
     // ==================================================================
-    // 凍結台帳 22 列の返済 migration（V228・CMP-260924-0010）の番人
+    // 凍結台帳 22 列の返済 migration（V230・CMP-260924-0010）の番人
     // 既存データ経路の検査は migrate 中の Callback（UnpaidDriftRepaymentFixture）が行い、
     // ここでは AC ごとにその結果を報告する。最終スキーマを要する検査はここで直接行う。
     // ==================================================================
@@ -399,7 +399,7 @@ class FlywayFromScratchMigrationTest {
 
     @Test
     @Order(12)
-    @DisplayName("返済AC-5a: 途中まで列が足された状態から完遂し、V228 の3本を再実行しても成功して列定義と値が変わらない")
+    @DisplayName("返済AC-5a: 途中まで列が足された状態から完遂し、V230 の3本を再実行しても成功して列定義と値が変わらない")
     void 返済migrationは途中状態からも再実行でも完遂する() throws Throwable {
         migrateFromScratch();
         UnpaidDriftRepaymentFixture.assertPassed("AC-5a");
@@ -521,7 +521,7 @@ class FlywayFromScratchMigrationTest {
     @DisplayName("返済AC-7c: 返済前から在る回覧受信者行の skip 系3列は null のまま、Entity でも読める")
     void 既存の回覧受信者行はskip系3列がnullのまま読める() throws Throwable {
         migrateFromScratch();
-        // V228 適用直後に、返済前にシードした行で検査済み（シード行は検査後に削除される）
+        // V230 適用直後に、返済前にシードした行で検査済み（シード行は検査後に削除される）
         UnpaidDriftRepaymentFixture.assertPassed("AC-7c");
 
         // 最終スキーマでも、返済前の列だけで書かれた行（skip 系 3 列を知らない INSERT）を Entity で読める
@@ -614,7 +614,7 @@ class FlywayFromScratchMigrationTest {
     /**
      * 本番の fresh 構築と同条件（out-of-order 無効）で全マイグレーションを適用する。冪等。
      *
-     * <p>{@link UnpaidDriftRepaymentFixture} を Callback として登録し、V228（返済 migration）の
+     * <p>{@link UnpaidDriftRepaymentFixture} を Callback として登録し、V230（返済 migration）の
      * 直前に既存行をシード・直後に既存データ経路を検査する（初回の from-scratch 適用でだけ発火する）。</p>
      */
     private static MigrateResult migrateFromScratch() {

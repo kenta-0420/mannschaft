@@ -40,7 +40,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 凍結台帳 {@code KNOWN_UNPAID_DRIFT} 22 列の返済 migration（V228 の 3 本・CMP-260924-0010）を
+ * 凍結台帳 {@code KNOWN_UNPAID_DRIFT} 22 列の返済 migration（V230 の 3 本・CMP-260924-0010）を
  * <b>既存データのある DB</b> で検証するための仕掛け。検証メソッド本体は
  * {@link FlywayFromScratchMigrationTest} にあり、本クラスはテストクラスではない（コンテナを持たない）。
  *
@@ -54,7 +54,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       「返済前から在る行」をシードし、一部の列を番兵値つきで先に足した「途中状態」を作る。</li>
  *   <li>{@link Event#AFTER_EACH_MIGRATE} で対象が U3（最後の返済 migration）のとき、
  *       埋め戻し（AC-4）・番兵の保護（AC-5b）・既存回覧行（AC-7c）を検査し、
- *       V228 の 3 本だけを同じスキーマへ再実行して定義と値が変わらないこと（AC-5a）を検査する。</li>
+ *       V230 の 3 本だけを同じスキーマへ再実行して定義と値が変わらないこと（AC-5a）を検査する。</li>
  *   <li>検査後、シード行を削除する。シード行は外部キー検査を切って入れた（親行の無い）行なので、
  *       残すと後発 migration（将来の FK 追加など）を無関係に落としうるため。</li>
  * </ol>
@@ -66,11 +66,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 final class UnpaidDriftRepaymentFixture implements Callback {
 
     /** U1 回覧受信者のスキップ 3 列。返済 migration 3 本のうち最初のもの。 */
-    static final String U1_VERSION = "228.20260929072008";
+    static final String U1_VERSION = "230.20260929233203";
     /** U2 大会エントリーメンバーの列。 */
-    static final String U2_VERSION = "228.20260929072009";
+    static final String U2_VERSION = "230.20260929233204";
     /** U3 BaseEntity 系 15 テーブルの created_at / updated_at。最後のもの。 */
-    static final String U3_VERSION = "228.20260929072010";
+    static final String U3_VERSION = "230.20260929233205";
 
     /** シード行の元日時（DEFAULT CURRENT_TIMESTAMP と区別できる過去の固定値）。 */
     static final String SEED_CREATED_AT = "2020-01-02 03:04:05";
@@ -193,7 +193,7 @@ final class UnpaidDriftRepaymentFixture implements Callback {
     static void assertPassed(String ac) throws Throwable {
         assertThat(FAILURES.get("seed")).as("既存行のシード・途中状態の作成に失敗していないこと").isNull();
         assertThat(seeded && verified)
-                .as("V228 の適用前後で検査が実際に走ったこと（Callback が一度も発火しなければ偽 green になる）")
+                .as("V230 の適用前後で検査が実際に走ったこと（Callback が一度も発火しなければ偽 green になる）")
                 .isTrue();
         Throwable failure = FAILURES.get(ac);
         if (failure != null) {
@@ -275,7 +275,7 @@ final class UnpaidDriftRepaymentFixture implements Callback {
     }
 
     // ==================================================================
-    // V228 適用直後の検査
+    // V230 適用直後の検査
     // ==================================================================
 
     /** AC-4: 既存行の新列が元の日時列から埋め戻されている。 */
@@ -328,7 +328,7 @@ final class UnpaidDriftRepaymentFixture implements Callback {
                 .as("circulation_recipients の既存行の skip 系 3 列は NULL").isEqualTo(1L);
     }
 
-    /** AC-5a: 全列が在る状態から V228 の 3 本だけを再実行しても成功し、定義と値が変わらない。 */
+    /** AC-5a: 全列が在る状態から V230 の 3 本だけを再実行しても成功し、定義と値が変わらない。 */
     private static void rerunRepaymentMigrations(Connection conn) throws Exception {
         for (String key : REPAID_COLUMNS) {
             String[] tc = key.split("\\.");
