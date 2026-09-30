@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <h2>方式</h2>
  * <p>通常の IT は Entity から Hibernate がスキーマを作る（Flyway 無効）ため、関数インデックスは存在しない。
  * そこで Spring を起動せず、{@code announcement_feeds} の最小スタブに<b>本物のマイグレーション SQL</b>
- * （V19.002 と V230 の feed 追加分）を流し、その実インデックスに対して実測する。</p>
+ * （V19.002 と V233 の feed 追加分）を流し、その実インデックスに対して実測する。</p>
  *
  * <h2>実測の結果（mysql:8.0 / innodb_page_size=16384）</h2>
  * <ul>
@@ -274,9 +274,9 @@ class AnnouncementMultiValuedIndexLimitIT {
     private static String findMigrationName(String descriptionPart) throws IOException {
         try (Stream<Path> files = Files.list(migrationDir())) {
             List<String> names = files.map(p -> p.getFileName().toString())
-                    .filter(n -> n.startsWith("V230.") && n.contains(descriptionPart))
+                    .filter(n -> n.startsWith("V233.") && n.contains(descriptionPart))
                     .toList();
-            assertThat(names).as("V230 の " + descriptionPart + " マイグレーションが1件あること").hasSize(1);
+            assertThat(names).as("V233 の " + descriptionPart + " マイグレーションが1件あること").hasSize(1);
             return names.get(0);
         }
     }
