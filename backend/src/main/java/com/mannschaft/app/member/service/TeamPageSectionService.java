@@ -20,11 +20,16 @@ import java.util.List;
 
 /**
  * ページセクションサービス。セクションのCRUDを担当する。
+ *
+ * <p><b>TX 境界（PR #3387 D-3T 根治）</b>: クラス単位の {@code @Transactional} を付けない。閲覧系メソッドは
+ * 他ドメインの権限確認（{@code AccessControlService}）を読むので、member の TX の外で走らせる
+ * （付けると権限確認が member の TX に入り、D-3T が赤になる）。書き込みメソッドは必ずメソッド単位の
+ * {@code @Transactional} を持つこと。閲覧で生じる短い隙の扱いは
+ * docs/features/F06.6_member_subtab_visibility.md「TX 境界とレース」節を参照。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class TeamPageSectionService {
 
     private final TeamPageSectionRepository sectionRepository;

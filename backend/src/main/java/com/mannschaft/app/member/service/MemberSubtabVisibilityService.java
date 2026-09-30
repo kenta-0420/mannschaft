@@ -1,15 +1,11 @@
 package com.mannschaft.app.member.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
-import com.mannschaft.app.member.MemberErrorCode;
 import com.mannschaft.app.member.MemberSubtabDefaultMinRoleMap;
 import com.mannschaft.app.member.MemberSubtabKey;
 import com.mannschaft.app.member.dto.MemberSubtabUpdatedByDto;
@@ -17,19 +13,17 @@ import com.mannschaft.app.member.dto.MemberSubtabVisibilityItemDto;
 import com.mannschaft.app.member.dto.MemberSubtabVisibilityResponse;
 import com.mannschaft.app.member.dto.UpdateMemberSubtabVisibilityRequest;
 import com.mannschaft.app.member.entity.MemberSubtabRoleVisibilityEntity;
+import com.mannschaft.app.member.event.MemberSubtabVisibilityUpdatedEvent;
 import com.mannschaft.app.member.repository.MemberSubtabRoleVisibilityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -50,25 +44,30 @@ import java.util.Set;
  *       さらに ADMIN または {@code MEMBER_SUBTAB_VISIBILITY_MANAGE} パーミッション保有を要求</li>
  * </ol>
  *
+ * <p><b>TX 境界（PR #3387 D-3T 根治）</b>: 本クラスは TX を持たない段取り役である。権限確認
+ * （{@link AccessControlService}）と表示名の解決（{@link NameResolverService}）は他ドメインの読み取りなので、
+ * member の TX の外で行う。設定の書き込みだけを {@link MemberSubtabVisibilityWriter#applyUpdates} の TX に
+ * 閉じ込め、監査はそこから発行するイベントで AFTER_COMMIT に記録する。クラス単位の
+ * {@code @Transactional} を付けてはならない（付けると D-3T が再び赤になる）。
+ * 閲覧で生じる短い隙の扱いは設計書「TX 境界とレース」節を参照。</p>
+ *
  * <p>設計書: docs/features/F06.6_member_subtab_visibility.md §4, §5, §7</p>
  */
 @Slf4j
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class MemberSubtabVisibilityService {
 
-    /** 監査ログのイベント種別 */
-    public static final String AUDIT_EVENT_TYPE = "MEMBER_SUBTAB_VISIBILITY_UPDATED";
+    /** 監査ログのイベント種別（{@link MemberSubtabVisibilityUpdatedEvent#AUDIT_EVENT_TYPE} と同じ値） */
+    public static final String AUDIT_EVENT_TYPE = MemberSubtabVisibilityUpdatedEvent.AUDIT_EVENT_TYPE;
 
     /** サブタブ可視性管理パーミッション名 */
     public static final String PERMISSION_NAME = "MEMBER_SUBTAB_VISIBILITY_MANAGE";
 
     private final MemberSubtabRoleVisibilityRepository repository;
     private final AccessControlService accessControlService;
-    private final AuditLogService auditLogService;
     private final NameResolverService nameResolverService;
-    private final ObjectMapper objectMapper;
+    private final MemberSubtabVisibilityWriter writer;
 
     // ─────────────────────────────────────────────
     // GET: 設定一覧取得
@@ -84,14 +83,24 @@ public class MemberSubtabVisibilityService {
                 || !accessControlService.hasRoleOrAbove(currentUserId, scopeId, scopeType.name(), "MEMBER")) {
             return buildDefaultResponse(scopeType, scopeId);
         }
-        return buildResponse(scopeType, scopeId);
+        MemberSubtabVisibilitySnapshot snapshot =
+                MemberSubtabVisibilitySnapshot.of(repository.findByScopeTypeAndScopeId(scopeType, scopeId));
+        return buildResponse(scopeType, scopeId, snapshot, resolveUpdaterNames(snapshot, null));
     }
 
     // ─────────────────────────────────────────────
     // PUT: 一括更新
     // ─────────────────────────────────────────────
 
-    @Transactional
+    /**
+     * 一括更新。順序は「引数検証 → 権限確認（TX 外）→ 表示名の先読み（TX 外・書き込み前）→
+     * writer の TX で書き込み → メモリ上で応答を組み立て」。
+     *
+     * <p>表示名は書き込みの<b>前</b>に引く。名前解決が失敗すれば何も保存していないので「5xx・変更なし」になり、
+     * コミット後に失敗しうる I/O を置かない（「保存済みなのに 5xx」を起こさない）。先読みから書き込みまでの間に
+     * 別の管理者が更新して新しい更新者が現れた場合、その表示名は {@code null} になる（名前を解決できない
+     * 利用者と同じ扱い）。</p>
+     */
     public MemberSubtabVisibilityResponse updateSettings(Long currentUserId,
                                                            ScopeType scopeType,
                                                            Long scopeId,
@@ -114,16 +123,17 @@ public class MemberSubtabVisibilityService {
             checkUpdatePermission(currentUserId, scopeId, scopeType.name());
         }
 
-        List<Map<String, Object>> changes = new ArrayList<>();
-        for (UpdateMemberSubtabVisibilityRequest.SubtabVisibilityUpdateItem update : request.getSubtabs()) {
-            applyOneUpdate(scopeType, scopeId, currentUserId, update, changes);
-        }
+        // 表示名の先読み（TX 外・書き込み前）: 既存の更新者＋今回の更新者（書き込み後は自分が更新者になる）
+        MemberSubtabVisibilitySnapshot before =
+                MemberSubtabVisibilitySnapshot.of(repository.findByScopeTypeAndScopeId(scopeType, scopeId));
+        Map<Long, String> displayNames = resolveUpdaterNames(before, currentUserId);
 
-        if (!changes.isEmpty()) {
-            recordAuditLog(scopeType, scopeId, currentUserId, changes);
-        }
+        // 書き込み（member の TX はここだけ。途中の 422 等で丸ごと取り消される）
+        MemberSubtabVisibilitySnapshot after =
+                writer.applyUpdates(scopeType, scopeId, currentUserId, request.getSubtabs());
 
-        return buildResponse(scopeType, scopeId);
+        // コミット後は応答用の DB アクセスをしない（メモリ上だけで組み立てる）
+        return buildResponse(scopeType, scopeId, after, displayNames);
     }
 
     // ─────────────────────────────────────────────
@@ -206,36 +216,45 @@ public class MemberSubtabVisibilityService {
                 .build();
     }
 
-    private MemberSubtabVisibilityResponse buildResponse(ScopeType scopeType, Long scopeId) {
-        List<MemberSubtabRoleVisibilityEntity> entities = repository.findByScopeTypeAndScopeId(scopeType, scopeId);
-        Map<String, MemberSubtabRoleVisibilityEntity> dbMap = new HashMap<>();
+    /**
+     * スナップショット中の更新者（＋ {@code extraUserId}）の表示名を1回で解決する。対象が無ければ呼ばない。
+     */
+    private Map<Long, String> resolveUpdaterNames(MemberSubtabVisibilitySnapshot snapshot, Long extraUserId) {
         Set<Long> updaterIds = new HashSet<>();
-        for (MemberSubtabRoleVisibilityEntity e : entities) {
-            dbMap.put(e.getSubtabKey(), e);
-            if (e.getUpdatedBy() != null) {
-                updaterIds.add(e.getUpdatedBy());
+        for (MemberSubtabVisibilitySnapshot.Row row : snapshot.rows()) {
+            if (row.updatedBy() != null) {
+                updaterIds.add(row.updatedBy());
             }
         }
+        if (extraUserId != null) {
+            updaterIds.add(extraUserId);
+        }
+        return updaterIds.isEmpty() ? Map.of() : nameResolverService.resolveUserDisplayNames(updaterIds);
+    }
 
-        Map<Long, String> displayNames = updaterIds.isEmpty()
-                ? Map.of()
-                : nameResolverService.resolveUserDisplayNames(updaterIds);
+    private static MemberSubtabVisibilityResponse buildResponse(ScopeType scopeType, Long scopeId,
+                                                                MemberSubtabVisibilitySnapshot snapshot,
+                                                                Map<Long, String> displayNames) {
+        Map<String, MemberSubtabVisibilitySnapshot.Row> dbMap = new HashMap<>();
+        for (MemberSubtabVisibilitySnapshot.Row row : snapshot.rows()) {
+            dbMap.put(row.subtabKey(), row);
+        }
 
         List<MemberSubtabVisibilityItemDto> subtabs = new ArrayList<>();
         for (Map.Entry<MemberSubtabKey, MinRole> entry : MemberSubtabDefaultMinRoleMap.getDefaults().entrySet()) {
             MemberSubtabKey key = entry.getKey();
-            MemberSubtabRoleVisibilityEntity dbEntity = dbMap.get(key.getDbValue());
-            if (dbEntity != null) {
+            MemberSubtabVisibilitySnapshot.Row dbRow = dbMap.get(key.getDbValue());
+            if (dbRow != null) {
                 MemberSubtabUpdatedByDto updatedBy = MemberSubtabUpdatedByDto.builder()
-                        .id(dbEntity.getUpdatedBy())
-                        .displayName(displayNames.getOrDefault(dbEntity.getUpdatedBy(), null))
+                        .id(dbRow.updatedBy())
+                        .displayName(displayNames.getOrDefault(dbRow.updatedBy(), null))
                         .build();
                 subtabs.add(MemberSubtabVisibilityItemDto.builder()
                         .subtabKey(key.getDbValue())
-                        .minRole(dbEntity.getMinRole())
+                        .minRole(dbRow.minRole())
                         .isDefault(false)
                         .updatedBy(updatedBy)
-                        .updatedAt(dbEntity.getUpdatedAt())
+                        .updatedAt(dbRow.updatedAt())
                         .build());
             } else {
                 subtabs.add(MemberSubtabVisibilityItemDto.builder()
@@ -251,74 +270,6 @@ public class MemberSubtabVisibilityService {
                 .scopeId(scopeId)
                 .subtabs(subtabs)
                 .build();
-    }
-
-    // ─────────────────────────────────────────────
-    // 個別更新ロジック
-    // ─────────────────────────────────────────────
-
-    private void applyOneUpdate(ScopeType scope, Long scopeId, Long currentUserId,
-                                 UpdateMemberSubtabVisibilityRequest.SubtabVisibilityUpdateItem update,
-                                 List<Map<String, Object>> changes) {
-        if (update == null || update.getMinRole() == null) {
-            throw new BusinessException(CommonErrorCode.COMMON_001);
-        }
-
-        MemberSubtabKey key = parseSubtabKey(update.getSubtabKey());
-        MinRole newMinRole = update.getMinRole();
-
-        // 一覧タブに PUBLIC を設定しようとしたら 422 で拒否（氏名・役割等を含むため）
-        if (newMinRole == MinRole.PUBLIC && !MemberSubtabDefaultMinRoleMap.isPublicAllowed(key)) {
-            log.warn("MemberSubtabVisibilityService: 一覧タブへの PUBLIC 設定は拒否 "
-                    + "(scopeType={}, scopeId={}, userId={})", scope, scopeId, currentUserId);
-            throw new BusinessException(MemberErrorCode.MEMBER_LIST_PUBLIC_NOT_ALLOWED);
-        }
-
-        MinRole defaultMinRole = MemberSubtabDefaultMinRoleMap.getDefault(key);
-
-        Optional<MemberSubtabRoleVisibilityEntity> existing =
-                repository.findByScopeTypeAndScopeIdAndSubtabKey(scope, scopeId, key.getDbValue());
-
-        MinRole beforeMinRole = existing.map(MemberSubtabRoleVisibilityEntity::getMinRole).orElse(defaultMinRole);
-
-        if (newMinRole == defaultMinRole) {
-            if (existing.isPresent()) {
-                repository.deleteByScopeTypeAndScopeIdAndSubtabKey(scope, scopeId, key.getDbValue());
-                addChangeIfDifferent(changes, key, beforeMinRole, newMinRole);
-            }
-            return;
-        }
-
-        if (existing.isPresent()) {
-            MemberSubtabRoleVisibilityEntity entity = existing.get();
-            if (entity.getMinRole() != newMinRole) {
-                entity.changeMinRole(newMinRole, currentUserId);
-                repository.save(entity);
-                addChangeIfDifferent(changes, key, beforeMinRole, newMinRole);
-            }
-        } else {
-            MemberSubtabRoleVisibilityEntity entity = MemberSubtabRoleVisibilityEntity.builder()
-                    .scopeType(scope)
-                    .scopeId(scopeId)
-                    .subtabKey(key.getDbValue())
-                    .minRole(newMinRole)
-                    .updatedBy(currentUserId)
-                    .build();
-            repository.save(entity);
-            addChangeIfDifferent(changes, key, beforeMinRole, newMinRole);
-        }
-    }
-
-    private static void addChangeIfDifferent(List<Map<String, Object>> changes, MemberSubtabKey key,
-                                               MinRole before, MinRole after) {
-        if (before == after) {
-            return;
-        }
-        Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put("subtab_key", key.getDbValue());
-        entry.put("before", before.name());
-        entry.put("after", after.name());
-        changes.add(entry);
     }
 
     // ─────────────────────────────────────────────
@@ -346,52 +297,5 @@ public class MemberSubtabVisibilityService {
         if (scopeId == null) {
             throw new IllegalArgumentException("scopeId must not be null");
         }
-    }
-
-    private static MemberSubtabKey parseSubtabKey(String subtabKey) {
-        if (subtabKey == null || subtabKey.isBlank()) {
-            throw new BusinessException(CommonErrorCode.COMMON_001);
-        }
-        try {
-            return MemberSubtabKey.fromDbValue(subtabKey);
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessException(CommonErrorCode.COMMON_001);
-        }
-    }
-
-    // ─────────────────────────────────────────────
-    // 監査ログ
-    // ─────────────────────────────────────────────
-
-    private void recordAuditLog(ScopeType scope, Long scopeId, Long currentUserId,
-                                 List<Map<String, Object>> changes) {
-        Long teamId = scope == ScopeType.TEAM ? scopeId : null;
-        Long organizationId = scope == ScopeType.ORGANIZATION ? scopeId : null;
-
-        Map<String, Object> metadataMap = new LinkedHashMap<>();
-        metadataMap.put("scope_type", scope.name());
-        metadataMap.put("scope_id", scopeId);
-        metadataMap.put("changes", changes);
-
-        String metadataJson;
-        try {
-            metadataJson = objectMapper.writeValueAsString(metadataMap);
-        } catch (JsonProcessingException ex) {
-            log.warn("MemberSubtabVisibilityService: 監査ログ metadata の JSON 直列化失敗 "
-                    + "(userId={})", currentUserId, ex);
-            metadataJson = "{}";
-        }
-
-        auditLogService.record(
-                AUDIT_EVENT_TYPE,
-                currentUserId,
-                null,
-                teamId,
-                organizationId,
-                null,
-                null,
-                null,
-                metadataJson
-        );
     }
 }
