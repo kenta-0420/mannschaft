@@ -99,7 +99,11 @@ async function load() {
   }
 }
 
-onMounted(load)
+// 権限が無ければ一覧 API を呼ばない（呼ぶと 403 を受けて「読み込みに失敗しました」のトーストまで出てしまい、
+// 権限なし表示と二重に知らせることになる）。
+onMounted(() => {
+  if (isAllowed.value) void load()
+})
 
 function goToDetail(row: PriceRevisionSummaryResponse) {
   navigateTo(`/system-admin/price-revisions/${row.id}`)
@@ -240,7 +244,8 @@ const taxCodes = ref<BillingTaxCodeResponse[]>([])
 const taxCodeLoading = ref(false)
 const taxCodeSaving = ref(false)
 
-const taxCodeForm = reactive<BillingTaxCodeCreateRequest>({
+/** 入力中の値。stripeTaxCode は入力欄の文字列で持ち、送信時に空なら null へ写す。 */
+const taxCodeForm = reactive<Omit<BillingTaxCodeCreateRequest, 'stripeTaxCode'> & { stripeTaxCode: string }>({
   code: '',
   displayName: '',
   rateBasisPoints: 1000,
@@ -248,6 +253,18 @@ const taxCodeForm = reactive<BillingTaxCodeCreateRequest>({
   validFrom: '',
   validUntil: null,
   enabled: true,
+})
+
+/**
+ * Stripe 税コードの形式（BE `BillingTaxCodeService.STRIPE_TAX_CODE_PATTERN` と同じ `^txcd_\d{8}$`）。
+ * 任意項目（BE は null を許す＝Product に tax_code を付けない）なので、空欄は妥当として扱う。
+ */
+const STRIPE_TAX_CODE_PATTERN = /^txcd_\d{8}$/
+
+/** 入力中の Stripe 税コードが形式違反か（空欄は任意項目として妥当）。 */
+const stripeTaxCodeInvalid = computed(() => {
+  const value = taxCodeForm.stripeTaxCode.trim()
+  return value.length > 0 && !STRIPE_TAX_CODE_PATTERN.test(value)
 })
 
 /** BE の Stripe 税コード形式検証（400 PRICE_REVISION_021: txcd_ + 数字8桁）に落ちたか。 */
@@ -281,10 +298,12 @@ const taxCodeCreateDisabled = computed(() =>
   || !taxCodeForm.code.trim()
   || !taxCodeForm.displayName.trim()
   || !taxCodeForm.validFrom
-  || taxCodeValidFromDstInvalid.value)
+  || taxCodeValidFromDstInvalid.value
+  || stripeTaxCodeInvalid.value)
 
 async function submitCreateTaxCode() {
   if (!taxCodeForm.code.trim() || !taxCodeForm.displayName.trim() || !taxCodeForm.validFrom) return
+  if (stripeTaxCodeInvalid.value) return
   const validFromInstant = toInstantPayload(taxCodeForm.validFrom)
   if (validFromInstant === null) {
     notification.error(t('billing.priceRevisions.errorNonexistentDstTime'))
@@ -295,6 +314,7 @@ async function submitCreateTaxCode() {
     await billingApi.createTaxCode({
       ...taxCodeForm,
       code: taxCodeForm.code.trim(),
+      stripeTaxCode: taxCodeForm.stripeTaxCode.trim() || null,
       validFrom: validFromInstant,
     })
     notification.success(t('billing.priceRevisions.taxCodeCreateSuccess'))
@@ -548,10 +568,26 @@ async function deactivateTaxCode(row: BillingTaxCodeResponse) {
       :style="{ width: '48rem' }"
       :draggable="false"
     >
-      <div class="mb-4 grid grid-cols-5 items-end gap-2">
+      <div class="mb-4 grid grid-cols-2 items-start gap-2 md:grid-cols-3">
         <InputText v-model="taxCodeForm.code" :placeholder="t('billing.priceRevisions.taxCode')" aria-label="new-tax-code-code" />
-        <InputText v-model="taxCodeForm.displayName" :placeholder="t('billing.priceRevisions.taxCode')" aria-label="new-tax-code-display-name" />
-        <InputNumber v-model="taxCodeForm.rateBasisPoints" aria-label="new-tax-code-rate" />
+        <InputText v-model="taxCodeForm.displayName" :placeholder="t('billing.priceRevisions.taxCodeDisplayName')" aria-label="new-tax-code-display-name" />
+        <InputNumber v-model="taxCodeForm.rateBasisPoints" :placeholder="t('billing.priceRevisions.taxCodeRate')" aria-label="new-tax-code-rate" />
+        <div>
+          <InputText
+            v-model="taxCodeForm.stripeTaxCode"
+            :placeholder="t('billing.priceRevisions.stripeTaxCodePlaceholder')"
+            :invalid="stripeTaxCodeInvalid"
+            class="w-full"
+            aria-label="new-tax-code-stripe-tax-code"
+          />
+          <p
+            v-if="stripeTaxCodeInvalid"
+            class="mt-1 text-xs text-red-600 dark:text-red-400"
+            aria-label="stripe-tax-code-format-error"
+          >
+            {{ t('billing.priceRevisions.errorInvalidStripeTaxCode') }}
+          </p>
+        </div>
         <div>
           <input v-model="taxCodeForm.validFrom" type="datetime-local" class="w-full rounded border p-2 text-sm" aria-label="new-tax-code-valid-from">
           <p
@@ -571,10 +607,15 @@ async function deactivateTaxCode(row: BillingTaxCodeResponse) {
         />
       </div>
       <DataTable :value="taxCodes" :loading="taxCodeLoading" data-key="id" class="text-sm">
-        <Column field="code" header="code" />
-        <Column field="displayName" header="displayName" />
-        <Column field="rateBasisPoints" header="rate" />
-        <Column header="enabled">
+        <Column field="code" :header="t('billing.priceRevisions.taxCode')" />
+        <Column field="displayName" :header="t('billing.priceRevisions.taxCodeDisplayName')" />
+        <Column field="rateBasisPoints" :header="t('billing.priceRevisions.taxCodeRate')" />
+        <Column :header="t('billing.priceRevisions.stripeTaxCode')">
+          <template #body="{ data: row }: { data: BillingTaxCodeResponse }">
+            <span :aria-label="`stripe-tax-code-${row.id}`">{{ row.stripeTaxCode ?? t('billing.priceRevisions.stripeTaxCodeUnset') }}</span>
+          </template>
+        </Column>
+        <Column :header="t('billing.priceRevisions.taxCodeEnabled')">
           <template #body="{ data: row }: { data: BillingTaxCodeResponse }">
             <Button
               :label="row.enabled ? 'ON' : 'OFF'"

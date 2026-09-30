@@ -8,6 +8,8 @@ import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.CancellationSource;
 import com.mannschaft.app.recruitment.ParticipantHistoryReason;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
+import com.mannschaft.app.recruitment.RecruitmentPenaltyActiveException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentMapper;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
@@ -24,6 +26,7 @@ import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRe
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
 import com.mannschaft.app.recruitment.event.RecruitmentCancellationFeeChargeRequestedEvent;
 import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +65,7 @@ public class RecruitmentParticipantService {
     private final RecruitmentListingRepository listingRepository;
     private final RecruitmentParticipantHistoryRepository historyRepository;
     private final RecruitmentCancellationRecordRepository cancellationRecordRepository;
+    private final RecruitmentUserPenaltyRepository penaltyRepository;
     private final RecruitmentCancellationPolicyService policyService;
     private final RecruitmentListingService listingService;
     private final AccessControlService accessControlService;
@@ -120,6 +124,15 @@ public class RecruitmentParticipantService {
         // 非対象ユーザーは NOT_FOUND→404（存在秘匿）/ deny→403 で弾かれ、IDOR（listingId 既知の
         // 任意ユーザーが応募できる）を根治する。
         visibilityChecker.assertCanView(ReferenceType.RECRUITMENT_LISTING, listingId, userId);
+
+        // §5.2 step4: GLOBAL またはこの募集スコープの有効ペナルティ中は申込を拒否する。
+        LocalDateTime penaltyExpiresAt = penaltyRepository.findApplicableActivePenaltyExpiry(
+                userId, listing.getScopeType(), listing.getScopeId(),
+                LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE));
+        if (penaltyExpiresAt != null) {
+            throw new RecruitmentPenaltyActiveException(
+                    penaltyExpiresAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
+        }
 
         // §5.2 step6 participation_type 整合
         boolean isIndividualListing = listing.getParticipationType() == RecruitmentParticipationType.INDIVIDUAL;

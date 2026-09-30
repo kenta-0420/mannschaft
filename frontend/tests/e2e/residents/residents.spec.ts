@@ -22,15 +22,13 @@ const MOCK_UNITS = [
     id: 1,
     unitNumber: '101',
     floor: 1,
-    isVacant: false,
-    residents: [{ id: 10, name: 'テスト 太郎' }],
+    residentCount: 1,
   },
   {
     id: 2,
     unitNumber: '102',
     floor: 1,
-    isVacant: true,
-    residents: [],
+    residentCount: 0,
   },
 ]
 
@@ -118,36 +116,40 @@ test.describe('RESIDENT: F09.1 住民台帳', () => {
     await waitForHydration(page)
 
     await expect(page.getByRole('heading', { name: '住民台帳' })).toBeVisible({ timeout: 10_000 })
-    expect(getCalled).toBe(true)
+    await expect.poll(() => getCalled).toBe(true)
     // 住戸番号が表示される
     await expect(page.getByText('101').first()).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText('102').first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('1人入居中')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('空室').first()).toBeVisible({ timeout: 10_000 })
   })
 
   // ---------------------------------------------------------------------------
   // RESIDENT-004: 住戸を登録できる（POST）
   // ---------------------------------------------------------------------------
   test('RESIDENT-004: 住戸を登録できる（POST）', async ({ page }) => {
-    let createCalled = false
+    const units = [...MOCK_UNITS]
+    let getRequests = 0
 
     await mockTeam(page)
     await mockTeamFeatureApis(page)
 
     await page.route(`**/api/v1/teams/${TEAM_ID}/dwelling-units**`, async (route) => {
       if (route.request().method() === 'POST') {
-        createCalled = true
+        expect(route.request().postDataJSON()).toMatchObject({ unitNumber: '201', floor: 2 })
+        const created = { id: 3, unitNumber: '201', floor: 2, residentCount: 0 }
+        units.push(created)
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
-          body: JSON.stringify({
-            data: { id: 3, unitNumber: '201', floor: 2, isVacant: true, residents: [] },
-          }),
+          body: JSON.stringify({ data: created }),
         })
       } else {
+        getRequests += 1
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: [] }),
+          body: JSON.stringify({ data: units }),
         })
       }
     })
@@ -164,10 +166,15 @@ test.describe('RESIDENT: F09.1 住民台帳', () => {
     // ボタンをクリックしてダイアログが開くことを確認
     await addButton.click()
 
-    // 作成ダイアログが表示されるか確認（実装済みの場合）
-    // ボタンが存在してクリックできることが確認できた時点でページは正常動作している
-    // createCalledは、ダイアログ内フォーム送信後にtrueになる（UIがダイアログ実装済みの場合）
-    expect(createCalled).toBe(false) // ダイアログ送信前なのでfalse
+    const form = page.getByTestId('dwelling-unit-create-form')
+    await expect(form).toBeVisible({ timeout: 5_000 })
+    await page.getByTestId('dwelling-unit-number-input').fill('201')
+    await page.locator('#dwelling-unit-floor input').fill('2')
+    await page.getByTestId('dwelling-unit-create-submit').click()
+
+    await expect.poll(() => getRequests).toBe(2)
+    await expect(page.getByText('201').first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('空室').first()).toBeVisible({ timeout: 10_000 })
   })
 
   // ---------------------------------------------------------------------------
@@ -186,7 +193,7 @@ test.describe('RESIDENT: F09.1 住民台帳', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            data: { id: 1, unitNumber: '101-改', floor: 1, isVacant: false, residents: [] },
+            data: { id: 1, unitNumber: '101-改', floor: 1, residentCount: 1 },
           }),
         })
       } else {
@@ -246,5 +253,30 @@ test.describe('RESIDENT: F09.1 住民台帳', () => {
 
     // ページ表示・住戸一覧取得が正常に完了していることを確認（DELETE APIはモック設定済み）
     expect(deleteRequested).toBe(false) // 削除UIから操作しない限りDELETEは呼ばれない
+  })
+
+  test('RESIDENT-007: 一般メンバーには住戸追加ボタンを表示しない', async ({ page }) => {
+    await mockTeam(page)
+    await mockTeamFeatureApis(page)
+    await page.route(`**/api/v1/teams/${TEAM_ID}/me/permissions`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { roleName: 'MEMBER', permissions: [] } }),
+      })
+    })
+    await page.route(`**/api/v1/teams/${TEAM_ID}/dwelling-units**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: MOCK_UNITS }),
+      })
+    })
+
+    await page.goto(`/teams/${TEAM_ID}/residents`)
+    await waitForHydration(page)
+
+    await expect(page.getByText('101').first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('button', { name: '住戸を追加' })).toBeHidden()
   })
 })

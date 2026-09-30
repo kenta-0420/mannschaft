@@ -82,6 +82,8 @@ class ShiftSlotTimeValidationServiceTest {
                 com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder()
                         .teamId(1L)
                         .build()));
+        lenient().when(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).thenReturn(Optional.of(
+                com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder().teamId(1L).build()));
     }
 
     private ShiftSlotEntity slotEntity(LocalTime start, LocalTime end) {

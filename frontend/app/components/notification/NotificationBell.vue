@@ -31,8 +31,8 @@ const totalCount = computed(() => notifCount.value + chatCount.value + mentionCo
  */
 function isAuthFlowFailure(error: unknown): boolean {
   return (
-    error instanceof Error
-    && (error.message === 'token_refresh_failed' || error.message === 'not_authenticated')
+    error instanceof Error &&
+    (error.message === 'token_refresh_failed' || error.message === 'not_authenticated')
   )
 }
 
@@ -90,7 +90,9 @@ defineExpose({ refresh: fetchCounts })
 <template>
   <div class="relative">
     <Button
-      v-tooltip.bottom="'通知'"
+      v-tooltip.bottom="$t('notification.bell.notification')"
+      :aria-label="$t('notification.bell.notification')"
+      class="min-h-11 min-w-11"
       icon="pi pi-bell"
       text
       rounded
@@ -111,9 +113,9 @@ defineExpose({ refresh: fetchCounts })
           <span class="notif-icon bg-amber-50 text-amber-500"
             ><i class="pi pi-bell text-xs"
           /></span>
-          <span class="flex-1 text-left text-sm">通知</span>
+          <span class="flex-1 text-left text-sm">{{ $t('notification.bell.notification') }}</span>
           <Badge v-if="notifCount > 0" :value="notifCount" severity="danger" />
-          <span v-else class="text-xs text-surface-400">なし</span>
+          <span v-else class="text-xs text-surface-400">{{ $t('notification.bell.none') }}</span>
         </button>
 
         <!-- チャット -->
@@ -121,17 +123,17 @@ defineExpose({ refresh: fetchCounts })
           <span class="notif-icon bg-green-50 text-green-500"
             ><i class="pi pi-comment text-xs"
           /></span>
-          <span class="flex-1 text-left text-sm">チャット</span>
+          <span class="flex-1 text-left text-sm">{{ $t('notification.bell.chat') }}</span>
           <Badge v-if="chatCount > 0" :value="chatCount" severity="danger" />
-          <span v-else class="text-xs text-surface-400">なし</span>
+          <span v-else class="text-xs text-surface-400">{{ $t('notification.bell.none') }}</span>
         </button>
 
         <!-- メンション -->
         <button class="notif-row" @click="navigate('/notifications?tab=mention')">
           <span class="notif-icon bg-blue-50 text-blue-500"><i class="pi pi-at text-xs" /></span>
-          <span class="flex-1 text-left text-sm">メンション</span>
+          <span class="flex-1 text-left text-sm">{{ $t('notification.bell.mention') }}</span>
           <Badge v-if="mentionCount > 0" :value="mentionCount" severity="danger" />
-          <span v-else class="text-xs text-surface-400">なし</span>
+          <span v-else class="text-xs text-surface-400">{{ $t('notification.bell.none') }}</span>
         </button>
       </div>
     </Popover>
