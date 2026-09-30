@@ -1,5 +1,9 @@
 ﻿{
   "adminConsole": {
+    "card": {
+      "teamAffiliation": "チーム加盟の設定",
+      "teamAffiliationDescription": "チームからの加盟申請の受付とチームグループを設定します"
+    },
     "comingSoon": "Próximamente",
     "team": {
       "title": "Consola de administración del equipo",

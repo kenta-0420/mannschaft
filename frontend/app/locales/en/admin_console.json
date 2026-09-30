@@ -1,5 +1,9 @@
 ﻿{
   "adminConsole": {
+    "card": {
+      "teamAffiliation": "Team affiliation settings",
+      "teamAffiliationDescription": "Configure acceptance of affiliation applications from teams and team groups"
+    },
     "comingSoon": "Coming soon",
     "team": {
       "title": "Team Admin Console",

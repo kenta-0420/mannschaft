@@ -2356,6 +2356,8 @@
   },
   "teamShell": {
     "tab": {
+      "affiliations": "所属組織",
+      "permissionGroups": "権限グループ",
       "dashboard": "대시보드",
       "info": "기본 정보",
       "members": "멤버",

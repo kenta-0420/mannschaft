@@ -2356,6 +2356,8 @@
   },
   "teamShell": {
     "tab": {
+      "affiliations": "Affiliated organizations",
+      "permissionGroups": "Permission groups",
       "dashboard": "Dashboard",
       "info": "Basic Info",
       "members": "Members",
