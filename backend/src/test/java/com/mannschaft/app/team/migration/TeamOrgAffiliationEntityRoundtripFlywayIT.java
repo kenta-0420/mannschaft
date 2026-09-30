@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -305,7 +306,8 @@ class TeamOrgAffiliationEntityRoundtripFlywayIT {
         assertThatThrownBy(() -> restrictionRepository.saveAndFlush(restriction(6501L, 5501L,
                 TeamOrgAffiliationDirection.TEAM_APPLY, TeamOrgAffiliationRestrictionKind.BLOCK,
                 TeamOrgAffiliationRestrictionReason.REJECTED, LocalDateTime.of(2026, 12, 31, 0, 0))))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataAccessException.class)
+                .hasMessageContaining("chk_toar_until");
     }
 
     // ------------------------------------------------------------------
