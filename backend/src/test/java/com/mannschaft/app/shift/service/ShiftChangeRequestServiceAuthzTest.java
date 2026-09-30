@@ -274,14 +274,31 @@ class ShiftChangeRequestServiceAuthzTest {
         given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
                 ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
         given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(true);
-        given(accessControlService.isMember(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        // モックの void checkMembership は何も投げないため、本物と同じ例外（非メンバー→COMMON_002）を明示する
+        org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkMembership(REVIEWER_ID, TEAM_ID, "TEAM");
 
         assertThatThrownBy(() -> service.create(createReq(null), REVIEWER_ID))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                        .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002));
+                        .isEqualTo(CommonErrorCode.COMMON_002));
 
+        verify(accessControlService).checkMembership(REVIEWER_ID, TEAM_ID, "TEAM");
         verify(changeRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create: メンバーでもある SYSTEM_ADMIN は作成できる（SYSTEM_ADMIN を一律拒否しない）")
+    void create_メンバーSYSTEM_ADMINは作成できる() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(true);
+        given(changeRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.create(createReq(null), REVIEWER_ID);
+
+        verify(accessControlService).checkMembership(REVIEWER_ID, TEAM_ID, "TEAM");
+        verify(changeRequestRepository).save(any());
     }
 
     @Test
@@ -343,5 +360,17 @@ class ShiftChangeRequestServiceAuthzTest {
 
         assertThat(entity.getStatus()).isEqualTo(ChangeRequestStatus.OPEN);
         verify(changeRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("withdraw: 依頼者本人でもある SYSTEM_ADMIN は取り下げられる（本人判定が SYSTEM_ADMIN 判定より先）")
+    void withdraw_本人かつSYSTEM_ADMINは取り下げられる() {
+        ShiftChangeRequestEntity entity = requestedBy(REVIEWER_ID);
+        given(changeRequestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+
+        service.withdraw(REQUEST_ID, REVIEWER_ID);
+
+        assertThat(entity.getStatus()).isEqualTo(ChangeRequestStatus.WITHDRAWN);
+        verify(changeRequestRepository).save(entity);
     }
 }

@@ -85,6 +85,7 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long outsiderId;      // 非メンバー
     private Long userRolesOnlyAdminAId; // TEAM A の user_roles のみ ADMIN（memberships 無し）
     private Long systemAdminId;   // SYSTEM_ADMIN（非メンバー）
+    private Long systemAdminMemberId; // SYSTEM_ADMIN かつ TEAM A のメンバー
 
     private Long scheduleAId;
     private Long myRequestId;     // memberTeamA の依頼
@@ -104,6 +105,9 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
         systemAdminId = insertUser("wave6-cr-sysadmin@example.com");
         MembershipTestHelper.insertUserRole(em, userRolesOnlyAdminAId, "ADMIN", teamAId, null);
         MembershipTestHelper.insertUserRole(em, systemAdminId, "SYSTEM_ADMIN", null, null);
+        systemAdminMemberId = insertUser("wave6-cr-sysadmin-member@example.com");
+        MembershipTestHelper.insertUserRole(em, systemAdminMemberId, "SYSTEM_ADMIN", null, null);
+        MembershipTestHelper.insertMembership(em, systemAdminMemberId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
 
         MembershipTestHelper.insertMembership(em, adminTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminTeamAId, "ADMIN", teamAId, null);
@@ -408,6 +412,27 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("依頼者本人でもある SYSTEM_ADMIN は自分の依頼を取り下げられる（204）、status は WITHDRAWN")
+        void 本人かつSYSTEM_ADMINは取下げ204() throws Exception {
+            Long ownId = changeRequestRepository.save(ShiftChangeRequestEntity.builder()
+                    .scheduleId(scheduleAId)
+                    .requestType(ChangeRequestType.OPEN_CALL)
+                    .requestedBy(systemAdminMemberId)
+                    .reason("SYSTEM_ADMIN 本人の依頼")
+                    .build()).getId();
+            em.flush();
+            em.clear();
+            setAuth(systemAdminMemberId);
+            mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", ownId))
+                    .andExpect(status().isNoContent());
+            em.flush();
+            em.clear();
+            org.assertj.core.api.Assertions.assertThat(
+                            changeRequestRepository.findById(ownId).orElseThrow().getStatus())
+                    .isEqualTo(com.mannschaft.app.shift.ChangeRequestStatus.WITHDRAWN);
+        }
+
+        @Test
         @DisplayName("別scope ADMINは404（越境・存在オラクル是正 W2）")
         void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
@@ -561,6 +586,18 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
             em.flush();
             em.clear();
             org.assertj.core.api.Assertions.assertThat(changeRequestRepository.count()).isEqualTo(before);
+        }
+
+        @Test
+        @DisplayName("チームのメンバーでもある SYSTEM_ADMIN は変更依頼を作成でき（201）、件数が1増える")
+        void メンバーかつSYSTEM_ADMINの作成は201で件数1増() throws Exception {
+            long before = changeRequestRepository.count();
+            setAuth(systemAdminMemberId);
+            org.assertj.core.api.Assertions.assertThat(call("create", scheduleAId).getResponse().getStatus())
+                    .isEqualTo(201);
+            em.flush();
+            em.clear();
+            org.assertj.core.api.Assertions.assertThat(changeRequestRepository.count()).isEqualTo(before + 1);
         }
 
         @Test
