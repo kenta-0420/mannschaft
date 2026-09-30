@@ -106,7 +106,10 @@ public class RoleService {
      * @throws BusinessException 操作者が ADMIN/DEPUTY_ADMIN でない場合（COMMON_002）
      */
     private void requireActorScopeAdminOnly(Long scopeId, String scopeType, Long actorUserId) {
-        boolean isAdmin = userRoleRepository.isActiveUser(actorUserId)
+        // checkScopeAdminOnly と同じ意味: SYSTEM_ADMIN（監査 read-only）は兼任でも無条件拒否。
+        // AccessControlService#isSystemAdmin と同じ下位層の判定（existsSystemAdminByUserId）を使う。
+        boolean systemAdmin = userRoleRepository.existsSystemAdminByUserId(actorUserId) > 0;
+        boolean isAdmin = !systemAdmin && userRoleRepository.isActiveUser(actorUserId)
                 && findUserRole(actorUserId, scopeId, scopeType)
                 .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
                 .map(RoleEntity::getName)

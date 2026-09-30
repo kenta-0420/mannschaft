@@ -662,6 +662,19 @@ class OrgAffiliationPermissionGroupAuthzContractIT extends AbstractMySqlIntegrat
 
             assertThat(assignedGroupIds(TX)).doesNotContain(plainDeputyGroupId);
         }
+
+        @Test
+        @DisplayName("AC-P11(d): SYSTEM_ADMIN 兼スコープ ADMIN の TA が加盟権限付き割当の外れるロール変更をすると 403（checkScopeAdminOnly と同じ）")
+        void systemAdminAlsoScopeAdminChangeRole_forbidden() throws Exception {
+            Long memberRoleId = seedDeputyHolding(affDeputyGroupId);
+            MembershipTestHelper.insertUserRole(em, TA, "SYSTEM_ADMIN", null, null);
+            em.flush();
+            em.clear();
+
+            forbidden(changeRoleToMember(TA, memberRoleId));
+
+            assertThat(assignedGroupIds(TX)).contains(affDeputyGroupId);
+        }
     }
 
     private void assignDirectly(Long userId, Long groupId) {
