@@ -37,17 +37,18 @@ public class ScopeAncestorResolver {
      * <p>挙動:</p>
      * <ul>
      *   <li>{@code TEAM} スコープ: {@code team_org_memberships} (status=ACTIVE) を
-     *       1 SQL で IN 句解決し、見つかった team については {@code (TEAM, parentOrgId)}
-     *       のエントリをマップに含める。所属組織が見つからない team は entry を返さない。</li>
-     *   <li>{@code ORGANIZATION} スコープ: 自身の scopeId を親 ORG ID としてそのまま返す。</li>
+     *       1 SQL で IN 句解決し、<strong>ACTIVE な全親組織</strong>の集合を
+     *       {@code (TEAM, {parentOrgId...})} としてマップに含める（F01.2.1 §9.2 #2。複数加盟対応）。
+     *       所属組織が見つからない team は entry を返さない。</li>
+     *   <li>{@code ORGANIZATION} スコープ: 自身の scopeId のみの集合を返す。</li>
      * </ul>
      *
      * <p>{@code scopes} が null/空、または TEAM が一切含まれない場合は SQL を発行しない。</p>
      *
      * @param scopes 解決対象のスコープ集合
-     * @return スコープ → 親 ORG ID のマップ（不変ではない）
+     * @return スコープ → 親 ORG ID 集合のマップ（不変ではない）
      */
-    public Map<ScopeKey, Long> resolveParentOrgIds(Set<ScopeKey> scopes) {
+    public Map<ScopeKey, Set<Long>> resolveParentOrgIds(Set<ScopeKey> scopes) {
         if (scopes == null || scopes.isEmpty()) {
             return Map.of();
         }
@@ -59,19 +60,19 @@ public class ScopeAncestorResolver {
             }
         }
 
-        Map<Long, Long> teamToOrg = teamIds.isEmpty()
+        Map<Long, Set<Long>> teamToOrgs = teamIds.isEmpty()
                 ? Map.of()
-                : teamOrgMembershipRepository.findOrganizationIdByTeamIdIn(teamIds);
+                : teamOrgMembershipRepository.findOrganizationIdsByTeamIdIn(teamIds);
 
-        Map<ScopeKey, Long> result = new HashMap<>();
+        Map<ScopeKey, Set<Long>> result = new HashMap<>();
         for (ScopeKey s : scopes) {
             if ("TEAM".equals(s.scopeType())) {
-                Long orgId = teamToOrg.get(s.scopeId());
-                if (orgId != null) {
-                    result.put(s, orgId);
+                Set<Long> orgIds = teamToOrgs.get(s.scopeId());
+                if (orgIds != null && !orgIds.isEmpty()) {
+                    result.put(s, orgIds);
                 }
             } else if ("ORGANIZATION".equals(s.scopeType())) {
-                result.put(s, s.scopeId());
+                result.put(s, Set.of(s.scopeId()));
             }
         }
         return result;

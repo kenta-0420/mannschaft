@@ -52,12 +52,18 @@ public class TeamOrgMembershipQueryService {
      * 同時刻なら {@code organization_id} が最小のもの。ACTIVE の加盟が無ければ空。
      * 明示の親組織を受け取れない既存 API に限って使う。</p>
      *
-     * <p>試練（3-A）時点のスケルトン。実装は出陣で行う。</p>
      *
      * @param teamId チーム ID
      * @return 代表親組織 ID（ACTIVE な加盟が無ければ空）
      */
     public Optional<Long> findPrimaryParentOrganizationId(Long teamId) {
-        throw new UnsupportedOperationException("F01.2.1 3-A: 未実装（試練スケルトン）");
+        if (teamId == null) {
+            return Optional.empty();
+        }
+        return teamOrgMembershipRepository
+                .findActiveByTeamIdOrderByRespondedAtAndOrganizationId(teamId)
+                .stream()
+                .findFirst()
+                .map(TeamOrgMembershipEntity::getOrganizationId);
     }
 }

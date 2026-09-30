@@ -443,10 +443,10 @@ class AbstractContentVisibilityResolverTest {
             ScopeKey parentOrg = new ScopeKey("ORGANIZATION", 10L);
             when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
                     .thenReturn(new UserScopeRoleSnapshot(false, Map.of(),
-                            Map.of(teamScope, 10L), Set.of(parentOrg), Set.of()));
+                            Map.of(teamScope, Set.of(10L)), Set.of(parentOrg), Set.of()));
             when(membershipBatchQueryService.snapshotForUser(eq(6L), anySet(), anySet()))
                     .thenReturn(new UserScopeRoleSnapshot(false, Map.of(),
-                            Map.of(teamScope, 10L), Set.of(), Set.of()));
+                            Map.of(teamScope, Set.of(10L)), Set.of(), Set.of()));
 
             assertThat(resolver.filterAccessible(List.of(1L), 5L)).containsExactly(1L);
             assertThat(resolver.filterAccessible(List.of(1L), 6L)).isEmpty();
@@ -547,7 +547,7 @@ class AbstractContentVisibilityResolverTest {
             ScopeKey teamScope = new ScopeKey("TEAM", 100L);
             when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
                     .thenReturn(new UserScopeRoleSnapshot(false, Map.of(),
-                            Map.of(teamScope, 10L), Set.of(), Set.of(10L)));
+                            Map.of(teamScope, Set.of(10L)), Set.of(), Set.of(10L)));
 
             assertThat(resolver.filterAccessible(List.of(1L), 5L)).isEmpty();
         }

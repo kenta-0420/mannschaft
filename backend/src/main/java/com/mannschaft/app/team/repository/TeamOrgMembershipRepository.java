@@ -124,14 +124,30 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
      * <p>{@link #findOrganizationIdByTeamIdIn(Set)} は {@code HashMap.put} の後勝ちで
      * 任意の1件に潰れるため、本メソッドへ置き換える（旧メソッドは 3-F で削除する）。</p>
      *
-     * <p>試練（3-A）時点のスケルトン。実装は出陣で行う。</p>
+     * <p>SQL は 1 本（IN 句）で、親組織の数に比例して増えない。親組織が0件のチームは entry に含めない。</p>
      *
      * @param teamIds 対象チーム ID 集合（空・null なら SQL を発行せず空 Map）
      * @return チーム ID → ACTIVE な親組織 ID 集合のマップ
      */
     default Map<Long, Set<Long>> findOrganizationIdsByTeamIdIn(Set<Long> teamIds) {
-        throw new UnsupportedOperationException("F01.2.1 3-A: 未実装（試練スケルトン）");
+        if (teamIds == null || teamIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Set<Long>> result = new HashMap<>();
+        for (TeamOrgIdProjection p : findTeamOrgIdProjectionsByTeamIdIn(teamIds)) {
+            result.computeIfAbsent(p.getTeamId(), k -> new java.util.HashSet<>()).add(p.getOrganizationId());
+        }
+        return result;
     }
+
+    /**
+     * チームの ACTIVE な加盟を {@code responded_at} 昇順・{@code organization_id} 昇順で取得する
+     * （代表親組織 §9.3 の決定用。{@code findFirstBy...} を増やさないため List で返し先頭を使う）。
+     */
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.teamId = :teamId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "ORDER BY m.respondedAt ASC, m.organizationId ASC")
+    List<TeamOrgMembershipEntity> findActiveByTeamIdOrderByRespondedAtAndOrganizationId(@Param("teamId") Long teamId);
 
     /**
      * {@link #findOrganizationIdByTeamIdIn(Set)} の内部 JPQL 実装。

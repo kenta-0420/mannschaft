@@ -186,7 +186,7 @@ class MembershipBatchQueryServiceTest {
 
             // TEAM_1 → ORG_10
             when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
-                    .thenReturn(Map.of(TEAM_1, 10L));
+                    .thenReturn(Map.of(TEAM_1, Set.of(10L)));
             // 親 ORG メンバーシップ取得
             when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
                     .thenReturn(List.of(projection(2L, null, 10L, 50L)));
@@ -208,7 +208,7 @@ class MembershipBatchQueryServiceTest {
             when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
 
             when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
-                    .thenReturn(Map.of(TEAM_1, 10L));
+                    .thenReturn(Map.of(TEAM_1, Set.of(10L)));
             when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
                     .thenReturn(List.of());
             when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
@@ -322,7 +322,7 @@ class MembershipBatchQueryServiceTest {
         void 親ORGがmemberships専属_ORGANIZATION_WIDE可視() {
             when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
             when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
-                    .thenReturn(Map.of(TEAM_1, 10L));
+                    .thenReturn(Map.of(TEAM_1, Set.of(10L)));
             // user_roles の親 ORG メンバーシップは無し
             when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
                     .thenReturn(List.of());
@@ -577,7 +577,7 @@ class MembershipBatchQueryServiceTest {
         void 親ORGのuser_rolesロール名が閾値評価に使える() {
             when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
             when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
-                    .thenReturn(Map.of(TEAM_1, 10L));
+                    .thenReturn(Map.of(TEAM_1, Set.of(10L)));
             // 親 ORG に DEPUTY_ADMIN として所属
             when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
                     .thenReturn(List.of(projection(2L, null, 10L, 52L)));
@@ -601,7 +601,7 @@ class MembershipBatchQueryServiceTest {
         void 親ORGのSUPPORTERはMEMBER閾値を満たさない() {
             when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
             when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
-                    .thenReturn(Map.of(TEAM_1, 10L));
+                    .thenReturn(Map.of(TEAM_1, Set.of(10L)));
             when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
                     .thenReturn(List.of());
             when(membershipRepository.findActiveRoleKindsByUserAndScopes(
@@ -624,7 +624,7 @@ class MembershipBatchQueryServiceTest {
         void 親ORGの併存ロールは最強を採用() {
             when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
             when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
-                    .thenReturn(Map.of(TEAM_1, 10L));
+                    .thenReturn(Map.of(TEAM_1, Set.of(10L)));
             when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
                     .thenReturn(List.of(projection(2L, null, 10L, 51L)));
             when(roleRepository.findAllById(Set.of(51L)))
@@ -645,7 +645,7 @@ class MembershipBatchQueryServiceTest {
         void 親ORG非所属なら閾値false() {
             when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
             when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
-                    .thenReturn(Map.of(TEAM_1, 10L));
+                    .thenReturn(Map.of(TEAM_1, Set.of(10L)));
             when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
                     .thenReturn(List.of());
             when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());

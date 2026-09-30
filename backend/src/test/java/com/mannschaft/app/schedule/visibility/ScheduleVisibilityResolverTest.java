@@ -206,7 +206,7 @@ class ScheduleVisibilityResolverTest {
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             Map.of(),
-                            Map.of(orgScope, 20L),
+                            Map.of(orgScope, Set.of(20L)),
                             Set.of(),          // 直接所属（orgMemberOf）は無くてよい（G3）
                             Set.of(),
                             Set.of(20L)));     // descendantMemberOfOrgIds
@@ -224,7 +224,7 @@ class ScheduleVisibilityResolverTest {
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             Map.of(),
-                            Map.of(orgScope, 20L),
+                            Map.of(orgScope, Set.of(20L)),
                             Set.of(),
                             Set.of(),
                             Set.of()));        // どの根の配下にもいない
@@ -243,7 +243,7 @@ class ScheduleVisibilityResolverTest {
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             Map.of(),
-                            Map.of(orgScope, 20L),
+                            Map.of(orgScope, Set.of(20L)),
                             Set.of(orgScope),
                             Set.of(),
                             Set.of(20L)));
@@ -261,7 +261,7 @@ class ScheduleVisibilityResolverTest {
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             Map.of(),
-                            Map.of(orgScope, 20L),
+                            Map.of(orgScope, Set.of(20L)),
                             Set.of(),
                             Set.of(20L),       // suspendedOrgIds に当該 ORG
                             Set.of(20L)));     // 配下メンバーではある
@@ -363,7 +363,7 @@ class ScheduleVisibilityResolverTest {
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             Map.of(),
-                            Map.of(teamScope, 40L),       // TEAM30 → 親 ORG40
+                            Map.of(teamScope, Set.of(40L)),       // TEAM30 → 親 ORG40
                             Set.of(new ScopeKey("ORGANIZATION", 40L)),
                             Set.of()));
 
@@ -477,7 +477,7 @@ class ScheduleVisibilityResolverTest {
                 .thenReturn(new UserScopeRoleSnapshot(
                         false,
                         Map.of(teamScope, "MEMBER"),
-                        Map.of(orgScope, 20L),
+                        Map.of(orgScope, Set.of(20L)),
                         Set.of(orgScope),
                         Set.of(),
                         Set.of(20L)));   // viewer は ORG20 の配下再帰メンバー
