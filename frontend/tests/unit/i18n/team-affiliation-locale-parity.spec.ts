@@ -17,7 +17,8 @@ function flatten(value: unknown, prefix = ''): string[] {
 function readLocale(locale: string, file: string): Record<string, unknown> {
   const path = resolve(process.cwd(), 'app', 'locales', locale, file)
   // admin_console.json 等は BOM 付きの場合があるため除去する
-  return JSON.parse(readFileSync(path, 'utf8').replace(/^﻿/, ''))
+  const raw = readFileSync(path, 'utf8')
+  return JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw)
 }
 
 function keysOf(locale: string, file: string, root?: string): string[] {
