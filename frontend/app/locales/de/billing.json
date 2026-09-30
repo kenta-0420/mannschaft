@@ -407,7 +407,8 @@
         "priceFree": "無償",
         "empty": "該当する契約はありません"
       },
-      "loadError": "マスタ情報の取得に失敗しました"
+      "loadError": "マスタ情報の取得に失敗しました",
+      "goToPriceRevisions": "Zu Preisänderungen / Steuercodes"
     },
     "lp": {
       "heading": "料金プラン",
@@ -468,7 +469,7 @@
       "errorReconcileMismatch": "Stripe側の価格情報がDBの記録と一致しません",
       "errorProvisionInProgress": "同一操作が処理中です。しばらくしてから再試行してください",
       "errorTaxSnapshotLegacy": "Die Steuerdaten dieser Preisstufe liegen im alten Format vor und können nicht bei Stripe registriert werden. Stornieren Sie diese Revision und legen Sie sie neu an.",
-      "errorInvalidStripeTaxCode": "Geben Sie den Stripe-Steuercode als „txcd_\" gefolgt von 8 Ziffern ein.",
+      "errorInvalidStripeTaxCode": "Das Format des Stripe-Steuercodes ist ungültig (txcd_ gefolgt von 8 Ziffern)",
       "errorNonexistentDstTime": "Diese Uhrzeit existiert aufgrund der Sommerzeitumstellung nicht. Bitte wählen Sie eine andere Uhrzeit.",
       "taxCodesTitle": "税コードマスタ",
       "taxCodeCreateAction": "税コードを追加",
@@ -483,7 +484,16 @@
       "notice": {
         "nextCycle": "既存契約は次の請求周期まで現在の価格のままです（即時には変わりません）",
         "noSaleOnPartialFailure": "一部バンドのProvisionに失敗している間は、その価格帯での新規販売・プラン変更はできません"
-      }
+      },
+      "errorUnknown": "Der Vorgang ist fehlgeschlagen. Bitte später erneut versuchen",
+      "stripePriceRef": "Stripe Price ID",
+      "stripePriceRefUnset": "Nicht erstellt",
+      "stripeTaxCode": "Stripe-Steuercode",
+      "stripeTaxCodeUnset": "Nicht festgelegt",
+      "stripeTaxCodePlaceholder": "Stripe-Steuercode (optional, z. B. txcd_10000000)",
+      "taxCodeDisplayName": "Anzeigename",
+      "taxCodeRate": "Steuersatz (Basispunkte)",
+      "taxCodeEnabled": "Aktiv"
     }
   }
 }

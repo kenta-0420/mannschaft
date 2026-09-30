@@ -1646,6 +1646,7 @@
     "search": "검색",
     "edit": "편집",
     "save": "저장",
+    "detail": "상세",
     "resume": {
       "title": "이력서・직무경력서",
       "listTitle": "이력서 버전 목록",
@@ -1936,6 +1937,7 @@
       "gdprPurge": "GDPR 삭제 현황",
       "feedbackInbox": "의견함 (전체)",
       "billing": "결제 마스터 관리",
+      "priceRevisions": "가격 개정",
       "betaPerks": "ベータ特典管理",
       "villageCreationRequests": "村作成申請",
       "seasonalWallpapers": "季節壁紙",
