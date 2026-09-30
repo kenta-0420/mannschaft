@@ -117,6 +117,11 @@ async function newLoggedInPage(
 async function gotoAndSettle(page: Page, url: string): Promise<void> {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180_000 })
   await waitForHydration(page)
+  // PageLoading コンポーネント（PrimeVue ProgressSpinner）が消えるまで待つ。
+  // .pi-spin は一覧・詳細内の個別スピナーで、画面全体のローディングシェルは
+  // p-progressspinner を使う（adhd-ux-flows.spec.ts 等と同じ作法）。
+  // eslint-disable-next-line no-restricted-syntax -- スピナーが初めから存在しないページでは待つ対象が無いだけ（失敗要因ではない）
+  await page.locator('.p-progressspinner').first().waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
   // eslint-disable-next-line no-restricted-syntax -- スピナーが初めから存在しないページでは待つ対象が無いだけ（失敗要因ではない）
   await page.locator('.pi-spin').first().waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
 }
@@ -212,9 +217,12 @@ test('PR-01 導線: システム管理画面のメニューから価格改定一
   const { context, page } = await newLoggedInPage(browser, ADMIN)
   try {
     await gotoAndSettle(page, '/system-admin')
+    // 描画が完了してからリンクを数える（無ければ本当に欠陥として失敗させる。握りつぶさない）
+    await page.locator('a[href*="/system-admin/price-revisions"]').first().waitFor({ state: 'visible', timeout: 30_000 })
     await shot(page, testInfo, 'system-admin-top')
     const onTop = await page.locator('a[href*="/system-admin/price-revisions"]').count()
     await gotoAndSettle(page, '/system-admin/billing')
+    await page.locator('a[href*="/system-admin/price-revisions"]').first().waitFor({ state: 'visible', timeout: 30_000 })
     await shot(page, testInfo, 'system-admin-billing')
     const onBilling = await page.locator('a[href*="/system-admin/price-revisions"]').count()
     await note(testInfo, 'price-revisions への a[href] の数', { '/system-admin': onTop, '/system-admin/billing': onBilling })
@@ -514,7 +522,85 @@ test('PR-05 activate: 確認ダイアログを経て SCHEDULED/ACTIVE になる'
 // ===========================================================================
 // PR-06 下流（テナント側のプラン変更プレビュー）
 // ===========================================================================
-test('PR-06 下流: テナント ADMIN の Billing Center で新価格がプラン変更プレビューに出る', async ({ browser }, testInfo) => {
+// 既知の欠陥（CMP-260930-1931）: 料金表のカタログ API（GET /api/v1/billing/plans）が
+// 旧 plan_price_bands を読み続けており、ACTIVATE した新価格（本テストの改定 B）が
+// カタログ・Billing Center のプラン変更プレビューへ反映されない。
+//
+// Codex 検分（P2）指摘: 旧 PR-06 は下流全体を test.fail() していたため、既知の欠陥に
+// 無関係な失敗（ログイン・API 応答形式・Billing Center への到達・画面の描画）まで
+// 「期待どおりの失敗」として success 扱いになり、回帰を検出できなかった。
+// → 既知の欠陥に依存しない検証は PR-06a（通常テスト）に残し、既知の欠陥に直接・必然的に
+//   依存する検証だけを PR-06b（test.fail、CMP-260930-1931）に切り出す。
+test('PR-06a 下流: テナント ADMIN が Billing Center に到達し、カタログ API・画面が壊れずに応答する', async ({ browser }, testInfo) => {
+  const state = readState()
+  expect(state.revisionBId, 'PR-07 で作った改定 B の ID').toBeTruthy()
+  const id = state.revisionBId!
+
+  // Codex 再検分 P2-1（4巡目）: PR-05 は SCHEDULED/ACTIVE のどちらも正常として state に保存する
+  // （即時適用の判定タイミング次第で SCHEDULED のまま保存されることがある）が、SCHEDULED→ACTIVE の
+  // 昇格は BillingPriceSelector.selectNow() → BillingPricePromotionService.promoteDue()（遅延昇格）
+  // を通る「販売価格の参照」でしか起きない（backend/src/main/java/com/mannschaft/app/billing/
+  // BillingPriceSelector.java:27）。system-admin の詳細 GET は状態を読むだけで selectNow を呼ばないため
+  // （PriceRevisionActivationService.java:28,93 のコメントの通り、詳細 GET・activate は promoteDue を
+  // 一切呼ばない設計）、これだけをポーリングしても昇格せず必ずタイムアウトする。
+  // selectNow を実際に呼ぶ経路は、未認証の公開カタログ GET /api/v1/public/billing/plans
+  // （backend/src/main/java/com/mannschaft/app/billing/api/BillingPublicCatalogController.java:35 →
+  // BillingPublicCatalogQueryService.java:104）のみ（副作用は価格版ステータスの遷移だけで、
+  // 課金・契約の確定は一切行わない読み取り専用 API）。ポーリングの各回でこの参照を発火してから
+  // 実際の状態を GET する。
+  {
+    const { context: adminContext, page: adminPage } = await newLoggedInPage(browser, ADMIN)
+    try {
+      await expect
+        .poll(
+          async () => {
+            // 遅延昇格の唯一のトリガー（副作用: 価格版ステータス遷移のみ。課金・契約の確定はしない）
+            await adminPage.request.get(`${BE}/api/v1/public/billing/plans?scopeKind=${SCOPE_KIND}`)
+            const res = await adminPage.request.get(`${PR_API}/${id}`)
+            const json = (await res.json()) as { data: { status: string } }
+            return json.data.status
+          },
+          { message: '改定 B が ACTIVE になるまで待つ（PR-05 は SCHEDULED/ACTIVE いずれも正常として保存する。ACTIVE への昇格は公開カタログ GET の遅延昇格でのみ起きる）', timeout: 120_000 },
+        )
+        .toBe('ACTIVE')
+    } finally {
+      await adminContext.close()
+    }
+  }
+
+  const { context, page } = await newLoggedInPage(browser, USER)
+  try {
+    // カタログ API 自体は 200 で応答し、対象プラン・対象バンドが存在すること
+    // （価格の値は既知の欠陥のため PR-06b の検証範囲。ここでは存在のみを主張する）
+    const catalog = await page.request.get(`${BE}/api/v1/billing/plans`)
+    const catalogJson = (await catalog.json()) as { data: { plans: { planKey: string; priceBands: { scopeKind: string; bandNo: number; monthlyPriceJpy: number | null }[] }[] } }
+    const targetPlan = catalogJson.data.plans.find((p) => p.planKey === PRODUCT_KEY)
+    const fullTeam = targetPlan?.priceBands.filter((b) => b.scopeKind === SCOPE_KIND)
+    await note(testInfo, `GET /billing/plans ${PRODUCT_KEY}/${SCOPE_KIND} バンド`, { status: catalog.status(), bands: fullTeam })
+    expect(catalog.status(), 'カタログ API は 200 で応答する').toBe(200)
+    expect(targetPlan, `カタログに対象プラン ${PRODUCT_KEY} が存在する`).toBeTruthy()
+    expect(fullTeam?.find((b) => b.bandNo === 1), `カタログに対象バンド（${SCOPE_KIND} bandNo=1）が存在する`).toBeTruthy()
+
+    await gotoAndSettle(page, `/organizations/${USER_ORG_SLUG}/settings/billing`)
+    await page.waitForTimeout(2_000)
+    await shot(page, testInfo, 'tenant-billing-center')
+    const text = await page.locator('main, body').first().innerText()
+    await note(testInfo, 'Billing Center 本文（先頭 1500 字）・到達 URL', { text: text.slice(0, 1500), url: page.url() })
+    // Codex 再検分 P2-3: 「プラン」を含む文言だけではサイドバーの導線見出しにも一致し、
+    // 別画面へリダイレクトされても素通りしてしまう。最終 URL とページ固有の見出しで到達を確認する。
+    expect(page.url(), 'リダイレクトされず組織の課金設定ページに到達する').toContain(`/organizations/${USER_ORG_SLUG}/settings/billing`)
+    // 画面が例外で落ちずに描画されていること（内容がプラン新価格を反映しているかは PR-06b）
+    await expect(page.locator('main, body').first()).not.toContainText('エラーが発生しました')
+    await expect(page.getByRole('heading', { name: '組織の課金・プラン管理' })).toBeVisible({ timeout: 5_000 })
+  } finally {
+    await context.close()
+  }
+})
+
+// 既知の欠陥（CMP-260930-1931）に直接・必然的に依存する検証のみをここに置く。マスター裁可により
+// 別戦役として切り出し済みのため、test.fail() で「失敗する」ことを明示する
+// （直った場合は逆に緑→赤の反転で気付ける。skip にはしない）。
+test.fail('PR-06b 下流: Billing Center のプラン変更プレビューに新価格が出る（既知の欠陥 CMP-260930-1931）', async ({ browser }, testInfo) => {
   const state = readState()
   const { context, page } = await newLoggedInPage(browser, USER)
   try {
@@ -523,16 +609,15 @@ test('PR-06 下流: テナント ADMIN の Billing Center で新価格がプラ�
     const catalogJson = (await catalog.json()) as { data: { plans: { planKey: string; priceBands: { scopeKind: string; bandNo: number; monthlyPriceJpy: number | null }[] }[] } }
     const fullTeam = catalogJson.data.plans.find((p) => p.planKey === PRODUCT_KEY)?.priceBands.filter((b) => b.scopeKind === SCOPE_KIND)
     await note(testInfo, `GET /billing/plans ${PRODUCT_KEY}/${SCOPE_KIND} バンド`, { status: catalog.status(), revisionBStatus: state.revisionBStatus, bands: fullTeam })
-    expect.soft(state.revisionBStatus, 'PR-05 で ACTIVE になっている').toBe('ACTIVE')
-    expect.soft(fullTeam?.find((b) => b.bandNo === 1)?.monthlyPriceJpy, 'カタログのバンド1に新価格（税込 3630）が出る').toBe(3630)
+    expect(fullTeam?.find((b) => b.bandNo === 1)?.monthlyPriceJpy, 'カタログのバンド1に新価格（税込 3630）が出る').toBe(3630)
 
     await gotoAndSettle(page, `/organizations/${USER_ORG_SLUG}/settings/billing`)
     await page.waitForTimeout(2_000)
-    await shot(page, testInfo, 'tenant-billing-center')
-    const text = await page.locator('main, body').first().innerText()
-    await note(testInfo, 'Billing Center 本文（先頭 1500 字）', text.slice(0, 1500))
+    await shot(page, testInfo, 'tenant-billing-center-preview')
     const changeButtons = page.getByRole('button', { name: /プラン.*変更|変更/ })
     await note(testInfo, 'プラン変更ボタン数', await changeButtons.count())
+    // カタログのバンド価格が null のままだと、契約中プランが「フリー」表示になりボタンが0件になる
+    // （実機E2E 2026-09-30 実測）。この可視性検証は新価格反映に必然的に依存する。
     await expect(changeButtons.first(), 'プラン変更の導線がある').toBeVisible({ timeout: 5_000 })
     await changeButtons.first().click()
     const dialog = page.getByTestId('billing-plan-change-dialog')
