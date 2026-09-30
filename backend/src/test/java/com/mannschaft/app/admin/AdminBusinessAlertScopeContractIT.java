@@ -137,7 +137,7 @@ class AdminBusinessAlertScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private ChatChannelEntity createInquiryChannel(TeamEntity team, String name) {
         return chatChannelRepository.saveAndFlush(ChatChannelEntity.builder()
-                .channelType(ChannelType.TEAM)
+                .channelType(ChannelType.TEAM_PUBLIC)
                 .teamId(team.getId())
                 .name(name)
                 .createdBy(ADMIN_USER_ID)
