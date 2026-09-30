@@ -1,4 +1,15 @@
 <script setup lang="ts">
+// NuxtLink は #components から明示 import して `<component :is>` に **コンポーネント実体**を渡す。
+//
+// 【重要・実機で踏んだ罠】`:is="'NuxtLink'"`（文字列）は動かない。Vue は文字列を
+// resolveDynamicComponent → ローカル/グローバル登録の解決に掛けるが、Nuxt の components
+// 自動 import は「テンプレートに `<NuxtLink>` というタグが literal で現れる」ことを引き金に
+// import を注入する仕組みのため、`:is` の文字列だけでは登録されない。解決に失敗した文字列は
+// **そのままネイティブ要素名として描画される**ので、`<nuxtlink>` という未知要素（href 無し・
+// クリックしても遷移しない死んだリンク）が静かに出来上がる。TypeScript も lint も検知しない。
+import type { Component } from 'vue'
+import { NuxtLink } from '#components'
+
 /**
  * F10.1.1 P2a — チーム管理コンソール L2 ハブ（骨格）。
  *
@@ -115,6 +126,15 @@ const cards = computed<AdminConsoleCard[]>(() => [
     to: `${base.value}/settings/shift`,
   },
 ])
+
+/**
+ * カードを何で描画するか。
+ * - 遷移先あり → NuxtLink（**文字列 'NuxtLink' ではなくコンポーネント実体**。上記 import の注参照）
+ * - 遷移先なし（近日公開） → div
+ */
+function cardTag(card: AdminConsoleCard): Component | string {
+  return card.to ? NuxtLink : 'div'
+}
 </script>
 
 <template>
@@ -131,7 +151,7 @@ const cards = computed<AdminConsoleCard[]>(() => [
 
       <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <component
-          :is="card.to ? 'NuxtLink' : 'div'"
+          :is="cardTag(card)"
           v-for="card in cards"
           :key="card.key"
           :to="card.to ?? undefined"

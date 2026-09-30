@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * チーム−組織所属ドメインの読み取り公開クエリサービス（他ドメインへ ID 一覧のみを提供する境界）。
@@ -42,5 +43,27 @@ public class TeamOrgMembershipQueryService {
                 .stream()
                 .map(TeamOrgMembershipEntity::getOrganizationId)
                 .toList();
+    }
+
+    /**
+     * チームの「代表親組織」を返す（F01.2.1 §9.3）。
+     *
+     * <p>規則: ACTIVE の加盟のうち {@code responded_at} が最も古いもの（最初に成立した加盟）。
+     * 同時刻なら {@code organization_id} が最小のもの。ACTIVE の加盟が無ければ空。
+     * 明示の親組織を受け取れない既存 API に限って使う。</p>
+     *
+     *
+     * @param teamId チーム ID
+     * @return 代表親組織 ID（ACTIVE な加盟が無ければ空）
+     */
+    public Optional<Long> findPrimaryParentOrganizationId(Long teamId) {
+        if (teamId == null) {
+            return Optional.empty();
+        }
+        return teamOrgMembershipRepository
+                .findActiveByTeamIdOrderByRespondedAtAndOrganizationId(teamId)
+                .stream()
+                .findFirst()
+                .map(TeamOrgMembershipEntity::getOrganizationId);
     }
 }
