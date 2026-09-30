@@ -1,0 +1,51 @@
+package com.mannschaft.app.social.announcement;
+
+import com.mannschaft.app.common.entity.UuidV7Entity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
+
+/**
+ * グループ宛てお知らせの送信時スナップショット（F01.2.1 §5.6・§8.2）。
+ *
+ * <p>グループ宛てのお知らせを送った時点で、そのグループに ACTIVE で所属していたチームを
+ * 「グループ単位」で固定して残す。グループが後から削除・改名されても、表示判定はこの行で行える。
+ * {@code announcement_feeds} と同一ドメインなので {@code feed_id} に CASCADE の FK を張る（DDL 側。原則2）。
+ * {@code group_id} はチームグループ（別ドメイン）の UUID 文字列で、FK は張らない（原則1）。</p>
+ *
+ * <p>DDL は {@code V230.__create_announcement_group_snapshots_and_fanout_audiences.sql}。
+ * 設計書 §5.6 の複合主キーは、原則6（新規表は UuidV7Entity）のため {@code id} 主キー + UNIQUE に置き換えた。
+ * 行数は「1 件のお知らせあたりの送信時の対象チーム数」で、件数上限は掛けない。</p>
+ */
+@Entity
+@Table(
+        name = "announcement_feed_group_snapshots",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_afgs_feed_group_team",
+                columnNames = {"feed_id", "group_id", "team_id"}),
+        indexes = @Index(name = "idx_afgs_team_feed", columnList = "team_id, feed_id"))
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class AnnouncementFeedGroupSnapshotEntity extends UuidV7Entity {
+
+    /** {@code announcement_feeds.id}（同一ドメイン）。 */
+    @Column(name = "feed_id", nullable = false)
+    private Long feedId;
+
+    /** 送信時に展開したチームグループ ID（UUID 文字列）。 */
+    @Column(name = "group_id", nullable = false, columnDefinition = "CHAR(36)")
+    private String groupId;
+
+    /** 送信時点でそのグループに ACTIVE で所属していたチーム ID。 */
+    @Column(name = "team_id", nullable = false)
+    private Long teamId;
+}
