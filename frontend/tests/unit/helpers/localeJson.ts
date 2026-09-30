@@ -32,7 +32,7 @@ function readJaLocaleFileList(): string[] {
   const files: string[] = []
   for (const line of arrayBody.split('\n')) {
     const match = line.match(/'([^']+)'/)
-    if (match) {
+    if (match?.[1]) {
       files.push(match[1])
     }
   }
