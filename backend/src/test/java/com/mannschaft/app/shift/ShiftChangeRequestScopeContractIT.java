@@ -549,6 +549,21 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("非メンバーの SYSTEM_ADMIN が変更依頼を作成すると 403 COMMON_002 で、件数が増えない")
+        void 非メンバーSYSTEM_ADMINの作成は403で件数不変() throws Exception {
+            long before = changeRequestRepository.count();
+            setAuth(systemAdminId);
+            MvcResult res = call("create", scheduleAId);
+            org.assertj.core.api.Assertions.assertThat(res.getResponse().getStatus()).isEqualTo(403);
+            org.assertj.core.api.Assertions.assertThat(
+                    (String) JsonPath.read(res.getResponse().getContentAsString(), "$.error.code"))
+                    .isEqualTo("COMMON_002");
+            em.flush();
+            em.clear();
+            org.assertj.core.api.Assertions.assertThat(changeRequestRepository.count()).isEqualTo(before);
+        }
+
+        @Test
         @DisplayName("AC-11: 越境で404にした書込み（作成・審査・取下げ）は DB を一切変えない")
         void AC11_越境書込でDB不変() throws Exception {
             long before = changeRequestRepository.count();

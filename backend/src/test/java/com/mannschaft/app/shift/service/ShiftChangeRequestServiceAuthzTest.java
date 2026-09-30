@@ -269,6 +269,22 @@ class ShiftChangeRequestServiceAuthzTest {
     }
 
     @Test
+    @DisplayName("create: 非メンバーの SYSTEM_ADMIN は是正前と同じ COMMON_002（403）で、保存されない")
+    void create_非メンバーSYSTEM_ADMINはCOMMON_002() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(true);
+        given(accessControlService.isMember(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        assertThatThrownBy(() -> service.create(createReq(null), REVIEWER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002));
+
+        verify(changeRequestRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("create: 別スケジュールの slotId を指定すると SHIFT_SLOT_NOT_FOUND（BOLA・存在秘匿）")
     void create_別スケジュールのslotは404() {
         given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
