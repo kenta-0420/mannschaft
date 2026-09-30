@@ -3,6 +3,7 @@ package com.mannschaft.app.publicview.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.publicview.dto.PublicOrganizationResponse;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PublicOrganizationQueryService {
 
     private final OrganizationRepository organizationRepository;
+    private final OrganizationService organizationService;
 
     /**
      * 公開組織の詳細を取得する。
@@ -41,6 +43,9 @@ public class PublicOrganizationQueryService {
                 .orElseThrow(() -> new BusinessException(PublicViewErrorCode.PUBLIC_001));
         boolean philosophyVisible = org.getProfileVisibility() != null
                 && org.getProfileVisibility().isPhilosophyVisible();
-        return PublicOrganizationResponse.from(org, philosophyVisible);
+        // 公開設定（タブの出し分け）は organization ドメインの Service 経由で得る（Entity 参照を増やさない）。
+        return PublicOrganizationResponse.from(org, philosophyVisible,
+                organizationService.isTimelinePostsPublicBySlug(slug),
+                organizationService.isPublicEventsEnabledBySlug(slug));
     }
 }

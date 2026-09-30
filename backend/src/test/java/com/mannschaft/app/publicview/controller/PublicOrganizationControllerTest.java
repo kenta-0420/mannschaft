@@ -98,6 +98,8 @@ class PublicOrganizationControllerTest {
                 .andExpect(jsonPath("$.name").value("公開組織 A"))
                 .andExpect(jsonPath("$.orgType").value("COMPANY"))
                 .andExpect(jsonPath("$.philosophy").value("理念テキスト"))
+                .andExpect(jsonPath("$.timelinePostsPublic").value(true))
+                .andExpect(jsonPath("$.publicEventsEnabled").value(true))
                 .andExpect(jsonPath("$.mapEmbedUrl")
                         .value("https://www.google.com/maps/embed?pb=xxx"));
     }
@@ -187,7 +189,9 @@ class PublicOrganizationControllerTest {
                 LocalDate.of(2018, 4, 1),
                 "DAY",
                 "理念テキスト",
-                "https://www.google.com/maps/embed?pb=xxx"
+                "https://www.google.com/maps/embed?pb=xxx",
+                true,
+                true
         );
     }
 }

@@ -292,6 +292,28 @@ public class OrganizationService {
     }
 
     /**
+     * 公開組織ページ用: タイムライン投稿を未ログインに公開する設定かを返す横断 SPI。
+     *
+     * <p>公開ページ（publicview）が {@link OrganizationEntity} の設定を直接読まずに済むよう、真偽値だけを返す
+     * （Entity 参照を越境させない・番人 D-1）。非公開 / 凍結 / 削除済み / 不在の組織は false。</p>
+     */
+    public boolean isTimelinePostsPublicBySlug(String slug) {
+        return slug != null && organizationRepository.findPublicOrganizationBySlug(slug)
+                .map(OrganizationEntity::isTimelinePostsPublic)
+                .orElse(false);
+    }
+
+    /**
+     * 公開組織ページ用: イベントを未ログインに公開する設定かを返す横断 SPI。
+     * 考え方は {@link #isTimelinePostsPublicBySlug(String)} と同じ。
+     */
+    public boolean isPublicEventsEnabledBySlug(String slug) {
+        return slug != null && organizationRepository.findPublicOrganizationBySlug(slug)
+                .map(OrganizationEntity::isPublicEventsEnabled)
+                .orElse(false);
+    }
+
+    /**
      * 公開ページのリンク生成用に、公開してよい組織の ID → slug を一括で引く横断 SPI。
      *
      * <p>公開ページの URL 識別子は slug に一本化されている（F01.2.1 AC-A13）。数値 ID から

@@ -79,7 +79,7 @@ class PublicTimelinePostControllerTest {
         org.mockito.BDDMockito.given(publicOrganizationQueryService.getPublicOrganization(ORG_SLUG))
                 .willReturn(new com.mannschaft.app.publicview.dto.PublicOrganizationResponse(
                         ORG_ID, "サンプル組織", null, null, null, "COMPANY", null, null, null, null,
-                        null, null, null, null, null));
+                        null, null, null, null, null, false, false));
     }
     private static final Long POST_ID = 9001L;
 
