@@ -15,11 +15,12 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const teamStore = useTeamStore()
-const { getSchedule, updateSchedule, transitionStatus } = useShiftApi()
+const { getSchedule, updateSchedule, transitionStatus, deleteSchedule } = useShiftApi()
 const { userTimezone } = useDatetime()
 const { listSlots } = useShiftSlotApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
+const confirm = useConfirm()
 
 const scheduleId = computed(() => Number(route.params.id))
 
@@ -42,10 +43,7 @@ const canManage = computed(() => {
 async function load() {
   loading.value = true
   try {
-    const [s, sl] = await Promise.all([
-      getSchedule(scheduleId.value),
-      listSlots(scheduleId.value),
-    ])
+    const [s, sl] = await Promise.all([getSchedule(scheduleId.value), listSlots(scheduleId.value)])
     schedule.value = s
     slots.value = sl
   } catch (error) {
@@ -178,21 +176,71 @@ async function saveEdit() {
   }
 }
 
+// =====================================================
+// シフト表削除
+// =====================================================
+const deleting = ref(false)
+
+function confirmDelete() {
+  if (!schedule.value || !canManage.value) return
+  confirm.require({
+    message: t('shift.detail.deleteConfirm'),
+    header: t('shift.detail.deleteTitle'),
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: t('common.cancel'),
+    acceptLabel: t('shift.action.delete'),
+    acceptClass: 'p-button-danger',
+    accept: handleDelete,
+  })
+}
+
+async function handleDelete() {
+  if (!schedule.value || !canManage.value || deleting.value) return
+  deleting.value = true
+  try {
+    await deleteSchedule(scheduleId.value)
+    success(t('shift.detail.deleteSuccess'))
+    await navigateTo('/shift')
+  } catch (error) {
+    handleApiError(error)
+  } finally {
+    deleting.value = false
+  }
+}
+
 // ステッパーステップ番号
-const currentStep = computed(() => (schedule.value ? statusToStep(schedule.value.status.status) : 1))
+const currentStep = computed(() =>
+  schedule.value ? statusToStep(schedule.value.status.status) : 1,
+)
 
 // タブナビゲーション
 // 「希望一覧」「勤務制約」タブは BE 側が ADMIN/DEPUTY_ADMIN 限定のため、
 // 一般メンバーには表示しない（見えるのに踏むと壊れる事故を防ぐ）。
 const tabs = computed(() => {
   const list = [
-    { label: t('shift.detail.tabOverview'), icon: 'pi pi-calendar', to: `/shift/${scheduleId.value}` },
-    { label: t('shift.detail.tabEdit'), icon: 'pi pi-pencil', to: `/shift/${scheduleId.value}/edit` },
+    {
+      label: t('shift.detail.tabOverview'),
+      icon: 'pi pi-calendar',
+      to: `/shift/${scheduleId.value}`,
+    },
+    {
+      label: t('shift.detail.tabEdit'),
+      icon: 'pi pi-pencil',
+      to: `/shift/${scheduleId.value}/edit`,
+    },
   ]
   if (canManage.value) {
     list.push(
-      { label: t('shift.detail.tabRequests'), icon: 'pi pi-list', to: `/shift/${scheduleId.value}/requests` },
-      { label: t('shift.detail.tabConstraints'), icon: 'pi pi-shield', to: `/shift/${scheduleId.value}/work-constraints` },
+      {
+        label: t('shift.detail.tabRequests'),
+        icon: 'pi pi-list',
+        to: `/shift/${scheduleId.value}/requests`,
+      },
+      {
+        label: t('shift.detail.tabConstraints'),
+        icon: 'pi pi-shield',
+        to: `/shift/${scheduleId.value}/work-constraints`,
+      },
     )
   }
   return list
@@ -229,13 +277,28 @@ const tabs = computed(() => {
             @click="handleTransition"
           />
           <ShiftReminderButton :schedule="schedule" :can-manage="canManage" />
+          <Button
+            data-testid="shift-schedule-delete"
+            icon="pi pi-trash"
+            :label="t('shift.action.delete')"
+            severity="danger"
+            outlined
+            size="small"
+            :loading="deleting"
+            @click="confirmDelete"
+          />
         </div>
       </div>
 
       <!-- ステッパー -->
       <div class="mb-6 flex items-center gap-0">
         <div
-          v-for="(step, idx) in [t('shift.status.draft'), t('shift.status.collecting'), t('shift.status.adjusting'), t('shift.status.published')]"
+          v-for="(step, idx) in [
+            t('shift.status.draft'),
+            t('shift.status.collecting'),
+            t('shift.status.adjusting'),
+            t('shift.status.published'),
+          ]"
           :key="idx"
           class="flex flex-1 items-center"
         >
@@ -263,7 +326,9 @@ const tabs = computed(() => {
       </div>
 
       <!-- タブナビ -->
-      <nav class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700">
+      <nav
+        class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700"
+      >
         <NuxtLink
           v-for="tab in tabs"
           :key="tab.to"
@@ -290,14 +355,21 @@ const tabs = computed(() => {
           {{ t('shift.detail.noDate') }}
         </div>
 
-        <div v-else class="overflow-x-auto rounded-xl border border-surface-200 dark:border-surface-700">
+        <div
+          v-else
+          class="overflow-x-auto rounded-xl border border-surface-200 dark:border-surface-700"
+        >
           <table class="w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th class="sticky left-0 min-w-[100px] bg-surface-50 px-3 py-2 text-left text-xs font-medium text-surface-500 dark:bg-surface-800">
+                <th
+                  class="sticky left-0 min-w-[100px] bg-surface-50 px-3 py-2 text-left text-xs font-medium text-surface-500 dark:bg-surface-800"
+                >
                   {{ t('shift.detail.colDate') }}
                 </th>
-                <th class="min-w-[140px] bg-surface-50 px-3 py-2 text-left text-xs font-medium text-surface-500 dark:bg-surface-800">
+                <th
+                  class="min-w-[140px] bg-surface-50 px-3 py-2 text-left text-xs font-medium text-surface-500 dark:bg-surface-800"
+                >
                   {{ t('shift.detail.colSlots') }}
                 </th>
               </tr>
@@ -314,9 +386,7 @@ const tabs = computed(() => {
                   <span>{{ formatDateShort(date) }}</span>
                   <span
                     class="ml-1 text-xs"
-                    :class="
-                      isWeekend(date) ? 'text-blue-500' : 'text-surface-400'
-                    "
+                    :class="isWeekend(date) ? 'text-blue-500' : 'text-surface-400'"
                   >
                     ({{ formatDayOfWeek(date) }})
                   </span>
@@ -336,8 +406,14 @@ const tabs = computed(() => {
                           : 'border-surface-200 bg-surface-50 text-surface-700 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300'
                       "
                     >
-                      <span>{{ slot.time.startTime.slice(0, 5) }}〜{{ slot.time.endTime.slice(0, 5) }}</span>
-                      <span v-if="slot.position.positionName" class="text-surface-400">/{{ slot.position.positionName }}</span>
+                      <span
+                        >{{ slot.time.startTime.slice(0, 5) }}〜{{
+                          slot.time.endTime.slice(0, 5)
+                        }}</span
+                      >
+                      <span v-if="slot.position.positionName" class="text-surface-400"
+                        >/{{ slot.position.positionName }}</span
+                      >
                       <!-- 割当バッジ。サーバーが割当を伏せている間は人数を出さず中立表示にする -->
                       <span
                         v-if="slot.assignmentMasked"

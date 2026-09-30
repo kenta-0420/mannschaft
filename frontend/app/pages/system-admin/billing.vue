@@ -155,8 +155,9 @@ async function submitBands() {
   if (!bandsEditingPlanKey.value) return
   bandsSubmitting.value = true
   try {
-    await billingApi.replacePriceBandsAdmin(bandsEditingPlanKey.value, { bands: bandsForm.value })
-    notification.success(t('billing.admin.priceBandsTab.saveSuccess'))
+    // 旧 PUT /plans/{planKey}/price-bands は 410 で廃止済み（AC-140〜142）。
+    // 人数バンド・金額の変更は新しい価格改定画面（/system-admin/price-revisions）で行う。
+    notification.info(t('billing.admin.priceBandsTab.movedToPriceRevisions'))
     bandsDialogVisible.value = false
   }
   catch (err) {
@@ -367,6 +368,17 @@ onMounted(async () => {
       {{ t('billing.admin.priceWarning') }}
     </Message>
 
+    <!-- 人数バンド・金額の変更は価格改定画面へ移設済み。課金マスタ管理からも直接たどれるようにする。 -->
+    <div class="mb-4 flex justify-end">
+      <NuxtLink
+        to="/system-admin/price-revisions"
+        class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        data-testid="billing-to-price-revisions"
+      >
+        <i class="pi pi-tags" aria-hidden="true" />{{ t('billing.admin.goToPriceRevisions') }}
+      </NuxtLink>
+    </div>
+
     <PageLoading v-if="loading" />
 
     <TabView v-else v-model:active-index="activeTab">
@@ -540,6 +552,14 @@ onMounted(async () => {
 
     <!-- 人数バンド編集ダイアログ -->
     <Dialog v-model:visible="bandsDialogVisible" :header="t('billing.admin.plansTab.editPriceBands')" :style="{ width: '620px' }" modal :draggable="false">
+      <Message severity="info" :closable="false" class="mb-3 text-sm">
+        {{ t('billing.admin.priceBandsTab.movedToPriceRevisions') }}
+        <NuxtLink
+          to="/system-admin/price-revisions"
+          class="ml-1 font-medium underline"
+          data-testid="bands-dialog-to-price-revisions"
+        >{{ t('billing.admin.goToPriceRevisions') }}</NuxtLink>
+      </Message>
       <p class="mb-3 text-xs text-surface-500">{{ t('billing.admin.priceBandsTab.validationNote') }}</p>
       <div class="space-y-3">
         <div v-for="(band, i) in bandsForm" :key="i" class="grid grid-cols-6 items-end gap-2 border-b border-surface-100 pb-3 dark:border-surface-800">

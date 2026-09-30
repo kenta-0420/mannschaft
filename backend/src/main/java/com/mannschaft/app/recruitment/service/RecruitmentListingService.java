@@ -1172,6 +1172,9 @@ public class RecruitmentListingService {
      */
     private void checkListingManagementAccess(
             RecruitmentScopeType scopeType, Long scopeId, Long userId, Long createdBy) {
+        if (scopeType == RecruitmentScopeType.GLOBAL) {
+            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
         if (scopeType == RecruitmentScopeType.PERSONAL) {
             if (!scopeId.equals(userId) || (createdBy != null && !createdBy.equals(userId))) {
                 throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002);

@@ -123,6 +123,7 @@ public class RecruitmentCancelledNotificationListener {
             case PERSONAL -> NotificationScopeType.PERSONAL;
             case TEAM -> NotificationScopeType.TEAM;
             case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
+            case GLOBAL -> throw new IllegalStateException("GLOBAL は募集枠のスコープではありません");
         };
         String reason = listing.getCancelledReason() != null ? listing.getCancelledReason() : "-";
         return new NotificationDeliveryRequest(

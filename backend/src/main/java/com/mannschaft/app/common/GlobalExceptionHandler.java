@@ -10,6 +10,8 @@ import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequired
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.recruitment.RecruitmentPenaltyActiveException;
+import com.mannschaft.app.recruitment.dto.RecruitmentPenaltyActiveErrorResponse;
 import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
@@ -1799,6 +1801,7 @@ public class GlobalExceptionHandler {
             // F03.11 市（募集）§5.2 / §17.5: 未払いのキャンセル料が残っている状態での申込は
             // 設計書が 402 Payment Required を契約として明示している（未払い決済リンクを返す前提）。
             // Severity.ERROR 既定の 500 のままでは「サーバ障害」に見え、支払い導線に繋がらなかった。
+            Map.entry("RECRUITMENT_300", HttpStatus.FORBIDDEN),          // PENALTY_ACTIVE（募集ペナルティによる申込ブロック）
             Map.entry("RECRUITMENT_301", HttpStatus.PAYMENT_REQUIRED),   // CANCELLATION_PAYMENT_FAILED（未払いキャンセル料による申込ブロック）
             // ─────────────────────────────────────────────────────────────
             // 宣言と実挙動の一致（2026-07-30・#2468 / 番人 ErrorCodeHttpStatusDeclarationGuardTest）
@@ -2527,6 +2530,16 @@ public class GlobalExceptionHandler {
             Map.entry("JOIN_REQUEST_001", HttpStatus.NOT_FOUND),
             Map.entry("JOIN_REQUEST_003", HttpStatus.NOT_FOUND),
 
+            // 価格改定戦役（price-revisions）出陣隊（第3陣）D/E/F/G/J群: PriceRevisionErrorCode の
+            // 宣言どおりの status（正本 .claude/campaigns/price-rev-plan-v3.md）。
+            Map.entry("PRICE_REVISION_001", HttpStatus.CONFLICT),   // TAX_CODE_DUPLICATE AC-9
+            Map.entry("PRICE_REVISION_002", HttpStatus.CONFLICT),   // TAX_CODE_OVERLAP AC-10
+            Map.entry("PRICE_REVISION_013", HttpStatus.CONFLICT),   // FUTURE_REVISION_ALREADY_EXISTS AC-176
+            Map.entry("PRICE_REVISION_014", HttpStatus.CONFLICT),   // REVISION_OVERLAP AC-46/AC-49
+            Map.entry("PRICE_REVISION_016", HttpStatus.NOT_FOUND),  // REVISION_NOT_FOUND AC-55/56/102
+            Map.entry("PRICE_REVISION_017", HttpStatus.CONFLICT),   // LOCK_VERSION_CONFLICT AC-76/103/115
+            Map.entry("PRICE_REVISION_018", HttpStatus.CONFLICT),   // STATE_CONFLICT AC-77/78/94/95/105/106/116
+            Map.entry("PRICE_REVISION_020", HttpStatus.CONFLICT),   // PROVISION_IN_PROGRESS AC-104/131
             // CMP-260920-1040 F04.9 確認通知「宛先指定」（軍議第8版確定稿 §3.3・§4・AC-36）。
             // TARGETS_EMPTY / TARGETS_AND_GROUP_BOTH_SPECIFIED / DEADLINE_IN_PAST は
             // Severity.WARN 既定の 400 のまま（登録不要）。
@@ -2546,6 +2559,14 @@ public class GlobalExceptionHandler {
      * 個別マッピングが存在しないか 500 を返す場合）のみ error_reports に severity=MEDIUM で
      * 記録する。4xx を返す通常の業務エラーは記録しない（設計書 §5.2）。</p>
      */
+    @ExceptionHandler(RecruitmentPenaltyActiveException.class)
+    public ResponseEntity<RecruitmentPenaltyActiveErrorResponse> handleRecruitmentPenaltyActive(
+            RecruitmentPenaltyActiveException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new RecruitmentPenaltyActiveErrorResponse(
+                        ex.getErrorCode().getCode(), resolveMessage(ex.getErrorCode()), ex.getExpiresAt()));
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex,
                                                                   HttpServletRequest request) {
@@ -3144,6 +3165,16 @@ public class GlobalExceptionHandler {
      * @return 対応する HttpStatus
      */
     protected HttpStatus resolveHttpStatus(ErrorCode errorCode) {
+        return resolveStatus(errorCode);
+    }
+
+    /**
+     * {@link #resolveHttpStatus(ErrorCode)} の static 版。価格改定戦役（price-revisions）
+     * 出陣隊（第3陣）D/I群: Controller 側で「業務上想定される4xx（400/404/409）は冪等台帳へ
+     * complete として保存し再送で再生する・真に予期しない例外だけ fail() する」を判定するために、
+     * インスタンスを介さず ErrorCode → HttpStatus を解決できる必要がある（決定2b）。
+     */
+    public static HttpStatus resolveStatus(ErrorCode errorCode) {
         // 個別マッピングを優先
         HttpStatus mapped = ERROR_CODE_STATUS_MAP.get(errorCode.getCode());
         if (mapped != null) {

@@ -4,6 +4,7 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.PenaltyLiftReason;
+import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
 import com.mannschaft.app.recruitment.event.RecruitmentPenaltyLiftedNotificationEvent;
@@ -103,8 +104,10 @@ public class RecruitmentPenaltyRecomputeBatch {
                 }
 
                 // 集計期間内の有効 NO_SHOW 件数を再計算
-                LocalDateTime since = now.minusDays(setting.getThresholdPeriodDays());
-                long currentCount = noShowRepository.countConfirmedNoShows(penalty.getUserId(), since);
+                long currentCount = noShowRepository.countConfirmedNoShowsForPenalty(
+                        penalty.getUserId(), setting.getThresholdPeriodDays(),
+                        penalty.getScopeType() == RecruitmentScopeType.GLOBAL,
+                        setting.getScopeType().name(), setting.getScopeId());
 
                 if (currentCount < setting.getThresholdCount()) {
                     // 閾値を下回った → ペナルティ解除

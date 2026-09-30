@@ -175,7 +175,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 ### セキュリティ・認証
 
-> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
+> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟡 設計中） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
 
 - **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
@@ -477,6 +477,8 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 - 重要度に応じた通知チャネル自動選択
 - **通知受信設定**: 個人アカウントが所属する組織・チームごとに通知の受け取り ON/OFF を設定可能
 - **募集の無断欠席異議**: 参加者の異議理由を保存して主催者へアプリ内通知し、TEAM/ORGANIZATION の管理者または PERSONAL 募集の作成者が裁定可能
+- **募集ペナルティの発動通知**: 確定した無断欠席が設定回数に達すると本人へ緊急の確認通知を送り、設定に応じて募集スコープ内または全スコープへの応募を制限。拒否応答には解除予定時刻を含む
+- **確認通知の状態**: 通知の既読と本人の確認済みを独立して表示。既読にしても確認待ちは残り、明示確認後に未読へ戻しても確認済みを保持する
 
 #### 7. アンケート・投票
 - カスタム設問作成（単一選択・複数選択・自由記述等）
@@ -895,7 +897,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 | Phase | 機能領域 | 詳細設計 |
 |-------|---------|---------|
-| 1 | 認証・権限・ユーザー基盤、プラットフォーム設定、チーム・組織・グループ階層、テンプレート・モジュール、プラン・サブスクリプション、チーム間相互フォロー・フレンドチーム | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
+| 1 | 認証・権限・ユーザー基盤、プラットフォーム設定、チーム・組織・グループ階層、テンプレート・モジュール、プラン・サブスクリプション、チーム間相互フォロー・フレンドチーム | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.2.1](docs/features/F01.2.1_org_team_groups.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
 | 2 | QR会員証、ダッシュボード、帰省・滞在予定、TODO・プロジェクト、アクセス解析、外観設定、オンボーディング | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
 | 3 | スケジュール・出欠、個人スケジュール、Googleカレンダー連携、予約管理、シフト管理、緊急安否確認、順番待ち、イベント管理 | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md)（v2枝番: [F03.4.1 メニュー](docs/features/F03.4.1_reservation_menu.md), [F03.4.2 枠テンプレート](docs/features/F03.4.2_reservation_slot_template.md), [F03.4.3 予約グループ](docs/features/F03.4.3_reservation_group_booking.md), [F03.4.4 マトリックスUI](docs/features/F03.4.4_reservation_matrix_ui.md)）, [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md), [F03.8](docs/features/F03.8_event_management.md) |
 | 4 | タイムライン、チャット、プッシュ通知、ソーシャルプロフィール・フォロー、通報・モデレーション、グローバル検索、ゲーミフィケーション | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md), [F04.7](docs/features/F04.7_gamification.md) |
@@ -926,7 +928,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 | Phase | 機能領域 | 主要エンドポイント例 | 詳細設計 |
 |-------|---------|-------------------|---------|
-| 1 | 認証・権限、チーム・組織、テンプレート・モジュール、プラン・課金、フレンドチーム | `/auth/**`, `/teams/**`, `/organizations/**`, `/templates/**`, `/system-admin/**`, `/teams/{id}/friends/**`, `/teams/{id}/friend-folders/**`, `/teams/{id}/friend-feed/**` | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
+| 1 | 認証・権限、チーム・組織、テンプレート・モジュール、プラン・課金、フレンドチーム | `/auth/**`, `/teams/**`, `/organizations/**`, `/templates/**`, `/system-admin/**`, `/teams/{id}/friends/**`, `/teams/{id}/friend-folders/**`, `/teams/{id}/friend-feed/**` | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.2.1](docs/features/F01.2.1_org_team_groups.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
 | 2 | QR会員証、ダッシュボード、帰省・滞在予定（本人管理・TEAM公開）、TODO、オンボーディング | `/members/card/**`, `/dashboard/**`, `/me/return-stay-plans/**`, `/teams/{teamId}/members/**/return-stay-plans`, `/todos/**`, `/onboarding/**` | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
 | 3 | スケジュール、予約、シフト、安否確認、順番待ち | `/schedules/**`, `/reservations/**`, `/shifts/**`, `/safety-checks/**`, `/queues/**` | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md), [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md) |
 | 4 | タイムライン、チャット、通知、クイック確認、ソーシャルプロフィール、検索 | `/timeline/**`, `/chat/**`, `/notifications/**`, `/confirmable-notifications/**`, `/social-profiles/**`, `/search/**` | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.9](docs/features/F04.9_confirmable_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md) |

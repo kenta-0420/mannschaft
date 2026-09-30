@@ -146,6 +146,30 @@
       "back": "Zurück zur Liste",
       "changeStatus": "Status ändern"
     },
+    "residents": {
+      "title": "Bewohnerverzeichnis",
+      "create": "Wohneinheit hinzufügen",
+      "createTitle": "Wohneinheit hinzufügen",
+      "unitNumber": "Wohnungsnummer",
+      "unitNumberPlaceholder": "z. B. 101",
+      "floor": "Etage",
+      "unitType": "Wohnungstyp",
+      "layout": "Grundriss",
+      "areaSqm": "Fläche",
+      "notes": "Notizen",
+      "residentCount": "{count} Bewohner",
+      "occupied": "Bewohnt",
+      "vacant": "Frei",
+      "empty": "Keine Wohneinheiten vorhanden",
+      "createSuccess": "Wohneinheit hinzugefügt",
+      "createFailed": "Wohneinheit konnte nicht hinzugefügt werden",
+      "validation": {
+        "unitNumberRequired": "Bitte Wohnungsnummer eingeben",
+        "unitNumberMax": "Die Wohnungsnummer darf höchstens 50 Zeichen enthalten",
+        "unitTypeMax": "Der Wohnungstyp darf höchstens 20 Zeichen enthalten",
+        "layoutMax": "Der Grundriss darf höchstens 20 Zeichen enthalten"
+      }
+    },
     "errors": {
       "loadFailed": "Laden fehlgeschlagen",
       "saveFailed": "Speichern fehlgeschlagen",

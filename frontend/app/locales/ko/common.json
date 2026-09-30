@@ -971,7 +971,29 @@
       "title": "할 일이 넘겨졌습니다",
       "body": "{from}님으로부터 「{title}」을（를） 받았습니다（상태: {label}）"
     },
-    "pageTitle": "通知",
+    "pageTitle": "알림",
+    "list": {
+      "all": "전체",
+      "unread": "읽지 않음",
+      "markAllRead": "모두 읽음으로 표시",
+      "markUnread": "읽지 않음으로 표시",
+      "markRead": "읽음으로 표시",
+      "empty": "알림이 없습니다",
+      "loadMore": "더 보기",
+      "loadError": "알림을 불러오지 못했습니다",
+      "actionError": "작업에 실패했습니다",
+      "markAllReadError": "모두 읽음 처리에 실패했습니다",
+      "confirmInfoMissing": "확인 알림 정보가 부족합니다",
+      "invalidScope": "범위가 올바르지 않습니다",
+      "confirmed": "확인했습니다",
+      "confirmError": "확인 처리에 실패했습니다"
+    },
+    "bell": {
+      "notification": "알림",
+      "chat": "채팅",
+      "mention": "멘션",
+      "none": "없음"
+    },
     "guide": {
       "title": "通知の使い方",
       "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
@@ -1624,6 +1646,7 @@
     "search": "검색",
     "edit": "편집",
     "save": "저장",
+    "detail": "상세",
     "resume": {
       "title": "이력서・직무경력서",
       "listTitle": "이력서 버전 목록",
@@ -1914,6 +1937,7 @@
       "gdprPurge": "GDPR 삭제 현황",
       "feedbackInbox": "의견함 (전체)",
       "billing": "결제 마스터 관리",
+      "priceRevisions": "가격 개정",
       "betaPerks": "ベータ特典管理",
       "villageCreationRequests": "村作成申請",
       "seasonalWallpapers": "季節壁紙",
