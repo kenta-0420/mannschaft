@@ -312,4 +312,20 @@ class ShiftChangeRequestServiceAuthzTest {
                 .version(0L)
                 .build();
     }
+
+    @Test
+    @DisplayName("withdraw: SYSTEM_ADMIN も本人でなければ ACCESS_DENIED(SHIFT_019)で、依頼は変更されない")
+    void withdraw_SYSTEM_ADMINも本人でなければ403() {
+        ShiftChangeRequestEntity entity = requestedBy(MEMBER_ID);
+        given(changeRequestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(true);
+
+        assertThatThrownBy(() -> service.withdraw(REQUEST_ID, REVIEWER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(ShiftErrorCode.ACCESS_DENIED));
+
+        assertThat(entity.getStatus()).isEqualTo(ChangeRequestStatus.OPEN);
+        verify(changeRequestRepository, never()).save(any());
+    }
 }

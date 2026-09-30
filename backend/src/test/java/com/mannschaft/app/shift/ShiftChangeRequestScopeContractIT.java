@@ -393,6 +393,21 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("SYSTEM_ADMINも本人でなければ403（SHIFT_019）で、依頼の status・version は変わらない")
+        void SYSTEM_ADMINも本人でなければ403でDB不変() throws Exception {
+            setAuth(systemAdminId);
+            mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", myRequestId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_019"));
+            em.flush();
+            em.clear();
+            ShiftChangeRequestEntity after = changeRequestRepository.findById(myRequestId).orElseThrow();
+            org.assertj.core.api.Assertions.assertThat(after.getStatus())
+                    .isEqualTo(com.mannschaft.app.shift.ChangeRequestStatus.OPEN);
+            org.assertj.core.api.Assertions.assertThat(after.getVersion()).isEqualTo(0L);
+        }
+
+        @Test
         @DisplayName("別scope ADMINは404（越境・存在オラクル是正 W2）")
         void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
