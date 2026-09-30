@@ -146,6 +146,30 @@
       "back": "一覧に戻る",
       "changeStatus": "ステータスを変更"
     },
+    "residents": {
+      "title": "住民台帳",
+      "create": "住戸を追加",
+      "createTitle": "住戸を追加",
+      "unitNumber": "住戸番号",
+      "unitNumberPlaceholder": "例: 101",
+      "floor": "階",
+      "unitType": "住戸種別",
+      "layout": "間取り",
+      "areaSqm": "面積",
+      "notes": "メモ",
+      "residentCount": "{count}人入居中",
+      "occupied": "入居中",
+      "vacant": "空室",
+      "empty": "住戸情報がありません",
+      "createSuccess": "住戸を追加しました",
+      "createFailed": "住戸の追加に失敗しました",
+      "validation": {
+        "unitNumberRequired": "住戸番号を入力してください",
+        "unitNumberMax": "住戸番号は50文字以内で入力してください",
+        "unitTypeMax": "住戸種別は20文字以内で入力してください",
+        "layoutMax": "間取りは20文字以内で入力してください"
+      }
+    },
     "errors": {
       "loadFailed": "読み込みに失敗しました",
       "saveFailed": "保存に失敗しました",

@@ -174,5 +174,23 @@ class ShiftCleanupBatchServiceTest {
             verify(scheduleRepository).findArchivedScheduleIdsOlderThan(any(), captor.capture());
             assertThat(captor.getValue().getPageSize()).isEqualTo(100);
         }
+
+        @Test
+        @DisplayName("101件の親は複数回実行で先頭100件に滞留せず全て削除される")
+        void 百一件は複数回で全て処理する() {
+            List<Long> firstHundred = java.util.stream.LongStream.rangeClosed(1, 100).boxed().toList();
+            given(scheduleRepository.findArchivedScheduleIdsOlderThan(any(), any(Pageable.class)))
+                    .willReturn(firstHundred, List.of(101L), List.of());
+            given(requestRepository.deleteByScheduleIds(firstHundred)).willReturn(100);
+            given(requestRepository.deleteByScheduleIds(List.of(101L))).willReturn(1);
+
+            batchService.runRequestCleanup();
+            batchService.runRequestCleanup();
+            batchService.runRequestCleanup();
+
+            verify(requestRepository).deleteByScheduleIds(firstHundred);
+            verify(requestRepository).deleteByScheduleIds(List.of(101L));
+            verify(requestRepository, times(2)).deleteByScheduleIds(any());
+        }
     }
 }

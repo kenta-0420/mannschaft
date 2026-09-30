@@ -204,7 +204,12 @@ public class ShiftScheduleEntity extends BaseEntity {
      * 論理削除を行う。
      */
     public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
+        softDelete(LocalDateTime.now());
+    }
+
+    /** 子への連鎖と同じ削除日時を親にも設定する。 */
+    public void softDelete(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     /**

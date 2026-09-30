@@ -167,7 +167,7 @@ class ShiftRequestProxyInputTest {
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
                     LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", CURRENT_TIME, false);
 
-            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.empty());
@@ -195,7 +195,7 @@ class ShiftRequestProxyInputTest {
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
                     LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", CURRENT_TIME, false);
 
-            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.empty());
@@ -270,7 +270,7 @@ class ShiftRequestProxyInputTest {
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
                     LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", CURRENT_TIME, false);
 
-            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.empty());
@@ -334,7 +334,7 @@ class ShiftRequestProxyInputTest {
                     REQUEST_ID, SCHEDULE_ID, USER_ID, null,
                     LocalDate.of(2026, 3, 2), "PREFERRED", "テスト", CURRENT_TIME, false);
 
-            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
+            given(scheduleService.findScheduleForUpdateOrThrow(SCHEDULE_ID)).willReturn(schedule);
             given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.empty());

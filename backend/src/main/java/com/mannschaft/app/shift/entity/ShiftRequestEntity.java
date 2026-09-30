@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift.entity;
 
 import com.mannschaft.app.shift.ShiftPreference;
+import com.mannschaft.app.shift.ShiftRequestDeleteReason;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,23 +18,38 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
  * シフト希望エンティティ。メンバーのシフト希望を管理する。
  */
 @Entity
+@SQLRestriction("deleted_at IS NULL")
 @Table(
         name = "shift_requests",
         uniqueConstraints = @UniqueConstraint(
-                name = "uq_sr_schedule_user_slot",
-                columnNames = {"schedule_id", "user_id", "slot_id_uq", "slot_date_uq"}))
+                name = "uq_sr_schedule_user_slot_active",
+                columnNames = {"schedule_id", "user_id", "slot_id_uq", "slot_date_uq", "active_uq"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
 public class ShiftRequestEntity {
+
+    /** 論理削除日時。native UPDATE だけが書き込み、古い実体の save では蘇生させない。 */
+    @Column(name = "deleted_at", insertable = false, updatable = false)
+    private Instant deletedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delete_reason", length = 20, insertable = false, updatable = false)
+    private ShiftRequestDeleteReason deleteReason;
+
+    @Column(name = "active_uq", insertable = false, updatable = false,
+            columnDefinition = "TINYINT GENERATED ALWAYS AS (IF(deleted_at IS NULL, 1, NULL)) VIRTUAL")
+    private Integer activeUq;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

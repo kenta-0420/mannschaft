@@ -11,6 +11,7 @@ import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.service.ShiftSlotService;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,12 +21,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -61,6 +67,12 @@ class ShiftSlotServiceTest {
 
     @Mock
     private com.mannschaft.app.shift.repository.ShiftAssignmentRepository assignmentRepository;
+
+    @Mock
+    private ShiftRequestRepository requestRepository;
+
+    @Mock
+    private Clock wallClock;
 
     @InjectMocks
     private ShiftSlotService shiftSlotService;
@@ -90,11 +102,15 @@ class ShiftSlotServiceTest {
      */
     @BeforeEach
     void setUpAuthz() {
+        lenient().when(wallClock.instant()).thenReturn(Instant.parse("2026-09-29T12:00:00Z"));
+        lenient().when(wallClock.getZone()).thenReturn(ZoneId.of("Asia/Tokyo"));
         lenient().when(accessControlService.isSystemAdmin(ACTOR)).thenReturn(true);
         lenient().when(scheduleRepository.findById(SCHEDULE_ID)).thenReturn(Optional.of(
                 com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder()
                         .teamId(1L)
                         .build()));
+        lenient().when(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).thenReturn(Optional.of(
+                com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder().teamId(1L).build()));
     }
 
     private ShiftSlotEntity createSlotEntity() {
@@ -228,7 +244,9 @@ class ShiftSlotServiceTest {
 
             // Then
             assertThat(result).isNotNull();
-            verify(slotRepository).save(any(ShiftSlotEntity.class));
+            InOrder order = inOrder(scheduleRepository, slotRepository);
+            order.verify(scheduleRepository).findByIdForUpdate(SCHEDULE_ID);
+            order.verify(slotRepository).save(any(ShiftSlotEntity.class));
         }
 
         @Test
@@ -552,17 +570,22 @@ class ShiftSlotServiceTest {
     class DeleteSlot {
 
         @Test
-        @DisplayName("シフト枠削除_正常_deleteが呼ばれる")
-        void シフト枠削除_正常_deleteが呼ばれる() {
+        @DisplayName("シフト枠削除_正常_割当と枠指定希望と枠が論理削除される")
+        void シフト枠削除_正常_子を連鎖論理削除する() {
             // Given
             ShiftSlotEntity entity = createSlotEntity();
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(entity));
+            given(slotRepository.softDeleteById(SLOT_ID))
+                    .willReturn(1);
 
             // When
             shiftSlotService.deleteSlot(SLOT_ID, ACTOR);
 
             // Then
-            verify(slotRepository).delete(entity);
+            verify(slotRepository).softDeleteById(SLOT_ID);
+            verify(assignmentRepository).softDeleteBySlotId(SLOT_ID);
+            verify(requestRepository).softDeleteBySlotId(SLOT_ID);
+            verify(slotRepository, never()).delete(entity);
         }
 
         @Test
