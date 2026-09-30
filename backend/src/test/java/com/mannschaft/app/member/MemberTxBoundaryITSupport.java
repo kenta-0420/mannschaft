@@ -22,6 +22,8 @@ import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.awaitility.Awaitility;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -257,13 +259,28 @@ abstract class MemberTxBoundaryITSupport extends AbstractMySqlIntegrationTest {
     // AC-8: TX 状態の記録と判定
     // ═════════════════════════════════════════════════════════════════════
 
+    /**
+     * spy の実体を呼ぶ。{@code inv.callRealMethod()} の代わりに必ずこれを使うこと。
+     *
+     * <p>Spring Data の Repository は JDK 動的プロキシなので、{@code @MockitoSpyBean} はインターフェース型の
+     * mock を作り、既定の Answer を {@code AdditionalAnswers.delegatesTo(元の Bean)} にする
+     * （spring-test 6.2 {@code MockitoSpyBeanOverrideHandler#createSpy} の {@code Proxy.isProxyClass} 分岐）。
+     * この mock で {@code callRealMethod()} を呼ぶと、抽象メソッドの実体が無いため
+     * {@code MockitoException("Cannot call abstract real method")} になる（前例:
+     * {@code MonthlyShiftBudgetCloseTransactionIT}）。mock 生成時の既定 Answer に委ねれば、
+     * Repository は元の Bean へ、クラスの spy は実メソッドへ、どちらも正しく届く。</p>
+     */
+    protected static Object callReal(InvocationOnMock inv) throws Throwable {
+        return Mockito.mockingDetails(inv.getMock()).getMockCreationSettings().getDefaultAnswer().answer(inv);
+    }
+
     /** 呼ばれた時点の TX 状態を {@link #observations} に積んでから実体を呼ぶ Answer。 */
     protected Answer<Object> observing(String targetFqcn) {
         return inv -> {
             observations.add(new TxObservation(targetFqcn, inv.getMethod().getName(),
                     TransactionSynchronizationManager.isActualTransactionActive(),
                     TransactionSynchronizationManager.getCurrentTransactionName()));
-            return inv.callRealMethod();
+            return callReal(inv);
         };
     }
 

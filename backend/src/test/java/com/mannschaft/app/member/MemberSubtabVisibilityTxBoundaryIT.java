@@ -19,6 +19,8 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.core.NestedExceptionUtils;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -28,6 +30,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -53,13 +56,32 @@ class MemberSubtabVisibilityTxBoundaryIT extends MemberTxBoundaryITSupport {
     @Autowired private ApplicationContext applicationContext;
     @Autowired private TeamPageService teamPageService;
 
-    /** 例外（MockMvc から ServletException として出る場合を含む）か 4xx/5xx かを返す。 */
-    private int performExpectingFailure(RequestBuilder request) {
+    /**
+     * 注入した例外で失敗したことを確かめたうえで HTTP ステータスを返す。
+     *
+     * <p>原因を問わずに失敗を数えると、障害注入点に届かない別の失敗（spy の誤用・権限不足など）でも
+     * 通ってしまう（偽緑）。そこで、例外ハンドラが解決した例外（または MockMvc から伝播した例外）の
+     * root cause が、注入した型・メッセージと一致することを必須にする。未処理のまま伝播した場合は
+     * 599 を返す。</p>
+     */
+    private int performExpectingInjectedFailure(RequestBuilder request,
+                                                Class<? extends Throwable> injectedType,
+                                                String injectedMessage) {
+        Throwable failure;
+        int status;
         try {
-            return mockMvc.perform(request).andReturn().getResponse().getStatus();
+            MvcResult result = mockMvc.perform(request).andReturn();
+            failure = result.getResolvedException();
+            status = result.getResponse().getStatus();
         } catch (Exception e) {
-            return 599; // 未処理例外として呼び出し元まで伝播した＝失敗
+            failure = e;
+            status = 599; // 未処理例外として呼び出し元まで伝播した＝失敗
         }
+        assertThat(failure).as("失敗の原因となった例外がある（status=%s）", status).isNotNull();
+        Throwable root = NestedExceptionUtils.getMostSpecificCause(failure);
+        assertThat(root).as("root cause は注入した例外（実際: %s）", root).isExactlyInstanceOf(injectedType);
+        assertThat(root.getMessage()).as("root cause のメッセージは注入したもの").isEqualTo(injectedMessage);
+        return status;
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -92,18 +114,23 @@ class MemberSubtabVisibilityTxBoundaryIT extends MemberTxBoundaryITSupport {
     @DisplayName("AC-D3T-6: writer の TX の beforeCommit が落ちたら PUT は失敗・DB 不変・監査0回")
     void AC6_コミット直前の失敗では監査が出ない() throws Exception {
         long auditBefore = countAuditRows();
+        AtomicInteger saveReached = new AtomicInteger();
         doAnswer(inv -> {
+            saveReached.incrementAndGet();
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void beforeCommit(boolean readOnly) {
                     throw new IllegalStateException("AC-6 injected beforeCommit failure");
                 }
             });
-            return inv.callRealMethod();
+            return callReal(inv);
         }).when(subtabRepository).save(any());
         setAuth(admId);
 
-        int status = performExpectingFailure(putSettingsRequest(PROFILES, "PUBLIC"));
+        int status = performExpectingInjectedFailure(putSettingsRequest(PROFILES, "PUBLIC"),
+                IllegalStateException.class, "AC-6 injected beforeCommit failure");
+
+        assertThat(saveReached.get()).as("障害注入点（repository.save）に到達している").isEqualTo(1);
 
         assertThat(status).as("PUT は失敗する（status=%s）", status).isGreaterThanOrEqualTo(400);
         awaitEventPoolIdle();
@@ -130,8 +157,11 @@ class MemberSubtabVisibilityTxBoundaryIT extends MemberTxBoundaryITSupport {
                     .when(nameResolverService).resolveUserDisplayNames(any());
             setAuth(admId);
 
-            int status = performExpectingFailure(putSettingsRequest(PROFILES, "PUBLIC"));
+            int status = performExpectingInjectedFailure(putSettingsRequest(PROFILES, "PUBLIC"),
+                    IllegalStateException.class, "AC-7a injected name resolution failure");
 
+            org.mockito.Mockito.verify(nameResolverService, org.mockito.Mockito.atLeastOnce())
+                    .resolveUserDisplayNames(any());
             assertThat(status).as("PUT は 5xx（status=%s）", status).isGreaterThanOrEqualTo(500);
             awaitEventPoolIdle();
             assertThat(subtabMinRole(PROFILES)).as("DB は変わらない").isNull();
@@ -381,7 +411,7 @@ class MemberSubtabVisibilityTxBoundaryIT extends MemberTxBoundaryITSupport {
                 writes.add(new TxObservation("MemberSubtabRoleVisibilityRepository", inv.getMethod().getName(),
                         TransactionSynchronizationManager.isActualTransactionActive(),
                         TransactionSynchronizationManager.getCurrentTransactionName()));
-                return inv.callRealMethod();
+                return callReal(inv);
             }).when(subtabRepository).save(any());
             setAuth(admId);
 

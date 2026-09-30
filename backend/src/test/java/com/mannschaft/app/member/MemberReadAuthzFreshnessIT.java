@@ -86,7 +86,7 @@ class MemberReadAuthzFreshnessIT extends MemberTxBoundaryITSupport {
                     throw new IllegalStateException("AC-9 latch: 再開の合図が来ない");
                 }
             }
-            return inv.callRealMethod();
+            return callReal(inv);
         };
     }
 
