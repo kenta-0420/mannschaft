@@ -76,6 +76,10 @@ class PublicUserProfileControllerTest {
     @MockitoBean
     private PublicUserProfileQueryService publicUserProfileQueryService;
 
+    /** 組織投稿の公開ページ用 slug の解決（organization ドメインの Service）。 */
+    @MockitoBean
+    private com.mannschaft.app.organization.service.OrganizationService organizationService;
+
     // WebMvcTest が要求する依存の最小モック注入
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -180,6 +184,29 @@ class PublicUserProfileControllerTest {
     }
 
     @Test
+    @DisplayName("公開投稿一覧: 組織の投稿は公開組織の slug を orgSlug に載せ、非公開組織は null（数値 ID の URL を作らせない・AC-A13）")
+    void getPosts_organizationPost_carriesOrgSlug() throws Exception {
+        Page<PublicUserPostSummaryResponse> page = new PageImpl<>(
+                List.of(orgPostSummary(1L, "200"), orgPostSummary(2L, "300"), samplePostSummary(3L, "チーム投稿")),
+                PageRequest.of(0, 20),
+                3
+        );
+        given(publicUserProfileQueryService.getPublicPosts(eq(USER_ID), any(Pageable.class)))
+                .willReturn(page);
+        // 200 は公開組織、300 は非公開（解決結果に含まれない）
+        given(organizationService.findPublicOrganizationSlugsByIds(java.util.Set.of(200L, 300L)))
+                .willReturn(java.util.Map.of(200L, "org-two-hundred"));
+
+        mockMvc.perform(get("/api/v1/public/users/{userId}/posts", USER_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].scopeType").value("ORGANIZATION"))
+                .andExpect(jsonPath("$.content[0].orgSlug").value("org-two-hundred"))
+                .andExpect(jsonPath("$.content[1].orgSlug").doesNotExist())
+                .andExpect(jsonPath("$.content[2].scopeType").value("TEAM"))
+                .andExpect(jsonPath("$.content[2].orgSlug").doesNotExist());
+    }
+
+    @Test
     @DisplayName("PROF_007: GET /public/users/{id}/posts 404 — 非公開ユーザーの投稿一覧（IDOR 対策で一律 404）")
     void getPosts_privateUser_returns404() throws Exception {
         willThrow(new BusinessException(PublicViewErrorCode.PUBLIC_007))
@@ -225,6 +252,12 @@ class PublicUserProfileControllerTest {
                 "https://cdn/avatar.png",
                 LocalDate.of(2023, 4, 1)
         );
+    }
+
+    private PublicUserPostSummaryResponse orgPostSummary(Long postId, String orgId) {
+        return new PublicUserPostSummaryResponse(
+                postId, "組織投稿" + postId, "ORGANIZATION", "", orgId,
+                LocalDateTime.of(2024, 1, 15, 10, 0), null);
     }
 
     private PublicUserPostSummaryResponse samplePostSummary(Long postId, String title) {

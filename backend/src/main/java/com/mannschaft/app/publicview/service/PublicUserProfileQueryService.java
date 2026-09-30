@@ -6,7 +6,6 @@ import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
-import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.publicview.dto.PublicUserPostSummaryResponse;
 import com.mannschaft.app.publicview.dto.PublicUserProfileResponse;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
@@ -18,10 +17,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * F19.1 Phase 6: 公開ユーザープロフィール用クエリサービス。
@@ -45,8 +40,6 @@ public class PublicUserProfileQueryService {
     // TODO: publicview → team のクロスドメイン参照。将来はチーム名をスナップショットで保持する方式に移行予定。
     private final TeamRepository teamRepository;
     private final MediaUrlResolver mediaUrlResolver;
-    // 組織の公開ページ用 slug の一括解決（organization ドメインの Service 経由。Repository は直接引かない）。
-    private final OrganizationService organizationService;
 
     /**
      * 公開プロフィールを取得する。
@@ -92,20 +85,9 @@ public class PublicUserProfileQueryService {
                 .filter(u -> u.isPublicProfileEnabled())
                 .orElseThrow(() -> new BusinessException(PublicViewErrorCode.PUBLIC_007));
 
-        Page<BlogPostEntity> posts = blogPostRepository.findPublicPostsByAuthorId(userId, pageable);
-
-        // 組織投稿のリンクは slug で作る（数値 ID の URL は作らせない・F01.2.1 AC-A13）。
-        // 非公開の組織は slug を返さない（null → FE はリンクを張らない）。ページ内の組織を 1 回で一括解決する。
-        Set<Long> orgIds = posts.getContent().stream()
-                .filter(p -> p.getTeamId() == null && p.getOrganizationId() != null)
-                .map(BlogPostEntity::getOrganizationId)
-                .collect(Collectors.toSet());
-        Map<Long, String> orgSlugs = organizationService.findPublicOrganizationSlugsByIds(orgIds);
-
-        return posts.map(post -> toPostSummary(post).withOrgSlug(
-                post.getTeamId() == null && post.getOrganizationId() != null
-                        ? orgSlugs.get(post.getOrganizationId())
-                        : null));
+        // 組織の公開ページ用 slug（orgSlug）は Controller が organization ドメインの Service で解決して載せる。
+        return blogPostRepository.findPublicPostsByAuthorId(userId, pageable)
+                .map(post -> toPostSummary(post));
     }
 
     /**
