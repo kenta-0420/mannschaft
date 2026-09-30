@@ -89,16 +89,14 @@ public class ShiftBudgetConsumptionRecordListener {
 
         // 計上先の組織（F01.2.1 §9.2 #14）。チームは複数の組織に加盟しうるため、チームから組織を
         // 推測せず、スロットごとに「そのチーム・日付に予算割当を持つ組織」を割当から解決する。
-        // 最初に計上先が確定した組織を、監査ログ・通知・失敗イベントの代表とする。
-        Long primaryOrganizationId = null;
+        // 監査ログ・時給未設定の通知・失敗イベントは、計上した組織ごとに分けて出す
+        // （組織 Y の利用者の情報を組織 X の予算管理者へ流さない）。
+        Map<Long, OrgTally> tallies = new java.util.LinkedHashMap<>();
         try {
             Map<Long, Boolean> featureEnabledByOrg = new java.util.HashMap<>();
 
-            int recordedCount = 0;
-            int skippedCount = 0;
-            // CMP-260910-1555: 時給未設定でスキップしたユーザー（重複なし・昇順）。
-            // 空でなければ hook の最後に予算管理者へ通知する。
-            Set<Long> missingRateUserIds = new TreeSet<>();
+            // 計上先の組織が確定できなかったスロット数（組織に帰属させられないので組織なしで監査する）
+            int unresolvedSkipped = 0;
 
             List<ShiftSlotEntity> slots =
                     slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(scheduleId);
@@ -110,7 +108,7 @@ public class ShiftBudgetConsumptionRecordListener {
                     log.warn("F08.7 hook: 該当 allocation 不在または計上先の組織を一意に決められない"
                                     + "（事前作成漏れの可能性）: teamId={}, slotDate={}, slotId={}",
                             teamId, slot.getSlotDate(), slot.getId());
-                    skippedCount++;
+                    unresolvedSkipped++;
                     continue;
                 }
                 ShiftBudgetAllocationEntity allocation = allocOpt.get();
@@ -122,9 +120,7 @@ public class ShiftBudgetConsumptionRecordListener {
                             organizationId);
                     continue;
                 }
-                if (primaryOrganizationId == null) {
-                    primaryOrganizationId = organizationId;
-                }
+                OrgTally tally = tallies.computeIfAbsent(organizationId, k -> new OrgTally());
 
                 List<Long> assignedUserIds = parseAssignedUserIds(slot.getAssignedUserIds());
                 if (assignedUserIds.isEmpty()) {
@@ -150,8 +146,8 @@ public class ShiftBudgetConsumptionRecordListener {
                             log.warn("F08.7 hook: 時給未設定のため消化記録をスキップ: "
                                             + "teamId={}, userId={}, slotId={}, slotDate={}",
                                     teamId, userId, slot.getId(), slot.getSlotDate());
-                            missingRateUserIds.add(userId);
-                            skippedCount++;
+                            tally.missingRateUserIds.add(userId);
+                            tally.skipped++;
                             continue;
                         }
                         BigDecimal hourlyRate = hourlyRateOpt.get();
@@ -163,7 +159,7 @@ public class ShiftBudgetConsumptionRecordListener {
                                 userId,
                                 hourlyRate,
                                 hours);
-                        recordedCount++;
+                        tally.recorded++;
 
                         // Phase 9-δ 追加: 各 (slot,user) PLANNED INSERT 後に閾値判定を呼ぶ。
                         // 例外は飲み込む（既存パターン踏襲: hook 失敗が main トランザクションを巻き戻さないため）
@@ -188,47 +184,65 @@ public class ShiftBudgetConsumptionRecordListener {
                         // CONFIRMED 既存 → スキップして他継続（個別エラーで全体を止めない）
                         log.warn("F08.7 hook: CONFIRMED 既存のため skip: slot={}, user={}, msg={}",
                                 slot.getId(), userId, e.getMessage());
-                        skippedCount++;
+                        tally.skipped++;
                     } catch (Exception e) {
                         log.error("F08.7 hook: 個別消化記録失敗 (skip): slot={}, user={}",
                                 slot.getId(), userId, e);
-                        skippedCount++;
+                        tally.skipped++;
                     }
                 }
             }
 
-            if (primaryOrganizationId == null && skippedCount == 0) {
+            if (tallies.isEmpty() && unresolvedSkipped == 0) {
                 // 計上先の組織が 1 つも確定せず、スキップもしていない（全スロットがフラグ OFF の組織、
                 // またはスロット無し）。既存シフト機能を阻害しないよう何も記録せず終える。
                 return;
             }
 
-            log.info("F08.7 hook: シフト公開→消化記録完了: scheduleId={}, recorded={}, skipped={}, "
-                            + "missingHourlyRateUsers={}",
-                    scheduleId, recordedCount, skippedCount, missingRateUserIds.size());
+            if (unresolvedSkipped > 0) {
+                log.warn("F08.7 hook: 計上先を決められないスロットあり: scheduleId={}, teamId={}, skipped={}",
+                        scheduleId, teamId, unresolvedSkipped);
+                auditLogService.record(
+                        "SHIFT_BUDGET_CONSUMPTION_RECORDED",
+                        event.getTriggeredByUserId(), null,
+                        teamId, null,
+                        null, null, null,
+                        String.format("{\"shift_schedule_id\":%d,\"recorded_count\":0,\"skipped_count\":%d,"
+                                        + "\"missing_hourly_rate_count\":0}",
+                                scheduleId, unresolvedSkipped));
+            }
 
-            auditLogService.record(
-                    "SHIFT_BUDGET_CONSUMPTION_RECORDED",
-                    event.getTriggeredByUserId(), null,
-                    teamId, primaryOrganizationId,
-                    null, null, null,
-                    String.format("{\"shift_schedule_id\":%d,\"recorded_count\":%d,\"skipped_count\":%d,"
-                                    + "\"missing_hourly_rate_count\":%d}",
-                            scheduleId, recordedCount, skippedCount, missingRateUserIds.size()));
+            for (Map.Entry<Long, OrgTally> entry : tallies.entrySet()) {
+                Long organizationId = entry.getKey();
+                OrgTally tally = entry.getValue();
+                log.info("F08.7 hook: シフト公開→消化記録完了: scheduleId={}, organizationId={}, recorded={}, "
+                                + "skipped={}, missingHourlyRateUsers={}",
+                        scheduleId, organizationId, tally.recorded, tally.skipped,
+                        tally.missingRateUserIds.size());
 
-            // CMP-260910-1555: 時給未設定は「黙って 0 円」ではなく予算管理者へ届ける。
-            // publish の失敗が消化記録の成功を無かったことにしてはならないので、ここでも個別に握る
-            // （配送側は失敗した受信者を NOTIFICATION_SEND の failed event に残して再送経路へ載せる）。
-            if (!missingRateUserIds.isEmpty()) {
-                try {
-                    eventPublisher.publishEvent(new ShiftBudgetHourlyRateMissingEvent(
-                            primaryOrganizationId, teamId,
-                            rateQueryRepository.findTeamSlugByTeamId(teamId).orElse(null),
-                            scheduleId, List.copyOf(missingRateUserIds)));
-                } catch (Exception notifyEx) {
-                    log.error("F08.7 hook: 時給未設定警告イベントの publish に失敗（消化記録自体は完了済）: "
-                                    + "scheduleId={}, teamId={}, missingUsers={}",
-                            scheduleId, teamId, missingRateUserIds.size(), notifyEx);
+                auditLogService.record(
+                        "SHIFT_BUDGET_CONSUMPTION_RECORDED",
+                        event.getTriggeredByUserId(), null,
+                        teamId, organizationId,
+                        null, null, null,
+                        String.format("{\"shift_schedule_id\":%d,\"recorded_count\":%d,\"skipped_count\":%d,"
+                                        + "\"missing_hourly_rate_count\":%d}",
+                                scheduleId, tally.recorded, tally.skipped, tally.missingRateUserIds.size()));
+
+                // CMP-260910-1555: 時給未設定は「黙って 0 円」ではなく、その予算を持つ組織の管理者へ届ける。
+                // publish の失敗が消化記録の成功を無かったことにしてはならないので、ここでも個別に握る
+                // （配送側は失敗した受信者を NOTIFICATION_SEND の failed event に残して再送経路へ載せる）。
+                if (!tally.missingRateUserIds.isEmpty()) {
+                    try {
+                        eventPublisher.publishEvent(new ShiftBudgetHourlyRateMissingEvent(
+                                organizationId, teamId,
+                                rateQueryRepository.findTeamSlugByTeamId(teamId).orElse(null),
+                                scheduleId, List.copyOf(tally.missingRateUserIds)));
+                    } catch (Exception notifyEx) {
+                        log.error("F08.7 hook: 時給未設定警告イベントの publish に失敗（消化記録自体は完了済）: "
+                                        + "scheduleId={}, teamId={}, organizationId={}, missingUsers={}",
+                                scheduleId, teamId, organizationId, tally.missingRateUserIds.size(), notifyEx);
+                    }
                 }
             }
 
@@ -251,8 +265,8 @@ public class ShiftBudgetConsumptionRecordListener {
             // Phase 10-β: 計上先の組織が確定していれば failed_events にも記録。
             // 確定前（hook 入口で例外）は組織が無いため記録不可（チームから組織を推測して記録しない）。
             try {
-                if (primaryOrganizationId != null) {
-                    recordFailureSafe(primaryOrganizationId,
+                for (Long failedOrgId : tallies.keySet()) {
+                    recordFailureSafe(failedOrgId,
                             ShiftBudgetFailedEventType.CONSUMPTION_RECORD,
                             scheduleId,
                             Map.of(
@@ -267,6 +281,14 @@ public class ShiftBudgetConsumptionRecordListener {
                 // failed_events 記録自体の失敗も諦める（ERROR ログは既に出ている）
             }
         }
+    }
+
+    /** 組織ごとの計上集計（監査ログ・通知を組織単位で出すため）。 */
+    private static final class OrgTally {
+        private int recorded;
+        private int skipped;
+        /** 時給未設定でスキップしたユーザー（重複なし・昇順）。 */
+        private final Set<Long> missingRateUserIds = new TreeSet<>();
     }
 
     /**

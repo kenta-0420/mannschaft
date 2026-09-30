@@ -153,7 +153,7 @@ public class ShiftBudgetAllocationService {
             // 判定より前にチーム行を排他ロックする（PESSIMISTIC_WRITE 相当の SELECT ... FOR UPDATE）。
             // チームは複数の組織に加盟しうるので、組織単位ではなくチーム単位でロックする。
             // 越境注記: teams は team ドメインの表だが、ロックのためだけに読む（Repository 冒頭参照）。
-            rateQueryRepository.lockTeamForUpdate(request.teamId())
+            rateQueryRepository.lockTeamForUpdate(request.teamId(), organizationId)
                     .orElseThrow(() -> new BusinessException(ShiftBudgetErrorCode.ALLOCATION_NOT_FOUND));
             requireTeamInOrganization(request.teamId(), organizationId);
             requireNoOverlapWithOtherOrganizations(request.teamId(), organizationId,

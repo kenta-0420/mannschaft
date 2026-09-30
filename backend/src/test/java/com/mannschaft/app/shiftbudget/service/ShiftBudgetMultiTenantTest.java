@@ -107,7 +107,7 @@ class ShiftBudgetMultiTenantTest {
         given(accessControlService.isMember(USER_ID, ORG_A, "ORGANIZATION")).willReturn(true);
         // team_id=TEAM_OF_B は ORG_A に所属しないため count=0
         given(rateQueryRepository.countTeamInOrganization(TEAM_OF_B, ORG_A)).willReturn(0L);
-        given(rateQueryRepository.lockTeamForUpdate(TEAM_OF_B)).willReturn(Optional.of(TEAM_OF_B));
+        given(rateQueryRepository.lockTeamForUpdate(TEAM_OF_B, ORG_A)).willReturn(Optional.of(TEAM_OF_B));
 
         AllocationCreateRequest req = new AllocationCreateRequest(
                 TEAM_OF_B, null, 3L, 17L,

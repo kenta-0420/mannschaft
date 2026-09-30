@@ -358,4 +358,61 @@ class ShiftBudgetPublishedEventListenerTest {
         verify(auditLogService, never()).record(eq("SHIFT_BUDGET_CONSUMPTION_FAILED"),
                 any(), any(), any(), any(), any(), any(), any(), any());
     }
+
+    @Test
+    @DisplayName("F01.2.1 監査ログと時給未設定の通知は、計上した組織ごとに分けて出る（他組織の利用者を混ぜない）")
+    void 監査と通知は計上組織ごとに分かれる() throws Exception {
+        Long orgY = 2L;
+        Long userX = 100L;
+        Long userY = 200L;
+        LocalDate dateX = LocalDate.of(2026, 6, 10);
+        LocalDate dateY = LocalDate.of(2026, 7, 10);
+        ShiftSlotEntity slotX = slotOn(7L, userX, dateX);
+        ShiftSlotEntity slotY = slotOn(8L, userY, dateY);
+        given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                .willReturn(List.of(slotX, slotY));
+
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(TEAM_ID, dateX))
+                .willReturn(List.of(ORG_ID));
+        given(allocationRepository.findOrganizationIdsWithTeamAllocationContaining(TEAM_ID, dateY))
+                .willReturn(List.of(orgY));
+        ShiftBudgetAllocationEntity allocX = allocationWithId();
+        ShiftBudgetAllocationEntity allocY = allocationWithId().toBuilder().organizationId(orgY).build();
+        given(allocationRepository.findContainingPeriod(ORG_ID, TEAM_ID, dateX)).willReturn(Optional.of(allocX));
+        given(allocationRepository.findContainingPeriod(orgY, TEAM_ID, dateY)).willReturn(Optional.of(allocY));
+        given(featureService.isEnabled(ORG_ID)).willReturn(true);
+        given(featureService.isEnabled(orgY)).willReturn(true);
+        given(hourlyRateRepository.findEffectiveRate(any(), eq(TEAM_ID), any())).willReturn(Optional.empty());
+        given(rateQueryRepository.findTeamSlugByTeamId(TEAM_ID)).willReturn(Optional.of("team-alpha"));
+
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
+
+        // 通知: 組織 X には userX だけ、組織 Y には userY だけ。相手組織の利用者を含めない
+        verify(eventPublisher).publishEvent(
+                eq(new com.mannschaft.app.shiftbudget.event.ShiftBudgetHourlyRateMissingEvent(
+                        ORG_ID, TEAM_ID, "team-alpha", SCHEDULE_ID, List.of(userX))));
+        verify(eventPublisher).publishEvent(
+                eq(new com.mannschaft.app.shiftbudget.event.ShiftBudgetHourlyRateMissingEvent(
+                        orgY, TEAM_ID, "team-alpha", SCHEDULE_ID, List.of(userY))));
+        // 監査: 組織ごとに 1 件ずつ
+        verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                eq(USER_ID), eq(null), eq(TEAM_ID), eq(ORG_ID), any(), any(), any(), any());
+        verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                eq(USER_ID), eq(null), eq(TEAM_ID), eq(orgY), any(), any(), any(), any());
+    }
+
+    private ShiftSlotEntity slotOn(Long slotId, Long userId, LocalDate date) throws Exception {
+        ShiftSlotEntity slot = ShiftSlotEntity.builder()
+                .scheduleId(SCHEDULE_ID)
+                .slotDate(date)
+                .startTime(LocalTime.of(9, 0))
+                .endTime(LocalTime.of(13, 0))
+                .requiredCount(1)
+                .assignedUserIds(objectMapper.writeValueAsString(List.of(userId)))
+                .build();
+        java.lang.reflect.Field idField = slot.getClass().getSuperclass().getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(slot, slotId);
+        return slot;
+    }
 }
