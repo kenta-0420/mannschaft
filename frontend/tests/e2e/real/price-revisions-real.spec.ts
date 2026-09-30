@@ -115,9 +115,8 @@ async function newLoggedInPage(
 async function gotoAndSettle(page: Page, url: string): Promise<void> {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180_000 })
   await waitForHydration(page)
-  await page.locator('.pi-spin').first().waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {
-    // スピナーが初めから存在しないページでは待つ対象が無いだけ（失敗要因ではない）
-  })
+  // eslint-disable-next-line no-restricted-syntax -- スピナーが初めから存在しないページでは待つ対象が無いだけ（失敗要因ではない）
+  await page.locator('.pi-spin').first().waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
 }
 
 async function shot(page: Page, testInfo: TestInfo, name: string): Promise<void> {
