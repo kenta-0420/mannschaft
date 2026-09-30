@@ -29,7 +29,8 @@
       "archived": "보관함으로 이동했습니다",
       "unarchived": "받은 편지함으로 이동했습니다",
       "unsnoozed": "스누즈를 해제했습니다",
-      "snoozeFailed": "스누즈에 실패했습니다"
+      "snoozeFailed": "스누즈에 실패했습니다",
+      "readFailed": "알림을 읽음으로 표시하지 못했습니다"
     },
     "snoozePreset": {
       "in3h": "3시간 후",

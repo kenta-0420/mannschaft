@@ -13,6 +13,7 @@ import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
 import com.mannschaft.app.matching.MatchingErrorCode;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
+import com.mannschaft.app.recruitment.RecruitmentPenaltyActiveException;
 import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.common.storage.StorageErrorCode;
 import com.mannschaft.app.succession.SuccessionErrorCode;
@@ -51,6 +52,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Set;
+import java.time.LocalDateTime;
 
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -2026,6 +2028,28 @@ class GlobalExceptionHandlerTest {
                     .isEqualTo(HttpStatus.CONFLICT);
             assertThat(globalExceptionHandler.resolveHttpStatus(StorageErrorCode.ACL_INVALID_REQUEST))
                     .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @Test
+    @DisplayName("募集ペナルティ中の申込は403と解除予定時刻を返す")
+    void recruitmentPenaltyActiveIncludesExpiry() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new PenaltyBlockedController())
+                .setControllerAdvice(new GlobalExceptionHandler(new org.springframework.context.support.StaticMessageSource()))
+                .build();
+
+        mockMvc.perform(get("/test/recruitment-penalty-blocked"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("RECRUITMENT_300"))
+                .andExpect(jsonPath("$.error.details.expiresAt").value("2026-09-28T12:30:00Z"))
+                .andExpect(jsonPath("$.error.fieldErrors").isArray());
+    }
+
+    @org.springframework.web.bind.annotation.RestController
+    static class PenaltyBlockedController {
+        @org.springframework.web.bind.annotation.GetMapping("/test/recruitment-penalty-blocked")
+        void blocked() {
+            throw new RecruitmentPenaltyActiveException(java.time.Instant.parse("2026-09-28T12:30:00Z"));
         }
     }
 }

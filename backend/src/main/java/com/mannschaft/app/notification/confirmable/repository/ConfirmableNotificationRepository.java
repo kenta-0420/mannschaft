@@ -65,6 +65,9 @@ public interface ConfirmableNotificationRepository
     boolean existsBySourceTypeAndSourceIdAndStatus(
             String sourceType, Long sourceId, ConfirmableNotificationStatus status);
 
+    /** 発生元のペナルティにつき確認通知が既に作成されているか。確認後も再送しない。 */
+    boolean existsBySourceTypeAndSourceId(String sourceType, Long sourceId);
+
     /**
      * CMP-260920-1040: 親の行を {@code SELECT ... FOR UPDATE} でロックして読む（軍議第8版確定稿 §9.2・§11.1）。
      *

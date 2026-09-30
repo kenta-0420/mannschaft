@@ -129221,6 +129221,7 @@
               "enum": [
                 "TEAM",
                 "ORGANIZATION",
+                "GLOBAL",
                 "PERSONAL"
               ]
             }
@@ -196580,6 +196581,13 @@
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "isConfirmed": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "本人の確認通知受信者状態。対象外はnull"
           },
           "isRead": {
             "type": "boolean"

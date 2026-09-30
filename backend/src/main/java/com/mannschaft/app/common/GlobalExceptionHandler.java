@@ -10,6 +10,8 @@ import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequired
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.recruitment.RecruitmentPenaltyActiveException;
+import com.mannschaft.app.recruitment.dto.RecruitmentPenaltyActiveErrorResponse;
 import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
@@ -1801,6 +1803,7 @@ public class GlobalExceptionHandler {
             // F03.11 市（募集）§5.2 / §17.5: 未払いのキャンセル料が残っている状態での申込は
             // 設計書が 402 Payment Required を契約として明示している（未払い決済リンクを返す前提）。
             // Severity.ERROR 既定の 500 のままでは「サーバ障害」に見え、支払い導線に繋がらなかった。
+            Map.entry("RECRUITMENT_300", HttpStatus.FORBIDDEN),          // PENALTY_ACTIVE（募集ペナルティによる申込ブロック）
             Map.entry("RECRUITMENT_301", HttpStatus.PAYMENT_REQUIRED),   // CANCELLATION_PAYMENT_FAILED（未払いキャンセル料による申込ブロック）
             // ─────────────────────────────────────────────────────────────
             // 宣言と実挙動の一致（2026-07-30・#2468 / 番人 ErrorCodeHttpStatusDeclarationGuardTest）
@@ -2558,6 +2561,14 @@ public class GlobalExceptionHandler {
      * 個別マッピングが存在しないか 500 を返す場合）のみ error_reports に severity=MEDIUM で
      * 記録する。4xx を返す通常の業務エラーは記録しない（設計書 §5.2）。</p>
      */
+    @ExceptionHandler(RecruitmentPenaltyActiveException.class)
+    public ResponseEntity<RecruitmentPenaltyActiveErrorResponse> handleRecruitmentPenaltyActive(
+            RecruitmentPenaltyActiveException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new RecruitmentPenaltyActiveErrorResponse(
+                        ex.getErrorCode().getCode(), resolveMessage(ex.getErrorCode()), ex.getExpiresAt()));
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex,
                                                                   HttpServletRequest request) {

@@ -59,6 +59,7 @@ class RecruitmentParticipantServiceCancellationFeeChargeTest {
     @Mock private RecruitmentListingRepository listingRepository;
     @Mock private RecruitmentParticipantHistoryRepository historyRepository;
     @Mock private RecruitmentCancellationRecordRepository cancellationRecordRepository;
+    @Mock private com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository penaltyRepository;
     @Mock private RecruitmentCancellationPolicyService policyService;
     @Mock private RecruitmentListingService listingService;
     @Mock private AccessControlService accessControlService;
@@ -76,6 +77,7 @@ class RecruitmentParticipantServiceCancellationFeeChargeTest {
     private RecruitmentParticipantService service() {
         return new RecruitmentParticipantService(
                 participantRepository, listingRepository, historyRepository, cancellationRecordRepository,
+                penaltyRepository,
                 policyService, listingService, accessControlService, mapper, marketFinalizeService,
                 visibilityChecker, eventPublisher);
     }

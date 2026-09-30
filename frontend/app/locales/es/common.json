@@ -971,7 +971,29 @@
       "title": "Se te pasó una tarea",
       "body": "{from} te pasó \"{title}\" (estado: {label})"
     },
-    "pageTitle": "通知",
+    "pageTitle": "Notificaciones",
+    "list": {
+      "all": "Todas",
+      "unread": "No leídas",
+      "markAllRead": "Marcar todas como leídas",
+      "markUnread": "Marcar como no leída",
+      "markRead": "Marcar como leída",
+      "empty": "No hay notificaciones",
+      "loadMore": "Cargar más",
+      "loadError": "No se pudieron cargar las notificaciones",
+      "actionError": "No se pudo completar la acción",
+      "markAllReadError": "No se pudieron marcar todas como leídas",
+      "confirmInfoMissing": "Falta información de la confirmación",
+      "invalidScope": "El ámbito no es válido",
+      "confirmed": "Confirmado",
+      "confirmError": "No se pudo confirmar"
+    },
+    "bell": {
+      "notification": "Notificaciones",
+      "chat": "Chat",
+      "mention": "Menciones",
+      "none": "Ninguna"
+    },
     "guide": {
       "title": "通知の使い方",
       "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",

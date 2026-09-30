@@ -524,7 +524,8 @@ public class ConfirmableNotificationService {
         NotificationScopeType notifScopeType = toNotificationScopeType(scopeType);
         notificationHelper.notifyAll(
                 uniqueRecipientUserIds,
-                "CONFIRMABLE_NOTIFICATION",
+                "RECRUITMENT_PENALTY".equals(sourceType)
+                        ? "RECRUITMENT_PENALTY_APPLIED" : "CONFIRMABLE_NOTIFICATION",
                 notifPriority,
                 title,
                 body != null ? body : "",
