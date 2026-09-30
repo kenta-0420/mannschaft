@@ -1,9 +1,5 @@
 ﻿{
   "adminConsole": {
-    "card": {
-      "teamAffiliation": "チーム加盟の設定",
-      "teamAffiliationDescription": "チームからの加盟申請の受付とチームグループを設定します"
-    },
     "comingSoon": "Demnächst verfügbar",
     "team": {
       "title": "Team-Administrationskonsole",
@@ -14,6 +10,10 @@
       "subtitle": "Verwalte Budget, Zahlungen, ausstehende Genehmigungen, Mitglieder und Einstellungen deiner Organisation an einem Ort"
     },
     "cards": {
+      "teamAffiliation": {
+        "title": "チーム加盟の設定",
+        "desc": "チームからの加盟申請の受付とチームグループを設定します"
+      },
       "reservations": {
         "title": "Reservierungen",
         "desc": "Prüfe ausstehende Reservierungen und bestätige, storniere oder schließe sie ab"

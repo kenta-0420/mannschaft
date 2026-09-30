@@ -1,9 +1,5 @@
 ﻿{
   "adminConsole": {
-    "card": {
-      "teamAffiliation": "チーム加盟の設定",
-      "teamAffiliationDescription": "チームからの加盟申請の受付とチームグループを設定します"
-    },
     "comingSoon": "近日公開",
     "team": {
       "title": "チーム管理コンソール",
@@ -14,6 +10,10 @@
       "subtitle": "組織の予算・支払・承認待ち・メンバー・設定をまとめて管理します"
     },
     "cards": {
+      "teamAffiliation": {
+        "title": "チーム加盟の設定",
+        "desc": "チームからの加盟申請の受付とチームグループを設定します"
+      },
       "reservations": {
         "title": "予約確認",
         "desc": "承認待ちの予約を確認し、確定・キャンセル・完了などの対応を行います"

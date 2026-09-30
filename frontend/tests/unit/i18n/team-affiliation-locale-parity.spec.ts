@@ -140,22 +140,69 @@ describe('team_affiliation ロケール（AC-G118 FE）', () => {
     expect(keysOf(locale, 'team_affiliation.json')).toEqual(keysOf('ja', 'team_affiliation.json'))
   })
 
-  it.each(locales)('%s の値は空文字でなく、生の @ を含まない', (locale) => {
-    const json = readLocale(locale, 'team_affiliation.json')
-    const walk = (v: unknown): string[] =>
-      typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(walk) : []
-    for (const value of walk(json)) {
-      expect(value.length).toBeGreaterThan(0)
-      // Nuxt i18n は "@" をリンク記法として解釈しビルドを壊す。{'@'} でエスケープする
-      expect(value.replace(/\{'@'\}/g, '')).not.toContain('@')
+  it.each(locales)('%s の team_affiliation の値は空文字でなく、生の @ を含まない', (locale) => {
+    assertValuesSafe(readLocale(locale, 'team_affiliation.json'), locale, 'team_affiliation.json', 'teamAffiliation')
+    assertValuesSafe(readLocale(locale, 'team_affiliation.json'), locale, 'team_affiliation.json', 'teamGroup')
+  })
+})
+
+/** 今回追加したキー（announcement / common / admin_console）の値が空でなく、生の @ を含まないこと */
+const addedKeys: Array<[string, string[]]> = [
+  ['announcement.json', announcementKeys],
+  ['common.json', ['teamShell.tab.affiliations', 'teamShell.tab.permissionGroups']],
+  ['admin_console.json', ['adminConsole.cards.teamAffiliation.title', 'adminConsole.cards.teamAffiliation.desc']],
+]
+
+function valueAt(json: Record<string, unknown>, dotted: string): unknown {
+  return dotted.split('.').reduce<unknown>((cur, k) => (cur && typeof cur === 'object' ? (cur as Record<string, unknown>)[k] : undefined), json)
+}
+
+function assertValuesSafe(json: Record<string, unknown>, locale: string, file: string, root: string): void {
+  const walk = (v: unknown): string[] =>
+    typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(walk) : []
+  const values = walk(json[root])
+  expect(values.length, `${locale}/${file}:${root}`).toBeGreaterThan(0)
+  for (const value of values) {
+    expect(value.length).toBeGreaterThan(0)
+    // Nuxt i18n は "@" をリンク記法として解釈しビルドを壊す。{'@'} でエスケープする
+    expect(value.replace(/\{'@'\}/g, '')).not.toContain('@')
+  }
+}
+
+describe('追加キーの値の健全性（AC-G118 FE）', () => {
+  it.each(locales)('%s の追加キーは空文字でなく、生の @ を含まない', (locale) => {
+    for (const [file, keys] of addedKeys) {
+      const json = readLocale(locale, file)
+      for (const key of keys) {
+        const value = valueAt(json, key)
+        expect(typeof value, `${locale}/${file}:${key}`).toBe('string')
+        expect((value as string).length, `${locale}/${file}:${key}`).toBeGreaterThan(0)
+        expect((value as string).replace(/\{'@'\}/g, ''), `${locale}/${file}:${key}`).not.toContain('@')
+      }
     }
   })
 })
 
 describe('nuxt.config.ts への team_affiliation.json 登録（AC-G118 FE）', () => {
   const config = readFileSync(resolve(process.cwd(), 'nuxt.config.ts'), 'utf8')
-  it.each(locales)('%s/team_affiliation.json が登録されている', (locale) => {
-    expect(config).toContain(`'${locale}/team_affiliation.json'`)
+
+  /** `code: '<locale>'` のロケール定義に属する files 配列の中身を返す */
+  function filesOf(locale: string): string[] {
+    const start = config.indexOf(`code: '${locale}'`)
+    expect(start, `${locale} のロケール定義`).toBeGreaterThanOrEqual(0)
+    const filesStart = config.indexOf('files: [', start)
+    const filesEnd = config.indexOf(']', filesStart)
+    const nextCode = config.indexOf('code: ', start + 1)
+    // files 配列は当該ロケール定義の内側（次の code: より前）になければならない
+    if (nextCode >= 0) expect(filesStart).toBeLessThan(nextCode)
+    return [...config.slice(filesStart, filesEnd).matchAll(/'([^']+)'/g)].map((m) => m[1] as string)
+  }
+
+  it.each(locales)('%s の files に自言語の team_affiliation.json がある', (locale) => {
+    const files = filesOf(locale)
+    expect(files).toContain(`${locale}/team_affiliation.json`)
+    // 他言語のファイルが紛れ込んでいない
+    expect(files.filter((f) => f.endsWith('/team_affiliation.json'))).toEqual([`${locale}/team_affiliation.json`])
   })
 })
 
@@ -173,8 +220,8 @@ describe('チームシェルのタブと管理コンソールのカード（AC-G
     expect(has(locale, 'common.json', 'teamShell.tab.permissionGroups')).toBe(true)
   })
 
-  it.each(locales)('%s の admin_console.json に adminConsole.card.teamAffiliation(Description) がある', (locale) => {
-    expect(has(locale, 'admin_console.json', 'adminConsole.card.teamAffiliation')).toBe(true)
-    expect(has(locale, 'admin_console.json', 'adminConsole.card.teamAffiliationDescription')).toBe(true)
+  it.each(locales)('%s の admin_console.json に adminConsole.cards.teamAffiliation.title/desc がある', (locale) => {
+    expect(has(locale, 'admin_console.json', 'adminConsole.cards.teamAffiliation.title')).toBe(true)
+    expect(has(locale, 'admin_console.json', 'adminConsole.cards.teamAffiliation.desc')).toBe(true)
   })
 })
