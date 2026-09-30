@@ -51,15 +51,18 @@ public class TeamOrgAffiliationRestrictionEntity extends UuidV7Entity {
     private Long teamId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "direction", nullable = false, length = 20)
+    @Column(name = "direction", nullable = false, length = 20,
+            columnDefinition = "VARCHAR(20) NOT NULL")
     private TeamOrgAffiliationDirection direction;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "kind", nullable = false, length = 20)
+    @Column(name = "kind", nullable = false, length = 20,
+            columnDefinition = "VARCHAR(20) NOT NULL")
     private TeamOrgAffiliationRestrictionKind kind;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "reason", nullable = false, length = 20)
+    @Column(name = "reason", nullable = false, length = 20,
+            columnDefinition = "VARCHAR(20) NOT NULL")
     private TeamOrgAffiliationRestrictionReason reason;
 
     @Column(name = "restricted_until")
