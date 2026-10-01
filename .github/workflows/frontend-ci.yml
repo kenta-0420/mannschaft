@@ -21,6 +21,8 @@ on:
     paths:
       - "frontend/**"
       - "docs/openapi.json"
+      # BE の欠席理由 enum 変更で FE の契約テスト（absenceReason.spec.ts）を起動するため
+      - "backend/src/main/java/com/mannschaft/app/school/**/AbsenceReason.java"
       - ".github/workflows/frontend-ci.yml"
   push:
     branches:
@@ -28,6 +30,8 @@ on:
     paths:
       - "frontend/**"
       - "docs/openapi.json"
+      # BE の欠席理由 enum 変更で FE の契約テスト（absenceReason.spec.ts）を起動するため
+      - "backend/src/main/java/com/mannschaft/app/school/**/AbsenceReason.java"
       - ".github/workflows/frontend-ci.yml"
 
 concurrency:

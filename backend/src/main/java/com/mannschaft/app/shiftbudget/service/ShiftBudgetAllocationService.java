@@ -149,7 +149,15 @@ public class ShiftBudgetAllocationService {
 
         // team_id 指定時は組織所属検証
         if (request.teamId() != null) {
+            // F01.2.1 AC-N15: 重なり判定と INSERT を同じチームへの作成同士で直列化するため、
+            // 判定より前にチーム行を排他ロックする（PESSIMISTIC_WRITE 相当の SELECT ... FOR UPDATE）。
+            // チームは複数の組織に加盟しうるので、組織単位ではなくチーム単位でロックする。
+            // 越境注記: teams は team ドメインの表だが、ロックのためだけに読む（Repository 冒頭参照）。
+            rateQueryRepository.lockTeamForUpdate(request.teamId(), organizationId)
+                    .orElseThrow(() -> new BusinessException(ShiftBudgetErrorCode.ALLOCATION_NOT_FOUND));
             requireTeamInOrganization(request.teamId(), organizationId);
+            requireNoOverlapWithOtherOrganizations(request.teamId(), organizationId,
+                    request.periodStart(), request.periodEnd());
         }
 
         // project_id 指定時は存在検証（FK 制約に頼らずアプリ層でも検証して 404 を統一）
@@ -376,6 +384,24 @@ public class ShiftBudgetAllocationService {
         if (projectRepository.findByIdAndDeletedAtIsNull(projectId).isEmpty()) {
             // PROJECT_NOT_FOUND は 9-γ TODO 紐付系で導入。allocation 系も同コードで統一
             throw new BusinessException(ShiftBudgetErrorCode.PROJECT_NOT_FOUND);
+        }
+    }
+
+    /**
+     * F01.2.1 AC-N10: 同じチーム・重なる期間に、別の組織が割当を持つことを禁止する（409）。
+     *
+     * <p>シフト公開時の予算消化は「そのチームに予算割当を持つ組織」へ計上する。計上先を一意に保つため、
+     * 作成時に重複を拒否する。呼び出し側はチーム行をロック済みであること（AC-N15）。</p>
+     *
+     * <p>エラーコードは既存の {@link ShiftBudgetErrorCode#ALLOCATION_ALREADY_EXISTS}（409）を使う。
+     * 設計書 §11 にはシフト予算用の専用コードが予約されていない。</p>
+     */
+    private void requireNoOverlapWithOtherOrganizations(Long teamId, Long organizationId,
+                                                        java.time.LocalDate periodStart,
+                                                        java.time.LocalDate periodEnd) {
+        if (!allocationRepository.findLiveOverlappingByOtherOrganizations(
+                teamId, organizationId, periodStart, periodEnd).isEmpty()) {
+            throw new BusinessException(ShiftBudgetErrorCode.ALLOCATION_ALREADY_EXISTS);
         }
     }
 

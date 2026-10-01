@@ -7,7 +7,8 @@ import type {
 
 export function useDailyRollCall(teamId: Ref<string>) {
   const api = useDailyRollCallApi()
-  const { error: notifyError, success: notifySuccess } = useNotification()
+  const { success: notifySuccess } = useNotification()
+  const { handleApiError } = useErrorHandler()
   const { t } = useI18n()
 
   const records = ref<DailyAttendanceResponse[]>([])
@@ -20,8 +21,8 @@ export function useDailyRollCall(teamId: Ref<string>) {
     try {
       const res = await api.getDailyAttendance(teamId.value, date)
       records.value = res.records
-    } catch {
-      notifyError(t('school.attendance.dailyRollCall.title'))
+    } catch (e) {
+      handleApiError(e, 'school.attendance.dailyRollCall.load')
     } finally {
       loading.value = false
     }
@@ -31,6 +32,8 @@ export function useDailyRollCall(teamId: Ref<string>) {
     date: string,
     entries: DailyRollCallEntry[],
   ): Promise<DailyRollCallSummary | null> {
+    // 二重送信防止: 提出中の再呼び出しは API を叩かない
+    if (submitting.value) return null
     submitting.value = true
     try {
       const summary = await api.submitRollCall(teamId.value, {
@@ -40,8 +43,8 @@ export function useDailyRollCall(teamId: Ref<string>) {
       lastSummary.value = summary
       notifySuccess(t('school.attendance.dailyRollCall.submitSuccess'))
       return summary
-    } catch {
-      notifyError(t('school.attendance.dailyRollCall.title'))
+    } catch (e) {
+      handleApiError(e, 'school.attendance.dailyRollCall.submit')
       return null
     } finally {
       submitting.value = false
