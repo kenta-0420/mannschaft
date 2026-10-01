@@ -66,6 +66,20 @@ public class PermissionScopeQueryService {
     }
 
     /**
+     * 当該ユーザーが「チーム ADMIN、または権限グループで指定権限を付与されている」チームの ID を返す（SQL 1 本。
+     * F01.2.1 §3.2 のチーム加盟操作者の判定）。チームごとに単票判定を回さないための一括版。
+     *
+     * <p>ユーザー・権限名が未指定なら SQL を発行せず空集合を返す。チームの削除・アーカイブ状態は見ないので、
+     * 呼び出し側（team ドメイン）で有効なチームに絞ること。</p>
+     */
+    public Set<Long> findTeamIdsWithAdminOrGroupPermission(Long userId, String permissionName) {
+        if (userId == null || permissionName == null) {
+            return Set.of();
+        }
+        return toIdSet(userRoleRepository.findTeamIdsWithAdminOrGroupPermission(userId, permissionName));
+    }
+
+    /**
      * native クエリの単一列結果を {@code Long} 集合へ正規化する。
      *
      * <p>native の数値列は JDBC ドライバ／列型により {@code Long} 以外（{@code Integer} や

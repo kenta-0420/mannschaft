@@ -80,12 +80,7 @@ public class TeamAffiliationApplicantQueryService {
      * （制限は新しい申請を止めるだけなので、既に行があるチームは行の状態を見せる）。</p>
      */
     public List<ApplicantTeam> findApplicantTeams(Collection<Long> teamIds, Long organizationId) {
-        if (teamIds == null || teamIds.isEmpty()) {
-            return List.of();
-        }
-        List<TeamEntity> teams = teamRepository.findAllById(new HashSet<>(teamIds)).stream()
-                .filter(team -> team.getArchivedAt() == null)
-                .filter(team -> team.getLifecycleStatus() == TeamEntity.LifecycleStatus.ACTIVE)
+        List<TeamEntity> teams = applicableTeams(teamIds).stream()
                 .sorted(Comparator.comparing(TeamEntity::getName, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(TeamEntity::getId))
                 .limit(MY_TEAMS_LIMIT)
@@ -106,6 +101,28 @@ public class TeamAffiliationApplicantQueryService {
                         team.getName(),
                         mediaUrlResolver.resolve(team.getIconUrl()),
                         statusOf(memberships.get(team.getId()), restricted.contains(team.getId()))))
+                .toList();
+    }
+
+    /**
+     * 指定チーム群に、申請者として使える（{@link #findApplicantTeams} に載る）チームが1つ以上あるか。
+     * 申請ボタン判定（§10.3）が申請フォームと<b>同じ条件</b>でチームを数えるための窓口。
+     */
+    public boolean hasApplicableTeam(Collection<Long> teamIds) {
+        return !applicableTeams(teamIds).isEmpty();
+    }
+
+    /**
+     * 申請者として使えるチーム（削除済み・アーカイブ済み・承諾前 PROVISIONED を除く）。
+     * 申請フォームの myTeams と申請ボタン判定の唯一の判定箇所。削除済みは {@code @SQLRestriction} で返らない。
+     */
+    private List<TeamEntity> applicableTeams(Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return List.of();
+        }
+        return teamRepository.findAllById(new HashSet<>(teamIds)).stream()
+                .filter(team -> team.getArchivedAt() == null)
+                .filter(team -> team.getLifecycleStatus() == TeamEntity.LifecycleStatus.ACTIVE)
                 .toList();
     }
 

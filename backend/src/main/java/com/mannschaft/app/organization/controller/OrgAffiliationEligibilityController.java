@@ -1,5 +1,7 @@
 package com.mannschaft.app.organization.controller;
 
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.organization.dto.OrgAffiliationEligibilityResponse;
@@ -27,6 +29,8 @@ public class OrgAffiliationEligibilityController {
 
     private final TeamAffiliationFacade teamAffiliationFacade;
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "組織へのチーム加盟申請ボタンの判定は中核の所属管理機能として常時提供する")
     @GetMapping("/api/v1/me/org-affiliation-eligibility")
     @Operation(summary = "組織へのチーム加盟申請ボタンを出すか（常に 200。理由は区別しない）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "判定結果")

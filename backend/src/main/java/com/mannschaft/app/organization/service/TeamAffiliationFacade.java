@@ -12,6 +12,7 @@ import com.mannschaft.app.organization.dto.TeamAffiliationSettingsResponse;
 import com.mannschaft.app.organization.dto.TeamApplicationFormResponse;
 import com.mannschaft.app.organization.dto.UpdateTeamAffiliationSettingsRequest;
 import com.mannschaft.app.organization.service.TeamAffiliationSettingsService.OrgAffiliationSnapshot;
+import com.mannschaft.app.role.service.PermissionScopeQueryService;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.service.TeamAffiliationApplicantQueryService;
 import jakarta.validation.ConstraintViolation;
@@ -20,7 +21,6 @@ import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -45,12 +45,12 @@ public class TeamAffiliationFacade {
     static final String MANAGE_ORG_AFFILIATION = "MANAGE_ORG_AFFILIATION";
 
     private static final String ORGANIZATION = "ORGANIZATION";
-    private static final String TEAM = "TEAM";
 
     private final TeamAffiliationSettingsService settingsService;
     private final TeamAffiliationApplicantQueryService applicantQueryService;
     private final AccessControlService accessControlService;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final PermissionScopeQueryService permissionScopeQueryService;
     private final Validator validator;
 
     // ========================================
@@ -131,7 +131,9 @@ public class TeamAffiliationFacade {
                 || !contentVisibilityChecker.canView(ReferenceType.ORGANIZATION, org.id(), userId)) {
             return OrgAffiliationEligibilityResponse.no();
         }
-        return new OrgAffiliationEligibilityResponse(!findOperableTeamIds(userId).isEmpty());
+        // 申請フォームの myTeams と同じ条件（削除・アーカイブ・PROVISIONED のチームを除く）で数える
+        return new OrgAffiliationEligibilityResponse(
+                applicantQueryService.hasApplicableTeam(findOperableTeamIds(userId)));
     }
 
     // ========================================
@@ -174,14 +176,8 @@ public class TeamAffiliationFacade {
      * 持つチームの ID（§3.2）。
      */
     private Set<Long> findOperableTeamIds(Long userId) {
-        Set<Long> operable = new LinkedHashSet<>();
-        for (Long teamId : accessControlService.findAffiliatedScopeIds(userId, TEAM)) {
-            if (accessControlService.isAdmin(userId, teamId, TEAM)
-                    || accessControlService.hasPermission(userId, teamId, TEAM, MANAGE_ORG_AFFILIATION)) {
-                operable.add(teamId);
-            }
-        }
-        return operable;
+        // 所属チームごとに単票判定を回さず、ロールと権限グループを1本の SQL でまとめて判定する（N+1 回避）
+        return permissionScopeQueryService.findTeamIdsWithAdminOrGroupPermission(userId, MANAGE_ORG_AFFILIATION);
     }
 
     private TeamAffiliationSettingsResponse toSettingsResponse(OrgAffiliationSnapshot org) {

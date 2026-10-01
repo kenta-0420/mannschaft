@@ -146,6 +146,36 @@ final class TeamAffiliationApiFixture {
         return team.getId();
     }
 
+    /** 無効なチーム（アーカイブ済み・論理削除済み・承諾前 PROVISIONED）の ADMIN だけを務める利用者。 */
+    static final Long IA = 930260111L;
+
+    /**
+     * {@link #IA} を、アーカイブ済み・論理削除済み・承諾前（PROVISIONED）の3チームの ADMIN にする
+     * （有効なチームは1つも持たない）。3チームの slug を返す。
+     */
+    String[] seedAdminOfInvalidTeamsOnly() {
+        MembershipTestHelper.insertActiveUser(em, IA);
+        String archived = slug("iaa");
+        String deleted = slug("iad");
+        String provisioned = slug("iap");
+        Long archivedId = insertTeam("アーカイブ済みチーム", archived);
+        Long deletedId = insertTeam("削除済みチーム", deleted);
+        Long provisionedId = insertTeam("承諾前チーム", provisioned);
+        for (Long teamId : new Long[] {archivedId, deletedId, provisionedId}) {
+            MembershipTestHelper.insertMembership(em, IA, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, IA, "ADMIN", teamId, null);
+        }
+        em.createNativeQuery("UPDATE teams SET archived_at = UTC_TIMESTAMP() WHERE id = :id")
+                .setParameter("id", archivedId).executeUpdate();
+        em.createNativeQuery("UPDATE teams SET deleted_at = UTC_TIMESTAMP() WHERE id = :id")
+                .setParameter("id", deletedId).executeUpdate();
+        em.createNativeQuery("UPDATE teams SET lifecycle_status = 'PROVISIONED' WHERE id = :id")
+                .setParameter("id", provisionedId).executeUpdate();
+        em.flush();
+        em.clear();
+        return new String[] {archived, deleted, provisioned};
+    }
+
     /** 受付・グループ機能・保存モードを DB へ直接書く（前提状態の準備）。 */
     void setOrgSettings(Long orgId, boolean applicationEnabled, boolean groupsEnabled, String groupMode) {
         em.createNativeQuery("UPDATE organizations SET team_application_enabled = :a, "

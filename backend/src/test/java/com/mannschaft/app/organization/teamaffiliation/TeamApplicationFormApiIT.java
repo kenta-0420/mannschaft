@@ -255,6 +255,16 @@ class TeamApplicationFormApiIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("§10.3: アーカイブ済み・削除済み・承諾前（PROVISIONED）のチームは myTeams に出ない")
+        void invalidTeamsExcluded() throws Exception {
+            fx.seedAdminOfInvalidTeamsOnly();
+
+            getAs(TeamAffiliationApiFixture.IA, fx.orgXSlug)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.myTeams", hasSize(0)));
+        }
+
+        @Test
         @DisplayName("AC-G116: myTeams の上限は100件")
         void myTeamsCappedAt100() throws Exception {
             for (int i = 0; i < 100; i++) {

@@ -1,5 +1,7 @@
 package com.mannschaft.app.organization.controller;
 
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.organization.dto.TeamAffiliationSettingsResponse;
@@ -32,6 +34,8 @@ public class TeamAffiliationSettingsController {
 
     private final TeamAffiliationFacade teamAffiliationFacade;
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チーム加盟の申請受付設定の閲覧は中核の所属管理機能として常時提供する")
     @GetMapping("/team-affiliation-settings")
     @Operation(summary = "チーム加盟の申請受付・グループ設定の取得（組織 ADMIN。SYSTEM_ADMIN は閲覧のみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -44,6 +48,8 @@ public class TeamAffiliationSettingsController {
                 teamAffiliationFacade.getSettings(slug, SecurityUtils.getCurrentUserId())));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チーム加盟の申請受付設定の変更は中核の所属管理機能として常時提供する")
     @PutMapping("/team-affiliation-settings")
     @Operation(summary = "チーム加盟の申請受付・グループ設定の更新（組織 ADMIN のみ。全項目の置き換え）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功（GET と同じ形）")
@@ -60,6 +66,8 @@ public class TeamAffiliationSettingsController {
                 teamAffiliationFacade.updateSettings(slug, SecurityUtils.getCurrentUserId(), req)));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チーム加盟の申請フォームは中核の所属管理機能として常時提供する")
     @GetMapping("/team-application-form")
     @Operation(summary = "チーム加盟の申請フォームの内容（認証済み・組織が見えること）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

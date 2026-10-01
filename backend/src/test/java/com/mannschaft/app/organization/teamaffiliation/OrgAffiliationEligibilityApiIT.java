@@ -125,6 +125,17 @@ class OrgAffiliationEligibilityApiIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("§10.3: 無効なチーム（アーカイブ済み・削除済み・承諾前）の ADMIN しか務めない利用者は false（申請フォームの myTeams と同じ条件）")
+    void invalidTeamsOnlyIsFalse() throws Exception {
+        fx.setOrgSettings(fx.orgXId, true, false, "OFF");
+        fx.seedAdminOfInvalidTeamsOnly();
+
+        assertCanApply(TeamAffiliationApiFixture.IA, fx.orgXSlug, false);
+        // 有効なチームを持つ TA は同じ組織で true（比較対照）
+        assertCanApply(TA, fx.orgXSlug, true);
+    }
+
+    @Test
     @DisplayName("§10.3: 受付 on でもアーカイブ済みの組織は false（不在と同じ本文）")
     void archivedOrgIsFalse() throws Exception {
         fx.setOrgSettings(fx.orgXId, true, false, "OFF");
