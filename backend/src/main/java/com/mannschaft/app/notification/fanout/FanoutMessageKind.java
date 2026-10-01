@@ -48,7 +48,53 @@ public enum FanoutMessageKind {
 
     /** 村: 祭りが始まった。{@code arg0} = 祭り名。 */
     VILLAGE_FESTIVAL_STARTED("notification.fanout.village.festivalStarted.title",
-            "notification.fanout.village.festivalStarted.body", 1);
+            "notification.fanout.village.festivalStarted.body", 1),
+
+    // ---------------------------------------------------------------------
+    // F01.2.1 §6.7・§14.2: チームの組織加盟の通知。引数は組織名・チーム名・グループ名・理由
+    // （いずれも利用者が書いた文字列）。notification_type と 1 対 1 に対応する
+    // （拒否だけは理由の有無で本文キーが分かれるため2種）。
+    // ---------------------------------------------------------------------
+
+    /** 加盟申請が届いた（TEAM_ORG_APPLICATION_RECEIVED）。{@code arg0} = チーム名、{@code arg1} = 組織名。 */
+    TEAM_ORG_APPLICATION_RECEIVED("notification.teamAffiliation.applicationReceived.title",
+            "notification.teamAffiliation.applicationReceived.body", 2),
+
+    /** 加盟が承認された（TEAM_ORG_APPLICATION_APPROVED）。{@code arg0} = 組織名、{@code arg1} = グループ名（未分類は既定の文言）。 */
+    TEAM_ORG_APPLICATION_APPROVED("notification.teamAffiliation.applicationApproved.title",
+            "notification.teamAffiliation.applicationApproved.body", 2),
+
+    /** 加盟申請が承認されなかった・理由なし（TEAM_ORG_APPLICATION_REJECTED）。{@code arg0} = 組織名。 */
+    TEAM_ORG_APPLICATION_REJECTED("notification.teamAffiliation.applicationRejected.title",
+            "notification.teamAffiliation.applicationRejected.body", 1),
+
+    /** 加盟申請が承認されなかった・理由あり（TEAM_ORG_APPLICATION_REJECTED）。{@code arg0} = 組織名、{@code arg1} = 理由。 */
+    TEAM_ORG_APPLICATION_REJECTED_WITH_REASON("notification.teamAffiliation.applicationRejected.title",
+            "notification.teamAffiliation.applicationRejected.bodyWithReason", 2),
+
+    /** 組織から招待が届いた（TEAM_ORG_INVITE_RECEIVED）。{@code arg0} = 組織名、{@code arg1} = チーム名。 */
+    TEAM_ORG_INVITE_RECEIVED("notification.teamAffiliation.inviteReceived.title",
+            "notification.teamAffiliation.inviteReceived.body", 2),
+
+    /** 招待が承諾された（TEAM_ORG_INVITE_ACCEPTED）。{@code arg0} = チーム名、{@code arg1} = 組織名。 */
+    TEAM_ORG_INVITE_ACCEPTED("notification.teamAffiliation.inviteAccepted.title",
+            "notification.teamAffiliation.inviteAccepted.body", 2),
+
+    /** 申請・招待の期限切れ（TEAM_ORG_PENDING_EXPIRED）。{@code arg0}・{@code arg1} = 当事者の名前。 */
+    TEAM_ORG_PENDING_EXPIRED("notification.teamAffiliation.pendingExpired.title",
+            "notification.teamAffiliation.pendingExpired.body", 2),
+
+    /** 相手の削除・アーカイブによる取消（TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM）。{@code arg0} = 削除された側の名前。 */
+    TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM("notification.teamAffiliation.pendingCancelledBySystem.title",
+            "notification.teamAffiliation.pendingCancelledBySystem.body", 1),
+
+    /** チームが組織から離脱した（TEAM_ORG_MEMBERSHIP_LEFT）。{@code arg0} = チーム名、{@code arg1} = 組織名。 */
+    TEAM_ORG_MEMBERSHIP_LEFT("notification.teamAffiliation.membershipLeft.title",
+            "notification.teamAffiliation.membershipLeft.body", 2),
+
+    /** チームが組織から除名された（TEAM_ORG_MEMBERSHIP_REMOVED）。{@code arg0} = チーム名、{@code arg1} = 組織名。 */
+    TEAM_ORG_MEMBERSHIP_REMOVED("notification.teamAffiliation.membershipRemoved.title",
+            "notification.teamAffiliation.membershipRemoved.body", 2);
 
     private final String titleKey;
     private final String bodyKey;

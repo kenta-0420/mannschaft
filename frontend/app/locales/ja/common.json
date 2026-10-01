@@ -2358,6 +2358,8 @@
   },
   "teamShell": {
     "tab": {
+      "affiliations": "所属組織",
+      "permissionGroups": "権限グループ",
       "dashboard": "ダッシュボード",
       "info": "基本情報",
       "members": "メンバー",

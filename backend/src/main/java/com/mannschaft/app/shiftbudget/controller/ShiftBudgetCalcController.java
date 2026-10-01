@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,6 +28,10 @@ import org.springframework.web.bind.annotation.RestController;
  * 設計書 F08.7 §6.1 / §6.2.2 / §13 段階導入計画 Phase 9-α に準拠。</p>
  *
  * <p>必要権限: {@code MANAGE_SHIFTS} (TEAM スコープ)</p>
+ *
+ * <p>組織の指定: チームは複数の組織に加盟しうるため（F01.2.1）、組織はチームから推測せず
+ * {@code X-Organization-Id} ヘッダで明示する（他のシフト予算 API と同じ規約）。
+ * {@code team_id} を指定する場合は必須。{@code team_id} 無しの EXPLICIT モードでは不要。</p>
  */
 @RestController
 @RequireFeature("FEATURE_SHIFT_ENABLED")
@@ -69,8 +74,9 @@ public class ShiftBudgetCalcController {
     @Operation(summary = "シフト枠数を予算から逆算 (Phase 9-α)",
                description = "ステートレス計算 API。MEMBER_AVG/POSITION_AVG/EXPLICIT の 3 モード対応。")
     public ResponseEntity<ApiResponse<RequiredSlotsResponse>> calculateRequiredSlots(
+            @RequestHeader(name = "X-Organization-Id", required = false) Long organizationId,
             @Valid @RequestBody RequiredSlotsRequest request) {
-        RequiredSlotsResponse response = calcService.calculateRequiredSlots(request);
+        RequiredSlotsResponse response = calcService.calculateRequiredSlots(organizationId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }
