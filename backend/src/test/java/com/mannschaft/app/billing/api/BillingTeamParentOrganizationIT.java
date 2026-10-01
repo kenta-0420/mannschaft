@@ -2,6 +2,7 @@ package com.mannschaft.app.billing.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.billing.ActiveContractPointerRepository;
 import com.mannschaft.app.billing.BillingContractEntity;
 import com.mannschaft.app.billing.BillingProductKind;
@@ -21,6 +22,8 @@ import com.mannschaft.app.billing.beta.BetaGrantEntity;
 import com.mannschaft.app.billing.beta.BetaGrantRepository;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -32,6 +35,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.support.TransactionTemplate;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -87,6 +93,8 @@ class BillingTeamParentOrganizationIT extends AbstractMySqlIntegrationTest {
     @Autowired private FeatureCatalogRepository featureCatalogRepository;
     @Autowired private BetaGrantRepository betaGrantRepository;
     @Autowired private OrganizationRepository organizationRepository;
+    @Autowired private TransactionTemplate transactionTemplate;
+    @PersistenceContext private EntityManager entityManager;
     @Autowired private BillingCheckoutContractRepository checkoutContractRepository;
     @Autowired private ActiveContractPointerRepository activeContractPointerRepository;
 
@@ -127,8 +135,10 @@ class BillingTeamParentOrganizationIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-N13: チーム契約の作成で契約行に代表親組織（最初に成立した加盟）が記録され、後の加盟で変わらない")
     void AC_N13_契約行に代表親組織が記録され後の加盟で変わらない() {
+        // 契約変更 tx は操作者の現在権限を再確認する（BillingOperationAuthorizer）ため、実在するチーム ADMIN を用意する。
+        long adminId = insertTeamAdmin(teamId);
         ContractResponse created = contractApplicationService.create(
-                EntitlementScopeKind.TEAM, teamId, TEAM_OPERATOR_ID,
+                EntitlementScopeKind.TEAM, teamId, adminId,
                 new CreateContractRequest("PLAN", FREE_PLAN, null), UUID.randomUUID().toString());
 
         UUID contractId = UUID.fromString(created.getContractId());
@@ -320,6 +330,32 @@ class BillingTeamParentOrganizationIT extends AbstractMySqlIntegrationTest {
     private Long contractOrganizationId(UUID contractId) {
         BillingContractEntity contract = billingContractRepository.findByIdAndDeletedAtIsNull(contractId).orElseThrow();
         return contract.getOrganizationId();
+    }
+
+    /** 実在する ACTIVE ユーザーに、そのチームの ADMIN ロールを付ける。 */
+    private long insertTeamAdmin(long team) {
+        return transactionTemplate.execute(tx -> {
+            UserEntity user = UserEntity.builder()
+                    .email("g126-admin-" + System.nanoTime() + "@example.com")
+                    .lastName("課金").firstName("管理").displayName("課金管理")
+                    .status(UserEntity.UserStatus.ACTIVE).locale("ja").timezone("Asia/Tokyo")
+                    .isSearchable(true).build();
+            entityManager.persist(user);
+            var ids = entityManager.createNativeQuery("SELECT id FROM roles WHERE name = 'ADMIN'").getResultList();
+            long roleId;
+            if (ids.isEmpty()) {
+                RoleEntity role = RoleEntity.builder().name("ADMIN").displayName("ADMIN")
+                        .priority(1).isSystem(true).build();
+                entityManager.persist(role);
+                entityManager.flush();
+                roleId = role.getId();
+            } else {
+                roleId = ((Number) ids.get(0)).longValue();
+            }
+            entityManager.persist(UserRoleEntity.builder().userId(user.getId()).roleId(roleId).teamId(team).build());
+            entityManager.flush();
+            return user.getId();
+        });
     }
 
     private void seedPlan(String planKey, int baseMonthlyPriceJpy) {
