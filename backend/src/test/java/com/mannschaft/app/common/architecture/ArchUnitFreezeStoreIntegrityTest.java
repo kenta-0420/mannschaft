@@ -730,7 +730,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * PR #3462 の main 追従で追加された27件を再凍結し、期待件数へ反映した。
      * PR #3447 の main 追従で追加された5件も同様に反映した。
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7684;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7682;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
