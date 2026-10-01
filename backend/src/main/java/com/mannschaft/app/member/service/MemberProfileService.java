@@ -29,11 +29,16 @@ import java.util.List;
 
 /**
  * メンバープロフィールサービス。プロフィールのCRUD・一括登録・コピー・並び替え・検索を担当する。
+ *
+ * <p><b>TX 境界（PR #3387 D-3T 根治）</b>: クラス単位の {@code @Transactional} を付けない。閲覧系メソッドは
+ * 他ドメインの権限確認（{@code AccessControlService}）を読むので、member の TX の外で走らせる
+ * （付けると権限確認が member の TX に入り、D-3T が赤になる）。書き込みメソッドは必ずメソッド単位の
+ * {@code @Transactional} を持つこと。閲覧で生じる短い隙の扱いは
+ * docs/features/F06.6_member_subtab_visibility.md「TX 境界とレース」節を参照。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class MemberProfileService {
 
     private final MemberProfileRepository profileRepository;
@@ -48,8 +53,16 @@ public class MemberProfileService {
      */
     public Page<MemberProfileResponse> listProfiles(Long actorUserId, Long teamPageId, Pageable pageable) {
         TeamPageEntity page = pageService.findPageOrThrow(teamPageId);
-        pageService.checkPageMembershipOrNotFound(actorUserId, page);
-        Page<MemberProfileEntity> result = profileRepository.findByTeamPageIdOrderBySortOrder(teamPageId, pageable);
+        pageService.checkPageViewableOrNotFound(actorUserId, page);
+        // 検分修正（3巡目・P1）: checkPageViewableOrNotFound は「紹介」サブタブ PUBLIC/SUPPORTER 設定で
+        // 通過した非会員も弾かない（外側の門）。組織スコープでは管理者かどうかを見て、非管理者には
+        // is_visible=false の行を除外する（内側の扉）。管理者は編集用途のため全件取得する。
+        // PR #3387 裁可3: 非表示行の除外は組織スコープだけに効かせる。チームスコープの会員には
+        // PR 前どおり非表示行も含めて返す。
+        boolean includeHidden = !isOrganizationPage(page) || pageService.isPageAdmin(actorUserId, page);
+        Page<MemberProfileEntity> result = includeHidden
+                ? profileRepository.findByTeamPageIdOrderBySortOrder(teamPageId, pageable)
+                : profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(teamPageId, pageable);
         return result.map(memberMapper::toMemberProfileResponse);
     }
 
@@ -62,7 +75,14 @@ public class MemberProfileService {
     public MemberProfileResponse getProfile(Long actorUserId, Long profileId) {
         MemberProfileEntity entity = findProfileOrThrow(profileId);
         TeamPageEntity page = pageService.findPageOrThrow(entity.getTeamPageId());
-        pageService.checkPageMembershipOrNotFound(actorUserId, page);
+        pageService.checkPageViewableOrNotFound(actorUserId, page);
+        // 検分修正（3巡目・P1）: 組織スコープの非管理者には非表示（is_visible=false）プロフィールを見せない。
+        // 個別 id を直打ちされても存在を漏らさないため、見つからない場合と同じ 404 秘匿にする
+        // （Wave3-B2 BOLA対策のパターンを踏襲）。PR #3387 裁可3: チームスコープには適用しない。
+        if (Boolean.FALSE.equals(entity.getIsVisible()) && isOrganizationPage(page)
+                && !pageService.isPageAdmin(actorUserId, page)) {
+            throw new BusinessException(MemberErrorCode.PROFILE_NOT_FOUND);
+        }
         return memberMapper.toMemberProfileResponse(entity);
     }
 
@@ -183,14 +203,21 @@ public class MemberProfileService {
         TeamPageEntity targetPage = pageService.findPageOrThrow(targetPageId);
         pageService.checkPageAdminOrNotFound(actorUserId, targetPage);
 
-        // コピー元ページ存在確認 + メンバー以上検証（コピー元データの閲覧権限。他スコープの会員情報を
-        // 無断で読み出すデータ流出経路になるため、ターゲット ADMIN 権限だけでは不十分）
-        TeamPageEntity sourcePage = pageService.findPageOrThrow(request.getSourcePageId());
-        pageService.checkPageMembershipOrNotFound(actorUserId, sourcePage);
-
+        // AC-29: 同一ページをコピー元にすることは常に無意味な操作であり、コピー元の読み出し（存在確認・
+        // スコープ照合・MEMBER 以上検証）より前に弾く（コピー元へは一切アクセスしない）。
         if (targetPageId.equals(request.getSourcePageId())) {
             throw new BusinessException(MemberErrorCode.INVALID_SOURCE_PAGE);
         }
+
+        // コピー元ページ存在確認。PR #3387 裁可1: コピー元はコピー先と同じスコープ（scopeType・scopeId が
+        // 一致）のページに限る。別スコープのページは存在を明かさず 404（PAGE_NOT_FOUND）で拒否する
+        // （他スコープの会員情報を複製で持ち出すデータ流出経路を塞ぐ）。
+        TeamPageEntity sourcePage = pageService.findPageOrThrow(request.getSourcePageId());
+        if (!isSameScope(targetPage, sourcePage)) {
+            throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+        }
+        // コピー元は MEMBER 以上であること（業務操作のため、サブタブ公開設定の緩和は効かせない）
+        pageService.checkPageMemberRoleOrNotFound(actorUserId, sourcePage);
 
         List<MemberProfileEntity> sourceMembers =
                 profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(request.getSourcePageId());
@@ -265,8 +292,10 @@ public class MemberProfileService {
     public List<MemberLookupResponse> lookupMembers(Long actorUserId, Long teamPageId, String query, int limit) {
         // teamPageId は必須パラメータ（Wave3-B2 member 認可根治）。分岐の外で必ず認可チェックを通す
         // ことで、「if の中にしか認可判定が無く未指定時に素通りする」構造を排除する。
+        // PR #3387 裁可2: 会員の番号・氏名を引き当てる業務操作のため MEMBER 以上に限る
+        // （サブタブ公開設定の緩和は効かせない）。
         TeamPageEntity page = pageService.findPageOrThrow(teamPageId);
-        pageService.checkPageMembershipOrNotFound(actorUserId, page);
+        pageService.checkPageMemberRoleOrNotFound(actorUserId, page);
         String numberQuery = query + "%";
         String nameQuery = "%" + query + "%";
         Pageable pageable = PageRequest.of(0, Math.min(limit, 20));
@@ -275,6 +304,25 @@ public class MemberProfileService {
                 teamPageId, numberQuery, nameQuery, query, pageable);
 
         return memberMapper.toMemberLookupResponseList(entities);
+    }
+
+    /**
+     * 組織スコープのページかどうか（teamId を持たないページは組織スコープ）。
+     */
+    private static boolean isOrganizationPage(TeamPageEntity page) {
+        return page.getTeamId() == null;
+    }
+
+    /**
+     * 2つのページが同じスコープ（scopeType・scopeId とも一致）に属するかどうか。
+     */
+    private static boolean isSameScope(TeamPageEntity a, TeamPageEntity b) {
+        if (isOrganizationPage(a) != isOrganizationPage(b)) {
+            return false;
+        }
+        Long scopeIdA = isOrganizationPage(a) ? a.getOrganizationId() : a.getTeamId();
+        Long scopeIdB = isOrganizationPage(b) ? b.getOrganizationId() : b.getTeamId();
+        return scopeIdA != null && scopeIdA.equals(scopeIdB);
     }
 
     /**
