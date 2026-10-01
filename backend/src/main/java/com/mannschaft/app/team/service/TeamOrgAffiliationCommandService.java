@@ -13,7 +13,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -140,7 +142,7 @@ public class TeamOrgAffiliationCommandService {
         auditRecorder.record(AuditEventType.TEAM_ORG_APPLICATION_SUBMITTED,
                 operatorUserId, teamId, organizationId, metadata);
         return new AppliedApplication(saved.getId(), organizationId, groupId, message, operatorUserId,
-                saved.getInvitedAt());
+                saved.getInvitedAt().atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant());
     }
 
     /**
@@ -148,7 +150,7 @@ public class TeamOrgAffiliationCommandService {
      * 取り直すと、その間に拒否・取下げされて行が消えたとき応答が 500 になる。
      */
     public record AppliedApplication(Long id, Long organizationId, UUID groupId, String message,
-                                     Long invitedBy, LocalDateTime invitedAt) {
+                                     Long invitedBy, Instant invitedAt) {
     }
 
     /**

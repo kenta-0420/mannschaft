@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.team.dto.ApplyToOrganizationRequest;
 import com.mannschaft.app.team.dto.TeamOrgAffiliationResponse;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -78,7 +80,7 @@ public class TeamOrgAffiliationService {
                 .groupId(applied.groupId())
                 .message(applied.message())
                 .invitedBy(applied.invitedBy())
-                .invitedAt(applied.invitedAt())
+                .invitedAt(LocalDateTime.ofInstant(applied.invitedAt(), UserZoneLocalDateTimeParser.SERVER_ZONE))
                 .build();
         return assembler.assembleForTeam(teamId, List.of(snapshot)).get(0);
     }
