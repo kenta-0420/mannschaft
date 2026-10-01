@@ -10,7 +10,6 @@ import com.mannschaft.app.billing.EntitlementRepository;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.api.dto.ContractResponse;
 import com.mannschaft.app.billing.api.dto.CreateContractRequest;
-import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,7 +47,7 @@ class BillingContractApplicationServiceTest {
     @Mock
     private EntitlementRepository entitlementRepository;
     @Mock
-    private TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private BillingTenantOrganizationResolver tenantOrganizationResolver;
     @Mock
     private BillingIdempotencyService idempotencyService;
     @Mock
@@ -112,11 +111,11 @@ class BillingContractApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("AC organizationId 解決: TEAM は主所属組織（ACTIVE 所属の先頭）を渡す")
+    @DisplayName("AC organizationId 解決: TEAM は代表親組織（resolver が解決した組織）を渡す")
     void create_team_resolvesPrimaryOrg() {
         UUID id = UUID.randomUUID();
         given(idempotencyService.findStoredContractId(9L, "idem-t")).willReturn(null);
-        given(teamOrgMembershipQueryService.findActiveOrganizationIds(123L)).willReturn(List.of(77L, 88L));
+        given(tenantOrganizationResolver.resolveForCreate(EntitlementScopeKind.TEAM, 123L)).willReturn(77L);
         // D-4: 価格 NULL＝無償フロー（明示 null 指定）。
         given(priceResolver.resolveMonthlyPriceJpy(
                 EntitlementScopeKind.TEAM, 123L, ContractKind.PLAN, "FULL", null)).willReturn(null);
