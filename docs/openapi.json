@@ -17262,6 +17262,136 @@
         }
       }
     },
+    "/api/v1/organizations/{slug}/team-affiliation-settings": {
+      "get": {
+        "tags": [
+          "チーム加盟（F01.2.1）"
+        ],
+        "summary": "チーム加盟の申請受付・グループ設定の取得（組織 ADMIN。SYSTEM_ADMIN は閲覧のみ）",
+        "operationId": "getSettings_9",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamAffiliationSettingsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織は見えるが ADMIN ではない（COMMON_002）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamAffiliationSettingsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "組織が存在しない・見えない（どちらも ORG_001。区別しない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamAffiliationSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "チーム加盟（F01.2.1）"
+        ],
+        "summary": "チーム加盟の申請受付・グループ設定の更新（組織 ADMIN のみ。全項目の置き換え）",
+        "operationId": "updateSettings_9",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTeamAffiliationSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功（GET と同じ形）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamAffiliationSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "入力不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamAffiliationSettingsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織は見えるが ADMIN ではない（SYSTEM_ADMIN を含む。COMMON_002）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamAffiliationSettingsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "組織が存在しない・見えない（どちらも ORG_001。区別しない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamAffiliationSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "REQUIRED の保存条件（グループ機能 on・生存グループ1件以上）を満たさない（ORG_070）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamAffiliationSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{slug}/supporter-settings": {
       "get": {
         "tags": [
@@ -17675,7 +17805,7 @@
         ],
         "summary": "メンバーサブタブ可視性設定一覧",
         "description": "指定組織の一覧／紹介サブタブの最低必要ロール一覧を取得する。非メンバーでもデフォルト値で 200。",
-        "operationId": "getSettings_9",
+        "operationId": "getSettings_10",
         "parameters": [
           {
             "name": "slug",
@@ -17705,7 +17835,7 @@
         ],
         "summary": "メンバーサブタブ可視性設定更新",
         "description": "指定組織の一覧／紹介サブタブの最低必要ロールを一括更新する。ADMIN は無条件、DEPUTY_ADMIN は MEMBER_SUBTAB_VISIBILITY_MANAGE 権限保有時のみ可。一覧タブに PUBLIC を指定すると 422。",
-        "operationId": "updateSettings_9",
+        "operationId": "updateSettings_10",
         "parameters": [
           {
             "name": "slug",
@@ -18107,7 +18237,7 @@
           "組織駐車区画管理"
         ],
         "summary": "組織駐車場設定取得",
-        "operationId": "getSettings_10",
+        "operationId": "getSettings_11",
         "parameters": [
           {
             "name": "organizationId",
@@ -18137,7 +18267,7 @@
           "組織駐車区画管理"
         ],
         "summary": "組織駐車場設定更新",
-        "operationId": "updateSettings_10",
+        "operationId": "updateSettings_11",
         "parameters": [
           {
             "name": "organizationId",
@@ -18704,7 +18834,7 @@
           "組織施設設定"
         ],
         "summary": "施設予約設定取得",
-        "operationId": "getSettings_11",
+        "operationId": "getSettings_12",
         "parameters": [
           {
             "name": "organizationId",
@@ -18734,7 +18864,7 @@
           "組織施設設定"
         ],
         "summary": "施設予約設定更新",
-        "operationId": "updateSettings_11",
+        "operationId": "updateSettings_12",
         "parameters": [
           {
             "name": "organizationId",
@@ -22656,7 +22786,7 @@
           "確認通知設定（組織）"
         ],
         "summary": "確認通知設定取得（組織）",
-        "operationId": "getSettings_12",
+        "operationId": "getSettings_13",
         "parameters": [
           {
             "name": "orgId",
@@ -22686,7 +22816,7 @@
           "確認通知設定（組織）"
         ],
         "summary": "確認通知設定更新（組織）",
-        "operationId": "updateSettings_12",
+        "operationId": "updateSettings_13",
         "parameters": [
           {
             "name": "orgId",
@@ -23291,7 +23421,7 @@
           "通知設定"
         ],
         "summary": "グローバル通知設定取得",
-        "operationId": "getSettings_13",
+        "operationId": "getSettings_14",
         "responses": {
           "200": {
             "description": "取得成功",
@@ -23310,7 +23440,7 @@
           "通知設定"
         ],
         "summary": "グローバル通知設定更新",
-        "operationId": "updateSettings_13",
+        "operationId": "updateSettings_14",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23856,7 +23986,7 @@
           "振り返り通知設定"
         ],
         "summary": "想起通知設定取得",
-        "operationId": "getSettings_14",
+        "operationId": "getSettings_15",
         "responses": {
           "200": {
             "description": "OK",
@@ -23875,7 +24005,7 @@
           "振り返り通知設定"
         ],
         "summary": "想起通知設定更新",
-        "operationId": "updateSettings_14",
+        "operationId": "updateSettings_15",
         "requestBody": {
           "content": {
             "application/json": {
@@ -92381,7 +92511,7 @@
           "予約設定管理"
         ],
         "summary": "予約設定（チームポリシー）取得",
-        "operationId": "getSettings_15",
+        "operationId": "getSettings_16",
         "parameters": [
           {
             "name": "teamId",
@@ -92926,7 +93056,7 @@
           "順番待ち設定管理"
         ],
         "summary": "設定取得",
-        "operationId": "getSettings_16",
+        "operationId": "getSettings_17",
         "parameters": [
           {
             "name": "teamId",
@@ -92956,7 +93086,7 @@
           "順番待ち設定管理"
         ],
         "summary": "設定更新",
-        "operationId": "updateSettings_15",
+        "operationId": "updateSettings_16",
         "parameters": [
           {
             "name": "teamId",
@@ -96544,7 +96674,7 @@
           "チームシフト設定"
         ],
         "summary": "チームシフト設定取得（メンバー限定）",
-        "operationId": "getSettings_17",
+        "operationId": "getSettings_18",
         "parameters": [
           {
             "name": "slug",
@@ -96583,7 +96713,7 @@
           "チームシフト設定"
         ],
         "summary": "チームシフト設定更新（ADMIN/DEPUTY のみ）",
-        "operationId": "updateSettings_16",
+        "operationId": "updateSettings_17",
         "parameters": [
           {
             "name": "slug",
@@ -99648,7 +99778,7 @@
           "予定コメント"
         ],
         "summary": "スレッド開閉",
-        "operationId": "updateSettings_17",
+        "operationId": "updateSettings_18",
         "parameters": [
           {
             "name": "scheduleId",
@@ -107170,7 +107300,7 @@
           "チャットチャンネル"
         ],
         "summary": "チャンネル個人設定",
-        "operationId": "updateSettings_18",
+        "operationId": "updateSettings_19",
         "parameters": [
           {
             "name": "channelId",
@@ -108789,7 +108919,7 @@
           "領収書発行者設定"
         ],
         "summary": "発行者設定取得",
-        "operationId": "getSettings_18",
+        "operationId": "getSettings_19",
         "parameters": [
           {
             "name": "scopeType",
@@ -109508,7 +109638,7 @@
           "行動メモ設定"
         ],
         "summary": "行動メモ設定取得",
-        "operationId": "getSettings_19",
+        "operationId": "getSettings_20",
         "responses": {
           "200": {
             "description": "OK",
@@ -109527,7 +109657,7 @@
           "行動メモ設定"
         ],
         "summary": "行動メモ設定更新",
-        "operationId": "updateSettings_19",
+        "operationId": "updateSettings_20",
         "requestBody": {
           "content": {
             "application/json": {
@@ -122949,7 +123079,7 @@
           "SYSTEM_ADMINモデレーション"
         ],
         "summary": "モデレーション設定一覧取得",
-        "operationId": "getSettings_20",
+        "operationId": "getSettings_21",
         "responses": {
           "200": {
             "description": "取得成功",
@@ -129051,7 +129181,7 @@
           "公開チーム・組織検索 API (F19.1 Phase 4)"
         ],
         "summary": "公開組織検索",
-        "description": "未ログインでも実行可能。keyword / prefecture でフィルタリングし、最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。visibility\u003dPUBLIC かつ未 archive / 未削除の組織のみ返す。",
+        "description": "未ログインでも実行可能。keyword / prefecture でフィルタリングし、最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。visibility\u003dPUBLIC かつ未 archive / 未削除の組織のみ返す。acceptingTeamApplications\u003dtrue でチーム加盟を受付中の組織だけに絞る。",
         "operationId": "searchOrganizations",
         "parameters": [
           {
@@ -129068,6 +129198,14 @@
             "required": false,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "acceptingTeamApplications",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
             }
           },
           {
@@ -130316,6 +130454,57 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/team-application-form": {
+      "get": {
+        "tags": [
+          "チーム加盟（F01.2.1）"
+        ],
+        "summary": "チーム加盟の申請フォームの内容（認証済み・組織が見えること）",
+        "operationId": "getApplicationForm",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamApplicationFormResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "受付 off（TEAM_064）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamApplicationFormResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "組織が存在しない・見えない（どちらも ORG_001。区別しない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamApplicationFormResponse"
                 }
               }
             }
@@ -138127,6 +138316,47 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PagedResponseOrgProjectSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/org-affiliation-eligibility": {
+      "get": {
+        "tags": [
+          "チーム加盟（F01.2.1）"
+        ],
+        "summary": "組織へのチーム加盟申請ボタンを出すか（常に 200。理由は区別しない）",
+        "operationId": "eligibility",
+        "parameters": [
+          {
+            "name": "organizationSlug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "判定結果",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOrgAffiliationEligibilityResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "レートリミット超過",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOrgAffiliationEligibilityResponse"
                 }
               }
             }
@@ -164210,6 +164440,77 @@
           }
         }
       },
+      "UpdateTeamAffiliationSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "applicationGroupMode": {
+            "type": "string",
+            "enum": [
+              "OFF",
+              "OPTIONAL",
+              "REQUIRED"
+            ]
+          },
+          "applicationGuidance": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "teamApplicationEnabled": {
+            "type": "boolean"
+          },
+          "teamGroupsEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "applicationGroupMode",
+          "teamApplicationEnabled",
+          "teamGroupsEnabled"
+        ]
+      },
+      "ApiResponseTeamAffiliationSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TeamAffiliationSettingsResponse"
+          }
+        }
+      },
+      "TeamAffiliationSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "applicationGroupMode": {
+            "type": "string",
+            "enum": [
+              "OFF",
+              "OPTIONAL",
+              "REQUIRED"
+            ]
+          },
+          "applicationGuidance": {
+            "type": "string"
+          },
+          "effectiveApplicationGroupMode": {
+            "type": "string",
+            "enum": [
+              "OFF",
+              "OPTIONAL",
+              "REQUIRED"
+            ]
+          },
+          "pendingApplicationCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamApplicationEnabled": {
+            "type": "boolean"
+          },
+          "teamGroupsEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseOrganizationResponse": {
         "type": "object",
         "properties": {
@@ -164329,11 +164630,22 @@
           "slug": {
             "type": "string"
           },
+          "teamApplication": {
+            "$ref": "#/components/schemas/TeamApplicationDto"
+          },
           "timestamps": {
             "$ref": "#/components/schemas/OrgTimestampsDto"
           },
           "visibility": {
             "$ref": "#/components/schemas/OrgVisibilityDto"
+          }
+        }
+      },
+      "TeamApplicationDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
           }
         }
       },
@@ -229423,6 +229735,9 @@
       "PublicOrganizationResponse": {
         "type": "object",
         "properties": {
+          "acceptingTeamApplications": {
+            "type": "boolean"
+          },
           "bannerUrl": {
             "type": "string"
           },
@@ -229835,6 +230150,9 @@
       "PublicOrganizationSearchResultResponse": {
         "type": "object",
         "properties": {
+          "acceptingTeamApplications": {
+            "type": "boolean"
+          },
           "iconUrl": {
             "type": "string"
           },
@@ -231083,6 +231401,90 @@
           },
           "visibility": {
             "type": "string"
+          }
+        }
+      },
+      "ApiResponseTeamApplicationFormResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TeamApplicationFormResponse"
+          }
+        }
+      },
+      "GroupOption": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "MyTeam": {
+        "type": "object",
+        "properties": {
+          "affiliationStatus": {
+            "type": "string"
+          },
+          "iconUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "OrganizationRef": {
+        "type": "object",
+        "properties": {
+          "iconUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "TeamApplicationFormResponse": {
+        "type": "object",
+        "properties": {
+          "groupMode": {
+            "type": "string",
+            "enum": [
+              "OFF",
+              "OPTIONAL",
+              "REQUIRED"
+            ]
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupOption"
+            }
+          },
+          "guidance": {
+            "type": "string"
+          },
+          "myTeams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyTeam"
+            }
+          },
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationRef"
           }
         }
       },
@@ -235223,6 +235625,22 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ApiResponseOrgAffiliationEligibilityResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OrgAffiliationEligibilityResponse"
+          }
+        }
+      },
+      "OrgAffiliationEligibilityResponse": {
+        "type": "object",
+        "properties": {
+          "canApply": {
+            "type": "boolean"
           }
         }
       },
