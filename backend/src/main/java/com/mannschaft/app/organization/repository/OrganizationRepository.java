@@ -57,17 +57,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
 
     List<OrganizationEntity> findByVisibility(OrganizationEntity.Visibility visibility);
 
-    /**
-     * 組織行を {@code SELECT ... FOR UPDATE}（PESSIMISTIC_WRITE）で取得する（F01.2.1 §6.1 step 7・§6.9）。
-     *
-     * <p>チームからの申請・組織からの招待の作成が「チーム行 → 組織行」の固定順でロックを取り、
-     * 組織のアーカイブ（組織行の UPDATE が同じ行ロックを取る）と直列化するために使う。
-     * ロック付き読み取りなので REPEATABLE READ でも最新のコミット済み行を読む。
-     * 論理削除済みは {@code @SQLRestriction} により空になる。</p>
-     */
-    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT o FROM OrganizationEntity o WHERE o.id = :id")
-    Optional<OrganizationEntity> findByIdForUpdate(@Param("id") Long id);
+    // 組織行の PESSIMISTIC_WRITE 取得は、後段（4-A と共用）の findByIdForUpdate を使う（F01.2.1 §6.1 step 7・§6.9）。
 
     // existsByName は柱③-A で撤去済み（ORG_002 一律ブロックの残骸。検分P2-6是正）。
     // 同名許可のため、代わりに findActiveByNormalizedName(ForUpdate) を使う。
