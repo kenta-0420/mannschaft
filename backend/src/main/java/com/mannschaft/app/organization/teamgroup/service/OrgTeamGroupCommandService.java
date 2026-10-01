@@ -54,7 +54,7 @@ public class OrgTeamGroupCommandService {
      * @throws BusinessException ORG_001（組織なし）・ORG_067（機能 off）・ORG_066（上限）・ORG_065（同名）
      */
     @Transactional
-    public OrgTeamGroupEntity create(Long organizationId, Long userId, String name, String description) {
+    public OrgTeamGroupView create(Long organizationId, Long userId, String name, String description) {
         lockEnabledOrganization(organizationId);
         String normalizedName = OrgTeamGroupInputRules.normalize(name);
 
@@ -73,7 +73,7 @@ public class OrgTeamGroupCommandService {
                 .createdBy(userId)
                 .updatedBy(userId)
                 .build();
-        return saveMappingDuplicate(entity);
+        return OrgTeamGroupView.of(saveMappingDuplicate(entity));
     }
 
     /**
@@ -82,7 +82,7 @@ public class OrgTeamGroupCommandService {
      * @throws BusinessException ORG_064（他組織・削除済み・不在は同じ）・ORG_067・ORG_065（改名で同名）
      */
     @Transactional
-    public OrgTeamGroupEntity update(Long organizationId, UUID groupId, Long userId, String name, String description) {
+    public OrgTeamGroupView update(Long organizationId, UUID groupId, Long userId, String name, String description) {
         lockEnabledOrganization(organizationId);
         OrgTeamGroupEntity group = findLiveGroup(organizationId, groupId);
 
@@ -97,7 +97,7 @@ public class OrgTeamGroupCommandService {
         if (description != null) {
             group.changeDescription(OrgTeamGroupInputRules.normalizeDescription(description), userId);
         }
-        return saveMappingDuplicate(group);
+        return OrgTeamGroupView.of(saveMappingDuplicate(group));
     }
 
     /**
@@ -109,13 +109,13 @@ public class OrgTeamGroupCommandService {
      * @throws BusinessException ORG_064・ORG_067
      */
     @Transactional
-    public OrgTeamGroupEntity delete(Long organizationId, UUID groupId, Long userId) {
+    public OrgTeamGroupView delete(Long organizationId, UUID groupId, Long userId) {
         lockEnabledOrganization(organizationId);
         OrgTeamGroupEntity group = findLiveGroup(organizationId, groupId);
         group.softDelete(Instant.now(clock), userId);
         groupRepository.saveAndFlush(group);
         eventPublisher.publishEvent(new OrgTeamGroupDeletedEvent(organizationId, groupId, userId));
-        return group;
+        return OrgTeamGroupView.of(group);
     }
 
     /**
@@ -127,7 +127,7 @@ public class OrgTeamGroupCommandService {
      * @throws BusinessException ORG_068・ORG_067
      */
     @Transactional
-    public List<OrgTeamGroupEntity> reorder(Long organizationId, Long userId, List<UUID> groupIds) {
+    public List<OrgTeamGroupView> reorder(Long organizationId, Long userId, List<UUID> groupIds) {
         lockEnabledOrganization(organizationId);
         List<OrgTeamGroupEntity> live = groupRepository
                 .findByOrganizationIdAndDeletedAtIsNullOrderBySortOrderAscIdAsc(organizationId);
@@ -149,7 +149,7 @@ public class OrgTeamGroupCommandService {
             ordered.add(g);
         }
         groupRepository.saveAllAndFlush(ordered);
-        return ordered;
+        return ordered.stream().map(OrgTeamGroupView::of).toList();
     }
 
     // ───────── 内部 ─────────

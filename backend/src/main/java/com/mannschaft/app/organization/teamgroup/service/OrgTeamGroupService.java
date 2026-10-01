@@ -9,7 +9,6 @@ import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.teamgroup.dto.OrgTeamGroupListResponse;
 import com.mannschaft.app.organization.teamgroup.dto.OrgTeamGroupResponse;
-import com.mannschaft.app.organization.teamgroup.entity.OrgTeamGroupEntity;
 import com.mannschaft.app.organization.teamgroup.repository.OrgTeamGroupRepository;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService.GroupTeamCounts;
@@ -52,40 +51,42 @@ public class OrgTeamGroupService {
      */
     public OrgTeamGroupListResponse list(Long organizationId) {
         requireEnabled(organizationId);
-        List<OrgTeamGroupEntity> groups = groupRepository
-                .findByOrganizationIdAndDeletedAtIsNullOrderBySortOrderAscIdAsc(organizationId);
+        List<OrgTeamGroupView> groups = groupRepository
+                .findByOrganizationIdAndDeletedAtIsNullOrderBySortOrderAscIdAsc(organizationId).stream()
+                .map(g -> new OrgTeamGroupView(g.getId(), g.getName(), g.getDescription(), g.getSortOrder()))
+                .toList();
         return toListResponse(organizationId, groups);
     }
 
     /** 作成。 */
     public OrgTeamGroupResponse create(Long organizationId, Long userId, String name, String description) {
-        OrgTeamGroupEntity created = commandService.create(organizationId, userId, name, description);
+        OrgTeamGroupView created = commandService.create(organizationId, userId, name, description);
         audit("ORG_TEAM_GROUP_CREATED", userId, organizationId, Map.of(
-                "groupId", created.getId().toString(), "name", created.getName()));
+                "groupId", created.id().toString(), "name", created.name()));
         return toResponse(created, 0L);
     }
 
     /** 変更。 */
     public OrgTeamGroupResponse update(Long organizationId, UUID groupId, Long userId, String name, String description) {
-        OrgTeamGroupEntity updated = commandService.update(organizationId, groupId, userId, name, description);
+        OrgTeamGroupView updated = commandService.update(organizationId, groupId, userId, name, description);
         audit("ORG_TEAM_GROUP_UPDATED", userId, organizationId, Map.of(
-                "groupId", updated.getId().toString(), "name", updated.getName()));
+                "groupId", updated.id().toString(), "name", updated.name()));
         GroupTeamCounts counts = membershipQueryService.countActiveTeamsByGroup(organizationId);
-        return toResponse(updated, counts.byGroup().getOrDefault(updated.getId(), 0L));
+        return toResponse(updated, counts.byGroup().getOrDefault(updated.id(), 0L));
     }
 
     /** 削除（所属チームの付け替えはコミット後のリスナーが行う）。 */
     public void delete(Long organizationId, UUID groupId, Long userId) {
-        OrgTeamGroupEntity deleted = commandService.delete(organizationId, groupId, userId);
+        OrgTeamGroupView deleted = commandService.delete(organizationId, groupId, userId);
         audit("ORG_TEAM_GROUP_DELETED", userId, organizationId, Map.of(
-                "groupId", deleted.getId().toString(), "name", deleted.getName()));
+                "groupId", deleted.id().toString(), "name", deleted.name()));
     }
 
     /** 並び替え（成功すると新しい一覧を返す）。 */
     public OrgTeamGroupListResponse reorder(Long organizationId, Long userId, List<UUID> groupIds) {
-        List<OrgTeamGroupEntity> ordered = commandService.reorder(organizationId, userId, groupIds);
+        List<OrgTeamGroupView> ordered = commandService.reorder(organizationId, userId, groupIds);
         audit("ORG_TEAM_GROUP_REORDERED", userId, organizationId, Map.of(
-                "groupIds", ordered.stream().map(g -> g.getId().toString()).toList()));
+                "groupIds", ordered.stream().map(g -> g.id().toString()).toList()));
         return toListResponse(organizationId, ordered);
     }
 
@@ -99,12 +100,12 @@ public class OrgTeamGroupService {
         }
     }
 
-    private OrgTeamGroupListResponse toListResponse(Long organizationId, List<OrgTeamGroupEntity> groups) {
+    private OrgTeamGroupListResponse toListResponse(Long organizationId, List<OrgTeamGroupView> groups) {
         GroupTeamCounts counts = membershipQueryService.countActiveTeamsByGroup(organizationId);
         long assignedToLive = 0;
         List<OrgTeamGroupResponse> data = new java.util.ArrayList<>(groups.size());
-        for (OrgTeamGroupEntity g : groups) {
-            long teamCount = counts.byGroup().getOrDefault(g.getId(), 0L);
+        for (OrgTeamGroupView g : groups) {
+            long teamCount = counts.byGroup().getOrDefault(g.id(), 0L);
             assignedToLive += teamCount;
             data.add(toResponse(g, teamCount));
         }
@@ -114,8 +115,8 @@ public class OrgTeamGroupService {
                 new OrgTeamGroupListResponse.Meta(unassigned, OrgTeamGroupCommandService.MAX_GROUPS_PER_ORG));
     }
 
-    private static OrgTeamGroupResponse toResponse(OrgTeamGroupEntity g, long teamCount) {
-        return new OrgTeamGroupResponse(g.getId(), g.getName(), g.getDescription(), g.getSortOrder(), teamCount);
+    private static OrgTeamGroupResponse toResponse(OrgTeamGroupView g, long teamCount) {
+        return new OrgTeamGroupResponse(g.id(), g.name(), g.description(), g.sortOrder(), teamCount);
     }
 
     private void audit(String eventType, Long userId, Long organizationId, Map<String, Object> metadata) {
