@@ -61,26 +61,38 @@ public interface ErrorReportRepository extends JpaRepository<ErrorReportEntity, 
      *   <li>{@code memberships} の ORGANIZATION 在籍（{@code left_at IS NULL}）＝組織直属</li>
      * </ul>
      *
+     * <p><b>決定性（F01.2.1 §9.2 #18）</b>: 複数の組織に属していても結果が実行のたびに変わらないよう
+     * {@code ORDER BY} で順序を固定する。<b>直属組織を優先</b>（prio=0。在籍が最も古いもの）し、次に
+     * チーム経由の §9.3 代表親組織（prio=1。{@code COALESCE(responded_at, created_at)} 昇順）、
+     * 同順位は {@code organization_id} 昇順。{@code LIMIT 1} は ORDER BY 付きの決定的な1件取得である。</p>
+     *
      * <p>{@code memberships} 側の枝は索引 {@code (scope_type, scope_id, left_at)} /
      * {@code (user_id, left_at)} に載せるため、必ず {@code scope_type} の等値条件を伴う。</p>
      */
     @Query(value = """
         SELECT cand.organization_id
         FROM (
-            SELECT tom.organization_id AS organization_id
+            SELECT tom.organization_id AS organization_id,
+                   1 AS prio,
+                   COALESCE(tom.responded_at, tom.created_at) AS ord_at
               FROM team_org_memberships tom
               JOIN user_roles ur ON ur.team_id = tom.team_id
               WHERE ur.user_id = :userId AND tom.status = 'ACTIVE'
             UNION
-            SELECT tom2.organization_id AS organization_id
+            SELECT tom2.organization_id AS organization_id,
+                   1 AS prio,
+                   COALESCE(tom2.responded_at, tom2.created_at) AS ord_at
               FROM team_org_memberships tom2
               JOIN memberships ms ON ms.scope_type = 'TEAM' AND ms.scope_id = tom2.team_id
               WHERE ms.user_id = :userId AND ms.left_at IS NULL AND tom2.status = 'ACTIVE'
             UNION
-            SELECT ms2.scope_id AS organization_id
+            SELECT ms2.scope_id AS organization_id,
+                   0 AS prio,
+                   ms2.joined_at AS ord_at
               FROM memberships ms2
               WHERE ms2.user_id = :userId AND ms2.scope_type = 'ORGANIZATION' AND ms2.left_at IS NULL
         ) cand
+        ORDER BY cand.prio ASC, cand.ord_at ASC, cand.organization_id ASC
         LIMIT 1
         """, nativeQuery = true)
     Optional<Long> findOrganizationIdByUserId(@Param("userId") Long userId);

@@ -42,7 +42,7 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3608);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2 + 4 = 3608（main 3602 + CMP-260919-1140 Phase 1 の2本 + F01.2.1 2-A の4本）
+                .isEqualTo(3613);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 4（F01.2.1 2-A）= 3613（main 3609 + 4）
                                     // + F01.2.1 部隊 2-A の4エンドポイント（TeamAffiliationSettingsController の
                                     //   設定 GET/PUT・申請フォーム GET の3本 + OrgAffiliationEligibilityController の1本。
                                     //   いずれも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|3・0|1））
@@ -65,6 +65,8 @@ class ApiGateDeclarationGuardTest {
                                     //   従来どおり残っているため、この11本は純増分
                                     // + 価格改定の取り消し POST /price-revisions/{id}/cancel 1本（2026-09-24 御裁可）。
                                     //   @AlwaysReachable(GATE_CONTROL_PLANE) を宣言済みのため未宣言数は増えない（7|8）
+                                    // + F01.2.1 部隊 4-A のチームグループ管理 OrgTeamGroupController 5本
+                                    //   （一覧・作成・変更・削除・並び替え。認可は各 EP 本体の AccessControlService 直接呼び出し）
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.STOMP).count())
                 .as("STOMP @MessageMapping の走査総数。Chat 2件と VillageLobbyPresence 3件")
                 .isEqualTo(5);
