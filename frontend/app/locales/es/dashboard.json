@@ -103,6 +103,12 @@
       "count": "{count}",
       "visible_count": "{count} visibles"
     },
+    "scope_accordion": {
+      "schedule_activity": "Agenda y actividad",
+      "tasks_confirmation": "Tareas y confirmación",
+      "communication": "Comunicación y contenido compartido",
+      "results_members": "Resultados y miembros"
+    },
     "widget_labels": {
       "event-dismissal-reminder": "解散通知リマインダー",
       "notices": "お知らせ",
