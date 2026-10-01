@@ -25,6 +25,7 @@ const analytics = useMatchAnalytics()
 
 const orgId = ref<number | null>(null)
 const organizations = ref<MatchOrgOption[]>([])
+const orgInvalid = ref(false)
 const stats = ref<TeamMatchStatsResponse | null>(null)
 const loading = ref(true)
 
@@ -39,6 +40,7 @@ async function load(): Promise<void> {
     const ctx = await resolveContext(teamSlug.value, { orgId: parseOrgQuery(route.query.org) })
     orgId.value = ctx?.orgId ?? null
     organizations.value = ctx?.organizations ?? []
+    orgInvalid.value = ctx?.orgInvalid ?? false
     if (ctx === null || ctx.orgId === null) {
       stats.value = null
       return
@@ -63,14 +65,14 @@ onMounted(load)
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.team_subtitle') }}</p>
 
-    <MatchOrgSelect :organizations="organizations" :org-id="orgId" />
+    <MatchOrgSelect :organizations="organizations" :org-id="orgId" :invalid="orgInvalid" />
 
     <PageLoading v-if="loading" />
 
     <template v-else>
       <!-- 組織未解決 -->
       <DashboardEmptyState
-        v-if="orgId === null"
+        v-if="orgId === null && !orgInvalid"
         icon="pi pi-building"
         :message="t('match.analytics.empty.no_team')"
       />
@@ -83,7 +85,7 @@ onMounted(load)
         <i class="pi pi-chart-bar text-5xl text-surface-300" />
         <p>{{ t('match.analytics.empty.no_matches') }}</p>
         <NuxtLink
-          :to="`/teams/${teamSlug}/matches`"
+          :to="{ path: `/teams/${teamSlug}/matches`, query: { org: String(orgId) } }"
           class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-contrast"
         >
           <i class="pi pi-plus" />

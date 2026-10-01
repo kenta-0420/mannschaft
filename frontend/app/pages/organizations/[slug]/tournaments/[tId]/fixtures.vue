@@ -128,9 +128,10 @@ async function recordFixture(fx: TournamentMatch): Promise<void> {
     //    試合の組織は「表示中の大会の組織」（ページの [slug]）。チームの親組織から推測しない
     //    （チームが複数の組織に加盟していても、大会の組織の下に試合を作る。F01.2.1 §9.2 F2）。
     const ctx = await resolveContextByTeamId(target.selfTeamId, { orgSlug: orgId })
-    if (!ctx) {
-      // /me/teams の取得失敗は composable 内で通知済み。ここへ来る null は
-      // 「大会の組織にそのチームが加盟していない」ため、理由を提示する（症状を隠さない）。
+    // null は /me/teams の取得失敗（composable 内で通知済み）またはチーム不在。ここでは通知を重ねない。
+    if (!ctx) return
+    // 大会の組織にそのチームが加盟していない場合だけ、理由を提示する（症状を隠さない）。
+    if (ctx.orgInvalid || ctx.orgId === null) {
       notification.warn(t('match.org_context.not_member_of_org'))
       return
     }

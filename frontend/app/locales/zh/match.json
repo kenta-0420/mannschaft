@@ -454,7 +454,9 @@
       "L": "自由人"
     },
     "org_select": {
-      "label": "组织"
+      "label": "组织",
+      "invalid": "指定された組織は無効です（このチームの組織ではありません）。組織を選び直してください",
+      "placeholder": "組織を選択"
     },
     "org_context": {
       "resolve_failed": "无法解析球队/组织信息。请确认你的所属",

@@ -454,7 +454,9 @@
       "L": "Libero"
     },
     "org_select": {
-      "label": "Organization"
+      "label": "Organization",
+      "invalid": "The specified organization is invalid (not an organization of this team). Please choose an organization again",
+      "placeholder": "Select an organization"
     },
     "org_context": {
       "resolve_failed": "Could not resolve team/organization info. Please check your memberships",

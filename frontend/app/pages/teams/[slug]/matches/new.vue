@@ -22,8 +22,10 @@ const { resolveContext } = useMatchOrgContext()
 const orgId = ref<number | null>(null)
 const teamId = ref<number | null>(null)
 const organizations = ref<MatchOrgOption[]>([])
+/** org クエリが無効（不正・親組織に無い）。true の間は作成を止める。 */
+const orgInvalid = ref(false)
 /** 遷移先へ選択中の組織（URL クエリ org）を引き継ぐ。 */
-const orgQuery = computed(() => (route.query.org ? { org: String(route.query.org) } : {}))
+const orgQuery = computed<{ org?: string }>(() => (orgId.value !== null ? { org: String(orgId.value) } : {}))
 /** 組織は URL クエリ `org` で選ぶ（F01.2.1 §9.2 F1）。未指定は代表親組織。 */
 async function loadOrganizationId(): Promise<boolean> {
   const ctx = await resolveContext(teamSlug, { orgId: parseOrgQuery(route.query.org) })
@@ -34,7 +36,9 @@ async function loadOrganizationId(): Promise<boolean> {
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
   organizations.value = ctx?.organizations ?? []
-  return true
+  orgInvalid.value = ctx.orgInvalid
+  // 指定された組織が無効なら代表親組織へ落とさず作成を止める（セレクタと警告が出る）
+  return !ctx.orgInvalid && ctx.orgId !== null
 }
 
 // === フォーム状態 ===
@@ -145,12 +149,12 @@ watch(
 <template>
   <div class="mx-auto max-w-xl">
     <div class="mb-1 flex items-center gap-3">
-      <PageHeader :title="$t('match.create.title')" size="sm" :back-to="`/teams/${teamSlug}/matches`" />
+      <PageHeader :title="$t('match.create.title')" size="sm" :back-to="orgQuery.org ? `/teams/${teamSlug}/matches?org=${orgQuery.org}` : `/teams/${teamSlug}/matches`" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ $t('match.create.subtitle') }}</p>
 
     <!-- 組織選択（親組織が複数のときだけ表示。作成先の組織になる） -->
-    <MatchOrgSelect :organizations="organizations" :org-id="orgId" />
+    <MatchOrgSelect :organizations="organizations" :org-id="orgId" :invalid="orgInvalid" />
 
     <form @submit.prevent="submit">
       <!-- 種別（必須・タップ選択） -->

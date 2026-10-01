@@ -31,6 +31,7 @@ const kanbans = ref<QuoteKanban[]>([])
 const kanbanLoading = ref(false)
 const organizationId = ref<number | null>(null)
 const organizations = ref<MatchOrgOption[]>([])
+const orgInvalid = ref(false)
 const { resolveContext } = useMatchOrgContext()
 const selectedKanban = ref<QuoteKanban | null>(null)
 const showCreateDialog = ref(false)
@@ -51,6 +52,7 @@ async function loadOrganizationId() {
   const ctx = await resolveContext(teamSlug.value, { orgId: parseOrgQuery(route.query.org) })
   organizationId.value = ctx?.orgId ?? null
   organizations.value = ctx?.organizations ?? []
+  orgInvalid.value = ctx?.orgInvalid ?? false
 }
 
 // 組織を切り替えたら（URL クエリ org の変化）その組織のカンバンを読み直す
@@ -269,11 +271,11 @@ onMounted(async () => {
       </div>
 
       <!-- 組織選択（親組織が複数のときだけ表示） -->
-      <MatchOrgSelect :organizations="organizations" :org-id="organizationId" />
+      <MatchOrgSelect :organizations="organizations" :org-id="organizationId" :invalid="orgInvalid" />
 
       <!-- 組織ID未取得の警告 -->
       <Message
-        v-if="!kanbanLoading && organizationId === null && !selectedKanban"
+        v-if="!kanbanLoading && organizationId === null && !orgInvalid && !selectedKanban"
         severity="warn"
         :closable="false"
         class="mb-4"

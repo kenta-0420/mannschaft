@@ -32,7 +32,7 @@ vi.mock('~/composables/useNotification', () => ({
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 
 // eslint-disable-next-line import/first
-import { useMatchOrgContext, parseOrgQuery } from '~/composables/match/useMatchOrgContext'
+import { useMatchOrgContext, parseOrgQuery, INVALID_ORG } from '~/composables/match/useMatchOrgContext'
 
 // slug（URL slug 文字列）。数値 id とは別物であることを表現するための固定値。
 const TEAM_A_SLUG = 'team-alpha'
@@ -57,6 +57,7 @@ describe('useMatchOrgContext', () => {
       orgId: 10,
       teamId: 100,
       organizations: [{ id: 10, slug: '', name: '' }],
+      orgInvalid: false,
     })
   })
 
@@ -112,7 +113,7 @@ describe('useMatchOrgContext', () => {
     const { resolveContext } = useMatchOrgContext()
     const result = await resolveContext(TEAM_A_SLUG)
 
-    expect(result).toEqual({ orgId: null, teamId: 100, organizations: [] })
+    expect(result).toEqual({ orgId: null, teamId: 100, organizations: [], orgInvalid: false })
     expect(mockWarn).not.toHaveBeenCalled()
   })
 
@@ -142,6 +143,7 @@ describe('useMatchOrgContext', () => {
       teamId: 500,
       teamSlug: TEAM_A_SLUG,
       organizations: [{ id: 50, slug: '', name: '' }],
+      orgInvalid: false,
     })
   })
 
@@ -216,13 +218,38 @@ describe('useMatchOrgContext', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it('ORG-CTX-203: チームの親組織でない org を指定したら任意の組織へ縮退せず null を返す', async () => {
+  it('ORG-CTX-203: チームの親組織でない org を指定したら代表親組織へ落とさず orgInvalid（候補は残す）', async () => {
     mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
 
     const { resolveContext } = useMatchOrgContext()
     const result = await resolveContext(TEAM_A_SLUG, { orgId: 999 })
 
-    expect(result).toBeNull()
+    expect(result?.orgInvalid).toBe(true)
+    expect(result?.orgId).toBeNull()
+    // 正しい組織へ戻れるよう選択肢は残す（中2）
+    expect(result?.organizations.map((o) => o.id)).toEqual([11, 22])
+    expect(result?.teamId).toBe(900)
+  })
+
+  it('ORG-CTX-203b: 不正な org（org=abc）も代表親組織へ落とさず orgInvalid（高1）', async () => {
+    mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
+
+    const { resolveContext } = useMatchOrgContext()
+    const result = await resolveContext(TEAM_A_SLUG, { orgId: parseOrgQuery('abc') })
+
+    expect(result?.orgInvalid).toBe(true)
+    expect(result?.orgId).toBeNull()
+    expect(result?.organizations).toHaveLength(2)
+  })
+
+  it('ORG-CTX-203c: org 未指定のときだけ代表親組織を既定にする', async () => {
+    mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
+
+    const { resolveContext } = useMatchOrgContext()
+    const result = await resolveContext(TEAM_A_SLUG, { orgId: parseOrgQuery(undefined) })
+
+    expect(result?.orgInvalid).toBe(false)
+    expect(result?.orgId).toBe(11)
   })
 
   it('ORG-CTX-204: 大会の組織 slug（ページの [slug]）の組織を使い、代表親組織ではない（F2）', async () => {
@@ -235,13 +262,14 @@ describe('useMatchOrgContext', () => {
     expect(result?.teamSlug).toBe(TEAM_A_SLUG)
   })
 
-  it('ORG-CTX-205: 大会の組織にチームが加盟していなければ null（チームの別の親組織で試合を作らない）', async () => {
+  it('ORG-CTX-205: 大会の組織にチームが加盟していなければ orgInvalid（チームの別の親組織で試合を作らない）', async () => {
     mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
 
     const { resolveContextByTeamId } = useMatchOrgContext()
     const result = await resolveContextByTeamId(900, { orgSlug: 'org-z' })
 
-    expect(result).toBeNull()
+    expect(result?.orgInvalid).toBe(true)
+    expect(result?.orgId).toBeNull()
   })
 
   it('ORG-CTX-206: repair-plan の組織 ID は数値（slug 文字列の id を number 判定して常に null になる旧バグの根治・G124）', async () => {
@@ -253,11 +281,12 @@ describe('useMatchOrgContext', () => {
     expect(typeof result?.orgId).toBe('number')
   })
 
-  it('ORG-CTX-207: parseOrgQuery は数値文字列だけを orgId にし、不正値・配列先頭を正規化する', () => {
+  it('ORG-CTX-207: parseOrgQuery は未指定を null・数値を orgId・不正値を INVALID_ORG にする', () => {
     expect(parseOrgQuery('22')).toBe(22)
     expect(parseOrgQuery(['22', '33'])).toBe(22)
-    expect(parseOrgQuery('abc')).toBeNull()
-    expect(parseOrgQuery('1e3')).toBeNull()
+    expect(parseOrgQuery('abc')).toBe(INVALID_ORG)
+    expect(parseOrgQuery('1e3')).toBe(INVALID_ORG)
+    expect(parseOrgQuery('')).toBeNull()
     expect(parseOrgQuery(undefined)).toBeNull()
   })
 })

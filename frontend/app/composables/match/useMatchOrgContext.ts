@@ -22,7 +22,9 @@
  *   1. 呼び出し側が渡した `preferredOrgId`（URL クエリ `org`）が親組織に含まれればそれ
  *   2. 呼び出し側が渡した `orgSlug`（大会ページの組織 slug など）が親組織に含まれればそれ
  *   3. 代表親組織（`organizations[0]`。旧 BE 互換で `organizationId` にも縮退）
- * 1・2 で指定されたのに親組織に含まれない場合は、任意の組織へ黙って縮退させず null を返す。
+ * 1・2 で「指定されたのに無効」（数値でない・親組織に含まれない）場合は、代表親組織へ黙って
+ * 縮退させない。`orgInvalid: true`・`orgId: null` で返し、選択肢（organizations）は残す。
+ * 画面は作成・保存を止め、組織セレクタと警告を出して正しい組織へ戻れるようにする。
  * 選択肢は返り値の `organizations` で画面に渡し、画面側が URL クエリ `org` に載せる。
  *
  * ## キャッシュ方式
@@ -40,8 +42,10 @@ export interface MatchOrgOption {
 
 /** 数値 orgId ＋ 数値 teamId の解決結果。 */
 export interface MatchOrgContext {
-  /** 実際に使う組織（選択中、無ければ代表親組織）。親組織が無いチームは null。 */
+  /** 実際に使う組織（選択中、未指定なら代表親組織）。親組織が無いチーム・指定が無効なときは null。 */
   orgId: number | null
+  /** 組織が「指定されたのに無効」（不正な値・親組織に無い）。true の間、作成・保存は止める。 */
+  orgInvalid: boolean
   teamId: number
   /** チームの全親組織（代表親組織が先頭）。組織選択 UI の選択肢。 */
   organizations: MatchOrgOption[]
@@ -55,9 +59,15 @@ export interface MatchOrgContextByTeamId extends MatchOrgContext {
   teamSlug: string
 }
 
-/** 組織の選択指定。`orgId`（URL クエリ org）か `orgSlug`（ページの組織 slug）のどちらか。 */
+/** URL クエリ org が指定されたが数値として不正。 */
+export const INVALID_ORG = 'invalid' as const
+
+/**
+ * 組織の選択指定。`orgId`（URL クエリ org の parseOrgQuery 結果）か `orgSlug`（ページの組織 slug）。
+ * 何も指定しない（null/undefined）ときだけ代表親組織を既定にする。
+ */
 export interface MatchOrgSelector {
-  orgId?: number | null
+  orgId?: number | typeof INVALID_ORG | null
   orgSlug?: string | null
 }
 
@@ -71,14 +81,16 @@ interface MyTeamItem {
 }
 
 /**
- * URL クエリ `org`（文字列・配列）を数値 orgId に正規化する。不正値は null。
- * 呼び出し側は `parseOrgQuery(route.query.org)` を resolveContext の `orgId` に渡す。
+ * URL クエリ `org`（文字列・配列）を解釈する。
+ * 未指定（undefined・空）は null（＝代表親組織が既定）。数値は orgId。
+ * 指定されたが数値でない値は INVALID_ORG（代表親組織へ落とさず「無効」として扱うため）。
  */
-export function parseOrgQuery(raw: unknown): number | null {
+export function parseOrgQuery(raw: unknown): number | typeof INVALID_ORG | null {
   const v = Array.isArray(raw) ? raw[0] : raw
-  if (typeof v !== 'string' || !/^\d+$/.test(v)) return null
+  if (v === undefined || v === null || v === '') return null
+  if (typeof v !== 'string' || !/^\d+$/.test(v)) return INVALID_ORG
   const n = Number(v)
-  return Number.isSafeInteger(n) ? n : null
+  return Number.isSafeInteger(n) ? n : INVALID_ORG
 }
 
 /** MyTeamItem から全親組織を取り出す（旧 BE は organizationId だけを slug/name なしで縮退）。 */
@@ -88,17 +100,22 @@ function organizationsOf(tm: MyTeamItem): MatchOrgOption[] {
 }
 
 /**
- * 使う組織を決める。
- * @returns `{ orgId }`。指定があるのに親組織に含まれない場合は `undefined`（呼び出し側で null 扱い）。
+ * 使う組織を決める。指定が無ければ代表親組織、指定が無効なら invalid（代表親組織へ落とさない）。
  */
-function pickOrg(orgs: MatchOrgOption[], sel: MatchOrgSelector | undefined): number | null | undefined {
+function pickOrg(
+  orgs: MatchOrgOption[],
+  sel: MatchOrgSelector | undefined,
+): { orgId: number | null; invalid: boolean } {
+  if (sel?.orgId === INVALID_ORG) return { orgId: null, invalid: true }
   if (sel?.orgId != null) {
-    return orgs.some((o) => o.id === sel.orgId) ? sel.orgId : undefined
+    const ok = orgs.some((o) => o.id === sel.orgId)
+    return ok ? { orgId: sel.orgId, invalid: false } : { orgId: null, invalid: true }
   }
   if (sel?.orgSlug) {
-    return orgs.find((o) => o.slug === sel.orgSlug)?.id
+    const id = orgs.find((o) => o.slug === sel.orgSlug)?.id
+    return id === undefined ? { orgId: null, invalid: true } : { orgId: id, invalid: false }
   }
-  return orgs[0]?.id ?? null
+  return { orgId: orgs[0]?.id ?? null, invalid: false }
 }
 
 export function useMatchOrgContext() {
@@ -124,7 +141,7 @@ export function useMatchOrgContext() {
   /**
    * teamSlug（URL slug 文字列）から数値 orgId ＋ 数値 teamId ＋ 親組織の選択肢を解決する。
    * `selector.orgId`（URL クエリ org）が指定され、チームの親組織に含まれればその組織を使う。
-   * 含まれない場合・チームが無い場合は null（呼び出し側で null ガードする）。
+   * 含まれない場合は `orgInvalid: true`（orgId は null・選択肢は残す）。チームが無い／取得失敗は null。
    * 別の teamSlug・別の selector は必ず新たに判定する（キャッシュするのは /me/teams の応答のみ）。
    */
   async function resolveContext(
@@ -142,9 +159,8 @@ export function useMatchOrgContext() {
       if (!myTeam) return null
 
       const organizations = organizationsOf(myTeam)
-      const orgId = pickOrg(organizations, selector)
-      if (orgId === undefined) return null
-      return { orgId, teamId: myTeam.id, organizations }
+      const { orgId, invalid } = pickOrg(organizations, selector)
+      return { orgId, orgInvalid: invalid, teamId: myTeam.id, organizations }
     } catch {
       notification.warn(t('match.org_context.resolve_failed'))
       return null
@@ -156,7 +172,7 @@ export function useMatchOrgContext() {
    * 大会対戦表（入口①）では participant.teamId（数値）が起点になるため、slug 起点の
    * resolveContext と対称に `/me/teams` を引く。大会の組織は `selector.orgSlug`（ページの
    * `[slug]`）で指定し、チームの親組織から推測しない（F01.2.1 §9.2 F2）。
-   * 当該ユーザーが所属しないチーム、または指定の組織に加盟していないチームは null。
+   * 当該ユーザーが所属しないチーム・取得失敗は null。指定の組織に加盟していないチームは `orgInvalid: true`。
    */
   async function resolveContextByTeamId(
     teamId: number,
@@ -168,9 +184,14 @@ export function useMatchOrgContext() {
       if (!myTeam) return null
 
       const organizations = organizationsOf(myTeam)
-      const orgId = pickOrg(organizations, selector)
-      if (orgId === undefined) return null
-      return { orgId, teamId: myTeam.id, teamSlug: myTeam.slug, organizations }
+      const { orgId, invalid } = pickOrg(organizations, selector)
+      return {
+        orgId,
+        orgInvalid: invalid,
+        teamId: myTeam.id,
+        teamSlug: myTeam.slug,
+        organizations,
+      }
     } catch {
       notification.warn(t('match.org_context.resolve_failed'))
       return null

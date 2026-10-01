@@ -29,6 +29,7 @@ const analytics = useMatchAnalytics()
 const stats = ref<UserMatchStatsResponse | null>(null)
 const orgId = ref<number | null>(null)
 const organizations = ref<MatchOrgOption[]>([])
+const orgInvalid = ref(false)
 const loading = ref(true)
 /** 403（閲覧権限なし）を検出したフラグ */
 const forbidden = ref(false)
@@ -53,6 +54,7 @@ async function load(): Promise<void> {
     const ctx = await resolveContext(teamSlug.value, { orgId: parseOrgQuery(route.query.org) })
     orgId.value = ctx?.orgId ?? null
     organizations.value = ctx?.organizations ?? []
+    orgInvalid.value = ctx?.orgInvalid ?? false
     if (ctx === null || ctx.orgId === null || !Number.isFinite(userId.value)) {
       stats.value = null
       return
@@ -82,7 +84,7 @@ onMounted(load)
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.member_subtitle') }}</p>
 
-    <MatchOrgSelect :organizations="organizations" :org-id="orgId" />
+    <MatchOrgSelect :organizations="organizations" :org-id="orgId" :invalid="orgInvalid" />
 
     <PageLoading v-if="loading" />
 
