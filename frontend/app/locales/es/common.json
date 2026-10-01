@@ -2712,7 +2712,28 @@
     }
   },
   "loadErrorState": {
-    "message": "Error al cargar los datos",
+    "states": {
+      "generic": {
+        "title": "No podemos cargar los datos en este momento",
+        "message": "Puede tratarse de un problema temporal. Espere un momento e inténtelo de nuevo."
+      },
+      "forbidden": {
+        "title": "Esta página no está disponible para esta cuenta",
+        "message": "Si necesita acceder, consulte con una persona administradora."
+      },
+      "notFoundOrForbidden": {
+        "title": "No pudimos mostrar la información que busca",
+        "message": "Puede que ya no esté disponible o que haya cambiado quién puede verla."
+      },
+      "network": {
+        "title": "Parece que la conexión no ha funcionado",
+        "message": "Compruebe su conexión a Internet e inténtelo de nuevo."
+      },
+      "server": {
+        "title": "No podemos cargar los datos en este momento",
+        "message": "Puede tratarse de un problema temporal. Espere un momento e inténtelo de nuevo."
+      }
+    },
     "retry": "Reintentar"
   },
   "searchBar": {
