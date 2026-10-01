@@ -106,6 +106,8 @@ class TournamentEntryScopeContractIT extends AbstractMySqlIntegrationTest {
     private UUID templateAId;
     private UUID templateBId;
     private UUID entryMemberAId;
+    /** 同じ division A に居る別 participant（teamB）のエントリー（他 participant の entryMemberId 越境検証用） */
+    private UUID entryMemberOtherParticipantId;
 
     @BeforeEach
     void setUp() {
@@ -149,13 +151,21 @@ class TournamentEntryScopeContractIT extends AbstractMySqlIntegrationTest {
 
         templateAId = templateRepository.save(TournamentEntryTemplateEntity.builder()
                 .teamId(teamAId).name("W7ENTRYテンプレA").sortOrder((short) 0)
+                .createdBy(orgAdminAId)
                 .build()).getId();
         templateBId = templateRepository.save(TournamentEntryTemplateEntity.builder()
                 .teamId(teamBId).name("W7ENTRYテンプレB").sortOrder((short) 0)
+                .createdBy(orgAdminBId)
                 .build()).getId();
 
         entryMemberAId = entryMemberRepository.save(TournamentEntryMemberEntity.builder()
                 .participantId(pAId).userId(teamMemberAId).sortOrder((short) 0)
+                .build()).getId();
+
+        // 同一 division A に別 participant（teamB）を参加させ、そのエントリーを作る（CMP-260929-0654 IDOR 行列）
+        Long pOtherId = insertParticipant(divAId, teamBId);
+        entryMemberOtherParticipantId = entryMemberRepository.save(TournamentEntryMemberEntity.builder()
+                .participantId(pOtherId).userId(orgAdminBId).sortOrder((short) 0)
                 .build()).getId();
 
         em.flush();
@@ -618,6 +628,117 @@ class TournamentEntryScopeContractIT extends AbstractMySqlIntegrationTest {
             return body;
         }
     }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 10. IDOR 行列（CMP-260929-0654 回帰: 認可ロジックは変えず、既存に無い操作を足す）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("10. IDOR 行列（他チームの templateId・他 participant の entryMemberId・階層不整合・権限不足）")
+    class IdorMatrix {
+
+        @Test
+        @DisplayName("他チームの templateId での PUT は404（team 束縛・存在秘匿）")
+        void 他チームのテンプレートPUTは404() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(put(TEMPLATES + "/{tplId}", orgAId, teamAId, templateBId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody("越境PUT"))))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("他チームの templateId での DELETE は404")
+        void 他チームのテンプレートDELETEは404() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(delete(TEMPLATES + "/{tplId}", orgAId, teamAId, templateBId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("他チームの templateId での GET は404")
+        void 他チームのテンプレートGETは404() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(get(TEMPLATES + "/{tplId}", orgAId, teamAId, templateBId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("orgId と teamId の不整合（orgB のパスに teamA）は GET/PUT/DELETE すべて404")
+        void org_team不整合は404() throws Exception {
+            setAuth(orgAdminBId);
+            mockMvc.perform(get(TEMPLATES + "/{tplId}", orgBId, teamAId, templateAId))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(put(TEMPLATES + "/{tplId}", orgBId, teamAId, templateAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody("不整合PUT"))))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(delete(TEMPLATES + "/{tplId}", orgBId, teamAId, templateAId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("他 participant の entryMemberId での DELETE は404（同じ division の別チームのエントリーを消せない）")
+        void 他participantのentryMemberIdのDELETEは404() throws Exception {
+            setAuth(teamAdminAId);
+            mockMvc.perform(delete(ENTRY_MEMBERS + "/{emId}", orgAId, tAId, divAId, pAId,
+                            entryMemberOtherParticipantId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("orgId→tournamentId の不整合（orgB のパスに大会A）は PUT / DELETE とも404")
+        void org_tournament不整合は404() throws Exception {
+            setAuth(orgAdminBId);
+            mockMvc.perform(put(ENTRY_MEMBERS, orgBId, tAId, divAId, pAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("members", List.of()))))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(delete(ENTRY_MEMBERS + "/{emId}", orgBId, tAId, divAId, pAId, entryMemberAId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("tournamentId→divisionId の不整合（大会A に division B）は PUT / DELETE とも404")
+        void tournament_division不整合は404() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(put(ENTRY_MEMBERS, orgAId, tAId, divBId, pAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("members", List.of()))))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(delete(ENTRY_MEMBERS + "/{emId}", orgAId, tAId, divBId, pAId, entryMemberAId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("divisionId→participantId の不整合（division A に participant B）は PUT / DELETE とも404")
+        void division_participant不整合は404() throws Exception {
+            setAuth(orgAdminAId);
+            mockMvc.perform(put(ENTRY_MEMBERS, orgAId, tAId, divAId, pBId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("members", List.of()))))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(delete(ENTRY_MEMBERS + "/{emId}", orgAId, tAId, divAId, pBId, entryMemberAId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("非メンバーは正しいリソースでも PUT（エントリー・テンプレート）/ DELETE（テンプレート）が403")
+        void 権限不足は正しいリソースでも403() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(put(ENTRY_MEMBERS, orgAId, tAId, divAId, pAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("members", List.of()))))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(put(TEMPLATES + "/{tplId}", orgAId, teamAId, templateAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(templateBody("権限不足PUT"))))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete(TEMPLATES + "/{tplId}", orgAId, teamAId, templateAId))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
 
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー

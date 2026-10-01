@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.architecture;
 
+import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
@@ -20,12 +22,15 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 認可をトランザクションの外のファサードへ出した型（CMP-260923-0954 W2 / plan4 の AC-15・K7）の固定。
+ * 認可をトランザクションの外のファサードへ出した型（CMP-260923-0954 W2・W1 / plan4 の AC-15・K7）の固定。
  *
- * <p>対象は<b>今回移した shift の交代・変更依頼・自動割当に限定</b>する（reservation など他ドメインや
- * {@code @SelfScopedEndpoint} の正当な Controller 直呼びは対象外。W6 で番人へ一般化する）。</p>
+ * <p>対象は<b>移した shift の交代・変更依頼・自動割当（W2）とシフト希望・ポジション（W1）に限定</b>する
+ * （reservation など他ドメインや {@code @SelfScopedEndpoint} の正当な Controller 直呼びは対象外。
+ * W6 で番人へ一般化する。{@code ShiftRequestController#listMyRequests} は自己スコープの EP なので
+ * {@code ShiftRequestService} の直呼びを許し、それ以外のメソッドだけ Facade を要求する）。</p>
  * <ol>
- *   <li>tx 本体（{@code ShiftSwapService} / {@code ShiftChangeRequestService} / {@code ShiftAutoAssignService}）は
+ *   <li>tx 本体（{@code ShiftSwapService} / {@code ShiftChangeRequestService} / {@code ShiftAutoAssignService} /
+ *       {@code ShiftRequestService} / {@code ShiftPositionService}）は
  *       {@code AccessControlService} / {@code ScopeConcealingAccessGate} に依存しない。</li>
  *   <li>Facade に {@code @Transactional} が無い（クラスにもメソッドにも）。</li>
  *   <li>Facade は実際に {@code AccessControlService} / Gate へ届く（認可が空洞化していない）。</li>
@@ -41,14 +46,22 @@ class ShiftTxFacadeArchTest {
     private static final String ACCESS_CONTROL = "com.mannschaft.app.common.AccessControlService";
     private static final String GATE = "com.mannschaft.app.common.ScopeConcealingAccessGate";
 
-    /** tx 本体 → ファサード → Controller の対応（今回移した 3 組だけ）。 */
+    /** tx 本体 → ファサード → Controller の対応（移した組だけ）。 */
     private static final List<String[]> TRIPLES = List.of(
             new String[]{PKG + ".service.ShiftSwapService", PKG + ".service.ShiftSwapFacade",
                     PKG + ".controller.ShiftSwapController"},
             new String[]{PKG + ".service.ShiftChangeRequestService", PKG + ".service.ShiftChangeRequestFacade",
                     PKG + ".controller.ShiftChangeRequestController"},
             new String[]{PKG + ".service.ShiftAutoAssignService", PKG + ".service.ShiftAutoAssignFacade",
-                    PKG + ".controller.ShiftAutoAssignController"});
+                    PKG + ".controller.ShiftAutoAssignController"},
+            new String[]{PKG + ".service.ShiftRequestService", PKG + ".service.ShiftRequestFacade",
+                    PKG + ".controller.ShiftRequestController"},
+            new String[]{PKG + ".service.ShiftPositionService", PKG + ".service.ShiftPositionFacade",
+                    PKG + ".controller.ShiftPositionController"});
+
+    /** 自己スコープ（{@code @SelfScopedEndpoint}）で tx 本体の直呼びを許す Controller メソッド。 */
+    private static final String SELF_SCOPED_CONTROLLER = PKG + ".controller.ShiftRequestController";
+    private static final String SELF_SCOPED_METHOD = "listMyRequests";
 
     private static JavaClasses classesUnderTest;
 
@@ -67,6 +80,11 @@ class ShiftTxFacadeArchTest {
         return TRIPLES.stream().map(t -> t[1]).toArray(String[]::new);
     }
 
+    private static DescribedPredicate<JavaClass> anyOf(String[] names) {
+        List<String> list = List.of(names);
+        return DescribedPredicate.describe("is one of " + list, c -> list.contains(c.getName()));
+    }
+
     @Test
     @DisplayName("対象クラスが実在する（リネームで番人が空振りしない）")
     void 対象クラスが実在する() {
@@ -80,9 +98,7 @@ class ShiftTxFacadeArchTest {
     @Test
     @DisplayName("AC-15: tx 本体は AccessControlService / ScopeConcealingAccessGate に依存しない")
     void tx本体は認可クラスに依存しない() {
-        noClasses().that().haveFullyQualifiedName(txBodies()[0])
-                .or().haveFullyQualifiedName(txBodies()[1])
-                .or().haveFullyQualifiedName(txBodies()[2])
+        noClasses().that(anyOf(txBodies()))
                 .should().dependOnClassesThat().haveFullyQualifiedName(ACCESS_CONTROL)
                 .orShould().dependOnClassesThat().haveFullyQualifiedName(GATE)
                 .because("認可は tx の外の Facade に置く。tx 本体に残すと D-3T が common 経由で越境と数える")
@@ -92,9 +108,7 @@ class ShiftTxFacadeArchTest {
     @Test
     @DisplayName("AC-15: Facade に @Transactional が無い（クラスにもメソッドにも）")
     void Facadeにtransactionalが無い() {
-        classes().that().haveFullyQualifiedName(facades()[0])
-                .or().haveFullyQualifiedName(facades()[1])
-                .or().haveFullyQualifiedName(facades()[2])
+        classes().that(anyOf(facades()))
                 .should(haveNoTransactionalAnywhere())
                 .check(classesUnderTest);
     }
@@ -102,22 +116,19 @@ class ShiftTxFacadeArchTest {
     @Test
     @DisplayName("AC-15: Facade は AccessControlService / Gate へ実際に届く（認可が空洞化していない）")
     void Facadeは認可クラスに届く() {
-        classes().that().haveFullyQualifiedName(facades()[0])
-                .or().haveFullyQualifiedName(facades()[1])
-                .or().haveFullyQualifiedName(facades()[2])
+        // Gate へは全 Facade が届く。AccessControlService へは、Gate だけで足りるシフト希望の Facade 以外が届く
+        // （W2 の 3 Facade は従来どおり両方、ポジションは一覧・作成が ACL・更新・削除が Gate）。
+        classes().that(anyOf(facades()))
                 .should().dependOnClassesThat().haveFullyQualifiedName(GATE)
                 .check(classesUnderTest);
-        classes().that().haveFullyQualifiedName(facades()[0])
-                .or().haveFullyQualifiedName(facades()[1])
-                .or().haveFullyQualifiedName(facades()[2])
+        classes().that(anyOf(Arrays.stream(facades())
+                        .filter(f -> !f.equals(PKG + ".service.ShiftRequestFacade")).toArray(String[]::new)))
                 .should().dependOnClassesThat().haveFullyQualifiedName(ACCESS_CONTROL)
                 .check(classesUnderTest);
         // 各 Facade の public メソッドのうち、tx 本体を呼ぶものは必ずその前に認可クラスへ届く（呼び出し順は
         // ITs / UT が応答で固定）。ここでは「全 public メソッドが認可クラスか、認可を行う同クラスの
         // private メソッドを呼ぶ」ことを検査する。
-        classes().that().haveFullyQualifiedName(facades()[0])
-                .or().haveFullyQualifiedName(facades()[1])
-                .or().haveFullyQualifiedName(facades()[2])
+        classes().that(anyOf(facades()))
                 .should(haveEveryPublicMethodReachAuthorization())
                 .check(classesUnderTest);
     }
@@ -126,10 +137,17 @@ class ShiftTxFacadeArchTest {
     @DisplayName("K7: Controller は tx 本体を直接呼ばず、指定の Facade を呼ぶ")
     void Controllerは指定のFacadeだけを呼ぶ() {
         for (String[] triple : TRIPLES) {
-            noClasses().that().haveFullyQualifiedName(triple[2])
-                    .should().dependOnClassesThat().haveFullyQualifiedName(triple[0])
-                    .because("認可を飛ばして tx 本体へ入れてはならない")
-                    .check(classesUnderTest);
+            if (triple[2].equals(SELF_SCOPED_CONTROLLER)) {
+                // 自己スコープの EP だけ tx 本体の直呼びを許し、それ以外のメソッドは Facade 経由のみ。
+                classes().that().haveFullyQualifiedName(triple[2])
+                        .should(haveEveryMethodExceptSelfScopedUseFacadeNotTxBody(triple[0], triple[1]))
+                        .check(classesUnderTest);
+            } else {
+                noClasses().that().haveFullyQualifiedName(triple[2])
+                        .should().dependOnClassesThat().haveFullyQualifiedName(triple[0])
+                        .because("認可を飛ばして tx 本体へ入れてはならない")
+                        .check(classesUnderTest);
+            }
             classes().that().haveFullyQualifiedName(triple[2])
                     .should().dependOnClassesThat().haveFullyQualifiedName(triple[1])
                     .check(classesUnderTest);
@@ -144,6 +162,45 @@ class ShiftTxFacadeArchTest {
             assertThat(simple).doesNotEndWith("AccessService").doesNotEndWith("AccessGuard")
                     .doesNotEndWith("AccessGate").endsWith("Facade");
         }
+    }
+
+    /**
+     * 自己スコープの EP（{@value #SELF_SCOPED_METHOD}）以外の Controller メソッドは、tx 本体を直接呼ばず Facade を呼ぶこと。
+     * {@value #SELF_SCOPED_METHOD} は tx 本体（listMyRequests）を呼び、Facade は呼ばない（呼び出し元 userId のみを条件にする）。
+     */
+    private static ArchCondition<JavaClass> haveEveryMethodExceptSelfScopedUseFacadeNotTxBody(
+            String txBody, String facade) {
+        return new ArchCondition<>("route every method except " + SELF_SCOPED_METHOD + " through the facade") {
+            @Override
+            public void check(JavaClass item, ConditionEvents events) {
+                for (JavaMethod method : item.getMethods()) {
+                    boolean callsTx = method.getMethodCallsFromSelf().stream()
+                            .anyMatch(c -> c.getTargetOwner().getName().equals(txBody));
+                    boolean callsFacade = method.getMethodCallsFromSelf().stream()
+                            .anyMatch(c -> c.getTargetOwner().getName().equals(facade));
+                    boolean endpoint = method.getModifiers().contains(
+                            com.tngtech.archunit.core.domain.JavaModifier.PUBLIC);
+                    if (!endpoint) {
+                        continue;
+                    }
+                    if (method.getName().equals(SELF_SCOPED_METHOD)) {
+                        if (!callsTx) {
+                            events.add(SimpleConditionEvent.violated(method, method.getFullName()
+                                    + " は自己スコープの EP なのに tx 本体を呼んでいない（想定した構成が変わった）"));
+                        }
+                        continue;
+                    }
+                    if (callsTx) {
+                        events.add(SimpleConditionEvent.violated(method,
+                                method.getFullName() + " が認可を飛ばして tx 本体を直接呼んでいる"));
+                    }
+                    if (!callsFacade) {
+                        events.add(SimpleConditionEvent.violated(method,
+                                method.getFullName() + " が Facade を呼んでいない"));
+                    }
+                }
+            }
+        };
     }
 
     /** クラス・メソッドのどこにも {@code @Transactional} が付いていないこと。 */

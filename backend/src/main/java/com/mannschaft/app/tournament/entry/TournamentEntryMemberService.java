@@ -424,6 +424,9 @@ public class TournamentEntryMemberService {
 
         // 既存エントリーを全削除して再INSERT
         entryMemberRepository.deleteByParticipantId(pId);
+        // 派生 delete は remove を予約するだけで、Hibernate の flush は INSERT を DELETE より先に流す。
+        // 同じ userId を含む再保存が uq_tem_participant_user に当たらないよう、ここで DELETE を確定させる。
+        entryMemberRepository.flush();
 
         List<TournamentEntryMemberEntity> newEntries = req.getMembers().stream()
                 .map(item -> (TournamentEntryMemberEntity) TournamentEntryMemberEntity.builder()
