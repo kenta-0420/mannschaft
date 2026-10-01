@@ -328,7 +328,7 @@ class TeamControllerTest {
     @DisplayName("getOrganizations: 200 OK（チーム本体と同じ可視性ラダーで判定する）")
     void getOrganizations_200() {
         given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
-        given(teamService.getOrganizations(TEAM_ID)).willReturn(List.of());
+        given(teamService.getOrganizations(TEAM_ID, false)).willReturn(List.of());
         assertThat(controller.getOrganizations(TEAM_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(contentVisibilityChecker).assertCanView(ReferenceType.TEAM, TEAM_ID, USER_ID);
     }
@@ -342,7 +342,7 @@ class TeamControllerTest {
                 .assertCanView(ReferenceType.TEAM, TEAM_ID, USER_ID);
         assertThatThrownBy(() -> controller.getOrganizations(TEAM_SLUG))
                 .isInstanceOf(BusinessException.class);
-        verify(teamService, Mockito.never()).getOrganizations(TEAM_ID);
+        verify(teamService, Mockito.never()).getOrganizations(Mockito.eq(TEAM_ID), Mockito.anyBoolean());
     }
 
     @Test

@@ -811,8 +811,9 @@ public class OrganizationService {
      *
      * <p>{@link OrganizationMembershipService#getTeams(Long)} へ委譲。</p>
      */
-    public List<OrgTeamSummaryResponse> getTeams(Long orgId) {
-        return organizationMembershipService.getTeams(orgId);
+    public List<OrgTeamSummaryResponse> getTeams(Long orgId, boolean viewerSeesGroups, java.util.UUID teamGroupId,
+                                                 boolean unassigned) {
+        return organizationMembershipService.getTeams(orgId, viewerSeesGroups, teamGroupId, unassigned);
     }
 
     /**

@@ -2880,4 +2880,25 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("teamId") long teamId,
             @Param("cursor") long cursor,
             @Param("limit") int limit);
+
+    // ========================================================================
+    // F01.2.1 4-B: 加盟チーム一覧・チーム所属組織一覧の人数を、行数に比例しない SQL 本数で数える
+    // ========================================================================
+
+    /**
+     * チームごとの user_roles 行数を1本の SQL でまとめて数える（{@link #countByTeamId} の一括版。N+1 を避ける）。
+     * 行が1件も無いチームは結果に含まれない。
+     */
+    @Query("SELECT ur.teamId AS scopeId, COUNT(ur) AS memberCount FROM UserRoleEntity ur "
+            + "WHERE ur.teamId IN :teamIds GROUP BY ur.teamId")
+    List<ScopeMemberCountProjection> countGroupByTeamIdIn(@Param("teamIds") Collection<Long> teamIds);
+
+    /**
+     * 組織ごとの user_roles 行数を1本の SQL でまとめて数える（{@link #countByOrganizationId} の一括版。N+1 を避ける）。
+     * 行が1件も無い組織は結果に含まれない。
+     */
+    @Query("SELECT ur.organizationId AS scopeId, COUNT(ur) AS memberCount FROM UserRoleEntity ur "
+            + "WHERE ur.organizationId IN :organizationIds GROUP BY ur.organizationId")
+    List<ScopeMemberCountProjection> countGroupByOrganizationIdIn(
+            @Param("organizationIds") Collection<Long> organizationIds);
 }
