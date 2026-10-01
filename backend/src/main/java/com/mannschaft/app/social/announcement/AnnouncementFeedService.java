@@ -298,6 +298,18 @@ public class AnnouncementFeedService {
                 priority, expiresAt, targetTeamIds, titleCache, visibility);
     }
 
+    /**
+     * 告知ウィザードで作ったフィードに宛先の記録を書き込む（F01.2.1 §5.6・§8.2。{@link AnnouncementCreationService} へ委譲）。
+     *
+     * @see AnnouncementCreationService#recordBroadcastAudience
+     */
+    @Transactional
+    public void recordBroadcastAudience(Long feedId, String targetGroupIds, boolean includeUnassigned,
+                                        String targetAudience,
+                                        java.util.Map<java.util.UUID, List<Long>> groupTeams) {
+        creationService.recordBroadcastAudience(feedId, targetGroupIds, includeUnassigned, targetAudience, groupTeams);
+    }
+
     // ═════════════════════════════════════════════════════════════
     // 委譲: 既読管理（AnnouncementReadService へ委譲）
     // ═════════════════════════════════════════════════════════════

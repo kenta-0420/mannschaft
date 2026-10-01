@@ -117,7 +117,7 @@ class BroadcastAudiencePersistenceIT extends AbstractBroadcastAudienceIT {
         JsonNode atSend = savedTargetAudience(feedId);
         assertThat(atSend.path("mode").asText()).isEqualTo("GROUPS");
         assertThat(atSend.path("teamCount").asInt()).isEqualTo(2);
-        assertThat(atSend.path("range").path("fromGroupId").isNull()).isTrue();
+        assertThat(atSend.path("range").hasNonNull("fromGroupId")).as("「以前」は開始を持たない").isFalse();
         assertThat(atSend.path("range").path("toGroupId").asText()).isEqualTo(g2.getId().toString());
         assertThat(atSend.path("range").path("toGroupName").asText()).isEqualTo("G2");
         assertThat(atSend.path("groups").findValuesAsText("name")).containsExactly("G1", "G2");

@@ -293,4 +293,29 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     int clearGroupId(@Param("organizationId") Long organizationId,
                      @Param("groupId") java.util.UUID groupId,
                      @Param("now") java.time.Instant now);
+
+    // ========================================================================
+    // F01.2.1 告知の宛先解決（6-A）: ACTIVE の加盟だけを候補にする
+    // ========================================================================
+
+    /**
+     * 指定チームのうち、組織に ACTIVE で加盟しているチーム ID を返す（「チームを選ぶ」の候補の検証。§8.3・AC-K07）。
+     * PENDING・加盟行の無いチーム（離脱済み・他組織）は返らない。
+     */
+    @Query("SELECT m.teamId FROM TeamOrgMembershipEntity m "
+        + "WHERE m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "AND m.teamId IN :teamIds")
+    List<Long> findActiveTeamIdsByOrganizationIdAndTeamIdIn(@Param("organizationId") Long organizationId,
+                                                            @Param("teamIds") java.util.Collection<Long> teamIds);
+
+    /**
+     * 組織に ACTIVE で加盟しているチームと、その所属グループ ID（未分類は NULL）を team_id 昇順で返す
+     * （グループ宛ての展開。§8.2）。
+     */
+    @Query("SELECT m.teamId AS teamId, m.groupId AS groupId FROM TeamOrgMembershipEntity m "
+        + "WHERE m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "ORDER BY m.teamId ASC")
+    List<TeamGroupAssignmentProjection> findActiveTeamGroupAssignments(@Param("organizationId") Long organizationId);
 }
