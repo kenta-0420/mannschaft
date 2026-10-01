@@ -57847,6 +57847,8 @@ export interface components {
             scope?: string;
             /** Format: int32 */
             sortOrder?: number;
+            /** Format: int64 */
+            sourceOrganizationId?: number;
         };
         ReminderResponse: {
             /** Format: int64 */
@@ -79472,10 +79474,17 @@ export interface components {
             name?: string;
             /** Format: int64 */
             organizationId?: number;
+            organizations?: components["schemas"]["ParentOrganization"][];
             role?: string;
             slug?: string;
             template?: string;
             visibility?: string;
+        };
+        ParentOrganization: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            slug?: string;
         };
         PagedResponseTeamProjectSummaryResponse: {
             data?: components["schemas"]["TeamProjectSummaryResponse"][];

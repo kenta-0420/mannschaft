@@ -5,7 +5,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.shift.dto.ChangeRequestResponse;
 import com.mannschaft.app.shift.dto.CreateChangeRequestRequest;
 import com.mannschaft.app.shift.dto.ReviewChangeRequestRequest;
-import com.mannschaft.app.shift.service.ShiftChangeRequestService;
+import com.mannschaft.app.shift.service.ShiftChangeRequestFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.mannschaft.app.common.security.AuthorizedInService;
 
 import java.util.List;
 
@@ -36,7 +35,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ShiftChangeRequestController {
 
-    private final ShiftChangeRequestService changeRequestService;
+    private final ShiftChangeRequestFacade changeRequestFacade;
 
     /**
      * 変更依頼を作成する。
@@ -46,7 +45,7 @@ public class ShiftChangeRequestController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ChangeRequestResponse>> createChangeRequest(
             @Valid @RequestBody CreateChangeRequestRequest request) {
-        ChangeRequestResponse response = changeRequestService.create(request, SecurityUtils.getCurrentUserId());
+        ChangeRequestResponse response = changeRequestFacade.create(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -57,7 +56,7 @@ public class ShiftChangeRequestController {
      * <p><b>認可（認可根治 Wave6）:</b> 旧実装は {@code @RequestParam String role} を受け取り
      * その値で返却範囲を分岐していたため、<b>認可の判断材料がクライアント入力</b>という
      * 権限昇格の穴になっていた。本 API から {@code role} を撤廃し、返却範囲は
-     * {@code ShiftChangeRequestService#list} 内でサーバー側のロール判定により決定する
+     * {@code ShiftChangeRequestFacade#list} 内でサーバー側のロール判定により決定する
      *（scope は {@code scheduleId} から解決したチーム）。</p>
      *
      * <p>scope がパス変数でなくスケジュール実体由来のため {@code @accessGuard} の SpEL では
@@ -69,7 +68,7 @@ public class ShiftChangeRequestController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ChangeRequestResponse>>> listChangeRequests(
             @RequestParam Long scheduleId) {
-        List<ChangeRequestResponse> responses = changeRequestService.list(
+        List<ChangeRequestResponse> responses = changeRequestFacade.list(
                 scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
@@ -78,7 +77,7 @@ public class ShiftChangeRequestController {
      * 変更依頼詳細を取得する。
      *
      * <p><b>認可（認可根治 Wave6）:</b> 依頼者本人または当該チーム管理者のみ閲覧可。
-     * 真の強制点は {@code ShiftChangeRequestService#get}（越境は 404 で存在秘匿）。</p>
+     * 真の強制点は {@code ShiftChangeRequestFacade#get}（越境は 404 で存在秘匿）。</p>
      */
     @GetMapping("/{id}")
     @Operation(summary = "変更依頼詳細取得")
@@ -86,7 +85,7 @@ public class ShiftChangeRequestController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeRequestResponse>> getChangeRequest(
             @PathVariable Long id) {
-        ChangeRequestResponse response = changeRequestService.get(id, SecurityUtils.getCurrentUserId());
+        ChangeRequestResponse response = changeRequestFacade.get(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -96,7 +95,7 @@ public class ShiftChangeRequestController {
      * <p>per-scope 認可（SYSTEM_ADMIN 短絡 or 当該シフトの所属チーム ADMIN/DEPUTY_ADMIN）は
      * {@code scheduleId} がパス変数ではなく依頼エンティティ由来のため、
      * {@code @accessGuard} の SpEL では表現できない。よって認可の真の強制点は
-     * {@code ShiftChangeRequestService#review} 内の明示呼出（{@code checkReviewerScopeAdminAccess}）に置く。
+     * {@code ShiftChangeRequestFacade#review} 内の明示呼出（Gate）に置く。
      * ここでは Phase 2 の method-security 点火時に一斉 403 化しないよう {@code isAuthenticated()} に留め、
      * 認証のみを担保する（認可根治 Phase 3-a）。</p>
      */
@@ -107,22 +106,20 @@ public class ShiftChangeRequestController {
     public ResponseEntity<ApiResponse<ChangeRequestResponse>> reviewChangeRequest(
             @PathVariable Long id,
             @Valid @RequestBody ReviewChangeRequestRequest request) {
-        ChangeRequestResponse response = changeRequestService.review(id, request, SecurityUtils.getCurrentUserId());
+        ChangeRequestResponse response = changeRequestFacade.review(id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
      * 変更依頼を取り下げる（依頼者のみ、OPEN のもの）。
      */
-    // ShiftChangeRequestService#withdraw が依頼エンティティの requesterUserId と
-    // SecurityUtils.getCurrentUserId() の一致を検証してから取下げる（依頼者本人以外は拒否）。
-    @AuthorizedInService
+    // 認可（依頼者本人のみ）は ShiftChangeRequestFacade#withdraw が tx の外で行う（W2）。
     @DeleteMapping("/{id}")
     @Operation(summary = "変更依頼取下")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取下成功")
     public ResponseEntity<Void> withdrawChangeRequest(
             @PathVariable Long id) {
-        changeRequestService.withdraw(id, SecurityUtils.getCurrentUserId());
+        changeRequestFacade.withdraw(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 自分の所属チームレスポンス（GET /api/v1/me/teams 用）。
@@ -21,8 +22,17 @@ public class MyTeamResponse {
      * 試合 REST は {@code /organizations/{orgId}/teams/{teamId}/...}（数値）配下のため、
      * slug しか持たない {@code /teams/{id}/organizations} ではなく
      * 本フィールドから数値 orgId を直接取得できるようにする。
+     *
+     * <p><b>非推奨（F01.2.1）</b>: チームは複数の親組織に同時加盟できる。互換のため残すが、
+     * 値は §9.3 の代表親組織（最初に成立した ACTIVE 加盟。同時刻なら organization_id 最小）に固定される。
+     * 全親組織は {@link #organizations} を使うこと。</p>
      */
     private final Long organizationId;
+    /**
+     * チームが ACTIVE で加盟している全親組織（F01.2.1 §9.2 #7）。
+     * 代表親組織が先頭。親組織が 0 件なら空配列。
+     */
+    private final List<ParentOrganization> organizations;
     private final String name;
     /** アイコンURL（DB未実装のため常にnull）。 */
     private final String iconUrl;
@@ -38,4 +48,13 @@ public class MyTeamResponse {
      * テンプレート未設定（汎用チーム）の場合は null。
      */
     private final String template;
+
+    /** チームの親組織（id・slug・name）。 */
+    @Getter
+    @RequiredArgsConstructor
+    public static class ParentOrganization {
+        private final Long id;
+        private final String slug;
+        private final String name;
+    }
 }

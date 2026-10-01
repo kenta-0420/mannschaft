@@ -23,11 +23,6 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     List<TeamOrgMembershipEntity> findByOrganizationIdAndStatus(Long organizationId, TeamOrgMembershipEntity.Status status);
 
     /**
-     * チームが所属するACTIVE状態の組織を取得する（通常1件）。
-     */
-    Optional<TeamOrgMembershipEntity> findFirstByTeamIdAndStatus(Long teamId, TeamOrgMembershipEntity.Status status);
-
-    /**
      * チームが所属する全組織を取得する。
      */
     List<TeamOrgMembershipEntity> findByTeamIdAndStatus(Long teamId, TeamOrgMembershipEntity.Status status);
@@ -148,6 +143,38 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
         + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
         + "ORDER BY COALESCE(m.respondedAt, m.createdAt) ASC, m.organizationId ASC")
     List<TeamOrgMembershipEntity> findActiveByTeamIdOrderByRespondedAtAndOrganizationId(@Param("teamId") Long teamId);
+
+    /**
+     * 複数チームの ACTIVE な親組織 ID を、チームごとに代表親組織の規則順
+     * （{@code COALESCE(responded_at, created_at)} 昇順 → {@code organization_id} 昇順）の List で返す
+     * （F01.2.1 §9.2 #7・#8。先頭が代表親組織 §9.3）。SQL は 1 本。親組織が 0 件のチームは entry に含めない。
+     *
+     * @param teamIds 対象チーム ID 集合（空・null なら SQL を発行せず空 Map）
+     * @return チーム ID → 親組織 ID（代表親組織が先頭・重複なし）
+     */
+    default Map<Long, List<Long>> findOrganizationIdsInPrimaryOrderByTeamIdIn(Set<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<Long>> result = new java.util.LinkedHashMap<>();
+        for (TeamOrgIdProjection p : findTeamOrgIdProjectionsInPrimaryOrderByTeamIdIn(teamIds)) {
+            List<Long> orgIds = result.computeIfAbsent(p.getTeamId(), k -> new java.util.ArrayList<>());
+            if (!orgIds.contains(p.getOrganizationId())) {
+                orgIds.add(p.getOrganizationId());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * {@link #findOrganizationIdsInPrimaryOrderByTeamIdIn(Set)} の内部 JPQL 実装（teamIds は非空）。
+     */
+    @Query("SELECT m.teamId AS teamId, m.organizationId AS organizationId "
+        + "FROM TeamOrgMembershipEntity m "
+        + "WHERE m.teamId IN :teamIds "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "ORDER BY m.teamId ASC, COALESCE(m.respondedAt, m.createdAt) ASC, m.organizationId ASC")
+    List<TeamOrgIdProjection> findTeamOrgIdProjectionsInPrimaryOrderByTeamIdIn(@Param("teamIds") Set<Long> teamIds);
 
     /**
      * {@link #findOrganizationIdByTeamIdIn(Set)} の内部 JPQL 実装。
