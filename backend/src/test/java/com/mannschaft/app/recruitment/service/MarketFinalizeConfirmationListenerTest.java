@@ -16,7 +16,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.InOrder;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +30,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -50,6 +55,9 @@ class MarketFinalizeConfirmationListenerTest {
     @Mock
     private ConfirmableNotificationService confirmableNotificationService;
 
+    @Mock
+    private PlatformTransactionManager transactionManager;
+
     @InjectMocks
     private MarketFinalizeConfirmationListener listener;
 
@@ -71,7 +79,7 @@ class MarketFinalizeConfirmationListenerTest {
 
     private static MarketFinalizeService.FinalizeConfirmationPlan teamPlan() {
         return new MarketFinalizeService.FinalizeConfirmationPlan(
-                LISTING_ID, ScopeType.TEAM, 88L, "t", "b", ConfirmableNotificationPriority.HIGH,
+                LISTING_ID, ScopeType.TEAM, 88L, "t", "b",
                 "/market/listings/" + LISTING_ID, 7L,
                 List.of(101L, 102L));
     }
@@ -80,6 +88,7 @@ class MarketFinalizeConfirmationListenerTest {
     @DisplayName("送るべき札なら、計画どおり MARKET_FINALIZE として sendFromSource する")
     void 計画どおりMARKET_FINALIZEで送る() {
         given(marketFinalizeService.planFinalizeConfirmation(LISTING_ID)).willReturn(Optional.of(teamPlan()));
+        given(marketFinalizeService.finalizeConfirmationPriority()).willReturn(ConfirmableNotificationPriority.HIGH);
 
         listener.onReachedFull(new MarketListingReachedFullEvent(LISTING_ID));
 
@@ -88,6 +97,38 @@ class MarketFinalizeConfirmationListenerTest {
                 eq(ScopeType.TEAM), eq(88L), eq("t"), eq("b"),
                 eq(ConfirmableNotificationPriority.HIGH), isNull(),
                 eq("/market/listings/" + LISTING_ID), eq(7L), eq(List.of(101L, 102L)));
+    }
+
+    @Test
+    @DisplayName("Codex P2: 札の行ロック付き判定と通知作成は、同じ1つの REQUIRES_NEW 通知TXの中で行い、その後にコミットする")
+    void 判定と作成は同一の通知TXで行う() {
+        given(marketFinalizeService.planFinalizeConfirmation(LISTING_ID)).willReturn(Optional.of(teamPlan()));
+
+        listener.onReachedFull(new MarketListingReachedFullEvent(LISTING_ID));
+
+        InOrder order = inOrder(transactionManager, marketFinalizeService, confirmableNotificationService);
+        order.verify(transactionManager).getTransaction(
+                org.mockito.ArgumentMatchers.argThat((TransactionDefinition d) ->
+                        d.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW));
+        order.verify(marketFinalizeService).planFinalizeConfirmation(LISTING_ID);
+        order.verify(confirmableNotificationService).sendFromSource(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        order.verify(transactionManager).commit(any());
+    }
+
+    @Test
+    @DisplayName("Codex P2: 送信が失敗したら通知TXをロールバックし（コミットしない）、ERROR ログで伝播させない")
+    void 送信失敗なら通知TXをロールバック() {
+        given(marketFinalizeService.planFinalizeConfirmation(LISTING_ID)).willReturn(Optional.of(teamPlan()));
+        given(confirmableNotificationService.sendFromSource(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .willThrow(new IllegalStateException("模擬送信失敗"));
+
+        assertThatCode(() -> listener.onReachedFull(new MarketListingReachedFullEvent(LISTING_ID)))
+                .doesNotThrowAnyException();
+
+        verify(transactionManager).rollback(any());
+        verify(transactionManager, never()).commit(any());
     }
 
     @Test

@@ -16,6 +16,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -54,7 +55,6 @@ public class MarketFinalizeService {
      * @param scopeId          スコープID
      * @param title            タイトル
      * @param body             本文
-     * @param priority         優先度
      * @param actionUrl        遷移先
      * @param createdByUserId  作成者（札主）
      * @param recipientUserIds 受信者（札主 scope の ADMIN。不在なら札主本人）
@@ -65,7 +65,6 @@ public class MarketFinalizeService {
             Long scopeId,
             String title,
             String body,
-            ConfirmableNotificationPriority priority,
             String actionUrl,
             Long createdByUserId,
             List<Long> recipientUserIds) {
@@ -81,14 +80,34 @@ public class MarketFinalizeService {
      * <p>重複発火ガード（02_api_design §6.1）: FULL→OPEN→再FULL で確認通知が二重送信されるのを防ぐ。
      * 同一札（source_id）に未確認（ACTIVE）の MARKET_FINALIZE 通知が既に存在すれば送らない。</p>
      *
-     * <p>{@code @Transactional} を付けない: 読み取りのみで、各 Repository 呼び出しの単位で整合すれば足りる
-     * （AFTER_COMMIT リスナーから呼ばれ、業務TXは既にコミット済み。送信は呼び出し側の別TXで行う）。</p>
+     * <p><b>札の行ロック下で判定する（Codex 検分 P2）</b>: 札行を {@code PESSIMISTIC_WRITE} で取り、
+     * そのロックを<b>呼び出し側の通知TXのコミットまで握ったまま</b>状態と既存 ACTIVE 通知を確認する。
+     * 札の status を変える経路（申込 {@code apply}・本人キャンセル {@code cancelMyApplication}・
+     * 管理者キャンセル・自動下げバッチ・{@link #finalizeBySourceId}）はいずれも同じ札行を
+     * {@code findByIdForUpdate} で取るか native UPDATE（＝同じ行の排他ロック）で書き換えるため、
+     * ①「FULL を確認した後・通知を作る前に参加者キャンセルで OPEN に戻る」ことは起きず、
+     * ② FULL→OPEN→再FULL の2イベントの判定も直列化され、後続は先行の ACTIVE 通知を必ず見る。
+     * したがって呼び出し側は<b>この呼び出しを通知TXの最初のクエリにし</b>、同じTX内で通知を作ること
+     * （InnoDB の REPEATABLE READ は最初の一貫性読み取りで読取ビューを作るため、ロック取得後に作られる
+     * ビューが先行TXのコミット済み通知を含む）。{@code MANDATORY}: TX 外から呼ぶとロックが即座に外れ
+     * 直列化が成立しないため、呼び出し側のTXが無ければ {@link IllegalStateException} にする。</p>
+     *
+     * <p>{@code @Transactional(propagation = MANDATORY)} を付けず実行時に検査する理由: 宣言すると本メソッドが
+     * D-3T 番人の {@code @Transactional} 入口になり、通知・ロールの Repository へ届く新規の越境TX入口を
+     * 増やす。TX を開く責務は通知TXを束ねる {@link MarketFinalizeConfirmationListener} 側にあり、
+     * 越境の理由もそこに明記している。</p>
      *
      * @param listingId 札ID
      * @return 送るべきなら送信内容、送らないなら空
+     * @throws IllegalStateException 実TXの外から呼ばれた場合
      */
     public Optional<FinalizeConfirmationPlan> planFinalizeConfirmation(Long listingId) {
-        RecruitmentListingEntity listing = listingRepository.findById(listingId).orElse(null);
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException(
+                    "planFinalizeConfirmation は札の行ロックを通知作成まで握るため、通知TXの内側で呼ぶこと: listingId="
+                            + listingId);
+        }
+        RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId).orElse(null);
         if (listing == null) {
             log.warn("F22.1 市: 最終認証通知の対象札が不在（削除済み等）: listingId={}", listingId);
             return Optional.empty();
@@ -134,10 +153,21 @@ public class MarketFinalizeService {
                 listing.getScopeId(),
                 "募集を確定して札を下げますか？",
                 listing.getTitle() + " が定員に達しました。最終認証で募集を確定できます。",
-                ConfirmableNotificationPriority.HIGH,
                 "/market/listings/" + listing.getId(),
                 listing.getCreatedBy(),
                 recipientUserIds));
+    }
+
+    /**
+     * 最終認証の確認通知の優先度（02_api_design §6.1: 札主の確定操作を促すため HIGH）。
+     *
+     * <p>送信内容の record（{@link FinalizeConfirmationPlan}）に通知ドメインの型を持たせない
+     * （D-1: 他ドメインの entity パッケージへの依存を recruitment の新しいクラスへ広げない）。</p>
+     *
+     * @return 優先度
+     */
+    public ConfirmableNotificationPriority finalizeConfirmationPriority() {
+        return ConfirmableNotificationPriority.HIGH;
     }
 
     /**

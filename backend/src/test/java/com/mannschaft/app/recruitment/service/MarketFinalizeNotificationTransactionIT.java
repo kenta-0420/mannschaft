@@ -15,6 +15,7 @@ import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.dto.ApplyToRecruitmentRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.event.MarketListingReachedFullEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
@@ -79,6 +80,9 @@ class MarketFinalizeNotificationTransactionIT extends AbstractMySqlIntegrationTe
     private RecruitmentListingRepository listingRepository;
 
     @Autowired
+    private MarketFinalizeConfirmationListener finalizeListener;
+
+    @Autowired
     private OrganizationNotificationBalanceRepository balanceRepository;
 
     @Autowired
@@ -97,6 +101,9 @@ class MarketFinalizeNotificationTransactionIT extends AbstractMySqlIntegrationTe
 
     private Logger rootLogger;
     private ListAppender<ILoggingEvent> appender;
+    /** test プロファイルの root は WARN のため、判定スキップの INFO を拾うには発生元ロガーを一時的に INFO にする。 */
+    private Logger finalizeServiceLogger;
+    private Level finalizeServiceLoggerLevel;
 
     @BeforeEach
     void attachAppender() {
@@ -105,11 +112,15 @@ class MarketFinalizeNotificationTransactionIT extends AbstractMySqlIntegrationTe
         appender = new ListAppender<>();
         appender.start();
         rootLogger.addAppender(appender);
+        finalizeServiceLogger = (Logger) LoggerFactory.getLogger(MarketFinalizeService.class);
+        finalizeServiceLoggerLevel = finalizeServiceLogger.getLevel();
+        finalizeServiceLogger.setLevel(Level.INFO);
     }
 
     @AfterEach
     void cleanUp() {
         rootLogger.detachAppender(appender);
+        finalizeServiceLogger.setLevel(finalizeServiceLoggerLevel);
         for (Long listingId : listingIds) {
             List<Long> notificationIds = jdbc.queryForList(
                     "SELECT id FROM confirmable_notifications WHERE source_type = ? AND source_id = ?",
@@ -256,9 +267,96 @@ class MarketFinalizeNotificationTransactionIT extends AbstractMySqlIntegrationTe
                         .isZero());
     }
 
+
+    @Test
+    @DisplayName("Codex P2-①: 状態確認から通知作成までの間に参加者キャンセルで札が OPEN に戻ったら、"
+            + "最終認証通知を作らない（札の行ロック下で状態を再確認して直列化する）")
+    void P2_確認と作成の間にOPENへ戻った札には最終認証通知を作らない() {
+        List<Long> users = newUsers("p2cancel", 1);
+        Long teamId = TEAM_ID_BASE + 3 + System.nanoTime() % 1_000_000L;
+        Long listingId = createPublicListing(RecruitmentScopeType.TEAM, teamId, users.get(0));
+        markFull(listingId);
+
+        // 参加者キャンセルの業務TXを模す: cancelMyApplication と同じく札行を FOR UPDATE で握ったまま、
+        // その間に最終認証リスナーを走らせ、後から FULL→OPEN（decrementConfirmedAtomic 相当）で commit する。
+        new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
+            jdbc.queryForObject("SELECT id FROM recruitment_listings WHERE id = ? FOR UPDATE", Long.class, listingId);
+            finalizeListener.onReachedFull(new MarketListingReachedFullEvent(listingId)); // @Async: 別スレッド
+            sleepQuietly(1_500);
+            jdbc.update("UPDATE recruitment_listings SET status = 'OPEN', confirmed_count = 0 WHERE id = ?", listingId);
+        });
+
+        assertThat(listingStatus(listingId)).as("前提: キャンセルの commit 後の札は OPEN")
+                .isEqualTo(RecruitmentListingStatus.OPEN.name());
+        // リスナーの処理が終わる（＝通知を作った、または OPEN を見てスキップした）まで待つ。
+        await().atMost(Duration.ofSeconds(10)).until(() ->
+                countFinalizeNotifications(listingId) > 0
+                        || skipLogCount(listingId, "コミット時点で FULL ではない") > 0);
+        assertThat(countFinalizeNotifications(listingId))
+                .as("Codex P2-①: キャンセルで OPEN に戻った札に無効な最終認証通知を作ってはならない")
+                .isZero();
+    }
+
+    @Test
+    @DisplayName("Codex P2-②: 同一札の FULL 到達イベントが2件並行に処理されても、ACTIVE な最終認証通知は1件だけ作る")
+    void P2_同一札の2イベント並行処理でもACTIVEな最終認証通知は1件() {
+        List<Long> users = newUsers("p2dup", 1);
+        Long teamId = TEAM_ID_BASE + 4 + System.nanoTime() % 1_000_000L;
+        Long listingId = createPublicListing(RecruitmentScopeType.TEAM, teamId, users.get(0));
+        markFull(listingId);
+
+        // FULL→OPEN→再FULL で2件の AFTER_COMMIT イベントが event-pool で並行に処理される状況を作る。
+        // 受信者（札主 = ADMIN 不在時のフォールバック）の users 行を握り、通知の受信者行 INSERT の FK 検査
+        // （users 行の共有ロック）で両スレッドを「ACTIVE 不在を確認した後・通知をコミットする前」に止める。
+        // 札行で直列化していなければ、両者とも ACTIVE 不在を見たまま待ち、解放後に2件とも作ってしまう。
+        Long ownerId = users.get(0);
+        new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
+            jdbc.queryForObject("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, ownerId);
+            finalizeListener.onReachedFull(new MarketListingReachedFullEvent(listingId));
+            finalizeListener.onReachedFull(new MarketListingReachedFullEvent(listingId));
+            sleepQuietly(2_000);
+        });
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                assertThat(activeFinalizeNotifications(listingId) + skipLogCount(listingId, "既に未確認で存在する"))
+                        .as("前提: 2件のイベントがどちらも処理された（作成1件＋再送スキップ1件）")
+                        .isGreaterThanOrEqualTo(2L));
+        assertThat(activeFinalizeNotifications(listingId))
+                .as("Codex P2-②: 同一札（source_id）の ACTIVE な最終認証通知は1件でなければならない（重複通知）")
+                .isEqualTo(1L);
+    }
+
     // ------------------------------------------------------------------
     // ヘルパー
     // ------------------------------------------------------------------
+
+    private void markFull(Long listingId) {
+        jdbc.update("UPDATE recruitment_listings SET status = 'FULL', confirmed_count = 1 WHERE id = ?", listingId);
+    }
+
+    private static void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private long activeFinalizeNotifications(Long listingId) {
+        Long c = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM confirmable_notifications WHERE source_type = ? AND source_id = ? AND status = 'ACTIVE'",
+                Long.class, SOURCE_TYPE, listingId);
+        return c == null ? 0 : c;
+    }
+
+    private long skipLogCount(Long listingId, String fragment) {
+        return appender.list.stream()
+                .filter(e -> e.getLevel() == Level.INFO)
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(msg -> msg.contains(fragment) && msg.contains("listingId=" + listingId))
+                .count();
+    }
 
     private static ApplyToRecruitmentRequest userRequest() {
         return new ApplyToRecruitmentRequest(RecruitmentParticipantType.USER, null, null);
