@@ -161,7 +161,7 @@ function onSubmit(): void {
         <Button
           :label="$t('school.familyNotice.submit')"
           :loading="submitting"
-          :disabled="!attendanceDate"
+          :disabled="!attendanceDate || submitting"
           class="w-full"
           data-testid="family-notice-submit"
           @click="onSubmit"

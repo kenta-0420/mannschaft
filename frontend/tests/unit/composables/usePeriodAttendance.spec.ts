@@ -29,7 +29,7 @@ mockNuxtImport('useErrorHandler', () => () => ({ handleApiError, handleError: ha
 
 const { usePeriodAttendance } = await import('~/composables/usePeriodAttendance')
 
-const entries = [{ studentUserId: 1, status: 'ABSENT' as const, absenceReason: 'SICK' as const }]
+const entries = [{ studentUserId: 1, status: 'ABSENT' as const }]
 
 beforeEach(() => {
   mockSubmit.mockReset()

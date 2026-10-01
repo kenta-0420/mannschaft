@@ -126,7 +126,7 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
     await page.context().close()
   })
 
-  test('AC2 時限点呼: SICK / FAMILY_REASON を選んで提出（実 BE の応答を検証）', async ({ browser }) => {
+  test('AC2 時限点呼: 欠席理由の選択 UI が無く、送信に absenceReason が含まれない（period_attendance_records に理由列は無い）', async ({ browser }) => {
     const page = await newPage(browser, adminCred)
     await page.goto(`/teams/${TEAM_SLUG}/school-attendance/period-attendance`)
     await waitForHydration(page)
@@ -134,23 +134,19 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
     const row = page.getByTestId(`period-row-${STUDENT_ID}`)
     await expect(row).toBeVisible({ timeout: 30_000 })
     await page.getByTestId(`period-row-${STUDENT_ID}-absent`).click()
-    const select = row.locator('.p-select')
-    const labels = await openSelect(page, select)
-    expect(labels).toEqual(REASON_KEYS.map((k) => REASONS[k]))
-    await page.keyboard.press('Escape')
+    // 欠席にしても理由の Select は出ない
+    await expect(row.locator('.p-select')).toHaveCount(0)
 
-    for (const key of ['SICK', 'FAMILY_REASON'] as const) {
-      await select.click()
-      await page.getByRole('option', { name: REASONS[key], exact: true }).click()
-      const submit = page.getByTestId('period-attendance-submit')
-      const resP = page.waitForResponse(isPeriodPost, { timeout: 20_000 })
-      await submit.click()
-      await expect(submit).toBeDisabled()
-      const res = await resP
-      expect(res.status(), await res.text()).toBeLessThan(300)
-      expect(res.request().postDataJSON().entries[0].absenceReason).toBe(key)
-      await expect(page.getByText(JA.school.attendance.period.submitSuccess).first()).toBeVisible()
-    }
+    const submit = page.getByTestId('period-attendance-submit')
+    const resP = page.waitForResponse(isPeriodPost, { timeout: 20_000 })
+    await submit.click()
+    await expect(submit).toBeDisabled()
+    const res = await resP
+    expect(res.status(), await res.text()).toBeLessThan(300)
+    const sent = res.request().postDataJSON().entries[0]
+    expect(sent.status).toBe('ABSENT')
+    expect('absenceReason' in sent).toBe(false)
+    await expect(page.getByText(JA.school.attendance.period.submitSuccess).first()).toBeVisible()
     await expectNoRawKeys(page)
     await page.context().close()
   })
@@ -169,8 +165,8 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
     const submit = parent.getByTestId('family-notice-submit')
     const resP = parent.waitForResponse(isNoticePost, { timeout: 20_000 })
     await submit.click()
-    // 保護者フォームのボタンは :loading のみで disabled 属性は付かない（二重送信ガードも無い = 欠陥として報告）。
-    // ここでは PrimeVue の提出中表示（p-button-loading / data-p-disabled）が出ていることを確認する。
+    // 提出中は disabled 属性が付き（二重送信防止）、PrimeVue の提出中表示も出る。
+    await expect(submit).toBeDisabled()
     await expect(submit).toHaveAttribute('data-p-disabled', 'true')
     await expect(submit).toHaveClass(/p-button-loading/)
     const res = await resP
@@ -206,11 +202,14 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
     const res = await resP
     expect(res.status()).toBe(403)
     await expect(parent.getByTestId('family-notice-success')).not.toBeVisible()
-    // 失敗トースト（PrimeVue Toast）が出ること。文言は notifyError の引数どおり「保護者連絡」のみで、
-    // 拒否理由（権限なし）が利用者に伝わらない = 欠陥として報告する。
+    // 失敗トースト（PrimeVue Toast）に BE のエラー内容（拒否理由）が出ること。「保護者連絡」の一語だけでは不可。
     const toast = parent.locator('.p-toast-message')
     await expect(toast.first()).toBeVisible({ timeout: 10_000 })
-    testInfo.annotations.push({ type: 'ac5-error-toast', description: (await toast.first().innerText()).replace(/\s+/g, ' ') })
+    const toastText = (await toast.first().innerText()).replace(/\s+/g, ' ')
+    testInfo.annotations.push({ type: 'ac5-error-toast', description: toastText })
+    const resBody = await res.json()
+    expect(resBody?.error?.message, 'BE がエラー内容を返している').toBeTruthy()
+    expect(toastText).toContain(resBody.error.message)
     await parent.context().close()
   })
 

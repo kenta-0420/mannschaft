@@ -40,7 +40,6 @@ function initEntries(): void {
     dailyStatus: c.dailyStatus,
     previousPeriodStatus: c.previousPeriodStatus,
     status: 'UNDECIDED' as const,
-    absenceReason: undefined,
     comment: undefined,
   }))
 }

@@ -69,6 +69,7 @@ export interface AttendanceHistoryItem {
   recordedAt: string
 }
 
+/** 時限点呼には欠席理由が無い（F03.13 §3.1 period_attendance_records に absence_reason 列なし）。 */
 export interface PeriodAttendanceResponse {
   id: number
   teamId: number
@@ -76,7 +77,6 @@ export interface PeriodAttendanceResponse {
   attendanceDate: string
   periodNumber: number
   status: AttendanceStatus
-  absenceReason?: AbsenceReason
   comment?: string
   recordedAt: string
   createdAt: string
@@ -90,7 +90,6 @@ export interface PeriodAttendanceListResponse {
 export interface PeriodAttendanceEntry {
   studentUserId: number
   status: AttendanceStatus
-  absenceReason?: AbsenceReason
   comment?: string
 }
 
@@ -112,7 +111,6 @@ export interface PeriodAttendanceSummary {
 
 export interface PeriodAttendanceUpdateRequest {
   status?: AttendanceStatus
-  absenceReason?: AbsenceReason
   comment?: string
 }
 
