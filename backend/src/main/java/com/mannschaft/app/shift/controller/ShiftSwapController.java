@@ -4,7 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.shift.dto.CreateSwapRequestRequest;
 import com.mannschaft.app.shift.dto.ResolveSwapRequestRequest;
 import com.mannschaft.app.shift.dto.SwapRequestResponse;
-import com.mannschaft.app.shift.service.ShiftSwapService;
+import com.mannschaft.app.shift.service.ShiftSwapFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,7 +32,7 @@ import com.mannschaft.app.common.SecurityUtils;
 @RequiredArgsConstructor
 public class ShiftSwapController {
 
-    private final ShiftSwapService swapService;
+    private final ShiftSwapFacade swapFacade;
 
 
     /**
@@ -55,7 +55,7 @@ public class ShiftSwapController {
             @RequestParam Long teamId,
             @RequestParam(required = false) String status) {
         List<SwapRequestResponse> responses =
-                swapService.listSwapRequests(teamId, status, SecurityUtils.getCurrentUserId());
+                swapFacade.listSwapRequests(teamId, status, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -67,7 +67,7 @@ public class ShiftSwapController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<SwapRequestResponse>> createSwapRequest(
             @Valid @RequestBody CreateSwapRequestRequest request) {
-        SwapRequestResponse response = swapService.createSwapRequest(request, SecurityUtils.getCurrentUserId());
+        SwapRequestResponse response = swapFacade.createSwapRequest(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -79,7 +79,7 @@ public class ShiftSwapController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承諾成功")
     public ResponseEntity<ApiResponse<SwapRequestResponse>> acceptSwapRequest(
             @PathVariable Long swapId) {
-        SwapRequestResponse response = swapService.acceptSwapRequest(swapId, SecurityUtils.getCurrentUserId());
+        SwapRequestResponse response = swapFacade.acceptSwapRequest(swapId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -92,7 +92,7 @@ public class ShiftSwapController {
     public ResponseEntity<ApiResponse<SwapRequestResponse>> resolveSwapRequest(
             @PathVariable Long swapId,
             @Valid @RequestBody ResolveSwapRequestRequest request) {
-        SwapRequestResponse response = swapService.resolveSwapRequest(swapId, request, SecurityUtils.getCurrentUserId());
+        SwapRequestResponse response = swapFacade.resolveSwapRequest(swapId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -104,7 +104,7 @@ public class ShiftSwapController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "キャンセル成功")
     public ResponseEntity<Void> cancelSwapRequest(
             @PathVariable Long swapId) {
-        swapService.cancelSwapRequest(swapId, SecurityUtils.getCurrentUserId());
+        swapFacade.cancelSwapRequest(swapId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }
