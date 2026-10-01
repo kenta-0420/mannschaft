@@ -90,4 +90,20 @@ public class TeamOrgAffiliationRestrictionEntity extends UuidV7Entity {
     protected void onUpdate() {
         this.updatedAt = Instant.now();
     }
+
+    /**
+     * 合成規則（§5.4）に従って、新しい制限の内容で置き換える。
+     *
+     * <p>置き換えるかどうかの判定は
+     * {@link com.mannschaft.app.team.service.TeamOrgAffiliationRestrictionComposer#incomingWins} が行う。
+     * 本メソッドは「置き換える」と決まった後の値の差し替えだけを担う
+     * （{@code chk_toar_until}: BLOCK は {@code restricted_until} が NULL、COOLDOWN は非 NULL）。</p>
+     */
+    public void replaceWith(TeamOrgAffiliationRestrictionKind newKind, Instant newUntil,
+                            TeamOrgAffiliationRestrictionReason newReason, Long newCreatedBy) {
+        this.kind = newKind;
+        this.restrictedUntil = newKind == TeamOrgAffiliationRestrictionKind.BLOCK ? null : newUntil;
+        this.reason = newReason;
+        this.createdBy = newCreatedBy;
+    }
 }

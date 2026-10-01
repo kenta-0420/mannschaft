@@ -57,6 +57,19 @@ public interface TeamRepository
     List<TeamEntity> findByVisibility(TeamEntity.Visibility visibility);
 
     /**
+     * チーム行を {@code SELECT ... FOR UPDATE}（PESSIMISTIC_WRITE）で取得する（F01.2.1 §6.1 step 7・§6.9）。
+     *
+     * <p>同じチームの加盟申請・招待どうし、およびチームのアーカイブと直列化するための行ロック。
+     * 同時申請数の上限（10件）は一意制約では守れない（別々の組織への並行申請は別の組になる）ため、
+     * 申請のトランザクションは最初にこのロックを取り、ロックの内側で件数確認と INSERT を行う。
+     * ロック付き読み取りなので REPEATABLE READ でも最新のコミット済み行を読む。
+     * 論理削除済みは {@code @SQLRestriction} により空になる。</p>
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM TeamEntity t WHERE t.id = :id")
+    Optional<TeamEntity> findByIdForUpdate(@Param("id") Long id);
+
+    /**
      * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
      *
      * <p>検分第5巡是正: クエリ側の {@code TRIM()} を撤去した（理由は
