@@ -131,7 +131,6 @@ export interface PeriodCandidatesResponse {
 export interface PeriodTimelineItem {
   periodNumber: number
   status: AttendanceStatus
-  absenceReason?: AbsenceReason
   comment?: string
 }
 

@@ -91,13 +91,6 @@ function dailyStatusClass(status: AttendanceStatus): string {
             {{ statusLabel(period.status) }}
           </div>
           <div
-            v-if="period.absenceReason"
-            class="text-xs mt-1 opacity-75"
-            :title="$t(`school.attendance.absenceReason.${period.absenceReason}`)"
-          >
-            ({{ $t(`school.attendance.absenceReason.${period.absenceReason}`) }})
-          </div>
-          <div
             v-if="period.comment"
             class="text-xs mt-1 opacity-75 max-w-[80px] truncate"
             :title="period.comment"
