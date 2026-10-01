@@ -275,6 +275,7 @@ class FlywayExistingDataTournamentEntryPkTypeMigrationTest {
         seedOldRows();
         List<String> constraintsBefore = constraintSnapshot();
         try (Connection conn = connect(); Statement st = conn.createStatement()) {
+            st.execute("SET FOREIGN_KEY_CHECKS = 0"); // participant への FK は親を用意していないため切る
             st.executeUpdate("UPDATE tournament_entry_members SET id = 'not-a-uuid' WHERE id = '" + TEM_1 + "'");
         }
         List<String> statements = migrationStatements();
@@ -289,6 +290,7 @@ class FlywayExistingDataTournamentEntryPkTypeMigrationTest {
                     .as("元の行も失われていない").isEqualTo(1L);
         }
         try (Connection conn = connect(); Statement st = conn.createStatement()) {
+            st.execute("SET FOREIGN_KEY_CHECKS = 0"); // participant への FK は親を用意していないため切る
             st.executeUpdate("UPDATE tournament_entry_members SET id = '" + TEM_1 + "' WHERE id = 'not-a-uuid'");
         }
         try (Connection conn = connect()) {
