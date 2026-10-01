@@ -57,7 +57,8 @@ public class UpdateEntryTemplateRequest {
         /** 背番号（nullable） */
         Integer jerseyNumber;
 
-        /** ポジション（nullable） */
+        /** ポジション（nullable、最大30文字。DDL の VARCHAR(30) と一致） */
+        @Size(max = 30)
         String position;
 
         /** 並び順（デフォルト: 0） */
