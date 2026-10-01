@@ -24,6 +24,11 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     locale: 'ja-JP',
     timezoneId: 'Asia/Tokyo',
+    // localhost の URL 文字列は Cookie の同一サイト判定のため維持しつつ、
+    // Chromium が WSL2 mirrored networking の IPv6 ゴーストソケットへ接続するのを防ぐ。
+    launchOptions: {
+      args: ['--host-resolver-rules=MAP localhost 127.0.0.1'],
+    },
   },
   projects: [
     {
