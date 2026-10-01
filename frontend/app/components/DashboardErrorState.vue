@@ -1,26 +1,29 @@
 <script setup lang="ts">
-/**
- * 取得失敗を表す共通エラー状態コンポーネント。
- *
- * `DashboardEmptyState`（0件表示）とは別コンポーネント・別 data-testid で描き分ける。
- * 権限エラー・通信断などの取得失敗を「未登録」の空状態へフォールバックさせないために使う
- * （CMP-260922-2045 / 設計は `frontend/app/pages/my/shift-availability.vue` の先行実装を踏襲）。
- */
-const props = withDefaults(
-  defineProps<{
-    /** エラー本文。未指定時は汎用の「データの取得に失敗しました」を表示する。 */
-    message?: string
-    /** 再試行ボタンを表示するか */
-    showRetry?: boolean
-    /** ルート要素に付与する data-testid */
-    testid?: string
-  }>(),
-  {
-    message: undefined,
-    showRetry: true,
-    testid: 'load-error-state',
-  },
-)
+import type { LoadErrorKind } from '~/utils/loadError'
+import { classifyLoadError } from '~/utils/loadError'
+
+/** 取得失敗を空状態と区別し、原因に応じた穏やかな案内を表示する共通部品。 */
+const props = withDefaults(defineProps<{
+  /** catch したエラー。HTTP状態や通信断の判定に使い、生の内容は画面へ表示しない。 */
+  error?: unknown
+  /** API契約上の事情などで自動判定を上書きする場合の表示種別。 */
+  kind?: LoadErrorKind
+  /** 個別画面で見出しを上書きする場合の文言。 */
+  title?: string
+  /** 個別画面で本文を上書きする場合の文言。 */
+  message?: string
+  /** 再試行ボタンの表示を明示的に上書きする。 */
+  showRetry?: boolean
+  /** ルート要素に付与する data-testid。 */
+  testid?: string
+}>(), {
+  error: undefined,
+  kind: undefined,
+  title: undefined,
+  message: undefined,
+  showRetry: undefined,
+  testid: undefined,
+})
 
 const emit = defineEmits<{
   retry: []
@@ -28,7 +31,28 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const displayMessage = computed(() => props.message ?? t('loadErrorState.message'))
+const displayKind = computed<LoadErrorKind>(() => {
+  if (props.kind) return props.kind
+  if (props.error !== undefined) return classifyLoadError(props.error)
+  return 'generic'
+})
+const displayTitle = computed(
+  () => props.title ?? t(`loadErrorState.states.${displayKind.value}.title`),
+)
+const displayMessage = computed(
+  () => props.message ?? t(`loadErrorState.states.${displayKind.value}.message`),
+)
+const shouldShowRetry = computed(() => {
+  if (props.showRetry !== undefined) return props.showRetry
+  return !['forbidden', 'notFoundOrForbidden'].includes(displayKind.value)
+})
+const icon = computed(() => {
+  if (displayKind.value === 'forbidden') return 'pi pi-lock'
+  if (displayKind.value === 'notFoundOrForbidden') return 'pi pi-search'
+  if (displayKind.value === 'network') return 'pi pi-wifi'
+  return 'pi pi-exclamation-circle'
+})
+const testid = computed(() => props.testid ?? 'load-error-state')
 </script>
 
 <template>
@@ -36,10 +60,13 @@ const displayMessage = computed(() => props.message ?? t('loadErrorState.message
     :data-testid="testid"
     class="flex flex-col items-center justify-center gap-3 py-8 text-center"
   >
-    <i class="pi pi-exclamation-triangle text-2xl text-red-500" />
-    <p class="text-sm text-surface-700 dark:text-surface-200">{{ displayMessage }}</p>
+    <i :class="[icon, 'text-2xl text-amber-500']" aria-hidden="true" />
+    <div class="space-y-1">
+      <p class="font-medium text-surface-800 dark:text-surface-100">{{ displayTitle }}</p>
+      <p class="text-sm text-surface-600 dark:text-surface-300">{{ displayMessage }}</p>
+    </div>
     <Button
-      v-if="showRetry"
+      v-if="shouldShowRetry"
       :label="t('loadErrorState.retry')"
       icon="pi pi-refresh"
       severity="secondary"

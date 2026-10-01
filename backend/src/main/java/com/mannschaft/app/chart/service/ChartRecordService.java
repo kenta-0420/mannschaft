@@ -338,10 +338,26 @@ public class ChartRecordService {
             page = recordRepository.findByCustomerUserIdAndIsSharedToCustomerTrueOrderByVisitDateDesc(
                     userId, pageable);
         }
+        Map<Long, Long> photoCounts = countPhotosByChartIds(page.getContent());
         return page.map(entity -> chartMapper.toSummaryResponse(
                 entity, null, null,
-                (int) photoRepository.countByChartRecordId(entity.getId())
+                photoCounts.getOrDefault(entity.getId(), 0L).intValue()
         ));
+    }
+
+    /**
+     * ページ内カルテの写真件数を1回のクエリで取得する（N+1 回避）。写真0枚のカルテは 0 件。
+     */
+    private Map<Long, Long> countPhotosByChartIds(List<ChartRecordEntity> records) {
+        if (records.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = records.stream().map(ChartRecordEntity::getId).toList();
+        Map<Long, Long> result = new HashMap<>();
+        for (Object[] row : photoRepository.countGroupedByChartRecordIds(ids)) {
+            result.put((Long) row[0], (Long) row[1]);
+        }
+        return result;
     }
 
     /**

@@ -2712,7 +2712,28 @@
     }
   },
   "loadErrorState": {
-    "message": "数据获取失败",
+    "states": {
+      "generic": {
+        "title": "暂时无法加载数据",
+        "message": "可能是临时问题，请稍后再试。"
+      },
+      "forbidden": {
+        "title": "当前账号暂时无法使用此页面",
+        "message": "如需访问，请联系管理员确认。"
+      },
+      "notFoundOrForbidden": {
+        "title": "无法显示您查找的信息",
+        "message": "相关信息可能已不可用，或可见范围发生了变化。"
+      },
+      "network": {
+        "title": "网络连接似乎不太顺畅",
+        "message": "请检查网络连接后重试。"
+      },
+      "server": {
+        "title": "暂时无法加载数据",
+        "message": "可能是临时问题，请稍后再试。"
+      }
+    },
     "retry": "重试"
   },
   "searchBar": {
