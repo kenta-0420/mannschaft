@@ -401,7 +401,7 @@ class ActivityResponseContractTrialTest extends AbstractMySqlIntegrationTest {
     @WithMockUser(username = MEMBER_ID_STR)
     @DisplayName("AC-12b: org 公開一覧が該当 0 件のとき 200 かつ data は空配列")
     void ac12_orgPublicList_emptyList_空配列() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/v1/public/organizations/{orgId}/activities", emptyOrgId))
+        MvcResult result = mockMvc.perform(get("/api/v1/public/organizations/{slug}/activities", orgSlug(emptyOrgId)))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -428,7 +428,7 @@ class ActivityResponseContractTrialTest extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-12d: org 公開詳細のレスポンスが公開8項目ホワイトリスト契約を満たす")
     void ac12_orgPublicDetail_契約遵守() throws Exception {
         MvcResult result = mockMvc.perform(
-                        get("/api/v1/public/organizations/{orgId}/activities/{id}", orgId, orgActivityId))
+                        get("/api/v1/public/organizations/{slug}/activities/{id}", orgSlug(orgId), orgActivityId))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -458,17 +458,23 @@ class ActivityResponseContractTrialTest extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-12g: org 公開一覧 EP は未認証で到達できる")
     void ac12_orgPublicListUnauthenticated_匿名到達できる() throws Exception {
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/activities", orgId))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/activities", orgSlug(orgId)))
                 .andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("AC-12h: org 公開詳細 EP は未認証で到達できる")
     void ac12_orgPublicDetailUnauthenticated_匿名到達できる() throws Exception {
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/activities/{id}", orgId, orgActivityId))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/activities/{id}", orgSlug(orgId), orgActivityId))
                 .andExpect(status().isOk());
     }
 
+    /** 組織の公開 API は slug で引く（F01.2.1 AC-A13）。fixture の ID から slug を得る。 */
+    private String orgSlug(Long orgId) {
+        return (String) em.createNativeQuery("SELECT slug FROM organizations WHERE id = :id")
+                .setParameter("id", orgId)
+                .getSingleResult();
+    }
     private Long insertTeam(String name) {
         em.createNativeQuery(
                         "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
