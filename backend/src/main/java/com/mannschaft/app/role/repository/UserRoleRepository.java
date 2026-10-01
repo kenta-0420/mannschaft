@@ -470,8 +470,10 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      */
     @Query(value = "SELECT COUNT(*) FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
             "WHERE ur.user_id = :userId AND r.name = 'SYSTEM_ADMIN' " +
-            "AND ur.team_id IS NULL AND ur.organization_id IS NULL",
+            "AND ur.team_id IS NULL AND ur.organization_id IS NULL " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
             nativeQuery = true)
     long existsSystemAdminByUserId(@Param("userId") Long userId);
 

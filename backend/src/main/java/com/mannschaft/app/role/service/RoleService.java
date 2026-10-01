@@ -105,6 +105,21 @@ public class RoleService {
      * @param actorUserId 操作者ユーザー ID
      * @throws BusinessException 操作者が ADMIN/DEPUTY_ADMIN でない場合（COMMON_002）
      */
+    private void requireActorScopeAdminOnly(Long scopeId, String scopeType, Long actorUserId) {
+        // checkScopeAdminOnly と同じ意味: SYSTEM_ADMIN（監査 read-only）は兼任でも無条件拒否。
+        // AccessControlService#isSystemAdmin と同じ下位層の判定（existsSystemAdminByUserId）を使う。
+        boolean systemAdmin = userRoleRepository.existsSystemAdminByUserId(actorUserId) > 0;
+        boolean isAdmin = !systemAdmin && userRoleRepository.isActiveUser(actorUserId)
+                && findUserRole(actorUserId, scopeId, scopeType)
+                .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
+                .map(RoleEntity::getName)
+                .filter("ADMIN"::equals)
+                .isPresent();
+        if (!isAdmin) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
     private void requireActorAdmin(Long scopeId, String scopeType, Long actorUserId) {
         boolean isAdmin = userRoleRepository.isActiveUser(actorUserId)
                 && findUserRole(actorUserId, scopeId, scopeType)
@@ -282,6 +297,15 @@ public class RoleService {
         // 理由・ErrorCode を ROLE_001 に畳む方針・配置場所は assignRole のコメント参照。
         if (!userRoleRepository.isActiveUser(targetUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
+
+        // F01.2.1 5-A（AC-P11）: ロール変更で外れる割当に ADMIN 専用権限を含むグループがあれば ADMIN のみ許可。
+        // 剥奪は権限グループ割当の解除と等価なので、副作用（delete / 割当除去）より前に判定する。
+        // AccessControlService は RoleService に依存するため注入できない（循環）。ADMIN 判定は
+        // AccessControlService#checkScopeAdminOnly と同じ意味（ADMIN ロールのみ・同じ COMMON_002）を本クラスで行う。
+        if (rolePermissionCleanupService.wouldRemoveAdminOnlyAssignments(
+                targetUserId, scopeId, scopeType, requestedRole.getName())) {
+            requireActorScopeAdminOnly(scopeId, scopeType, changedBy);
         }
 
         // 既存を削除して新規作成
