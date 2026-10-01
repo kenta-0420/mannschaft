@@ -375,6 +375,58 @@ class UserRoleRepositoryF00ExtensionTest extends AbstractMySqlIntegrationTest {
     class ExistsSystemAdminByUserId {
 
         @Test
+        @DisplayName("全ての非ACTIVE statusのplatform SYSTEM_ADMINは1 SQLで0を返す")
+        void nonActiveSystemAdminReturnsZero() {
+            insertUserRole(userId, systemAdminRoleId, null, null);
+            em.flush();
+
+            for (String status : List.of(
+                    "PENDING_VERIFICATION", "PENDING_PARENTAL_CONSENT", "FROZEN",
+                    "ARCHIVED", "DECEASED", "RELOCATED")) {
+                em.createNativeQuery("UPDATE users SET status = :status WHERE id = :id")
+                        .setParameter("status", status)
+                        .setParameter("id", userId)
+                        .executeUpdate();
+                em.flush();
+                em.clear();
+
+                assertSystemAdminCount(userId, false);
+            }
+        }
+
+        @Test
+        @DisplayName("論理削除済みACTIVE platform SYSTEM_ADMINは1 SQLで0を返す")
+        void deletedSystemAdminReturnsZero() {
+            insertUserRole(userId, systemAdminRoleId, null, null);
+            em.createNativeQuery("UPDATE users SET deleted_at = NOW() WHERE id = :id")
+                    .setParameter("id", userId)
+                    .executeUpdate();
+            em.flush();
+            em.clear();
+
+            assertSystemAdminCount(userId, false);
+        }
+
+        @Test
+        @DisplayName("TEAMまたはORGANIZATION scope付きSYSTEM_ADMINは1 SQLで0を返す")
+        void scopedSystemAdminReturnsZero() {
+            insertUserRole(userId, systemAdminRoleId, teamId1, null);
+            insertUserRole(otherUserId, systemAdminRoleId, null, orgId1);
+            em.flush();
+            em.clear();
+
+            assertSystemAdminCount(userId, false);
+            assertSystemAdminCount(otherUserId, false);
+        }
+
+        @Test
+        @DisplayName("不存在ユーザーとnullは各1 SQLで0を返す")
+        void missingAndNullUserReturnZero() {
+            assertSystemAdminCount(Long.MAX_VALUE, false);
+            assertSystemAdminCount(null, false);
+        }
+
+        @Test
         @DisplayName("SYSTEM_ADMIN ユーザーは正の値を返す")
         void SYSTEM_ADMINユーザーは正の値を返す() {
             // SYSTEM_ADMIN は team_id・organization_id ともに NULL
@@ -399,6 +451,21 @@ class UserRoleRepositoryF00ExtensionTest extends AbstractMySqlIntegrationTest {
 
             assertThat(count).isZero();
         }
+    }
+
+    private void assertSystemAdminCount(Long candidateUserId, boolean expectedPresent) {
+        Statistics stats = statisticsCleared();
+
+        long count = repository.existsSystemAdminByUserId(candidateUserId);
+
+        if (expectedPresent) {
+            assertThat(count).isPositive();
+        } else {
+            assertThat(count).isZero();
+        }
+        assertThat(stats.getPrepareStatementCount())
+                .as("existsSystemAdminByUserId は1 SQLで判定すること")
+                .isEqualTo(1L);
     }
 
     private void insertRoleIfAbsent(String name, String displayName, int priority, boolean isSystem) {

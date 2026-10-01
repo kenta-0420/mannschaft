@@ -2358,6 +2358,8 @@
   },
   "teamShell": {
     "tab": {
+      "affiliations": "Affiliated organizations",
+      "permissionGroups": "Permission groups",
       "dashboard": "Dashboard",
       "info": "Basic Info",
       "members": "Members",
@@ -2712,7 +2714,28 @@
     }
   },
   "loadErrorState": {
-    "message": "Failed to load data",
+    "states": {
+      "generic": {
+        "title": "We can't load the data right now",
+        "message": "This may be a temporary issue. Please wait a moment and try again."
+      },
+      "forbidden": {
+        "title": "This page isn't available for this account",
+        "message": "If you need access, please check with an administrator."
+      },
+      "notFoundOrForbidden": {
+        "title": "We couldn't display what you're looking for",
+        "message": "It may no longer be available, or its visibility may have changed."
+      },
+      "network": {
+        "title": "It looks like the connection didn't work",
+        "message": "Please check your internet connection and try again."
+      },
+      "server": {
+        "title": "We can't load the data right now",
+        "message": "This may be a temporary issue. Please wait a moment and try again."
+      }
+    },
     "retry": "Retry"
   },
   "searchBar": {
