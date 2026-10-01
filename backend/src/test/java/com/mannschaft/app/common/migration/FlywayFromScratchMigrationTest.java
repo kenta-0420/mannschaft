@@ -574,7 +574,7 @@ class FlywayFromScratchMigrationTest {
                     .isEqualTo(1L);
 
             String memberNumber = "M".repeat(50); // Entity の length=50 いっぱい
-            // 主キー・外部キー列は V232（CMP-260929-0654）で BINARY(16) になったため UUID_TO_BIN で入れる
+            // 主キー・外部キー列は V234（CMP-260929-0654）で BINARY(16) になったため UUID_TO_BIN で入れる
             String temId = "00000000-0000-7000-8000-0000000ac801";
             String tetmId = "00000000-0000-7000-8000-0000000ac802";
             String tetmDefaultId = "00000000-0000-7000-8000-0000000ac803";
@@ -639,7 +639,7 @@ class FlywayFromScratchMigrationTest {
                 StringBuilder sb = new StringBuilder();
                 sb.append("Entity の UUID 列と Flyway 実スキーマの列型が一致しません。\n")
                   .append("UuidV7Entity 系は binary(16)、UuidV7CharEntity 系（@JdbcTypeCode(CHAR)）は char(36) が正です。\n")
-                  .append("対処は migration で列型を直す（V232 が手本。UUID_TO_BIN で既存行を保持する）か、\n")
+                  .append("対処は migration で列型を直す（V234 が手本。UUID_TO_BIN で既存行を保持する）か、\n")
                   .append("Entity の基底クラスを DDL に合わせること。この番人に例外を足して黙らせてはなりません。\n")
                   .append("違反一覧:\n");
                 violations.stream().sorted().forEach(v -> sb.append("  ✗ ").append(v).append('\n'));

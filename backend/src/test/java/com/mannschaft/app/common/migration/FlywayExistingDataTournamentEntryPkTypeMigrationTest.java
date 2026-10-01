@@ -47,11 +47,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * <b>CMP-260929-0654: 5 表 6 列の主キー・外部キー列を CHAR(36) から BINARY(16) へ移す migration（V232）の、
+ * <b>CMP-260929-0654: 5 表 6 列の主キー・外部キー列を CHAR(36) から BINARY(16) へ移す migration（V234）の、
  * 既存データ経路の検証。</b>
  *
- * <p>V230（V232 の直前の大会エントリー系 migration）まで当てた実スキーマへ、6 列それぞれ CHAR(36) の行
- * （親子関係のあるもの）を入れてから V232 を当て、値・親子関係・制約・冪等性・途中失敗の回復を実測する。</p>
+ * <p>V233（V234 の直前の最新 migration）まで当てた実スキーマへ、6 列それぞれ CHAR(36) の行
+ * （親子関係のあるもの）を入れてから V234 を当て、値・親子関係・制約・冪等性・途中失敗の回復を実測する。</p>
  *
  * <ul>
  *   <li>AC-5: {@code HEX(新列) = REPLACE(元,'-','')}、template_id の親子関係が保たれる、Entity 経由で読める、staff.id は不変</li>
@@ -59,18 +59,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li>AC-10b: 各段階（FK 削除済み・一時列追加済み・変換済み・PK 付け替え済み）を再現した状態から再実行しても最後まで通る</li>
  * </ul>
  *
- * <p>Flyway 経由の適用（@Order(1)）は実運用と同じ経路。途中状態の再現は、V232 をセミコロンで分割して
+ * <p>Flyway 経由の適用（@Order(1)）は実運用と同じ経路。途中状態の再現は、V234 をセミコロンで分割して
  * 先頭から N 文だけ流し、続けて全文を流す方式で行う（Flyway は適用済みの migration を二度流さないため）。
  * 途中状態を作る前に、対象 5 表を SHOW CREATE TABLE で控えた移行前の DDL へ戻す。</p>
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @EnabledIf("com.mannschaft.app.common.migration.FlywayExistingDataTournamentEntryPkTypeMigrationTest#isDockerAvailable")
-@DisplayName("Flyway 既存データ: 大会エントリー系・興味タグの主キーを BINARY(16) へ移行（V232）")
+@DisplayName("Flyway 既存データ: 大会エントリー系・興味タグの主キーを BINARY(16) へ移行（V234）")
 class FlywayExistingDataTournamentEntryPkTypeMigrationTest {
 
-    /** V232 の直前まで（V230 系と V231 を含む）。V232 はここに含めない。 */
-    private static final String PRE_V232_TARGET = "231.20260929230821";
+    /** V234 の直前まで（現時点の最新 V233 まで）。V234 はここに含めない。 */
+    private static final String PRE_V234_TARGET = "233.20261001011717";
 
     /** 子 → 親の順（DROP はこの順、CREATE は逆順）。 */
     private static final List<String> TABLES_CHILD_FIRST = List.of(
@@ -114,12 +114,12 @@ class FlywayExistingDataTournamentEntryPkTypeMigrationTest {
     }
 
     @BeforeAll
-    void startContainerAndMigrateToPreV232() throws Exception {
+    void startContainerAndMigrateToPreV234() throws Exception {
         MYSQL.start();
         Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
-                .target(MigrationVersion.fromVersion(PRE_V232_TARGET))
+                .target(MigrationVersion.fromVersion(PRE_V234_TARGET))
                 .load()
                 .migrate();
         try (Connection conn = connect(); Statement st = conn.createStatement()) {
@@ -425,11 +425,11 @@ class FlywayExistingDataTournamentEntryPkTypeMigrationTest {
         }
     }
 
-    /** V232 をセミコロンで分割する（コメント行は除く）。 */
+    /** V234 をセミコロンで分割する（コメント行は除く）。 */
     private static List<String> migrationStatements() throws Exception {
         Resource[] found = new PathMatchingResourcePatternResolver()
-                .getResources("classpath:db/migration/V232.*__migrate_tournament_entry_and_interest_tag_ids_to_binary16.sql");
-        assertThat(found).as("V232 の migration ファイルが classpath に在ること").hasSize(1);
+                .getResources("classpath:db/migration/V234.*__migrate_tournament_entry_and_interest_tag_ids_to_binary16.sql");
+        assertThat(found).as("V234 の migration ファイルが classpath に在ること").hasSize(1);
         String text = new String(found[0].getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         StringBuilder body = new StringBuilder();
         for (String line : text.split("\\R")) {

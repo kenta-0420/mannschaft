@@ -53,7 +53,7 @@ SET @bad = 0;
 SET @s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_members' AND COLUMN_NAME = 'id' AND DATA_TYPE = 'char') = 1 AND (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_members' AND COLUMN_NAME = 'id_bin') = 1, 'SELECT COUNT(*) INTO @bad FROM tournament_entry_members WHERE id_bin IS NULL OR HEX(id_bin) <> UPPER(REPLACE(id, ''-'', ''''))', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @s = IF(@bad > 0, 'DROP TABLE `V232_verify_failed_tem_id`', 'SELECT 1');
+SET @s = IF(@bad > 0, 'DROP TABLE `V234_verify_failed_tem_id`', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- tournament_entry_templates.id
@@ -67,7 +67,7 @@ SET @bad = 0;
 SET @s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_templates' AND COLUMN_NAME = 'id' AND DATA_TYPE = 'char') = 1 AND (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_templates' AND COLUMN_NAME = 'id_bin') = 1, 'SELECT COUNT(*) INTO @bad FROM tournament_entry_templates WHERE id_bin IS NULL OR HEX(id_bin) <> UPPER(REPLACE(id, ''-'', ''''))', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @s = IF(@bad > 0, 'DROP TABLE `V232_verify_failed_tet_id`', 'SELECT 1');
+SET @s = IF(@bad > 0, 'DROP TABLE `V234_verify_failed_tet_id`', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- tournament_entry_template_members.id / template_id
@@ -87,14 +87,14 @@ SET @bad = 0;
 SET @s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_template_members' AND COLUMN_NAME = 'id' AND DATA_TYPE = 'char') = 1 AND (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_template_members' AND COLUMN_NAME = 'id_bin') = 1, 'SELECT COUNT(*) INTO @bad FROM tournament_entry_template_members WHERE id_bin IS NULL OR HEX(id_bin) <> UPPER(REPLACE(id, ''-'', ''''))', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @s = IF(@bad > 0, 'DROP TABLE `V232_verify_failed_tetm_id`', 'SELECT 1');
+SET @s = IF(@bad > 0, 'DROP TABLE `V234_verify_failed_tetm_id`', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @bad = 0;
 SET @s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_template_members' AND COLUMN_NAME = 'template_id' AND DATA_TYPE = 'char') = 1 AND (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_template_members' AND COLUMN_NAME = 'template_id_bin') = 1, 'SELECT COUNT(*) INTO @bad FROM tournament_entry_template_members WHERE template_id_bin IS NULL OR HEX(template_id_bin) <> UPPER(REPLACE(template_id, ''-'', ''''))', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @s = IF(@bad > 0, 'DROP TABLE `V232_verify_failed_tetm_template_id`', 'SELECT 1');
+SET @s = IF(@bad > 0, 'DROP TABLE `V234_verify_failed_tetm_template_id`', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- tournament_entry_template_staff.template_id
@@ -108,7 +108,7 @@ SET @bad = 0;
 SET @s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_template_staff' AND COLUMN_NAME = 'template_id' AND DATA_TYPE = 'char') = 1 AND (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tournament_entry_template_staff' AND COLUMN_NAME = 'template_id_bin') = 1, 'SELECT COUNT(*) INTO @bad FROM tournament_entry_template_staff WHERE template_id_bin IS NULL OR HEX(template_id_bin) <> UPPER(REPLACE(template_id, ''-'', ''''))', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @s = IF(@bad > 0, 'DROP TABLE `V232_verify_failed_tets_template_id`', 'SELECT 1');
+SET @s = IF(@bad > 0, 'DROP TABLE `V234_verify_failed_tets_template_id`', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- user_interest_tags.id
@@ -122,7 +122,7 @@ SET @bad = 0;
 SET @s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_interest_tags' AND COLUMN_NAME = 'id' AND DATA_TYPE = 'char') = 1 AND (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_interest_tags' AND COLUMN_NAME = 'id_bin') = 1, 'SELECT COUNT(*) INTO @bad FROM user_interest_tags WHERE id_bin IS NULL OR HEX(id_bin) <> UPPER(REPLACE(id, ''-'', ''''))', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @s = IF(@bad > 0, 'DROP TABLE `V232_verify_failed_uit_id`', 'SELECT 1');
+SET @s = IF(@bad > 0, 'DROP TABLE `V234_verify_failed_uit_id`', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ---------------------------------------------------------------------------
