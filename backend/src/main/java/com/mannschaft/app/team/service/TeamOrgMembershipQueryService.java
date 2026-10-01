@@ -46,6 +46,27 @@ public class TeamOrgMembershipQueryService {
     }
 
     /**
+     * チームの ACTIVE な親組織 ID を、代表親組織の規則順（§9.3: 最初に成立した加盟 → organization_id 昇順）で返す。
+     *
+     * <p>先頭が代表親組織。複数親組織のマージ表示（行事カテゴリ等）で、結果の並びを決定的にするために使う。
+     * 親組織が 0 件なら空リスト。</p>
+     *
+     * @param teamId チーム ID
+     * @return 親組織 ID（代表親組織が先頭。重複なし）
+     */
+    public List<Long> findActiveOrganizationIdsInPrimaryOrder(Long teamId) {
+        if (teamId == null) {
+            return List.of();
+        }
+        return teamOrgMembershipRepository
+                .findActiveByTeamIdOrderByRespondedAtAndOrganizationId(teamId)
+                .stream()
+                .map(TeamOrgMembershipEntity::getOrganizationId)
+                .distinct()
+                .toList();
+    }
+
+    /**
      * チームの「代表親組織」を返す（F01.2.1 §9.3）。
      *
      * <p>規則: ACTIVE の加盟のうち {@code responded_at} が最も古いもの（最初に成立した加盟）。
