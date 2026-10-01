@@ -20,7 +20,7 @@ import lombok.experimental.SuperBuilder;
  * {@code announcement_feeds} と同一ドメインなので {@code feed_id} に CASCADE の FK を張る（DDL 側。原則2）。
  * {@code group_id} はチームグループ（別ドメイン）の UUID 文字列で、FK は張らない（原則1）。</p>
  *
- * <p>DDL は {@code V233.__create_announcement_group_snapshots_and_fanout_audiences.sql}。
+ * <p>DDL は {@code V234.__create_announcement_group_snapshots_and_fanout_audiences.sql}。
  * 設計書 §5.6 の複合主キーは、原則6（新規表は UuidV7Entity）のため {@code id} 主キー + UNIQUE に置き換えた。
  * 行数は「1 件のお知らせあたりの送信時の対象チーム数」で、件数上限は掛けない。</p>
  */
