@@ -6,9 +6,12 @@
 > **実装メモ（2026-06-01・隊5）**: バックエンドを設計書どおり実装。
 > - Flyway `V9.20260601160000`〜`160500`（roster_deadline / registration_number / uniform_set_id 追加 ＋
 >   新規 `team_uniform_set` / `match_roster_staff` / `tournament_entry_template_staff`）。
-> - **型方針＝案A 確定**: 着手時 DDL 確認で `tournament_entry_templates.id` の実体物理型は **`CHAR(36)`**
->   （`V9.123`/`V9.124`）。よって `tournament_entry_template_staff.template_id` を **`CHAR(36)`** とし FK CASCADE を成立させた
->   （既存 `tournament_entry_template_members.template_id` も `CHAR(36)` で FK 成立済を踏襲）。
+> - **型方針＝案A は V232 で解消済み（CMP-260929-0654）**: 実装時点では `tournament_entry_templates.id` の実体物理型が **`CHAR(36)`**
+>   （`V9.123`/`V9.124`）だったため、`tournament_entry_template_staff.template_id` も `CHAR(36)` に合わせて FK CASCADE を成立させていた（案A）。
+>   しかし Entity（`UuidV7Entity`＝Hibernate 標準の BINARY 表現）と DDL の型がずれており、Flyway 構築環境では保存のたびに失敗していた。
+>   V232（`V232.20260930232304__migrate_tournament_entry_and_interest_tag_ids_to_binary16.sql`）で
+>   `tournament_entry_templates.id` / `tournament_entry_template_members.id`・`template_id` / `tournament_entry_template_staff.template_id` を
+>   **`BINARY(16)`** へ移行済み（既存行は `UUID_TO_BIN` で保持。FK は削除→変換→PK 付け替え→再作成）。現在の実体型は **`BINARY(16)`**（案A の注記は歴史的経緯）。
 > - API: `GET/PUT /api/v1/tournaments/{tId}/matches/{matchId}/rosters/me`、
 >   `POST .../rosters/me/apply-template`、`GET .../rosters`（主催者）、`PATCH .../matches/{matchId}`（締切）。
 > - 認可: 提出/適用=自チーム ADMIN/DEPUTY のみ・主催者=閲覧/締切・締切後 409・全 read 認可・提出監査
@@ -143,7 +146,7 @@ ALTER TABLE tournament_entry_template_members
 - **PK 型の実態（検分1周目で確認）**: `tournament_match_rosters` は **BIGINT PK**（`TournamentMatchRosterEntity.java:28-30` ＝ `@Id @GeneratedValue(IDENTITY) Long id`、DDL `V8.046:3` ＝ `BIGINT UNSIGNED AUTO_INCREMENT`）。一方 `tournament_entry_templates` / `tournament_entry_template_members` は **UUIDv7 テーブル**（`TournamentEntryTemplateEntity` / `TournamentEntryTemplateMemberEntity` がともに `UuidV7Entity` を継承。`TournamentEntryTemplateMemberEntity.java:33` の `templateId` も `@Column(columnDefinition = "BINARY(16)") UUID`）。
 - 列追加（`registration_number`）自体は PK 型に関係なく可能なので、上記 ALTER はそのまま成立する。**「entry_template 系も BIGINT テーブル」という記述は誤り**（B-2 訂正）。entry_template 系は新規 FK・新規子テーブルを足す際に **UUID（BINARY(16)）に整合**させる必要がある（§8.4 参照）。
 
-> **実装時注意（DDL/Entity 型の不一致）**: entry_template 系の作成移行（`V9.123` / `V9.124`）は PK を `CHAR(36)` で宣言しているが、Entity 側は `UuidV7Entity`＝`BINARY(16)` 前提・`templateId` も `columnDefinition="BINARY(16)"`。実 DB の物理型（`CHAR(36)` か `BINARY(16)` か）を実装時に必ず確認し、本章で新設する子テーブルの FK 列の型を **参照先 PK の実体型に一致**させること（不一致は FK 作成エラー／暗黙キャストの原因）。本設計は UuidV7 規約に従い **`BINARY(16)`** を正とし、既存 DDL が `CHAR(36)` のままなら併せて整合移行する想定で記述する。
+> **DDL/Entity 型の不一致は V232 で解消済み（CMP-260929-0654）**: entry_template 系の作成移行（`V9.123` / `V9.124`）は PK を `CHAR(36)` で宣言していたが、Entity 側は `UuidV7Entity`＝`BINARY(16)` 前提・`templateId` も `columnDefinition="BINARY(16)"` だった。V232 で実 DB も **`BINARY(16)`** に揃えた。新設する子テーブルの FK 列の型は **参照先 PK の実体型（`BINARY(16)`）に一致**させること。再発は `FlywayFromScratchMigrationTest` の UUID 列型の番人が検出する。
 
 ### 8.2 ユニフォーム色指定（新規テーブル `team_uniform_set`）
 
@@ -229,7 +232,7 @@ CREATE TABLE tournament_entry_template_staff (
     PRIMARY KEY (id),
     INDEX idx_template_staff_template (template_id),
     -- 同一 tournament ドメイン内（template の子）なので CASCADE 可（原則 2）
-    -- FK 列型は参照先 PK の実体型に一致させること（§8.1 実装時注意：CHAR(36) のままなら CHAR(36) で合わせる）
+    -- FK 列型は参照先 PK の実体型（BINARY(16)）に一致させること（V232 で親側も BINARY(16) へ移行済み）
     CONSTRAINT fk_template_staff_template FOREIGN KEY (template_id)
       REFERENCES tournament_entry_templates (id) ON DELETE CASCADE
 );
@@ -271,7 +274,7 @@ CREATE TABLE tournament_entry_template_staff (
 ### 9.2 2 回目（検分1周目の指摘反映＝B-2 根治）
 - **PK 型の実態確認（実コード）**: `tournament_match_rosters`＝BIGINT PK（`TournamentMatchRosterEntity.java:28-30`／`V8.046:3`）、`tournament_entry_templates`/`_members`＝UUIDv7 PK（両 Entity が `UuidV7Entity` 継承／`V9.123`・`V9.124`）。
 - **訂正**: ①§8.1 の「entry_template 系も BIGINT」記述を「UUIDv7 テーブル」へ是正。②§8.4 `tournament_entry_template_staff.template_id` を `BIGINT` → **`BINARY(16)`**（参照先 UUID PK と整合・同一ドメイン CASCADE）。③`registration_number` 列追加は PK 型に依存せず可能である点を明記。④`match_roster_staff` の `match_id`/`participant_id` は BIGINT PK 参照ゆえ BIGINT のまま。
-- **DDL/Entity 不一致の正直化**: entry_template 系は DDL が `CHAR(36)`、Entity が `BINARY(16)` 想定という既存の物理型不一致を §8.1 に明記し、実装時に実体型へ FK を一致させる注記を追加。
+- **DDL/Entity 不一致の正直化**: entry_template 系は DDL が `CHAR(36)`、Entity が `BINARY(16)` 想定という既存の物理型不一致を §8.1 に明記し、実装時に実体型へ FK を一致させる注記を追加。→ その後 V232（CMP-260929-0654）で実 DB を `BINARY(16)` へ移行して解消した。
 - **退会（O-4）**: `match_roster_staff.user_id` / `tournament_entry_template_staff.user_id` / roster の `user_id` は履歴・証跡として保持＝**強匿名化対象外**（NULL 化しない）。表示名のみ既存匿名化に追従（CLAUDE.md 退会二段モデルと整合）。`name` 列はアプリ未登録者の手入力値ゆえ匿名化対象外（個人特定リスクは運用上の入力であり、当該本人の退会とは独立）。
 
 ### 9.3 未解決事項
