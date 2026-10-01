@@ -1,0 +1,96 @@
+{
+  "teamAffiliation": {
+    "settings": {
+      "title": "Team affiliation settings",
+      "entry_button": "Affiliation settings",
+      "application_enabled": "Accept affiliation applications from teams",
+      "application_enabled_hint": "When on, a \"Apply as a team\" button appears on the organization page",
+      "groups_enabled": "Use team groups",
+      "groups_enabled_hint": "Divide affiliated teams into groups such as fiscal year or district and use them as announcement audiences",
+      "group_mode": "Team group selection on application",
+      "group_mode_off": "Do not let them choose",
+      "group_mode_optional": "Optional",
+      "group_mode_required": "Required",
+      "guidance": "Guidance text for the application form",
+      "turn_off_pending_confirm": "{count} received application(s) remain. Even if you stop accepting, you can still approve or reject them from the applications list.",
+      "required_mode_degraded": "Because there are no groups, group selection is treated as \"Optional\""
+    },
+    "view": {
+      "teams": "Affiliated teams",
+      "applications": "Applications",
+      "invites": "Sent invitations",
+      "restrictions": "Application restrictions",
+      "groups": "Team groups"
+    },
+    "apply": {
+      "button": "Apply as a team",
+      "dialog_title": "Apply to join {org}",
+      "select_team": "Team to apply with",
+      "select_group": "Team group",
+      "group_none": "Do not choose",
+      "message": "Message (optional)",
+      "submit": "Apply",
+      "success": "Application submitted. Please wait for the organization to approve it",
+      "expires_hint": "If there is no response by {date}, the application is cancelled automatically",
+      "status": {
+        "NONE": "You can apply",
+        "APPLYING": "Application pending",
+        "INVITED": "You have an invitation from this organization",
+        "ACTIVE": "Already affiliated",
+        "UNAVAILABLE": "Applications to this organization are currently unavailable"
+      },
+      "find_orgs": "Find organizations to join"
+    },
+    "review": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "approve_dialog_title": "Approve affiliation of {team}",
+      "approve_group": "Team group to assign",
+      "requested_group": "Requested: {requested} -> On approval: {decided}",
+      "unassigned": "Unassigned",
+      "reject_reason": "Reason (optional; the team will be notified)",
+      "reject_block": "Do not accept further applications from this team",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "invite": {
+      "button": "Invite a team",
+      "accept": "Accept",
+      "decline": "Decline",
+      "decline_block": "Do not accept further invitations from this organization",
+      "cancel": "Cancel invitation"
+    },
+    "restriction": {
+      "kind_COOLDOWN": "In cooldown (until {until})",
+      "kind_BLOCK": "Blocked",
+      "lift": "Lift"
+    },
+    "leave": {
+      "button": "Leave this organization",
+      "confirm": "Leave {org}? You will no longer receive announcements from the organization (affiliations with other organizations are not affected)"
+    },
+    "remove": {
+      "button": "Remove",
+      "confirm": "Remove {team} from the organization?"
+    },
+    "badge_accepting": "Accepting affiliations",
+    "public_page_apply_hint": "You can apply from a team you are entrusted to manage affiliations for",
+    "filter_accepting": "Accepting team affiliations"
+  },
+  "teamGroup": {
+    "title": "Team groups",
+    "create": "Create a team group",
+    "name": "Group name",
+    "description": "Description",
+    "team_count": "{count} teams",
+    "unassigned": "Unassigned",
+    "unassigned_count": "Unassigned teams: {count}",
+    "reorder_hint": "The order is the basis for \"up to / from\" in announcements",
+    "delete_confirm": "Delete \"{name}\"? The {count} teams in it return to Unassigned. Past announcements addressed to this group remain visible to the teams that were targeted when they were sent",
+    "limit_reached": "You can have up to 200 team groups",
+    "assign": "Assign to a group",
+    "bulk_assign": "Assign selected teams to a group",
+    "filter_all": "All groups",
+    "disabled_cta": "The team group feature is disabled. You can enable it in settings"
+  }
+}
