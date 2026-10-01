@@ -99,7 +99,7 @@ HTTP|com.mannschaft.app.billing.api.BillingPlanController|2|2
 HTTP|com.mannschaft.app.billing.api.BillingReturnController|0|4
 HTTP|com.mannschaft.app.billing.api.PriceRevisionController|7|8
 HTTP|com.mannschaft.app.billing.api.PublicBillingCatalogController|0|1
-HTTP|com.mannschaft.app.billing.api.SystemAdminBillingController|14|14
+HTTP|com.mannschaft.app.billing.api.SystemAdminBillingController|15|15
 HTTP|com.mannschaft.app.billing.beta.api.BetaPerkController|3|3
 HTTP|com.mannschaft.app.billing.beta.api.SystemAdminBetaPerkController|9|9
 HTTP|com.mannschaft.app.billing.tax.SystemAdminTaxCodeController|4|4

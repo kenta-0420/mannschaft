@@ -20,7 +20,6 @@ import com.mannschaft.app.billing.api.dto.FeatureAdminResponse;
 import com.mannschaft.app.billing.api.dto.FeatureUpsertRequest;
 import com.mannschaft.app.billing.api.dto.ManualGrantRequest;
 import com.mannschaft.app.billing.api.dto.PagedContractResponse;
-import com.mannschaft.app.billing.api.dto.TeamParentOrganizationsResponse;
 import com.mannschaft.app.billing.api.dto.PlanAdminResponse;
 import com.mannschaft.app.billing.api.dto.PlanFeaturesReplaceRequest;
 import com.mannschaft.app.billing.api.dto.PlanUpsertRequest;
@@ -217,19 +216,6 @@ public class SystemAdminBillingService {
                 scopeKind, req.scopeId(), organizationId, contractKind,
                 req.planKey(), req.featureKey(), sysAdminUserId);
         return toContractResponse(result);
-    }
-
-    /** 手動付与の画面が選ぶ、チームの ACTIVE な親組織の候補と代表親組織（F01.2.1 §9.2 #17）。 */
-    @Transactional(readOnly = true)
-    public TeamParentOrganizationsResponse teamParentOrganizations(Long teamId) {
-        return TeamParentOrganizationsResponse.builder()
-                .organizationIds(tenantOrganizationResolver.candidateOrganizationIds(teamId))
-                .organizations(tenantOrganizationResolver.candidateOrganizations(teamId).stream()
-                        .map(o -> TeamParentOrganizationsResponse.Organization.builder()
-                                .organizationId(o.id()).name(o.name()).slug(o.slug()).build())
-                        .toList())
-                .representativeOrganizationId(tenantOrganizationResolver.representativeOrganizationId(teamId))
-                .build();
     }
 
     // ============================================================

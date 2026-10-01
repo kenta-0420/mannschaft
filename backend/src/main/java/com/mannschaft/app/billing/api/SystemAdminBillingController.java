@@ -47,6 +47,7 @@ import java.util.List;
 public class SystemAdminBillingController {
 
     private final SystemAdminBillingService service;
+    private final SystemAdminTeamParentOrganizationQueryService teamParentOrganizationQueryService;
 
     // ============================================================
     // プラン CRUD
@@ -180,7 +181,7 @@ public class SystemAdminBillingController {
     @Operation(summary = "チームの親組織候補", description = "手動付与で組織を選ぶための ACTIVE な親組織一覧と代表親組織（§9.3）。")
     public ResponseEntity<ApiResponse<TeamParentOrganizationsResponse>> teamParentOrganizations(
             @PathVariable Long teamId) {
-        return ResponseEntity.ok(ApiResponse.of(service.teamParentOrganizations(teamId)));
+        return ResponseEntity.ok(ApiResponse.of(teamParentOrganizationQueryService.teamParentOrganizations(teamId)));
     }
 
     @GetMapping("/contracts")
