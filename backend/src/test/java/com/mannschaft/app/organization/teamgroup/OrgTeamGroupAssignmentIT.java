@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -230,11 +231,11 @@ class OrgTeamGroupAssignmentIT extends AbstractOrgTeamGroupAssignmentIT {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.data.updatedCount").doesNotExist());
         mockMvc.perform(put(BULK, slug).with(user(AXA.toString()))
-                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"groupId\":\"" + groupA.getId() + "\"}"))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(put(BULK, slug).with(user(AXA.toString()))
-                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"groupId\":\"" + groupA.getId() + "\",\"teamSlugs\":null}"))
                 .andExpect(status().isBadRequest());
         assignBulk(AXA, slug, groupA.getId(), List.of(slugOf(m), " "))
@@ -270,10 +271,10 @@ class OrgTeamGroupAssignmentIT extends AbstractOrgTeamGroupAssignmentIT {
         em.flush();
         em.clear();
 
-        mockMvc.perform(put(SINGLE, slug, slugOf(m)).contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+        mockMvc.perform(put(SINGLE, slug, slugOf(m)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"groupId\":null}"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(put(BULK, slug).contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+        mockMvc.perform(put(BULK, slug).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"groupId\":null,\"teamSlugs\":[\"x\"]}"))
                 .andExpect(status().isUnauthorized());
         assignBulk(AXA, "no-such-org-slug", groupA.getId(), List.of(slugOf(m))).andExpect(status().isNotFound());
