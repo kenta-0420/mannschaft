@@ -148,6 +148,7 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
             teamAdminId = insertUser("3c-team-" + nonce + "@example.com");
             MembershipTestHelper.insertMembership(em, teamAdminId, ScopeType.TEAM, teamT, RoleKind.MEMBER);
             MembershipTestHelper.insertUserRole(em, teamAdminId, "ADMIN", teamT, null);
+            grantManageShiftsToAdmin();
             em.flush();
         });
     }
@@ -165,7 +166,8 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-N05 逆算 API は指定した組織のフラグで判定される（X=有効なら通り、Y=無効なら 503 相当）")
     void 逆算は明示した組織のフラグで判定される() {
         setShiftBudgetFlag(orgY, false);
-        setAuth(sysAdminId);
+        // MANAGE_SHIFTS（TEAM スコープ）の権限判定は SYSTEM_ADMIN を素通しにしないので、チーム ADMIN で呼ぶ
+        setAuth(teamAdminId);
         RequiredSlotsRequest req = explicitRequest(teamT);
 
         assertThat(calcService.calculateRequiredSlots(orgX, req).requiredSlots())
@@ -541,6 +543,26 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
                                 + "ORDER BY id DESC LIMIT 1")
                 .setParameter("teamId", teamT)
                 .getSingleResult()).longValue();
+    }
+
+    /**
+     * {@code MANAGE_SHIFTS} を権限カタログへ登録し ADMIN へ付与する（本番マイグレーションの写し）。
+     * 基底 IT は ddl-auto=create で動き permissions / role_permissions は空の表になるため、
+     * フィクスチャ側で同じ行を作らないと TEAM スコープの権限判定が誰に対しても成立しない。
+     */
+    private void grantManageShiftsToAdmin() {
+        em.createNativeQuery(
+                        "INSERT INTO permissions (name, display_name, scope, created_at, updated_at) "
+                                + "SELECT 'MANAGE_SHIFTS', 'シフト管理', 'TEAM', NOW(), NOW() FROM DUAL "
+                                + "WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'MANAGE_SHIFTS')")
+                .executeUpdate();
+        em.createNativeQuery(
+                        "INSERT INTO role_permissions (role_id, permission_id, is_default, created_at) "
+                                + "SELECT r.id, p.id, 1, NOW() FROM roles r CROSS JOIN permissions p "
+                                + "WHERE r.name = 'ADMIN' AND p.name = 'MANAGE_SHIFTS' "
+                                + "AND NOT EXISTS (SELECT 1 FROM role_permissions rp "
+                                + "  WHERE rp.role_id = r.id AND rp.permission_id = p.id)")
+                .executeUpdate();
     }
 
     private static String nonce() {
