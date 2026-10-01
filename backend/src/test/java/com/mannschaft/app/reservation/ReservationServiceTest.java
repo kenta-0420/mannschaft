@@ -86,9 +86,6 @@ class ReservationServiceTest {
     @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
-    @Mock
-    private com.mannschaft.app.common.AccessControlService accessControlService;
-
     /** 予約閲覧 view ゲート（会員 or 公開）。機能C グリッドと同一述語を共有するため専用ガードに集約された。 */
     @Mock
     private com.mannschaft.app.reservation.service.ReservationViewAccessGuard viewAccessGuard;
@@ -147,7 +144,7 @@ class ReservationServiceTest {
         // 固定 Clock を明示注入してサービスを生成する（ReservationSlotServiceTest と同じ作法）。
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
-                nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
+                nameResolverService, eventPublisher, viewAccessGuard,
                 reservationPolicyService, blockedTimeRepository, recurringBlockedTimeRepository,
                 unavailabilityChecker,
                 groupSummaryResolver,
@@ -204,7 +201,7 @@ class ReservationServiceTest {
     private void reinitServiceWithClock(Clock clock) {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
-                nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
+                nameResolverService, eventPublisher, viewAccessGuard,
                 reservationPolicyService, blockedTimeRepository, recurringBlockedTimeRepository,
                 unavailabilityChecker,
                 groupSummaryResolver,
@@ -316,86 +313,27 @@ class ReservationServiceTest {
     // ========================================
 
     @Nested
-    @DisplayName("getReservation")
+    @DisplayName("getReservation / resolveOwnerUserId（認可は ReservationDetailFacade が担う）")
     class GetReservation {
 
-        /** 予約所有者ではない別会員のユーザー ID（USER_ID=100 とは別）。 */
-        private static final Long OTHER_USER_ID = 200L;
-        /** 当該チームの管理者ユーザー ID。 */
-        private static final Long ADMIN_USER_ID = 300L;
-
         @Test
-        @DisplayName("正常系: 管理者は予約詳細を閲覧できる")
-        void 予約詳細_管理者_正常取得() {
-            // Given
+        @DisplayName("正常系: 認可なしで予約詳細を返す（認可は Facade の責務）")
+        void 予約詳細_正常取得() {
             ReservationEntity entity = createReservationEntity();
             ReservationResponse response = createReservationResponse();
             given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
                     .willReturn(Optional.of(entity));
             given(reservationMapper.toReservationResponse(entity)).willReturn(response);
 
-            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> mocked =
-                         org.mockito.Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
-                mocked.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
-                given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            ReservationResponse result = service.getReservation(TEAM_ID, RESERVATION_ID);
 
-                // When
-                ReservationResponse result = service.getReservation(TEAM_ID, RESERVATION_ID);
-
-                // Then
-                assertThat(result).isNotNull();
-                assertThat(result.getIdentifier().teamId()).isEqualTo(TEAM_ID);
-                assertThat(result.getIdentifier().userName()).isEqualTo("山田 太郎");
-            }
+            assertThat(result).isNotNull();
+            assertThat(result.getIdentifier().teamId()).isEqualTo(TEAM_ID);
+            assertThat(result.getIdentifier().userName()).isEqualTo("山田 太郎");
         }
 
         @Test
-        @DisplayName("正常系: 予約の本人（非管理者）は自分の予約詳細を閲覧できる")
-        void 予約詳細_本人_正常取得() {
-            // Given: entity.userId=USER_ID(100)、閲覧者も同じ本人。管理者ではない。
-            ReservationEntity entity = createReservationEntity();
-            ReservationResponse response = createReservationResponse();
-            given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
-                    .willReturn(Optional.of(entity));
-            given(reservationMapper.toReservationResponse(entity)).willReturn(response);
-
-            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> mocked =
-                         org.mockito.Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
-                mocked.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-
-                // When
-                ReservationResponse result = service.getReservation(TEAM_ID, RESERVATION_ID);
-
-                // Then
-                assertThat(result).isNotNull();
-                assertThat(result.getIdentifier().teamId()).isEqualTo(TEAM_ID);
-            }
-        }
-
-        @Test
-        @DisplayName("異常系: 他人（非管理者・非所有者）が予約詳細を取ると RESERVATION_PERMISSION_DENIED（403 相当）")
-        void 予約詳細_他人_403() {
-            // Given: entity.userId=USER_ID(100)、閲覧者は別会員 OTHER_USER_ID(200)。管理者ではない。
-            ReservationEntity entity = createReservationEntity();
-            given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
-                    .willReturn(Optional.of(entity));
-
-            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> mocked =
-                         org.mockito.Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
-                mocked.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId).thenReturn(OTHER_USER_ID);
-                given(accessControlService.isAdminOrAbove(OTHER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-
-                // When / Then
-                assertThatThrownBy(() -> service.getReservation(TEAM_ID, RESERVATION_ID))
-                        .isInstanceOf(BusinessException.class)
-                        .extracting(e -> ((BusinessException) e).getErrorCode())
-                        .isEqualTo(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
-            }
-        }
-
-        @Test
-        @DisplayName("正常系: スロット・ラインのサマリが付与される（管理者閲覧）")
+        @DisplayName("正常系: スロット・ラインのサマリが付与される")
         void 予約詳細_スロットサマリ付与() {
             // Given
             ReservationEntity entity = createReservationEntity();
@@ -417,33 +355,46 @@ class ReservationServiceTest {
             given(lineRepository.findById(LINE_ID)).willReturn(Optional.of(line));
             given(reservationMapper.toReservationResponse(entity, slot, line)).willReturn(enriched);
 
-            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> mocked =
-                         org.mockito.Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
-                mocked.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
-                given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            // When
+            ReservationResponse result = service.getReservation(TEAM_ID, RESERVATION_ID);
 
-                // When
-                ReservationResponse result = service.getReservation(TEAM_ID, RESERVATION_ID);
-
-                // Then
-                assertThat(result.getSlot()).isNotNull();
-                assertThat(result.getSlot().lineName()).isEqualTo("カット");
-                assertThat(result.getSlot().slotDate()).isEqualTo(java.time.LocalDate.of(2026, 4, 1));
-                assertThat(result.getSlot().startTime()).isEqualTo(java.time.LocalTime.of(10, 0));
-                assertThat(result.getSlot().endTime()).isEqualTo(java.time.LocalTime.of(11, 0));
-                verify(reservationMapper).toReservationResponse(entity, slot, line);
-            }
+            // Then
+            assertThat(result.getSlot()).isNotNull();
+            assertThat(result.getSlot().lineName()).isEqualTo("カット");
+            assertThat(result.getSlot().slotDate()).isEqualTo(java.time.LocalDate.of(2026, 4, 1));
+            assertThat(result.getSlot().startTime()).isEqualTo(java.time.LocalTime.of(10, 0));
+            assertThat(result.getSlot().endTime()).isEqualTo(java.time.LocalTime.of(11, 0));
+            verify(reservationMapper).toReservationResponse(entity, slot, line);
         }
 
         @Test
-        @DisplayName("異常系: 予約が存在しない場合BusinessExceptionがスローされる")
+        @DisplayName("異常系: 予約が存在しない場合 RESERVATION_NOT_FOUND")
         void 予約詳細_存在しない() {
-            // Given: 所有権判定より前に findReservationOrThrow が NOT_FOUND を投げる（SecurityUtils 到達前）。
             given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
                     .willReturn(Optional.empty());
 
-            // When / Then
             assertThatThrownBy(() -> service.getReservation(TEAM_ID, RESERVATION_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.RESERVATION_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("正常系: resolveOwnerUserId は予約の本人 ID を返す")
+        void 所有者解決_正常() {
+            given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(createReservationEntity()));
+
+            assertThat(service.resolveOwnerUserId(TEAM_ID, RESERVATION_ID)).isEqualTo(USER_ID);
+        }
+
+        @Test
+        @DisplayName("異常系: resolveOwnerUserId は不在・他チーム・論理削除済みを RESERVATION_NOT_FOUND にする")
+        void 所有者解決_不在() {
+            given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.resolveOwnerUserId(TEAM_ID, RESERVATION_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.RESERVATION_NOT_FOUND);
