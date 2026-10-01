@@ -197,4 +197,40 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
         + "WHERE m.teamId IN :teamIds "
         + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
     List<Long> findDistinctOrganizationIdsByTeamIdIn(@Param("teamIds") Set<Long> teamIds);
+
+    // ========================================================================
+    // F01.2.1 チームグループ（4-A）: 件数集計と、グループ削除後の付け替え
+    // ========================================================================
+
+    /**
+     * 組織の ACTIVE な加盟数を返す（チームグループ一覧の unassignedTeamCount の母数）。
+     */
+    long countByOrganizationIdAndStatus(Long organizationId, TeamOrgMembershipEntity.Status status);
+
+    /**
+     * 組織の ACTIVE な加盟を、グループ ID ごとに数える（グループ一覧の teamCount。SQL は 1 本）。
+     *
+     * <p>{@code group_id} が NULL（未分類）の行は含めない。削除済みグループを指す行も本クエリには
+     * 含まれて返るため、呼び出し側が生存グループの ID だけを拾い、残りを未分類として数える
+     * （リスナーによる付け替えが非同期であるため。§5.1）。PENDING は数えない。</p>
+     */
+    @Query("SELECT m.groupId AS groupId, COUNT(m) AS teamCount "
+        + "FROM TeamOrgMembershipEntity m "
+        + "WHERE m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "AND m.groupId IS NOT NULL "
+        + "GROUP BY m.groupId")
+    List<GroupTeamCountProjection> countActiveGroupByOrganizationId(@Param("organizationId") Long organizationId);
+
+    /**
+     * 削除されたグループを指す {@code group_id} を NULL（未分類）へ戻す。ステータスを問わない（PENDING も含む）。
+     *
+     * @return 更新した行数
+     */
+    @Modifying
+    @Query("UPDATE TeamOrgMembershipEntity m SET m.groupId = NULL, m.updatedAt = :now "
+        + "WHERE m.organizationId = :organizationId AND m.groupId = :groupId")
+    int clearGroupId(@Param("organizationId") Long organizationId,
+                     @Param("groupId") java.util.UUID groupId,
+                     @Param("now") java.time.Instant now);
 }
