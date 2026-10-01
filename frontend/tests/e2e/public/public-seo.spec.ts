@@ -18,7 +18,7 @@
  * 本 spec は <strong>バックエンド + フロントエンド統合環境</strong> で実行する:
  *   1. `docker-compose up -d` で Spring Boot 8080 + MySQL + Valkey を起動
  *   2. PUBLIC かつ未 archive のチーム/組織 + 紐づく PUBLIC/PUBLISHED 状態の blog_posts 1 件を seed
- *   3. 環境変数 `E2E_PUBLIC_TEAM_ID` / `E2E_PUBLIC_POST_ID` / `E2E_PUBLIC_ORG_ID` / `E2E_PUBLIC_ORG_POST_ID` を指定して実行
+ *   3. 環境変数 `E2E_PUBLIC_TEAM_ID` / `E2E_PUBLIC_POST_ID` / `E2E_PUBLIC_ORG_SLUG` / `E2E_PUBLIC_ORG_POST_ID` を指定して実行
  *
  * 環境変数未指定の場合は describe.skip により自動的にスキップされる。
  *
@@ -31,13 +31,14 @@ test.use({ storageState: { cookies: [], origins: [] } })
 
 const TEAM_ID_RAW = process.env.E2E_PUBLIC_TEAM_ID
 const POST_ID_RAW = process.env.E2E_PUBLIC_POST_ID
-const ORG_ID_RAW = process.env.E2E_PUBLIC_ORG_ID
+const ORG_SLUG_RAW = process.env.E2E_PUBLIC_ORG_SLUG
 const ORG_POST_ID_RAW = process.env.E2E_PUBLIC_ORG_POST_ID
 
 const RUN_INTEGRATION = TEAM_ID_RAW !== undefined && POST_ID_RAW !== undefined
 const TEAM_ID = TEAM_ID_RAW !== undefined ? Number(TEAM_ID_RAW) : 0
 const POST_ID = POST_ID_RAW !== undefined ? Number(POST_ID_RAW) : 0
-const ORG_ID = ORG_ID_RAW !== undefined ? Number(ORG_ID_RAW) : 0
+// 組織の公開ページ URL は slug（数値 ID の URL は不在扱い。F01.2.1 AC-A13）
+const ORG_SLUG = ORG_SLUG_RAW ?? ''
 const ORG_POST_ID = ORG_POST_ID_RAW !== undefined ? Number(ORG_POST_ID_RAW) : 0
 
 // サポートされる hreflang 値（6言語 + x-default）
@@ -91,9 +92,9 @@ test.describe('F19.1 Phase 3 公開ページ SEO タグ検証 (BE 統合環境�
   })
 
   test('F19.1-SEO-004: 組織ページに JSON-LD Organization スキーマが存在する（@graph 内）', async ({ page }) => {
-    test.skip(ORG_ID === 0, 'E2E_PUBLIC_ORG_ID 未設定のためスキップ')
+    test.skip(ORG_SLUG === '', 'E2E_PUBLIC_ORG_SLUG 未設定のためスキップ')
 
-    await page.goto(`/public/organizations/${ORG_ID}`)
+    await page.goto(`/public/organizations/${ORG_SLUG}`)
 
     const jsonLdScript = await page.$('script[type="application/ld+json"]')
     expect(jsonLdScript).toBeTruthy()
@@ -125,9 +126,9 @@ test.describe('F19.1 Phase 3 公開ページ SEO タグ検証 (BE 統合環境�
   })
 
   test('F19.1-SEO-006: 組織投稿詳細ページに JSON-LD Article スキーマが存在する', async ({ page }) => {
-    test.skip(ORG_ID === 0 || ORG_POST_ID === 0, 'E2E_PUBLIC_ORG_ID / E2E_PUBLIC_ORG_POST_ID 未設定のためスキップ')
+    test.skip(ORG_SLUG === '' || ORG_POST_ID === 0, 'E2E_PUBLIC_ORG_SLUG / E2E_PUBLIC_ORG_POST_ID 未設定のためスキップ')
 
-    await page.goto(`/public/organizations/${ORG_ID}/posts/${ORG_POST_ID}`)
+    await page.goto(`/public/organizations/${ORG_SLUG}/posts/${ORG_POST_ID}`)
 
     const jsonLdScript = await page.$('script[type="application/ld+json"]')
     expect(jsonLdScript).toBeTruthy()
@@ -195,9 +196,9 @@ test.describe('F19.1 Phase 3 公開ページ SEO タグ検証 (BE 統合環境�
   })
 
   test('F21.1-GEO-003: 組織ページの JSON-LD に @graph があり BreadcrumbList を含む', async ({ page }) => {
-    test.skip(ORG_ID === 0, 'E2E_PUBLIC_ORG_ID 未設定のためスキップ')
+    test.skip(ORG_SLUG === '', 'E2E_PUBLIC_ORG_SLUG 未設定のためスキップ')
 
-    await page.goto(`/public/organizations/${ORG_ID}`)
+    await page.goto(`/public/organizations/${ORG_SLUG}`)
 
     const jsonLdScript = await page.$('script[type="application/ld+json"]')
     expect(jsonLdScript).toBeTruthy()
@@ -333,11 +334,11 @@ test.describe('F19.1 Phase 3 公開ページ SEO タグ検証 (BE 統合環境�
 
   test("F21.1-FAQ-004: 回答済みFAQがある組織の @graph に @type:'FAQPage'（@id が #faq）が含まれる", async ({ page }) => {
     test.skip(
-      ORG_ID === 0 || process.env.E2E_PUBLIC_ORG_HAS_FAQ === undefined,
-      'E2E_PUBLIC_ORG_ID / E2E_PUBLIC_ORG_HAS_FAQ 未設定のためスキップ',
+      ORG_SLUG === '' || process.env.E2E_PUBLIC_ORG_HAS_FAQ === undefined,
+      'E2E_PUBLIC_ORG_SLUG / E2E_PUBLIC_ORG_HAS_FAQ 未設定のためスキップ',
     )
 
-    await page.goto(`/public/organizations/${ORG_ID}`)
+    await page.goto(`/public/organizations/${ORG_SLUG}`)
 
     const jsonLdScript = await page.$('script[type="application/ld+json"]')
     expect(jsonLdScript).toBeTruthy()

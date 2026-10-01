@@ -55,12 +55,13 @@ public class PublicOrganizationController {
     /**
      * 組織詳細を未ログインで取得する。
      */
-    @GetMapping("/{id}")
+    @GetMapping("/{slug}")
     @Operation(
             summary = "組織詳細（未ログイン公開）",
-            description = "未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。"
+            description = "組織を slug で指定する（数値 ID は受けない）。未ログインでも実行可能。"
+                    + "PUBLIC かつ未 archive かつ未削除の組織のみ 200。"
                     + " それ以外は 404（IDOR 対策で状態を区別しない）。")
-    public PublicOrganizationResponse getPublicOrganization(@PathVariable Long id) {
-        return publicOrganizationQueryService.getPublicOrganization(id);
+    public PublicOrganizationResponse getPublicOrganization(@PathVariable String slug) {
+        return publicOrganizationQueryService.getPublicOrganization(slug);
     }
 }

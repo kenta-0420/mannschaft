@@ -67,4 +67,43 @@ public interface NotificationFanoutJobRepository extends JpaRepository<Notificat
      */
     List<NotificationFanoutJob> findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuidOrderByShardIndexAsc(
             String scopeType, String scopeRef, String notificationType, UUID sourceEventUuid);
+
+    /**
+     * 冪等キーと {@code shard_index} で 1 行を引く（F01.2.1 §6.7 新版 enqueue の再読込用）。
+     * 親ジョブ（{@code shard_index=0}）は AUTO 分割後も 1 行だけ存在する。
+     */
+    Optional<NotificationFanoutJob> findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuidAndShardIndex(
+            String scopeType, String scopeRef, String notificationType, UUID sourceEventUuid, short shardIndex);
+
+    /**
+     * 親ジョブ行を冪等に登録する（F01.2.1 §6.7）。{@code uk_fanout_idempotency} 衝突時は
+     * {@code id = id} で何も変えず、例外も投げない（呼び出し側 TX を rollback-only にしない・AC-E11）。
+     * {@code shard_index} は 0 固定（親ジョブ）。文面列は子表に持つため含まない。
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = """
+            INSERT INTO notification_fanout_jobs
+                (id, source_event_uuid, scope_type, scope_ref, notification_type, organization_id, priority,
+                 source_type, source_id, action_url, actor_id, include_supporters, shard_index, shard_count,
+                 status, cursor_subject_id, inserted_count, retry_count, next_attempt_at, created_at, updated_at)
+            VALUES
+                (:id, :sourceEventUuid, :scopeType, :scopeRef, :notificationType, :organizationId, :priority,
+                 :sourceType, :sourceId, :actionUrl, :actorId, :includeSupporters, 0, :shardCount,
+                 'PENDING', 0, 0, 0, :now, :now, :now)
+            ON DUPLICATE KEY UPDATE id = id
+            """, nativeQuery = true)
+    int insertIdempotent(@Param("id") UUID id,
+                         @Param("sourceEventUuid") UUID sourceEventUuid,
+                         @Param("scopeType") String scopeType,
+                         @Param("scopeRef") String scopeRef,
+                         @Param("notificationType") String notificationType,
+                         @Param("organizationId") Long organizationId,
+                         @Param("priority") String priority,
+                         @Param("sourceType") String sourceType,
+                         @Param("sourceId") Long sourceId,
+                         @Param("actionUrl") String actionUrl,
+                         @Param("actorId") Long actorId,
+                         @Param("includeSupporters") boolean includeSupporters,
+                         @Param("shardCount") short shardCount,
+                         @Param("now") LocalDateTime now);
 }

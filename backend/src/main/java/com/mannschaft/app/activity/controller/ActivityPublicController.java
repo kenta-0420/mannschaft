@@ -5,6 +5,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicActivityDetail;
 import com.mannschaft.app.publicview.dto.PublicActivitySummary;
+import com.mannschaft.app.publicview.service.PublicOrganizationQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
@@ -68,6 +69,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ActivityPublicController {
 
+    private final PublicOrganizationQueryService publicOrganizationQueryService;
     private final PublicActivityQueryService publicActivityQueryService;
 
     /**
@@ -142,15 +144,17 @@ public class ActivityPublicController {
      * @param limit 取得件数（上限 {@code 100}・0 以下は既定 {@code 20} に丸める）
      * @param page  ページ番号（0始まり・既定 0）
      */
-    @GetMapping("/organizations/{orgId}/activities")
+    @GetMapping("/organizations/{slug}/activities")
     @Operation(summary = "組織公開活動記録一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "404", description = "組織が存在しない / 非公開（区別しない）")
     public ResponseEntity<ApiResponse<List<PublicActivitySummary>>> listOrgPublicActivities(
-            @PathVariable Long orgId,
+            @PathVariable String slug,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") @Min(0) int page) {
+        // slug → 組織 ID。非公開・archived・削除済・不在は親 API と同じ PUBLIC_001（404）
+        Long orgId = publicOrganizationQueryService.getPublicOrganization(slug).id();
         return ResponseEntity.ok(ApiResponse.of(
                 publicActivityQueryService.listPublicOrganizationActivities(orgId, limit, page)));
     }
@@ -160,14 +164,15 @@ public class ActivityPublicController {
      *
      * <p>パス変数 {@code orgId} と記録の実スコープが一致しない場合は 404（スコープ詐称拒否）。</p>
      */
-    @GetMapping("/organizations/{orgId}/activities/{id}")
+    @GetMapping("/organizations/{slug}/activities/{id}")
     @Operation(summary = "組織公開活動記録詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "404", description = "非公開 / 不在 / スコープ不一致（区別しない）")
     public ResponseEntity<ApiResponse<PublicActivityDetail>> getOrgPublicActivity(
-            @PathVariable Long orgId,
+            @PathVariable String slug,
             @PathVariable Long id) {
+        Long orgId = publicOrganizationQueryService.getPublicOrganization(slug).id();
         return ResponseEntity.ok(ApiResponse.of(
                 publicActivityQueryService.getPublicOrganizationActivity(orgId, id)));
     }

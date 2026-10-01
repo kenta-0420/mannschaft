@@ -1,6 +1,7 @@
 package com.mannschaft.app.publicview.controller;
 
 import com.mannschaft.app.common.security.IntentionallyPublic;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.publicview.dto.PublicUserPostSummaryResponse;
 import com.mannschaft.app.publicview.dto.PublicUserProfileResponse;
 import com.mannschaft.app.publicview.service.PublicUserProfileQueryService;
@@ -15,6 +16,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * F19.1 Phase 6: 公開ユーザープロフィール Controller。
@@ -60,6 +65,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicUserProfileController {
 
     private final PublicUserProfileQueryService publicUserProfileQueryService;
+    private final OrganizationService organizationService;
 
     /**
      * 公開ユーザープロフィールを取得する。
@@ -91,6 +97,29 @@ public class PublicUserProfileController {
     public ResponseEntity<Page<PublicUserPostSummaryResponse>> getPosts(
             @PathVariable Long userId,
             @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(publicUserProfileQueryService.getPublicPosts(userId, pageable));
+        Page<PublicUserPostSummaryResponse> posts = publicUserProfileQueryService.getPublicPosts(userId, pageable);
+
+        // 組織投稿のリンクは slug で作る（数値 ID の URL は作らせない・F01.2.1 AC-A13）。
+        // 非公開の組織は slug を返さない（null → FE はリンクを張らない）。ページ内の組織を 1 回で一括解決する。
+        // 越境（publicview → organization）は @Transactional の Service 内ではなく Controller で行い、
+        // 番人 D-3T（transactional entry の推移的な越境到達）に新規違反を作らない。
+        Set<Long> orgIds = posts.getContent().stream()
+                .filter(p -> "ORGANIZATION".equals(p.scopeType()))
+                .map(p -> parseId(p.scopeId()))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> orgSlugs = organizationService.findPublicOrganizationSlugsByIds(orgIds);
+
+        return ResponseEntity.ok(posts.map(p -> "ORGANIZATION".equals(p.scopeType())
+                ? p.withOrgSlug(orgSlugs.get(parseId(p.scopeId())))
+                : p));
+    }
+
+    private static Long parseId(String id) {
+        try {
+            return id == null || id.isEmpty() ? null : Long.valueOf(id);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

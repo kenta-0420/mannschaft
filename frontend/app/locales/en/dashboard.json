@@ -103,6 +103,12 @@
       "empty": "0",
       "count": "{count}"
     },
+    "scope_accordion": {
+      "schedule_activity": "Schedule & activity",
+      "tasks_confirmation": "Tasks & confirmation",
+      "communication": "Communication & sharing",
+      "results_members": "Results & members"
+    },
     "widget_labels": {
       "event-dismissal-reminder": "Disbanding Reminder",
       "notices": "Announcements",

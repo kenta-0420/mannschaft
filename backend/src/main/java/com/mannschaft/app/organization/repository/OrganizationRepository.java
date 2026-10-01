@@ -356,6 +356,34 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     Optional<OrganizationEntity> findPublicOrganizationById(@Param("id") Long id);
 
     /**
+     * 公開組織ページ API（{@code GET /api/v1/public/organizations/{slug}}）用に、
+     * slug で PUBLIC 組織を取得する。
+     *
+     * <p>判定条件は {@link #findPublicOrganizationById(Long)} と同一（PUBLIC・ACTIVE・未 archive・
+     * 未論理削除）。条件を満たさない場合は不在と区別せず空を返す（存在オラクル対策）。</p>
+     *
+     * @param slug 組織の slug
+     * @return PUBLIC かつアクティブな組織。条件を満たさない場合は空。
+     */
+    @Query("SELECT o FROM OrganizationEntity o " +
+           "WHERE o.slug = :slug " +
+           "AND o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC " +
+           "AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE " +
+           "AND o.archivedAt IS NULL")
+    Optional<OrganizationEntity> findPublicOrganizationBySlug(@Param("slug") String slug);
+
+    /**
+     * 公開ページのリンク生成用に、PUBLIC 組織を ID 群で一括取得する。
+     * 判定条件は {@link #findPublicOrganizationById(Long)} と同一。条件を満たさない組織は結果に含まれない。
+     */
+    @Query("SELECT o FROM OrganizationEntity o " +
+           "WHERE o.id IN :ids " +
+           "AND o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC " +
+           "AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE " +
+           "AND o.archivedAt IS NULL")
+    List<OrganizationEntity> findPublicOrganizationsByIds(@Param("ids") Collection<Long> ids);
+
+    /**
      * F19.1 Phase 3 sitemap.xml 用: PUBLIC かつ未アーカイブの組織を全件取得する。
      *
      * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。</p>

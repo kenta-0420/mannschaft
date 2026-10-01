@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -59,7 +60,8 @@ public class SitemapQueryService {
     public List<SitemapEntry> findPublicOrganizationEntries() {
         return organizationRepository.findAllPublicOrganizations()
                 .stream()
-                .map(o -> new SitemapEntry(o.getId(), o.getUpdatedAt()))
+                // 組織の公開ページ URL は slug（数値 ID の URL は作らない・F01.2.1 AC-A13）
+                .map(o -> new SitemapEntry(o.getId(), o.getSlug(), o.getUpdatedAt()))
                 .toList();
     }
 
@@ -115,17 +117,19 @@ public class SitemapQueryService {
      * 公開組織の ID 集合は本クラスの {@link #findPublicOrganizationEntries()} から作る。</p>
      */
     public List<SitemapPostEntry> findPublicOrganizationPostEntries() {
-        Set<Long> publicOrganizationIds = findPublicOrganizationEntries()
+        // 公開組織の ID → slug（投稿 URL は /public/organizations/{slug}/posts/{postId}）
+        Map<Long, String> slugById = findPublicOrganizationEntries()
                 .stream()
-                .map(SitemapEntry::id)
-                .collect(Collectors.toSet());
-        if (publicOrganizationIds.isEmpty()) {
+                .filter(e -> e.slug() != null)
+                .collect(Collectors.toMap(SitemapEntry::id, SitemapEntry::slug, (a, b) -> a));
+        if (slugById.isEmpty()) {
             // 公開組織が 1 つも無い＝載せてよい投稿も存在しない。
             return List.of();
         }
-        return blogPostRepository.findAllPublicPostsByOrganization(publicOrganizationIds)
+        return blogPostRepository.findAllPublicPostsByOrganization(slugById.keySet())
                 .stream()
-                .map(bp -> new SitemapPostEntry(bp.getOrganizationId(), bp.getId(), bp.getUpdatedAt()))
+                .map(bp -> new SitemapPostEntry(bp.getOrganizationId(), slugById.get(bp.getOrganizationId()),
+                        bp.getId(), bp.getUpdatedAt()))
                 .toList();
     }
 
