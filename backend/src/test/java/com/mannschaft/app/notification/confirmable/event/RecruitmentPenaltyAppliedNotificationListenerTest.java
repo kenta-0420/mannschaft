@@ -44,14 +44,11 @@ class RecruitmentPenaltyAppliedNotificationListenerTest {
         listener.onPenaltyApplied(new RecruitmentPenaltyAppliedNotificationEvent(
                 11L, 22L, RecruitmentScopeType.ORGANIZATION, 33L, expiresAt));
 
-        // ALIC-1: actionUrl は受信箱から開ける導線（募集一覧フィード）を指す。
-        // 専用の「自分のペナルティ」表示画面は未実装（設計書 §12 スコープ外）で、
-        // 本イベントは listingId を持たないため募集詳細へは飛ばせない。
         verify(confirmableNotificationService).sendFromSource(
                 eq("RECRUITMENT_PENALTY"), eq(11L), eq(ScopeType.ORGANIZATION), eq(33L),
                 any(), any(), eq(ConfirmableNotificationPriority.URGENT),
                 eq(LocalDateTime.ofInstant(expiresAt, UserZoneLocalDateTimeParser.SERVER_ZONE)),
-                eq("/recruitment-listings"), eq(SystemUsers.SYSTEM_USER_ID), eq(List.of(22L)));
+                eq("/notifications"), eq(SystemUsers.SYSTEM_USER_ID), eq(List.of(22L)));
     }
 
     @Test

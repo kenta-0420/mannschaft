@@ -57,10 +57,7 @@ public class RecruitmentPenaltyAppliedNotificationListener {
                             + "解除予定: " + event.expiresAt() + "。内容を確認してください。",
                     ConfirmableNotificationPriority.URGENT,
                     LocalDateTime.ofInstant(event.expiresAt(), UserZoneLocalDateTimeParser.SERVER_ZONE),
-                    // 専用の「自分のペナルティ」表示画面は未実装（設計書 §12: 債務者向け一覧はスコープ外）。
-                    // ペナルティは募集への申込を制限するものであり、制限は一覧/申込時に可視化される
-                    // 募集一覧フィード（/recruitment-listings）へ遷移させる（特定の listingId は持たないため）。
-                    "/recruitment-listings",
+                    "/notifications",
                     SystemUsers.SYSTEM_USER_ID,
                     List.of(event.recipientUserId()));
         } catch (Exception e) {
