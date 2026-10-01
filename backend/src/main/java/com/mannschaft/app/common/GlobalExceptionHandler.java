@@ -1339,6 +1339,7 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_039", HttpStatus.TOO_MANY_REQUESTS),  // CANCEL_RATE_LIMITED（解約/撤回は同一バケットで scope ごと 10 回/時 → 429・AC-55/56）
             // 早馬（課金事故対応）: マスタ価格未設定（NULL）を無償扱いにせず契約拒否する（PLAN_PRICE_NOT_CONFIGURED）。
             Map.entry("ENTITLEMENT_040", HttpStatus.CONFLICT),           // PLAN_PRICE_NOT_CONFIGURED（価格未設定は状態不整合として409）
+            Map.entry("ENTITLEMENT_041", HttpStatus.BAD_REQUEST),        // ORGANIZATION_NOT_PARENT_OF_TEAM（F01.2.1 §9.2 #17・手動付与の組織指定が親組織でない）
             // F20.3 ベータ特典（設計書 02 §8）。登録漏れは Severity 既定 400/500 にフォールバックする前科（#1279）ゆえ明示登録。
             Map.entry("BETA_PERK_001", HttpStatus.NOT_FOUND),            // GRANT_NOT_FOUND（IDOR 秘匿含む）
             Map.entry("BETA_PERK_002", HttpStatus.CONFLICT),            // GRANT_ALREADY_EXISTS（uk_bg_scope_phase）

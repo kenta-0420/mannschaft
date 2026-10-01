@@ -3,6 +3,7 @@ package com.mannschaft.app.billing.api;
 import com.mannschaft.app.billing.EntitlementErrorCode;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.organization.service.OrganizationQueryService;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ import java.util.List;
 public class BillingTenantOrganizationResolver {
 
     private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private final OrganizationQueryService organizationQueryService;
 
     /** 作成時の解決（組織の明示なし）。TEAM は代表親組織を採る。 */
     public Long resolveForCreate(EntitlementScopeKind scopeKind, Long scopeId) {
@@ -45,11 +47,11 @@ public class BillingTenantOrganizationResolver {
             return resolveForCreate(scopeKind, scopeId);
         }
         if (scopeKind != EntitlementScopeKind.TEAM) {
-            throw new BusinessException(EntitlementErrorCode.INVALID_SCOPE_KIND);
+            throw new BusinessException(EntitlementErrorCode.ORGANIZATION_NOT_PARENT_OF_TEAM);
         }
         List<Long> parents = teamOrgMembershipQueryService.findActiveOrganizationIds(scopeId);
         if (!parents.contains(explicitOrganizationId)) {
-            throw new BusinessException(EntitlementErrorCode.INVALID_SCOPE_KIND);
+            throw new BusinessException(EntitlementErrorCode.ORGANIZATION_NOT_PARENT_OF_TEAM);
         }
         return explicitOrganizationId;
     }
@@ -62,5 +64,10 @@ public class BillingTenantOrganizationResolver {
     /** 組織を明示しなかったときに記録される代表親組織（無所属は null）。 */
     public Long representativeOrganizationId(Long teamId) {
         return teamOrgMembershipQueryService.findPrimaryParentOrganizationId(teamId).orElse(null);
+    }
+
+    /** 候補の組織の表示用要約（名前・slug。削除済みの組織は除く）。 */
+    public List<OrganizationQueryService.OrganizationSummary> candidateOrganizations(Long teamId) {
+        return organizationQueryService.findSummariesByIds(candidateOrganizationIds(teamId));
     }
 }

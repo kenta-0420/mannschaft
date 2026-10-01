@@ -16,7 +16,7 @@ import jakarta.validation.constraints.NotBlank;
  * @param featureKey   ADDON 時必須
  * @param note         付与理由（監査用・任意）
  * @param organizationId TEAM スコープのときだけ、記録する親組織を明示できる（任意）。未指定は代表親組織（F01.2.1 §9.3）。
- *                     そのチームの ACTIVE な親組織でない値、TEAM 以外での指定は 400（ENTITLEMENT_009）
+ *                     そのチームの ACTIVE な親組織でない値、TEAM 以外での指定は 400（ENTITLEMENT_041）
  */
 @Schema(name = "BillingManualGrantRequest", description = "F20.1 シスアド 手動付与")
 public record ManualGrantRequest(

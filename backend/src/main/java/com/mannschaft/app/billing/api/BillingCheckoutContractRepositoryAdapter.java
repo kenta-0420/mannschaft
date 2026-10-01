@@ -37,6 +37,7 @@ class BillingCheckoutContractRepositoryAdapter implements BillingCheckoutContrac
     /** PENDING 契約の放棄（補償）は既存決済フローと同じ正本 {@link BillingContractService} に委ねる。 */
     private final BillingContractService billingContractService;
     private final ActiveContractPointerRepository activeContractPointerRepository;
+    private final BillingTenantOrganizationResolver tenantOrganizationResolver;
     private final Clock clock;
 
     @Override
@@ -46,7 +47,9 @@ class BillingCheckoutContractRepositoryAdapter implements BillingCheckoutContrac
                 ? ContractKind.ADDON : ContractKind.PLAN;
         boolean addon = contractKind == ContractKind.ADDON;
         String slotAddonKey = addon ? quote.productKey() : "";
-        Long organizationId = quote.scopeKind() == EntitlementScopeKind.ORG ? quote.scopeId() : null;
+        // F01.2.1 §9.2 #17: TEAM は代表親組織（§9.3）を作成時に1度だけ解決して契約行・pointer へ記録する。
+        // 入金後の entitlement 発行はこの契約行の値を使う（再解決しない）。
+        Long organizationId = tenantOrganizationResolver.resolveForCreate(quote.scopeKind(), quote.scopeId());
         LocalDateTime now = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
 
         BillingContractEntity contract = BillingContractEntity.builder()

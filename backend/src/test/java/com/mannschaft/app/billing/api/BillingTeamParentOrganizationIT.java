@@ -2,7 +2,10 @@ package com.mannschaft.app.billing.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.billing.ActiveContractPointerRepository;
 import com.mannschaft.app.billing.BillingContractEntity;
+import com.mannschaft.app.billing.BillingProductKind;
+import com.mannschaft.app.billing.ContractKind;
 import com.mannschaft.app.billing.BillingContractRepository;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.FeatureCatalogEntity;
@@ -16,6 +19,8 @@ import com.mannschaft.app.billing.api.dto.ContractResponse;
 import com.mannschaft.app.billing.api.dto.CreateContractRequest;
 import com.mannschaft.app.billing.beta.BetaGrantEntity;
 import com.mannschaft.app.billing.beta.BetaGrantRepository;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -31,6 +36,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -80,6 +86,9 @@ class BillingTeamParentOrganizationIT extends AbstractMySqlIntegrationTest {
     @Autowired private PlanFeatureRepository planFeatureRepository;
     @Autowired private FeatureCatalogRepository featureCatalogRepository;
     @Autowired private BetaGrantRepository betaGrantRepository;
+    @Autowired private OrganizationRepository organizationRepository;
+    @Autowired private BillingCheckoutContractRepository checkoutContractRepository;
+    @Autowired private ActiveContractPointerRepository activeContractPointerRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -146,6 +155,33 @@ class BillingTeamParentOrganizationIT extends AbstractMySqlIntegrationTest {
                 .isEqualTo(orgA);
     }
 
+    @Test
+    @DisplayName("AC-N13: quote→Checkout の有料契約（PENDING 起票）でも契約行・pointer に代表親組織が記録され、後の加盟で変わらない")
+    void AC_N13_Checkout経路でも代表親組織が記録される() {
+        BillingMoney money = new BillingMoney("JPY", 1_100L, 1_000L, 100L, "消費税", 1_000);
+        Instant now = Instant.now();
+        BillingQuoteSnapshot quote = new BillingQuoteSnapshot(
+                UUID.randomUUID(), TEAM_OPERATOR_ID, EntitlementScopeKind.TEAM, teamId,
+                UUID.randomUUID(), BillingProductKind.PLAN, FULL_PLAN, null, "price_dummy",
+                5, money, money, "{}", now, now.plusSeconds(86_400), now,
+                0L, "0".repeat(64), now.plusSeconds(900), null, 0L);
+
+        UUID contractId = checkoutContractRepository.reservePendingContract(quote, TEAM_OPERATOR_ID);
+
+        assertThat(contractOrganizationId(contractId))
+                .as("Checkout 経路（旧実装は ORG 以外 null）も §9.3 の代表親組織を契約行へ記録する")
+                .isEqualTo(orgA);
+        assertThat(activeContractPointerRepository
+                .findByScopeKindAndScopeIdAndContractKindAndAddonFeatureKey(
+                        EntitlementScopeKind.TEAM, teamId, ContractKind.PLAN, "")
+                .orElseThrow().getOrganizationId())
+                .as("アクティブ契約 pointer にも同じ組織を記録する")
+                .isEqualTo(orgA);
+
+        affiliate(teamId, orgB - 1_000, LocalDateTime.now().minusDays(365).withNano(0));
+        assertThat(contractOrganizationId(contractId)).as("後の加盟で変わらない").isEqualTo(orgA);
+    }
+
     // ═════════ AC-G126 ═════════
 
     @Test
@@ -159,15 +195,15 @@ class BillingTeamParentOrganizationIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("AC-G126: そのチームの ACTIVE な親組織でない組織は選べない（400 ENTITLEMENT_009）")
+    @DisplayName("AC-G126: そのチームの ACTIVE な親組織でない組織は選べない（400 ENTITLEMENT_041）")
     void AC_G126_親組織でない組織は選べない() throws Exception {
         grantContract(teamId, orgA + 777_777L)
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("ENTITLEMENT_009"));
+                .andExpect(jsonPath("$.error.code").value("ENTITLEMENT_041"));
     }
 
     @Test
-    @DisplayName("AC-G126: TEAM 以外のスコープに organizationId を付けると 400 ENTITLEMENT_009")
+    @DisplayName("AC-G126: TEAM 以外のスコープに organizationId を付けると 400 ENTITLEMENT_041")
     void AC_G126_TEAM以外のスコープでは組織を指定できない() throws Exception {
         String body = "{\"scopeKind\":\"USER\",\"scopeId\":" + SEQ.incrementAndGet()
                 + ",\"contractKind\":\"PLAN\",\"planKey\":\"" + FREE_PLAN + "\",\"organizationId\":" + orgA + "}";
@@ -175,7 +211,7 @@ class BillingTeamParentOrganizationIT extends AbstractMySqlIntegrationTest {
                         .with(user(String.valueOf(SYSADMIN_ID)).roles("SYSTEM_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("ENTITLEMENT_009"));
+                .andExpect(jsonPath("$.error.code").value("ENTITLEMENT_041"));
     }
 
     @Test
@@ -230,6 +266,27 @@ class BillingTeamParentOrganizationIT extends AbstractMySqlIntegrationTest {
         mockMvc.perform(get("/api/v1/system-admin/billing/teams/{teamId}/parent-organizations", teamId)
                         .with(user("42").roles("ADMIN")))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("AC-G126: 候補一覧は FE が選べるよう組織名と slug も返す")
+    void AC_G126_候補一覧は組織名とslugを返す() throws Exception {
+        long t = SEQ.incrementAndGet();
+        OrganizationEntity org = organizationRepository.save(OrganizationEntity.builder()
+                .slug("g126-" + t).name("選択肢組織" + t)
+                .orgType(OrganizationEntity.OrgType.ASSOCIATION)
+                .visibility(OrganizationEntity.Visibility.PRIVATE)
+                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
+                .supporterEnabled(true).build());
+        affiliate(t, org.getId(), LocalDateTime.now().minusDays(1).withNano(0));
+
+        mockMvc.perform(get("/api/v1/system-admin/billing/teams/{teamId}/parent-organizations", t)
+                        .with(user(String.valueOf(SYSADMIN_ID)).roles("SYSTEM_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.organizations.length()").value(1))
+                .andExpect(jsonPath("$.data.organizations[0].organizationId").value(org.getId()))
+                .andExpect(jsonPath("$.data.organizations[0].name").value("選択肢組織" + t))
+                .andExpect(jsonPath("$.data.organizations[0].slug").value("g126-" + t));
     }
 
     // ============================================================

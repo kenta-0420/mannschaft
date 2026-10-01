@@ -224,6 +224,10 @@ public class SystemAdminBillingService {
     public TeamParentOrganizationsResponse teamParentOrganizations(Long teamId) {
         return TeamParentOrganizationsResponse.builder()
                 .organizationIds(tenantOrganizationResolver.candidateOrganizationIds(teamId))
+                .organizations(tenantOrganizationResolver.candidateOrganizations(teamId).stream()
+                        .map(o -> TeamParentOrganizationsResponse.Organization.builder()
+                                .organizationId(o.id()).name(o.name()).slug(o.slug()).build())
+                        .toList())
                 .representativeOrganizationId(tenantOrganizationResolver.representativeOrganizationId(teamId))
                 .build();
     }
