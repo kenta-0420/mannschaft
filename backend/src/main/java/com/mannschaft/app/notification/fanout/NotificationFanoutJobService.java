@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.fanout;
 
+import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.notification.NotificationPriority;
 import java.util.Map;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -281,6 +282,64 @@ public class NotificationFanoutJobService {
         jobRepository.save(job);
         jobRepository.flush();
         return job.getId();
+    }
+
+    /**
+     * F01.2.1 §6.7: 呼び出し側の進行中トランザクションに参加して fan-out ジョブを冪等に enqueue する（新版）。
+     *
+     * <p>文面の描画・{@code action_url}・シャードの扱い（{@code FIXED_SINGLE} / {@code AUTO}）を持ち、
+     * ジョブ行と文面行を {@code INSERT ... ON DUPLICATE KEY UPDATE id = id} で登録したうえで、
+     * 冪等キーで再読込したジョブ行を返す（同じキーの2回目は例外を投げず既存行を返す・AC-E11）。
+     * 既存の9引数版には委譲しない（AC-E12）。</p>
+     *
+     * <h2>冪等の作り（AC-E11）</h2>
+     * <p>{@code INSERT ... ON DUPLICATE KEY UPDATE id = id} は重複時に例外を投げず、呼び出し側トランザクションを
+     * rollback-only にしない。既存の {@code enqueue}（REQUIRES_NEW ＋例外捕捉）と違い、業務と同じ TX に参加する
+     * ため、業務のロールバックとジョブ登録が運命を共にする。文面行も {@code (job_id, locale)} の重複を
+     * 同じ方式で吸収する（既存ジョブの ID に対して書くため、2回目は何も変わらない）。</p>
+     *
+     * <h2>シャード（{@link FanoutEnqueueCommand.ShardMode}）</h2>
+     * <p>{@code FIXED_SINGLE} は {@code shard_count=1}、{@code AUTO} は {@code shard_count=0}（未評価）で登録し、
+     * Worker の {@link #resolveAndSplitShards} が受信者数から分割する。</p>
+     *
+     * @param command enqueue の引数一式
+     * @return 登録済み（新規または既存）の親ジョブ行の ID とシャード状態（Entity は返さない）
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public FanoutEnqueueResult enqueueInCurrentTransaction(FanoutEnqueueCommand command) {
+        // 文面の描画は INSERT より前に済ませる。キー欠落は握り潰さず伝播させ、文面の無いジョブを作らない。
+        Map<String, FanoutMessageRenderer.RenderedMessage> messages = command.messageKind() == null
+                ? Map.of()
+                : messageRenderer.renderAllLocales(command.messageKind(),
+                        command.messageArgs() == null
+                                ? new String[0]
+                                : command.messageArgs().toArray(new String[0]));
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        short shardCount = command.shardMode() == FanoutEnqueueCommand.ShardMode.AUTO ? (short) 0 : (short) 1;
+        NotificationPriority priority = command.priority() == null ? NotificationPriority.NORMAL : command.priority();
+
+        jobRepository.insertIdempotent(
+                UuidV7.generate(), command.idempotencyKey(),
+                command.scopeType(), command.scopeRef(), command.notificationType(),
+                command.organizationId(), priority.name(), command.sourceType(), command.sourceId(),
+                command.actionUrl(), command.actorId(), command.includeSupporters(),
+                shardCount, now);
+
+        // 決定的キー（uk_fanout_idempotency・shard_index=0）で再読込する。新規でも既存でも同じ行に着く。
+        NotificationFanoutJob job = jobRepository
+                .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuidAndShardIndex(
+                        command.scopeType(), command.scopeRef(), command.notificationType(),
+                        command.idempotencyKey(), (short) 0)
+                .orElseThrow(() -> new IllegalStateException(
+                        "fan-out ジョブの登録後に再読込できない: scopeType=" + command.scopeType()
+                                + " scopeRef=" + command.scopeRef()));
+
+        for (Map.Entry<String, FanoutMessageRenderer.RenderedMessage> entry : messages.entrySet()) {
+            jobMessageRepository.insertIdempotent(UuidV7.generate(), job.getId(),
+                    entry.getKey(), entry.getValue().title(), entry.getValue().body());
+        }
+        return new FanoutEnqueueResult(job.getId(), job.getShardCount());
     }
 
     /** 描画済み文面 Map をジョブ配下の子エンティティ群へ写す（配信ロケール数ぶん＝6 行）。 */
