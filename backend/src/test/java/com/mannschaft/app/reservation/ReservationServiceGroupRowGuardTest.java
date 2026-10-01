@@ -102,7 +102,7 @@ class ReservationServiceGroupRowGuardTest {
     void setUp() {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
-                nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
+                nameResolverService, eventPublisher, viewAccessGuard,
                 reservationPolicyService, blockedTimeRepository, recurringBlockedTimeRepository,
                 unavailabilityChecker,
                 groupSummaryResolver,
