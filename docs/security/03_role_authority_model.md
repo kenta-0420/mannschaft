@@ -128,7 +128,7 @@ Spring Security はメソッドセキュリティが有効化されていない�
 | JTI ブラックリスト | `AuthTokenService.java:185-191,219-227` | 単一デバイスログアウトで即時失効 |
 | 全デバイス無効化タイムスタンプ | `AuthTokenService.java:199-203,237-250` | `iat < user_invalidated_at` で全 Access Token 無効化 |
 | access token 15 分寿命 | `application.yml`（`mannschaft.jwt.access-token-expiration`） | ロール変更が最悪でも 15 分で反映 |
-| SYSTEM_ADMIN 即判定 | `role/repository/UserRoleRepository.java:204-209`（`existsSystemAdminByUserId`） | 単一 SQL で SYSTEM_ADMIN 判定可 |
+| SYSTEM_ADMIN 即判定 | `role/repository/UserRoleRepository.java`（`existsSystemAdminByUserId`） | 単一 SQL で、ACTIVE かつ未削除のプラットフォーム SYSTEM_ADMIN だけを判定可 |
 | per-scope 判定の集約 | `common/AccessControlService.java`（`isSystemAdmin` / `isAdminOrAbove` / `checkAdminOrAbove` / `getRoleName`） | per-scope ロール判定の単一窓口 |
 | 既存 SpEL ガード前例 | `admin/security/AdminRoleChecker.java`, `quickmemo/security/QuickMemoAccessGuard.java` | `@Component` Bean を `@PreAuthorize("@bean.method(...)")` で参照する定石 |
 
@@ -175,7 +175,7 @@ if (accessControlService.isSystemAdmin(userId)) {     // user_roles を 1 SQL �
 String accessToken = authTokenService.issueAccessToken(userId, roles);
 ```
 
-- 判定は既存 `AccessControlService#isSystemAdmin(userId)` → `UserRoleRepository#existsSystemAdminByUserId` を再利用（新規クエリ不要）。
+- 判定は既存 `AccessControlService#isSystemAdmin(userId)` → `UserRoleRepository#existsSystemAdminByUserId` を再利用（新規クエリ不要）。この判定は ACTIVE かつ未削除の利用者だけを SYSTEM_ADMIN として扱う。
 - **リフレッシュ時も再判定する**（`AuthTokenRotationService:88`）。これにより SYSTEM_ADMIN を剥奪されたユーザーは、次回リフレッシュ（最長 15 分以内）で SYSTEM_ADMIN authority を失う。即時失効が必要な場合は §6 の無効化タイムスタンプを併用する。
 
 #### 3.2.3 フィルタ層の付与

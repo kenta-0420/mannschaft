@@ -24,7 +24,7 @@ const { formatDateTime } = useDatetime()
 const batches = ref<BatchEndpointSummary[]>([])
 const loading = ref(false)
 /** 取得失敗は「バッチなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
-const loadFailed = ref(false)
+const loadError = ref<unknown>(null)
 const triggeringName = ref<string | null>(null)
 
 const searchKeyword = ref('')
@@ -65,7 +65,7 @@ const filteredBatches = computed(() => {
 
 async function load() {
   loading.value = true
-  loadFailed.value = false
+  loadError.value = null
   try {
     const res = await batchApi.listBatches()
     batches.value = res.data
@@ -73,7 +73,7 @@ async function load() {
     console.error('batches.vue: failed to load batches', e)
     notification.error(t('systemAdmin.batches.toast.loadFailed'))
     batches.value = []
-    loadFailed.value = true
+    loadError.value = e
   } finally {
     loading.value = false
   }
@@ -229,7 +229,8 @@ onMounted(load)
 
     <!-- 取得失敗: 空状態とは別に描き分ける -->
     <DashboardErrorState
-      v-else-if="loadFailed"
+      v-else-if="loadError"
+      :error="loadError"
       testid="batches-error-state"
       @retry="load"
     />
