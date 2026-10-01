@@ -114,8 +114,16 @@ public class ScheduleEventCategoryService {
      */
     public List<ScheduleEventCategoryEntity> getCategoriesForTeam(Long teamId, List<Long> organizationIds) {
         List<ScheduleEventCategoryEntity> merged = new ArrayList<>();
-        for (Long organizationId : organizationIds) {
-            merged.addAll(categoryRepository.findByOrganizationIdOrderBySortOrder(organizationId));
+        if (!organizationIds.isEmpty()) {
+            // 親組織の数に比例して SQL を増やさない（IN 句で 1 本）。組織の並びは引数順、組織内は sortOrder 順。
+            Map<Long, List<ScheduleEventCategoryEntity>> byOrg = new java.util.HashMap<>();
+            for (ScheduleEventCategoryEntity c
+                    : categoryRepository.findByOrganizationIdInOrderBySortOrderAscIdAsc(organizationIds)) {
+                byOrg.computeIfAbsent(c.getOrganizationId(), k -> new ArrayList<>()).add(c);
+            }
+            for (Long organizationId : organizationIds) {
+                merged.addAll(byOrg.getOrDefault(organizationId, List.of()));
+            }
         }
         merged.addAll(categoryRepository.findByTeamIdOrderBySortOrder(teamId));
         return merged;
