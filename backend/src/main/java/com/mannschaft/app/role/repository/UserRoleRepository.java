@@ -2881,8 +2881,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("cursor") long cursor,
             @Param("limit") int limit);
 
-    // =================================================================
-
+    // ========================================================================
     // F01.2.1 4-B: 加盟チーム一覧・チーム所属組織一覧の人数を、行数に比例しない SQL 本数で数える
     // ========================================================================
 
@@ -2902,7 +2901,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             + "WHERE ur.organizationId IN :organizationIds GROUP BY ur.organizationId")
     List<ScopeMemberCountProjection> countGroupByOrganizationIdIn(
             @Param("organizationIds") Collection<Long> organizationIds);
-=======
+
     /**
      * 指定ユーザーが「チーム ADMIN、または当該チームの有効な権限グループで指定権限を付与されている」チームの ID を
      * <b>1 本の SQL で</b>返す（F01.2.1 §3.2・§10.3。申請フォームの myTeams と申請ボタン判定用）。
