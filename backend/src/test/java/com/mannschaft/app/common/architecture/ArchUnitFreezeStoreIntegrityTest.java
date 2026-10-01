@@ -729,8 +729,11 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 初回生成したストア（{@code 296295dd-06cf-4f7b-bf82-315ba12ff501}）を実測。
      * PR #3462 の main 追従で追加された27件を再凍結し、期待件数へ反映した。
      * PR #3447 の main 追従で追加された5件も同様に反映した。
+     * CMP-260923-0954 W2（認可をトランザクションの外のファサードへ）で ShiftSwapService 20 行・
+     * ShiftChangeRequestService 13 行（凍結済みの旧 private 認可ヘルパーを含む）・ShiftAutoAssignService 18 行、
+     * 計 51 行が解消し 7684→7633。origin/main のストアとの差分は「追加 0・削除 51（上記 3 サービスのキーのみ）」。
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7684;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7633;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
