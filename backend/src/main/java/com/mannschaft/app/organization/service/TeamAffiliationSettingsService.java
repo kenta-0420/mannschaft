@@ -11,6 +11,7 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.teamgroup.entity.OrgTeamGroupEntity;
 import com.mannschaft.app.organization.teamgroup.repository.OrgTeamGroupRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,8 +80,12 @@ public class TeamAffiliationSettingsService {
      *
      * <p>REQUIRED は「グループ機能 on かつ生存グループ1件以上」を満たすときだけ保存でき、満たさなければ
      * 422 {@code ORG_070} で何も変えない（§5.5）。</p>
+     *
+     * <p>{@code GET /organizations/{slug}} の応答（{@code teamApplication.enabled} を含む）は
+     * {@code org-detail} にキャッシュされるため、更新時に追い出す（兄弟の {@code updateOrganization} と同じ作法）。</p>
      */
     @Transactional
+    @CacheEvict(value = "org-detail", allEntries = true)
     public OrgAffiliationSnapshot updateSettings(Long organizationId, UpdateTeamAffiliationSettingsRequest req) {
         OrganizationEntity org = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
