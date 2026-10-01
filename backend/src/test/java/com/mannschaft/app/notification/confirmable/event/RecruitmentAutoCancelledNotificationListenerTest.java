@@ -108,15 +108,17 @@ class RecruitmentAutoCancelledNotificationListenerTest {
     }
 
     @Test
-    @DisplayName("ALIC-1: actionUrl に募集詳細ページ（/recruitment-listings/{listingId}）を設定する"
-            + "（受信箱から開いたとき FE 404 する /confirmations/{id} フォールバックを回避するため）")
-    void ALIC1_actionUrlは募集詳細ページを指す() {
+    @DisplayName("ALIC-1: actionUrl は /notifications を指す"
+            + "（AUTO_CANCELLED の募集は RecruitmentListingStatusMapper で ARCHIVED に写像され"
+            + "SystemAdmin 以外は /recruitment-listings/{id} へ到達できないため、"
+            + "ペナルティ通知と同じく受信者が開ける通知一覧へ誘導する）")
+    void ALIC1_actionUrlは通知一覧ページを指す() {
         listener.onAutoCancelled(new RecruitmentAutoCancelledNotificationEvent(
                 LISTING_ID, RecruitmentScopeType.TEAM, 77L, List.of(1L, 2L)));
 
         verify(confirmableNotificationService, times(1)).sendFromSource(
                 any(), any(), any(), any(), any(), any(), any(), any(),
-                eq("/recruitment-listings/" + LISTING_ID), any(), any());
+                eq("/notifications"), any(), any());
     }
 
     @Test
