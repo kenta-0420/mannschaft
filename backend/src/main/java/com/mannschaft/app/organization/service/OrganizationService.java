@@ -304,6 +304,17 @@ public class OrganizationService {
     }
 
     /**
+     * 公開組織ページ用: チームからの加盟申請を受け付けているかを返す横断 SPI（F01.2.1 §10.3）。
+     * 考え方は {@link #isTimelinePostsPublicBySlug(String)} と同じ（公開してよい組織だけを見る。
+     * 非公開・不在は false で、存在オラクルにならない）。
+     */
+    public boolean isAcceptingTeamApplicationsBySlug(String slug) {
+        return slug != null && organizationRepository.findPublicOrganizationBySlug(slug)
+                .map(org -> Boolean.TRUE.equals(org.getTeamApplicationEnabled()))
+                .orElse(false);
+    }
+
+    /**
      * 公開組織ページ用: イベントを未ログインに公開する設定かを返す横断 SPI。
      * 考え方は {@link #isTimelinePostsPublicBySlug(String)} と同じ。
      */
@@ -980,6 +991,8 @@ public class OrganizationService {
                         mediaUrlResolver.resolve(org.getBannerUrl())))
                 .timestamps(new OrganizationResponse.OrgTimestampsDto(
                         org.getArchivedAt(), org.getCreatedAt()))
+                .teamApplication(new OrganizationResponse.TeamApplicationDto(
+                        Boolean.TRUE.equals(org.getTeamApplicationEnabled())))
                 .build();
     }
 }

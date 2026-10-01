@@ -46,6 +46,7 @@ public class PublicOrganizationQueryService {
         // 公開設定（タブの出し分け）は organization ドメインの Service 経由で得る（Entity 参照を増やさない）。
         return PublicOrganizationResponse.from(org, philosophyVisible,
                 organizationService.isTimelinePostsPublicBySlug(slug),
-                organizationService.isPublicEventsEnabledBySlug(slug));
+                organizationService.isPublicEventsEnabledBySlug(slug),
+                organizationService.isAcceptingTeamApplicationsBySlug(slug));
     }
 }
