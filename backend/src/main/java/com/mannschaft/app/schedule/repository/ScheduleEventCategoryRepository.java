@@ -21,6 +21,13 @@ public interface ScheduleEventCategoryRepository extends JpaRepository<ScheduleE
     List<ScheduleEventCategoryEntity> findByOrganizationIdOrderBySortOrder(Long orgId);
 
     /**
+     * 複数の組織IDのカテゴリを一括取得する（sortOrder 昇順→id 昇順。組織ごとの並べ替えは呼び出し側で行う）。
+     * {@code orgIds} は非空であること。
+     */
+    List<ScheduleEventCategoryEntity> findByOrganizationIdInOrderBySortOrderAscIdAsc(
+            java.util.Collection<Long> orgIds);
+
+    /**
      * チーム内で同名カテゴリの存在を確認する。
      */
     boolean existsByTeamIdAndName(Long teamId, String name);

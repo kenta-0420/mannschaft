@@ -7,7 +7,7 @@ import com.mannschaft.app.shift.dto.AssignmentRunResponse;
 import com.mannschaft.app.shift.dto.AutoAssignRequest;
 import com.mannschaft.app.shift.dto.ConfirmAutoAssignRequest;
 import com.mannschaft.app.shift.dto.VisualReviewConfirmRequest;
-import com.mannschaft.app.shift.service.ShiftAutoAssignService;
+import com.mannschaft.app.shift.service.ShiftAutoAssignFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,7 +29,7 @@ import java.util.List;
  *
  * <p><b>認可（認可根治 Wave7）:</b> scope（チーム）はパス変数ではなくスケジュール／実行ログ実体から
  * 解決するため {@code @PreAuthorize} の SpEL では表現できない。真の強制点は
- * {@link ShiftAutoAssignService} 内（全 public 入口に per-scope 管理者認可）に置く。</p>
+ * {@link com.mannschaft.app.shift.service.ShiftAutoAssignFacade} 内（全 public 入口に per-scope 管理者認可。tx の外）に置く。</p>
  *
  * <p><b>機能フラグによる停止（F03.5 §11.1・戦役B-1）:</b> 時刻を見ない割当が二重割当を生むため、
  * {@code FEATURE_SHIFT_AUTO_ASSIGN_ENABLED} を既定 OFF で seed し、本クラスを
@@ -49,7 +49,7 @@ import java.util.List;
 @RequireFeature("FEATURE_SHIFT_AUTO_ASSIGN_ENABLED")
 public class ShiftAutoAssignController {
 
-    private final ShiftAutoAssignService autoAssignService;
+    private final ShiftAutoAssignFacade autoAssignFacade;
 
     /**
      * 自動割当を実行する。
@@ -60,7 +60,7 @@ public class ShiftAutoAssignController {
     public ResponseEntity<ApiResponse<AssignmentRunResponse>> runAutoAssign(
             @PathVariable Long scheduleId,
             @Valid @RequestBody AutoAssignRequest request) {
-        AssignmentRunResponse response = autoAssignService.runAutoAssign(
+        AssignmentRunResponse response = autoAssignFacade.runAutoAssign(
                 scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -74,7 +74,7 @@ public class ShiftAutoAssignController {
     public ResponseEntity<Void> confirmAutoAssign(
             @PathVariable Long scheduleId,
             @Valid @RequestBody ConfirmAutoAssignRequest request) {
-        autoAssignService.confirmAutoAssign(scheduleId, request, SecurityUtils.getCurrentUserId());
+        autoAssignFacade.confirmAutoAssign(scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 
@@ -87,7 +87,7 @@ public class ShiftAutoAssignController {
     public ResponseEntity<Void> revokeAutoAssign(
             @PathVariable Long scheduleId,
             @RequestBody Long runId) {
-        autoAssignService.revokeAutoAssign(scheduleId, runId, SecurityUtils.getCurrentUserId());
+        autoAssignFacade.revokeAutoAssign(scheduleId, runId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -100,7 +100,7 @@ public class ShiftAutoAssignController {
     public ResponseEntity<ApiResponse<List<AssignmentRunResponse>>> getAssignmentRuns(
             @PathVariable Long scheduleId) {
         List<AssignmentRunResponse> responses =
-                autoAssignService.getAssignmentRuns(scheduleId, SecurityUtils.getCurrentUserId());
+                autoAssignFacade.getAssignmentRuns(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -113,7 +113,7 @@ public class ShiftAutoAssignController {
     public ResponseEntity<ApiResponse<AssignmentRunResponse>> getAssignmentRunDetail(
             @PathVariable Long runId) {
         AssignmentRunResponse response =
-                autoAssignService.getAssignmentRunDetail(runId, SecurityUtils.getCurrentUserId());
+                autoAssignFacade.getAssignmentRunDetail(runId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -127,7 +127,7 @@ public class ShiftAutoAssignController {
             @PathVariable Long runId,
             @RequestBody(required = false) VisualReviewConfirmRequest request) {
         String note = request != null ? request.note() : null;
-        autoAssignService.confirmVisualReview(runId, note, SecurityUtils.getCurrentUserId());
+        autoAssignFacade.confirmVisualReview(runId, note, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 }
