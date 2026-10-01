@@ -3,6 +3,7 @@ package com.mannschaft.app.faq.controller;
 import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.faq.dto.PublicFaqResponse;
 import com.mannschaft.app.faq.service.PublicFaqQueryService;
+import com.mannschaft.app.publicview.service.PublicOrganizationQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +61,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PublicFaqController {
 
+    private final PublicOrganizationQueryService publicOrganizationQueryService;
     private final PublicFaqQueryService publicFaqQueryService;
 
     /**
@@ -84,13 +86,15 @@ public class PublicFaqController {
      * @param orgId 対象組織 ID
      * @return 回答済みFAQ（固定質問 displayOrder 昇順 → 自由質問 displayOrder 昇順）
      */
-    @GetMapping("/organizations/{orgId}/faqs")
+    @GetMapping("/organizations/{slug}/faqs")
     @Operation(
             summary = "組織の公開FAQ（未ログイン公開）",
             description = "PUBLIC 組織の回答済み FAQ を返す。固定質問（questionKey 非null・"
                     + "FE が i18n で質問文描画）を先頭に、続けて自由質問（questionText を保持）を返す。"
                     + " PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。")
-    public List<PublicFaqResponse> getOrganizationFaqs(@PathVariable Long orgId) {
+    public List<PublicFaqResponse> getOrganizationFaqs(@PathVariable String slug) {
+        // slug → 組織 ID。非公開・archived・削除済・不在は親 API と同じ PUBLIC_001（404）
+        Long orgId = publicOrganizationQueryService.getPublicOrganization(slug).id();
         return publicFaqQueryService.getPublicOrganizationFaqs(orgId);
     }
 }

@@ -129,6 +129,27 @@
           "step2": "送信完了を確認。※アンケートの設問・TODOの担当者は送信後に各画面で追加します"
         }
       }
-    }
+    },
+    "target_mode_all": "すべてのチーム",
+    "target_mode_teams": "チームを選ぶ",
+    "target_mode_groups": "チームグループで選ぶ",
+    "target_groups_label": "チームグループ",
+    "target_range_label": "範囲で選ぶ",
+    "target_range_up_to": "{name} 以前（並び順で先頭から）",
+    "target_range_from": "{name} 以降（並び順で末尾まで）",
+    "target_range_between": "{from} 〜 {to}",
+    "target_range_kind_up_to": "〜以前",
+    "target_range_kind_from": "〜以降",
+    "target_range_kind_between": "A〜B",
+    "target_include_unassigned": "未分類のチームを含める",
+    "target_direct_members_note": "組織の直属メンバー（どのチームにも属さない人）にも届きます",
+    "target_resolved_count": "該当: {teams} チーム＋直属メンバー {members} 人",
+    "target_resolved_empty": "該当する人がいません",
+    "target_order_hint": "並び順はチームグループ管理で変えられます",
+    "push_disabled_note": "このお知らせの push 通知は送られません",
+    "dynamic_display_note": "表示は現在の所属で判定されます（削除されたグループは送信時点の対象チームで判定）",
+    "template_deleted_groups_removed": "削除されたチームグループがテンプレートから除外されました",
+    "template_range_invalid": "テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください",
+    "audience_summary": "宛先: {label}（送信時 {count} チーム）"
   }
 }

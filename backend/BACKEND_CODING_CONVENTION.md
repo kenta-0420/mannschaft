@@ -192,6 +192,9 @@ main の実在例は `recruitment/dto/RecruitmentListingSearchRequest`）にす�
     - Service クラスのクラスレベルに `@Transactional(readOnly = true)` を付与する（デフォルトを読み取り専用にする）。
     - データの登録・更新・削除（CUD処理）を行うメソッドにのみ、個別に `@Transactional` を付与してオーバーライドする。
     - これにより、読み取り時のDB最適化（スレーブ参照、フラッシュ不要）が自動的に効く。
+    - **例外（他ドメインの権限確認・名前解決を読む Service）**: 他ドメインの権限確認（`AccessControlService` 等）や名前解決（`NameResolverService` 等）を読む Service には、**クラス単位の TX を付けない**。書き込みはメソッド単位の `@Transactional` を必ず持ち、**別の部品（書き込み専用 Bean）に分ける**（同じクラス内の自己呼び出しはプロキシを通らず TX が掛からないため）。クラス単位の readOnly TX を付けると、private メソッドを含む全メソッドが番人 D-3T（`CrossDomainTransactionalTransitiveArchTest`）の入口になり、権限確認が自ドメインの TX の中で走ってドメイン境界原則5に違反する。他ドメインへの監査記録などの副作用は、書き込み TX の中でイベントを発行し `@TransactionalEventListener(AFTER_COMMIT)` で記録する。
+        - なお `ReplicaRoutingAspect` はメソッドに付いた `@Transactional` しか見ないため、クラス単位の readOnly を外しても DB の振り分け先は変わらない。
+        - 実例: `member/service/MemberSubtabVisibilityService`（段取り役）＋ `MemberSubtabVisibilityWriter`（書き込み専用）、`TeamPageService`・`MemberProfileService`・`TeamPageSectionService`（PR #3387）、`billing/beta/MembershipQueryService`。構造は `MemberTransactionBoundaryTest` が固定している。
 * **テスト容易性**: 現在時刻や外部通信などの「変動要素」はモック化可能な設計にし、ユニットテストの実行を容易にしてください。
 
 ## 5. データアクセスと開発環境

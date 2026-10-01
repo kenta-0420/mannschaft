@@ -2473,6 +2473,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "SELECT DISTINCT ur.team_id FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
             "JOIN users u ON u.id = ur.user_id " +
+            "JOIN teams t ON t.id = ur.team_id AND t.deleted_at IS NULL " +
             "WHERE ur.user_id = :userId " +
             "AND ur.team_id IS NOT NULL " +
             "AND r.name IN ('ADMIN', 'DEPUTY_ADMIN') " +
@@ -2794,4 +2795,89 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "ORDER BY o.id ASC LIMIT :pageSize",
             nativeQuery = true)
     List<Long> findOrganizationIdsWithoutActiveAdminPage(@Param("afterId") long afterId, @Param("pageSize") int pageSize);
+
+    /**
+     * F01.2.1 §6.7: 組織 ADMIN（生存・ACTIVE のユーザーで、当該組織に在籍中）を user_id 昇順のキーセットで返す
+     * （fan-out 受信者ソース {@code ORGANIZATION_ADMINS} 用）。
+     *
+     * <p>ADMIN は {@code user_roles}（{@code V60.010} 以降も ADMIN / DEPUTY_ADMIN はこちらに残る）で判定し、
+     * 在籍は {@code memberships.left_at IS NULL} で確認する（退会済みなのに {@code user_roles} が残った人を
+     * 除外する。既存の権限保持者クエリと同条件）。子孫組織・配下チームへは展開しない。
+     * {@code CAST(... AS SIGNED)} で戻り値を {@code Long} に揃える。</p>
+     *
+     * @return {@code [user_id, locale]} を昇順に最大 limit 件
+     */
+    @Query(value =
+            "SELECT DISTINCT CAST(u.id AS SIGNED) AS uid, u.locale AS locale " +
+            "FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.organization_id = :organizationId AND r.name = 'ADMIN' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND ur.user_id > :cursor " +
+            "  AND EXISTS ( " +
+            "    SELECT 1 FROM memberships ms " +
+            "    WHERE ms.user_id = ur.user_id AND ms.scope_type = 'ORGANIZATION' " +
+            "      AND ms.scope_id = :organizationId AND ms.left_at IS NULL ) " +
+            "ORDER BY uid ASC LIMIT :limit",
+            nativeQuery = true)
+    List<Object[]> findOrganizationAdminUserIdsKeyset(
+            @Param("organizationId") long organizationId,
+            @Param("cursor") long cursor,
+            @Param("limit") int limit);
+
+    /**
+     * F01.2.1 §6.7: チームの加盟操作者（チーム ADMIN と、そのチームの有効な権限グループで
+     * {@code MANAGE_ORG_AFFILIATION} を付与された在籍者）を user_id 昇順のキーセットで返す
+     * （fan-out 受信者ソース {@code TEAM_AFFILIATION_OPS} 用）。
+     *
+     * <p><b>候補は {@code memberships}（在籍中）起点</b>: {@code V60.010} 以降、一般 MEMBER の在籍行は
+     * {@code memberships} 側にしか無い（{@code user_roles} 行が無い）ため、{@code user_roles} 起点だと
+     * 権限グループを付与された一般メンバーを取りこぼす。在籍（{@code left_at IS NULL}）を必須とすることで、
+     * 退会済みなのに {@code user_roles} や権限グループの割当が残った人も除外する
+     * （既存の権限保持者クエリ {@code findUserIdsWithPermissionInOrganization} と同じ作法）。
+     * ADMIN は {@code user_roles} で判定する。権限グループは論理削除されていない当該チームのもので、かつ
+     * {@code target_role} が利用者の実効ロール（ADMIN > DEPUTY_ADMIN > MEMBER。user_roles と memberships.role_kind から解決）と
+     * 一致する割当だけを数える。当該チームのものに限る
+     * （{@code @SQLRestriction} は native に効かないため {@code pg.deleted_at IS NULL} を明示）。</p>
+     *
+     * @return {@code [user_id, locale]} を昇順に最大 limit 件
+     */
+    @Query(value =
+            "SELECT DISTINCT CAST(u.id AS SIGNED) AS uid, u.locale AS locale " +
+            "FROM memberships ms " +
+            "JOIN users u ON u.id = ms.user_id " +
+            "WHERE ms.scope_type = 'TEAM' AND ms.scope_id = :teamId AND ms.left_at IS NULL " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND ms.user_id > :cursor " +
+            "  AND ( EXISTS ( " +
+            "      SELECT 1 FROM user_roles ur " +
+            "      JOIN roles r ON r.id = ur.role_id " +
+            "      WHERE ur.user_id = ms.user_id AND ur.team_id = :teamId AND r.name = 'ADMIN' ) " +
+            "    OR EXISTS ( " +
+            "      SELECT 1 FROM user_permission_groups upg " +
+            "      JOIN permission_groups pg ON pg.id = upg.group_id " +
+            "      JOIN permission_group_permissions pgp ON pgp.group_id = pg.id " +
+            "      JOIN permissions p ON p.id = pgp.permission_id " +
+            "      WHERE upg.user_id = ms.user_id AND pg.team_id = :teamId AND pg.deleted_at IS NULL " +
+            "        AND p.name = 'MANAGE_ORG_AFFILIATION' " +
+            // 権限グループは target_role が利用者の実効ロール（強いロール優先: ADMIN > DEPUTY_ADMIN > MEMBER）と
+            // 一致する割当だけを有効とする（RoleService.resolveEffectivePermissions と同じ扱い）。
+            "        AND pg.target_role = ( CASE " +
+            "          WHEN EXISTS ( SELECT 1 FROM user_roles ea " +
+            "            JOIN roles ear ON ear.id = ea.role_id " +
+            "            WHERE ea.user_id = ms.user_id AND ea.team_id = :teamId AND ear.name = 'ADMIN' ) THEN 'ADMIN' " +
+            "          WHEN EXISTS ( SELECT 1 FROM user_roles ed " +
+            "            JOIN roles edr ON edr.id = ed.role_id " +
+            "            WHERE ed.user_id = ms.user_id AND ed.team_id = :teamId AND edr.name = 'DEPUTY_ADMIN' ) THEN 'DEPUTY_ADMIN' " +
+            "          WHEN EXISTS ( SELECT 1 FROM memberships em " +
+            "            WHERE em.user_id = ms.user_id AND em.scope_type = 'TEAM' AND em.scope_id = :teamId " +
+            "              AND em.role_kind = 'MEMBER' AND em.left_at IS NULL ) THEN 'MEMBER' " +
+            "        END ) ) ) " +
+            "ORDER BY uid ASC LIMIT :limit",
+            nativeQuery = true)
+    List<Object[]> findTeamAffiliationOperatorUserIdsKeyset(
+            @Param("teamId") long teamId,
+            @Param("cursor") long cursor,
+            @Param("limit") int limit);
 }

@@ -19,6 +19,8 @@ import java.time.LocalDateTime;
  * @param scopeName スコープ名（チーム名 / 組織名）
  * @param scopeId   スコープ ID（チーム ID / 組織 ID の文字列表現、リンク生成用）
  * @param createdAt 投稿作成日時
+ * @param orgSlug   組織の公開ページ用 slug（scopeType = "ORGANIZATION" かつ組織が公開のときのみ。
+ *                  それ以外は null。組織の公開ページ URL は slug で作り、{@code scopeId} からは作らない）
  */
 public record PublicUserPostSummaryResponse(
         Long postId,
@@ -26,5 +28,12 @@ public record PublicUserPostSummaryResponse(
         String scopeType,
         String scopeName,
         String scopeId,
-        LocalDateTime createdAt
-) {}
+        LocalDateTime createdAt,
+        String orgSlug
+) {
+
+    /** 組織 slug を載せた複製を返す。 */
+    public PublicUserPostSummaryResponse withOrgSlug(String slug) {
+        return new PublicUserPostSummaryResponse(postId, title, scopeType, scopeName, scopeId, createdAt, slug);
+    }
+}

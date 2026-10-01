@@ -3,6 +3,7 @@ package com.mannschaft.app.publicview.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.publicview.dto.PublicOrganizationResponse;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><strong>IDOR 対策</strong>: PRIVATE / archived / 削除済 / 不在を区別せず
  * 一律 {@link PublicViewErrorCode#PUBLIC_001}（404 へ正規化）を返す。
- * リポジトリ層の {@link OrganizationRepository#findPublicOrganizationById} が
+ * リポジトリ層の {@link OrganizationRepository#findPublicOrganizationBySlug} が
  * これら全条件を満たした行のみ返すため、本サービスは結果の有無のみ判定する。</p>
  */
 @Service
@@ -27,20 +28,24 @@ import org.springframework.transaction.annotation.Transactional;
 public class PublicOrganizationQueryService {
 
     private final OrganizationRepository organizationRepository;
+    private final OrganizationService organizationService;
 
     /**
      * 公開組織の詳細を取得する。
      *
-     * @param organizationId 組織 ID
+     * @param slug 組織の slug（URL 識別子は slug に一本化。数値 ID は受けない）
      * @return 抑制版 DTO
      * @throws BusinessException PRIVATE / archived / 削除済 / 不在の場合
      *                           （{@link PublicViewErrorCode#PUBLIC_001}、404 へ正規化）
      */
-    public PublicOrganizationResponse getPublicOrganization(Long organizationId) {
-        OrganizationEntity org = organizationRepository.findPublicOrganizationById(organizationId)
+    public PublicOrganizationResponse getPublicOrganization(String slug) {
+        OrganizationEntity org = organizationRepository.findPublicOrganizationBySlug(slug)
                 .orElseThrow(() -> new BusinessException(PublicViewErrorCode.PUBLIC_001));
         boolean philosophyVisible = org.getProfileVisibility() != null
                 && org.getProfileVisibility().isPhilosophyVisible();
-        return PublicOrganizationResponse.from(org, philosophyVisible);
+        // 公開設定（タブの出し分け）は organization ドメインの Service 経由で得る（Entity 参照を増やさない）。
+        return PublicOrganizationResponse.from(org, philosophyVisible,
+                organizationService.isTimelinePostsPublicBySlug(slug),
+                organizationService.isPublicEventsEnabledBySlug(slug));
     }
 }
