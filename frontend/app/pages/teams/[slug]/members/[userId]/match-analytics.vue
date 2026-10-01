@@ -98,7 +98,7 @@ onMounted(load)
 
       <!-- 試合記録が無い -->
       <DashboardEmptyState
-        v-else-if="isEmpty"
+        v-else-if="!orgInvalid && isEmpty"
         icon="pi pi-chart-bar"
         :message="t('match.analytics.empty.member_no_matches')"
       />

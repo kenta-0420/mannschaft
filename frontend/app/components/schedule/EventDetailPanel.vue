@@ -66,7 +66,8 @@ const canRecordMatch = computed(() => props.scopeType === 'team' && !!props.scop
 const recordingMatch = ref(false)
 
 // 試合を作る組織: 予定が組織に属していればその組織。属していなければ、チームの親組織が複数のとき
-// セレクタで選ばせる（黙って代表親組織だけを使わない）。
+// 既定の組織を置かずセレクタで必ず選ばせる（選ぶまで作成できない。黙って代表親組織を使わない）。
+// ※ 現行の呼び出し元（calendar.vue 等）は event.organizationId を渡さないため、通常はこの経路になる。
 const matchOrganizations = ref<MatchOrgOption[]>([])
 const selectedOrgId = ref<number | null>(null)
 const matchOrgId = ref<number | null>(null)
@@ -74,11 +75,15 @@ const showOrgSelect = computed(
   () => canRecordMatch.value && props.event.organizationId == null && matchOrganizations.value.length > 1,
 )
 
+/** 親組織が複数・予定に組織が無い・まだ選んでいない: 選ぶまで作成できない。 */
+const needsOrgChoice = computed(() => showOrgSelect.value && selectedOrgId.value === null)
+
 async function loadMatchOrganizations(): Promise<void> {
   if (!canRecordMatch.value) return
   const ctx = await resolveContext(props.scopeId, { orgId: selectedOrgId.value })
   matchOrganizations.value = ctx?.organizations ?? []
-  matchOrgId.value = ctx?.orgId ?? null
+  // 選択が必要なうちは既定（代表親組織）を見せない（セレクタは未選択の表示になる）
+  matchOrgId.value = needsOrgChoice.value ? null : (ctx?.orgId ?? null)
 }
 
 function onSelectMatchOrg(id: number): void {
@@ -93,7 +98,7 @@ watch(() => props.scopeId, () => {
 })
 
 async function recordMatch(): Promise<void> {
-  if (!canRecordMatch.value || recordingMatch.value) return
+  if (!canRecordMatch.value || recordingMatch.value || needsOrgChoice.value) return
   recordingMatch.value = true
   try {
     // 予定の組織があればそれ、無ければセレクタの選択（未選択は代表親組織）
@@ -299,6 +304,7 @@ onMounted(async () => {
         size="small"
         class="w-full"
         :loading="recordingMatch"
+        :disabled="needsOrgChoice"
         @click="recordMatch"
       />
       <p class="mt-1 text-xs text-surface-400">{{ $t('match.entry.record_from_schedule_hint') }}</p>

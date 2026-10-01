@@ -10,9 +10,11 @@ import EventDetailPanel from '~/components/schedule/EventDetailPanel.vue'
  *   EDP-002: organization スコープ予定ではボタンを描画しない（他用途を壊さない）
  *   EDP-003: 既存 match があれば作成せず live を開く（二重起票防止）
  *   EDP-004: 既存が無ければプリフィルして作成 → live へ遷移
- *   EDP-005: 予定が組織に属していれば、その組織で試合を作り live に org を引き継ぐ（F01.2.1 §9.2 F3）
- *   EDP-006: 予定の組織がチームの親組織でなければ、代表親組織へ落とさず作成を止める
- *   EDP-007: 予定が組織を持たず親組織が複数なら、組織セレクタを出し、選んだ組織で作成する
+ *   EDP-005: 予定に組織が無く親組織が複数（実際の呼び出し元と同じ props＝organizationId 無し）なら、
+ *            既定を置かず、選ぶまで作成できない（F01.2.1 §9.2 F3）
+ *   EDP-006: セレクタで選んだ組織で試合を作り、live に org を引き継ぐ
+ *   EDP-007: 親組織が1つ（organizationId 無し）なら、その組織で作成できる
+ *   EDP-008: 予定の組織（organizationId）がチームの親組織でなければ、代表親組織へ落とさず作成を止める
  */
 
 const mockNavigate = vi.fn()
@@ -146,31 +148,57 @@ describe('EventDetailPanel.vue（入口④）', () => {
     })
   })
 
-  it('EDP-005: 予定が組織に属していれば、その組織で試合を作り live に org を引き継ぐ', async () => {
+  const MULTI_ORGS = [
+    { id: 11, slug: 'x', name: '組織X' },
+    { id: 22, slug: 'y', name: '組織Y' },
+  ]
+  // 実際の呼び出し元（calendar.vue）は organizationId を渡さない。選択が無ければ代表親組織 X(11) が既定になる BE 側の振る舞いを模す。
+  function multiParentContext(): void {
     mockResolveContext.mockImplementation(async (_slug: string, sel?: { orgId?: number | null }) => ({
       orgId: sel?.orgId ?? 11,
       orgInvalid: false,
       teamId: 42,
-      organizations: [
-        { id: 11, slug: 'x', name: '組織X' },
-        { id: 22, slug: 'y', name: '組織Y' },
-      ],
+      organizations: MULTI_ORGS,
     }))
+  }
+
+  it('EDP-005: 予定に組織が無く親組織が複数なら、選ぶまで作成できない（既定の代表親組織で作らない）', async () => {
+    multiParentContext()
     mockResolveBySchedule.mockResolvedValue(null)
     mockCreateMatch.mockResolvedValue({ id: 'm-new' })
 
     const wrapper = await mountSuspended(EventDetailPanel, {
-      props: {
-        event: { ...baseEvent(), organizationId: 22 },
-        scopeType: 'team',
-        scopeId: 'team-uuid',
-        canEdit: false,
-      },
+      props: { event: baseEvent(), scopeType: 'team', scopeId: 'team-uuid', canEdit: false },
     })
+    await new Promise((r) => setTimeout(r, 0))
+
+    // セレクタは出ていて、まだ何も選ばれていない
+    const select = wrapper.find('[data-testid="match-org-select"]')
+    expect(select.exists()).toBe(true)
+    expect((select.element as HTMLSelectElement).value).toBe('')
+    // 記録ボタンは無効で、押しても作成されない
+    const button = findRecordButton(wrapper)!
+    expect(button.attributes('disabled')).toBeDefined()
+    await button.trigger('click')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(mockCreateMatch).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('EDP-006: セレクタで選んだ組織で試合を作り、live に org を引き継ぐ', async () => {
+    multiParentContext()
+    mockResolveBySchedule.mockResolvedValue(null)
+    mockCreateMatch.mockResolvedValue({ id: 'm-new' })
+
+    const wrapper = await mountSuspended(EventDetailPanel, {
+      props: { event: baseEvent(), scopeType: 'team', scopeId: 'team-uuid', canEdit: false },
+    })
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.find('[data-testid="match-org-select"]').setValue('22')
+    await new Promise((r) => setTimeout(r, 0))
     await findRecordButton(wrapper)!.trigger('click')
     await new Promise((r) => setTimeout(r, 0))
 
-    expect(mockResolveContext).toHaveBeenCalledWith('team-uuid', { orgId: 22 })
     expect(mockCreateMatch).toHaveBeenCalledWith(22, 42, expect.anything())
     expect(mockNavigate).toHaveBeenCalledWith({
       path: '/teams/team-uuid/matches/m-new/live',
@@ -178,7 +206,28 @@ describe('EventDetailPanel.vue（入口④）', () => {
     })
   })
 
-  it('EDP-006: 予定の組織がチームの親組織でなければ、代表親組織へ落とさず作成を止める', async () => {
+  it('EDP-007: 親組織が1つ（organizationId 無し）なら、その組織で作成できる', async () => {
+    mockResolveContext.mockResolvedValue({
+      orgId: 7,
+      orgInvalid: false,
+      teamId: 42,
+      organizations: [{ id: 7, slug: 'x', name: '組織X' }],
+    })
+    mockResolveBySchedule.mockResolvedValue(null)
+    mockCreateMatch.mockResolvedValue({ id: 'm-new' })
+
+    const wrapper = await mountSuspended(EventDetailPanel, {
+      props: { event: baseEvent(), scopeType: 'team', scopeId: 'team-uuid', canEdit: false },
+    })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(wrapper.find('[data-testid="match-org-select"]').exists()).toBe(false)
+    await findRecordButton(wrapper)!.trigger('click')
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(mockCreateMatch).toHaveBeenCalledWith(7, 42, expect.anything())
+  })
+
+  it('EDP-008: 予定の組織がチームの親組織でなければ、代表親組織へ落とさず作成を止める', async () => {
     mockResolveContext.mockResolvedValue({
       orgId: null,
       orgInvalid: true,
@@ -197,41 +246,10 @@ describe('EventDetailPanel.vue（入口④）', () => {
     await findRecordButton(wrapper)!.trigger('click')
     await new Promise((r) => setTimeout(r, 0))
 
+    expect(mockResolveContext).toHaveBeenCalledWith('team-uuid', { orgId: 999 })
     expect(mockCreateMatch).not.toHaveBeenCalled()
     expect(mockResolveBySchedule).not.toHaveBeenCalled()
     expect(mockNavigate).not.toHaveBeenCalled()
-  })
-
-  it('EDP-007: 予定が組織を持たず親組織が複数なら、セレクタを出し、選んだ組織で作成する', async () => {
-    mockResolveContext.mockImplementation(async (_slug: string, sel?: { orgId?: number | null }) => ({
-      orgId: sel?.orgId ?? 11,
-      orgInvalid: false,
-      teamId: 42,
-      organizations: [
-        { id: 11, slug: 'x', name: '組織X' },
-        { id: 22, slug: 'y', name: '組織Y' },
-      ],
-    }))
-    mockResolveBySchedule.mockResolvedValue(null)
-    mockCreateMatch.mockResolvedValue({ id: 'm-new' })
-
-    const wrapper = await mountSuspended(EventDetailPanel, {
-      props: { event: baseEvent(), scopeType: 'team', scopeId: 'team-uuid', canEdit: false },
-    })
-    await new Promise((r) => setTimeout(r, 0))
-    const select = wrapper.find('[data-testid="match-org-select"]')
-    expect(select.exists()).toBe(true)
-
-    await select.setValue('22')
-    await new Promise((r) => setTimeout(r, 0))
-    await findRecordButton(wrapper)!.trigger('click')
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(mockCreateMatch).toHaveBeenCalledWith(22, 42, expect.anything())
-    expect(mockNavigate).toHaveBeenCalledWith({
-      path: '/teams/team-uuid/matches/m-new/live',
-      query: { org: '22' },
-    })
   })
 
   // 是正4【P2】: 個人予定は scheduleId=null で渡され、コメント欄自体が描画されないこと（設計書 §AC-17。

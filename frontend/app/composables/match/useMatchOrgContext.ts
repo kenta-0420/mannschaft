@@ -82,12 +82,12 @@ interface MyTeamItem {
 
 /**
  * URL クエリ `org`（文字列・配列）を解釈する。
- * 未指定（undefined・空）は null（＝代表親組織が既定）。数値は orgId。
- * 指定されたが数値でない値は INVALID_ORG（代表親組織へ落とさず「無効」として扱うため）。
+ * 未指定（undefined・null・空配列）だけが null（＝代表親組織が既定）。数値は orgId。
+ * 指定されたが数値でない値（`?org=` の空文字を含む）は INVALID_ORG（代表親組織へ落とさず「無効」として扱うため）。
  */
 export function parseOrgQuery(raw: unknown): number | typeof INVALID_ORG | null {
   const v = Array.isArray(raw) ? raw[0] : raw
-  if (v === undefined || v === null || v === '') return null
+  if (v === undefined || v === null) return null
   if (typeof v !== 'string' || !/^\d+$/.test(v)) return INVALID_ORG
   const n = Number(v)
   return Number.isSafeInteger(n) ? n : INVALID_ORG

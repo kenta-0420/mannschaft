@@ -79,7 +79,7 @@ onMounted(load)
 
       <!-- 試合記録が無い（空状態＋作成 CTA・§G.8） -->
       <div
-        v-else-if="isEmpty"
+        v-else-if="!orgInvalid && isEmpty"
         class="flex flex-col items-center gap-4 py-16 text-center text-surface-500"
       >
         <i class="pi pi-chart-bar text-5xl text-surface-300" />

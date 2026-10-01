@@ -281,12 +281,15 @@ describe('useMatchOrgContext', () => {
     expect(typeof result?.orgId).toBe('number')
   })
 
-  it('ORG-CTX-207: parseOrgQuery は未指定を null・数値を orgId・不正値を INVALID_ORG にする', () => {
+  it('ORG-CTX-207: parseOrgQuery は未指定だけ null・数値を orgId・不正値（空文字含む）を INVALID_ORG にする', () => {
     expect(parseOrgQuery('22')).toBe(22)
     expect(parseOrgQuery(['22', '33'])).toBe(22)
     expect(parseOrgQuery('abc')).toBe(INVALID_ORG)
     expect(parseOrgQuery('1e3')).toBe(INVALID_ORG)
-    expect(parseOrgQuery('')).toBeNull()
+    // `?org=`（空文字）は未指定ではなく不正値（代表親組織へ落とさない）
+    expect(parseOrgQuery('')).toBe(INVALID_ORG)
+    expect(parseOrgQuery([])).toBeNull()
+    expect(parseOrgQuery(null)).toBeNull()
     expect(parseOrgQuery(undefined)).toBeNull()
   })
 })
