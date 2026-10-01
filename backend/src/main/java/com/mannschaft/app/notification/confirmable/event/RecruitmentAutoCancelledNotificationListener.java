@@ -80,7 +80,7 @@ public class RecruitmentAutoCancelledNotificationListener {
                     "最小定員を達成できなかったため自動キャンセルされました",
                     ConfirmableNotificationPriority.URGENT,
                     LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE).plusHours(DEADLINE_HOURS),
-                    null,
+                    "/recruitment-listings/" + listingId,
                     SystemUsers.SYSTEM_USER_ID,
                     event.recipientUserIds());
         } catch (DataIntegrityViolationException e) {
