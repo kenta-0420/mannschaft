@@ -66,7 +66,7 @@ describe('DashboardScopeAccordion', () => {
     const wrapper = await mountAccordion([widget('future-widget')])
     const section = wrapper.get('[data-section-key="results-members"]')
 
-    expect(section.get('[data-widget-count="1"]').exists()).toBe(true)
+    expect(section.find('[data-widget-count="1"]').exists()).toBe(true)
     await section.get('button').trigger('click')
     expect(section.get('.rendered-widgets').text()).toBe('future-widget')
   })
