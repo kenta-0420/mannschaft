@@ -62,13 +62,10 @@ class ApiGateDeclarationGuardTest {
                                     //   従来どおり残っているため、この11本は純増分
                                     // + 価格改定の取り消し POST /price-revisions/{id}/cancel 1本（2026-09-24 御裁可）。
                                     //   @AlwaysReachable(GATE_CONTROL_PLANE) を宣言済みのため未宣言数は増えない（7|8）
-<<<<<<< HEAD
-                                    // + F01.2.1 2-B1 チームの加盟申請（TeamOrgApplicationController: 申請・申請中一覧・取下げの3本）。
-                                    //   チーム系コントローラの既存流儀に揃えて feature gate は未宣言（3|3）
-=======
                                     // + F01.2.1 部隊 4-A のチームグループ管理 OrgTeamGroupController 5本
                                     //   （一覧・作成・変更・削除・並び替え。認可は各 EP 本体の AccessControlService 直接呼び出し）
->>>>>>> origin/main
+                                    // + F01.2.1 2-B1 チームの加盟申請（TeamOrgApplicationController: 申請・申請中一覧・取下げの3本）。
+                                    //   チーム系コントローラの既存流儀に揃えて feature gate は未宣言（3|3）
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.STOMP).count())
                 .as("STOMP @MessageMapping の走査総数。Chat 2件と VillageLobbyPresence 3件")
                 .isEqualTo(5);
