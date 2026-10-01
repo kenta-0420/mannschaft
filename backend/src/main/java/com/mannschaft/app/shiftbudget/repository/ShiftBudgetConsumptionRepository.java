@@ -77,6 +77,34 @@ public interface ShiftBudgetConsumptionRepository
             nativeQuery = true)
     List<OrphanConsumptionShiftRow> findShiftsWithOrphanPlannedConsumptions(@Param("limit") int limit);
 
+    /**
+     * 指定シフトの、取消の対象になる PLANNED 消化を、計上先の割当・組織ごとに集計して返す。
+     *
+     * <p>F01.2.1 AC-G125: 取消（#15）・照合バッチ（#16）は、チームの親組織を再解決せず、
+     * 計上時に消化行が紐づけた割当（{@code allocation_id}）の組織を使う。消化行には organization_id の
+     * 列が無いため、割当を引いて得る（DDL は変えない）。取消の対象は {@code cancelAllForShift} と同じ
+     * PLANNED のみで、CANCELLED / CONFIRMED の古い行は含めない（今回の取消と無関係な組織を拾わない）。
+     * 取消<b>より前</b>に呼ぶこと（取消後は PLANNED でなくなり空になる）。</p>
+     */
+    @Query(value =
+            "SELECT a.id AS allocationId, a.organization_id AS organizationId, COUNT(*) AS plannedCount "
+                    + "FROM shift_budget_consumptions c "
+                    + "INNER JOIN shift_budget_allocations a ON a.id = c.allocation_id "
+                    + "WHERE c.shift_id = :shiftId AND c.status = 'PLANNED' AND c.deleted_at IS NULL "
+                    + "GROUP BY a.id, a.organization_id "
+                    + "ORDER BY a.id",
+            nativeQuery = true)
+    List<PlannedAllocationRow> findPlannedAllocationRowsByShiftId(@Param("shiftId") Long shiftId);
+
+    /** {@link #findPlannedAllocationRowsByShiftId(Long)} の射影。 */
+    interface PlannedAllocationRow {
+        Long getAllocationId();
+
+        Long getOrganizationId();
+
+        Long getPlannedCount();
+    }
+
     /** {@link #findShiftsWithOrphanPlannedConsumptions(int)} の射影。 */
     interface OrphanConsumptionShiftRow {
         Long getShiftId();
