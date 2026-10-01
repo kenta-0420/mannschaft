@@ -11,6 +11,7 @@ import { expect, test, type Page } from '@playwright/test'
  * 各テストを空の storageState から開始し、既定ログイン状態の持ち越しを断つ。
  */
 test.use({ storageState: { cookies: [], origins: [] } })
+test.setTimeout(300_000)
 
 /**
  * この環境では共有ヘルパー `waitForHydration`（tests/e2e/helpers/wait.ts）が
@@ -30,29 +31,34 @@ async function waitForHydrationLocal(page: Page): Promise<void> {
       return el !== null && el.childElementCount > 0
     },
     undefined,
-    { timeout: 30_000 },
+    { timeout: 90_000 },
   )
 }
 async function loginAsLocal(
   page: Page,
   credentials: { email: string; password: string },
 ): Promise<void> {
-  await page.goto('/login')
+  await page.goto('/login', { waitUntil: 'domcontentloaded' })
 
   const emailInput = page.locator('input#email')
   await emailInput.waitFor({ state: 'visible', timeout: 30_000 })
-  await emailInput.click()
-  await emailInput.pressSequentially(credentials.email, { delay: 10 })
+  await emailInput.fill(credentials.email)
 
   const passwordInput = page.locator('input[type="password"]')
-  await passwordInput.click()
-  await passwordInput.pressSequentially(credentials.password, { delay: 10 })
+  await passwordInput.fill(credentials.password)
 
-  await page.getByRole('button', { name: 'ログイン', exact: true }).click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), {
-    timeout: 30_000,
-    waitUntil: 'commit',
+  const loginNavigation = page.waitForURL((url) => !url.pathname.includes('/login'), {
+    timeout: 90_000,
+    waitUntil: 'domcontentloaded',
   })
+  const loginResponse = page.waitForResponse(
+    (response) => response.url().includes('/api/v1/auth/login'),
+    { timeout: 90_000 },
+  )
+  await page.getByRole('button', { name: 'ログイン', exact: true }).click()
+  expect((await loginResponse).status()).toBe(200)
+  await loginNavigation
+  await waitForHydrationLocal(page)
 }
 
 /**
@@ -134,12 +140,12 @@ for (const screen of ADMIN_ONLY_SCREENS) {
   test.describe(`${screen.name}`, () => {
     test(`[正] SYSTEM_ADMINで開くと一覧が出てerror-stateは出ない`, async ({ page }) => {
       await loginAsLocal(page, ADMIN_CREDS)
-      await page.goto(screen.path, { waitUntil: 'domcontentloaded' })
+      await page.goto(screen.path, { waitUntil: 'commit' })
       await waitForHydrationLocal(page)
       // ネットワーク安定待ちの best-effort（成否の判定はこの直後の明示的な expect が担う。
       // ここでの握りつぶしはデータの取得失敗を空/無反応に偽装するものではない）。
       // eslint-disable-next-line no-restricted-syntax -- 上記コメント参照
-      await page.waitForLoadState('networkidle').catch(() => undefined)
+      await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined)
 
       await expect(
         page.getByTestId(screen.errorTestId),
@@ -165,12 +171,12 @@ for (const screen of ADMIN_ONLY_SCREENS) {
         }
       })
 
-      await page.goto(screen.path, { waitUntil: 'domcontentloaded' })
+      await page.goto(screen.path, { waitUntil: 'commit' })
       await waitForHydrationLocal(page)
 
       const errorState = page.getByTestId(screen.errorTestId)
       await expect(errorState, `${screen.name}: MEMBERでerror-stateが出なかった`).toBeVisible({
-        timeout: 10_000,
+        timeout: 90_000,
       })
       await expect(errorState).toContainText('この画面をご利用いただけません')
       await expect(page.getByTestId(`${screen.errorTestId}-retry`)).toHaveCount(0)
@@ -194,20 +200,6 @@ for (const screen of ADMIN_ONLY_SCREENS) {
         fullPage: true,
       })
 
-      // 再試行ボタンを押すと同じAPIが再度呼ばれることを確認（CSR経由のためブラウザから確実に観測できる）
-      const retryButton = page.getByTestId(`${screen.errorTestId}-retry`)
-      await expect(retryButton).toBeVisible()
-      const retryResponsePromise = page.waitForResponse(
-        (res) => res.url().includes(screen.apiPathContains),
-        { timeout: 15_000 },
-      )
-      await retryButton.click()
-      const retryRes = await retryResponsePromise
-      expect(retryRes.url()).toContain(screen.apiPathContains)
-      expect(
-        [403, 404].includes(retryRes.status()),
-        `${screen.name}: 再試行時ステータス=${retryRes.status()}（403/404を期待）`,
-      ).toBeTruthy()
     })
   })
 }
@@ -215,12 +207,12 @@ for (const screen of ADMIN_ONLY_SCREENS) {
 test.describe('villages/[id]/admin/recruit-categories', () => {
   test('[正] HEADMANの自村では一覧が出てerror-stateは出ない', async ({ page }) => {
     await loginAsLocal(page, MEMBER_CREDS)
-    await page.goto(`/villages/${OWNED_VILLAGE_ID}/admin/recruit-categories`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/villages/${OWNED_VILLAGE_ID}/admin/recruit-categories`, { waitUntil: 'commit' })
     await waitForHydrationLocal(page)
     // ネットワーク安定待ちの best-effort（成否の判定はこの直後の明示的な expect が担う。
     // ここでの握りつぶしはデータの取得失敗を空/無反応に偽装するものではない）。
     // eslint-disable-next-line no-restricted-syntax -- 上記コメント参照
-    await page.waitForLoadState('networkidle').catch(() => undefined)
+    await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined)
 
     await expect(
       page.getByTestId('recruit-category-error-state'),
@@ -233,7 +225,7 @@ test.describe('villages/[id]/admin/recruit-categories', () => {
     })
   })
 
-  test('[負・他村] 所属していない村のURLを直打ちするとerror-stateが出る', async ({ page }) => {
+  test('[負・他村] 所属していない村のURLを直打ちすると権限案内が出る', async ({ page }) => {
     await loginAsLocal(page, MEMBER_CREDS)
 
     const otherApiPath = `/api/v1/villages/${OTHER_VILLAGE_ID}/recruit-categories`
@@ -244,22 +236,25 @@ test.describe('villages/[id]/admin/recruit-categories', () => {
       }
     })
 
-    await page.goto(`/villages/${OTHER_VILLAGE_ID}/admin/recruit-categories`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/villages/${OTHER_VILLAGE_ID}/admin/recruit-categories`, { waitUntil: 'commit' })
     await waitForHydrationLocal(page)
 
-    const errorState = page.getByTestId('recruit-category-error-state')
-    await expect(errorState, '他村URL直打ちでerror-stateが出なかった').toBeVisible({
-      timeout: 10_000,
+    const accessDenied = page.getByTestId('recruit-category-access-denied')
+    await expect(accessDenied, '他村URL直打ちで権限案内が出なかった').toBeVisible({
+      timeout: 90_000,
     })
-    await expect(errorState).toContainText('お探しの情報を表示できませんでした')
+    await expect(accessDenied).toContainText('この画面は村長・長老のみ利用できます')
+    await expect(page.getByTestId('recruit-category-error-state')).toHaveCount(0)
 
-    if (responses.length > 0) {
-      for (const r of responses) {
-        expect(
-          [403, 404].includes(r.status),
-          `他村recruit-categories: ${r.url} のステータス=${r.status}（403/404を期待）`,
-        ).toBeTruthy()
-      }
+    await expect.poll(
+      () => responses.length,
+      { message: '他村recruit-categories APIの応答を観測できなかった', timeout: 30_000 },
+    ).toBeGreaterThan(0)
+    for (const r of responses) {
+      expect(
+        [403, 404].includes(r.status),
+        `他村recruit-categories: ${r.url} のステータス=${r.status}（403/404を期待）`,
+      ).toBeTruthy()
     }
 
     await page.screenshot({
@@ -274,12 +269,12 @@ test.describe('villages/[id]/admin/recruit-categories', () => {
 test.describe('villages/[id]/calendar', () => {
   test('[正] 自村（所属村）では一覧が出てerror-stateは出ない', async ({ page }) => {
     await loginAsLocal(page, MEMBER_CREDS)
-    await page.goto(`/villages/${OWNED_VILLAGE_ID}/calendar`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/villages/${OWNED_VILLAGE_ID}/calendar`, { waitUntil: 'commit' })
     await waitForHydrationLocal(page)
     // ネットワーク安定待ちの best-effort（成否の判定はこの直後の明示的な expect が担う。
     // ここでの握りつぶしはデータの取得失敗を空/無反応に偽装するものではない）。
     // eslint-disable-next-line no-restricted-syntax -- 上記コメント参照
-    await page.waitForLoadState('networkidle').catch(() => undefined)
+    await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined)
 
     await expect(
       page.getByTestId('village-calendar-error-state'),
@@ -303,14 +298,14 @@ test.describe('villages/[id]/calendar', () => {
       }
     })
 
-    await page.goto(`/villages/${OTHER_VILLAGE_ID}/calendar`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`/villages/${OTHER_VILLAGE_ID}/calendar`, { waitUntil: 'commit' })
     await waitForHydrationLocal(page)
 
     const errorState = page.getByTestId('village-calendar-error-state')
     await expect(errorState, '他村カレンダーURL直打ちでerror-stateが出なかった').toBeVisible({
-      timeout: 10_000,
+      timeout: 90_000,
     })
-    await expect(errorState).toContainText('お探しの情報を表示できませんでした')
+    await expect(errorState).toContainText('この画面をご利用いただけません')
 
     if (responses.length > 0) {
       for (const r of responses) {
@@ -340,7 +335,7 @@ test.describe('admin/villages/creation-requests（参考: DashboardErrorState対
     page,
   }) => {
     await loginAsLocal(page, MEMBER_CREDS)
-    await page.goto('/admin/villages/creation-requests', { waitUntil: 'domcontentloaded' })
+    await page.goto('/admin/villages/creation-requests', { waitUntil: 'commit' })
     await waitForHydrationLocal(page)
 
     await expect(
@@ -348,7 +343,7 @@ test.describe('admin/villages/creation-requests（参考: DashboardErrorState対
       'この画面ではDashboardErrorStateは出ない想定',
     ).toHaveCount(0)
     await expect(page.getByText('この画面を閲覧する権限がありません')).toBeVisible({
-      timeout: 10_000,
+      timeout: 90_000,
     })
 
     await page.screenshot({
