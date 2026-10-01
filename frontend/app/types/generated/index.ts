@@ -115973,7 +115973,9 @@ export interface operations {
     calculateRequiredSlots: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-Id"?: number;
+            };
             path?: never;
             cookie?: never;
         };

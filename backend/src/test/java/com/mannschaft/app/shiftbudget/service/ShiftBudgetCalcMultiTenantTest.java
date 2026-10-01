@@ -38,7 +38,7 @@ import static org.mockito.Mockito.verify;
  * <p>設計書 §9.5 / §14.4 の検証:</p>
  * <ul>
  *   <li>組織 A の ADMIN が組織 B の team_id を URL 直叩き → TEAM_NOT_FOUND (404 IDOR 対策)
- *       <br>多テナント分離は {@code findOrganizationIdByTeamId} → 権限チェック (TEAM スコープ) の
+ *       <br>多テナント分離は {@code countTeamInOrganization} → 権限チェック (TEAM スコープ) の
  *       2 段階で担保する</li>
  *   <li>shift_hourly_rates の AVG 計算が、リクエストで指定した team_id 以外を混入しないこと
  *       <br>リポジトリクエリは {@code WHERE team_id = :teamId} で厳密に絞り込む</li>
@@ -85,8 +85,7 @@ class ShiftBudgetCalcMultiTenantTest {
     void 組織A_ADMIN_組織BチームID_TEAM_NOT_FOUND_IDOR対策404() {
         // arrange — TEAM_B は USER_A から見て権限上アクセス不可
         // 1. team_id 自体は他組織で存在するが、権限チェックが拒否するパターン
-        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_B))
-                .willReturn(Optional.of(2L));  // 組織 B
+        given(rateQueryRepository.countTeamInOrganization(TEAM_B, ORG_A)).willReturn(1L);
         // フィーチャーフラグは ON（doNothing デフォルト）
         // USER_A は TEAM_B での MANAGE_SHIFTS 権限なし
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
@@ -98,7 +97,7 @@ class ShiftBudgetCalcMultiTenantTest {
                 RateMode.MEMBER_AVG, null, null);
 
         // act + assert: 403 (権限エラー)
-        assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+        assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_A, req))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CommonErrorCode.COMMON_002);
 
@@ -110,8 +109,7 @@ class ShiftBudgetCalcMultiTenantTest {
     @DisplayName("組織A_ADMIN_自組織チームID_集計はteamId限定_他組織混入なし")
     void 組織A_ADMIN_自組織チームID_集計はteamId限定_他組織混入なし() {
         // arrange — 自組織チーム TEAM_A への正常アクセス
-        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_A))
-                .willReturn(Optional.of(ORG_A));
+        given(rateQueryRepository.countTeamInOrganization(TEAM_A, ORG_A)).willReturn(1L);
         given(aggregationService.aggregate(any(RequiredSlotsRequest.class)))
                 .willReturn(new HourlyRateAggregationService.AggregationResult(
                         new BigDecimal("1200"), List.of(), null));
@@ -121,11 +119,11 @@ class ShiftBudgetCalcMultiTenantTest {
                 RateMode.MEMBER_AVG, null, null);
 
         // act
-        calcService.calculateRequiredSlots(req);
+        calcService.calculateRequiredSlots(ORG_A, req);
 
         // assert
         // 1. 組織解決は teamId に対して呼ばれる
-        verify(rateQueryRepository).findOrganizationIdByTeamId(TEAM_A);
+        verify(rateQueryRepository).countTeamInOrganization(TEAM_A, ORG_A);
         // 2. フィーチャーフラグは ORG_A（解決済み組織）に対して呼ばれる
         verify(featureService).requireEnabled(ORG_A);
         // 3. 権限チェックは USER_A × TEAM_A × MANAGE_SHIFTS で呼ばれる
