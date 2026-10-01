@@ -39,6 +39,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
@@ -299,12 +300,14 @@ class ShiftTxFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest {
         CompletableFuture<Void> holder = holdScheduleLock(locked, release);
         try {
             assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
-            setAuth(outsiderId);
-            MvcResult result = assertTimeoutPreemptively(Duration.ofSeconds(8), () ->
-                    mockMvc.perform(post("/api/v1/shifts/schedules/{id}/auto-assign", scheduleId)
+            // assertTimeoutPreemptively は別スレッドで実行するため、認証はラムダの中で張る
+            MvcResult result = assertTimeoutPreemptively(Duration.ofSeconds(8), () -> {
+                setAuth(outsiderId);
+                return mockMvc.perform(post("/api/v1/shifts/schedules/{id}/auto-assign", scheduleId)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(Map.of("strategy", "GREEDY_V1"))))
-                            .andReturn());
+                            .andReturn();
+            });
             assertThat(result.getResponse().getStatus()).isEqualTo(404);
             assertThat((String) JsonPath.read(result.getResponse().getContentAsString(), "$.error.code"))
                     .isEqualTo(SCHEDULE_NOT_FOUND_CODE);
@@ -409,8 +412,15 @@ class ShiftTxFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest {
         assertThat((String) JsonPath.read(content, "$.error.message")).isEqualTo(SCHEDULE_NOT_FOUND_MESSAGE);
     }
 
+    /**
+     * 親スケジュールを論理削除してコミットする。フックは Gate（{@code @Transactional(readOnly=true)}）の呼び出しの中で
+     * 走るため、既存 tx に合流させず {@code REQUIRES_NEW} の別接続・別 tx で書く（合流すると readOnly の tx へ UPDATE
+     * してしまい 500 になる）。
+     */
     private void softDeleteSchedule() {
-        tx.executeWithoutResult(s -> em.createNativeQuery(
+        TransactionTemplate requiresNew = new TransactionTemplate(transactionManager);
+        requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        requiresNew.executeWithoutResult(s -> em.createNativeQuery(
                         "UPDATE shift_schedules SET deleted_at = NOW() WHERE id = :id")
                 .setParameter("id", scheduleId).executeUpdate());
     }

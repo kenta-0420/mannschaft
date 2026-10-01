@@ -236,7 +236,7 @@ public class ShiftSwapService {
      * 交代リクエストの scope（所属チーム ID と申請者 ID）。
      *
      * @param teamId      所属チーム ID（申請者本人の取消経路など、scope が不要なときは null）
-     * @param requesterId 申請者 ID（取消以外では使わない。取消の本人判定用）
+     * @param requesterId 申請者 ID（取消の Facade が操作者との同一性を見るために返す。それ以外の EP では参照しない）
      */
     public record SwapScope(Long teamId, Long requesterId) { }
 
