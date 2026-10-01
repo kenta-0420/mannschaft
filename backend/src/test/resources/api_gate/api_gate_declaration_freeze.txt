@@ -355,9 +355,11 @@ HTTP|com.mannschaft.app.onboarding.controller.OrgOnboardingProgressController|2|
 HTTP|com.mannschaft.app.onboarding.controller.OrgOnboardingTemplateController|2|2
 HTTP|com.mannschaft.app.onboarding.controller.TeamOnboardingProgressController|2|2
 HTTP|com.mannschaft.app.onboarding.controller.TeamOnboardingTemplateController|2|2
+HTTP|com.mannschaft.app.organization.controller.OrgAffiliationEligibilityController|0|1
 HTTP|com.mannschaft.app.organization.controller.OrgTeamApplicationController|0|3
 HTTP|com.mannschaft.app.organization.controller.OrganizationController|40|40
 HTTP|com.mannschaft.app.organization.controller.OrganizationExtendedProfileController|12|12
+HTTP|com.mannschaft.app.organization.controller.TeamAffiliationSettingsController|0|3
 HTTP|com.mannschaft.app.organization.teamgroup.controller.OrgTeamGroupController|5|5
 HTTP|com.mannschaft.app.parking.controller.OrgParkingApplicationController|6|6
 HTTP|com.mannschaft.app.parking.controller.OrgParkingListingController|7|7

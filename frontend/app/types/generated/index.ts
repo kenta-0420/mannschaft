@@ -3269,6 +3269,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{slug}/team-affiliation-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チーム加盟の申請受付・グループ設定の取得（組織 ADMIN。SYSTEM_ADMIN は閲覧のみ） */
+        get: operations["getSettings_9"];
+        /** チーム加盟の申請受付・グループ設定の更新（組織 ADMIN のみ。全項目の置き換え） */
+        put: operations["updateSettings_9"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{slug}/supporter-settings": {
         parameters: {
             query?: never;
@@ -3386,12 +3404,12 @@ export interface paths {
          * メンバーサブタブ可視性設定一覧
          * @description 指定組織の一覧／紹介サブタブの最低必要ロール一覧を取得する。非メンバーでもデフォルト値で 200。
          */
-        get: operations["getSettings_9"];
+        get: operations["getSettings_10"];
         /**
          * メンバーサブタブ可視性設定更新
          * @description 指定組織の一覧／紹介サブタブの最低必要ロールを一括更新する。ADMIN は無条件、DEPUTY_ADMIN は MEMBER_SUBTAB_VISIBILITY_MANAGE 権限保有時のみ可。一覧タブに PUBLIC を指定すると 422。
          */
-        put: operations["updateSettings_9"];
+        put: operations["updateSettings_10"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3480,9 +3498,9 @@ export interface paths {
             cookie?: never;
         };
         /** 組織駐車場設定取得 */
-        get: operations["getSettings_10"];
+        get: operations["getSettings_11"];
         /** 組織駐車場設定更新 */
-        put: operations["updateSettings_10"];
+        put: operations["updateSettings_11"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3590,9 +3608,9 @@ export interface paths {
             cookie?: never;
         };
         /** 施設予約設定取得 */
-        get: operations["getSettings_11"];
+        get: operations["getSettings_12"];
         /** 施設予約設定更新 */
-        put: operations["updateSettings_11"];
+        put: operations["updateSettings_12"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4329,9 +4347,9 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知設定取得（組織） */
-        get: operations["getSettings_12"];
+        get: operations["getSettings_13"];
         /** 確認通知設定更新（組織） */
-        put: operations["updateSettings_12"];
+        put: operations["updateSettings_13"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4483,9 +4501,9 @@ export interface paths {
             cookie?: never;
         };
         /** グローバル通知設定取得 */
-        get: operations["getSettings_13"];
+        get: operations["getSettings_14"];
         /** グローバル通知設定更新 */
-        put: operations["updateSettings_13"];
+        put: operations["updateSettings_14"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4650,9 +4668,9 @@ export interface paths {
             cookie?: never;
         };
         /** 想起通知設定取得 */
-        get: operations["getSettings_14"];
+        get: operations["getSettings_15"];
         /** 想起通知設定更新 */
-        put: operations["updateSettings_14"];
+        put: operations["updateSettings_15"];
         post?: never;
         delete?: never;
         options?: never;
@@ -16106,40 +16124,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{slug}/team-applications/{membershipId}/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 加盟申請の拒否（組織 ADMIN。30日の冷却または無期限ブロック） */
-        post: operations["reject_2"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{slug}/team-applications/{membershipId}/approve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 加盟申請の承認（組織 ADMIN。グループを確定する） */
-        post: operations["approve_4"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/organizations/{slug}/supporter-applications/{applicationId}/reject": {
         parameters: {
             query?: never;
@@ -17713,7 +17697,7 @@ export interface paths {
          * 受け入れ承認・配属
          * @description 受け入れ側 org ADMIN のみ。target_division_id セット・PLACED・participant 作成（REGISTERED）
          */
-        post: operations["approve_5"];
+        post: operations["approve_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18029,7 +18013,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 封緘解除申請の一次承認（申請者本人以外の MANAGE_SUCCESSION_UNSEAL または ADMIN） */
-        post: operations["approve_6"];
+        post: operations["approve_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18523,7 +18507,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 承認 */
-        post: operations["approve_7"];
+        post: operations["approve_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22405,7 +22389,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 拒否 */
-        post: operations["reject_3"];
+        post: operations["reject_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -24143,7 +24127,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 運営: 村作成申請を拒否 */
-        post: operations["reject_4"];
+        post: operations["reject_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -24160,7 +24144,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 運営: 村作成申請を承認 */
-        post: operations["approve_8"];
+        post: operations["approve_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -26032,7 +26016,7 @@ export interface paths {
             cookie?: never;
         };
         /** 予約設定（チームポリシー）取得 */
-        get: operations["getSettings_15"];
+        get: operations["getSettings_16"];
         put?: never;
         post?: never;
         delete?: never;
@@ -26157,14 +26141,14 @@ export interface paths {
             cookie?: never;
         };
         /** 設定取得 */
-        get: operations["getSettings_16"];
+        get: operations["getSettings_17"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 設定更新 */
-        patch: operations["updateSettings_15"];
+        patch: operations["updateSettings_16"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/queue/counters/{counterId}": {
@@ -26438,7 +26422,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チームサブリース承認 */
-        patch: operations["approve_9"];
+        patch: operations["approve_8"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/parking/spaces/{id}/maintenance": {
@@ -26506,7 +26490,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チーム申請拒否 */
-        patch: operations["reject_5"];
+        patch: operations["reject_4"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/parking/applications/{id}/approve": {
@@ -26523,7 +26507,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チーム申請承認 */
-        patch: operations["approve_10"];
+        patch: operations["approve_9"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/status": {
@@ -27179,14 +27163,14 @@ export interface paths {
             cookie?: never;
         };
         /** チームシフト設定取得（メンバー限定） */
-        get: operations["getSettings_17"];
+        get: operations["getSettings_18"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** チームシフト設定更新（ADMIN/DEPUTY のみ） */
-        patch: operations["updateSettings_16"];
+        patch: operations["updateSettings_17"];
         trace?: never;
     };
     "/api/v1/teams/{slug}/restore": {
@@ -27964,7 +27948,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["reject_6"];
+        patch: operations["reject_5"];
         trace?: never;
     };
     "/api/v1/system-admin/ad-creatives/{adId}/approve": {
@@ -27980,7 +27964,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["approve_11"];
+        patch: operations["approve_10"];
         trace?: never;
     };
     "/api/v1/system-admin/ad-campaigns-operational/{id}/unsuspend": {
@@ -28016,7 +28000,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["reject_7"];
+        patch: operations["reject_6"];
         trace?: never;
     };
     "/api/v1/system-admin/ad-campaigns-operational/{id}/approve": {
@@ -28032,7 +28016,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["approve_12"];
+        patch: operations["approve_11"];
         trace?: never;
     };
     "/api/v1/sync/conflicts/{id}/resolve": {
@@ -28268,7 +28252,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** スレッド開閉 */
-        patch: operations["updateSettings_17"];
+        patch: operations["updateSettings_18"];
         trace?: never;
     };
     "/api/v1/schedule-delegations/{delegationId}/reject": {
@@ -28288,7 +28272,7 @@ export interface paths {
          * 代理拒否
          * @description F03.10 §4.1: 代理人が代理を拒否する
          */
-        patch: operations["reject_8"];
+        patch: operations["reject_7"];
         trace?: never;
     };
     "/api/v1/schedule-delegations/{delegationId}/accept": {
@@ -29009,7 +28993,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 組織サブリース承認 */
-        patch: operations["approve_13"];
+        patch: operations["approve_12"];
         trace?: never;
     };
     "/api/v1/organizations/{organizationId}/parking/spaces/{id}/maintenance": {
@@ -29077,7 +29061,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 組織申請拒否 */
-        patch: operations["reject_9"];
+        patch: operations["reject_8"];
         trace?: never;
     };
     "/api/v1/organizations/{organizationId}/parking/applications/{id}/approve": {
@@ -29094,7 +29078,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 組織申請承認 */
-        patch: operations["approve_14"];
+        patch: operations["approve_13"];
         trace?: never;
     };
     "/api/v1/organizations/{organizationId}/facilities/bookings/{bookingId}": {
@@ -30306,7 +30290,7 @@ export interface paths {
          * 代理拒否
          * @description F03.10 §4.2: 代理人が代理を拒否する
          */
-        patch: operations["reject_10"];
+        patch: operations["reject_9"];
         trace?: never;
     };
     "/api/v1/event-delegations/{delegationId}/accept": {
@@ -30505,7 +30489,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チャンネル個人設定 */
-        patch: operations["updateSettings_18"];
+        patch: operations["updateSettings_19"];
         trace?: never;
     };
     "/api/v1/chat/channels/{channelId}/members/{userId}/role": {
@@ -31066,7 +31050,7 @@ export interface paths {
             cookie?: never;
         };
         /** 発行者設定取得 */
-        get: operations["getSettings_18"];
+        get: operations["getSettings_19"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31304,14 +31288,14 @@ export interface paths {
             cookie?: never;
         };
         /** 行動メモ設定取得 */
-        get: operations["getSettings_19"];
+        get: operations["getSettings_20"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 行動メモ設定更新 */
-        patch: operations["updateSettings_19"];
+        patch: operations["updateSettings_20"];
         trace?: never;
     };
     "/sitemap.xml": {
@@ -36575,7 +36559,7 @@ export interface paths {
             cookie?: never;
         };
         /** モデレーション設定一覧取得 */
-        get: operations["getSettings_20"];
+        get: operations["getSettings_21"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39144,7 +39128,7 @@ export interface paths {
         };
         /**
          * 公開組織検索
-         * @description 未ログインでも実行可能。keyword / prefecture でフィルタリングし、最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。visibility=PUBLIC かつ未 archive / 未削除の組織のみ返す。
+         * @description 未ログインでも実行可能。keyword / prefecture でフィルタリングし、最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。visibility=PUBLIC かつ未 archive / 未削除の組織のみ返す。acceptingTeamApplications=true でチーム加盟を受付中の組織だけに絞る。
          */
         get: operations["searchOrganizations"];
         put?: never;
@@ -39695,15 +39679,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{slug}/team-applications": {
+    "/api/v1/organizations/{slug}/team-application-form": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** 受信した加盟申請の一覧（組織 ADMIN） */
-        get: operations["listApplications_2"];
+        /** チーム加盟の申請フォームの内容（認証済み・組織が見えること） */
+        get: operations["getApplicationForm"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42774,6 +42758,23 @@ export interface paths {
         };
         /** 所属組織のプロジェクト集約 */
         get: operations["listMyOrgProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/org-affiliation-eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織へのチーム加盟申請ボタンを出すか（常に 200。理由は区別しない） */
+        get: operations["eligibility"];
         put?: never;
         post?: never;
         delete?: never;
@@ -53718,6 +53719,27 @@ export interface components {
             /** Format: int64 */
             teamCount?: number;
         };
+        UpdateTeamAffiliationSettingsRequest: {
+            /** @enum {string} */
+            applicationGroupMode: "OFF" | "OPTIONAL" | "REQUIRED";
+            applicationGuidance?: string;
+            teamApplicationEnabled: boolean;
+            teamGroupsEnabled: boolean;
+        };
+        ApiResponseTeamAffiliationSettingsResponse: {
+            data?: components["schemas"]["TeamAffiliationSettingsResponse"];
+        };
+        TeamAffiliationSettingsResponse: {
+            /** @enum {string} */
+            applicationGroupMode?: "OFF" | "OPTIONAL" | "REQUIRED";
+            applicationGuidance?: string;
+            /** @enum {string} */
+            effectiveApplicationGroupMode?: "OFF" | "OPTIONAL" | "REQUIRED";
+            /** Format: int64 */
+            pendingApplicationCount?: number;
+            teamApplicationEnabled?: boolean;
+            teamGroupsEnabled?: boolean;
+        };
         ApiResponseOrganizationResponse: {
             data?: components["schemas"]["OrganizationResponse"];
         };
@@ -53764,8 +53786,12 @@ export interface components {
             /** Format: int64 */
             numericId?: number;
             slug?: string;
+            teamApplication?: components["schemas"]["TeamApplicationDto"];
             timestamps?: components["schemas"]["OrgTimestampsDto"];
             visibility?: components["schemas"]["OrgVisibilityDto"];
+        };
+        TeamApplicationDto: {
+            enabled?: boolean;
         };
         ReorderRequest: {
             orders?: components["schemas"]["OrderItem"][];
@@ -64391,26 +64417,6 @@ export interface components {
         };
         ApiResponseOrgTeamGroupResponse: {
             data?: components["schemas"]["OrgTeamGroupResponse"];
-        };
-        RejectTeamApplicationRequest: {
-            block?: boolean;
-            reason?: string;
-        };
-        ApiResponseRejectTeamApplicationResponse: {
-            data?: components["schemas"]["RejectTeamApplicationResponse"];
-        };
-        ApplicationRestriction: {
-            kind?: string;
-            /** Format: date-time */
-            restrictedUntil?: string;
-        };
-        RejectTeamApplicationResponse: {
-            restriction?: components["schemas"]["ApplicationRestriction"];
-        };
-        ApproveTeamApplicationRequest: {
-            /** Format: uuid */
-            groupId?: string;
-            overrideGroup?: boolean;
         };
         CreateOfficerRequest: {
             is_visible?: boolean;
@@ -77785,6 +77791,7 @@ export interface components {
             totalUsers?: number;
         };
         PublicOrganizationResponse: {
+            acceptingTeamApplications?: boolean;
             bannerUrl?: string;
             city?: string;
             /** Format: date */
@@ -77949,6 +77956,7 @@ export interface components {
             totalPages?: number;
         };
         PublicOrganizationSearchResultResponse: {
+            acceptingTeamApplications?: boolean;
             iconUrl?: string;
             /** Format: int64 */
             id?: number;
@@ -78441,6 +78449,33 @@ export interface components {
             name?: string;
             slug?: string;
             visibility?: string;
+        };
+        ApiResponseTeamApplicationFormResponse: {
+            data?: components["schemas"]["TeamApplicationFormResponse"];
+        };
+        GroupOption: {
+            description?: string;
+            id?: string;
+            name?: string;
+        };
+        MyTeam: {
+            affiliationStatus?: string;
+            iconUrl?: string;
+            name?: string;
+            slug?: string;
+        };
+        OrganizationRef: {
+            iconUrl?: string;
+            name?: string;
+            slug?: string;
+        };
+        TeamApplicationFormResponse: {
+            /** @enum {string} */
+            groupMode?: "OFF" | "OPTIONAL" | "REQUIRED";
+            groups?: components["schemas"]["GroupOption"][];
+            guidance?: string;
+            myTeams?: components["schemas"]["MyTeam"][];
+            organization?: components["schemas"]["OrganizationRef"];
         };
         ApiResponseListOfficerResponse: {
             data?: components["schemas"]["OfficerResponse"][];
@@ -80041,6 +80076,12 @@ export interface components {
         PagedResponseOrgProjectSummaryResponse: {
             data?: components["schemas"]["OrgProjectSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponseOrgAffiliationEligibilityResponse: {
+            data?: components["schemas"]["OrgAffiliationEligibilityResponse"];
+        };
+        OrgAffiliationEligibilityResponse: {
+            canApply?: boolean;
         };
         PagedResponsePersonalMarketListingSummaryResponse: {
             data?: components["schemas"]["PersonalMarketListingSummaryResponse"][];
@@ -91958,6 +91999,108 @@ export interface operations {
             };
         };
     };
+    getSettings_9: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description 組織は見えるが ADMIN ではない（COMMON_002） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description 組織が存在しない・見えない（どちらも ORG_001。区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+        };
+    };
+    updateSettings_9: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTeamAffiliationSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功（GET と同じ形） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description 入力不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description 組織は見えるが ADMIN ではない（SYSTEM_ADMIN を含む。COMMON_002） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description 組織が存在しない・見えない（どちらも ORG_001。区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description REQUIRED の保存条件（グループ機能 on・生存グループ1件以上）を満たさない（ORG_070） */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+        };
+    };
     getSupporterSettings_1: {
         parameters: {
             query?: never;
@@ -92202,7 +92345,7 @@ export interface operations {
             };
         };
     };
-    getSettings_9: {
+    getSettings_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -92224,7 +92367,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_9: {
+    updateSettings_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -92464,7 +92607,7 @@ export interface operations {
             };
         };
     };
-    getSettings_10: {
+    getSettings_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -92486,7 +92629,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_10: {
+    updateSettings_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -92804,7 +92947,7 @@ export interface operations {
             };
         };
     };
-    getSettings_11: {
+    getSettings_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -92826,7 +92969,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_11: {
+    updateSettings_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -95047,7 +95190,7 @@ export interface operations {
             };
         };
     };
-    getSettings_12: {
+    getSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -95069,7 +95212,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_12: {
+    updateSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -95453,7 +95596,7 @@ export interface operations {
             };
         };
     };
-    getSettings_13: {
+    getSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -95473,7 +95616,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_13: {
+    updateSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -95848,7 +95991,7 @@ export interface operations {
             };
         };
     };
-    getSettings_14: {
+    getSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -95868,7 +96011,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_14: {
+    updateSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -118605,132 +118748,6 @@ export interface operations {
             };
         };
     };
-    reject_2: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-                membershipId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["RejectTeamApplicationRequest"];
-            };
-        };
-        responses: {
-            /** @description 拒否成功（記録した制限） */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseRejectTeamApplicationResponse"];
-                };
-            };
-            /** @description 理由が500文字を超える */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseRejectTeamApplicationResponse"];
-                };
-            };
-            /** @description 組織 ADMIN ではない */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseRejectTeamApplicationResponse"];
-                };
-            };
-            /** @description ORG_001: 組織が見つからない / TEAM_070: 申請が見つからない（他組織の ID・処理済みも同じ） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseRejectTeamApplicationResponse"];
-                };
-            };
-            /** @description TEAM_071（既に処理済み） */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseRejectTeamApplicationResponse"];
-                };
-            };
-        };
-    };
-    approve_4: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-                membershipId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApproveTeamApplicationRequest"];
-            };
-        };
-        responses: {
-            /** @description 承認成功（ACTIVE の加盟） */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
-                };
-            };
-            /** @description overrideGroup が無い / TEAM_072（指定したグループが選択できない） */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
-                };
-            };
-            /** @description 組織 ADMIN ではない */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
-                };
-            };
-            /** @description ORG_001: 組織が見つからない / TEAM_070: 申請が見つからない（他組織の ID・処理済みも同じ） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
-                };
-            };
-            /** @description TEAM_071（既に処理済み）/ 組織・チームがアーカイブ済み */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
-                };
-            };
-        };
-    };
     rejectSupporterApplication_1: {
         parameters: {
             query?: never;
@@ -121929,7 +121946,7 @@ export interface operations {
             };
         };
     };
-    approve_5: {
+    approve_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -122628,7 +122645,7 @@ export interface operations {
             };
         };
     };
-    approve_6: {
+    approve_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -123619,7 +123636,7 @@ export interface operations {
             };
         };
     };
-    approve_7: {
+    approve_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -130735,7 +130752,7 @@ export interface operations {
             };
         };
     };
-    reject_3: {
+    reject_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -133697,7 +133714,7 @@ export interface operations {
             };
         };
     };
-    reject_4: {
+    reject_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -133723,7 +133740,7 @@ export interface operations {
             };
         };
     };
-    approve_8: {
+    approve_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -137449,7 +137466,7 @@ export interface operations {
             };
         };
     };
-    getSettings_15: {
+    getSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -137766,7 +137783,7 @@ export interface operations {
             };
         };
     };
-    getSettings_16: {
+    getSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -137788,7 +137805,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_15: {
+    updateSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -138229,7 +138246,7 @@ export interface operations {
             };
         };
     };
-    approve_9: {
+    approve_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -138333,7 +138350,7 @@ export interface operations {
             };
         };
     };
-    reject_5: {
+    reject_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -138360,7 +138377,7 @@ export interface operations {
             };
         };
     };
-    approve_10: {
+    approve_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -139807,7 +139824,7 @@ export interface operations {
             };
         };
     };
-    getSettings_17: {
+    getSettings_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -139838,7 +139855,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_16: {
+    updateSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -141230,7 +141247,7 @@ export interface operations {
             };
         };
     };
-    reject_6: {
+    reject_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -141252,7 +141269,7 @@ export interface operations {
             };
         };
     };
-    approve_11: {
+    approve_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -141296,7 +141313,7 @@ export interface operations {
             };
         };
     };
-    reject_7: {
+    reject_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -141322,7 +141339,7 @@ export interface operations {
             };
         };
     };
-    approve_12: {
+    approve_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -141849,7 +141866,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_17: {
+    updateSettings_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -141875,7 +141892,7 @@ export interface operations {
             };
         };
     };
-    reject_8: {
+    reject_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -143237,7 +143254,7 @@ export interface operations {
             };
         };
     };
-    approve_13: {
+    approve_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -143341,7 +143358,7 @@ export interface operations {
             };
         };
     };
-    reject_9: {
+    reject_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -143368,7 +143385,7 @@ export interface operations {
             };
         };
     };
-    approve_14: {
+    approve_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -146087,7 +146104,7 @@ export interface operations {
             };
         };
     };
-    reject_10: {
+    reject_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -146524,7 +146541,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_18: {
+    updateSettings_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -147546,7 +147563,7 @@ export interface operations {
             };
         };
     };
-    getSettings_18: {
+    getSettings_19: {
         parameters: {
             query: {
                 scopeType: string;
@@ -147979,7 +147996,7 @@ export interface operations {
             };
         };
     };
-    getSettings_19: {
+    getSettings_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -147999,7 +148016,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_19: {
+    updateSettings_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -155364,7 +155381,7 @@ export interface operations {
             };
         };
     };
-    getSettings_20: {
+    getSettings_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -158819,6 +158836,7 @@ export interface operations {
             query: {
                 keyword?: string;
                 prefecture?: string;
+                acceptingTeamApplications?: boolean;
                 pageable: components["schemas"]["Pageable"];
             };
             header?: never;
@@ -159550,13 +159568,9 @@ export interface operations {
             };
         };
     };
-    listApplications_2: {
+    getApplicationForm: {
         parameters: {
-            query?: {
-                teamGroupId?: string;
-                page?: number;
-                size?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 slug: string;
@@ -159565,31 +159579,31 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 取得成功（申請日時の降順） */
+            /** @description 取得成功 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationResponse"];
+                    "*/*": components["schemas"]["ApiResponseTeamApplicationFormResponse"];
                 };
             };
-            /** @description 組織 ADMIN ではない */
+            /** @description 受付 off（TEAM_064） */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationResponse"];
+                    "*/*": components["schemas"]["ApiResponseTeamApplicationFormResponse"];
                 };
             };
-            /** @description ORG_001: 組織が見つからない */
+            /** @description 組織が存在しない・見えない（どちらも ORG_001。区別しない） */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationResponse"];
+                    "*/*": components["schemas"]["ApiResponseTeamApplicationFormResponse"];
                 };
             };
         };
@@ -163869,6 +163883,37 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PagedResponseOrgProjectSummaryResponse"];
+                };
+            };
+        };
+    };
+    eligibility: {
+        parameters: {
+            query: {
+                organizationSlug: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 判定結果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrgAffiliationEligibilityResponse"];
+                };
+            };
+            /** @description レートリミット超過 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrgAffiliationEligibilityResponse"];
                 };
             };
         };
