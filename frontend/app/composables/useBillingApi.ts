@@ -113,7 +113,8 @@ export interface BillingTaxCodeResponse {
   id: string
   code: string
   displayName: string
-  stripeTaxCode: string
+  /** Stripe 側税コード（`txcd_` + 数字8桁）。未設定は null（BE は null 許容）。 */
+  stripeTaxCode: string | null
   rateBasisPoints: number
   validFrom: string
   validUntil?: string | null
@@ -124,7 +125,8 @@ export interface BillingTaxCodeCreateRequest {
   code: string
   displayName: string
   rateBasisPoints: number
-  stripeTaxCode: string
+  /** Stripe 側税コード（`txcd_` + 数字8桁）。未設定は null。 */
+  stripeTaxCode: string | null
   validFrom: string
   validUntil?: string | null
   enabled: boolean
@@ -132,7 +134,7 @@ export interface BillingTaxCodeCreateRequest {
 
 export interface BillingTaxCodeUpdateRequest {
   displayName: string
-  stripeTaxCode: string
+  stripeTaxCode: string | null
   validUntil?: string | null
   enabled: boolean
 }

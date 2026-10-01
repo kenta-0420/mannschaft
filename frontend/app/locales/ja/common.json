@@ -1646,6 +1646,7 @@
     "search": "検索",
     "edit": "編集",
     "save": "保存",
+    "detail": "詳細",
     "resume": {
       "title": "履歴書・職務経歴書",
       "listTitle": "履歴書バージョン一覧",
@@ -1936,6 +1937,7 @@
       "gdprPurge": "GDPR パージ状況",
       "feedbackInbox": "目安箱（全体）",
       "billing": "課金マスタ管理",
+      "priceRevisions": "価格改定",
       "betaPerks": "ベータ特典管理",
       "villageCreationRequests": "村作成申請",
       "seasonalWallpapers": "季節壁紙",
@@ -2710,7 +2712,28 @@
     }
   },
   "loadErrorState": {
-    "message": "データの取得に失敗しました",
+    "states": {
+      "generic": {
+        "title": "ただいまデータを読み込めません",
+        "message": "一時的な問題の可能性があります。少し時間をおいて、もう一度お試しください。"
+      },
+      "forbidden": {
+        "title": "この画面をご利用いただけません",
+        "message": "現在のアカウントでは表示できない画面です。必要な場合は管理者へご確認ください。"
+      },
+      "notFoundOrForbidden": {
+        "title": "お探しの情報を表示できませんでした",
+        "message": "情報が見つからないか、表示できる範囲が変更された可能性があります。"
+      },
+      "network": {
+        "title": "通信がうまくいかなかったようです",
+        "message": "インターネット接続を確認して、もう一度お試しください。"
+      },
+      "server": {
+        "title": "ただいまデータを読み込めません",
+        "message": "一時的な問題の可能性があります。少し時間をおいて、もう一度お試しください。"
+      }
+    },
     "retry": "再試行"
   },
   "searchBar": {

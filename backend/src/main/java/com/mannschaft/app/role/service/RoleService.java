@@ -105,12 +105,43 @@ public class RoleService {
      * @param actorUserId 操作者ユーザー ID
      * @throws BusinessException 操作者が ADMIN/DEPUTY_ADMIN でない場合（COMMON_002）
      */
+    private void requireActorScopeAdminOnly(Long scopeId, String scopeType, Long actorUserId) {
+        // checkScopeAdminOnly と同じ意味: SYSTEM_ADMIN（監査 read-only）は兼任でも無条件拒否。
+        // AccessControlService#isSystemAdmin と同じ下位層の判定（existsSystemAdminByUserId）を使う。
+        boolean systemAdmin = userRoleRepository.existsSystemAdminByUserId(actorUserId) > 0;
+        boolean isAdmin = !systemAdmin && userRoleRepository.isActiveUser(actorUserId)
+                && findUserRole(actorUserId, scopeId, scopeType)
+                .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
+                .map(RoleEntity::getName)
+                .filter("ADMIN"::equals)
+                .isPresent();
+        if (!isAdmin) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
     private void requireActorAdmin(Long scopeId, String scopeType, Long actorUserId) {
         boolean isAdmin = userRoleRepository.isActiveUser(actorUserId)
                 && findUserRole(actorUserId, scopeId, scopeType)
                 .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
                 .map(RoleEntity::getName)
                 .filter(ADMIN_ROLE_NAMES::contains)
+                .isPresent();
+        if (!isAdmin) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * ADMIN への昇格、および ADMIN ロールを別ロールへ変える操作は、当該スコープの ADMIN だけに限定する。
+     * DEPUTY_ADMIN は 403（COMMON_002）。{@link #requireActorAdmin} を通過した後の追加ゲートとして
+     * 各 public 入口（assignRole / changeRole）から呼ぶ。
+     */
+    private void requireActorIsScopeAdmin(Long scopeId, String scopeType, Long actorUserId) {
+        boolean isAdmin = findUserRole(actorUserId, scopeId, scopeType)
+                .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
+                .map(RoleEntity::getName)
+                .filter("ADMIN"::equals)
                 .isPresent();
         if (!isAdmin) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
@@ -147,6 +178,7 @@ public class RoleService {
             boolean existingAdmin = isAdminRole(existing);
             boolean assignedAdmin = "ADMIN".equals(assignedRole.getName());
             if (existingAdmin || assignedAdmin) {
+                requireActorIsScopeAdmin(scopeId, scopeType, grantedBy);
                 List<Long> lockedAdminUserIds =
                         adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
                 if (existingAdmin && !assignedAdmin) {
@@ -156,6 +188,7 @@ public class RoleService {
             userRoleRepository.delete(existing);
             userRoleRepository.flush();
         } else if ("ADMIN".equals(assignedRole.getName())) {
+            requireActorIsScopeAdmin(scopeId, scopeType, grantedBy);
             adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
         }
 
@@ -236,16 +269,22 @@ public class RoleService {
         // 束1 権限昇格根治（Service 層二重防御）: 操作者が当該スコープの ADMIN/DEPUTY_ADMIN であることを要求。
         requireActorAdmin(scopeId, scopeType, changedBy);
 
-        UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
-                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
-
         // 新ロール存在確認
         RoleEntity requestedRole = roleRepository.findById(req.getRoleId())
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+        boolean requestedAdmin = "ADMIN".equals(requestedRole.getName());
+        if (requestedAdmin) {
+            // ADMIN への昇格は当該スコープの ADMIN のみ（DEPUTY_ADMIN は 403）。対象の在籍有無に依らず先に弾く。
+            requireActorIsScopeAdmin(scopeId, scopeType, changedBy);
+        }
+
+        UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
         boolean currentAdmin = isAdminRole(current);
-        boolean requestedAdmin = "ADMIN".equals(requestedRole.getName());
         if (currentAdmin || requestedAdmin) {
+            // ADMIN の降格は当該スコープの ADMIN のみ（DEPUTY_ADMIN は 403）。
+            requireActorIsScopeAdmin(scopeId, scopeType, changedBy);
             List<Long> lockedAdminUserIds =
                     adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
             if (currentAdmin) {
@@ -258,6 +297,15 @@ public class RoleService {
         // 理由・ErrorCode を ROLE_001 に畳む方針・配置場所は assignRole のコメント参照。
         if (!userRoleRepository.isActiveUser(targetUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
+
+        // F01.2.1 5-A（AC-P11）: ロール変更で外れる割当に ADMIN 専用権限を含むグループがあれば ADMIN のみ許可。
+        // 剥奪は権限グループ割当の解除と等価なので、副作用（delete / 割当除去）より前に判定する。
+        // AccessControlService は RoleService に依存するため注入できない（循環）。ADMIN 判定は
+        // AccessControlService#checkScopeAdminOnly と同じ意味（ADMIN ロールのみ・同じ COMMON_002）を本クラスで行う。
+        if (rolePermissionCleanupService.wouldRemoveAdminOnlyAssignments(
+                targetUserId, scopeId, scopeType, requestedRole.getName())) {
+            requireActorScopeAdminOnly(scopeId, scopeType, changedBy);
         }
 
         // 既存を削除して新規作成
