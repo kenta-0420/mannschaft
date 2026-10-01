@@ -91,7 +91,7 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
 
   test('AC1/4 日次点呼: 8選択肢・SICK と FAMILY_REASON が 201・提出中は無効化・再読込で保持', async ({ browser }) => {
     const page = await newPage(browser, adminCred)
-    await page.goto(`/teams/${TEAM_SLUG}/school-attendance/daily-roll-call`)
+    await page.goto(`/teams/${TEAM_SLUG}/school-attendance/daily-roll-call`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await delaySubmit(page, '/attendance/daily/roll-call')
     const row = page.getByTestId(`roll-call-row-${STUDENT_ID}`)
@@ -116,7 +116,7 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
       await expect(page.getByText(JA.school.attendance.dailyRollCall.submitSuccess).first()).toBeVisible()
       await expect(page.getByTestId('daily-roll-call-summary')).toBeVisible()
 
-      await page.reload()
+      await page.reload({ waitUntil: 'domcontentloaded' })
       await waitForHydration(page)
       const rowAfter = page.getByTestId(`roll-call-row-${STUDENT_ID}`)
       await expect(rowAfter).toHaveAttribute('data-status', 'ABSENT', { timeout: 30_000 })
@@ -128,7 +128,7 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
 
   test('AC2 時限点呼: 欠席理由の選択 UI が無く、送信に absenceReason が含まれない（period_attendance_records に理由列は無い）', async ({ browser }) => {
     const page = await newPage(browser, adminCred)
-    await page.goto(`/teams/${TEAM_SLUG}/school-attendance/period-attendance`)
+    await page.goto(`/teams/${TEAM_SLUG}/school-attendance/period-attendance`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await delaySubmit(page, '/attendance/periods/1')
     const row = page.getByTestId(`period-row-${STUDENT_ID}`)
@@ -154,7 +154,7 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
   test('AC3/4 保護者の欠席連絡: 8選択肢・201・先生の受信一覧と me 履歴で日本語ラベル', async ({ browser }) => {
     const parent = await newPage(browser, userCred)
     await delaySubmit(parent, '/me/attendance/notices')
-    await parent.goto(`/me/attendance/notices?teamId=${TEAM_ID}&studentUserId=${STUDENT_ID}`)
+    await parent.goto(`/me/attendance/notices?teamId=${TEAM_ID}&studentUserId=${STUDENT_ID}`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(parent)
     await expect(parent.getByTestId('family-notice-form')).toBeVisible({ timeout: 30_000 })
     const select = parent.getByTestId('family-notice-reason')
@@ -180,7 +180,7 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
     await parent.context().close()
 
     const teacher = await newPage(browser, adminCred)
-    await teacher.goto(`/teams/${TEAM_SLUG}/school-attendance/notices`)
+    await teacher.goto(`/teams/${TEAM_SLUG}/school-attendance/notices`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(teacher)
     const list = teacher.getByTestId('teacher-notice-list')
     await expect(list).toBeVisible({ timeout: 30_000 })
@@ -192,7 +192,7 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
 
   test('AC5 失敗時: 見守り関係の無い生徒への連絡は 403 で、画面にエラーが出る（実 BE の拒否）', async ({ browser }, testInfo) => {
     const parent = await newPage(browser, userCred)
-    await parent.goto(`/me/attendance/notices?teamId=${TEAM_ID}&studentUserId=${STUDENT_ID + 1000}`)
+    await parent.goto(`/me/attendance/notices?teamId=${TEAM_ID}&studentUserId=${STUDENT_ID + 1000}`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(parent)
     await expect(parent.getByTestId('family-notice-form')).toBeVisible({ timeout: 30_000 })
     await parent.getByTestId('family-notice-reason').click()
@@ -216,7 +216,7 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
   test('AC6 ロール横断: 一般メンバー／他チーム（画面と文言を記録）', async ({ browser }, testInfo) => {
     // 一般メンバー(MEMBER) — 日次点呼画面を URL 直打ち
     const member = await newPage(browser, userCred)
-    await member.goto(`/teams/${TEAM_SLUG}/school-attendance/daily-roll-call`)
+    await member.goto(`/teams/${TEAM_SLUG}/school-attendance/daily-roll-call`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(member)
     await member.waitForTimeout(3000)
     testInfo.annotations.push({ type: 'member-daily-page', description: await bodyText(member) })
@@ -228,7 +228,7 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
       testInfo.annotations.push({ type: 'member-roll-call-post-status', description: String(res.status()) })
     }
     // 一般メンバーは先生用の受信一覧を開けない（BE 403）
-    await member.goto(`/teams/${TEAM_SLUG}/school-attendance/notices`)
+    await member.goto(`/teams/${TEAM_SLUG}/school-attendance/notices`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(member)
     await member.waitForTimeout(3000)
     await expect(member.locator('[data-testid^="teacher-notice-item-"]')).toHaveCount(0)
@@ -240,7 +240,7 @@ test.describe.serial('CMP-260930-1532 欠席理由 実機E2E', () => {
     member.on('response', (r) => {
       if (r.url().includes(`/teams/${OTHER_TEAM_SLUG}/attendance/daily?`)) listStatus = r.status()
     })
-    await member.goto(`/teams/${OTHER_TEAM_SLUG}/school-attendance/daily-roll-call`)
+    await member.goto(`/teams/${OTHER_TEAM_SLUG}/school-attendance/daily-roll-call`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(member)
     await member.waitForTimeout(3000)
     expect(listStatus).toBe(403)
