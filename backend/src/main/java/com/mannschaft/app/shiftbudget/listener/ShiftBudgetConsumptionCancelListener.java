@@ -8,7 +8,6 @@ import com.mannschaft.app.shift.event.ShiftScheduleClosedEvent;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFeatureService;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
-import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
 import com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService;
@@ -19,9 +18,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -39,7 +40,6 @@ import java.util.Set;
 public class ShiftBudgetConsumptionCancelListener {
 
     private final ShiftBudgetFeatureService featureService;
-    private final ShiftBudgetRateQueryRepository rateQueryRepository;
     private final ShiftBudgetConsumptionService consumptionService;
     private final ShiftBudgetConsumptionRepository consumptionRepository;
     private final AuditLogService auditLogService;
@@ -80,37 +80,52 @@ public class ShiftBudgetConsumptionCancelListener {
      * @param actorUserId 操作者ID。バッチ等の自動処理では null
      */
     private void cancelConsumptions(Long scheduleId, Long teamId, Long actorUserId) {
+        // 取消先の組織（F01.2.1 AC-G125 / §9.2 #15）。チームの親組織は再解決しない。
+        // チームは複数の組織に加盟しうる上、計上後に加盟先が変わっても取消は計上時の組織で行うべきなので、
+        // 取消対象の PLANNED 消化行が紐づく割当（allocation_id）の組織を使い、監査・失敗イベントは組織ごとに出す。
+        Map<Long, Long> cancelledPlannedByOrg = new LinkedHashMap<>();
         try {
-            Optional<Long> orgIdOpt = rateQueryRepository.findOrganizationIdByTeamId(teamId);
-            if (orgIdOpt.isEmpty()) {
-                log.debug("F08.7 cancel hook: organization_id 不在のためスキップ: scheduleId={}", scheduleId);
+            List<ShiftBudgetConsumptionRepository.PlannedAllocationRow> rows =
+                    consumptionRepository.findPlannedAllocationRowsByShiftId(scheduleId);
+            if (rows.isEmpty()) {
+                log.debug("F08.7 cancel hook: 取消対象の PLANNED 消化が無いためスキップ: scheduleId={}",
+                        scheduleId);
                 return;
             }
-            Long organizationId = orgIdOpt.get();
-
-            if (!featureService.isEnabled(organizationId)) {
-                log.debug("F08.7 cancel hook: フィーチャーフラグ OFF のためスキップ: organizationId={}",
-                        organizationId);
-                return;
+            Set<Long> affectedAllocationIds = new LinkedHashSet<>();
+            Map<Long, Long> allocationOrg = new HashMap<>();
+            for (ShiftBudgetConsumptionRepository.PlannedAllocationRow row : rows) {
+                cancelledPlannedByOrg.merge(row.getOrganizationId(), row.getPlannedCount(), Long::sum);
+                affectedAllocationIds.add(row.getAllocationId());
+                allocationOrg.put(row.getAllocationId(), row.getOrganizationId());
             }
 
-            // CANCEL 前に当該シフトに紐付く allocation_id 集合を採取
-            // (cancel 後は consumption.status=CANCELLED に遷移するが allocation_id 自体は変わらないため、
-            //  事前/事後どちらでも採取可能。明示的に事前採取して意図を明らかにする)
-            Set<Long> affectedAllocationIds = new HashSet<>();
-            consumptionRepository.findByShiftIdAndDeletedAtIsNull(scheduleId)
-                    .forEach(c -> affectedAllocationIds.add(c.getAllocationId()));
+            // フィーチャーフラグは計上時の組織で判定する。計上先の組織がすべて OFF なら何もしない。
+            boolean anyEnabled = false;
+            for (Long orgId : cancelledPlannedByOrg.keySet()) {
+                if (featureService.isEnabled(orgId)) {
+                    anyEnabled = true;
+                    break;
+                }
+            }
+            if (!anyEnabled) {
+                log.debug("F08.7 cancel hook: フィーチャーフラグ OFF のためスキップ: organizationIds={}",
+                        cancelledPlannedByOrg.keySet());
+                return;
+            }
 
             int cancelledCount = consumptionService.cancelAllForShift(scheduleId);
 
             if (cancelledCount > 0) {
-                auditLogService.record(
-                        "SHIFT_BUDGET_CONSUMPTION_CANCELLED",
-                        actorUserId, null,
-                        teamId, organizationId,
-                        null, null, null,
-                        String.format("{\"shift_schedule_id\":%d,\"cancelled_count\":%d}",
-                                scheduleId, cancelledCount));
+                for (Map.Entry<Long, Long> entry : cancelledPlannedByOrg.entrySet()) {
+                    auditLogService.record(
+                            "SHIFT_BUDGET_CONSUMPTION_CANCELLED",
+                            actorUserId, null,
+                            teamId, entry.getKey(),
+                            null, null, null,
+                            String.format("{\"shift_schedule_id\":%d,\"cancelled_count\":%d}",
+                                    scheduleId, entry.getValue()));
+                }
 
                 // Phase 9-δ 追加: CANCEL 後に影響 allocation の閾値判定を再評価する。
                 // 例外は飲み込む（既存パターン踏襲: hook 失敗が main トランザクションを巻き戻さないため）
@@ -120,8 +135,8 @@ public class ShiftBudgetConsumptionCancelListener {
                     } catch (Exception thresholdEx) {
                         log.error("F08.7 cancel hook: 閾値判定失敗（処理継続）: allocId={}, scheduleId={}",
                                 allocationId, scheduleId, thresholdEx);
-                        // Phase 10-β: 失敗イベントとして永続化
-                        recordFailureSafe(organizationId,
+                        // Phase 10-β: 失敗イベントとして永続化（その割当の組織で）
+                        recordFailureSafe(allocationOrg.get(allocationId),
                                 ShiftBudgetFailedEventType.THRESHOLD_ALERT,
                                 allocationId,
                                 Map.of(
@@ -135,12 +150,11 @@ public class ShiftBudgetConsumptionCancelListener {
             }
         } catch (Exception e) {
             log.error("F08.7 cancel hook: シフトアーカイブ消化キャンセルの致命的失敗: scheduleId={}", scheduleId, e);
-            // Phase 10-β: organization_id が解決できていれば failed_events にも記録
+            // Phase 10-β: 計上時の組織が確定していれば、その組織ごとに failed_events にも記録
+            // （確定前は組織が無いため記録不可）
             try {
-                Long orgIdForFailure = rateQueryRepository.findOrganizationIdByTeamId(teamId)
-                        .orElse(null);
-                if (orgIdForFailure != null) {
-                    recordFailureSafe(orgIdForFailure,
+                for (Long failedOrgId : cancelledPlannedByOrg.keySet()) {
+                    recordFailureSafe(failedOrgId,
                             ShiftBudgetFailedEventType.CONSUMPTION_CANCEL,
                             scheduleId,
                             Map.of(

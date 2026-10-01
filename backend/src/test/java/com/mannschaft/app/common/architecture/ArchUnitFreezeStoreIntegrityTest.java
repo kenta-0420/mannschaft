@@ -729,8 +729,15 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 初回生成したストア（{@code 296295dd-06cf-4f7b-bf82-315ba12ff501}）を実測。
      * PR #3462 の main 追従で追加された27件を再凍結し、期待件数へ反映した。
      * PR #3447 の main 追従で追加された5件も同様に反映した。
+     *
+     * <p>PR #3387 D-3T 根治（軍議書 gungi-3387-d3t.md 第3版 §3・AC-D3T-2）: member の閲覧系
+     * （TeamPageService・MemberProfileService・TeamPageSectionService）からクラス単位の readOnly TX を
+     * 外したことで発火しなくなる旧凍結 21 行（MemberProfileService getProfile/listProfiles/lookupMembers
+     * 各3・TeamPageSectionService listSections 3・TeamPageService checkPageAdminOrNotFound 2/
+     * checkPageMembershipOrNotFound 3/getPage 3/listPages→MembershipRepository 1）を削除。追記は 0 行。
+     * {@code 7684 → 7663}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7684;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7661;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -766,8 +773,11 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code CHAR(36)} であり、Hibernate の UUID バイナリバインドでは保存できない。
      * 既存データを保つため {@code UuidV7CharEntity} に切り替え、567 → 568。
      * UUIDv7 の採番規約は維持する。</p>
+     *
+     * <p>ScheduleMediaUploadEntity が {@code UuidV7Entity} を継承済みとなり、凍結ストアから解消行 1 件が
+     * 自動で縮退したため 568 → 567（PR #3387 の main 追従で反映）。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 568;
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 567;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。

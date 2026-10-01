@@ -178,7 +178,7 @@ class ReservationRecurringSeriesScopeTest {
     private ReservationService buildService(Clock clock) {
         return new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
-                nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
+                nameResolverService, eventPublisher, viewAccessGuard,
                 reservationPolicyService, blockedTimeRepository, recurringBlockedTimeRepository,
                 new ReservationUnavailabilityChecker(), groupSummaryResolver,
                 mock(ReservationWaitlistService.class), mock(ReservationCreateRateLimiter.class), clock);

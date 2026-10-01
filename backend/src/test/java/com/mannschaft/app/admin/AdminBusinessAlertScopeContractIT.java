@@ -126,6 +126,22 @@ class AdminBusinessAlertScopeContractIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    @DisplayName("削除済みチームのADMINロールだけを持つ利用者は403になる")
+    void summary_削除済みチームの管理者を拒否する() throws Exception {
+        TeamEntity deletedTeam = createTeam("契約テスト削除済み", "contract-alert-deleted");
+        MembershipTestHelper.insertUserRole(
+                entityManager, MEMBER_USER_ID, "ADMIN", deletedTeam.getId(), null);
+        deletedTeam.softDelete();
+        teamRepository.saveAndFlush(deletedTeam);
+        entityManager.clear();
+
+        authenticate(MEMBER_USER_ID);
+
+        mockMvc.perform(get("/api/v1/admin/business-alerts/summary"))
+                .andExpect(status().isForbidden());
+    }
+
     private TeamEntity createTeam(String name, String slug) {
         return teamRepository.saveAndFlush(TeamEntity.builder()
                 .name(name)

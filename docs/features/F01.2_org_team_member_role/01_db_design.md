@@ -16,7 +16,7 @@
 | `invite_tokens` | 招待URL/QRコード用トークン | なし（revoked_at で失効管理）|
 | `ownership_transfer_offers` | オーナー委譲の承諾型オファー（打診→承諾で ADMIN 委譲を実行）。2026-07-18 承諾型化で新設 | なし（status で状態管理）|
 | `team_org_memberships` | チーム↔組織の多対多所属関係（組織からの招待→チームの承諾、またはチームからの申請→組織の承認で成立。`direction` で起点を区別・`group_id` でチームグループに所属。F01.2.1）| なし（物理削除。履歴は audit_logs、再申請の抑止は `team_org_affiliation_restrictions`）|
-| `org_team_groups` | 組織内のチーム区分「チームグループ」（平坦・並び順付き・1組織200件まで）。定義は [F01.2.1 §5.2](../F01.2.1_org_team_groups.md) | `deleted_at`（論理削除）|
+| `org_team_groups` | 組織内のチーム区分「チームグループ」（平坦・並び順付き・1組織100件まで）。定義は [F01.2.1 §5.2](../F01.2.1_org_team_groups.md) | `deleted_at`（論理削除）|
 | `team_org_affiliation_restrictions` | 加盟の申請・招待の再送制限（拒否後30日の冷却・ブロック、取下げ・取消後24時間の冷却）。定義は [F01.2.1 §5.4](../F01.2.1_org_team_groups.md) | なし（物理削除。期限切れは夜間バッチで削除）|
 | `team_blocks` | チームのサポーター自己登録ブロックリスト（ADMIN/DEPUTY_ADMIN が管理）| なし |
 | `organization_blocks` | 組織のサポーター自己登録ブロックリスト（ADMIN/DEPUTY_ADMIN が管理）| なし |
