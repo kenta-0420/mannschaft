@@ -11,6 +11,7 @@
  * route.params.slug を読むことで layout が正しくサイドバーを表示できる。
  */
 import type { TeamMatchStatsResponse } from '~/types/match'
+import { parseOrgQuery, type MatchOrgOption } from '~/composables/match/useMatchOrgContext'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -23,6 +24,7 @@ const { resolveContext } = useMatchOrgContext()
 const analytics = useMatchAnalytics()
 
 const orgId = ref<number | null>(null)
+const organizations = ref<MatchOrgOption[]>([])
 const stats = ref<TeamMatchStatsResponse | null>(null)
 const loading = ref(true)
 
@@ -33,8 +35,10 @@ async function load(): Promise<void> {
   loading.value = true
   try {
     // resolveContext は tm.slug === 引数 で照合するため slug を渡す（数値 ID 不可）
-    const ctx = await resolveContext(teamSlug.value)
+    // 分析は URL クエリ org で選んだ組織の試合を集計する（未指定は代表親組織）
+    const ctx = await resolveContext(teamSlug.value, { orgId: parseOrgQuery(route.query.org) })
     orgId.value = ctx?.orgId ?? null
+    organizations.value = ctx?.organizations ?? []
     if (ctx === null || ctx.orgId === null) {
       stats.value = null
       return
@@ -48,7 +52,7 @@ async function load(): Promise<void> {
   }
 }
 
-watch(teamSlug, () => void load())
+watch([teamSlug, () => route.query.org], () => void load())
 onMounted(load)
 </script>
 
@@ -58,6 +62,8 @@ onMounted(load)
       <PageHeader :title="t('match.analytics.team_title')" size="sm" :back-to="`/teams/${teamSlug}`" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.team_subtitle') }}</p>
+
+    <MatchOrgSelect :organizations="organizations" :org-id="orgId" />
 
     <PageLoading v-if="loading" />
 

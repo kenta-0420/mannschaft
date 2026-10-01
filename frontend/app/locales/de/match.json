@@ -453,8 +453,12 @@
       "OH": "Außenangreifer",
       "L": "Libero"
     },
+    "org_select": {
+      "label": "Organisation"
+    },
     "org_context": {
-      "resolve_failed": "Team-/Organisationsinfo konnte nicht aufgelöst werden. Bitte prüfe deine Mitgliedschaften"
+      "resolve_failed": "Team-/Organisationsinfo konnte nicht aufgelöst werden. Bitte prüfe deine Mitgliedschaften",
+      "not_member_of_org": "このチームはこの大会の組織に加盟していないため、試合を記録できません"
     },
     "entry": {
       "record_from_schedule": "Dieses Spiel aufzeichnen",

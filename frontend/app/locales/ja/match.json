@@ -453,8 +453,12 @@
       "S": "セッター",
       "L": "リベロ"
     },
+    "org_select": {
+      "label": "組織"
+    },
     "org_context": {
-      "resolve_failed": "チーム・組織の情報を解決できませんでした。所属を確認してください"
+      "resolve_failed": "チーム・組織の情報を解決できませんでした。所属を確認してください",
+      "not_member_of_org": "このチームはこの大会の組織に加盟していないため、試合を記録できません"
     },
     "entry": {
       "record_from_schedule": "この試合を記録",

@@ -124,14 +124,21 @@ async function recordFixture(fx: TournamentMatch): Promise<void> {
 
   recordingFixtureId.value = fx.id
   try {
-    // 1) 数値 teamId → 数値 orgId ＋ teamSlug を解決（live 遷移先に slug が要る）
-    const ctx = await resolveContextByTeamId(target.selfTeamId)
-    if (!ctx) return // 解決失敗時は composable 内で通知済み
+    // 1) 数値 teamId → 数値 orgId ＋ teamSlug を解決（live 遷移先に slug が要る）。
+    //    試合の組織は「表示中の大会の組織」（ページの [slug]）。チームの親組織から推測しない
+    //    （チームが複数の組織に加盟していても、大会の組織の下に試合を作る。F01.2.1 §9.2 F2）。
+    const ctx = await resolveContextByTeamId(target.selfTeamId, { orgSlug: orgId })
+    if (!ctx) {
+      // /me/teams の取得失敗は composable 内で通知済み。ここへ来る null は
+      // 「大会の組織にそのチームが加盟していない」ため、理由を提示する（症状を隠さない）。
+      notification.warn(t('match.org_context.not_member_of_org'))
+      return
+    }
 
     // 2) この fixture に紐づく既存 match があれば live を開く（二重起票防止）
     const existing = await resolveMatchByFixture(ctx.orgId, ctx.teamId, fx.id)
     if (existing?.id) {
-      await navigateTo(`/teams/${ctx.teamSlug}/matches/${existing.id}/live`)
+      await navigateTo({ path: `/teams/${ctx.teamSlug}/matches/${existing.id}/live`, query: { org: String(ctx.orgId) } })
       return
     }
 
@@ -150,7 +157,7 @@ async function recordFixture(fx: TournamentMatch): Promise<void> {
       venue: fx.info?.venue ?? undefined,
     })
     if (created.id) {
-      await navigateTo(`/teams/${ctx.teamSlug}/matches/${created.id}/live`)
+      await navigateTo({ path: `/teams/${ctx.teamSlug}/matches/${created.id}/live`, query: { org: String(ctx.orgId) } })
     }
   } catch {
     // エラーは composable 内で通知済み（症状は隠さない）

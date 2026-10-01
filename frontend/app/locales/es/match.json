@@ -453,8 +453,12 @@
       "OH": "Receptor",
       "L": "Libero"
     },
+    "org_select": {
+      "label": "Organización"
+    },
     "org_context": {
-      "resolve_failed": "No se pudo resolver la información del equipo/organización. Verifica tus membresías"
+      "resolve_failed": "No se pudo resolver la información del equipo/organización. Verifica tus membresías",
+      "not_member_of_org": "このチームはこの大会の組織に加盟していないため、試合を記録できません"
     },
     "entry": {
       "record_from_schedule": "Registrar este partido",

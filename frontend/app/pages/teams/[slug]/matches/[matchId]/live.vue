@@ -194,7 +194,8 @@ function addManualPlayer(p: { name: string; jerseyNumber: number | null }): void
 
 // === 初期ロード ===
 onMounted(async () => {
-  const ctx = await resolveContext(teamSlug)
+  // 試合は作成時の組織の下に保存されている。遷移元（一覧・作成・大会対戦表）が URL クエリ org で引き継ぐ
+  const ctx = await resolveContext(teamSlug, { orgId: parseOrgQuery(route.query.org) })
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
   if (ctx === null || teamId.value === null) {
