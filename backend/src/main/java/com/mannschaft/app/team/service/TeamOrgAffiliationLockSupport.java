@@ -79,4 +79,38 @@ public class TeamOrgAffiliationLockSupport {
     public record LockedScope(TeamEntity team,
                               TeamAffiliationOrganizationPort.OrganizationAffiliationState organization) {
     }
+
+    /**
+     * 既存の PENDING 行に応答する経路（組織側の承認・拒否。§6.2・§6.3）のために、チーム行 → 組織行の順にロックを取る。
+     *
+     * <p>{@link #lockTeamThenOrganization} と同じ順序・同じ「呼び出しの約束」（トランザクションの最初の文で呼ぶ）。
+     * ただし<b>状態による拒否はしない</b>。応答は §6.4 の判定表（行が無い 404・状態違い 409）を先に決め、
+     * その後で状態を再確認する（§6.2 step 2 → step 3）必要があるため、アーカイブ済みかどうかは呼び出し側が判定する。
+     * 例えば組織のアーカイブ後に片付けで行が消えていれば、アーカイブ拒否ではなく 404 {@code TEAM_070} を返す（AC-C13）。</p>
+     *
+     * <p>チームが論理削除済みならチーム行は取れない（{@code @SQLRestriction}）ので {@code team} を null で返す。
+     * 組織が論理削除済み・不在なら 404（{@code ORG_001}）。</p>
+     *
+     * @param teamId         加盟行のチーム ID
+     * @param organizationId 加盟行の組織 ID
+     * @return ロックを保持している両者（チームが削除済みなら team は null）
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public LockedParties lockTeamThenOrganizationForResponse(Long teamId, Long organizationId) {
+        // 順序はここに固定する（チーム行 → 組織行）
+        TeamEntity team = teamRepository.findByIdForUpdate(teamId).orElse(null);
+        TeamAffiliationOrganizationPort.OrganizationAffiliationState organization =
+                organizationPort.lockForAffiliation(organizationId);
+        return new LockedParties(team, organization);
+    }
+
+    /**
+     * 応答の経路でロックを保持している状態（状態の再確認は呼び出し側）。
+     *
+     * @param team         ロック済みのチーム行。論理削除済みなら null
+     * @param organization ロック時点の組織の状態
+     */
+    public record LockedParties(TeamEntity team,
+                                TeamAffiliationOrganizationPort.OrganizationAffiliationState organization) {
+    }
 }

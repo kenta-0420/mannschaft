@@ -89,6 +89,48 @@ public class TeamOrgAffiliationAssembler {
                 .toList();
     }
 
+    /**
+     * 複数チームにまたがる加盟の行（組織側の一覧。2-B2）を共通表現へ組み立てる。入力の順序を保つ。
+     *
+     * <p>チームも ID 集合でまとめて引く（SQL は1本）。行が指すチームが論理削除済みの行は、片付け（§4.5）の前の
+     * 短い間だけ残りうる。その行はチームの名前を出せないため識別子を持たない最小の表現にし、黙って落とさない。</p>
+     *
+     * @param rows 加盟の行
+     */
+    public List<TeamOrgAffiliationResponse> assembleForOrganization(List<TeamOrgMembershipEntity> rows) {
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> teamIds = new HashSet<>();
+        Set<Long> organizationIds = new HashSet<>();
+        Set<UUID> groupIds = new HashSet<>();
+        Set<Long> userIds = new HashSet<>();
+        for (TeamOrgMembershipEntity row : rows) {
+            teamIds.add(row.getTeamId());
+            organizationIds.add(row.getOrganizationId());
+            if (row.getGroupId() != null) {
+                groupIds.add(row.getGroupId());
+            }
+            if (row.getInvitedBy() != null) {
+                userIds.add(row.getInvitedBy());
+            }
+        }
+        Map<Long, AffiliationPartyRef> teams = new java.util.HashMap<>();
+        for (TeamEntity team : teamRepository.findAllById(teamIds)) {
+            teams.put(team.getId(), new AffiliationPartyRef(team.getSlug(), team.getName(), team.getIconUrl()));
+        }
+        Map<Long, TeamAffiliationOrganizationPort.OrganizationRef> organizations =
+                organizationPort.findOrganizationRefs(organizationIds);
+        Map<UUID, TeamAffiliationOrganizationPort.GroupRef> groups = organizationPort.findAliveGroupRefs(groupIds);
+        Map<Long, String> displayNames = nameResolverService.resolveUserDisplayNames(userIds);
+
+        AffiliationPartyRef missingTeam = new AffiliationPartyRef(null, null, null);
+        return rows.stream()
+                .map(row -> toResponse(row, teams.getOrDefault(row.getTeamId(), missingTeam),
+                        organizations, groups, displayNames))
+                .toList();
+    }
+
     private TeamOrgAffiliationResponse toResponse(
             TeamOrgMembershipEntity row, AffiliationPartyRef teamRef,
             Map<Long, TeamAffiliationOrganizationPort.OrganizationRef> organizations,
