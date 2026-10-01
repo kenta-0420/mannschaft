@@ -96,8 +96,7 @@ class ShiftBudgetCalcServiceTest {
         @DisplayName("逆算_budget30万_rate1200_hours4_required62枠")
         void 逆算_budget30万_rate1200_hours4_required62枠() {
             // arrange
-            given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID))
-                    .willReturn(Optional.of(ORG_ID));
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
             given(aggregationService.aggregate(any(RequiredSlotsRequest.class)))
                     .willReturn(new HourlyRateAggregationService.AggregationResult(
                             new BigDecimal("1200"), List.of(), null));
@@ -107,7 +106,7 @@ class ShiftBudgetCalcServiceTest {
                     RateMode.MEMBER_AVG, null, null);
 
             // act
-            RequiredSlotsResponse resp = calcService.calculateRequiredSlots(req);
+            RequiredSlotsResponse resp = calcService.calculateRequiredSlots(ORG_ID, req);
 
             // assert
             assertThat(resp.requiredSlots()).isEqualTo(62L);
@@ -118,8 +117,7 @@ class ShiftBudgetCalcServiceTest {
         @Test
         @DisplayName("逆算_budget0_required0_BUDGET_ZERO警告")
         void 逆算_budget0_required0_BUDGET_ZERO警告() {
-            given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID))
-                    .willReturn(Optional.of(ORG_ID));
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
             given(aggregationService.aggregate(any(RequiredSlotsRequest.class)))
                     .willReturn(new HourlyRateAggregationService.AggregationResult(
                             new BigDecimal("1200"), new java.util.ArrayList<>(), null));
@@ -128,7 +126,7 @@ class ShiftBudgetCalcServiceTest {
                     TEAM_ID, BigDecimal.ZERO, new BigDecimal("4.0"),
                     RateMode.MEMBER_AVG, null, null);
 
-            RequiredSlotsResponse resp = calcService.calculateRequiredSlots(req);
+            RequiredSlotsResponse resp = calcService.calculateRequiredSlots(ORG_ID, req);
 
             assertThat(resp.requiredSlots()).isZero();
             assertThat(resp.warnings()).contains("BUDGET_ZERO");
@@ -137,8 +135,7 @@ class ShiftBudgetCalcServiceTest {
         @Test
         @DisplayName("逆算_rate0_required0_AVG_RATE_ZERO警告")
         void 逆算_rate0_required0_AVG_RATE_ZERO警告() {
-            given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID))
-                    .willReturn(Optional.of(ORG_ID));
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
             given(aggregationService.aggregate(any(RequiredSlotsRequest.class)))
                     .willReturn(new HourlyRateAggregationService.AggregationResult(
                             BigDecimal.ZERO,
@@ -149,7 +146,7 @@ class ShiftBudgetCalcServiceTest {
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),
                     RateMode.MEMBER_AVG, null, null);
 
-            RequiredSlotsResponse resp = calcService.calculateRequiredSlots(req);
+            RequiredSlotsResponse resp = calcService.calculateRequiredSlots(ORG_ID, req);
 
             assertThat(resp.requiredSlots()).isZero();
             assertThat(resp.warnings()).contains("AVG_RATE_ZERO");
@@ -159,8 +156,7 @@ class ShiftBudgetCalcServiceTest {
         @DisplayName("逆算_余りあり_floor切り捨て_required62")
         void 逆算_余りあり_floor切り捨て_required62() {
             // 300100 / (1200 * 4.0) = 62.5208... → 62
-            given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID))
-                    .willReturn(Optional.of(ORG_ID));
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
             given(aggregationService.aggregate(any(RequiredSlotsRequest.class)))
                     .willReturn(new HourlyRateAggregationService.AggregationResult(
                             new BigDecimal("1200"), List.of(), null));
@@ -169,7 +165,7 @@ class ShiftBudgetCalcServiceTest {
                     TEAM_ID, new BigDecimal("300100"), new BigDecimal("4.0"),
                     RateMode.MEMBER_AVG, null, null);
 
-            RequiredSlotsResponse resp = calcService.calculateRequiredSlots(req);
+            RequiredSlotsResponse resp = calcService.calculateRequiredSlots(ORG_ID, req);
 
             assertThat(resp.requiredSlots()).isEqualTo(62L);
         }
@@ -186,8 +182,7 @@ class ShiftBudgetCalcServiceTest {
         @Test
         @DisplayName("フラグOFF_FEATURE_DISABLED例外_503相当")
         void フラグOFF_FEATURE_DISABLED例外_503相当() {
-            given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID))
-                    .willReturn(Optional.of(ORG_ID));
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
             willThrow(new BusinessException(ShiftBudgetErrorCode.FEATURE_DISABLED))
                     .given(featureService).requireEnabled(ORG_ID);
 
@@ -195,7 +190,7 @@ class ShiftBudgetCalcServiceTest {
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),
                     RateMode.MEMBER_AVG, null, null);
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ShiftBudgetErrorCode.FEATURE_DISABLED);
@@ -209,8 +204,7 @@ class ShiftBudgetCalcServiceTest {
         @Test
         @DisplayName("MANAGE_SHIFTS権限なし_BusinessException_集計なし")
         void MANAGE_SHIFTS権限なし_BusinessException_集計なし() {
-            given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID))
-                    .willReturn(Optional.of(ORG_ID));
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
             // featureService は通る（doNothing デフォルト）
             willThrow(new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
                     .given(accessControlService)
@@ -220,7 +214,7 @@ class ShiftBudgetCalcServiceTest {
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),
                     RateMode.MEMBER_AVG, null, null);
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             com.mannschaft.app.common.CommonErrorCode.COMMON_002);
@@ -231,14 +225,13 @@ class ShiftBudgetCalcServiceTest {
         @Test
         @DisplayName("team_id組織不在_TEAM_NOT_FOUND例外_IDOR対策404相当")
         void team_id組織不在_TEAM_NOT_FOUND例外_IDOR対策404相当() {
-            given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID))
-                    .willReturn(Optional.empty());
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(0L);
 
             RequiredSlotsRequest req = new RequiredSlotsRequest(
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),
                     RateMode.MEMBER_AVG, null, null);
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ShiftBudgetErrorCode.TEAM_NOT_FOUND);
@@ -260,7 +253,7 @@ class ShiftBudgetCalcServiceTest {
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("0.1"),
                     RateMode.MEMBER_AVG, null, null);
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ShiftBudgetErrorCode.INVALID_SLOT_HOURS);
@@ -273,7 +266,7 @@ class ShiftBudgetCalcServiceTest {
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("25"),
                     RateMode.MEMBER_AVG, null, null);
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ShiftBudgetErrorCode.INVALID_SLOT_HOURS);
@@ -286,7 +279,7 @@ class ShiftBudgetCalcServiceTest {
                     TEAM_ID, new BigDecimal("-1"), new BigDecimal("4.0"),
                     RateMode.MEMBER_AVG, null, null);
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ShiftBudgetErrorCode.INVALID_BUDGET_AMOUNT);
@@ -299,7 +292,7 @@ class ShiftBudgetCalcServiceTest {
                     null, new BigDecimal("300000"), new BigDecimal("4.0"),
                     RateMode.MEMBER_AVG, null, null);
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ShiftBudgetErrorCode.TEAM_NOT_FOUND);
@@ -312,7 +305,7 @@ class ShiftBudgetCalcServiceTest {
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),
                     RateMode.POSITION_AVG, null, List.of());
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ShiftBudgetErrorCode.EMPTY_POSITION_LIST);
@@ -326,7 +319,7 @@ class ShiftBudgetCalcServiceTest {
                     RateMode.POSITION_AVG, null,
                     List.of(new PositionRequiredCount(1L, 0)));
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ShiftBudgetErrorCode.INVALID_REQUIRED_COUNT);
@@ -343,7 +336,7 @@ class ShiftBudgetCalcServiceTest {
                             new PositionRequiredCount(1L, 3)
                     ));
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ShiftBudgetErrorCode.DUPLICATE_POSITION_ID);
@@ -356,7 +349,7 @@ class ShiftBudgetCalcServiceTest {
                     null, new BigDecimal("300000"), new BigDecimal("4.0"),
                     RateMode.EXPLICIT, null, null);
 
-            assertThatThrownBy(() -> calcService.calculateRequiredSlots(req))
+            assertThatThrownBy(() -> calcService.calculateRequiredSlots(ORG_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode",
                             ShiftBudgetErrorCode.MISSING_EXPLICIT_RATE);
@@ -379,7 +372,7 @@ class ShiftBudgetCalcServiceTest {
                 null, new BigDecimal("300000"), new BigDecimal("4.0"),
                 RateMode.EXPLICIT, new BigDecimal("1500"), null);
 
-        RequiredSlotsResponse resp = calcService.calculateRequiredSlots(req);
+        RequiredSlotsResponse resp = calcService.calculateRequiredSlots(ORG_ID, req);
 
         // floor(300000 / (1500 * 4)) = 50
         assertThat(resp.requiredSlots()).isEqualTo(50L);

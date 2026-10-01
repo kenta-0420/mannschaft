@@ -190,6 +190,15 @@ const quickLinks: QuickLink[] = [
     color: 'text-emerald-500',
     bg: 'bg-emerald-50 dark:bg-emerald-900/20',
   },
+  // F20.1 価格改定: 人数バンドの価格改定（DRAFT→Provision→Activate）と税コードマスタ。
+  // 課金マスタ管理の人数バンド編集はここへ移設済みのため、トップからも直接たどれるようにする。
+  {
+    label: t('admin.quickLinks.priceRevisions'),
+    icon: 'pi pi-tags',
+    to: '/system-admin/price-revisions',
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+  },
   // F20.3 Phase3: ベータ特典 審査運用（付与一覧/付与候補/条件マスタ）
   {
     label: t('admin.quickLinks.betaPerks'),

@@ -1572,6 +1572,8 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBER_006", HttpStatus.CONFLICT),                // DUPLICATE_YEAR → 409
             Map.entry("MEMBER_007", HttpStatus.CONFLICT),                // DUPLICATE_MAIN_PAGE → 409
             Map.entry("MEMBER_008", HttpStatus.CONFLICT),                // DUPLICATE_USER → 409
+            // CMP-260919-1140 Phase 1: メンバーサブタブ可視性 — 一覧タブへの PUBLIC 設定は入力検証エラー → 422
+            Map.entry("MEMBER_016", HttpStatus.UNPROCESSABLE_ENTITY),    // MEMBER_LIST_PUBLIC_NOT_ALLOWED → 422
             // 認可根治戦役 Wave3 forms/disclosure BOLA存在秘匿: forms の *_NOT_FOUND は BOLA 存在秘匿のため 404、PDF 権限なしは 403。
             Map.entry("FORM_001", HttpStatus.NOT_FOUND),                 // TEMPLATE_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("FORM_002", HttpStatus.NOT_FOUND),                 // SUBMISSION_NOT_FOUND（IDOR 秘匿 → 404）
@@ -1825,6 +1827,30 @@ public class GlobalExceptionHandler {
             Map.entry("ANNOUNCE_009", HttpStatus.FORBIDDEN),             // テンプレート操作権限なし → 403
             Map.entry("ANNOUNCE_010", HttpStatus.CONFLICT),              // テンプレート上限超過 → 409
             Map.entry("BROADCAST_003", HttpStatus.NOT_FOUND),            // 一斉配信テンプレート不在 → 404
+            Map.entry("ORG_064", HttpStatus.NOT_FOUND), // F01.2.1 §11 チームグループが見つかりません
+            Map.entry("ORG_065", HttpStatus.CONFLICT), // F01.2.1 §11 同じ名前のチームグループがすでにあります
+            Map.entry("ORG_066", HttpStatus.UNPROCESSABLE_ENTITY), // F01.2.1 §11 チームグループは1組織あたり100件までです
+            Map.entry("ORG_067", HttpStatus.CONFLICT), // F01.2.1 §11 この組織ではチームグループ機能が無効です
+            Map.entry("ORG_068", HttpStatus.CONFLICT), // F01.2.1 §11 チームグループの構成が変わっています。画面を更新してください
+            Map.entry("ORG_069", HttpStatus.BAD_REQUEST), // F01.2.1 §11 この組織に加盟していないチームが含まれています
+            Map.entry("ORG_070", HttpStatus.UNPROCESSABLE_ENTITY), // F01.2.1 §11 グループ選択を必須にするには、グループ機能を有効にしてグループを1件以上作成してください
+            Map.entry("TEAM_064", HttpStatus.FORBIDDEN), // F01.2.1 §11 この組織はチームからの加盟申請を受け付けていません
+            Map.entry("TEAM_065", HttpStatus.CONFLICT), // F01.2.1 §11 このチームはすでにこの組織に加盟しています
+            Map.entry("TEAM_066", HttpStatus.CONFLICT), // F01.2.1 §11 このチームとこの組織の間には、処理中の申請または招待があります
+            Map.entry("TEAM_067", HttpStatus.BAD_REQUEST), // F01.2.1 §11 この組織への申請にはチームグループの選択が必要です
+            Map.entry("TEAM_068", HttpStatus.FORBIDDEN), // F01.2.1 §11 現在この組織には申請（招待）できません
+            Map.entry("TEAM_069", HttpStatus.UNPROCESSABLE_ENTITY), // F01.2.1 §11 同時に申請できる組織は10件までです
+            Map.entry("TEAM_070", HttpStatus.NOT_FOUND), // F01.2.1 §11 申請・招待・加盟が見つかりません
+            Map.entry("TEAM_071", HttpStatus.CONFLICT), // F01.2.1 §11 この申請・招待はすでに処理されています
+            Map.entry("TEAM_072", HttpStatus.BAD_REQUEST), // F01.2.1 §11 指定したチームグループは選択できません
+            Map.entry("BROADCAST_006", HttpStatus.BAD_REQUEST), // F01.2.1 §11 指定したチームグループは選択できません
+            Map.entry("BROADCAST_007", HttpStatus.BAD_REQUEST), // F01.2.1 §11 この組織ではチームグループ機能が無効です
+            Map.entry("BROADCAST_008", HttpStatus.BAD_REQUEST), // F01.2.1 §11 範囲の指定が正しくありません（開始が終了より後ろです）
+            Map.entry("BROADCAST_009", HttpStatus.BAD_REQUEST), // F01.2.1 §11 対象になる人がいません
+            Map.entry("BROADCAST_010", HttpStatus.BAD_REQUEST), // F01.2.1 §11 個別に選べるチームは500までです。「すべてのチーム」かチームグループを使ってください
+            Map.entry("BROADCAST_011", HttpStatus.BAD_REQUEST), // F01.2.1 §11 チームの個別指定とチームグループ指定は同時に使えません
+            Map.entry("BROADCAST_012", HttpStatus.BAD_REQUEST), // F01.2.1 §11 チームの告知ではチームグループを指定できません
+            Map.entry("BROADCAST_013", HttpStatus.BAD_REQUEST), // F01.2.1 §11 テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください
             // 405 は handleMethodNotSupported が直接返しており本表を経由しないが、
             // BusinessException 経路で投げられた場合にも宣言どおり 405 になるよう登録する
             //（兄弟の COMMON_005 も同じ理由で登録済み）。

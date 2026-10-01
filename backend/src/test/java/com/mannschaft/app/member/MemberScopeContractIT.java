@@ -817,6 +817,57 @@ class MemberScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data[0].memberProfileId").value(profileAId))
                     .andExpect(jsonPath("$.data[?(@.memberProfileId == " + profileBId + ")]").isEmpty());
         }
+
+        @Test
+        @DisplayName("PR #3387 AC-13(裁可2): TEAM の SUPPORTER は lookup 404（lookup は MEMBER 以上）")
+        void SUPPORTERは404() throws Exception {
+            Long supporterAId = insertUser("mbauthz-supporter-a@example.com");
+            MembershipTestHelper.insertMembership(em, supporterAId, ScopeType.TEAM, teamAId, RoleKind.SUPPORTER);
+            em.flush();
+            setAuth(supporterAId);
+            mockMvc.perform(get("/api/v1/team/members/lookup")
+                            .param("q", "選手")
+                            .param("teamPageId", pageAId.toString()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("MEMBER_001"));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // PR #3387 AC-20（裁可3）: 非表示プロフィールの除外は ORG だけ。TEAM の会員には PR 前どおり見せる
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("PR #3387 AC-20: TEAM の会員は非表示プロフィールも見える")
+    class TeamHiddenProfilesVisibleToMembers {
+
+        private Long hiddenProfileId;
+
+        @BeforeEach
+        void hiddenProfile() {
+            hiddenProfileId = profileRepository.save(MemberProfileEntity.builder()
+                    .teamPageId(pageAId).displayName("MBAUTHZ 非表示選手").isVisible(false).sortOrder(1)
+                    .build()).getId();
+            em.flush();
+            em.clear();
+        }
+
+        @Test
+        @DisplayName("AC-20 V3: TEAM の MEMBER の一覧に非表示行も返る（2件）")
+        void 一覧に非表示も返る() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/team/members").param("teamPageId", pageAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(2));
+        }
+
+        @Test
+        @DisplayName("AC-20 V4: TEAM の MEMBER は非表示プロフィールの詳細も 200")
+        void 非表示の詳細も200() throws Exception {
+            setAuth(memberAId);
+            mockMvc.perform(get("/api/v1/team/members/{id}", hiddenProfileId))
+                    .andExpect(status().isOk());
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════

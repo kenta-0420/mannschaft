@@ -100,19 +100,29 @@ public interface ShiftBudgetRateQueryRepository
                                  @Param("organizationId") Long organizationId);
 
     /**
-     * 指定チームの組織IDを返す（ACTIVE な team_org_memberships から）。
+     * 指定チームの {@code teams} 行を排他ロック（{@code SELECT ... FOR UPDATE}、JPA でいう
+     * {@code PESSIMISTIC_WRITE}）して、存在を返す。
      *
-     * <p>権限チェック前のテナント解決に利用する。</p>
+     * <p>F01.2.1 AC-N15: 期間の重なるシフト予算割当の重複確認と INSERT を、同じチームへの作成同士で
+     * 直列化するためのロック。チームは複数の組織に加盟しうるため、組織単位のロックでは別々の組織が
+     * 並行に作る競合を防げない。両者が共通して触れるチーム行をロックする。
+     * 呼び出しは書き込みトランザクションの<b>先頭</b>で行うこと。</p>
+     *
+     * <p>対象組織への ACTIVE 加盟を条件に含める。加盟していない組織のリクエストが、無関係なチームの
+     * 行ロックを取って他組織の作成を待たせる（ロックの空打ち）ことを防ぐ。条件を満たさなければ空。</p>
+     *
+     * <p>{@code teams} は team ドメインのテーブルだが、ロックのためだけに読む（書き込みはしない）。
+     * 同リポジトリの他クエリと同じく read-only 参照の前例に倣い、Entity へは依存しない。</p>
      */
     @Query(value =
-            "SELECT tom.organization_id FROM team_org_memberships tom " +
-            "INNER JOIN teams t ON t.id = tom.team_id " +
-            "WHERE tom.team_id = :teamId " +
-            "  AND tom.status = 'ACTIVE' " +
-            "  AND t.deleted_at IS NULL " +
-            "LIMIT 1",
+            "SELECT t.id FROM teams t WHERE t.id = :teamId AND t.deleted_at IS NULL "
+                    + "AND EXISTS (SELECT 1 FROM team_org_memberships tom "
+                    + "            WHERE tom.team_id = t.id AND tom.organization_id = :organizationId "
+                    + "              AND tom.status = 'ACTIVE') "
+                    + "FOR UPDATE",
             nativeQuery = true)
-    Optional<Long> findOrganizationIdByTeamId(@Param("teamId") Long teamId);
+    Optional<Long> lockTeamForUpdate(@Param("teamId") Long teamId,
+                                     @Param("organizationId") Long organizationId);
 
     /**
      * 指定チームの slug を返す（CMP-260910-1555）。

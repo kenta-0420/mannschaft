@@ -1646,6 +1646,7 @@
     "search": "搜索",
     "edit": "编辑",
     "save": "保存",
+    "detail": "详情",
     "resume": {
       "title": "简历・职务经历书",
       "listTitle": "简历版本列表",
@@ -1936,6 +1937,7 @@
       "gdprPurge": "GDPR 清除状态",
       "feedbackInbox": "意见箱（全体）",
       "billing": "课金主数据管理",
+      "priceRevisions": "价格修订",
       "betaPerks": "ベータ特典管理",
       "villageCreationRequests": "村作成申請",
       "seasonalWallpapers": "季節壁紙",
@@ -2356,6 +2358,8 @@
   },
   "teamShell": {
     "tab": {
+      "affiliations": "所属組織",
+      "permissionGroups": "権限グループ",
       "dashboard": "仪表板",
       "info": "基本信息",
       "members": "成员",
@@ -2710,7 +2714,28 @@
     }
   },
   "loadErrorState": {
-    "message": "数据获取失败",
+    "states": {
+      "generic": {
+        "title": "暂时无法加载数据",
+        "message": "可能是临时问题，请稍后再试。"
+      },
+      "forbidden": {
+        "title": "当前账号暂时无法使用此页面",
+        "message": "如需访问，请联系管理员确认。"
+      },
+      "notFoundOrForbidden": {
+        "title": "无法显示您查找的信息",
+        "message": "相关信息可能已不可用，或可见范围发生了变化。"
+      },
+      "network": {
+        "title": "网络连接似乎不太顺畅",
+        "message": "请检查网络连接后重试。"
+      },
+      "server": {
+        "title": "暂时无法加载数据",
+        "message": "可能是临时问题，请稍后再试。"
+      }
+    },
     "retry": "重试"
   },
   "searchBar": {
