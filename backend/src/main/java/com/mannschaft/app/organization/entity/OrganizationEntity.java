@@ -291,6 +291,18 @@ public class OrganizationEntity extends BaseEntity {
         this.bannerUrl = bannerUrl;
     }
 
+    /**
+     * F01.2.1 §10.2: チーム加盟の申請受付・グループ設定を更新する（PUT は全項目の置き換え）。
+     * REQUIRED の保存条件（§5.5）の検証は呼び出し側 Service の責務。
+     */
+    public void updateTeamAffiliationSettings(boolean applicationEnabled, boolean groupsEnabled,
+            com.mannschaft.app.organization.TeamApplicationGroupMode groupMode, String guidance) {
+        this.teamApplicationEnabled = applicationEnabled;
+        this.teamGroupsEnabled = groupsEnabled;
+        this.teamApplicationGroupMode = groupMode;
+        this.teamApplicationGuidance = guidance;
+    }
+
     /** F19.1 Phase 7: イベント公開設定を更新する。 */
     public void updatePublicEventsEnabled(boolean enabled) {
         this.publicEventsEnabled = enabled;

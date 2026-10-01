@@ -408,6 +408,8 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
      *
      * @param keyword    組織名・説明の部分一致キーワード（null の場合は絞り込みなし）
      * @param prefecture 都道府県名の完全一致（null の場合は絞り込みなし）
+     * @param onlyAccepting TRUE ならチームからの加盟申請を受け付けている組織だけ（F01.2.1 §10.1）。
+     *                      null は絞り込みなし
      * @param pageable   ページング情報
      * @return PUBLIC かつアクティブな組織のページ
      */
@@ -418,10 +420,12 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
               AND o.archivedAt IS NULL
               AND (:keyword IS NULL OR o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%)
               AND (:prefecture IS NULL OR o.prefecture = :prefecture)
+              AND (:onlyAccepting IS NULL OR o.teamApplicationEnabled = TRUE)
             """)
     Page<OrganizationEntity> searchPublicOrganizations(
             @Param("keyword") String keyword,
             @Param("prefecture") String prefecture,
+            @Param("onlyAccepting") Boolean onlyAccepting,
             Pageable pageable);
 
     // ========================================================================

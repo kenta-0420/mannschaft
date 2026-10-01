@@ -175,7 +175,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 ### セキュリティ・認証
 
-> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟡 設計中） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
+> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟡 実装中: 申請受付設定・申請フォーム・申請ボタン判定・公開 API の受付フラグは実装済み） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
 
 - **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
