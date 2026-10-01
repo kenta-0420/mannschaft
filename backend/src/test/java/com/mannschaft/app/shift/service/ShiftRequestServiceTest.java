@@ -1,6 +1,5 @@
 package com.mannschaft.app.shift.service;
 
-import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -67,9 +66,6 @@ class ShiftRequestServiceTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
-    private ScopeConcealingAccessGate accessGate;
-
-    @Mock
     private ProxyInputContext proxyInputContext;
 
     @Mock
@@ -101,9 +97,9 @@ class ShiftRequestServiceTest {
         lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
 
-    // 本 UT の検証対象は業務ロジック。認可ゲート（ScopeConcealingAccessGate）はモックで素通しとし、
-    // per-scope 認可と存在秘匿の成否は ScopeConcealingAccessGateTest と
-    // 契約IT（ShiftRequestPositionScopeContractIT）で固定する。
+    // 本 UT の検証対象は tx 本体の業務ロジックと scope 解決。認可は tx の外の ShiftRequestFacade が行う
+    // （順序は ShiftRequestFacadeTest、per-scope 認可と存在秘匿の成否は ScopeConcealingAccessGateTest と
+    // 契約IT（ShiftRequestPositionScopeContractIT）で固定する）。
 
     private ShiftScheduleEntity createCollectingSchedule() {
         ShiftScheduleEntity entity = ShiftScheduleEntity.builder()
@@ -187,10 +183,78 @@ class ShiftRequestServiceTest {
                     .willReturn(List.of(response));
 
             // When
-            List<ShiftRequestResponse> result = shiftRequestService.listRequests(SCHEDULE_ID, USER_ID);
+            List<ShiftRequestResponse> result = shiftRequestService.listRequests(SCHEDULE_ID);
 
             // Then
             assertThat(result).hasSize(1);
+        }
+    }
+
+    // ========================================
+    // scope 解決（Facade が認可の前に呼ぶ readOnly の読み取り）
+    // ========================================
+
+    @Nested
+    @DisplayName("resolveScheduleScope / resolveRequestScope")
+    class ResolveScope {
+
+        @Test
+        @DisplayName("scheduleId から scope 解決_正常_teamId を返す")
+        void scheduleId_正常() {
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(createCollectingSchedule());
+
+            assertThat(shiftRequestService.resolveScheduleScope(SCHEDULE_ID).teamId()).isEqualTo(TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("scheduleId から scope 解決_不在_SHIFT_001")
+        void scheduleId_不在() {
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID))
+                    .willThrow(new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+
+            assertThatThrownBy(() -> shiftRequestService.resolveScheduleScope(SCHEDULE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("requestId から scope 解決_正常_teamId と提出者を返し、ロックは取らない")
+        void requestId_正常() {
+            ShiftRequestEntity entity = createRequestEntity();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(scheduleService.findSchedule(entity.getScheduleId()))
+                    .willReturn(Optional.of(createCollectingSchedule()));
+
+            ShiftRequestService.RequestScope scope = shiftRequestService.resolveRequestScope(REQUEST_ID);
+
+            assertThat(scope.teamId()).isEqualTo(TEAM_ID);
+            assertThat(scope.ownerUserId()).isEqualTo(USER_ID);
+            verify(scheduleService, never()).findScheduleForUpdate(any());
+        }
+
+        @Test
+        @DisplayName("requestId から scope 解決_親削除済み_希望の不在コードSHIFT_003")
+        void requestId_親削除済み() {
+            ShiftRequestEntity entity = createRequestEntity();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(scheduleService.findSchedule(entity.getScheduleId())).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> shiftRequestService.resolveRequestScope(REQUEST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("requestId から scope 解決_希望不在_SHIFT_003")
+        void requestId_希望不在() {
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> shiftRequestService.resolveRequestScope(REQUEST_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
         }
     }
 
@@ -333,7 +397,7 @@ class ShiftRequestServiceTest {
             given(shiftMapper.toRequestResponse(entity)).willReturn(response);
 
             // When
-            shiftRequestService.updateRequest(REQUEST_ID, req, USER_ID);
+            shiftRequestService.updateRequest(REQUEST_ID, req);
 
             // Then
             assertThat(entity.getPreference()).isEqualTo(ShiftPreference.AVAILABLE);
@@ -348,7 +412,7 @@ class ShiftRequestServiceTest {
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftRequestService.updateRequest(REQUEST_ID, req, USER_ID))
+            assertThatThrownBy(() -> shiftRequestService.updateRequest(REQUEST_ID, req))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -371,7 +435,7 @@ class ShiftRequestServiceTest {
                     .willReturn(Optional.of(createCollectingSchedule()));
 
             // When
-            shiftRequestService.deleteRequest(REQUEST_ID, USER_ID);
+            shiftRequestService.deleteRequest(REQUEST_ID);
 
             // Then
             verify(requestRepository).softDeleteById(REQUEST_ID);
@@ -387,7 +451,7 @@ class ShiftRequestServiceTest {
             given(scheduleService.findScheduleForUpdate(entity.getScheduleId())).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftRequestService.deleteRequest(REQUEST_ID, USER_ID))
+            assertThatThrownBy(() -> shiftRequestService.deleteRequest(REQUEST_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(t -> assertThat(((BusinessException) t).getErrorCode())
                             .isEqualTo(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
@@ -401,7 +465,7 @@ class ShiftRequestServiceTest {
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftRequestService.deleteRequest(REQUEST_ID, USER_ID))
+            assertThatThrownBy(() -> shiftRequestService.deleteRequest(REQUEST_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }
