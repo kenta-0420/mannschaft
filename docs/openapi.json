@@ -229281,6 +229281,12 @@
           },
           "prefecture": {
             "type": "string"
+          },
+          "publicEventsEnabled": {
+            "type": "boolean"
+          },
+          "timelinePostsPublic": {
+            "type": "boolean"
           }
         }
       },

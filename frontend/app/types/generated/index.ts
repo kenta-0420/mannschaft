@@ -77516,6 +77516,8 @@ export interface components {
             orgType?: string;
             philosophy?: string;
             prefecture?: string;
+            publicEventsEnabled?: boolean;
+            timelinePostsPublic?: boolean;
         };
         PagedResponseTournamentResponse: {
             data?: components["schemas"]["TournamentResponse"][];
