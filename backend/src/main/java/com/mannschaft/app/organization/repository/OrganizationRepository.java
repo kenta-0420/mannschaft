@@ -57,6 +57,8 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
 
     List<OrganizationEntity> findByVisibility(OrganizationEntity.Visibility visibility);
 
+    // 組織行の PESSIMISTIC_WRITE 取得は、後段（4-A と共用）の findByIdForUpdate を使う（F01.2.1 §6.1 step 7・§6.9）。
+
     // existsByName は柱③-A で撤去済み（ORG_002 一律ブロックの残骸。検分P2-6是正）。
     // 同名許可のため、代わりに findActiveByNormalizedName(ForUpdate) を使う。
 

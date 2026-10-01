@@ -36558,6 +36558,168 @@
         }
       }
     },
+    "/api/v1/teams/{teamSlug}/org-applications": {
+      "get": {
+        "tags": [
+          "チームの加盟申請"
+        ],
+        "summary": "申請中一覧（チームの加盟操作者）",
+        "operationId": "listApplications_1",
+        "parameters": [
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功（申請日時の降順）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "加盟操作権限なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "チームの加盟申請"
+        ],
+        "summary": "組織へ加盟申請（チームの加盟操作者）",
+        "operationId": "apply_1",
+        "parameters": [
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyToOrganizationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "申請成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "TEAM_067（グループ選択が必須）/ TEAM_072（グループが選択できない）/ 入力不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "加盟操作権限なし / TEAM_064（受付していない）/ TEAM_068（現在申請できない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "チーム・組織が見つからない（見えない組織は存在しない slug と同じ応答）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "TEAM_065（加盟済み）/ TEAM_066（処理中の申請・招待がある）/ アーカイブ済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "TEAM_069（同時に申請できるのは10件まで）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "申請は10件/時/ユーザー",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamPublicId}/schedules": {
       "get": {
         "tags": [
@@ -44030,7 +44192,7 @@
           "チームサブリース"
         ],
         "summary": "チームサブリース申込",
-        "operationId": "apply_1",
+        "operationId": "apply_2",
         "parameters": [
           {
             "name": "teamId",
@@ -44511,7 +44673,7 @@
           "チーム譲渡希望"
         ],
         "summary": "チーム譲渡希望申込",
-        "operationId": "apply_2",
+        "operationId": "apply_3",
         "parameters": [
           {
             "name": "teamId",
@@ -59716,7 +59878,7 @@
           "F03.11 募集型予約 / 参加申込"
         ],
         "summary": "参加申込 (個人 or チーム)",
-        "operationId": "apply_3",
+        "operationId": "apply_4",
         "parameters": [
           {
             "name": "listingId",
@@ -62884,7 +63046,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース申込",
-        "operationId": "apply_4",
+        "operationId": "apply_5",
         "parameters": [
           {
             "name": "organizationId",
@@ -63365,7 +63527,7 @@
           "組織譲渡希望"
         ],
         "summary": "組織譲渡希望申込",
-        "operationId": "apply_5",
+        "operationId": "apply_6",
         "parameters": [
           {
             "name": "organizationId",
@@ -78263,7 +78425,7 @@
           "求人応募"
         ],
         "summary": "応募する（Worker視点）",
-        "operationId": "apply_6",
+        "operationId": "apply_7",
         "parameters": [
           {
             "name": "jobId",
@@ -147153,6 +147315,49 @@
         }
       }
     },
+    "/api/v1/teams/{teamSlug}/org-applications/{membershipId}": {
+      "delete": {
+        "tags": [
+          "チームの加盟申請"
+        ],
+        "summary": "加盟申請の取下げ（チームの加盟操作者）",
+        "operationId": "withdraw_5",
+        "parameters": [
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "取下げ成功"
+          },
+          "403": {
+            "description": "加盟操作権限なし"
+          },
+          "404": {
+            "description": "TEAM_070（存在しない ID・他チームの ID・処理済みで消えた行は同じ応答）"
+          },
+          "409": {
+            "description": "TEAM_071（既に承認済みなど、取下げの前提と違う状態）"
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/scheduled-tasks/{taskId}": {
       "delete": {
         "tags": [
@@ -176100,6 +176305,109 @@
           },
           "message": {
             "type": "string"
+          }
+        }
+      },
+      "ApplyToOrganizationRequest": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": "string"
+          },
+          "organizationSlug": {
+            "type": "string"
+          }
+        }
+      },
+      "AffiliationGroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "AffiliationPartyRef": {
+        "type": "object",
+        "properties": {
+          "iconUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "AffiliationRequesterRef": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseTeamOrgAffiliationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TeamOrgAffiliationResponse"
+          }
+        }
+      },
+      "TeamOrgAffiliationResponse": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "message": {
+            "type": "string"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/AffiliationPartyRef"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/AffiliationRequesterRef"
+          },
+          "respondedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "team": {
+            "$ref": "#/components/schemas/AffiliationPartyRef"
+          },
+          "teamGroup": {
+            "$ref": "#/components/schemas/AffiliationGroupRef"
           }
         }
       },
@@ -216302,6 +216610,20 @@
             "items": {
               "$ref": "#/components/schemas/ModuleSummaryResponse"
             }
+          }
+        }
+      },
+      "PagedResponseTeamOrgAffiliationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamOrgAffiliationResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },
