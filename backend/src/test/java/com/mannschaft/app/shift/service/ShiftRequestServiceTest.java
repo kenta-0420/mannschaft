@@ -480,7 +480,7 @@ class ShiftRequestServiceTest {
             // Given
             ShiftScheduleEntity schedule = createCollectingSchedule();
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_TEN_MEMBERS)).willReturn(3L);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(3L);
             given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
                     .willReturn(List.of());
 
@@ -514,7 +514,7 @@ class ShiftRequestServiceTest {
             // Given
             ShiftScheduleEntity schedule = createCollectingSchedule();
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_TEN_MEMBERS)).willReturn(5L);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(5L);
             given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
                     .willReturn(List.of(
                             new Object[]{ShiftPreference.PREFERRED, 7L},
@@ -542,7 +542,7 @@ class ShiftRequestServiceTest {
             // Given
             ShiftScheduleEntity schedule = createCollectingSchedule();
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_TEN_MEMBERS)).willReturn(2L);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(2L);
             given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
                     .willReturn(List.of(
                             new Object[]{ShiftPreference.PREFERRED, 3L},
