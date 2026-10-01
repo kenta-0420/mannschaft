@@ -2,6 +2,7 @@ package com.mannschaft.app.shift;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.dto.CreateSwapRequestRequest;
 import com.mannschaft.app.shift.dto.ResolveSwapRequestRequest;
@@ -12,12 +13,12 @@ import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
+import com.mannschaft.app.shift.service.ShiftSwapFacade;
 import com.mannschaft.app.shift.service.ShiftSwapService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,7 +37,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link ShiftSwapService} の単体テスト。
+ * {@link ShiftSwapFacade}（認可）＋{@link ShiftSwapService}（tx 本体）の単体テスト。
  * シフト交代リクエストの作成・承諾・承認・却下・キャンセルを検証する。
  *
  * <p>認可根治 Wave6 で全 public メソッドが per-scope 認可を行うようになったため、
@@ -65,8 +66,23 @@ class ShiftSwapServiceTest {
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    @InjectMocks
     private ShiftSwapService shiftSwapService;
+
+    private ShiftSwapFacade swapFacade;
+
+    /**
+     * Gate は本物（{@link ScopeConcealingAccessGate}）を、その下の {@link AccessControlService} だけモックにして組む。
+     * 存在オラクル是正（CMP-260923-0954 W2）で認可判定の中身が Gate へ移ったため、
+     * サービスへは Gate を注入する。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpService() {
+        shiftSwapService = new ShiftSwapService(swapRepository, slotRepository, scheduleRepository,
+                shiftMapper, objectMapper);
+        // 認可は Facade（tx の外）が行う。応答の契約は Facade→tx 本体の合成で検証する。
+        swapFacade = new ShiftSwapFacade(shiftSwapService, new ScopeConcealingAccessGate(accessControlService),
+                accessControlService);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー
@@ -106,10 +122,12 @@ class ShiftSwapServiceTest {
         given(accessControlService.isSupporter(userId, TEAM_ID, "TEAM")).willReturn(false);
     }
 
-    /** 当該ユーザーを「当該チームの ADMIN」として認可を通す（checkAdminOrAbove は void で何もしない）。 */
+    /** 当該ユーザーを「当該チームの ADMIN」として認可を通す（Gate は isAdminOrAbove を見る）。 */
     private void givenTeamAdmin(Long userId) {
         givenScopeResolvable();
         given(accessControlService.isSystemAdmin(userId)).willReturn(false);
+        org.mockito.Mockito.lenient().when(accessControlService.isAdminOrAbove(userId, TEAM_ID, "TEAM"))
+                .thenReturn(true);
     }
 
     private ShiftSwapRequestEntity createPendingSwap() {
@@ -244,7 +262,7 @@ class ShiftSwapServiceTest {
                     .willReturn(List.of(response));
 
             // When
-            List<SwapRequestResponse> result = shiftSwapService.listSwapRequests(TEAM_ID, "PENDING", ADMIN_ID);
+            List<SwapRequestResponse> result = swapFacade.listSwapRequests(TEAM_ID, "PENDING", ADMIN_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -263,7 +281,7 @@ class ShiftSwapServiceTest {
                     .willReturn(List.of(response));
 
             // When
-            List<SwapRequestResponse> result = shiftSwapService.listSwapRequests(TEAM_ID, null, ADMIN_ID);
+            List<SwapRequestResponse> result = swapFacade.listSwapRequests(TEAM_ID, null, ADMIN_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -283,7 +301,7 @@ class ShiftSwapServiceTest {
             givenMapperEchoesReasons();
 
             // When
-            List<SwapRequestResponse> result = shiftSwapService.listSwapRequests(TEAM_ID, null, ADMIN_ID);
+            List<SwapRequestResponse> result = swapFacade.listSwapRequests(TEAM_ID, null, ADMIN_ID);
 
             // Then
             assertThat(result).extracting(SwapRequestResponse::getReason)
@@ -301,7 +319,7 @@ class ShiftSwapServiceTest {
             givenMapperEchoesReasons();
 
             // When
-            List<SwapRequestResponse> result = shiftSwapService.listSwapRequests(TEAM_ID, null, ACCEPTER_ID);
+            List<SwapRequestResponse> result = swapFacade.listSwapRequests(TEAM_ID, null, ACCEPTER_ID);
 
             // Then: 指名された依頼・指名なし依頼・自分の依頼のみ。他人同士の依頼（理由文が漏れる）は含まれない
             assertThat(result).extracting(SwapRequestResponse::getReason)
@@ -319,7 +337,7 @@ class ShiftSwapServiceTest {
             givenMapperEchoesReasons();
 
             // When
-            List<SwapRequestResponse> result = shiftSwapService.listSwapRequests(TEAM_ID, "PENDING", ACCEPTER_ID);
+            List<SwapRequestResponse> result = swapFacade.listSwapRequests(TEAM_ID, "PENDING", ACCEPTER_ID);
 
             // Then
             assertThat(result).extracting(SwapRequestResponse::getReason)
@@ -335,7 +353,7 @@ class ShiftSwapServiceTest {
             given(accessControlService.isMember(OUTSIDER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.listSwapRequests(TEAM_ID, null, OUTSIDER_ID))
+            assertThatThrownBy(() -> swapFacade.listSwapRequests(TEAM_ID, null, OUTSIDER_ID))
                     .isInstanceOf(BusinessException.class);
         }
 
@@ -349,7 +367,7 @@ class ShiftSwapServiceTest {
             given(accessControlService.isSupporter(SUPPORTER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.listSwapRequests(TEAM_ID, null, SUPPORTER_ID))
+            assertThatThrownBy(() -> swapFacade.listSwapRequests(TEAM_ID, null, SUPPORTER_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -401,7 +419,7 @@ class ShiftSwapServiceTest {
             given(shiftMapper.toSwapResponse(savedEntity)).willReturn(response);
 
             // When
-            SwapRequestResponse result = shiftSwapService.createSwapRequest(req, REQUESTER_ID);
+            SwapRequestResponse result = swapFacade.createSwapRequest(req, REQUESTER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -423,7 +441,7 @@ class ShiftSwapServiceTest {
             given(shiftMapper.toSwapResponse(savedEntity)).willReturn(response);
 
             // When
-            SwapRequestResponse result = shiftSwapService.createSwapRequest(req, REQUESTER_ID);
+            SwapRequestResponse result = swapFacade.createSwapRequest(req, REQUESTER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -442,7 +460,7 @@ class ShiftSwapServiceTest {
             given(shiftMapper.toSwapResponse(savedEntity)).willReturn(response);
 
             // When
-            SwapRequestResponse result = shiftSwapService.createSwapRequest(req, REQUESTER_ID);
+            SwapRequestResponse result = swapFacade.createSwapRequest(req, REQUESTER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -470,7 +488,7 @@ class ShiftSwapServiceTest {
             given(shiftMapper.toSwapResponse(entity)).willReturn(response);
 
             // When
-            shiftSwapService.acceptSwapRequest(SWAP_ID, ACCEPTER_ID);
+            swapFacade.acceptSwapRequest(SWAP_ID, ACCEPTER_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SwapRequestStatus.ACCEPTED);
@@ -486,7 +504,7 @@ class ShiftSwapServiceTest {
             givenTeamMember(REQUESTER_ID);
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.acceptSwapRequest(SWAP_ID, REQUESTER_ID))
+            assertThatThrownBy(() -> swapFacade.acceptSwapRequest(SWAP_ID, REQUESTER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.SWAP_SELF_REQUEST));
@@ -501,7 +519,7 @@ class ShiftSwapServiceTest {
             givenTeamMember(ACCEPTER_ID);
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.acceptSwapRequest(SWAP_ID, ACCEPTER_ID))
+            assertThatThrownBy(() -> swapFacade.acceptSwapRequest(SWAP_ID, ACCEPTER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.INVALID_SWAP_STATUS));
@@ -514,7 +532,7 @@ class ShiftSwapServiceTest {
             given(swapRepository.findById(SWAP_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.acceptSwapRequest(SWAP_ID, ACCEPTER_ID))
+            assertThatThrownBy(() -> swapFacade.acceptSwapRequest(SWAP_ID, ACCEPTER_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -540,7 +558,7 @@ class ShiftSwapServiceTest {
             given(shiftMapper.toSwapResponse(entity)).willReturn(response);
 
             // When
-            shiftSwapService.resolveSwapRequest(SWAP_ID, req, ADMIN_ID);
+            swapFacade.resolveSwapRequest(SWAP_ID, req, ADMIN_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SwapRequestStatus.APPROVED);
@@ -561,7 +579,7 @@ class ShiftSwapServiceTest {
             given(shiftMapper.toSwapResponse(entity)).willReturn(response);
 
             // When
-            shiftSwapService.resolveSwapRequest(SWAP_ID, req, ADMIN_ID);
+            swapFacade.resolveSwapRequest(SWAP_ID, req, ADMIN_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SwapRequestStatus.REJECTED);
@@ -577,7 +595,7 @@ class ShiftSwapServiceTest {
             givenTeamAdmin(ADMIN_ID);
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.resolveSwapRequest(SWAP_ID, req, ADMIN_ID))
+            assertThatThrownBy(() -> swapFacade.resolveSwapRequest(SWAP_ID, req, ADMIN_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.INVALID_SWAP_STATUS));
@@ -593,7 +611,7 @@ class ShiftSwapServiceTest {
             givenTeamAdmin(ADMIN_ID);
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.resolveSwapRequest(SWAP_ID, req, ADMIN_ID))
+            assertThatThrownBy(() -> swapFacade.resolveSwapRequest(SWAP_ID, req, ADMIN_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.INVALID_SWAP_STATUS));
@@ -608,12 +626,12 @@ class ShiftSwapServiceTest {
             given(swapRepository.findById(SWAP_ID)).willReturn(Optional.of(entity));
             givenScopeResolvable();
             given(accessControlService.isSystemAdmin(ACCEPTER_ID)).willReturn(false);
-            org.mockito.BDDMockito.willThrow(
-                            new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(ACCEPTER_ID, TEAM_ID, "TEAM");
+            // 同一チームの所属者だが ADMIN ではない（Gate は 403 COMMON_002 を返す）
+            given(accessControlService.isAdminOrAbove(ACCEPTER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(ACCEPTER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.resolveSwapRequest(SWAP_ID, req, ACCEPTER_ID))
+            assertThatThrownBy(() -> swapFacade.resolveSwapRequest(SWAP_ID, req, ACCEPTER_ID))
                     .isInstanceOf(BusinessException.class);
             assertThat(entity.getStatus()).isEqualTo(SwapRequestStatus.ACCEPTED);
         }
@@ -636,7 +654,7 @@ class ShiftSwapServiceTest {
             given(swapRepository.save(entity)).willReturn(entity);
 
             // When
-            shiftSwapService.cancelSwapRequest(SWAP_ID, REQUESTER_ID);
+            swapFacade.cancelSwapRequest(SWAP_ID, REQUESTER_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SwapRequestStatus.CANCELLED);
@@ -651,7 +669,7 @@ class ShiftSwapServiceTest {
             given(swapRepository.findById(SWAP_ID)).willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.cancelSwapRequest(SWAP_ID, REQUESTER_ID))
+            assertThatThrownBy(() -> swapFacade.cancelSwapRequest(SWAP_ID, REQUESTER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.INVALID_SWAP_STATUS));
@@ -664,7 +682,7 @@ class ShiftSwapServiceTest {
             given(swapRepository.findById(SWAP_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.cancelSwapRequest(SWAP_ID, REQUESTER_ID))
+            assertThatThrownBy(() -> swapFacade.cancelSwapRequest(SWAP_ID, REQUESTER_ID))
                     .isInstanceOf(BusinessException.class);
         }
 
@@ -676,12 +694,12 @@ class ShiftSwapServiceTest {
             given(swapRepository.findById(SWAP_ID)).willReturn(Optional.of(entity));
             givenScopeResolvable();
             given(accessControlService.isSystemAdmin(ACCEPTER_ID)).willReturn(false);
-            org.mockito.BDDMockito.willThrow(
-                            new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(ACCEPTER_ID, TEAM_ID, "TEAM");
+            // 同一チームの所属者だが ADMIN ではない（Gate は 403 COMMON_002 を返す）
+            given(accessControlService.isAdminOrAbove(ACCEPTER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(ACCEPTER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.cancelSwapRequest(SWAP_ID, ACCEPTER_ID))
+            assertThatThrownBy(() -> swapFacade.cancelSwapRequest(SWAP_ID, ACCEPTER_ID))
                     .isInstanceOf(BusinessException.class);
             assertThat(entity.getStatus()).isEqualTo(SwapRequestStatus.PENDING);
         }
