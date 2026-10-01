@@ -146,6 +146,30 @@ public class OrganizationEntity extends BaseEntity {
     @Column(name = "map_embed_url", length = 2048)
     private String mapEmbedUrl;
 
+    /** F01.2.1 §5.5: チームからの加盟申請を受け付けるか（既定 off）。 */
+    @Column(name = "team_application_enabled", nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private Boolean teamApplicationEnabled = false;
+
+    /** F01.2.1 §5.5: チームグループ機能を使うか（既定 off）。 */
+    @Column(name = "team_groups_enabled", nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private Boolean teamGroupsEnabled = false;
+
+    /** F01.2.1 §5.5: 申請時のグループ選択（OFF / OPTIONAL / REQUIRED。既定 OFF）。 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "team_application_group_mode", nullable = false, length = 10,
+            columnDefinition = "VARCHAR(10) NOT NULL DEFAULT 'OFF'")
+    @Builder.Default
+    private com.mannschaft.app.organization.TeamApplicationGroupMode teamApplicationGroupMode =
+            com.mannschaft.app.organization.TeamApplicationGroupMode.OFF;
+
+    /** F01.2.1 §5.5: 申請フォームに表示する案内文（最大500文字）。 */
+    @Column(name = "team_application_guidance", length = 500)
+    private String teamApplicationGuidance;
+
     /** F19.1 Phase 7: イベントを公開ページに表示するか。 */
     @Column(name = "public_events_enabled", nullable = false,
             columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
