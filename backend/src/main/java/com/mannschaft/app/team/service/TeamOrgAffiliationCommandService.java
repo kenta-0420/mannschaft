@@ -64,7 +64,7 @@ public class TeamOrgAffiliationCommandService {
     }
 
     /**
-     * 組織へ加盟を申請する（§6.1 step 7〜13）。作成した加盟（PENDING / TEAM_APPLY）の ID を返す。
+     * 組織へ加盟を申請する（§6.1 step 7〜13）。作成した加盟（PENDING / TEAM_APPLY）の確定値を返す。
      *
      * <p>チーム行 → 組織行の順にロックを取り、ロックの内側で状態の再確認・制限・既存の加盟・件数上限・
      * グループの検証を行って INSERT する。ロックは INSERT とコミットまで保持する。</p>
@@ -76,7 +76,8 @@ public class TeamOrgAffiliationCommandService {
      * @param message        添え書き（正規化・長さ検証済み。任意）
      */
     @Transactional
-    public Long apply(Long teamId, Long organizationId, Long operatorUserId, UUID groupId, String message) {
+    public AppliedApplication apply(Long teamId, Long organizationId, Long operatorUserId, UUID groupId,
+                                    String message) {
         // 1. 最初の文でロックを取り、ロック取得後に状態を再確認する（削除 404・アーカイブ 409）
         TeamOrgAffiliationLockSupport.LockedScope scope =
                 lockSupport.lockTeamThenOrganization(teamId, organizationId);
@@ -138,7 +139,16 @@ public class TeamOrgAffiliationCommandService {
         metadata.put("group_id", groupId == null ? null : groupId.toString());
         auditRecorder.record(AuditEventType.TEAM_ORG_APPLICATION_SUBMITTED,
                 operatorUserId, teamId, organizationId, metadata);
-        return saved.getId();
+        return new AppliedApplication(saved.getId(), organizationId, groupId, message, operatorUserId,
+                saved.getInvitedAt());
+    }
+
+    /**
+     * 申請の結果（コミット後に行を取り直さず、トランザクション内で確定した値だけで応答を組み立てるための値）。
+     * 取り直すと、その間に拒否・取下げされて行が消えたとき応答が 500 になる。
+     */
+    public record AppliedApplication(Long id, Long organizationId, UUID groupId, String message,
+                                     Long invitedBy, LocalDateTime invitedAt) {
     }
 
     /**

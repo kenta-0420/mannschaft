@@ -65,12 +65,22 @@ public class TeamOrgAffiliationService {
         Long organizationId = organizationPort.findVisibleOrganizationId(organizationSlug, operatorUserId)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
 
-        Long membershipId = commandService.apply(
+        TeamOrgAffiliationCommandService.AppliedApplication applied = commandService.apply(
                 teamId, organizationId, operatorUserId, request.groupId(), message);
 
-        TeamOrgMembershipEntity saved = membershipRepository.findById(membershipId)
-                .orElseThrow(() -> new IllegalStateException("作成した申請を読み出せない: membershipId=" + membershipId));
-        return assembler.assembleForTeam(teamId, List.of(saved)).get(0);
+        // コミット後に行を取り直さない（その間に拒否・取下げで消えると 500 になる）。確定した値から組み立てる
+        TeamOrgMembershipEntity snapshot = TeamOrgMembershipEntity.builder()
+                .id(applied.id())
+                .teamId(teamId)
+                .organizationId(applied.organizationId())
+                .status(TeamOrgMembershipEntity.Status.PENDING)
+                .direction(TeamOrgAffiliationDirection.TEAM_APPLY)
+                .groupId(applied.groupId())
+                .message(applied.message())
+                .invitedBy(applied.invitedBy())
+                .invitedAt(applied.invitedAt())
+                .build();
+        return assembler.assembleForTeam(teamId, List.of(snapshot)).get(0);
     }
 
     /**
