@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -20,6 +22,8 @@ import com.mannschaft.app.shift.service.ShiftRequestService;
 import com.mannschaft.app.shift.dto.UpdatePositionRequest;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.awaitility.Awaitility;
@@ -84,7 +88,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * 待機は Awaitility とスタックの観測で行い固定 sleep は使わない）。</p>
  *
  * <ul>
- *   <li>K1（AC-17）: 認可の<b>後</b>・tx の<b>前</b>に親スケジュールを論理削除（希望系）／ポジションを物理削除（ポジション系）し、
+ *   <li>K1（AC-17）: 認可の<b>後</b>・tx の<b>前</b>に親スケジュールを論理削除（希望系）／ポジションを物理削除（ポジション系）／対象の希望を物理削除（希望の更新・削除）し、
  *       <b>全経路</b>（希望の一覧・サマリー・提出・更新（本人・管理者）・削除（本人・管理者）、ポジションの更新・削除）が
  *       解決時と同じコード・message の 404 になり、DB（全列＝updated_at まで）が不変であること。
  *       希望の更新・削除は本人の経路でも是正前から親（スケジュール）に依存するため、本人も対象に含める
@@ -108,6 +112,10 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
     private ObjectMapper objectMapper;
     @Autowired
     private PlatformTransactionManager transactionManager;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private TeamRepository teamRepository;
     @Autowired
     private ShiftScheduleRepository scheduleRepository;
     @Autowired
@@ -209,7 +217,9 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
         /** 親スケジュールの論理削除（希望系の全経路）。 */
         SCHEDULE,
         /** ポジション行の物理削除（ポジションの更新・削除）。 */
-        POSITION
+        POSITION,
+        /** 希望行そのものの物理削除（希望の更新・削除。親スケジュールは生きたまま、対象の希望だけが消える）。 */
+        REQUEST
     }
 
     private record Req(Long userId, MockHttpServletRequestBuilder request) { }
@@ -253,6 +263,19 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
                         ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND,
                         t -> new Req(t.adminId, delete("/api/v1/shifts/requests/{id}",
                                 t.newRequest(t.memberId, LocalDate.of(2026, 3, 2))))),
+                // --- シフト希望（対象の希望そのものが消える。親は生きている） ---
+                new RaceCase("希望更新（提出者本人・希望が消える）", Hook.GATE_OWNER_OR_ADMIN, Victim.REQUEST,
+                        ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND,
+                        t -> new Req(t.memberId, t.patchRequest(t.newVictimRequest()))),
+                new RaceCase("希望更新（管理者・希望が消える）", Hook.GATE_OWNER_OR_ADMIN, Victim.REQUEST,
+                        ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND,
+                        t -> new Req(t.adminId, t.patchRequest(t.newVictimRequest()))),
+                new RaceCase("希望削除（提出者本人・希望が消える）", Hook.GATE_OWNER_OR_ADMIN, Victim.REQUEST,
+                        ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND,
+                        t -> new Req(t.memberId, delete("/api/v1/shifts/requests/{id}", t.newVictimRequest()))),
+                new RaceCase("希望削除（管理者・希望が消える）", Hook.GATE_OWNER_OR_ADMIN, Victim.REQUEST,
+                        ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND,
+                        t -> new Req(t.adminId, delete("/api/v1/shifts/requests/{id}", t.newVictimRequest()))),
                 // --- ポジション（対象行そのものが消える） ---
                 new RaceCase("ポジション更新（管理者）", Hook.GATE_ADMIN, Victim.POSITION,
                         ShiftErrorCode.SHIFT_POSITION_NOT_FOUND,
@@ -268,6 +291,9 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
     /** 現在のテストで「消される側」のポジション ID（ケースの req 生成時に newPosition が設定する）。 */
     private final AtomicReference<Long> victimPositionId = new AtomicReference<>();
 
+    /** 現在のテストで「消される側」の希望 ID（Victim.REQUEST のケースの req 生成時に newVictimRequest が設定する）。 */
+    private final AtomicReference<Long> victimRequestId = new AtomicReference<>();
+
     @ParameterizedTest(name = "K1: {0} — 認可後に対象/親が消えたら 404・DB 不変")
     @MethodSource("raceCases")
     @DisplayName("K1: 全経路で、認可後・tx 前の親/対象の削除は解決時と同じコードの 404 になり DB は変わらない")
@@ -282,6 +308,8 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
         // フックが実際に走った（親/対象が消えた）ことの確認。走っていなければ 404 の根拠が崩れるので先に見る。
         if (testCase.victim() == Victim.SCHEDULE) {
             assertThat(scheduleIsSoftDeleted()).as("フックが走り親スケジュールが論理削除されていること").isTrue();
+        } else if (testCase.victim() == Victim.REQUEST) {
+            assertThat(requestExists(victimRequestId.get())).as("フックが走り希望が消えていること").isFalse();
         } else {
             assertThat(positionExists(victimPositionId.get())).as("フックが走りポジションが消えていること").isFalse();
         }
@@ -290,11 +318,17 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
         if (testCase.victim() == Victim.POSITION) {
             assertThat(positionExists(victimPositionId.get())).as("更新が消えた行を復活させていない").isFalse();
         }
+        if (testCase.victim() == Victim.REQUEST) {
+            assertThat(requestExists(victimRequestId.get())).as("更新・削除が消えた希望を復活・変更させていない").isFalse();
+        }
     }
 
     private void installHookAfterAuthorization(Hook hook, Victim victim) {
-        Runnable mutate = victim == Victim.SCHEDULE ? this::softDeleteSchedule
-                : () -> hardDeletePosition(victimPositionId.get());
+        Runnable mutate = switch (victim) {
+            case SCHEDULE -> this::softDeleteSchedule;
+            case POSITION -> () -> hardDeletePosition(victimPositionId.get());
+            case REQUEST -> () -> hardDeleteRequest(victimRequestId.get());
+        };
         Answer<Object> afterReal = inv -> {
             Object result = inv.callRealMethod();
             mutate.run();
@@ -507,6 +541,11 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
                 .setParameter("id", id).executeUpdate());
     }
 
+    private void hardDeleteRequest(Long id) {
+        requiresNew(() -> em.createNativeQuery("DELETE FROM shift_requests WHERE id = :id")
+                .setParameter("id", id).executeUpdate());
+    }
+
     private void requiresNew(Runnable action) {
         TransactionTemplate requiresNew = new TransactionTemplate(transactionManager);
         requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -519,6 +558,12 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
                 .setParameter("id", scheduleId).getSingleResult()).longValue() == 1L);
     }
 
+    private boolean requestExists(Long id) {
+        return tx.execute(s -> ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM shift_requests WHERE id = :id")
+                .setParameter("id", id).getSingleResult()).longValue() == 1L);
+    }
+
     private boolean positionExists(Long id) {
         return tx.execute(s -> ((Number) em.createNativeQuery(
                         "SELECT COUNT(*) FROM shift_positions WHERE id = :id")
@@ -527,11 +572,13 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
 
     /**
      * 親（スケジュール）配下の希望と傍観ポジションを、全列（updated_at を含む）そのまま文字列にして連結する。
-     * 論理削除したスケジュール行自身・物理削除した対象ポジションは含めない。拒否・不在で 1 列でも変われば差が出る。
+     * 論理削除したスケジュール行自身・物理削除した対象ポジション・対象の希望（Victim.REQUEST）は含めない
+     * （対象の希望の傍らに別メンバーの希望を 1 件置き、そちらが全列不変であることで見る）。拒否・不在で 1 列でも変われば差が出る。
      */
     private String snapshot() {
         return tx.execute(s -> Stream.of(
-                        "SELECT * FROM shift_requests WHERE schedule_id = :sid ORDER BY id",
+                        "SELECT * FROM shift_requests WHERE schedule_id = :sid AND id <> "
+                                + (victimRequestId.get() == null ? -1L : victimRequestId.get()) + " ORDER BY id",
                         "SELECT * FROM shift_positions WHERE id = " + bystanderPositionId)
                 .map(sql -> {
                     var query = em.createNativeQuery(sql);
@@ -556,6 +603,17 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
                 .preference(ShiftPreference.PREFERRED)
                 .note("競合テスト")
                 .build()).getId());
+    }
+
+    /**
+     * Victim.REQUEST 用: 提出者 member の希望（消される側）を 1 件と、傍観者 member2 の希望を 1 件コミットし、
+     * 消される側の ID を返す（同時に記録する）。
+     */
+    private Long newVictimRequest() {
+        Long id = newRequest(memberId, LocalDate.of(2026, 3, 2));
+        victimRequestId.set(id);
+        newRequest(member2Id, LocalDate.of(2026, 3, 4));
+        return id;
     }
 
     /** ポジションを 1 件コミットして ID を返す（同時に「消される側」として記録する）。 */
@@ -594,37 +652,19 @@ class ShiftRequestPositionFacadeRaceAndQueryIT extends AbstractMySqlIntegrationT
     }
 
     private Long insertUser(String email) {
-        em.createNativeQuery(
-                        "INSERT INTO users ("
-                                + "email, last_name, first_name, display_name, status, "
-                                + "is_searchable, handle_searchable, contact_approval_required, "
-                                + "online_visibility, dm_receive_from, encryption_key_version, "
-                                + "locale, timezone, reporting_restricted, follow_list_visibility, "
-                                + "care_notification_enabled, offline_only, "
-                                + "created_at, updated_at) "
-                                + "VALUES (:email, 'W1FACADE', 'テスト', 'W1FACADE テスト', 'ACTIVE', "
-                                + "1, 1, 1, "
-                                + "'NOBODY', 'ANYONE', 1, "
-                                + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
-                                + "1, 0, "
-                                + "NOW(), NOW())")
-                .setParameter("email", email)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM users WHERE email = :email")
-                .setParameter("email", email)
-                .getSingleResult()).longValue();
+        return userRepository.saveAndFlush(UserEntity.builder()
+                .email(email)
+                .lastName("W1FACADE").firstName("テスト").displayName("W1FACADE テスト")
+                .status(UserEntity.UserStatus.ACTIVE).locale("ja").timezone("Asia/Tokyo")
+                .isSearchable(true).build()).getId();
     }
 
     private Long insertTeam(String name) {
-        em.createNativeQuery(
-                        "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, "
-                                + "created_at, updated_at) "
-                                + "VALUES (:name, 'PUBLIC', 1, 0, 0, "
-                                + "CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
-                .setParameter("name", name)
-                .executeUpdate();
-        return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE name = :name")
-                .setParameter("name", name)
-                .getSingleResult()).longValue();
+        return teamRepository.saveAndFlush(TeamEntity.builder()
+                .name(name)
+                .slug("s-" + Long.toHexString(System.nanoTime()))
+                .visibility(TeamEntity.Visibility.PUBLIC)
+                .supporterEnabled(true)
+                .build()).getId();
     }
 }
