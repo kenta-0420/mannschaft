@@ -102,20 +102,22 @@ public class ScheduleEventCategoryService {
     );
 
     /**
-     * チーム固有カテゴリ + 親組織カテゴリをマージして取得する。
+     * チーム固有カテゴリ + 全親組織のカテゴリをマージして取得する（F01.2.1 §9.2 #9・#10）。
      *
-     * @param teamId         チームID
-     * @param organizationId 親組織ID
-     * @return マージされたカテゴリ一覧（sortOrder順）
+     * <p>並びは決定的: 親組織は引数の順（代表親組織が先頭）に、各組織内は sortOrder 順、
+     * 最後にチーム固有カテゴリ（sortOrder 順）。親組織が 0 件なら自チームの分だけを返す
+     * （{@code organization_id IS NULL} での検索を発行しない）。</p>
+     *
+     * @param teamId          チームID
+     * @param organizationIds ACTIVE な親組織ID（代表親組織が先頭。空可）
+     * @return マージされたカテゴリ一覧
      */
-    public List<ScheduleEventCategoryEntity> getCategoriesForTeam(Long teamId, Long organizationId) {
-        List<ScheduleEventCategoryEntity> teamCategories =
-                categoryRepository.findByTeamIdOrderBySortOrder(teamId);
-        List<ScheduleEventCategoryEntity> orgCategories =
-                categoryRepository.findByOrganizationIdOrderBySortOrder(organizationId);
-
-        List<ScheduleEventCategoryEntity> merged = new ArrayList<>(orgCategories);
-        merged.addAll(teamCategories);
+    public List<ScheduleEventCategoryEntity> getCategoriesForTeam(Long teamId, List<Long> organizationIds) {
+        List<ScheduleEventCategoryEntity> merged = new ArrayList<>();
+        for (Long organizationId : organizationIds) {
+            merged.addAll(categoryRepository.findByOrganizationIdOrderBySortOrder(organizationId));
+        }
+        merged.addAll(categoryRepository.findByTeamIdOrderBySortOrder(teamId));
         return merged;
     }
 

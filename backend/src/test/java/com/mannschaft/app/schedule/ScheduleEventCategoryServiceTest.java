@@ -85,7 +85,7 @@ class ScheduleEventCategoryServiceTest {
                     .willReturn(List.of(orgCat));
 
             // when
-            List<ScheduleEventCategoryEntity> result = categoryService.getCategoriesForTeam(TEAM_ID, ORG_ID);
+            List<ScheduleEventCategoryEntity> result = categoryService.getCategoriesForTeam(TEAM_ID, List.of(ORG_ID));
 
             // then
             assertThat(result).hasSize(2);
