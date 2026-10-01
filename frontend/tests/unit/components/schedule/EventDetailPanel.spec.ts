@@ -76,7 +76,11 @@ function baseEvent() {
 
 // 記録ボタンは pi-play アイコン付き（パネル内で唯一）。i18n は実インスタンスが英語ラベルに
 // 解決するため、キー文字列でなくアイコンで特定する。
-function findRecordButton(wrapper: { findAll: (s: string) => Array<{ html: () => string; trigger: (e: string) => Promise<void> }> }) {
+function findRecordButton(wrapper: { findAll: (s: string) => Array<{
+    html: () => string
+    trigger: (e: string) => Promise<void>
+    attributes: (name?: string) => string | undefined
+  }> }) {
   return wrapper
     .findAll('button')
     .find((b) => b.html().includes('pi-play'))
