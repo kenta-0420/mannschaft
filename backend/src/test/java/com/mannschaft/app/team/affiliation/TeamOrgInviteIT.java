@@ -153,9 +153,9 @@ class TeamOrgInviteIT extends TeamOrgInviteItSupport {
 
         MvcResult received = listReceived(ta, team.slug()).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].id").value(membershipId))
                 .andExpect(jsonPath("$.data[0].organization.slug").value(org.slug()))
                 .andReturn();
+        assertThat(json(received).get("data").get(0).get("id").asLong()).isEqualTo(membershipId);
         assertThat(json(received).get("meta").get("total").asLong()).isEqualTo(1);
 
         listSent(xa, org.slug()).andExpect(status().isOk())

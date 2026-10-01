@@ -89,6 +89,48 @@ public class TeamOrgAffiliationAssembler {
                 .toList();
     }
 
+    /**
+     * 行ごとにチームが異なる加盟の行を共通表現へ組み立てる（組織側の一覧。招待の送信済み一覧など）。入力の順序を保つ。
+     *
+     * <p>チームもまとめて引く（チーム1本・組織1本・グループ1本・ユーザー1本。行数に比例して SQL を増やさない）。</p>
+     *
+     * @param rows 加盟の行（チームは問わない）
+     */
+    public List<TeamOrgAffiliationResponse> assembleAcrossTeams(List<TeamOrgMembershipEntity> rows) {
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> teamIds = new HashSet<>();
+        Set<Long> organizationIds = new HashSet<>();
+        Set<UUID> groupIds = new HashSet<>();
+        Set<Long> userIds = new HashSet<>();
+        for (TeamOrgMembershipEntity row : rows) {
+            teamIds.add(row.getTeamId());
+            organizationIds.add(row.getOrganizationId());
+            if (row.getGroupId() != null) {
+                groupIds.add(row.getGroupId());
+            }
+            if (row.getInvitedBy() != null) {
+                userIds.add(row.getInvitedBy());
+            }
+        }
+        Map<Long, AffiliationPartyRef> teams = new java.util.HashMap<>();
+        for (TeamEntity team : teamRepository.findAllById(teamIds)) {
+            teams.put(team.getId(), new AffiliationPartyRef(team.getSlug(), team.getName(), team.getIconUrl()));
+        }
+        Map<Long, TeamAffiliationOrganizationPort.OrganizationRef> organizations =
+                organizationPort.findOrganizationRefs(organizationIds);
+        Map<UUID, TeamAffiliationOrganizationPort.GroupRef> groups = organizationPort.findAliveGroupRefs(groupIds);
+        Map<Long, String> displayNames = nameResolverService.resolveUserDisplayNames(userIds);
+
+        return rows.stream()
+                .map(row -> toResponse(row,
+                        // 論理削除済みのチームを指す行は、片付け（§4.5）の前の短い間だけ残りうる。名前を出せないので識別子なしの表現にする
+                        teams.getOrDefault(row.getTeamId(), new AffiliationPartyRef(null, null, null)),
+                        organizations, groups, displayNames))
+                .toList();
+    }
+
     private TeamOrgAffiliationResponse toResponse(
             TeamOrgMembershipEntity row, AffiliationPartyRef teamRef,
             Map<Long, TeamAffiliationOrganizationPort.OrganizationRef> organizations,

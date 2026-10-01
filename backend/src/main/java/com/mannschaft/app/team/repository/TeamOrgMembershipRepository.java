@@ -293,4 +293,80 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     int clearGroupId(@Param("organizationId") Long organizationId,
                      @Param("groupId") java.util.UUID groupId,
                      @Param("now") java.time.Instant now);
+
+    // ========================================================================
+    // F01.2.1 2-C: 組織からの招待・承諾・辞退・取消（§6.5）
+    //
+    // 組織側から引くクエリは必ず organization_id を、チーム側から引くクエリは必ず team_id を条件に含める
+    // （越境した ID は存在しない ID と同じく空・0件になる。§5.1）。
+    // ========================================================================
+
+    /**
+     * (チーム, 組織) の組の行を {@code SELECT ... FOR UPDATE} で取得する（招待の取消。承諾・別の取消と直列化する）。
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.teamId = :teamId AND m.organizationId = :organizationId")
+    Optional<TeamOrgMembershipEntity> findByTeamIdAndOrganizationIdForUpdate(
+            @Param("teamId") Long teamId, @Param("organizationId") Long organizationId);
+
+    /**
+     * 組織の PENDING な加盟を向き別に、作成日時の降順で引く（組織側の送信済み招待一覧。§10.6）。
+     *
+     * <p>同時刻の行の並びを決定的にするため ID の降順を副キーにする。</p>
+     */
+    @Query(value = "SELECT m FROM TeamOrgMembershipEntity m "
+            + "WHERE m.organizationId = :organizationId AND m.status = :status AND m.direction = :direction "
+            + "ORDER BY m.invitedAt DESC, m.id DESC",
+            countQuery = "SELECT COUNT(m) FROM TeamOrgMembershipEntity m "
+            + "WHERE m.organizationId = :organizationId AND m.status = :status AND m.direction = :direction")
+    org.springframework.data.domain.Page<TeamOrgMembershipEntity> findPageByOrganizationIdAndStatusAndDirection(
+            @Param("organizationId") Long organizationId,
+            @Param("status") TeamOrgMembershipEntity.Status status,
+            @Param("direction") com.mannschaft.app.team.entity.TeamOrgAffiliationDirection direction,
+            org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * 招待の承諾: 条件付き UPDATE（{@code id, team_id, PENDING, ORG_INVITE}。§4.1・§6.5）。
+     *
+     * <p>ACTIVE にし、確定グループを書き、添え書きを NULL に戻す（PII を残さない。§5.3・AC-G104）。
+     * {@code responded_at} はアプリの壁時計（§4.6）、{@code updated_at} は起きた瞬間（UTC）で渡す。</p>
+     *
+     * @return 更新した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE TeamOrgMembershipEntity m SET "
+        + "m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE, "
+        + "m.groupId = :groupId, m.message = NULL, m.respondedBy = :respondedBy, "
+        + "m.respondedAt = :respondedAt, m.updatedAt = :updatedAt "
+        + "WHERE m.id = :id AND m.teamId = :teamId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
+        + "AND m.direction = com.mannschaft.app.team.entity.TeamOrgAffiliationDirection.ORG_INVITE")
+    int acceptPendingInvite(@Param("id") Long id,
+                            @Param("teamId") Long teamId,
+                            @Param("groupId") java.util.UUID groupId,
+                            @Param("respondedBy") Long respondedBy,
+                            @Param("respondedAt") java.time.LocalDateTime respondedAt,
+                            @Param("updatedAt") java.time.Instant updatedAt);
+
+    /**
+     * 招待の辞退: 条件付き DELETE（{@code id, team_id, PENDING, ORG_INVITE}。§4.1・§6.5）。
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgMembershipEntity m WHERE m.id = :id AND m.teamId = :teamId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
+        + "AND m.direction = com.mannschaft.app.team.entity.TeamOrgAffiliationDirection.ORG_INVITE")
+    int deletePendingInviteByTeam(@Param("id") Long id, @Param("teamId") Long teamId);
+
+    /**
+     * 招待の取消: 条件付き DELETE（{@code id, organization_id, PENDING, ORG_INVITE}。§4.1・§6.5）。
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgMembershipEntity m WHERE m.id = :id AND m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
+        + "AND m.direction = com.mannschaft.app.team.entity.TeamOrgAffiliationDirection.ORG_INVITE")
+    int deletePendingInviteByOrganization(@Param("id") Long id, @Param("organizationId") Long organizationId);
 }
