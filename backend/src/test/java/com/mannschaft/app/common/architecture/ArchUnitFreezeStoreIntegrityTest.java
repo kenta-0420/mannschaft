@@ -740,9 +740,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>CMP-260923-0954 W2（認可をトランザクションの外のファサードへ）: ShiftSwapService 20 行・
      * ShiftChangeRequestService 13 行（凍結済みの旧 private 認可ヘルパーを含む）・ShiftAutoAssignService 18 行、
      * 計 51 行が解消。origin/main のストアとの差分は「追加 0・削除 51（上記 3 サービスのキーのみ）」。
-     * {@code 7663 → 7612}。</p>
+     * {@code 7661（#3544 取込み後の main） → 7610}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7612;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7610;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
