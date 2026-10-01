@@ -16,7 +16,6 @@ import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -61,9 +60,6 @@ class ShiftRequestServiceTest {
 
     @Mock
     private ShiftMapper shiftMapper;
-
-    @Mock
-    private UserRoleRepository userRoleRepository;
 
     @Mock
     private ProxyInputContext proxyInputContext;
@@ -484,13 +480,12 @@ class ShiftRequestServiceTest {
             // Given
             ShiftScheduleEntity schedule = createCollectingSchedule();
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(TEN_MEMBERS);
-            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(3L);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_TEN_MEMBERS)).willReturn(3L);
             given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
                     .willReturn(List.of());
 
             // When
-            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, USER_ID);
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, TEN_MEMBERS);
 
             // Then
             assertThat(result.getScheduleId()).isEqualTo(SCHEDULE_ID);
@@ -503,10 +498,9 @@ class ShiftRequestServiceTest {
         @DisplayName("希望提出サマリー取得_対象者ゼロなら提出者照会を行わない")
         void 希望提出サマリー取得_対象者ゼロ() {
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(createCollectingSchedule());
-            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(List.of());
             given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID)).willReturn(List.of());
 
-            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, USER_ID);
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, List.of());
 
             assertThat(result.getTotalMembers()).isZero();
             assertThat(result.getSubmittedCount()).isZero();
@@ -520,8 +514,7 @@ class ShiftRequestServiceTest {
             // Given
             ShiftScheduleEntity schedule = createCollectingSchedule();
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(TEN_MEMBERS);
-            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(5L);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_TEN_MEMBERS)).willReturn(5L);
             given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
                     .willReturn(List.of(
                             new Object[]{ShiftPreference.PREFERRED, 7L},
@@ -531,7 +524,7 @@ class ShiftRequestServiceTest {
                             new Object[]{ShiftPreference.ABSOLUTE_REST, 1L}));
 
             // When
-            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, USER_ID);
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, TEN_MEMBERS);
 
             // Then
             assertThat(result.getPreferredCount()).isEqualTo(7L);
@@ -549,15 +542,14 @@ class ShiftRequestServiceTest {
             // Given
             ShiftScheduleEntity schedule = createCollectingSchedule();
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID)).willReturn(TEN_MEMBERS);
-            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_MEMBERS)).willReturn(2L);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, TEN_TEN_MEMBERS)).willReturn(2L);
             given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID))
                     .willReturn(List.of(
                             new Object[]{ShiftPreference.PREFERRED, 3L},
                             new Object[]{ShiftPreference.ABSOLUTE_REST, 1L}));
 
             // When
-            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, USER_ID);
+            ShiftRequestSummaryResponse result = shiftRequestService.getRequestSummary(SCHEDULE_ID, TEN_MEMBERS);
 
             // Then
             assertThat(result.getPreferredCount()).isEqualTo(3L);
@@ -566,6 +558,21 @@ class ShiftRequestServiceTest {
             assertThat(result.getStrongRestCount()).isEqualTo(0L);
             assertThat(result.getAbsoluteRestCount()).isEqualTo(1L);
             assertThat(result.getUnavailableCount()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("希望提出サマリー取得_候補に重複があっても人数は重複排除して数える")
+        void 希望提出サマリー取得_候補重複は排除() {
+            given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(createCollectingSchedule());
+            List<Long> distinct = List.of(1L, 2L);
+            given(requestRepository.countSubmittedMembersByScheduleId(SCHEDULE_ID, distinct)).willReturn(1L);
+            given(requestRepository.countByPreferenceForSchedule(SCHEDULE_ID)).willReturn(List.of());
+
+            ShiftRequestSummaryResponse result =
+                    shiftRequestService.getRequestSummary(SCHEDULE_ID, List.of(1L, 2L, 2L, 1L));
+
+            assertThat(result.getTotalMembers()).isEqualTo(2L);
+            assertThat(result.getPendingCount()).isEqualTo(1L);
         }
     }
 }

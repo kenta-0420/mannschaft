@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.common.ScopeConcealingAccessGate;
+import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.dto.CreateShiftRequestRequest;
 import com.mannschaft.app.shift.dto.ShiftRequestResponse;
@@ -50,6 +51,7 @@ public class ShiftRequestFacade {
 
     private final ShiftRequestService requestService;
     private final ScopeConcealingAccessGate accessGate;
+    private final RoleService roleService;
 
     /**
      * スケジュールのシフト希望一覧を取得する（他メンバー分を含むため管理者のみ）。
@@ -117,6 +119,8 @@ public class ShiftRequestFacade {
     public ShiftRequestSummaryResponse getRequestSummary(Long scheduleId, Long userId) {
         ShiftRequestService.ScheduleScope scope = requestService.resolveScheduleScope(scheduleId);
         accessGate.requireAdminOrConceal(userId, scope.teamId(), TEAM, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
-        return requestService.getRequestSummary(scheduleId, userId);
+        // 提出対象メンバーの列挙は role ドメインの窓口（RoleService）から tx の外で取得し、tx 本体へ引数で渡す。
+        List<Long> memberCandidateIds = roleService.getMemberCandidateUserIdsByTeamId(scope.teamId());
+        return requestService.getRequestSummary(scheduleId, memberCandidateIds);
     }
 }

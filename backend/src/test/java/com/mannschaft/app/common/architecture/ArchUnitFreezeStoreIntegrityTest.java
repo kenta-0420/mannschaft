@@ -744,13 +744,17 @@ class ArchUnitFreezeStoreIntegrityTest {
      *
      * <p>CMP-260923-0954 W1 の作り替え（シフト希望・ポジション。{@code ShiftRequestFacade} / {@code ShiftPositionFacade}）:
      * ShiftRequestService 17 行のうち 14 行・ShiftPositionService 14 行、計 28 行が解消。origin/main のストアとの差分は
-     * 「追加 0・削除 28（上記 2 サービスのキーのみ）」。残す 3 行は認可と無関係な越境:
+     * 「追加 0・削除 28（上記 2 サービスのキーのみ）」。残す 2 行は認可と無関係な越境:
      * ShiftRequestService の submitRequest → ProxyInputRecordRepository と buildAndSaveProxyInputRecord →
-     * ProxyInputRecordRepository（代理入力の記録。K3: 名前・引数・クラスの {@code @Transactional} を維持して入口のまま保つ）、
-     * getRequestSummary → UserRoleRepository（提出対象メンバーの列挙を role の Repository 直参照で行う既存の越境。
-     * 認可ではないため本 PR の対象外）。{@code 7610 → 7582}。</p>
+     * ProxyInputRecordRepository（代理入力の記録。K3: 名前・引数・クラスの {@code @Transactional} を維持して入口のまま保つ）。
+     * {@code 7610 → 7582}。</p>
+     *
+     * <p>同 W1 の Codex 検分1巡目 P2: getRequestSummary → UserRoleRepository の 1 行も解消（提出対象メンバーの列挙を
+     * {@code ShiftRequestFacade} が {@code RoleService#getMemberCandidateUserIdsByTeamId} から取得して tx 本体へ
+     * 引数で渡す形にし、tx 本体から role の Repository 依存を除去。死んだ引数 actorUserId も削除）。
+     * origin/main のストアとの差分は「追加 0・削除 29（W1 の 2 サービスのキーのみ）」。{@code 7582 → 7581}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7582;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7581;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

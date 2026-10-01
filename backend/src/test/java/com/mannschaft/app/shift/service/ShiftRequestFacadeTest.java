@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.ScopeConcealingAccessGate;
+import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.dto.CreateShiftRequestRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftRequestRequest;
@@ -15,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,6 +47,9 @@ class ShiftRequestFacadeTest {
 
     @Mock
     private ScopeConcealingAccessGate accessGate;
+
+    @Mock
+    private RoleService roleService;
 
     @InjectMocks
     private ShiftRequestFacade facade;
@@ -82,13 +87,17 @@ class ShiftRequestFacadeTest {
         given(requestService.resolveScheduleScope(SCHEDULE_ID))
                 .willReturn(new ShiftRequestService.ScheduleScope(TEAM_ID));
 
+        List<Long> candidates = List.of(5L, 6L);
+        given(roleService.getMemberCandidateUserIdsByTeamId(TEAM_ID)).willReturn(candidates);
+
         facade.getRequestSummary(SCHEDULE_ID, USER_ID);
 
-        InOrder order = inOrder(requestService, accessGate);
+        InOrder order = inOrder(requestService, accessGate, roleService);
         order.verify(requestService).resolveScheduleScope(SCHEDULE_ID);
         order.verify(accessGate).requireAdminOrConceal(USER_ID, TEAM_ID, "TEAM",
                 ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
-        order.verify(requestService).getRequestSummary(SCHEDULE_ID, USER_ID);
+        order.verify(roleService).getMemberCandidateUserIdsByTeamId(TEAM_ID);
+        order.verify(requestService).getRequestSummary(SCHEDULE_ID, candidates);
     }
 
     @Test

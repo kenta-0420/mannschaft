@@ -19,7 +19,6 @@ import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -65,7 +64,6 @@ public class ShiftRequestService {
     private final ShiftSlotRepository slotRepository;
     private final ShiftScheduleService scheduleService;
     private final ShiftMapper shiftMapper;
-    private final UserRoleRepository userRoleRepository;
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     @Qualifier("wallClock")
@@ -252,18 +250,17 @@ public class ShiftRequestService {
      * <p>v2 拡張: 5 段階 preference 別カウント（PREFERRED / AVAILABLE / WEAK_REST /
      * STRONG_REST / ABSOLUTE_REST）を 1 クエリで集計して返却する。</p>
      *
-     * @param scheduleId  スケジュールID
-     * @param actorUserId 操作者ユーザーID（認可は {@link ShiftRequestFacade} 済み。監査ログ用）
+     * @param scheduleId          スケジュールID
+     * @param memberCandidateIds  提出対象メンバーの userId（認可と同じく {@link ShiftRequestFacade} が role ドメインの
+     *                            窓口から取得して渡す。tx 本体は role の Repository を参照しない）
      * @return 提出サマリー
      * @throws BusinessException 認可の後にスケジュールが消えた競合（SHIFT_001 / 404）
      */
-    // TODO: shiftドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
-    public ShiftRequestSummaryResponse getRequestSummary(Long scheduleId, Long actorUserId) {
+    public ShiftRequestSummaryResponse getRequestSummary(Long scheduleId, List<Long> memberCandidateIds) {
         // 認可は Facade 済み。スケジュールの読み直し（不在なら解決時と同じ SHIFT_001）が teamId の取得を兼ねる。
         ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(scheduleId);
-        log.debug("シフト希望サマリー取得: scheduleId={}, actorUserId={}", scheduleId, actorUserId);
-        List<Long> memberIds = userRoleRepository.findMemberCandidateIdsByTeam(schedule.getTeamId())
-                .stream().distinct().toList();
+        log.debug("シフト希望サマリー取得: scheduleId={}, teamId={}", scheduleId, schedule.getTeamId());
+        List<Long> memberIds = memberCandidateIds.stream().distinct().toList();
         long submittedCount = memberIds.isEmpty()
                 ? 0
                 : requestRepository.countSubmittedMembersByScheduleId(scheduleId, memberIds);
