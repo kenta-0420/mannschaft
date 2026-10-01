@@ -175674,6 +175674,10 @@
           "sortOrder": {
             "type": "integer",
             "format": "int32"
+          },
+          "sourceOrganizationId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -234196,6 +234200,12 @@
             "type": "integer",
             "format": "int64"
           },
+          "organizations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParentOrganization"
+            }
+          },
           "role": {
             "type": "string"
           },
@@ -234206,6 +234216,21 @@
             "type": "string"
           },
           "visibility": {
+            "type": "string"
+          }
+        }
+      },
+      "ParentOrganization": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
             "type": "string"
           }
         }
