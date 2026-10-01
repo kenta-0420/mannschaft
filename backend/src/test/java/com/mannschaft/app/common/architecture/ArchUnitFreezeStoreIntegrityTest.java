@@ -737,7 +737,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * checkPageMembershipOrNotFound 3/getPage 3/listPages→MembershipRepository 1）を削除。追記は 0 行。
      * {@code 7684 → 7663}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7663;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7661;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

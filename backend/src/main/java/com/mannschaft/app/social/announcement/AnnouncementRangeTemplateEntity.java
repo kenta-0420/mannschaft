@@ -58,6 +58,25 @@ public class AnnouncementRangeTemplateEntity extends BaseEntity {
     private String targetTeamIds;
 
     /**
+     * 個別選択したチームグループ ID（UUID 文字列の JSON 配列）（F01.2.1 §5.6）。NULL = 個別選択なし。
+     */
+    @Column(name = "target_group_ids", columnDefinition = "JSON")
+    private String targetGroupIds;
+
+    /**
+     * 並び順の範囲指定（JSON: {@code {"from_group_id":..,"to_group_id":..}}）。NULL = 範囲指定なし。
+     */
+    @Column(name = "target_group_range", columnDefinition = "JSON")
+    private String targetGroupRange;
+
+    /**
+     * 未分類チームを含めるか。
+     */
+    @Column(name = "include_unassigned", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private Boolean includeUnassigned = false;
+
+    /**
      * 優先チャネル（BULLETIN_THREAD / TIMELINE_POST / BLOG_POST / TODO / SCHEDULE / SURVEY）。
      */
     @Column(length = 30)

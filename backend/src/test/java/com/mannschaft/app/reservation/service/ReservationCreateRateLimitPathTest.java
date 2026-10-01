@@ -96,7 +96,6 @@ class ReservationCreateRateLimitPathTest {
                 mock(com.mannschaft.app.reservation.ReservationMapper.class),
                 mock(com.mannschaft.app.common.NameResolverService.class),
                 mock(org.springframework.context.ApplicationEventPublisher.class),
-                mock(com.mannschaft.app.common.AccessControlService.class),
                 viewAccessGuard,
                 mock(ReservationPolicyService.class),
                 mock(com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository.class),

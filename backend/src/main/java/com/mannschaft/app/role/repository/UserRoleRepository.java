@@ -2473,6 +2473,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "SELECT DISTINCT ur.team_id FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
             "JOIN users u ON u.id = ur.user_id " +
+            "JOIN teams t ON t.id = ur.team_id AND t.deleted_at IS NULL " +
             "WHERE ur.user_id = :userId " +
             "AND ur.team_id IS NOT NULL " +
             "AND r.name IN ('ADMIN', 'DEPUTY_ADMIN') " +
