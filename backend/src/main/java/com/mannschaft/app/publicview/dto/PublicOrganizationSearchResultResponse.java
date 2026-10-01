@@ -20,6 +20,8 @@ import java.time.LocalDateTime;
  * @param iconUrl      アイコン URL（null 可）
  * @param memberCount  所属ユーザー数（{@code user_roles} からの集計値）
  * @param lastPostDate 最新投稿日時（{@code blog_posts.created_at} MAX、投稿なしの場合は null）
+ * @param acceptingTeamApplications チームからの加盟申請を受け付けているか（F01.2.1 §10.1。discover の
+ *                                  「加盟受付中」バッジ用。公開組織にしか載らない）
  */
 public record PublicOrganizationSearchResultResponse(
         Long id,
@@ -27,5 +29,6 @@ public record PublicOrganizationSearchResultResponse(
         String name,
         String iconUrl,
         int memberCount,
-        LocalDateTime lastPostDate
+        LocalDateTime lastPostDate,
+        boolean acceptingTeamApplications
 ) {}

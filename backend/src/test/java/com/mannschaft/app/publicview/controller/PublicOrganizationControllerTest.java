@@ -191,7 +191,8 @@ class PublicOrganizationControllerTest {
                 "理念テキスト",
                 "https://www.google.com/maps/embed?pb=xxx",
                 true,
-                true
+                true,
+                false
         );
     }
 }

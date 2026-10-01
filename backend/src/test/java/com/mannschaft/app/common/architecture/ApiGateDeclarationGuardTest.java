@@ -42,7 +42,10 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3612);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 3（F01.2.1 2-B1）= 3612
+                .isEqualTo(3616);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 3（F01.2.1 2-B1）+ 4（F01.2.1 2-A）= 3616（main 3612 + 4）
+                                    // + F01.2.1 部隊 2-A の4エンドポイント（TeamAffiliationSettingsController の
+                                    //   設定 GET/PUT・申請フォーム GET の3本 + OrgAffiliationEligibilityController の1本。
+                                    //   いずれも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|3・0|1））
                                     //   main 3566（ブログ・スケジュール画像の完了確認2本を含む）
                                     // + Billing Center PR6a の解約/撤回2エンドポイント（D6・正本 05:334-335）
                                     // + CMP-260912-1525 のメンバー一括取得・チーム時給一括取得の2エンドポイント
