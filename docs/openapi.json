@@ -164688,10 +164688,14 @@
             "format": "int32"
           },
           "notes": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
           },
           "position": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 0
           },
           "sortOrder": {
             "type": "integer",
@@ -164912,7 +164916,9 @@
             "format": "int32"
           },
           "position": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 0
           },
           "sortOrder": {
             "type": "integer",

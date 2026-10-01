@@ -699,6 +699,57 @@ class FlywayFromScratchMigrationTest {
     }
 
     /**
+     * 負のテスト: 通常の所有側 {@code @OneToOne @JoinColumn} の FK 列も検査対象であること
+     * （mappedBy 側は列を所有しないため誤検出しないこと）。
+     */
+    @Test
+    @Order(22)
+    @DisplayName("AC-7: 負のテスト: 所有側 @OneToOne @JoinColumn の FK 列の型ずれを検出し、mappedBy 側は誤検出しない")
+    void 所有側OneToOneのFK列も検査される() {
+        StandardServiceRegistry registry = buildServiceRegistry();
+        try {
+            Metadata metadata = new MetadataSources(registry)
+                    .addAnnotatedClass(FakeO2oParent.class)
+                    .addAnnotatedClass(FakeO2oChild.class)
+                    .getMetadataBuilder()
+                    .applyPhysicalNamingStrategy(new CamelCaseToUnderscoresNamingStrategy())
+                    .applyImplicitNamingStrategy(new SpringImplicitNamingStrategy())
+                    .build();
+
+            Map<String, Map<String, String>> ok = new HashMap<>();
+            ok.put("fake_o2o_parent", new HashMap<>(Map.of("id", "binary(16)")));
+            ok.put("fake_o2o_child", new HashMap<>(Map.of("id", "binary(16)", "parent_id", "binary(16)")));
+            assertThat(uuidColumnTypeViolations(metadata, ok)).as("型が揃っていれば違反 0 件").isEmpty();
+
+            Map<String, Map<String, String>> bad = deepCopy(ok);
+            bad.get("fake_o2o_child").put("parent_id", "char(36)");
+            assertThat(uuidColumnTypeViolations(metadata, bad))
+                    .as("所有側 OneToOne の FK 列（fake_o2o_child.parent_id）の型ずれを検出する")
+                    .anyMatch(v -> v.startsWith("fake_o2o_child.parent_id "));
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    /** 上記負のテスト用の検体（本番ソースセットではないため scanMappedClasses の対象外）。 */
+    @jakarta.persistence.Entity
+    @jakarta.persistence.Table(name = "fake_o2o_parent")
+    static class FakeO2oParent extends com.mannschaft.app.common.entity.UuidV7Entity {
+        /** mappedBy 側（FK 列を所有しない）。 */
+        @jakarta.persistence.OneToOne(mappedBy = "parent")
+        FakeO2oChild child;
+    }
+
+    @jakarta.persistence.Entity
+    @jakarta.persistence.Table(name = "fake_o2o_child")
+    static class FakeO2oChild extends com.mannschaft.app.common.entity.UuidV7Entity {
+        /** 所有側（FK 列 parent_id を持つ）。 */
+        @jakarta.persistence.OneToOne
+        @jakarta.persistence.JoinColumn(name = "parent_id")
+        FakeO2oParent parent;
+    }
+
+    /**
      * 全 Entity（主キー・基本属性・埋め込み・ToOne の外部キー・コレクション表）の UUID 型の列を走査し、
      * Hibernate が書き込む JDBC 型から期待される DB 列型（binary(16) / char(36)）と実スキーマを突き合わせる。
      */
@@ -737,8 +788,11 @@ class FlywayFromScratchMigrationTest {
         }
         Value typed = value;
         if (value instanceof ToOne toOne) {
+            // 除外するのは「FK 列を所有しない側」だけ。Hibernate のマッピング上、org.hibernate.mapping.OneToOne は
+            // mappedBy 側（列なし）と共有主キー（@MapsId / @PrimaryKeyJoinColumn。列は自身の主キーで検査済み）に限られる。
+            // 通常の所有側 @OneToOne @JoinColumn は ManyToOne として表現され、FK 列をここで検査する。
             if (toOne instanceof org.hibernate.mapping.OneToOne || toOne.getReferencedEntityName() == null) {
-                return; // 共有主キー（列を持たない）
+                return;
             }
             PersistentClass target = metadata.getEntityBinding(toOne.getReferencedEntityName());
             if (target == null) {
