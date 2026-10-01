@@ -31,6 +31,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -279,10 +284,15 @@ class MarketFinalizeNotificationTransactionIT extends AbstractMySqlIntegrationTe
 
         // 参加者キャンセルの業務TXを模す: cancelMyApplication と同じく札行を FOR UPDATE で握ったまま、
         // その間に最終認証リスナーを走らせ、後から FULL→OPEN（decrementConfirmedAtomic 相当）で commit する。
+        // 固定 sleep ではなく、リスナーが札行のロック待ちに入ったこと（data_locks の WAITING）を実測してから進める。
+        // 札行で直列化していなければリスナーはロック待ちに入らず、ロック保持中に通知を作り終える（→ 下の検証で red）。
         new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
             jdbc.queryForObject("SELECT id FROM recruitment_listings WHERE id = ? FOR UPDATE", Long.class, listingId);
             finalizeListener.onReachedFull(new MarketListingReachedFullEvent(listingId)); // @Async: 別スレッド
-            sleepQuietly(1_500);
+            await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofMillis(50)).until(() ->
+                    waitingRowLocks("recruitment_listings", listingId) == 1
+                            || countFinalizeNotifications(listingId) > 0
+                            || skipLogCount(listingId, "コミット時点で FULL ではない") > 0);
             jdbc.update("UPDATE recruitment_listings SET status = 'OPEN', confirmed_count = 0 WHERE id = ?", listingId);
         });
 
@@ -309,12 +319,16 @@ class MarketFinalizeNotificationTransactionIT extends AbstractMySqlIntegrationTe
         // 受信者（札主 = ADMIN 不在時のフォールバック）の users 行を握り、通知の受信者行 INSERT の FK 検査
         // （users 行の共有ロック）で両スレッドを「ACTIVE 不在を確認した後・通知をコミットする前」に止める。
         // 札行で直列化していなければ、両者とも ACTIVE 不在を見たまま待ち、解放後に2件とも作ってしまう。
+        // 固定 sleep ではなく、2スレッドがともにロック待ちに入ったことを data_locks で実測してから解放する。
+        // 直列化ありなら「先行=users 行（FK 検査）・後続=札行」で各1件、直列化なしなら users 行に2件となり、
+        // どちらの場合も待ち合計が2件に達してから解放するため、ロック解放後に遅れて走る偽緑を排除できる。
         Long ownerId = users.get(0);
         new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
             jdbc.queryForObject("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, ownerId);
             finalizeListener.onReachedFull(new MarketListingReachedFullEvent(listingId));
             finalizeListener.onReachedFull(new MarketListingReachedFullEvent(listingId));
-            sleepQuietly(2_000);
+            await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofMillis(50)).until(() ->
+                    waitingRowLocks("users", ownerId) + waitingRowLocks("recruitment_listings", listingId) == 2);
         });
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
@@ -334,12 +348,25 @@ class MarketFinalizeNotificationTransactionIT extends AbstractMySqlIntegrationTe
         jdbc.update("UPDATE recruitment_listings SET status = 'FULL', confirmed_count = 1 WHERE id = ?", listingId);
     }
 
-    private static void sleepQuietly(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(e);
+    /**
+     * 指定テーブルの主キー行に対して InnoDB のロック待ち（{@code LOCK_STATUS='WAITING'}）に入っている件数。
+     *
+     * <p>{@code performance_schema} はアプリ用の test 利用者では読めないため、同じコンテナへ root で別接続して覗く
+     * （Testcontainers の MySQL は root のパスワードを利用者のパスワードと同じにする）。ロック保持側の接続とは別物。</p>
+     */
+    private static long waitingRowLocks(String table, Long id) throws SQLException {
+        try (Connection c = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword());
+             PreparedStatement ps = c.prepareStatement(
+                     "SELECT COUNT(*) FROM performance_schema.data_locks"
+                             + " WHERE OBJECT_SCHEMA = ? AND OBJECT_NAME = ? AND INDEX_NAME = 'PRIMARY'"
+                             + " AND LOCK_STATUS = 'WAITING' AND LOCK_DATA = ?")) {
+            ps.setString(1, MYSQL.getDatabaseName());
+            ps.setString(2, table);
+            ps.setString(3, String.valueOf(id));
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getLong(1);
+            }
         }
     }
 
