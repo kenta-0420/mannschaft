@@ -35,6 +35,11 @@ public class OrganizationResponse {
     private OrgVisibilityDto visibility;
     private OrgMetadataDto metadata;
     private OrgTimestampsDto timestamps;
+    /**
+     * F01.2.1 §10.1: チームからの加盟申請の受付状況（組織シェル内の申請ボタンの出し分け用）。
+     * 受付状況は組織を閲覧できる人なら誰でも見てよい情報（§3.1「受付状況の閲覧」）。
+     */
+    private TeamApplicationDto teamApplication;
 
     /** 組織基本情報：名称・読み仮名・ニックネーム。 */
     public record OrgBasicInfoDto(
@@ -70,4 +75,8 @@ public class OrganizationResponse {
     public record OrgTimestampsDto(
             LocalDateTime archivedAt,
             LocalDateTime createdAt) {}
+
+    /** チーム加盟の受付状況：受付中か。 */
+    public record TeamApplicationDto(
+            boolean enabled) {}
 }

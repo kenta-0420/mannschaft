@@ -77,7 +77,7 @@ class PublicEventControllerTest {
         org.mockito.BDDMockito.given(publicOrganizationQueryService.getPublicOrganization(ORG_SLUG))
                 .willReturn(new com.mannschaft.app.publicview.dto.PublicOrganizationResponse(
                         ORG_ID, "サンプル組織", null, null, null, "COMPANY", null, null, null, null,
-                        null, null, null, null, null, false, false));
+                        null, null, null, null, null, false, false, false));
     }
     private static final Long EVENT_ID = 7001L;
 
