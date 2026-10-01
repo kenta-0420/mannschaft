@@ -1,9 +1,6 @@
 package com.mannschaft.app.shift.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.shift.ChangeRequestStatus;
 import com.mannschaft.app.shift.ChangeRequestType;
 import com.mannschaft.app.shift.ShiftErrorCode;
@@ -11,7 +8,6 @@ import com.mannschaft.app.shift.dto.ChangeRequestResponse;
 import com.mannschaft.app.shift.dto.CreateChangeRequestRequest;
 import com.mannschaft.app.shift.dto.ReviewChangeRequestRequest;
 import com.mannschaft.app.shift.entity.ShiftChangeRequestEntity;
-import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -24,8 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * シフト変更依頼サービス。
+ * シフト変更依頼の <b>トランザクション本体</b>（自ドメイン = shift の Repository だけに触れる）。
  * A-1確定前変更・A-2個別交代・A-3オープンコールの依頼フローを担当する。
+ *
+ * <p><b>認可はここに置かない（CMP-260923-0954 W2）:</b> 権限の確認は非トランザクションの
+ * {@link ShiftChangeRequestFacade} が行う。{@code AccessControlService} / {@code ScopeConcealingAccessGate}
+ * への依存と認可用の private メソッドは持たない（D-3T 番人と {@code ShiftTxFacadeArchTest} が固定）。
+ * Facade は認可の前に {@link #resolveHead} / {@link #resolveScheduleTeamId}（readOnly）で scope を解き、
+ * 書き込み tx（および一覧・詳細）では<b>同じ経路で読み直して</b>、不在・論理削除済みなら Facade の解決時と
+ * 同じコードの 404 を投げる（認可の後・tx の前に親が消える競合）。</p>
  */
 @Slf4j
 @Service
@@ -39,8 +42,6 @@ public class ShiftChangeRequestService {
     private final ShiftChangeRequestRepository changeRequestRepository;
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftSlotRepository slotRepository;
-    private final AccessControlService accessControlService;
-    private final ScopeConcealingAccessGate accessGate;
 
     /**
      * 変更依頼を作成する。
@@ -61,19 +62,9 @@ public class ShiftChangeRequestService {
      */
     @Transactional
     public ChangeRequestResponse create(CreateChangeRequestRequest request, Long userId) {
-        // スケジュール存在チェック＋所属チーム解決（scope はクライアント入力でなく実体由来）
-        ShiftScheduleEntity schedule = scheduleRepository.findById(request.scheduleId())
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
-        // 存在オラクル是正（CMP-260923-0954 W2）: 越境（他チームの scheduleId）は不在と同一応答
-        // （SHIFT_SCHEDULE_NOT_FOUND）に畳む。checkMembership は SYSTEM_ADMIN も素通しにしないため
-        // Gate（requireMemberOrConceal）に置き換える。
-        // Gate は冒頭で SYSTEM_ADMIN を通すが、是正前は checkMembership（memberships のみ）で
-        // 非メンバーの SYSTEM_ADMIN も 403 COMMON_002 だった。挙動を変えないため先に弾く。
-        if (accessControlService.isSystemAdmin(userId)) {
-            accessControlService.checkMembership(userId, schedule.getTeamId(), "TEAM");
-        }
-        accessGate.requireMemberOrConceal(
-                userId, schedule.getTeamId(), "TEAM", ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, false);
+        // 認可は Facade 済み。認可の後・tx の前にスケジュールが消えた競合を 404 にするため読み直す
+        // （不在なら Facade の解決時と同じ SHIFT_SCHEDULE_NOT_FOUND・DB 不変）。
+        resolveTeamId(request.scheduleId());
         checkSlotBelongsToSchedule(request.slotId(), request.scheduleId());
 
         // オープンコールの月次上限チェック
@@ -116,21 +107,15 @@ public class ShiftChangeRequestService {
      *
      * @param scheduleId スケジュールID
      * @param userId     操作者ユーザーID
+     * @param scopeAdmin Facade の認可結果（SYSTEM_ADMIN または当該チームの ADMIN 以上なら true＝全件）
      * @return 変更依頼一覧
      */
-    public List<ChangeRequestResponse> list(Long scheduleId, Long userId) {
-        Long teamId = resolveTeamId(scheduleId);
-
-        // 存在オラクル是正（W2）: 越境（非メンバーが他チームの scheduleId を指定）は不在と同一応答
-        // （SHIFT_SCHEDULE_NOT_FOUND）に畳む。同一チーム内は admin/member どちらでも許可されるため、
-        // Gate の permitted 条件に isMember を渡し、拒否経路でのみ越境判定を行わせる。
-        accessGate.requireOrConceal(
-                userId, teamId, "TEAM",
-                () -> accessControlService.isMember(userId, teamId, "TEAM"),
-                ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, CommonErrorCode.COMMON_002);
+    public List<ChangeRequestResponse> list(Long scheduleId, Long userId, boolean scopeAdmin) {
+        // 認可は Facade 済み。認可の後にスケジュールが消えた競合を 404 にするため読み直す。
+        resolveTeamId(scheduleId);
 
         List<ShiftChangeRequestEntity> entities;
-        if (isScopeAdmin(userId, teamId)) {
+        if (scopeAdmin) {
             entities = changeRequestRepository.findAllByScheduleIdOrderByCreatedAtDesc(scheduleId);
         } else {
             entities = changeRequestRepository.findAllByRequestedByAndScheduleId(userId, scheduleId);
@@ -157,14 +142,12 @@ public class ShiftChangeRequestService {
     public ChangeRequestResponse get(Long id, Long userId) {
         ShiftChangeRequestEntity entity = findOrThrow(id);
 
-        if (entity.getRequestedBy().equals(userId)) {
-            return toResponse(entity);
+        // 認可は Facade 済み（依頼者本人は親の存在に依存しない）。本人以外は管理者として許可された者なので、
+        // 認可の後にスケジュールが消えた競合を 404 にするため読み直す。
+        if (!entity.getRequestedBy().equals(userId)) {
+            resolveTeamId(entity.getScheduleId());
         }
-        if (isScopeAdmin(userId, resolveTeamId(entity.getScheduleId()))) {
-            return toResponse(entity);
-        }
-        // 越境は存在秘匿（未存在と同一応答）
-        throw new BusinessException(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND);
+        return toResponse(entity);
     }
 
     /**
@@ -179,10 +162,9 @@ public class ShiftChangeRequestService {
     public ChangeRequestResponse review(Long id, ReviewChangeRequestRequest request, Long userId) {
         ShiftChangeRequestEntity entity = findOrThrow(id);
 
-        // per-scope 認可（認可根治 Phase 3-a）。
-        // entity の scheduleId からチームを解決して per-scope 認可することで IDOR も同時に封鎖する。
-        // SYSTEM_ADMIN は短絡許可、それ以外は当該チームの ADMIN/DEPUTY_ADMIN のみ審査可。
-        checkReviewerScopeAdminAccess(entity, userId);
+        // 認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）は Facade 済み。
+        // 認可の後にスケジュールが消えた競合を 404 にするため読み直す。
+        resolveTeamId(entity.getScheduleId());
 
         if (entity.getStatus() != ChangeRequestStatus.OPEN) {
             throw new BusinessException(ShiftErrorCode.INVALID_CHANGE_REQUEST_STATUS);
@@ -214,7 +196,11 @@ public class ShiftChangeRequestService {
     public void withdraw(Long id, Long userId) {
         ShiftChangeRequestEntity entity = findOrThrow(id);
 
-        checkWithdrawAccess(entity, userId);
+        // 認可は Facade 済み。取下げは依頼者本人のみ（親の存在に依存しない）。
+        // Facade を経由しない呼び出しで本人以外が来た場合に備え、同一性だけをここで再確認する。
+        if (!entity.getRequestedBy().equals(userId)) {
+            throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
+        }
 
         if (entity.getStatus() != ChangeRequestStatus.OPEN) {
             throw new BusinessException(ShiftErrorCode.INVALID_CHANGE_REQUEST_STATUS);
@@ -225,52 +211,38 @@ public class ShiftChangeRequestService {
         log.info("シフト変更依頼取下: id={}, userId={}", id, userId);
     }
 
+    // ═════════════════════════════════════════════════════════════════════
+    // scope 解決（Facade が認可の前に呼ぶ readOnly の読み取り。戻り値は record で Entity は返さない）
+    // ═════════════════════════════════════════════════════════════════════
+
     /**
-     * 変更依頼審査に対する per-scope 認可を強制する（認可根治 Phase 3-a）。
+     * 変更依頼の先頭情報（認可に必要な最小限）。
      *
-     * <p>Controller の {@code @PreAuthorize("hasRole('ADMIN')")} は per-scope 文脈を持てないため、
-     * Service 層で明示的に認可する。
-     * 変更依頼の {@code scheduleId} から所属チームを解決し（IDOR 封鎖）、SYSTEM_ADMIN は短絡許可、
-     * それ以外は当該チームの ADMIN/DEPUTY_ADMIN でなければ {@code COMMON_002}（403）をスローする。
-     * {@code ShiftScheduleService#checkScheduleAdminAccess}（#1189）と同一方針。</p>
-     *
-     * @param entity 審査対象の変更依頼
-     * @param userId 審査者ユーザー ID
+     * @param requestedBy 依頼者 ID
+     * @param scheduleId  対象スケジュール ID
      */
-    private void checkReviewerScopeAdminAccess(ShiftChangeRequestEntity entity, Long userId) {
-        Long teamId = scheduleRepository.findById(entity.getScheduleId())
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
-                .getTeamId();
-        accessGate.requireAdminOrConceal(userId, teamId, "TEAM", ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND);
+    public record ChangeRequestHead(Long requestedBy, Long scheduleId) { }
+
+    /**
+     * 変更依頼の依頼者とスケジュール ID を解決する。不在なら {@code CHANGE_REQUEST_NOT_FOUND}。
+     *
+     * @param id 変更依頼 ID
+     * @return 先頭情報
+     */
+    public ChangeRequestHead resolveHead(Long id) {
+        ShiftChangeRequestEntity entity = findOrThrow(id);
+        return new ChangeRequestHead(entity.getRequestedBy(), entity.getScheduleId());
     }
 
     /**
-     * 変更依頼の取下げに対する per-scope 認可を強制する（存在オラクル是正 W2）。
+     * スケジュール ID から所属チーム ID を解決する。不在・論理削除済みなら {@code SHIFT_SCHEDULE_NOT_FOUND}。
+     * tx 内の読み直しも同じ経路（{@link #resolveTeamId}）を通るので、コードは Facade の解決時と一致する。
      *
-     * <p>取下げは依頼者本人のみ許可する（SYSTEM_ADMIN・管理者による代理取下げは対象外・従来どおり）。
-     * 本人でない場合、SYSTEM_ADMIN および当該チームの所属者（user_roles のみの管理者を含む）には従来どおり
-     * {@code ACCESS_DENIED}（403 / SHIFT_019）を返す。所属しない越境の場合のみ、不在と
-     * 同一応答（{@code CHANGE_REQUEST_NOT_FOUND}）に畳む。Gate は forbidden コードを
-     * {@code COMMON_002} 固定で持つため、SHIFT_019 を維持する本メソッドは
-     * 同ゲートの判定対象（SYSTEM_ADMIN / isAdminOrAbove / isMember）だけを踏襲し、いずれも 403 とする。</p>
-     *
-     * @param entity 変更依頼
-     * @param userId 操作者ユーザー ID
+     * @param scheduleId スケジュール ID
+     * @return 所属チーム ID
      */
-    private void checkWithdrawAccess(ShiftChangeRequestEntity entity, Long userId) {
-        if (entity.getRequestedBy().equals(userId)) {
-            return;
-        }
-        // SYSTEM_ADMIN も本人でなければ取下げ不可（従来どおり 403）。404 に畳まず ACCESS_DENIED を返す。
-        if (accessControlService.isSystemAdmin(userId)) {
-            throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
-        }
-        Long teamId = resolveTeamId(entity.getScheduleId());
-        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")
-                || accessControlService.isMember(userId, teamId, "TEAM")) {
-            throw new BusinessException(ShiftErrorCode.ACCESS_DENIED);
-        }
-        throw new BusinessException(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND);
+    public Long resolveScheduleTeamId(Long scheduleId) {
+        return resolveTeamId(scheduleId);
     }
 
     /**
@@ -304,21 +276,6 @@ public class ShiftChangeRequestService {
         return scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
                 .getTeamId();
-    }
-
-    /**
-     * 当該チームに対する管理者（SYSTEM_ADMIN 短絡 or ADMIN/DEPUTY_ADMIN）かを判定する。
-     *
-     * <p>{@code checkAdminOrAbove} と異なり例外を投げず真偽を返す。一覧の返却範囲切替や
-     * 詳細の可視判定のように「弾く」のでなく「分岐する」用途で使う。</p>
-     *
-     * @param userId 操作者ユーザー ID
-     * @param teamId チーム ID
-     * @return 管理者相当なら true
-     */
-    private boolean isScopeAdmin(Long userId, Long teamId) {
-        return accessControlService.isSystemAdmin(userId)
-                || accessControlService.isAdminOrAbove(userId, teamId, "TEAM");
     }
 
     /**

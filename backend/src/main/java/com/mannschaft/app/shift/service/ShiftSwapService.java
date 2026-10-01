@@ -3,10 +3,7 @@ package com.mannschaft.app.shift.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.SwapRequestStatus;
@@ -25,29 +22,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * シフト交代リクエストサービス。メンバー間のシフト交代申請・承認フローを担当する。
+ * シフト交代リクエストの <b>トランザクション本体</b>（自ドメイン = shift の Repository だけに触れる）。
  *
- * <p><b>認可（認可根治 Wave6）:</b> 本サービスの全 public メソッドは操作者 {@code userId} を受け取り、
- * <b>交代申請が指すシフト枠 → スケジュール実体から解決した teamId</b> に対して per-scope 認可する
- * （パス変数・クエリの scope 値を鵜呑みにしないことで BOLA を封鎖する）。</p>
+ * <p><b>認可はここに置かない（CMP-260923-0954 W2 / 認可をトランザクションの外へ）:</b>
+ * 権限の確認は非トランザクションの {@link ShiftSwapFacade} が行い、通ったものだけを本クラスの
+ * {@code @Transactional} メソッドが実行する。{@code AccessControlService} / {@code ScopeConcealingAccessGate}
+ * への依存と認可用の private メソッドは本クラスに持たない（D-3T 番人と {@code ShiftTxFacadeArchTest} が固定）。</p>
  *
- * <p>粒度は同ドメインの既存実装（{@code ShiftSlotService} / {@code ShiftScheduleService}）に合わせる:</p>
- * <ul>
- *   <li><b>管理操作</b>（承認/却下）: ADMIN/DEPUTY_ADMIN 以上（SYSTEM_ADMIN 短絡）。</li>
- *   <li><b>一覧</b>: 当該チームのメンバー（SUPPORTER 不可）。ただし ADMIN 未満は
- *       <b>自分に関係する依頼のみ</b>に BE 側で絞り込む（CMP-260908-2116）。</li>
- *   <li><b>メンバー操作</b>（申請・承諾・手挙げ）: 当該チームのメンバー、ただし SUPPORTER は不可。</li>
- *   <li><b>本人操作</b>（取消）: 申請者本人、または当該チームの ADMIN 以上。</li>
- *   <li><b>候補者選定</b>: 従来どおり<b>申請者本人のみ</b>（本改修で緩和していない）。
- *       これに加えて当該チームのメンバーであることを前置きで検証する。</li>
- * </ul>
+ * <p><b>scope の解決と読み直し:</b> Facade は認可の前に {@link #resolveSwapScope} 等（readOnly・自ドメインのみ）で
+ * 「対象 → シフト枠 → スケジュール → チーム」をたどって teamId を得る。書き込み tx では必ず
+ * <b>同じ経路で読み直し</b>、どこかが不在・論理削除済みなら Facade の解決時と<b>同じコード</b>の 404 を投げて DB を変えない
+ * （認可の後・tx の前に親が消える競合。K1/K5）。scope の列（slot→schedule→team）は不変という前提で、
+ * 所属（memberships）の変化は従来どおりロックしない。</p>
  *
- * <p><b>存在オラクル是正（CMP-260923-0954 W2）:</b> {@code ?teamId=} の一覧（{@link #listSwapRequests}）は
- * チーム自体の存在有無が応答で割れないため 403（{@code COMMON_002}）のまま。一方 swapId・slotId など
- * <b>個別リソース ID を叩く EP</b>（作成・承諾・承認/却下・取消）は、他チームの実在 ID を叩いた応答と
- * 不在 ID を叩いた応答が {@code status}/{@code error.code} で割れていた（403 vs 404）ため、
- * {@link ScopeConcealingAccessGate} を用いて越境時は不在時と同一コードへ畳む。
- * 同一チーム内の権限不足（SUPPORTER・非ADMIN・非申請者）は従来どおり 403 のまま隠さない。</p>
+ * <p>認可の契約（主体 × 結果）は {@link ShiftSwapFacade} の Javadoc を参照。</p>
  */
 @Slf4j
 @Service
@@ -61,8 +49,6 @@ public class ShiftSwapService {
     private final ShiftSwapRequestRepository swapRepository;
     private final ShiftSlotRepository slotRepository;
     private final ShiftScheduleRepository scheduleRepository;
-    private final AccessControlService accessControlService;
-    private final ScopeConcealingAccessGate accessGate;
     private final ShiftMapper shiftMapper;
     private final ObjectMapper objectMapper;
 
@@ -84,14 +70,16 @@ public class ShiftSwapService {
      * 私的な内容が書かれうる。FE で表示を隠すだけではレスポンス本文に他人の理由が乗り、
      * 開発者ツールから読めてしまう。したがって関係のない依頼は<b>返さない</b>。</p>
      *
-     * @param teamId 対象チームID
-     * @param status ステータスフィルタ（省略時は当該チームの全件）
-     * @param userId 操作者ユーザーID
+     * <p>認可は {@link ShiftSwapFacade#listSwapRequests} が済ませており、その結果（全件可視か）を
+     * {@code privileged} で受け取る。</p>
+     *
+     * @param teamId     対象チームID（Facade が認可済み）
+     * @param status     ステータスフィルタ（省略時は当該チームの全件）
+     * @param userId     操作者ユーザーID（一般メンバーの絞り込みに使う）
+     * @param privileged SYSTEM_ADMIN または当該チームの ADMIN/DEPUTY_ADMIN なら true（全件可視）
      * @return 交代リクエスト一覧（一般メンバーは自分に関係するもののみ）
-     * @throws BusinessException 当該チームのメンバーでない、または SUPPORTER の場合（COMMON_002 / 403）
      */
-    public List<SwapRequestResponse> listSwapRequests(Long teamId, String status, Long userId) {
-        boolean privileged = checkListAccessAndIsPrivileged(teamId, userId);
+    public List<SwapRequestResponse> listSwapRequests(Long teamId, String status, Long userId, boolean privileged) {
         List<ShiftSwapRequestEntity> entities;
         if (status != null) {
             entities = swapRepository.findByTeamIdAndStatusOrderByCreatedAtAsc(
@@ -135,13 +123,9 @@ public class ShiftSwapService {
      */
     @Transactional
     public SwapRequestResponse createSwapRequest(CreateSwapRequestRequest req, Long userId) {
-        // 対象シフト枠の属するチームのメンバーのみ申請できる（SUPPORTER 不可）。
-        // 存在オラクル是正（CMP-260923-0954 W2）: 越境（他チームの slotId）は不在と同一応答
-        // （SHIFT_SLOT_NOT_FOUND）に畳む。従来は同一チーム内権限不足と同じ COMMON_002 を返していたため、
-        // 「slotId が実在するが他チーム」と「slotId が実在しない」が判別できてしまっていた。
-        accessGate.requireMemberOrConceal(
-                userId, resolveTeamIdBySlotId(req.getSlotId()), "TEAM",
-                ShiftErrorCode.SHIFT_SLOT_NOT_FOUND, true);
+        // 認可は Facade 済み。認可の後・tx の前にシフト枠やスケジュールが消えた競合を拾うため、
+        // 解決と同じ経路（枠→スケジュール）で読み直す（不在なら Facade の解決時と同じコードの 404・DB 不変）。
+        resolveTeamIdBySlotId(req.getSlotId());
 
         // 受信者モードの決定
         String recipientMode = req.isOpenCall() ? "OPEN_CALL" : "SPECIFIC";
@@ -179,10 +163,8 @@ public class ShiftSwapService {
     @Transactional
     public SwapRequestResponse acceptSwapRequest(Long swapId, Long accepterId) {
         ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
-        // 存在オラクル是正（W2）: 越境（他チームの swapId）は不在と同一応答（SWAP_REQUEST_NOT_FOUND）。
-        accessGate.requireMemberOrConceal(
-                accepterId, resolveTeamIdBySwap(entity), "TEAM",
-                ShiftErrorCode.SWAP_REQUEST_NOT_FOUND, true);
+        // 認可は Facade 済み。認可の後に親（枠・スケジュール）が消えた競合を 404 にするため読み直す。
+        resolveTeamIdBySwap(entity);
         validatePendingStatus(entity);
 
         if (entity.getRequesterId().equals(accepterId)) {
@@ -207,9 +189,8 @@ public class ShiftSwapService {
     @Transactional
     public SwapRequestResponse resolveSwapRequest(Long swapId, ResolveSwapRequestRequest req, Long adminId) {
         ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
-        // 存在オラクル是正（W2）: 越境（他チームの swapId）は不在と同一応答（SWAP_REQUEST_NOT_FOUND）。
-        accessGate.requireAdminOrConceal(
-                adminId, resolveTeamIdBySwap(entity), "TEAM", ShiftErrorCode.SWAP_REQUEST_NOT_FOUND);
+        // 認可は Facade 済み。認可の後に親（枠・スケジュール）が消えた競合を 404 にするため読み直す。
+        resolveTeamIdBySwap(entity);
 
         if (entity.getStatus() != SwapRequestStatus.ACCEPTED) {
             throw new BusinessException(ShiftErrorCode.INVALID_SWAP_STATUS);
@@ -235,13 +216,10 @@ public class ShiftSwapService {
     @Transactional
     public void cancelSwapRequest(Long swapId, Long userId) {
         ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
-        // 存在オラクル是正（W2）: 申請者本人は所属を問わず許可、それ以外は当該チームの ADMIN 以上のみ。
-        // 越境（申請者でも当該チーム ADMIN でもない）は不在と同一応答（SWAP_REQUEST_NOT_FOUND）。
-        // 申請者本人の経路では scope 解決（slot→schedule の 2 クエリ）を行わず、是正前と同じクエリ数に保つ。
+        // 認可は Facade 済み。申請者本人は所属を問わず許可（親の存在に依存しない）ので scope 解決を行わない。
+        // 本人以外（当該チームの ADMIN 以上として許可された者）は、親が消えた競合を 404 にするため読み直す。
         if (!entity.getRequesterId().equals(userId)) {
-            accessGate.requireOwnerOrAdminOrConceal(
-                    userId, resolveTeamIdBySwap(entity), "TEAM", entity.getRequesterId(),
-                    ShiftErrorCode.SWAP_REQUEST_NOT_FOUND);
+            resolveTeamIdBySwap(entity);
         }
         validatePendingStatus(entity);
 
@@ -251,8 +229,56 @@ public class ShiftSwapService {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // 認可ヘルパー（認可根治 Wave6）
+    // scope 解決（Facade が認可の前に呼ぶ readOnly の読み取り。戻り値は record で Entity は返さない）
     // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * 交代リクエストの scope（所属チーム ID と申請者 ID）。
+     *
+     * @param teamId      所属チーム ID（申請者本人の取消経路など、scope が不要なときは null）
+     * @param requesterId 申請者 ID（取消以外では使わない。取消の本人判定用）
+     */
+    public record SwapScope(Long teamId, Long requesterId) { }
+
+    /**
+     * swapId から scope を解決する（承諾・承認/却下用）。不在なら {@code SWAP_REQUEST_NOT_FOUND}、
+     * 親（枠・スケジュール）が不在なら {@code SHIFT_SLOT_NOT_FOUND} / {@code SHIFT_SCHEDULE_NOT_FOUND}
+     * （是正前の応答と同一。tx 内の読み直しも同じメソッドで同じコードになる）。
+     *
+     * @param swapId 交代リクエスト ID
+     * @return scope
+     */
+    public SwapScope resolveSwapScope(Long swapId) {
+        ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
+        return new SwapScope(resolveTeamIdBySwap(entity), entity.getRequesterId());
+    }
+
+    /**
+     * 取消の scope を解決する。申請者本人なら scope 解決（枠→スケジュールの 2 クエリ）を行わず
+     * {@code teamId=null} で返す（是正前と同じクエリ数）。
+     *
+     * @param swapId 交代リクエスト ID
+     * @param userId 操作者 ID
+     * @return scope（本人なら teamId は null）
+     */
+    public SwapScope resolveCancelScope(Long swapId, Long userId) {
+        ShiftSwapRequestEntity entity = findSwapOrThrow(swapId);
+        if (entity.getRequesterId().equals(userId)) {
+            return new SwapScope(null, entity.getRequesterId());
+        }
+        return new SwapScope(resolveTeamIdBySwap(entity), entity.getRequesterId());
+    }
+
+    /**
+     * 作成対象のシフト枠から scope を解決する。枠が不在なら {@code SHIFT_SLOT_NOT_FOUND}、
+     * スケジュールが不在なら {@code SHIFT_SCHEDULE_NOT_FOUND}。
+     *
+     * @param slotId シフト枠 ID
+     * @return scope（requesterId は null）
+     */
+    public SwapScope resolveSlotScope(Long slotId) {
+        return new SwapScope(resolveTeamIdBySlotId(slotId), null);
+    }
 
     /**
      * 交代リクエスト実体から所属チーム ID を解決する。
@@ -280,33 +306,6 @@ public class ShiftSwapService {
         return scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
                 .getTeamId();
-    }
-
-    /**
-     * 一覧 API の per-scope 認可を行い、「全件を見てよい立場か」を返す。
-     *
-     * <p>AccessControlService をこのメソッドから直接呼ぶ（番人 AuthzControllerGuardArchTest の
-     * 委譲探索は深さ2までのため、認可クラスへの到達を1ホップ内に収める）。</p>
-     *
-     * @param teamId 対象チーム ID
-     * @param userId 操作者ユーザー ID
-     * @return SYSTEM_ADMIN または当該チームの ADMIN/DEPUTY_ADMIN なら true（全件可視）
-     * @throws BusinessException 当該チームのメンバーでない、または SUPPORTER の場合（COMMON_002 / 403）
-     */
-    private boolean checkListAccessAndIsPrivileged(Long teamId, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return true;
-        }
-        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
-            return true;
-        }
-        // 一般メンバー（SUPPORTER は不可）。承諾できる立場と同じ条件に揃える
-        //（Gate の requireMemberOrConceal(excludeSupporter=true) と同一方針）。
-        if (!accessControlService.isMember(userId, teamId, "TEAM")
-                || accessControlService.isSupporter(userId, teamId, "TEAM")) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
-        return false;
     }
 
     /**

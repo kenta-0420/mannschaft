@@ -32,7 +32,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link ShiftChangeRequestService#review} の per-scope 認可（認可根治 Phase 3-a / 生穴封鎖）単体テスト。
+ * {@link ShiftChangeRequestFacade#review} の per-scope 認可（認可根治 Phase 3-a / 生穴封鎖）単体テスト。
  *
  * <p>本メソッドはかつて認可がなく「認証済みなら誰でも任意のシフト変更依頼を審査（承認/却下）できる」
  * 生穴であった。本テストは {@code scheduleId → teamId} 解決による IDOR 封鎖込みの per-scope 認可
@@ -52,13 +52,16 @@ class ShiftChangeRequestServiceAuthzTest {
     @Mock
     private AccessControlService accessControlService;
 
-    private ShiftChangeRequestService service;
+    /** 認可は Facade（tx の外）が行い、通ったものを tx 本体が実行する。応答の契約は両者の合成で検証する。 */
+    private ShiftChangeRequestFacade service;
 
     /** Gate は本物、その下の AccessControlService だけモック（存在オラクル是正 W2 で認可が Gate へ移った）。 */
     @org.junit.jupiter.api.BeforeEach
     void setUpService() {
-        service = new ShiftChangeRequestService(changeRequestRepository, scheduleRepository, slotRepository,
-                accessControlService, new ScopeConcealingAccessGate(accessControlService));
+        ShiftChangeRequestService txService = new ShiftChangeRequestService(
+                changeRequestRepository, scheduleRepository, slotRepository);
+        service = new ShiftChangeRequestFacade(txService, new ScopeConcealingAccessGate(accessControlService),
+                accessControlService);
     }
 
     private static final Long REQUEST_ID = 500L;
