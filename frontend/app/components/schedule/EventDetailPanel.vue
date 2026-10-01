@@ -78,12 +78,27 @@ const showOrgSelect = computed(
 /** 親組織が複数・予定に組織が無い・まだ選んでいない: 選ぶまで作成できない。 */
 const needsOrgChoice = computed(() => showOrgSelect.value && selectedOrgId.value === null)
 
+/**
+ * 親組織の解決が終わるまでは、親組織が複数かどうか分からない。その間に押されると
+ * 代表親組織で作られてしまうため、予定に組織が無い場合は解決完了まで作成できない。
+ */
+const matchOrgsLoaded = ref(false)
+const orgResolving = computed(
+  () => canRecordMatch.value && props.event.organizationId == null && !matchOrgsLoaded.value,
+)
+/** 記録ボタンを押せない（組織の解決中、または選択待ち）。 */
+const recordBlocked = computed(() => orgResolving.value || needsOrgChoice.value)
+
 async function loadMatchOrganizations(): Promise<void> {
   if (!canRecordMatch.value) return
-  const ctx = await resolveContext(props.scopeId, { orgId: selectedOrgId.value })
-  matchOrganizations.value = ctx?.organizations ?? []
-  // 選択が必要なうちは既定（代表親組織）を見せない（セレクタは未選択の表示になる）
-  matchOrgId.value = needsOrgChoice.value ? null : (ctx?.orgId ?? null)
+  try {
+    const ctx = await resolveContext(props.scopeId, { orgId: selectedOrgId.value })
+    matchOrganizations.value = ctx?.organizations ?? []
+    // 選択が必要なうちは既定（代表親組織）を見せない（セレクタは未選択の表示になる）
+    matchOrgId.value = needsOrgChoice.value ? null : (ctx?.orgId ?? null)
+  } finally {
+    matchOrgsLoaded.value = true
+  }
 }
 
 function onSelectMatchOrg(id: number): void {
@@ -94,11 +109,12 @@ function onSelectMatchOrg(id: number): void {
 onMounted(loadMatchOrganizations)
 watch(() => props.scopeId, () => {
   selectedOrgId.value = null
+  matchOrgsLoaded.value = false
   void loadMatchOrganizations()
 })
 
 async function recordMatch(): Promise<void> {
-  if (!canRecordMatch.value || recordingMatch.value || needsOrgChoice.value) return
+  if (!canRecordMatch.value || recordingMatch.value || recordBlocked.value) return
   recordingMatch.value = true
   try {
     // 予定の組織があればそれ、無ければセレクタの選択（未選択は代表親組織）
@@ -304,7 +320,7 @@ onMounted(async () => {
         size="small"
         class="w-full"
         :loading="recordingMatch"
-        :disabled="needsOrgChoice"
+        :disabled="recordBlocked"
         @click="recordMatch"
       />
       <p class="mt-1 text-xs text-surface-400">{{ $t('match.entry.record_from_schedule_hint') }}</p>

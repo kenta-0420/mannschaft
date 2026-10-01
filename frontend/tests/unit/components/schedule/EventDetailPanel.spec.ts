@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import type { DOMWrapper } from '@vue/test-utils'
 import EventDetailPanel from '~/components/schedule/EventDetailPanel.vue'
 
 /**
@@ -14,6 +15,7 @@ import EventDetailPanel from '~/components/schedule/EventDetailPanel.vue'
  *            既定を置かず、選ぶまで作成できない（F01.2.1 §9.2 F3）
  *   EDP-006: セレクタで選んだ組織で試合を作り、live に org を引き継ぐ
  *   EDP-007: 親組織が1つ（organizationId 無し）なら、その組織で作成できる
+ *   EDP-009: 組織の解決中（親組織が複数かまだ分からない間）に押しても作成されない
  *   EDP-008: 予定の組織（organizationId）がチームの親組織でなければ、代表親組織へ落とさず作成を止める
  */
 
@@ -76,11 +78,7 @@ function baseEvent() {
 
 // 記録ボタンは pi-play アイコン付き（パネル内で唯一）。i18n は実インスタンスが英語ラベルに
 // 解決するため、キー文字列でなくアイコンで特定する。
-function findRecordButton(wrapper: { findAll: (s: string) => Array<{
-    html: () => string
-    trigger: (e: string) => Promise<void>
-    attributes: (name?: string) => string | undefined
-  }> }) {
+function findRecordButton(wrapper: { findAll: (selector: string) => DOMWrapper<Element>[] }) {
   return wrapper
     .findAll('button')
     .find((b) => b.html().includes('pi-play'))
@@ -115,6 +113,7 @@ describe('EventDetailPanel.vue（入口④）', () => {
     const wrapper = await mountSuspended(EventDetailPanel, {
       props: { event: baseEvent(), scopeType: 'team', scopeId: 'team-uuid', canEdit: false },
     })
+    await new Promise((r) => setTimeout(r, 0)) // 親組織の解決完了を待つ
     await findRecordButton(wrapper)!.trigger('click')
     await new Promise((r) => setTimeout(r, 0))
 
@@ -134,6 +133,7 @@ describe('EventDetailPanel.vue（入口④）', () => {
     const wrapper = await mountSuspended(EventDetailPanel, {
       props: { event: baseEvent(), scopeType: 'team', scopeId: 'team-uuid', canEdit: false },
     })
+    await new Promise((r) => setTimeout(r, 0)) // 親組織の解決完了を待つ
     await findRecordButton(wrapper)!.trigger('click')
     await new Promise((r) => setTimeout(r, 0))
 
@@ -251,6 +251,25 @@ describe('EventDetailPanel.vue（入口④）', () => {
     await new Promise((r) => setTimeout(r, 0))
 
     expect(mockResolveContext).toHaveBeenCalledWith('team-uuid', { orgId: 999 })
+    expect(mockCreateMatch).not.toHaveBeenCalled()
+    expect(mockResolveBySchedule).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('EDP-009: 組織の解決中に押しても、代表親組織で作成されない（解決完了まで押せない）', async () => {
+    // 解決が終わらない状態を作る（親組織が複数かどうかまだ分からない）
+    mockResolveContext.mockImplementation(() => new Promise(() => {}))
+    mockResolveBySchedule.mockResolvedValue(null)
+    mockCreateMatch.mockResolvedValue({ id: 'm-new' })
+
+    const wrapper = await mountSuspended(EventDetailPanel, {
+      props: { event: baseEvent(), scopeType: 'team', scopeId: 'team-uuid', canEdit: false },
+    })
+    const button = findRecordButton(wrapper)!
+    expect(button.attributes('disabled')).toBeDefined()
+    await button.trigger('click')
+    await new Promise((r) => setTimeout(r, 0))
+
     expect(mockCreateMatch).not.toHaveBeenCalled()
     expect(mockResolveBySchedule).not.toHaveBeenCalled()
     expect(mockNavigate).not.toHaveBeenCalled()

@@ -129,7 +129,7 @@ onMounted(async () => {
         <p>{{ t('match.analytics.empty.no_matches') }}</p>
         <NuxtLink
           v-if="selectedTeamId"
-          :to="`/teams/${selectedTeamId}/matches`"
+          :to="{ path: `/teams/${selectedTeamId}/matches`, query: orgId !== null ? { org: String(orgId) } : {} }"
           class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-contrast"
         >
           <i class="pi pi-plus" />
