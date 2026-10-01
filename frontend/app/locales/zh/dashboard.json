@@ -103,6 +103,12 @@
       "empty": "0",
       "count": "{count}"
     },
+    "scope_accordion": {
+      "schedule_activity": "日程与活动",
+      "tasks_confirmation": "待办与确认",
+      "communication": "联络与共享",
+      "results_members": "成绩与成员"
+    },
     "widget_labels": {
       "event-dismissal-reminder": "解散通知リマインダー",
       "notices": "お知らせ",

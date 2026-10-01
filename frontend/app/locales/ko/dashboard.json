@@ -103,6 +103,12 @@
       "empty": "0",
       "count": "{count}"
     },
+    "scope_accordion": {
+      "schedule_activity": "일정 및 활동",
+      "tasks_confirmation": "할 일 및 확인",
+      "communication": "연락 및 공유",
+      "results_members": "성적 및 멤버"
+    },
     "widget_labels": {
       "event-dismissal-reminder": "解散通知リマインダー",
       "notices": "お知らせ",

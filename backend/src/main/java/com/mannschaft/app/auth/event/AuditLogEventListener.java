@@ -8,6 +8,7 @@ import com.mannschaft.app.circulation.event.CirculationExportRequestedEvent;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.member.event.MemberSubtabVisibilityUpdatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -779,6 +780,36 @@ public class AuditLogEventListener {
             null,
             null,
             toJson(Map.of("documentId", event.getDocumentId()))
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // MEMBER (F06.6 サブタブ可視性設定。PR #3387 D-3T 根治)
+    // ─────────────────────────────────────────────
+
+    /**
+     * サブタブ可視性設定の更新を監査ログに記録する。
+     *
+     * <p>member の書き込み TX のコミット後にだけ動く（ロールバックすれば記録しない）。metadata は member 側で
+     * 組み立て済みの文字列をそのまま記録する。本メソッドはすでに event-pool のスレッド上で動くので、
+     * 非同期版 {@code record} ではなく同期版 {@code recordSync} を呼ぶ（同じ event-pool への二重投入を避け、
+     * 非同期の境界を1段にする）。</p>
+     */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleMemberSubtabVisibilityUpdated(MemberSubtabVisibilityUpdatedEvent event) {
+        auditLogService.recordSync(
+            MemberSubtabVisibilityUpdatedEvent.AUDIT_EVENT_TYPE,
+            event.getActorUserId(),
+            null,
+            event.getTeamId(),
+            event.getOrganizationId(),
+            null,
+            null,
+            null,
+            event.getMetadataJson()
         );
     }
 }

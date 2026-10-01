@@ -290,9 +290,9 @@ public class TodoBudgetLinkService {
             return scopeId.equals(organizationId);
         }
         if (scopeType == TodoScopeType.TEAM) {
-            return rateQueryRepository.findOrganizationIdByTeamId(scopeId)
-                    .map(orgId -> orgId.equals(organizationId))
-                    .orElse(false);
+            // F01.2.1 AC-N11: チームは複数の組織に ACTIVE 加盟しうる。任意の 1 件との等値比較ではなく、
+            // 「指定組織への ACTIVE 加盟が存在するか」で判定する。
+            return rateQueryRepository.countTeamInOrganization(scopeId, organizationId) > 0;
         }
         // PERSONAL は対象外
         return false;

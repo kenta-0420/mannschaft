@@ -10,6 +10,10 @@
       "subtitle": "Manage budget, payments, approvals, members and settings for your organization in one place"
     },
     "cards": {
+      "teamAffiliation": {
+        "title": "Team affiliation settings",
+        "desc": "Configure acceptance of affiliation applications from teams and team groups"
+      },
       "reservations": {
         "title": "Reservations",
         "desc": "Review pending reservations and confirm, cancel or complete them"

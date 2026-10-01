@@ -5,7 +5,6 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
-import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +12,9 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * CMP-260909-1445 — シフト予算消化の整合バッチ（孤児 PLANNED 消化の収束）。
@@ -57,7 +58,6 @@ public class ShiftBudgetConsumptionReconcileBatchService {
 
     private final ShiftBudgetConsumptionRepository consumptionRepository;
     private final ShiftBudgetConsumptionService consumptionService;
-    private final ShiftBudgetRateQueryRepository rateQueryRepository;
     private final AuditLogService auditLogService;
 
     /**
@@ -99,6 +99,13 @@ public class ShiftBudgetConsumptionReconcileBatchService {
             Long shiftId = orphan.getShiftId();
             Long teamId = orphan.getTeamId();
             try {
+                // F01.2.1 AC-G125: 監査ログの組織は、チームの親組織を再解決せず、取消対象の消化行が紐づく
+                // 割当の組織（計上時の組織）を使い、組織ごとに出す。取消より前に引く（取消後は PLANNED でなくなる）。
+                Map<Long, Long> plannedByOrg = new LinkedHashMap<>();
+                for (ShiftBudgetConsumptionRepository.PlannedAllocationRow row
+                        : consumptionRepository.findPlannedAllocationRowsByShiftId(shiftId)) {
+                    plannedByOrg.merge(row.getOrganizationId(), row.getPlannedCount(), Long::sum);
+                }
                 int cancelled = consumptionService.cancelAllForShift(shiftId);
                 if (cancelled == 0) {
                     // 直前に別経路（リスナー・並行実行）が取り消し済み。競合であって異常ではない。
@@ -106,14 +113,15 @@ public class ShiftBudgetConsumptionReconcileBatchService {
                     continue;
                 }
                 cancelledTotal += cancelled;
-                Long organizationId = rateQueryRepository.findOrganizationIdByTeamId(teamId).orElse(null);
-                auditLogService.record(
-                        "SHIFT_BUDGET_CONSUMPTION_CANCELLED",
-                        null, null,
-                        teamId, organizationId,
-                        null, null, null,
-                        String.format("{\"shift_schedule_id\":%d,\"cancelled_count\":%d,\"source\":\"RECONCILE_BATCH\"}",
-                                shiftId, cancelled));
+                for (Map.Entry<Long, Long> entry : plannedByOrg.entrySet()) {
+                    auditLogService.record(
+                            "SHIFT_BUDGET_CONSUMPTION_CANCELLED",
+                            null, null,
+                            teamId, entry.getKey(),
+                            null, null, null,
+                            String.format("{\"shift_schedule_id\":%d,\"cancelled_count\":%d,\"source\":\"RECONCILE_BATCH\"}",
+                                    shiftId, entry.getValue()));
+                }
                 log.warn("シフト予算消化 整合バッチ: 孤児消化を取消: shiftId={}, teamId={}, 件数={}",
                         shiftId, teamId, cancelled);
             } catch (Exception e) {

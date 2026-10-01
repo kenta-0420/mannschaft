@@ -3358,6 +3358,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{slug}/member-subtab-visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * メンバーサブタブ可視性設定一覧
+         * @description 指定組織の一覧／紹介サブタブの最低必要ロール一覧を取得する。非メンバーでもデフォルト値で 200。
+         */
+        get: operations["getSettings_9"];
+        /**
+         * メンバーサブタブ可視性設定更新
+         * @description 指定組織の一覧／紹介サブタブの最低必要ロールを一括更新する。ADMIN は無条件、DEPUTY_ADMIN は MEMBER_SUBTAB_VISIBILITY_MANAGE 権限保有時のみ可。一覧タブに PUBLIC を指定すると 422。
+         */
+        put: operations["updateSettings_9"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{slug}/custom-fields/reorder": {
         parameters: {
             query?: never;
@@ -3439,9 +3463,9 @@ export interface paths {
             cookie?: never;
         };
         /** 組織駐車場設定取得 */
-        get: operations["getSettings_9"];
+        get: operations["getSettings_10"];
         /** 組織駐車場設定更新 */
-        put: operations["updateSettings_9"];
+        put: operations["updateSettings_10"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3549,9 +3573,9 @@ export interface paths {
             cookie?: never;
         };
         /** 施設予約設定取得 */
-        get: operations["getSettings_10"];
+        get: operations["getSettings_11"];
         /** 施設予約設定更新 */
-        put: operations["updateSettings_10"];
+        put: operations["updateSettings_11"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4288,9 +4312,9 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知設定取得（組織） */
-        get: operations["getSettings_11"];
+        get: operations["getSettings_12"];
         /** 確認通知設定更新（組織） */
-        put: operations["updateSettings_11"];
+        put: operations["updateSettings_12"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4442,9 +4466,9 @@ export interface paths {
             cookie?: never;
         };
         /** グローバル通知設定取得 */
-        get: operations["getSettings_12"];
+        get: operations["getSettings_13"];
         /** グローバル通知設定更新 */
-        put: operations["updateSettings_12"];
+        put: operations["updateSettings_13"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4609,9 +4633,9 @@ export interface paths {
             cookie?: never;
         };
         /** 想起通知設定取得 */
-        get: operations["getSettings_13"];
+        get: operations["getSettings_14"];
         /** 想起通知設定更新 */
-        put: operations["updateSettings_13"];
+        put: operations["updateSettings_14"];
         post?: never;
         delete?: never;
         options?: never;
@@ -25921,7 +25945,7 @@ export interface paths {
             cookie?: never;
         };
         /** 予約設定（チームポリシー）取得 */
-        get: operations["getSettings_14"];
+        get: operations["getSettings_15"];
         put?: never;
         post?: never;
         delete?: never;
@@ -26046,14 +26070,14 @@ export interface paths {
             cookie?: never;
         };
         /** 設定取得 */
-        get: operations["getSettings_15"];
+        get: operations["getSettings_16"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 設定更新 */
-        patch: operations["updateSettings_14"];
+        patch: operations["updateSettings_15"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/queue/counters/{counterId}": {
@@ -27068,14 +27092,14 @@ export interface paths {
             cookie?: never;
         };
         /** チームシフト設定取得（メンバー限定） */
-        get: operations["getSettings_16"];
+        get: operations["getSettings_17"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** チームシフト設定更新（ADMIN/DEPUTY のみ） */
-        patch: operations["updateSettings_15"];
+        patch: operations["updateSettings_16"];
         trace?: never;
     };
     "/api/v1/teams/{slug}/restore": {
@@ -28157,7 +28181,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** スレッド開閉 */
-        patch: operations["updateSettings_16"];
+        patch: operations["updateSettings_17"];
         trace?: never;
     };
     "/api/v1/schedule-delegations/{delegationId}/reject": {
@@ -30376,7 +30400,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チャンネル個人設定 */
-        patch: operations["updateSettings_17"];
+        patch: operations["updateSettings_18"];
         trace?: never;
     };
     "/api/v1/chat/channels/{channelId}/members/{userId}/role": {
@@ -30937,7 +30961,7 @@ export interface paths {
             cookie?: never;
         };
         /** 発行者設定取得 */
-        get: operations["getSettings_17"];
+        get: operations["getSettings_18"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31175,14 +31199,14 @@ export interface paths {
             cookie?: never;
         };
         /** 行動メモ設定取得 */
-        get: operations["getSettings_18"];
+        get: operations["getSettings_19"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 行動メモ設定更新 */
-        patch: operations["updateSettings_18"];
+        patch: operations["updateSettings_19"];
         trace?: never;
     };
     "/sitemap.xml": {
@@ -36446,7 +36470,7 @@ export interface paths {
             cookie?: never;
         };
         /** モデレーション設定一覧取得 */
-        get: operations["getSettings_19"];
+        get: operations["getSettings_20"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38730,6 +38754,160 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/organizations/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織詳細（未ログイン公開）
+         * @description 組織を slug で指定する（数値 ID は受けない）。未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。
+         */
+        get: operations["getPublicOrganization"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/timeline-posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の公開タイムライン投稿一覧（未ログイン公開）
+         * @description PUBLIC 組織で timeline_posts_public=true の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。
+         */
+        get: operations["listOrganizationTimelinePosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の公開投稿一覧（未ログイン公開）
+         * @description PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事一覧。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。
+         */
+        get: operations["listPublicPosts_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/posts/{postId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の公開投稿詳細（未ログイン公開）
+         * @description PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事詳細。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織 / 非公開記事 / 不在は 404。
+         */
+        get: operations["getPublicPostDetail_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/faqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の公開FAQ（未ログイン公開）
+         * @description PUBLIC 組織の回答済み FAQ を返す。固定質問（questionKey 非null・FE が i18n で質問文描画）を先頭に、続けて自由質問（questionText を保持）を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。
+         */
+        get: operations["getOrganizationFaqs_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の公開イベント一覧（未ログイン公開）
+         * @description PUBLIC 組織で public_events_enabled=true の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。
+         */
+        get: operations["listOrganizationEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織公開活動記録一覧 */
+        get: operations["listOrgPublicActivities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/activities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織公開活動記録詳細 */
+        get: operations["getOrgPublicActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/organizations/{orgId}/tournaments": {
         parameters: {
             query?: never;
@@ -38824,160 +39002,6 @@ export interface paths {
         };
         /** 公開トーナメント表 */
         get: operations["getPublicBracket"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/timeline-posts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織の公開タイムライン投稿一覧（未ログイン公開）
-         * @description PUBLIC 組織で timeline_posts_public=true の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。
-         */
-        get: operations["listOrganizationTimelinePosts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/posts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織の公開投稿一覧（未ログイン公開）
-         * @description PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事一覧。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。
-         */
-        get: operations["listPublicPosts_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/posts/{postId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織の公開投稿詳細（未ログイン公開）
-         * @description PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事詳細。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織 / 非公開記事 / 不在は 404。
-         */
-        get: operations["getPublicPostDetail_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/faqs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織の公開FAQ（未ログイン公開）
-         * @description PUBLIC 組織の回答済み FAQ を返す。固定質問（questionKey 非null・FE が i18n で質問文描画）を先頭に、続けて自由質問（questionText を保持）を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。
-         */
-        get: operations["getOrganizationFaqs_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織の公開イベント一覧（未ログイン公開）
-         * @description PUBLIC 組織で public_events_enabled=true の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。
-         */
-        get: operations["listOrganizationEvents"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/activities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 組織公開活動記録一覧 */
-        get: operations["listOrgPublicActivities"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/activities/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 組織公開活動記録詳細 */
-        get: operations["getOrgPublicActivity"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織詳細（未ログイン公開）
-         * @description 未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。
-         */
-        get: operations["getPublicOrganization"];
         put?: never;
         post?: never;
         delete?: never;
@@ -53583,6 +53607,38 @@ export interface components {
         };
         ReorderRequest: {
             orders?: components["schemas"]["OrderItem"][];
+        };
+        SubtabVisibilityUpdateItem: {
+            /** @enum {string} */
+            minRole: "PUBLIC" | "SUPPORTER" | "MEMBER";
+            subtabKey: string;
+        };
+        UpdateMemberSubtabVisibilityRequest: {
+            subtabs?: components["schemas"]["SubtabVisibilityUpdateItem"][];
+        };
+        ApiResponseMemberSubtabVisibilityResponse: {
+            data?: components["schemas"]["MemberSubtabVisibilityResponse"];
+        };
+        MemberSubtabUpdatedByDto: {
+            displayName?: string;
+            /** Format: int64 */
+            id?: number;
+        };
+        MemberSubtabVisibilityItemDto: {
+            default?: boolean;
+            /** @enum {string} */
+            minRole?: "PUBLIC" | "SUPPORTER" | "MEMBER";
+            subtabKey?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            updatedBy?: components["schemas"]["MemberSubtabUpdatedByDto"];
+        };
+        MemberSubtabVisibilityResponse: {
+            /** Format: int64 */
+            scopeId?: number;
+            /** @enum {string} */
+            scopeType?: "PERSONAL" | "TEAM" | "ORGANIZATION";
+            subtabs?: components["schemas"]["MemberSubtabVisibilityItemDto"][];
         };
         DisclosureCustomTemplateRequest: {
             code?: string;
@@ -77256,6 +77312,7 @@ export interface components {
         PublicUserPostSummaryResponse: {
             /** Format: date-time */
             createdAt?: string;
+            orgSlug?: string;
             /** Format: int64 */
             postId?: number;
             scopeId?: string;
@@ -77497,6 +77554,27 @@ export interface components {
             /** Format: int64 */
             totalUsers?: number;
         };
+        PublicOrganizationResponse: {
+            bannerUrl?: string;
+            city?: string;
+            /** Format: date */
+            establishedDate?: string;
+            establishedDatePrecision?: string;
+            homepageUrl?: string;
+            iconUrl?: string;
+            /** Format: int64 */
+            id?: number;
+            mapEmbedUrl?: string;
+            name?: string;
+            nameKana?: string;
+            nickname1?: string;
+            nickname2?: string;
+            orgType?: string;
+            philosophy?: string;
+            prefecture?: string;
+            publicEventsEnabled?: boolean;
+            timelinePostsPublic?: boolean;
+        };
         PagedResponseTournamentResponse: {
             data?: components["schemas"]["TournamentResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -77621,25 +77699,6 @@ export interface components {
         };
         ApiResponseListFixtureResponse: {
             data?: components["schemas"]["FixtureResponse"][];
-        };
-        PublicOrganizationResponse: {
-            bannerUrl?: string;
-            city?: string;
-            /** Format: date */
-            establishedDate?: string;
-            establishedDatePrecision?: string;
-            homepageUrl?: string;
-            iconUrl?: string;
-            /** Format: int64 */
-            id?: number;
-            mapEmbedUrl?: string;
-            name?: string;
-            nameKana?: string;
-            nickname1?: string;
-            nickname2?: string;
-            orgType?: string;
-            philosophy?: string;
-            prefecture?: string;
         };
         PagePublicOrganizationSearchResultResponse: {
             content?: components["schemas"]["PublicOrganizationSearchResultResponse"][];
@@ -91862,6 +91921,54 @@ export interface operations {
             };
         };
     };
+    getSettings_9: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberSubtabVisibilityResponse"];
+                };
+            };
+        };
+    };
+    updateSettings_9: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMemberSubtabVisibilityRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberSubtabVisibilityResponse"];
+                };
+            };
+        };
+    };
     reorderCustomFields_1: {
         parameters: {
             query?: never;
@@ -92076,7 +92183,7 @@ export interface operations {
             };
         };
     };
-    getSettings_9: {
+    getSettings_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -92098,7 +92205,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_9: {
+    updateSettings_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -92416,7 +92523,7 @@ export interface operations {
             };
         };
     };
-    getSettings_10: {
+    getSettings_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -92438,7 +92545,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_10: {
+    updateSettings_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -94659,7 +94766,7 @@ export interface operations {
             };
         };
     };
-    getSettings_11: {
+    getSettings_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -94681,7 +94788,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_11: {
+    updateSettings_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -95065,7 +95172,7 @@ export interface operations {
             };
         };
     };
-    getSettings_12: {
+    getSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -95085,7 +95192,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_12: {
+    updateSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -95460,7 +95567,7 @@ export interface operations {
             };
         };
     };
-    getSettings_13: {
+    getSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -95480,7 +95587,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_13: {
+    updateSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -115869,7 +115976,9 @@ export interface operations {
     calculateRequiredSlots: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-Id"?: number;
+            };
             path?: never;
             cookie?: never;
         };
@@ -136726,7 +136835,7 @@ export interface operations {
             };
         };
     };
-    getSettings_14: {
+    getSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -137043,7 +137152,7 @@ export interface operations {
             };
         };
     };
-    getSettings_15: {
+    getSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -137065,7 +137174,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_14: {
+    updateSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -139084,7 +139193,7 @@ export interface operations {
             };
         };
     };
-    getSettings_16: {
+    getSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -139115,7 +139224,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_15: {
+    updateSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -141126,7 +141235,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_16: {
+    updateSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -145705,7 +145814,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_17: {
+    updateSettings_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -146727,7 +146836,7 @@ export interface operations {
             };
         };
     };
-    getSettings_17: {
+    getSettings_18: {
         parameters: {
             query: {
                 scopeType: string;
@@ -147160,7 +147269,7 @@ export interface operations {
             };
         };
     };
-    getSettings_18: {
+    getSettings_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -147180,7 +147289,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_18: {
+    updateSettings_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -154545,7 +154654,7 @@ export interface operations {
             };
         };
     };
-    getSettings_19: {
+    getSettings_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -157619,6 +157728,214 @@ export interface operations {
             };
         };
     };
+    getPublicOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PublicOrganizationResponse"];
+                };
+            };
+        };
+    };
+    listOrganizationTimelinePosts: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagePublicTimelinePostResponse"];
+                };
+            };
+        };
+    };
+    listPublicPosts_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagePublicPostSummary"];
+                };
+            };
+        };
+    };
+    getPublicPostDetail_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                postId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PublicPostDetail"];
+                };
+            };
+        };
+    };
+    getOrganizationFaqs_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PublicFaqResponse"][];
+                };
+            };
+        };
+    };
+    listOrganizationEvents: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagePublicEventResponse"];
+                };
+            };
+        };
+    };
+    listOrgPublicActivities: {
+        parameters: {
+            query?: {
+                limit?: number;
+                page?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
+                };
+            };
+            /** @description 組織が存在しない / 非公開（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
+                };
+            };
+        };
+    };
+    getOrgPublicActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
+                };
+            };
+            /** @description 非公開 / 不在 / スコープ不一致（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
+                };
+            };
+        };
+    };
     listPublicTournaments: {
         parameters: {
             query?: {
@@ -157761,214 +158078,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListFixtureResponse"];
-                };
-            };
-        };
-    };
-    listOrganizationTimelinePosts: {
-        parameters: {
-            query?: {
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagePublicTimelinePostResponse"];
-                };
-            };
-        };
-    };
-    listPublicPosts_1: {
-        parameters: {
-            query?: {
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagePublicPostSummary"];
-                };
-            };
-        };
-    };
-    getPublicPostDetail_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                postId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PublicPostDetail"];
-                };
-            };
-        };
-    };
-    getOrganizationFaqs_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PublicFaqResponse"][];
-                };
-            };
-        };
-    };
-    listOrganizationEvents: {
-        parameters: {
-            query?: {
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagePublicEventResponse"];
-                };
-            };
-        };
-    };
-    listOrgPublicActivities: {
-        parameters: {
-            query?: {
-                limit?: number;
-                page?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 取得成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
-                };
-            };
-            /** @description 組織が存在しない / 非公開（区別しない） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
-                };
-            };
-        };
-    };
-    getOrgPublicActivity: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 取得成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
-                };
-            };
-            /** @description 非公開 / 不在 / スコープ不一致（区別しない） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
-                };
-            };
-        };
-    };
-    getPublicOrganization: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PublicOrganizationResponse"];
                 };
             };
         };

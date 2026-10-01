@@ -42,12 +42,13 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3605);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 3 = 3605（台帳753行・HTTP total 列合計の実測）
+                .isEqualTo(3607);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2 + 3 = 3607（main 3604 + F01.2.1 2-B1 の3本）
                                     //   main 3566（ブログ・スケジュール画像の完了確認2本を含む）
                                     // + Billing Center PR6a の解約/撤回2エンドポイント（D6・正本 05:334-335）
                                     // + CMP-260912-1525 のメンバー一括取得・チーム時給一括取得の2エンドポイント
                                     // + Billing Center PR6b-1 の見積り/実行/3DS payment-action の3エンドポイント（AC-142/145・第13隊）
                                     // + CMP-011 の会費チェックアウト状態取得・領収書PDF・手数料明細PDFの3エンドポイント
+                                    // + CMP-260919-1140 Phase 1 のメンバーサブタブ可視性 GET/PUT 2エンドポイント
                                     // + CMP-260912-0910 の MEMBER 既定権限取得・更新2エンドポイント
                                     // + CMP-260920-1040 F04.9「宛先指定」戦役の12エンドポイント
                                     //   （Org/TeamConfirmableNotificationController の受信者ページング取得×2
