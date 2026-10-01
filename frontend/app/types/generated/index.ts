@@ -38754,6 +38754,160 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/organizations/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織詳細（未ログイン公開）
+         * @description 組織を slug で指定する（数値 ID は受けない）。未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。
+         */
+        get: operations["getPublicOrganization"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/timeline-posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の公開タイムライン投稿一覧（未ログイン公開）
+         * @description PUBLIC 組織で timeline_posts_public=true の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。
+         */
+        get: operations["listOrganizationTimelinePosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の公開投稿一覧（未ログイン公開）
+         * @description PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事一覧。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。
+         */
+        get: operations["listPublicPosts_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/posts/{postId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の公開投稿詳細（未ログイン公開）
+         * @description PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事詳細。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織 / 非公開記事 / 不在は 404。
+         */
+        get: operations["getPublicPostDetail_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/faqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の公開FAQ（未ログイン公開）
+         * @description PUBLIC 組織の回答済み FAQ を返す。固定質問（questionKey 非null・FE が i18n で質問文描画）を先頭に、続けて自由質問（questionText を保持）を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。
+         */
+        get: operations["getOrganizationFaqs_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織の公開イベント一覧（未ログイン公開）
+         * @description PUBLIC 組織で public_events_enabled=true の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。
+         */
+        get: operations["listOrganizationEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織公開活動記録一覧 */
+        get: operations["listOrgPublicActivities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/{slug}/activities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織公開活動記録詳細 */
+        get: operations["getOrgPublicActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/organizations/{orgId}/tournaments": {
         parameters: {
             query?: never;
@@ -38848,160 +39002,6 @@ export interface paths {
         };
         /** 公開トーナメント表 */
         get: operations["getPublicBracket"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/timeline-posts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織の公開タイムライン投稿一覧（未ログイン公開）
-         * @description PUBLIC 組織で timeline_posts_public=true の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。
-         */
-        get: operations["listOrganizationTimelinePosts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/posts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織の公開投稿一覧（未ログイン公開）
-         * @description PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事一覧。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。
-         */
-        get: operations["listPublicPosts_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/posts/{postId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織の公開投稿詳細（未ログイン公開）
-         * @description PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事詳細。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織 / 非公開記事 / 不在は 404。
-         */
-        get: operations["getPublicPostDetail_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/faqs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織の公開FAQ（未ログイン公開）
-         * @description PUBLIC 組織の回答済み FAQ を返す。固定質問（questionKey 非null・FE が i18n で質問文描画）を先頭に、続けて自由質問（questionText を保持）を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。
-         */
-        get: operations["getOrganizationFaqs_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織の公開イベント一覧（未ログイン公開）
-         * @description PUBLIC 組織で public_events_enabled=true の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。
-         */
-        get: operations["listOrganizationEvents"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/activities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 組織公開活動記録一覧 */
-        get: operations["listOrgPublicActivities"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{orgId}/activities/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 組織公開活動記録詳細 */
-        get: operations["getOrgPublicActivity"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/organizations/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 組織詳細（未ログイン公開）
-         * @description 未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。
-         */
-        get: operations["getPublicOrganization"];
         put?: never;
         post?: never;
         delete?: never;
@@ -77312,6 +77312,7 @@ export interface components {
         PublicUserPostSummaryResponse: {
             /** Format: date-time */
             createdAt?: string;
+            orgSlug?: string;
             /** Format: int64 */
             postId?: number;
             scopeId?: string;
@@ -77553,6 +77554,27 @@ export interface components {
             /** Format: int64 */
             totalUsers?: number;
         };
+        PublicOrganizationResponse: {
+            bannerUrl?: string;
+            city?: string;
+            /** Format: date */
+            establishedDate?: string;
+            establishedDatePrecision?: string;
+            homepageUrl?: string;
+            iconUrl?: string;
+            /** Format: int64 */
+            id?: number;
+            mapEmbedUrl?: string;
+            name?: string;
+            nameKana?: string;
+            nickname1?: string;
+            nickname2?: string;
+            orgType?: string;
+            philosophy?: string;
+            prefecture?: string;
+            publicEventsEnabled?: boolean;
+            timelinePostsPublic?: boolean;
+        };
         PagedResponseTournamentResponse: {
             data?: components["schemas"]["TournamentResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -77677,25 +77699,6 @@ export interface components {
         };
         ApiResponseListFixtureResponse: {
             data?: components["schemas"]["FixtureResponse"][];
-        };
-        PublicOrganizationResponse: {
-            bannerUrl?: string;
-            city?: string;
-            /** Format: date */
-            establishedDate?: string;
-            establishedDatePrecision?: string;
-            homepageUrl?: string;
-            iconUrl?: string;
-            /** Format: int64 */
-            id?: number;
-            mapEmbedUrl?: string;
-            name?: string;
-            nameKana?: string;
-            nickname1?: string;
-            nickname2?: string;
-            orgType?: string;
-            philosophy?: string;
-            prefecture?: string;
         };
         PagePublicOrganizationSearchResultResponse: {
             content?: components["schemas"]["PublicOrganizationSearchResultResponse"][];
@@ -157725,6 +157728,214 @@ export interface operations {
             };
         };
     };
+    getPublicOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PublicOrganizationResponse"];
+                };
+            };
+        };
+    };
+    listOrganizationTimelinePosts: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagePublicTimelinePostResponse"];
+                };
+            };
+        };
+    };
+    listPublicPosts_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagePublicPostSummary"];
+                };
+            };
+        };
+    };
+    getPublicPostDetail_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                postId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PublicPostDetail"];
+                };
+            };
+        };
+    };
+    getOrganizationFaqs_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PublicFaqResponse"][];
+                };
+            };
+        };
+    };
+    listOrganizationEvents: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagePublicEventResponse"];
+                };
+            };
+        };
+    };
+    listOrgPublicActivities: {
+        parameters: {
+            query?: {
+                limit?: number;
+                page?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
+                };
+            };
+            /** @description 組織が存在しない / 非公開（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
+                };
+            };
+        };
+    };
+    getOrgPublicActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
+                };
+            };
+            /** @description 非公開 / 不在 / スコープ不一致（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
+                };
+            };
+        };
+    };
     listPublicTournaments: {
         parameters: {
             query?: {
@@ -157867,214 +158078,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListFixtureResponse"];
-                };
-            };
-        };
-    };
-    listOrganizationTimelinePosts: {
-        parameters: {
-            query?: {
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagePublicTimelinePostResponse"];
-                };
-            };
-        };
-    };
-    listPublicPosts_1: {
-        parameters: {
-            query?: {
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagePublicPostSummary"];
-                };
-            };
-        };
-    };
-    getPublicPostDetail_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                postId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PublicPostDetail"];
-                };
-            };
-        };
-    };
-    getOrganizationFaqs_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PublicFaqResponse"][];
-                };
-            };
-        };
-    };
-    listOrganizationEvents: {
-        parameters: {
-            query?: {
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagePublicEventResponse"];
-                };
-            };
-        };
-    };
-    listOrgPublicActivities: {
-        parameters: {
-            query?: {
-                limit?: number;
-                page?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 取得成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
-                };
-            };
-            /** @description 組織が存在しない / 非公開（区別しない） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
-                };
-            };
-        };
-    };
-    getOrgPublicActivity: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 取得成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
-                };
-            };
-            /** @description 非公開 / 不在 / スコープ不一致（区別しない） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
-                };
-            };
-        };
-    };
-    getPublicOrganization: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PublicOrganizationResponse"];
                 };
             };
         };

@@ -128334,6 +128334,382 @@
         }
       }
     },
+    "/api/v1/public/organizations/{slug}": {
+      "get": {
+        "tags": [
+          "公開組織ページ API (F19.1)"
+        ],
+        "summary": "組織詳細（未ログイン公開）",
+        "description": "組織を slug で指定する（数値 ID は受けない）。未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。",
+        "operationId": "getPublicOrganization",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicOrganizationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{slug}/timeline-posts": {
+      "get": {
+        "tags": [
+          "公開タイムライン投稿 API (F19.1 Phase 7)"
+        ],
+        "summary": "組織の公開タイムライン投稿一覧（未ログイン公開）",
+        "description": "PUBLIC 組織で timeline_posts_public\u003dtrue の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
+        "operationId": "listOrganizationTimelinePosts",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagePublicTimelinePostResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{slug}/posts": {
+      "get": {
+        "tags": [
+          "公開組織投稿 API (F19.1)"
+        ],
+        "summary": "組織の公開投稿一覧（未ログイン公開）",
+        "description": "PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事一覧。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。",
+        "operationId": "listPublicPosts_1",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagePublicPostSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{slug}/posts/{postId}": {
+      "get": {
+        "tags": [
+          "公開組織投稿 API (F19.1)"
+        ],
+        "summary": "組織の公開投稿詳細（未ログイン公開）",
+        "description": "PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事詳細。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織 / 非公開記事 / 不在は 404。",
+        "operationId": "getPublicPostDetail_1",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPostDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{slug}/faqs": {
+      "get": {
+        "tags": [
+          "公開FAQ API (F21.1 §5.5)"
+        ],
+        "summary": "組織の公開FAQ（未ログイン公開）",
+        "description": "PUBLIC 組織の回答済み FAQ を返す。固定質問（questionKey 非null・FE が i18n で質問文描画）を先頭に、続けて自由質問（questionText を保持）を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。",
+        "operationId": "getOrganizationFaqs_1",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicFaqResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{slug}/events": {
+      "get": {
+        "tags": [
+          "公開イベント API (F19.1 Phase 7)"
+        ],
+        "summary": "組織の公開イベント一覧（未ログイン公開）",
+        "description": "PUBLIC 組織で public_events_enabled\u003dtrue の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
+        "operationId": "listOrganizationEvents",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagePublicEventResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{slug}/activities": {
+      "get": {
+        "tags": [
+          "公開活動記録"
+        ],
+        "summary": "組織公開活動記録一覧",
+        "operationId": "listOrgPublicActivities",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPublicActivitySummary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "組織が存在しない / 非公開（区別しない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPublicActivitySummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/organizations/{slug}/activities/{id}": {
+      "get": {
+        "tags": [
+          "公開活動記録"
+        ],
+        "summary": "組織公開活動記録詳細",
+        "operationId": "getOrgPublicActivity",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicActivityDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "非公開 / 不在 / スコープ不一致（区別しない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicActivityDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/organizations/{orgId}/tournaments": {
       "get": {
         "tags": [
@@ -128630,390 +129006,6 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListFixtureResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/timeline-posts": {
-      "get": {
-        "tags": [
-          "公開タイムライン投稿 API (F19.1 Phase 7)"
-        ],
-        "summary": "組織の公開タイムライン投稿一覧（未ログイン公開）",
-        "description": "PUBLIC 組織で timeline_posts_public\u003dtrue の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
-        "operationId": "listOrganizationTimelinePosts",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 20
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PagePublicTimelinePostResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/posts": {
-      "get": {
-        "tags": [
-          "公開組織投稿 API (F19.1)"
-        ],
-        "summary": "組織の公開投稿一覧（未ログイン公開）",
-        "description": "PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事一覧。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。",
-        "operationId": "listPublicPosts_1",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 20
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PagePublicPostSummary"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/posts/{postId}": {
-      "get": {
-        "tags": [
-          "公開組織投稿 API (F19.1)"
-        ],
-        "summary": "組織の公開投稿詳細（未ログイン公開）",
-        "description": "PUBLIC 組織の PUBLIC / PUBLISHED ブログ記事詳細。 ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。 PRIVATE 組織 / 非公開記事 / 不在は 404。",
-        "operationId": "getPublicPostDetail_1",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "postId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicPostDetail"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/faqs": {
-      "get": {
-        "tags": [
-          "公開FAQ API (F21.1 §5.5)"
-        ],
-        "summary": "組織の公開FAQ（未ログイン公開）",
-        "description": "PUBLIC 組織の回答済み FAQ を返す。固定質問（questionKey 非null・FE が i18n で質問文描画）を先頭に、続けて自由質問（questionText を保持）を返す。 PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。",
-        "operationId": "getOrganizationFaqs_1",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PublicFaqResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/events": {
-      "get": {
-        "tags": [
-          "公開イベント API (F19.1 Phase 7)"
-        ],
-        "summary": "組織の公開イベント一覧（未ログイン公開）",
-        "description": "PUBLIC 組織で public_events_enabled\u003dtrue の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
-        "operationId": "listOrganizationEvents",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 20
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PagePublicEventResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/activities": {
-      "get": {
-        "tags": [
-          "公開活動記録"
-        ],
-        "summary": "組織公開活動記録一覧",
-        "operationId": "listOrgPublicActivities",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 20
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0,
-              "minimum": 0
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "取得成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListPublicActivitySummary"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "組織が存在しない / 非公開（区別しない）",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListPublicActivitySummary"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{orgId}/activities/{id}": {
-      "get": {
-        "tags": [
-          "公開活動記録"
-        ],
-        "summary": "組織公開活動記録詳細",
-        "operationId": "getOrgPublicActivity",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "取得成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePublicActivityDetail"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "非公開 / 不在 / スコープ不一致（区別しない）",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePublicActivityDetail"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/organizations/{id}": {
-      "get": {
-        "tags": [
-          "公開組織ページ API (F19.1)"
-        ],
-        "summary": "組織詳細（未ログイン公開）",
-        "description": "未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。",
-        "operationId": "getPublicOrganization",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicOrganizationResponse"
                 }
               }
             }
@@ -228816,6 +228808,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "orgSlug": {
+            "type": "string"
+          },
           "postId": {
             "type": "integer",
             "format": "int64"
@@ -229425,6 +229420,64 @@
           }
         }
       },
+      "PublicOrganizationResponse": {
+        "type": "object",
+        "properties": {
+          "bannerUrl": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "establishedDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "establishedDatePrecision": {
+            "type": "string"
+          },
+          "homepageUrl": {
+            "type": "string"
+          },
+          "iconUrl": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "mapEmbedUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nameKana": {
+            "type": "string"
+          },
+          "nickname1": {
+            "type": "string"
+          },
+          "nickname2": {
+            "type": "string"
+          },
+          "orgType": {
+            "type": "string"
+          },
+          "philosophy": {
+            "type": "string"
+          },
+          "prefecture": {
+            "type": "string"
+          },
+          "publicEventsEnabled": {
+            "type": "boolean"
+          },
+          "timelinePostsPublic": {
+            "type": "boolean"
+          }
+        }
+      },
       "PagedResponseTournamentResponse": {
         "type": "object",
         "properties": {
@@ -229730,58 +229783,6 @@
             "items": {
               "$ref": "#/components/schemas/FixtureResponse"
             }
-          }
-        }
-      },
-      "PublicOrganizationResponse": {
-        "type": "object",
-        "properties": {
-          "bannerUrl": {
-            "type": "string"
-          },
-          "city": {
-            "type": "string"
-          },
-          "establishedDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "establishedDatePrecision": {
-            "type": "string"
-          },
-          "homepageUrl": {
-            "type": "string"
-          },
-          "iconUrl": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "mapEmbedUrl": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "nameKana": {
-            "type": "string"
-          },
-          "nickname1": {
-            "type": "string"
-          },
-          "nickname2": {
-            "type": "string"
-          },
-          "orgType": {
-            "type": "string"
-          },
-          "philosophy": {
-            "type": "string"
-          },
-          "prefecture": {
-            "type": "string"
           }
         }
       },
