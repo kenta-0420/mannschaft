@@ -61827,6 +61827,185 @@
         }
       }
     },
+    "/api/v1/organizations/{slug}/team-applications/{membershipId}/reject": {
+      "post": {
+        "tags": [
+          "組織の加盟申請（受信）"
+        ],
+        "summary": "加盟申請の拒否（組織 ADMIN。30日の冷却または無期限ブロック）",
+        "operationId": "reject_2",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectTeamApplicationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "拒否成功（記録した制限）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRejectTeamApplicationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "理由が500文字を超える",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRejectTeamApplicationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織 ADMIN ではない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRejectTeamApplicationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ORG_001: 組織が見つからない / TEAM_070: 申請が見つからない（他組織の ID・処理済みも同じ）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRejectTeamApplicationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "TEAM_071（既に処理済み）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRejectTeamApplicationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/team-applications/{membershipId}/approve": {
+      "post": {
+        "tags": [
+          "組織の加盟申請（受信）"
+        ],
+        "summary": "加盟申請の承認（組織 ADMIN。グループを確定する）",
+        "operationId": "approve_4",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveTeamApplicationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "承認成功（ACTIVE の加盟）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "overrideGroup が無い / TEAM_072（指定したグループが選択できない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織 ADMIN ではない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ORG_001: 組織が見つからない / TEAM_070: 申請が見つからない（他組織の ID・処理済みも同じ）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "TEAM_071（既に処理済み）/ 組織・チームがアーカイブ済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{slug}/supporter-applications/{applicationId}/reject": {
       "post": {
         "tags": [
@@ -67674,7 +67853,7 @@
         ],
         "summary": "受け入れ承認・配属",
         "description": "受け入れ側 org ADMIN のみ。target_division_id セット・PLACED・participant 作成（REGISTERED）",
-        "operationId": "approve_4",
+        "operationId": "approve_5",
         "parameters": [
           {
             "name": "orgId",
@@ -68944,7 +69123,7 @@
           "封緘解除申請（F09.15）"
         ],
         "summary": "封緘解除申請の一次承認（申請者本人以外の MANAGE_SUCCESSION_UNSEAL または ADMIN）",
-        "operationId": "approve_5",
+        "operationId": "approve_6",
         "parameters": [
           {
             "name": "orgId",
@@ -70652,7 +70831,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "承認",
-        "operationId": "approve_6",
+        "operationId": "approve_7",
         "parameters": [
           {
             "name": "orgId",
@@ -81916,7 +82095,7 @@
           "回覧押印"
         ],
         "summary": "拒否",
-        "operationId": "reject_2",
+        "operationId": "reject_3",
         "parameters": [
           {
             "name": "documentId",
@@ -86411,7 +86590,7 @@
           "F17.1 村機能 - 村作成申請"
         ],
         "summary": "運営: 村作成申請を拒否",
-        "operationId": "reject_3",
+        "operationId": "reject_4",
         "parameters": [
           {
             "name": "id",
@@ -86453,7 +86632,7 @@
           "F17.1 村機能 - 村作成申請"
         ],
         "summary": "運営: 村作成申請を承認",
-        "operationId": "approve_7",
+        "operationId": "approve_8",
         "parameters": [
           {
             "name": "id",
@@ -94114,7 +94293,7 @@
           "チームサブリース"
         ],
         "summary": "チームサブリース承認",
-        "operationId": "approve_8",
+        "operationId": "approve_9",
         "parameters": [
           {
             "name": "teamId",
@@ -94308,7 +94487,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム申請拒否",
-        "operationId": "reject_4",
+        "operationId": "reject_5",
         "parameters": [
           {
             "name": "teamId",
@@ -94359,7 +94538,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム申請承認",
-        "operationId": "approve_9",
+        "operationId": "approve_10",
         "parameters": [
           {
             "name": "teamId",
@@ -99058,7 +99237,7 @@
         "tags": [
           "system-admin-ad-creative-controller"
         ],
-        "operationId": "reject_5",
+        "operationId": "reject_6",
         "parameters": [
           {
             "name": "adId",
@@ -99089,7 +99268,7 @@
         "tags": [
           "system-admin-ad-creative-controller"
         ],
-        "operationId": "approve_10",
+        "operationId": "approve_11",
         "parameters": [
           {
             "name": "adId",
@@ -99153,7 +99332,7 @@
         "tags": [
           "システム管理 - 運用型キャンペーン審査"
         ],
-        "operationId": "reject_6",
+        "operationId": "reject_7",
         "parameters": [
           {
             "name": "id",
@@ -99194,7 +99373,7 @@
         "tags": [
           "システム管理 - 運用型キャンペーン審査"
         ],
-        "operationId": "approve_11",
+        "operationId": "approve_12",
         "parameters": [
           {
             "name": "id",
@@ -100034,7 +100213,7 @@
         ],
         "summary": "代理拒否",
         "description": "F03.10 §4.1: 代理人が代理を拒否する",
-        "operationId": "reject_7",
+        "operationId": "reject_8",
         "parameters": [
           {
             "name": "delegationId",
@@ -102095,7 +102274,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース承認",
-        "operationId": "approve_12",
+        "operationId": "approve_13",
         "parameters": [
           {
             "name": "organizationId",
@@ -102289,7 +102468,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請拒否",
-        "operationId": "reject_8",
+        "operationId": "reject_9",
         "parameters": [
           {
             "name": "organizationId",
@@ -102340,7 +102519,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請承認",
-        "operationId": "approve_13",
+        "operationId": "approve_14",
         "parameters": [
           {
             "name": "organizationId",
@@ -106963,7 +107142,7 @@
         ],
         "summary": "代理拒否",
         "description": "F03.10 §4.2: 代理人が代理を拒否する",
-        "operationId": "reject_9",
+        "operationId": "reject_10",
         "parameters": [
           {
             "name": "delegationId",
@@ -130779,6 +130958,86 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/team-applications": {
+      "get": {
+        "tags": [
+          "組織の加盟申請（受信）"
+        ],
+        "summary": "受信した加盟申請の一覧（組織 ADMIN）",
+        "operationId": "listApplications_2",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "teamGroupId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功（申請日時の降順）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織 ADMIN ではない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ORG_001: 組織が見つからない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
                 }
               }
             }
@@ -193744,6 +194003,57 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/OrgTeamGroupResponse"
+          }
+        }
+      },
+      "RejectTeamApplicationRequest": {
+        "type": "object",
+        "properties": {
+          "block": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseRejectTeamApplicationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RejectTeamApplicationResponse"
+          }
+        }
+      },
+      "ApplicationRestriction": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "restrictedUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RejectTeamApplicationResponse": {
+        "type": "object",
+        "properties": {
+          "restriction": {
+            "$ref": "#/components/schemas/ApplicationRestriction"
+          }
+        }
+      },
+      "ApproveTeamApplicationRequest": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "overrideGroup": {
+            "type": "boolean"
           }
         }
       },
