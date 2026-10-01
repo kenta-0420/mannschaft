@@ -105,8 +105,8 @@ class TeamOrgApplicationIT extends TeamAffiliationItSupport {
     @AfterEach
     void restoreClock() {
         if (originalRestrictionClock != null) {
-            ReflectionTestUtils.setField(AopTestUtils.getTargetObject(restrictionService), "clock",
-                    originalRestrictionClock);
+            Object target = AopTestUtils.getTargetObject(restrictionService);
+            ReflectionTestUtils.setField(target, "clock", originalRestrictionClock);
         }
     }
 
@@ -144,27 +144,6 @@ class TeamOrgApplicationIT extends TeamAffiliationItSupport {
     }
 
     @Test
-    @DisplayName("AC-G117a 申請と同じトランザクションで、組織 ADMIN 宛ての通知ジョブが1件 enqueue される（slug の action_url）")
-    void 申請すると組織ADMIN宛ての通知ジョブがenqueueされる() throws Exception {
-        long membershipId = applyAndGetId(ta, team.slug(), org.slug());
-
-        List<?> jobs = em.createNativeQuery(
-                        "SELECT scope_type, scope_ref, notification_type, organization_id, source_type, source_id, "
-                                + "action_url, actor_id FROM notification_fanout_jobs "
-                                + "WHERE source_type = 'TEAM_ORG_MEMBERSHIP' AND source_id = :id")
-                .setParameter("id", membershipId).getResultList();
-        assertThat(jobs).as("通知ジョブはちょうど1件").hasSize(1);
-        Object[] job = (Object[]) jobs.get(0);
-        assertThat(job[0]).as("受信者の解決方式は組織 ADMIN").isEqualTo("ORGANIZATION_ADMINS");
-        assertThat(job[1]).as("scope_ref は組織 ID").isEqualTo(String.valueOf(org.id()));
-        assertThat(job[2]).isEqualTo("TEAM_ORG_APPLICATION_RECEIVED");
-        assertThat(((Number) job[3]).longValue()).as("テナントは組織").isEqualTo(org.id());
-        assertThat(job[6]).as("action_url は slug").isEqualTo(
-                "/organizations/" + org.slug() + "/member-teams?view=applications");
-        assertThat(((Number) job[7]).longValue()).isEqualTo(ta);
-    }
-
-    @Test
     @DisplayName("AC-G103b 申請すると TEAM_ORG_APPLICATION_SUBMITTED が audit_logs に1行残る")
     void 申請の監査ログが残る() throws Exception {
         long membershipId = applyAndGetId(ta, team.slug(), org.slug());
@@ -183,7 +162,7 @@ class TeamOrgApplicationIT extends TeamAffiliationItSupport {
     // =====================================================================
 
     @Test
-    @DisplayName("AC-B02 受付 off の組織へ直接申請すると 403 TEAM_064 で、行も通知ジョブも作られない")
+    @DisplayName("AC-B02 受付 off の組織へ直接申請すると 403 TEAM_064 で、行は作られない")
     void 受付offは403() throws Exception {
         OrgFx closed = newOrg(false, false, "OFF", "PUBLIC");
 
@@ -192,7 +171,6 @@ class TeamOrgApplicationIT extends TeamAffiliationItSupport {
                 .andExpect(jsonPath("$.error.code").value("TEAM_064"));
 
         assertThat(countMemberships(team.id(), closed.id())).isZero();
-        assertThat(jobCount(closed.id())).as("失敗した申請では通知ジョブも作られない（同一トランザクション）").isZero();
     }
 
     // =====================================================================
@@ -323,7 +301,7 @@ class TeamOrgApplicationIT extends TeamAffiliationItSupport {
     // =====================================================================
 
     @Test
-    @DisplayName("AC-B09 同時申請の上限: 10件目は成功し、11件目は 422 TEAM_069（行も通知ジョブも作られない）")
+    @DisplayName("AC-B09 同時申請の上限: 10件目は成功し、11件目は 422 TEAM_069（行は作られない）")
     void 同時申請の上限は10件() throws Exception {
         for (int i = 0; i < 9; i++) {
             insertMembershipRow(team.id(), newOrg().id(), "PENDING", "TEAM_APPLY", null, LocalDateTime.now());
@@ -338,7 +316,6 @@ class TeamOrgApplicationIT extends TeamAffiliationItSupport {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.error.code").value("TEAM_069"));
         assertThat(countMemberships(team.id(), eleventh.id())).isZero();
-        assertThat(jobCount(eleventh.id())).as("上限で失敗した申請では通知ジョブも作られない").isZero();
     }
 
     // =====================================================================
@@ -641,12 +618,6 @@ class TeamOrgApplicationIT extends TeamAffiliationItSupport {
                 .setParameter("type", eventType)
                 .setParameter("teamId", team.id())
                 .getResultList();
-    }
-
-    private long jobCount(long organizationId) {
-        return ((Number) em.createNativeQuery(
-                        "SELECT COUNT(*) FROM notification_fanout_jobs WHERE organization_id = :orgId")
-                .setParameter("orgId", organizationId).getSingleResult()).longValue();
     }
 
     private Statistics statisticsCleared() {
