@@ -5,6 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.entity.UserInterestTagEntity;
 import com.mannschaft.app.auth.repository.UserInterestTagRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.pointcard.entity.PointCardProviderEntity;
+import com.mannschaft.app.pointcard.entity.PointCardProviderSynonymEntity;
+import com.mannschaft.app.pointcard.enums.PointCardCategory;
+import com.mannschaft.app.pointcard.repository.PointCardProviderRepository;
+import com.mannschaft.app.pointcard.repository.PointCardProviderSynonymRepository;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -143,6 +148,10 @@ class TournamentEntryPkTypeFlywayIT {
     private TransactionTemplate tx;
     @Autowired
     private UserInterestTagRepository interestTagRepository;
+    @Autowired
+    private PointCardProviderRepository pointCardProviderRepository;
+    @Autowired
+    private PointCardProviderSynonymRepository pointCardSynonymRepository;
     @PersistenceContext
     private EntityManager em;
 
@@ -342,6 +351,26 @@ class TournamentEntryPkTypeFlywayIT {
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM user_interest_tags WHERE HEX(id) = UPPER(REPLACE(?, '-', ''))",
                 Long.class, saved.getId().toString())).isEqualTo(1L);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // AC-7 派生: UUID 列型の番人が検出した point_card_provider_synonyms.provider_id（@JdbcTypeCode 漏れ）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("AC-7: point_card_provider_synonyms を実スキーマで保存でき、findByProviderId / countByProviderId が通る（親 provider も Entity 経由）")
+    void AC7_同義語を実スキーマで保存して検索できる() {
+        PointCardProviderEntity provider = pointCardProviderRepository.save(PointCardProviderEntity.builder()
+                .code("pk" + suffix).displayName("PK型プロバイダー").category(PointCardCategory.RETAIL).build());
+        PointCardProviderSynonymEntity saved = pointCardSynonymRepository.save(PointCardProviderSynonymEntity.builder()
+                .providerId(provider.getId()).synonymDisplay("ぴーけー").synonymNormalized("pk" + suffix).build());
+
+        assertThat(pointCardSynonymRepository.findByProviderId(provider.getId()))
+                .extracting(PointCardProviderSynonymEntity::getId).containsExactly(saved.getId());
+        assertThat(pointCardSynonymRepository.countByProviderId(provider.getId())).isEqualTo(1L);
+        // provider_id は CHAR(36) の文字列として保存されている
+        assertThat(jdbc.queryForObject("SELECT provider_id FROM point_card_provider_synonyms WHERE id = ?",
+                String.class, saved.getId().toString())).isEqualTo(provider.getId().toString());
     }
 
     // ═════════════════════════════════════════════════════════════════════
