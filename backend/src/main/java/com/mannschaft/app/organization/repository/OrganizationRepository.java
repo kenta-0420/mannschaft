@@ -5,9 +5,12 @@ import com.mannschaft.app.organization.visibility.OrganizationVisibilityProjecti
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import java.util.Collection;
 import java.util.List;
@@ -53,6 +56,8 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     boolean existsBySlugAndDeletedAtIsNull(String slug);
 
     List<OrganizationEntity> findByVisibility(OrganizationEntity.Visibility visibility);
+
+    // 組織行の PESSIMISTIC_WRITE 取得は、後段（4-A と共用）の findByIdForUpdate を使う（F01.2.1 §6.1 step 7・§6.9）。
 
     // existsByName は柱③-A で撤去済み（ORG_002 一律ブロックの残骸。検分P2-6是正）。
     // 同名許可のため、代わりに findActiveByNormalizedName(ForUpdate) を使う。
@@ -104,6 +109,16 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
             + "AND name_trimmed = :nameTrimmed FOR UPDATE",
             nativeQuery = true)
     List<OrganizationEntity> findActiveByNormalizedNameForUpdate(@Param("nameTrimmed") String nameTrimmed);
+
+    /**
+     * 組織行を排他ロックして取得する（F01.2.1 チームグループの作成・並び替え・削除の直列化用）。
+     *
+     * <p>グループの上限判定・末尾採番・並び替えは「読んでから書く」ため、同じ組織への並行操作を
+     * 組織行のロックで直列化する。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM OrganizationEntity o WHERE o.id = :id")
+    Optional<OrganizationEntity> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * 組織をキーワード検索する（公開検索）。

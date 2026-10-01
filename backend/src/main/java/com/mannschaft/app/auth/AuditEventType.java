@@ -95,6 +95,10 @@ public enum AuditEventType {
     TEAM_MEMBERSHIP_INVITE_DECLINED(AuditEventCategory.TEAM),
     TEAM_MEMBERSHIP_INVITE_CANCELLED(AuditEventCategory.TEAM),
     TEAM_MEMBERSHIP_INVITE_COMPENSATED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: チームの加盟操作者が組織へ加盟を申請した（metadata: 組織・加盟 ID・希望グループ）。 */
+    TEAM_ORG_APPLICATION_SUBMITTED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: チームの加盟操作者が加盟申請を取り下げた（metadata: 組織・加盟 ID）。 */
+    TEAM_ORG_APPLICATION_WITHDRAWN(AuditEventCategory.TEAM),
 
     // ─── ORGANIZATION (Phase 2+) ──────────────────────────────
     ORGANIZATION_CREATED(AuditEventCategory.ORGANIZATION),
