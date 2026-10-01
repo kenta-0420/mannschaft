@@ -634,6 +634,7 @@ HTTP|com.mannschaft.app.team.controller.OrganizationTeamSearchController|1|1
 HTTP|com.mannschaft.app.team.controller.PublicTeamController|1|1
 HTTP|com.mannschaft.app.team.controller.TeamController|39|39
 HTTP|com.mannschaft.app.team.controller.TeamExtendedProfileController|12|12
+HTTP|com.mannschaft.app.team.controller.TeamOrgApplicationController|3|3
 HTTP|com.mannschaft.app.team.controller.TeamShiftSettingsController|2|2
 HTTP|com.mannschaft.app.template.controller.ModuleController|2|2
 HTTP|com.mannschaft.app.template.controller.OrganizationModuleController|3|3

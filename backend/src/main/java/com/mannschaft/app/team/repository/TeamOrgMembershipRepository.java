@@ -41,7 +41,7 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     @Query("UPDATE TeamOrgMembershipEntity m SET m.respondedBy = NULL WHERE m.respondedBy = :userId")
     int nullifyRespondedBy(@Param("userId") Long userId);
 
-    // ========================================================================
+    // =================================================================
     // Phase D-3: AccountPurgedEvent 処理漏れの孤児補正（夜次バッチ用）
     //
     // TeamPurgeEventListener が失敗した場合、退会済みユーザーへの参照が残存する。
@@ -197,6 +197,66 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
         + "WHERE m.teamId IN :teamIds "
         + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
     List<Long> findDistinctOrganizationIdsByTeamIdIn(@Param("teamIds") Set<Long> teamIds);
+
+    // ========================================================================
+    // F01.2.1 2-B1: チーム側の加盟申請（§6.1・§6.4・§10.6）
+    //
+    // 「チーム側から引くクエリは必ず team_id を条件に含め、ID 指定の取得は (id, team_id) の組でだけ行う」
+    // （§5.1。AbstractTenantAwareRepository を継承しない代わりの規約。TeamAffiliationScopeContractIT が担保）。
+    // ========================================================================
+
+    /**
+     * 加盟 ID とチーム ID の組で1件引く（越境した ID・存在しない ID・削除済みはすべて空になる）。
+     */
+    Optional<TeamOrgMembershipEntity> findByIdAndTeamId(Long id, Long teamId);
+
+    /**
+     * {@link #findByIdAndTeamId} の {@code SELECT ... FOR UPDATE} 版。承認・取下げの競合を行ロックで直列化し、
+     * ロック取得後は REPEATABLE READ でも最新のコミット済みの状態を読む（§6.4 の判定表を一意に決める）。
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.id = :id AND m.teamId = :teamId")
+    Optional<TeamOrgMembershipEntity> findByIdAndTeamIdForUpdate(@Param("id") Long id, @Param("teamId") Long teamId);
+
+    /**
+     * チームの PENDING な加盟を向き別に数える（同時申請数の上限 §6.1 step 9）。
+     */
+    @Query("SELECT COUNT(m) FROM TeamOrgMembershipEntity m "
+        + "WHERE m.teamId = :teamId AND m.status = :status AND m.direction = :direction")
+    long countByTeamIdAndStatusAndDirection(
+            @Param("teamId") Long teamId,
+            @Param("status") TeamOrgMembershipEntity.Status status,
+            @Param("direction") com.mannschaft.app.team.entity.TeamOrgAffiliationDirection direction);
+
+    /**
+     * チームの申請中一覧（PENDING / TEAM_APPLY）を申請日時の降順で引く（§10.6）。
+     *
+     * <p>同時刻の行の並びを決定的にするため ID の降順を副キーにする。</p>
+     */
+    @Query(value = "SELECT m FROM TeamOrgMembershipEntity m "
+            + "WHERE m.teamId = :teamId AND m.status = :status AND m.direction = :direction "
+            + "ORDER BY m.invitedAt DESC, m.id DESC",
+            countQuery = "SELECT COUNT(m) FROM TeamOrgMembershipEntity m "
+            + "WHERE m.teamId = :teamId AND m.status = :status AND m.direction = :direction")
+    org.springframework.data.domain.Page<TeamOrgMembershipEntity> findPageByTeamIdAndStatusAndDirection(
+            @Param("teamId") Long teamId,
+            @Param("status") TeamOrgMembershipEntity.Status status,
+            @Param("direction") com.mannschaft.app.team.entity.TeamOrgAffiliationDirection direction,
+            org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * チーム側の取下げ: 条件付き DELETE（{@code id, team_id, PENDING, TEAM_APPLY}。§4.1・§6.4）。
+     *
+     * <p>状態を変える更新は必ず条件付きで行い、影響行数 0 のときの応答は §6.4 の判定表で決める。
+     * 承認（条件付き UPDATE）と競合したとき、ちょうど一方だけが成功する。</p>
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgMembershipEntity m WHERE m.id = :id AND m.teamId = :teamId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
+        + "AND m.direction = com.mannschaft.app.team.entity.TeamOrgAffiliationDirection.TEAM_APPLY")
+    int deletePendingApplication(@Param("id") Long id, @Param("teamId") Long teamId);
 
     // ========================================================================
     // F01.2.1 チームグループ（4-A）: 件数集計と、グループ削除後の付け替え
