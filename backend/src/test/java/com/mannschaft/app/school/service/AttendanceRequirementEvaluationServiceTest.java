@@ -57,6 +57,9 @@ class AttendanceRequirementEvaluationServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
+
     // ========================================
     // evaluate
     // ========================================
@@ -363,7 +366,7 @@ class AttendanceRequirementEvaluationServiceTest {
 
             service.getAtRiskStudents(10L, null, 999L);
 
-            verify(accessControlService).checkMembership(999L, 10L, "TEAM");
+            verify(schoolAttendanceAccessPolicy).checkCanView(999L, 10L);
         }
     }
 

@@ -37,6 +37,7 @@ public class AttendanceRequirementEvaluationService {
     private final AttendanceRequirementRuleRepository ruleRepository;
     private final StudentAttendanceSummaryRepository summaryRepository;
     private final AccessControlService accessControlService;
+    private final SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
 
     // スコープ種別文字列（AttendanceRequirementService の用法に合わせる）。
     private static final String SCOPE_ORGANIZATION = "ORGANIZATION";
@@ -84,7 +85,7 @@ public class AttendanceRequirementEvaluationService {
      */
     public List<AtRiskStudentResponse> getAtRiskStudents(
             Long teamId, List<String> statusFilters, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, teamId, SCOPE_TEAM);
+        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
 
         // フィルターが空の場合はデフォルトで RISK と VIOLATION を対象とする
         List<EvaluationStatus> statuses;

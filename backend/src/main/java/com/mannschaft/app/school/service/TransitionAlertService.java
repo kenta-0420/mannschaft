@@ -30,6 +30,7 @@ public class TransitionAlertService {
 
     private final AttendanceTransitionAlertRepository alertRepository;
     private final AccessControlService accessControlService;
+    private final SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
 
     // ========================================
     // アラート一覧取得
@@ -49,7 +50,7 @@ public class TransitionAlertService {
     @Transactional(readOnly = true)
     public TransitionAlertListResponse getAlerts(
             Long teamId, LocalDate date, boolean unresolvedOnly, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, teamId, "TEAM");
+        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
 
         List<AttendanceTransitionAlertEntity> entities;
         if (unresolvedOnly) {

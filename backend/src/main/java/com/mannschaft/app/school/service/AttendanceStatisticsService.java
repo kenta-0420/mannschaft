@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.AttendanceStatisticsSummary;
 import com.mannschaft.app.school.dto.MonthlyStatisticsResponse;
@@ -33,7 +32,7 @@ public class AttendanceStatisticsService {
 
     private final DailyAttendanceRecordRepository dailyRepo;
     private final PeriodAttendanceRecordRepository periodRepo;
-    private final AccessControlService accessControlService;
+    private final SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
 
     /** 認可スコープ種別（出欠統計は常にクラスチーム単位）。 */
     private static final String SCOPE_TEAM = "TEAM";
@@ -42,7 +41,7 @@ public class AttendanceStatisticsService {
      * 担任向け月次出欠集計を取得する。
      *
      * <p>認可: クラス全員分を返すため、対象クラスチームのメンバーのみ参照可
-     * （{@link AccessControlService#checkMembership}）。非メンバーは 403（COMMON_002）。</p>
+     * （{@link SchoolAttendanceAccessPolicy#checkCanView}）。非メンバーは 403（COMMON_002）。</p>
      *
      * @param teamId        クラスチームID
      * @param year          対象年
@@ -52,7 +51,7 @@ public class AttendanceStatisticsService {
      */
     public MonthlyStatisticsResponse getMonthlyStatistics(
             Long teamId, int year, int month, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, teamId, SCOPE_TEAM);
+        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
 
         LocalDate from = LocalDate.of(year, month, 1);
         LocalDate to = from.withDayOfMonth(from.lengthOfMonth());
@@ -158,7 +157,7 @@ public class AttendanceStatisticsService {
      * 担任向け出欠 CSV データを生成する。
      *
      * <p>認可: クラス全員分を書き出すため、対象クラスチームのメンバーのみ実行可
-     * （{@link AccessControlService#checkMembership}）。非メンバーは 403（COMMON_002）。</p>
+     * （{@link SchoolAttendanceAccessPolicy#checkCanView}）。非メンバーは 403（COMMON_002）。</p>
      *
      * @param teamId        クラスチームID
      * @param from          開始日
@@ -167,7 +166,7 @@ public class AttendanceStatisticsService {
      * @return UTF-8 エンコードされた CSV バイト配列
      */
     public byte[] exportAttendanceCsv(Long teamId, LocalDate from, LocalDate to, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, teamId, SCOPE_TEAM);
+        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
 
         List<DailyAttendanceRecordEntity> records =
                 dailyRepo.findByTeamIdAndAttendanceDateBetweenOrderByAttendanceDateAsc(teamId, from, to);

@@ -56,6 +56,7 @@ public class PeriodAttendanceService {
     private final PeriodAttendanceRecordRepository periodAttendanceRecordRepository;
     private final AttendanceTransitionDetectionService attendanceTransitionDetectionService;
     private final AccessControlService accessControlService;
+    private final SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
 
     /**
      * 時限出欠を一括登録（教科担任用）。
@@ -128,7 +129,7 @@ public class PeriodAttendanceService {
     public PeriodAttendanceListResponse getPeriodAttendance(
             Long teamId, LocalDate date, Integer periodNumber, Long currentUserId) {
 
-        accessControlService.checkMembership(currentUserId, teamId, "TEAM");
+        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
 
         List<PeriodAttendanceRecordEntity> records =
                 periodAttendanceRecordRepository.findByTeamIdAndAttendanceDateAndPeriodNumber(
@@ -171,7 +172,7 @@ public class PeriodAttendanceService {
     public PeriodCandidatesResponse getPeriodCandidates(
             Long teamId, LocalDate date, Integer periodNumber, Long currentUserId) {
 
-        accessControlService.checkMembership(currentUserId, teamId, "TEAM");
+        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
 
         // 当該時限の既存レコードから生徒一覧を組み立てる（簡易実装）
         // TODO: Phase 3 でチームメンバーリポジトリと正式連携

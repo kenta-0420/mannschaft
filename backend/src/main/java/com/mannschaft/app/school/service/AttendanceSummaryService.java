@@ -43,6 +43,7 @@ public class AttendanceSummaryService {
     private final DailyAttendanceRecordRepository dailyRepository;
     private final PeriodAttendanceRecordRepository periodRepository;
     private final AccessControlService accessControlService;
+    private final SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
 
     /** 認可スコープ種別（出席集計は常にクラスチーム単位）。 */
     private static final String SCOPE_TEAM = "TEAM";
@@ -89,7 +90,7 @@ public class AttendanceSummaryService {
      */
     public ClassSummaryListResponse getClassSummaries(
             Long teamId, short academicYear, Long termId, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, teamId, SCOPE_TEAM);
+        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
 
         List<StudentAttendanceSummaryEntity> entities;
         if (termId == null) {

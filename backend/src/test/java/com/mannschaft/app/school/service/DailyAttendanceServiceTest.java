@@ -59,6 +59,9 @@ class DailyAttendanceServiceTest {
     private AccessControlService accessControlService;
 
     @Mock
+    private SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -237,7 +240,7 @@ class DailyAttendanceServiceTest {
         @DisplayName("正常系: 日次出欠一覧と集計を返す")
         void success() {
             // Arrange
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+            doNothing().when(schoolAttendanceAccessPolicy).checkCanView(OPERATOR_USER_ID, TEAM_ID);
 
             List<DailyAttendanceRecordEntity> entities = List.of(
                     buildEntity(1L, STUDENT_USER_ID_1, AttendanceStatus.ATTENDING),

@@ -63,6 +63,9 @@ class PeriodAttendanceServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
+
     @InjectMocks
     private PeriodAttendanceService periodAttendanceService;
 
