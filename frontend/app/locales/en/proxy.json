@@ -17,7 +17,7 @@
         "active": "Active",
         "expired": "Expired",
         "revoked": "Revoked",
-        "scheduled": "?????"
+        "scheduled": "Not yet effective"
       },
       "effectiveFrom": "Effective From",
       "effectiveUntil": "Effective Until",
@@ -232,23 +232,23 @@
       }
     },
     "admin": {
-      "consentsTitle": "??????????",
-      "description": "????????????????????????????????",
-      "organization": "????",
-      "proxyUserId": "???ID",
-      "status": "??",
-      "actions": "??",
-      "approve": "????",
-      "revoke": "????",
-      "approveConfirm": "??? #{id} ?????????????",
-      "approved": "??????????",
-      "revoked": "??????????",
-      "selfApprovalDenied": "????????????????????",
-      "noConsents": "?????????",
-      "noRecords": "???????????????",
-      "none": "???",
-      "recordId": "??ID",
-      "targetType": "????"
+      "consentsTitle": "Proxy input consent management",
+      "description": "Review and approve or revoke proxy input consents and view proxy input history for your organization.",
+      "organization": "Managed organization",
+      "proxyUserId": "Proxy user ID",
+      "status": "Status",
+      "actions": "Actions",
+      "approve": "Approve",
+      "revoke": "Revoke",
+      "approveConfirm": "Approve consent #{id}. Confirm to continue.",
+      "approved": "Consent approved.",
+      "revoked": "Consent revoked.",
+      "selfApprovalDenied": "You cannot approve a consent that names you as the proxy.",
+      "noConsents": "No consents found.",
+      "noRecords": "No proxy input records found.",
+      "none": "None",
+      "recordId": "Record ID",
+      "targetType": "Target type"
     }
   }
 }

@@ -17,7 +17,7 @@
         "active": "Aktiv",
         "expired": "Abgelaufen",
         "revoked": "Widerrufen",
-        "scheduled": "?????"
+        "scheduled": "Noch nicht wirksam"
       },
       "effectiveFrom": "Gültig ab",
       "effectiveUntil": "Gültig bis",
@@ -232,23 +232,23 @@
       }
     },
     "admin": {
-      "consentsTitle": "??????????",
-      "description": "????????????????????????????????",
-      "organization": "????",
-      "proxyUserId": "???ID",
-      "status": "??",
-      "actions": "??",
-      "approve": "????",
-      "revoke": "????",
-      "approveConfirm": "??? #{id} ?????????????",
-      "approved": "??????????",
-      "revoked": "??????????",
-      "selfApprovalDenied": "????????????????????",
-      "noConsents": "?????????",
-      "noRecords": "???????????????",
-      "none": "???",
-      "recordId": "??ID",
-      "targetType": "????"
+      "consentsTitle": "Einwilligungen zur stellvertretenden Eingabe verwalten",
+      "description": "Prüfen, genehmigen oder widerrufen Sie Einwilligungen zur stellvertretenden Eingabe und sehen Sie die Eingabehistorie Ihrer Organisation ein.",
+      "organization": "Verwaltete Organisation",
+      "proxyUserId": "ID der Vertretung",
+      "status": "Status",
+      "actions": "Aktionen",
+      "approve": "Genehmigen",
+      "revoke": "Widerrufen",
+      "approveConfirm": "Einwilligung #{id} genehmigen. Bitte bestätigen Sie den Vorgang.",
+      "approved": "Einwilligung genehmigt.",
+      "revoked": "Einwilligung widerrufen.",
+      "selfApprovalDenied": "Sie können keine Einwilligung genehmigen, die Sie selbst als Vertretung benennt.",
+      "noConsents": "Keine Einwilligungen vorhanden.",
+      "noRecords": "Keine stellvertretenden Eingaben vorhanden.",
+      "none": "Keine",
+      "recordId": "Eintrags-ID",
+      "targetType": "Zieltyp"
     }
   }
 }
