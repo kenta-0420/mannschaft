@@ -10,6 +10,11 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationQueryService;
+import com.mannschaft.app.support.test.MembershipTestHelper;
+import org.mockito.Mockito;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import java.util.concurrent.atomic.AtomicBoolean;
 import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixture;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
@@ -47,6 +52,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -96,6 +102,9 @@ class ConfirmableNotificationConfirmOracleIT extends AbstractMySqlIntegrationTes
     private ConfirmableNotificationRepository notificationRepository;
     @Autowired
     private PlatformTransactionManager transactionManager;
+    /** K1: tx 本体（Query サービス）の直前に割り込むための spy（実処理は呼ぶ）。 */
+    @MockitoSpyBean
+    private ConfirmableNotificationQueryService queryService;
     @PersistenceContext
     private EntityManager em;
 
@@ -110,6 +119,8 @@ class ConfirmableNotificationConfirmOracleIT extends AbstractMySqlIntegrationTes
     private Long otherTeamId;     // 通知と無関係なチーム
     private Long orgId;           // 通知と無関係な組織
     private final List<Long> notificationIds = new ArrayList<>();
+    private final List<Long> extraAdminIds = new ArrayList<>();
+    private String adminEmailPrefix;
 
     enum Path { ME, TEAM_OWN, TEAM_OTHER, ORG_UNRELATED }
 
@@ -147,7 +158,12 @@ class ConfirmableNotificationConfirmOracleIT extends AbstractMySqlIntegrationTes
     void tearDown() {
         executor.shutdownNow();
         SecurityContextHolder.clearContext();
+        Mockito.reset(queryService);
         tx.executeWithoutResult(s -> {
+            for (Long adminId : extraAdminIds) {
+                em.createNativeQuery("DELETE FROM user_roles WHERE user_id = :u").setParameter("u", adminId).executeUpdate();
+                em.createNativeQuery("DELETE FROM memberships WHERE user_id = :u").setParameter("u", adminId).executeUpdate();
+            }
             for (Long id : notificationIds) {
                 em.createNativeQuery("DELETE FROM confirmable_notification_recipients WHERE confirmable_notification_id = :id")
                         .setParameter("id", id).executeUpdate();
@@ -159,6 +175,9 @@ class ConfirmableNotificationConfirmOracleIT extends AbstractMySqlIntegrationTes
             em.createNativeQuery("DELETE FROM organizations WHERE id = :id").setParameter("id", orgId).executeUpdate();
         });
         ConfirmableFanoutFixture.deleteUsers(transactionManager, em, emailPrefix);
+        if (adminEmailPrefix != null) {
+            ConfirmableFanoutFixture.deleteUsers(transactionManager, em, adminEmailPrefix);
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -285,6 +304,50 @@ class ConfirmableNotificationConfirmOracleIT extends AbstractMySqlIntegrationTes
         }
     }
 
+
+    // ═════════════════════════════════════════════════════════════════════
+    // K1: 認可の後・tx 本体の前に通知が消えても、不在IDと同一の404（recipients/page・ファサード化）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(value = Path.class, names = {"TEAM_OWN", "ORG_UNRELATED"})
+    @DisplayName("K1: recipients/page で認可の後・tx 本体の前に通知が削除されても、不在IDと status・code・message 完全一致の404")
+    void 認可後tx前に通知が消えても不在と同一の404(Path path) throws Exception {
+        boolean org = path == Path.ORG_UNRELATED;
+        adminEmailPrefix = "w3b-k1-" + UUID.randomUUID().toString().substring(0, 12);
+        Long adminId = ConfirmableFanoutFixture.insertUsers(transactionManager, em, 1, adminEmailPrefix).get(0);
+        extraAdminIds.add(adminId);
+        Long scopeId = org ? orgId : teamId;
+        com.mannschaft.app.membership.domain.ScopeType scope = org
+                ? com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION
+                : com.mannschaft.app.membership.domain.ScopeType.TEAM;
+        tx.executeWithoutResult(s -> {
+            MembershipTestHelper.insertMembership(em, adminId, scope, scopeId,
+                    com.mannschaft.app.membership.domain.RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, adminId, "ADMIN", org ? null : teamId, org ? orgId : null);
+        });
+        Long notificationId = newScopedNotification(org ? ScopeType.ORGANIZATION : ScopeType.TEAM, scopeId);
+        String base = org ? "/api/v1/organizations/" + orgId : "/api/v1/teams/" + teamId;
+        setAuth(adminId);
+
+        ErrorView missing = perform(get(base + "/confirmable-notifications/" + MISSING_ID + "/recipients/page"));
+        assertThat(missing).isEqualTo(new ErrorView(404, ConfirmableNotificationErrorCode.NOT_FOUND.getCode(),
+                ConfirmableNotificationErrorCode.NOT_FOUND.getMessage()));
+
+        // 認可（ファサード）を通過した直後 = tx 本体（Query サービス）へ入る直前に、通知を物理削除する。
+        AtomicBoolean hookRan = new AtomicBoolean();
+        Mockito.doAnswer(inv -> {
+            hookRan.set(true);
+            deleteNotification(notificationId);
+            return inv.callRealMethod();
+        }).when(queryService).getRecipientsPage(
+                Mockito.eq(notificationId), Mockito.any(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyBoolean());
+
+        ErrorView raced = perform(get(base + "/confirmable-notifications/" + notificationId + "/recipients/page"));
+        assertThat(hookRan).as("認可の後・tx 本体の前の割り込みが実際に走ったこと（空振りでない）").isTrue();
+        assertThat(raced).as("認可後に消えた通知は不在IDと完全一致").isEqualTo(missing);
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // EP8: トークン経由（是正不要・doConfirm 共有の回帰固定）
     // ═════════════════════════════════════════════════════════════════════
@@ -351,6 +414,29 @@ class ConfirmableNotificationConfirmOracleIT extends AbstractMySqlIntegrationTes
         });
         notificationIds.add(id);
         return id;
+    }
+
+    private Long newScopedNotification(ScopeType scopeType, Long scopeId) {
+        Long id = tx.execute(s -> notificationRepository.save(ConfirmableNotificationEntity.builder()
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .title("W3B K1 " + scopeType)
+                .priority(ConfirmableNotificationPriority.NORMAL)
+                .status(ConfirmableNotificationStatus.ACTIVE)
+                .totalRecipientCount(0)
+                .unconfirmedCount(0)
+                .build()).getId());
+        notificationIds.add(id);
+        return id;
+    }
+
+    private void deleteNotification(Long id) {
+        tx.executeWithoutResult(s -> {
+            em.createNativeQuery("DELETE FROM confirmable_notification_recipients WHERE confirmable_notification_id = :id")
+                    .setParameter("id", id).executeUpdate();
+            em.createNativeQuery("DELETE FROM confirmable_notifications WHERE id = :id")
+                    .setParameter("id", id).executeUpdate();
+        });
     }
 
     private void persistRecipient(Long notificationId, Long userId, boolean confirmed, boolean excluded) {
