@@ -122,6 +122,17 @@ describe('CMP1017: 領収書無効化の表示と送信境界', () => {
     wrapper.unmount()
   })
 
+  it('所属一覧を再確認中は、以前のADMIN行が残っていても無効化操作を表示しない', async () => {
+    selectScope('team', 'ADMIN')
+    useTeamStore().loading = true
+    const wrapper = await mountPage()
+    expect(voidButtons(wrapper)).toHaveLength(0)
+    useTeamStore().loading = false
+    await flushPromises()
+    expect(voidButtons(wrapper)).toHaveLength(1)
+    wrapper.unmount()
+  })
+
   it('権限を失った直前のボタンイベントでもopenハンドラが無効化ダイアログを開かない', async () => {
     selectScope('team', 'ADMIN')
     const wrapper = await mountPage()
