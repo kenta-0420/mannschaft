@@ -3,7 +3,7 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: 実DB契約テストを先行作成中。実装・green・実機は未実施。
+- 状態: 実DB契約テスト21件を先行作成中。実装・green・実機は未実施。
 
 ## 方針
 
@@ -15,7 +15,7 @@
 
 殿から受領したAC1〜11を対象とする。管理入口・全状態一覧、承認状態制約、紙撤回保存、履歴の組合/本人交差、空/取得失敗/再試行、null表示、理由255/256・ページ境界、未認証/越境、途中失敗、DBページング/N+1、6言語/390px/権限別実機と探索3視点を検証する。
 
-- red: 取得契約・認可の7件を作成し実行中。初回compileJavaのソース入力fingerprintが45分超継続し、テスト未到達。red成立・XML件数は未確認。現在のfixtureはEntityManager.persistであり、Repository.saveを使う規約の金型へ整理した上で承認・撤回の契約テストを追加する。
+- red: 取得契約・認可7件、承認・撤回14件を作成。Repository.saveを使う専用fixtureへ整理済み。初回compileJavaのソース入力fingerprintが45分超継続しテスト未到達のため、殿の指示で自分の処理だけを中断。red成立・XML件数は未確認。ext4の専用snapshotへ同じcommitを取り込み再実行する。
 - green・関連回帰・生成型・lint/typecheck: 未実施。
 - 実機・E2E・アリシゼーション: 未実施。
 
@@ -25,9 +25,9 @@
 
 ## 2026-10-02 保全時点
 
-- 本体/API変更は殿からのOpenAPI依存調査指示で保留中。CMP-260912-1526は既存PR #3282/#3291と再生成手順書の完走証跡があると調査報告済み。保留解除は未受領。
+- CMP-260912-1526は既存PR #3282/#3291と再生成手順書の完走証跡で解消済みと殿が判断し、OpenAPIを理由とする本体/API変更の保留を解除。完了前に標準generateOpenApiDocsを再実行する。
 - 専用陣のBE/FE本体は未変更。origin/mainのa21dfa38c84への追従は未実施。
-- redのunified exec sessionは3650、WSL wrapper PID1145134、daemon PID1145221。停止していない。
+- redのunified exec session3650をCtrl-Cで中断（exit1）。WSL wrapper PID1145134・daemon PID1145221の不存在と共通gate /home/kenta/gradle-turnstile/turnstile.lock.d の不存在を確認。既存アプリやDBへは触れていない。
 - 自分daemonのThread.print（14:43:35）ではExecution workerがFileInputStream.open0→DefaultFileHasher→DirectorySnapshotter→DefaultSourceDirectorySet→DefaultInputFingerprinterで待機。コンパイラやHTTP依存取得のスタックはない。Windows worktreeをWSLから読む際のI/Oが原因候補であり、テスト失敗と判断しない。
 - ローカル専用run-cmp-consent-red.shとcmp-consent-thread-diagnostic.txtはignore配下、commit対象外。実行scriptはGit環境変数をWSLパスへ設定し、既存turnstileのCRLF除去済み一時コピーを使う。共有ゲートの解放を確認するまで別heavy実行・サーバー起動を行わない。
-- 親がremote compactのmodel capacityエラーで中断、環境担当も終了状態となったため、現時点のIT・台帳を保全commitする。完了ではなく再開待ち。
+- 親はremote compactのmodel capacityエラーから復帰し通常作業を再開。紙撤回の立会資格をADMIN限定とするかDEPUTYも含めるかはユーザー判断待ち。非null・有効user・同じ組合資格の検証はどちらでも必要なため、ADMIN正常系と非管理/別組合/不在witness拒否を先行テスト。DEPUTY witnessを推測許可しない。

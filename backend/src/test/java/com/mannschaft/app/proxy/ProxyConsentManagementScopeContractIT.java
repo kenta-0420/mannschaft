@@ -1,9 +1,11 @@
 package com.mannschaft.app.proxy;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -15,9 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.util.UUID;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -33,6 +32,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("代理同意管理の実操作履歴・認可契約")
 class ProxyConsentManagementScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mvc;
+    @Autowired private UserRepository users;
+    @Autowired private OrganizationRepository organizations;
+    @Autowired private ProxyInputConsentRepository consents;
+    @Autowired private ProxyInputRecordRepository records;
     @PersistenceContext private EntityManager em;
     private Long organizationA;
     private Long organizationB;
@@ -44,19 +47,21 @@ class ProxyConsentManagementScopeContractIT extends AbstractMySqlIntegrationTest
 
     @BeforeEach
     void 準備() {
-        organizationA = organization();
-        organizationB = organization();
-        admin = account();
-        subject = account();
-        otherSubject = account();
-        proxy = account();
+        var fixture = new ProxyConsentManagementTestFixture(users, organizations, consents, records);
+        organizationA = fixture.organization();
+        organizationB = fixture.organization();
+        admin = fixture.account();
+        subject = fixture.account();
+        otherSubject = fixture.account();
+        proxy = fixture.account();
         MembershipTestHelper.insertUserRole(em, admin, "ADMIN", null, organizationA);
-        ProxyInputConsentEntity consentA = consent(organizationA, subject);
-        ProxyInputConsentEntity consentB = consent(organizationB, subject);
-        recordA = record(consentA.getId(), subject, ProxyInputRecordEntity.InputSource.PAPER_FORM);
-        record(consentB.getId(), subject, ProxyInputRecordEntity.InputSource.PHONE_INTERVIEW);
-        record(consentA.getId(), otherSubject, ProxyInputRecordEntity.InputSource.IN_PERSON);
-        record(null, subject, ProxyInputRecordEntity.InputSource.GUARDIANSHIP_SWITCH);
+        ProxyInputConsentEntity consentA = fixture.consent(organizationA, subject, proxy);
+        ProxyInputConsentEntity consentB = fixture.consent(organizationB, subject, proxy);
+        ProxyInputConsentEntity otherConsent = fixture.consent(organizationA, otherSubject, proxy);
+        recordA = fixture.record(consentA.getId(), subject, proxy, ProxyInputRecordEntity.InputSource.PAPER_FORM);
+        fixture.record(consentB.getId(), subject, proxy, ProxyInputRecordEntity.InputSource.PHONE_INTERVIEW);
+        fixture.record(otherConsent.getId(), otherSubject, proxy, ProxyInputRecordEntity.InputSource.IN_PERSON);
+        fixture.record(null, subject, proxy, ProxyInputRecordEntity.InputSource.GUARDIANSHIP_SWITCH);
         em.flush();
         em.clear();
     }
@@ -131,35 +136,4 @@ class ProxyConsentManagementScopeContractIT extends AbstractMySqlIntegrationTest
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty());
     }
 
-    private Long account() {
-        UserEntity entity = UserEntity.builder().email(UUID.randomUUID() + "@example.com")
-                .lastName("契約").firstName("住民").displayName("契約住民").isSearchable(true)
-                .status(UserEntity.UserStatus.ACTIVE).locale("ja").timezone("Asia/Tokyo").build();
-        em.persist(entity);
-        return entity.getId();
-    }
-
-    private Long organization() {
-        OrganizationEntity entity = OrganizationEntity.builder()
-                .slug("proxy-" + UUID.randomUUID().toString().substring(0, 12)).name("代理管理組合")
-                .orgType(OrganizationEntity.OrgType.COMMUNITY).visibility(OrganizationEntity.Visibility.PUBLIC)
-                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE).supporterEnabled(false).build();
-        em.persist(entity);
-        return entity.getId();
-    }
-
-    private ProxyInputConsentEntity consent(Long organizationId, Long subjectId) {
-        ProxyInputConsentEntity entity = ProxyInputConsentEntity.create(subjectId, proxy, organizationId,
-                ProxyInputConsentEntity.ConsentMethod.PAPER_SIGNED, "consent.pdf", null, null,
-                LocalDate.now().minusDays(1), LocalDate.now().plusDays(30));
-        em.persist(entity);
-        return entity;
-    }
-
-    private Long record(Long consentId, Long subjectId, ProxyInputRecordEntity.InputSource source) {
-        ProxyInputRecordEntity entity = ProxyInputRecordEntity.create(consentId, subjectId, proxy,
-                "SURVEY", "SURVEY_RESPONSE", 42L, source, "組合事務所");
-        em.persist(entity);
-        return entity.getId();
-    }
 }
