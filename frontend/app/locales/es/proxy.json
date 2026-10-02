@@ -229,6 +229,44 @@
         "not_allowed": "La asistencia por representación no está permitida para este horario/evento",
         "rate_limit": "Demasiadas solicitudes. Por favor, inténtelo de nuevo en 1 minuto"
       }
+    },
+    "management": {
+      "consentsTitle": "Gestión de consentimientos de representación",
+      "description": "Apruebe consentimientos, tramite revocaciones en papel y consulte operaciones guardadas.",
+      "open": "Abrir gestión",
+      "loading": "Cargando…",
+      "retry": "Reintentar",
+      "chooseMember": "Seleccione un miembro",
+      "noCandidates": "No hay candidatos en esta página. Consulte otra página.",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "chooseOrganization": "Seleccione una organización",
+      "accessLoadFailed": "No se pudo obtener la organización o sus permisos.",
+      "accessDenied": "Se requiere ADMIN o DEPUTY_ADMIN de la organización. Los administradores del sistema no pueden usar esta gestión ordinaria.",
+      "saved": "Guardado.",
+      "mutationFailed": "No se pudo guardar. Puede reintentar la misma operación.",
+      "reloadFailed": "Guardado, pero no se pudo recargar la lista. Actualícela.",
+      "refresh": "Actualizar",
+      "loadFailed": "No se pudieron cargar los datos.",
+      "emptyConsents": "No hay consentimientos.",
+      "emptyRecords": "No hay registros de operaciones.",
+      "subject": "Persona representada",
+      "proxy": "Representante",
+      "witness": "ADMIN testigo de la revocación en papel",
+      "revokeMethod": "Método de revocación",
+      "approve": "Aprobar",
+      "cancel": "Cancelar",
+      "subjectFilter": "Filtrar por persona (opcional)",
+      "page": "Página {page} / {pages} · {total} en total",
+      "status": {
+        "PENDING_APPROVAL": "Pendiente de aprobación",
+        "APPROVED": "Aprobado",
+        "REVOKED": "Revocado"
+      },
+      "methods": {
+        "API_BY_SUBJECT": "Solicitud en línea por el titular",
+        "PAPER_BY_SUBJECT": "Solicitud en papel"
+      }
     }
   }
 }

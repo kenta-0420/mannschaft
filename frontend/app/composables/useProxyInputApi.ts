@@ -6,12 +6,7 @@ import type {
   ScanUploadUrlResponse,
   ScanDownloadUrlResponse,
 } from '~/types/proxy-input'
-
-/** ページネーション付きレスポンス */
-interface PagedResponse<T> {
-  data: T[]
-  totalElements: number
-}
+import type { ApiResponse, PagedResponse } from '~/types/api'
 
 /**
  * 代理入力（Proxy Input）バックエンド API composable。
@@ -22,12 +17,14 @@ export function useProxyInputApi() {
 
   /** 自分が代理人として持つ有効同意書一覧（デスク起動時に使用） */
   async function getActiveConsents(): Promise<ProxyInputConsent[]> {
-    return api<ProxyInputConsent[]>('/api/v1/proxy-input-consents/active')
+    return (await api<ApiResponse<ProxyInputConsent[]>>('/api/v1/proxy-input-consents/active')).data
   }
 
   /** 組織単位の同意書一覧（管理者用） */
-  async function getConsentsByOrg(orgId: string): Promise<ProxyInputConsent[]> {
-    return api<ProxyInputConsent[]>(`/api/v1/organizations/${orgId}/proxy-input-consents`)
+  async function getConsentsByOrg(orgId: string, page = 0, size = 20): Promise<PagedResponse<ProxyInputConsent>> {
+    return api<PagedResponse<ProxyInputConsent>>(`/api/v1/organizations/${orgId}/proxy-input-consents`, {
+      query: { page, size },
+    })
   }
 
   /** 同意書登録 */
@@ -43,17 +40,17 @@ export function useProxyInputApi() {
 
   /** 同意書承認 */
   async function approveConsent(id: number): Promise<ProxyInputConsent> {
-    return api<ProxyInputConsent>(`/api/v1/proxy-input-consents/${id}/approve`, {
+    return (await api<ApiResponse<ProxyInputConsent>>(`/api/v1/proxy-input-consents/${id}/approve`, {
       method: 'PATCH',
-    })
+    })).data
   }
 
   /** 同意書撤回 */
   async function revokeConsent(
     id: number,
     request: RevokeProxyInputConsentRequest,
-  ): Promise<ProxyInputConsent> {
-    return api<ProxyInputConsent>(`/api/v1/proxy-input-consents/${id}/revoke`, {
+  ): Promise<void> {
+    await api<ApiResponse<void>>(`/api/v1/proxy-input-consents/${id}/revoke`, {
       method: 'PATCH',
       body: request,
     })
@@ -61,6 +58,7 @@ export function useProxyInputApi() {
 
   /** 代理入力履歴（監査用） */
   async function getRecords(params?: {
+    organizationId?: number
     subjectUserId?: number
     page?: number
     size?: number

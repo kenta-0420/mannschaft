@@ -3,7 +3,7 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: 追加65契約の実REDをff7b20f6ff、最小2guardをef9448ac10へ保全。管理65契約を含む既存Proxy・必要認可・標準Arch回帰224件が全green（0 failures/errors/skipped）。生成型・FE・同意管理実機は未達。
+- 状態: 管理65契約を含む既存Proxy・必要認可・標準Arch回帰224件が全green（0 failures/errors/skipped、main追従前）。最新main追従と標準H2 OpenAPI/生成FE型は完了。FE初期実装・API単体5件green、全体型チェック再測定中。同意管理実機・最終検分は未達。
 
 ## 方針
 
@@ -86,3 +86,13 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - session32539は共有turnstile経由で既存proxy全体（管理契約65を含む）、AccessControlServiceTest、ScopeConcealingAccessGateTest、ServiceApiEntityBoundary/ControllerEntityResponse/CrossDomainTransactionalTransitiveの標準Archを実行。compileJava成功、終端exit0/BUILD SUCCESSFUL（17分44秒）。**224 tests /0 failures /0 errors /0 skipped**、53 XML。管理6 XMLの内訳は13/12/15/2/18/5の計65件で全green。
 - `evidence-green1`とWindows ignored artifactsの`green1`へraw XML53 files、stdio、before/after JUnit headers/SHA256を二重保全。修正前RED6 XMLもgreen1/xml-beforeに保持。修正後stdio SHA256 `56f5cdfa84382efd3659c562ed6bf7fa5b76acaed0c57a480dc73327f1c45ba2`。
 - 次は最新mainとの実差分・schema照合、標準OpenAPI再生成と生成FE型、正本2管理画面/管理ハブ導線、6言語と390px/権限別の実機を実施する。新BE8081起動は殿の事前確認に従い共有DBのrepair等は行わない。
+
+## 2026-10-03 最新main・標準生成とFE初期実装
+
+- origin/main 1cb0febb62b5015f44a0387267087e4b858c81b1へ追従し、canonical HEAD d189a835734f26ef7535e8e203ca83c8ac22dc7e。Proxy本体のmain差分なし。GlobalExceptionHandlerは通知コードの整理のみでCOMMON_001/002/003不変。新V235はgenerated unique column/index追加で、環境担当がsharedDBで既に適用済み/failed0/duplicate groups0/列とunique index一致をSELECTだけで確認。repair/dedup/DDLは行わない。
+- GREEN時のFreezeStoreは旧違反が2件減少（消滅済みbilling→teamメソッド、既にDTOへ変更済みRecruitmentNoShow旧2引数Entity-return）。added0/refreeze=false。前後raw/deltaを両側保全、殿が直接確認。Windows正本store・allowlistは変更せず、mirrorだけcanonicalへ復元。main patch適用後の12,005 files raw hash一致を確認した。
+- 標準generateOpenApiDocsをsharedturnstile経由、openApiPort8099/no-daemon/no-build-cacheで実行。起動前にWindows/WSLの競合とoverride変数をsafe projection、task専用環境だけsanitize。exit0/244秒、openapi-gen/H2memory観測、Flyway migration観測なし。stdio SHA256 d2ef89913538b19de9ac3fc27b75f3496ffa81d47fea7eb1bdc97f4273bdb894。生成JSON SHA256 c10fef7cee2c8573f224be6cb4015fb074768bb9334f7313abee9dde7540ac91（2710 paths/4199 schemas）、Windows backup一致。生成物を正本docsへ転送しnpm run generate:types exit0。生成型の手編集なし。
+- 正本/admin/proxy/consentsと/admin/proxy/records、組合管理hubの入口、API実応答展開/標準ページング/nullable監査項目、6locale操作文言を初期実装。SYSは業務UI非表示、scopeの最強role ADMIN/DEPUTYだけを使い、承認permissionを別判定。scope切替前の遅い応答は破棄。member候補は既存getMembersを20件ずつ取得し全ページ走査なし。応答にACTIVE情報がないため当該ADMIN表示候補とBEの最終isAdmin資格判定を用いる（殿確認）。
+- API契約unit初回はNuxt beforeAll timeoutで5skip、実テスト未実行。既存useTodoApi.bulk-statusのNode環境金型へ修正後、actual5/0fail/0error/0skip、JUnitはWindows自所有ignored artifactsのfe-api1へ保全（SHA256 34bcd7e05a3131a3d4a6c5f07de55861590bfaa7778c361a78e689c29c7d2e95）。変更9FE files ESLint exit0。全体typecheckは既定4GB heapでOOM exit134、processだけ8GBとして再測定中。未達を成功にしない。
+- d189ソースのbootJar exit0/30秒、immutable artifact 217548260 bytes、SHA256 1952cc96ac37701cac3da69ac1337966318b69704ce1c275abac7298f5b3f51a。persistent evidence-jar1とWindows jar1へ二重保全、hash一致。新8081はまだ未起動、旧runtimeのpublic config条件を読み取り確認中。
+- 空/error/retry・null・mutation失敗/成功後reload失敗・6言語390px・権限別導線/直URL・実操作から履歴観測・独立探索3視点は、初期実装だけでは合格とせず後段実機へ残す。CMP1017は今回完了扱いしない。

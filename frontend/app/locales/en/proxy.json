@@ -229,6 +229,44 @@
         "not_allowed": "Proxy attendance is not allowed for this schedule/event",
         "rate_limit": "Too many requests. Please try again in 1 minute"
       }
+    },
+    "management": {
+      "consentsTitle": "Proxy consent management",
+      "description": "Approve consents, process paper withdrawals, and review saved activity.",
+      "open": "Open management",
+      "loading": "Loading…",
+      "retry": "Retry",
+      "chooseMember": "Select a member",
+      "noCandidates": "No candidates on this page. Check another page.",
+      "previous": "Previous",
+      "next": "Next",
+      "chooseOrganization": "Select an organization",
+      "accessLoadFailed": "Unable to load organization or permission information.",
+      "accessDenied": "An organization administrator or deputy role is required. System administrators cannot use ordinary organization management screens.",
+      "saved": "Saved.",
+      "mutationFailed": "Unable to save. You can retry the same action.",
+      "reloadFailed": "Saved, but the list could not be reloaded. Please refresh.",
+      "refresh": "Refresh",
+      "loadFailed": "Unable to load data.",
+      "emptyConsents": "No consents.",
+      "emptyRecords": "No activity records.",
+      "subject": "Subject",
+      "proxy": "Proxy",
+      "witness": "Administrator witnessing paper withdrawal",
+      "revokeMethod": "Withdrawal method",
+      "approve": "Approve",
+      "cancel": "Cancel",
+      "subjectFilter": "Filter by subject (optional)",
+      "page": "Page {page} / {pages} · {total} total",
+      "status": {
+        "PENDING_APPROVAL": "Pending approval",
+        "APPROVED": "Approved",
+        "REVOKED": "Revoked"
+      },
+      "methods": {
+        "API_BY_SUBJECT": "Online Application by Subject",
+        "PAPER_BY_SUBJECT": "Paper Application"
+      }
     }
   }
 }

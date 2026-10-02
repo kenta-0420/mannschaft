@@ -229,6 +229,44 @@
         "not_allowed": "Stellvertretende Teilnahme ist für diesen Zeitplan/dieses Ereignis nicht erlaubt",
         "rate_limit": "Zu viele Anfragen. Bitte versuchen Sie es in 1 Minute erneut"
       }
+    },
+    "management": {
+      "consentsTitle": "Vertretungseinwilligungen verwalten",
+      "description": "Einwilligungen genehmigen, schriftliche Widerrufe bearbeiten und gespeicherte Vorgänge ansehen.",
+      "open": "Verwaltung öffnen",
+      "loading": "Wird geladen…",
+      "retry": "Erneut versuchen",
+      "chooseMember": "Mitglied auswählen",
+      "noCandidates": "Keine Kandidaten auf dieser Seite. Prüfen Sie eine andere Seite.",
+      "previous": "Zurück",
+      "next": "Weiter",
+      "chooseOrganization": "Organisation auswählen",
+      "accessLoadFailed": "Organisation oder Berechtigungen konnten nicht geladen werden.",
+      "accessDenied": "Eine Organisationsrolle ADMIN oder DEPUTY_ADMIN ist erforderlich. Systemadministratoren können diese Verwaltungsansicht nicht verwenden.",
+      "saved": "Gespeichert.",
+      "mutationFailed": "Speichern fehlgeschlagen. Sie können denselben Vorgang erneut versuchen.",
+      "reloadFailed": "Gespeichert, aber die Liste konnte nicht neu geladen werden. Bitte aktualisieren.",
+      "refresh": "Aktualisieren",
+      "loadFailed": "Daten konnten nicht geladen werden.",
+      "emptyConsents": "Keine Einwilligungen.",
+      "emptyRecords": "Keine Vorgänge.",
+      "subject": "Betroffene Person",
+      "proxy": "Vertretung",
+      "witness": "ADMIN als Zeuge des schriftlichen Widerrufs",
+      "revokeMethod": "Widerrufsmethode",
+      "approve": "Genehmigen",
+      "cancel": "Abbrechen",
+      "subjectFilter": "Nach Person filtern (optional)",
+      "page": "Seite {page} / {pages} · insgesamt {total}",
+      "status": {
+        "PENDING_APPROVAL": "Genehmigung ausstehend",
+        "APPROVED": "Genehmigt",
+        "REVOKED": "Widerrufen"
+      },
+      "methods": {
+        "API_BY_SUBJECT": "Online-Antrag durch Betroffene/n",
+        "PAPER_BY_SUBJECT": "Papierantrag"
+      }
     }
   }
 }

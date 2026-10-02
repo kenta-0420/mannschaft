@@ -127,6 +127,7 @@ export const GATE_ROUTE_MAP: Record<string, string[]> = {
   ],
   FEATURE_SUCCESSION_PROXY_ENABLED: [
     '/admin/proxy-desk',
+    '/admin/proxy/',
     '/my/proxy-requests',
     '/organizations/*/succession',
   ],
