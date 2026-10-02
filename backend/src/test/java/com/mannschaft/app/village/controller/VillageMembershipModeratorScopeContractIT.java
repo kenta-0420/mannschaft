@@ -22,6 +22,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -161,21 +162,30 @@ class VillageMembershipModeratorScopeContractIT extends AbstractMySqlIntegration
         assertThat(snapshot(headman.getId())).isEqualTo(before);
     }
 
-    @ParameterizedTest(name = "後継候補の {0} がBAN済みなら最後の現役村長は降格できない")
-    @CsvSource({"HEADMAN", "ELDER"})
-    void ロール変更_後継候補がBAN済み_最後の現役村長降格を拒否してDB不変(VillageRole successorRole) throws Exception {
+    @ParameterizedTest(name = "後継候補の {0}/{1} に応じて最後の現役村長の降格を判定")
+    @CsvSource({"HEADMAN,BANNED", "ELDER,BANNED", "HEADMAN,ACTIVE", "ELDER,ACTIVE"})
+    void ロール変更_後継候補の現役状態_最後の現役村長降格を判定する(VillageRole successorRole, String state) throws Exception {
         VillageEntity village = village(VillageVisibility.PUBLIC);
         VillageMembershipEntity headman = membership(village.getId(), ACTOR_ID, VillageRole.HEADMAN, "ACTIVE");
-        VillageMembershipEntity successor = membership(village.getId(), TARGET_ID, successorRole, "BANNED");
+        VillageMembershipEntity successor = membership(village.getId(), TARGET_ID, successorRole, state);
         Snapshot headmanBefore = snapshot(headman.getId());
         Snapshot successorBefore = snapshot(successor.getId());
 
-        mockMvc.perform(request("role", village.getId(), headman.getId()).with(actor())
-                        .content("{\"role\":\"VILLAGER\"}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("VILLAGE_017"));
+        ResultActions result = mockMvc.perform(request("role", village.getId(), headman.getId()).with(actor())
+                .content("{\"role\":\"VILLAGER\"}"));
 
-        assertThat(snapshot(headman.getId())).isEqualTo(headmanBefore);
+        if (state.equals("BANNED")) {
+            result.andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("VILLAGE_017"));
+            assertThat(snapshot(headman.getId())).isEqualTo(headmanBefore);
+        } else {
+            result.andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").value(headman.getId().toString()));
+            Snapshot headmanAfter = snapshot(headman.getId());
+            assertThat(headmanAfter.role()).isEqualTo(VillageRole.VILLAGER);
+            assertThat(headmanAfter).usingRecursiveComparison().ignoringFields("role", "version")
+                    .isEqualTo(headmanBefore);
+        }
         assertThat(snapshot(successor.getId())).isEqualTo(successorBefore);
     }
 
