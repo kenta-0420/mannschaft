@@ -68,7 +68,7 @@ public final class CalendarScopeAutoColor {
     /** API 応答用。null 種別・PERSONAL は従来の色解決と同じ PERSONAL:0 に正規化する。 */
     public static String resolveForScope(String scopeType, Long scopeId) {
         String normalizedType = scopeType == null ? "PERSONAL" : scopeType;
-        Long normalizedId = "PERSONAL".equals(normalizedType) ? 0L : scopeId;
+        Long normalizedId = "PERSONAL".equals(normalizedType) ? Long.valueOf(0L) : scopeId;
         return resolve(normalizedType, normalizedId);
     }
 
