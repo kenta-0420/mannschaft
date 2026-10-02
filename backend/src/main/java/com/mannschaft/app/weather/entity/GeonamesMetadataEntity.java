@@ -5,11 +5,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -23,13 +22,12 @@ import java.time.LocalDateTime;
 @Table(name = "geonames_metadata")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class GeonamesMetadataEntity {
 
     /** 固定値 1（シングルトン制約）。 */
     @Id
-    @Column(name = "id", columnDefinition = "TINYINT UNSIGNED")
+    @Column(name = "id", nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Short id;
 
     /** 最終取り込み日時。 */

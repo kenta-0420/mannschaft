@@ -8,7 +8,8 @@ import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.scopefolder.dto.BulkAssignResponse;
 import com.mannschaft.app.scopefolder.dto.FolderNotificationSummaryDto;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.AssignedVia;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderQueryService;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import org.junit.jupiter.api.BeforeEach;
@@ -334,7 +335,9 @@ class MyScopeFolderControllerTest {
         void addItem_正常系_200() throws Exception {
             ScopeFolderResponse updated = new ScopeFolderResponse(
                     FOLDER_ID, "フォルダ", "#FF0000", null, 0, false, List.of(SCOPE_ID), 0L);
-            given(folderService.addItem(eq(USER_ID), eq(FOLDER_ID), any()))
+            // 手動追加の入口なので監査区分は MANUAL で委譲される。
+            given(folderService.addItemWithAssignedVia(
+                    eq(USER_ID), eq(FOLDER_ID), eq(SCOPE_ID), eq(AssignedVia.MANUAL)))
                     .willReturn(updated);
 
             String body = """

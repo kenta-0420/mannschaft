@@ -1,7 +1,9 @@
 package com.mannschaft.app.membership.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.CheckinType;
 import com.mannschaft.app.membership.MembershipErrorCode;
 import com.mannschaft.app.membership.ScopeType;
@@ -35,9 +37,16 @@ public class CheckinStatsService {
 
     private final MemberCardCheckinRepository checkinRepository;
     private final MemberCardRepository memberCardRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * チェックイン統計を取得する。
+     *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は {@link AccessControlService} を注入すらしておらず
+     * 認可ゼロだった（任意の認証ユーザーが任意スコープのチェックイン統計＝会員氏名を含む
+     * 集計を取得できた）。本 EP はスコープが呼び出し元から明示的に宣言される
+     * （path の scopeId/scopeType）ため、その scope で checkAdminOrAbove する
+     * （統計は管理者向け閲覧のため checkAdminOrAbove）。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -47,6 +56,7 @@ public class CheckinStatsService {
      */
     public ApiResponse<CheckinStatsResponse> getStats(
             ScopeType scopeType, Long scopeId, LocalDate from, LocalDate to) {
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType.name());
 
         if (from == null || to == null) {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_022);

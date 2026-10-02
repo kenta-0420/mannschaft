@@ -6,10 +6,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -22,8 +22,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SkillCategoryEntity extends BaseEntity {
 
     @Column(nullable = false, length = 50)
@@ -56,6 +55,19 @@ public class SkillCategoryEntity extends BaseEntity {
     private Long version;
 
     private LocalDateTime deletedAt;
+
+    /**
+     * カテゴリ情報を更新する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyUpdate(String name, String description, String icon, Integer sortOrder, Boolean isActive) {
+        this.name = name;
+        this.description = description;
+        this.icon = icon;
+        this.sortOrder = sortOrder;
+        this.isActive = isActive;
+    }
 
     /**
      * 論理削除を行う。

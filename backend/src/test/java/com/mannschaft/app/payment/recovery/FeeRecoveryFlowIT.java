@@ -127,6 +127,12 @@ class FeeRecoveryFlowIT extends AbstractMySqlIntegrationTest {
                         anyLong(), anyString(), anyString(), anyLong(), anyString(),
                         any(CaptureMethod.class), anyString());
 
+        // 冪等な再実行では既存 escrow の PI を再取得して clientSecret を返す。
+        willAnswer(inv -> {
+            String paymentIntentId = inv.getArgument(0);
+            return new StripePaymentProvider.PaymentIntentInfo(paymentIntentId, "secret", "requires_confirmation");
+        }).given(stripePaymentProvider).retrievePaymentIntentClientSecret(anyString());
+
         // 返金（ModeB は createConnectRefund・refund_application_fee=true）は毎回ユニークな re_xxx を返す。
         AtomicInteger refundSeq = new AtomicInteger(1);
         willAnswer(inv -> new StripePaymentProvider.ConnectRefundInfo(

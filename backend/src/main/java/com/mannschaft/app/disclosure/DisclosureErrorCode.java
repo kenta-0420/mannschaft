@@ -17,7 +17,11 @@ public enum DisclosureErrorCode implements ErrorCode {
     /** 設計書 §4: 404 — テンプレート/ドラフト/出力履歴が見つからない。 */
     DISCLOSURE_001("DISCLOSURE_001", "対象の重要事項説明書リソースが見つかりません", Severity.WARN),
 
-    /** 設計書 §4: 403 — 権限なし。 */
+    /**
+     * 権限なし。設計書 §4 の表記は 403 だが、実装では他スコープの ID を指定した場合の
+     * 存在秘匿に本コードを使うため、{@code GlobalExceptionHandler} で 404 に正規化している
+     * （不在の {@code DISCLOSURE_001} と同一応答に畳む）。
+     */
     DISCLOSURE_002("DISCLOSURE_002", "重要事項説明書の操作権限がありません", Severity.WARN),
 
     /** 設計書 §4: 409 — バージョン競合（楽観的ロック）。 */

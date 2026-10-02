@@ -13,6 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserPermissionGroupAssignRequest {
 
+    /** 空配列は対象スコープの全割当解除を表し、null は受け付けない。 */
     @NotNull
     private final List<Long> groupIds;
 }

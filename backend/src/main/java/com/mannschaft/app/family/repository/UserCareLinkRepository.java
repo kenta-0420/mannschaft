@@ -94,4 +94,23 @@ public interface UserCareLinkRepository extends JpaRepository<UserCareLinkEntity
      */
     List<UserCareLinkEntity> findByRelationshipAndStatusOrderByIdAsc(
             CareRelationship relationship, CareLinkStatus status, Pageable pageable);
+
+    /**
+     * ケア対象者・見守り者・続柄の組み合わせで、<b>ステータスを問わず</b>ケアリンクが
+     * 存在したことがあるかを確認する（PENDING/ACTIVE/REJECTED/REVOKED のいずれでも true）。
+     *
+     * <p>{@code GuardianshipSwitchService#endSwitch}（後見切替終了）の認可で使用する。
+     * 行は {@link com.mannschaft.app.family.entity.UserCareLinkEntity#revoke} 等で
+     * ステータスを書き換えるのみで物理削除されないため、本メソッドは「過去に一度でも
+     * 当該 (recipient, watcher, PARENT) の組でリンクが作成されたか」を判定する。
+     * 切替中にリンクが解除された正当な保護者を締め出さないための<b>意図的に緩い</b>
+     * 存在チェックである（認可根治戦役 Wave5・endSwitch 是正）。</p>
+     *
+     * @param careRecipientUserId ケア対象者（子）のユーザーID
+     * @param watcherUserId       見守り者（保護者）のユーザーID
+     * @param relationship        続柄（通常 PARENT）
+     * @return いずれかのステータスでケアリンクが存在したことがある場合 true
+     */
+    boolean existsByCareRecipientUserIdAndWatcherUserIdAndRelationship(
+            Long careRecipientUserId, Long watcherUserId, CareRelationship relationship);
 }

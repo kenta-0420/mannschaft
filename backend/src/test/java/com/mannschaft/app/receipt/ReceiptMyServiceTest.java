@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.receipt.repository.ReceiptLineItemRepository;
 import com.mannschaft.app.receipt.repository.ReceiptRepository;
 import com.mannschaft.app.receipt.service.ReceiptMyService;
+import com.mannschaft.app.receipt.service.ReceiptPdfArchiveService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ class ReceiptMyServiceTest {
     @Mock private ReceiptRepository receiptRepository;
     @Mock private ReceiptLineItemRepository lineItemRepository;
     @Mock private ReceiptPdfGenerator pdfGenerator;
+    @Mock private ReceiptPdfArchiveService pdfArchiveService;
 
     @InjectMocks
     private ReceiptMyService service;

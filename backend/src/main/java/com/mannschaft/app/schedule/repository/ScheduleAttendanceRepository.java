@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,6 +27,20 @@ public interface ScheduleAttendanceRepository extends JpaRepository<ScheduleAtte
      * スケジュールIDで出欠一覧を取得する。
      */
     List<ScheduleAttendanceEntity> findByScheduleIdOrderByUserIdAsc(Long scheduleId);
+
+    /**
+     * スケジュールID群と単一ユーザーIDで出欠一覧を取得する（一覧APIの自分の出欠バッチ供給用）。
+     *
+     * <p>{@code ScheduleQueryService#toVisibleScheduleResponses} が一覧内の全スケジュールに対する
+     * 閲覧者自身の出欠を N+1 を避けて 1 クエリで取得するために使う。userId は常に呼び出し元の
+     * 閲覧者本人（{@code viewerUserId}）に固定し、他ユーザーの出欠を読まない（fail-closed）。
+     * scheduleIds が空でも安全に空 List を返す。</p>
+     *
+     * @param scheduleIds 対象スケジュールID群
+     * @param userId      閲覧者ユーザーID
+     * @return 該当する出欠一覧
+     */
+    List<ScheduleAttendanceEntity> findByScheduleIdInAndUserId(Collection<Long> scheduleIds, Long userId);
 
     /**
      * スケジュールIDとステータスで出欠一覧を取得する。

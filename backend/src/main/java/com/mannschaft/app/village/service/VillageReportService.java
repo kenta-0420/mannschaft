@@ -14,7 +14,6 @@ import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageReportRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -63,11 +62,11 @@ public class VillageReportService {
     /** レートリミット計測ウィンドウ（直近 1 時間）。 */
     static final java.time.Duration REPORT_RATE_WINDOW = java.time.Duration.ofHours(1);
 
-    private final VillageRepository villageRepository;
     private final VillageReportRepository reportRepository;
     private final VillageMembershipRepository membershipRepository;
     /** BAN 実行のため B3 Service に委譲する（村ドメイン内）。 */
     private final VillageMembershipService membershipService;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // 4.11.1 通報送信
@@ -83,7 +82,7 @@ public class VillageReportService {
      */
     @Transactional
     public ReportResponse createReport(UUID villageId, Long reporterUserId, ReportCreateRequest request) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, reporterUserId);
 
         // 村人判定（VISITOR / 未参加は通報不可・IDOR 対策）
         if (!isUserMember(villageId, reporterUserId)) {
@@ -135,7 +134,7 @@ public class VillageReportService {
                                             VillageReportStatus statusFilter,
                                             int page,
                                             int size) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireModerator(villageId, actorUserId);
 
         Pageable pageable = PageRequest.of(page, size);
@@ -167,7 +166,7 @@ public class VillageReportService {
                                         UUID reportId,
                                         Long actorUserId,
                                         ReportResolveRequest request) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMembershipEntity actor = requireModerator(villageId, actorUserId);
 
         VillageReportEntity report = reportRepository.findById(reportId)
@@ -227,33 +226,32 @@ public class VillageReportService {
     // 共通ヘルパ
     // ========================================================================
 
-    /** 有効な村を取得する（削除/凍結済みは VILLAGE_001 / VILLAGE_027 で扱う）。 */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     /**
-     * 当該ユーザーが対象村のモデレーター（HEADMAN / ELDER）であることを要求する。
-     * 一般村人や非村人は {@link VillageErrorCode#MODERATION_FORBIDDEN}（403）。
+     * 当該ユーザーが対象村の<strong>現役</strong>モデレーター（HEADMAN / ELDER）であることを要求する。
+     * 一般村人・非村人・退村済み・BAN 済みは {@link VillageErrorCode#MODERATION_FORBIDDEN}（403）。
+     *
+     * <p>BAN / 退村の検査は {@code findActiveByVillageIdAndSubject} のクエリに委譲する（#2284 §12）。
+     * 従来はここで手書きの {@code bannedAt != null} 分岐を持っていたが、同じ判定が村ドメイン全体に
+     * コピーされ 5 実装で書き忘れられていた。述語をクエリ 1 箇所に寄せ、書き忘れの余地を無くす。</p>
      *
      * @return モデレーターのメンバーシップ Entity（{@code handler_membership_id} 記録用）
      */
     private VillageMembershipEntity requireModerator(UUID villageId, Long actorUserId) {
         VillageMembershipEntity m = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, VillageSubjectType.USER, actorUserId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
-        if (m.getBannedAt() != null) {
-            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
-        }
         if (m.getRole() != VillageRole.HEADMAN && m.getRole() != VillageRole.ELDER) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }

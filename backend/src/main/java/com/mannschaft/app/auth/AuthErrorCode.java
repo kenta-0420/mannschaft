@@ -63,7 +63,13 @@ public enum AuthErrorCode implements ErrorCode {
     /** TOTPコード不正 */
     AUTH_017("AUTH_017", "TOTPコードが正しくありません", Severity.WARN),
 
-    /** TOTPコード使用済み */
+    /**
+     * TOTPコード関連エラー。{@code Auth2faService} 内で「コード不正」（verifyTotpCode 失敗）と
+     * 「コード使用済み（リプレイ検出）」という意味の異なる 2 箇所から throw されており、
+     * 定数の意味が割れている。前者は入力不備、後者は状態競合であり単一のステータスに
+     * 寄せられないため、ErrorCode ステータス写像是正ロットAでは変更を見送り、
+     * Severity.WARN 既定の 400 のままとする。
+     */
     AUTH_018("AUTH_018", "TOTPコードは既に使用済みです", Severity.WARN),
 
     /** 2段階認証未有効化 */
@@ -72,7 +78,10 @@ public enum AuthErrorCode implements ErrorCode {
     /** バックアップコード不正 */
     AUTH_020("AUTH_020", "バックアップコードが正しくありません", Severity.WARN),
 
-    /** バックアップコード全使用済み */
+    /**
+     * バックアップコード全使用済み。throw 元が main 内に存在しない未使用定数のため、
+     * ErrorCode ステータス写像是正ロットAでは対象外とし Severity.WARN 既定の 400 のままとする。
+     */
     AUTH_021("AUTH_021", "バックアップコードが全て使用済みです", Severity.WARN),
 
     /** 2FA回復メール送信上限 */
@@ -84,7 +93,7 @@ public enum AuthErrorCode implements ErrorCode {
     /** WebAuthn認証失敗 */
     AUTH_024("AUTH_024", "WebAuthn認証に失敗しました", Severity.WARN),
 
-    /** WebAuthnデバイス重複登録 */
+    /** WebAuthnデバイス重複登録（409: 登録状態との競合） */
     AUTH_025("AUTH_025", "WebAuthnデバイスが既に登録されています", Severity.WARN),
 
     /** リプレイ攻撃検出 */
@@ -96,16 +105,16 @@ public enum AuthErrorCode implements ErrorCode {
     /** 未サポートOAuthプロバイダー */
     AUTH_028("AUTH_028", "このOAuthプロバイダーはサポートされていません", Severity.WARN),
 
-    /** OAuthプロバイダー未連携 */
+    /** OAuthプロバイダー未連携（404: 解除対象の連携が存在しない） */
     AUTH_029("AUTH_029", "OAuthプロバイダーはこのアカウントに連携されていません", Severity.WARN),
 
-    /** OAuth連携解除時ログイン手段喪失 */
+    /** OAuth連携解除時ログイン手段喪失（409: 状態競合） */
     AUTH_030("AUTH_030", "OAuthプロバイダーを連携解除するとログイン手段が失われます", Severity.WARN),
 
     /** OAuth連携トークン無効 */
     AUTH_031("AUTH_031", "OAuth連携トークンが無効または期限切れです", Severity.WARN),
 
-    /** 退会申請不存在 */
+    /** 退会申請不存在（取消可能な状態が無いという状態遷移違反 → 409。自分自身の状態確認のため IDOR ではない） */
     AUTH_032("AUTH_032", "退会申請が存在しません", Severity.WARN),
 
     /** セッション不存在 */
@@ -120,13 +129,13 @@ public enum AuthErrorCode implements ErrorCode {
     /** 国コードバリデーションエラー */
     AUTH_040("AUTH_040", "国コードが無効です（ISO 3166-1 alpha-2 形式 例: JP・US・DE）", Severity.WARN),
 
-    /** アクセストークン期限切れ */
+    /** アクセストークン期限切れ（兄弟の AUTH_007/026/039 と同じく401） */
     AUTH_036("AUTH_036", "アクセストークンの有効期限が切れています", Severity.WARN),
 
-    /** アクセストークン不正（署名不一致・フォーマット異常） */
+    /** アクセストークン不正（署名不一致・フォーマット異常。401） */
     AUTH_037("AUTH_037", "アクセストークンが無効です", Severity.WARN),
 
-    /** アクセストークンがブラックリスト登録済み（個別ログアウト後） */
+    /** アクセストークンがブラックリスト登録済み（個別ログアウト後。401） */
     AUTH_038("AUTH_038", "このセッションは既にログアウトされています", Severity.WARN),
 
     /** ユーザーの全トークン無効化後のアクセス（全デバイスログアウト後） */
@@ -140,6 +149,9 @@ public enum AuthErrorCode implements ErrorCode {
 
     /** 招待コードが無効またはベータ対象外 */
     AUTH_043("AUTH_043", "招待コードが無効またはベータ対象外です", Severity.WARN),
+
+    /** レート制限超過（ログイン/登録/パスワードリセット/2FA等の試行回数上限） */
+    AUTH_044("AUTH_044", "リクエストが集中しています。しばらく時間をおいて再試行してください", Severity.WARN),
 
     // ===== F01.9 年齢確認・保護者同意機能 (AUTH_050〜AUTH_070) =====
 
@@ -183,7 +195,15 @@ public enum AuthErrorCode implements ErrorCode {
     AUTH_069("AUTH_069", "Cannot invite your own email address", Severity.WARN),
 
     /** PENDING_PARENTAL_CONSENT での操作ブロック */
-    AUTH_070("AUTH_070", "This operation is not allowed for accounts pending parental consent", Severity.WARN);
+    AUTH_070("AUTH_070", "This operation is not allowed for accounts pending parental consent", Severity.WARN),
+
+    // ===== F02.10 §391 郵便番号検証基盤（国別レジストリ駆動） =====
+
+    /** 対応国で郵便番号が未入力（必須違反） */
+    AUTH_071("AUTH_071", "postal code is required for your region", Severity.WARN),
+
+    /** 郵便番号フォーマット不正 */
+    AUTH_072("AUTH_072", "invalid postal code format", Severity.WARN);
 
     private final String code;
     private final String message;

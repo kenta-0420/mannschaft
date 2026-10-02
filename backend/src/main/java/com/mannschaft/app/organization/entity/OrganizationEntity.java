@@ -6,11 +6,12 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -22,12 +23,16 @@ import java.time.LocalDateTime;
  * 組織マスターエンティティ。組織の基本情報・公開設定・階層構造を管理する。
  */
 @Entity
-@Table(name = "organizations")
+@Table(name = "organizations", indexes = {
+        // CMP-260901-1538 柱③-A 検分第4巡是正(P1-2): FOR UPDATE候補検索が全表走査/全表ロックに
+        // ならないよう、生成列 name_trimmed に索引を張る。test profile（ddl-auto=create）では
+        // ここが唯一の索引定義源のため、Flyway側（V201）と定義を一致させること。
+        @Index(name = "idx_organizations_name_trimmed", columnList = "name_trimmed")
+})
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class OrganizationEntity extends BaseEntity {
 
     /**
@@ -41,13 +46,25 @@ public class OrganizationEntity extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
+    /**
+     * CMP-260901-1538 柱③-A 検分第4巡是正: 同名確認フローの候補検索が索引を使えるようにする
+     * ための生成列（{@code GENERATED ALWAYS AS (TRIM(name)) STORED}）。DB 側が自動算出するため
+     * JPA からは書き込まない（{@code insertable/updatable=false}）。
+     * {@code columnDefinition} で明示することで、test profile（{@code ddl-auto=create}）でも
+     * 本番と同じ生成列としてスキーマが作られる（本番/開発は Flyway
+     * {@code V201.*__add_organizations_name_trimmed.sql} が担う）。
+     */
+    @Column(name = "name_trimmed", insertable = false, updatable = false,
+            columnDefinition = "VARCHAR(100) GENERATED ALWAYS AS (TRIM(name)) STORED")
+    private String nameTrimmed;
+
     @Column(length = 100)
     private String nameKana;
 
-    @Column(length = 50)
+    @Column(name = "nickname1", length = 50)
     private String nickname1;
 
-    @Column(length = 50)
+    @Column(name = "nickname2", length = 50)
     private String nickname2;
 
     @Enumerated(EnumType.STRING)
@@ -129,6 +146,30 @@ public class OrganizationEntity extends BaseEntity {
     @Column(name = "map_embed_url", length = 2048)
     private String mapEmbedUrl;
 
+    /** F01.2.1 §5.5: チームからの加盟申請を受け付けるか（既定 off）。 */
+    @Column(name = "team_application_enabled", nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private Boolean teamApplicationEnabled = false;
+
+    /** F01.2.1 §5.5: チームグループ機能を使うか（既定 off）。 */
+    @Column(name = "team_groups_enabled", nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private Boolean teamGroupsEnabled = false;
+
+    /** F01.2.1 §5.5: 申請時のグループ選択（OFF / OPTIONAL / REQUIRED。既定 OFF）。 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "team_application_group_mode", nullable = false, length = 10,
+            columnDefinition = "VARCHAR(10) NOT NULL DEFAULT 'OFF'")
+    @Builder.Default
+    private com.mannschaft.app.organization.TeamApplicationGroupMode teamApplicationGroupMode =
+            com.mannschaft.app.organization.TeamApplicationGroupMode.OFF;
+
+    /** F01.2.1 §5.5: 申請フォームに表示する案内文（最大500文字）。 */
+    @Column(name = "team_application_guidance", length = 500)
+    private String teamApplicationGuidance;
+
     /** F19.1 Phase 7: イベントを公開ページに表示するか。 */
     @Column(name = "public_events_enabled", nullable = false,
             columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
@@ -140,6 +181,16 @@ public class OrganizationEntity extends BaseEntity {
             columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
     @Builder.Default
     private boolean timelinePostsPublic = false;
+
+    /**
+     * 柱②-1: 販促プロビジョニング。PROVISIONED（承諾前の事前作成状態）/ ACTIVE（通常）。
+     * <p>本 PR では ACTIVE 以外を生成するコードは存在しない（DDL とエンティティ骨格のみ）。
+     * 作成 API とゲート（PROVISIONED を通常導線から隠す等）は後続 PR で実装する。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lifecycle_status", nullable = false, length = 20)
+    @Builder.Default
+    private LifecycleStatus lifecycleStatus = LifecycleStatus.ACTIVE;
 
     /**
      * 組織種別
@@ -171,6 +222,31 @@ public class OrganizationEntity extends BaseEntity {
         NONE,
         BASIC,
         FULL
+    }
+
+    /**
+     * 柱②-1: 販促プロビジョニングのライフサイクル状態。
+     */
+    public enum LifecycleStatus {
+        /** 承諾前の事前作成状態。招待未承諾のため通常導線には出さない想定（ゲートは後続 PR）。 */
+        PROVISIONED,
+        /** 通常の組織（既定値）。 */
+        ACTIVE
+    }
+
+    /**
+     * PROVISIONED（承諾前の事前作成状態）かどうかを判定する。
+     */
+    public boolean isProvisioned() {
+        return this.lifecycleStatus == LifecycleStatus.PROVISIONED;
+    }
+
+    /**
+     * 招待承諾により PROVISIONED から ACTIVE へ引き上げる。
+     * <p>本 PR では呼び出し元が存在しない（承諾 API は後続 PR）。</p>
+     */
+    public void activate() {
+        this.lifecycleStatus = LifecycleStatus.ACTIVE;
     }
 
     /**
@@ -215,6 +291,18 @@ public class OrganizationEntity extends BaseEntity {
         this.bannerUrl = bannerUrl;
     }
 
+    /**
+     * F01.2.1 §10.2: チーム加盟の申請受付・グループ設定を更新する（PUT は全項目の置き換え）。
+     * REQUIRED の保存条件（§5.5）の検証は呼び出し側 Service の責務。
+     */
+    public void updateTeamAffiliationSettings(boolean applicationEnabled, boolean groupsEnabled,
+            com.mannschaft.app.organization.TeamApplicationGroupMode groupMode, String guidance) {
+        this.teamApplicationEnabled = applicationEnabled;
+        this.teamGroupsEnabled = groupsEnabled;
+        this.teamApplicationGroupMode = groupMode;
+        this.teamApplicationGuidance = guidance;
+    }
+
     /** F19.1 Phase 7: イベント公開設定を更新する。 */
     public void updatePublicEventsEnabled(boolean enabled) {
         this.publicEventsEnabled = enabled;
@@ -246,9 +334,9 @@ public class OrganizationEntity extends BaseEntity {
      * dirty checking により UPDATE が発行される。</p>
      *
      * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
-     * {@link OrganizationEntity} は {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
+     * {@link OrganizationEntity} は {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
      * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
-     * {@code @Builder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * {@code @SuperBuilder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
      * 作り直すと継承フィールド {@code id} が引き継がれず {@code id = null} の新インスタンスになる。
      * これを {@code save} すると UPDATE ではなく INSERT が走り、slug 一意制約違反で 500 になる。
      * よって更新は必ず managed entity の直接ミューテートで行う（PR #1643 と同型）。</p>

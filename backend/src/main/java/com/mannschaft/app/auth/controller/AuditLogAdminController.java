@@ -6,6 +6,9 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +48,8 @@ public class AuditLogAdminController {
      * @param size           ページサイズ（デフォルト20・最大100）
      */
     @Operation(summary = "監査ログ一覧（SYSTEM_ADMIN）")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "管理監査証跡をGate状態にかかわらず確認可能にするため")
     @GetMapping("/api/v1/admin/audit-logs")
     public PagedResponse<AuditLogResponse> getAdminLogs(
             @RequestParam(required = false) Long userId,
@@ -79,8 +84,21 @@ public class AuditLogAdminController {
      * @param to        終了日時
      * @param cursor    カーソル（前ページ末尾の id 文字列）
      * @param limit     取得件数（デフォルト20・最大50）
+     *
+     * <p><b>認可方式（{@link com.mannschaft.app.common.security.SelfScopedEndpoint} メソッド付与）</b>:
+     * クラス名に {@code Admin} を含むが本メソッド自体は SYSTEM_ADMIN 専用ではなく、
+     * {@code SecurityUtils.getCurrentUserId()} のみで対象ユーザーを解決する自分専用のエンドポイントである
+     * （{@link AuditLogService#getMyLogs} は {@code userId} 以外のユーザー識別子パラメータを持たない）。
+     * 他人の {@code userId} を指定する経路は構造的に存在しない。</p>
+     *
+     * <p>認可根治戦役 Wave5 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "SecurityUtils.getCurrentUserId() のみで取得対象ユーザーを解決する"
+                    + "（AuditLogAdminController#getMyLogs）")
     @Operation(summary = "自分の監査ログ一覧")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "本人の監査証跡をGate状態にかかわらず確認可能にするため")
     @GetMapping("/api/v1/users/me/audit-logs")
     public CursorPagedResponse<AuditLogResponse> getMyLogs(
             @RequestParam(required = false) String eventType,

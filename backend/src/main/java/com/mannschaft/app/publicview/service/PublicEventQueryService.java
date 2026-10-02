@@ -1,6 +1,7 @@
 package com.mannschaft.app.publicview.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
@@ -19,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 
 /**
  * F19.1 Phase 7 公開イベントクエリサービス。
@@ -153,6 +153,6 @@ public class PublicEventQueryService {
         if (ldt == null) {
             return null;
         }
-        return ldt.atZone(ZoneId.systemDefault()).toOffsetDateTime();
+        return ldt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toOffsetDateTime();
     }
 }

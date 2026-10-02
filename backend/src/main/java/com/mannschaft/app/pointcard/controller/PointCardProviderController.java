@@ -1,5 +1,6 @@
 package com.mannschaft.app.pointcard.controller;
 
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.pointcard.dto.PointCardProviderResponse;
 import com.mannschaft.app.pointcard.service.PointCardProviderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +34,9 @@ public class PointCardProviderController {
      * 有効化されている全プロバイダーをカテゴリ昇順・表示名昇順で返す。
      * レスポンス形式は設計書 §6.2 に準拠し {@code {"data": [...]}} でラップする。
      */
+    // SecurityConfig の anyRequest().authenticated() で認証必須。応答は運営マスタの
+    // プロバイダー一覧のみで、全認証済みユーザーに同一の結果を返す（利用者固有情報を含まない）。
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping
     @Operation(summary = "プロバイダー一覧取得",
             description = "is_active=true のプロバイダーを category, display_name 昇順で返す")

@@ -7,7 +7,6 @@ const {
   loading,
   totalRecords,
   page,
-  statusFilter,
   selectedReport,
   showDetailDialog,
   notes,
@@ -16,7 +15,6 @@ const {
   resolveForm,
   showEscalateDialog,
   escalateForm,
-  statusOptions,
   openDetail,
   addNote,
   review,
@@ -36,17 +34,12 @@ const { formatDateTime } = useDatetime()
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <div class="mb-4 flex items-center justify-between">
-      <PageHeader :title="$t('admin_report.title')" />
-      <Select
-        v-model="statusFilter"
-        :options="statusOptions"
-        option-label="label"
-        option-value="value"
-        :placeholder="$t('admin_report.table.status_placeholder')"
-        class="w-48"
-      />
-    </div>
+    <!--
+      ステータス絞り込みは置かない。一覧の実体である BE の
+      `/api/v1/system-admin/reports` が status 条件を解釈しないため、
+      Select を置いても操作できるだけで結果が変わらない（CMP-260912-1823 の検分 P2）。
+    -->
+    <PageHeader :title="$t('admin_report.title')" class="mb-4" />
 
     <AdminReportStatsCards v-if="stats" :stats="stats" />
 

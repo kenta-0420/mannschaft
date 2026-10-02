@@ -6,16 +6,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.payment.connect.event.ConnectPayoutsEnabledEvent;
 import com.mannschaft.app.payment.connect.dto.ConnectStatusResponse;
 import com.mannschaft.app.payment.connect.dto.OnboardingLinkRequest;
 import com.mannschaft.app.payment.connect.dto.OnboardingLinkResponse;
-import com.mannschaft.app.payment.escrow.EscrowLifecycleService;
-import com.mannschaft.app.payment.escrow.EscrowStatus;
-import com.mannschaft.app.payment.escrow.EscrowTransactionEntity;
-import com.mannschaft.app.payment.escrow.EscrowTransactionRepository;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +38,16 @@ import java.util.Optional;
 @Transactional
 public class ConnectAccountService {
 
-    /** TEAM scope ADMIN 判定に用いる権限名（札の謝礼設定と同等の管理権限）。 */
+    /**
+     * TEAM/ORG scope の管理者判定に用いる権限名（札の謝礼設定と同等の管理権限）。
+     *
+     * <p>本権限は {@code V183.20260813045816__add_manage_recruitments_permission.sql} で
+     * {@code permissions} へ登録し ADMIN へ {@code is_default=1} 付与する。カタログに行が無いと
+     * TEAM 経路（{@link com.mannschaft.app.common.AccessControlService#checkPermission}）の判定が
+     * 成立せず、チーム受取の onboarding が誰にも通らない。TEAM と ORG で呼び分ける理由・
+     * DEPUTY_ADMIN へ {@code role_permissions} 行を作ってはならない不変条件は
+     * {@link com.mannschaft.app.payment.escrow.ConnectChargeService} の同名定数の javadoc に集約している。</p>
+     */
     static final String PERMISSION_MANAGE_PAYMENT = "MANAGE_RECRUITMENTS";
 
     /** 国コード（JP 固定・01 §1）。 */
@@ -51,8 +58,7 @@ public class ConnectAccountService {
     private final AccessControlService accessControlService;
     private final PayeeScopeResolver payeeScopeResolver;
     private final ObjectMapper objectMapper;
-    private final EscrowTransactionRepository escrowTransactionRepository;
-    private final EscrowLifecycleService escrowLifecycleService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Connect onboarding リンクを発行する（設計書 02 §2.1）。
@@ -160,38 +166,14 @@ public class ConnectAccountService {
 
         // 第三陣: payouts_enabled が false→true に遷移したら、この口座を payee とする HELD escrow を昇格する
         // （設計書 02 §5.2）。鏡像更新（既存処理）は壊さず、その後段に昇格を足す。
+        //
+        // Issue #2990 L3: 昇格は業務TX内で直接呼ばず、AFTER_COMMIT へ移した。
+        // 昇格先の EscrowLifecycleService#promoteHeldEscrow は REQUIRES_NEW で payee 口座を読み直し
+        // payouts_enabled を検証するため、鏡像更新が未 commit の状態で呼ぶと必ず旧値（false）を読み、
+        // 昇格が毎回空振りしていた（詳細は ConnectHeldEscrowPromotionListener の javadoc）。
         if (!wasPayoutsEnabled && payoutsEnabled) {
-            promoteHeldEscrowsForPayee(account);
+            eventPublisher.publishEvent(new ConnectPayoutsEnabledEvent(account.getId()));
         }
-    }
-
-    /**
-     * 受取口座（payee）の onboarding 完了（payouts_enabled=true）に伴い、当該 connect_account を payee とする
-     * {@link com.mannschaft.app.payment.escrow.EscrowStatus#HELD} escrow を順に昇格する（設計書 02 §5.2・第三陣）。
-     *
-     * <p>各 escrow は {@link EscrowLifecycleService#promoteHeldEscrow}（{@code REQUIRES_NEW}＋行ロック＋冪等）で
-     * 個別に処理する。1 件の失敗（Stripe 例外等）は握りつぶさず ERROR ログに残し、他件の昇格を継続する
-     * （複数 HELD escrow で 1 件が他を巻き込まない・症状を隠さない＝CLAUDE.md 根治原則）。</p>
-     */
-    private void promoteHeldEscrowsForPayee(ConnectAccountEntity account) {
-        List<EscrowTransactionEntity> held = escrowTransactionRepository
-                .findByPayeeConnectAccountIdAndStatus(account.getId(), EscrowStatus.HELD);
-        if (held.isEmpty()) {
-            return;
-        }
-        log.info("HELD escrow の昇格を開始: payeeAccountId={}, 対象={}件", account.getId(), held.size());
-        int promoted = 0;
-        for (EscrowTransactionEntity escrow : held) {
-            try {
-                if (escrowLifecycleService.promoteHeldEscrow(escrow.getId())) {
-                    promoted++;
-                }
-            } catch (RuntimeException ex) {
-                log.error("HELD escrow の昇格に失敗（他件は継続）: escrowId={}, reason={}",
-                        escrow.getId(), ex.getMessage(), ex);
-            }
-        }
-        log.info("HELD escrow の昇格完了: payeeAccountId={}, 昇格={}/{}件", account.getId(), promoted, held.size());
     }
 
     /**

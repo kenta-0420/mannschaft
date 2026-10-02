@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -13,6 +14,7 @@ import com.mannschaft.app.membership.dto.MembershipLeaveRequest;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.supporter.SupporterApplicationStatus;
 import com.mannschaft.app.supporter.SupporterErrorCode;
 import com.mannschaft.app.supporter.dto.BulkApproveRequest;
@@ -53,6 +55,8 @@ public class SupporterService {
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
     private final UserRepository userRepository;
+    private final MediaUrlResolver mediaUrlResolver;
+    private final ProvisioningGate provisioningGate;
 
     // ========================================
     // フォロー申請
@@ -69,6 +73,10 @@ public class SupporterService {
      */
     @Transactional
     public ApiResponse<FollowStatusResponse> follow(Long userId, String scopeType, Long scopeId) {
+        // 柱②-3 販促プロビジョニングゲート（AC11）: PROVISIONED（承諾前の事前作成状態）スコープへの
+        // サポーター申請を遮断する。
+        provisioningGate.requireActive(scopeId, scopeType);
+
         ScopeType scope = ScopeType.valueOf(scopeType);
 
         // 既にアクティブなメンバーシップがあれば申請不可
@@ -188,7 +196,7 @@ public class SupporterService {
                 .map(m -> {
                     UserEntity user = userRepository.findById(m.getUserId()).orElse(null);
                     String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "不明";
-                    String avatarUrl = user != null ? user.getAvatarUrl() : null;
+                    String avatarUrl = user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null;
                     String followedAt = m.getJoinedAt() != null
                             ? m.getJoinedAt().format(ISO_FORMATTER)
                             : null;
@@ -223,7 +231,7 @@ public class SupporterService {
                 .map(app -> {
                     UserEntity user = userRepository.findById(app.getUserId()).orElse(null);
                     String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "不明";
-                    String avatarUrl = user != null ? user.getAvatarUrl() : null;
+                    String avatarUrl = user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null;
                     return new SupporterApplicationResponse(
                             app.getId(),
                             app.getUserId(),

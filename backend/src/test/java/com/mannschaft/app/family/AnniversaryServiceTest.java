@@ -1,5 +1,6 @@
 package com.mannschaft.app.family;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.dto.AnniversaryRequest;
@@ -28,6 +29,7 @@ import static org.mockito.BDDMockito.given;
 class AnniversaryServiceTest {
 
     @Mock private TeamAnniversaryRepository teamAnniversaryRepository;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private AnniversaryService service;
 
     @Nested
@@ -79,7 +81,7 @@ class AnniversaryServiceTest {
             given(teamAnniversaryRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.deleteAnniversary(1L, 1L))
+            assertThatThrownBy(() -> service.deleteAnniversary(1L, 1L, 100L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("FAMILY_018"));

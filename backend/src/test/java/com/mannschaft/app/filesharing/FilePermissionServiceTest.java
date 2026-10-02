@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.filesharing.dto.CreatePermissionRequest;
 import com.mannschaft.app.filesharing.dto.PermissionResponse;
 import com.mannschaft.app.filesharing.entity.FilePermissionEntity;
@@ -168,7 +169,7 @@ class FilePermissionServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 不正なPermissionTypeでIllegalArgumentException")
+        @DisplayName("異常系: 不正なPermissionTypeで入力エラー")
         void 権限作成_不正なPermissionType_例外() {
             // Given
             CreatePermissionRequest request = new CreatePermissionRequest(
@@ -176,11 +177,17 @@ class FilePermissionServiceTest {
 
             // When / Then
             assertThatThrownBy(() -> filePermissionService.createPermission(request))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> {
+                        BusinessException businessException = (BusinessException) ex;
+                        assertThat(businessException.getErrorCode()).isEqualTo(CommonErrorCode.COMMON_001);
+                        assertThat(businessException.getFieldErrors()).singleElement().satisfies(fieldError ->
+                                assertThat(fieldError.getField()).isEqualTo("permissionType"));
+                    });
         }
 
         @Test
-        @DisplayName("異常系: 不正なPermissionTargetTypeでIllegalArgumentException")
+        @DisplayName("異常系: 不正なPermissionTargetTypeで入力エラー")
         void 権限作成_不正なPermissionTargetType_例外() {
             // Given
             CreatePermissionRequest request = new CreatePermissionRequest(
@@ -188,7 +195,13 @@ class FilePermissionServiceTest {
 
             // When / Then
             assertThatThrownBy(() -> filePermissionService.createPermission(request))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> {
+                        BusinessException businessException = (BusinessException) ex;
+                        assertThat(businessException.getErrorCode()).isEqualTo(CommonErrorCode.COMMON_001);
+                        assertThat(businessException.getFieldErrors()).singleElement().satisfies(fieldError ->
+                                assertThat(fieldError.getField()).isEqualTo("permissionTargetType"));
+                    });
         }
     }
 

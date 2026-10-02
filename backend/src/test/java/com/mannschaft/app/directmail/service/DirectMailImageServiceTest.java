@@ -1,5 +1,6 @@
 package com.mannschaft.app.directmail.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.directmail.dto.DirectMailImageUploadResponse;
@@ -35,6 +36,10 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DirectMailImageService 単体テスト")
 class DirectMailImageServiceTest {
+
+    /** 認可根治戦役 Wave2 トランシェ2C: 認可検証はスコープ契約IT側で実施。UTでは素通し（void mockは何もしない） */
+    @Mock
+    private AccessControlService accessControlService;
 
     @Mock
     private DirectMailImageUploadRepository imageUploadRepository;

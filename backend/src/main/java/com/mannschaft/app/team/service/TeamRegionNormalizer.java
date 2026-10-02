@@ -1,14 +1,10 @@
 package com.mannschaft.app.team.service;
 
-import com.mannschaft.app.matching.entity.CityEntity;
-import com.mannschaft.app.matching.entity.PrefectureEntity;
-import com.mannschaft.app.matching.repository.CityRepository;
-import com.mannschaft.app.matching.repository.PrefectureRepository;
+import com.mannschaft.app.matching.service.RegionMasterLookupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,8 +43,9 @@ import java.util.Map;
 @Slf4j
 public class TeamRegionNormalizer {
 
-    private final PrefectureRepository prefectureRepository;
-    private final CityRepository cityRepository;
+    private final RegionMasterLookupService regionMasterLookupService;
+
+    private static final int PREFECTURE_CODE_LENGTH = 2;
 
     /** 都道府県名サフィックス（この順で完全一致を試す）。 */
     private static final String[] PREFECTURE_SUFFIXES = {"都", "道", "府", "県"};
@@ -84,7 +81,7 @@ public class TeamRegionNormalizer {
         }
 
         // 整合検証: city_code 上位2桁 == prefecture_code。
-        if (!cityCode.substring(0, 2).equals(prefectureCode)) {
+        if (!cityCode.substring(0, PREFECTURE_CODE_LENGTH).equals(prefectureCode)) {
             log.debug("[TeamRegionNormalizer] city_code 上位2桁不整合: cityCode={} prefectureCode={}",
                     cityCode, prefectureCode);
             return new ResolvedRegion(prefectureCode, null, MatchStage.PREFECTURE_ONLY);
@@ -140,10 +137,10 @@ public class TeamRegionNormalizer {
         }
 
         // 1. 県内で名称完全一致（政令市区の独立行も拾える）。
-        List<CityEntity> exact =
-                cityRepository.findByPrefectureCodeAndNameOrderByCodeAsc(prefectureCode, cityName);
+        List<RegionMasterLookupService.City> exact =
+                regionMasterLookupService.findCitiesByPrefectureCodeAndName(prefectureCode, cityName);
         if (exact.size() == 1) {
-            return exact.get(0).getCode();
+            return exact.get(0).code();
         }
         if (exact.size() > 1) {
             // 同名複数は曖昧。恣意的な基準（行政コード最小等）で誤った自治体コードを
@@ -158,18 +155,18 @@ public class TeamRegionNormalizer {
         int cityIdx = cityName.indexOf('市');
         if (cityIdx >= 0 && wardIdx > cityIdx) {
             String parentCity = cityName.substring(0, cityIdx + 1);
-            List<CityEntity> parent =
-                    cityRepository.findByPrefectureCodeAndNameOrderByCodeAsc(prefectureCode, parentCity);
+            List<RegionMasterLookupService.City> parent =
+                    regionMasterLookupService.findCitiesByPrefectureCodeAndName(prefectureCode, parentCity);
             if (!parent.isEmpty()) {
-                return parent.get(0).getCode();
+                return parent.get(0).code();
             }
         }
 
         // 3. 前方一致で候補が 1 件だけならそれを採用（複数候補は曖昧として不採用）。
-        List<CityEntity> prefixMatches =
-                cityRepository.findByPrefectureCodeAndNameStartingWithOrderByCodeAsc(prefectureCode, cityName);
+        List<RegionMasterLookupService.City> prefixMatches =
+                regionMasterLookupService.findCitiesByPrefectureCodeAndNameStartingWith(prefectureCode, cityName);
         if (prefixMatches.size() == 1) {
-            return prefixMatches.get(0).getCode();
+            return prefixMatches.get(0).code();
         }
 
         return null;
@@ -179,12 +176,7 @@ public class TeamRegionNormalizer {
      * 都道府県マスタを名称→コードの Map に変換して返す。47 件と小さいため都度ロードする。
      */
     private Map<String, String> loadPrefectureNameToCode() {
-        List<PrefectureEntity> all = prefectureRepository.findAllByOrderByCodeAsc();
-        Map<String, String> map = new HashMap<>(all.size() * 2);
-        for (PrefectureEntity p : all) {
-            map.put(p.getName(), p.getCode());
-        }
-        return map;
+        return regionMasterLookupService.findPrefectureCodesByName();
     }
 
     private static String blankToNull(String s) {

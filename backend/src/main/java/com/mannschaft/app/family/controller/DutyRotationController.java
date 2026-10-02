@@ -42,7 +42,7 @@ public class DutyRotationController {
     @Operation(summary = "当番ローテーション一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<DutyRotationResponse>>> getDuties(@PathVariable Long teamId) {
-        return ResponseEntity.ok(dutyRotationService.getDuties(teamId));
+        return ResponseEntity.ok(dutyRotationService.getDuties(teamId, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -68,7 +68,8 @@ public class DutyRotationController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody DutyRotationRequest request) {
-        return ResponseEntity.ok(dutyRotationService.updateDuty(teamId, id, request));
+        return ResponseEntity.ok(
+                dutyRotationService.updateDuty(teamId, id, SecurityUtils.getCurrentUserId(), request));
     }
 
     /**
@@ -80,7 +81,7 @@ public class DutyRotationController {
     public ResponseEntity<Void> deleteDuty(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        dutyRotationService.deleteDuty(teamId, id);
+        dutyRotationService.deleteDuty(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -91,6 +92,6 @@ public class DutyRotationController {
     @Operation(summary = "今日の当番一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<DutyTodayResponse>>> getTodayDuties(@PathVariable Long teamId) {
-        return ResponseEntity.ok(dutyRotationService.getTodayDuties(teamId));
+        return ResponseEntity.ok(dutyRotationService.getTodayDuties(teamId, SecurityUtils.getCurrentUserId()));
     }
 }

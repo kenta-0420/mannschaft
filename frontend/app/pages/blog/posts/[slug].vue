@@ -37,9 +37,10 @@ async function loadGateCheck(postId: number) {
     const res = await checkAccess('POST', postId)
     gateResult.value = res.data
   } catch {
-    // ゲートチェック失敗時は fail-safe: accessible=true として扱い通常表示する
-    // （未ログイン時の 401 等を考慮。ペイウォールは設定のある記事のみに影響）
-    gateResult.value = { accessible: true, titleHidden: false, requiredItems: [] }
+    // gate-check API 失敗時のフォールバック: BE が未課金で body をマスク(null)する仕様のため、
+    // 本文の有無をアクセス可否の真実として使う（無条件 fail-open を廃止）。
+    const hasBody = !!(post.value?.content?.body)
+    gateResult.value = { accessible: hasBody, titleHidden: false, requiredItems: [] }
   } finally {
     gateLoading.value = false
   }
@@ -141,7 +142,7 @@ onMounted(() => loadPost())
 
     <template v-else-if="post">
       <!-- ペイウォール判定中 or ロック時: PaywallLock でコンテンツをラップ -->
-      <PaymentPaywallLock :loading="gateLoading" :gate-result="gateResult">
+      <PaywallLock :loading="gateLoading" :gate-result="gateResult">
         <BlogPostDetail :post="post" @tag-click="onTagClick" />
 
         <div class="mt-4 flex justify-center">
@@ -165,7 +166,7 @@ onMounted(() => loadPost())
           :current-post-id="post.id"
           class="mt-8"
         />
-      </PaymentPaywallLock>
+      </PaywallLock>
     </template>
 
     <DashboardEmptyState

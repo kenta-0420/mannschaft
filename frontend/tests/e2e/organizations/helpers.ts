@@ -4,6 +4,7 @@ export const ORG_ID = 1
 
 export const MOCK_ORG = {
   id: ORG_ID,
+  numericId: ORG_ID,
   name: 'テスト組織',
   description: 'E2Eテスト用組織',
   visibility: 'PUBLIC',
@@ -54,7 +55,7 @@ export async function mockOrgFeatureApis(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [],
-          meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+          meta: { page: 0, size: 20, total: 0, totalPages: 0 },
         }),
       })
     }

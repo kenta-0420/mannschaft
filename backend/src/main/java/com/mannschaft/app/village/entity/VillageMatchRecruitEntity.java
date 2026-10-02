@@ -12,8 +12,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,8 +34,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PUBLIC)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class VillageMatchRecruitEntity extends UuidV7Entity {
 
@@ -56,13 +54,32 @@ public class VillageMatchRecruitEntity extends UuidV7Entity {
     @Column(name = "category", nullable = false, length = 30)
     private VillageMatchRecruitCategory category;
 
+    /**
+     * カテゴリマスタ参照（F17.1 P1 の Expand で追加された {@code category_id} 列。
+     * 設計書 §5.4 Stage 1）。
+     *
+     * <p>この時点（P2）ではまだ書き込み専用の補助フィールドであり、{@code category}（enum）が
+     * 引き続き正である。読み取りをこちらへ一本化するのは Stage 2（P5・設計書 §5.4）の役割。
+     * P2 でマッピングした理由は、募集カテゴリ CRUD の削除ガード（使用中判定）と
+     * {@code recruitCount} 集計（設計書 §6.2）が本列を参照する必要があるため。</p>
+     */
+    @Column(name = "category_id", columnDefinition = "BINARY(16)")
+    private UUID categoryId;
+
     @Column(name = "title", nullable = false, length = 100)
     private String title;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "match_date", nullable = false)
+    /**
+     * 予定日（任意）。
+     *
+     * <p>F17.1 §5.6: カテゴリを汎用化しても日付が必須のままでは「マネージャー募集」
+     * 「引っ越し手伝い募集」のような日付を持たない募集が登録できないため NULL 許容に緩和した
+     * （V153 Expand）。制約の緩和方向であり既存データは壊れない。</p>
+     */
+    @Column(name = "match_date")
     private LocalDate matchDate;
 
     @Column(name = "match_time_start")

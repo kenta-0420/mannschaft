@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.recruitment.CancellationFeeType;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentMapper;
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link RecruitmentCancellationPolicyService} の単体テスト。
@@ -68,6 +70,19 @@ class RecruitmentCancellationPolicyServiceTest {
     @Nested
     @DisplayName("§5.9 calculateFee - 境界値")
     class CalculateFeeBoundary {
+
+        @Test
+        @DisplayName("決済無効のPERSONAL札は無料として試算できる")
+        void estimateFee_personalPaymentDisabled_returnsFree() throws Exception {
+            RecruitmentListingEntity listing = buildPaymentListing(POLICY_ID, 5000);
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            setField(listing, "paymentEnabled", false);
+
+            var estimate = service.estimateFee(listing, LocalDateTime.now());
+
+            assertThat(estimate.getFeeAmount()).isZero();
+            verifyNoInteractions(policyRepository, tierRepository);
+        }
 
         /**
          * 境界値1: hoursBefore == free_until_hours_before の等号ケース。
@@ -344,17 +359,21 @@ class RecruitmentCancellationPolicyServiceTest {
 
     /** BaseEntity の id は @GeneratedValue のためテストではリフレクションでセット。 */
     private void setIdField(Object entity, Long id) throws Exception {
+        setField(entity, "id", id);
+    }
+
+    private void setField(Object entity, String name, Object value) throws Exception {
         Class<?> clazz = entity.getClass();
         while (clazz != null) {
             try {
-                Field f = clazz.getDeclaredField("id");
+                Field f = clazz.getDeclaredField(name);
                 f.setAccessible(true);
-                f.set(entity, id);
+                f.set(entity, value);
                 return;
             } catch (NoSuchFieldException e) {
                 clazz = clazz.getSuperclass();
             }
         }
-        throw new NoSuchFieldException("id field not found");
+        throw new NoSuchFieldException(name + " field not found");
     }
 }

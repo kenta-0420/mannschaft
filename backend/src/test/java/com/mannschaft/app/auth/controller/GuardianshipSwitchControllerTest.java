@@ -90,8 +90,10 @@ class GuardianshipSwitchControllerTest {
         securityUtilsMock.close();
     }
 
+    // GuardianshipSwitchController#getSwitchableChildren の自己スコープ性を固定する契約テスト
+    // （@SelfScopedEndpoint の付与要件・SelfScopedEndpointMarkerGuardTest が要求するトレーサビリティ・リンク）。
     @Test
-    @DisplayName("正常系: 200 OK / camelCase / viewer=自分が Service に渡る")
+    @DisplayName("GuardianshipSwitchController#getSwitchableChildren 正常系: 200 OK / camelCase / viewer=自分が Service に渡る")
     void list_ok_200_camelCase() throws Exception {
         SwitchableChildrenResponse serviceResponse = new SwitchableChildrenResponse(
                 List.of(new SwitchableChildDto(11L, "小学生の子", "elementary", true)),
@@ -189,13 +191,29 @@ class GuardianshipSwitchControllerTest {
     // DELETE /switch — 切替終了（F08.9 P3c）
     // ========================================
 
+    // GuardianshipSwitchController#endSwitch の認可（過去に一度でもリンクが存在したことの検証）を
+    // 固定する契約テスト（endSwitch は childUserId の実データ照合を経てから監査記録する）。
     @Test
-    @DisplayName("DELETE 正常系: 204 / Service へ (guardian, child) が渡る")
+    @DisplayName("GuardianshipSwitchController#endSwitch 正常系: 204 / Service へ (guardian, child) が渡る")
     void endSwitch_204() throws Exception {
         mockMvc.perform(delete("/api/v1/me/guardianship/switch")
                         .param("childUserId", "11"))
                 .andExpect(status().isNoContent());
         verify(guardianshipSwitchService).endSwitch(GUARDIAN_USER_ID, 11L);
+    }
+
+    @Test
+    @DisplayName("GuardianshipSwitchController#endSwitch 一切の関係がない childUserId: "
+            + "403 GUARDIANSHIP_LINK_NOT_FOUND（MEMBERSHIP_BILLING_005・監査ログ捏造防止）")
+    void endSwitch_neverLinked_403() throws Exception {
+        willThrow(new com.mannschaft.app.common.BusinessException(
+                com.mannschaft.app.payment.MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND))
+                .given(guardianshipSwitchService).endSwitch(GUARDIAN_USER_ID, 999L);
+
+        mockMvc.perform(delete("/api/v1/me/guardianship/switch")
+                        .param("childUserId", "999"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_005"));
     }
 
     // ========================================

@@ -23,26 +23,37 @@
 import EventDismissalCard from '~/components/event/dismissal/EventDismissalCard.vue'
 import type { DismissalReminderTarget } from '~/types/care'
 
+const { t } = useI18n()
 const targets = ref<DismissalReminderTarget[]>([])
 const { fetchTargets } = useDismissalReminders()
+
+const emit = defineEmits<{
+  hasContent: [value: boolean]
+}>()
 
 /**
  * 主催未解散イベントを再取得する。
  *
  * <p>失敗時は targets を空のままにし、ダッシュボードに枠を表示しない。
  * ログだけ console.warn で残す（ユーザーの動線を阻害しないため）。</p>
+ *
+ * <p>取得完了後（成功・失敗どちらも）に hasContent を emit し、
+ * 親パネルが空グリッドスロットを非表示にできるようにする。</p>
  */
 async function loadTargets(): Promise<void> {
   try {
     targets.value = await fetchTargets()
+    emit('hasContent', targets.value.length > 0)
   } catch (e) {
     console.warn('[WidgetEventDismissalReminder] 主催未解散イベントの取得に失敗', e)
     targets.value = []
+    emit('hasContent', false)
   }
 }
 
 function onSubmitted(): void {
   // 送信された対象を targets から除外する（最新を BE から取り直す）
+  // loadTargets 内で emit('hasContent', ...) が呼ばれる
   loadTargets()
 }
 
@@ -50,14 +61,21 @@ onMounted(loadTargets)
 </script>
 
 <template>
-  <div v-if="targets.length > 0" class="space-y-3" data-testid="widget-event-dismissal-reminder">
-    <EventDismissalCard
-      v-for="t in targets"
-      :key="`${t.teamId}-${t.eventId}`"
-      :team-id="t.teamId"
-      :event-id="t.eventId"
-      :event-name="t.eventName"
-      @submitted="onSubmitted"
-    />
-  </div>
+  <DashboardWidgetCard
+    v-if="targets.length > 0"
+    :title="t('dashboard.widget_labels.event-dismissal-reminder')"
+    icon="pi pi-exclamation-circle"
+    data-testid="widget-event-dismissal-reminder"
+  >
+    <div class="space-y-3">
+      <EventDismissalCard
+        v-for="target in targets"
+        :key="`${target.teamId}-${target.eventId}`"
+        :team-id="target.teamId"
+        :event-id="target.eventId"
+        :event-name="target.eventName"
+        @submitted="onSubmitted"
+      />
+    </div>
+  </DashboardWidgetCard>
 </template>

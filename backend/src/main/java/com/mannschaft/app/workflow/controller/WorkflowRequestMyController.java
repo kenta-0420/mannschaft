@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 自分の申請一覧コントローラー。
@@ -38,6 +39,9 @@ public class WorkflowRequestMyController {
      * @param size   1 ページあたりの件数
      * @return 申請レスポンスのページ
      */
+    @SelfScopedEndpoint("WorkflowRequestService#listMyRequests は"
+        + "findByRequestedByOrderByCreatedAtDesc(SecurityUtils.getCurrentUserId())"
+        + " のみを組織横断で検索する")
     @GetMapping("/me")
     @Operation(summary = "自分の申請一覧（組織横断）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

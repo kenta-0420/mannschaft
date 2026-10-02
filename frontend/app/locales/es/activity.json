@@ -44,6 +44,7 @@
       "TEXT": "Texto",
       "NUMBER": "Número",
       "DATE": "Fecha",
+      "DATETIME": "Fecha y hora",
       "SELECT": "Selección",
       "CHECKBOX": "Casilla de verificación",
       "TEXTAREA": "Área de texto"

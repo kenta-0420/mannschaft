@@ -1,5 +1,6 @@
 package com.mannschaft.app.equipment;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.StorageService;
@@ -39,6 +40,7 @@ class EquipmentAssignmentServiceTest {
     @Mock private QrCodeGenerator qrCodeGenerator;
     @Mock private StorageService storageService;
     @Mock private DomainEventPublisher eventPublisher;
+    @Mock private AccessControlService accessControlService;
 
     private EquipmentItemService itemService;
     private EquipmentAssignmentService service;
@@ -51,9 +53,9 @@ class EquipmentAssignmentServiceTest {
     void setUp() {
         itemService = new EquipmentItemService(
                 itemRepository, assignmentRepository, equipmentMapper,
-                qrCodeGenerator, storageService, eventPublisher);
+                qrCodeGenerator, storageService, eventPublisher, accessControlService);
         service = new EquipmentAssignmentService(
-                itemRepository, assignmentRepository, itemService, equipmentMapper);
+                itemRepository, assignmentRepository, itemService, equipmentMapper, accessControlService);
     }
 
     private EquipmentItemEntity createItem(EquipmentStatus status, int quantity, int assigned) {

@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.confirmable.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.ScopeType;
@@ -51,6 +52,9 @@ class TeamConfirmableNotificationControllerTest {
     @Mock
     private ConfirmableNotificationMapper mapper;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private TeamConfirmableNotificationController controller;
 
@@ -87,20 +91,11 @@ class TeamConfirmableNotificationControllerTest {
     }
 
     private ConfirmableNotificationCreateRequest createValidRequest() {
-        ConfirmableNotificationCreateRequest request =
-                mock(ConfirmableNotificationCreateRequest.class);
-        given(request.getTitle()).willReturn("テスト確認通知");
-        given(request.getBody()).willReturn(null);
-        given(request.getPriority()).willReturn(ConfirmableNotificationPriority.NORMAL);
-        // deadlineAt は OffsetDateTime へ変更済み。Controller は getDeadlineAtAsJst() を呼ぶ
-        given(request.getDeadlineAtAsJst()).willReturn(null);
-        given(request.getFirstReminderMinutes()).willReturn(null);
-        given(request.getSecondReminderMinutes()).willReturn(null);
-        given(request.getActionUrl()).willReturn(null);
-        given(request.getTemplateId()).willReturn(null);
-        given(request.getUnconfirmedVisibility()).willReturn(null);
-        given(request.getRecipientUserIds()).willReturn(List.of(2L, 3L, 4L));
-        return request;
+        // CMP-260920-1040 CI是正: send は notificationService.sendAsync(...) の引数を
+        // any() で丸ごとモック化するため、Controller は request の各 getter を個別に呼ばない。
+        // getter をスタブしても使われず UnnecessaryStubbingException になるため、
+        // モックの生成のみ行う（検証の力は sendAsync の戻り値アサーションで担保する）。
+        return mock(ConfirmableNotificationCreateRequest.class);
     }
 
     // ========================================
@@ -112,29 +107,41 @@ class TeamConfirmableNotificationControllerTest {
     class Send {
 
         @Test
-        @DisplayName("POST_confirmable-notifications_正常系_201Createdが返りレスポンスにidが含まれる")
-        void POST_confirmableNotifications_正常系_201CreatedとレスポンスにIDが含まれる() {
+        @DisplayName("POST_confirmable-notifications_正常系_202Acceptedが返りdeliveryStatusとestimatedRecipientCountが含まれる")
+        void POST_confirmableNotifications_正常系_202AcceptedとレスポンスにQUEUEDと見込み件数が含まれる() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 // given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 ConfirmableNotificationCreateRequest request = createValidRequest();
-                ConfirmableNotificationEntity entity = createActiveNotification();
-                ConfirmableNotificationResponse response = createNotificationResponse();
+                // CMP-260920-1040: 送信APIは非同期化され、202 Accepted で
+                // ConfirmableNotificationSendAcceptedResponse（id・deliveryStatus=QUEUED・estimatedRecipientCount）
+                // を返す契約に変わった（軍議第8版確定稿 §3.3・AC-19）。受信者行はAPI内で作らない。
+                com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationSendAcceptedResponse
+                        accepted = com.mannschaft.app.notification.confirmable.dto
+                                .ConfirmableNotificationSendAcceptedResponse.builder()
+                                .id(NOTIFICATION_ID)
+                                .deliveryStatus(com.mannschaft.app.notification.confirmable.entity
+                                        .ConfirmableNotificationDeliveryStatus.QUEUED)
+                                .estimatedRecipientCount(3)
+                                .build();
 
-                given(notificationService.send(
-                        eq(ScopeType.TEAM), eq(TEAM_ID), any(), any(), any(), any(),
-                        any(), any(), any(), any(), any(), eq(USER_ID), any()))
-                        .willReturn(entity);
-                given(mapper.toResponse(entity)).willReturn(response);
+                given(notificationService.sendAsync(
+                        eq(ScopeType.TEAM), eq(TEAM_ID), any(), eq(USER_ID)))
+                        .willReturn(accepted);
 
                 // when
-                ResponseEntity<ApiResponse<ConfirmableNotificationResponse>> result =
+                ResponseEntity<ApiResponse<com.mannschaft.app.notification.confirmable.dto
+                        .ConfirmableNotificationSendAcceptedResponse>> result =
                         controller.send(TEAM_ID, request);
 
                 // then
-                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
                 assertThat(result.getBody()).isNotNull();
                 assertThat(result.getBody().getData().getId()).isEqualTo(NOTIFICATION_ID);
+                assertThat(result.getBody().getData().getDeliveryStatus())
+                        .isEqualTo(com.mannschaft.app.notification.confirmable.entity
+                                .ConfirmableNotificationDeliveryStatus.QUEUED);
+                assertThat(result.getBody().getData().getEstimatedRecipientCount()).isEqualTo(3);
             }
         }
     }
@@ -150,26 +157,32 @@ class TeamConfirmableNotificationControllerTest {
         @Test
         @DisplayName("GET_confirmable-notifications_一覧_200OKとJSON配列が返る")
         void GET_confirmableNotifications_一覧_200OKとJSON配列が返る() {
-            // given
-            ConfirmableNotificationEntity entity = createActiveNotification();
-            ConfirmableNotificationResponse response = createNotificationResponse();
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                // given
+                // 認可根治 Wave3-B12notif: list は checkMembership のため
+                // SecurityUtils.getCurrentUserId() が呼ばれる。認証コンテキストをモックする
+                // （accessControlService は @Mock のため checkMembership は void で通る）。
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                ConfirmableNotificationEntity entity = createActiveNotification();
+                ConfirmableNotificationResponse response = createNotificationResponse();
 
-            given(notificationService.listByScope(ScopeType.TEAM, TEAM_ID))
-                    .willReturn(List.of(entity));
-            given(mapper.toResponse(entity)).willReturn(response);
-            given(recipientRepository.countByConfirmableNotificationIdAndIsConfirmedTrue(any()))
-                    .willReturn(0L);
+                given(notificationService.listByScope(ScopeType.TEAM, TEAM_ID))
+                        .willReturn(List.of(entity));
+                given(mapper.toResponse(entity)).willReturn(response);
+                given(recipientRepository.countByConfirmableNotificationIdAndIsConfirmedTrue(any()))
+                        .willReturn(0L);
 
-            // when
-            ResponseEntity<ApiResponse<List<ConfirmableNotificationResponse>>> result =
-                    controller.list(TEAM_ID);
+                // when
+                ResponseEntity<ApiResponse<List<ConfirmableNotificationResponse>>> result =
+                        controller.list(TEAM_ID);
 
-            // then
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody()).isNotNull();
-            assertThat(result.getBody().getData()).isNotEmpty();
-            assertThat(result.getBody().getData()).hasSize(1);
-            verify(notificationService).listByScope(ScopeType.TEAM, TEAM_ID);
+                // then
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody()).isNotNull();
+                assertThat(result.getBody().getData()).isNotEmpty();
+                assertThat(result.getBody().getData()).hasSize(1);
+                verify(notificationService).listByScope(ScopeType.TEAM, TEAM_ID);
+            }
         }
     }
 
@@ -187,6 +200,9 @@ class TeamConfirmableNotificationControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 // given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                // 認可根治 Wave3-B12notif: cancel はスコープ整合チェックのため notificationId で
+                // 通知エンティティを取得する（TEAM_ID 配下の ACTIVE 通知）。
+                given(notificationService.getDetail(NOTIFICATION_ID)).willReturn(createActiveNotification());
 
                 // when
                 ResponseEntity<Void> result = controller.cancel(TEAM_ID, NOTIFICATION_ID);

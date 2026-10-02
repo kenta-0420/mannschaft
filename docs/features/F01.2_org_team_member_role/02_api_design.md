@@ -22,6 +22,7 @@
 | PATCH | `/api/v1/teams/{slug}` | 必要（ADMIN+）| チーム情報更新 |
 | DELETE | `/api/v1/teams/{slug}` | 必要（ADMIN+）| チーム論理削除 |
 | GET | `/api/v1/teams/{slug}/members` | 必要（visibility = PUBLIC / ORGANIZATION_ONLY は外部閲覧可）| チームメンバー一覧（visibility 依存の認可・返却粒度あり）|
+| GET | `/api/v1/teams/{slug}/members/all` | 一覧と同じ（visibility 依存）| チームメンバー**全件**一括取得（ページングなし。CMP-260912-1525）|
 | PATCH | `/api/v1/teams/{slug}/members/{userId}/role` | 必要（ADMIN）| メンバーロール変更 |
 | DELETE | `/api/v1/teams/{slug}/members/{userId}` | 必要（ADMIN）| メンバー除名 |
 | POST | `/api/v1/teams/{slug}/invite-tokens` | 必要（ADMIN / DEPUTY_ADMIN※）| チーム招待トークン発行（※INVITE_MEMBERS + MANAGE_INVITE_TOKENS 権限必要）|
@@ -41,8 +42,14 @@
 | PUT | `/api/v1/organizations/{slug}/members/{userId}/permission-groups` | 必要（ADMIN）| 組織 DEPUTY_ADMIN / MEMBER への権限グループ一括設定 |
 | GET | `/api/v1/teams/{slug}/me/permissions` | 必要 | 自分の実効パーミッション一覧（対象チームでの権限確認用）|
 | GET | `/api/v1/organizations/{slug}/me/permissions` | 必要 | 自分の実効パーミッション一覧（対象組織での権限確認用）|
-| POST | `/api/v1/teams/{slug}/transfer-ownership` | 必要（ADMIN）| チーム ADMIN 権限移譲（1ステップ: 対象→ADMIN、自分→DEPUTY_ADMIN）|
-| POST | `/api/v1/organizations/{slug}/transfer-ownership` | 必要（ADMIN）| 組織 ADMIN 権限移譲（1ステップ: 対象→ADMIN、自分→DEPUTY_ADMIN）|
+| POST | `/api/v1/teams/{slug}/transfer-ownership-offers` | 必要（ADMIN）| チーム オーナー委譲を打診（承諾型オファー作成・PENDING）|
+| POST | `/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept` | 必要（指名相手）| 委譲を承諾（対象→ADMIN、発行者→MEMBER 降格を実行）|
+| POST | `/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/decline` | 必要（指名相手）| 委譲を辞退（ロール不変）|
+| DELETE | `/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}` | 必要（発行者/ADMIN）| 委譲オファーを取消（ロール不変）|
+| POST | `/api/v1/organizations/{slug}/transfer-ownership-offers` | 必要（ADMIN）| 組織 オーナー委譲を打診（team と同一仕様）|
+| POST | `/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/accept` | 必要（指名相手）| 組織委譲を承諾 |
+| POST | `/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/decline` | 必要（指名相手）| 組織委譲を辞退 |
+| DELETE | `/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}` | 必要（発行者/ADMIN）| 組織委譲オファーを取消 |
 | GET | `/api/v1/permissions` | 必要（ADMIN+）| パーミッションカタログ一覧 |
 | GET | `/api/v1/me/teams` | 必要 | 自分が所属するチーム一覧（ロール・参加日時付き）|
 | GET | `/api/v1/me/organizations` | 必要 | 自分が所属する組織一覧（ロール・参加日時付き）|
@@ -65,18 +72,18 @@
 | PATCH | `/api/v1/organizations/{slug}/unarchive` | 必要（ADMIN）| 組織アーカイブ解除（`archived_at = NULL`）|
 | PATCH | `/api/v1/teams/{slug}/restore` | 必要（SYSTEM_ADMIN）| 論理削除済みチームの復元（`deleted_at = NULL`）|
 | PATCH | `/api/v1/organizations/{slug}/restore` | 必要（SYSTEM_ADMIN）| 論理削除済み組織の復元（`deleted_at = NULL`）|
-| POST | `/api/v1/organizations/{slug}/team-invites` | 必要（ADMIN）| 組織からチームへ所属招待を送信 |
-| GET | `/api/v1/organizations/{slug}/team-invites` | 必要（ADMIN）| 送信済み招待一覧（PENDING のみ）|
-| DELETE | `/api/v1/organizations/{slug}/team-invites/{teamId}` | 必要（ADMIN）| 招待取消（PENDING を削除）|
-| DELETE | `/api/v1/organizations/{slug}/teams/{teamId}` | 必要（ADMIN）| 所属チームを除名（ACTIVE を削除）|
-| GET | `/api/v1/organizations/{slug}/teams` | 必要 | 組織に所属するチーム一覧（ACTIVE のみ）|
-| GET | `/api/v1/teams/{slug}/organizations` | 必要 | チームが所属する組織一覧（ACTIVE のみ）|
+| POST | `/api/v1/organizations/{slug}/team-invites` | 必要（ADMIN）| 組織からチームへ所属招待を送信（body `{team_slug, group_id?, message?}`。**未実装**・契約は F01.2.1 §6.5/§10）|
+| GET | `/api/v1/organizations/{slug}/team-invites` | 必要（ADMIN）| 送信済み招待一覧（PENDING/ORG_INVITE のみ。**未実装**）|
+| DELETE | `/api/v1/organizations/{slug}/team-invites/{teamSlug}` | 必要（ADMIN）| 招待取消（PENDING を削除。**未実装**）|
+| DELETE | `/api/v1/organizations/{slug}/teams/{teamSlug}` | 必要（ADMIN）| 所属チームを除名（ACTIVE を削除。**未実装**）|
+| GET | `/api/v1/organizations/{slug}/teams` | 必要 | 組織に所属するチーム一覧（ACTIVE のみ）。F01.2.1 で `team_group` フィールドと `team_group_id` / `unassigned` 絞り込みを追加予定 |
+| GET | `/api/v1/teams/{slug}/organizations` | 必要 | チームが所属する組織一覧（ACTIVE のみ。1チームは複数の組織に同時加盟でき、全件を返す）。F01.2.1 で `team_group` フィールドを追加予定 |
 | GET | `/api/v1/organizations/{slug}/ancestors` | 任意 | 上位組織チェーン取得（root → 親の順。`hierarchy_visibility` を尊重）|
 | GET | `/api/v1/organizations/{slug}/children` | 任意 | 下位組織一覧（直近の子のみ・`visibility` で可視範囲フィルタ）|
-| GET | `/api/v1/teams/{slug}/org-invites` | 必要（ADMIN）| 受信した組織招待一覧（PENDING のみ）|
-| POST | `/api/v1/teams/{slug}/org-invites/{membershipId}/accept` | 必要（ADMIN）| 組織招待を承認（PENDING → ACTIVE）|
-| POST | `/api/v1/teams/{slug}/org-invites/{membershipId}/reject` | 必要（ADMIN）| 組織招待を拒否（PENDING を削除）|
-| DELETE | `/api/v1/teams/{slug}/organizations/{orgSlug}` | 必要（ADMIN）| チームが組織から自主離脱（ACTIVE を削除）|
+| GET | `/api/v1/teams/{slug}/org-invites` | 必要（MANAGE_ORG_AFFILIATION。ADMIN は常に保持）| 受信した組織招待一覧（PENDING/ORG_INVITE のみ。**未実装**）|
+| POST | `/api/v1/teams/{slug}/org-invites/{membershipId}/accept` | 必要（MANAGE_ORG_AFFILIATION）| 組織招待を承諾（PENDING → ACTIVE。**未実装**）|
+| POST | `/api/v1/teams/{slug}/org-invites/{membershipId}/reject` | 必要（MANAGE_ORG_AFFILIATION）| 組織招待を拒否（PENDING を削除し、再招待に30日の冷却。body `{block?}`。**未実装**）|
+| DELETE | `/api/v1/teams/{slug}/organizations/{orgSlug}` | 必要（MANAGE_ORG_AFFILIATION）| チームが組織から自主離脱（ACTIVE を削除。**未実装**）|
 | GET | `/api/v1/invite/{token}/qr` | 不要 | 招待QRコード画像取得（PNG）|
 | PATCH | `/api/v1/organizations/{slug}/profile` | 必要（ADMIN / DEPUTY_ADMIN※）| 組織プロフィール拡張項目の一括更新（homepage_url / established_date / philosophy / profile_visibility）。※MANAGE_ORGANIZATION 権限必要 |
 | PATCH | `/api/v1/teams/{slug}/profile` | 必要（ADMIN / DEPUTY_ADMIN※）| チームプロフィール拡張項目の一括更新。※MANAGE_TEAM 権限必要 |
@@ -100,6 +107,8 @@
 | PATCH | `/api/v1/teams/{slug}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド編集 |
 | DELETE | `/api/v1/teams/{slug}/custom-fields/{fieldId}` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド削除 |
 | PUT | `/api/v1/teams/{slug}/custom-fields/reorder` | 必要（ADMIN / DEPUTY_ADMIN※）| チームカスタムフィールド並び替え |
+
+> **チーム加盟の書き込み API（F01.2.1 で正式化・2026-09-25）**: 上表の招待系に加えて、チーム→組織の加盟申請（`POST/GET /teams/{slug}/org-applications`、`DELETE /teams/{slug}/org-applications/{membershipId}`）、組織側の申請一覧・承認・拒否（`/organizations/{slug}/team-applications/**`）、申請受付設定（`/organizations/{slug}/team-affiliation-settings`）、申請フォーム（`GET /organizations/{slug}/team-application-form`）、再申請の制限一覧・解除、チームグループ（`/organizations/{slug}/team-groups/**`・割当）を定義した。契約（フィールド・型・null 可否・認可・ページング・エラーコード）の正本は [F01.2.1 §10](../F01.2.1_org_team_groups.md) とし、ここには重複して書かない。2026-09-25 時点で加盟の**書き込み API は1本も実装されていない**（参照系の `GET /organizations/{slug}/teams` と `GET /teams/{slug}/organizations` だけが実装済み）。
 
 ### リクエスト／レスポンス仕様
 
@@ -315,6 +324,47 @@ MEMBER / SUPPORTER / GUEST またはチーム非メンバー（PUBLIC / ORGANIZA
 |-----------|------|
 | 401 | 未認証 |
 | 403 | `visibility = PRIVATE` かつ呼び出し者がチームメンバーでない / `visibility = ORGANIZATION_ONLY` かつ呼び出し者が当該チームのメンバーでも所属組織のメンバーでもない |
+| 404 | チームが存在しない / 論理削除済み |
+
+---
+
+#### `GET /api/v1/teams/{slug}/members/all`（CMP-260912-1525）
+
+チームの**全メンバーを 1 レスポンスで**返す。ページングパラメータは取らない。
+
+**なぜページング経路と別に要るのか**
+
+`TeamService#getMembers` は 1 ページ要求ごとに `user_roles` と `memberships` を
+**スコープ全件走査**して重複排除と OQ-2 優先度解決を行う。どの行が何位になるかは
+全件見ないと決まらないため、この走査はページぶんに絞り込めない。したがって
+「全員を必要とする画面」（時給設定など）が全ページをめくると、総走査量はメンバー数 N に対して
+`N × ceil(N / ページサイズ)` になる。ページサイズを大きくしても並列を直列にしても総量は変わらない。
+
+本 EP は走査をちょうど 1 回に固定する。表示名・アバターの実体化とカレンダー色の解決も
+全員ぶんをまとめて 1 クエリずつで行うため、総処理量は N に比例する。
+
+**認可**: ページング経路 `GET /api/v1/teams/{slug}/members` と**同一**の visibility ラダー
+（`ContentVisibilityChecker#assertCanView`）。返却項目も同一であり、一括化によって
+新たに露出する情報は無い（ページングでも全ページをめくれば同じ集合が得られる）。
+
+**集約規則・並び順**: ページング経路と同一（OQ-2 優先度。同じ
+`queryMemberIdentities` → `hydrate` の順路を、切り出しを挟まずに通しているだけ）。
+
+**レスポンス（200 OK）** — `meta` は付かない（`ApiResponse` ラッパー）。
+```json
+{
+  "data": [
+    { "userId": 42, "displayName": "田中太郎", "avatarUrl": null,
+      "roleName": "DEPUTY_ADMIN", "joinedAt": "2026-03-01T10:00:00", "calendarColor": null }
+  ]
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 401 | 未認証 |
+| 403 | 可視性レベル未満（非メンバー等） |
 | 404 | チームが存在しない / 論理削除済み |
 
 ---
@@ -1016,36 +1066,32 @@ Body: QRコード PNG バイナリ（invite_url をエンコード・デフォ�
 
 ---
 
-#### `POST /api/v1/teams/{slug}/transfer-ownership`
+#### オーナー委譲（承諾型・2ステップ / 2026-07-18 承諾型化）
 
-ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユーザー→ADMIN」「自分→DEPUTY_ADMIN」を同時に実行する。
+> **⚠️ 旧即時 API の廃止**: 旧 `POST /api/v1/teams/{slug}/transfer-ownership`（押した瞬間に即時昇格・降格）は **廃止し、承諾型の 2 ステップ API に置き換える**。旧エンドポイントは後方互換の観点から一時的に「内部で PENDING オファーを作成して 201 を返す」ラッパーとして残すことも可能だが、既定は **廃止（410 Gone または新エンドポイントへ 308 誘導）** とし、FE を新 API へ全面移行する。ビジネスロジックは [03_business_logic.md「オーナー委譲 承諾フロー（2ステップ・承諾型）」](03_business_logic.md) を参照。
+
+##### `POST /api/v1/teams/{slug}/transfer-ownership-offers`（打診）
+
+ADMIN が別メンバーへオーナー委譲を打診する。この時点ではロールは変わらず PENDING オファーを作成するのみ。
 
 **リクエストボディ**
 ```json
-{
-  "target_user_id": 42
-}
+{ "targetUserId": 42 }
 ```
+> **パラメータ名**: BE は `targetUserId`（旧 `target_user_id` から camelCase 統一）。FE composable が旧来 `newAdminUserId` を送っていた不一致は本承諾型化に伴い `targetUserId` へ統一する（03_business_logic.md 既知課題参照）。
 
-**レスポンス（200 OK）**
+**レスポンス（201 Created）**
 ```json
 {
   "data": {
-    "new_admin": {
-      "user_id": 42,
-      "display_name": "田中太郎",
-      "role": "ADMIN"
-    },
-    "previous_admin": {
-      "user_id": 1,
-      "display_name": "佐藤一郎",
-      "role": "DEPUTY_ADMIN"
-    }
+    "offerId": "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "status": "PENDING",
+    "target": { "user_id": 42, "display_name": "田中太郎" },
+    "issuedBy": { "user_id": 1, "display_name": "佐藤一郎" },
+    "expiresAt": "2026-07-25T09:00:00Z"
   }
 }
 ```
-
-> - `POST /organizations/{slug}/transfer-ownership` も同一仕様（スコープが組織に変わるのみ）
 
 **エラーレスポンス**
 | ステータス | 条件 |
@@ -1053,8 +1099,38 @@ ADMIN 権限を別のメンバーに移譲する。1ステップで「対象ユ�
 | 401 | 未認証 |
 | 403 | 操作者が ADMIN でない |
 | 404 | チーム/組織が存在しない / 論理削除済み / 対象ユーザーがメンバーでない |
-| 422 | 対象ユーザーが 2FA 未設定（ADMIN 昇格には 2FA 必須）|
-| 422 | アーカイブ済みチーム/組織 |
+| 409 | 同一スコープに未処理（PENDING）のオファーが既存 |
+| 422 | 対象ユーザーが 2FA 未設定 / 操作者 == 対象 / アーカイブ済み |
+
+##### `POST /api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept`（承諾＝実行）
+
+**指名相手本人のみ** が承諾できる。承諾で初めて「対象→ADMIN 昇格」「発行者→MEMBER 降格」を実行する。
+
+**レスポンス（200 OK）**
+```json
+{
+  "data": {
+    "new_admin":      { "user_id": 42, "display_name": "田中太郎", "role": "ADMIN" },
+    "previous_admin": { "user_id": 1,  "display_name": "佐藤一郎", "role": "MEMBER" }
+  }
+}
+```
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 401 | 未認証 |
+| 403 | **実行ユーザー ≠ オファーの指名相手（宛先照合 = IDOR 防止）** |
+| 409 | オファーが PENDING でない（既に承諾/辞退/取消済み）/ 発行者が既に ADMIN でない |
+| 410 | オファーが期限切れ（EXPIRED）|
+| 422 | 実行ユーザーが 2FA 未設定 / アーカイブ済み |
+
+##### `POST .../transfer-ownership-offers/{offerId}/decline`（辞退）／`DELETE .../transfer-ownership-offers/{offerId}`（取消）
+
+- **decline**: 指名相手本人のみ。`status=DECLINED`。ロール不変。403 は宛先不一致。
+- **DELETE（取消）**: 発行者または対象スコープ ADMIN のみ。`status=CANCELLED`。ロール不変。
+
+> - `POST /organizations/{slug}/transfer-ownership-offers`（および accept/decline/DELETE）も同一仕様（スコープが組織に変わるのみ）
 
 ---
 

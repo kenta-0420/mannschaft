@@ -46,7 +46,7 @@ public class OrgParkingSpaceController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<SpaceResponse> result = spaceService.list(SCOPE_TYPE, organizationId, status, spaceType, floor,
-                PageRequest.of(page, Math.min(size, 100), Sort.by("spaceNumber")));
+                PageRequest.of(page, Math.min(size, 100), Sort.by("spaceNumber")), SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -74,7 +74,7 @@ public class OrgParkingSpaceController {
     @Operation(summary = "組織区画詳細")
     public ResponseEntity<ApiResponse<SpaceDetailResponse>> getSpace(
             @PathVariable Long organizationId, @PathVariable Long id) {
-        SpaceDetailResponse result = spaceService.getDetail(SCOPE_TYPE, organizationId, id);
+        SpaceDetailResponse result = spaceService.getDetail(SCOPE_TYPE, organizationId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -90,7 +90,7 @@ public class OrgParkingSpaceController {
     @DeleteMapping("/spaces/{id}")
     @Operation(summary = "組織区画削除")
     public ResponseEntity<Void> deleteSpace(@PathVariable Long organizationId, @PathVariable Long id) {
-        spaceService.delete(SCOPE_TYPE, organizationId, id);
+        spaceService.delete(SCOPE_TYPE, organizationId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -106,7 +106,7 @@ public class OrgParkingSpaceController {
     @GetMapping("/spaces/vacant")
     @Operation(summary = "組織空き区画一覧")
     public ResponseEntity<ApiResponse<List<SpaceResponse>>> listVacant(@PathVariable Long organizationId) {
-        List<SpaceResponse> result = spaceService.listVacant(SCOPE_TYPE, organizationId);
+        List<SpaceResponse> result = spaceService.listVacant(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -133,7 +133,7 @@ public class OrgParkingSpaceController {
     public ResponseEntity<ApiResponse<SpaceResponse>> toggleMaintenance(
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody MaintenanceToggleRequest request) {
-        SpaceResponse result = spaceService.toggleMaintenance(SCOPE_TYPE, organizationId, id, request);
+        SpaceResponse result = spaceService.toggleMaintenance(SCOPE_TYPE, organizationId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -142,7 +142,7 @@ public class OrgParkingSpaceController {
     public ResponseEntity<ApiResponse<SpaceResponse>> acceptApplications(
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody AcceptApplicationsRequest request) {
-        SpaceResponse result = spaceService.acceptApplications(SCOPE_TYPE, organizationId, id, request);
+        SpaceResponse result = spaceService.acceptApplications(SCOPE_TYPE, organizationId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -153,7 +153,7 @@ public class OrgParkingSpaceController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<AssignmentResponse> result = spaceService.getHistory(SCOPE_TYPE, organizationId, id,
-                PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "assignedAt")));
+                PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "assignedAt")), SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -175,7 +175,7 @@ public class OrgParkingSpaceController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<PriceHistoryResponse> result = spaceService.getPriceHistory(SCOPE_TYPE, organizationId, id,
-                PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "changedAt")));
+                PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "changedAt")), SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -184,14 +184,14 @@ public class OrgParkingSpaceController {
     @GetMapping("/stats")
     @Operation(summary = "組織駐車場統計")
     public ResponseEntity<ApiResponse<ParkingStatsResponse>> getStats(@PathVariable Long organizationId) {
-        ParkingStatsResponse result = spaceService.getStats(SCOPE_TYPE, organizationId);
+        ParkingStatsResponse result = spaceService.getStats(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
     @GetMapping("/settings")
     @Operation(summary = "組織駐車場設定取得")
     public ResponseEntity<ApiResponse<ParkingSettingsResponse>> getSettings(@PathVariable Long organizationId) {
-        ParkingSettingsResponse result = settingsService.getSettings(SCOPE_TYPE, organizationId);
+        ParkingSettingsResponse result = settingsService.getSettings(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -200,7 +200,7 @@ public class OrgParkingSpaceController {
     public ResponseEntity<ApiResponse<ParkingSettingsResponse>> updateSettings(
             @PathVariable Long organizationId,
             @Valid @RequestBody UpdateSettingsRequest request) {
-        ParkingSettingsResponse result = settingsService.updateSettings(SCOPE_TYPE, organizationId, request);
+        ParkingSettingsResponse result = settingsService.updateSettings(SCOPE_TYPE, organizationId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 }

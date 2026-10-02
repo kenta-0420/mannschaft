@@ -292,7 +292,7 @@ class WidgetDefaultMinRoleMapTest {
             assertThat(result.keySet())
                     .allSatisfy(key -> assertThat(key.getScopeType()).isEqualTo(ScopeType.TEAM));
 
-            // 想定 11 キーを網羅（F08.7.1 で 2 件 + F08.10 で 1 件追加）
+            // 想定 19 キーを網羅（F08.7.1 で 2 件 + F08.10 で 1 件 + 対象2 で 8 件追加）
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     WidgetKey.TEAM_NOTICES,
                     WidgetKey.TEAM_UPCOMING_EVENTS,
@@ -304,7 +304,16 @@ class WidgetDefaultMinRoleMapTest {
                     WidgetKey.TEAM_MEMBER_ATTENDANCE,
                     WidgetKey.TEAM_TOURNAMENT_RECORD,
                     WidgetKey.TEAM_DIVISION_STANDINGS,
-                    WidgetKey.TEAM_MATCH_SUMMARY);
+                    WidgetKey.TEAM_MATCH_SUMMARY,
+                    // 対象2 追加分
+                    WidgetKey.TEAM_MEMBERS,
+                    WidgetKey.TEAM_GALLERY,
+                    WidgetKey.TEAM_CIRCULATION,
+                    WidgetKey.TEAM_SURVEYS,
+                    WidgetKey.TEAM_SURVEY_RESULTS,
+                    WidgetKey.TEAM_BLOG,
+                    WidgetKey.TEAM_SCHEDULE_CALENDAR,
+                    WidgetKey.TEAM_MEMBER_INFO);
 
             // ADMIN 限定は含まれない
             assertThat(result).doesNotContainKey(WidgetKey.TEAM_BILLING);
@@ -328,14 +337,27 @@ class WidgetDefaultMinRoleMapTest {
                     .allSatisfy(key ->
                             assertThat(key.getScopeType()).isEqualTo(ScopeType.ORGANIZATION));
 
-            // 想定 6 キーを網羅（F08.7.1 で 1 件追加）
+            // 想定 18 キーを網羅（F08.7.1 で 1 件 + 対象2 で 12 件追加）
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     WidgetKey.ORG_TEAM_LIST,
                     WidgetKey.ORG_NOTICES,
                     WidgetKey.ORG_TODO,
                     WidgetKey.ORG_PROJECT_PROGRESS,
                     WidgetKey.ORG_STATS,
-                    WidgetKey.ORG_TOURNAMENT_SUMMARY);
+                    WidgetKey.ORG_TOURNAMENT_SUMMARY,
+                    // 対象2 追加分
+                    WidgetKey.ORG_UPCOMING_EVENTS,
+                    WidgetKey.ORG_LATEST_POSTS,
+                    WidgetKey.ORG_BLOG,
+                    WidgetKey.ORG_UNREAD_THREADS,
+                    WidgetKey.ORG_SCHEDULE_CALENDAR,
+                    WidgetKey.ORG_MEMBERS,
+                    WidgetKey.ORG_ACTIVITY,
+                    WidgetKey.ORG_GALLERY,
+                    WidgetKey.ORG_CIRCULATION,
+                    WidgetKey.ORG_SURVEYS,
+                    WidgetKey.ORG_SURVEY_RESULTS,
+                    WidgetKey.ORG_MEMBER_ATTENDANCE);
 
             // ADMIN 限定は含まれない
             assertThat(result).doesNotContainKey(WidgetKey.ORG_BILLING);
@@ -369,11 +391,12 @@ class WidgetDefaultMinRoleMapTest {
     class AllKeys {
 
         @Test
-        @DisplayName("全管理対象キーを返す（17 件）")
-        void getAllConfigurableKeys_17件() {
+        @DisplayName("全管理対象キーを返す（37 件）")
+        void getAllConfigurableKeys_37件() {
             Set<WidgetKey> all = WidgetDefaultMinRoleMap.getAllConfigurableKeys();
-            // TEAM 11 件 + ORG 6 件 = 17 件（F08.7.1 で 3 件 + F08.10 で 1 件追加）
-            assertThat(all).hasSize(17);
+            // TEAM 19 件 + ORG 18 件 = 37 件
+            // （F08.7.1 で 3 件 + F08.10 で 1 件 + 対象2 で TEAM 8 件・ORG 12 件追加）
+            assertThat(all).hasSize(37);
         }
 
         @Test

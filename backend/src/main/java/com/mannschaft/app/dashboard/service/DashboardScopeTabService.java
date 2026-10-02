@@ -5,14 +5,14 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.dashboard.DashboardScopeTabErrorCode;
 import com.mannschaft.app.dashboard.dto.ScopeTabItemResponse;
 import com.mannschaft.app.dashboard.dto.ScopeTabOrderUpdateRequest;
 import com.mannschaft.app.dashboard.dto.ScopeTabPageResponse;
 import com.mannschaft.app.dashboard.entity.DashboardScopeTabOrderEntity;
 import com.mannschaft.app.dashboard.repository.DashboardScopeTabOrderRepository;
-import com.mannschaft.app.membership.entity.MembershipEntity;
-import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * F22.1: 横スワイプ・ダッシュボードのチーム/組織タグ表示順サービス。
@@ -51,13 +52,14 @@ public class DashboardScopeTabService {
     private static final int PAGE_SIZE = 6;
 
     private final DashboardScopeTabOrderRepository scopeTabOrderRepository;
-    private final MembershipRepository membershipRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final MyScopeFolderRepository scopeFolderRepository;
     private final MyScopeFolderItemRepository scopeFolderItemRepository;
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+    private final MediaUrlResolver mediaUrlResolver;
 
     // ============================================
     // GET /dashboard/scope-tabs
@@ -86,18 +88,34 @@ public class DashboardScopeTabService {
         int safePage = Math.max(0, page);
 
         // ① 現在の所属スコープ集合（真実の源）。退会/権限喪失スコープはここに含まれない。
-        List<MembershipEntity> activeMemberships =
-                membershipRepository.findActiveByUserAndScopeType(
+        List<MembershipScopeQueryService.CurrentMembershipScope> activeMemberships =
+                membershipScopeQueryService.findCurrentMemberships(
                         userId, toMembershipScopeType(scopeType));
 
         // 所属 scope_id の登場順（joined_at 降順）を保持しつつ重複排除する。
         //   1 ユーザー × スコープに複数のアクティブ行が理屈上ありうる（再加入歴）ため LinkedHashSet で de-dup。
         Set<Long> activeScopeIds = new HashSet<>();
         List<Long> membershipOrder = new ArrayList<>();
-        for (MembershipEntity m : activeMemberships) {
-            if (activeScopeIds.add(m.getScopeId())) {
-                membershipOrder.add(m.getScopeId());
+        for (MembershipScopeQueryService.CurrentMembershipScope membership : activeMemberships) {
+            if (activeScopeIds.add(membership.scopeId())) {
+                membershipOrder.add(membership.scopeId());
             }
+        }
+
+        // ②' 実在・非論理削除のスコープに絞り込む（孤児membership除外）。
+        //   FK撤廃（孤児保持方針）により、削除済み team/org への membership 行が残るようになった。
+        //   membership だけ見ても team/org が実在するか不明なため、1 回のバッチ照会で実在 id 集合を確定する。
+        //   TeamEntity / OrganizationEntity は @SQLRestriction("deleted_at IS NULL") が付いているため、
+        //   findAllById の結果に論理削除済みは含まれない。
+        final Set<Long> existingScopeIds;
+        if ("TEAM".equals(scopeType)) {
+            existingScopeIds = teamRepository.findAllById(activeScopeIds).stream()
+                    .map(TeamEntity::getId)
+                    .collect(Collectors.toSet());
+        } else {
+            existingScopeIds = organizationRepository.findAllById(activeScopeIds).stream()
+                    .map(OrganizationEntity::getId)
+                    .collect(Collectors.toSet());
         }
 
         // ③ folderId 指定時の絞り込み対象集合（フィルタは並び順適用の前）。
@@ -122,12 +140,12 @@ public class DashboardScopeTabService {
         List<Long> orderedScopeIds = new ArrayList<>();
         Set<Long> placed = new HashSet<>();
         for (Long scopeId : savedSortOrder.keySet()) {
-            if (isEligible(scopeId, activeScopeIds, folderScopeIds) && placed.add(scopeId)) {
+            if (isEligible(scopeId, activeScopeIds, existingScopeIds, folderScopeIds) && placed.add(scopeId)) {
                 orderedScopeIds.add(scopeId);
             }
         }
         for (Long scopeId : membershipOrder) {
-            if (isEligible(scopeId, activeScopeIds, folderScopeIds) && placed.add(scopeId)) {
+            if (isEligible(scopeId, activeScopeIds, existingScopeIds, folderScopeIds) && placed.add(scopeId)) {
                 orderedScopeIds.add(scopeId);
             }
         }
@@ -186,7 +204,8 @@ public class DashboardScopeTabService {
                 .publicId(publicId)
                 .scopeType(scopeType)
                 .name(name)
-                .avatarUrl(avatarUrl)
+                // 画像 URL 根治 Phase 2: 生 R2 キー（team/org の iconUrl）を署名付き表示 URL へ解決
+                .avatarUrl(mediaUrlResolver.resolve(avatarUrl))
                 // Wave 2 で action-required 込みの未読集計に拡張予定。現時点では集計源がないため 0。
                 .unreadCount(0)
                 .sortOrder(sortOrder)
@@ -214,10 +233,21 @@ public class DashboardScopeTabService {
 
     /**
      * scope_id が現在の所属集合に含まれ（④退会/権限喪失除外）、
+     * かつ team/org が実在・非論理削除であり（孤児membership除外）、
      * かつ folderId 指定時は当該フォルダ対象集合に含まれる（③フィルタ）かを判定する。
+     *
+     * @param activeScopeIds   membership テーブルの leftAt IS NULL で取得したアクティブ所属集合
+     * @param existingScopeIds team/org の findAllById バッチ照会結果（実在・非論理削除のみ）
+     * @param folderScopeIds   folderId 指定時の絞り込み集合（null = フィルタなし）
      */
-    private boolean isEligible(Long scopeId, Set<Long> activeScopeIds, Set<Long> folderScopeIds) {
+    private boolean isEligible(Long scopeId, Set<Long> activeScopeIds,
+                               Set<Long> existingScopeIds, Set<Long> folderScopeIds) {
         if (!activeScopeIds.contains(scopeId)) {
+            return false;
+        }
+        // 孤児membership除外: team/org が実在（非論理削除）しない場合は一覧から落とす。
+        // クロスドメインFK撤廃後は membership が残っても team/org が消える可能性があるため必須。
+        if (!existingScopeIds.contains(scopeId)) {
             return false;
         }
         return folderScopeIds == null || folderScopeIds.contains(scopeId);

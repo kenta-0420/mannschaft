@@ -1,5 +1,6 @@
 package com.mannschaft.app.promotion;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.promotion.dto.CreateSegmentPresetRequest;
 import com.mannschaft.app.promotion.dto.SegmentPresetResponse;
@@ -32,6 +33,7 @@ class SegmentPresetServiceTest {
 
     @Mock private SavedSegmentPresetRepository presetRepository;
     @Mock private PromotionMapper promotionMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks private SegmentPresetService service;
 
@@ -74,7 +76,7 @@ class SegmentPresetServiceTest {
                     .willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.delete(SCOPE_TYPE, SCOPE_ID, 1L))
+            assertThatThrownBy(() -> service.delete(SCOPE_TYPE, SCOPE_ID, 1L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PROMOTION_011"));

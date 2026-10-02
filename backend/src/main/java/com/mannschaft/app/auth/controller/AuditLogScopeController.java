@@ -5,6 +5,8 @@ import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +44,8 @@ public class AuditLogScopeController {
      * @param limit          取得件数（デフォルト20・最大100）
      */
     @Operation(summary = "チーム監査ログ一覧（チームADMIN）")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チームの監査証跡をGate状態にかかわらず確認可能にするため")
     @GetMapping("/api/v1/teams/{teamId}/audit-logs")
     public CursorPagedResponse<AuditLogResponse> getTeamAuditLogs(
             @PathVariable Long teamId,
@@ -77,6 +81,8 @@ public class AuditLogScopeController {
      * @param limit          取得件数
      */
     @Operation(summary = "組織監査ログ一覧（組織ADMIN）")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "組織の監査証跡をGate状態にかかわらず確認可能にするため")
     @GetMapping("/api/v1/organizations/{orgId}/audit-logs")
     public CursorPagedResponse<AuditLogResponse> getOrganizationAuditLogs(
             @PathVariable Long orgId,

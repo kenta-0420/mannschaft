@@ -1,5 +1,7 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.proxyvote.ResolutionMode;
 import com.mannschaft.app.proxyvote.SessionStatus;
@@ -10,6 +12,7 @@ import com.mannschaft.app.proxyvote.repository.ProxyVoteMotionRepository;
 import com.mannschaft.app.proxyvote.repository.ProxyVoteSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,8 +37,13 @@ public class ProxyVoteScheduledService {
      * OPEN → CLOSED 自動遷移（WRITTEN モードのみ）。
      * MEETING モード投票タイマー自動終了。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SUCCESSION_PROXY_ENABLED",
+            reason = "状態遷移と投票タイマーは開始終了日時から冪等に再判定でき、代理投票機能を閉じている間は投票が行われないため票が失われない")
     @BatchEndpoint(name = "proxyvote-session-state-transition", description = "委任投票セッションの状態遷移と投票タイマーを 5 分毎に処理する")
     @Scheduled(fixedRate = 300_000) // 5分間隔
+    // 起動間隔は 5 分（fixedRate）。処理は進行中セッションの状態遷移とタイマー判定のみで通常は数秒。間隔の 3 倍を上限とする。
+    @SchedulerLock(name = "proxyVoteSessionStateTransition", lockAtLeastFor = "PT30S", lockAtMostFor = "PT15M")
     @Transactional
     public void processAutoTransitions() {
         LocalDateTime now = LocalDateTime.now();
@@ -83,7 +91,8 @@ public class ProxyVoteScheduledService {
                 .findByVotingStatusAndVoteDeadlineAtLessThanEqualAndVoteDeadlineAtIsNotNull(VotingStatus.VOTING, now);
         for (ProxyVoteMotionEntity motion : expiredMotions) {
             try {
-                motionService.endVote(motion.getId());
+                // システム起点（実行ユーザー不在）のため認可を伴わない専用入口を使う。
+                motionService.endVoteBySystem(motion.getId());
                 log.info("投票タイマー自動終了: motionId={}", motion.getId());
             } catch (Exception e) {
                 log.error("投票タイマー自動終了エラー: motionId={}", motion.getId(), e);

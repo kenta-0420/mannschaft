@@ -1,6 +1,7 @@
 package com.mannschaft.app.jobmatching.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.jobmatching.config.QrSigningProperties;
 import com.mannschaft.app.jobmatching.entity.JobCheckInEntity;
 import com.mannschaft.app.jobmatching.entity.JobContractEntity;
@@ -230,13 +231,14 @@ public class JobCheckInService {
      * 当該 Worker が**別契約で** IN スキャン済の場合、拒否する（設計書 §2.3.1 末尾）。
      *
      * <p>契約の {@code workStartAt/workEndAt} は {@link java.time.LocalDateTime} で、UTC 前提の
-     * Instant への変換はシステムデフォルトゾーンを用いる（DB と JVM で同ゾーン運用前提）。</p>
+     * Instant への変換はアプリ層の基準ゾーン（{@link UserZoneLocalDateTimeParser#SERVER_ZONE}）
+     * を用いる（CMP-023 第1ロット。旧実装は {@code ZoneId.systemDefault()} を直接見ていた）。</p>
      */
     private void detectConcurrentConflict(JobContractEntity contract, Long workerUserId) {
-        // 契約の workStartAt/workEndAt は LocalDateTime（JVM システムゾーン前提）。
-        // Clock が UTC 設定であっても、契約上の時刻は DB 格納時の JVM ローカルゾーンで解釈するのが
-        // 既存 Entity 運用と整合する。このため systemDefault() で Instant 化する。
-        ZoneId zone = ZoneId.systemDefault();
+        // 契約の workStartAt/workEndAt は LocalDateTime（アプリ層の基準ゾーン前提）。
+        // Clock が UTC 設定であっても、契約上の時刻は DB 格納時のアプリ層基準ゾーンで解釈するのが
+        // 既存 Entity 運用と整合する。このため SERVER_ZONE で Instant 化する。
+        ZoneId zone = UserZoneLocalDateTimeParser.SERVER_ZONE;
         Instant rangeFrom = contract.getWorkStartAt().atZone(zone).toInstant()
                 .minus(CONCURRENT_CHECK_BUFFER);
         Instant rangeTo = contract.getWorkEndAt().atZone(zone).toInstant()

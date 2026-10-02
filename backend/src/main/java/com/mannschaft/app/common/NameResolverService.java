@@ -2,6 +2,7 @@ package com.mannschaft.app.common;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -45,6 +46,7 @@ public class NameResolverService {
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * ユーザーIDの集合から表示名マップを返す（ニックネーム）。
@@ -62,6 +64,30 @@ public class NameResolverService {
                         UserEntity::getId,
                         UserEntity::getDisplayName
                 ));
+    }
+
+    /**
+     * ユーザーIDの集合からアバター表示URLマップを返す。avatarUrl 未設定／解決不能のIDは含まれない。
+     *
+     * <p>DB には生の R2 キーが格納されているため、{@link MediaUrlResolver} で署名付き表示 URL に解決する
+     * （生キーをそのまま返すと FE が相対 URL として解釈し 404 になる）。
+     * {@code Collectors.toMap} は null 値で例外を投げるため、HashMap + null 除外で構築する。</p>
+     *
+     * @param userIds ユーザーIDの集合
+     * @return Map(userId → 署名付きアバター表示URL)。avatarUrl が null／解決不能のIDは含まれない
+     */
+    public Map<Long, String> resolveUserAvatarUrls(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        for (UserEntity u : userRepository.findAllById(userIds)) {
+            String resolved = mediaUrlResolver.resolve(u.getAvatarUrl());
+            if (resolved != null) {
+                result.put(u.getId(), resolved);
+            }
+        }
+        return result;
     }
 
     /**
@@ -177,6 +203,52 @@ public class NameResolverService {
     }
 
     /**
+     * チームIDの集合からアイコン表示URLマップを返す（N+1 回避・バッチ）。
+     *
+     * <p>DB には生の R2 キーが格納されているため {@link MediaUrlResolver} で署名付き表示 URL に
+     * 解決する（{@link #resolveUserAvatarUrls} と同方針）。iconUrl が null／解決不能のIDは含めない
+     * （{@code Collectors.toMap} は null 値で例外を投げるため HashMap + null 除外で構築する）。</p>
+     *
+     * @param teamIds チームIDの集合
+     * @return Map(teamId → 署名付きアイコン表示URL)。未設定／解決不能のIDは含まれない
+     */
+    public Map<Long, String> resolveTeamIconUrls(Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        for (TeamEntity t : teamRepository.findAllById(teamIds)) {
+            String resolved = mediaUrlResolver.resolve(t.getIconUrl());
+            if (resolved != null) {
+                result.put(t.getId(), resolved);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 組織IDの集合からアイコン表示URLマップを返す（N+1 回避・バッチ）。
+     *
+     * <p>解決方針は {@link #resolveTeamIconUrls} と同じ（生 R2 キー → 署名付き URL）。</p>
+     *
+     * @param orgIds 組織IDの集合
+     * @return Map(orgId → 署名付きアイコン表示URL)。未設定／解決不能のIDは含まれない
+     */
+    public Map<Long, String> resolveOrganizationIconUrls(Collection<Long> orgIds) {
+        if (orgIds == null || orgIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        for (OrganizationEntity o : organizationRepository.findAllById(orgIds)) {
+            String resolved = mediaUrlResolver.resolve(o.getIconUrl());
+            if (resolved != null) {
+                result.put(o.getId(), resolved);
+            }
+        }
+        return result;
+    }
+
+    /**
      * スコープ種別とIDからアイコン画像URLを返す。
      * scopeType は文字列で受け取り、各パッケージ固有の ScopeType enum に依存しない。
      * PERSONAL スコープまたは該当なしの場合は null を返す。
@@ -201,6 +273,27 @@ public class NameResolverService {
     }
 
     /**
+     * 印鑑初回生成用に姓・名を個別に返す。
+     * いずれかが null の場合は空文字で補完する。
+     *
+     * @param userId ユーザーID
+     * @return 姓名パーツ（姓・名が両方空の場合も返す）
+     */
+    public UserNameParts resolveUserNameParts(Long userId) {
+        if (userId == null) {
+            return new UserNameParts("", "");
+        }
+        return userRepository.findById(userId)
+                .map(u -> new UserNameParts(
+                        u.getLastName() != null ? u.getLastName() : "",
+                        u.getFirstName() != null ? u.getFirstName() : ""))
+                .orElse(new UserNameParts("", ""));
+    }
+
+    /** 電子印鑑初回生成用の氏名パーツ。 */
+    public record UserNameParts(String lastName, String firstName) {}
+
+    /**
      * スコープ種別とIDからスコープ名を返す。
      * scopeType は文字列で受け取り、各パッケージ固有の ScopeType enum に依存しない。
      *
@@ -221,6 +314,18 @@ public class NameResolverService {
                     .orElse("不明な組織");
             case "PERSONAL" -> "個人";
             default -> "不明なスコープ";
+        };
+    }
+
+    /** 共有予定の詳細API・画面URLで使用する公開slugを内部IDから解決する。 */
+    public String resolveScopeSlug(String scopeType, Long scopeId) {
+        if (scopeType == null || scopeId == null) {
+            return null;
+        }
+        return switch (scopeType.toUpperCase()) {
+            case "TEAM" -> teamRepository.findById(scopeId).map(TeamEntity::getSlug).orElse(null);
+            case "ORGANIZATION" -> organizationRepository.findById(scopeId).map(OrganizationEntity::getSlug).orElse(null);
+            default -> null;
         };
     }
 }

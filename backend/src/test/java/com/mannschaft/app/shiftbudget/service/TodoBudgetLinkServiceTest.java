@@ -320,8 +320,7 @@ class TodoBudgetLinkServiceTest {
             TodoEntity t = mockTodo(TodoScopeType.TEAM, TEAM_ID);
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID))
                     .willReturn(Optional.of(t));
-            given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID))
-                    .willReturn(Optional.of(ORG_ID));
+            given(rateQueryRepository.countTeamInOrganization(TEAM_ID, ORG_ID)).willReturn(1L);
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM"))
                     .willReturn(true);

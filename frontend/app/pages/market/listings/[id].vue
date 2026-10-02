@@ -3,17 +3,19 @@
  * F22.1 市（Market）— 公開札詳細ページ
  *
  * - 未ログイン公開（middleware なし・permitAll）
- * - 公開札（visibility='PUBLIC'）のみ表示。非公開/scope限定は 404。
+ * - 公開札、またはログイン利用者が選択公開先に所属する札を表示。権限外は 404。
  * - 未ログイン: 応募ボタンを「ログインして応募」に置換。
  * - ログイン済み: 「札に応じる」ボタン（応募API呼び出し）。
- * - PII抑制: 主催はチーム公称名+アイコンのみ表示。
+ * - PII抑制: 個人札は API が閲覧者との所属関係に応じて実名またはニックネームを返す。
  *
  * 設計書: docs/features/F22.1_market/03_ui_i18n.md §3
  * API:    GET /api/v1/public/market/listings/{id}
  *         POST /api/v1/recruitment-listings/{id}/applications
+ *         POST /api/v1/reports
  */
 import type { MarketListingRegion, MarketListingResponse } from '~/types/market'
 import type { ScopeKind } from '~/types/marketPayment'
+import type { RecruitmentParticipantResponse } from '~/types/recruitment'
 
 definePageMeta({
   layout: 'default',
@@ -24,6 +26,7 @@ const route = useRoute()
 const marketApi = useMarketApi()
 const recruitmentApi = useRecruitmentApi()
 const authStore = useAuthStore()
+const teamStore = useTeamStore()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
 
@@ -40,6 +43,18 @@ const listingId = computed(() => {
 const listing = ref<MarketListingResponse | null>(null)
 const pageLoading = ref(true)
 const applying = ref(false)
+const participationLoading = ref(authStore.isAuthenticated)
+const participationLoadFailed = ref(false)
+const myParticipation = ref<RecruitmentParticipantResponse | null>(null)
+const autoOpenPayment = ref(false)
+/** TEAM 型募集のときに選択されたチームID。 */
+const selectedTeamId = ref<number | null>(null)
+const reportDialogVisible = ref(false)
+const reportReason = ref('INAPPROPRIATE')
+const reportDescription = ref('')
+const reporting = ref(false)
+const reportReasons = ['SPAM', 'HARASSMENT', 'INAPPROPRIATE', 'VIOLENCE', 'MISINFORMATION', 'COPYRIGHT', 'OTHER']
+  .map(value => ({ value, label: t(`market.report.reason.${value}`) }))
 
 async function load() {
   pageLoading.value = true
@@ -64,24 +79,72 @@ async function load() {
 
 await load()
 
+// TEAM 型の募集であれば所属チーム一覧を先読み。
+if (authStore.isAuthenticated && listing.value?.participationType === 'TEAM') {
+  await teamStore.fetchMyTeams()
+}
+
 // ロケール切替時に地域名表示を現在ロケールへ追従させる。
 watch(locale, async () => {
   await load()
 })
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
-const canApply = computed(() =>
-  isAuthenticated.value
-  && listing.value?.status === 'OPEN',
+const isTeamListing = computed(() => listing.value?.participationType === 'TEAM')
+const isPaymentSupported = computed(() =>
+  listing.value?.paymentEnabled === true
+  && (listing.value.owner.scopeType === 'TEAM' || listing.value.owner.scopeType === 'ORGANIZATION'),
 )
+const canApply = computed(() => {
+  if (
+    participationLoading.value
+    || participationLoadFailed.value
+    || !isAuthenticated.value
+    || listing.value?.status !== 'OPEN'
+  ) {
+    return false
+  }
+  if (myParticipation.value != null) return false
+  // TEAM 型はチームを選択するまで応募不可。
+  if (isTeamListing.value) return selectedTeamId.value !== null
+  return true
+})
+
+async function loadMyParticipation() {
+  if (!authStore.isAuthenticated) {
+    myParticipation.value = null
+    return
+  }
+  participationLoading.value = true
+  participationLoadFailed.value = false
+  try {
+    const myList = await recruitmentApi.listMyActiveParticipations()
+    myParticipation.value = myList.data.find((p) => p.listingId === listingId.value) ?? null
+  }
+  catch (err) {
+    participationLoadFailed.value = true
+    handleApiError(err, t('market.detail.loadFailed'))
+  }
+  finally {
+    participationLoading.value = false
+  }
+}
+
+onMounted(() => {
+  void loadMyParticipation()
+})
 
 async function applyToListing() {
   if (!listing.value) return
   applying.value = true
   try {
-    await recruitmentApi.applyToListing(listing.value.id, {
-      participantType: 'TEAM',
+    const isTeam = listing.value.participationType === 'TEAM'
+    const result = await recruitmentApi.applyToListing(listing.value.id, {
+      participantType: isTeam ? 'TEAM' : 'USER',
+      teamId: isTeam ? selectedTeamId.value : undefined,
     })
+    myParticipation.value = result.data
+    autoOpenPayment.value = isPaymentSupported.value && result.data.status === 'CONFIRMED'
     notification.success(t('recruitment.participantStatus.applied'))
     // 応募後に件数を更新するために再取得
     await load()
@@ -94,9 +157,24 @@ async function applyToListing() {
   }
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString()
+async function submitReport() {
+  if (!listing.value) return
+  reporting.value = true
+  try {
+    await marketApi.reportMarketListing(listing.value.id, reportReason.value, reportDescription.value)
+    reportDialogVisible.value = false
+    reportDescription.value = ''
+    notification.success(t('market.report.succeeded'))
+  }
+  catch (err) {
+    handleApiError(err, t('market.report.failed'))
+  }
+  finally {
+    reporting.value = false
+  }
 }
+
+const { formatDateTime: formatDate } = useDatetime()
 
 function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'danger' {
   switch (status) {
@@ -133,7 +211,13 @@ function regionLabel(region: MarketListingRegion): string {
  */
 const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
   const l = listing.value
-  if (!l || !l.paymentEnabled || !isAuthenticated.value) {
+  // PERSONAL は Phase 4 では決済対象外。未知の owner 種別も fail closed にする。
+  if (
+    !l
+    || !l.paymentEnabled
+    || !isAuthenticated.value
+    || (l.owner.scopeType !== 'TEAM' && l.owner.scopeType !== 'ORGANIZATION')
+  ) {
     return null
   }
   const kind: ScopeKind = l.owner.scopeType === 'ORGANIZATION' ? 'ORG' : 'TEAM'
@@ -151,17 +235,9 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
     <PageLoading v-if="pageLoading" />
 
     <template v-else-if="listing">
-      <!-- 戻るボタン -->
-      <div class="mb-4">
-        <Button
-          icon="pi pi-arrow-left"
-          :label="$t('market.title')"
-          text
-          @click="navigateTo('/market')"
-        />
-      </div>
+      <PageHeader :title="listing.title" size="sm" back-to="/market" />
 
-      <div class="rounded-xl border border-surface-300 bg-surface-0 p-6 shadow-sm dark:border-surface-600 dark:bg-surface-900" data-testid="market-detail-card">
+      <SectionCard data-testid="market-detail-card">
         <!-- 主催（PII抑制: 公称名+アイコンのみ） -->
         <div class="mb-4 flex items-center gap-3" data-testid="market-detail-organizer">
           <Avatar
@@ -188,11 +264,6 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
             class="ml-auto"
           />
         </div>
-
-        <!-- タイトル -->
-        <h1 class="mb-4 text-2xl font-bold text-surface-900 dark:text-surface-50" data-testid="market-detail-title">
-          {{ listing.title }}
-        </h1>
 
         <!-- カテゴリ -->
         <div class="mb-3 flex items-center gap-2">
@@ -250,7 +321,7 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
         </div>
 
         <!-- 応募ボタン -->
-        <div class="flex justify-center" data-testid="market-detail-apply-area">
+        <div class="flex flex-col items-center gap-3" data-testid="market-detail-apply-area">
           <!-- 未ログイン: ログイン誘導 -->
           <Button
             v-if="!isAuthenticated"
@@ -260,26 +331,100 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
             data-testid="market-login-to-apply-btn"
             @click="navigateTo('/login')"
           />
-          <!-- ログイン済み・OPEN: 応募ボタン -->
-          <Button
-            v-else-if="canApply"
-            :label="$t('market.action.apply')"
-            icon="pi pi-check"
-            size="large"
-            :loading="applying"
-            data-testid="market-apply-btn"
-            @click="applyToListing"
-          />
+          <template v-else-if="listing.status === 'OPEN'">
+            <!-- TEAM 型: チーム選択ドロップダウン -->
+            <Select
+              v-if="isTeamListing"
+              v-model="selectedTeamId"
+              :options="teamStore.myTeams"
+              option-label="name"
+              option-value="id"
+              :placeholder="$t('market.action.selectTeam')"
+              class="w-full max-w-xs"
+              data-testid="market-team-select"
+            />
+            <!-- 応募ボタン -->
+            <Button
+              v-if="myParticipation == null"
+              :label="$t('market.action.apply')"
+              icon="pi pi-check"
+              size="large"
+              :loading="applying"
+              :disabled="!canApply"
+              data-testid="market-apply-btn"
+              @click="applyToListing"
+            />
+            <Tag
+              v-else
+              :value="$t(`recruitment.participantStatus.${myParticipation.status.toLowerCase()}`)"
+              severity="success"
+            />
+          </template>
           <!-- ログイン済み・OPEN以外 -->
           <Button
-            v-else-if="isAuthenticated"
+            v-else
             :label="$t(`market.status.${listing.status}`)"
             :severity="statusSeverity(listing.status)"
             size="large"
             disabled
           />
         </div>
-      </div>
+        <div v-if="isAuthenticated" class="mt-5 flex justify-end">
+          <Button
+            :label="$t('market.report.open')"
+            icon="pi pi-flag"
+            severity="secondary"
+            text
+            @click="reportDialogVisible = true"
+          />
+        </div>
+      </SectionCard>
+
+      <Dialog
+        v-model:visible="reportDialogVisible"
+        modal
+        :header="$t('market.report.title')"
+        class="w-full max-w-lg"
+      >
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-col gap-2">
+            <label for="market-report-reason">{{ $t('market.report.reasonLabel') }}</label>
+            <Select
+              id="market-report-reason"
+              v-model="reportReason"
+              :options="reportReasons"
+              option-label="label"
+              option-value="value"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label for="market-report-description">{{ $t('market.report.description') }}</label>
+            <Textarea
+              id="market-report-description"
+              v-model="reportDescription"
+              :maxlength="1000"
+              rows="4"
+              auto-resize
+            />
+          </div>
+          <p class="text-xs text-surface-500">{{ $t('market.report.notice') }}</p>
+          <div class="flex justify-end gap-2">
+            <Button :label="$t('common.cancel')" severity="secondary" text @click="reportDialogVisible = false" />
+            <Button :label="$t('market.report.submit')" :loading="reporting" @click="submitReport" />
+          </div>
+        </div>
+      </Dialog>
+
+      <RecruitmentPaymentConfirmationButton
+        v-if="isPaymentSupported
+          && myParticipation?.participantType === 'USER'
+          && myParticipation.status === 'CONFIRMED'"
+        :listing-id="listing.id"
+        :participant-id="myParticipation.id"
+        :auto-open="autoOpenPayment"
+        class="mt-4"
+        @confirmed="autoOpenPayment = false"
+      />
 
       <!-- 謝礼あり札の受取口座（Stripe Connect）登録導線（受取側・F22.1） -->
       <MarketConnectOnboarding

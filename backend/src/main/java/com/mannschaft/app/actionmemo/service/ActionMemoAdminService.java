@@ -61,6 +61,13 @@ public class ActionMemoAdminService {
      * <p>認可: callerUserId が memo.postedTeamId の ADMIN または DEPUTY_ADMIN であること。
      * completesTodo = false のメモは差し戻し対象外（400）。</p>
      *
+     * <p><b>判定順序</b>: メモ取得の直後に<b>認可判定を行い</b>、業務状態
+     * （{@code completesTodo} / {@code relatedTodoId}）の検証はその後に行う。
+     * これは「スコープ外の利用者にはメモの状態を一切開示せず、一律 403 を返す」ことを
+     * 保証するための順序である（業務状態に依存してレスポンスが分岐しないようにする）。
+     * 認可のスコープはリクエストではなく <b>メモ entity の {@code postedTeamId}</b>
+     * から導出する（BOLA 対策）。</p>
+     *
      * @param memoId        対象メモ ID
      * @param callerUserId  呼び出し者 ID（管理者）
      */
@@ -71,15 +78,15 @@ public class ActionMemoAdminService {
         ActionMemoEntity memo = memoRepository.findById(memoId)
                 .orElseThrow(() -> new BusinessException(ActionMemoErrorCode.ACTION_MEMO_NOT_FOUND));
 
-        // completesTodo フラグ確認
-        if (!Boolean.TRUE.equals(memo.getCompletesTodo())) {
-            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_COMPLETED_BY_MEMO);
-        }
-
-        // チーム投稿済みかつ管理者権限チェック
+        // 認可: entity 由来の postedTeamId チームの管理者のみ許可（業務状態の検証より前に判定する）
         if (memo.getPostedTeamId() == null
                 || userRoleRepository.countTeamAdminByUserIdAndTeamId(callerUserId, memo.getPostedTeamId()) == 0) {
             throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TODO_REVERT_NOT_ALLOWED);
+        }
+
+        // completesTodo フラグ確認
+        if (!Boolean.TRUE.equals(memo.getCompletesTodo())) {
+            throw new BusinessException(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_COMPLETED_BY_MEMO);
         }
 
         Long todoId = memo.getRelatedTodoId();

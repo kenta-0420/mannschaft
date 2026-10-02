@@ -3,6 +3,7 @@ package com.mannschaft.app.school.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.school.dto.ClassHomeroomCreateRequest;
 import com.mannschaft.app.school.dto.ClassHomeroomResponse;
 import com.mannschaft.app.school.dto.ClassHomeroomUpdateRequest;
@@ -172,30 +173,111 @@ class ClassHomeroomServiceTest {
         }
     }
 
+    /**
+     * listHomerooms の認可は「管理者・VIEW_ATTENDANCE 保持者は全件／担任本人は自分の担任分のみ／
+     * それ以外は COMMON_002」である。肯定側だけでは判定が常に true でも緑になるため、
+     * 必ず否定側と対で検証する。
+     */
     @Nested
     @DisplayName("listHomerooms")
     class ListHomerooms {
 
-        @Test
-        @DisplayName("正常系: 指定年度の担任設定一覧を返す")
-        void success() {
-            ClassHomeroomEntity e1 = ClassHomeroomEntity.builder()
+        private static final Long OTHER_TEACHER_USER_ID = 400L;
+        private static final Long OUTSIDER_USER_ID = 500L;
+
+        private ClassHomeroomEntity homeroomOf(Long teacherUserId, Long id) {
+            ClassHomeroomEntity e = ClassHomeroomEntity.builder()
                     .teamId(TEAM_ID)
-                    .homeroomTeacherUserId(TEACHER_USER_ID)
+                    .homeroomTeacherUserId(teacherUserId)
                     .academicYear(ACADEMIC_YEAR)
                     .effectiveFrom(LocalDate.of(2026, 4, 1))
                     .createdBy(ADMIN_USER_ID)
                     .build();
-            ReflectionTestUtils.setField(e1, "id", 1L);
+            ReflectionTestUtils.setField(e, "id", id);
+            return e;
+        }
 
-            // checkPermission は void のため例外を投げないのがデフォルト動作
+        @Test
+        @DisplayName("肯定系: 管理者は担任本人でなくても全件を閲覧できる")
+        void adminSeesAll() {
+            given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(classHomeroomRepository.findByTeamIdAndAcademicYearOrderByEffectiveFromDesc(TEAM_ID, ACADEMIC_YEAR))
-                    .willReturn(List.of(e1));
+                    .willReturn(List.of(homeroomOf(TEACHER_USER_ID, 1L), homeroomOf(OTHER_TEACHER_USER_ID, 2L)));
 
-            List<ClassHomeroomResponse> result = classHomeroomService.listHomerooms(TEAM_ID, ACADEMIC_YEAR, ADMIN_USER_ID);
+            List<ClassHomeroomResponse> result =
+                    classHomeroomService.listHomerooms(TEAM_ID, ACADEMIC_YEAR, ADMIN_USER_ID);
+
+            assertThat(result).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("肯定系: VIEW_ATTENDANCE を委任された者は管理者でなくても全件を閲覧できる")
+        void permissionHolderSeesAll() {
+            given(accessControlService.isAdminOrAbove(OUTSIDER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.hasPermission(OUTSIDER_USER_ID, TEAM_ID, "TEAM", "VIEW_ATTENDANCE"))
+                    .willReturn(true);
+            given(classHomeroomRepository.findByTeamIdAndAcademicYearOrderByEffectiveFromDesc(TEAM_ID, ACADEMIC_YEAR))
+                    .willReturn(List.of(homeroomOf(TEACHER_USER_ID, 1L), homeroomOf(OTHER_TEACHER_USER_ID, 2L)));
+
+            List<ClassHomeroomResponse> result =
+                    classHomeroomService.listHomerooms(TEAM_ID, ACADEMIC_YEAR, OUTSIDER_USER_ID);
+
+            assertThat(result).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("肯定系かつ絞り込み: 担任本人は自分が担任の学級だけが返り、他人の担任設定は返らない")
+        void teacherSeesOnlyOwnHomerooms() {
+            given(accessControlService.isAdminOrAbove(TEACHER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.hasPermission(TEACHER_USER_ID, TEAM_ID, "TEAM", "VIEW_ATTENDANCE"))
+                    .willReturn(false);
+            given(classHomeroomRepository.existsByTeamIdAndHomeroomTeacherUserId(TEAM_ID, TEACHER_USER_ID))
+                    .willReturn(true);
+            given(classHomeroomRepository.findByTeamIdAndAcademicYearOrderByEffectiveFromDesc(TEAM_ID, ACADEMIC_YEAR))
+                    .willReturn(List.of(homeroomOf(TEACHER_USER_ID, 1L), homeroomOf(OTHER_TEACHER_USER_ID, 2L)));
+
+            List<ClassHomeroomResponse> result =
+                    classHomeroomService.listHomerooms(TEAM_ID, ACADEMIC_YEAR, TEACHER_USER_ID);
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getHomeroomTeacherUserId()).isEqualTo(TEACHER_USER_ID);
+        }
+
+        @Test
+        @DisplayName("否定系: 管理者でも担任本人でもない者は COMMON_002 で拒否される（空一覧を返さない）")
+        void outsiderIsRejected() {
+            given(accessControlService.isAdminOrAbove(OUTSIDER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.hasPermission(OUTSIDER_USER_ID, TEAM_ID, "TEAM", "VIEW_ATTENDANCE"))
+                    .willReturn(false);
+            given(classHomeroomRepository.existsByTeamIdAndHomeroomTeacherUserId(TEAM_ID, OUTSIDER_USER_ID))
+                    .willReturn(false);
+
+            assertThatThrownBy(() ->
+                    classHomeroomService.listHomerooms(TEAM_ID, ACADEMIC_YEAR, OUTSIDER_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            // 認可は絞り込みの前段で成立していること（拒否時にデータを読みに行かない）。
+            verify(classHomeroomRepository, never())
+                    .findByTeamIdAndAcademicYearOrderByEffectiveFromDesc(any(), any());
+        }
+
+        @Test
+        @DisplayName("否定系: 別チームの管理者は当該チームでは管理者でなく担任でもないため拒否される")
+        void adminOfAnotherTeamIsRejected() {
+            // 別チームの管理者は「このチームでは」isAdminOrAbove=false になる。
+            given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.hasPermission(ADMIN_USER_ID, TEAM_ID, "TEAM", "VIEW_ATTENDANCE"))
+                    .willReturn(false);
+            given(classHomeroomRepository.existsByTeamIdAndHomeroomTeacherUserId(TEAM_ID, ADMIN_USER_ID))
+                    .willReturn(false);
+
+            assertThatThrownBy(() ->
+                    classHomeroomService.listHomerooms(TEAM_ID, ACADEMIC_YEAR, ADMIN_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
         }
     }
 

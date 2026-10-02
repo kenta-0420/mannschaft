@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 投票セッションコントローラー。セッションのCRUD・ライフサイクル・投票APIを提供する。
@@ -104,7 +105,7 @@ public class ProxyVoteSessionController {
     @DeleteMapping("/{id}")
     @Operation(summary = "セッション削除")
     public ResponseEntity<Void> deleteSession(@PathVariable Long id) {
-        sessionService.deleteSession(id);
+        sessionService.deleteSession(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -163,12 +164,14 @@ public class ProxyVoteSessionController {
     @GetMapping("/{id}/results")
     @Operation(summary = "投票結果")
     public ResponseEntity<ApiResponse<VoteResultsResponse>> getResults(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.getResults(id)));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.getResults(id, SecurityUtils.getCurrentUserId())));
     }
 
     /**
      * 自分の投票・委任履歴を取得する。
      */
+    @SelfScopedEndpoint("ProxyVoteSessionService#getMyHistory は"
+        + "findByUserInvolvement(SecurityUtils.getCurrentUserId()) のみを検索条件にする")
     @GetMapping("/my")
     @Operation(summary = "自分の投票履歴")
     public ResponseEntity<PagedResponse<SessionListResponse>> getMyHistory(
@@ -188,7 +191,7 @@ public class ProxyVoteSessionController {
     @PostMapping("/{id}/remind")
     @Operation(summary = "リマインド送信")
     public ResponseEntity<ApiResponse<RemindResponse>> remind(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.remind(id)));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.remind(id, SecurityUtils.getCurrentUserId())));
     }
 
     /**

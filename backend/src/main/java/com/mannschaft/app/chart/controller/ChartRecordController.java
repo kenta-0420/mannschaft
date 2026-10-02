@@ -13,6 +13,7 @@ import com.mannschaft.app.chart.service.ChartRecordService;
 import com.mannschaft.app.chart.service.ChartSettingsService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
@@ -73,7 +74,7 @@ public class ChartRecordController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<ChartRecordSummaryResponse> result = chartRecordService.listCharts(
-                teamId, customerUserId, staffUserId, visitDateFrom, visitDateTo,
+                teamId, SecurityUtils.getCurrentUserId(), customerUserId, staffUserId, visitDateFrom, visitDateTo,
                 isSharedToCustomer, keyword, PageRequest.of(page, Math.min(size, 100)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -90,7 +91,7 @@ public class ChartRecordController {
     public ResponseEntity<ApiResponse<ChartRecordResponse>> createChart(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateChartRecordRequest request) {
-        ChartRecordResponse response = chartRecordService.createChart(teamId, request);
+        ChartRecordResponse response = chartRecordService.createChart(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -104,7 +105,7 @@ public class ChartRecordController {
     public ResponseEntity<ApiResponse<ChartRecordResponse>> getChart(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        ChartRecordResponse response = chartRecordService.getChart(teamId, id);
+        ChartRecordResponse response = chartRecordService.getChart(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -119,7 +120,7 @@ public class ChartRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateChartRecordRequest request) {
-        ChartRecordResponse response = chartRecordService.updateChart(teamId, id, request);
+        ChartRecordResponse response = chartRecordService.updateChart(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -133,7 +134,7 @@ public class ChartRecordController {
     public ResponseEntity<Void> deleteChart(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        chartRecordService.deleteChart(teamId, id);
+        chartRecordService.deleteChart(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -148,7 +149,7 @@ public class ChartRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody CopyChartRequest request) {
-        ChartRecordResponse response = chartRecordService.copyChart(teamId, id, request);
+        ChartRecordResponse response = chartRecordService.copyChart(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -162,7 +163,7 @@ public class ChartRecordController {
     public ResponseEntity<byte[]> exportPdf(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        ChartRecordResponse chart = chartRecordService.getChartForPdf(teamId, id);
+        ChartRecordResponse chart = chartRecordService.getChartForPdf(teamId, id, SecurityUtils.getCurrentUserId());
         List<Map<String, String>> photoBase64List = chartRecordService.getPhotoBase64List(id);
 
         Map<String, Object> variables = new HashMap<>();
@@ -191,7 +192,8 @@ public class ChartRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody ShareChartRequest request) {
-        ShareResponse response = chartRecordService.updateShareStatus(teamId, id, request.getIsSharedToCustomer());
+        ShareResponse response = chartRecordService.updateShareStatus(
+                teamId, id, SecurityUtils.getCurrentUserId(), request.getIsSharedToCustomer());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -208,7 +210,7 @@ public class ChartRecordController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<ChartRecordSummaryResponse> result = chartRecordService.listCustomerCharts(
-                teamId, userId, PageRequest.of(page, Math.min(size, 100)));
+                teamId, userId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, Math.min(size, 100)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -225,7 +227,8 @@ public class ChartRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody PinChartRequest request) {
-        PinResponse response = chartRecordService.updatePinStatus(teamId, id, request.getIsPinned());
+        PinResponse response = chartRecordService.updatePinStatus(
+                teamId, id, SecurityUtils.getCurrentUserId(), request.getIsPinned());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -243,7 +246,7 @@ public class ChartRecordController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate visitDateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate visitDateTo) {
         com.mannschaft.app.chart.dto.ProgressResponse response = chartSettingsService.getProgressData(
-                teamId, userId, fieldIds, visitDateFrom, visitDateTo);
+                teamId, userId, SecurityUtils.getCurrentUserId(), fieldIds, visitDateFrom, visitDateTo);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

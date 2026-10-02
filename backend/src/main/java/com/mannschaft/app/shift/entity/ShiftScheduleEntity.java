@@ -10,8 +10,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -27,9 +27,36 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ShiftScheduleEntity extends BaseEntity {
+
+    /**
+     * 非管理者に「存在を見せてよい」シフト表を選ぶ JPQL 述語（別名 {@code s} 前提）。
+     *
+     * <p>CMP-260826-2127。{@code ShiftScheduleVisibilityPolicy.Visibility#HIDDEN} の否定であり、
+     * {@code MASKED}（COLLECTING / ADJUSTING）と {@code FULL}（PUBLISHED / 公開済み ARCHIVED）を含む。
+     * {@code @Query} のアノテーション値に埋め込むためコンパイル時定数として entity 側に置く
+     *（可視性判定の正本は {@code ShiftScheduleVisibilityPolicy}。条件式を各所へ書き写さないための唯一の複製）。</p>
+     */
+    public static final String NOT_HIDDEN_JPQL =
+            "(s.status IN ('COLLECTING', 'ADJUSTING', 'PUBLISHED') "
+                    + "OR (s.status = 'ARCHIVED' AND s.publishedAt IS NOT NULL))";
+
+    /**
+     * 非管理者に「割当まで見せてよい」シフト表を選ぶネイティブ SQL 述語（別名 {@code sc} 前提）。
+     *
+     * <p>CMP-260908-2117。{@code ShiftScheduleVisibilityPolicy.Visibility#FULL} と等価であり、
+     * {@link #NOT_HIDDEN_JPQL} より<b>狭い</b>（COLLECTING / ADJUSTING は割当を伏せる MASKED なので含まない）。
+     * 「自分のシフト」「今後の予定」は割当そのものを本人へ返す経路であるため、
+     * MASKED を通してはならない。</p>
+     *
+     * <p>JPQL でなくネイティブ SQL なのは、割当の絞り込みが {@code JSON_CONTAINS} を要し
+     * JPQL では表現できないためである（列名は物理名）。{@code deleted_at IS NULL} も
+     * ここに含める — ネイティブクエリには {@code @SQLRestriction} が効かない。</p>
+     */
+    public static final String FULLY_VISIBLE_SQL =
+            "(sc.deleted_at IS NULL AND (sc.status = 'PUBLISHED' "
+                    + "OR (sc.status = 'ARCHIVED' AND sc.published_at IS NOT NULL)))";
 
     @Column(nullable = false)
     private Long teamId;
@@ -102,9 +129,9 @@ public class ShiftScheduleEntity extends BaseEntity {
      * dirty checking により UPDATE が発行される。
      *
      * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
-     * {@link ShiftScheduleEntity} は {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
+     * {@link ShiftScheduleEntity} は {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
      * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
-     * {@code @Builder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * {@code @SuperBuilder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
      * 作り直すと継承フィールド {@code id} が引き継がれず {@code id = null} の新インスタンスになる。
      * これを {@code save} すると UPDATE ではなく INSERT が走り、行重複が発生する
      * （本メソッド導入の動機）。よって更新は必ず managed entity の直接ミューテートで行う。
@@ -177,7 +204,12 @@ public class ShiftScheduleEntity extends BaseEntity {
      * 論理削除を行う。
      */
     public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
+        softDelete(LocalDateTime.now());
+    }
+
+    /** 子への連鎖と同じ削除日時を親にも設定する。 */
+    public void softDelete(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     /**

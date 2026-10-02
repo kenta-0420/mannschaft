@@ -1,8 +1,11 @@
 package com.mannschaft.app.bulletin.service;
 
 import com.mannschaft.app.bulletin.ScopeType;
+import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,9 +18,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -31,6 +36,14 @@ class SurveyBulletinThreadServiceTest {
 
     @Mock
     private BulletinThreadRepository bulletinThreadRepository;
+
+    /** フラット enrichment 委譲先。findThreadResponseBySurveyId のスタブに使用。 */
+    @Mock
+    private BulletinThreadService bulletinThreadService;
+
+    /** per-scope 所属認可ガード。findThreadResponseBySurveyId の認可検証に使用（軍議④）。 */
+    @Mock
+    private BulletinAccessGuard accessGuard;
 
     @InjectMocks
     private SurveyBulletinThreadService service;
@@ -289,6 +302,87 @@ class SurveyBulletinThreadServiceTest {
 
             // then
             assertThat(result).isEmpty();
+        }
+    }
+
+    // =====================================================================
+    // findThreadResponseBySurveyId — per-scope 認可（軍議④・F00漏洩根治）
+    // =====================================================================
+
+    @Nested
+    @DisplayName("findThreadResponseBySurveyId — per-scope 認可")
+    class FindThreadResponseBySurveyId {
+
+        /**
+         * スコープ・IDを持つスレッドのモックを生成する。
+         * enrichSingle への委譲と accessGuard 引数検証で scopeType/scopeId を使う。
+         */
+        private BulletinThreadEntity threadWithScope(ScopeType scopeType, long scopeId) {
+            BulletinThreadEntity thread = org.mockito.Mockito.mock(BulletinThreadEntity.class);
+            given(thread.getScopeType()).willReturn(scopeType);
+            given(thread.getScopeId()).willReturn(scopeId);
+            return thread;
+        }
+
+        @Test
+        @DisplayName("AC-1: 非所属ユーザーは COMMON_002(403) を受け取る（スレッドは存在する）")
+        void shouldThrowForbidden_whenNotMember() {
+            // given: スレッドは存在するが、当該ユーザーはそのスコープの非所属
+            long currentUserId = 999L;
+            BulletinThreadEntity thread = threadWithScope(ScopeType.TEAM, SCOPE_ID);
+            given(bulletinThreadRepository.findBySourceTypeAndSourceIdAndDeletedAtIsNull(
+                    SURVEY_SOURCE_TYPE, SURVEY_ID))
+                    .willReturn(Optional.of(thread));
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessGuard).checkMembership(currentUserId, ScopeType.TEAM, SCOPE_ID);
+
+            // when / then: 認可違反が伝播する。enrichSingle は呼ばれない
+            assertThatThrownBy(() -> service.findThreadResponseBySurveyId(SURVEY_ID, currentUserId))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            verify(bulletinThreadService, never()).enrichSingle(any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-2: 所属メンバーは enrich 済みレスポンスを受け取り、スレッド自身のscopeでガードされる")
+        void shouldReturnEnrichedResponse_whenMember() {
+            // given: メンバー（checkMembership は void で何もしない）
+            long currentUserId = 7L;
+            BulletinThreadEntity thread = threadWithScope(ScopeType.TEAM, SCOPE_ID);
+            given(bulletinThreadRepository.findBySourceTypeAndSourceIdAndDeletedAtIsNull(
+                    SURVEY_SOURCE_TYPE, SURVEY_ID))
+                    .willReturn(Optional.of(thread));
+            ThreadResponse enriched = org.mockito.Mockito.mock(ThreadResponse.class);
+            given(bulletinThreadService.enrichSingle(thread, currentUserId)).willReturn(enriched);
+
+            // when
+            Optional<ThreadResponse> result = service.findThreadResponseBySurveyId(SURVEY_ID, currentUserId);
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get()).isSameAs(enriched);
+            // スレッド自身の scopeType/scopeId でガードされること
+            verify(accessGuard).checkMembership(currentUserId, ScopeType.TEAM, SCOPE_ID);
+        }
+
+        @Test
+        @DisplayName("AC-3: スレッド未存在なら empty を返し、認可ガードは呼ばれない（既存404の非退行）")
+        void shouldReturnEmptyAndNotGuard_whenThreadNotFound() {
+            // given
+            long currentUserId = 7L;
+            given(bulletinThreadRepository.findBySourceTypeAndSourceIdAndDeletedAtIsNull(
+                    SURVEY_SOURCE_TYPE, SURVEY_ID))
+                    .willReturn(Optional.empty());
+
+            // when
+            Optional<ThreadResponse> result = service.findThreadResponseBySurveyId(SURVEY_ID, currentUserId);
+
+            // then: 存在しないものは gate 前 → empty（コントローラで 404）。ガードは踏まない
+            assertThat(result).isEmpty();
+            verify(accessGuard, never()).checkMembership(any(), any(), any());
+            verify(bulletinThreadService, never()).enrichSingle(any(), any());
         }
     }
 }

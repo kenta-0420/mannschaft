@@ -17,15 +17,15 @@ defineEmits<{
 </script>
 
 <template>
-  <SectionCard title="電子印鑑">
+  <SectionCard :title="$t('settings.seal.section_title')">
     <Tabs
       :value="sealActiveTab"
       @update:value="$emit('update:sealActiveTab', $event as string)"
     >
       <TabList>
-        <Tab value="0">印鑑プレビュー</Tab>
-        <Tab value="1">デフォルト設定</Tab>
-        <Tab value="2">押印履歴</Tab>
+        <Tab value="0">{{ $t('settings.seal.tab_preview') }}</Tab>
+        <Tab value="1">{{ $t('settings.seal.tab_defaults') }}</Tab>
+        <Tab value="2">{{ $t('settings.seal.tab_history') }}</Tab>
       </TabList>
       <TabPanels>
         <TabPanel value="0">
@@ -33,7 +33,8 @@ defineEmits<{
             <SealPreview :seals="seals" />
             <div class="flex justify-center">
               <Button
-                label="印鑑を再生成"
+                translate="no"
+                :label="$t('settings.seal.regenerate_button')"
                 icon="pi pi-refresh"
                 severity="secondary"
                 :loading="regeneratingSeals"
@@ -41,7 +42,7 @@ defineEmits<{
               />
             </div>
             <p class="text-center text-xs text-surface-500">
-              印鑑は登録姓名から自動生成されます（1時間に3回まで）
+              {{ $t('settings.seal.regenerate_hint') }}
             </p>
           </div>
         </TabPanel>

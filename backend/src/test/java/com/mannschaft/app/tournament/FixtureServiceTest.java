@@ -1,15 +1,19 @@
 package com.mannschaft.app.tournament;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.tournament.dto.BatchScoreRequest;
 import com.mannschaft.app.tournament.dto.FixtureSetRequest;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
+import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.repository.*;
 import com.mannschaft.app.tournament.service.FixtureService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,6 +31,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -35,12 +40,17 @@ import static org.mockito.Mockito.verify;
 
 /**
  * {@link FixtureService} の単体テスト。
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2C: matchId→tId・divId→tId・mdId→divId の束縛検証が
+ * 各変更系メソッドの先頭に追加されたため、{@link #stubAuthzDefaults()} で既定「束縛 OK」を
+ * lenient スタブしておく（本テストの関心事は束縛検証自体ではなくビジネスロジックであるため）。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("FixtureService 単体テスト")
 class FixtureServiceTest {
 
     @Mock private TournamentRepository tournamentRepository;
+    @Mock private TournamentDivisionRepository divisionRepository;
     @Mock private TournamentMatchdayRepository matchdayRepository;
     @Mock private TournamentFixtureRepository matchRepository;
     @Mock private TournamentFixtureSetRepository matchSetRepository;
@@ -51,12 +61,28 @@ class FixtureServiceTest {
     @Mock private TournamentMapper mapper;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private com.mannschaft.app.match.service.MatchService matchService;
+    @Mock private AccessControlService accessControlService;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private FixtureService service;
 
+    private static final Long ORG_ID = 1L;
     private static final Long TOURNAMENT_ID = 1L;
     private static final Long MATCH_ID = 10L;
+
+    /**
+     * 束縛検証（matchId→tId・divId→tId・mdId→divId）の既定「OK」スタブ。
+     * 個別テストで束縛不一致（BOLA/IDOR）を検証したい場合は該当スタブを上書きすること。
+     */
+    @BeforeEach
+    void stubAuthzDefaults() {
+        lenient().when(matchRepository.countByIdAndTournamentId(anyLong(), anyLong())).thenReturn(1L);
+        lenient().when(divisionRepository.findByIdAndTournamentId(anyLong(), anyLong()))
+                .thenReturn(Optional.of(TournamentDivisionEntity.builder().tournamentId(TOURNAMENT_ID).build()));
+        lenient().when(matchdayRepository.findByIdAndDivisionId(anyLong(), anyLong()))
+                .thenReturn(Optional.of(TournamentMatchdayEntity.builder().divisionId(5L).build()));
+    }
 
     /**
      * match 正本化（{@code recordMatchCanonical}）が participant→team を解決できるよう、
@@ -608,15 +634,88 @@ class FixtureServiceTest {
         @DisplayName("異常系: 参加チーム2チーム未満はエラー")
         void 参加チーム不足() {
             TournamentEntity tournament = TournamentEntity.builder()
-                    .organizationId(1L).format(TournamentFormat.LEAGUE).build();
+                    .organizationId(ORG_ID).format(TournamentFormat.LEAGUE).build();
             given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament));
             given(participantRepository.findByDivisionIdOrderBySeedAsc(5L))
                     .willReturn(List.of(TournamentParticipantEntity.builder().teamId(1L).build()));
 
-            assertThatThrownBy(() -> service.generateMatchdays(TOURNAMENT_ID, 5L))
+            assertThatThrownBy(() -> service.generateMatchdays(ORG_ID, TOURNAMENT_ID, 5L, 999L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.INSUFFICIENT_PARTICIPANTS);
+        }
+    }
+
+    /**
+     * 認可根治戦役 Wave2 トランシェ2C: GET 系可視性ガードの番人テスト
+     * （旧 FixtureControllerVisibilityTest から移設・Service 層集約に伴う追随）。
+     */
+    @Nested
+    @DisplayName("可視性ガード（閲覧系・F00 委譲）")
+    class VisibilityGuard {
+
+        private static final Long DIV_ID = 11L;
+        private static final Long VIEWER = 5L;
+
+        @Test
+        @DisplayName("listMatchdays: 不可視（canView=false）なら 404 でブロックしサービス層を進めない")
+        void listMatchdays_denied() {
+            given(contentVisibilityChecker.canView(
+                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, VIEWER))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> service.listMatchdays(TOURNAMENT_ID, DIV_ID, VIEWER))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("getMatch: 不可視（canView=false）なら 404 でブロックする")
+        void getMatch_denied() {
+            given(contentVisibilityChecker.canView(
+                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, VIEWER))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> service.getMatch(TOURNAMENT_ID, MATCH_ID, VIEWER))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("listRosters: 不可視（canView=false）なら 404 でブロックする")
+        void listRosters_denied() {
+            given(contentVisibilityChecker.canView(
+                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, VIEWER))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> service.listRosters(TOURNAMENT_ID, MATCH_ID, VIEWER))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("未認証（viewer=null）も canView に委譲され、不可視なら 404")
+        void anonymous_denied() {
+            given(contentVisibilityChecker.canView(
+                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, null))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> service.getMatch(TOURNAMENT_ID, MATCH_ID, null))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("可視（canView=true）なら listMatchdays はディビジョン束縛検証を経てサービス層へ進む")
+        void listMatchdays_allowed() {
+            given(contentVisibilityChecker.canView(
+                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, VIEWER))
+                    .willReturn(true);
+            given(matchdayRepository.findByDivisionIdOrderByMatchdayNumberAsc(DIV_ID)).willReturn(List.of());
+
+            assertThat(service.listMatchdays(TOURNAMENT_ID, DIV_ID, VIEWER)).isEmpty();
         }
     }
 }

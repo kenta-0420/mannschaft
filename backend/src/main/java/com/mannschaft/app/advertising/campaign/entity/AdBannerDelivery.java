@@ -7,7 +7,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,7 +26,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder
 @EqualsAndHashCode(callSuper = true)
 public class AdBannerDelivery extends UuidV7Entity {
 
@@ -37,11 +37,12 @@ public class AdBannerDelivery extends UuidV7Entity {
     @Column(name = "user_id")
     private Long userId;
 
-    /** F09.7 ad_impressions.id (FK なし) */
-    @Column(name = "ad_impression_id", nullable = false)
+    /** F09.7 ad_impressions.id (FK なし)。実表示（serve）時に設定・予約時 NULL（V144.20260708013355 で NULL 許容化）。 */
+    @Column(name = "ad_impression_id")
     private Long adImpressionId;
 
-    @Column(name = "served_at", nullable = false)
+    /** バナー実表示時刻。予約時 NULL（NULL = 未表示予約。V144.20260708013355 で NULL 許容化）。 */
+    @Column(name = "served_at")
     private LocalDateTime servedAt;
 
     @Column(name = "clicked_at")

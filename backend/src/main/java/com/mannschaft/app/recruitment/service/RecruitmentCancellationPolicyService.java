@@ -212,6 +212,22 @@ public class RecruitmentCancellationPolicyService {
             feeAmount = matchingTier.getFeeValue();
         }
 
+        // F03.11.1 §6.1（R-1 御裁可）: キャンセル料を参加費で丸める。
+        //
+        // Stripe は与信額を超えるキャプチャを標準では受け付けないため、参加費を超えるキャンセル料は
+        // そもそも徴収が成立しない（FIXED は DB CHECK に上限が無く、参加費超の設定が作れてしまう）。
+        //
+        // 丸めは分岐ごとに撒かず、feeAmount を確定した「算出の出口」に一度だけ置く。
+        // (1) 試算 API（estimateFee）も本メソッドを通るため、利用者がキャンセル前確認で見た額と
+        //     実際に徴収される額が構造的に必ず一致する（AC-25。「見積りより多く取られた」を起こさせない）。
+        // (2) 新しい CancellationFeeType が増えても丸めが漏れない。
+        //
+        // 参加費が未設定（price == null）の場合は丸めの基準が無い。この場合は与信自体が立たず
+        // 徴収対象になりえないため、算出結果をそのまま保つ。
+        if (listing.getPrice() != null) {
+            feeAmount = Math.min(feeAmount, listing.getPrice());
+        }
+
         return new CalculatedFee(
                 policy.getId(),
                 matchingTier.getId(),

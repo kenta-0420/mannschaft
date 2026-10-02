@@ -1,6 +1,7 @@
 {
   "appearance": {
     "bgColorLabel": "背景颜色",
+    "darkBgColorLabel": "深色背景颜色",
     "color": {
       "cream": "奶油色",
       "white": "白色",
@@ -12,6 +13,16 @@
       "sand": "沙色",
       "sage": "鼠尾草",
       "slate": "石板"
+    },
+    "darkColor": {
+      "charcoal": "木炭色",
+      "black": "黑色",
+      "graphite": "石墨色",
+      "slate": "石板色",
+      "navy": "海军蓝",
+      "forest": "森林绿",
+      "coffee": "咖啡色",
+      "wine": "酒红色"
     }
   }
 }

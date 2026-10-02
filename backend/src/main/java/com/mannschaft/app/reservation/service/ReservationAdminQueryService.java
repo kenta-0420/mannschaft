@@ -21,8 +21,9 @@ import java.util.Map;
  * F10.1.1 / P1: 予約ドメインの管理者向け承認待ち集約 Query Service（read-only）。
  *
  * <p>「承認待ち」= {@code status = PENDING} の予約。件数は既存
- * {@link ReservationRepository#countByTeamIdAndStatus} を流用し、プレビューは
- * {@link ReservationRepository#findByTeamIdAndStatusOrderByBookedAtDesc} で LIMIT 取得する。
+ * {@link ReservationRepository#countByTeamIdAndStatusAndIsGroupPrimaryTrue} を流用し、プレビューは
+ * {@link ReservationRepository#findByTeamIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc} で LIMIT 取得する
+ * （F03.4.3: グループは代表行 1 件で数える）。
  * 全クエリの WHERE に {@code team_id} を含めるため、テナント越境（IDOR）は構造的に発生しない。</p>
  *
  * <p>承認ロジック・トランザクション・監査ログには一切触れない（読み取り専用）。
@@ -53,14 +54,16 @@ public class ReservationAdminQueryService {
      */
     @Transactional(readOnly = true)
     public PendingAggregate pendingForTeam(Long teamId, String teamSlug, int previewSize) {
-        long count = reservationRepository.countByTeamIdAndStatus(teamId, ReservationStatus.PENDING);
+        // F03.4.3 §5.6 #4/#10: グループは代表行 1 件で数え・並べる（単枠は常に TRUE で従来どおり）。
+        long count = reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(
+                teamId, ReservationStatus.PENDING);
 
         if (previewSize <= 0) {
             return new PendingAggregate(count, List.of());
         }
 
         List<ReservationEntity> preview = reservationRepository
-                .findByTeamIdAndStatusOrderByBookedAtDesc(
+                .findByTeamIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc(
                         teamId, ReservationStatus.PENDING, PageRequest.of(0, previewSize))
                 .getContent();
 
@@ -98,7 +101,9 @@ public class ReservationAdminQueryService {
      */
     @Transactional(readOnly = true)
     public TeamReservationSummary summaryForTeam(Long teamId) {
-        long pending = reservationRepository.countByTeamIdAndStatus(teamId, ReservationStatus.PENDING);
+        // F03.4.3 §5.6 #4: グループ=1 予約で数える（代表行絞り）。
+        long pending = reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(
+                teamId, ReservationStatus.PENDING);
 
         // 本日（JST）の半開区間 [本日0:00, 翌日0:00) を JST→UTC へ変換して算出する（ReservationAdminAlertQueryService と同方式）。
         LocalDate todayJst = LocalDate.now(JST);

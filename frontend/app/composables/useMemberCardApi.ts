@@ -29,12 +29,23 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function getCheckins(id: number, params?: { page?: number; size?: number }) {
+  /**
+   * チェックイン履歴を取得する。
+   *
+   * BE（`MemberCardController#getCheckinHistory`）は `ApiResponse<List<CheckinHistoryResponse>>` を返し、
+   * **ページングしない**（`meta` 自体が存在せず、受け取れるのは期間絞り込み `from` / `to` のみ）。
+   * かつては `page` / `size` を送って `meta.totalElements` を読んでいたが、
+   * BE はどちらも解釈せず `meta` も送らないため、総件数は常に undefined だった（CMP-260912-1823）。
+   *
+   * @param id    会員カードID
+   * @param range 取得期間（ISO 8601）。未指定なら全期間
+   */
+  async function getCheckins(id: number, range?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
-    if (params?.page != null) query.set('page', String(params.page))
-    if (params?.size != null) query.set('size', String(params.size))
+    if (range?.from) query.set('from', range.from)
+    if (range?.to) query.set('to', range.to)
     const qs = query.toString()
-    const res = await api<{ data: CheckinRecord[]; meta: { totalElements: number } }>(
+    const res = await api<{ data: CheckinRecord[] }>(
       `/api/v1/member-cards/${id}/checkins${qs ? `?${qs}` : ''}`,
     )
     return res

@@ -11,19 +11,19 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum NotificationErrorCode implements ErrorCode {
 
-    /** 通知が見つからない */
+    /** 通知が見つからない（404） */
     NOTIFICATION_NOT_FOUND("NOTIFICATION_001", "通知が見つかりません", Severity.WARN),
 
-    /** 通知設定が見つからない */
+    /** 通知設定が見つからない（throw元なし・未使用） */
     PREFERENCE_NOT_FOUND("NOTIFICATION_002", "通知設定が見つかりません", Severity.WARN),
 
-    /** 通知種別設定が見つからない */
+    /** 通知種別設定が見つからない（throw元なし・未使用） */
     TYPE_PREFERENCE_NOT_FOUND("NOTIFICATION_003", "通知種別設定が見つかりません", Severity.WARN),
 
-    /** プッシュ購読が見つからない */
+    /** プッシュ購読が見つからない（404） */
     SUBSCRIPTION_NOT_FOUND("NOTIFICATION_004", "プッシュ購読が見つかりません", Severity.WARN),
 
-    /** プッシュ購読が重複している */
+    /** プッシュ購読が重複している（状態競合のため409） */
     SUBSCRIPTION_ALREADY_EXISTS("NOTIFICATION_005", "このエンドポイントは既に登録されています", Severity.WARN),
 
     /** 通知は既に既読 */
@@ -33,7 +33,17 @@ public enum NotificationErrorCode implements ErrorCode {
     ALREADY_UNREAD("NOTIFICATION_007", "通知は既に未読です", Severity.INFO),
 
     /** スヌーズ日時が過去 */
-    INVALID_SNOOZE_TIME("NOTIFICATION_008", "スヌーズ日時は未来である必要があります", Severity.WARN);
+    INVALID_SNOOZE_TIME("NOTIFICATION_008", "スヌーズ日時は未来である必要があります", Severity.WARN),
+
+    /** 通知種別設定リクエストが不正（未知の種別・条件付き必須欠落） */
+    INVALID_TYPE_PREFERENCE("NOTIFICATION_009", "通知種別設定のリクエストが不正です", Severity.WARN),
+
+    /**
+     * 通知設定（notification_preferences）のスコープ指定が不正
+     * （scopeType 未指定・未知の列挙値・ID必須スコープでの scopeId 欠落・SYSTEM での scopeId 非null）。
+     * 認可根治戦役（CMP-260826-2127派生）でスコープ検証を導入した際に追加。
+     */
+    INVALID_PREFERENCE_SCOPE("NOTIFICATION_010", "通知設定のスコープ指定が不正です", Severity.WARN);
 
     private final String code;
     private final String message;

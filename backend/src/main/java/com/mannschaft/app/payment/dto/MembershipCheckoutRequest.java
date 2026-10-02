@@ -13,13 +13,18 @@ import lombok.AllArgsConstructor;
  * Service 層の {@link com.mannschaft.app.payment.service.PaymentAuthorizationService#authorizePayment}
  * が SELF 権原として処理する。</p>
  *
- * <p>{@code idempotencyKey} は省略可（省略時は Controller で UUID を生成して補完する）。
- * Stripe の idempotency_key へ橋渡しされる（設計書 §0 冪等性）。</p>
  */
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 public class MembershipCheckoutRequest {
+
+    /**
+     * 旧ボディ形式との一時的なソース互換用。冪等キーは HTTP ヘッダだけを正とする。
+     */
+    public MembershipCheckoutRequest(Long beneficiaryUserId, String ignoredIdempotencyKey) {
+        this.beneficiaryUserId = beneficiaryUserId;
+    }
 
     /**
      * 受益者ユーザーID（会費の支払い対象者）。必須。
@@ -28,9 +33,4 @@ public class MembershipCheckoutRequest {
     @NotNull
     private Long beneficiaryUserId;
 
-    /**
-     * 冪等性キー（省略時は Controller で UUID 生成）。
-     * Idempotency-Key ヘッダと統合し Stripe へ橋渡しする。
-     */
-    private String idempotencyKey;
 }

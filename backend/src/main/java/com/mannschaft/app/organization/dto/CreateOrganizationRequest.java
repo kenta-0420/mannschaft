@@ -3,11 +3,13 @@ package com.mannschaft.app.organization.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 /**
  * 組織作成リクエスト。
  */
 @Getter
+@Setter
 @RequiredArgsConstructor
 public class CreateOrganizationRequest {
 
@@ -36,4 +38,19 @@ public class CreateOrganizationRequest {
      * コンストラクタ引数の後方互換のため末尾に置く。</p>
      */
     private final String slug;
+
+    /**
+     * CMP-260901-1538 柱③-A: 同名確認フロー。true の場合、同名候補の存在を確認済みとして
+     * 作成を続行する（{@link #duplicateNameFingerprint} との組で TX 内再検証される）。
+     * 省略時 false（@RequiredArgsConstructor 対象外の非 final フィールドのため、
+     * 既存コンストラクタ呼び出しへの後方互換を維持する）。
+     */
+    private boolean confirmDuplicate;
+
+    /**
+     * CMP-260901-1538 柱③-A: {@code confirmDuplicate=true} 時に返送する HMAC fingerprint。
+     * 確認時に提示した候補集合に束縛されており、作成 TX 内で再計算した候補集合と不一致の場合
+     * （確認後に新たな同名が出現した場合）は再度 409 となる。
+     */
+    private String duplicateNameFingerprint;
 }

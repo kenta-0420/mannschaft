@@ -54,7 +54,8 @@ public class LineBotConfigController {
     public ApiResponse<LineBotConfigResponse> updateForTeam(
             @PathVariable Long teamId,
             @Valid @RequestBody UpdateLineBotConfigRequest request) {
-        return ApiResponse.of(lineBotConfigService.update(ScopeType.TEAM, teamId, request));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(lineBotConfigService.update(ScopeType.TEAM, teamId, userId, request));
     }
 
     /**
@@ -62,7 +63,8 @@ public class LineBotConfigController {
      */
     @GetMapping("/api/v1/teams/{teamId}/line/config")
     public ApiResponse<LineBotConfigResponse> getForTeam(@PathVariable Long teamId) {
-        return ApiResponse.of(lineBotConfigService.getConfig(ScopeType.TEAM, teamId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(lineBotConfigService.getConfig(ScopeType.TEAM, teamId, userId));
     }
 
     /**
@@ -71,7 +73,8 @@ public class LineBotConfigController {
     @DeleteMapping("/api/v1/teams/{teamId}/line/config")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteForTeam(@PathVariable Long teamId) {
-        lineBotConfigService.delete(ScopeType.TEAM, teamId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        lineBotConfigService.delete(ScopeType.TEAM, teamId, userId);
     }
 
     /**
@@ -82,7 +85,8 @@ public class LineBotConfigController {
     public void sendTestForTeam(
             @PathVariable Long teamId,
             @Valid @RequestBody TestMessageRequest request) {
-        lineBotConfigService.sendTestMessage(ScopeType.TEAM, teamId, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        lineBotConfigService.sendTestMessage(ScopeType.TEAM, teamId, userId, request);
     }
 
     /**
@@ -91,8 +95,9 @@ public class LineBotConfigController {
     @GetMapping("/api/v1/teams/{teamId}/line/logs")
     public PagedResponse<LineMessageLogResponse> logsForTeam(
             @PathVariable Long teamId, Pageable pageable) {
+        Long userId = SecurityUtils.getCurrentUserId();
         Page<LineMessageLogResponse> page =
-                lineBotConfigService.getMessageLogs(ScopeType.TEAM, teamId, pageable);
+                lineBotConfigService.getMessageLogs(ScopeType.TEAM, teamId, userId, pageable);
         return PagedResponse.of(
                 page.getContent(),
                 new PagedResponse.PageMeta(
@@ -124,8 +129,9 @@ public class LineBotConfigController {
     public ApiResponse<LineBotConfigResponse> updateForOrg(
             @PathVariable Long orgId,
             @Valid @RequestBody UpdateLineBotConfigRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(
-                lineBotConfigService.update(ScopeType.ORGANIZATION, orgId, request));
+                lineBotConfigService.update(ScopeType.ORGANIZATION, orgId, userId, request));
     }
 
     /**
@@ -133,7 +139,8 @@ public class LineBotConfigController {
      */
     @GetMapping("/api/v1/organizations/{orgId}/line/config")
     public ApiResponse<LineBotConfigResponse> getForOrg(@PathVariable Long orgId) {
-        return ApiResponse.of(lineBotConfigService.getConfig(ScopeType.ORGANIZATION, orgId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(lineBotConfigService.getConfig(ScopeType.ORGANIZATION, orgId, userId));
     }
 
     /**
@@ -142,7 +149,8 @@ public class LineBotConfigController {
     @DeleteMapping("/api/v1/organizations/{orgId}/line/config")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteForOrg(@PathVariable Long orgId) {
-        lineBotConfigService.delete(ScopeType.ORGANIZATION, orgId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        lineBotConfigService.delete(ScopeType.ORGANIZATION, orgId, userId);
     }
 
     /**
@@ -153,7 +161,8 @@ public class LineBotConfigController {
     public void sendTestForOrg(
             @PathVariable Long orgId,
             @Valid @RequestBody TestMessageRequest request) {
-        lineBotConfigService.sendTestMessage(ScopeType.ORGANIZATION, orgId, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        lineBotConfigService.sendTestMessage(ScopeType.ORGANIZATION, orgId, userId, request);
     }
 
     /**
@@ -162,8 +171,9 @@ public class LineBotConfigController {
     @GetMapping("/api/v1/organizations/{orgId}/line/logs")
     public PagedResponse<LineMessageLogResponse> logsForOrg(
             @PathVariable Long orgId, Pageable pageable) {
+        Long userId = SecurityUtils.getCurrentUserId();
         Page<LineMessageLogResponse> page =
-                lineBotConfigService.getMessageLogs(ScopeType.ORGANIZATION, orgId, pageable);
+                lineBotConfigService.getMessageLogs(ScopeType.ORGANIZATION, orgId, userId, pageable);
         return PagedResponse.of(
                 page.getContent(),
                 new PagedResponse.PageMeta(

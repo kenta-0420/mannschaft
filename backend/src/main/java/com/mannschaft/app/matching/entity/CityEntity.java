@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 public class CityEntity {
 
     @Id
-    @Column(length = 5)
+    @Column(nullable = false, length = 5)
     private String code;
 
     @Column(nullable = false, length = 2)

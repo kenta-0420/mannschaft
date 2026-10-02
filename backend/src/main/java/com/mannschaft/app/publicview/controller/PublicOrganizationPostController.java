@@ -1,7 +1,9 @@
 package com.mannschaft.app.publicview.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicPostDetail;
 import com.mannschaft.app.publicview.dto.PublicPostSummary;
+import com.mannschaft.app.publicview.service.PublicOrganizationQueryService;
 import com.mannschaft.app.publicview.service.PublicPostQueryService;
 import com.mannschaft.app.publicview.service.ViewerContextBuilder;
 import com.mannschaft.app.publicview.visibility.ViewerContext;
@@ -26,9 +28,30 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>{@link PublicTeamPostController} の組織版。Phase 2 では {@link ViewerContextBuilder} を使って
  * ログイン済みユーザーの閲覧立場を判定し、段階開示ルール（§4.6.1 マトリクス）に従った投稿者識別を返す。
  * blog_posts のみ対応（§4.2 軍議追補）。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 2 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/organizations/&#42;/posts"
+ * / "/api/v1/public/organizations/&#42;/posts/*").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F19.1 公開組織投稿。<b>visibility=PUBLIC かつ公開状態の投稿のみ</b>を返す。組織が対外公開を意図して掲載したコンテンツに限られる。
+ * レート制限あり。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/organizations/*/posts",
+        "/api/v1/public/organizations/*/posts/*"
+})
 @RestController
-@RequestMapping("/api/v1/public/organizations/{orgId}/posts")
+@RequestMapping("/api/v1/public/organizations/{slug}/posts")
 @Tag(name = "公開組織投稿 API (F19.1)")
 @RequiredArgsConstructor
 public class PublicOrganizationPostController {
@@ -36,6 +59,7 @@ public class PublicOrganizationPostController {
     private static final int MAX_PAGE_SIZE = 100;
     private static final int DEFAULT_PAGE_SIZE = 20;
 
+    private final PublicOrganizationQueryService publicOrganizationQueryService;
     private final PublicPostQueryService publicPostQueryService;
     private final ViewerContextBuilder viewerContextBuilder;
 
@@ -51,7 +75,7 @@ public class PublicOrganizationPostController {
                     + " ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。"
                     + " PRIVATE 組織の ID で叩いた場合は 404（IDOR 対策で隠蔽）。")
     public Page<PublicPostSummary> listPublicPosts(
-            @PathVariable Long orgId,
+            @PathVariable String slug,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
@@ -61,6 +85,8 @@ public class PublicOrganizationPostController {
         if (size <= 0) {
             pageable = PageRequest.of(Math.max(page, 0), DEFAULT_PAGE_SIZE);
         }
+        // slug → 組織 ID。非公開・archived・削除済・不在は親 API と同じ PUBLIC_001（404）
+        Long orgId = publicOrganizationQueryService.getPublicOrganization(slug).id();
         ViewerContext viewerContext = viewerContextBuilder.buildForOrganization(authentication, orgId);
         return publicPostQueryService.listPublicPostsByOrganization(orgId, pageable, viewerContext);
     }
@@ -77,9 +103,10 @@ public class PublicOrganizationPostController {
                     + " ログイン済みの場合は段階開示ルールに従った投稿者識別を返す。"
                     + " PRIVATE 組織 / 非公開記事 / 不在は 404。")
     public PublicPostDetail getPublicPostDetail(
-            @PathVariable Long orgId,
+            @PathVariable String slug,
             @PathVariable Long postId,
             Authentication authentication) {
+        Long orgId = publicOrganizationQueryService.getPublicOrganization(slug).id();
         ViewerContext viewerContext = viewerContextBuilder.buildForOrganization(authentication, orgId);
         return publicPostQueryService.findPublicPostDetailByOrganization(orgId, postId, viewerContext);
     }

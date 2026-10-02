@@ -9,11 +9,12 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * F13 ストレージ使用量変動履歴（{@code storage_usage_logs}）。
@@ -25,7 +26,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class StorageUsageLogEntity {
 
     @Id
@@ -47,8 +48,11 @@ public class StorageUsageLogEntity {
     @Column(name = "reference_type", nullable = false, length = 50)
     private String referenceType;
 
-    @Column(name = "reference_id", nullable = false)
+    @Column(name = "reference_id")
     private Long referenceId;
+
+    @Column(name = "reference_uuid", columnDefinition = "BINARY(16)")
+    private UUID referenceUuid;
 
     @Column(nullable = false, length = 20)
     private String action;
@@ -56,11 +60,14 @@ public class StorageUsageLogEntity {
     @Column(name = "actor_id")
     private Long actorId;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
+        if (referenceId == null && referenceUuid == null) {
+            throw new IllegalStateException("referenceId または referenceUuid が必要です");
+        }
         this.createdAt = LocalDateTime.now();
     }
 }

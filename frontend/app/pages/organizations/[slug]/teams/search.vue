@@ -20,7 +20,7 @@ import {
 import type { CityResponse, PrefectureResponse } from '~/types/matching'
 
 definePageMeta({
-  layout: 'default',
+  layout: 'public',
 })
 
 useHead({
@@ -73,6 +73,7 @@ function stringQuery(key: string): string {
 
 function numberQuery(key: string, defaultValue: number): number {
   const v = stringQuery(key)
+  if (v === '') return defaultValue
   const n = Number(v)
   return Number.isFinite(n) && n >= 0 ? n : defaultValue
 }
@@ -159,7 +160,7 @@ async function executeSearch() {
     }
     const res = await teamApi.searchOrganizationTeams(organizationId.value, query)
     items.value = res.data
-    totalElements.value = res.meta.totalElements
+    totalElements.value = res.meta.total
   } catch (error) {
     items.value = []
     totalElements.value = 0
@@ -254,9 +255,12 @@ watch(
 const isEmpty = computed(() => !loading.value && items.value.length === 0 && !errorMessage.value)
 
 onMounted(async () => {
+  // 公開検索の絞り込みにも必要な、個人・テナント情報を含まない地域マスタ。
   await loadPrefectures()
   if (prefectureCode.value) await loadCities(prefectureCode.value)
-  await loadOrganizationName()
+  // 組織詳細 API は認証必須。公開検索の未ログイン利用者を 401 共通処理で
+  // ログイン画面へ送らないよう、組織名の補助表示は認証済みの場合だけ取得する。
+  if (isAuthenticated.value) await loadOrganizationName()
   await executeSearch()
 })
 </script>

@@ -1,5 +1,6 @@
 package com.mannschaft.app.succession.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.resident.service.ResidentRegistryService;
 import com.mannschaft.app.succession.SuccessionErrorCode;
@@ -45,12 +46,16 @@ class DelinquencyEscalationServiceTest {
     @Mock
     private ResidentRegistryService residentRegistryService;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private DelinquencyEscalationService service;
 
     private static final Long ORG_ID = 100L;
     private static final Long DWELLING_ID = 200L;
     private static final Long RESIDENT_REGISTRY_ID = 300L;
+    private static final Long REQUESTING_USER_ID = 400L;
 
     // ─── createEscalation ──────────────────────────────────────────────
 
@@ -210,7 +215,7 @@ class DelinquencyEscalationServiceTest {
                     .thenReturn(Optional.of(entity));
             when(escalationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            service.freeze(id, ORG_ID, "弁護士介入");
+            service.freeze(id, ORG_ID, "弁護士介入", REQUESTING_USER_ID);
 
             assertThat(entity.getFrozenAt()).isNotNull();
             assertThat(entity.getFrozenReason()).isEqualTo("弁護士介入");
@@ -228,7 +233,7 @@ class DelinquencyEscalationServiceTest {
             when(escalationRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(id, ORG_ID))
                     .thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.freeze(id, ORG_ID, "新しい理由"))
+            assertThatThrownBy(() -> service.freeze(id, ORG_ID, "新しい理由", REQUESTING_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(SuccessionErrorCode.ESCALATION_FROZEN);
@@ -251,7 +256,7 @@ class DelinquencyEscalationServiceTest {
                     .thenReturn(Optional.of(entity));
             when(escalationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            service.resolve(id, ORG_ID, "PAID");
+            service.resolve(id, ORG_ID, "PAID", REQUESTING_USER_ID);
 
             assertThat(entity.getResolvedAt()).isNotNull();
             assertThat(entity.getResolvedReason()).isEqualTo("PAID");
@@ -271,7 +276,7 @@ class DelinquencyEscalationServiceTest {
             when(escalationRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(id, ORG_ID))
                     .thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.resolve(id, ORG_ID, "MANUAL_CLOSE"))
+            assertThatThrownBy(() -> service.resolve(id, ORG_ID, "MANUAL_CLOSE", REQUESTING_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(SuccessionErrorCode.ESCALATION_ALREADY_RESOLVED);

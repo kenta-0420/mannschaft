@@ -2,6 +2,7 @@ package com.mannschaft.app.role;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.organization.entity.OrganizationBlockEntity;
@@ -59,6 +60,9 @@ class BlockServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private BlockService blockService;
@@ -357,7 +361,7 @@ class BlockServiceTest {
                     .willReturn(Optional.of(createUser(ADMIN_USER_ID, "admin")));
 
             // When
-            List<BlockResponse> result = blockService.getBlocks(TEAM_ID, "TEAM");
+            List<BlockResponse> result = blockService.getBlocks(TEAM_ID, "TEAM", ADMIN_USER_ID);
 
             // Then
             assertThat(result).hasSize(2);
@@ -385,7 +389,7 @@ class BlockServiceTest {
                     .willReturn(Optional.of(createUser(ADMIN_USER_ID, "admin")));
 
             // When
-            List<BlockResponse> result = blockService.getBlocks(ORG_ID, "ORGANIZATION");
+            List<BlockResponse> result = blockService.getBlocks(ORG_ID, "ORGANIZATION", ADMIN_USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -402,7 +406,7 @@ class BlockServiceTest {
             given(teamBlockRepository.findByTeamId(TEAM_ID)).willReturn(List.of());
 
             // When
-            List<BlockResponse> result = blockService.getBlocks(TEAM_ID, "TEAM");
+            List<BlockResponse> result = blockService.getBlocks(TEAM_ID, "TEAM", ADMIN_USER_ID);
 
             // Then
             assertThat(result).isEmpty();

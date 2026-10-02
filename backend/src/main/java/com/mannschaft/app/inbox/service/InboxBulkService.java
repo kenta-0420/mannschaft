@@ -32,14 +32,23 @@ public class InboxBulkService {
 
     private final InboxTriageService triageService;
     private final InboxLabelService labelService;
+    private final InboxAccessGuard inboxAccessGuard;
 
     /**
      * 一括操作を実行する。
+     *
+     * <p>{@code LABEL_ADD} のラベル所有検証は<b>item ループより前</b>に一度だけ行う
+     * （{@link InboxAccessGuard#requireOwnedLabel}）。他者所有・不存在のラベル ID は
+     * 全体を 404 で止め、存在を秘匿する。認可を業務処理より前に置くことで、ラベル ID の
+     * 妥当性が item ごとのスキップ件数の差として観測されるのを防ぐ。</p>
      *
      * @return 成功/スキップ件数
      */
     public BulkResultResponse bulk(Long userId, BulkInboxRequest request) {
         validatePreconditions(request);
+        if (request.getAction() == BulkInboxRequest.BulkAction.LABEL_ADD) {
+            inboxAccessGuard.requireOwnedLabel(userId, request.getLabelId());
+        }
 
         int processed = 0;
         int skipped = 0;

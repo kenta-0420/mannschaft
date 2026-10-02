@@ -6,8 +6,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -24,8 +24,7 @@ import java.time.LocalDateTime;
 @Table(name = "organization_notification_balances")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class OrganizationNotificationBalanceEntity extends BaseEntity {
 
     /** 組織ID（UNIQUE制約） */
@@ -134,7 +133,7 @@ public class OrganizationNotificationBalanceEntity extends BaseEntity {
      * 行わず、無料枠カウンタ・当月アラート・猶予負債のみを当月用に初期化する（従来挙動を踏襲）。</p>
      *
      * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
-     * 本エンティティは {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）で、
+     * 本エンティティは {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）で、
      * 主キー {@code id} は基底クラス {@link BaseEntity} のフィールドである。
      * {@code toBuilder()} は継承フィールド {@code id} を引き継がず {@code id = null} の
      * 新インスタンスになり、{@code save} が UPDATE でなく INSERT を実行して

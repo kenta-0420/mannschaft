@@ -25,6 +25,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ClassHomeroomService {
 
+    /**
+     * 出欠・学級担任情報の閲覧権限名（{@code permissions.name} の値）。
+     * ADMIN は既定で保有し、それ以外へは権限グループ経由で個別に委任する。
+     */
+    static final String PERMISSION_VIEW_ATTENDANCE = "VIEW_ATTENDANCE";
+
     private final ClassHomeroomRepository classHomeroomRepository;
     private final AccessControlService accessControlService;
     private final ObjectMapper objectMapper;
@@ -35,13 +41,32 @@ public class ClassHomeroomService {
 
     /**
      * 指定チームの学級担任設定一覧を取得する。
-     * 認可: ADMIN または担任本人。
+     *
+     * <p>認可: 以下のいずれかを満たす者のみ（それ以外は COMMON_002）。</p>
+     * <ul>
+     *   <li><b>チーム管理者</b>（{@code isAdminOrAbove}）— 全件を閲覧できる。</li>
+     *   <li><b>{@code VIEW_ATTENDANCE} 権限保持者</b>（権限グループ経由の委任）— 全件を閲覧できる。</li>
+     *   <li><b>当該チームの担任本人</b> — <b>自分が担任の学級のみ</b>閲覧できる。</li>
+     * </ul>
+     *
+     * <p>ここでは認可と絞り込みを<b>二重に</b>担保する。すなわち
+     * (1) 特権も担任実績も無い者は結果を組み立てる前に拒否し、
+     * (2) 特権を持たない担任には自分が担任の行だけを返す。
+     * 絞り込みだけに頼ると「0 件の一覧」が権限判定の代わりになってしまい、
+     * 他人の担任設定が見えない保証が絞り込みロジックの正しさに依存してしまうため。</p>
      */
     public List<ClassHomeroomResponse> listHomerooms(Long teamId, Integer academicYear, Long currentUserId) {
-        checkAdminOrTeamMember(currentUserId, teamId);
+        // (1) 認可ゲート: 特権保持者か、当該チームの担任本人か。
+        boolean privileged = hasHomeroomViewPrivilege(currentUserId, teamId);
+        if (!privileged && !isHomeroomTeacherOfTeam(currentUserId, teamId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+
         List<ClassHomeroomEntity> entities =
                 classHomeroomRepository.findByTeamIdAndAcademicYearOrderByEffectiveFromDesc(teamId, academicYear);
         return entities.stream()
+                // (2) 絞り込み: 特権が無い担任本人には自分の担任分だけを返す。
+                .filter(e -> privileged || isOwnHomeroom(e, currentUserId))
                 .map(e -> ClassHomeroomResponse.from(e, parseAssistantIds(e.getAssistantTeacherUserIds())))
                 .toList();
     }
@@ -103,14 +128,32 @@ public class ClassHomeroomService {
         }
     }
 
-    private void checkAdminOrTeamMember(Long userId, Long teamId) {
-        // チームメンバーシップ確認は AccessControlService に委譲
-        // COMMON_002 = 権限不足
-        try {
-            accessControlService.checkPermission(userId, teamId, "TEAM", "VIEW_ATTENDANCE");
-        } catch (BusinessException e) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
+    /**
+     * 学級担任設定を「全件」閲覧できる特権を持つかを判定する。
+     *
+     * <p>チーム管理者（ADMIN 以上）、または {@code VIEW_ATTENDANCE} 権限の保持者。
+     * 後者はロールに紐づく既定権限ではなく、権限グループ経由で個別に委任された者を指す。
+     * 本メソッドは<b>メンバーシップを見ない</b>（見ているのはロールと権限のみ）ため、
+     * メンバーであることを含意する名前を付けてはならない。</p>
+     */
+    private boolean hasHomeroomViewPrivilege(Long userId, Long teamId) {
+        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
+            return true;
         }
+        return accessControlService.hasPermission(userId, teamId, "TEAM", PERMISSION_VIEW_ATTENDANCE);
+    }
+
+    /** 当該チームで 1 件でも担任を務めている（＝担任本人である）かを判定する。 */
+    private boolean isHomeroomTeacherOfTeam(Long userId, Long teamId) {
+        if (userId == null) {
+            return false;
+        }
+        return classHomeroomRepository.existsByTeamIdAndHomeroomTeacherUserId(teamId, userId);
+    }
+
+    /** 当該担任設定の担任本人かを判定する。 */
+    private boolean isOwnHomeroom(ClassHomeroomEntity entity, Long userId) {
+        return userId != null && userId.equals(entity.getHomeroomTeacherUserId());
     }
 
     private String serializeAssistantIds(List<Long> ids) {

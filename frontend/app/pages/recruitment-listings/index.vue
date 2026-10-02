@@ -6,6 +6,8 @@ import type {
 } from '~/types/recruitment'
 
 const api = useRecruitmentApi()
+const { error: showError } = useNotification()
+const { t } = useI18n()
 
 // カテゴリ一覧
 const categories = ref<RecruitmentCategoryResponse[]>([])
@@ -25,12 +27,23 @@ const totalCount = ref(0)
 const currentPage = ref(0)
 const pageSize = 20
 const totalPages = ref(0)
+/** 取得失敗は「該当なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const searchFailed = ref(false)
 
-// DateオブジェクトをISO8601文字列（yyyy-MM-dd）に変換
+/**
+ * Date を `yyyy-MM-dd` に変換する。
+ *
+ * 以前は `toISOString().slice(0, 10)` で **UTC 日付**を作っており、JST では1日前、
+ * `America/*` の夕方以降は1日後の日付が送られていた（Issue #2508 ②）。
+ * `toLocalDateString()`（ローカル壁時計基準）が LocalDate 送信の正規ルート。
+ *
+ * なお本 API（求人検索）は PUBLIC でユーザーTZを解決できず、BE も `String` で受けて
+ * Service 層で直接 parse するため、オフセット付き OffsetDateTime は送れない。
+ * ここは `LocalDate` のままとする。
+ */
 function toIsoDateString(d: Date | undefined): string | undefined {
   if (!d) return undefined
-  if (typeof d === 'string') return d
-  return d.toISOString().slice(0, 10)
+  return toLocalDateString(d)
 }
 
 // カテゴリ読み込み
@@ -47,6 +60,7 @@ async function loadCategories() {
 // 検索実行
 async function search(page = 0) {
   loading.value = true
+  searchFailed.value = false
   currentPage.value = page
   try {
     const params: RecruitmentSearchParams = {
@@ -61,13 +75,15 @@ async function search(page = 0) {
     }
     const res = await api.searchListings(params)
     listings.value = res.data
-    totalCount.value = res.meta.totalElements
+    totalCount.value = res.meta.total
     totalPages.value = res.meta.totalPages
   }
-  catch {
+  catch (e) {
+    showError(t('recruitment.search.loadError'), String(e))
     listings.value = []
     totalCount.value = 0
     totalPages.value = 0
+    searchFailed.value = true
   }
   finally {
     loading.value = false
@@ -209,6 +225,14 @@ onMounted(async () => {
 
     <!-- ローディング -->
     <PageLoading v-if="loading" />
+
+    <!-- 取得失敗: 検索結果0件とは別に描き分ける -->
+    <DashboardErrorState
+      v-else-if="searchFailed"
+      :message="t('recruitment.search.loadError')"
+      testid="recruitment-listings-error-state"
+      @retry="search(currentPage)"
+    />
 
     <!-- 検索結果 -->
     <div

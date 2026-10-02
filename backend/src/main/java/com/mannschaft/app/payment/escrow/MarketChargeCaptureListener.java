@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.escrow;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.payment.escrow.event.ChargeCaptureFailedEvent;
 import com.mannschaft.app.recruitment.event.MarketListingFinalizedEvent;
 import lombok.RequiredArgsConstructor;
@@ -61,6 +63,8 @@ public class MarketChargeCaptureListener {
      *
      * @param event 最終認証確定イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると最終承認済みの取引に対して実際の課金が行われず、DB 上は確定・決済は未実行という乖離が残る")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onListingFinalized(MarketListingFinalizedEvent event) {
         if (!event.paymentEnabled()) {

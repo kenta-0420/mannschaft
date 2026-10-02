@@ -1,5 +1,7 @@
 package com.mannschaft.app.schedule.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.schedule.repository.UserGoogleCalendarConnectionRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,8 @@ public class IntegrationAnonymizationEventListener {
      *
      * @param event 退会匿名化イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会済み利用者の外部カレンダー連携情報とトークンが残存し、退会後も外部同期が継続しうる")
     @Async("event-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

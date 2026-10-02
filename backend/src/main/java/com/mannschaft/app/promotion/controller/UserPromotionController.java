@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * ユーザー用プロモーション・クーポンコントローラー。
@@ -35,6 +36,15 @@ public class UserPromotionController {
     private final PromotionDeliveryService deliveryService;
     private final CouponService couponService;
 
+    /**
+     * <b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code deliveryService.listByUser} は {@code SecurityUtils.getCurrentUserId()} のみを
+     * 検索条件に渡すため、他人宛のプロモーションへ到達する経路が構造的に無い
+     * （UserPromotionController#listPromotions）。認可根治戦役 Wave6 監査済。
+     */
+    @SelfScopedEndpoint(
+            "deliveryService.listByUser(userId, ...) は SecurityUtils.getCurrentUserId() のみを"
+                    + "検索条件に渡す（UserPromotionController#listPromotions）")
     @GetMapping("/api/v1/users/me/promotions")
     @Operation(summary = "受信プロモーション一覧")
     public ResponseEntity<PagedResponse<UserPromotionResponse>> listPromotions(
@@ -47,6 +57,15 @@ public class UserPromotionController {
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
     }
 
+    /**
+     * <b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code deliveryService.markAsRead} 内部の {@code findByIdAndUserId(deliveryId, userId)} が
+     * 検索条件に {@code SecurityUtils.getCurrentUserId()} を束縛するため、他人配信の既読化経路が
+     * 構造的に無い（UserPromotionController#markAsRead）。認可根治戦役 Wave6 監査済。
+     */
+    @SelfScopedEndpoint(
+            "deliveryService.markAsRead が findByIdAndUserId(deliveryId, userId) で"
+                    + "SecurityUtils.getCurrentUserId() に束縛する（UserPromotionController#markAsRead）")
     @PatchMapping("/api/v1/users/me/promotions/{deliveryId}/read")
     @Operation(summary = "既読マーク")
     public ResponseEntity<Void> markAsRead(@PathVariable Long deliveryId) {
@@ -54,12 +73,30 @@ public class UserPromotionController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * <b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code couponService.listUserCoupons} は {@code SecurityUtils.getCurrentUserId()} のみを
+     * 検索条件に渡すため、他人のクーポンへ到達する経路が構造的に無い
+     * （UserPromotionController#listCoupons）。認可根治戦役 Wave6 監査済。
+     */
+    @SelfScopedEndpoint(
+            "couponService.listUserCoupons(userId) は SecurityUtils.getCurrentUserId() のみを"
+                    + "検索条件に渡す（UserPromotionController#listCoupons）")
     @GetMapping("/api/v1/users/me/coupons")
     @Operation(summary = "保有クーポン一覧")
     public ResponseEntity<ApiResponse<List<UserCouponResponse>>> listCoupons() {
         return ResponseEntity.ok(ApiResponse.of(couponService.listUserCoupons(SecurityUtils.getCurrentUserId())));
     }
 
+    /**
+     * <b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code couponService.redeem} 内部の {@code findByIdAndUserId(distributionId, userId)} が
+     * 検索条件に {@code SecurityUtils.getCurrentUserId()} を束縛するため、他人配布クーポンの
+     * 利用経路が構造的に無い（UserPromotionController#redeemCoupon）。認可根治戦役 Wave6 監査済。
+     */
+    @SelfScopedEndpoint(
+            "couponService.redeem が findByIdAndUserId(distributionId, userId) で"
+                    + "SecurityUtils.getCurrentUserId() に束縛する（UserPromotionController#redeemCoupon）")
     @PostMapping("/api/v1/users/me/coupons/{distributionId}/redeem")
     @Operation(summary = "クーポン利用")
     public ResponseEntity<Void> redeemCoupon(

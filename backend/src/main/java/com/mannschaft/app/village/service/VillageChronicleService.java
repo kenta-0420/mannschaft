@@ -34,9 +34,18 @@ import java.util.stream.Collectors;
  *
  * <h2>権限</h2>
  * <ul>
- *   <li>生成: バッチ専用（呼出元で actor を null とする）</li>
- *   <li>取得: 認可は Controller 層で行う（村スコープの閲覧範囲に従う）</li>
+ *   <li>生成: バッチ専用（呼出元で actor を null とする）。認可は行わない。</li>
+ *   <li>取得（一覧・単月）: 村掲示板と<b>同一の閲覧認可</b>に従う。
+ *       村の {@code bulletin_visibility} が {@code MEMBERS_ONLY}（既定値）なら村メンバーまたは
+ *       SYSTEM_ADMIN のみ、{@code PUBLIC} ならログイン済ユーザーなら誰でも参照できる。
+ *       判定は {@link VillageBulletinAccessService#checkVillageBulletinViewAccess} に委譲する。</li>
  * </ul>
+ *
+ * <h2>なぜ掲示板と同じ認可なのか</h2>
+ * <p>TOP3 トピックは {@code BulletinThreadRepository#findTitlesByVillageIdAndCreatedAtBetween} で
+ * <b>村掲示板スレッドのタイトルを集計したもの</b>である。掲示板 API が {@code MEMBERS_ONLY} で
+ * 守っている情報が村史経由で非メンバーに漏れてはならないため、参照系は掲示板の閲覧認可に従う
+ * （マスター裁可 2026-07-15「掲示板の設定に従う」）。</p>
  *
  * <h2>原則準拠</h2>
  * <ul>
@@ -70,6 +79,8 @@ public class VillageChronicleService {
     private final VillageChronicleRepository chronicleRepository;
     private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
+    /** 参照系の閲覧認可（村の bulletin_visibility）を一元判定する。独自の可視性述語は書かない。 */
+    private final VillageBulletinAccessService bulletinAccessService;
     // TODO: 将来は VillagePostCreatedEvent を購読するカウンタテーブルへ分離し、
     //       本サービスはそのカウンタを読むだけにする（原則5 完全準拠）。
     private final BulletinThreadRepository bulletinThreadRepository;
@@ -145,9 +156,13 @@ public class VillageChronicleService {
 
     /**
      * 村の村史一覧（年月降順）を返す。
+     *
+     * @param villageId    村 ID
+     * @param actorUserId  閲覧しようとするログイン済ユーザー ID
+     * @throws BusinessException 村が存在しない（404）／掲示板の閲覧権限が無い（403）
      */
-    public List<ChronicleResponse> listChronicles(UUID villageId) {
-        ensureActiveVillage(villageId);
+    public List<ChronicleResponse> listChronicles(UUID villageId, Long actorUserId) {
+        bulletinAccessService.checkVillageBulletinViewAccess(villageId, actorUserId);
         return chronicleRepository.findByVillageIdOrderByYearMonthDesc(villageId).stream()
                 .map(ChronicleResponse::of)
                 .toList();
@@ -155,26 +170,23 @@ public class VillageChronicleService {
 
     /**
      * 単一月の村史を取得する。
+     *
+     * <p>認可は村史の存在確認より先に行う。非メンバーには「その月の村史が存在するか否か」も
+     * 秘匿する必要があるため、順序を入れ替えてはならない。</p>
+     *
+     * @param villageId    村 ID
+     * @param yearMonth    対象月（任意の日付を渡してもその月の 1 日に正規化する）
+     * @param actorUserId  閲覧しようとするログイン済ユーザー ID
+     * @throws BusinessException 村が存在しない（404）／掲示板の閲覧権限が無い（403）／
+     *                           該当月の村史が無い（404）
      */
-    public ChronicleResponse getChronicle(UUID villageId, LocalDate yearMonth) {
-        ensureActiveVillage(villageId);
+    public ChronicleResponse getChronicle(UUID villageId, LocalDate yearMonth, Long actorUserId) {
+        bulletinAccessService.checkVillageBulletinViewAccess(villageId, actorUserId);
         LocalDate monthFirstDay = yearMonth.withDayOfMonth(1);
         VillageChronicleEntity entity = chronicleRepository
                 .findByVillageIdAndYearMonth(villageId, monthFirstDay)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.CHRONICLE_NOT_FOUND));
         return ChronicleResponse.of(entity);
-    }
-
-    // ====================================================================
-    // 共通ヘルパ
-    // ====================================================================
-
-    private void ensureActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
     }
 
     /**

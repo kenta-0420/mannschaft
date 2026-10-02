@@ -1,6 +1,7 @@
 package com.mannschaft.app.activity.entity;
 
 import com.mannschaft.app.activity.ActivityScopeType;
+import com.mannschaft.app.activity.ActivityStatus;
 import com.mannschaft.app.activity.ActivityVisibility;
 import com.mannschaft.app.common.BaseEntity;
 import jakarta.persistence.Column;
@@ -9,10 +10,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
@@ -27,8 +28,7 @@ import java.time.LocalTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ActivityResultEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
@@ -38,7 +38,7 @@ public class ActivityResultEntity extends BaseEntity {
     @Column(nullable = false)
     private Long scopeId;
 
-    @Column(nullable = false)
+    /** テンプレート ID。DRAFT（下書き）は最小項目作成のため NULL 許容。 */
     private Long templateId;
 
     @Column(nullable = false, length = 200)
@@ -70,6 +70,18 @@ public class ActivityResultEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private ActivityVisibility visibility = ActivityVisibility.MEMBERS_ONLY;
+
+    /**
+     * ライフサイクル状態（F06.4 下書き対応）。
+     *
+     * <p>{@code @Builder.Default = PUBLISHED} とすることで、status を明示指定しない
+     * 従来の作成経路（{@code ActivityResultService#createActivity}）は「作成即公開」の
+     * 挙動を維持する（後方互換）。DRAFT 作成は専用経路で明示的に status を指定する。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private ActivityStatus status = ActivityStatus.PUBLISHED;
 
     private Long scheduleId;
 
@@ -105,5 +117,19 @@ public class ActivityResultEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 公開可能かどうかを判定する（DRAFT のときのみ true）。
+     */
+    public boolean isPublishable() {
+        return this.status == ActivityStatus.DRAFT;
+    }
+
+    /**
+     * 下書きを公開する（DRAFT → PUBLISHED）。
+     */
+    public void publish() {
+        this.status = ActivityStatus.PUBLISHED;
     }
 }

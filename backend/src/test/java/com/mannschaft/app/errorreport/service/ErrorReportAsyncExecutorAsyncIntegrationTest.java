@@ -34,7 +34,11 @@ import static org.mockito.BDDMockito.given;
  * リグレッションテストでもある。</p>
  *
  * <p>{@link AsyncConfig} と {@link ErrorReportAsyncExecutor} のみを Spring コンテキストに
- * 立ち上げ、Repository/Notifier はモック化することで起動コストを抑える。</p>
+ * 立ち上げ、Repository はモック化することで起動コストを抑える。</p>
+ *
+ * <p>Issue #2990 L11 — Executor は通知ではなく業務イベントを publish する形に変わった。
+ * {@code ApplicationEventPublisher} は ApplicationContext 自身が満たすため個別のモックは要らない。
+ * 配送リスナーは本コンテキストに載せていないので、publish しても副作用は無い。</p>
  */
 @SpringJUnitConfig
 @Import({AsyncConfig.class, ErrorReportAsyncExecutor.class})
@@ -52,8 +56,6 @@ class ErrorReportAsyncExecutorAsyncIntegrationTest {
 
     @MockitoBean
     private ErrorReportRepository errorReportRepository;
-    @MockitoBean
-    private ErrorReportNotifier errorReportNotifier;
     /** F10.6 §5.6-③ — 集約バッファ。プロキシ統合テストでは Mock 化して呼び出し回数のみ検証。 */
     @MockitoBean
     private ErrorReportAggregator aggregator;

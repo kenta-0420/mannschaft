@@ -18,6 +18,7 @@ import com.mannschaft.app.village.entity.enums.VillageVisibility;
 import com.mannschaft.app.village.repository.VillageJoinRequestRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,6 +41,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * F17.1 Phase 1 B6 — VillageJoinRequestService 単体テスト。
@@ -72,8 +75,23 @@ class VillageJoinRequestServiceTest {
     @Mock
     private VillageMembershipService membershipService;
 
+    /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
+    @Mock
+    private VillageAccessGate accessGate;
+
     @InjectMocks
     private VillageJoinRequestService service;
+
+    /**
+     * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
+     * モックのゲートに実物のゲート（同じモックのリポジトリを注入）を委譲させることで、
+     * 本テストが積み上げてきた {@code villageRepository.findById} の stub をそのまま生かしつつ、
+     * 可視性判定は実物のロジックで走らせる。
+     */
+    @BeforeEach
+    void wireVillageAccessGate() {
+        VillageAccessGateTestSupport.delegateToRealGate(accessGate, villageRepository, membershipRepository);
+    }
 
     private static final UUID VILLAGE_ID = UUID.randomUUID();
     private static final Long USER_ID = 100L;
@@ -277,7 +295,7 @@ class VillageJoinRequestServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
         // ensureReviewer
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
                 .willReturn(Optional.of(reviewer));
         // 申請ロード
@@ -322,7 +340,7 @@ class VillageJoinRequestServiceTest {
         VillageMembershipEntity reviewer = membership(VillageRole.ELDER, USER_ID);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
                 .willReturn(Optional.of(reviewer));
         given(joinRequestRepository.findById(requestId)).willReturn(Optional.of(pending));
@@ -347,7 +365,7 @@ class VillageJoinRequestServiceTest {
     void approve_villagerForbidden() {
         UUID requestId = UUID.randomUUID();
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
                 .willReturn(Optional.of(membership(VillageRole.VILLAGER, USER_ID)));
 
@@ -426,5 +444,72 @@ class VillageJoinRequestServiceTest {
                 .isEqualTo(CommonErrorCode.COMMON_002);
 
         verify(joinRequestRepository, never()).save(any());
+    }
+
+    // ----------------------------------------------------------------
+    // 13〜15. 申請者向け「自分の申請」取得（listMine）
+    // ----------------------------------------------------------------
+
+    /**
+     * AC2（IDOR 閉塞）の要。
+     *
+     * <p>listMine は「操作者本人が申請した行」だけをリポジトリで絞り込む。
+     * 取得後に所有者を検証する方式（= 他人の行を一度読んでから弾く）だと検証漏れが
+     * そのまま漏洩になるため、**そもそも他人の行を読まない**クエリにしている。
+     * 絞り込みキーは withdraw の認可条件（{@code requesterUserId == actor}）と同一。</p>
+     */
+    @Test
+    @DisplayName("13. listMine — 操作者本人の申請だけをリポジトリで絞り込む（IDOR 閉塞）")
+    void listMine_filtersByRequesterUserId() {
+        VillageJoinRequestEntity mine = VillageJoinRequestEntity.builder()
+                .villageId(VILLAGE_ID)
+                .subjectType(VillageSubjectType.USER)
+                .subjectId(USER_ID)
+                .requesterUserId(USER_ID)
+                .message("よろしく")
+                .status(VillageRequestStatus.PENDING)
+                .build();
+        ReflectionTestUtils.setField(mine, "id", UUID.randomUUID());
+
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
+        given(joinRequestRepository.findByVillageIdAndRequesterUserIdOrderByCreatedAtDesc(
+                VILLAGE_ID, USER_ID)).willReturn(List.of(mine));
+
+        List<JoinRequestResponse> result = service.listMine(VILLAGE_ID, USER_ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).status()).isEqualTo(VillageRequestStatus.PENDING);
+        assertThat(result.get(0).subjectId()).isEqualTo(USER_ID);
+
+        // 他人の ID でリポジトリを引くことは絶対にない
+        verify(joinRequestRepository)
+                .findByVillageIdAndRequesterUserIdOrderByCreatedAtDesc(VILLAGE_ID, USER_ID);
+        verify(joinRequestRepository, never())
+                .findByVillageIdAndRequesterUserIdOrderByCreatedAtDesc(VILLAGE_ID, OTHER_USER_ID);
+        // 申請者は定義上まだ非メンバーなので、メンバーシップ判定は一切行わない。
+        // （メソッド名に依存せず「メンバーシップ層に触れないこと」自体を固定する）
+        verifyNoInteractions(membershipRepository);
+        verifyNoInteractions(membershipService);
+    }
+
+    @Test
+    @DisplayName("14. listMine — 申請が無ければ空リスト（例外にしない）")
+    void listMine_empty() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(approvalVillage()));
+        given(joinRequestRepository.findByVillageIdAndRequesterUserIdOrderByCreatedAtDesc(
+                VILLAGE_ID, USER_ID)).willReturn(List.of());
+
+        assertThat(service.listMine(VILLAGE_ID, USER_ID)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("15. listMine — 村が存在しなければ VILLAGE_001")
+    void listMine_villageNotFound() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.listMine(VILLAGE_ID, USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
     }
 }

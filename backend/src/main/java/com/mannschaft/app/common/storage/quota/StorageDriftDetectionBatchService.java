@@ -1,6 +1,8 @@
 package com.mannschaft.app.common.storage.quota;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.StorageProperties;
 import com.mannschaft.app.common.storage.quota.entity.StorageSubscriptionEntity;
 import com.mannschaft.app.common.storage.quota.entity.StorageUsageLogEntity;
@@ -9,6 +11,8 @@ import com.mannschaft.app.common.storage.quota.repository.StorageUsageLogReposit
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,6 +80,12 @@ public class StorageDriftDetectionBatchService {
     /** R2 ListObjectsV2 のページングサイズ（Class A 課金を抑えるため最大値） */
     private static final int LIST_PAGE_SIZE = 1000;
 
+    /** サブスクリプション走査 1 ページあたりの抽出件数。 */
+    private static final int SUBSCRIPTION_PAGE_SIZE = 200;
+
+    /** サブスクリプション走査の暴走を防ぐ最大ページ数。 */
+    private static final int SUBSCRIPTION_MAX_PAGES = 500;
+
     /**
      * feature_type → R2 トップレベルルートのマッピング。
      *
@@ -115,33 +125,60 @@ public class StorageDriftDetectionBatchService {
      * 週次ドリフト検出バッチのエントリポイント。
      * 毎週日曜日深夜 2:00 に実行する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。R2 実使用量と DB の差分検出であり、再開後の週次実行で同じ差分を検出し直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "storage-quota-drift-detection-weekly", description = "R2 実使用量と DB の used_bytes 差分を毎週日曜 02:00 に自動修正する")
     @Scheduled(cron = "0 0 2 * * SUN")
+    // 起動間隔は週次（日曜 02:00）。全スコープの R2 実使用量を列挙して DB と突き合わせるため、オブジェクト数に比例して伸びる。
+    // 週次で次回まで 7 日あるので余裕を取り 2 時間を上限とする。
+    @SchedulerLock(name = "storageQuotaDriftDetection", lockAtLeastFor = "PT1M", lockAtMostFor = "PT2H")
     public void execute() {
         log.info("F13 ドリフト検出バッチ 開始 (migrationMode={})", migrationModeEnabled);
         int correctedCount = 0;
         int skippedCount = 0;
+        int totalCount = 0;
 
-        List<StorageSubscriptionEntity> subscriptions = subscriptionRepository.findAll();
-        for (StorageSubscriptionEntity sub : subscriptions) {
-            try {
-                long r2Bytes = sumR2BytesForSubscription(sub);
-                log.debug("F13 R2 集計完了: subscriptionId={}, scopeType={}, scopeId={}, r2Bytes={}",
-                        sub.getId(), sub.getScopeType(), sub.getScopeId(), r2Bytes);
-                int corrected = correctSubscriptionDrift(sub, r2Bytes);
-                if (corrected > 0) {
-                    correctedCount += corrected;
-                } else {
-                    skippedCount++;
+        // 絞り込み条件の無い全件走査。ドリフト修正（used_bytes 更新）を行っても対象母集合は
+        // 縮まないため、ページ0固定のドレインは無限ループになる。id 昇順キーセットページングで
+        // カーソルを必ず前進させる。
+        long cursor = 0L;
+        for (int page = 0; page < SUBSCRIPTION_MAX_PAGES; page++) {
+            List<StorageSubscriptionEntity> batch =
+                    subscriptionRepository.findAllAfterId(cursor, PageRequest.of(0, SUBSCRIPTION_PAGE_SIZE));
+            if (batch.isEmpty()) {
+                break;
+            }
+
+            for (StorageSubscriptionEntity sub : batch) {
+                totalCount++;
+                try {
+                    long r2Bytes = sumR2BytesForSubscription(sub);
+                    log.debug("F13 R2 集計完了: subscriptionId={}, scopeType={}, scopeId={}, r2Bytes={}",
+                            sub.getId(), sub.getScopeType(), sub.getScopeId(), r2Bytes);
+                    int corrected = correctSubscriptionDrift(sub, r2Bytes);
+                    if (corrected > 0) {
+                        correctedCount += corrected;
+                    } else {
+                        skippedCount++;
+                    }
+                } catch (Exception e) {
+                    log.error("F13 ドリフト修正失敗: subscriptionId={}, scopeType={}, scopeId={}, error={}",
+                            sub.getId(), sub.getScopeType(), sub.getScopeId(), e.getMessage(), e);
                 }
-            } catch (Exception e) {
-                log.error("F13 ドリフト修正失敗: subscriptionId={}, scopeType={}, scopeId={}, error={}",
-                        sub.getId(), sub.getScopeType(), sub.getScopeId(), e.getMessage(), e);
+            }
+
+            cursor = batch.get(batch.size() - 1).getId();
+            if (batch.size() < SUBSCRIPTION_PAGE_SIZE) {
+                break;
+            }
+            if (page == SUBSCRIPTION_MAX_PAGES - 1) {
+                log.warn("F13 ドリフト検出バッチ: SUBSCRIPTION_MAX_PAGES={} に到達したため打ち切り",
+                        SUBSCRIPTION_MAX_PAGES);
             }
         }
 
         log.info("F13 ドリフト検出バッチ 完了: subscriptions={}, corrected={}, skipped={}",
-                subscriptions.size(), correctedCount, skippedCount);
+                totalCount, correctedCount, skippedCount);
     }
 
     /**

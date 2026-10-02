@@ -1,37 +1,30 @@
 package com.mannschaft.app.committee.entity;
 
 import com.mannschaft.app.common.BaseEntity;
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * F04.10 委員会伝達処理ログエンティティ。
  *
  * <p>委員会からの伝達（お知らせ配信・確認通知送信）の実行履歴を記録する。
- * このテーブルは updated_at カラムを持たないため、BaseEntity の updatedAt を
- * insertable=false / updatable=false の仮想カラムとして上書きしている。</p>
+ * updated_at 列は V230（CMP-260924-0010）で追加したため、BaseEntity の updatedAt を
+ * そのまま読み書きする（以前は列が無く、書き込み不可の上書きで回避していたが、
+ * SELECT には列が含まれるため Flyway 構築環境では Unknown column で失敗していた）。</p>
  */
 @Entity
 @Table(name = "committee_distribution_logs")
-// updated_at カラムが DDL に存在しないため、BaseEntity の updatedAt マッピングを無効化する
-@AttributeOverrides({
-    @AttributeOverride(name = "updatedAt",
-        column = @Column(name = "updated_at", insertable = false, updatable = false))
-})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
+@SuperBuilder(toBuilder = true)
 public class CommitteeDistributionLogEntity extends BaseEntity {
 
     /** 委員会 ID（FK → committees） */

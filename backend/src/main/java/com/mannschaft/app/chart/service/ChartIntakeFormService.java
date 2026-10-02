@@ -5,8 +5,10 @@ import com.mannschaft.app.chart.ChartMapper;
 import com.mannschaft.app.chart.dto.IntakeFormResponse;
 import com.mannschaft.app.chart.dto.UpdateIntakeFormRequest;
 import com.mannschaft.app.chart.entity.ChartIntakeFormEntity;
+import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.repository.ChartIntakeFormRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,13 +30,19 @@ public class ChartIntakeFormService {
     private final ChartIntakeFormRepository intakeFormRepository;
     private final ChartRecordRepository recordRepository;
     private final ChartMapper chartMapper;
+    private final AccessControlService accessControlService;
+
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     /**
      * カルテの問診票一覧を取得する。
      */
-    public List<IntakeFormResponse> getIntakeForms(Long teamId, Long chartId) {
-        recordRepository.findByIdAndTeamId(chartId, teamId)
+    public List<IntakeFormResponse> getIntakeForms(Long teamId, Long chartId, Long actorUserId) {
+        ChartRecordEntity record = recordRepository.findByIdAndTeamId(chartId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkMembership(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         List<ChartIntakeFormEntity> forms = intakeFormRepository.findByChartRecordId(chartId);
         return chartMapper.toIntakeFormResponseList(forms);
@@ -44,9 +52,12 @@ public class ChartIntakeFormService {
      * 問診票を更新（upsert）する。
      */
     @Transactional
-    public IntakeFormResponse updateIntakeForm(Long teamId, Long chartId, UpdateIntakeFormRequest request) {
-        recordRepository.findByIdAndTeamId(chartId, teamId)
+    public IntakeFormResponse updateIntakeForm(Long teamId, Long chartId, Long actorUserId,
+                                                UpdateIntakeFormRequest request) {
+        ChartRecordEntity record = recordRepository.findByIdAndTeamId(chartId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         Optional<ChartIntakeFormEntity> existing = intakeFormRepository.findByChartRecordIdAndFormType(
                 chartId, request.getFormType());

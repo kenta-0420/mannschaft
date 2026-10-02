@@ -54,7 +54,14 @@ const hasResolvedSlug = computed(() =>
   selectedOrgId.value !== null && !isUnmigratedScopeId(selectedOrgId.value),
 )
 
+/**
+ * 直近に load() を発火した orgId（slug）。同一 slug の二重 fetch を防ぐガード。
+ * tabPages.ORGANIZATION の張り替えで watcher が再評価されても、既にロード済みなら再 fetch しない。
+ */
+const lastLoadedId = ref<string | null>(null)
+
 async function load(orgId: string) {
+  lastLoadedId.value = orgId
   loading.value = true
   errorKey.value = null
   try {
@@ -80,21 +87,41 @@ onMounted(async () => {
   }
 })
 
+/**
+ * 選択スコープ解決のメインロジック（不変条件）:
+ *   - id===null            → data=null, loading=false（空状態）
+ *   - 移行前 BIGINT（slug 未確定）→ loading=true（スピナー。load は呼ばない）
+ *   - slug 確定           → load(id) を必ず 1 回呼ぶ（lastLoadedId で二重 fetch を防ぐ）
+ *
+ * selectedOrgId だけでなく store.tabPages.ORGANIZATION も監視するのが要点。
+ * 旧実装は selectedOrgId のみ監視していたため、loadTabs が tabPages を埋めても
+ * 値が変わらない（slug がそのまま BIGINT 文字列だった等）と watcher が再発火せず、
+ * load() が永久に呼ばれず空白に落ちるレースがあった。tabPages の変化も監視することで、
+ * slug が確定（isUnmigratedScopeId が false へ転じる）した時点で確実に load() が走る。
+ */
+function resolveSelectedOrg() {
+  const id = selectedOrgId.value
+  if (id === null) {
+    data.value = null
+    loading.value = false
+    lastLoadedId.value = null
+    return
+  }
+  if (isUnmigratedScopeId(id)) {
+    // 内部 BIGINT（移行前）: onMounted の loadTabs が slug に張り替えるまでスピナーを
+    // 表示し、空白状態（loading=false/data=null/errorKey=null かつ非 null id）を防ぐ。
+    loading.value = true
+    return
+  }
+  // slug（team-000017 等）が確定。既に同一 slug をロード済みなら二重 fetch しない。
+  if (lastLoadedId.value === id) return
+  // 404 時は errorKey で顕在化させ握り潰さない。
+  load(id)
+}
+
 watch(
-  selectedOrgId,
-  (id) => {
-    if (id === null) {
-      data.value = null
-      loading.value = false
-    } else if (isUnmigratedScopeId(id)) {
-      // 内部 BIGINT（移行前）: onMounted の loadTabs が slug に張り替えるまでスピナーを
-      // 表示し、空白状態（loading=false/data=null/errorKey=null かつ非null id）を防ぐ。
-      loading.value = true
-    } else {
-      // slug（team-000017 等）: そのまま表示。404 時は errorKey で顕在化させ握り潰さない。
-      load(id)
-    }
-  },
+  [selectedOrgId, () => store.tabPages.ORGANIZATION],
+  () => resolveSelectedOrg(),
   { immediate: true },
 )
 </script>
@@ -140,5 +167,13 @@ watch(
       :scope-id="selectedOrgId"
       :data="data"
     />
+
+    <!--
+      最終フォールバック（解決待ち）。
+      いずれの分岐にも当たらない状態（selectedOrgId 非 null / loading=false /
+      errorKey=null / data=null＝slug 確定直前のレース等）でも完全空白に落ちないよう、
+      解決待ちとして PageLoading を出す。新規 i18n キーは追加しない。
+    -->
+    <PageLoading v-else />
   </div>
 </template>

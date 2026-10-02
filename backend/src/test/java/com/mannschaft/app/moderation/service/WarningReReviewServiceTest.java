@@ -4,8 +4,11 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.moderation.ModerationExtErrorCode;
 import com.mannschaft.app.moderation.ModerationExtMapper;
 import com.mannschaft.app.moderation.ReReviewStatus;
+import com.mannschaft.app.moderation.ViolationType;
 import com.mannschaft.app.moderation.dto.WarningReReviewResponse;
+import com.mannschaft.app.moderation.entity.UserViolationEntity;
 import com.mannschaft.app.moderation.entity.WarningReReviewEntity;
+import com.mannschaft.app.moderation.repository.UserViolationRepository;
 import com.mannschaft.app.moderation.repository.WarningReReviewRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +37,9 @@ class WarningReReviewServiceTest {
     private WarningReReviewRepository reReviewRepository;
 
     @Mock
+    private UserViolationRepository userViolationRepository;
+
+    @Mock
     private ModerationExtMapper mapper;
 
     @InjectMocks
@@ -55,6 +61,18 @@ class WarningReReviewServiceTest {
                 .build();
     }
 
+    /** 認可根治戦役 Wave3-B3: createReReview の actionId 所有者検証（BOLA是正）用フィクスチャ。 */
+    private UserViolationEntity createViolation(Long userId, Long reportId, Long actionId) {
+        return UserViolationEntity.builder()
+                .userId(userId)
+                .reportId(reportId)
+                .actionId(actionId)
+                .violationType(ViolationType.WARNING)
+                .reason("GUIDELINE_1_2")
+                .isActive(true)
+                .build();
+    }
+
     // ========================================
     // createReReview
     // ========================================
@@ -71,6 +89,8 @@ class WarningReReviewServiceTest {
                     REPORT_ID, ACTION_ID, "再レビュー理由", "PENDING", null, null, null, null,
                     null, null, null, null);
 
+            given(userViolationRepository.findByActionId(ACTION_ID))
+                    .willReturn(createViolation(USER_ID, REPORT_ID, ACTION_ID));
             given(reReviewRepository.existsByUserIdAndActionId(USER_ID, ACTION_ID)).willReturn(false);
             given(reReviewRepository.save(any(WarningReReviewEntity.class))).willReturn(saved);
             given(mapper.toWarningReReviewResponse(any(WarningReReviewEntity.class))).willReturn(expected);
@@ -87,6 +107,8 @@ class WarningReReviewServiceTest {
         @DisplayName("異常系: 同一アクションに対する再レビューが既に存在する場合はエラー")
         void 同一アクションに対する再レビューが既に存在する場合はエラー() {
             // given
+            given(userViolationRepository.findByActionId(ACTION_ID))
+                    .willReturn(createViolation(USER_ID, REPORT_ID, ACTION_ID));
             given(reReviewRepository.existsByUserIdAndActionId(USER_ID, ACTION_ID)).willReturn(true);
 
             // when & then
@@ -95,6 +117,54 @@ class WarningReReviewServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ModerationExtErrorCode.RE_REVIEW_ALREADY_EXISTS));
+        }
+
+        // ────────────────────────────────────────────────────────────
+        // 認可根治戦役 Wave3-B3: actionId 所有者検証（BOLA是正）
+        // ────────────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("異常系(BOLA): actionIdに紐づくviolationが存在しない場合はVIOLATION_NOT_FOUND")
+        void violationが存在しない場合はエラー() {
+            // given
+            given(userViolationRepository.findByActionId(ACTION_ID)).willReturn(null);
+
+            // when & then
+            assertThatThrownBy(() -> warningReReviewService.createReReview(
+                    USER_ID, ACTION_ID, REPORT_ID, "理由"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ModerationExtErrorCode.VIOLATION_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("異常系(BOLA): actionIdが他ユーザーのviolationを指す場合はVIOLATION_NOT_FOUND（存在秘匿）")
+        void actionIdが他ユーザーのviolationの場合はエラー() {
+            // given: actionId=ACTION_ID の violation は別ユーザー(999L)のもの
+            given(userViolationRepository.findByActionId(ACTION_ID))
+                    .willReturn(createViolation(999L, REPORT_ID, ACTION_ID));
+
+            // when & then
+            assertThatThrownBy(() -> warningReReviewService.createReReview(
+                    USER_ID, ACTION_ID, REPORT_ID, "理由"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ModerationExtErrorCode.VIOLATION_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("異常系(BOLA): reportIdがviolation由来の値と不一致な場合はVIOLATION_NOT_FOUND")
+        void reportIdが不一致の場合はエラー() {
+            // given: 本人の violation だが reportId が異なる
+            given(userViolationRepository.findByActionId(ACTION_ID))
+                    .willReturn(createViolation(USER_ID, REPORT_ID, ACTION_ID));
+
+            // when & then
+            assertThatThrownBy(() -> warningReReviewService.createReReview(
+                    USER_ID, ACTION_ID, 999L, "理由"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ModerationExtErrorCode.VIOLATION_NOT_FOUND));
         }
     }
 

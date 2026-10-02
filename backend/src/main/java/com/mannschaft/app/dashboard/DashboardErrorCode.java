@@ -30,10 +30,10 @@ public enum DashboardErrorCode implements ErrorCode {
     /** フォルダが存在しない */
     DASHBOARD_006("DASHBOARD_006", "指定されたフォルダが存在しません", Severity.WARN),
 
-    /** フォルダ所有者でない */
+    /** フォルダ所有者でない（存在は秘匿せず権限拒否として扱う） */
     DASHBOARD_007("DASHBOARD_007", "このフォルダにアクセスする権限がありません", Severity.WARN),
 
-    /** 同名フォルダが既に存在 */
+    /** 同名フォルダが既に存在（状態競合） */
     DASHBOARD_008("DASHBOARD_008", "同じ名前のフォルダが既に存在します", Severity.WARN),
 
     /** フォルダ数上限に到達 */
@@ -59,6 +59,7 @@ public enum DashboardErrorCode implements ErrorCode {
 
     /** フォルダアイテムが存在しない */
     DASHBOARD_016("DASHBOARD_016", "指定されたフォルダアイテムが存在しません", Severity.WARN),
+
 
     // ========================================
     // F02.2.1 ウィジェットロール別可視性

@@ -1,6 +1,5 @@
 package com.mannschaft.app.family;
 
-import com.mannschaft.app.family.repository.CoinTossResultRepository;
 import com.mannschaft.app.family.repository.PresenceEventRepository;
 import com.mannschaft.app.family.service.FamilyBatchService;
 import org.junit.jupiter.api.DisplayName;
@@ -24,7 +23,6 @@ import static org.mockito.Mockito.verify;
 class FamilyBatchServiceTest {
 
     @Mock private PresenceEventRepository presenceEventRepository;
-    @Mock private CoinTossResultRepository coinTossResultRepository;
     @InjectMocks private FamilyBatchService service;
 
     @Nested
@@ -46,22 +44,6 @@ class FamilyBatchServiceTest {
             // Then
             verify(presenceEventRepository).findOverdueEvents(eq(0), any(LocalDateTime.class));
             verify(presenceEventRepository).findOverdueEvents(eq(1), any(LocalDateTime.class));
-        }
-    }
-
-    @Nested
-    @DisplayName("cleanupOldRecords")
-    class CleanupOldRecords {
-
-        @Test
-        @DisplayName("正常系: クリーンアップが実行される")
-        void クリーンアップ_正常_実行() {
-            // When
-            service.cleanupOldRecords();
-
-            // Then
-            verify(presenceEventRepository).deleteByCreatedAtBefore(any(LocalDateTime.class));
-            verify(coinTossResultRepository).deleteByCreatedAtBefore(any(LocalDateTime.class));
         }
     }
 }

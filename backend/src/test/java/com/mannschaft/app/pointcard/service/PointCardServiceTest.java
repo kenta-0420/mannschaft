@@ -117,7 +117,7 @@ class PointCardServiceTest {
     @Test
     @DisplayName("createCard: fuzzy match ヒット → provider_id 設定 + 監査ログ provider_matched=true")
     void createCard_withFuzzyMatch_setsProviderIdAndLogs() {
-        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, "v1.0.0");
+        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         given(cardRepository.countByUserId(USER_ID)).willReturn(5L);
 
         PointCardProviderEntity provider = sampleProvider();
@@ -162,7 +162,7 @@ class PointCardServiceTest {
     @Test
     @DisplayName("createCard: fuzzy match 未ヒット → provider_id=null + 監査ログ provider_matched=false")
     void createCard_withoutFuzzyMatch_savesNullProvider() {
-        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, "v1.0.0");
+        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         given(cardRepository.countByUserId(USER_ID)).willReturn(0L);
         given(providerMatchService.matchProvider("マイナーカード")).willReturn(Optional.empty());
         given(cardRepository.save(any(UserPointCardEntity.class)))
@@ -190,7 +190,7 @@ class PointCardServiceTest {
     @Test
     @DisplayName("createCard: 200 枚上限を超えると CARD_LIMIT_EXCEEDED")
     void createCard_overLimit_throwsCardLimitExceeded() {
-        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, "v1.0.0");
+        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         given(cardRepository.countByUserId(USER_ID)).willReturn(200L);
 
         CreateUserPointCardRequest req = new CreateUserPointCardRequest(
@@ -208,7 +208,7 @@ class PointCardServiceTest {
     @DisplayName("createCard: 規約未同意は WALLET_NOT_ENABLED を伝播する")
     void createCard_termsNotAccepted_propagatesWalletNotEnabled() {
         willThrow(new BusinessException(PointCardErrorCode.WALLET_NOT_ENABLED))
-                .given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, "v1.0.0");
+                .given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
 
         CreateUserPointCardRequest req = new CreateUserPointCardRequest(
                 "カード", "1234", BarcodeFormat.CODE128, null, null, null);
@@ -226,7 +226,7 @@ class PointCardServiceTest {
     @Test
     @DisplayName("createCard: barcodeValue が 4 文字未満なら last4=null")
     void createCard_shortBarcode_last4IsNull() {
-        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, "v1.0.0");
+        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         given(cardRepository.countByUserId(USER_ID)).willReturn(0L);
         given(providerMatchService.matchProvider(anyString())).willReturn(Optional.empty());
         given(cardRepository.save(any(UserPointCardEntity.class)))

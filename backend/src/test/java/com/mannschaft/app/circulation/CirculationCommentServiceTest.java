@@ -1,5 +1,7 @@
 package com.mannschaft.app.circulation;
 
+import org.mockito.Spy;
+import com.mannschaft.app.circulation.service.CirculationAccessGuard;
 import com.mannschaft.app.circulation.dto.CommentResponse;
 import com.mannschaft.app.circulation.dto.CreateCommentRequest;
 import com.mannschaft.app.circulation.dto.UpdateCommentRequest;
@@ -40,6 +42,13 @@ class CirculationCommentServiceTest {
 
     @Mock
     private CirculationMapper circulationMapper;
+
+    /**
+     * コメントの本人性判定ガードは依存を持たない純粋な判定であるため、実体を注入して
+     * 「当該文書に属する自分のコメントのみ更新・削除できる」判定そのものを検証する。
+     */
+    @Spy
+    private CirculationAccessGuard circulationAccessGuard = new CirculationAccessGuard();
 
     @InjectMocks
     private CirculationCommentService circulationCommentService;

@@ -12,7 +12,10 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const scheduleApi = useScheduleApi()
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
+const { isAdminOrDeputy, roleName, can, loadPermissions } = useRoleAccess('team', teamSlug)
+const canManageSchedule = computed(
+  () => isAdminOrDeputy.value || (roleName.value === 'MEMBER' && can('MANAGE_SCHEDULES')),
+)
 
 const refreshing = ref(false)
 const showCreateDialog = ref(false)
@@ -31,12 +34,22 @@ const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> =
 const { currentYear, currentMonth, events, loading, loadEvents, refresh, onPrevMonth, onNextMonth } =
   useCalendarEvents(fetcher, { cacheHalfMonths: 2 })
 
+// モバイルのリストビュー用: 表示中の月のイベントを実際の時系列（瞬間）昇順に並べる。
+// ISO 文字列のまま localeCompare すると、時差の異なる予定（例: +09:00 と Z）が
+// 文字列としての大小関係で並んでしまい、実際の前後関係と食い違う（Codex 検分指摘）。
+// 必ず Date.parse で瞬間へ変換してから比較する。
+const sortedEvents = computed(() =>
+  [...events.value].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt)),
+)
+
 function onDateClick(date: string) {
+  if (!canManageSchedule.value) return
   selectedDate.value = date
   showCreateDialog.value = true
 }
 
 function onAddButtonClick() {
+  if (!canManageSchedule.value) return
   selectedDate.value = undefined
   showCreateDialog.value = true
 }
@@ -54,11 +67,13 @@ async function onEventClick(eventId: number) {
 }
 
 function onEditEvent() {
+  if (!canManageSchedule.value) return
   showDetailPanel.value = false
   showEditDialog.value = true
 }
 
 async function onDeleteEvent() {
+  if (!canManageSchedule.value) return
   if (!selectedEventId.value || !confirm('このイベントを削除しますか？')) return
   try {
     await scheduleApi.deleteSchedule('team', teamSlug, selectedEventId.value)
@@ -87,14 +102,50 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <BackButton />
-        <PageHeader title="スケジュール" />
+      <PageHeader title="スケジュール" />
+      <div class="flex items-center gap-2">
+        <NuxtLink :to="`/teams/${teamSlug}/schedule-keeps`">
+          <Button :label="$t('scheduleKeep.title')" icon="pi pi-bookmark" outlined data-testid="schedule-keep-nav-link" />
+        </NuxtLink>
+        <Button v-if="canManageSchedule" label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
       </div>
-      <Button label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
     </div>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <!-- ===== モバイル（<768px）: リストビュー既定 ===== -->
+    <!-- カレンダーはタップしないと時刻/詳細が見えず即時性が無いため、狭幅では
+         日付・時刻・タイトルを 1 行で即時可視化するリストを既定にする。 -->
+    <div class="md:hidden">
+      <ScheduleMobileListView
+        :year="currentYear"
+        :month="currentMonth"
+        :events="sortedEvents"
+        scope-type="team"
+        :scope-id="teamSlug"
+        :empty-message="$t('schedule.list.empty')"
+        :dimmed="refreshing"
+        @prev-month="onPrevMonth"
+        @next-month="onNextMonth"
+        @open="(ev) => onEventClick(ev.id)"
+        @responded="refresh"
+      />
+
+      <!-- 行タップ時の詳細（モバイルはインライン表示） -->
+      <SectionCard v-if="showDetailPanel && selectedEvent" class="mt-4">
+        <EventDetailPanel
+          :event="selectedEvent!"
+          scope-type="team"
+          :scope-id="teamSlug"
+          :can-edit="isAdminOrDeputy"
+          :can-manage-schedule="canManageSchedule"
+          @edit="onEditEvent"
+          @delete="onDeleteEvent"
+          @responded="refresh"
+        />
+      </SectionCard>
+    </div>
+
+    <!-- ===== デスクトップ（768px以上）: 従来のカレンダー主体UI（不変） ===== -->
+    <div class="hidden grid-cols-1 gap-6 md:grid lg:grid-cols-3">
       <!-- カレンダー -->
       <div class="lg:col-span-2">
         <SectionCard :class="{ 'opacity-60': refreshing }">
@@ -118,6 +169,7 @@ onMounted(async () => {
             scope-type="team"
             :scope-id="teamSlug"
             :can-edit="isAdminOrDeputy"
+            :can-manage-schedule="canManageSchedule"
             @edit="onEditEvent"
             @delete="onDeleteEvent"
             @responded="refresh"

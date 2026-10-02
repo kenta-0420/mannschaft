@@ -1,6 +1,9 @@
 package com.mannschaft.app.admin.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.gdpr.dto.PurgeStatusRow;
 import com.mannschaft.app.gdpr.dto.PurgeStatusSummaryData;
 import com.mannschaft.app.gdpr.dto.RetryResultResponse;
@@ -48,7 +51,21 @@ import java.util.List;
  * </ul>
  *
  * <p>設計根拠: {@code docs/architecture/account_purge_cross_domain_refactor.md} §4 Phase E / Phase F</p>
+ *
+ * <p><b>認可根拠（{@link AuthorizedByPathConfig} クラス付与・凍結ストア該当 5 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは、{@code SecurityConfig} のパス単位認可により
+ * SYSTEM_ADMIN ロール保持者のみへ宣言的に予約されている。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig の requestMatchers("/api/v1/system-admin/gdpr/**").hasRole("SYSTEM_ADMIN")（併せて
+ * requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN") でも二重に予約される）
+ * </p>
+ *
+ * <p>Controller / Service 側に認可コードは存在しないが、フィルタチェーンで強制されるため
+ * 無認可ではない。認可根治戦役 Wave5 監査済。パス定義を変更・削除する際は本注釈の根拠が
+ * 失効するため、必ず併せて見直すこと。</p>
  */
+@AuthorizedByPathConfig({"/api/v1/system-admin/gdpr/**", "/api/v1/system-admin/**"})
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/system-admin/gdpr/purge-status")
@@ -72,6 +89,8 @@ public class SystemAdminGdprPurgeController {
      * @param size     1 ページあたり件数（既定: 20）
      * @return ページネーション済みの GDPR パージ状況リスト
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "GDPR消去処理の運用監視をGate状態にかかわらず継続するため")
     @GetMapping
     @Operation(summary = "GDPR パージ状況一覧取得", description = "status/domain/dateFrom/dateTo でフィルタ可能。全て省略で全件対象。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -97,6 +116,8 @@ public class SystemAdminGdprPurgeController {
      *
      * @return サマリーデータ
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "GDPR消去処理の運用監視をGate状態にかかわらず継続するため")
     @GetMapping("/summary")
     @Operation(summary = "GDPR パージ状況サマリー取得", description = "ドメイン別集計とアラート件数を返す。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -111,6 +132,8 @@ public class SystemAdminGdprPurgeController {
      * @param userId 対象ユーザー ID
      * @return 対象ユーザーの全 per-domain レコード（ドメイン名昇順）
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "GDPR消去処理の運用監視をGate状態にかかわらず継続するため")
     @GetMapping("/{userId}")
     @Operation(summary = "ユーザー別 GDPR パージ状況詳細取得", description = "userId に紐づく全ドメインの消去状況を返す。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -128,6 +151,8 @@ public class SystemAdminGdprPurgeController {
      *
      * @return StreamingResponseBody として CSV データを返す
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "GDPR消去処理の監査資料をGate状態にかかわらず取得するため")
     @GetMapping("/export.csv")
     @Operation(summary = "GDPR パージ状況 CSV エクスポート", description = "全件を CSV 形式でダウンロード。UTF-8 BOM 付き。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "CSV エクスポート成功")
@@ -162,6 +187,8 @@ public class SystemAdminGdprPurgeController {
      * @param domainName retry 対象ドメイン（role / team / payment / chart / proxy / errorreport）
      * @return retry 結果（succeeded=true の場合は SUCCESS に遷移、false の場合は PENDING 継続）
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "失敗したGDPR消去をGate状態にかかわらず復旧するため")
     @PostMapping("/{userId}/retry/{domainName}")
     @Operation(
             summary = "GDPR パージ手動 retry",

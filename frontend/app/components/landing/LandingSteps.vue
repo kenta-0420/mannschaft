@@ -9,7 +9,7 @@ const steps = [
 </script>
 
 <template>
-  <section id="steps" aria-labelledby="steps-heading" class="bg-surface-50 py-24 dark:bg-surface-900">
+  <section id="steps" aria-labelledby="steps-heading" class="py-24 dark:bg-surface-900">
     <div class="mx-auto max-w-5xl px-4">
       <div class="mb-14 text-center">
         <h2 id="steps-heading" class="text-3xl font-bold text-surface-900 dark:text-white md:text-4xl">

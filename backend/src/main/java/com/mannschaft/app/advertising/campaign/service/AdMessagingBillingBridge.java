@@ -1,12 +1,15 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.PricingModel;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
-import com.mannschaft.app.advertising.campaign.enums.AdBounceType;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.event.MessagingCampaignBudgetConsumedEvent;
 import com.mannschaft.app.advertising.campaign.repository.AdAnnouncementDeliveryRepository;
+import com.mannschaft.app.advertising.campaign.repository.AdBannerDeliveryRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdEmailDeliveryRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdPushDeliveryRepository;
@@ -17,6 +20,7 @@ import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -49,7 +53,8 @@ import java.util.UUID;
  *   <li>ANNOUNCEMENT: ¥5 / 件 ({@code delivered_at IS NOT NULL})</li>
  *   <li>EMAIL:        ¥10 / 通 ({@code sent_at IS NOT NULL AND (bounce_type IS NULL OR bounce_type='SOFT')})</li>
  *   <li>PUSH:         ¥3 / 通 ({@code delivered_at IS NOT NULL AND failed_reason IS NULL})</li>
- *   <li>BANNER:       F09.7 既存 CPM/CPC で別バッチが処理 (ε-C スコープ外)</li>
+ *   <li>BANNER:       ¥3 / served view ({@code served_at IS NOT NULL} の予約行のみ。F09.19.3 §7.4 で新規実装。
+ *                     クリック課金なし・未表示予約は課金対象外)</li>
  * </ul>
  *
  * <h3>冪等性</h3>
@@ -76,6 +81,8 @@ public class AdMessagingBillingBridge {
     static final long UNIT_PRICE_EMAIL_YEN = 10L;
     /** PUSH 単価 (円/通)。 */
     static final long UNIT_PRICE_PUSH_YEN = 3L;
+    /** BANNER 単価 (円/served view)。F09.19.3 §7.4 固定単価。 */
+    static final long UNIT_PRICE_BANNER_YEN = 3L;
 
     /** YYYY-MM 形式 (パーティショニング & 冪等キー)。 */
     static final DateTimeFormatter MONTH_KEY_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
@@ -84,9 +91,30 @@ public class AdMessagingBillingBridge {
     private final AdAnnouncementDeliveryRepository announcementDeliveryRepository;
     private final AdEmailDeliveryRepository emailDeliveryRepository;
     private final AdPushDeliveryRepository pushDeliveryRepository;
+    private final AdBannerDeliveryRepository bannerDeliveryRepository;
     private final AdInvoiceRepository invoiceRepository;
     private final AdInvoiceItemRepository invoiceItemRepository;
     private final ApplicationEventPublisher eventPublisher;
+
+    /**
+     * 自分自身の Spring プロキシを取り出すための遅延解決プロバイダ（CMP-260912-1524）。
+     *
+     * <p>{@code runMonthlyBilling} から {@code billOneCampaign} を素の
+     * {@code this} 呼び出しにすると AOP プロキシを経由せず、
+     * {@code @Transactional(propagation = REQUIRES_NEW)} が<b>まったく効かない</b>。
+     * 呼び出し元がトランザクションを張っていないため、キャンペーン 1 件ぶんの処理は
+     * Spring Data 既定の {@code @Transactional} が張る<b>save ごとの細切れトランザクション</b>で
+     * 走り、途中で落ちるとそこまでの請求明細だけがコミットされたまま残った。
+     * 加えて {@code recalcInvoiceTotals} は請求書エンティティの dirty checking に依存するため、
+     * トランザクション（＝永続化コンテキスト）が無いと<b>合計金額の更新がどこにも書かれない</b>。</p>
+     *
+     * <p>別 Bean への切り出しではなく自己プロキシを採るのは、
+     * {@code advertising} ドメイン内の Repository 群をそのまま持ち越せて
+     * ArchUnit 凍結ストアへ新しいクラス名を登録せずに済むため
+     * （前例: CMP-260910-1556 / PR #3234）。{@code ObjectProvider} は遅延解決なので
+     * 自己参照による循環依存にもならない。</p>
+     */
+    private final ObjectProvider<AdMessagingBillingBridge> selfProvider;
 
     @Value("${mannschaft.advertising.tax-rate:10.00}")
     private BigDecimal taxRate;
@@ -97,7 +125,8 @@ public class AdMessagingBillingBridge {
     enum BillingChannel {
         ANNOUNCEMENT(UNIT_PRICE_ANNOUNCEMENT_YEN),
         EMAIL(UNIT_PRICE_EMAIL_YEN),
-        PUSH(UNIT_PRICE_PUSH_YEN);
+        PUSH(UNIT_PRICE_PUSH_YEN),
+        BANNER(UNIT_PRICE_BANNER_YEN);
 
         final long unitPriceYen;
 
@@ -112,11 +141,15 @@ public class AdMessagingBillingBridge {
      * <p>F09.7 の {@code MonthlyInvoiceBatchService} (1 日 05:00) より前に走らせ、
      * 同一 invoice 内に F09.17 由来明細も含める設計。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "殿の裁定: 手動再実行経路（BatchEndpoint）を持たぬため、止めた月の広告メッセージ課金は明細として請求へ載らず恒久的に未請求になる。取り損ねた売上は復旧不能である")
     @Scheduled(cron = "${mannschaft.ad.billing.cron:0 0 3 1 * *}", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "adMessagingBilling",
             lockAtMostFor = "PT30M",
             lockAtLeastFor = "PT5M")
+    @BatchEndpoint(name = "ad-messaging-billing-monthly",
+            description = "前月分のメッセージ型広告キャンペーン配信実績を集計し、請求明細行を毎月1日03:00に積み上げる")
     public void runMonthlyBilling() {
         YearMonth targetMonth = YearMonth.now().minusMonths(1);
         runMonthlyBilling(targetMonth);
@@ -156,7 +189,7 @@ public class AdMessagingBillingBridge {
         int errors = 0;
         for (AdMessagingCampaign campaign : deduped.values()) {
             try {
-                billOneCampaign(campaign, targetMonth, monthKey);
+                self().billOneCampaign(campaign, targetMonth, monthKey);
                 success++;
             } catch (Exception e) {
                 errors++;
@@ -169,21 +202,37 @@ public class AdMessagingBillingBridge {
     }
 
     /**
+     * 自分自身の Spring プロキシを返す。
+     *
+     * <p>トランザクション境界を跨ぐ内部呼び出しは必ず本メソッド経由で行うこと。</p>
+     */
+    private AdMessagingBillingBridge self() {
+        return selfProvider.getObject();
+    }
+
+    /**
      * 1 キャンペーン分の集計と invoice_item 積み上げを行う。
      *
      * <p>キャンペーン単位で別トランザクション ({@link Propagation#REQUIRES_NEW}) とすることで、
-     * 1 件の失敗が全体集計を中断させないようにする。</p>
+     * 1 件の失敗が全体集計を中断させないようにする。逆に 1 キャンペーンの中では
+     * 「請求明細の追加 → 請求書合計の再計算 → 消費予算の加算」が全部入るか 1 つも入らないかの
+     * どちらかでなければならない（明細だけ入って合計が古いままの請求書は請求できない）。</p>
+     *
+     * <p><b>必ず {@link #self()} 経由で呼ぶこと。</b>同一 Bean 内の自己呼び出しでは
+     * プロキシを通らず {@code REQUIRES_NEW} が無効化され、部分適用が残る（CMP-260912-1524）。</p>
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void billOneCampaign(AdMessagingCampaign campaign, YearMonth targetMonth, String monthKey) {
         long announcementCount = countAnnouncements(campaign.getId(), monthKey);
         long emailCount = countBillableEmails(campaign.getId(), monthKey);
         long pushCount = countBillablePushes(campaign.getId(), monthKey);
+        long bannerCount = countBillableBanners(campaign.getId(), monthKey);
 
         Map<BillingChannel, Long> counts = new EnumMap<>(BillingChannel.class);
         counts.put(BillingChannel.ANNOUNCEMENT, announcementCount);
         counts.put(BillingChannel.EMAIL, emailCount);
         counts.put(BillingChannel.PUSH, pushCount);
+        counts.put(BillingChannel.BANNER, bannerCount);
 
         long totalAddedYen = 0L;
         AdInvoiceEntity invoice = null;
@@ -265,10 +314,8 @@ public class AdMessagingBillingBridge {
      * ANNOUNCEMENT 課金件数: delivered_at IS NOT NULL の行数。
      */
     long countAnnouncements(UUID campaignId, String monthKey) {
-        return announcementDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey)
-                .stream()
-                .filter(d -> d.getDeliveredAt() != null)
-                .count();
+        return announcementDeliveryRepository
+                .countByCampaignIdAndMonthKeyAndDeliveredAtIsNotNull(campaignId, monthKey);
     }
 
     /**
@@ -276,22 +323,22 @@ public class AdMessagingBillingBridge {
      * HARD / COMPLAINT は課金対象外 (設計書 §11 解決事項 8)。
      */
     long countBillableEmails(UUID campaignId, String monthKey) {
-        return emailDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey)
-                .stream()
-                .filter(d -> d.getSentAt() != null)
-                .filter(d -> d.getBounceType() == null || d.getBounceType() == AdBounceType.SOFT)
-                .count();
+        return emailDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey);
     }
 
     /**
      * PUSH 課金件数: delivered_at IS NOT NULL AND failed_reason IS NULL。
      */
     long countBillablePushes(UUID campaignId, String monthKey) {
-        return pushDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey)
-                .stream()
-                .filter(d -> d.getDeliveredAt() != null)
-                .filter(d -> d.getFailedReason() == null || d.getFailedReason().isBlank())
-                .count();
+        return pushDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey);
+    }
+
+    /**
+     * BANNER 課金件数: served_at IS NOT NULL の予約行数（実表示された view のみ・F09.19.3 §7.4）。
+     * 未表示予約（served_at NULL）・クリック有無は課金額に影響しない。
+     */
+    long countBillableBanners(UUID campaignId, String monthKey) {
+        return bannerDeliveryRepository.countByCampaignIdAndMonthKeyAndServedAtIsNotNull(campaignId, monthKey);
     }
 
     /**

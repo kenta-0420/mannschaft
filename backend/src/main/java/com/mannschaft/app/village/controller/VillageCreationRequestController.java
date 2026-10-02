@@ -3,6 +3,8 @@ package com.mannschaft.app.village.controller;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.VillageCreationRequestCreateRequest;
 import com.mannschaft.app.village.dto.VillageCreationRequestResponse;
 import com.mannschaft.app.village.dto.VillageCreationRequestReviewRequest;
@@ -52,8 +54,16 @@ public class VillageCreationRequestController {
     // 申請者向け
     // ------------------------------------------------------------------
 
+    /**
+     * 村作成申請を行う。
+     *
+     * <p>認可は {@link VillageCreationRequestService#createRequest} 内で実施する。申請者は常に
+     * 認証主体で固定され、{@code OFFICIAL} 種別の村は SYSTEM_ADMIN のみが申請できる
+     * （{@code OFFICIAL_VILLAGE_FORBIDDEN}）。あわせて 24 時間のレートリミットを適用する。</p>
+     */
+    @AuthorizedInService
     @PostMapping("/api/v1/villages/creation-requests")
-    @Operation(summary = "村作成申請を行う")
+    @Operation(summary = "村作成申請を行う（OFFICIAL は SYSTEM_ADMIN のみ）")
     public ResponseEntity<ApiResponse<VillageCreationRequestResponse>> create(
             @Valid @RequestBody VillageCreationRequestCreateRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -61,6 +71,9 @@ public class VillageCreationRequestController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
+    @SelfScopedEndpoint("検索条件が SecurityUtils.getCurrentUserId() のみで、"
+            + "リクエストは他ユーザーの識別子を受け取らない"
+            + "（VillageCreationRequestService#listMine が requesterUserId を認証主体で固定する）")
     @GetMapping("/api/v1/me/village-creation-requests")
     @Operation(summary = "自分の村作成申請一覧")
     public ResponseEntity<ApiResponse<List<VillageCreationRequestResponse>>> listMine() {
@@ -105,6 +118,14 @@ public class VillageCreationRequestController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    /**
+     * 村作成申請を取り下げる。
+     *
+     * <p>認可は {@link VillageCreationRequestService#withdraw} 内で実施する。申請エンティティを
+     * 先に取得し、その {@code requesterUserId} が認証主体と一致するか、または操作者が
+     * SYSTEM_ADMIN である場合にのみ通す。</p>
+     */
+    @AuthorizedInService
     @PostMapping("/api/v1/admin/village-creation-requests/{id}/withdraw")
     @Operation(summary = "村作成申請を取り下げ（申請者本人または運営）")
     public ResponseEntity<ApiResponse<VillageCreationRequestResponse>> withdraw(

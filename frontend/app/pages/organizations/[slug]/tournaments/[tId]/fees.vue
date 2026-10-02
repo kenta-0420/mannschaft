@@ -116,9 +116,11 @@ function formatAmount(fee: TournamentFeeResponse): string {
   return new Intl.NumberFormat('ja-JP', { style: 'currency', currency }).format(fee.amount)
 }
 
+const { formatDate } = useDatetime()
+
 function formatDueDate(fee: TournamentFeeResponse): string {
   if (!fee.paymentDue) return '-'
-  return new Date(fee.paymentDue).toLocaleDateString('ja-JP')
+  return formatDate(fee.paymentDue)
 }
 
 function targetLabel(fee: TournamentFeeResponse): string {
@@ -138,12 +140,8 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/organizations/${orgSlug}/tournaments/${tId}`" :label="$t('tournament.fees.title')" />
-    </div>
-
     <div class="mb-6 flex items-center justify-between">
-      <PageHeader :title="$t('tournament.fees.title')" />
+      <PageHeader :title="$t('tournament.fees.title')" :back-to="`/organizations/${orgSlug}/tournaments/${tId}`" :back-label="$t('tournament.fees.title')" />
       <Button
         v-if="isAdminOrDeputy"
         :label="$t('tournament.fees.create')"

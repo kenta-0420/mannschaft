@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
-import { useWindowSize } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import type { ChatTab, ChatChannelResponse } from '~/types/chat'
 
@@ -17,8 +16,8 @@ const { t } = useI18n()
 const { warn } = useNotification()
 
 // ─── レスポンシブ ───────────────────────────────────────────────────
-const { width } = useWindowSize()
-const isDesktop = computed(() => width.value >= 768)
+// 判定閾値(>=768px)は teams/[slug]/chat.vue と共通の useIsDesktop に正準化した。
+const { isDesktop } = useIsDesktop()
 
 // ─── UI 状態 ────────────────────────────────────────────────────────
 const showAddDropdown = ref(false)
@@ -315,14 +314,29 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <!-- タブが0個の時の空状態 -->
-        <div
-          v-else
-          class="flex h-full flex-col items-center justify-center text-surface-400"
-        >
-          <i class="pi pi-comments mb-3 text-4xl" aria-hidden="true" />
-          <p>{{ $t('chat.tab.selectChannelEmpty') }}</p>
-        </div>
+        <!-- タブが0個の時 -->
+        <template v-else>
+          <!--
+            モバイル: PC のようなサイドバーが無いため、タブ未選択時はチャンネル一覧を
+            全幅表示して「そのまま選んで開始」できるようにする（空ペイン＋＋のみの廃止）。
+            チャンネル選択で addTab され、タブ本体（会話ビュー）へ切り替わる。
+          -->
+          <div v-if="!isDesktop" class="h-full overflow-y-auto">
+            <ChatChannelList
+              ref="listRef"
+              @select="onSelectChannel"
+              @create="showCreateDialog = true"
+            />
+          </div>
+          <!-- PC: サイドバーに一覧があるため、本体は選択待ちの空状態を出す -->
+          <div
+            v-else
+            class="flex h-full flex-col items-center justify-center text-surface-400"
+          >
+            <i class="pi pi-comments mb-3 text-4xl" aria-hidden="true" />
+            <p>{{ $t('chat.tab.selectChannelEmpty') }}</p>
+          </div>
+        </template>
       </div>
     </div>
 

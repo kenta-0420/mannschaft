@@ -1,5 +1,7 @@
 package com.mannschaft.app.village.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.service.VillageLobbyPresenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,8 @@ public class VillageWebSocketSessionListener {
     private final VillageLobbyPresenceService presenceService;
     private final StringRedisTemplate redisTemplate;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。WebSocket 切断時の村の在席状態の後始末であり、接続の生存期間に閉じる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @EventListener
     public void onDisconnect(SessionDisconnectEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());

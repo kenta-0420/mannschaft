@@ -28,7 +28,7 @@ describe('useAdMessagingCampaignApi (scope-based URL)', () => {
     mockFetch.mockReset()
     mockFetch.mockResolvedValue({
       data: {},
-      meta: { totalElements: 0, page: 0, size: 20, totalPages: 0 },
+      meta: { total: 0, page: 0, size: 20, totalPages: 0 },
     })
   })
 

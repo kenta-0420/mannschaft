@@ -82,7 +82,8 @@ class LineMapperTest {
             assertThat(result.getScopeType()).isEqualTo("TEAM");
             assertThat(result.getScopeId()).isEqualTo(1L);
             assertThat(result.getChannelId()).isEqualTo("channel-001");
-            assertThat(result.getWebhookSecret()).isEqualTo("webhook-secret");
+            // webhookSecret は平文露出是正のため prefix マスクされる（先頭8文字+****+末尾4文字）
+            assertThat(result.getWebhookSecret()).isEqualTo("webhook-****cret");
             assertThat(result.getBotUserId()).isEqualTo("bot-user-001");
             assertThat(result.getIsActive()).isTrue();
             assertThat(result.getNotificationEnabled()).isTrue();
@@ -109,12 +110,39 @@ class LineMapperTest {
 
             assertThat(result.getScopeType()).isEqualTo("ORGANIZATION");
             assertThat(result.getNotificationEnabled()).isFalse();
+            // 12文字未満のwebhookSecretは全体がマスクされる
+            assertThat(result.getWebhookSecret()).isEqualTo("**");
         }
 
         @Test
         @DisplayName("null エンティティは null を返す")
         void null_エンティティは_null_を返す() {
             assertThat(mapper.toLineBotConfigResponse(null)).isNull();
+        }
+    }
+
+    // ── maskSecret ──
+
+    @Nested
+    @DisplayName("maskSecret")
+    class MaskSecret {
+
+        @Test
+        @DisplayName("12文字以上は先頭8文字+****+末尾4文字にマスクされる")
+        void 長いシークレットはprefixマスクされる() {
+            assertThat(mapper.maskSecret("wh-team-a-secret-0001")).isEqualTo("wh-team-****0001");
+        }
+
+        @Test
+        @DisplayName("12文字未満は全文字がマスクされる")
+        void 短いシークレットは全文字マスクされる() {
+            assertThat(mapper.maskSecret("shortsec")).isEqualTo("********");
+        }
+
+        @Test
+        @DisplayName("nullはnullを返す")
+        void nullはnullを返す() {
+            assertThat(mapper.maskSecret(null)).isNull();
         }
     }
 

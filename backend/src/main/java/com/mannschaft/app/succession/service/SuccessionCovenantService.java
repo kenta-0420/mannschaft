@@ -110,6 +110,12 @@ public class SuccessionCovenantService {
         ResidentRegistryEntity resident = residentRegistryRepository.findById(req.getResidentRegistryId())
                 .orElseThrow(() -> new BusinessException(SuccessionErrorCode.RESIDENT_REGISTRY_NOT_FOUND));
 
+        // 本人の居住者台帳であることを検証（他人の residentRegistryId を指定した
+        // 代理署名・PII 混入・多重署名ロックを防ぐ。存在秘匿のため NOT_FOUND を返す）。
+        if (resident.getUserId() == null || !resident.getUserId().equals(currentUserId)) {
+            throw new BusinessException(SuccessionErrorCode.RESIDENT_REGISTRY_NOT_FOUND);
+        }
+
         DwellingUnitEntity unit = dwellingUnitRepository.findById(resident.getDwellingUnitId())
                 .orElseThrow(() -> new BusinessException(SuccessionErrorCode.DWELLING_UNIT_NOT_FOUND));
 
@@ -230,7 +236,8 @@ public class SuccessionCovenantService {
         SuccessionCovenantEntity entity = covenantRepository.findById(covenantId)
                 .orElseThrow(() -> new BusinessException(SuccessionErrorCode.COVENANT_NOT_FOUND));
 
-        // 本人のみ撤回可
+        // 本人のみ撤回可。他人の誓約 ID への越境は 403 ではなく不在と同じ 404
+        // （COVENANT_FORBIDDEN は 404 に写像済み）で返し、誓約 ID の実在を秘匿する。
         if (!entity.getSignerUserId().equals(currentUserId)) {
             throw new BusinessException(SuccessionErrorCode.COVENANT_FORBIDDEN);
         }
@@ -271,6 +278,8 @@ public class SuccessionCovenantService {
                 .findByIdAndOrganizationIdAndDeletedAtIsNull(covenantId, organizationId)
                 .orElseThrow(() -> new BusinessException(SuccessionErrorCode.COVENANT_NOT_FOUND));
 
+        // 本人でも組織 ADMIN でもない場合は 404（COVENANT_NOT_FOUND と同一ステータス）。
+        // 403 に割ると、同一組織内の他人の誓約 ID の実在が応答差から判別できてしまう。
         boolean isSelf = entity.getSignerUserId().equals(currentUserId);
         boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, organizationId, "ORGANIZATION");
         if (!isSelf && !isAdmin) {
@@ -286,7 +295,7 @@ public class SuccessionCovenantService {
     public Page<SuccessionCovenantResponse> listOrgCovenants(
             Long organizationId, Pageable pageable, Long currentUserId) {
         if (!accessControlService.isAdminOrAbove(currentUserId, organizationId, "ORGANIZATION")) {
-            throw new BusinessException(SuccessionErrorCode.COVENANT_FORBIDDEN);
+            throw new BusinessException(SuccessionErrorCode.COVENANT_LIST_FORBIDDEN);
         }
         return covenantRepository
                 .findByOrganizationIdAndDeletedAtIsNull(organizationId, pageable)

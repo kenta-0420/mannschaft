@@ -1,5 +1,6 @@
 package com.mannschaft.app.shiftbudget.controller;
 
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventStatus;
 import com.mannschaft.app.shiftbudget.dto.FailedEventResponse;
@@ -33,6 +34,7 @@ import java.util.List;
  * <p>共通: {@code X-Organization-Id} ヘッダで組織スコープを強制（多テナント分離）。</p>
  */
 @RestController
+@RequireFeature("FEATURE_SHIFT_ENABLED")
 @RequestMapping("/api/v1/shift-budget/failed-events")
 @Tag(name = "シフト予算 失敗イベント (F08.7)",
      description = "Phase 10-β: 通知失敗 / hook 失敗イベントの一覧・再実行・手動補正済マーク API")

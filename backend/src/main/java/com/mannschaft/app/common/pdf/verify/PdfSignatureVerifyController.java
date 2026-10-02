@@ -23,9 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><strong>認可（認可根治 Phase 3-a / 2026-05-30）:</strong>
  * 本 EP はリクエストボディ（Base64 PDF + 署名トークン）のみを受け取り、
  * 特定のチーム・組織スコープを持たないプラットフォーム横断の検証操作である。
- * よって per-scope の {@code @accessGuard} では表現できず、{@code @EnableMethodSecurity} 未有効ゆえ
- * 旧 {@code @PreAuthorize("hasRole('ADMIN')")} は実機 no-op（生穴＝任意の認証ユーザーが叩けた）であった。
- * スコープ不在のため、AttendanceBatch（全テナント横断バッチ）と同様に
+ * よって per-scope の {@code @accessGuard} では表現できないため、旧 {@code @PreAuthorize("hasRole('ADMIN')")}
+ * から、スコープ不在の AttendanceBatch（全テナント横断バッチ）と同様に
  * {@link AccessControlService#checkSystemAdmin(Long)} で SYSTEM_ADMIN に限定して封鎖する
  *（旧「ADMIN のみ」から厳格化＝安全側。per-scope ADMIN への緩和が要件なら殿の判断で再調整）。
  */

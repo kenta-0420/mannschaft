@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.UserConstants;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
@@ -54,6 +56,8 @@ public class PaymentPurgeBackfillBatchService {
      * member_payments のバルク UPDATE が失敗した場合は例外を再スローせず WARN ログを残し、
      * 次回実行での再補正に委ねる。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると論理削除済み決済関連行の物理削除 backfill が進まず、消したはずの決済個人データが残り続ける")
     @BatchEndpoint(
             name = "payment-purge-backfill-daily",
             description = "AccountPurgedEvent 処理漏れの member_payments / stripe_customers を毎日 03:00 に補正する"

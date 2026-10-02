@@ -84,7 +84,7 @@ class SealMapperTest {
 
             SealResponse response = mapper.toSealResponse(entity);
 
-            assertThat(response.getId()).isEqualTo(10L);
+            assertThat(response.getSealId()).isEqualTo(10L);
             assertThat(response.getUserId()).isEqualTo(1L);
             assertThat(response.getVariant()).isEqualTo("LAST_NAME");
             assertThat(response.getDisplayText()).isEqualTo("田中");

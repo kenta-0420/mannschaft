@@ -12,23 +12,26 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const { uploadImage, uploadVideo } = useBlogMediaApi()
 const { handleApiError } = useErrorHandler()
-const config = useRuntimeConfig()
 
-/** R2 Public ベース URL（末尾スラッシュなし） */
-const r2PublicUrl = computed<string>(() => {
-  const url = config.public.r2PublicUrl as string | undefined
-  return url ? url.replace(/\/$/, '') : ''
-})
+/*
+ * 記事本文へ挿入するのは **r2Key**（`blog/TEAM/12/xxx.png`）そのものであり、URL ではない。
+ *
+ * 従来は公開ベース URL `config.public.r2PublicUrl` を連結した絶対 URL を挿入していたが、
+ * この設定は nuxt.config に一度も宣言されておらず、null ガードも無かったため空文字へ
+ * フォールバックし、`/blog/TEAM/12/xxx.png` という壊れた相対パスが本文へ永続保存されていた。
+ *
+ * マスター御裁可により配信は署名 URL（presigned URL）へ統一する。署名 URL には有効期限が
+ * あるため本文へ焼き込むことはできない。よって本文には r2Key を保存し、記事取得時に
+ * バックエンド（BlogBodyMediaResolver）が署名 URL へ解決する。
+ * 公開バケットの公開ベース URL を宣言し直す案は、横断セキュリティ方針（公開バケット禁止）に
+ * 反するため採らない。
+ */
 
 const imageInputRef = ref<HTMLInputElement | null>(null)
 const videoInputRef = ref<HTMLInputElement | null>(null)
 
 const uploading = ref(false)
 const progress = ref(0)
-
-function buildPublicUrl(fileKey: string): string {
-  return `${r2PublicUrl.value}/${fileKey}`
-}
 
 /** 画像アップロードボタンクリック */
 function onClickUploadImage() {
@@ -58,8 +61,7 @@ async function onImageSelected(event: Event) {
     })
 
     progress.value = 100
-    const publicUrl = buildPublicUrl(fileKey)
-    const markdownText = `![${file.name}](${publicUrl})`
+    const markdownText = `![${file.name}](${fileKey})`
     emit('inserted', markdownText)
   }
   catch (error) {
@@ -94,8 +96,7 @@ async function onVideoSelected(event: Event) {
     })
 
     progress.value = 100
-    const publicUrl = buildPublicUrl(fileKey)
-    const markdownText = `<video src="${publicUrl}" controls></video>`
+    const markdownText = `<video src="${fileKey}" controls></video>`
     emit('inserted', markdownText)
   }
   catch (error) {

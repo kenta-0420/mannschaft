@@ -2,6 +2,7 @@ package com.mannschaft.app.reservation.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.reservation.dto.CreateEmergencyClosureRequest;
 import com.mannschaft.app.reservation.dto.EmergencyClosureConfirmationResponse;
 import com.mannschaft.app.reservation.dto.EmergencyClosurePreviewResponse;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,6 +48,7 @@ public class TeamEmergencyClosureController {
     @GetMapping("/preview")
     @Operation(summary = "臨時休業プレビュー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<EmergencyClosurePreviewResponse>> previewClosure(
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -63,6 +66,7 @@ public class TeamEmergencyClosureController {
     @PostMapping
     @Operation(summary = "臨時休業通知送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "送信成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<EmergencyClosureResponse>> sendClosure(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateEmergencyClosureRequest request) {
@@ -78,6 +82,7 @@ public class TeamEmergencyClosureController {
     @GetMapping
     @Operation(summary = "臨時休業通知履歴一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<List<EmergencyClosureResponse>>> listClosures(
             @PathVariable Long teamId) {
         List<EmergencyClosureResponse> response = emergencyClosureService.listClosures(teamId);
@@ -85,10 +90,21 @@ public class TeamEmergencyClosureController {
     }
 
     /**
-     * 臨時休業通知を確認済みとしてマークする（患者側）。
+     * 臨時休業通知を確認済みとしてマークする（予約者側）。
+     *
+     * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
+     * パス変数 {@code teamId} はそれ単体ではスコープ判定に用いない。認可の実体は
+     * {@code EmergencyClosureService#confirmClosure(Long, Long)} が
+     * {@code EmergencyClosureConfirmationRepository#findByEmergencyClosureIdAndUserId} で
+     * <b>呼び出しユーザー自身の確認レコードのみ</b>を特定し、該当しなければ
+     * {@code CLOSURE_CONFIRMATION_NOT_FOUND} を投げる構造にある。確認レコードは
+     * {@code sendClosure} が対象予約者にのみ作成するため、他人の確認を横取りすることは構造上できない
+     * 自己スコープ EP であり、権限昇格は発生しない。データ依存でない構造的な自己スコープ認可のため
+     * 白名簿クラス呼び出しを持たず、本マーカーで監査済であることを明示する。</p>
      */
     @PostMapping("/{closureId}/confirm")
     @Operation(summary = "臨時休業確認")
+    @AuthorizedInService
     public ResponseEntity<Void> confirmClosure(
             @PathVariable Long teamId,
             @PathVariable Long closureId) {
@@ -101,6 +117,7 @@ public class TeamEmergencyClosureController {
      */
     @GetMapping("/{closureId}/confirmations")
     @Operation(summary = "確認状況一覧")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<List<EmergencyClosureConfirmationResponse>>> getConfirmations(
             @PathVariable Long teamId,
             @PathVariable Long closureId) {

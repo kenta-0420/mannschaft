@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.dto;
 
 import com.mannschaft.app.reservation.ApprovalMode;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,14 @@ public class UpdateSlotRequest {
 
     private final LocalTime endTime;
 
+    /**
+     * ライン軸の変更（任意・F03.4.2 §4）。
+     *
+     * <p>{@code null} / 未指定 = 据え置き（他フィールドと同じ部分更新セマンティクス）。
+     * 当該チームの active ライン以外は 400（LINE_NOT_FOUND=001 再利用）。</p>
+     */
+    private final Long lineId;
+
     private final BigDecimal price;
 
     @Size(max = 2000)
@@ -52,4 +61,15 @@ public class UpdateSlotRequest {
      * {@code null} / {@code false} / 未指定の場合は据え置き。</p>
      */
     private final Boolean clearApprovalMode;
+
+    /**
+     * 予約枠の定員（任意・部分更新）。
+     *
+     * <p>{@code null} / 未指定 = 据え置き（他フィールドと同じ部分更新セマンティクス）。
+     * 値を指定すると定員を変更し、予約数との関係で満席/空きを再評価する
+     * （定員を減らして {@code booked_count >= capacity} なら FULL、増やして下回れば AVAILABLE へ復帰）。
+     * 1 以上を指定すること。</p>
+     */
+    @Min(1)
+    private final Integer capacity;
 }

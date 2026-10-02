@@ -15,6 +15,8 @@ const committees = ref<CommitteeSummary[]>([])
 const loading = ref(true)
 const showCreateDialog = ref(false)
 const creating = ref(false)
+/** 取得失敗は「委員会なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 // 作成フォームの値
 const createForm = ref({
@@ -26,11 +28,13 @@ const createForm = ref({
 
 async function loadCommittees() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await committeeApi.listCommittees(orgSlug)
     committees.value = res.data
   } catch {
     committees.value = []
+    loadFailed.value = true
   } finally {
     loading.value = false
   }
@@ -81,10 +85,7 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <BackButton />
-        <PageHeader :title="$t('committee.list.title')" />
-      </div>
+      <PageHeader :title="$t('committee.list.title')" />
       <Button
         v-if="isAdminOrDeputy"
         :label="$t('committee.list.create')"
@@ -93,7 +94,11 @@ onMounted(async () => {
       />
     </div>
 
-    <SectionCard v-if="committees.length === 0">
+    <SectionCard v-if="loadFailed">
+      <DashboardErrorState testid="committees-list-error-state" @retry="loadCommittees" />
+    </SectionCard>
+
+    <SectionCard v-else-if="committees.length === 0">
       <DashboardEmptyState icon="pi pi-users" :message="$t('committee.list.empty')" />
     </SectionCard>
 

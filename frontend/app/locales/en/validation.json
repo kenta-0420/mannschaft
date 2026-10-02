@@ -4,5 +4,7 @@
   "min_length": "Must be at least {min} characters",
   "max_length": "Must be at most {max} characters",
   "password_mismatch": "Passwords do not match",
-  "invalid_format": "Invalid format"
+  "invalid_format": "Invalid format",
+  "postal_code_format": "Invalid postal code format (e.g. 123-4567)",
+  "postal_code_required": "Postal code is required"
 }

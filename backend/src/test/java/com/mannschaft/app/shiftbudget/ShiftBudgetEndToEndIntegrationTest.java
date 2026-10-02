@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -103,6 +104,9 @@ class ShiftBudgetEndToEndIntegrationTest {
     private OrganizationRepository organizationRepository;
     @Mock
     private ShiftBudgetFailedEventService failedEventService;
+    /** 自己プロキシのプロバイダ（CMP-260910-1556）。Mockito 構成では被テスト実体を返す。 */
+    @Mock
+    private ObjectProvider<MonthlyShiftBudgetCloseService> closeServiceSelfProvider;
 
     private ShiftBudgetSummaryService summaryService;
     private MonthlyShiftBudgetCloseService closeService;
@@ -119,7 +123,8 @@ class ShiftBudgetEndToEndIntegrationTest {
         closeService = new MonthlyShiftBudgetCloseService(
                 allocationRepository, consumptionRepository, budgetTransactionRepository,
                 featureService, accessControlService, auditLogService,
-                organizationRepository, failedEventService);
+                organizationRepository, failedEventService, closeServiceSelfProvider);
+        lenient().when(closeServiceSelfProvider.getObject()).thenReturn(closeService);
 
         allocation = ShiftBudgetAllocationEntity.builder()
                 .organizationId(ORG_ID).teamId(TEAM_ID)
@@ -133,6 +138,11 @@ class ShiftBudgetEndToEndIntegrationTest {
                 .build();
         // BaseEntity の id を反射で埋める（実 DB なら IDENTITY 自動採番、本テストは Mock のため）
         injectId(allocation, ALLOCATION_ID);
+
+        // CMP-260910-1556 検分 P1-2: closeOneAllocation は冒頭で allocation 行を排他ロックする。
+        // stub しないと empty が返り、締めが「対象なし」で静かに 0 件になる。
+        lenient().when(allocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation));
 
         // featureService は常に有効
         lenient().doNothing().when(featureService).requireEnabled(ORG_ID);

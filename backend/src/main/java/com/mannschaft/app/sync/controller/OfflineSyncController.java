@@ -3,6 +3,8 @@ package com.mannschaft.app.sync.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.sync.dto.ConflictDetailResponse;
 import com.mannschaft.app.sync.dto.ConflictResponse;
 import com.mannschaft.app.sync.dto.ResolveConflictRequest;
@@ -47,6 +49,8 @@ public class OfflineSyncController {
      * オフラインキュー一括同期。
      * フロントエンドがオフライン中にキューイングしたリクエストを最大50件一括送信する。
      */
+    @SelfScopedEndpoint("OfflineSyncService#sync は"
+        + "SecurityUtils.getCurrentUserId() のキューを本人のデータとして処理するのみ")
     @PostMapping
     @Operation(summary = "オフラインキュー一括同期")
     public ResponseEntity<ApiResponse<SyncResponse>> sync(
@@ -59,6 +63,9 @@ public class OfflineSyncController {
     /**
      * 自分の未解決コンフリクト一覧を取得する。
      */
+    @SelfScopedEndpoint("ConflictResolverService#getMyConflicts は"
+        + "findByUserIdAndResolutionIsNullOrderByCreatedAtDesc(SecurityUtils.getCurrentUserId())"
+        + " のみを検索する")
     @GetMapping("/conflicts/me")
     @Operation(summary = "自分の未解決コンフリクト一覧")
     public ResponseEntity<PagedResponse<ConflictResponse>> getMyConflicts(
@@ -78,7 +85,11 @@ public class OfflineSyncController {
 
     /**
      * コンフリクト詳細を取得する。
+     *
+     * <p>ConflictResolverService#getConflictDetail は findByIdAndCheckOwnership で
+     * 対象コンフリクトの所有者を SecurityUtils.getCurrentUserId() と照合してから返す。</p>
      */
+    @AuthorizedInService
     @GetMapping("/conflicts/{id}")
     @Operation(summary = "コンフリクト詳細")
     public ResponseEntity<ApiResponse<ConflictDetailResponse>> getConflictDetail(
@@ -91,7 +102,11 @@ public class OfflineSyncController {
     /**
      * コンフリクトを解決する。
      * resolution: CLIENT_WIN / SERVER_WIN / MANUAL_MERGE
+     *
+     * <p>ConflictResolverService#resolveConflict は findByIdAndCheckOwnership で
+     * 対象コンフリクトの所有者を SecurityUtils.getCurrentUserId() と照合してから解決する。</p>
      */
+    @AuthorizedInService
     @PatchMapping("/conflicts/{id}/resolve")
     @Operation(summary = "コンフリクト解決")
     public ResponseEntity<ApiResponse<ConflictDetailResponse>> resolveConflict(
@@ -104,7 +119,11 @@ public class OfflineSyncController {
 
     /**
      * コンフリクトを破棄（DISCARDED）する。
+     *
+     * <p>ConflictResolverService#discardConflict は findByIdAndCheckOwnership で
+     * 対象コンフリクトの所有者を SecurityUtils.getCurrentUserId() と照合してから破棄する。</p>
      */
+    @AuthorizedInService
     @DeleteMapping("/conflicts/{id}")
     @Operation(summary = "コンフリクト破棄")
     public ResponseEntity<Void> discardConflict(@PathVariable Long id) {

@@ -9,9 +9,8 @@
  * - カテゴリフィルタ・名前/カナ検索
  * - 有効/無効フラグ表示
  *
- * Phase 1 では admin guard は middleware:'auth' のみ。ロール検証は今後の中央化に従う
- * （バックエンドの @PreAuthorize で 403 を返すため、UI 側で誤って表示しても
- * API 呼び出しは安全に拒否される）。
+ * admin guard は useAdminScopeGuard('DEPUTY_ADMIN') による直リンク防御（CMP-260917-1351）。
+ * BE も組織スコープでは checkAdminOrAbove を要求する二重防御（CMP-260917-1350）。
  */
 import type {
   VendorCategory,
@@ -33,6 +32,14 @@ const scope = computed<ScopeName>(() => {
 const scopeId = computed<string>(() => {
   const raw = route.query.scopeId
   return String(Array.isArray(raw) ? raw[0] : raw ?? '')
+})
+
+// 業者マスタは repair_longterm_plan モジュールの管理項目（DEPUTY_ADMIN 以上）。
+// 直リンク防御（CMP-260917-1351 課題B）。scope クエリは 'teams'/'organizations' 表記のため
+// useAdminScopeGuard が期待する 'team'/'organization' へ変換する。
+useAdminScopeGuard('DEPUTY_ADMIN', {
+  scopeType: computed(() => (scope.value === 'organizations' ? 'organization' : 'team')),
+  scopeId,
 })
 
 const api = computed(() => useVendorApi(scope.value, scopeId.value))
@@ -212,12 +219,14 @@ function categoryLabel(c: VendorCategory | null): string {
       />
     </header>
 
-    <p
+    <div
       v-if="!scopeId"
-      class="rounded-md border border-dashed border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
+      class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-300"
     >
-      ?scope=teams&scopeId=N
-    </p>
+      <i class="pi pi-info-circle mr-1" />
+      {{ t('property.vendor.notice.personalScopeUnsupported') }}
+      <ScopeSwitchHint class="mt-3" />
+    </div>
 
     <section v-else class="space-y-3">
       <div class="flex flex-wrap gap-2">

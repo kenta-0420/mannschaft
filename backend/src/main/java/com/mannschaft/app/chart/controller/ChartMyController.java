@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * マイカルテコントローラー。自分に共有されたカルテを全チーム横断で取得する。
@@ -31,6 +32,8 @@ public class ChartMyController {
      * 19. 自分のカルテ（共有されたもの）
      * GET /api/v1/charts/me
      */
+    @SelfScopedEndpoint("ChartRecordService#listMyCharts は customerUserId= "
+        + "SecurityUtils.getCurrentUserId() で絞り込み、teamId は任意の絞り込み条件にすぎない")
     @GetMapping("/me")
     @Operation(summary = "マイカルテ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

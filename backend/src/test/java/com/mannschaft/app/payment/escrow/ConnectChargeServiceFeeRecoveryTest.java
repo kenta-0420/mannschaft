@@ -56,6 +56,7 @@ class ConnectChargeServiceFeeRecoveryTest {
     @Mock private RefundRepository refundRepository;
     @Mock private FeePolicyResolver feePolicyResolver;
     @Mock private FeeRecoveryBalanceRepository feeRecoveryBalanceRepository;
+    @Mock private PaymentRequestEscrowPersistenceService paymentRequestEscrowPersistenceService;
 
     private final PaymentFeeCalculator feeCalculator = new PaymentFeeCalculator();
 
@@ -74,7 +75,16 @@ class ConnectChargeServiceFeeRecoveryTest {
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
                 feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new PayeeScopeResolver(), feePolicyResolver, feeRecoveryBalanceRepository);
+                refundRepository, new PayeeScopeResolver(), feePolicyResolver, feeRecoveryBalanceRepository,
+                paymentRequestEscrowPersistenceService);
+    }
+
+    private void stubPersistCandidate() {
+        given(paymentRequestEscrowPersistenceService.persist(any())).willAnswer(inv -> {
+            EscrowTransactionEntity candidate = inv.getArgument(0);
+            candidate.setId(ESCROW_ID);
+            return candidate;
+        });
     }
 
     private ConnectAccountEntity payeeAccount() {
@@ -121,13 +131,7 @@ class ConnectChargeServiceFeeRecoveryTest {
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_new", "cs_new", "requires_confirmation"));
         // 回収実行は未計上（純額 0）→ 適用される。
         given(ledgerEntryRepository.sumAppliedRecoveryNetOnEscrow(any())).willReturn(0L);
-        given(escrowTransactionRepository.save(any())).willAnswer(inv -> {
-            EscrowTransactionEntity e = inv.getArgument(0);
-            if (e.getId() == null) {
-                e.setId(ESCROW_ID);
-            }
-            return e;
-        });
+        stubPersistCandidate();
         given(feeRecoveryBalanceRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
 
@@ -137,7 +141,7 @@ class ConnectChargeServiceFeeRecoveryTest {
         verify(stripePaymentProvider).createDestinationPaymentIntent(eq(AMOUNT), eq("JPY"), eq("cus_x"),
                 eq(869L), eq("acct_payee"), eq(CaptureMethod.AUTOMATIC), eq("idem-1"));
         ArgumentCaptor<EscrowTransactionEntity> escrowCaptor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
-        verify(escrowTransactionRepository).save(escrowCaptor.capture());
+        verify(paymentRequestEscrowPersistenceService).persist(escrowCaptor.capture());
         assertThat(escrowCaptor.getValue().getApplicationFeeAmount()).isEqualTo(SELF_FEE); // 隔離: 列は self のまま
 
         // ① outstanding を 369 減算（369 → 0）。
@@ -175,13 +179,7 @@ class ConnectChargeServiceFeeRecoveryTest {
                 eq(AMOUNT), eq("acct_payee"), eq(CaptureMethod.AUTOMATIC), eq("idem-1")))
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_new", "cs_new", "requires_confirmation"));
         given(ledgerEntryRepository.sumAppliedRecoveryNetOnEscrow(any())).willReturn(0L);
-        given(escrowTransactionRepository.save(any())).willAnswer(inv -> {
-            EscrowTransactionEntity e = inv.getArgument(0);
-            if (e.getId() == null) {
-                e.setId(ESCROW_ID);
-            }
-            return e;
-        });
+        stubPersistCandidate();
         given(feeRecoveryBalanceRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
 
@@ -214,13 +212,7 @@ class ConnectChargeServiceFeeRecoveryTest {
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_new", "cs_new", "requires_confirmation"));
         // 既に回収実行が立っている（純額 369 > 0）→ skip。
         given(ledgerEntryRepository.sumAppliedRecoveryNetOnEscrow(any())).willReturn(369L);
-        given(escrowTransactionRepository.save(any())).willAnswer(inv -> {
-            EscrowTransactionEntity e = inv.getArgument(0);
-            if (e.getId() == null) {
-                e.setId(ESCROW_ID);
-            }
-            return e;
-        });
+        stubPersistCandidate();
 
         svc.charge(membershipCmd());
 
@@ -246,13 +238,7 @@ class ConnectChargeServiceFeeRecoveryTest {
         given(stripePaymentProvider.createDestinationPaymentIntent(eq(AMOUNT), eq("JPY"), eq("cus_x"),
                 eq(SELF_FEE), eq("acct_payee"), eq(CaptureMethod.AUTOMATIC), eq("idem-1")))
                 .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_new", "cs_new", "requires_confirmation"));
-        given(escrowTransactionRepository.save(any())).willAnswer(inv -> {
-            EscrowTransactionEntity e = inv.getArgument(0);
-            if (e.getId() == null) {
-                e.setId(ESCROW_ID);
-            }
-            return e;
-        });
+        stubPersistCandidate();
 
         svc.charge(membershipCmd());
 

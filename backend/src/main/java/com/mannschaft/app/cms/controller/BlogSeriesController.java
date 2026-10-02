@@ -45,7 +45,8 @@ public class BlogSeriesController {
     public ResponseEntity<ApiResponse<List<BlogSeriesResponse>>> listSeries(
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) Long organizationId) {
-        return ResponseEntity.ok(ApiResponse.of(seriesService.listSeries(teamId, organizationId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                seriesService.listSeries(SecurityUtils.getCurrentUserId(), teamId, organizationId)));
     }
 
     /**
@@ -69,7 +70,8 @@ public class BlogSeriesController {
     public ResponseEntity<ApiResponse<BlogSeriesResponse>> updateSeries(
             @PathVariable Long id,
             @Valid @RequestBody UpdateSeriesRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(seriesService.updateSeries(id, request)));
+        return ResponseEntity.ok(
+                ApiResponse.of(seriesService.updateSeries(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     /**
@@ -79,7 +81,7 @@ public class BlogSeriesController {
     @Operation(summary = "シリーズ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSeries(@PathVariable Long id) {
-        seriesService.deleteSeries(id);
+        seriesService.deleteSeries(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

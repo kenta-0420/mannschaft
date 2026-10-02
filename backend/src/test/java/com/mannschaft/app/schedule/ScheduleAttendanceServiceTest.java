@@ -3,6 +3,8 @@ package com.mannschaft.app.schedule;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.MembershipScopeQueryService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -20,6 +22,7 @@ import com.mannschaft.app.schedule.service.EventSurveyService;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
 import com.mannschaft.app.schedule.service.ScheduleDelegationService;
 import com.mannschaft.app.schedule.service.ScheduleService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +43,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -64,6 +72,9 @@ class ScheduleAttendanceServiceTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
@@ -81,6 +92,9 @@ class ScheduleAttendanceServiceTest {
     @Mock
     private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
 
+    @Mock
+    private Clock wallClock;
+
     @InjectMocks
     private ScheduleAttendanceService attendanceService;
 
@@ -92,9 +106,16 @@ class ScheduleAttendanceServiceTest {
     private static final Long USER_ID = 100L;
     private static final Long TEAM_ID = 10L;
     private static final Long ORG_ID = 20L;
+    private static final Instant CURRENT_INSTANT = Instant.parse("2026-04-01T00:00:00Z");
     private static final LocalDateTime START = LocalDateTime.of(2026, 4, 1, 10, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 4, 1, 12, 0);
     private static final LocalDateTime FUTURE_DEADLINE = LocalDateTime.of(2099, 12, 31, 23, 59);
+
+    @BeforeEach
+    void setUpWallClock() {
+        lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
+        lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
 
     private ScheduleEntity createScheduleWithAttendance() {
         return ScheduleEntity.builder()
@@ -202,6 +223,12 @@ class ScheduleAttendanceServiceTest {
             // given
             ScheduleEntity schedule = createScheduleWithAttendance();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は DB DEFAULT / Entity @Builder.Default により常に MEMBER_PLUS
+            // （nullではない・DDL上NOT NULL DEFAULT 'MEMBER_PLUS'）。本テストは認可自体を
+            // 検証対象にしていないため、被験者がMEMBER以上を満たす前提で明示的にstubする
+            // （検分差し戻し是正: 認可で先に弾かれて意図した分岐に到達しない事故の再発防止）。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
             given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
@@ -255,6 +282,11 @@ class ScheduleAttendanceServiceTest {
                     .isException(false)
                     .build();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は既定 MEMBER_PLUS（DDL NOT NULL DEFAULT と同値）。本テストの
+            // 検証対象は期限チェックであり認可ではないため、被験者がMEMBER以上を満たす前提で
+            // 明示的にstubし、認可で先に弾かれて意図した分岐に到達しない事故を防ぐ。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
 
@@ -263,6 +295,8 @@ class ScheduleAttendanceServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.ATTENDANCE_DEADLINE_PASSED);
+            verify(wallClock).instant();
+            verify(wallClock).getZone();
         }
 
         @Test
@@ -285,6 +319,11 @@ class ScheduleAttendanceServiceTest {
                     .isException(false)
                     .build();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は既定 MEMBER_PLUS（DDL NOT NULL DEFAULT と同値）。本テストの
+            // 検証対象はコメント必須チェックであり認可ではないため、被験者がMEMBER以上を
+            // 満たす前提で明示的にstubし、認可で先に弾かれて意図した分岐に到達しない事故を防ぐ。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             AttendanceRequest req = new AttendanceRequest("ABSENT", null, null);
 
@@ -321,6 +360,11 @@ class ScheduleAttendanceServiceTest {
 
             ScheduleEntity schedule = createScheduleWithAttendance();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は既定 MEMBER_PLUS（DDL NOT NULL DEFAULT と同値）。本テストは
+            // 後見切替の代理入力記録スモークが検証対象であり認可ではないため、respondAttendance
+            // に渡る被験者（USER_ID）がMEMBER以上を満たす前提で明示的にstubする。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
             given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
@@ -643,20 +687,34 @@ class ScheduleAttendanceServiceTest {
         @Test
         @DisplayName("出欠一覧取得_正常_一覧を返す")
         void 出欠一覧取得_正常_一覧を返す() {
-            // given
-            ScheduleEntity schedule = createScheduleWithAttendance();
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
-
+            // given: checkScopeViewAccess は entity 由来 scope の per-scope 認可を担う
+            // ScheduleService 側の void メソッド（モックのためデフォルトで no-op）。
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.ATTENDING);
             given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(SCHEDULE_ID))
                     .willReturn(List.of(attendance));
 
             // when
-            List<AttendanceResponse> result = attendanceService.getAttendances(SCHEDULE_ID);
+            List<AttendanceResponse> result = attendanceService.getAttendances(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getStatus()).isEqualTo("ATTENDING");
+            verify(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("出欠一覧取得_非権限者_COMMON_002")
+        void 出欠一覧取得_非権限者_COMMON_002() {
+            // given
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.getAttendances(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(attendanceRepository, never()).findByScheduleIdOrderByUserIdAsc(SCHEDULE_ID);
         }
     }
 
@@ -681,12 +739,102 @@ class ScheduleAttendanceServiceTest {
                     .willReturn(List.of(row1, row2));
 
             // when
-            AttendanceSummaryResponse result = attendanceService.getAttendanceSummary(SCHEDULE_ID);
+            AttendanceSummaryResponse result = attendanceService.getAttendanceSummary(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(result.getAttending()).isEqualTo(3);
             assertThat(result.getAbsent()).isEqualTo(1);
             assertThat(result.getTotal()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("出欠サマリー取得_scope外の利用者_COMMON_002")
+        void 出欠サマリー取得_scope外の利用者_COMMON_002() {
+            // given: checkScopeViewAccess が entity 由来 scope で弾く
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.getAttendanceSummary(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    // ========================================
+    // 出席率統計の認可（認可根治 Wave6）
+    // ========================================
+
+    @Nested
+    @DisplayName("出席率統計の認可（認可根治 Wave6）")
+    class AttendanceStatsAuthorization {
+
+        /** 期間フィクスチャ。文字列リテラルでなく LocalDateTime で bind する（TZ ズレ事故の回避）。 */
+        private static final LocalDateTime FROM = LocalDateTime.of(2026, 4, 1, 0, 0);
+        private static final LocalDateTime TO = LocalDateTime.of(2026, 4, 30, 23, 59);
+
+        @Test
+        @DisplayName("チーム統計_チーム管理者でない_COMMON_002")
+        void チーム統計_チーム管理者でない_COMMON_002() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> attendanceService.getTeamAttendanceStats(
+                    TEAM_ID, FROM, TO, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            // 認可前にリポジトリを引いていないこと（漏洩経路が残っていないこと）
+            org.mockito.Mockito.verifyNoInteractions(userRoleRepository);
+        }
+
+        @Test
+        @DisplayName("組織統計_組織管理者でない_COMMON_002")
+        void 組織統計_組織管理者でない_COMMON_002() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+
+            assertThatThrownBy(() -> attendanceService.getOrgAttendanceStats(
+                    ORG_ID, FROM, TO, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            org.mockito.Mockito.verifyNoInteractions(userRoleRepository);
+        }
+
+        @Test
+        @DisplayName("チーム統計_正常_チーム管理者は取得できる")
+        void チーム統計_正常_チーム管理者は取得できる() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(userRoleRepository.findByTeamId(org.mockito.ArgumentMatchers.eq(TEAM_ID),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(org.springframework.data.domain.Page.empty());
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of());
+
+            assertThat(attendanceService.getTeamAttendanceStats(TEAM_ID, FROM, TO, USER_ID)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("組織統計_正常_SYSTEM_ADMINは横断で取得できる")
+        void 組織統計_正常_SYSTEM_ADMINは横断で取得できる() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+            given(userRoleRepository.findByOrganizationId(org.mockito.ArgumentMatchers.eq(ORG_ID),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(org.springframework.data.domain.Page.empty());
+            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
+                    .willReturn(List.of());
+
+            assertThat(attendanceService.getOrgAttendanceStats(ORG_ID, FROM, TO, USER_ID)).isEmpty();
+
+            // SYSTEM_ADMIN は per-scope 判定を通さない
+            org.mockito.Mockito.verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         }
     }
 
@@ -715,10 +863,11 @@ class ScheduleAttendanceServiceTest {
                     List.of(new BulkAttendanceRequest.BulkAttendanceItem(USER_ID, "ATTENDING", "管理者承認")));
 
             // when
-            attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req);
+            attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req, USER_ID);
 
             // then
             verify(attendanceRepository).save(any(ScheduleAttendanceEntity.class));
+            verify(scheduleService).checkScopeAdminAccess(SCHEDULE_ID, USER_ID);
         }
 
         @Test
@@ -732,10 +881,28 @@ class ScheduleAttendanceServiceTest {
                     List.of(new BulkAttendanceRequest.BulkAttendanceItem(USER_ID, "ATTENDING", null)));
 
             // when & then
-            assertThatThrownBy(() -> attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req))
+            assertThatThrownBy(() -> attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.ATTENDANCE_NOT_REQUIRED);
+        }
+
+        @Test
+        @DisplayName("一括更新_非権限者_COMMON_002")
+        void 一括更新_非権限者_COMMON_002() {
+            // given: checkScopeAdminAccess（ScheduleService 側）が COMMON_002 を投げるケース
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeAdminAccess(SCHEDULE_ID, USER_ID);
+
+            BulkAttendanceRequest req = new BulkAttendanceRequest(
+                    List.of(new BulkAttendanceRequest.BulkAttendanceItem(USER_ID, "ATTENDING", null)));
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.bulkUpdateAttendances(SCHEDULE_ID, req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(attendanceRepository, never()).save(any(ScheduleAttendanceEntity.class));
         }
     }
 
@@ -750,21 +917,34 @@ class ScheduleAttendanceServiceTest {
         @Test
         @DisplayName("CSV出力_正常_ヘッダーとデータを含む")
         void CSV出力_正常_ヘッダーとデータを含む() {
-            // given
-            ScheduleEntity schedule = createScheduleWithAttendance();
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
-
+            // given: checkScopeViewAccess は entity 由来 scope の per-scope 認可を担う
+            // ScheduleService 側の void メソッド（モックのためデフォルトで no-op）。
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.ATTENDING);
             attendance.respond(AttendanceStatus.ATTENDING, "参加します");
             given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(SCHEDULE_ID))
                     .willReturn(List.of(attendance));
 
             // when
-            String csv = attendanceService.exportAttendancesCsv(SCHEDULE_ID);
+            String csv = attendanceService.exportAttendancesCsv(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(csv).startsWith("ユーザーID,ステータス,コメント,回答日時");
             assertThat(csv).contains("ATTENDING");
+            verify(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("CSV出力_非権限者_COMMON_002")
+        void CSV出力_非権限者_COMMON_002() {
+            // given
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.exportAttendancesCsv(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
         }
     }
 
@@ -808,8 +988,8 @@ class ScheduleAttendanceServiceTest {
         @DisplayName("個人出席統計_出欠なし_出席率0を返す")
         void 個人出席統計_出欠なし_出席率0を返す() {
             // given
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
 
             // when
             AttendanceStatsResponse result = attendanceService.getMyAttendanceStats(USER_ID, START, END);
@@ -817,6 +997,216 @@ class ScheduleAttendanceServiceTest {
             // then
             assertThat(result.getTotalSchedules()).isZero();
             assertThat(result.getAttendanceRate()).isZero();
+        }
+    }
+
+    // ========================================
+    // getAttendanceTeamBreakdown（(B) フェーズB・出欠のチーム別内訳 by_team）
+    // ========================================
+
+    @Nested
+    @DisplayName("getAttendanceTeamBreakdown")
+    class GetAttendanceTeamBreakdown {
+
+        private static final Long ORG_SCHEDULE_ID = 30L;
+        private static final Long TEAM_A = 1L;
+        private static final Long TEAM_B = 2L;
+
+        /** team_breakdown_enabled / include_supporters を指定した組織出欠スケジュールを生成する。 */
+        private ScheduleEntity orgSchedule(boolean teamBreakdownEnabled, boolean includeSupporters) {
+            return ScheduleEntity.builder()
+                    .organizationId(ORG_ID)
+                    .title("組織練習")
+                    .startAt(START)
+                    .endAt(END)
+                    .allDay(false)
+                    .eventType(EventType.PRACTICE)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(true)
+                    .includeSupporters(includeSupporters)
+                    .teamBreakdownEnabled(teamBreakdownEnabled)
+                    .commentOption(CommentOption.OPTIONAL)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+        }
+
+        private ScheduleAttendanceEntity attendance(Long userId, AttendanceStatus status) {
+            return ScheduleAttendanceEntity.builder()
+                    .scheduleId(ORG_SCHEDULE_ID)
+                    .userId(userId)
+                    .status(status)
+                    .build();
+        }
+
+        /** countByScheduleIdGroupByStatus が返す Object[]{status, count(Long)} を組み立てる。 */
+        private List<Object[]> statusCounts(java.util.Map<AttendanceStatus, Long> counts) {
+            List<Object[]> rows = new java.util.ArrayList<>();
+            counts.forEach((status, count) -> rows.add(new Object[]{status, count}));
+            return rows;
+        }
+
+        @Test
+        @DisplayName("番人③: トグルOFFはby_teamを省略（null）＝従来挙動・totalは返す")
+        void トグルOFFはbyTeam省略() {
+            // given: team_breakdown_enabled = false
+            given(scheduleService.getSchedule(ORG_SCHEDULE_ID))
+                    .willReturn(orgSchedule(false, false));
+            given(attendanceRepository.countByScheduleIdGroupByStatus(ORG_SCHEDULE_ID))
+                    .willReturn(statusCounts(java.util.Map.of(
+                            AttendanceStatus.ATTENDING, 3L,
+                            AttendanceStatus.ABSENT, 1L)));
+
+            // when
+            var result = attendanceService.getAttendanceTeamBreakdown(ORG_SCHEDULE_ID);
+
+            // then: byTeam は null（省略）、total は実人数で返る
+            assertThat(result.getByTeam()).isNull();
+            assertThat(result.getTotal().attending()).isEqualTo(3);
+            assertThat(result.getTotal().absent()).isEqualTo(1);
+            // トグル OFF では母集団解決（越境窓口）を呼ばない
+            org.mockito.Mockito.verifyNoInteractions(organizationMembershipService);
+        }
+
+        @Test
+        @DisplayName("番人④⑤: トグルONでby_team算出・totalはDISTINCT実人数・複数チーム所属は全チーム計上(合計>total)・team_id=null枠")
+        void トグルONで全チーム計上_totalはDISTINCT() {
+            // given: 3 ユーザー
+            //   u101: TEAM_A のみ → ATTENDING
+            //   u102: TEAM_A と TEAM_B 両方所属 → ABSENT（両チームに計上＝重複）
+            //   u103: 組織直属（team_id=null 枠）→ PARTIAL
+            given(scheduleService.getSchedule(ORG_SCHEDULE_ID))
+                    .willReturn(orgSchedule(true, false));
+
+            // total（実人数）: ATTENDING=1, ABSENT=1, PARTIAL=1 → DISTINCT 3 名
+            given(attendanceRepository.countByScheduleIdGroupByStatus(ORG_SCHEDULE_ID))
+                    .willReturn(statusCounts(java.util.Map.of(
+                            AttendanceStatus.ATTENDING, 1L,
+                            AttendanceStatus.ABSENT, 1L,
+                            AttendanceStatus.PARTIAL, 1L)));
+
+            given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(ORG_SCHEDULE_ID))
+                    .willReturn(List.of(
+                            attendance(101L, AttendanceStatus.ATTENDING),
+                            attendance(102L, AttendanceStatus.ABSENT),
+                            attendance(103L, AttendanceStatus.PARTIAL)));
+
+            // 母集団解決（越境窓口）: u102 は TEAM_A/TEAM_B 両方、u103 は組織直属（teamId=null）
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, false))
+                    .willReturn(java.util.Map.of(
+                            101L, List.of(new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(TEAM_A, "Aチーム")),
+                            102L, List.of(
+                                    new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(TEAM_A, "Aチーム"),
+                                    new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(TEAM_B, "Bチーム")),
+                            103L, List.of(new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(null, null))));
+
+            // when
+            var result = attendanceService.getAttendanceTeamBreakdown(ORG_SCHEDULE_ID);
+
+            // then: total は DISTINCT 実人数（各 1）
+            assertThat(result.getTotal().attending()).isEqualTo(1);
+            assertThat(result.getTotal().absent()).isEqualTo(1);
+            assertThat(result.getTotal().partial()).isEqualTo(1);
+
+            assertThat(result.getByTeam()).isNotNull();
+
+            // TEAM_A: u101(ATTENDING) + u102(ABSENT)
+            var teamA = result.getByTeam().stream()
+                    .filter(i -> TEAM_A.equals(i.teamId())).findFirst().orElseThrow();
+            assertThat(teamA.teamName()).isEqualTo("Aチーム");
+            assertThat(teamA.attending()).isEqualTo(1);
+            assertThat(teamA.absent()).isEqualTo(1);
+
+            // TEAM_B: u102(ABSENT) ← 複数チーム所属の重複計上
+            var teamB = result.getByTeam().stream()
+                    .filter(i -> TEAM_B.equals(i.teamId())).findFirst().orElseThrow();
+            assertThat(teamB.absent()).isEqualTo(1);
+
+            // team_id=null 枠（組織直接メンバー）: u103(PARTIAL)
+            var orgDirect = result.getByTeam().stream()
+                    .filter(i -> i.teamId() == null).findFirst().orElseThrow();
+            assertThat(orgDirect.partial()).isEqualTo(1);
+
+            // 御裁可A: by_team 各チームの「のべ人数」合計 ≧ total（実人数）。
+            //   by_team のべ = TEAM_A(2) + TEAM_B(1) + null枠(1) = 4 > total 実人数 3
+            int byTeamTotal = result.getByTeam().stream()
+                    .mapToInt(i -> i.attending() + i.partial() + i.absent() + i.undecided())
+                    .sum();
+            int realTotal = result.getTotal().attending() + result.getTotal().partial()
+                    + result.getTotal().absent() + result.getTotal().undecided();
+            assertThat(byTeamTotal).isGreaterThan(realTotal);
+            assertThat(byTeamTotal).isEqualTo(4);
+            assertThat(realTotal).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("番人②: team_id=null枠が組織直接メンバーを拾う")
+        void teamIdNull枠が組織直接メンバーを拾う() {
+            given(scheduleService.getSchedule(ORG_SCHEDULE_ID))
+                    .willReturn(orgSchedule(true, false));
+            given(attendanceRepository.countByScheduleIdGroupByStatus(ORG_SCHEDULE_ID))
+                    .willReturn(statusCounts(java.util.Map.of(AttendanceStatus.ATTENDING, 1L)));
+            given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(ORG_SCHEDULE_ID))
+                    .willReturn(List.of(attendance(200L, AttendanceStatus.ATTENDING)));
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, false))
+                    .willReturn(java.util.Map.of(200L, List.of(
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(null, null))));
+
+            var result = attendanceService.getAttendanceTeamBreakdown(ORG_SCHEDULE_ID);
+
+            assertThat(result.getByTeam()).hasSize(1);
+            var orgDirect = result.getByTeam().get(0);
+            assertThat(orgDirect.teamId()).isNull();
+            assertThat(orgDirect.attending()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("includeSupportersトグルが母集団解決へ伝播する")
+        void includeSupportersが母集団解決へ伝播() {
+            given(scheduleService.getSchedule(ORG_SCHEDULE_ID))
+                    .willReturn(orgSchedule(true, true)); // includeSupporters=true
+            given(attendanceRepository.countByScheduleIdGroupByStatus(ORG_SCHEDULE_ID))
+                    .willReturn(List.of());
+            given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(ORG_SCHEDULE_ID))
+                    .willReturn(List.of());
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, true))
+                    .willReturn(java.util.Map.of());
+
+            attendanceService.getAttendanceTeamBreakdown(ORG_SCHEDULE_ID);
+
+            // includeSupporters=true で母集団解決が呼ばれることを検証
+            verify(organizationMembershipService).resolveMemberTeams(ORG_ID, true);
+        }
+
+        @Test
+        @DisplayName("チーム別CSVは数式接頭辞とCRLF・引用符・カンマを安全に出力する")
+        void チーム別CSVは数式接頭辞と制御文字を無害化する() {
+            given(scheduleService.getSchedule(ORG_SCHEDULE_ID)).willReturn(orgSchedule(true, false));
+            given(attendanceRepository.countByScheduleIdGroupByStatus(ORG_SCHEDULE_ID))
+                    .willReturn(statusCounts(java.util.Map.of(AttendanceStatus.ATTENDING, 1L)));
+            given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(ORG_SCHEDULE_ID))
+                    .willReturn(List.of(attendance(901L, AttendanceStatus.ATTENDING)));
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, false)).willReturn(java.util.Map.of(
+                    901L, List.of(
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(11L, "=formula"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(12L, "+formula"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(13L, "-formula"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(14L, "@formula"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(15L, "carriage\rreturn"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(16L, "line\nfeed"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(17L, "both\r\nends"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(18L, "say \"hello\""),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(19L, "comma,name"))));
+
+            String csv = attendanceService.exportAttendanceTeamBreakdownCsv(ORG_SCHEDULE_ID);
+
+            assertThat(csv).contains("'=formula,1,0,0,0,1", "'+formula,1,0,0,0,1",
+                    "'-formula,1,0,0,0,1", "'@formula,1,0,0,0,1");
+            assertThat(csv).contains("\"carriage\rreturn\",1,0,0,0,1",
+                    "\"line\nfeed\",1,0,0,0,1", "\"both\r\nends\",1,0,0,0,1",
+                    "\"say \"\"hello\"\"\",1,0,0,0,1", "\"comma,name\",1,0,0,0,1");
         }
     }
 }

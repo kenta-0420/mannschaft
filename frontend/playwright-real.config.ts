@@ -2,7 +2,15 @@ import { defineConfig, devices } from '@playwright/test'
 import dotenv from 'dotenv'
 import path from 'path'
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env.test') })
+dotenv.config({ path: path.resolve(process.cwd(), '.env.test'), quiet: true })
+
+// .env.test は .gitignore 対象（追跡外）のため、未設定環境では API_BASE_URL が
+// 空文字（baseURL相対）になり fixtures/auth.ts の loginViaApi が Nuxt(3000) に
+// /api/v1/auth/login を投げて 404 → setup が落ちて後続が全skipのまま exit code 0 になる
+// （偽の緑）。実機構成は本陣ポート規約（BE=8080）を既定値として明示する。
+if (!process.env.API_BASE_URL) {
+  process.env.API_BASE_URL = 'http://localhost:8080'
+}
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -16,6 +24,11 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     locale: 'ja-JP',
     timezoneId: 'Asia/Tokyo',
+    // localhost の URL 文字列は Cookie の同一サイト判定のため維持しつつ、
+    // Chromium が WSL2 mirrored networking の IPv6 ゴーストソケットへ接続するのを防ぐ。
+    launchOptions: {
+      args: ['--host-resolver-rules=MAP localhost 127.0.0.1'],
+    },
   },
   projects: [
     {

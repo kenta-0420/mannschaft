@@ -11,6 +11,7 @@ import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chart.repository.ChartRecordTemplateRepository;
 import com.mannschaft.app.chart.repository.ChartSectionSettingRepository;
 import com.mannschaft.app.chart.service.ChartSettingsService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,11 +39,13 @@ class ChartSettingsServiceTest {
     @Mock private ChartRecordRepository recordRepository;
     @Mock private ChartRecordTemplateRepository recordTemplateRepository;
     @Mock private ChartMapper chartMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ChartSettingsService service;
 
     private static final Long TEAM_ID = 1L;
+    private static final Long USER_ID = 100L;
 
     @Nested
     @DisplayName("createCustomField")
@@ -53,7 +56,7 @@ class ChartSettingsServiceTest {
             given(customFieldRepository.countByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(5L);
             CreateCustomFieldRequest request = new CreateCustomFieldRequest("新フィールド", "TEXT", null, null);
 
-            assertThatThrownBy(() -> service.createCustomField(TEAM_ID, request))
+            assertThatThrownBy(() -> service.createCustomField(TEAM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_012"));
@@ -70,7 +73,7 @@ class ChartSettingsServiceTest {
             given(chartMapper.toCustomFieldResponse(saved)).willReturn(
                     new CustomFieldResponse(null, null, null, null, null, null));
 
-            CustomFieldResponse result = service.createCustomField(TEAM_ID, request);
+            CustomFieldResponse result = service.createCustomField(TEAM_ID, USER_ID, request);
             assertThat(result).isNotNull();
         }
     }
@@ -82,7 +85,7 @@ class ChartSettingsServiceTest {
         @DisplayName("異常系: フィールド不在でCHART_004例外")
         void 無効化_不在_例外() {
             given(customFieldRepository.findByIdAndTeamId(99L, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deactivateCustomField(TEAM_ID, 99L))
+            assertThatThrownBy(() -> service.deactivateCustomField(TEAM_ID, 99L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_004"));
@@ -98,7 +101,7 @@ class ChartSettingsServiceTest {
             given(recordTemplateRepository.countByTeamId(TEAM_ID)).willReturn(20L);
             CreateRecordTemplateRequest request = new CreateRecordTemplateRequest("テンプレート", null, null, null, null, null);
 
-            assertThatThrownBy(() -> service.createRecordTemplate(TEAM_ID, request))
+            assertThatThrownBy(() -> service.createRecordTemplate(TEAM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_014"));
@@ -112,7 +115,7 @@ class ChartSettingsServiceTest {
         @DisplayName("異常系: テンプレート不在でCHART_006例外")
         void 削除_不在_例外() {
             given(recordTemplateRepository.findByIdAndTeamId(99L, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deleteRecordTemplate(TEAM_ID, 99L))
+            assertThatThrownBy(() -> service.deleteRecordTemplate(TEAM_ID, 99L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_006"));
@@ -124,7 +127,7 @@ class ChartSettingsServiceTest {
             ChartRecordTemplateEntity entity = ChartRecordTemplateEntity.builder()
                     .teamId(TEAM_ID).templateName("テスト").build();
             given(recordTemplateRepository.findByIdAndTeamId(10L, TEAM_ID)).willReturn(Optional.of(entity));
-            service.deleteRecordTemplate(TEAM_ID, 10L);
+            service.deleteRecordTemplate(TEAM_ID, 10L, USER_ID);
             verify(recordTemplateRepository).delete(entity);
         }
     }

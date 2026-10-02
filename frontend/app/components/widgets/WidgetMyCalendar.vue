@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useMyCalendarData, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
+import { toCalendarPanelEvent, type NestedScheduleResponse } from '~/utils/scheduleCalendar'
 
 interface EventDetail {
   id: number
@@ -21,6 +22,9 @@ interface EventDetail {
   status?: string
   categoryName?: string | null
   categoryColor?: string | null
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: Array<{ userId: number; displayName: string; avatarUrl: string | null; calendarColor: string | null }>
 }
 
 interface PersonalScheduleRaw {
@@ -39,7 +43,7 @@ const {
   onPrevMonth, onNextMonth,
   extendedEvents, allScopeOptions, selectedScopes, filteredEvents,
   toggleScope, multiSelectScopes, initStorage,
-} = useMyCalendarData({ storageKey: 'mannschaft:widget:calendar:scopeFilter' })
+} = useMyCalendarData()
 
 const selectedEventId = ref<number | null>(null)
 const selectedEvent = ref<EventDetail | null>(null)
@@ -49,6 +53,25 @@ const showEditDialog = ref(false)
 
 function onDateClick(date: string) {
   navigateTo(`/calendar?date=${date}`)
+}
+
+/**
+ * reflection 印クリック（§6.2/AC-21）。
+ * - REFLECTION_RECALL（SPACED 間隔反復）: recall 画面（entry_id 指定）へ遷移。
+ * - REFLECTION_PRE_EXAM（考査前総まとめ）: テーマ詳細画面（theme_id 指定）へ遷移。
+ * - それ以外（REFLECTION_ENTRY 等）: エントリ詳細へ遷移。
+ * referenceUuid は SPACED/エントリ＝entry UUID、PRE_EXAM＝theme UUID。
+ */
+function onReflectionClick(referenceUuid: string, referenceKind: string) {
+  if (referenceKind === 'REFLECTION_RECALL') {
+    navigateTo(`/reflections/recall?entry=${referenceUuid}`)
+  }
+  else if (referenceKind === 'REFLECTION_PRE_EXAM') {
+    navigateTo(`/reflections/themes/${referenceUuid}`)
+  }
+  else {
+    navigateTo(`/reflections/entries/${referenceUuid}`)
+  }
 }
 
 async function onEventClick(eventId: number, isPersonal: boolean) {
@@ -81,18 +104,21 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const ext = extendedEvents.value.find(e => e.id === eventId && !e.isPersonal)
       if (!ext) return
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
-      const sid = ext.scopeId ?? ''
+      // F03.19 W2-a P1修繕: 詳細APIは公開スコープID（slug）を要求する。ext.scopeId は
+      // レイヤーキー照合用の数値IDに変わったため、詳細取得には ext.scopeRouteId を使う。
+      const sid = ext.scopeRouteId ?? ''
       const res = await scheduleApi.getSchedule(st, sid, eventId)
-      const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
-      selectedEvent.value = {
-        ...d,
+      // F03.19 実機E2E 欠陥1 と同型の欠陥がここにもあった（calendar.vue と同じ嘘のキャスト＋
+      // スプレッドで、題名・日時が常に undefined になっていた）。詰め替えは共通の
+      // toCalendarPanelEvent に委ねる（画面ごとに書くから1画面だけ取り残される）。
+      selectedEvent.value = toCalendarPanelEvent(res.data as NestedScheduleResponse, {
         scopeType: ext.scopeType,
-        scopeId: ext.scopeId,
-        scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
-        scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
-        createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
-        myAttendance: d.myAttendanceStatus ?? null,
-      }
+        scopeId: ext.scopeRouteId,
+        scopeName: ext.scopeName,
+        targetMode: ext.targetMode,
+        targetCount: ext.targetCount,
+        targets: ext.targets,
+      })
     }
     showEventDialog.value = true
   }
@@ -139,7 +165,7 @@ onMounted(() => {
 <template>
   <div>
     <div class="mb-2 flex items-center justify-between">
-      <h3 class="font-semibold text-sm text-surface-700 dark:text-surface-300">
+      <h3 class="font-semibold text-[22px] text-surface-700 dark:text-surface-200">
         <i class="pi pi-calendar mr-1.5 text-primary" />マイカレンダー
       </h3>
       <Button label="全画面で開く" icon="pi pi-external-link" text size="small" @click="navigateTo('/calendar')" />
@@ -156,6 +182,7 @@ onMounted(() => {
         :events="filteredEvents"
         @date-click="onDateClick"
         @event-click="onEventClick"
+        @reflection-click="onReflectionClick"
         @prev-month="onPrevMonth"
         @next-month="onNextMonth"
       />
@@ -223,6 +250,9 @@ onMounted(() => {
           attendanceRequired: selectedEvent.attendanceRequired ?? false,
           myAttendance: selectedEvent.myAttendance ?? null,
           attendanceStats: selectedEvent.attendanceStats ?? null,
+          targetMode: selectedEvent.targetMode,
+          targetCount: selectedEvent.targetCount,
+          targets: selectedEvent.targets,
         }"
         :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
         :scope-id="selectedEvent.scopeId ?? ''"
@@ -230,6 +260,7 @@ onMounted(() => {
         :skip-delegations="selectedEventIsPersonal"
         :scope-name="selectedEvent.scopeName ?? null"
         :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
+        :show-audience="!selectedEventIsPersonal"
         @edit="onEditEvent"
         @delete="onDeleteEvent"
         @responded="refresh"
