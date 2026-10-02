@@ -107,6 +107,8 @@ public enum AuditEventType {
     TEAM_ORG_INVITE_CANCELLED(AuditEventCategory.TEAM),
     /** F01.2.1 §4.1: 加盟が成立した（metadata.via: ORG_INVITE＝招待の承諾 / TEAM_APPLY＝申請の承認・group_id）。 */
     TEAM_ORG_MEMBERSHIP_CREATED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: 組織 ADMIN が加盟チームのグループ割当を変更した（単体・一括。1チームにつき1行。metadata: from・to のグループ ID）。 */
+    TEAM_ORG_GROUP_CHANGED(AuditEventCategory.TEAM),
 
     // ─── ORGANIZATION (Phase 2+) ──────────────────────────────
     ORGANIZATION_CREATED(AuditEventCategory.ORGANIZATION),

@@ -125,6 +125,8 @@ class ConfirmableNotificationConfirmServiceTest {
                     createActiveNotification(2, 2, ConfirmableNotificationDeliveryStatus.DELIVERING);
             ConfirmableNotificationRecipientEntity recipient1 = createRecipient(notification, USER_ID_1, false);
 
+            given(recipientRepository.existsByConfirmableNotificationIdAndUserIdAndExcludedAtIsNull(
+                    NOTIFICATION_ID, USER_ID_1)).willReturn(true);
             given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID))
                     .willReturn(Optional.of(notification));
             given(recipientRepository.findByNotificationIdAndUserIdForUpdate(NOTIFICATION_ID, USER_ID_1))
@@ -148,6 +150,8 @@ class ConfirmableNotificationConfirmServiceTest {
                     createActiveNotification(2, 1, ConfirmableNotificationDeliveryStatus.DELIVERED);
             ConfirmableNotificationRecipientEntity recipient1 = createRecipient(notification, USER_ID_1, false);
 
+            given(recipientRepository.existsByConfirmableNotificationIdAndUserIdAndExcludedAtIsNull(
+                    NOTIFICATION_ID, USER_ID_1)).willReturn(true);
             given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID))
                     .willReturn(Optional.of(notification));
             given(recipientRepository.findByNotificationIdAndUserIdForUpdate(NOTIFICATION_ID, USER_ID_1))
@@ -171,6 +175,8 @@ class ConfirmableNotificationConfirmServiceTest {
                     createActiveNotification(2, 1, ConfirmableNotificationDeliveryStatus.DELIVERING);
             ConfirmableNotificationRecipientEntity recipient1 = createRecipient(notification, USER_ID_1, false);
 
+            given(recipientRepository.existsByConfirmableNotificationIdAndUserIdAndExcludedAtIsNull(
+                    NOTIFICATION_ID, USER_ID_1)).willReturn(true);
             given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID))
                     .willReturn(Optional.of(notification));
             given(recipientRepository.findByNotificationIdAndUserIdForUpdate(NOTIFICATION_ID, USER_ID_1))
@@ -182,6 +188,74 @@ class ConfirmableNotificationConfirmServiceTest {
             assertThat(notification.getStatus())
                     .as("AC-40: DELIVERING中は全員確認してもCOMPLETEDにしない")
                     .isEqualTo(ConfirmableNotificationStatus.ACTIVE);
+        }
+
+        @Test
+        @DisplayName("confirm_非受信者_通知が実在しても受信者行が無ければNOT_FOUNDで、親も受信者もFOR UPDATEしない（W3b・K6）")
+        void confirm_非受信者はロックを取らずNOT_FOUND() {
+            given(recipientRepository.existsByConfirmableNotificationIdAndUserIdAndExcludedAtIsNull(
+                    NOTIFICATION_ID, USER_ID_2)).willReturn(false);
+
+            assertThatThrownBy(() -> confirmService.confirm(NOTIFICATION_ID, USER_ID_2))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ConfirmableNotificationErrorCode.NOT_FOUND);
+
+            verify(notificationRepository, never()).findByIdForUpdate(any());
+            verify(recipientRepository, never()).findByNotificationIdAndUserIdForUpdate(any(), any());
+        }
+
+        @Test
+        @DisplayName("confirm_受信者だが通知がロック時点で不在ならNOT_FOUND")
+        void confirm_ロック時点で通知が不在ならNOT_FOUND() {
+            given(recipientRepository.existsByConfirmableNotificationIdAndUserIdAndExcludedAtIsNull(
+                    NOTIFICATION_ID, USER_ID_1)).willReturn(true);
+            given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> confirmService.confirm(NOTIFICATION_ID, USER_ID_1))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ConfirmableNotificationErrorCode.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("confirm_事前判定の後に除外された受信者は、ロック後の読み直しでNOT_FOUND（状態によらずALREADY_CANCELLEDにしない）")
+        void confirm_ロック後に除外が判明した受信者はNOT_FOUND() {
+            ConfirmableNotificationEntity notification = createCancelledNotification();
+            ConfirmableNotificationRecipientEntity excluded = createRecipient(notification, USER_ID_1, false);
+            excluded.markExcluded(null);
+
+            given(recipientRepository.existsByConfirmableNotificationIdAndUserIdAndExcludedAtIsNull(
+                    NOTIFICATION_ID, USER_ID_1)).willReturn(true);
+            given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID))
+                    .willReturn(Optional.of(notification));
+            given(recipientRepository.findByNotificationIdAndUserIdForUpdate(NOTIFICATION_ID, USER_ID_1))
+                    .willReturn(Optional.of(excluded));
+
+            assertThatThrownBy(() -> confirmService.confirm(NOTIFICATION_ID, USER_ID_1))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ConfirmableNotificationErrorCode.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("confirm_受信者本人でも非ACTIVEならALREADY_CANCELLED（状態判定は受信者の特定とロックの後）")
+        void confirm_受信者本人の非ACTIVEはALREADY_CANCELLED() {
+            ConfirmableNotificationEntity notification = createCancelledNotification();
+            ConfirmableNotificationRecipientEntity recipient1 = createRecipient(notification, USER_ID_1, false);
+
+            given(recipientRepository.existsByConfirmableNotificationIdAndUserIdAndExcludedAtIsNull(
+                    NOTIFICATION_ID, USER_ID_1)).willReturn(true);
+            given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID))
+                    .willReturn(Optional.of(notification));
+            given(recipientRepository.findByNotificationIdAndUserIdForUpdate(NOTIFICATION_ID, USER_ID_1))
+                    .willReturn(Optional.of(recipient1));
+
+            assertThatThrownBy(() -> confirmService.confirm(NOTIFICATION_ID, USER_ID_1))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
+            assertThat(recipient1.getIsConfirmed()).isFalse();
         }
     }
 

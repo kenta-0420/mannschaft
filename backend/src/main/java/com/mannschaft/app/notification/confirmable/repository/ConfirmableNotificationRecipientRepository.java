@@ -279,6 +279,13 @@ public interface ConfirmableNotificationRecipientRepository
      * @param userId          ユーザーID
      * @return 受信者（存在しない場合 empty）
      */
+    /**
+     * 呼び出しユーザーが当通知の（除外されていない）受信者かをロックなしで判定する
+     * （CMP-260923-0954 W3b: confirm の拒否経路で FOR UPDATE を取らないための事前判定。
+     * エンティティは読み込まない）。
+     */
+    boolean existsByConfirmableNotificationIdAndUserIdAndExcludedAtIsNull(Long notificationId, Long userId);
+
     Optional<ConfirmableNotificationRecipientEntity> findByConfirmableNotificationIdAndUserId(
             Long notificationId, Long userId);
 

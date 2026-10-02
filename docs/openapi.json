@@ -17262,6 +17262,85 @@
         }
       }
     },
+    "/api/v1/organizations/{slug}/teams/{teamSlug}/team-group": {
+      "put": {
+        "tags": [
+          "チームグループ割当"
+        ],
+        "summary": "加盟チームのグループ割当（単体）",
+        "operationId": "assignOne",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignTeamGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "割当成功（更新後の加盟）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織 ADMIN ではない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ORG_064: グループなし（他組織・削除済みも同じ）/ TEAM_070: その組織の ACTIVE 加盟ではないチーム",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ORG_067: 機能無効",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{slug}/team-groups/order": {
       "put": {
         "tags": [
@@ -17316,6 +17395,97 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/OrgTeamGroupListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/team-group-assignments": {
+      "put": {
+        "tags": [
+          "チームグループ割当"
+        ],
+        "summary": "加盟チームのグループ割当（一括）",
+        "operationId": "assignBulk",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkAssignTeamGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "割当成功（updatedCount）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ORG_069: その組織の ACTIVE 加盟でないチームを含む（何も更新しない）/ teamSlugs が空・欠落・501 件以上",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織 ADMIN ではない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ORG_064: グループなし（他組織・削除済みも同じ）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ORG_067: 機能無効",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "一括割当は 20 件/分/ユーザー",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
                 }
               }
             }
@@ -81356,8 +81526,8 @@
           "required": true
         },
         "responses": {
-          "201": {
-            "description": "新規作成",
+          "200": {
+            "description": "既存レポートに集約",
             "content": {
               "*/*": {
                 "schema": {
@@ -81369,8 +81539,8 @@
               }
             }
           },
-          "200": {
-            "description": "既存レポートに集約",
+          "201": {
+            "description": "新規作成",
             "content": {
               "*/*": {
                 "schema": {
@@ -131337,6 +131507,7 @@
           "組織管理"
         ],
         "summary": "組織所属チーム一覧",
+        "description": "各チームに所属チームグループ（teamGroup）を付ける。グループ機能が off・未分類・削除済みグループ・閲覧者が組織の MEMBER 以上でない場合は null。teamGroupId（UUID）または unassigned\u003dtrue で絞り込める（併用は 400。絞り込みは組織の MEMBER 以上と SYSTEM_ADMIN のみ）。他組織・削除済み・不在の teamGroupId は空の一覧を返す。",
         "operationId": "getTeams_1",
         "parameters": [
           {
@@ -131345,6 +131516,24 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "teamGroupId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "unassigned",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],
@@ -131359,8 +131548,18 @@
               }
             }
           },
+          "400": {
+            "description": "teamGroupId と unassigned の併用 / teamGroupId が UUID でない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
+                }
+              }
+            }
+          },
           "403": {
-            "description": "可視性レベル未満（非メンバー等）でアクセス不可",
+            "description": "可視性レベル未満（非メンバー等）でアクセス不可 / 非メンバーによるグループ絞り込み",
             "content": {
               "*/*": {
                 "schema": {
@@ -143698,8 +143897,8 @@
           }
         ],
         "responses": {
-          "302": {
-            "description": "生成済 PDF への Pre-signed URL リダイレクト",
+          "202": {
+            "description": "非同期生成ジョブ受付",
             "content": {
               "*/*": {
                 "schema": {
@@ -143708,8 +143907,8 @@
               }
             }
           },
-          "202": {
-            "description": "非同期生成ジョブ受付",
+          "302": {
+            "description": "生成済 PDF への Pre-signed URL リダイレクト",
             "content": {
               "*/*": {
                 "schema": {
@@ -154867,8 +155066,8 @@
           },
           "progressRate": {
             "type": "number",
-            "maximum": 100.00,
-            "minimum": 0.00
+            "maximum": 100,
+            "minimum": 0
           },
           "projectId": {
             "type": "integer",
@@ -162874,8 +163073,8 @@
           },
           "percentRate": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0
+            "maximum": 1,
+            "minimum": 0
           },
           "policyKey": {
             "type": "string",
@@ -164055,7 +164254,7 @@
           "maxMonthlyHours": {
             "type": "number",
             "maximum": 9999.99,
-            "minimum": 0.00
+            "minimum": 0
           },
           "maxNightShiftsPerMonth": {
             "type": "integer",
@@ -164066,7 +164265,7 @@
           "minRestHoursBetweenShifts": {
             "type": "number",
             "maximum": 99.99,
-            "minimum": 0.00
+            "minimum": 0
           },
           "note": {
             "type": "string",
@@ -165585,6 +165784,103 @@
           }
         }
       },
+      "AssignTeamGroupRequest": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "AffiliationGroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "AffiliationPartyRef": {
+        "type": "object",
+        "properties": {
+          "iconUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "AffiliationRequesterRef": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseTeamOrgAffiliationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TeamOrgAffiliationResponse"
+          }
+        }
+      },
+      "TeamOrgAffiliationResponse": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "message": {
+            "type": "string"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/AffiliationPartyRef"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/AffiliationRequesterRef"
+          },
+          "respondedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "team": {
+            "$ref": "#/components/schemas/AffiliationPartyRef"
+          },
+          "teamGroup": {
+            "$ref": "#/components/schemas/AffiliationGroupRef"
+          }
+        }
+      },
       "ReorderOrgTeamGroupsRequest": {
         "type": "object",
         "properties": {
@@ -165647,6 +165943,38 @@
           "teamCount": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "BulkAssignTeamGroupRequest": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamSlugs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ApiResponseBulkAssignTeamGroupResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BulkAssignTeamGroupResponse"
+          }
+        }
+      },
+      "BulkAssignTeamGroupResponse": {
+        "type": "object",
+        "properties": {
+          "updatedCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -171526,8 +171854,8 @@
           },
           "cpiInflationRate": {
             "type": "number",
-            "maximum": 0.20,
-            "minimum": -0.10
+            "maximum": 0.2,
+            "minimum": -0.1
           },
           "deferralYears": {
             "type": "integer",
@@ -171564,8 +171892,8 @@
           },
           "reserveInflationRate": {
             "type": "number",
-            "maximum": 0.20,
-            "minimum": -0.10
+            "maximum": 0.2,
+            "minimum": -0.1
           },
           "scenarioHorizonYears": {
             "type": "integer",
@@ -175706,8 +176034,8 @@
           },
           "progressRate": {
             "type": "number",
-            "maximum": 100.00,
-            "minimum": 0.00
+            "maximum": 100,
+            "minimum": 0
           },
           "projectId": {
             "type": "integer",
@@ -175761,8 +176089,8 @@
           },
           "link_percentage": {
             "type": "number",
-            "maximum": 100.00,
-            "minimum": 0.00
+            "maximum": 100,
+            "minimum": 0
           },
           "project_id": {
             "type": "integer",
@@ -176986,94 +177314,6 @@
         "properties": {
           "restriction": {
             "$ref": "#/components/schemas/Restriction"
-          }
-        }
-      },
-      "AffiliationGroupRef": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          }
-        }
-      },
-      "AffiliationPartyRef": {
-        "type": "object",
-        "properties": {
-          "iconUrl": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "slug": {
-            "type": "string"
-          }
-        }
-      },
-      "AffiliationRequesterRef": {
-        "type": "object",
-        "properties": {
-          "displayName": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "ApiResponseTeamOrgAffiliationResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/TeamOrgAffiliationResponse"
-          }
-        }
-      },
-      "TeamOrgAffiliationResponse": {
-        "type": "object",
-        "properties": {
-          "direction": {
-            "type": "string"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "message": {
-            "type": "string"
-          },
-          "organization": {
-            "$ref": "#/components/schemas/AffiliationPartyRef"
-          },
-          "requestedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "requestedBy": {
-            "$ref": "#/components/schemas/AffiliationRequesterRef"
-          },
-          "respondedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "status": {
-            "type": "string"
-          },
-          "team": {
-            "$ref": "#/components/schemas/AffiliationPartyRef"
-          },
-          "teamGroup": {
-            "$ref": "#/components/schemas/AffiliationGroupRef"
           }
         }
       },
@@ -187055,13 +187295,13 @@
           },
           "maxAbsenceRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100,
+            "minimum": 0
           },
           "minAttendanceRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100,
+            "minimum": 0
           },
           "name": {
             "type": "string",
@@ -187082,8 +187322,8 @@
           },
           "warningThresholdRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100,
+            "minimum": 0
           }
         },
         "required": [
@@ -191888,21 +192128,21 @@
         "properties": {
           "consecutivePenaltyWeight": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0
+            "maximum": 1,
+            "minimum": 0
           },
           "fairnessWeight": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0
+            "maximum": 1,
+            "minimum": 0
           },
           "overwriteExisting": {
             "type": "boolean"
           },
           "preferenceWeight": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0
+            "maximum": 1,
+            "minimum": 0
           },
           "respectWorkConstraints": {
             "type": "boolean"
@@ -197092,7 +197332,7 @@
         "properties": {
           "amount": {
             "type": "number",
-            "maximum": 1000000.00,
+            "maximum": 1000000,
             "minimum": 0.01
           },
           "note": {
@@ -200682,19 +200922,19 @@
           "geoAccuracy": {
             "type": "number",
             "format": "double",
-            "minimum": 0.0
+            "minimum": 0
           },
           "geoLat": {
             "type": "number",
             "format": "double",
-            "maximum": 90.0,
-            "minimum": -90.0
+            "maximum": 90,
+            "minimum": -90
           },
           "geoLng": {
             "type": "number",
             "format": "double",
-            "maximum": 180.0,
-            "minimum": -180.0
+            "maximum": 180,
+            "minimum": -180
           },
           "manualCodeFallback": {
             "type": "boolean"
@@ -206364,8 +206604,8 @@
           },
           "progress_rate": {
             "type": "number",
-            "maximum": 100.00,
-            "minimum": 0.00
+            "maximum": 100,
+            "minimum": 0
           },
           "related_todo_id": {
             "type": "integer",
@@ -207584,8 +207824,8 @@
         "properties": {
           "progressRate": {
             "type": "number",
-            "maximum": 100.00,
-            "minimum": 0.00
+            "maximum": 100,
+            "minimum": 0
           }
         },
         "required": [
@@ -213384,13 +213624,13 @@
           },
           "maxAbsenceRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100,
+            "minimum": 0
           },
           "minAttendanceRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100,
+            "minimum": 0
           },
           "name": {
             "type": "string",
@@ -213403,8 +213643,8 @@
           },
           "warningThresholdRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100,
+            "minimum": 0
           }
         }
       },
@@ -213561,8 +213801,8 @@
           },
           "progress_rate": {
             "type": "number",
-            "maximum": 100.00,
-            "minimum": 0.00
+            "maximum": 100,
+            "minimum": 0
           },
           "related_todo_id": {
             "type": "integer",
@@ -224325,6 +224565,18 @@
           }
         }
       },
+      "TeamOrgSummaryGroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "TeamOrgSummaryResponse": {
         "type": "object",
         "properties": {
@@ -224343,6 +224595,9 @@
           },
           "slug": {
             "type": "string"
+          },
+          "teamGroup": {
+            "$ref": "#/components/schemas/TeamOrgSummaryGroupRef"
           },
           "visibility": {
             "type": "string"
@@ -232891,6 +233146,22 @@
           }
         }
       },
+      "OrgTeamSummaryGroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "OrgTeamSummaryResponse": {
         "type": "object",
         "properties": {
@@ -232909,6 +233180,9 @@
           },
           "slug": {
             "type": "string"
+          },
+          "teamGroup": {
+            "$ref": "#/components/schemas/OrgTeamSummaryGroupRef"
           },
           "visibility": {
             "type": "string"
@@ -238251,7 +238525,7 @@
           "quantity": {
             "type": "number",
             "description": "数量",
-            "example": 1.0
+            "example": 1
           },
           "taxes": {
             "type": "array",
