@@ -124342,6 +124342,39 @@
         }
       }
     },
+    "/api/v1/system-admin/billing/teams/{teamId}/parent-organizations": {
+      "get": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "チームの親組織候補",
+        "description": "手動付与で組織を選ぶための ACTIVE な親組織一覧と代表親組織（§9.3）。",
+        "operationId": "teamParentOrganizations",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingTeamParentOrganizationsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/billing/price-revisions/{id}": {
       "get": {
         "tags": [
@@ -189222,6 +189255,12 @@
             "type": "string",
             "example": "ベータ検証のため付与"
           },
+          "organizationId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "TEAM スコープの親組織（任意・未指定は代表親組織）",
+            "example": 45
+          },
           "planKey": {
             "type": "string",
             "example": "FULL"
@@ -189265,6 +189304,12 @@
             "example": "第2期 パイロット団体",
             "maxLength": 500,
             "minLength": 0
+          },
+          "organizationId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "TEAM スコープの親組織（任意・未指定は代表親組織）",
+            "example": 45
           },
           "scopeId": {
             "type": "integer",
@@ -226360,6 +226405,59 @@
               "PUBLIC",
               "PRIVATE"
             ]
+          }
+        }
+      },
+      "ApiResponseBillingTeamParentOrganizationsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingTeamParentOrganizationsResponse"
+          }
+        }
+      },
+      "BillingTeamParentOrganization": {
+        "type": "object",
+        "description": "チームの親組織の候補",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "組織名"
+          },
+          "organizationId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "組織 ID"
+          },
+          "slug": {
+            "type": "string",
+            "description": "組織の slug"
+          }
+        }
+      },
+      "BillingTeamParentOrganizationsResponse": {
+        "type": "object",
+        "description": "チームの ACTIVE な親組織の候補と代表親組織",
+        "properties": {
+          "organizationIds": {
+            "type": "array",
+            "description": "ACTIVE な親組織の ID 一覧（無所属は空）",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "organizations": {
+            "type": "array",
+            "description": "候補の組織の表示用情報（画面の選択肢。削除済みの組織は含まれない）",
+            "items": {
+              "$ref": "#/components/schemas/BillingTeamParentOrganization"
+            }
+          },
+          "representativeOrganizationId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "組織を明示しなかったときに記録される代表親組織（§9.3。無所属は null）"
           }
         }
       },

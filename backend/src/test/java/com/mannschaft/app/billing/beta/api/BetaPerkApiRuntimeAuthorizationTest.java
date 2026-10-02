@@ -13,7 +13,7 @@ import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.security.AccessGuard;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
-import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
+import com.mannschaft.app.billing.api.BillingTenantOrganizationResolver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -67,7 +67,7 @@ class BetaPerkApiRuntimeAuthorizationTest {
     @MockitoBean
     private BetaPerkCandidateService betaPerkCandidateService;
     @MockitoBean
-    private TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private BillingTenantOrganizationResolver tenantOrganizationResolver;
 
     // ---- SpEL の @accessGuard 参照を実行時に解決させる ----
     @MockitoBean(name = "accessGuard")

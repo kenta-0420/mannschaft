@@ -25,7 +25,6 @@ import com.mannschaft.app.billing.api.dto.PlanFeaturesReplaceRequest;
 import com.mannschaft.app.billing.api.dto.PlanUpsertRequest;
 import com.mannschaft.app.billing.api.dto.PriceBandsReplaceRequest;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -54,7 +53,7 @@ public class SystemAdminBillingService {
     private final PlanFeatureRepository planFeatureRepository;
     private final BillingContractRepository billingContractRepository;
     private final BillingContractService billingContractService;
-    private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private final BillingTenantOrganizationResolver tenantOrganizationResolver;
 
     // ============================================================
     // プラン CRUD
@@ -211,7 +210,8 @@ public class SystemAdminBillingService {
     public ContractResponse grant(ManualGrantRequest req, Long sysAdminUserId) {
         EntitlementScopeKind scopeKind = BillingApiSupport.parseScopeKind(req.scopeKind());
         ContractKind contractKind = BillingApiSupport.parseContractKind(req.contractKind());
-        Long organizationId = resolveOrganizationId(scopeKind, req.scopeId());
+        Long organizationId = tenantOrganizationResolver.resolveForSystemAdmin(
+                scopeKind, req.scopeId(), req.organizationId());
         ContractResult result = billingContractService.createContractBySystemAdmin(
                 scopeKind, req.scopeId(), organizationId, contractKind,
                 req.planKey(), req.featureKey(), sysAdminUserId);
@@ -251,17 +251,6 @@ public class SystemAdminBillingService {
     // ============================================================
     // ヘルパ
     // ============================================================
-
-    private Long resolveOrganizationId(EntitlementScopeKind scopeKind, Long scopeId) {
-        return switch (scopeKind) {
-            case USER -> null;
-            case ORG -> scopeId;
-            case TEAM -> {
-                List<Long> orgIds = teamOrgMembershipQueryService.findActiveOrganizationIds(scopeId);
-                yield orgIds.isEmpty() ? null : orgIds.get(0);
-            }
-        };
-    }
 
     private PlanEntity loadPlan(String planKey) {
         return planRepository.findById(planKey)
