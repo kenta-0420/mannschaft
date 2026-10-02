@@ -58,6 +58,9 @@ class AttendanceLocationServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
+
     @InjectMocks
     private AttendanceLocationService attendanceLocationService;
 
@@ -132,7 +135,7 @@ class AttendanceLocationServiceTest {
         @DisplayName("AC-1-5 red→green: 対象チーム非所属ユーザーが GET /teams/{t}/attendance/locations → 403 (COMMON_002)")
         void nonMember_forbidden() {
             doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkMembership(OUTSIDER_USER_ID, TEAM_ID, "TEAM");
+                    .when(schoolAttendanceAccessPolicy).checkCanView(OUTSIDER_USER_ID, TEAM_ID);
 
             assertThatThrownBy(() -> attendanceLocationService
                     .getTeamLocationMap(TEAM_ID, ATTENDANCE_DATE, OUTSIDER_USER_ID))
@@ -147,7 +150,7 @@ class AttendanceLocationServiceTest {
         @Test
         @DisplayName("非回帰: チーム所属ユーザーは従来どおり一覧取得可能")
         void member_success() {
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+            doNothing().when(schoolAttendanceAccessPolicy).checkCanView(OPERATOR_USER_ID, TEAM_ID);
             given(dailyAttendanceRecordRepository.findByTeamIdAndAttendanceDate(TEAM_ID, ATTENDANCE_DATE))
                     .willReturn(List.of());
             given(attendanceLocationChangeRepository
@@ -157,7 +160,7 @@ class AttendanceLocationServiceTest {
             var map = attendanceLocationService.getTeamLocationMap(TEAM_ID, ATTENDANCE_DATE, OPERATOR_USER_ID);
 
             assertThat(map).isEmpty();
-            verify(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+            verify(schoolAttendanceAccessPolicy).checkCanView(OPERATOR_USER_ID, TEAM_ID);
         }
     }
 

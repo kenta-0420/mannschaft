@@ -44,6 +44,7 @@ public class DailyAttendanceService {
 
     private final DailyAttendanceRecordRepository dailyAttendanceRecordRepository;
     private final AccessControlService accessControlService;
+    private final SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
     private final ApplicationEventPublisher eventPublisher;
 
     // ========================================
@@ -144,7 +145,7 @@ public class DailyAttendanceService {
      */
     @Transactional(readOnly = true)
     public DailyAttendanceListResponse getDailyAttendance(Long teamId, LocalDate date, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, teamId, "TEAM");
+        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
 
         List<DailyAttendanceRecordEntity> records =
                 dailyAttendanceRecordRepository.findByTeamIdAndAttendanceDate(teamId, date);

@@ -44,6 +44,9 @@ class TransitionAlertServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
+
     @InjectMocks
     private TransitionAlertService transitionAlertService;
 
@@ -75,7 +78,7 @@ class TransitionAlertServiceTest {
         @DisplayName("red→green: 対象チーム非所属ユーザーが GET 移動検知アラート一覧 → 403 (COMMON_002)")
         void nonMember_forbidden() {
             doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkMembership(OUTSIDER_USER_ID, TEAM_ID, "TEAM");
+                    .when(schoolAttendanceAccessPolicy).checkCanView(OUTSIDER_USER_ID, TEAM_ID);
 
             assertThatThrownBy(() -> transitionAlertService
                     .getAlerts(TEAM_ID, ATTENDANCE_DATE, false, OUTSIDER_USER_ID))
@@ -90,14 +93,14 @@ class TransitionAlertServiceTest {
         @Test
         @DisplayName("非回帰: チーム所属ユーザーは従来どおり一覧取得可能")
         void member_success() {
-            doNothing().when(accessControlService).checkMembership(MEMBER_USER_ID, TEAM_ID, "TEAM");
+            doNothing().when(schoolAttendanceAccessPolicy).checkCanView(MEMBER_USER_ID, TEAM_ID);
             given(alertRepository.findByTeamIdAndAttendanceDateOrderByCreatedAtDesc(TEAM_ID, ATTENDANCE_DATE))
                     .willReturn(List.of());
 
             var response = transitionAlertService.getAlerts(TEAM_ID, ATTENDANCE_DATE, false, MEMBER_USER_ID);
 
             assertThat(response.getAlerts()).isEmpty();
-            verify(accessControlService).checkMembership(MEMBER_USER_ID, TEAM_ID, "TEAM");
+            verify(schoolAttendanceAccessPolicy).checkCanView(MEMBER_USER_ID, TEAM_ID);
         }
     }
 

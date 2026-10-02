@@ -36,6 +36,7 @@ public class AttendanceLocationService {
     private final PeriodAttendanceRecordRepository periodAttendanceRecordRepository;
     private final AttendanceLocationChangeRepository attendanceLocationChangeRepository;
     private final AccessControlService accessControlService;
+    private final SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
 
     // ========================================
     // 場所変更記録
@@ -195,7 +196,7 @@ public class AttendanceLocationService {
     public Map<Long, AttendanceLocation> getTeamLocationMap(
             Long teamId, LocalDate attendanceDate, Long currentUserId) {
         // 認可: クラス全体の位置一覧はチーム所属の教職員のみ（手本 DailyAttendanceService#getDailyAttendance）。
-        accessControlService.checkMembership(currentUserId, teamId, "TEAM");
+        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
 
         // 当日のチーム全日次出欠レコードをベースにマップを構築
         Map<Long, AttendanceLocation> locationMap = new LinkedHashMap<>();

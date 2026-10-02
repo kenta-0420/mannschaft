@@ -51,6 +51,9 @@ class AttendanceStatisticsServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
+
     @InjectMocks
     private AttendanceStatisticsService service;
 
