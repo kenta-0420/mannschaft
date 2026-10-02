@@ -18,7 +18,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -90,24 +89,10 @@ public class OrgTeamApplicationReviewService {
         }
         Long teamId = locateTeamId(organizationId, membershipId);
 
-        OrgTeamApplicationReviewCommandService.ApprovedApplication approved = commandService.approve(
+        TeamOrgAffiliationAssembler.AffiliationRow approved = commandService.approve(
                 organizationId, teamId, membershipId, operatorUserId,
                 request.overrideGroup(), request.groupId());
-
-        // コミット後に行を取り直さない（その間に除名・離脱で消えると 500 になる）。確定した値から組み立てる
-        TeamOrgMembershipEntity snapshot = TeamOrgMembershipEntity.builder()
-                .id(approved.id())
-                .teamId(approved.teamId())
-                .organizationId(approved.organizationId())
-                .status(TeamOrgMembershipEntity.Status.ACTIVE)
-                .direction(TeamOrgAffiliationDirection.TEAM_APPLY)
-                .groupId(approved.groupId())
-                .invitedBy(approved.invitedBy())
-                .invitedAt(LocalDateTime.ofInstant(approved.invitedAt(), UserZoneLocalDateTimeParser.SERVER_ZONE))
-                .respondedBy(approved.respondedBy())
-                .respondedAt(LocalDateTime.ofInstant(approved.respondedAt(), UserZoneLocalDateTimeParser.SERVER_ZONE))
-                .build();
-        return assembler.assembleForTeam(approved.teamId(), List.of(snapshot)).get(0);
+        return assembler.assembleRowsForTeam(approved.teamId(), List.of(approved)).get(0);
     }
 
     /**

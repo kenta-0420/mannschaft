@@ -6,6 +6,12 @@ import com.mannschaft.app.common.visibility.ScopeAncestorResolver;
 import com.mannschaft.app.common.visibility.ScopeKey;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.schedule.EventType;
+import com.mannschaft.app.schedule.MinViewRole;
+import com.mannschaft.app.schedule.ScheduleStatus;
+import com.mannschaft.app.schedule.ScheduleVisibility;
+import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.service.TeamOrgAffiliationRestrictionService;
 import org.hibernate.SessionFactory;
@@ -76,6 +82,9 @@ class OrgTeamApplicationReviewIT extends TeamAffiliationItSupport {
 
     @Autowired
     private ScopeAncestorResolver scopeAncestorResolver;
+
+    @Autowired
+    private ScheduleRepository scheduleRepository;
 
     private TeamFx team;
     private OrgFx orgX;
@@ -647,10 +656,21 @@ class OrgTeamApplicationReviewIT extends TeamAffiliationItSupport {
 
     @Test
     @DisplayName("AC-C04 Y に加盟済みの T の X への申請を承認すると、(a)両組織の加盟チーム一覧 (b)T の所属組織2件 "
-            + "(c)ScopeAncestorResolver が X・Y (d)/me/teams に X・Y が出る")
+            + "(c)T の ORGANIZATION_WIDE 予定を X・Y 両方のメンバーが実際の閲覧 API で読める (d)/me/teams に X・Y が出る")
     void 複数組織への加盟が成立する() throws Exception {
         insertMembershipRow(team.id(), orgY.id(), "ACTIVE", "ORG_INVITE", null, LocalDateTime.now().minusDays(10));
         long id = pendingApplication(team.id(), orgX.id(), groupA);
+        long yMember = newUser();
+        makeOrgMember(yMember, orgY.id());
+        OrgFx orgZ = newOrg();
+        long zMember = newUser();
+        makeOrgMember(zMember, orgZ.id());
+        long organizationWide = saveOrganizationWideSchedule(team.id(), ta);
+
+        // 承認の前: Y のメンバーは読めるが、X のメンバー（XM）はまだ T の親組織のメンバーではないので読めない
+        // （承認が無ければ (c) は落ちることを、同じテストの中で確かめる）
+        readSchedule(yMember, organizationWide).andExpect(status().isOk());
+        readSchedule(xm, organizationWide).andExpect(status().isForbidden());
 
         approve(xa, orgX.slug(), id, false, null).andExpect(status().isOk());
         em.flush();
@@ -674,7 +694,11 @@ class OrgTeamApplicationReviewIT extends TeamAffiliationItSupport {
         json(orgs).get("data").forEach(n -> orgSlugs.add(n.get("slug").asText()));
         assertThat(orgSlugs).containsExactlyInAnyOrder(orgX.slug(), orgY.slug());
 
-        // (c) ScopeAncestorResolver が X・Y の両方を返す（ORGANIZATION_WIDE の閲覧判定の土台）
+        // (c) T の ORGANIZATION_WIDE 予定（親組織のメンバーへ公開）を、X・Y 両方のメンバーが実際の閲覧 API で読める。
+        //     無関係の組織 Z のメンバーは読めない（閲覧判定が素通しでないことの対照）
+        readSchedule(xm, organizationWide).andExpect(status().isOk());
+        readSchedule(yMember, organizationWide).andExpect(status().isOk());
+        readSchedule(zMember, organizationWide).andExpect(status().isForbidden());
         Map<ScopeKey, Set<Long>> parents =
                 scopeAncestorResolver.resolveParentOrgIds(Set.of(new ScopeKey("TEAM", team.id())));
         assertThat(parents.get(new ScopeKey("TEAM", team.id()))).containsExactlyInAnyOrder(orgX.id(), orgY.id());
@@ -702,6 +726,35 @@ class OrgTeamApplicationReviewIT extends TeamAffiliationItSupport {
 
     private void makeOrgMember(long userId, long orgId) {
         MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
+    }
+
+    /** チーム T の ORGANIZATION_WIDE（予定では visibility=ORGANIZATION）の予定を作る。 */
+    private long saveOrganizationWideSchedule(long teamId, long authorId) {
+        long scheduleId = scheduleRepository.save(ScheduleEntity.builder()
+                .teamId(teamId)
+                .title("加盟承認後の組織公開予定")
+                .startAt(LocalDateTime.of(2026, 11, 10, 10, 0))
+                .endAt(LocalDateTime.of(2026, 11, 10, 12, 0))
+                .eventType(EventType.PRACTICE)
+                .visibility(ScheduleVisibility.ORGANIZATION)
+                .minViewRole(MinViewRole.MEMBER_PLUS)
+                .status(ScheduleStatus.SCHEDULED)
+                .attendanceRequired(true)
+                .allowProxyAttendance(true)
+                .isProxyAutoAccept(false)
+                .createdBy(authorId)
+                .build()).getId();
+        em.flush();
+        em.clear();
+        return scheduleId;
+    }
+
+    /** 実際の閲覧 API（実 Security・実認可）で T の予定を読む。 */
+    private ResultActions readSchedule(long viewer, long scheduleId) throws Exception {
+        em.flush();
+        em.clear();
+        return mockMvc.perform(get("/api/v1/teams/{slug}/schedules/{id}", team.slug(), scheduleId)
+                .with(user(String.valueOf(viewer))));
     }
 
     /** PENDING / TEAM_APPLY の申請行を、検証対象の API を使わずに作る。 */

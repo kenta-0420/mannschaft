@@ -2,7 +2,6 @@ package com.mannschaft.app.team.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -11,7 +10,6 @@ import com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionKind;
 import com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionReason;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
@@ -20,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -59,7 +57,6 @@ public class OrgTeamApplicationReviewCommandService {
     private final TeamAffiliationNotifier notifier;
     private final TeamAffiliationAuditRecorder auditRecorder;
     private final MessageSource messageSource;
-    private final Clock wallClock;
     private final Clock clock;
     private final Duration rejectCooldown;
 
@@ -71,7 +68,6 @@ public class OrgTeamApplicationReviewCommandService {
             TeamAffiliationNotifier notifier,
             TeamAffiliationAuditRecorder auditRecorder,
             MessageSource messageSource,
-            @Qualifier("wallClock") Clock wallClock,
             Clock clock,
             @Value("${mannschaft.affiliation.reject-cooldown-days:30}") long rejectCooldownDays) {
         this.lockSupport = lockSupport;
@@ -81,7 +77,6 @@ public class OrgTeamApplicationReviewCommandService {
         this.notifier = notifier;
         this.auditRecorder = auditRecorder;
         this.messageSource = messageSource;
-        this.wallClock = wallClock;
         this.clock = clock;
         this.rejectCooldown = Duration.ofDays(rejectCooldownDays);
     }
@@ -97,7 +92,7 @@ public class OrgTeamApplicationReviewCommandService {
      * @param groupId        上書きするグループ（{@code overrideGroup=true} のときだけ使う。null なら未分類）
      */
     @Transactional
-    public ApprovedApplication approve(Long organizationId, Long teamId, Long membershipId, Long operatorUserId,
+    public TeamOrgAffiliationAssembler.AffiliationRow approve(Long organizationId, Long teamId, Long membershipId, Long operatorUserId,
                                        boolean overrideGroup, UUID groupId) {
         // 1. 最初の文でチーム行 → 組織行をロックし、続けて加盟行をロックして判定表に従う
         TeamOrgAffiliationLockSupport.LockedParties parties =
@@ -122,13 +117,13 @@ public class OrgTeamApplicationReviewCommandService {
         UUID finalGroupId = group == null ? null : group.id();
 
         // 4. 条件付き UPDATE。加盟行のロックを保持しているので必ず1行に当たる。0 件なら前提が崩れているため握り潰さない
-        LocalDateTime respondedAt = LocalDateTime.now(wallClock);
-        Instant updatedAt = Instant.now(clock);
+        //    承認の瞬間は DATETIME（秒精度）に合わせて秒へ丸め、応答と DB の値を一致させる
+        Instant respondedAt = Instant.now(clock).truncatedTo(ChronoUnit.SECONDS);
         int updated = finalGroupId == null
                 ? membershipRepository.approvePendingApplicationUnassigned(
-                        membershipId, organizationId, operatorUserId, respondedAt, updatedAt)
+                        membershipId, organizationId, operatorUserId, respondedAt.getEpochSecond())
                 : membershipRepository.approvePendingApplication(
-                        membershipId, organizationId, finalGroupId, operatorUserId, respondedAt, updatedAt);
+                        membershipId, organizationId, finalGroupId, operatorUserId, respondedAt.getEpochSecond());
         if (updated != 1) {
             throw new IllegalStateException("ロック済みの加盟申請を条件付き UPDATE できない: membershipId=" + membershipId);
         }
@@ -151,8 +146,11 @@ public class OrgTeamApplicationReviewCommandService {
         auditRecorder.record(AuditEventType.TEAM_ORG_MEMBERSHIP_CREATED,
                 operatorUserId, teamId, organizationId, metadata);
 
-        return new ApprovedApplication(membershipId, teamId, organizationId, finalGroupId,
-                row.getInvitedBy(), toInstant(row.getInvitedAt()), operatorUserId, toInstant(respondedAt));
+        // コミット後に行を取り直さない（その間に除名・離脱で消えると 500 になる）。確定した値から応答の入力を作る
+        TeamOrgAffiliationAssembler.AffiliationRow requested = TeamOrgAffiliationAssembler.AffiliationRow.from(row);
+        return new TeamOrgAffiliationAssembler.AffiliationRow(membershipId, teamId, organizationId,
+                TeamOrgMembershipEntity.Status.ACTIVE, TeamOrgAffiliationDirection.TEAM_APPLY, finalGroupId, null,
+                requested.invitedBy(), requested.invitedAt(), respondedAt);
     }
 
     /**
@@ -257,20 +255,5 @@ public class OrgTeamApplicationReviewCommandService {
         TeamAffiliationOrganizationPort.GroupRef group =
                 organizationPort.findAliveGroupRefs(List.of(groupId)).get(groupId);
         return group != null && organizationId.equals(group.organizationId()) ? group : null;
-    }
-
-    /**
-     * 承認の結果（コミット後に行を取り直さず、トランザクション内で確定した値だけで応答を組み立てるための値）。
-     * 取り直すと、その間に除名・離脱で行が消えたとき応答が 500 になる。
-     */
-    public record ApprovedApplication(Long id, Long teamId, Long organizationId, UUID groupId, Long invitedBy,
-                                      Instant invitedAt, Long respondedBy, Instant respondedAt) {
-    }
-
-    /** アプリの壁時計（JST）の LocalDateTime を、起きた瞬間（Instant）へ変換する。 */
-    private static Instant toInstant(LocalDateTime wallClockValue) {
-        return wallClockValue == null
-                ? null
-                : wallClockValue.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant();
     }
 }
