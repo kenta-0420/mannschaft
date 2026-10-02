@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { expect, test, type BrowserContext, type Page, type TestInfo } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
@@ -10,7 +11,7 @@ const apiBase = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const run = `CMP2609011246-${process.env.GITHUB_RUN_ID ?? 'local'}-${Date.now()}`
 const month = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit' }).format(new Date())
 type TeamFixture = { id: number; slug: string; name: string; scheduleTitle?: string; scheduleId?: number; todoTitle?: string; todoId?: number }
-type CalendarEntry = { content: { title: string; color: string; colorSource: string; scopeAutoColor: string }; scope: { scopeId: number; scopeName: string | null } }
+type CalendarEntry = { scheduleId: number | null; content: { title: string; color: string; colorSource: string; scopeAutoColor: string }; scope: { scopeId: number; scopeName: string | null } }
 type CalendarTodo = { id: number; title: string; scopeId: number; scopeName: string | null; scopeAutoColor: string; priority: string }
 const teams: TeamFixture[] = []
 const contexts: BrowserContext[] = []
@@ -29,6 +30,7 @@ function sql(statement: string): string {
 
 function proveIsolation(): void {
   expect(process.env.GITHUB_ACTIONS, '共有開発DBでは実行しない').toBe('true')
+  expect(run, 'SQL識別子はActions run IDと自生成時刻だけ').toMatch(/^CMP2609011246-\d+-\d+$/)
   expect(process.env.E2E_ISOLATED_DB).toBe('true')
   expect(apiBase).toBe('http://localhost:8080')
   expect(process.env.E2E_DB_HOST).toBe('127.0.0.1')
@@ -52,6 +54,33 @@ async function api<T = void>(page: Page, method: 'get' | 'post' | 'patch' | 'del
   return (response.status() === 204 ? undefined : (await response.json()).data) as T
 }
 
+/** Cの専用DB金型を再利用し、APIが提供しない保存色だけを今回の予定に用意する。 */
+async function saveFixtureScheduleColor(team: TeamFixture, date: string, color: string): Promise<void> {
+  expect(isolated, '接続先コンテナとDBの照合完了後だけ変更する').toBe(true)
+  expect(Number.isSafeInteger(team.scheduleId) && team.scheduleId! > 0).toBe(true)
+  expect(Number.isSafeInteger(ownerId) && ownerId > 0).toBe(true)
+  expect(team.scheduleTitle).toBe(`${run}-予定-${teams.indexOf(team)}`)
+  const require = createRequire(new URL('../../../../backend/scripts/package.json', import.meta.url))
+  const mysql = require('mysql2/promise') as {
+    createConnection(options: Record<string, unknown>): Promise<{
+      execute<T>(statement: string, params: unknown[]): Promise<[T, unknown]>
+      end(): Promise<void>
+    }>
+  }
+  const db = await mysql.createConnection({ host: process.env.E2E_DB_HOST, port: Number(process.env.E2E_DB_PORT), user: process.env.E2E_DB_USER, password: process.env.E2E_DB_PASSWORD, database: process.env.E2E_DB_NAME })
+  try {
+    const [updated] = await db.execute<{ affectedRows: number }>('UPDATE schedules SET color = ? WHERE id = ? AND title = ? AND created_by = ?', [color, team.scheduleId, team.scheduleTitle, ownerId])
+    expect(updated.affectedRows, '今回API作成の予定1行だけに色を保存する').toBe(1)
+  }
+  finally {
+    await db.end()
+  }
+  const query = `from=${encodeURIComponent(`${date}T00:00:00`)}&to=${encodeURIComponent(`${date}T23:59:59`)}`
+  const entries = await api<CalendarEntry[]>(owner, 'get', `/my/calendar?${query}`)
+  const entry = entries.find(value => value.scheduleId === team.scheduleId)
+  expect(entry?.scope.scopeId).toBe(team.id)
+  expect(entry?.content).toMatchObject({ title: team.scheduleTitle, color, colorSource: 'SCHEDULE' })
+}
 async function evidence(page: Page, info: TestInfo, name: string): Promise<void> {
   await info.attach(name, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
 }
@@ -102,7 +131,8 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
       const date = `${month}-${10 + index * 2}`
       if (index !== 1) {
         team.scheduleTitle = `${run}-予定-${index}`
-        team.scheduleId = (await api<{ id: number }>(owner, 'post', `/teams/${team.slug}/schedules`, { title: team.scheduleTitle, startAt: `${date}T10:00:00+09:00`, endAt: `${date}T11:00:00+09:00`, allDay: false, eventType: 'OTHER', targetMode: 'ALL_MEMBERS', targetUserIds: [], attendanceRequired: false, color: index === 2 ? '#234567' : '#123456' })).id
+        team.scheduleId = (await api<{ id: number }>(owner, 'post', `/teams/${team.slug}/schedules`, { title: team.scheduleTitle, startAt: `${date}T10:00:00+09:00`, endAt: `${date}T11:00:00+09:00`, allDay: false, eventType: 'OTHER', targetMode: 'ALL_MEMBERS', targetUserIds: [], attendanceRequired: false })).id
+        await saveFixtureScheduleColor(team, date, index === 2 ? '#234567' : '#123456')
       }
       if (index !== 0) {
         team.todoTitle = `${run}-TODO-${index}`

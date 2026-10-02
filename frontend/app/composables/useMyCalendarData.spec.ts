@@ -483,14 +483,14 @@ describe('フォールバックチップの色（§5.2.1 と §3.3 の板挟み�
     expect(cal.filteredEvents.value.find(e => e.scopeType === 'TEAM')?.color).toBe(OLD_COLOR)
   })
 
-  it('同じ数値IDのTEAMとORGを別スコープとして集約する（パレット色の衝突は許容）', async () => {
+  it('同じ数値IDのTEAMとORGANIZATIONを別スコープとして集約する（パレット色の衝突は許容）', async () => {
     localStorage.clear()
     const entry = sharedEntry(OLD_COLOR, 'CATEGORY')
     getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669')] })
-    getCalendarRange.mockResolvedValue({ data: ['TEAM', 'ORG'].map((scopeType, index) => ({ ...entry, id: 990 + index, scope: { ...entry.scope, scopeType }, content: { ...entry.content, scopeAutoColor: '#C026D3' } })) })
+    getCalendarRange.mockResolvedValue({ data: ['TEAM', 'ORGANIZATION'].map((scopeType, index) => ({ ...entry, id: 990 + index, scope: { ...entry.scope, scopeType }, content: { ...entry.content, scopeAutoColor: '#C026D3' } })) })
     listPersonalSchedules.mockResolvedValue({ data: [] })
     getMyCalendarTodos.mockResolvedValue({ data: [] })
     const cal = await boot()
-    expect(cal.allScopeOptions.value.filter(o => o.value === 'TEAM:42' || o.value === 'ORG:42').map(o => [o.value, o.color])).toEqual([['TEAM:42', '#C026D3'], ['ORG:42', '#C026D3']])
+    expect(cal.allScopeOptions.value.filter(o => o.value === 'TEAM:42' || o.value === 'ORGANIZATION:42').map(o => [o.value, o.color])).toEqual([['TEAM:42', '#C026D3'], ['ORGANIZATION:42', '#C026D3']])
   })
 })
