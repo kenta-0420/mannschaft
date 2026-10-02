@@ -436,19 +436,20 @@ onMounted(async () => {
     >
       <i class="pi pi-exclamation-triangle text-3xl text-red-500" />
       <p class="text-sm text-red-700 dark:text-red-200">{{ t('surveys.detail.fetchFailed') }}</p>
-      <Button :label="t('surveys.detail.back')" icon="pi pi-arrow-left" outlined @click="navigateTo(scopeListPath)" />
+      <Button :label="t('surveys.detail.back')" icon="pi pi-arrow-left" outlined class="min-h-11 min-w-11" @click="navigateTo(scopeListPath)" />
     </div>
 
     <template v-else>
       <!-- ヘッダー -->
-      <PageHeader :title="survey.content?.title ?? ''" size="sm" :back-to="scopeListPath">
-        <span :class="statusClass(survey.status)" class="rounded px-2 py-0.5 text-xs font-medium" data-testid="survey-detail-status">
+      <PageHeader :title="survey.content?.title ?? ''" size="sm" :back-to="scopeListPath" class="flex-wrap">
+        <span :class="statusClass(survey.status)" class="shrink-0 whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium" data-testid="survey-detail-status">
           {{ t(`surveys.statusLabel.${survey.status}`) }}
         </span>
         <Badge
           v-if="(survey as SurveyDetailResponse['data']).hasResponded"
           :value="t('surveys.detail.answeredBadge')"
           severity="success"
+          class="shrink-0 whitespace-nowrap"
         />
       </PageHeader>
 
@@ -493,6 +494,7 @@ onMounted(async () => {
           outlined
           :loading="actionLoading"
           data-testid="survey-close-button"
+          class="min-h-11 min-w-11"
           @click="onCloseSurvey"
         />
       </div>
@@ -546,6 +548,7 @@ onMounted(async () => {
               icon="pi pi-send"
               :loading="draftQuestionsSubmitting"
               data-testid="survey-publish-with-questions-button"
+              class="min-h-11 min-w-11"
               @click="onSaveQuestionsAndPublish"
             />
             <!-- 設問なしでそのまま公開（設問ゼロでも可、グレー強調） -->
@@ -556,6 +559,7 @@ onMounted(async () => {
               :outlined="draftQuestions.length > 0"
               :loading="actionLoading || draftQuestionsSubmitting"
               data-testid="survey-publish-button"
+              class="min-h-11 min-w-11"
               @click="onPublish"
             />
             <Button
@@ -565,6 +569,7 @@ onMounted(async () => {
               outlined
               :loading="actionLoading || draftQuestionsSubmitting"
               data-testid="survey-delete-button"
+              class="min-h-11 min-w-11"
               @click="onDelete"
             />
           </div>
@@ -611,6 +616,7 @@ onMounted(async () => {
             "
             icon="pi pi-pencil"
             data-testid="survey-respond-cta"
+            class="min-h-11 min-w-11"
             @click="goToResponseForm"
           />
         </div>
@@ -643,7 +649,7 @@ onMounted(async () => {
             hasResponded ? t('surveys.results.editResponseCta') : t('surveys.results.respondCta')
           "
           icon="pi pi-pencil"
-          class="mt-2"
+          class="mt-2 min-h-11 min-w-11"
           data-testid="survey-respond-cta"
           @click="goToResponseForm"
         />
@@ -710,6 +716,7 @@ onMounted(async () => {
                 text
                 size="small"
                 data-testid="survey-respondents-toggle"
+                class="min-h-11 min-w-11 shrink-0 whitespace-nowrap"
                 @click="showRespondents = !showRespondents"
               />
             </div>
