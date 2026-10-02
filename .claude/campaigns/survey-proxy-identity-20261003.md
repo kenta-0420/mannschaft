@@ -28,12 +28,16 @@ SurveyResponseController は JWT の actor ID を Service へ渡し、Service �
 | 本人未回答なら actor の回答を返さず空 | 本人未回答なら代理の回答取得は空配列を返す |
 | 通常の本人回答は actorへ保存、代理記録なし | 通常回答は認証本人へ保存し代理記録を作らない |
 | 途中設問エラーは部分回答・記録・件数を全 rollback | 途中の不正設問は全回答と記録と件数をロールバックする |
+| 同意検証時 actor と変身後 principal の不一致は保存・閲覧とも拒否 | 変身で同意検証時の代理者が変わる操作は拒否する（2対照） |
+| 未認可の request Context を用いた Service 直呼出しでは保存・閲覧を拒否 | 事前認可を通していないContextのService直呼出しは拒否する（2対照） |
 
-設置上の予定は34ケース。コンパイル、RED、JUnit 件数は実測前に達成扱いにしない。既存の正常な挙動は characterization として GREEN を保存し、失敗原因を製品差分と fixture/環境不備に分ける。
+初期実測は34ケース。上記4対照を追加した以降の設置上の予定は38ケース。コンパイル、RED、JUnit 件数は実測前に達成扱いにしない。既存の正常な挙動は characterization として GREEN を保存し、失敗原因を製品差分と fixture/環境不備に分ける。
 
 ## 設計判断
 
-殿の設計判断と読み取り専用 advisor の助言により、代理時だけ SURVEY を要求し、proxy Service で有効同意の actor/subject/organization と同意組合の PROXY_INPUT_EXECUTE を検証する。SYSTEM_ADMIN は既存 isSystemAdmin を併用。Survey は同意組合と実体 scope を束縛する（ORGANIZATION 完全一致、TEAM は既存 OrganizationHierarchyService の ACTIVE anchor 組合）。配信/重複/削除/保存に使用する ID だけ本人へ置き換え、監査の actor は JWT のまま保つ。通常 GET の空配列、終了後 GET、管理者個別回答の認可は保存する。
+殿の設計判断と読み取り専用 advisor の助言により、代理時だけ SURVEY を要求し、有効同意の actor/subject/organization と同意組合の PROXY_INPUT_EXECUTE を検証する。SYSTEM_ADMIN は既存 isSystemAdmin を併用。同意組合と実体 scope を束縛する（ORGANIZATION 完全一致、TEAM は既存 OrganizationHierarchyService の ACTIVE anchor 組合）。配信/重複/削除/保存に使用する ID だけ本人へ置き換え、監査の actor は JWT のまま保つ。通常 GET の空配列、終了後 GET、管理者個別回答の認可は保存する。
+
+追加設計確認で、SurveyResponseService の TX 内へ新たな認可照会を足すと D-3T 新違反になることを確認した。認可は HandlerInterceptor の preHandle で実 HandlerMethod の submitResponse/getMyResponses に限って実施し、MVC の共通例外処理を維持する。Proxy Service の照会は同意組合IDという immutable な値だけ、Survey Service の照会も own Repository 由来の primitive scope だけ返す。Context には Filter が検証した actor と、認可された actor/subject/consent/survey/操作を束縛して保存する。Service では引数 actor/現在 principal/認可印を照合し、印を別アンケートや GET→POST へ流用させない。activate/clear は認可印を必ず消す。proxy + AdminImpersonationFilter の principal 置換は不一致として拒否する。凍結ストアへの新負債追加、interface で静的解析を隠す迂回、Filter/TX内へ全 chain を入れる変更は行わない。
 
 F14.1 の「SUPPORTER が代理者として条件付き実行」と現 RoleService の SUPPORTER 空権限には不整合がある。今回、同意を権限の代用にして SUPPORTER 代理者を通す変更は行わず、既存権限判定へ従う。この不整合は別途台帳へ記録する。本人が SUPPORTER の配信母集団判定とは別問題である。
 

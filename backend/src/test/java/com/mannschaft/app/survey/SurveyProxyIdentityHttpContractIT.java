@@ -4,11 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
+import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity.FeatureScope;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -21,6 +25,8 @@ import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
+import com.mannschaft.app.survey.service.SurveyResponseService;
+import com.mannschaft.app.survey.dto.SubmitResponseRequest;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -40,20 +46,27 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -85,6 +98,8 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private SurveyQuestionRepository questions;
     @Autowired private SurveyTargetRepository targets;
     @Autowired private SurveyResponseRepository responses;
+    @Autowired private ProxyInputContext proxyContext;
+    @Autowired private SurveyResponseService responseService;
 
     private Long actor;
     private Long subject;
@@ -330,6 +345,49 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
                 Map.of("questionId", question.getId(), "textResponse", "先行回答"),
                 Map.of("questionId", 999_999_999L, "textResponse", "不正回答")))));
         mvc.perform(req).andExpect(status().isNotFound());
+        assertThat(snapshot()).isEqualTo(before);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"POST", "GET"})
+    void 変身で同意検証時の代理者が変わる操作は拒否する(String method) throws Exception {
+        inTx(() -> { MembershipTestHelper.insertUserRole(em, actor, "SYSTEM_ADMIN", null, null); return null; });
+        seedAnswer(subject, "本人の既回答");
+        var before = snapshot();
+        var req = request(HttpMethod.valueOf(method), "/api/v1/surveys/" + survey.getId() + "/responses"
+                + ("GET".equals(method) ? "/me" : ""))
+                .header("Authorization", "Bearer " + tokens.issueAccessToken(actor, List.of("SYSTEM_ADMIN")))
+                .header("X-Admin-Impersonate-User-Id", subject);
+        proxyHeaders(req, subject);
+        if ("POST".equals(method)) req.contentType(MediaType.APPLICATION_JSON).content(body());
+        mvc.perform(req).andExpect(status().isForbidden());
+        assertThat(snapshot()).isEqualTo(before);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 事前認可を通していないContextのService直呼出しは拒否する(boolean submit) {
+        var previousAttributes = RequestContextHolder.getRequestAttributes();
+        var previousAuthentication = SecurityContextHolder.getContext().getAuthentication();
+        var attributes = new ServletRequestAttributes(new MockHttpServletRequest());
+        var before = snapshot();
+        RequestContextHolder.setRequestAttributes(attributes);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(actor.toString(), null, List.of()));
+        try {
+            // request state を直接作っても、実 HTTP の同意・権限・scope 検証を代用できない。
+            proxyContext.activate(subject, consentId, "PAPER_FORM", "試練保管場所", Set.of(FeatureScope.SURVEY));
+            assertThatThrownBy(() -> {
+                if (submit) responseService.submitResponse(survey.getId(), actor, new SubmitResponseRequest(List.of(
+                        new SubmitResponseRequest.AnswerEntry(question.getId(), null, "本人の回答"))));
+                else responseService.getMyResponses(survey.getId(), actor);
+            }).isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(CommonErrorCode.COMMON_002);
+        } finally {
+            proxyContext.clear();
+            attributes.requestCompleted();
+            RequestContextHolder.setRequestAttributes(previousAttributes);
+            SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
+        }
         assertThat(snapshot()).isEqualTo(before);
     }
 
