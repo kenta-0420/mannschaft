@@ -231616,8 +231616,12 @@
         "type": "object",
         "properties": {
           "auditLogId": {
-            "type": "integer",
-            "format": "int64"
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "監査ログID（未紐付けはnull）"
           },
           "createdAt": {
             "type": "string",
@@ -231637,8 +231641,12 @@
             "type": "string"
           },
           "proxyInputConsentId": {
-            "type": "integer",
-            "format": "int64"
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "代理入力同意ID（同意書紐付けのない履歴はnull）"
           },
           "proxyUserId": {
             "type": "integer",
