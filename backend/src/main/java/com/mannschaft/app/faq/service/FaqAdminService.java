@@ -34,10 +34,7 @@ import java.util.UUID;
  * 論理削除（deletedAt）を用い、物理削除はしない。</p>
  *
  * <p><strong>権限チェック（per-scope 認可の真の強制点）:</strong>
- * 本アプリは {@code @EnableMethodSecurity} が未有効のため、Controller の
- * {@code @PreAuthorize("hasRole('ADMIN') ...")} は実機では強制力を持たない（将来の
- * method-security 有効化に備えた宣言・防御多重に留まる）。さらに JWT には {@code MEMBER}
- * しか乗らず、ADMIN/DEPUTY_ADMIN は {@code user_roles} にスコープ別保持されるため
+ * JWT には {@code MEMBER} しか乗らず、ADMIN/DEPUTY_ADMIN は {@code user_roles} にスコープ別保持されるため
  * {@code hasRole} では per-scope（その team / org の管理者か）の判定にならない。</p>
  *
  * <p>そこで本サービスの {@code getEditorPayload} / {@code save} の双方で、処理本体の前に

@@ -134,9 +134,10 @@ public class TodoResponseConverter {
         } catch (IllegalArgumentException ex) {
             return null;
         }
+        // issue #2544 D 群: キャッシュ安全な View（record）へ射影済みのため record アクセサで読む。
         return todoStatusLabelService.findSystemDefaultByBucket(bucket)
                 .map(l -> new TodoResponse.TodoStatusLabelInfo(
-                        l.getId(), l.getName(), l.getBucket().name(), l.getColor()))
+                        l.id(), l.name(), l.bucket(), l.color()))
                 .orElse(null);
     }
 

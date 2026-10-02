@@ -3,6 +3,9 @@ package com.mannschaft.app.recruitment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CancellationFeeEstimateResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse;
@@ -57,9 +60,15 @@ public class RecruitmentListingController {
      * visibility が SCOPE_ONLY / SUPPORTERS_ONLY の募集も検索結果に含める。
      * 詳細閲覧時に権限チェックを行うため、一覧では visibility による除外は行わない。
      * keyword / location は空文字列の場合 null 扱いとして LIKE 検索を省略する。
+     *
+     * <p>本文中の「認証不要」は将来設計を示す旧コメント。実際は {@code /api/v1/recruitment-listings/**}
+     * が permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
+     * で認証必須が現に強制されている（結果として OPEN の公開募集のみを返す参照系）。</p>
      */
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/search")
     @Operation(summary = "募集枠 全体検索 (§Phase4)")
+    @RequireFeature("FEATURE_RECRUITMENT_ENABLED")
     public ResponseEntity<PagedResponse<RecruitmentListingSummaryResponse>> searchListings(
             @Valid @ModelAttribute RecruitmentListingSearchRequest req) {
         // XSS 対策: keyword・location をトリムし、空文字列は null に正規化
@@ -95,6 +104,8 @@ public class RecruitmentListingController {
 
     @PatchMapping("/{id}")
     @Operation(summary = "募集枠編集 (§5.7)")
+    // updateInternal が checkListingManagementAccess で札主スコープと認証主体を照合する。
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody UpdateRecruitmentListingRequest request) {
@@ -111,6 +122,8 @@ public class RecruitmentListingController {
 
     @PostMapping("/{id}/cancel")
     @Operation(summary = "募集枠 主催者キャンセル")
+    // cancelInternal が checkListingManagementAccess で札主スコープと認証主体を照合する。
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> cancel(
             @PathVariable Long id,
             @RequestBody(required = false) CancelRecruitmentListingRequest request) {

@@ -82,9 +82,27 @@ class VillageCalendarServiceTest {
     private VillageCalendarEventRepository calendarRepository;
     @Mock
     private VillageMembershipRepository membershipRepository;
+    /** F17.2 Wave2 ①: 歳時記作成の還流イベント発行（no-op モック）。 */
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
+    @Mock
+    private VillageAccessGate accessGate;
 
     @InjectMocks
     private VillageCalendarService service;
+
+    /**
+     * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
+     * モックのゲートに実物のゲート（同じモックのリポジトリを注入）を委譲させることで、
+     * 本テストが積み上げてきた {@code villageRepository.findById} の stub をそのまま生かしつつ、
+     * 可視性判定は実物のロジックで走らせる。
+     */
+    @BeforeEach
+    void wireVillageAccessGate() {
+        VillageAccessGateTestSupport.delegateToRealGate(accessGate, villageRepository, membershipRepository);
+    }
 
     private VillageEntity village;
 
@@ -146,7 +164,7 @@ class VillageCalendarServiceTest {
     }
 
     private void mockModerator(Long userId, UUID membershipId, VillageRole role) {
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, userId))
                 .willReturn(Optional.of(memberOf(membershipId, userId, role)));
     }
@@ -208,7 +226,7 @@ class VillageCalendarServiceTest {
     @DisplayName("作成: 非村人は VILLAGE_024 で拒否")
     void createEvent_byNonMember_denied() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, NON_MEMBER_USER_ID))
                 .willReturn(Optional.empty());
 
@@ -352,6 +370,7 @@ class VillageCalendarServiceTest {
     @DisplayName("月別取得: 毎年繰返・単発を含む並び（リポジトリの順序を尊重）")
     void listEventsByMonth_includesAnnualAndOneShot() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
+        mockModerator(VILLAGER_USER_ID, VILLAGER_MEMBERSHIP_ID, VillageRole.VILLAGER);
         VillageCalendarEventEntity annual = existingEvent(true); // 7/7 毎年
         VillageCalendarEventEntity oneShot = VillageCalendarEventEntity.builder()
                 .villageId(VILLAGE_ID)
@@ -367,7 +386,7 @@ class VillageCalendarServiceTest {
         given(calendarRepository.findByMonth(eq(VILLAGE_ID), eq(2026), eq(7)))
                 .willReturn(List.of(annual, oneShot));
 
-        CalendarEventListResponse res = service.listEventsByMonth(VILLAGE_ID, 2026, 7);
+        CalendarEventListResponse res = service.listEventsByMonth(VILLAGE_ID, 2026, 7, VILLAGER_USER_ID);
 
         assertThat(res.year()).isEqualTo(2026);
         assertThat(res.month()).isEqualTo(7);
@@ -382,13 +401,29 @@ class VillageCalendarServiceTest {
     @DisplayName("月別取得: month 範囲外（0 や 13）は VILLAGE_FIELD_INVALID")
     void listEventsByMonth_invalidMonth() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
+        mockModerator(VILLAGER_USER_ID, VILLAGER_MEMBERSHIP_ID, VillageRole.VILLAGER);
 
-        assertThatThrownBy(() -> service.listEventsByMonth(VILLAGE_ID, 2026, 0))
+        assertThatThrownBy(() -> service.listEventsByMonth(VILLAGE_ID, 2026, 0, VILLAGER_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_FIELD_INVALID);
-        assertThatThrownBy(() -> service.listEventsByMonth(VILLAGE_ID, 2026, 13))
+        assertThatThrownBy(() -> service.listEventsByMonth(VILLAGE_ID, 2026, 13, VILLAGER_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.VILLAGE_FIELD_INVALID);
+    }
+
+    @Test
+    @DisplayName("月別取得: 非村人は VILLAGE_024（MODERATION_FORBIDDEN）で拒否")
+    void listEventsByMonth_byNonMember_denied() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                VILLAGE_ID, VillageSubjectType.USER, NON_MEMBER_USER_ID))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.listEventsByMonth(VILLAGE_ID, 2026, 7, NON_MEMBER_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
+        verify(calendarRepository, never()).findByMonth(any(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt());
     }
 
     // ========================================================================
@@ -399,11 +434,12 @@ class VillageCalendarServiceTest {
     @DisplayName("詳細取得: 削除済みイベントは VILLAGE_056")
     void getEvent_deleted() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
+        mockModerator(VILLAGER_USER_ID, VILLAGER_MEMBERSHIP_ID, VillageRole.VILLAGER);
         VillageCalendarEventEntity deleted = existingEvent(true);
         deleted.setDeletedAt(LocalDateTime.now().minusDays(1));
         given(calendarRepository.findById(EVENT_ID)).willReturn(Optional.of(deleted));
 
-        assertThatThrownBy(() -> service.getEvent(VILLAGE_ID, EVENT_ID))
+        assertThatThrownBy(() -> service.getEvent(VILLAGE_ID, EVENT_ID, VILLAGER_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(VillageErrorCode.CALENDAR_EVENT_NOT_FOUND);
     }
@@ -412,12 +448,27 @@ class VillageCalendarServiceTest {
     @DisplayName("詳細取得: 生存イベントを返す")
     void getEvent_success() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
+        mockModerator(VILLAGER_USER_ID, VILLAGER_MEMBERSHIP_ID, VillageRole.VILLAGER);
         given(calendarRepository.findById(EVENT_ID)).willReturn(Optional.of(existingEvent(true)));
 
-        CalendarEventResponse res = service.getEvent(VILLAGE_ID, EVENT_ID);
+        CalendarEventResponse res = service.getEvent(VILLAGE_ID, EVENT_ID, VILLAGER_USER_ID);
 
         assertThat(res.id()).isEqualTo(EVENT_ID);
         assertThat(res.title()).isEqualTo("七夕");
         assertThat(res.createdByDisplayName()).isNull();
+    }
+
+    @Test
+    @DisplayName("詳細取得: 非村人は VILLAGE_024（MODERATION_FORBIDDEN）で拒否")
+    void getEvent_byNonMember_denied() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                VILLAGE_ID, VillageSubjectType.USER, NON_MEMBER_USER_ID))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getEvent(VILLAGE_ID, EVENT_ID, NON_MEMBER_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
+        verify(calendarRepository, never()).findById(any());
     }
 }

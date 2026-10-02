@@ -121,11 +121,30 @@ export function useSystemAdminAdCampaignApi() {
     })
   }
 
+  /**
+   * 通報の対応状態を遷移させる（F09.19.9）。
+   *
+   * <p>NEW→REVIEWING→RESOLVED/DISMISSED。不正遷移は 409 / AD_027。</p>
+   */
+  async function updateUserReportStatus(
+    reportId: string,
+    status: AdUserReport['status'],
+  ) {
+    return api<{ data: AdUserReport }>(
+      `/api/v1/system-admin/ad-user-reports/${reportId}/status`,
+      {
+        method: 'PATCH',
+        body: { status },
+      },
+    )
+  }
+
   return {
     listReviewQueue,
     getCampaignForReview,
     approveCampaign,
     blockCampaign,
     listUserReports,
+    updateUserReportStatus,
   }
 }

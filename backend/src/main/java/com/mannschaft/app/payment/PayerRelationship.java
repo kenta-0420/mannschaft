@@ -23,12 +23,6 @@ public enum PayerRelationship {
      */
     GUARDIAN_PROXY,
 
-    /**
-     * payment_proxy_grants による第三者払い（非後見・祖父母・スポンサー等）。
-     * payment_proxy_grant_id が必ず設定される。
-     */
-    PROXY_GRANT,
-
     /** 管理者（ADMIN）が手動で記録した支払い。監査・確認用。 */
     ADMIN_MANUAL
 }

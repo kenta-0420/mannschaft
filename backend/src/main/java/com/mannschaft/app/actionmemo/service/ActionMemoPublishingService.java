@@ -22,11 +22,12 @@ import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
@@ -52,15 +53,14 @@ public class ActionMemoPublishingService {
     private static final DateTimeFormatter MEMO_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("HH:mm");
 
-    /** JST タイムゾーン */
-    private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
-
     private final ActionMemoRepository memoRepository;
     private final TimelinePostRepository timelinePostRepository;
     private final UserRoleRepository userRoleRepository;
     private final ActionMemoSettingsService settingsService;
     private final ActionMemoMetrics metrics;
     private final TodoRepository todoRepository;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 当日分（または指定日分）のメモをまとめて PERSONAL タイムラインに投稿する。
@@ -96,7 +96,7 @@ public class ActionMemoPublishingService {
             // 1. memo_date デフォルト設定（JST 今日）
             LocalDate memoDate = request.getMemoDate() != null
                     ? request.getMemoDate()
-                    : LocalDate.now(ZONE_JST);
+                    : LocalDate.now(wallClock);
 
             // 2. 対象日のメモを時系列順に取得
             List<ActionMemoEntity> memos = memoRepository.findByUserIdAndMemoDate(userId, memoDate);
@@ -242,7 +242,7 @@ public class ActionMemoPublishingService {
     // TODO: actionmemoドメインがroleドメイン(UserRoleRepository)・timelineドメイン(TimelinePostRepository)をまたいでいる。将来はイベント駆動で分離予定
     @Transactional
     public PublishDailyToTeamResponse publishDailyToTeam(PublishDailyToTeamRequest request, Long userId) {
-        LocalDate today = LocalDate.now(ZONE_JST);
+        LocalDate today = LocalDate.now(wallClock);
 
         // team_id 解決
         Long teamId = resolveTeamId(request.getTeamId(), userId);

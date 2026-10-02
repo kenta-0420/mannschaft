@@ -11,11 +11,13 @@ import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 /**
  * F09.17 Phase 11-b ε-B プッシュ通知チャネル配信サービス。
@@ -47,12 +49,10 @@ public class AdPushChannelService {
     /** 通知種別。F04.3 NotificationType 文字列。 */
     static final String NOTIFICATION_TYPE = "ADVERTISER_AD";
 
-    /** 本文プレフィックス強制（景品表示法対応）。 */
-    private static final String AD_BODY_PREFIX = "【広告】";
-
     private final NotificationService notificationService;
     private final NotificationDispatchService dispatchService;
     private final AdPushDeliveryRepository deliveryRepository;
+    private final MessageSource messageSource;
 
     /**
      * 1 ユーザーに 1 件のプッシュ通知を配信する。
@@ -70,9 +70,16 @@ public class AdPushChannelService {
             throw new IllegalArgumentException("campaign, channel, userId は必須です");
         }
 
-        String title = channel.getSubject() != null ? channel.getSubject() : "新しい広告";
+        // Issue #2715 CMP-055 ロットC-6: channel は locale 解決済の単一行のため、そのロケールで
+        // フォールバック文言（subject 未設定時）と広告プレフィックスを組み立てる。
+        Locale locale = Locale.forLanguageTag(channel.getLocale() != null ? channel.getLocale() : "ja");
+        String defaultTitle = messageSource.getMessage(
+                "notification.advertising.push.defaultTitle", null, "新しい広告", locale);
+        String adBodyPrefix = messageSource.getMessage(
+                "notification.advertising.push.bodyPrefix", null, "【広告】", locale);
+        String title = channel.getSubject() != null ? channel.getSubject() : defaultTitle;
         String rawBody = channel.getBodyMarkdown() != null ? channel.getBodyMarkdown() : "";
-        String body = rawBody.startsWith(AD_BODY_PREFIX) ? rawBody : AD_BODY_PREFIX + rawBody;
+        String body = rawBody.startsWith(adBodyPrefix) ? rawBody : adBodyPrefix + rawBody;
 
         // 通知行を作成（NotificationService 内部の visibility ガードは ADVERTISER_CAMPAIGN が
         // ReferenceType に解決できないため fail-soft で通過する設計）。

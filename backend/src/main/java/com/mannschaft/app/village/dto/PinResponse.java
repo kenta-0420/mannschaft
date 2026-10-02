@@ -14,7 +14,8 @@ import java.util.UUID;
  * @param id              ピンエンティティ ID
  * @param villageId       村 ID
  * @param villageName     村名（村側 join）
- * @param villageIconUrl  村アイコン R2 キー（公開キーをそのまま返す。CDN 配信前提）
+ * @param villageIconUrl  村アイコンの表示用署名付き URL（{@code MediaUrlResolver} で解決済み。
+ *                        FE は img src に直接渡す。アイコン未設定/解決不能時は null）
  * @param sortOrder       並び順（小さいほど上）
  * @param pinnedAt        ピン留め日時
  */

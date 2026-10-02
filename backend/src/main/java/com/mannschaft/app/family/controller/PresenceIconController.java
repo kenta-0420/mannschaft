@@ -38,7 +38,7 @@ public class PresenceIconController {
     @Operation(summary = "カスタムアイコン一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<PresenceIconResponse>>> getIcons(@PathVariable Long teamId) {
-        return ResponseEntity.ok(presenceIconService.getIcons(teamId));
+        return ResponseEntity.ok(presenceIconService.getIcons(teamId, SecurityUtils.getCurrentUserId()));
     }
 
     /**

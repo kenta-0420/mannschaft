@@ -1,6 +1,7 @@
 package com.mannschaft.app.survey.visibility;
 
 import com.mannschaft.app.common.visibility.VisibilityProjection;
+import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyStatus;
 
@@ -33,6 +34,15 @@ import java.time.LocalDateTime;
  * @param status             surveys.status（status 軸正規化に利用）
  * @param resultsVisibility  surveys.results_visibility（StandardVisibility 正規化に利用）
  * @param expiresAt          surveys.expires_at（AFTER_CLOSE 判定の閾値、{@code null} 可 → fail-closed）
+ * @param includeSupporters  surveys.include_supporters（{@code null} 可 → false 扱い）。
+ *                           {@link ResultsVisibility#ALWAYS} は「配信母集団＝中間集計の閲覧母集団」を
+ *                           不変条件とするため、配信母集団の算出（{@code OrganizationMembershipService
+ *                           #resolveOrgDistributionUserIds(Long, boolean)}）が参照するのと
+ *                           <b>同じフラグ</b>を可視性判定でも参照する必要がある。
+ * @param distributionMode   surveys.distribution_mode（{@code null} 可 → 名簿必須の安全側で扱う）。
+ *                           {@link com.mannschaft.app.survey.DistributionMode#TARGETED} では
+ *                           配信母集団が {@code survey_targets} 名簿そのものであるため、
+ *                           {@link ResultsVisibility#ALWAYS} の可視範囲も名簿に一致させる必要がある。
  */
 public record SurveyVisibilityProjection(
         Long id,
@@ -41,7 +51,9 @@ public record SurveyVisibilityProjection(
         Long authorUserId,
         SurveyStatus status,
         ResultsVisibility resultsVisibility,
-        LocalDateTime expiresAt) implements VisibilityProjection {
+        LocalDateTime expiresAt,
+        Boolean includeSupporters,
+        DistributionMode distributionMode) implements VisibilityProjection {
 
     @Override
     public Long visibilityTemplateId() {

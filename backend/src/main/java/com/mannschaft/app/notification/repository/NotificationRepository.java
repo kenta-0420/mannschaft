@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.repository;
 
+import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -60,21 +61,26 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     long countBySourceTypeAndSourceId(String sourceType, Long sourceId);
 
     /**
-     * スコープタイプとスコープIDで通知件数を取得する。
-     */
-    long countByScopeTypeAndScopeId(String scopeType, Long scopeId);
-
-    /**
      * スコープタイプとスコープIDで通知一覧をページング取得する（フレンド通知一覧用）。
+     *
+     * <p><b>scopeType は必ず {@link NotificationScopeType} で受けること。</b>
+     * {@code NotificationEntity#scopeType} は {@code @Enumerated(EnumType.STRING)} の enum 属性であり、
+     * 派生クエリのバインド型はエンティティ属性側で決まる。{@code String} で宣言すると
+     * Hibernate のパラメータ束縛時に
+     * {@code InvalidDataAccessApiUsageException: Argument [...] of type [java.lang.String] did not match
+     * parameter type [NotificationScopeType]} となり、実行時に必ず 500 になる（列名が同じ VARCHAR でも通らない）。</p>
      */
     Page<NotificationEntity> findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
-            String scopeType, Long scopeId, Pageable pageable);
+            NotificationScopeType scopeType, Long scopeId, Pageable pageable);
 
     /**
      * スコープタイプとスコープIDで未読フィルタ付き通知一覧をページング取得する。
+     *
+     * <p>scopeType を enum で受ける理由は
+     * {@link #findByScopeTypeAndScopeIdOrderByCreatedAtDesc} の javadoc を参照。</p>
      */
     Page<NotificationEntity> findByScopeTypeAndScopeIdAndIsReadOrderByCreatedAtDesc(
-            String scopeType, Long scopeId, Boolean isRead, Pageable pageable);
+            NotificationScopeType scopeType, Long scopeId, Boolean isRead, Pageable pageable);
 
     /**
      * 組織に紐づく通知一覧を取得する（テナント絞り込み用）。
@@ -99,14 +105,17 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
      * <p>マイスコープフォルダによるフィルタリングに使用する（設計書 §5.2.4）。
      * scope_id IN (...) と scope_type 完全一致の AND 条件。</p>
      *
+     * <p>scopeType を enum で受ける理由は
+     * {@link #findByScopeTypeAndScopeIdOrderByCreatedAtDesc} の javadoc を参照。</p>
+     *
      * @param userId    ユーザーID
-     * @param scopeType スコープタイプ（"TEAM" / "ORGANIZATION"）
+     * @param scopeType スコープタイプ（{@code TEAM} / {@code ORGANIZATION}）
      * @param scopeIds  scope_id 集合（フォルダ内のチーム/組織 ID）
      * @param pageable  ページング
      * @return 通知ページ
      */
     Page<NotificationEntity> findByUserIdAndScopeTypeAndScopeIdInOrderByCreatedAtDesc(
-            Long userId, String scopeType, List<Long> scopeIds, Pageable pageable);
+            Long userId, NotificationScopeType scopeType, List<Long> scopeIds, Pageable pageable);
 
     /**
      * 指定ユーザー向けに、同一の notification_type / source_type / source_id の通知が

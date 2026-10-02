@@ -101,6 +101,7 @@ public class TimelinePostAttachmentEntity {
     @Column(length = 20)
     private VideoProcessingStatus videoProcessingStatus;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

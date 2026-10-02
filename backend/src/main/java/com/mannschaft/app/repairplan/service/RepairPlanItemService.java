@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.repairplan.RepairPlanErrorCode;
 import com.mannschaft.app.repairplan.RepairPlanItemStatus;
 import com.mannschaft.app.repairplan.dto.CreateRepairPlanItemRequest;
@@ -181,7 +182,7 @@ public class RepairPlanItemService {
             entity.setCpiInflationBasisYear(req.getCpiInflationBasisYear());
         }
         if (req.getStatus() != null) {
-            RepairPlanItemStatus.valueOf(req.getStatus());
+            EnumInputParser.parse(RepairPlanItemStatus.class, req.getStatus(), "status");
             entity.setStatus(req.getStatus());
         }
         if (req.getLinkedWorkPackageId() != null) {

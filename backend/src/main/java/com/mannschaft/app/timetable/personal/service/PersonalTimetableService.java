@@ -6,6 +6,7 @@ import com.mannschaft.app.timetable.personal.PersonalPeriodTemplate;
 import com.mannschaft.app.timetable.personal.PersonalTimetableErrorCode;
 import com.mannschaft.app.timetable.personal.PersonalTimetableStatus;
 import com.mannschaft.app.timetable.personal.PersonalTimetableVisibility;
+import com.mannschaft.app.timetable.personal.dto.PersonalTimetableSummary;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetablePeriodEntity;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableSlotEntity;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * F03.15 個人時間割サービス（Phase 1）。
@@ -373,6 +375,27 @@ public class PersonalTimetableService {
             Boolean weekPatternEnabled,
             LocalDate weekPatternBaseDate,
             String notes) {
+    }
+
+    /**
+     * F06.5 Phase 3 term-suggestion 用: 指定日時点で有効な個人時間割（status = ACTIVE のみ）の
+     * 学年・学期サマリーを返す（§12.1・D-1 越境依存禁止のため reflection ドメイン側が Service 経由で呼ぶ）。
+     *
+     * <p>条件: status = ACTIVE かつ effectiveFrom &lt;= date かつ (effectiveUntil IS NULL OR effectiveUntil &gt;= date)。
+     * 複数該当時は effectiveFrom が最新（最遅）のものを採用。該当なしは {@link Optional#empty()}。
+     * DRAFT・ARCHIVED の時間割は除外する（提案に混入しないよう）。</p>
+     *
+     * @param userId   対象ユーザーID
+     * @param date     基準日
+     * @return 有効な時間割の学年・学期サマリー（該当なしは empty）
+     */
+    public Optional<PersonalTimetableSummary> findEffectiveAt(Long userId, LocalDate date) {
+        return repository.findByUserIdAndStatusAndDeletedAtIsNull(userId, PersonalTimetableStatus.ACTIVE)
+                .stream()
+                .filter(pt -> !pt.getEffectiveFrom().isAfter(date)
+                        && (pt.getEffectiveUntil() == null || !pt.getEffectiveUntil().isBefore(date)))
+                .max(java.util.Comparator.comparing(PersonalTimetableEntity::getEffectiveFrom))
+                .map(pt -> new PersonalTimetableSummary(pt.getAcademicYear(), pt.getTermLabel()));
     }
 
     /**

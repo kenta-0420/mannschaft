@@ -21,9 +21,21 @@ import java.util.List;
  * ({@code String#toLowerCase().contains()})。コードブロックや HTML エスケープによる
  * NG 回避を防ぐため、Markdown 本文は前処理なしでそのまま照合する。</p>
  *
- * <p>辞書取得は Spring Cache {@code @Cacheable(value="adNgWords")} で
- * RedisConfig のデフォルト TTL (30分) でキャッシュされる。
- * SYSTEM_ADMIN が辞書を更新した際は明示的に evict すること (将来の UI 拡張で対応)。</p>
+ * <p>辞書取得は Spring Cache {@code @Cacheable(value="adNgWords")} でキャッシュされる。
+ * TTL は {@code RedisConfig} で明示的に <b>5 分</b>に設定している（既定 30 分ではない）。</p>
+ *
+ * <p><b>evict が存在しない理由（issue #2544）:</b>
+ * {@code ad_ng_words} にはアプリケーション側の書き込み経路が 1 つも無い
+ * （{@code AdNgWordRepository} の呼び出しは {@link #getActiveNgWords} の
+ * {@code findByIsActiveTrue()} 1 箇所のみで、辞書の投入・変更は Flyway
+ * {@code V67.030__seed_ad_ng_words.sql} ＝デプロイ時のマイグレーション、
+ * ないし運用者の DB 直接操作でしか起きない）。
+ * よって {@code @CacheEvict} を貼るべきミューテーションメソッドが存在せず、
+ * 反映の収束手段は TTL のみである。issue #2544 で自己呼び出しを是正して
+ * 本キャッシュが初めて実際に効くようになったため、
+ * 反映遅延を新たに作り込まないよう TTL を 5 分へ短縮してある。
+ * 将来 SYSTEM_ADMIN 向けの辞書編集 UI を作る際は、その更新メソッドに
+ * {@code @CacheEvict(value = CACHE_NAME, allEntries = true)} を貼ること。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -33,6 +45,17 @@ public class AdContentModerator {
     public static final String CACHE_NAME = "adNgWords";
 
     private final AdNgWordRepository adNgWordRepository;
+
+    /**
+     * 自己プロキシ参照（issue #2544）。{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用する。
+     * 旧実装は {@link #getActiveNgWords} を {@code public} にすれば自己呼び出しでも効くと
+     * Javadoc で主張していたが、<b>public 化だけではプロキシを通らない</b>ため
+     * {@code adNgWords} キャッシュは一度も発火していなかった（唯一の呼び出し元が同一クラス内）。
+     * 循環参照を避けるため {@code @Lazy} を付けたフィールド注入とする。
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private AdContentModerator self;
 
     /**
      * 本文を NG 辞書と突合し、検出ヒットと推奨アクションを返す。
@@ -52,7 +75,8 @@ public class AdContentModerator {
             return new ModerationCheckResult(List.of(), SuggestedModerationAction.AUTO_PASS);
         }
 
-        List<AdNgWord> dictionary = getActiveNgWords();
+        // issue #2544: 自己プロキシ経由で呼ぶ（this. だと @Cacheable が発火しない）。
+        List<AdNgWord> dictionary = self.getActiveNgWords();
         String lower = bodyMarkdown.toLowerCase();
 
         List<DetectedNgWord> detected = new ArrayList<>();
@@ -89,9 +113,13 @@ public class AdContentModerator {
     /**
      * 有効な NG 辞書を取得 (Spring Cache でキャッシュ)。
      *
-     * <p>{@code @Cacheable} 自己呼び出しを避けるためメソッドを public とし
-     * Spring AOP プロキシ経由で呼び出される。テストで evict したい場合は
-     * {@code @CacheEvict} を別途用意する。</p>
+     * <p>{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用するため、
+     * 同一クラス内の {@link #check} からは自己プロキシ {@code self} を通して呼ぶこと。
+     * <b>public 化だけではプロキシをバイパスしたままで発火しない</b>（issue #2544 で是正）。</p>
+     *
+     * <p>戻り値の {@code List} は Spring Data が返す可変 {@code ArrayList} であり、
+     * {@code AdNgWord} は {@code @Setter} を持つため Valkey から復元できる
+     * （{@code CacheValueSerializationRoundTripTest} が実シリアライザで往復検証する）。</p>
      */
     @Cacheable(value = CACHE_NAME, key = "'active'")
     public List<AdNgWord> getActiveNgWords() {

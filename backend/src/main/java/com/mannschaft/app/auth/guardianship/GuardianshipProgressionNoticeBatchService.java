@@ -4,6 +4,8 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.ParentalConsentService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.family.service.CareLinkService;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
@@ -92,6 +94,8 @@ public class GuardianshipProgressionNoticeBatchService {
      */
     @BatchEndpoint(name = "guardianship-progression-notice-batch",
             description = "自立移行 進学予告（封印3ヶ月前・保護者へ事前通知）バッチ")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。保護者同意の段階進行の事前通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "guardianshipProgressionNoticeBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void execute() {
@@ -103,10 +107,10 @@ public class GuardianshipProgressionNoticeBatchService {
         // 子の属性をまとめてロードするため、子IDごとに保護者IDの集合を持つ（N+1 防止）。
         Map<Long, Set<Long>> guardiansByChild = new LinkedHashMap<>();
 
-        collectPairs(pairKeys, guardiansByChild, today);
+        boolean truncated = collectPairs(pairKeys, guardiansByChild, today);
 
         if (guardiansByChild.isEmpty()) {
-            log.info("進学予告バッチ完了: 対象ペアなし");
+            log.info("進学予告バッチ完了: 対象ペアなし（打ち切り={}）", truncated);
             return;
         }
 
@@ -160,43 +164,69 @@ public class GuardianshipProgressionNoticeBatchService {
             }
         }
 
-        log.info("進学予告バッチ完了: 対象子={}件, 送信={}件, スキップ={}件, 失敗={}件",
-                guardiansByChild.size(), sentCount, skippedCount, failedCount);
+        log.info("進学予告バッチ完了: 対象子={}件, 送信={}件, スキップ={}件, 失敗={}件, 打ち切り={}",
+                guardiansByChild.size(), sentCount, skippedCount, failedCount, truncated);
     }
 
     /**
      * 2 経路（parental_consent / care_links）から (保護者, 子) ペアをページングで収集する。
      * {@code pairKeys} で (保護者,子) の重複を排除しつつ、{@code guardiansByChild} に子→保護者集合を蓄積する。
+     *
+     * <p>各経路は {@link #MAX_PAGES} 件のページを走査しても終端（空ページ、または
+     * {@link #PAGE_SIZE} 未満のページ）に到達しなければ、そこで打ち切って WARN ログを残す
+     * （無言の切り捨て禁止。対処療法禁止の原則に基づき、根本解決＝キーセットページング化は別任務とする）。
+     *
+     * @return いずれかの経路が {@link #MAX_PAGES} で打ち切られ、収集しきれなかった場合 true
      */
-    private void collectPairs(Set<String> pairKeys, Map<Long, Set<Long>> guardiansByChild, LocalDate today) {
-        // parental_consent_links（APPROVED）
+    private boolean collectPairs(Set<String> pairKeys, Map<Long, Set<Long>> guardiansByChild, LocalDate today) {
+        boolean consentTruncated = collectParentalConsentPairs(pairKeys, guardiansByChild);
+        boolean careLinkTruncated = collectCareLinkPairs(pairKeys, guardiansByChild);
+        return consentTruncated || careLinkTruncated;
+    }
+
+    /** parental_consent_links（APPROVED）経路のページング収集。打ち切られたら true。 */
+    private boolean collectParentalConsentPairs(Set<String> pairKeys, Map<Long, Set<Long>> guardiansByChild) {
         for (int page = 0; page < MAX_PAGES; page++) {
             List<ParentalConsentService.ParentChildPair> pairs =
                     parentalConsentService.listApprovedParentChildPairs(page, PAGE_SIZE);
             if (pairs.isEmpty()) {
-                break;
+                return false;
             }
             for (ParentalConsentService.ParentChildPair pair : pairs) {
                 addPair(pairKeys, guardiansByChild, pair.parentUserId(), pair.childUserId());
             }
             if (pairs.size() < PAGE_SIZE) {
-                break;
+                return false;
             }
         }
-        // user_care_links（ACTIVE PARENT）
+        logCollectionTruncated("parental_consent_links");
+        return true;
+    }
+
+    /** user_care_links（ACTIVE PARENT）経路のページング収集。打ち切られたら true。 */
+    private boolean collectCareLinkPairs(Set<String> pairKeys, Map<Long, Set<Long>> guardiansByChild) {
         for (int page = 0; page < MAX_PAGES; page++) {
             List<CareLinkService.ParentChildPair> pairs =
                     careLinkService.listActiveParentWatcherPairs(page, PAGE_SIZE);
             if (pairs.isEmpty()) {
-                break;
+                return false;
             }
             for (CareLinkService.ParentChildPair pair : pairs) {
                 addPair(pairKeys, guardiansByChild, pair.parentUserId(), pair.childUserId());
             }
             if (pairs.size() < PAGE_SIZE) {
-                break;
+                return false;
             }
         }
+        logCollectionTruncated("user_care_links");
+        return true;
+    }
+
+    /** ページング走査が MAX_PAGES で打ち切られた際の WARN ログ（無言の切り捨て禁止）。 */
+    private void logCollectionTruncated(String sourceName) {
+        log.warn("進学予告: {} のペア収集がページ上限（{}件 = {}件×{}ページ）に到達したため打ち切り。"
+                        + "上限を超えた分は今回の対象から漏れており、該当保護者には通知が届かない状態。",
+                sourceName, PAGE_SIZE * MAX_PAGES, PAGE_SIZE, MAX_PAGES);
     }
 
     /** (保護者, 子) を重複排除して蓄積する。自分自身が子のペアは防御的に除外。 */

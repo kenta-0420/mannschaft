@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 自分の貸出一覧コントローラー。全チーム・組織横断で自分が借りている備品を取得する。
@@ -30,6 +31,8 @@ public class EquipmentMyAssignmentsController {
     /**
      * 自分が借りている備品一覧を取得する（全チーム・組織横断）。
      */
+    @SelfScopedEndpoint("EquipmentAssignmentService#getMyAssignments が SecurityUtils.getCurrentUserId() のみを"
+            + "検索条件に使い、全チーム・組織横断でも常に呼び出し元自身の貸出のみを返す")
     @GetMapping("/my-assignments")
     @Operation(summary = "自分の貸出一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

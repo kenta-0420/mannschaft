@@ -85,6 +85,10 @@ class VillageRepresentativeControllerIntegrationTest extends AbstractVillageInte
         lenient().when(userRoleRepository.existsByUserIdAndOrganizationId(anyLong(), anyLong())).thenReturn(false);
         // 代表ユーザーはチームメンバー扱い
         lenient().when(userRoleRepository.existsByUserIdAndTeamId(REPRESENTATIVE_USER_ID, TEAM_ID)).thenReturn(true);
+        // CMP-050: 代表ユーザーのアカウントは生存（未削除かつ ACTIVE）している前提。
+        // isActiveUser は default メソッドだが Mockito は default 実装を呼ばず既定 false を返すため、
+        // 明示的に stub しないと委任がすべて VILLAGE_055 で拒否される。
+        lenient().when(userRoleRepository.isActiveUser(REPRESENTATIVE_USER_ID)).thenReturn(true);
         lenient().when(accessControlService.isSystemAdmin(anyLong())).thenReturn(false);
     }
 
@@ -186,10 +190,11 @@ class VillageRepresentativeControllerIntegrationTest extends AbstractVillageInte
     // ─────────────────────────────────────────────
 
     @Test
-    @DisplayName("GET — 現役委任が一覧で返る")
+    @DisplayName("GET — 現役委任が一覧で返る（村人・非管理者メンバーでも閲覧可）")
     void list_active_only() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity village = persistVillage();
+        persistVillager(village.getId(), REGULAR_USER_ID);
         VillageMembershipEntity teamMembership = persistTeamMembership(village.getId(), TEAM_ID);
         VillageRepresentativeEntity rep = persistActiveRepresentative(
                 village.getId(), teamMembership.getId(), REPRESENTATIVE_USER_ID, HEADMAN_USER_ID);
@@ -202,10 +207,11 @@ class VillageRepresentativeControllerIntegrationTest extends AbstractVillageInte
     }
 
     @Test
-    @DisplayName("GET — includeRevoked=false なら取消し済みは返らない")
+    @DisplayName("GET — includeRevoked=false なら取消し済みは返らない（村人）")
     void list_excludes_revoked() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity village = persistVillage();
+        persistVillager(village.getId(), REGULAR_USER_ID);
         VillageMembershipEntity teamMembership = persistTeamMembership(village.getId(), TEAM_ID);
         VillageRepresentativeEntity rep = persistActiveRepresentative(
                 village.getId(), teamMembership.getId(), REPRESENTATIVE_USER_ID, HEADMAN_USER_ID);
@@ -219,6 +225,50 @@ class VillageRepresentativeControllerIntegrationTest extends AbstractVillageInte
         assertThat(res.getStatusCode().value()).isEqualTo(200);
         List<RepresentativeResponse> body = res.getBody().getData();
         assertThat(body).extracting(RepresentativeResponse::id).doesNotContain(rep.getId());
+    }
+
+    @Test
+    @DisplayName("GET — HEADMAN 本人も一覧を閲覧できる（正当な権限保持者・200）")
+    void list_headman_ok() {
+        authenticateAs(HEADMAN_USER_ID);
+        VillageEntity village = persistVillage();
+        persistHeadman(village.getId(), HEADMAN_USER_ID);
+        VillageMembershipEntity teamMembership = persistTeamMembership(village.getId(), TEAM_ID);
+        VillageRepresentativeEntity rep = persistActiveRepresentative(
+                village.getId(), teamMembership.getId(), REPRESENTATIVE_USER_ID, HEADMAN_USER_ID);
+
+        ResponseEntity<ApiResponse<List<RepresentativeResponse>>> res = controller.list(village.getId(), false);
+
+        assertThat(res.getStatusCode().value()).isEqualTo(200);
+        assertThat(res.getBody().getData()).extracting(RepresentativeResponse::id).contains(rep.getId());
+    }
+
+    @Test
+    @DisplayName("GET — 非村人は VILLAGE_007（NOT_MEMBER）で拒否")
+    void list_nonMember_forbidden() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity village = persistVillage();
+        // REGULAR_USER_ID は当該村のメンバーシップを持たない
+
+        assertThatThrownBy(() -> controller.list(village.getId(), false))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.NOT_MEMBER);
+    }
+
+    @Test
+    @DisplayName("GET — 別村の HEADMAN であっても当該村の非会員なら VILLAGE_007（BOLA 対策）")
+    void list_headmanOfOtherVillage_forbidden() {
+        authenticateAs(HEADMAN_USER_ID);
+        VillageEntity otherVillage = persistVillage();
+        persistHeadman(otherVillage.getId(), HEADMAN_USER_ID);
+        VillageEntity targetVillage = persistVillage();
+        // HEADMAN_USER_ID は targetVillage には所属していない
+
+        assertThatThrownBy(() -> controller.list(targetVillage.getId(), false))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.NOT_MEMBER);
     }
 
     // ─────────────────────────────────────────────
@@ -246,6 +296,17 @@ class VillageRepresentativeControllerIntegrationTest extends AbstractVillageInte
                 .subjectType(VillageSubjectType.USER)
                 .subjectId(userId)
                 .role(VillageRole.HEADMAN)
+                .joinedAt(LocalDateTime.now())
+                .build();
+        return membershipRepository.saveAndFlush(m);
+    }
+
+    private VillageMembershipEntity persistVillager(UUID villageId, Long userId) {
+        VillageMembershipEntity m = VillageMembershipEntity.builder()
+                .villageId(villageId)
+                .subjectType(VillageSubjectType.USER)
+                .subjectId(userId)
+                .role(VillageRole.VILLAGER)
                 .joinedAt(LocalDateTime.now())
                 .build();
         return membershipRepository.saveAndFlush(m);

@@ -35,7 +35,13 @@ const showDismiss = computed(
 
 <template>
   <div class="flex gap-2">
-    <Button label="編集" icon="pi pi-pencil" outlined @click="$emit('edit')" />
+    <Button
+      label="編集"
+      icon="pi pi-pencil"
+      outlined
+      data-testid="team-event-edit"
+      @click="$emit('edit')"
+    />
     <Button
       v-if="status === 'DRAFT'"
       label="公開"

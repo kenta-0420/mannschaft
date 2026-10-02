@@ -6,15 +6,17 @@ import type { FeeStatementResponse } from '~/types/payment'
  * チーム ADMIN のみアクセス可。
  * BE: GET /api/v1/teams/{id}/fee-statements?period=YYYY-MM
  */
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
-const teamId = String(route.params.slug)
-const { getFeeStatement } = usePaymentApi()
+const teamSlug = computed(() => String(route.params.slug))
+const teamId = ref<number | null>(null)
+const { resolveScopeId } = useActivityScopeId()
+const { getFeeStatement, exportFeeStatementPdf } = usePaymentApi()
 const notification = useNotification()
 
-const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
+const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug.value)
 
 const loading = ref(true)
 const permissionDenied = ref(false)
@@ -24,6 +26,7 @@ const selectedPeriod = ref<string>(currentYearMonth())
 const statement = ref<FeeStatementResponse | null>(null)
 const dataLoading = ref(false)
 const noData = ref(false)
+const pdfDownloading = ref(false)
 
 /** 現在の年月を YYYY-MM 形式で返す。 */
 function currentYearMonth(): string {
@@ -39,11 +42,12 @@ function formatAmount(amount: number, currency: string): string {
 }
 
 async function load() {
+  if (teamId.value === null) return
   dataLoading.value = true
   noData.value = false
   statement.value = null
   try {
-    const res = await getFeeStatement(teamId, selectedPeriod.value)
+    const res = await getFeeStatement(teamId.value, selectedPeriod.value)
     statement.value = res.data
   } catch (err: unknown) {
     // 404 = 対象月のデータなし、それ以外はエラー通知
@@ -66,6 +70,11 @@ onMounted(async () => {
       permissionDenied.value = true
       return
     }
+    teamId.value = await resolveScopeId('TEAM', teamSlug.value)
+    if (teamId.value === null) {
+      notification.error(t('payment.feeStatements.loadError'))
+      return
+    }
     await load()
   } finally {
     loading.value = false
@@ -75,80 +84,106 @@ onMounted(async () => {
 watch(selectedPeriod, () => {
   if (!permissionDenied.value) load()
 })
+
+async function downloadPdf() {
+  if (teamId.value === null) return
+  pdfDownloading.value = true
+  try {
+    const blob = await exportFeeStatementPdf(teamId.value, selectedPeriod.value)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `fee-statement-${selectedPeriod.value}.pdf`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    notification.error(t('payment.feeStatements.loadError'))
+  } finally {
+    pdfDownloading.value = false
+  }
+}
 </script>
 
 <template>
-  <PageLoading v-if="loading" />
+  <div>
+    <!--
+      pageTransition(out-in) は単一要素ルートを要求する。ルート直下のコメント＋
+      コンポーネント先頭の v-if はフラグメント根（非要素）となりアニメ不能 →
+      SPAバックで次ページが空白になる（#1863/#1866 と同型）。単一 <div> で包んで根治。
+    -->
+    <PageLoading v-if="loading" />
 
-  <!-- 権限不足 -->
-  <div v-else-if="permissionDenied" class="flex flex-col items-center justify-center py-16">
-    <i class="pi pi-lock mb-4 text-4xl text-surface-400" />
-    <p class="text-surface-500">{{ t('payment.admin.permissionDenied') }}</p>
-    <BackButton class="mt-4" />
-  </div>
-
-  <!-- メインコンテンツ -->
-  <div v-else class="container mx-auto max-w-2xl p-4">
-    <PageHeader :title="$t('payment.feeStatements.title')" class="mb-4" />
-
-    <!-- 月選択 -->
-    <div class="mb-6 flex items-center gap-3">
-      <label class="text-sm font-medium text-surface-600" for="fee-period">
-        {{ $t('payment.feeStatements.period') }}
-      </label>
-      <input
-        id="fee-period"
-        v-model="selectedPeriod"
-        type="month"
-        class="rounded-lg border border-surface-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-surface-600 dark:bg-surface-800"
-      />
+    <!-- 権限不足 -->
+    <div v-else-if="permissionDenied" class="flex flex-col items-center justify-center py-16">
+      <i class="pi pi-lock mb-4 text-4xl text-surface-400" />
+      <p class="text-surface-500">{{ t('payment.admin.permissionDenied') }}</p>
+      <BackButton class="mt-4" />
     </div>
 
-    <!-- ローディング -->
-    <div v-if="dataLoading" class="flex justify-center py-12">
-      <LoadingBounce />
-    </div>
+    <!-- メインコンテンツ -->
+    <div v-else class="container mx-auto max-w-2xl p-4">
+      <PageHeader :title="$t('payment.feeStatements.title')" class="mb-4" />
 
-    <!-- データなし -->
-    <div
-      v-else-if="noData"
-      class="rounded-lg border border-dashed border-surface-300 p-10 text-center text-surface-400"
-    >
-      {{ $t('payment.feeStatements.noData') }}
-    </div>
+      <!-- 月選択 -->
+      <div class="mb-6 flex items-center gap-3">
+        <label class="text-sm font-medium text-surface-600" for="fee-period">
+          {{ $t('payment.feeStatements.period') }}
+        </label>
+        <input
+          id="fee-period"
+          v-model="selectedPeriod"
+          type="month"
+          class="rounded-lg border border-surface-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-surface-600 dark:bg-surface-800"
+        >
+        <Button icon="pi pi-file-pdf" label="PDF" :loading="pdfDownloading" @click="downloadPdf" />
+      </div>
 
-    <!-- 明細表示 -->
-    <div
-      v-else-if="statement"
-      class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
-    >
-      <dl class="flex flex-col gap-4">
-        <!-- 対象月 -->
-        <div class="flex items-center justify-between border-b border-surface-100 pb-3 dark:border-surface-700">
-          <dt class="text-sm font-medium text-surface-500">
-            {{ $t('payment.feeStatements.period') }}
-          </dt>
-          <dd class="font-semibold">{{ statement.period }}</dd>
-        </div>
+      <!-- ローディング -->
+      <div v-if="dataLoading" class="flex justify-center py-12">
+        <LoadingBounce />
+      </div>
 
-        <!-- 手数料合計 -->
-        <div class="flex items-center justify-between border-b border-surface-100 pb-3 dark:border-surface-700">
-          <dt class="text-sm font-medium text-surface-500">
-            {{ $t('payment.feeStatements.totalFeeAmount') }}
-          </dt>
-          <dd class="text-xl font-bold text-primary">
-            {{ formatAmount(statement.totalFeeAmount, statement.currency) }}
-          </dd>
-        </div>
+      <!-- データなし -->
+      <div
+        v-else-if="noData"
+        class="rounded-lg border border-dashed border-surface-300 p-10 text-center text-surface-400"
+      >
+        {{ $t('payment.feeStatements.noData') }}
+      </div>
 
-        <!-- 発行者 -->
-        <div class="flex items-center justify-between">
-          <dt class="text-sm font-medium text-surface-500">
-            {{ $t('payment.feeStatements.issuerName') }}
-          </dt>
-          <dd class="text-sm">{{ statement.issuerName }}</dd>
-        </div>
-      </dl>
+      <!-- 明細表示 -->
+      <div
+        v-else-if="statement"
+        class="rounded-xl border border-surface-200 bg-surface-0 p-6 dark:border-surface-700 dark:bg-surface-900"
+      >
+        <dl class="flex flex-col gap-4">
+          <!-- 対象月 -->
+          <div class="flex items-center justify-between border-b border-surface-100 pb-3 dark:border-surface-700">
+            <dt class="text-sm font-medium text-surface-500">
+              {{ $t('payment.feeStatements.period') }}
+            </dt>
+            <dd class="font-semibold">{{ statement.period }}</dd>
+          </div>
+
+          <!-- 手数料合計 -->
+          <div class="flex items-center justify-between border-b border-surface-100 pb-3 dark:border-surface-700">
+            <dt class="text-sm font-medium text-surface-500">
+              {{ $t('payment.feeStatements.totalFeeAmount') }}
+            </dt>
+            <dd class="text-xl font-bold text-primary">
+              {{ formatAmount(statement.totalFeeAmount, statement.currency) }}
+            </dd>
+          </div>
+
+          <!-- 発行者 -->
+          <div class="flex items-center justify-between">
+            <dt class="text-sm font-medium text-surface-500">
+              {{ $t('payment.feeStatements.issuerName') }}
+            </dt>
+            <dd class="text-sm">{{ statement.issuerName }}</dd>
+          </div>
+        </dl>
+      </div>
     </div>
   </div>
 </template>

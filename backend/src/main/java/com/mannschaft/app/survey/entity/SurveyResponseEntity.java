@@ -51,8 +51,10 @@ public class SurveyResponseEntity {
     @Column(name = "proxy_input_record_id")
     private Long proxyInputRecordId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

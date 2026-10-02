@@ -148,9 +148,12 @@ public class ChatFolderService {
         ChatContactFolderEntity folder = findOwnedFolder(userId, folderId);
         FolderItemType itemType = parseFolderItemType(request.getItemType());
 
-        // 既存のアイテム割り当てを削除（1アイテム1フォルダの制約）
-        folderItemRepository.findByItemTypeAndItemId(itemType, request.getItemId())
-                .ifPresent(existing -> folderItemRepository.deleteByItemTypeAndItemId(itemType, request.getItemId()));
+        // 既存のアイテム割り当てを削除（1アイテム1フォルダの制約）。
+        // BOLA対策: owner-scoped 版を使い、リクエストユーザー自身のフォルダ配下の行のみ対象にする
+        // （グローバル版だと他人のフォルダの同一 itemType/itemId 行を eviction してしまう）。
+        folderItemRepository.findByFolderOwnerAndItemTypeAndItemId(userId, itemType, request.getItemId())
+                .ifPresent(existing -> folderItemRepository.deleteByFolderOwnerAndItemTypeAndItemId(
+                        userId, itemType, request.getItemId()));
 
         ChatContactFolderItemEntity item = ChatContactFolderItemEntity.builder()
                 .folderId(folderId)
@@ -198,9 +201,10 @@ public class ChatFolderService {
             try {
                 FolderItemType itemType = parseFolderItemType(itemRequest.getItemType());
 
-                // 既存割り当ての削除
-                folderItemRepository.findByItemTypeAndItemId(itemType, itemRequest.getItemId())
-                        .ifPresent(existing -> folderItemRepository.deleteByItemTypeAndItemId(itemType, itemRequest.getItemId()));
+                // 既存割り当ての削除（BOLA対策: owner-scoped 版。assignItem と同様の理由）
+                folderItemRepository.findByFolderOwnerAndItemTypeAndItemId(userId, itemType, itemRequest.getItemId())
+                        .ifPresent(existing -> folderItemRepository.deleteByFolderOwnerAndItemTypeAndItemId(
+                                userId, itemType, itemRequest.getItemId()));
 
                 ChatContactFolderItemEntity item = ChatContactFolderItemEntity.builder()
                         .folderId(folderId)

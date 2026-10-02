@@ -1,6 +1,11 @@
 package com.mannschaft.app.files.service;
 
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.MultipartContentTarget;
 import com.mannschaft.app.common.storage.R2StorageService.PresignedPartUrl;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
 import com.mannschaft.app.files.dto.CompleteMultipartResponse;
@@ -29,11 +34,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 /**
@@ -50,6 +57,18 @@ class MultipartUploadServiceTest {
 
     @Mock
     private MultipartUploadSessionRepository sessionRepository;
+
+    @Mock
+    private StorageAclService storageAclService;
+
+    @Mock
+    private MultipartUploadCleanupService cleanupService;
+
+    @org.mockito.Spy
+    private java.time.Clock clock = java.time.Clock.systemUTC();
+
+    @Mock
+    private com.mannschaft.app.common.storage.acl.MultipartContentTargetRegistry targetRegistry;
 
     @InjectMocks
     private MultipartUploadService service;
@@ -87,6 +106,9 @@ class MultipartUploadServiceTest {
             assertThat(result.getFileKey()).endsWith(".mp4");
             assertThat(result.getPartCount()).isEqualTo(10);
             assertThat(result.getPartSize()).isEqualTo(20 * 1024 * 1024L);
+            then(storageAclService).should().registerPending(
+                    eq(result.getFileKey()), eq(USER_ID), eq(StorageAclScope.personal(USER_ID)), eq("video/mp4"),
+                    any(), eq(new StorageAclContentReference("MULTIPART_UPLOAD", UPLOAD_ID)));
         }
 
         @Test
@@ -106,6 +128,43 @@ class MultipartUploadServiceTest {
 
             // then
             assertThat(result.getFileKey()).startsWith("files/");
+        }
+
+        @Test
+        @DisplayName("ACL登録失敗時はR2 multipartを補償abortする")
+        void acl登録失敗時はR2Multipartを補償abortする() {
+            StartMultipartUploadRequest req = new StartMultipartUploadRequest(
+                    null, "test-video.mp4", "video/mp4", 200 * 1024 * 1024L,
+                    10, 20 * 1024 * 1024L, "blog/");
+            given(r2StorageService.createMultipartUpload(anyString(), anyString())).willReturn(UPLOAD_ID);
+            given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            RuntimeException failure = new RuntimeException("acl unavailable");
+            org.mockito.Mockito.doThrow(failure).when(storageAclService).registerPending(
+                    anyString(), any(), any(StorageAclScope.class), anyString(), any(), any(StorageAclContentReference.class));
+
+            assertThatThrownBy(() -> service.startUpload(USER_ID, req)).isSameAs(failure);
+            then(r2StorageService).should().abortMultipartUpload(anyString(), eq(UPLOAD_ID));
+        }
+
+        @Test
+        @DisplayName("補償abort失敗時は別Txの再試行台帳へ記録する")
+        void 補償abort失敗時は再試行台帳へ記録する() {
+            StartMultipartUploadRequest req = new StartMultipartUploadRequest(
+                    null, "test-video.mp4", "video/mp4", 200 * 1024 * 1024L,
+                    10, 20 * 1024 * 1024L, "blog/");
+            given(r2StorageService.createMultipartUpload(anyString(), anyString())).willReturn(UPLOAD_ID);
+            given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            org.mockito.Mockito.doThrow(new RuntimeException("acl unavailable")).when(storageAclService)
+                    .registerPending(anyString(), any(), any(StorageAclScope.class), anyString(), any(),
+                            any(StorageAclContentReference.class));
+            org.mockito.Mockito.doThrow(new RuntimeException("r2 unavailable")).when(r2StorageService)
+                    .abortMultipartUpload(anyString(), eq(UPLOAD_ID));
+
+            assertThatThrownBy(() -> service.startUpload(USER_ID, req)).isInstanceOf(RuntimeException.class);
+            org.mockito.Mockito.verify(cleanupService).markAbortPending(
+                    eq(UPLOAD_ID), anyString(), eq("blog"), eq("PERSONAL"), eq(USER_ID), eq(USER_ID), eq("video/mp4"));
         }
 
         @Test
@@ -165,12 +224,27 @@ class MultipartUploadServiceTest {
     class GetPartUrls {
 
         @Test
+        @DisplayName("異常系: 別ユーザーは他人の uploadId と正しい fileKey を使っても拒否される")
+        void 別ユーザーのUploadIdは拒否される() {
+            MultipartUploadSessionEntity session = buildInProgressSession();
+            PartUrlRequest req = new PartUrlRequest(session.getR2Key(), List.of(1));
+            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+
+            assertThatThrownBy(() -> service.getPartUrls(UPLOAD_ID, USER_ID + 1, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(FORBIDDEN));
+            then(r2StorageService).should(never()).createPresignedPartUrls(anyString(), anyString(), anyList(), any());
+        }
+
+        @Test
         @DisplayName("正常系_パートURL発行成功")
         void 正常系_パートURL発行成功() {
             // given
             MultipartUploadSessionEntity session = buildInProgressSession();
-            PartUrlRequest req = new PartUrlRequest("timeline/uuid.mp4", List.of(1, 2, 3));
+            PartUrlRequest req = new PartUrlRequest(session.getR2Key(), List.of(1, 2, 3));
             given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            stubResolvedTarget(session);
             given(r2StorageService.createPresignedPartUrls(anyString(), anyString(), anyList(), any()))
                     .willReturn(List.of(
                             new PresignedPartUrl(1, "https://r2.example.com/part1"),
@@ -184,6 +258,23 @@ class MultipartUploadServiceTest {
             assertThat(result.getPartUrls()).hasSize(3);
             assertThat(result.getExpiresIn()).isEqualTo(600);
             assertThat(result.getPartUrls().get(0).partNumber()).isEqualTo(1);
+            then(r2StorageService).should().createPresignedPartUrls(
+                    eq(session.getR2Key()), eq(UPLOAD_ID), eq(req.getPartNumbers()), any());
+        }
+
+        @Test
+        @DisplayName("part URL fileKey 不一致_BAD_REQUEST_R2未呼出")
+        void partUrlFileKey不一致_BAD_REQUEST_R2未呼出() {
+            MultipartUploadSessionEntity session = buildInProgressSession();
+            PartUrlRequest req = new PartUrlRequest("timeline/other-file.mp4", List.of(1));
+            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+
+            assertThatThrownBy(() -> service.getPartUrls(UPLOAD_ID, USER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(BAD_REQUEST));
+            then(r2StorageService).should(never()).createPresignedPartUrls(
+                    anyString(), anyString(), anyList(), any());
         }
 
         @Test
@@ -213,12 +304,13 @@ class MultipartUploadServiceTest {
             // given
             MultipartUploadSessionEntity session = buildInProgressSession();
             CompleteMultipartRequest req = new CompleteMultipartRequest(
-                    "timeline/uuid.mp4",
+                    session.getR2Key(),
                     List.of(
                             new CompleteMultipartRequest.PartEtag(1, "etag-001"),
                             new CompleteMultipartRequest.PartEtag(2, "etag-002")));
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
-            given(r2StorageService.getObjectSize("timeline/uuid.mp4")).willReturn(200 * 1024 * 1024L);
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
+            stubResolvedTarget(session);
+            given(r2StorageService.getObjectSize(session.getR2Key())).willReturn(200 * 1024 * 1024L);
             given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -226,10 +318,29 @@ class MultipartUploadServiceTest {
             CompleteMultipartResponse result = service.completeUpload(UPLOAD_ID, USER_ID, req);
 
             // then
-            assertThat(result.getFileKey()).isEqualTo("timeline/uuid.mp4");
+            assertThat(result.getFileKey()).isEqualTo(session.getR2Key());
             assertThat(result.getFileSize()).isEqualTo(200 * 1024 * 1024L);
             then(r2StorageService).should().completeMultipartUpload(
+                    eq(session.getR2Key()), eq(UPLOAD_ID), anyList());
+            then(r2StorageService).should().getObjectSize(eq(session.getR2Key()));
+        }
+
+        @Test
+        @DisplayName("complete fileKey 不一致_BAD_REQUEST_R2未呼出")
+        void completeFileKey不一致_BAD_REQUEST_R2未呼出() {
+            MultipartUploadSessionEntity session = buildInProgressSession();
+            CompleteMultipartRequest req = new CompleteMultipartRequest(
+                    "timeline/other-file.mp4",
+                    List.of(new CompleteMultipartRequest.PartEtag(1, "etag-001")));
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
+
+            assertThatThrownBy(() -> service.completeUpload(UPLOAD_ID, USER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(BAD_REQUEST));
+            then(r2StorageService).should(never()).completeMultipartUpload(
                     anyString(), anyString(), anyList());
+            then(r2StorageService).should(never()).getObjectSize(anyString());
         }
 
         @Test
@@ -239,7 +350,7 @@ class MultipartUploadServiceTest {
             MultipartUploadSessionEntity session = buildSessionWithStatus("COMPLETED");
             CompleteMultipartRequest req = new CompleteMultipartRequest(
                     "files/uuid.mp4", List.of(new CompleteMultipartRequest.PartEtag(1, "etag-001")));
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
 
             // when / then
             assertThatThrownBy(() -> service.completeUpload(UPLOAD_ID, USER_ID, req))
@@ -260,7 +371,7 @@ class MultipartUploadServiceTest {
         void 正常系_中断成功() {
             // given
             MultipartUploadSessionEntity session = buildInProgressSession();
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
             given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -283,8 +394,8 @@ class MultipartUploadServiceTest {
     private MultipartUploadSessionEntity buildSessionWithStatus(String status) {
         return MultipartUploadSessionEntity.builder()
                 .uploadId(UPLOAD_ID)
-                .r2Key("timeline/uuid.mp4")
-                .feature("timeline")
+                .r2Key("blog/PERSONAL/" + USER_ID + "/uuid.mp4")
+                .feature("blog")
                 .scopeType("PERSONAL")
                 .scopeId(USER_ID)
                 .uploaderId(USER_ID)
@@ -292,5 +403,12 @@ class MultipartUploadServiceTest {
                 .status(status)
                 .expiresAt(LocalDateTime.now().plusHours(24))
                 .build();
+    }
+
+    private void stubResolvedTarget(MultipartUploadSessionEntity session) {
+        given(targetRegistry.resolve(session.getR2Key(), USER_ID)).willReturn(new MultipartContentTarget(
+                StorageAclScope.personal(USER_ID),
+                new StorageAclContentReference("BLOG_MEDIA", "101"),
+                new StorageAclAttachmentBinding("BLOG_MEDIA", "201")));
     }
 }

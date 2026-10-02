@@ -64,6 +64,7 @@ public class Auth2faService {
     private final DomainEventPublisher eventPublisher;
     private final EncryptionService encryptionService;
     private final RoleClaimResolver roleClaimResolver;
+    private final StatusClaimResolver statusClaimResolver;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String TOTP_USED_KEY_PREFIX = "mannschaft:auth:totp_used:";
@@ -183,6 +184,7 @@ public class Auth2faService {
      * @param totpCode        TOTPコード
      * @return トークンレスポンス
      */
+    @Transactional
     public ApiResponse<TokenResponse> validateTotp(String mfaSessionToken, String totpCode) {
         // 1. Valkey: MFAセッショントークンからuserIdを取得
         String sessionHash = authTokenService.hashToken(mfaSessionToken);
@@ -191,7 +193,17 @@ public class Auth2faService {
         if (userIdStr == null) {
             throw new BusinessException(AuthErrorCode.AUTH_019);
         }
-        // セッショントークンを削除（一度きり使用）
+        // セッショントークンを削除（一度きり使用）。
+        //
+        // 公開網漏れ是正 監査メモ: POST /api/v1/auth/2fa/validate は permitAll だが専用のレート制限
+        // フィルタを持たない。それでも安全なのは、この delete が TOTP 検証の「成否を問わず」直前に
+        // 実行されるため — 失敗しても使い捨てのセッショントークンが即座に無効化され、再試行には
+        // 毎回ログイン（AuthService の 10 回/分レートリミット下）を要求されるからである
+        // （このセッショントークン自体が「単回使用のケイパビリティ」として振る舞う設計）。
+        //
+        // ⚠️ この delete を「検証成功後」に動かすと、この間接的な保護は消滅し、
+        // 同一セッショントークンに対して無制限に TOTP を総当りできてしまう。
+        // 意図的な設計であり、危うさを内包するため触る際は必ずこのコメントごと確認すること。
         redisTemplate.delete(sessionKey);
 
         Long userId = Long.valueOf(userIdStr);
@@ -346,6 +358,22 @@ public class Auth2faService {
         return ApiResponse.of(tokenResponse);
     }
 
+    /**
+     * ユーザーが二要素認証（TOTP）を有効化済みかを返す。
+     *
+     * <p>他ドメイン（role 等）が ADMIN 昇格前の 2FA 必須チェックに用いるための公開クエリ。
+     * {@code auth.repository} を他ドメインから直接参照させない（D-3 ArchUnit・越境 Repository 依存禁止）
+     * ため、Service 経由でプリミティブ（boolean）のみを返し Entity を漏らさない。</p>
+     *
+     * @param userId ユーザー ID
+     * @return 2FA レコードが存在し {@code is_enabled = true} の場合のみ true（未設定・未有効化は false）
+     */
+    public boolean isTwoFactorEnabled(Long userId) {
+        return twoFactorAuthRepository.findByUserId(userId)
+                .map(TwoFactorAuthEntity::getIsEnabled)
+                .orElse(false);
+    }
+
     // === ヘルパーメソッド ===
 
     /**
@@ -471,14 +499,17 @@ public class Auth2faService {
      */
     private TokenResponse issueTokenPair(Long userId) {
         // 認可基盤完全根治 Phase 1（§3.2）: RoleClaimResolver で SYSTEM_ADMIN を判定して roles に載せる。
-        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId));
+        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId),
+                statusClaimResolver.isPendingParentalConsent(userId));
         String refreshToken = authTokenService.generateRefreshToken();
         String refreshTokenHash = authTokenService.hashToken(refreshToken);
+        String refreshTokenJti = UUID.randomUUID().toString();
 
         // Refresh Token を保存
         RefreshTokenEntity refreshTokenEntity = RefreshTokenEntity.builder()
                 .userId(userId)
                 .tokenHash(refreshTokenHash)
+                .jti(refreshTokenJti)
                 .rememberMe(false)
                 .expiresAt(LocalDateTime.now().plusDays(7))
                 .build();

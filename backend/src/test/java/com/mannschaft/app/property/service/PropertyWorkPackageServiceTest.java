@@ -185,7 +185,9 @@ class PropertyWorkPackageServiceTest {
             assertThat(postCap.getValue().getContent()).contains("【物件履歴】南側外壁大規模修繕");
             assertThat(postCap.getValue().getContent()).contains("RENOVATION");
             assertThat(postCap.getValue().getScopeType()).isEqualTo("TEAM");
-            assertThat(postCap.getValue().getScopeId()).isEqualTo(TEAM_ID);
+            // CreatePostRequest.scopeId は slug 文字列も受けるため String 化された（投稿400根治）。
+            // システム内部経路では数値文字列として渡され、サービス側で内部 Long ID に parse される。
+            assertThat(postCap.getValue().getScopeId()).isEqualTo(String.valueOf(TEAM_ID));
         }
 
         @Test
@@ -228,7 +230,8 @@ class PropertyWorkPackageServiceTest {
             ArgumentCaptor<CreatePostRequest> cap = ArgumentCaptor.forClass(CreatePostRequest.class);
             verify(timelinePostService).createSystemPost(cap.capture(), any(Long.class));
             assertThat(cap.getValue().getScopeType()).isEqualTo("ORGANIZATION");
-            assertThat(cap.getValue().getScopeId()).isEqualTo(ORG_ID);
+            // CreatePostRequest.scopeId は String 化された（投稿400根治）。数値文字列で渡る。
+            assertThat(cap.getValue().getScopeId()).isEqualTo(String.valueOf(ORG_ID));
         }
 
         // F09.13 Phase 2-α-2: visibility による status 分岐

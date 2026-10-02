@@ -1,0 +1,54 @@
+# =============================================================================
+# Dockerfile.deploy — CI デプロイ専用（runtime-only・arm64 クロスビルド対応）
+# =============================================================================
+# 通常の `Dockerfile`（マルチステージ・イメージ内で gradle bootJar）はローカル開発の
+# docker-compose（profile: dev-docker）が使用するため温存する。
+#
+# こちらは CI（.github/workflows/backend-deploy.yml）専用:
+#   - JAR はアーキテクチャ非依存なので、host(amd64) の「Build JAR」ステップで
+#     事前ビルドした build/libs/*.jar を COPY するだけにする
+#   - これにより buildx --platform linux/arm64 でも gradle ビルドが QEMU
+#     エミュレーション下で走らない（15〜40分・SIGSEGV/OOM の不安定要素を根本排除）。
+#     arm64 側で行うのはベースイメージ pull と COPY のみ
+#
+# 前提: ビルドコンテキスト（backend/）に build/libs/app-0.0.1-SNAPSHOT.jar が存在すること
+#       （workflow の「Build JAR」ステップ ./gradlew bootJar が生成する）
+# =============================================================================
+
+FROM eclipse-temurin:21-jre-jammy
+
+# ---- Security: non-root user ------------------------------------------------
+RUN groupadd --system --gid 1001 appgroup \
+ && useradd  --system --uid  1001 --gid appgroup --no-create-home appuser
+
+WORKDIR /app
+
+# host でビルド済みの fat JAR をコピー（Dockerfile と異なり builder ステージを持たない）
+COPY --chown=appuser:appgroup build/libs/app-0.0.1-SNAPSHOT.jar app.jar
+
+# ---- Runtime configuration（Dockerfile の runtime ステージと同一に保つこと）---
+ENV SPRING_PROFILES_ACTIVE=prod
+
+ENV SERVER_PORT=8080
+
+# JVM flags:
+#   -XX:+UseContainerSupport      — honour cgroup CPU/memory limits
+#   -XX:MaxRAMPercentage=75.0     — cap heap at 75 % of container RAM
+#   -Djava.security.egd=...       — faster SecureRandom on Linux (no /dev/random block)
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+               -XX:MaxRAMPercentage=75.0 \
+               -Djava.security.egd=file:/dev/./urandom"
+
+EXPOSE ${SERVER_PORT}
+
+# ---- Health check (Spring Actuator) -----------------------------------------
+# 注意: ECS は Docker HEALTHCHECK でなくタスク定義の healthCheck を使うが、
+# ローカルでの動作確認・他ランタイムでの流用に備えて Dockerfile 側にも残す。
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider \
+      http://localhost:${SERVER_PORT}/actuator/health \
+   || exit 1
+
+USER appuser
+
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]

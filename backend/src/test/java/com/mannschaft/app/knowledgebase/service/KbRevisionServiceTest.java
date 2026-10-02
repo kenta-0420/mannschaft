@@ -41,6 +41,8 @@ class KbRevisionServiceTest {
     private static final Long REVISION_ID = 5L;
     private static final Long USER_ID = 100L;
     private static final String ADMIN_ROLE = "ADMIN";
+    private static final String SCOPE_TYPE = "TEAM";
+    private static final Long SCOPE_ID = 1L;
 
     @Mock
     private KbPageRepository pageRepository;
@@ -101,7 +103,7 @@ class KbRevisionServiceTest {
             given(revisionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(pageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-            service.restoreRevision(PAGE_ID, REVISION_ID, USER_ID, ADMIN_ROLE);
+            service.restoreRevision(PAGE_ID, REVISION_ID, SCOPE_TYPE, SCOPE_ID, USER_ID, ADMIN_ROLE);
 
             ArgumentCaptor<KbPageEntity> captor = ArgumentCaptor.forClass(KbPageEntity.class);
             verify(pageRepository).save(captor.capture());
@@ -127,7 +129,8 @@ class KbRevisionServiceTest {
             given(revisionRepository.findByIdAndKbPageId(REVISION_ID, PAGE_ID))
                     .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.restoreRevision(PAGE_ID, REVISION_ID, USER_ID, ADMIN_ROLE))
+            assertThatThrownBy(() -> service.restoreRevision(
+                    PAGE_ID, REVISION_ID, SCOPE_TYPE, SCOPE_ID, USER_ID, ADMIN_ROLE))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(KnowledgeBaseErrorCode.KB_007);
@@ -142,10 +145,25 @@ class KbRevisionServiceTest {
             given(pageRepository.findByIdAndDeletedAtIsNull(PAGE_ID)).willReturn(Optional.of(page));
 
             assertThatThrownBy(
-                    () -> service.restoreRevision(PAGE_ID, REVISION_ID, USER_ID, "MEMBER"))
+                    () -> service.restoreRevision(
+                            PAGE_ID, REVISION_ID, SCOPE_TYPE, SCOPE_ID, USER_ID, "MEMBER"))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(KnowledgeBaseErrorCode.KB_002);
+        }
+
+        @Test
+        @DisplayName("BOLA: pageIdが指定scope配下でない場合 → KB_001（存在秘匿）")
+        void 越境pageId_KB_001() {
+            // page 自体は "TEAM"/1 に属するが、リクエストは別scope("TEAM"/999)から来た想定
+            KbPageEntity page = pageWithId(PAGE_ID);
+            given(pageRepository.findByIdAndDeletedAtIsNull(PAGE_ID)).willReturn(Optional.of(page));
+
+            assertThatThrownBy(() -> service.restoreRevision(
+                    PAGE_ID, REVISION_ID, "TEAM", 999L, USER_ID, ADMIN_ROLE))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(KnowledgeBaseErrorCode.KB_001);
         }
     }
 }

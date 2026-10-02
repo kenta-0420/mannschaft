@@ -125,6 +125,8 @@ export function useEmergencyClosureApi() {
       const myTeam = (res.data ?? []).find((tm) => tm.slug === teamRef)
       return myTeam ? myTeam.id : null
     } catch {
+      // 安全系（休講確認）ゆえ取得失敗を沈黙させない。不通・未所属いずれも null に潰れる点をログで表面化する。
+      console.warn('[useEmergencyClosureApi] チームID解決に失敗しました', { teamRef })
       return null
     }
   }

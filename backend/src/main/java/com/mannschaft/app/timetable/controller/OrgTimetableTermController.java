@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 import java.util.List;
 
@@ -32,7 +33,8 @@ public class OrgTimetableTermController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TimetableTermResponse>>> listOrgTerms(
             @PathVariable Long orgId) {
-        List<TimetableTermResponse> terms = termService.getOrganizationTerms(orgId).stream()
+        List<TimetableTermResponse> terms = termService
+                .getOrganizationTerms(orgId, SecurityUtils.getCurrentUserId()).stream()
                 .map(e -> new TimetableTermResponse(e.getId(), e.getName(), e.getStartDate(),
                         e.getEndDate(), e.getAcademicYear(), "ORGANIZATION", e.getCreatedAt()))
                 .toList();
@@ -49,7 +51,7 @@ public class OrgTimetableTermController {
                 request.getAcademicYear(), request.getName(),
                 request.getStartDate(), request.getEndDate(),
                 request.getSortOrder());
-        var entity = termService.createTerm(orgId, false, data);
+        var entity = termService.createTerm(orgId, false, data, SecurityUtils.getCurrentUserId());
         var response = new TimetableTermResponse(entity.getId(), entity.getName(),
                 entity.getStartDate(), entity.getEndDate(), entity.getAcademicYear(),
                 "ORGANIZATION", entity.getCreatedAt());

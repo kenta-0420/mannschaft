@@ -35,6 +35,7 @@ import type {
   AdminReservationSummary,
   AdminBudgetSummary,
 } from '~/types/admin-dashboard-widgets'
+import { requestWithTimeout } from '~/utils/requestTimeout'
 
 // ---- API レスポンス（snake_case）の生型 ----
 
@@ -321,7 +322,9 @@ export function useScopeTabApi() {
   ): Promise<ScopeTabPage> {
     const q = new URLSearchParams({ scopeType, page: String(page) })
     if (folderId !== undefined && folderId !== null) q.set('folderId', String(folderId))
-    const res = await api<{ data: RawScopeTabPage }>(`/api/v1/dashboard/scope-tabs?${q}`)
+    const res = await requestWithTimeout(signal =>
+      api<{ data: RawScopeTabPage }>(`/api/v1/dashboard/scope-tabs?${q}`, { signal }),
+    )
     return toScopeTabPage(res.data)
   }
 

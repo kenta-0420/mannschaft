@@ -6,6 +6,9 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.circulation.event.CirculationExportGeneratedEvent;
 import com.mannschaft.app.circulation.event.CirculationExportRequestedEvent;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.member.event.MemberSubtabVisibilityUpdatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -31,6 +34,8 @@ public class AuditLogEventListener {
     // AUTH
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLoginSuccess(LoginSuccessEvent event) {
@@ -47,6 +52,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLoginFailed(LoginFailedEvent event) {
@@ -63,6 +70,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLogout(LogoutEvent event) {
@@ -93,6 +102,8 @@ public class AuditLogEventListener {
     // ACCOUNT
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserRegistered(UserRegisteredEvent event) {
@@ -109,6 +120,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleEmailVerified(EmailVerifiedEvent event) {
@@ -125,6 +138,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordResetRequested(PasswordResetRequestedEvent event) {
@@ -141,6 +156,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordResetCompleted(PasswordResetCompletedEvent event) {
@@ -157,6 +174,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordChanged(PasswordChangedEvent event) {
@@ -173,6 +192,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleEmailChangeRequested(EmailChangeRequestedEvent event) {
@@ -189,6 +210,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleEmailChanged(EmailChangedEvent event) {
@@ -205,6 +228,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWithdrawalRequested(WithdrawalRequestedEvent event) {
@@ -221,6 +246,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWithdrawalCancelled(WithdrawalCancelledEvent event) {
@@ -237,6 +264,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleAccountLocked(AccountLockedEvent event) {
@@ -260,6 +289,8 @@ public class AuditLogEventListener {
     // OAUTH
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOAuthLinked(OAuthLinkedEvent event) {
@@ -276,6 +307,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOAuthUnlinked(OAuthUnlinkedEvent event) {
@@ -296,6 +329,8 @@ public class AuditLogEventListener {
     // MFA
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaEnabled(MfaEnabledEvent event) {
@@ -312,6 +347,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaDisabled(MfaDisabledEvent event) {
@@ -328,6 +365,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaRecoveryRequested(MfaRecoveryRequestedEvent event) {
@@ -345,6 +384,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaBackupCodesRegenerated(MfaBackupCodesRegeneratedEvent event) {
@@ -361,6 +402,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMfaRecoveryCompleted(MfaRecoveryCompletedEvent event) {
@@ -382,6 +425,8 @@ public class AuditLogEventListener {
     // WEBAUTHN
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWebAuthnRegistered(WebAuthnRegisteredEvent event) {
@@ -394,7 +439,7 @@ public class AuditLogEventListener {
             null,
             null,
             SecurityUtils.getCurrentSessionHash(),
-            toJson(Map.of("device_name", event.getDeviceName()))
+            toJson(Map.of("device_name", event.getDeviceName() != null ? event.getDeviceName() : ""))
         );
     }
 
@@ -402,6 +447,8 @@ public class AuditLogEventListener {
     // ADMIN_ACTION
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleAccountUnlocked(AccountUnlockedEvent event) {
@@ -418,6 +465,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserFrozen(UserFrozenEvent event) {
@@ -434,6 +483,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserUnfrozen(UserUnfrozenEvent event) {
@@ -467,6 +518,8 @@ public class AuditLogEventListener {
     // WEBAUTHN (追加分)
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWebAuthnLogin(WebAuthnLoginEvent event) {
@@ -485,6 +538,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWebAuthnLoginFailed(WebAuthnLoginFailedEvent event) {
@@ -503,6 +558,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWebAuthnCredentialRemoved(WebAuthnCredentialRemovedEvent event) {
@@ -525,6 +582,8 @@ public class AuditLogEventListener {
     // TOKEN / DEVICE (追加分)
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTokenReuseDetected(TokenReuseDetectedEvent event) {
@@ -543,6 +602,42 @@ public class AuditLogEventListener {
         );
     }
 
+    /**
+     * CMP-260917-1352 Phase 3: grace window 超過の後継有りトークン再提示を同一端末の再試行と判定して
+     * 救済した（全デバイス無効化はしていない）ことを監査ログへ記録する。
+     *
+     * <p>{@link #handleTokenReuseDetected}（真リプレイ検出・全デバイス無効化）とは別イベント・別
+     * {@link com.mannschaft.app.auth.AuditEventType} で記録する。同一種別に混ぜると監視側で
+     * 「本物の盗難検知」と区別できなくなり誤報が増え、感度低下（狼少年化）を招くため意図的に分けている。</p>
+     *
+     * <p>救済は日常的に起こり得る操作（クライアント側タイムアウトからの正当な自動リトライ）であるため、
+     * ここでは {@code log.warn} 等の高い警告レベルは使わない（呼び出し元 {@code AuthTokenRotationService}
+     * 側で既に {@code log.info} 相当）。本ハンドラも監査記録という「事実の保存」に徹し、
+     * アラート的な扱いはしない（過検知で本物のアラートへの感度を下げないため）。</p>
+     */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleTokenReplaySameDeviceRescued(TokenReplaySameDeviceRescuedEvent event) {
+        auditLogService.record(
+            AuditEventType.TOKEN_REPLAY_RESCUED_SAME_DEVICE.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            toJson(Map.of(
+                "stale_token_id", event.getStaleTokenId() != null ? event.getStaleTokenId() : "",
+                "rescued_from_token_id", event.getRescuedFromTokenId() != null ? event.getRescuedFromTokenId() : ""
+            ))
+        );
+    }
+
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleDeviceFingerprintMismatch(DeviceFingerprintMismatchEvent event) {
@@ -561,6 +656,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleNewDeviceLogin(NewDeviceLoginEvent event) {
@@ -584,6 +681,8 @@ public class AuditLogEventListener {
     // ACCOUNT (追加分)
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordSetup(PasswordSetupEvent event) {
@@ -600,6 +699,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOAuthUserRegistered(OAuthUserRegisteredEvent event) {
@@ -622,6 +723,8 @@ public class AuditLogEventListener {
     // OAUTH (追加分)
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOAuthLinkRequested(OAuthLinkRequestedEvent event) {
@@ -644,6 +747,8 @@ public class AuditLogEventListener {
     // CIRCULATION (F05.2 Phase 11 4-C)
     // ─────────────────────────────────────────────
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleCirculationExportRequested(CirculationExportRequestedEvent event) {
@@ -660,6 +765,8 @@ public class AuditLogEventListener {
         );
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleCirculationExportGenerated(CirculationExportGeneratedEvent event) {
@@ -673,6 +780,36 @@ public class AuditLogEventListener {
             null,
             null,
             toJson(Map.of("documentId", event.getDocumentId()))
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // MEMBER (F06.6 サブタブ可視性設定。PR #3387 D-3T 根治)
+    // ─────────────────────────────────────────────
+
+    /**
+     * サブタブ可視性設定の更新を監査ログに記録する。
+     *
+     * <p>member の書き込み TX のコミット後にだけ動く（ロールバックすれば記録しない）。metadata は member 側で
+     * 組み立て済みの文字列をそのまま記録する。本メソッドはすでに event-pool のスレッド上で動くので、
+     * 非同期版 {@code record} ではなく同期版 {@code recordSync} を呼ぶ（同じ event-pool への二重投入を避け、
+     * 非同期の境界を1段にする）。</p>
+     */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleMemberSubtabVisibilityUpdated(MemberSubtabVisibilityUpdatedEvent event) {
+        auditLogService.recordSync(
+            MemberSubtabVisibilityUpdatedEvent.AUDIT_EVENT_TYPE,
+            event.getActorUserId(),
+            null,
+            event.getTeamId(),
+            event.getOrganizationId(),
+            null,
+            null,
+            null,
+            event.getMetadataJson()
         );
     }
 }

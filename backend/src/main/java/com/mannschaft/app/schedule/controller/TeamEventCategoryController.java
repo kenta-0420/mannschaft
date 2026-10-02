@@ -3,8 +3,7 @@ package com.mannschaft.app.schedule.controller;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
-import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
+import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import com.mannschaft.app.schedule.dto.CreateEventCategoryRequest;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.entity.ScheduleEventCategoryEntity;
@@ -34,23 +33,22 @@ import java.util.List;
 public class TeamEventCategoryController {
 
     private final ScheduleEventCategoryService categoryService;
-    private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     private final AccessControlService accessControlService;
 
     /**
-     * チーム行事カテゴリ一覧を取得する（チーム固有 + 親組織カテゴリのマージ結果）。
+     * チーム行事カテゴリ一覧を取得する（チーム固有 + 全親組織カテゴリのマージ結果）。
+     * 当該チームのメンバーのみ取得可能。
      */
     @GetMapping
     @Operation(summary = "チーム行事カテゴリ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<EventCategoryResponse>>> listCategories(
             @PathVariable Long teamId) {
-        Long organizationId = teamOrgMembershipRepository
-                .findFirstByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)
-                .map(TeamOrgMembershipEntity::getOrganizationId)
-                .orElse(null);
-        List<ScheduleEventCategoryEntity> entities =
-                categoryService.getCategoriesForTeam(teamId, organizationId);
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
+        // 全親組織の行事カテゴリをマージする（F01.2.1 §9.2 #10。各カテゴリに由来の組織IDを付ける）。
+        List<ScheduleEventCategoryEntity> entities = categoryService.getCategoriesForTeam(
+                teamId, teamOrgMembershipQueryService.findActiveOrganizationIdsInPrimaryOrder(teamId));
         List<EventCategoryResponse> responses = entities.stream()
                 .map(this::toResponse)
                 .toList();
@@ -87,6 +85,7 @@ public class TeamEventCategoryController {
                 entity.getIcon(),
                 entity.getIsDayOffCategory(),
                 entity.getSortOrder(),
-                scope);
+                scope,
+                entity.getOrganizationId());
     }
 }

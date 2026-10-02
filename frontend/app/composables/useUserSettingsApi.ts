@@ -85,10 +85,12 @@ export function useUserSettingsApi() {
   }
 
   // === Login History ===
-  async function getLoginHistory(cursor?: string, limit?: number) {
+  async function getLoginHistory(cursor?: string, limit?: number, from?: string, to?: string) {
     const query = new URLSearchParams()
     if (cursor) query.set('cursor', cursor)
     if (limit) query.set('limit', String(limit))
+    if (from) query.set('from', from)
+    if (to) query.set('to', to)
     const qs = query.toString()
     return api<{ data: LoginHistoryResponse[]; meta: CursorMeta }>(
       `/api/v1/users/me/login-history${qs ? `?${qs}` : ''}`,
@@ -153,6 +155,16 @@ export function useUserSettingsApi() {
     return api<{ data: MessageRes }>(`/api/v1/users/me/oauth/${encodeURIComponent(provider)}`, {
       method: 'DELETE',
     })
+  }
+
+  async function getOAuthLinkAuthUrl(provider: string, includeCalendar = false) {
+    return api<{ data: { authUrl: string } }>(
+      `/api/v1/users/me/oauth/link/${encodeURIComponent(provider)}/auth-url?includeCalendar=${includeCalendar}`,
+    )
+  }
+
+  async function getCalendarOnlyAuthUrl() {
+    return api<{ data: { authUrl: string } }>('/api/v1/users/me/oauth/link/GOOGLE/calendar-only-auth-url')
   }
 
   // === LINE ===
@@ -240,6 +252,8 @@ export function useUserSettingsApi() {
     cancelWithdrawal,
     getOAuthProviders,
     unlinkOAuthProvider,
+    getOAuthLinkAuthUrl,
+    getCalendarOnlyAuthUrl,
     linkLine,
     unlinkLine,
     getLineStatus,

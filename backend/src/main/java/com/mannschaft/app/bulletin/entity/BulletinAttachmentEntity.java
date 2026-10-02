@@ -52,6 +52,7 @@ public class BulletinAttachmentEntity {
 
     private Long createdBy;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

@@ -1,5 +1,6 @@
 package com.mannschaft.app.property.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
@@ -73,6 +74,8 @@ public class PropertyWorkPackageController {
     private final PropertyWorkDocumentRepository documentRepository;
     private final VendorService vendorService;
     private final MembershipBatchQueryService membershipBatchQueryService;
+    /** 認可根治戦役 Wave3-B5: scope 認可（checkMembership/checkAdminOrAbove）用。 */
+    private final AccessControlService accessControlService;
 
     // =========================================================================
     // 一覧 / タイムライン / ガント
@@ -99,6 +102,7 @@ public class PropertyWorkPackageController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         String scopeType = toScopeType(scope);
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
         Pageable pageable = PageRequest.of(page, size);
 
@@ -147,6 +151,7 @@ public class PropertyWorkPackageController {
             @RequestParam(value = "to", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         String scopeType = toScopeType(scope);
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
         // タイムライン用の専用クエリは Repository に未実装のため、ガント用クエリで代替して時系列に整列。
         LocalDate effectiveFrom = from != null ? from : LocalDate.of(1970, 1, 1);
@@ -167,6 +172,7 @@ public class PropertyWorkPackageController {
             @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         String scopeType = toScopeType(scope);
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
         List<PropertyWorkPackageEntity> entities =
                 packageRepository.findForGantt(scopeType, scopeId, from, to);
@@ -186,7 +192,9 @@ public class PropertyWorkPackageController {
             @PathVariable("scopeId") Long scopeId,
             @PathVariable("packageId") Long packageId) {
         String scopeType = toScopeType(scope);
-        PropertyWorkPackageEntity entity = packageService.getById(packageId);
+        // BOLA対策: entity由来scopeを path scope と照合（不一致は不在扱い＝存在秘匿）してから認可判定
+        PropertyWorkPackageEntity entity = packageService.getByIdInScope(scopeType, scopeId, packageId);
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
         return ApiResponse.of(toDetail(entity, snapshot));
     }
@@ -198,6 +206,7 @@ public class PropertyWorkPackageController {
             @Valid @RequestBody PropertyWorkPackageRequest request) {
         String scopeType = toScopeType(scope);
         Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
         PropertyWorkPackageEntity created =
                 packageService.create(scopeType, scopeId, userId, toServiceRequest(request));
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
@@ -213,6 +222,9 @@ public class PropertyWorkPackageController {
             @Valid @RequestBody PropertyWorkPackageRequest request) {
         String scopeType = toScopeType(scope);
         Long userId = SecurityUtils.getCurrentUserId();
+        // BOLA対策: entity由来scopeを path scope と照合してから認可判定
+        packageService.getByIdInScope(scopeType, scopeId, packageId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
         PropertyWorkPackageEntity updated =
                 packageService.update(packageId, userId, toServiceRequest(request));
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
@@ -227,6 +239,9 @@ public class PropertyWorkPackageController {
             @Valid @RequestBody ChangeStatusRequest request) {
         String scopeType = toScopeType(scope);
         Long userId = SecurityUtils.getCurrentUserId();
+        // BOLA対策: entity由来scopeを path scope と照合してから認可判定
+        packageService.getByIdInScope(scopeType, scopeId, packageId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
         PropertyWorkPackageEntity updated =
                 packageService.changeStatus(packageId, userId, request.status());
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
@@ -238,6 +253,10 @@ public class PropertyWorkPackageController {
             @PathVariable("scope") String scope,
             @PathVariable("scopeId") Long scopeId,
             @PathVariable("packageId") Long packageId) {
+        String scopeType = toScopeType(scope);
+        // BOLA対策: entity由来scopeを path scope と照合してから認可判定
+        packageService.getByIdInScope(scopeType, scopeId, packageId);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         packageService.softDelete(packageId);
         return ResponseEntity.noContent().build();
     }
@@ -255,7 +274,11 @@ public class PropertyWorkPackageController {
         // F09.13 Phase 2-α-1: PropertyWorkDocumentService に集約。
         // SharedFile の同スコープ検証（PROPERTY_008）と添付上限（PROPERTY_009）は
         // Service 内で実施し、Controller はリクエスト → Service 呼出 → DTO 変換のみ担う。
+        String scopeType = toScopeType(scope);
         Long userId = SecurityUtils.getCurrentUserId();
+        // 認可根治戦役 Wave3-B5: BOLA対策（entity由来scopeをpath scopeと照合）＋ checkAdminOrAbove
+        packageService.getByIdInScope(scopeType, scopeId, packageId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
         com.mannschaft.app.property.entity.PropertyWorkDocumentEntity saved =
                 documentService.attach(
                         packageId,
@@ -275,7 +298,11 @@ public class PropertyWorkPackageController {
             @PathVariable("packageId") Long packageId,
             @PathVariable("documentId") Long documentId) {
         // F09.13 Phase 2-α-1: PropertyWorkDocumentService.detach に集約。
+        String scopeType = toScopeType(scope);
         Long userId = SecurityUtils.getCurrentUserId();
+        // 認可根治戦役 Wave3-B5: BOLA対策（entity由来scopeをpath scopeと照合）＋ checkAdminOrAbove
+        packageService.getByIdInScope(scopeType, scopeId, packageId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
         documentService.detach(packageId, documentId, userId);
         return ResponseEntity.noContent().build();
     }
@@ -291,6 +318,7 @@ public class PropertyWorkPackageController {
             @PathVariable("packageId") Long packageId,
             @RequestParam(value = "format", defaultValue = "pdf") String format) {
         String scopeType = toScopeType(scope);
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         return exportService.exportSinglePackage(scopeType, scopeId, packageId, format,
@@ -310,6 +338,7 @@ public class PropertyWorkPackageController {
             @RequestParam(value = "vendorId", required = false) Long vendorId,
             @RequestParam(value = "status", required = false) WorkPackageStatus status) {
         String scopeType = toScopeType(scope);
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         UserScopeRoleSnapshot snapshot = loadSnapshot(scopeType, scopeId);
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         return exportService.exportList(scopeType, scopeId, from, to, workType, vendorId, status,
@@ -332,6 +361,7 @@ public class PropertyWorkPackageController {
             @PathVariable("scopeId") Long scopeId,
             @RequestParam(value = "since", defaultValue = "12") int sinceMonths) {
         String scopeType = toScopeType(scope);
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         LocalDateTime since = LocalDateTime.now().minusMonths(Math.max(1, sinceMonths));
         List<Object[]> rows = packageRepository.aggregateCategoriesSince(scopeType, scopeId, since);
         List<CategorySuggestionResponse> body = rows.stream()

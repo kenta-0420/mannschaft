@@ -1,5 +1,7 @@
 package com.mannschaft.app.succession.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.payment.event.PaymentStatusChangedEvent;
 import com.mannschaft.app.resident.repository.ResidentRegistryRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +49,8 @@ public class DelinquencyEscalationListener {
      *
      * @param event 支払いステータス変更イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "殿の裁定: 上流の payment は別キーのため閉栓中も滞納が確定しうる。日次バッチは既存行の昇格しか行わずエスカレーションの新規生成は本リスナーが唯一の経路であり、落とすと取り返せない")
     @EventListener
     @Async
     public void onPaymentStatusChanged(PaymentStatusChangedEvent event) {

@@ -56,8 +56,10 @@ public class RankingSnapshotEntity {
     @Column(nullable = false)
     private Integer rankPosition;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

@@ -34,6 +34,7 @@ public class PersonalTimetableShareTargetEntity {
     @Column(nullable = false)
     private Long teamId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

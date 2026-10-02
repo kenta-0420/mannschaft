@@ -1,10 +1,13 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.NoShowReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentNoShowNotificationEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentPenaltySettingRepository;
@@ -16,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -40,13 +44,17 @@ public class RecruitmentNoShowDetectBatch {
     private final RecruitmentParticipantRepository participantRepository;
     private final RecruitmentNoShowRecordRepository noShowRepository;
     private final RecruitmentPenaltySettingRepository settingRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 毎時30分に実行（confirmバッチと時間をずらす）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_RECRUITMENT_ENABLED",
+            reason = "終了 24h 経過という時刻条件のみで検出するため、止めても再開後の初回実行で同じ参加者を仮マークし直せる")
     @BatchEndpoint(name = "recruitment-no-show-detect-hourly", description = "終了 24h 経過した CONFIRMED 参加者を毎時 30 分に NO_SHOW 仮マークする")
     @Scheduled(cron = "0 30 * * * *")
-    @SchedulerLock(name = "recruitment-no-show-detect-batch", lockAtMostFor = "55m", lockAtLeastFor = "5m")
+    @SchedulerLock(name = "recruitment-no-show-detect-batch", lockAtMostFor = "2h", lockAtLeastFor = "5m")
     @Transactional
     public void detectNoShows() {
         final int CHUNK_SIZE = 500;
@@ -85,7 +93,9 @@ public class RecruitmentNoShowDetectBatch {
                             .reason(NoShowReason.AUTO_DETECTED)
                             .recordedBy(null)
                             .build();
-                    noShowRepository.save(record);
+                    RecruitmentNoShowRecordEntity saved = noShowRepository.save(record);
+                    eventPublisher.publishEvent(new RecruitmentNoShowNotificationEvent(
+                            saved.getId(), participant.getListingId(), participant.getUserId()));
                     detected++;
                 }
             }

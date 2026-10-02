@@ -3,6 +3,7 @@ package com.mannschaft.app.mention.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.mention.MentionErrorCode;
 import com.mannschaft.app.mention.dto.MentionResponse;
 import com.mannschaft.app.mention.dto.MentionResponse.MentionedByUser;
@@ -30,6 +31,7 @@ public class MentionService {
 
     private final MentionRepository mentionRepository;
     private final UserRepository userRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 指定ユーザー宛のメンション一覧を取得する。
@@ -89,7 +91,7 @@ public class MentionService {
             mentionedBy = new MentionedByUser(
                     mentionedByUser.getId(),
                     mentionedByUser.getLastName() + " " + mentionedByUser.getFirstName(),
-                    mentionedByUser.getAvatarUrl()
+                    mediaUrlResolver.resolve(mentionedByUser.getAvatarUrl())
             );
         } else {
             // ユーザーが削除されている場合のフォールバック

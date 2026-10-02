@@ -8,9 +8,13 @@
         "UNDECIDED": "Nicht bestätigt"
       },
       "absenceReason": {
-        "ILLNESS": "Krankheit",
+        "SICK": "Krankheit",
         "INJURY": "Verletzung",
-        "FAMILY": "Familiäre Gründe",
+        "FAMILY_REASON": "Familiäre Gründe",
+        "BEREAVEMENT": "Trauerfall",
+        "INFECTIOUS_DISEASE": "Infektionskrankheit (Sperrung)",
+        "MENTAL_HEALTH": "Psychische/körperliche Beschwerden",
+        "OFFICIAL_BUSINESS": "Offizielle Tätigkeit",
         "OTHER": "Sonstiges"
       },
       "dailyRollCall": {

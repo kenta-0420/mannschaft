@@ -51,6 +51,9 @@ class TimelinePollServiceTest {
     @Mock
     private TimelineMapper timelineMapper;
 
+    @Mock
+    private TimelinePostVisibilityAccessGuard postVisibilityGuard;
+
     @InjectMocks
     private TimelinePollService timelinePollService;
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ShiftReminderButton from '~/components/shift/ShiftReminderButton.vue'
 import type {
   ShiftScheduleResponse,
   ShiftSlotResponse,
@@ -7,17 +8,19 @@ import type {
 } from '~/types/shift'
 import dayjs from 'dayjs'
 import { statusToStep } from '~/utils/shiftStatus'
+import { isSlotUnderStaffed } from '~/utils/shiftSlot'
 
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
 const teamStore = useTeamStore()
-const { getSchedule, updateSchedule, transitionStatus } = useShiftApi()
+const { getSchedule, updateSchedule, transitionStatus, deleteSchedule } = useShiftApi()
 const { userTimezone } = useDatetime()
 const { listSlots } = useShiftSlotApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
+const confirm = useConfirm()
 
 const scheduleId = computed(() => Number(route.params.id))
 
@@ -40,10 +43,7 @@ const canManage = computed(() => {
 async function load() {
   loading.value = true
   try {
-    const [s, sl] = await Promise.all([
-      getSchedule(scheduleId.value),
-      listSlots(scheduleId.value),
-    ])
+    const [s, sl] = await Promise.all([getSchedule(scheduleId.value), listSlots(scheduleId.value)])
     schedule.value = s
     slots.value = sl
   } catch (error) {
@@ -80,7 +80,7 @@ const nextStatusLabelMap: Record<ShiftScheduleStatus, string> = {
 }
 
 const nextStatus = computed(() =>
-  schedule.value ? nextStatusMap[schedule.value.status] : null,
+  schedule.value ? nextStatusMap[schedule.value.status.status] : null,
 )
 
 async function handleTransition() {
@@ -106,8 +106,8 @@ async function handleTransition() {
 const dateList = computed<string[]>(() => {
   if (!schedule.value) return []
   const dates: string[] = []
-  const start = new Date(schedule.value.startDate)
-  const end = new Date(schedule.value.endDate)
+  const start = new Date(schedule.value.period.startDate)
+  const end = new Date(schedule.value.period.endDate)
   const cur = new Date(start)
   while (cur <= end && dates.length <= 60) {
     dates.push(dayjs(cur).tz(userTimezone.value).format('YYYY-MM-DD'))
@@ -119,16 +119,12 @@ const dateList = computed<string[]>(() => {
 const slotsByDate = computed<Map<string, ShiftSlotResponse[]>>(() => {
   const map = new Map<string, ShiftSlotResponse[]>()
   for (const slot of slots.value) {
-    const arr = map.get(slot.slotDate) ?? []
+    const arr = map.get(slot.time.slotDate) ?? []
     arr.push(slot)
-    map.set(slot.slotDate, arr)
+    map.set(slot.time.slotDate, arr)
   }
   return map
 })
-
-function isUnderStaffed(slot: ShiftSlotResponse): boolean {
-  return slot.assignedUserIds.length < slot.requiredCount
-}
 
 function formatDateShort(dateStr: string): string {
   const d = new Date(dateStr)
@@ -156,8 +152,8 @@ const saving = ref(false)
 function openEdit() {
   if (!schedule.value) return
   editForm.value = {
-    title: schedule.value.title,
-    note: schedule.value.note ?? '',
+    title: schedule.value.content.title,
+    note: schedule.value.content.note ?? '',
   }
   showEditDialog.value = true
 }
@@ -180,16 +176,75 @@ async function saveEdit() {
   }
 }
 
+// =====================================================
+// シフト表削除
+// =====================================================
+const deleting = ref(false)
+
+function confirmDelete() {
+  if (!schedule.value || !canManage.value) return
+  confirm.require({
+    message: t('shift.detail.deleteConfirm'),
+    header: t('shift.detail.deleteTitle'),
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: t('common.cancel'),
+    acceptLabel: t('shift.action.delete'),
+    acceptClass: 'p-button-danger',
+    accept: handleDelete,
+  })
+}
+
+async function handleDelete() {
+  if (!schedule.value || !canManage.value || deleting.value) return
+  deleting.value = true
+  try {
+    await deleteSchedule(scheduleId.value)
+    success(t('shift.detail.deleteSuccess'))
+    await navigateTo('/shift')
+  } catch (error) {
+    handleApiError(error)
+  } finally {
+    deleting.value = false
+  }
+}
+
 // ステッパーステップ番号
-const currentStep = computed(() => (schedule.value ? statusToStep(schedule.value.status) : 1))
+const currentStep = computed(() =>
+  schedule.value ? statusToStep(schedule.value.status.status) : 1,
+)
 
 // タブナビゲーション
-const tabs = computed(() => [
-  { label: t('shift.detail.tabOverview'), icon: 'pi pi-calendar', to: `/shift/${scheduleId.value}` },
-  { label: t('shift.detail.tabEdit'), icon: 'pi pi-pencil', to: `/shift/${scheduleId.value}/edit` },
-  { label: t('shift.detail.tabRequests'), icon: 'pi pi-list', to: `/shift/${scheduleId.value}/requests` },
-  { label: t('shift.detail.tabConstraints'), icon: 'pi pi-shield', to: `/shift/${scheduleId.value}/work-constraints` },
-])
+// 「希望一覧」「勤務制約」タブは BE 側が ADMIN/DEPUTY_ADMIN 限定のため、
+// 一般メンバーには表示しない（見えるのに踏むと壊れる事故を防ぐ）。
+const tabs = computed(() => {
+  const list = [
+    {
+      label: t('shift.detail.tabOverview'),
+      icon: 'pi pi-calendar',
+      to: `/shift/${scheduleId.value}`,
+    },
+    {
+      label: t('shift.detail.tabEdit'),
+      icon: 'pi pi-pencil',
+      to: `/shift/${scheduleId.value}/edit`,
+    },
+  ]
+  if (canManage.value) {
+    list.push(
+      {
+        label: t('shift.detail.tabRequests'),
+        icon: 'pi pi-list',
+        to: `/shift/${scheduleId.value}/requests`,
+      },
+      {
+        label: t('shift.detail.tabConstraints'),
+        icon: 'pi pi-shield',
+        to: `/shift/${scheduleId.value}/work-constraints`,
+      },
+    )
+  }
+  return list
+})
 </script>
 
 <template>
@@ -198,19 +253,13 @@ const tabs = computed(() => [
 
     <template v-else-if="schedule">
       <!-- ヘッダー -->
-      <div class="mb-4 flex flex-wrap items-start gap-3">
-        <BackButton :to="`/shift`" />
-        <div class="min-w-0 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <h1 class="text-2xl font-bold text-surface-800 dark:text-surface-100">
-              {{ schedule.title }}
-            </h1>
-            <ShiftStatusBadge :status="schedule.status" />
-          </div>
-          <p class="mt-1 text-sm text-surface-500">
-            {{ schedule.startDate }} 〜 {{ schedule.endDate }}
-          </p>
-        </div>
+      <div class="mb-4">
+        <PageHeader :title="schedule.content.title" back-to="/shift">
+          <ShiftStatusBadge :status="schedule.status.status" />
+        </PageHeader>
+        <p class="mb-3 text-sm text-surface-500">
+          {{ schedule.period.startDate }} 〜 {{ schedule.period.endDate }}
+        </p>
         <div v-if="canManage" class="flex items-center gap-2">
           <Button
             icon="pi pi-pencil"
@@ -222,10 +271,21 @@ const tabs = computed(() => [
           <Button
             v-if="nextStatus"
             icon="pi pi-arrow-right"
-            :label="t(nextStatusLabelMap[schedule.status])"
+            :label="t(nextStatusLabelMap[schedule.status.status])"
             size="small"
             :loading="transitioning"
             @click="handleTransition"
+          />
+          <ShiftReminderButton :schedule="schedule" :can-manage="canManage" />
+          <Button
+            data-testid="shift-schedule-delete"
+            icon="pi pi-trash"
+            :label="t('shift.action.delete')"
+            severity="danger"
+            outlined
+            size="small"
+            :loading="deleting"
+            @click="confirmDelete"
           />
         </div>
       </div>
@@ -233,7 +293,12 @@ const tabs = computed(() => [
       <!-- ステッパー -->
       <div class="mb-6 flex items-center gap-0">
         <div
-          v-for="(step, idx) in [t('shift.status.draft'), t('shift.status.collecting'), t('shift.status.adjusting'), t('shift.status.published')]"
+          v-for="(step, idx) in [
+            t('shift.status.draft'),
+            t('shift.status.collecting'),
+            t('shift.status.adjusting'),
+            t('shift.status.published'),
+          ]"
           :key="idx"
           class="flex flex-1 items-center"
         >
@@ -261,7 +326,9 @@ const tabs = computed(() => [
       </div>
 
       <!-- タブナビ -->
-      <nav class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700">
+      <nav
+        class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700"
+      >
         <NuxtLink
           v-for="tab in tabs"
           :key="tab.to"
@@ -288,14 +355,21 @@ const tabs = computed(() => [
           {{ t('shift.detail.noDate') }}
         </div>
 
-        <div v-else class="overflow-x-auto rounded-xl border border-surface-200 dark:border-surface-700">
+        <div
+          v-else
+          class="overflow-x-auto rounded-xl border border-surface-200 dark:border-surface-700"
+        >
           <table class="w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th class="sticky left-0 min-w-[100px] bg-surface-50 px-3 py-2 text-left text-xs font-medium text-surface-500 dark:bg-surface-800">
+                <th
+                  class="sticky left-0 min-w-[100px] bg-surface-50 px-3 py-2 text-left text-xs font-medium text-surface-500 dark:bg-surface-800"
+                >
                   {{ t('shift.detail.colDate') }}
                 </th>
-                <th class="min-w-[140px] bg-surface-50 px-3 py-2 text-left text-xs font-medium text-surface-500 dark:bg-surface-800">
+                <th
+                  class="min-w-[140px] bg-surface-50 px-3 py-2 text-left text-xs font-medium text-surface-500 dark:bg-surface-800"
+                >
                   {{ t('shift.detail.colSlots') }}
                 </th>
               </tr>
@@ -312,9 +386,7 @@ const tabs = computed(() => [
                   <span>{{ formatDateShort(date) }}</span>
                   <span
                     class="ml-1 text-xs"
-                    :class="
-                      isWeekend(date) ? 'text-blue-500' : 'text-surface-400'
-                    "
+                    :class="isWeekend(date) ? 'text-blue-500' : 'text-surface-400'"
                   >
                     ({{ formatDayOfWeek(date) }})
                   </span>
@@ -329,23 +401,37 @@ const tabs = computed(() => [
                       :to="`/shift/${scheduleId}/edit`"
                       class="inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-xs transition-colors hover:border-primary"
                       :class="
-                        isUnderStaffed(slot)
+                        isSlotUnderStaffed(slot)
                           ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300'
                           : 'border-surface-200 bg-surface-50 text-surface-700 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300'
                       "
                     >
-                      <span>{{ slot.startTime.slice(0, 5) }}〜{{ slot.endTime.slice(0, 5) }}</span>
-                      <span v-if="slot.positionName" class="text-surface-400">/{{ slot.positionName }}</span>
-                      <!-- 割当バッジ -->
                       <span
+                        >{{ slot.time.startTime.slice(0, 5) }}〜{{
+                          slot.time.endTime.slice(0, 5)
+                        }}</span
+                      >
+                      <span v-if="slot.position.positionName" class="text-surface-400"
+                        >/{{ slot.position.positionName }}</span
+                      >
+                      <!-- 割当バッジ。サーバーが割当を伏せている間は人数を出さず中立表示にする -->
+                      <span
+                        v-if="slot.assignmentMasked"
+                        class="rounded bg-surface-100 px-1 font-medium text-surface-600 dark:bg-surface-700 dark:text-surface-300"
+                        :title="$t('shift.slot.assignmentMaskedHint')"
+                      >
+                        {{ $t('shift.slot.assignmentMasked') }}
+                      </span>
+                      <span
+                        v-else
                         class="rounded px-1 font-medium"
                         :class="
-                          isUnderStaffed(slot)
+                          isSlotUnderStaffed(slot)
                             ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-200'
                             : 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200'
                         "
                       >
-                        {{ slot.assignedUserIds.length }}/{{ slot.requiredCount }}
+                        {{ slot.assignedUserIds.length }}/{{ slot.position.requiredCount }}
                       </span>
                     </NuxtLink>
                   </div>

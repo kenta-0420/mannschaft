@@ -31,6 +31,7 @@
     "dashboard_widget": {
       "title": "Schnellnotizen",
       "empty": "Keine unsortierten Schnellnotizen",
+      "empty_hint": "Schreib auf, was dir gerade einfällt. Logo gedrückt halten oder Ctrl+Shift+M für sofortige Erfassung",
       "click_to_edit": "Zum Bearbeiten klicken",
       "open_detail": "Detail öffnen",
       "see_all": "Alle anzeigen",
@@ -104,6 +105,37 @@
       "saved": "Einstellungen gespeichert",
       "load_error": "Einstellungen konnten nicht geladen werden",
       "save_error": "Einstellungen konnten nicht gespeichert werden"
+    },
+    "guide": {
+      "title": "Schnellnotizen verwenden",
+      "description": "Erfasse Gedanken sofort ohne Reibung. Organisiere und wandle in TODOs um, wenn du bereit bist.",
+      "capture": {
+        "title": "Sofort erfassen",
+        "body": "Halte das Logo gedrückt oder nutze den Tastaturkurzbefehl, um jederzeit ein Popup zu öffnen.",
+        "steps": {
+          "step1": "Logo gedrückt halten oder Ctrl+Shift+M drücken um das Popup zu öffnen",
+          "step2": "Gedanken in einer Zeile eingeben und speichern",
+          "step3": "Auf 'Speichern!' klicken und fertig"
+        }
+      },
+      "organize": {
+        "title": "Notizen organisieren",
+        "body": "Wandle Notizen in TODOs um oder archiviere sie. Organisiere, bevor du 500 erreichst.",
+        "steps": {
+          "step1": "Liste im Tab 'Unsortiert' prüfen",
+          "step2": "Häkchen-Symbol für TODO-Aufstieg, Posteingang-Symbol für Archivierung",
+          "step3": "Titel anklicken um inline zu bearbeiten"
+        }
+      },
+      "search": {
+        "title": "Notizen suchen",
+        "body": "Finde vergangene Notizen sofort mit Stichwortsuche.",
+        "steps": {
+          "step1": "Stichwort in die Suchleiste oben eingeben",
+          "step2": "Ergebnisse werden in Echtzeit gefiltert",
+          "step3": "Notiz anklicken zum Anzeigen oder Bearbeiten"
+        }
+      }
     }
   }
 }

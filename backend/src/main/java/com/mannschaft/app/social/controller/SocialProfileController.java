@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * ソーシャルプロフィールコントローラー。プロフィールのCRUD APIを提供する。
@@ -39,6 +41,8 @@ public class SocialProfileController {
     @PostMapping
     @Operation(summary = "プロフィール作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @SelfScopedEndpoint("SocialProfileService#createProfile が作成するプロフィールの userId は常に "
+            + "SecurityUtils.getCurrentUserId() のみを使う")
     public ResponseEntity<ApiResponse<ProfileResponse>> createProfile(
             @Valid @RequestBody CreateProfileRequest request) {
         ProfileResponse response = profileService.createProfile(request, SecurityUtils.getCurrentUserId());
@@ -51,6 +55,8 @@ public class SocialProfileController {
     @GetMapping("/me")
     @Operation(summary = "自分のプロフィール取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @SelfScopedEndpoint("SocialProfileService#getMyProfile の検索条件が "
+            + "profileRepository.findByUserId(SecurityUtils.getCurrentUserId()) のみに束縛される")
     public ResponseEntity<ApiResponse<ProfileResponse>> getMyProfile() {
         ProfileResponse response = profileService.getMyProfile(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -62,6 +68,8 @@ public class SocialProfileController {
     @PatchMapping("/me")
     @Operation(summary = "プロフィール更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @SelfScopedEndpoint("SocialProfileService#updateProfile の検索・更新条件が "
+            + "profileRepository.findByUserId(SecurityUtils.getCurrentUserId()) のみに束縛される")
     public ResponseEntity<ApiResponse<ProfileResponse>> updateProfile(
             @Valid @RequestBody UpdateProfileRequest request) {
         ProfileResponse response = profileService.updateProfile(request, SecurityUtils.getCurrentUserId());
@@ -74,6 +82,7 @@ public class SocialProfileController {
     @GetMapping("/handle/{handle}")
     @Operation(summary = "ハンドルでプロフィール取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @AuthorizedInService // SocialProfileService#getProfileByHandle が isActive を検証し、無効化済みプロフィールを非公開にする
     public ResponseEntity<ApiResponse<ProfileResponse>> getProfileByHandle(
             @PathVariable String handle) {
         ProfileResponse response = profileService.getProfileByHandle(handle);
@@ -86,6 +95,7 @@ public class SocialProfileController {
     @GetMapping("/users/{userId}")
     @Operation(summary = "ユーザーIDでプロフィール取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @AuthorizedInService // SocialProfileService#getProfileByUserId が isActive を検証し、無効化済みプロフィールを非公開にする（getProfileByHandle と同一判定）
     public ResponseEntity<ApiResponse<ProfileResponse>> getProfileByUserId(
             @PathVariable Long userId) {
         ProfileResponse response = profileService.getProfileByUserId(userId);
@@ -98,6 +108,8 @@ public class SocialProfileController {
     @DeleteMapping("/me")
     @Operation(summary = "プロフィール無効化")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "無効化成功")
+    @SelfScopedEndpoint("SocialProfileService#deactivateProfile の検索・更新条件が "
+            + "profileRepository.findByUserId(SecurityUtils.getCurrentUserId()) のみに束縛される")
     public ResponseEntity<Void> deactivateProfile() {
         profileService.deactivateProfile(SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();

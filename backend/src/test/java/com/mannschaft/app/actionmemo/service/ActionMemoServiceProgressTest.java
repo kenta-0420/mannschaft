@@ -545,11 +545,30 @@ class ActionMemoServiceProgressTest {
             ActionMemoEntity memo = memoWithTodo(MEMO_ID, USER_ID, 50L, TEAM_ID, false);
 
             given(memoRepository.findById(MEMO_ID)).willReturn(Optional.of(memo));
+            // 認可判定を業務状態の検証より前に行うため、ADMIN であることを明示 stub する。
+            // 未 stub だと Mockito 既定の 0L により認可で先に弾かれ、
+            // 本テストが検証したい業務エラー（TODO_NOT_COMPLETED_BY_MEMO）に到達しない。
+            given(userRoleRepository.countTeamAdminByUserIdAndTeamId(ADMIN_ID, TEAM_ID)).willReturn(1L);
 
             assertThatThrownBy(() -> actionMemoAdminService.revertTodoCompletion(MEMO_ID, ADMIN_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ActionMemoErrorCode.ACTION_MEMO_TODO_NOT_COMPLETED_BY_MEMO);
+        }
+
+        @Test
+        @DisplayName("チーム未投稿メモの差し戻しは権限判定で拒否される（メモの状態は開示しない）")
+        void revertTodoCompletion_notPostedToTeam_forbidden() {
+            // postedTeamId = null（チーム未投稿）かつ completesTodo = false。
+            // 認可を業務検証より前に置いているため、状態差ではなく一律 403 相当となる。
+            ActionMemoEntity memo = memoWithTodo(MEMO_ID, USER_ID, 50L, null, false);
+
+            given(memoRepository.findById(MEMO_ID)).willReturn(Optional.of(memo));
+
+            assertThatThrownBy(() -> actionMemoAdminService.revertTodoCompletion(MEMO_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ActionMemoErrorCode.ACTION_MEMO_TODO_REVERT_NOT_ALLOWED);
         }
     }
 }

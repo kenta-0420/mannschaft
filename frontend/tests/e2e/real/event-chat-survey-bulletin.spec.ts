@@ -145,8 +145,8 @@ async function createTestSurvey(
     })
     if (!res.ok()) return null
     const body = await res.json()
-    // SurveyDetailResponse は { survey: { id, ... }, questions: [] } のネスト構造
-    return body?.data?.survey?.id ?? body?.data?.id ?? null
+    // Issue #2635 で SurveyDetailResponse はフラット化され { id, ..., questions: [] } になった。
+    return body?.data?.id ?? null
   } catch {
     return null
   }

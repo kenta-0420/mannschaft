@@ -9,6 +9,7 @@ import com.mannschaft.app.admin.entity.FeedbackVoteEntity;
 import com.mannschaft.app.admin.repository.FeedbackSubmissionRepository;
 import com.mannschaft.app.admin.repository.FeedbackVoteRepository;
 import com.mannschaft.app.admin.service.FeedbackService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -45,6 +46,9 @@ class FeedbackServiceTest {
 
     @Mock
     private FeedbackVoteRepository voteRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private FeedbackService service;
@@ -102,6 +106,7 @@ class FeedbackServiceTest {
             assertThat(result.getTitle()).isEqualTo("UI改善の提案");
             assertThat(result.getStatus()).isEqualTo("OPEN");
             assertThat(result.getVoteCount()).isZero();
+            verify(accessControlService).checkMembership(USER_ID, 10L, "TEAM");
             verify(feedbackRepository).save(any(FeedbackSubmissionEntity.class));
         }
 
@@ -110,7 +115,7 @@ class FeedbackServiceTest {
         void 作成_isAnonymousNull_falseセット() {
             // Given
             CreateFeedbackRequest req = new CreateFeedbackRequest(
-                    "PLATFORM", null, "BUG", "バグ報告", "ボタンが動かない", null);
+                    "GENERAL", null, "BUG", "バグ報告", "ボタンが動かない", null);
             FeedbackSubmissionEntity savedEntity = createOpenFeedback();
 
             given(feedbackRepository.save(any(FeedbackSubmissionEntity.class))).willReturn(savedEntity);

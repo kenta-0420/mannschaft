@@ -51,6 +51,9 @@ describe('scheduleCalendar 変換ユーティリティ', () => {
       expect(item.scopeType).toBe('TEAM')
       expect(item.scopeName).toBe('FC東京U-18')
       expect(item.scopeIconUrl).toBe('https://example/icon.png')
+      // モバイルのリストビュー行内 RSVP 出し分け用フィールド
+      expect(item.attendanceRequired).toBe(true)
+      expect(item.myAttendance).toBe('YES')
     })
 
     it('CAL-002: title/startAt は嘘キャスト時の undefined ではなく実値が入る（回帰防止）', () => {
@@ -68,6 +71,9 @@ describe('scheduleCalendar 変換ユーティリティ', () => {
       expect(item.allDay).toBe(false)
       expect(item.color).toBeNull()
       expect(item.scopeType).toBe('ORGANIZATION')
+      // 欠落時は attendanceRequired=false / myAttendance=null にフォールバック
+      expect(item.attendanceRequired).toBe(false)
+      expect(item.myAttendance).toBeNull()
     })
 
     it('CAL-004: endAt が無い場合は startAt へフォールバックする', () => {

@@ -17,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -70,6 +72,13 @@ class PointCardRematchBatchServiceTest {
     @Mock
     private ErrorReportService errorReportService;
 
+    /**
+     * 自己プロキシ（CMP-260912-1524）。ユニットテストではプロキシが存在しないため、
+     * {@code getObject()} が実体そのものを返すよう差し込む。
+     */
+    @Mock
+    private ObjectProvider<PointCardRematchBatchService> selfProvider;
+
     @InjectMocks
     private PointCardRematchBatchService service;
 
@@ -77,6 +86,7 @@ class PointCardRematchBatchServiceTest {
     void setUp() {
         // @Value 注入は手動で差し込む（テスト個別に上書き可能）
         ReflectionTestUtils.setField(service, "chunkSize", 1000);
+        lenient().when(selfProvider.getObject()).thenReturn(service);
     }
 
     // ──────────────────────────────────────────────

@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.ScopeType;
+import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationDeliveryStatus;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
@@ -24,7 +25,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,8 +38,13 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link ConfirmableNotificationConfirmService} の単体テスト。
  *
- * <p>リファクタリング第9弾でファサード {@code ConfirmableNotificationService} から
- * 分離された確認・キャンセル・リマインド再送のロジックを検証する。</p>
+ * <p>CMP-260920-1040 是正6: §8.2・§9.2・§11.1 で confirm/confirmByToken/cancel が
+ * {@code findByIdForUpdate}・{@code findByNotificationIdAndUserIdForUpdate}・
+ * {@code findByConfirmTokenForUpdate} を呼ぶ実装へ変わったため、モックの呼び出し方を
+ * 実装に合わせて更新する（旧: {@code findById}・{@code findByConfirmableNotificationId} の
+ * 全件ロード前提のまま期待値だけ弱めることはしない）。完了判定は
+ * {@code unconfirmedCount == 0 && deliveryStatus == DELIVERED && totalRecipientCount > 0}
+ * という実エンティティの状態で検証し、モックのブール値では表現しない。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -69,37 +74,38 @@ class ConfirmableNotificationConfirmServiceTest {
     private static final Long USER_ID_1 = 1L;
     private static final Long USER_ID_2 = 2L;
 
-    private ConfirmableNotificationEntity createActiveNotification() {
+    private ConfirmableNotificationEntity createActiveNotification(
+            int totalRecipientCount, int unconfirmedCount, ConfirmableNotificationDeliveryStatus deliveryStatus) {
         return ConfirmableNotificationEntity.builder()
                 .scopeType(ScopeType.TEAM)
                 .scopeId(SCOPE_ID)
                 .title("テスト確認通知")
                 .priority(ConfirmableNotificationPriority.NORMAL)
-                .totalRecipientCount(3)
+                .status(ConfirmableNotificationStatus.ACTIVE)
+                .totalRecipientCount(totalRecipientCount)
+                .unconfirmedCount(unconfirmedCount)
+                .deliveryStatus(deliveryStatus)
                 .build();
     }
 
     private ConfirmableNotificationEntity createCancelledNotification() {
-        ConfirmableNotificationEntity notification = createActiveNotification();
+        ConfirmableNotificationEntity notification =
+                createActiveNotification(3, 3, ConfirmableNotificationDeliveryStatus.DELIVERED);
         notification.cancel(null);
         return notification;
     }
 
-    /**
-     * IDを持つ受信者モックを作成する（checkAndCompleteIfAllConfirmedで getId() が使われるため）。
-     */
-    private ConfirmableNotificationRecipientEntity createMockedRecipient(
-            Long id, ConfirmableNotificationEntity notification, Long userId, boolean confirmed) {
+    private ConfirmableNotificationRecipientEntity createRecipient(
+            ConfirmableNotificationEntity notification, Long userId, boolean confirmed) {
         UserEntity user = mock(UserEntity.class);
         given(user.getId()).willReturn(userId);
 
-        ConfirmableNotificationRecipientEntity recipient =
-                mock(ConfirmableNotificationRecipientEntity.class);
-        given(recipient.getId()).willReturn(id);
-        given(recipient.getUser()).willReturn(user);
-        given(recipient.getIsConfirmed()).willReturn(confirmed);
-        given(recipient.isExcluded()).willReturn(false);
-        return recipient;
+        return ConfirmableNotificationRecipientEntity.builder()
+                .confirmableNotification(notification)
+                .user(user)
+                .confirmToken(java.util.UUID.randomUUID().toString())
+                .isConfirmed(confirmed)
+                .build();
     }
 
     // ========================================
@@ -111,54 +117,71 @@ class ConfirmableNotificationConfirmServiceTest {
     class Confirm {
 
         @Test
-        @DisplayName("confirm_正常系_未確認のrecipientをconfirmするとisConfirmedがtrueになる")
+        @DisplayName("confirm_正常系_未確認のrecipientをconfirmするとisConfirmedがtrueになる"
+                + "（findByIdForUpdate・findByNotificationIdAndUserIdForUpdateを使う実装に合わせる）")
         void confirm_正常系_未確認のrecipientをconfirmするとisConfirmedがtrueになる() {
-            // given
-            ConfirmableNotificationEntity notification = createActiveNotification();
+            // given: 配信中（DELIVERING）のため、この1件を確認しても完了しない。
+            ConfirmableNotificationEntity notification =
+                    createActiveNotification(2, 2, ConfirmableNotificationDeliveryStatus.DELIVERING);
+            ConfirmableNotificationRecipientEntity recipient1 = createRecipient(notification, USER_ID_1, false);
 
-            ConfirmableNotificationRecipientEntity recipient1 =
-                    createMockedRecipient(1L, notification, USER_ID_1, false);
-            ConfirmableNotificationRecipientEntity recipient2 =
-                    createMockedRecipient(2L, notification, USER_ID_2, false);
-
-            given(notificationRepository.findById(NOTIFICATION_ID))
+            given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID))
                     .willReturn(Optional.of(notification));
-            given(recipientRepository.findByConfirmableNotificationId(NOTIFICATION_ID))
-                    .willReturn(List.of(recipient1, recipient2));
-            given(recipientRepository.save(any())).willReturn(recipient1);
+            given(recipientRepository.findByNotificationIdAndUserIdForUpdate(NOTIFICATION_ID, USER_ID_1))
+                    .willReturn(Optional.of(recipient1));
 
             // when
             confirmService.confirm(NOTIFICATION_ID, USER_ID_1);
 
             // then
-            verify(recipient1).confirm(ConfirmedVia.APP);
+            assertThat(recipient1.getIsConfirmed()).isTrue();
+            assertThat(notification.getUnconfirmedCount()).isEqualTo(1);
             verify(recipientRepository).save(recipient1);
+            verify(notificationRepository).save(notification);
         }
 
         @Test
-        @DisplayName("confirm_全員確認済み時にCOMPLETED_全recipientが確認済みになったらnotification_completeが呼ばれる")
+        @DisplayName("confirm_全員確認済み時にCOMPLETED_配信完了(DELIVERED)で最後の1人を確認するとCOMPLETEDになる")
         void confirm_全員確認済み時にCOMPLETED_全recipientが確認済みになったらnotification_completeが呼ばれる() {
-            // given
-            ConfirmableNotificationEntity notification = createActiveNotification();
+            // given: 全員配信完了（DELIVERED）で、あと1人（USER_ID_1）だけ未確認。
+            ConfirmableNotificationEntity notification =
+                    createActiveNotification(2, 1, ConfirmableNotificationDeliveryStatus.DELIVERED);
+            ConfirmableNotificationRecipientEntity recipient1 = createRecipient(notification, USER_ID_1, false);
 
-            ConfirmableNotificationRecipientEntity recipient1 =
-                    createMockedRecipient(1L, notification, USER_ID_1, false);
-            ConfirmableNotificationRecipientEntity recipient2 =
-                    createMockedRecipient(2L, notification, USER_ID_2, true);
-
-            given(notificationRepository.findById(NOTIFICATION_ID))
+            given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID))
                     .willReturn(Optional.of(notification));
-            given(recipientRepository.findByConfirmableNotificationId(NOTIFICATION_ID))
-                    .willReturn(List.of(recipient1, recipient2));
-            given(recipientRepository.save(any())).willReturn(recipient1);
-            given(notificationRepository.save(any())).willReturn(notification);
+            given(recipientRepository.findByNotificationIdAndUserIdForUpdate(NOTIFICATION_ID, USER_ID_1))
+                    .willReturn(Optional.of(recipient1));
 
             // when
             confirmService.confirm(NOTIFICATION_ID, USER_ID_1);
 
             // then
             verify(notificationRepository).save(notification);
+            assertThat(notification.getUnconfirmedCount()).isZero();
             assertThat(notification.getStatus()).isEqualTo(ConfirmableNotificationStatus.COMPLETED);
+        }
+
+        @Test
+        @DisplayName("confirm_配信中はCOMPLETEDにしない_unconfirmedCountが0でもDELIVERING中は完了判定を保留する（§8.2・AC-40）")
+        void confirm_配信中はCOMPLETEDにしない() {
+            // given: このチャンクの受信者は全員確認済みになるが、他チャンクの配信がまだ続いている
+            // （deliveryStatus=DELIVERING）ため、isReadyToCompleteはfalseになるべき。
+            ConfirmableNotificationEntity notification =
+                    createActiveNotification(2, 1, ConfirmableNotificationDeliveryStatus.DELIVERING);
+            ConfirmableNotificationRecipientEntity recipient1 = createRecipient(notification, USER_ID_1, false);
+
+            given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID))
+                    .willReturn(Optional.of(notification));
+            given(recipientRepository.findByNotificationIdAndUserIdForUpdate(NOTIFICATION_ID, USER_ID_1))
+                    .willReturn(Optional.of(recipient1));
+
+            confirmService.confirm(NOTIFICATION_ID, USER_ID_1);
+
+            assertThat(notification.getUnconfirmedCount()).isZero();
+            assertThat(notification.getStatus())
+                    .as("AC-40: DELIVERING中は全員確認してもCOMPLETEDにしない")
+                    .isEqualTo(ConfirmableNotificationStatus.ACTIVE);
         }
     }
 
@@ -184,6 +207,27 @@ class ConfirmableNotificationConfirmServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo(ConfirmableNotificationErrorCode.INVALID_TOKEN.getCode()));
         }
+
+        @Test
+        @DisplayName("confirmByToken_正常系_手順1(不変列読み取り)→手順2(親ロック)→手順3(受信者行の再ロック)の順で呼ばれる")
+        void confirmByToken_正常系_親と受信者を再ロックして確認する() {
+            String token = java.util.UUID.randomUUID().toString();
+            ConfirmableNotificationEntity notification =
+                    createActiveNotification(1, 1, ConfirmableNotificationDeliveryStatus.DELIVERED);
+            ConfirmableNotificationRecipientEntity unlockedRecipient = createRecipient(notification, USER_ID_2, false);
+            ConfirmableNotificationRecipientEntity lockedRecipient = createRecipient(notification, USER_ID_2, false);
+
+            given(recipientRepository.findByConfirmToken(token)).willReturn(Optional.of(unlockedRecipient));
+            given(notificationRepository.findByIdForUpdate(any())).willReturn(Optional.of(notification));
+            given(recipientRepository.findByConfirmTokenForUpdate(token)).willReturn(Optional.of(lockedRecipient));
+
+            confirmService.confirmByToken(token);
+
+            assertThat(lockedRecipient.getIsConfirmed())
+                    .as("§10.1: 確定はロック済みの受信者行（手順3で再取得したもの）に対して行う")
+                    .isTrue();
+            assertThat(notification.getStatus()).isEqualTo(ConfirmableNotificationStatus.COMPLETED);
+        }
     }
 
     // ========================================
@@ -195,14 +239,16 @@ class ConfirmableNotificationConfirmServiceTest {
     class Cancel {
 
         @Test
-        @DisplayName("cancel_正常系_ADMINがcancelを呼ぶとstatusがCANCELLEDになる")
+        @DisplayName("cancel_正常系_ADMINがcancelを呼ぶとstatusがCANCELLEDになる"
+                + "（§10.2: findByIdForUpdateで親をロックしてから再判定する）")
         void cancel_正常系_ADMINがcancelを呼ぶとstatusがCANCELLEDになる() {
             // given
-            ConfirmableNotificationEntity notification = createActiveNotification();
+            ConfirmableNotificationEntity notification =
+                    createActiveNotification(3, 3, ConfirmableNotificationDeliveryStatus.DELIVERED);
             UserEntity cancelUser = mock(UserEntity.class);
             given(cancelUser.getId()).willReturn(USER_ID_1);
 
-            given(notificationRepository.findById(NOTIFICATION_ID))
+            given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID))
                     .willReturn(Optional.of(notification));
             given(userRepository.findById(USER_ID_1)).willReturn(Optional.of(cancelUser));
             given(notificationRepository.save(any())).willReturn(notification);
@@ -216,12 +262,13 @@ class ConfirmableNotificationConfirmServiceTest {
         }
 
         @Test
-        @DisplayName("cancel_既キャンセル済み_すでにCANCELLEDな通知をcancelするとALREADY_CANCELLEDエラーがthrowされる")
+        @DisplayName("cancel_既キャンセル済み_すでにCANCELLEDな通知をcancelするとALREADY_CANCELLEDエラーがthrowされる"
+                + "（§10.2: ロック取得後の再判定でACTIVE以外を拒否する）")
         void cancel_既キャンセル済み_すでにCANCELLEDな通知をcancelするとALREADY_CANCELLEDエラーがthrowされる() {
             // given
             ConfirmableNotificationEntity cancelledNotification = createCancelledNotification();
 
-            given(notificationRepository.findById(NOTIFICATION_ID))
+            given(notificationRepository.findByIdForUpdate(NOTIFICATION_ID))
                     .willReturn(Optional.of(cancelledNotification));
 
             // when / then

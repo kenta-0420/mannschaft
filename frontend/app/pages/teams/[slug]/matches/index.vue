@@ -50,7 +50,7 @@ const total = ref(0)
 const hasMore = computed(() => matches.value.length < total.value)
 
 async function load(reset = true): Promise<void> {
-  if (orgId.value === null || teamId.value === null) return
+  if (teamId.value === null) return
   if (reset) {
     page.value = 0
     matches.value = []
@@ -105,8 +105,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-3xl pb-24">
     <div class="mb-1 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}`" />
-      <PageHeader :title="$t('match.list.title')" size="sm" />
+      <PageHeader :title="$t('match.list.title')" size="sm" :back-to="`/teams/${teamSlug}`" />
     </div>
     <p class="mb-4 text-sm text-surface-500">{{ $t('match.list.subtitle') }}</p>
 

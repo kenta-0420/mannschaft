@@ -3,30 +3,36 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.shift.ChangeRequestStatus;
+import com.mannschaft.app.shift.ChangeRequestType;
+import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.entity.ShiftChangeRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import com.mannschaft.app.shift.dto.CreateChangeRequestRequest;
 import com.mannschaft.app.shift.dto.ReviewChangeRequestRequest;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link ShiftChangeRequestService#review} の per-scope 認可（認可根治 Phase 3-a / 生穴封鎖）単体テスト。
+ * {@link ShiftChangeRequestFacade#review} の per-scope 認可（認可根治 Phase 3-a / 生穴封鎖）単体テスト。
  *
  * <p>本メソッドはかつて認可がなく「認証済みなら誰でも任意のシフト変更依頼を審査（承認/却下）できる」
  * 生穴であった。本テストは {@code scheduleId → teamId} 解決による IDOR 封鎖込みの per-scope 認可
@@ -40,11 +46,23 @@ class ShiftChangeRequestServiceAuthzTest {
     private ShiftChangeRequestRepository changeRequestRepository;
     @Mock
     private ShiftScheduleRepository scheduleRepository;
+    /** 認可根治 Wave7: create の slotId 帰属検証（BOLA 封鎖）で使用。 */
+    @Mock
+    private ShiftSlotRepository slotRepository;
     @Mock
     private AccessControlService accessControlService;
 
-    @InjectMocks
-    private ShiftChangeRequestService service;
+    /** 認可は Facade（tx の外）が行い、通ったものを tx 本体が実行する。応答の契約は両者の合成で検証する。 */
+    private ShiftChangeRequestFacade service;
+
+    /** Gate は本物、その下の AccessControlService だけモック（存在オラクル是正 W2 で認可が Gate へ移った）。 */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpService() {
+        ShiftChangeRequestService txService = new ShiftChangeRequestService(
+                changeRequestRepository, scheduleRepository, slotRepository);
+        service = new ShiftChangeRequestFacade(txService, new ScopeConcealingAccessGate(accessControlService),
+                accessControlService);
+    }
 
     private static final Long REQUEST_ID = 500L;
     private static final Long SCHEDULE_ID = 70L;
@@ -65,14 +83,14 @@ class ShiftChangeRequestServiceAuthzTest {
     }
 
     @Test
-    @DisplayName("非権限者（他団体含む）は COMMON_002（scheduleId→teamId 解決後に弾く）")
+    @DisplayName("同一チームの所属者だが非ADMINは COMMON_002（scheduleId→teamId 解決後に弾く）")
     void review_非権限者_COMMON_002() {
         given(changeRequestRepository.findById(REQUEST_ID)).willReturn(Optional.of(openRequest()));
         given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(false);
         given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
                 ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
-        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                .when(accessControlService).checkAdminOrAbove(REVIEWER_ID, TEAM_ID, "TEAM");
+        given(accessControlService.isAdminOrAbove(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.isMember(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
         assertThatThrownBy(() -> service.review(REQUEST_ID, reviewReq(), REVIEWER_ID))
                 .isInstanceOf(BusinessException.class)
@@ -83,18 +101,279 @@ class ShiftChangeRequestServiceAuthzTest {
     }
 
     @Test
-    @DisplayName("SYSTEM_ADMIN は scheduleId 解決なしで認可通過（短絡）")
+    @DisplayName("他チーム（非所属）は不在と同一の CHANGE_REQUEST_NOT_FOUND（存在オラクル是正）")
+    void review_越境_CHANGE_REQUEST_NOT_FOUND() {
+        given(changeRequestRepository.findById(REQUEST_ID)).willReturn(Optional.of(openRequest()));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(false);
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isAdminOrAbove(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.isMember(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        assertThatThrownBy(() -> service.review(REQUEST_ID, reviewReq(), REVIEWER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND));
+
+        // 認可で弾かれたので保存（審査確定）は行われない
+        verify(changeRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("SYSTEM_ADMIN は per-scope 判定なしで認可通過（親スケジュールの生存確認は先に行う）")
     void review_SYSTEM_ADMIN_短絡() {
         given(changeRequestRepository.findById(REQUEST_ID)).willReturn(Optional.of(openRequest()));
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
         given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(true);
         given(changeRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         // 例外なく審査が確定する
         service.review(REQUEST_ID, reviewReq(), REVIEWER_ID);
 
-        // SYSTEM_ADMIN 短絡したので schedule 解決 / per-scope 判定は呼ばれない
-        verify(scheduleRepository, never()).findById(any());
-        verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
+        // SYSTEM_ADMIN 短絡したので per-scope 判定は呼ばれない
+        verify(accessControlService, never()).isAdminOrAbove(any(), any(), any());
+        verify(accessControlService, never()).isMember(any(), any(), any());
         verify(changeRequestRepository).save(any());
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // list — 権限昇格（?role=ADMIN）の封鎖
+    //
+    // 契約テスト（ShiftChangeRequestScopeContractIT）は Docker 前提で skip され得るため、
+    // 認可の要（返却範囲の決定）は Docker 非依存の純 UT でも押さえる。
+    // ════════════════════════════════════════════════════════════
+
+    /** 一般メンバー（依頼者本人） */
+    private static final Long MEMBER_ID = 21L;
+
+    @Test
+    @DisplayName("list: 一般メンバーには自分の依頼のみ返す（全件クエリは呼ばれない）")
+    void list_一般メンバーは自分の分のみ() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isSystemAdmin(MEMBER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(MEMBER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.isMember(MEMBER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(changeRequestRepository.findAllByRequestedByAndScheduleId(MEMBER_ID, SCHEDULE_ID))
+                .willReturn(List.of());
+
+        service.list(SCHEDULE_ID, MEMBER_ID);
+
+        // 「自分の分だけ」のクエリのみが使われ、全件取得は行われない
+        verify(changeRequestRepository).findAllByRequestedByAndScheduleId(MEMBER_ID, SCHEDULE_ID);
+        verify(changeRequestRepository, never()).findAllByScheduleIdOrderByCreatedAtDesc(any());
+    }
+
+    @Test
+    @DisplayName("list: 当該チーム ADMIN には全件返す")
+    void list_ADMINは全件() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(changeRequestRepository.findAllByScheduleIdOrderByCreatedAtDesc(SCHEDULE_ID))
+                .willReturn(List.of());
+
+        service.list(SCHEDULE_ID, REVIEWER_ID);
+
+        verify(changeRequestRepository).findAllByScheduleIdOrderByCreatedAtDesc(SCHEDULE_ID);
+        verify(changeRequestRepository, never()).findAllByRequestedByAndScheduleId(any(), any());
+    }
+
+    @Test
+    @DisplayName("list: 非メンバーは不在scheduleIdと同一の SHIFT_SCHEDULE_NOT_FOUND（存在オラクル是正）")
+    void list_非メンバーはCOMMON_002() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.isMember(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        assertThatThrownBy(() -> service.list(SCHEDULE_ID, REVIEWER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+
+        verify(changeRequestRepository, never()).findAllByScheduleIdOrderByCreatedAtDesc(any());
+        verify(changeRequestRepository, never()).findAllByRequestedByAndScheduleId(any(), any());
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // get — 死文だった IDOR チェックの実装
+    // ════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("get: 依頼者本人は取得できる（scope 解決すら不要）")
+    void get_依頼者本人はOK() {
+        given(changeRequestRepository.findById(REQUEST_ID))
+                .willReturn(Optional.of(requestedBy(MEMBER_ID)));
+
+        service.get(REQUEST_ID, MEMBER_ID);
+
+        // 本人一致で通るため schedule 解決は走らない
+        verify(scheduleRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("get: 当該チーム ADMIN は他人の依頼も取得できる")
+    void get_チームADMINはOK() {
+        given(changeRequestRepository.findById(REQUEST_ID))
+                .willReturn(Optional.of(requestedBy(MEMBER_ID)));
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+        service.get(REQUEST_ID, REVIEWER_ID);
+    }
+
+    @Test
+    @DisplayName("get: 他人かつ非 ADMIN は 404 相当（CHANGE_REQUEST_NOT_FOUND / 存在秘匿）")
+    void get_他人かつ非ADMINは存在秘匿() {
+        given(changeRequestRepository.findById(REQUEST_ID))
+                .willReturn(Optional.of(requestedBy(MEMBER_ID)));
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        assertThatThrownBy(() -> service.get(REQUEST_ID, REVIEWER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(ShiftErrorCode.CHANGE_REQUEST_NOT_FOUND));
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // create — 認可根治 Wave7（非メンバーによる他チームへの依頼投入の封鎖）
+    // ════════════════════════════════════════════════════════════
+
+    private static final Long SLOT_ID = 800L;
+
+    private CreateChangeRequestRequest createReq(Long slotId) {
+        return new CreateChangeRequestRequest(SCHEDULE_ID, slotId, ChangeRequestType.OPEN_CALL, "理由");
+    }
+
+    @Test
+    @DisplayName("create: 非メンバーは不在scheduleIdと同一の SHIFT_SCHEDULE_NOT_FOUND（存在オラクル是正）")
+    void create_非メンバーは不在と同一() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(false);
+        given(accessControlService.isMember(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.isAdminOrAbove(REVIEWER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        assertThatThrownBy(() -> service.create(createReq(null), REVIEWER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+
+        verify(changeRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create: 非メンバーの SYSTEM_ADMIN は是正前と同じ COMMON_002（403）で、保存されない")
+    void create_非メンバーSYSTEM_ADMINはCOMMON_002() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(true);
+        // モックの void checkMembership は何も投げないため、本物と同じ例外（非メンバー→COMMON_002）を明示する
+        org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkMembership(REVIEWER_ID, TEAM_ID, "TEAM");
+
+        assertThatThrownBy(() -> service.create(createReq(null), REVIEWER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(CommonErrorCode.COMMON_002));
+
+        verify(accessControlService).checkMembership(REVIEWER_ID, TEAM_ID, "TEAM");
+        verify(changeRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create: メンバーでもある SYSTEM_ADMIN は作成できる（SYSTEM_ADMIN を一律拒否しない）")
+    void create_メンバーSYSTEM_ADMINは作成できる() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(true);
+        given(changeRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.create(createReq(null), REVIEWER_ID);
+
+        verify(accessControlService).checkMembership(REVIEWER_ID, TEAM_ID, "TEAM");
+        verify(changeRequestRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("create: 別スケジュールの slotId を指定すると SHIFT_SLOT_NOT_FOUND（BOLA・存在秘匿）")
+    void create_別スケジュールのslotは404() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isMember(MEMBER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(
+                ShiftSlotEntity.builder().scheduleId(999L).build()));
+
+        assertThatThrownBy(() -> service.create(createReq(SLOT_ID), MEMBER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+
+        verify(changeRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("create: メンバー＋自スケジュールの slot なら作成できる（機能非回帰）")
+    void create_メンバーは作成できる() {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                ShiftScheduleEntity.builder().teamId(TEAM_ID).build()));
+        given(accessControlService.isMember(MEMBER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(
+                ShiftSlotEntity.builder().scheduleId(SCHEDULE_ID).build()));
+        given(changeRequestRepository.countByRequestedByAndRequestTypeInCurrentMonth(
+                MEMBER_ID, ChangeRequestType.OPEN_CALL)).willReturn(0L);
+        given(changeRequestRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.create(createReq(SLOT_ID), MEMBER_ID);
+
+        verify(changeRequestRepository).save(any());
+    }
+
+    /** 指定ユーザーが依頼者である変更依頼を作る */
+    private ShiftChangeRequestEntity requestedBy(Long requesterId) {
+        return ShiftChangeRequestEntity.builder()
+                .id(REQUEST_ID)
+                .scheduleId(SCHEDULE_ID)
+                .status(ChangeRequestStatus.OPEN)
+                .requestedBy(requesterId)
+                .version(0L)
+                .build();
+    }
+
+    @Test
+    @DisplayName("withdraw: SYSTEM_ADMIN も本人でなければ ACCESS_DENIED(SHIFT_019)で、依頼は変更されない")
+    void withdraw_SYSTEM_ADMINも本人でなければ403() {
+        ShiftChangeRequestEntity entity = requestedBy(MEMBER_ID);
+        given(changeRequestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+        given(accessControlService.isSystemAdmin(REVIEWER_ID)).willReturn(true);
+
+        assertThatThrownBy(() -> service.withdraw(REQUEST_ID, REVIEWER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(ShiftErrorCode.ACCESS_DENIED));
+
+        assertThat(entity.getStatus()).isEqualTo(ChangeRequestStatus.OPEN);
+        verify(changeRequestRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("withdraw: 依頼者本人でもある SYSTEM_ADMIN は取り下げられる（本人判定が SYSTEM_ADMIN 判定より先）")
+    void withdraw_本人かつSYSTEM_ADMINは取り下げられる() {
+        ShiftChangeRequestEntity entity = requestedBy(REVIEWER_ID);
+        given(changeRequestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+
+        service.withdraw(REQUEST_ID, REVIEWER_ID);
+
+        assertThat(entity.getStatus()).isEqualTo(ChangeRequestStatus.WITHDRAWN);
+        verify(changeRequestRepository).save(entity);
     }
 }

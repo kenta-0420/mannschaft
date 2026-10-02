@@ -50,4 +50,24 @@ public interface AdRateCardRepository extends JpaRepository<AdRateCardEntity, Lo
               AND (r.effectiveUntil IS NULL OR r.effectiveUntil >= :today)
             """)
     List<AdRateCardEntity> findCurrentlyEffective(@Param("today") LocalDate today);
+
+    /**
+     * F09.19.3 日次集計の単価フォールバック用: 集計日に有効な「全国・全テンプレート」
+     * （{@code target_prefecture IS NULL AND target_template IS NULL}）の料金カードを取得する。
+     *
+     * <p>{@code ad_campaigns.unit_price_snapshot} が NULL（V144.002 以前の理論上の既存行のみ）の場合の
+     * 代替単価源（正本 §7.3）。複数該当時は直近適用の {@code effective_from DESC} を優先する。</p>
+     */
+    @Query("""
+            SELECT r FROM AdRateCardEntity r
+            WHERE r.pricingModel = :pricingModel
+              AND r.targetPrefecture IS NULL
+              AND r.targetTemplate IS NULL
+              AND r.effectiveFrom <= :date
+              AND (r.effectiveUntil IS NULL OR r.effectiveUntil >= :date)
+            ORDER BY r.effectiveFrom DESC
+            """)
+    List<AdRateCardEntity> findNationwideDefaultRates(
+            @Param("pricingModel") PricingModel pricingModel,
+            @Param("date") LocalDate date);
 }

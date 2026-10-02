@@ -2,6 +2,7 @@ package com.mannschaft.app.service.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.service.dto.BulkCreateResponse;
 import com.mannschaft.app.service.dto.BulkCreateServiceRecordRequest;
 import com.mannschaft.app.service.dto.ConfirmResponse;
@@ -99,7 +100,7 @@ public class ServiceRecordController {
         });
 
         Page<ServiceRecordResponse> result = recordService.listRecords(
-                teamId, memberUserId, staffUserId, serviceDateFrom, serviceDateTo,
+                teamId, SecurityUtils.getCurrentUserId(), memberUserId, staffUserId, serviceDateFrom, serviceDateTo,
                 titleLike, status, customFieldFilters, PageRequest.of(page, size, sortObj));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -149,7 +150,7 @@ public class ServiceRecordController {
     public ResponseEntity<ApiResponse<ServiceRecordResponse>> getRecord(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        ServiceRecordResponse response = recordService.getRecord(teamId, id);
+        ServiceRecordResponse response = recordService.getRecord(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -165,7 +166,8 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateServiceRecordRequest request) {
-        ServiceRecordResponse response = recordService.updateRecord(teamId, id, request);
+        ServiceRecordResponse response = recordService.updateRecord(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -180,7 +182,7 @@ public class ServiceRecordController {
     public ResponseEntity<ApiResponse<ConfirmResponse>> confirmRecord(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        ConfirmResponse response = recordService.confirmRecord(teamId, id);
+        ConfirmResponse response = recordService.confirmRecord(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -195,7 +197,7 @@ public class ServiceRecordController {
     public ResponseEntity<Void> deleteRecord(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        recordService.deleteRecord(teamId, id);
+        recordService.deleteRecord(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -228,7 +230,8 @@ public class ServiceRecordController {
             @PathVariable Long userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<ServiceRecordResponse> result = recordService.getMemberHistory(teamId, userId, PageRequest.of(page, size));
+        Page<ServiceRecordResponse> result = recordService.getMemberHistory(
+                teamId, userId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -246,7 +249,8 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long userId,
             @RequestParam(defaultValue = "6") int months) {
-        ServiceHistorySummaryResponse response = recordService.getMemberSummary(teamId, userId, months);
+        ServiceHistorySummaryResponse response = recordService.getMemberSummary(
+                teamId, userId, SecurityUtils.getCurrentUserId(), months);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -254,10 +258,23 @@ public class ServiceRecordController {
 
     /**
      * 自分のサービス履歴を全チーム横断で取得する。
+     *
+     * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
+     * 本 EP はリクエストボディを持たず、対象ユーザーはリクエストから受け取らない。
+     * サーバ側で確定した {@link com.mannschaft.app.common.SecurityUtils#getCurrentUserId()} を
+     * {@code ServiceRecordService#getMyRecords} 経由で
+     * {@code ServiceRecordRepository#findMyRecords} の検索条件（{@code r.memberUserId = :userId}）に
+     * 固定して渡すため、他人のサービス記録は構造上取得できない自己スコープ EP である。
+     * クエリパラメータ {@code teamId} は「ダッシュボード共有が有効なチームに絞る」ための任意フィルタに
+     * すぎず、{@code memberUserId} の固定条件を回避する経路にはならない。未ログインは
+     * {@code SecurityUtils.getCurrentUserId()} が 401 を投げる。
+     * データ依存でない構造的な自己スコープ認可のため白名簿クラス呼び出しを持たず、
+     * 本マーカーで監査済であることを明示する。</p>
      */
     @GetMapping("/service-records/me")
     @Operation(summary = "自分のサービス履歴")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @AuthorizedInService
     public ResponseEntity<PagedResponse<ServiceRecordResponse>> getMyRecords(
             @RequestParam(required = false) Long teamId,
             @RequestParam(defaultValue = "0") int page,
@@ -312,7 +329,8 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UploadUrlRequest request) {
-        UploadUrlResponse response = recordService.generateUploadUrl(teamId, id, request);
+        UploadUrlResponse response = recordService.generateUploadUrl(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -328,7 +346,8 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody RegisterAttachmentRequest request) {
-        AttachmentResponse response = recordService.registerAttachment(teamId, id, request);
+        AttachmentResponse response = recordService.registerAttachment(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -344,7 +363,7 @@ public class ServiceRecordController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @PathVariable Long attachmentId) {
-        recordService.deleteAttachment(teamId, id, attachmentId);
+        recordService.deleteAttachment(teamId, id, attachmentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -362,7 +381,9 @@ public class ServiceRecordController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate serviceDateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate serviceDateTo,
             HttpServletResponse httpResponse) {
-        ExportResponse asyncResult = exportService.exportOrNull(teamId, memberUserId, serviceDateFrom, serviceDateTo);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ExportResponse asyncResult = exportService.exportOrNull(
+                teamId, currentUserId, memberUserId, serviceDateFrom, serviceDateTo);
 
         if (asyncResult != null) {
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(asyncResult));
@@ -372,7 +393,7 @@ public class ServiceRecordController {
         httpResponse.setContentType("text/csv; charset=UTF-8");
         httpResponse.setHeader("Content-Disposition", "attachment; filename=service_records.csv");
         try {
-            exportService.writeCsv(teamId, memberUserId, serviceDateFrom, serviceDateTo,
+            exportService.writeCsv(teamId, currentUserId, memberUserId, serviceDateFrom, serviceDateTo,
                     httpResponse.getOutputStream());
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();

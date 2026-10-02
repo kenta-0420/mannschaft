@@ -39,7 +39,7 @@ const MOCK_EQUIPMENT_ASSIGNED = {
 
 const MOCK_EQUIPMENT_LIST = {
   data: [MOCK_EQUIPMENT_ITEM, MOCK_EQUIPMENT_ASSIGNED],
-  meta: { page: 0, size: 20, totalElements: 2, totalPages: 1 },
+  meta: { page: 0, size: 20, total: 2, totalPages: 1 },
 }
 
 async function mockEquipmentApis(page: Page): Promise<void> {

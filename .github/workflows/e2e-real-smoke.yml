@@ -23,7 +23,7 @@
 # 実行時間の見積もり: 約 12〜20 分
 #   - JAR ビルド（キャッシュなし）: 約 8〜12 分
 #   - JAR ビルド（キャッシュあり）: 約 3〜5 分
-#   - バックエンド起動 + Flyway: 約 2〜3 分
+#   - バックエンド起動 + Flyway: 約 5〜8 分（migration 増加時）
 #   - seed 実行: 約 30 秒
 #   - smoke チェック: 約 30 秒
 #
@@ -53,7 +53,7 @@ jobs:
   seed-and-api-smoke:
     name: Seed + API Smoke Check
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
 
     services:
       mysql:
@@ -102,10 +102,10 @@ jobs:
         working-directory: backend
         run: ./gradlew bootJar -x test --no-daemon --build-cache
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22.23.2
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22.23.2'
 
       # seed スクリプトの依存関係（mysql2 + bcryptjs）をインストール
       - name: Install seed script dependencies
@@ -133,22 +133,27 @@ jobs:
           echo "BACKEND_PID=$!" >> "$GITHUB_ENV"
           echo "バックエンドを起動しました（PID: $!）"
 
-      # actuator/health が UP になるまで最大 5 分待機する
+      # Flyway の初回 migration が 4 分以上かかるため、最大 10 分待機する
       - name: Wait for backend health
         run: |
           echo "バックエンドの起動を待機しています..."
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
-              echo "✅ Backend is UP (試行 ${i}/30)"
+              echo "✅ Backend is UP (試行 ${i}/60)"
               break
             fi
-            if [ "$i" -eq 30 ]; then
-              echo "❌ FAIL: バックエンドが 5 分以内に起動しませんでした"
+            if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+              echo "❌ FAIL: バックエンドが起動途中で終了しました"
+              tail -100 /tmp/backend.log || true
+              exit 1
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "❌ FAIL: バックエンドが 10 分以内に起動しませんでした"
               echo "=== backend.log の末尾 ==="
               tail -100 /tmp/backend.log || true
               exit 1
             fi
-            echo "待機中... ($i/30)"
+            echo "待機中... ($i/60)"
             sleep 10
           done
 

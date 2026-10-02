@@ -1,12 +1,10 @@
 package com.mannschaft.app.notification.confirmable.service;
 
-import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
-import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.entity.UnconfirmedVisibility;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
@@ -26,7 +24,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 
 /**
  * {@link ConfirmableNotificationQueryService} の単体テスト。
@@ -53,23 +50,6 @@ class ConfirmableNotificationQueryServiceTest {
     private static final Long USER_ID_1 = 1L;
     private static final Long USER_ID_2 = 2L;
     private static final Long USER_ID_3 = 3L;
-
-    /**
-     * IDを持つ受信者モックを作成する。
-     */
-    private ConfirmableNotificationRecipientEntity createMockedRecipient(
-            Long id, ConfirmableNotificationEntity notification, Long userId, boolean confirmed) {
-        UserEntity user = mock(UserEntity.class);
-        given(user.getId()).willReturn(userId);
-
-        ConfirmableNotificationRecipientEntity recipient =
-                mock(ConfirmableNotificationRecipientEntity.class);
-        given(recipient.getId()).willReturn(id);
-        given(recipient.getUser()).willReturn(user);
-        given(recipient.getIsConfirmed()).willReturn(confirmed);
-        given(recipient.isExcluded()).willReturn(false);
-        return recipient;
-    }
 
     // ========================================
     // F04.9 Phase D: 未確認者一覧の可視化（unconfirmedVisibility）
@@ -107,18 +87,25 @@ class ConfirmableNotificationQueryServiceTest {
         // ADMIN+ 経路 — getRecipients() は公開範囲に関係なく全件返す
         // -------------------------------------------------------------------
 
+        /**
+         * CMP-260920-1040是正: getRecipients はネイティブ投影行（id, user_id, display_name,
+         * avatar_url, user_deleted_at, is_confirmed, confirmed_at, confirmed_via, excluded_at,
+         * created_at）から直接 DTO を組み立てるため、行配列を作るヘルパへ差し替える
+         * （退会者でも 500 化しない根治の一環）。
+         */
+        private Object[] recipientRow(Long id, Long userId, boolean confirmed) {
+            return new Object[] {id, userId, "表示名" + userId, null, null,
+                    confirmed, null, null, null, java.time.LocalDateTime.now()};
+        }
+
         @Test
         @DisplayName("getRecipients_HIDDEN_ADMINが呼ぶと全件返る")
         void getRecipients_HIDDEN_ADMINが呼ぶと全件返る() {
-            ConfirmableNotificationEntity notification = notificationWithVisibility(UnconfirmedVisibility.HIDDEN);
-            ConfirmableNotificationRecipientEntity r1 = createMockedRecipient(1L, notification, USER_ID_1, false);
-            ConfirmableNotificationRecipientEntity r2 = createMockedRecipient(2L, notification, USER_ID_2, true);
-
             given(notificationRepository.existsById(NOTIFICATION_ID)).willReturn(true);
-            given(recipientRepository.findByConfirmableNotificationId(NOTIFICATION_ID))
-                    .willReturn(List.of(r1, r2));
+            given(recipientRepository.findRecipientRowsByNotificationId(NOTIFICATION_ID))
+                    .willReturn(List.of(recipientRow(1L, USER_ID_1, false), recipientRow(2L, USER_ID_2, true)));
 
-            List<ConfirmableNotificationRecipientEntity> result =
+            List<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse> result =
                     queryService.getRecipients(NOTIFICATION_ID);
 
             assertThat(result).hasSize(2);
@@ -127,15 +114,11 @@ class ConfirmableNotificationQueryServiceTest {
         @Test
         @DisplayName("getRecipients_CREATOR_AND_ADMIN_ADMINが呼ぶと全件返る")
         void getRecipients_CREATOR_AND_ADMIN_ADMINが呼ぶと全件返る() {
-            ConfirmableNotificationEntity notification = notificationWithVisibility(UnconfirmedVisibility.CREATOR_AND_ADMIN);
-            ConfirmableNotificationRecipientEntity r1 = createMockedRecipient(1L, notification, USER_ID_1, false);
-            ConfirmableNotificationRecipientEntity r2 = createMockedRecipient(2L, notification, USER_ID_2, true);
-
             given(notificationRepository.existsById(NOTIFICATION_ID)).willReturn(true);
-            given(recipientRepository.findByConfirmableNotificationId(NOTIFICATION_ID))
-                    .willReturn(List.of(r1, r2));
+            given(recipientRepository.findRecipientRowsByNotificationId(NOTIFICATION_ID))
+                    .willReturn(List.of(recipientRow(1L, USER_ID_1, false), recipientRow(2L, USER_ID_2, true)));
 
-            List<ConfirmableNotificationRecipientEntity> result =
+            List<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse> result =
                     queryService.getRecipients(NOTIFICATION_ID);
 
             assertThat(result).hasSize(2);
@@ -144,15 +127,11 @@ class ConfirmableNotificationQueryServiceTest {
         @Test
         @DisplayName("getRecipients_ALL_MEMBERS_ADMINが呼ぶと全件返る")
         void getRecipients_ALL_MEMBERS_ADMINが呼ぶと全件返る() {
-            ConfirmableNotificationEntity notification = notificationWithVisibility(UnconfirmedVisibility.ALL_MEMBERS);
-            ConfirmableNotificationRecipientEntity r1 = createMockedRecipient(1L, notification, USER_ID_1, false);
-            ConfirmableNotificationRecipientEntity r2 = createMockedRecipient(2L, notification, USER_ID_2, true);
-
             given(notificationRepository.existsById(NOTIFICATION_ID)).willReturn(true);
-            given(recipientRepository.findByConfirmableNotificationId(NOTIFICATION_ID))
-                    .willReturn(List.of(r1, r2));
+            given(recipientRepository.findRecipientRowsByNotificationId(NOTIFICATION_ID))
+                    .willReturn(List.of(recipientRow(1L, USER_ID_1, false), recipientRow(2L, USER_ID_2, true)));
 
-            List<ConfirmableNotificationRecipientEntity> result =
+            List<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse> result =
                     queryService.getRecipients(NOTIFICATION_ID);
 
             assertThat(result).hasSize(2);
@@ -191,21 +170,22 @@ class ConfirmableNotificationQueryServiceTest {
         void getRecipientsForMember_ALL_MEMBERS_受信者本人なら未確認者のみ返る() {
             // given: ALL_MEMBERS 公開・受信者3名（USER_ID_1=未確認・USER_ID_2=確認済・USER_ID_3=未確認）
             ConfirmableNotificationEntity notification = notificationWithVisibility(UnconfirmedVisibility.ALL_MEMBERS);
-            ConfirmableNotificationRecipientEntity r1 = createMockedRecipient(1L, notification, USER_ID_1, false);
-            ConfirmableNotificationRecipientEntity r2 = createMockedRecipient(2L, notification, USER_ID_2, true);
-            ConfirmableNotificationRecipientEntity r3 = createMockedRecipient(3L, notification, USER_ID_3, false);
 
             given(notificationRepository.findById(NOTIFICATION_ID)).willReturn(Optional.of(notification));
-            given(recipientRepository.findByConfirmableNotificationId(NOTIFICATION_ID))
-                    .willReturn(List.of(r1, r2, r3));
+            given(recipientRepository.findRecipientRowsByNotificationId(NOTIFICATION_ID))
+                    .willReturn(List.of(
+                            recipientRow(1L, USER_ID_1, false),
+                            recipientRow(2L, USER_ID_2, true),
+                            recipientRow(3L, USER_ID_3, false)));
 
             // when: USER_ID_1（受信者本人・未確認）が呼ぶ
-            List<ConfirmableNotificationRecipientEntity> result =
+            List<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse> result =
                     queryService.getRecipientsForMember(NOTIFICATION_ID, USER_ID_1);
 
             // then: 未確認者2名のみ返る（USER_ID_2 は確認済みなので除外）
             assertThat(result).hasSize(2);
-            assertThat(result).extracting(r -> r.getUser().getId())
+            assertThat(result).extracting(
+                    com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse::getUserId)
                     .containsExactlyInAnyOrder(USER_ID_1, USER_ID_3);
         }
 
@@ -214,11 +194,10 @@ class ConfirmableNotificationQueryServiceTest {
         void getRecipientsForMember_ALL_MEMBERS_非受信者が呼ぶと403() {
             // given: ALL_MEMBERS 公開だが、呼び出しユーザーは受信者ではない
             ConfirmableNotificationEntity notification = notificationWithVisibility(UnconfirmedVisibility.ALL_MEMBERS);
-            ConfirmableNotificationRecipientEntity r1 = createMockedRecipient(1L, notification, USER_ID_2, false);
 
             given(notificationRepository.findById(NOTIFICATION_ID)).willReturn(Optional.of(notification));
-            given(recipientRepository.findByConfirmableNotificationId(NOTIFICATION_ID))
-                    .willReturn(List.of(r1));
+            given(recipientRepository.findRecipientRowsByNotificationId(NOTIFICATION_ID))
+                    .willReturn(List.<Object[]>of(recipientRow(1L, USER_ID_2, false)));
 
             // when / then: 非受信者の USER_ID_1 が呼ぶと 403
             assertThatThrownBy(() -> queryService.getRecipientsForMember(NOTIFICATION_ID, USER_ID_1))

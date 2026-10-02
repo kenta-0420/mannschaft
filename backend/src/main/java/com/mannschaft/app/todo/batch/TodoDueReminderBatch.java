@@ -2,6 +2,8 @@ package com.mannschaft.app.todo.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -110,9 +112,11 @@ public class TodoDueReminderBatch {
      * </ol>
      * </p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。TODO の期限リマインド送信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "todo-due-reminder-hourly", description = "TODO の明日期限と期限超過リマインドをユーザーTZ別に毎時チェックして送信する")
     @Scheduled(fixedDelay = 3_600_000)
-    @SchedulerLock(name = "todoDueReminderHourly", lockAtLeastFor = "PT50M", lockAtMostFor = "PT55M")
+    @SchedulerLock(name = "todoDueReminderHourly", lockAtLeastFor = "PT50M", lockAtMostFor = "PT2H")
     public void run() {
         log.info("TodoDueReminderBatch 開始");
         int dueTomorrowCount = sendDueTomorrowReminders();

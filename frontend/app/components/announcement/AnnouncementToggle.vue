@@ -3,7 +3,7 @@
  * F02.6 投稿フォームに埋め込む「お知らせウィジェットに表示する」スイッチ。
  *
  * 使用方法:
- *   <AnnouncementAnnouncementToggle v-model="displayInAnnouncement" />
+ *   <AnnouncementToggle v-model="displayInAnnouncement" />
  *
  * オフラインの場合は disabled にし、ツールチップを表示する。
  */

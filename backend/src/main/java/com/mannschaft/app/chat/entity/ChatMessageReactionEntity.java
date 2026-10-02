@@ -37,6 +37,7 @@ public class ChatMessageReactionEntity {
     @Column(nullable = false, length = 50)
     private String emoji;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

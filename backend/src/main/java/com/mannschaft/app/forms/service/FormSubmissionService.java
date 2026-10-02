@@ -1,11 +1,18 @@
 package com.mannschaft.app.forms.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.StorageErrorCode;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.forms.FormErrorCode;
 import com.mannschaft.app.forms.FormFieldType;
 import com.mannschaft.app.forms.FormMapper;
+import com.mannschaft.app.forms.FormScopes;
 import com.mannschaft.app.forms.FormStatus;
 import com.mannschaft.app.forms.dto.CreateFormSubmissionRequest;
 import com.mannschaft.app.forms.dto.FormSubmissionResponse;
@@ -27,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -45,6 +55,8 @@ public class FormSubmissionService {
     private final FormTemplateService templateService;
     private final FormMapper formMapper;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
+    private final AccessControlService accessControlService;
 
     /** Pre-signed upload URL の有効期間（10 分）。設計書 §4 添付アップロード API 準拠。 */
     private static final Duration UPLOAD_URL_TTL = Duration.ofMinutes(10);
@@ -73,13 +85,23 @@ public class FormSubmissionService {
     /**
      * テンプレートに紐付く提出一覧をページング取得する。
      *
+     * <p>認可根治戦役 Wave3-B4: {@code templateId} が URL の {@code scopeType}/{@code scopeId} に
+     * 属するかを {@link FormTemplateService#getTemplate} 経由で検証してから
+     * {@code checkAdminOrAbove} する（BOLA: 他スコープの templateId を指定した越境を 404 で秘匿）。</p>
+     *
+     * @param scopeType  スコープ種別
+     * @param scopeId    スコープID
+     * @param userId     操作ユーザーID
      * @param templateId テンプレートID
      * @param status     ステータスフィルタ（null の場合は全件）
      * @param pageable   ページング情報
      * @return 提出レスポンスのページ
      */
     public Page<FormSubmissionResponse> listSubmissionsByTemplate(
-            Long templateId, String status, Pageable pageable) {
+            String scopeType, Long scopeId, Long userId, Long templateId, String status, Pageable pageable) {
+        // findTemplateOrThrow相当: スコープ不一致は TEMPLATE_NOT_FOUND(404)で存在秘匿
+        templateService.getTemplateEntityInScope(scopeType, scopeId, templateId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
         Page<FormSubmissionEntity> page;
         if (status != null) {
             com.mannschaft.app.forms.SubmissionStatus submissionStatus =
@@ -106,6 +128,7 @@ public class FormSubmissionService {
      */
     public Page<FormSubmissionResponse> listMySubmissions(
             Long userId, String scopeType, Long scopeId, Pageable pageable) {
+        accessControlService.checkMembership(userId, scopeId, FormScopes.canonical(scopeType));
         Page<FormSubmissionEntity> page = submissionRepository
                 .findBySubmittedByAndScopeTypeAndScopeIdOrderByCreatedAtDesc(
                         userId, scopeType, scopeId, pageable);
@@ -118,11 +141,19 @@ public class FormSubmissionService {
     /**
      * 提出詳細を取得する。
      *
+     * <p>認可根治戦役 Wave3-B4: entity 由来の scope が URL の
+     * {@code scopeType}/{@code scopeId} と一致するかを検証（不一致は 404 で存在秘匿）したうえで
+     * {@code checkMembership} する。</p>
+     *
+     * @param scopeType    スコープ種別
+     * @param scopeId      スコープID
+     * @param userId       操作ユーザーID
      * @param submissionId 提出ID
      * @return 提出レスポンス
      */
-    public FormSubmissionResponse getSubmission(Long submissionId) {
-        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+    public FormSubmissionResponse getSubmission(String scopeType, Long scopeId, Long userId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionInScopeOrThrow(scopeType, scopeId, null, submissionId);
+        accessControlService.checkMembership(userId, scopeId, FormScopes.canonical(scopeType));
         List<FormSubmissionValueEntity> values = valueRepository.findBySubmissionId(submissionId);
         return formMapper.toSubmissionResponseWithValues(entity, values);
     }
@@ -139,6 +170,7 @@ public class FormSubmissionService {
     @Transactional
     public FormSubmissionResponse createSubmission(
             String scopeType, Long scopeId, Long userId, CreateFormSubmissionRequest request) {
+        accessControlService.checkMembership(userId, scopeId, FormScopes.canonical(scopeType));
         FormTemplateEntity template = templateService.getTemplateEntity(request.getTemplateId());
 
         if (template.getStatus() != FormStatus.PUBLISHED) {
@@ -176,7 +208,7 @@ public class FormSubmissionService {
 
         List<FormSubmissionValueEntity> values = List.of();
         if (request.getValues() != null && !request.getValues().isEmpty()) {
-            values = saveValues(saved.getId(), request.getValues());
+            values = saveValues(saved, request.getValues(), userId);
         }
 
         if (Boolean.TRUE.equals(request.getSubmitImmediately())) {
@@ -233,7 +265,6 @@ public class FormSubmissionService {
         FormSubmissionEntity entity;
         if (existing != null) {
             entity = existing;
-            valueRepository.deleteBySubmissionId(entity.getId());
             if (submitNow) {
                 entity.submit();
             }
@@ -256,8 +287,10 @@ public class FormSubmissionService {
         FormSubmissionEntity saved = submissionRepository.save(entity);
 
         List<FormSubmissionValueEntity> values = List.of();
-        if (request.getValues() != null && !request.getValues().isEmpty()) {
-            values = saveValues(saved.getId(), request.getValues());
+        if (existing != null) {
+            values = replaceValues(saved, request.getValues() == null ? List.of() : request.getValues(), userId);
+        } else if (request.getValues() != null && !request.getValues().isEmpty()) {
+            values = saveValues(saved, request.getValues(), userId);
         }
 
         if (submitNow) {
@@ -282,7 +315,6 @@ public class FormSubmissionService {
             Long submissionId, Long userId, UpdateFormSubmissionRequest request) {
         FormSubmissionEntity entity = submissionRepository.findByIdAndSubmittedBy(submissionId, userId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
-
         if (!entity.isEditable()) {
             FormTemplateEntity template = templateService.getTemplateEntity(entity.getTemplateId());
             if (!Boolean.TRUE.equals(template.getAllowEditAfterSubmit())) {
@@ -300,8 +332,7 @@ public class FormSubmissionService {
 
         List<FormSubmissionValueEntity> values;
         if (request.getValues() != null) {
-            valueRepository.deleteBySubmissionId(submissionId);
-            values = saveValues(submissionId, request.getValues());
+            values = replaceValues(saved, request.getValues(), userId);
         } else {
             values = valueRepository.findBySubmissionId(submissionId);
         }
@@ -353,12 +384,22 @@ public class FormSubmissionService {
     /**
      * 提出を承認する。
      *
+     * <p>認可根治戦役 Wave3-B4: BOLA ガード — 提出 entity 由来の {@code templateId}/{@code scopeType}/
+     * {@code scopeId} が URL パスと一致するかを検証してから {@code checkAdminOrAbove} する。
+     * 不一致は {@link FormErrorCode#SUBMISSION_NOT_FOUND}（404）で存在秘匿する。</p>
+     *
+     * @param scopeType    スコープ種別
+     * @param scopeId      スコープID
+     * @param userId       操作ユーザーID
+     * @param templateId   テンプレートID（URL パス由来。提出の templateId と一致すること）
      * @param submissionId 提出ID
      * @return 更新された提出レスポンス
      */
     @Transactional
-    public FormSubmissionResponse approveSubmission(Long submissionId) {
-        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+    public FormSubmissionResponse approveSubmission(
+            String scopeType, Long scopeId, Long userId, Long templateId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionInScopeOrThrow(scopeType, scopeId, templateId, submissionId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
 
         if (!entity.isSubmitted()) {
             throw new BusinessException(FormErrorCode.INVALID_SUBMISSION_STATUS);
@@ -375,12 +416,20 @@ public class FormSubmissionService {
     /**
      * 提出を却下する。
      *
+     * <p>認可根治戦役 Wave3-B4: BOLA ガード + checkAdminOrAbove（{@link #approveSubmission} 参照）。</p>
+     *
+     * @param scopeType    スコープ種別
+     * @param scopeId      スコープID
+     * @param userId       操作ユーザーID
+     * @param templateId   テンプレートID
      * @param submissionId 提出ID
      * @return 更新された提出レスポンス
      */
     @Transactional
-    public FormSubmissionResponse rejectSubmission(Long submissionId) {
-        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+    public FormSubmissionResponse rejectSubmission(
+            String scopeType, Long scopeId, Long userId, Long templateId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionInScopeOrThrow(scopeType, scopeId, templateId, submissionId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
 
         if (!entity.isSubmitted()) {
             throw new BusinessException(FormErrorCode.INVALID_SUBMISSION_STATUS);
@@ -397,12 +446,20 @@ public class FormSubmissionService {
     /**
      * 提出を差し戻す。
      *
+     * <p>認可根治戦役 Wave3-B4: BOLA ガード + checkAdminOrAbove（{@link #approveSubmission} 参照）。</p>
+     *
+     * @param scopeType    スコープ種別
+     * @param scopeId      スコープID
+     * @param userId       操作ユーザーID
+     * @param templateId   テンプレートID
      * @param submissionId 提出ID
      * @return 更新された提出レスポンス
      */
     @Transactional
-    public FormSubmissionResponse returnSubmission(Long submissionId) {
-        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+    public FormSubmissionResponse returnSubmission(
+            String scopeType, Long scopeId, Long userId, Long templateId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionInScopeOrThrow(scopeType, scopeId, templateId, submissionId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
 
         if (!entity.isSubmitted()) {
             throw new BusinessException(FormErrorCode.INVALID_SUBMISSION_STATUS);
@@ -426,6 +483,13 @@ public class FormSubmissionService {
     public void deleteSubmission(Long submissionId, Long userId) {
         FormSubmissionEntity entity = submissionRepository.findByIdAndSubmittedBy(submissionId, userId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+        // 添付と ACL は同じ transaction で不可視化する。R2 実体の削除はここでは行わない。
+        valueRepository.findBySubmissionIdForUpdate(submissionId).stream()
+                .filter(this::hasStoredFile).forEach(this::releaseValue);
+        if (entity.getPdfFileKey() != null && !entity.getPdfFileKey().isBlank()) {
+            storageAclService.releaseClaimed(entity.getPdfFileKey(),
+                    new StorageAclAttachmentBinding("FORM_SUBMISSION_PDF", submissionId.toString()));
+        }
         entity.softDelete();
         submissionRepository.save(entity);
         log.info("提出削除: submissionId={}", submissionId);
@@ -437,6 +501,23 @@ public class FormSubmissionService {
     private FormSubmissionEntity findSubmissionOrThrow(Long submissionId) {
         return submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+    }
+
+    /**
+     * 提出を取得し、URL の {@code scopeType}/{@code scopeId} と一致するかを検証する（BOLA ガード）。
+     * {@code templateId} が指定された場合は提出の {@code templateId} との一致も検証する。
+     * 不一致・不在はいずれも {@link FormErrorCode#SUBMISSION_NOT_FOUND}（404）として存在秘匿する
+     * （認可根治戦役 Wave3-B4）。
+     */
+    private FormSubmissionEntity findSubmissionInScopeOrThrow(
+            String scopeType, Long scopeId, Long templateId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+        boolean scopeMatches = entity.getScopeType().equalsIgnoreCase(scopeType) && entity.getScopeId().equals(scopeId);
+        boolean templateMatches = templateId == null || templateId.equals(entity.getTemplateId());
+        if (!scopeMatches || !templateMatches) {
+            throw new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND);
+        }
+        return entity;
     }
 
     /**
@@ -473,11 +554,17 @@ public class FormSubmissionService {
      * @throws BusinessException SUBMISSION_NOT_FOUND / EDIT_AFTER_SUBMIT_NOT_ALLOWED
      *                           / UPLOAD_CONTENT_TYPE_INVALID / UPLOAD_SIZE_EXCEEDED
      */
+    @Transactional
     public FormUploadUrlResponse presignUploadUrl(
             String scopeType, Long scopeId, Long submissionId, Long userId,
             FormUploadUrlRequest request) {
         FormSubmissionEntity entity = submissionRepository.findByIdAndSubmittedBy(submissionId, userId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+        if (!matchesScope(entity, scopeType, scopeId)) {
+            throw new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND);
+        }
+        String entityScopeType = FormScopes.canonical(entity.getScopeType());
+        Long entityScopeId = entity.getScopeId();
 
         // 編集可能ステータス（DRAFT / RETURNED）でのみ添付追加を許可する
         if (!entity.isEditable()) {
@@ -506,12 +593,14 @@ public class FormSubmissionService {
         String safeName = sanitizeFileName(request.getFileName());
         String fileKey = String.format(
                 "forms/%s/%d/submissions/%d/%s/%s/%s",
-                scopeType, scopeId, submissionId,
+                entityScopeType, entityScopeId, submissionId,
                 isSignature ? "signatures" : "attachments",
                 UUID.randomUUID(), safeName);
 
         PresignedUploadResult result = storageService.generateUploadUrl(
                 fileKey, normalizedType, UPLOAD_URL_TTL);
+        storageAclService.registerPending(result.s3Key(), userId, toAclScope(entityScopeType, entityScopeId), normalizedType,
+                UPLOAD_URL_TTL, new StorageAclContentReference("FORM_SUBMISSION", submissionId.toString()));
         log.info("フォーム upload-url 発行: submissionId={}, userId={}, fileKey={}",
                 submissionId, userId, fileKey);
         return new FormUploadUrlResponse(result.uploadUrl(), result.s3Key(), result.expiresInSeconds());
@@ -535,19 +624,96 @@ public class FormSubmissionService {
      * 提出値を一括保存する。
      */
     private List<FormSubmissionValueEntity> saveValues(
-            Long submissionId, List<SubmissionValueRequest> values) {
+            FormSubmissionEntity submission, List<SubmissionValueRequest> values, Long userId) {
+        return saveValues(submission, values, userId, Map.of());
+    }
+
+    /**
+     * 同じ fileKey の値 ID を保持し、除去された添付だけを解放する。
+     * ACL と提出値の整合が必要なため、storage サービスは forms の transaction に参加する。
+     */
+    private List<FormSubmissionValueEntity> replaceValues(
+            FormSubmissionEntity submission, List<SubmissionValueRequest> values, Long userId) {
+        List<FormSubmissionValueEntity> previous = valueRepository.findBySubmissionIdForUpdate(submission.getId());
+        Map<String, FormSubmissionValueEntity> previousFiles = new HashMap<>();
+        previous.stream().filter(this::hasStoredFile)
+                .forEach(value -> previousFiles.put(value.getFileKey(), value));
+        List<FormSubmissionValueEntity> saved = saveValues(submission, values, userId, previousFiles);
+        Set<Long> retainedIds = new HashSet<>();
+        saved.forEach(value -> retainedIds.add(value.getId()));
+        List<FormSubmissionValueEntity> removed = previous.stream()
+                .filter(value -> !retainedIds.contains(value.getId())).toList();
+        removed.stream().filter(this::hasStoredFile).forEach(this::releaseValue);
+        valueRepository.deleteAll(removed);
+        return saved;
+    }
+
+    private List<FormSubmissionValueEntity> saveValues(
+            FormSubmissionEntity submission, List<SubmissionValueRequest> values, Long userId,
+            Map<String, FormSubmissionValueEntity> previousFiles) {
+        Set<String> requestedFiles = new HashSet<>();
         List<FormSubmissionValueEntity> entities = values.stream()
-                .map(v -> (FormSubmissionValueEntity) FormSubmissionValueEntity.builder()
-                        .submissionId(submissionId)
+                .map(v -> {
+                    FormFieldType type = FormFieldType.valueOf(v.getFieldType());
+                    boolean storedFile = isStoredFile(type, v.getFileKey());
+                    if (storedFile && !requestedFiles.add(v.getFileKey())) {
+                        throw new BusinessException(StorageErrorCode.ACL_CLAIM_CONFLICT);
+                    }
+                    FormSubmissionValueEntity previous = storedFile ? previousFiles.get(v.getFileKey()) : null;
+                    return (FormSubmissionValueEntity) (previous == null
+                            ? FormSubmissionValueEntity.builder() : previous.toBuilder())
+                        .submissionId(submission.getId())
                         .fieldKey(v.getFieldKey())
-                        .fieldType(FormFieldType.valueOf(v.getFieldType()))
+                        .fieldType(type)
                         .textValue(v.getTextValue())
                         .numberValue(v.getNumberValue())
                         .dateValue(v.getDateValue())
                         .fileKey(v.getFileKey())
                         .isAutoFilled(v.getIsAutoFilled() != null ? v.getIsAutoFilled() : false)
-                        .build())
+                        .build();
+                })
                 .toList();
-        return valueRepository.saveAll(entities);
+        List<FormSubmissionValueEntity> saved = valueRepository.saveAll(entities);
+        StorageAclScope scope = toAclScope(submission.getScopeType(), submission.getScopeId());
+        for (FormSubmissionValueEntity value : saved) {
+            if ((value.getFieldType() == FormFieldType.FILE || value.getFieldType() == FormFieldType.SIGNATURE)
+                    && value.getFileKey() != null && !value.getFileKey().isBlank()) {
+                // 大会再提出の操作担当が変わっても、保持した添付の owner は元の提出者のまま。
+                Long ownerId = previousFiles.containsKey(value.getFileKey()) ? submission.getSubmittedBy() : userId;
+                storageAclService.claimPending(value.getFileKey(), ownerId, scope,
+                        new StorageAclContentReference("FORM_SUBMISSION", submission.getId().toString()),
+                        new StorageAclAttachmentBinding("FORM_SUBMISSION_VALUE", value.getId().toString()));
+            }
+        }
+        return saved;
+    }
+
+    private boolean hasStoredFile(FormSubmissionValueEntity value) {
+        return isStoredFile(value.getFieldType(), value.getFileKey());
+    }
+
+    private boolean isStoredFile(FormFieldType type, String fileKey) {
+        return (type == FormFieldType.FILE || type == FormFieldType.SIGNATURE)
+                && fileKey != null && !fileKey.isBlank();
+    }
+
+    private void releaseValue(FormSubmissionValueEntity value) {
+        storageAclService.releaseClaimed(value.getFileKey(),
+                new StorageAclAttachmentBinding("FORM_SUBMISSION_VALUE", value.getId().toString()));
+    }
+
+    private StorageAclScope toAclScope(String scopeType, Long scopeId) {
+        return "TEAM".equals(FormScopes.canonical(scopeType))
+                ? StorageAclScope.team(scopeId)
+                : StorageAclScope.organization(scopeId);
+    }
+
+    private boolean matchesScope(FormSubmissionEntity entity, String scopeType, Long scopeId) {
+        try {
+            return entity.getScopeId().equals(scopeId)
+                    && FormScopes.canonical(entity.getScopeType()).equals(FormScopes.canonical(scopeType));
+        } catch (BusinessException exception) {
+            return false;
+        }
     }
 }

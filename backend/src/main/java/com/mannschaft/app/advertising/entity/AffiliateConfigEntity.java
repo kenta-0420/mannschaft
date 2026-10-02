@@ -30,6 +30,13 @@ import java.time.LocalDateTime;
 @SuperBuilder
 public class AffiliateConfigEntity extends BaseEntity {
 
+    /**
+     * リリース前提シード（Flyway V149.20260710004057）が投入する未設定プレースホルダ tag_id の接頭辞。
+     * SYSTEM_ADMIN が affiliate-settings 画面で本物の tag_id へ上書きするまでの仮値であり、
+     * この接頭辞を持つ行は広告候補から除外する（CMP-260918-0025）。
+     */
+    public static final String PLACEHOLDER_TAG_PREFIX = "PLACEHOLDER_";
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AffiliateProvider provider;
@@ -113,5 +120,20 @@ public class AffiliateConfigEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * tag_id が未設定（プレースホルダ）かどうかを判定する。
+     * 広告候補選定・管理画面の警告表示など全経路から本メソッドを使う（比較ロジックの散逸防止）。
+     */
+    public static boolean isPlaceholderTagId(String tagId) {
+        return tagId != null && tagId.startsWith(PLACEHOLDER_TAG_PREFIX);
+    }
+
+    /**
+     * このエンティティの tag_id が未設定（プレースホルダ）かどうかを判定する。
+     */
+    public boolean isPlaceholderTagId() {
+        return isPlaceholderTagId(this.tagId);
     }
 }

@@ -94,7 +94,7 @@ const MOCK_ANNOUNCEMENT_FEED_RESPONSE = {
       createdAt: '2026-05-07T09:00:00+09:00',
     },
   ],
-  meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+  meta: { page: 0, size: 20, total: 1, totalPages: 1 },
 }
 
 // ---------------------------------------------------------------------------

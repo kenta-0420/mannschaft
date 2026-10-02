@@ -23,11 +23,13 @@ public interface CmsMapper {
 
     @Mapping(target = "scope", expression = "java(new com.mannschaft.app.cms.dto.BlogPostResponse.BlogPostScopeDto(entity.getTeamId(), entity.getOrganizationId(), entity.getUserId(), entity.getAuthorId()))")
     @Mapping(target = "content", expression = "java(new com.mannschaft.app.cms.dto.BlogPostResponse.BlogPostContentDto(entity.getTitle(), entity.getSlug(), entity.getBody(), entity.getExcerpt(), entity.getCoverImageUrl()))")
-    @Mapping(target = "meta", expression = "java(new com.mannschaft.app.cms.dto.BlogPostResponse.BlogPostMetaDto(entity.getPostType() != null ? entity.getPostType().name() : null, entity.getVisibility() != null ? entity.getVisibility().name() : null, entity.getPriority() != null ? entity.getPriority().name() : null, entity.getStatus() != null ? entity.getStatus().name() : null, entity.getPinned(), entity.getAllowComments()))")
+    @Mapping(target = "meta", expression = "java(new com.mannschaft.app.cms.dto.BlogPostResponse.BlogPostMetaDto(entity.getPostType() != null ? entity.getPostType().name() : null, entity.getVisibility() != null ? entity.getVisibility().name() : null, entity.getPriority() != null ? entity.getPriority().name() : null, entity.getStatus() != null ? entity.getStatus().name() : null, entity.getPinned(), entity.getAllowComments(), entity.isPublicVisible()))")
     @Mapping(target = "series", expression = "java(new com.mannschaft.app.cms.dto.BlogPostResponse.BlogPostSeriesDto(entity.getSeriesId(), entity.getSeriesOrder()))")
     @Mapping(target = "stats", expression = "java(new com.mannschaft.app.cms.dto.BlogPostResponse.BlogPostStatisticsDto(entity.getViewCount(), entity.getReadingTimeMinutes(), false, 0))")
     @Mapping(target = "audit", expression = "java(new com.mannschaft.app.cms.dto.BlogPostResponse.BlogPostAuditDto(entity.getPublishedAt(), entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt()))")
     @Mapping(target = "tags", expression = "java(java.util.Collections.emptyList())")
+    // accessState は可視性・課金の合成後に各サービスが設定するため、通常マッピングでは設定しない。
+    @Mapping(target = "accessState", ignore = true)
     BlogPostResponse toBlogPostResponse(BlogPostEntity entity);
 
     List<BlogPostResponse> toBlogPostResponseList(List<BlogPostEntity> entities);

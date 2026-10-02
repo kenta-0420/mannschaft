@@ -41,5 +41,6 @@ public class CouponRedemptionEntity {
     private String redemptionDetail;
 
     @Builder.Default
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }

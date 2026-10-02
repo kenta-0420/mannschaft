@@ -1,6 +1,8 @@
 package com.mannschaft.app.safetycheck.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.safetycheck.FollowupStatus;
 import com.mannschaft.app.safetycheck.MessageSource;
 import com.mannschaft.app.safetycheck.SafetyCheckErrorCode;
@@ -40,6 +42,7 @@ public class SafetyResponseService {
     private final SafetyResponseRepository responseRepository;
     private final SafetyResponseFollowupRepository followupRepository;
     private final SafetyCheckMapper mapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 安否確認に回答する。
@@ -52,6 +55,12 @@ public class SafetyResponseService {
     @Transactional
     public SafetyResponseResponse respond(Long safetyCheckId, RespondRequest req, Long userId) {
         SafetyCheckEntity check = findCheckOrThrow(safetyCheckId);
+        // 認可根治戦役 Wave6 ロットC: 呼び出し元が対象安否確認のスコープ（チーム/組織）に
+        // 所属していることを検証する。未検証だと非所属者が他組織の安否確認へ回答を書き込め、
+        // 集計結果（安否確認結果集計・未回答ユーザー一覧）が汚染される。
+        if (!accessControlService.isMember(userId, check.getScopeId(), check.getScopeType().name())) {
+            throw new BusinessException(SafetyCheckErrorCode.SAFETY_CHECK_NOT_FOUND);
+        }
         validateActive(check);
 
         // 重複回答チェック
@@ -62,7 +71,7 @@ public class SafetyResponseService {
 
         SafetyResponseStatus status = parseResponseStatus(req.getStatus());
         MessageSource messageSource = req.getMessageSource() != null
-                ? MessageSource.valueOf(req.getMessageSource()) : null;
+                ? EnumInputParser.parse(MessageSource.class, req.getMessageSource(), "messageSource") : null;
 
         SafetyResponseEntity entity = SafetyResponseEntity.builder()
                 .safetyCheckId(safetyCheckId)
@@ -90,13 +99,20 @@ public class SafetyResponseService {
     /**
      * 安否確認に一括回答する（管理者用）。
      *
-     * @param safetyCheckId 安否確認ID
-     * @param req           一括回答リクエスト
+     * <p>生命安全に直結するため、操作者（{@code operatorUserId}）がスコープの
+     * ADMIN/DEPUTY_ADMIN であることを要求する（束3 AC-1-4）。非ADMINが他人の安否を
+     * 「安全」と偽装登録できてしまう欠陥の根治。</p>
+     *
+     * @param safetyCheckId  安否確認ID
+     * @param req            一括回答リクエスト
+     * @param operatorUserId 操作者（管理者）のユーザーID
      * @return 回答レスポンス一覧
      */
     @Transactional
-    public List<SafetyResponseResponse> bulkRespond(Long safetyCheckId, BulkRespondRequest req) {
+    public List<SafetyResponseResponse> bulkRespond(Long safetyCheckId, BulkRespondRequest req,
+                                                      Long operatorUserId) {
         SafetyCheckEntity check = findCheckOrThrow(safetyCheckId);
+        accessControlService.checkAdminOrAbove(operatorUserId, check.getScopeId(), check.getScopeType().name());
         validateActive(check);
 
         if (req.getItems().size() > BULK_RESPOND_LIMIT) {

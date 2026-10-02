@@ -1,9 +1,19 @@
 package com.mannschaft.app.service.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.FileTypeValidator;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.service.BulkCreateMode;
 import com.mannschaft.app.service.ReactionType;
 import com.mannschaft.app.service.ServiceRecordErrorCode;
@@ -86,6 +96,13 @@ public class ServiceRecordService {
     private final ObjectMapper objectMapper;
     private final NameResolverService nameResolverService;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
+    private final AccessControlService accessControlService;
+    private final DomainEventPublisher eventPublisher;
+
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     /**
@@ -101,17 +118,20 @@ public class ServiceRecordService {
     }
     private static final int MAX_ATTACHMENTS = 5;
     private static final int MAX_BULK_RECORDS = 20;
+    private static final Duration DOWNLOAD_TTL = Duration.ofMinutes(5);
 
     // ==================== サービス記録 CRUD ====================
 
     /**
      * チーム内のサービス履歴一覧を取得する。
      */
-    public Page<ServiceRecordResponse> listRecords(Long teamId, Long memberUserId, Long staffUserId,
+    public Page<ServiceRecordResponse> listRecords(Long teamId, Long actorUserId, Long memberUserId, Long staffUserId,
                                                     LocalDate serviceDateFrom, LocalDate serviceDateTo,
                                                     String titleLike, String status,
                                                     Map<Long, String> customFieldFilters,
                                                     Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         Specification<ServiceRecordEntity> spec =
                 (root, query, cb) -> cb.equal(root.get("teamId"), teamId);
 
@@ -141,8 +161,10 @@ public class ServiceRecordService {
     /**
      * サービス履歴詳細を取得する。
      */
-    public ServiceRecordResponse getRecord(Long teamId, Long id) {
+    public ServiceRecordResponse getRecord(Long teamId, Long id, Long actorUserId) {
         ServiceRecordEntity entity = findRecordOrThrow(teamId, id);
+        // BOLA厳禁: entity 由来（fetch 済みentityのteamId）で認可する（path teamId 鵜呑み禁止）。
+        accessControlService.checkMembership(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         return toRecordResponse(entity, null);
     }
 
@@ -152,8 +174,11 @@ public class ServiceRecordService {
     @Transactional
     public ServiceRecordResponse createRecord(Long teamId, Long currentUserId,
                                                CreateServiceRecordRequest request) {
+        // createは作成先スコープ（request/pathのteamId）でcheckAdminOrAbove。
+        accessControlService.checkAdminOrAbove(currentUserId, teamId, SCOPE_TEAM);
+
         ServiceRecordStatus recordStatus = request.getStatus() != null
-                ? ServiceRecordStatus.valueOf(request.getStatus())
+                ? EnumInputParser.parse(ServiceRecordStatus.class, request.getStatus(), "status")
                 : ServiceRecordStatus.DRAFT;
 
         ServiceRecordEntity entity = ServiceRecordEntity.builder()
@@ -181,8 +206,11 @@ public class ServiceRecordService {
      * サービス記録を更新する。
      */
     @Transactional
-    public ServiceRecordResponse updateRecord(Long teamId, Long id, UpdateServiceRecordRequest request) {
+    public ServiceRecordResponse updateRecord(Long teamId, Long id, Long actorUserId,
+                                               UpdateServiceRecordRequest request) {
         ServiceRecordEntity entity = findRecordOrThrow(teamId, id);
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
         entity.update(
                 request.getMemberUserId(),
@@ -207,8 +235,10 @@ public class ServiceRecordService {
      * 下書き記録を確定する。
      */
     @Transactional
-    public ConfirmResponse confirmRecord(Long teamId, Long id) {
+    public ConfirmResponse confirmRecord(Long teamId, Long id, Long actorUserId) {
         ServiceRecordEntity entity = findRecordOrThrow(teamId, id);
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
         if (entity.getStatus() == ServiceRecordStatus.CONFIRMED) {
             throw new BusinessException(ServiceRecordErrorCode.ALREADY_CONFIRMED);
@@ -232,8 +262,11 @@ public class ServiceRecordService {
      * サービス記録を論理削除する。
      */
     @Transactional
-    public void deleteRecord(Long teamId, Long id) {
+    public void deleteRecord(Long teamId, Long id, Long actorUserId) {
         ServiceRecordEntity entity = findRecordOrThrow(teamId, id);
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        attachmentRepository.findByServiceRecordIdOrderBySortOrder(id).forEach(this::releaseAttachment);
         entity.softDelete();
         recordRepository.save(entity);
         log.info("サービス記録削除: recordId={}", id);
@@ -246,6 +279,8 @@ public class ServiceRecordService {
     public ServiceRecordResponse duplicateRecord(Long teamId, Long id, Long currentUserId,
                                                   DuplicateServiceRecordRequest request) {
         ServiceRecordEntity original = findRecordOrThrow(teamId, id);
+        // BOLA厳禁: entity 由来 teamId で認可する（複製は新規作成に相当するため checkAdminOrAbove）。
+        accessControlService.checkAdminOrAbove(currentUserId, original.getTeamId(), SCOPE_TEAM);
 
         LocalDate serviceDate = request != null && request.getServiceDate() != null
                 ? request.getServiceDate() : LocalDate.now();
@@ -286,11 +321,15 @@ public class ServiceRecordService {
     @Transactional
     public BulkCreateResponse bulkCreate(Long teamId, Long currentUserId,
                                           BulkCreateServiceRecordRequest request) {
+        // bulkCreateBestEffort は例外を個別レコードのFAILED扱いに丸めてしまうため、
+        // 認可はここで先に検証し top-level 403 として即座に拒否する。
+        accessControlService.checkAdminOrAbove(currentUserId, teamId, SCOPE_TEAM);
+
         if (request.getRecords().size() > MAX_BULK_RECORDS) {
             throw new BusinessException(ServiceRecordErrorCode.BULK_LIMIT_EXCEEDED);
         }
 
-        BulkCreateMode mode = BulkCreateMode.valueOf(request.getMode());
+        BulkCreateMode mode = EnumInputParser.parse(BulkCreateMode.class, request.getMode(), "mode");
 
         if (mode == BulkCreateMode.ALL_OR_NOTHING) {
             return bulkCreateAllOrNothing(teamId, currentUserId, request.getRecords());
@@ -302,7 +341,9 @@ public class ServiceRecordService {
     /**
      * 特定メンバーの履歴一覧を取得する。
      */
-    public Page<ServiceRecordResponse> getMemberHistory(Long teamId, Long userId, Pageable pageable) {
+    public Page<ServiceRecordResponse> getMemberHistory(Long teamId, Long userId, Long actorUserId,
+                                                         Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         Page<ServiceRecordEntity> page = recordRepository.findByTeamIdAndMemberUserId(teamId, userId, pageable);
         return page.map(entity -> toRecordResponse(entity, null));
     }
@@ -310,7 +351,8 @@ public class ServiceRecordService {
     /**
      * 特定メンバーの履歴サマリーを取得する。
      */
-    public ServiceHistorySummaryResponse getMemberSummary(Long teamId, Long userId, int months) {
+    public ServiceHistorySummaryResponse getMemberSummary(Long teamId, Long userId, Long actorUserId, int months) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         LocalDate fromDate = LocalDate.now().minusMonths(months);
         List<ServiceRecordEntity> records = recordRepository.findForSummary(teamId, userId, fromDate);
 
@@ -447,9 +489,7 @@ public class ServiceRecordService {
 
             List<ServiceRecordAttachmentEntity> attachments =
                     attachmentRepository.findByServiceRecordIdOrderBySortOrder(entity.getId());
-            List<AttachmentResponse> attachmentResponses = attachments.stream()
-                    .map(mapper::toAttachmentResponse)
-                    .collect(Collectors.toList());
+            List<AttachmentResponse> attachmentResponses = toAttachmentResponses(entity, attachments);
 
             return ServiceRecordResponse.builder()
                     .id(entity.getId())
@@ -479,6 +519,8 @@ public class ServiceRecordService {
     @Transactional
     public ReactionResponse addReaction(Long teamId, Long recordId, Long userId, ReactionRequest request) {
         ServiceRecordEntity record = findRecordOrThrow(teamId, recordId);
+        // BOLA厳禁: entity 由来 teamId で認可する（本人確認は下の NOT_OWN_RECORD チェックが別途行う）。
+        accessControlService.checkMembership(userId, record.getTeamId(), SCOPE_TEAM);
 
         // ダッシュボード共有・リアクション有効チェック
         ServiceRecordSettingsEntity settings = settingsRepository.findByTeamId(teamId)
@@ -495,7 +537,7 @@ public class ServiceRecordService {
             throw new BusinessException(ServiceRecordErrorCode.NOT_OWN_RECORD);
         }
 
-        ReactionType reactionType = ReactionType.valueOf(request.getReactionType());
+        ReactionType reactionType = EnumInputParser.parse(ReactionType.class, request.getReactionType(), "reactionType");
 
         Optional<ServiceRecordReactionEntity> existing =
                 reactionRepository.findByServiceRecordIdAndUserId(recordId, userId);
@@ -527,7 +569,9 @@ public class ServiceRecordService {
      */
     @Transactional
     public void deleteReaction(Long teamId, Long recordId, Long userId) {
-        findRecordOrThrow(teamId, recordId);
+        ServiceRecordEntity record = findRecordOrThrow(teamId, recordId);
+        // BOLA厳禁: entity 由来 teamId で認可する（削除自体は userId 紐付けで自ユーザー分のみ）。
+        accessControlService.checkMembership(userId, record.getTeamId(), SCOPE_TEAM);
         reactionRepository.deleteByServiceRecordIdAndUserId(recordId, userId);
         log.info("リアクション削除: recordId={}, userId={}", recordId, userId);
     }
@@ -538,8 +582,11 @@ public class ServiceRecordService {
      * アップロード用 Pre-signed URL を発行する。
      */
     @Transactional
-    public UploadUrlResponse generateUploadUrl(Long teamId, Long recordId, UploadUrlRequest request) {
-        findRecordOrThrow(teamId, recordId);
+    public UploadUrlResponse generateUploadUrl(Long teamId, Long recordId, Long actorUserId,
+                                                UploadUrlRequest request) {
+        ServiceRecordEntity record = findRecordOrThrow(teamId, recordId);
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         // ブロックリスト優先（危険な MIME タイプを明示排除）
         if (FileTypeValidator.isBlocked(request.getContentType())) {
@@ -560,7 +607,10 @@ public class ServiceRecordService {
         String fileKey = String.format("service-records/%d/%d/%s", teamId, recordId, UUID.randomUUID());
 
         String uploadUrl = storageService.generateUploadUrl(
-                fileKey, "application/octet-stream", Duration.ofSeconds(600)).uploadUrl();
+                fileKey, request.getContentType(), Duration.ofSeconds(600)).uploadUrl();
+        storageAclService.registerPending(fileKey, actorUserId, StorageAclScope.team(record.getTeamId()),
+                request.getContentType(), Duration.ofSeconds(600),
+                new StorageAclContentReference("SERVICE_RECORD", recordId.toString()));
 
         return UploadUrlResponse.builder()
                 .uploadUrl(uploadUrl)
@@ -573,9 +623,11 @@ public class ServiceRecordService {
      * 添付ファイルメタデータを登録する。
      */
     @Transactional
-    public AttachmentResponse registerAttachment(Long teamId, Long recordId,
+    public AttachmentResponse registerAttachment(Long teamId, Long recordId, Long actorUserId,
                                                   RegisterAttachmentRequest request) {
-        findRecordOrThrow(teamId, recordId);
+        ServiceRecordEntity record = findRecordOrThrow(teamId, recordId);
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         long currentCount = attachmentRepository.countByServiceRecordId(recordId);
         if (currentCount >= MAX_ATTACHMENTS) {
@@ -592,6 +644,9 @@ public class ServiceRecordService {
                 .build();
 
         ServiceRecordAttachmentEntity saved = attachmentRepository.save(entity);
+        storageAclService.claimPending(request.getFileKey(), actorUserId, StorageAclScope.team(record.getTeamId()),
+                new StorageAclContentReference("SERVICE_RECORD", recordId.toString()),
+                new StorageAclAttachmentBinding("SERVICE_RECORD_ATTACHMENT", saved.getId().toString()));
         log.info("添付ファイル登録: recordId={}, attachmentId={}", recordId, saved.getId());
         return mapper.toAttachmentResponse(saved);
     }
@@ -600,12 +655,16 @@ public class ServiceRecordService {
      * 添付ファイルを削除する。
      */
     @Transactional
-    public void deleteAttachment(Long teamId, Long recordId, Long attachmentId) {
-        findRecordOrThrow(teamId, recordId);
+    public void deleteAttachment(Long teamId, Long recordId, Long attachmentId, Long actorUserId) {
+        ServiceRecordEntity record = findRecordOrThrow(teamId, recordId);
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, record.getTeamId(), SCOPE_TEAM);
         ServiceRecordAttachmentEntity attachment = attachmentRepository
                 .findByIdAndServiceRecordId(attachmentId, recordId)
                 .orElseThrow(() -> new BusinessException(ServiceRecordErrorCode.ATTACHMENT_NOT_FOUND));
+        releaseAttachment(attachment);
         attachmentRepository.delete(attachment);
+        eventPublisher.publish(new S3ObjectDeleteEvent(attachment.getFileKey()));
         log.info("添付ファイル削除: recordId={}, attachmentId={}", recordId, attachmentId);
     }
 
@@ -614,6 +673,11 @@ public class ServiceRecordService {
     private ServiceRecordEntity findRecordOrThrow(Long teamId, Long id) {
         return recordRepository.findByIdAndTeamId(id, teamId)
                 .orElseThrow(() -> new BusinessException(ServiceRecordErrorCode.RECORD_NOT_FOUND));
+    }
+
+    private void releaseAttachment(ServiceRecordAttachmentEntity attachment) {
+        storageAclService.releaseClaimed(attachment.getFileKey(),
+                new StorageAclAttachmentBinding("SERVICE_RECORD_ATTACHMENT", attachment.getId().toString()));
     }
 
     private void saveCustomFieldValues(Long recordId, Long teamId,
@@ -744,9 +808,7 @@ public class ServiceRecordService {
 
         List<ServiceRecordAttachmentEntity> attachments =
                 attachmentRepository.findByServiceRecordIdOrderBySortOrder(entity.getId());
-        List<AttachmentResponse> attachmentResponses = attachments.stream()
-                .map(mapper::toAttachmentResponse)
-                .collect(Collectors.toList());
+        List<AttachmentResponse> attachmentResponses = toAttachmentResponses(entity, attachments);
 
         return ServiceRecordResponse.builder()
                 .id(entity.getId())
@@ -763,6 +825,38 @@ public class ServiceRecordService {
                 .duplicatedFrom(duplicatedFrom)
                 .createdAt(entity.getCreatedAt())
                 .build();
+    }
+
+    private List<AttachmentResponse> toAttachmentResponses(
+            ServiceRecordEntity record, List<ServiceRecordAttachmentEntity> attachments) {
+        if (attachments.isEmpty()) {
+            return List.of();
+        }
+        StorageAclScope scope = StorageAclScope.team(record.getTeamId());
+        StorageAclContentReference parent =
+                new StorageAclContentReference("SERVICE_RECORD", record.getId().toString());
+        Map<String, String> downloadUrls = storageAccessService.generateDownloadUrlsForList(
+                attachments.stream()
+                        .map(attachment -> new StorageAclDownloadRequest(
+                                attachment.getFileKey(),
+                                scope,
+                                parent,
+                                new StorageAclAttachmentBinding(
+                                        "SERVICE_RECORD_ATTACHMENT", attachment.getId().toString())))
+                        .toList(),
+                DOWNLOAD_TTL);
+        return attachments.stream()
+                .filter(attachment -> downloadUrls.containsKey(attachment.getFileKey()))
+                .map(attachment -> AttachmentResponse.builder()
+                        .id(attachment.getId())
+                        .fileName(attachment.getFileName())
+                        .contentType(attachment.getContentType())
+                        .fileSize(attachment.getFileSize())
+                        .sortOrder(attachment.getSortOrder())
+                        .downloadUrl(downloadUrls.get(attachment.getFileKey()))
+                        .createdAt(attachment.getCreatedAt())
+                        .build())
+                .toList();
     }
 
     private BulkCreateResponse bulkCreateAllOrNothing(Long teamId, Long currentUserId,

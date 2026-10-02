@@ -1,5 +1,6 @@
 package com.mannschaft.app.mail.outbox;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +10,6 @@ import jakarta.annotation.PostConstruct;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 /**
  * F09.18 Phase 18-e: メール outbox 監視メトリクス (設計書 §10)。
@@ -52,7 +52,7 @@ public class EmailOutboxMicrometerMetrics {
                         repository, r -> r
                                 .findFirstByStatusOrderByCreatedAtAsc(EmailOutboxStatus.PENDING.name())
                                 .map(e -> (double) Duration.between(
-                                        e.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant(),
+                                        e.getCreatedAt().atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant(),
                                         Instant.now()).getSeconds())
                                 .orElse(0.0))
                 .description("最古 PENDING エントリの経過秒。PENDING ゼロなら 0")

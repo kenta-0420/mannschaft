@@ -2,6 +2,7 @@ package com.mannschaft.app.quickmemo.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.quickmemo.dto.VoiceInputConsentRequest;
 import com.mannschaft.app.quickmemo.dto.VoiceInputConsentResponse;
 import com.mannschaft.app.quickmemo.service.UserVoiceInputConsentService;
@@ -23,6 +24,19 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 音声入力同意 コントローラー。
  * GDPR 対応のため同意取得・確認・撤回を担当する。
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 全 3 EP とも自己スコープ。
+ * 同意証跡は {@code (userId, version)} で一意に引き当てられ、userId は常に
+ * {@link SecurityUtils#getCurrentUserId()} である
+ * （getActiveConsent: UserVoiceInputConsentService.java:42-43 /
+ * grantConsent: UserVoiceInputConsentService.java:63-64・:70-72 /
+ * revokeConsent: UserVoiceInputConsentService.java:92-94）。
+ * リクエストで指定できるのはポリシーバージョンのみで、対象ユーザーは指定できない。
+ * さらにバージョンはサーバが保持する現行ポリシー値以下であることを要求し、
+ * 同意はサーバ側が認識しているポリシーに対してのみ成立させる
+ * （UserVoiceInputConsentService.java:38 / :58）。
+ * 認可番人の白名簿クラス経由ではないため監査済マーカーで明示承認する。
+ * 回帰は {@code QuickMemoSelfScopeContractIT} で固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/me/voice-input-consents")
@@ -34,6 +48,7 @@ public class UserVoiceInputConsentController {
 
     @GetMapping("/active")
     @Operation(summary = "有効な同意確認", description = "指定バージョンの有効な同意が存在するか確認する")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<VoiceInputConsentResponse>> getActiveConsent(
             @RequestParam(defaultValue = "1") int version) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -43,6 +58,7 @@ public class UserVoiceInputConsentController {
     @PostMapping
     @Operation(summary = "音声入力同意登録",
                description = "同意ポリシーに同意する。同一バージョンへの同意は冪等（重複登録しない）")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<VoiceInputConsentResponse>> grantConsent(
             @Valid @RequestBody VoiceInputConsentRequest request,
             HttpServletRequest httpRequest) {
@@ -55,6 +71,7 @@ public class UserVoiceInputConsentController {
 
     @DeleteMapping("/active")
     @Operation(summary = "音声入力同意撤回", description = "有効な同意を撤回する（revoked_at を現在時刻に設定）")
+    @AuthorizedInService
     public ResponseEntity<Void> revokeConsent() {
         Long userId = SecurityUtils.getCurrentUserId();
         consentService.revokeConsent(userId);

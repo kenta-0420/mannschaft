@@ -48,6 +48,7 @@ public class ServiceRecordAttachmentEntity {
     @Builder.Default
     private Integer sortOrder = 0;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

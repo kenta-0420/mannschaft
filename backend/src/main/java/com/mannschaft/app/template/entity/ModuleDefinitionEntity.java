@@ -70,4 +70,22 @@ public class ModuleDefinitionEntity extends BaseEntity {
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
+
+    /**
+     * 有料プラン要否を更新する（SYSTEM_ADMIN操作）。
+     *
+     * @param requiresPaidPlan 有料プランを必須とするか
+     */
+    public void applyRequiresPaidPlan(boolean requiresPaidPlan) {
+        this.requiresPaidPlan = requiresPaidPlan;
+    }
+
+    /**
+     * 有効/無効を更新する（SYSTEM_ADMIN操作）。
+     *
+     * @param isActive 有効化するか
+     */
+    public void applyActive(boolean isActive) {
+        this.isActive = isActive;
+    }
 }

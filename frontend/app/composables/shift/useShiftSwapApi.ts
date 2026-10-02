@@ -22,10 +22,24 @@ export interface CreateSwapRequestOptions {
 export function useShiftSwapApi() {
   const api = useApi()
 
-  async function listSwapRequests(status?: string): Promise<SwapRequestResponse[]> {
-    const query = status ? `?status=${encodeURIComponent(status)}` : ''
+  /**
+   * 指定チームの交代リクエスト一覧を取得する（当該チームの管理者のみ）。
+   *
+   * @param teamId 対象チームの<b>数値ID</b>（必須）。バックエンドは `@RequestParam Long teamId` で
+   *               受けるため、slug 文字列を渡すとバインドに失敗して 400 になる。
+   *               型を `number` に固定して slug の混入をコンパイル時に落とす。
+   * @param status ステータスフィルタ（省略可）
+   */
+  async function listSwapRequests(
+    teamId: number,
+    status?: string,
+  ): Promise<SwapRequestResponse[]> {
+    const params = new URLSearchParams({ teamId: String(teamId) })
+    if (status) {
+      params.set('status', status)
+    }
     const res = await api<{ data: SwapRequestResponse[] }>(
-      `/api/v1/shifts/swap-requests${query}`,
+      `/api/v1/shifts/swap-requests?${params.toString()}`,
     )
     return res.data
   }
@@ -72,19 +86,6 @@ export function useShiftSwapApi() {
     return res.data
   }
 
-  /**
-   * オープンコールのシフト枠に「代わりに入ります」と申告する（手挙げ）。
-   *
-   * 部隊Bが実装した `POST /api/v1/shifts/swap-requests/{id}/claim` に対応。
-   */
-  async function claimSwap(swapId: number): Promise<SwapRequestResponse> {
-    const res = await api<{ data: SwapRequestResponse }>(
-      `/api/v1/shifts/swap-requests/${swapId}/claim`,
-      { method: 'POST' },
-    )
-    return res.data
-  }
-
   async function resolveSwap(
     swapId: number,
     payload: ResolveSwapRequestRequest,
@@ -101,7 +102,6 @@ export function useShiftSwapApi() {
     createSwapRequest,
     deleteSwapRequest,
     acceptSwap,
-    claimSwap,
     resolveSwap,
   }
 }

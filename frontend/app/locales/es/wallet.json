@@ -20,14 +20,19 @@
       "no_provider": "(sin coincidencia)",
       "last4_format": "●●●● {last4}",
       "no_cards": "Aún no hay tarjetas registradas",
-      "no_cards_hint": "Use el botón '+' para añadir una tarjeta",
+      "no_cards_hint": "Usa el botón «Añadir tarjeta» de la parte superior para añadir una tarjeta",
       "no_matches": "No hay tarjetas que coincidan con '{query}'"
     },
     "group": {
       "card_count": "{count} tarjeta(s)",
       "no_emoji": "📋",
       "no_groups": "No hay grupos todavía",
-      "no_groups_hint": "Agrupa las tarjetas que sueles presentar juntas para cambiar rápidamente en caja"
+      "no_groups_hint": "Agrupa las tarjetas que sueles presentar juntas para cambiar rápidamente en caja",
+      "edit": "Editar",
+      "edit_group": "Editar {name}",
+      "start_presentation_for": "Iniciar modo presentación de {name}",
+      "show_barcode_tooltip": "Mostrar código de barras",
+      "edit_tooltip": "Editar grupo"
     },
     "settings": {
       "title": "Configuración de la cartera",
@@ -95,9 +100,50 @@
       "cancel": "Cancelar",
       "back": "Volver",
       "next": "Siguiente",
+      "manual_confirm": "Confirmar",
+      "next_disabled_hint": "Ingrese el nombre de la tarjeta y el código de barras para continuar",
       "save_failed": "Error al registrar la tarjeta",
       "validation_required": "Por favor ingrese el nombre de la tarjeta",
-      "validation_barcode_required": "Ingrese el valor del código de barras o seleccione 'Sin código de barras'"
+      "validation_barcode_required": "Ingrese el valor del código de barras o seleccione 'Sin código de barras'",
+      "format_labels": {
+        "CODE128": "CODE128 (tarjetas de socio en general, elija este si no sabe)",
+        "CODE39": "CODE39 (tarjetas de socio alfanuméricas)",
+        "EAN13": "EAN13 (código de barras de producto de 13 dígitos)",
+        "EAN8": "EAN8 (código de barras de producto de 8 dígitos)",
+        "JAN13": "JAN13 (código de barras japonés de 13 dígitos)",
+        "QR": "QR (patrón de puntos cuadrados)",
+        "PDF417": "PDF417 (licencia de conducir, etc.)",
+        "ITF": "ITF (logística / algunas tarjetas de socio)"
+      },
+      "help": {
+        "title": "Cómo añadir una tarjeta",
+        "description": "Registre el código de barras de su tarjeta de fidelización o membresía para presentarlo en caja.",
+        "easiest": {
+          "title": "La forma más sencilla de añadir una tarjeta",
+          "body": "Seleccionar un preset rellena automáticamente el nombre y el formato. Escanear con cámara o imagen también detecta el formato automáticamente.",
+          "steps": {
+            "step1": "Si su tienda aparece en los presets, tóquela (nombre y formato se rellenan solos)",
+            "step2": "Si no, escriba el nombre de la tienda en el campo 'Nombre de tarjeta'",
+            "step3": "Escanee el código de barras de su tarjeta con la cámara o una imagen",
+            "step4": "Revise la vista previa y toque 'Siguiente' → 'Guardar'"
+          }
+        },
+        "format_guide": {
+          "title": "¿No sabe qué formato de código de barras elegir?",
+          "body": "Solo necesita seleccionar el formato en la entrada manual. El escaneo por cámara o imagen lo detecta automáticamente.",
+          "steps": {
+            "step1": "Si tiene dudas, elija 'CODE128' (funciona para la mayoría de tarjetas de socio)",
+            "step2": "Si el número tiene 13 dígitos, elija 'EAN13'",
+            "step3": "Si el número tiene 8 dígitos, elija 'EAN8'",
+            "step4": "Si parece un patrón de puntos cuadrados, elija 'QR'"
+          }
+        },
+        "verify": {
+          "title": "Compruebe siempre después de guardar",
+          "body": "Tras guardar, verifique que el código de barras mostrado pueda escanearse en caja. Si no se puede leer, elimine la tarjeta y vuelva a registrarla con otro formato.",
+          "hint": "El formato del código de barras no puede cambiarse después de guardar. Para cambiarlo, elimínelo y vuelva a registrarlo."
+        }
+      }
     },
     "detail": {
       "edit": "Editar",
@@ -107,7 +153,6 @@
       "delete_confirm_title": "¿Eliminar la tarjeta?",
       "delete_confirm": "Esto eliminará la tarjeta permanentemente. No se puede deshacer.",
       "delete_confirm_ok": "Eliminar",
-      "record_used": "Registrar como usado",
       "favorite_on": "Añadir a favoritos",
       "favorite_off": "Quitar de favoritos",
       "section_meta": "Información de la tarjeta",
@@ -119,8 +164,7 @@
       "barcode_locked_hint": "El valor y formato del código de barras no pueden editarse por razones de seguridad. Para cambiarlos, elimine la tarjeta y vuelva a registrarla.",
       "not_found": "Tarjeta no encontrada",
       "back_to_list": "Volver a la lista",
-      "save_failed": "Error al actualizar",
-      "used_recorded": "Registrado como usado"
+      "save_failed": "Error al actualizar"
     },
     "group_form": {
       "title_new": "Nuevo grupo",
@@ -147,6 +191,7 @@
       "start_presentation": "Iniciar modo presentación",
       "validation_name_required": "Por favor ingrese el nombre del grupo",
       "validation_max_cards": "Un grupo puede contener hasta 20 tarjetas",
+      "saved": "Guardado",
       "save_failed": "Error al guardar",
       "not_found": "Grupo no encontrado"
     },
@@ -163,7 +208,8 @@
       "error_no_camera": "No se encontró cámara",
       "error_denied": "Acceso a cámara denegado",
       "error_decode_failed": "No se pudo leer el código de barras",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "manual_recommend_scan": "Escanear con cámara o imagen rellena el formato automáticamente. La entrada manual es el último recurso."
     },
     "barcode": {
       "no_barcode_label": "Sin código de barras",
@@ -183,6 +229,8 @@
       "hint_brightness": "Ajuste el brillo al máximo para una mejor lectura",
       "close": "Cerrar",
       "reload": "Recargar",
+      "prev_card": "Tarjeta anterior",
+      "next_card": "Siguiente tarjeta",
       "biometric_required": "Se requiere autenticación para iniciar el modo de presentación",
       "biometric_failed": "Autenticación fallida",
       "no_cards": "Este grupo no tiene tarjetas",
@@ -428,6 +476,45 @@
       "error_delete": "Error al eliminar",
       "error_duplicate": "Este sinónimo ya está registrado (duplicado tras normalización)",
       "error_provider_not_found": "No se encontró el proveedor especificado"
+    },
+    "wallet_guide": {
+      "title": "Cómo usar la billetera",
+      "description": "Función para llevar tus tarjetas de puntos en el smartphone y mostrar códigos de barras en caja.",
+      "overview": {
+        "title": "¿Qué es la billetera?",
+        "body": "Registra los códigos de barras de tus tarjetas de puntos y tarjetas de membresía en la aplicación y muéstralos en la pantalla de tu smartphone. Puedes registrar hasta 200 tarjetas.",
+        "hint": "La primera vez que la abras, deberás aceptar los términos de servicio."
+      },
+      "add_card": {
+        "title": "Registrar una tarjeta",
+        "body": "Puedes agregar una nueva tarjeta usando el botón «Añadir tarjeta» en la parte superior de la pestaña Tarjetas. Ahorra tiempo seleccionando tiendas populares de los presets.",
+        "steps": {
+          "step1": "Toca el botón «Añadir tarjeta» en la parte superior de la pestaña Tarjetas",
+          "step2": "Selecciona de presets para tiendas populares, o ingresa un nombre de tarjeta directamente",
+          "step3": "Ingresa el código de barras (número de membresía) mediante cámara, imagen o entrada manual",
+          "step4": "Verifica la vista previa y toca «Guardar»"
+        }
+      },
+      "groups": {
+        "title": "Organizar con grupos",
+        "body": "Agrupa varias tarjetas para cambiar rápidamente entre las tarjetas de tus tiendas favoritas.",
+        "steps": {
+          "step1": "Abre la pestaña «Grupos»",
+          "step2": "Toca «+ Nuevo grupo»",
+          "step3": "Ingresa un nombre de grupo y emoji, y marca las tarjetas a incluir",
+          "step4": "Toca «Guardar» para completar el grupo"
+        }
+      },
+      "present": {
+        "title": "Mostrar código de barras en caja",
+        "body": "Toca una tarjeta de la lista para mostrar el código de barras a pantalla completa. Con los grupos puedes deslizarte entre tarjetas.",
+        "steps": {
+          "step1": "Toca una tarjeta de la lista o de un grupo",
+          "step2": "El código de barras se muestra a pantalla completa",
+          "step3": "Acerca la pantalla del smartphone al personal para que lo escanee",
+          "step4": "(Si la autenticación biométrica está habilitada) Desbloquea con cara/huella primero"
+        }
+      }
     }
   }
 }

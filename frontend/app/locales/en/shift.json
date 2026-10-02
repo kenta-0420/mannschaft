@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "All day",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "timeRangeInvalid": "Start time must be earlier than end time",
+      "notConfigured": "Not configured yet. Set your preference and hours for each day, then save.",
+      "loadError": "Could not load your default availability",
+      "retry": "Retry"
+    },
     "board": {
       "title": "Shift Board",
       "memberPool": "Unassigned Members",
@@ -20,7 +29,9 @@
       "revoke": "Discard",
       "history": "Run History",
       "slotsFilled": "{filled}/{total} slots filled",
-      "warnings": "{count} warnings"
+      "warnings": "{count} warnings",
+      "disabledBadge": "Suspended",
+      "disabledReason": "Auto-assignment is currently suspended. Please build the shift manually."
     },
     "visualReview": {
       "title": "Visual Review",
@@ -61,12 +72,6 @@
       "openCallLimit": "Open calls are limited to 3 per month",
       "fetchError": "Failed to fetch change requests"
     },
-    "openCall": {
-      "badge": "Seeking substitute member",
-      "claim": "I'll cover this shift",
-      "claimed": "Already claimed",
-      "full": "Claim closed"
-    },
     "pdf": {
       "teamLayout": "Team Schedule PDF",
       "personalLayout": "Personal Timeline PDF",
@@ -74,12 +79,15 @@
       "error": "Failed to generate PDF"
     },
     "myShifts": {
-      "title": "My Shifts",
+      "title": "My Shift Requests",
       "empty": "No shifts found",
-      "fetchError": "Failed to fetch shift information"
+      "fetchError": "Failed to fetch shift information",
+      "description": "Submitted requests and their approval status",
+      "scheduleDeleted": "Shift schedule deleted"
     },
     "myShift": {
       "confirmedTitle": "Confirmed Shifts",
+      "upcomingTitle": "Upcoming Confirmed Shifts",
       "teamFilter": {
         "all": "All Teams",
         "label": "Filter by Team"
@@ -95,12 +103,13 @@
       "title": "Shift",
       "myShift": "My Shift",
       "submitRequest": "Submit Request",
-      "availability": "Default Availability",
+      "availability": "Default Weekly Availability",
       "schedules": "Schedule List",
       "detail": "Detail",
       "edit": "Edit",
       "requests": "Requests",
-      "workConstraints": "Work Constraints"
+      "workConstraints": "Work Constraints",
+      "teamLoadFailed": "Failed to load team information"
     },
     "status": {
       "all": "All",
@@ -140,11 +149,15 @@
       "archive": "Archive",
       "transitionSuccess": "Status changed",
       "saveSuccess": "Saved",
+      "deleteTitle": "Delete shift schedule",
+      "deleteConfirm": "Delete this shift schedule? Submitted requests will remain in each member's history.",
+      "deleteSuccess": "Shift schedule deleted",
       "calendarView": "Calendar view",
       "noDate": "No date",
       "colDate": "Date",
       "colSlots": "Slots",
-      "editDialogTitle": "Edit Shift"
+      "editDialogTitle": "Edit Shift",
+      "accessDeniedRedirect": "You do not have permission to view this page"
     },
     "slot": {
       "createTitle": "Create Slot",
@@ -164,7 +177,9 @@
       "dayOfWeek": "Day of week",
       "dayOfWeekHint": "Slots will be created only on the selected days of week",
       "saveSuccess": "Slot saved",
-      "deleteSuccess": "Slot deleted"
+      "deleteSuccess": "Slot deleted",
+      "assignmentMasked": "In adjustment",
+      "assignmentMaskedHint": "Assignments are hidden until the shift is published"
     },
     "requests": {
       "submissionRate": "Submission rate",
@@ -281,17 +296,56 @@
         "nightShift": "Night shift members",
         "selectedCount": "{count} selected"
       },
-      "templateHint": "Send to all {period} shift members in the same schedule"
+      "templateHint": "Send to all {period} shift members in the same schedule",
+      "list": {
+        "title": "Shift swap requests",
+        "requester": "Requester #{id}",
+        "accepter": "Partner #{id}",
+        "accepterUndecided": "Partner not decided",
+        "slot": "Slot #{id}",
+        "reason": "Reason: {reason}",
+        "cancel": "Withdraw",
+        "reload": "Reload",
+        "empty": "No swap requests",
+        "loadFailed": "Failed to load swap requests",
+        "loadFailedBody": "Could not load swap requests",
+        "actionFailed": "The operation failed",
+        "acceptSucceeded": "You accepted the swap",
+        "approveSucceeded": "The swap was approved",
+        "rejectSucceeded": "The swap was rejected",
+        "cancelSucceeded": "The request was withdrawn",
+        "statusPending": "Awaiting acceptance",
+        "statusAccepted": "Awaiting approval",
+        "statusApproved": "Approved",
+        "statusRejected": "Rejected",
+        "statusCancelled": "Withdrawn"
+      }
     },
     "reminder": {
       "send": "Send Reminder",
-      "sent": "Reminder Sent"
+      "sent": "Reminder Sent",
+      "confirmTitle": "Remind members who have not submitted",
+      "confirmMessage": "Send a reminder to members who have not submitted preferences for “{title}”?",
+      "confirmAccept": "Send reminder",
+      "confirmReject": "Cancel",
+      "sentTitle": "Reminder sent",
+      "sentDetail": "Asked {count} members to submit their preferences.",
+      "noRecipientsTitle": "No pending submissions",
+      "noRecipientsDetail": "There was nobody to remind.",
+      "failedTitle": "Could not send reminder",
+      "failedDetail": "Please try again later.",
+      "targetUnavailable": "This schedule is unavailable or no longer accepting preferences."
     },
     "empty": {
       "noSchedules": "No schedules found",
       "noShifts": "No shifts found",
       "noRequests": "No requests found",
       "noConstraints": "No work constraints set"
+    },
+    "teamLoad": {
+      "timeout": "Loading team information is taking too long. Check your connection and try again.",
+      "error": "Team information could not be loaded. Please try again later.",
+      "retry": "Retry"
     },
     "notification": {
       "publishSuccess": "Shift published successfully",
@@ -332,6 +386,156 @@
       "totalCount": "Total: {count}",
       "totalLabel": "Total",
       "confirmSubmit": "Submit with these settings?"
+    },
+    "entry": {
+      "sectionTitle": "Submit requests / Shift board",
+      "bulkRequest": "Submit requests in bulk",
+      "board": "Shift board",
+      "weeklyDefault": "Set weekly defaults",
+      "closed": "Request submission has closed"
+    },
+    "submitConfirm": {
+      "title": "Submit with this content?",
+      "filledLabel": "Days you filled in",
+      "defaultAppliedLabel": "Days filled from your weekly defaults",
+      "untouchedLabel": "Days left untouched",
+      "dayCount": "{count} day(s)",
+      "untouchedNotice": "Untouched days are submitted as \"prefer to rest\". You may still be asked to work if staffing runs short.",
+      "submit": "Submit",
+      "back": "Back to edit"
+    },
+    "hourlyRate": {
+      "title": "Hourly rate settings",
+      "description": "Set an hourly rate for each member. Shifts of members without an hourly rate are not reflected in the shift budget consumption.",
+      "missingWarning": "{count} member(s) have no hourly rate. Their shifts will not be reflected in the budget consumption when the shift is published.",
+      "unset": "Not set",
+      "setButton": "Set",
+      "perHour": "{amount} JPY/h",
+      "saved": "Hourly rate saved",
+      "saveFailed": "Failed to save the hourly rate",
+      "loadFailed": "Failed to load hourly rates",
+      "historyLoadFailed": "Failed to load the hourly rate history",
+      "permissionLoadFailed": "Failed to load permissions",
+      "forbidden": "You do not have permission to view this page",
+      "noMembers": "No members",
+      "dialogTitle": "Hourly rate for {name}",
+      "effectiveFromHint": "Applied from the specified date. Past settings are kept as history. Registering again with the same date corrects that day's setting.",
+      "historyTitle": "Hourly rate history",
+      "noHistory": "No hourly rate has been registered yet",
+      "column": {
+        "member": "Member",
+        "rate": "Hourly rate",
+        "effectiveFrom": "Effective from"
+      },
+      "validation": {
+        "rateRequired": "Please enter an hourly rate",
+        "ratePositive": "Please enter an hourly rate of 1 or more"
+      }
+    }
+  },
+  "my_shift_guide": {
+    "title": "シフトページの使い方",
+    "description": "このページでは、自分にアサインされた確定シフトの確認や、交代依頼の申請ができます。",
+    "view_shifts": {
+      "title": "確定シフトを確認する",
+      "body": "ログインユーザーにアサインされた確定済みシフトを、月次カレンダーまたは週次リストで表示します。シフトがない日付は空欄のまま表示されます。",
+      "steps": {
+        "step1": "「/my/shift」ページを開きます",
+        "step2": "ページが自動的に確定シフトを読み込み、カレンダーまたはリストに表示します",
+        "step3": "シフトがない場合は「シフトがありません」と表示されます"
+      }
+    },
+    "switch_view": {
+      "title": "表示を切り替える",
+      "body": "月次カレンダー（全体把握向き）と週次リスト（詳細確認向き）の2つのビューを切り替えられます。矢印ボタンで前後の月・週に移動できます。",
+      "steps": {
+        "step1": "画面上部の「月ビュー」「週ビュー」ボタンで表示形式を切り替えます",
+        "step2": "◀ ▶ ボタンで前月・次月（または前週・次週）に移動します",
+        "step3": "「今日」ボタンで今日を含む月・週に戻ります"
+      }
+    },
+    "filter_team": {
+      "title": "チームで絞り込む",
+      "body": "複数のチームに所属している場合、特定チームのシフトのみを表示できます。「全て」ボタンを選ぶと全チームのシフトが表示されます。",
+      "steps": {
+        "step1": "画面上部「チーム:」欄の「全て」またはチーム名ボタンをタップします",
+        "step2": "選択したチームのシフトのみ表示されます",
+        "step3": "「全て」を再度タップすると絞り込みが解除されます"
+      }
+    },
+    "view_detail": {
+      "title": "シフト詳細を確認する",
+      "body": "特定の日付をタップすると、そのシフトのチーム名・ポジション・時刻・スケジュール名などの詳細を確認できます。",
+      "steps": {
+        "step1": "【月次ビュー】日付セルをタップすると、画面右側に詳細パネルが開きます",
+        "step2": "【週次ビュー】日付カードのヘッダーをタップすると、カードが展開してシフト一覧が表示されます",
+        "step3": "月次ビューでは同じ日付をもう一度タップすると詳細パネルが閉じます"
+      }
+    },
+    "swap_request": {
+      "title": "交代依頼を申請する",
+      "body": "確定シフトを他のメンバーと交代したい場合、3つの方式で依頼を送れます。送信後は自動的にシフト一覧が更新されます。",
+      "steps": {
+        "step1": "シフト詳細内の「交代依頼を作成」ボタンをクリックします",
+        "step2": "送信方式を選びます：「メンバーを指定」（1名以上選択）／「シフト帯でまとめて」（同日の昼または夜シフト担当者全員）／「全員に公開」（誰でも立候補可）",
+        "step3": "必要であれば理由を記入します（任意）",
+        "step4": "「提出」ボタンをクリックして送信します"
+      },
+      "note": "提出後は確定シフト一覧が自動的に更新されます。送信中はボタンが無効になりますので、完了するまでそのままお待ちください。"
+    }
+  },
+  "shift_guide": {
+    "title": "シフト管理の使い方",
+    "description": "シフト管理では、チームのシフトスケジュールを作成・公開し、メンバーの希望を収集して調整できます。",
+    "overview": {
+      "title": "シフトスケジュール一覧を確認する",
+      "body": "このページでは、チームのシフトスケジュール一覧を管理します。ステータスバッジで進捗が一目で分かります。",
+      "steps": {
+        "step1": "ステータスフィルタ（下書き・収集中・調整中・公開済みなど）で絞り込む",
+        "step2": "各カードの提出率バーでメンバーの希望提出状況を確認する",
+        "step3": "カードをクリックして詳細ページへ移動する"
+      }
+    },
+    "create": {
+      "title": "新しいシフトスケジュールを作成する",
+      "body": "チームの管理者がシフトスケジュールを新規作成できます。タイトルと期間を設定してスタートしましょう。",
+      "steps": {
+        "step1": "右上の「新規作成」ボタンをクリックする",
+        "step2": "タイトル・開始日・終了日を入力する（必須）",
+        "step3": "希望締切・メモを必要に応じて入力する",
+        "step4": "「作成」ボタンで確定する（ステータス：下書きで作成）"
+      }
+    },
+    "status": {
+      "title": "ステータスを進めてシフトを確定させる",
+      "body": "シフトは5段階のステータスで管理されます。詳細ページのステッパーで現在のフェーズを確認し、順番に進めましょう。",
+      "steps": {
+        "step1": "「下書き」：スロットや制約を設定する準備段階",
+        "step2": "「収集中」：メンバーにシフト希望の提出を依頼する",
+        "step3": "「調整中」：希望を元にシフトを調整・作成する",
+        "step4": "「公開済み」：確定シフトをメンバーに公開する",
+        "step5": "「完了」：終了したシフトをアーカイブする"
+      }
+    },
+    "requests": {
+      "title": "メンバーのシフト希望を収集・確認する",
+      "body": "「収集中」ステータスになるとメンバーが希望を提出できます。詳細ページの「希望一覧」タブで全員の状況をマトリクスで確認できます。",
+      "steps": {
+        "step1": "詳細ページの「希望一覧」タブをクリックする",
+        "step2": "サマリーカードで提出率・未提出人数を確認する",
+        "step3": "マトリクス表で各メンバーの日付ごとの希望強度を確認する",
+        "step4": "「出勤希望・指定なし・出れなくはない・できれば休み・絶対休み」の5段階で表示される"
+      }
+    },
+    "slots": {
+      "title": "スロットと勤務制約を設定する",
+      "body": "シフトの時間帯（スロット）を登録し、チーム・メンバー別の勤務制約を設定します。",
+      "steps": {
+        "step1": "「編集」タブでスロット（日付・開始〜終了時刻・ポジション・必要人数）を作成する",
+        "step2": "「一括作成」ボタンで日付範囲・曜日指定による複数スロットの一括登録も可能",
+        "step3": "「制約」タブでチームデフォルトの勤務制約（月最大時間・連続勤務日数など）を設定する",
+        "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
+      }
     }
   }
 }

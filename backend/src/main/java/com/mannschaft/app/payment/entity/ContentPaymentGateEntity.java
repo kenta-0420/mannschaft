@@ -44,6 +44,7 @@ public class ContentPaymentGateEntity {
 
     private Long createdBy;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

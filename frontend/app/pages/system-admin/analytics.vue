@@ -72,16 +72,41 @@ const usersTrend = ref<AnyRecord | null>(null)
 const churnAnalysis = ref<AnyRecord | null>(null)
 const moduleRanking = ref<AnyRecord | null>(null)
 
+// 収益系（課金）は失敗を null(=ゼロ/空) と区別して表示する。取得失敗を「収益ゼロ」に見せない。
+const revenueSummaryError = ref(false)
+const revenueTrendError = ref(false)
+
 async function load() {
   loading.value = true
+  revenueSummaryError.value = false
+  revenueTrendError.value = false
   try {
     const range = getPeriodRange(selectedPeriod.value)
+    // 1 API の不通で全体を白紙化しない部分描画。ただし収益系（課金・🔴）は失敗をエラー状態として
+    // 表示し、その他統計（🟡）はログで表面化のうえ従来どおり fallback（null）を維持する。
     const [summary, trend, users, churn, modules] = await Promise.all([
-      analyticsApi.getRevenueSummary().catch(() => null),
-      analyticsApi.getRevenueTrend(range).catch(() => null),
-      analyticsApi.getUsersTrend(range).catch(() => null),
-      analyticsApi.getChurnAnalysis().catch(() => null),
-      analyticsApi.getModuleRanking().catch(() => null),
+      analyticsApi.getRevenueSummary().catch((e) => {
+        console.error('[system-admin] 収益サマリの取得に失敗', e)
+        revenueSummaryError.value = true
+        return null
+      }),
+      analyticsApi.getRevenueTrend(range).catch((e) => {
+        console.error('[system-admin] 収益トレンドの取得に失敗', e)
+        revenueTrendError.value = true
+        return null
+      }),
+      analyticsApi.getUsersTrend(range).catch((e) => {
+        console.warn('[system-admin] ユーザー増減の取得に失敗（データなし表示にフォールバック）', e)
+        return null
+      }),
+      analyticsApi.getChurnAnalysis().catch((e) => {
+        console.warn('[system-admin] 解約分析の取得に失敗（データなし表示にフォールバック）', e)
+        return null
+      }),
+      analyticsApi.getModuleRanking().catch((e) => {
+        console.warn('[system-admin] モジュールランキングの取得に失敗（データなし表示にフォールバック）', e)
+        return null
+      }),
     ])
     revenueSummary.value = (summary as { data: AnyRecord } | null)?.data ?? null
     revenueTrend.value = (trend as { data: AnyRecord } | null)?.data ?? null
@@ -256,6 +281,14 @@ onUnmounted(() => {
     <PageLoading v-if="loading" />
 
     <template v-else>
+      <!-- 収益サマリ取得失敗（課金・🔴）: KPI を「ゼロ」に見せず失敗として表示する -->
+      <p
+        v-if="revenueSummaryError"
+        class="mb-6 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"
+        role="alert"
+      >
+        {{ $t('error.section_load_failed') }}
+      </p>
       <!-- KPIカード -->
       <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
         <Card>
@@ -361,7 +394,14 @@ onUnmounted(() => {
           <div class="relative h-64">
             <canvas ref="revenueChartRef" />
             <div
-              v-if="!revenueTrend || ((revenueTrend.points as unknown[])?.length ?? 0) === 0"
+              v-if="revenueTrendError"
+              class="absolute inset-0 flex items-center justify-center text-sm text-red-600 dark:text-red-400"
+              role="alert"
+            >
+              {{ $t('error.section_load_failed') }}
+            </div>
+            <div
+              v-else-if="!revenueTrend || ((revenueTrend.points as unknown[])?.length ?? 0) === 0"
               class="absolute inset-0 flex items-center justify-center text-sm text-surface-400"
             >
               データがありません

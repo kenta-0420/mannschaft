@@ -14,7 +14,7 @@ public enum LineErrorCode implements ErrorCode {
     /** LINE BOT設定が見つからない */
     LINE_001("LINE_001", "LINE BOT設定が見つかりません", Severity.WARN),
 
-    /** LINE BOT設定が既に存在する */
+    /** LINE BOT設定が既に存在する（409・ErrorCode ステータス写像是正ロットH） */
     LINE_002("LINE_002", "このスコープには既にLINE BOT設定が存在します", Severity.WARN),
 
     /** Webhook シークレット不一致 */

@@ -89,7 +89,7 @@ watch(() => props.teamId, load)
       v-else-if="entries.length === 0"
       class="py-8 text-center text-sm text-surface-400"
     >
-      {{ $t('tournament.dashboard_widgets.empty_division_standings') }}
+      {{ $t('dashboard_widgets.empty_division_standings') }}
     </div>
 
     <div v-else class="space-y-3">
@@ -100,7 +100,7 @@ watch(() => props.teamId, load)
         :options="tournamentOptions"
         option-label="label"
         option-value="key"
-        :placeholder="$t('tournament.dashboard_widgets.select_tournament')"
+        :placeholder="$t('dashboard_widgets.select_tournament')"
         class="w-full"
         size="small"
       />
@@ -113,10 +113,10 @@ watch(() => props.teamId, load)
         <table class="w-full text-left text-xs">
           <thead class="sticky top-0 bg-surface-0 text-surface-400 dark:bg-surface-900">
             <tr>
-              <th class="py-1 text-center">{{ $t('tournament.dashboard_widgets.rank') }}</th>
-              <th class="py-1">{{ $t('tournament.dashboard_widgets.team') }}</th>
-              <th class="py-1 text-center">{{ $t('tournament.dashboard_widgets.win_draw_loss') }}</th>
-              <th class="py-1 text-center">{{ $t('tournament.dashboard_widgets.points') }}</th>
+              <th class="py-1 text-center">{{ $t('dashboard_widgets.rank') }}</th>
+              <th class="py-1">{{ $t('dashboard_widgets.team') }}</th>
+              <th class="py-1 text-center">{{ $t('dashboard_widgets.win_draw_loss') }}</th>
+              <th class="py-1 text-center">{{ $t('dashboard_widgets.points') }}</th>
             </tr>
           </thead>
           <tbody>

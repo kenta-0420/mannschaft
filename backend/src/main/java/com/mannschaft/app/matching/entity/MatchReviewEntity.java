@@ -48,6 +48,7 @@ public class MatchReviewEntity {
     @Builder.Default
     private Boolean isPublic = true;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

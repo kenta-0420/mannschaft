@@ -59,6 +59,13 @@ public class ActivityFeedEntity {
     @Column(nullable = false, length = 200)
     private String summary;
 
+    /**
+     * F03.18: 変更差分（JSON文字列）。SCHEDULE系活動のみ非NULL、既存種別は常にNULL。
+     * DB列はJSON型だが、JPAマッピングは素の文字列として保持する（既存方針を踏襲）。
+     */
+    @Column(columnDefinition = "JSON")
+    private String detail;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

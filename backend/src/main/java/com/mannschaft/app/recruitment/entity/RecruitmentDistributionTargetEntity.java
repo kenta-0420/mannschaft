@@ -40,6 +40,7 @@ public class RecruitmentDistributionTargetEntity {
     @Column(nullable = false, length = 20)
     private RecruitmentDistributionTargetType targetType;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

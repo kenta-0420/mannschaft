@@ -59,6 +59,7 @@ public class ResumePhotoService {
      *
      * <p>処理手順（設計書§5.10）:
      * <ol>
+     *   <li>所有者確認（{@code findByIdAndUserId}。不一致・不存在はいずれも RESUME_001 → 404 で存在を秘匿）</li>
      *   <li>Content-Type + マジックバイト検証（JPEG/PNG のみ。それ以外 → RESUME_007）</li>
      *   <li>サイズ検証（5MB 超過 → RESUME_006）</li>
      *   <li>画像の再エンコード（EXIF/GPS 除去・寸法上限 2000px）</li>
@@ -75,7 +76,14 @@ public class ResumePhotoService {
      */
     @Transactional
     public String uploadPhoto(UUID resumeId, Long userId, MultipartFile file) {
-        // --- 1. バリデーション ---
+        // --- 1. 所有者確認 ---
+        // 認可判定は入力検証・再エンコードより前に置く。所有者以外に対して
+        // 「ファイル形式は妥当だが履歴書が無い／形式が不正」という差分を返さないことで、
+        // 履歴書の存在有無が推測される余地を無くす（不一致・不存在とも RESUME_001 → 404）。
+        ResumeEntity resume = resumeRepository.findByIdAndUserId(resumeId, userId)
+                .orElseThrow(() -> new BusinessException(ResumeErrorCode.RESUME_001));
+
+        // --- 2. バリデーション ---
         String contentType = file.getContentType();
         byte[] bytes;
         try {
@@ -101,12 +109,8 @@ public class ResumePhotoService {
             throw new BusinessException(ResumeErrorCode.RESUME_006);
         }
 
-        // --- 2. 画像の再エンコード（EXIF/GPS 除去・寸法上限）---
+        // --- 3. 画像の再エンコード（EXIF/GPS 除去・寸法上限）---
         byte[] sanitized = sanitizeImage(bytes, format);
-
-        // --- 3. 所有者確認 ---
-        ResumeEntity resume = resumeRepository.findByIdAndUserId(resumeId, userId)
-                .orElseThrow(() -> new BusinessException(ResumeErrorCode.RESUME_001));
 
         // --- 4. R2 に保存 ---
         String ext = (format == PhotoFormat.JPEG) ? "jpg" : "png";

@@ -14,7 +14,10 @@
 | `permission_group_permissions` | 権限グループ↔パーミッション紐付け | なし |
 | `user_permission_groups` | ユーザー↔権限グループ割り当て | なし |
 | `invite_tokens` | 招待URL/QRコード用トークン | なし（revoked_at で失効管理）|
-| `team_org_memberships` | チーム↔組織の多対多所属関係（組織からの招待・チームの承認で成立）| なし（物理削除。履歴は audit_logs で管理）|
+| `ownership_transfer_offers` | オーナー委譲の承諾型オファー（打診→承諾で ADMIN 委譲を実行）。2026-07-18 承諾型化で新設 | なし（status で状態管理）|
+| `team_org_memberships` | チーム↔組織の多対多所属関係（組織からの招待→チームの承諾、またはチームからの申請→組織の承認で成立。`direction` で起点を区別・`group_id` でチームグループに所属。F01.2.1）| なし（物理削除。履歴は audit_logs、再申請の抑止は `team_org_affiliation_restrictions`）|
+| `org_team_groups` | 組織内のチーム区分「チームグループ」（平坦・並び順付き・1組織100件まで）。定義は [F01.2.1 §5.2](../F01.2.1_org_team_groups.md) | `deleted_at`（論理削除）|
+| `team_org_affiliation_restrictions` | 加盟の申請・招待の再送制限（拒否後30日の冷却・ブロック、取下げ・取消後24時間の冷却）。定義は [F01.2.1 §5.4](../F01.2.1_org_team_groups.md) | なし（物理削除。期限切れは夜間バッチで削除）|
 | `team_blocks` | チームのサポーター自己登録ブロックリスト（ADMIN/DEPUTY_ADMIN が管理）| なし |
 | `organization_blocks` | 組織のサポーター自己登録ブロックリスト（ADMIN/DEPUTY_ADMIN が管理）| なし |
 | `organization_officers` | 組織の役員一覧（氏名・役職・並び順・個別表示可否）| なし（物理削除）|
@@ -49,6 +52,10 @@
 | `visibility` | ENUM('PUBLIC', 'PRIVATE') | NO | 'PRIVATE' | 情報公開レベル（外部公開制御）|
 | `hierarchy_visibility` | ENUM('NONE', 'BASIC', 'FULL') | NO | 'NONE' | 子組織・チームのメンバーに対するこの組織の閲覧範囲。NONE=非公開 / BASIC=組織名・説明・アイコンのみ / FULL=visibility 設定範囲内の全コンテンツ |
 | `supporter_enabled` | BOOLEAN | NO | FALSE | サポーター（フォロー）登録機能の有効化フラグ。TRUE かつ visibility=PUBLIC の場合のみ招待コード不要でフォロー可能 |
+| `team_application_enabled` | BOOLEAN | NO | FALSE | チームからの加盟申請を受け付けるか（F01.2.1 §5.5）|
+| `team_groups_enabled` | BOOLEAN | NO | FALSE | チームグループ機能を使うか（F01.2.1 §5.5）|
+| `team_application_group_mode` | VARCHAR(10)（CHECK: OFF/OPTIONAL/REQUIRED） | NO | 'OFF' | 申請時のグループ選択。グループ機能 off のときは実効 OFF（F01.2.1 §5.5）|
+| `team_application_guidance` | VARCHAR(500) | YES | NULL | 申請フォームの案内文（F01.2.1 §5.5）|
 | `supporter_name_disclosure` | ENUM('DISPLAY_NAME','REAL_NAME') | NO | 'DISPLAY_NAME' | サポーター向け氏名表示モード（**実装: F19.1**）。詳細: `F19.1_public_pages_identity_disclosure.md` §5.1.2 |
 | `map_embed_url` | VARCHAR(2048) | YES | NULL | Google Maps 埋め込み URL（**実装: F19.1**） |
 | `archived_at` | DATETIME | YES | NULL | アーカイブ日時（NULL = アクティブ）|
@@ -239,7 +246,7 @@ INDEX idx_rp_permission (permission_id)
 
 **シードデータ（V2.015__seed_role_permissions.sql / V2.021__seed_member_permission_ceiling.sql / Phase 3: V3.007__add_manage_payments_permission.sql）**
 
-凡例: **✓** = is_default TRUE（自動付与） / **△** = is_default FALSE（天井のみ・権限グループ経由で個別付与可）
+凡例: **✓** = is_default TRUE（自動付与） / **△** = is_default FALSE（天井のみ。権限グループ、または MANAGE_SCHEDULES のスコープ別設定で付与可）
 
 | パーミッション | SYSTEM_ADMIN | ADMIN | DEPUTY_ADMIN | MEMBER | SUPPORTER | GUEST |
 |--------------|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -248,9 +255,9 @@ INDEX idx_rp_permission (permission_id)
 | `CHANGE_MEMBER_ROLES` | ✓ | ✓ | △ | - | - | - |
 | `MANAGE_INVITE_TOKENS` | ✓ | ✓ | △ | - | - | - |
 | `EDIT_TEAM_SETTINGS` | ✓ | ✓ | △ | - | - | - |
-| `MANAGE_SCHEDULES` | ✓ | ✓ | △ | ✓ | - | - |
-| `MANAGE_FILES` | ✓ | ✓ | △ | ✓ | - | - |
-| `MANAGE_POSTS` | ✓ | ✓ | △ | ✓ | - | - |
+| `MANAGE_SCHEDULES` | ✓ | ✓ | △ | △ | - | - |
+| `MANAGE_FILES` | ✓ | ✓ | △ | △ | - | - |
+| `MANAGE_POSTS` | ✓ | ✓ | △ | △ | - | - |
 | `DELETE_OTHERS_CONTENT` | ✓ | ✓ | △ | △ | - | - |
 | `MANAGE_ANNOUNCEMENTS` | ✓ | ✓ | △ | △ | - | - |
 | `SEND_SAFETY_CONFIRMATION` | ✓ | ✓ | △ | △ | - | - |
@@ -258,18 +265,37 @@ INDEX idx_rp_permission (permission_id)
 
 > ※ `MANAGE_PAYMENTS` は Phase 3 / V3.007 で追加
 
-Phase 2 合計レコード数: 11 + 11 + 11 + 6（✓3 + △3） = **39件**
+Phase 2 合計レコード数: 11 + 11 + 11 + 6 = **39件**（現行の MEMBER 内訳は V223 適用後 ✓0 + △6）
 Phase 3 追加（MANAGE_PAYMENTS）: SYSTEM_ADMIN ✓ + ADMIN ✓ + DEPUTY_ADMIN △ = **+3件 → 合計42件**
 
 **制約・備考**
 - **SYSTEM_ADMIN**: Phase 3 以降 全12件（is_default = TRUE）。権限チェックは JWT 判定に統一（runtime で DB 参照しない）。シードは監査・将来対応のため投入する
 - **ADMIN**: Phase 3 以降 全12件（is_default = TRUE）。`DELETE_OTHERS_CONTENT` / `MANAGE_PAYMENTS` を含む全パーミッションを行使可能
 - **DEPUTY_ADMIN**: Phase 3 以降 全12件（is_default = FALSE）。**天井（ceiling）定義**として機能する。runtime での権限解決は role_permissions を参照せず `user_permission_groups` のみを使用する（権限グループ未割り当ての DEPUTY_ADMIN は実効パーミッション 0）
-- **MEMBER（is_default = TRUE）**: `MANAGE_SCHEDULES` / `MANAGE_FILES` / `MANAGE_POSTS` の3件。チーム参加と同時に全 MEMBER へ自動付与
-- **MEMBER（is_default = FALSE）**: `DELETE_OTHERS_CONTENT` / `MANAGE_ANNOUNCEMENTS` / `SEND_SAFETY_CONFIRMATION` の3件。天井のみ（自動付与なし）。ADMIN が MEMBER 用権限グループを作成し特定ユーザーへ割り当てた場合のみ有効
+- **MEMBER（is_default = TRUE）**: 0件。スコープ上書きが無い場合、管理権限は付与しない
+- **MEMBER（is_default = FALSE）**: `MANAGE_SCHEDULES` / `MANAGE_FILES` / `MANAGE_POSTS` / `DELETE_OTHERS_CONTENT` / `MANAGE_ANNOUNCEMENTS` / `SEND_SAFETY_CONFIRMATION` の6件。管理権限3件は V223 で初期 OFF とし、対象スコープの ADMIN が既定権限画面から ON にするか、権限グループへ含めて割り当てた場合に許可する。ほか3件は権限グループ経由の個別付与対象
 - **`MANAGE_PAYMENTS`**: MEMBER の role_permissions に含めない（天井エントリなし）。MEMBER は支払い管理権限を付与不可
 - **`DELETE_OTHERS_CONTENT`**: DEPUTY_ADMIN / MEMBER いずれの天井にも含める。ただしいかなるデフォルト権限グループにも含めない。ADMIN が意図的に付与した場合のみ有効
 - **SUPPORTER / GUEST**: role_permissions なし。閲覧権限はロールチェックで制御し、パーミッションテーブルは参照しない
+
+#### `team_role_permissions`
+
+TEAM / ORGANIZATION ごとに MEMBER の既定権限を上書きする。行が無い権限は
+`role_permissions.is_default` を継承するため、既存スコープの一括バックフィルは行わない。
+
+| カラム名 | 型 | NULL | 説明 |
+|---------|---|------|------|
+| `id` | BINARY(16) | NO | UUIDv7 主キー |
+| `scope_type` | VARCHAR(20) | NO | `TEAM` / `ORGANIZATION` |
+| `scope_id` | BIGINT UNSIGNED | NO | 対象スコープID |
+| `role_id` | BIGINT UNSIGNED | NO | `roles.id`（本APIは MEMBER のみ） |
+| `permission_id` | BIGINT UNSIGNED | NO | `permissions.id` |
+| `is_enabled` | TINYINT(1) | NO | 当該スコープでの ON/OFF |
+| `created_at` / `updated_at` | DATETIME(3) | NO | 作成・更新日時 |
+
+`UNIQUE(scope_type, scope_id, role_id, permission_id)` で同一設定の重複を防ぐ。
+MEMBER に一致する権限グループが1件以上割り当てられている場合は、従来どおりグループ集合が
+完全上書きとなり、このスコープ既定値は参照しない。
 
 ---
 
@@ -420,6 +446,42 @@ INDEX idx_it_organization_id (organization_id)
 
 ---
 
+#### `ownership_transfer_offers`
+
+オーナー委譲（ADMIN 権限移譲）の **承諾型オファー**。発行者が打診（PENDING 作成）し、指名相手の承諾（accept）で初めて委譲を実行する。2026-07-18 のマスター御裁可による承諾型化で新設。
+
+| カラム名 | 型 | NULL | デフォルト | 説明 |
+|---------|---|------|-----------|------|
+| `id` | BINARY(16) | NO | （UUIDv7・アプリ生成）| PK。**新規テーブルのため原則6に従い UUIDv7**（`UuidV7Entity` 継承）|
+| `team_id` | BIGINT UNSIGNED | YES | NULL | 委譲対象がチームの場合に設定（組織委譲時は NULL）。**クロスドメインではなく team ドメイン内**だが FK は張らず INDEX（後述）|
+| `organization_id` | BIGINT UNSIGNED | YES | NULL | 委譲対象が組織の場合に設定（チーム委譲時は NULL）|
+| `issued_by` | BIGINT UNSIGNED | NO | — | 発行者（現 ADMIN）の user ID。FK なし（user は別ドメイン・原則1）|
+| `target_user_id` | BIGINT UNSIGNED | NO | — | 指名相手（承諾できる唯一のユーザー）の user ID。FK なし・INDEX |
+| `status` | VARCHAR(20) | NO | `'PENDING'` | `PENDING` / `ACCEPTED` / `DECLINED` / `EXPIRED` / `CANCELLED`。**VARCHAR + アプリ層検証**（ENUM にしない）|
+| `expires_at` | DATETIME | NO | — | 有効期限（発行から7日を既定）。超過は EXPIRED |
+| `accepted_at` | DATETIME | YES | NULL | 承諾日時（ACCEPTED 時のみ）|
+| `resolved_at` | DATETIME | YES | NULL | 辞退/取消/期限確定の処理日時 |
+| `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
+| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
+
+**インデックス**
+```sql
+INDEX idx_oto_target_user (target_user_id, status)     -- 自分宛ての PENDING オファー一覧
+INDEX idx_oto_team (team_id, status)                   -- チーム別 PENDING オファー
+INDEX idx_oto_org (organization_id, status)            -- 組織別 PENDING オファー
+```
+
+**制約・備考**
+- **主キーは UUIDv7（原則6）**: 本テーブルはテナント/ユーザーごとに行が増える新規テーブルのため、`UuidV7Entity` を継承し `id BINARY(16)` とする（マスタ例外・シングルトン例外のいずれにも該当しない）。
+- **`team_id`/`organization_id` の XOR**: どちらか一方のみ非 NULL（`invite_tokens.chk_it_scope` と同方式の CHECK 制約 `chk_oto_scope` を張る）。
+- **FK を張らない（原則1）**: `issued_by`/`target_user_id`（user ドメイン）はもちろん、`team_id`/`organization_id`（team/org ドメイン）も本テーブル（role ドメイン）から見れば別ドメイン参照のため FK なし・INDEX のみ。整合性はアプリ層で保証。
+- **同一スコープに PENDING は 1 件まで**: `status='PENDING'` の重複打診をアプリ層で禁止（打診時 409）。DB レベルの部分 UNIQUE は MySQL 8.0 では関数インデックスで表現するが、運用頻度が低いためアプリ層チェックを一次とする。
+- **既存 `invite_tokens` を流用しない理由**: `invite_tokens` は「非メンバーを新規参加させる」ための公開リンク/QR 用トークン（`role_id` で付与ロールを持ち、`used_count`/`max_uses` で多数参加を管理）である。オーナー委譲は「**既存メンバーのロールを入れ替える**」操作で意味論が異なり、`invite_tokens` に相乗りさせると join フローに特殊分岐が増えて認可が複雑化する。よって専用テーブル `ownership_transfer_offers`（新規＝原則6 で UUIDv7）を設ける方が整合的と判断した。
+- **チーム/組織論理削除時**: 紐付く PENDING オファーを CANCELLED に一括更新（`invite_tokens` の一括失効と同方針）。
+- **`AbstractTenantAwareRepository`（原則7）の継承要否**: 本テーブルは `organization_id`（NULL 可）と `team_id`（NULL 可）の XOR を持ち、`organization_id` 単独でのテナント絞り込みが常に成立しない（チーム委譲時は `organization_id` が NULL）。よって原則7 の基底（`findByOrganizationIdAndDeletedAtIsNull` 等）はそのままでは適合しない。**Repository は通常の `JpaRepository` とし、検索は `idx_oto_target_user`（宛先起点）/ `idx_oto_team` / `idx_oto_org`（スコープ起点）で行う**。将来シャーディングする場合は「委譲は宛先ユーザー文脈で承諾される短命レコード」であり、シャードキー（`organization_id`）に強く依存しないため原則7 非適用でも整合する（`invite_tokens` と同じ扱い）。
+
+---
+
 #### `team_blocks`
 
 | カラム名 | 型 | NULL | デフォルト | 説明 |
@@ -474,29 +536,39 @@ INDEX idx_ob_organization_id (organization_id)
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
-| `team_id` | BIGINT UNSIGNED | NO | — | FK → teams（ON DELETE CASCADE）|
-| `organization_id` | BIGINT UNSIGNED | NO | — | FK → organizations（ON DELETE CASCADE）|
-| `status` | ENUM('PENDING', 'ACTIVE') | NO | 'PENDING' | PENDING = 承認待ち / ACTIVE = 所属中 |
-| `invited_by` | BIGINT UNSIGNED | YES | NULL | FK → users（招待した組織 ADMIN; SET NULL on delete）|
-| `responded_by` | BIGINT UNSIGNED | YES | NULL | FK → users（承認/拒否したチーム ADMIN; SET NULL on delete）|
-| `invited_at` | DATETIME | NO | CURRENT_TIMESTAMP | 招待日時 |
-| `responded_at` | DATETIME | YES | NULL | 承認または拒否した日時 |
+| `team_id` | BIGINT UNSIGNED | NO | — | チーム ID（FK なし。V62.006〜V62.009 で DROP 済み）|
+| `organization_id` | BIGINT UNSIGNED | NO | — | 組織 ID（FK なし。同上）|
+| `status` | VARCHAR(20)（CHECK: 'PENDING','ACTIVE'） | NO | 'PENDING' | PENDING = 承認（承諾）待ち / ACTIVE = 所属中。終端状態は行として残さない（F01.2.1 §4.2）|
+| `direction` | VARCHAR(20)（CHECK: 'ORG_INVITE','TEAM_APPLY'） | NO | 'ORG_INVITE' | 起点。ORG_INVITE = 組織からの招待 / TEAM_APPLY = チームからの申請（F01.2.1 で追加）|
+| `group_id` | BINARY(16) | YES | NULL | チームグループ（`org_team_groups.id`・organization ドメイン・クロスドメイン FK なし）。NULL = 未分類。PENDING/TEAM_APPLY では希望グループ（F01.2.1 で追加）|
+| `message` | VARCHAR(500) | YES | NULL | 申請・招待の添え書き。ACTIVE 化で NULL に戻す（F01.2.1 で追加）|
+| `invited_by` | BIGINT UNSIGNED | YES | NULL | PENDING を作成した加盟操作者（組織 ADMIN、または `MANAGE_ORG_AFFILIATION` を持つチームユーザー。F01.2.1 §3.2・§5.3）|
+| `responded_by` | BIGINT UNSIGNED | YES | NULL | 承諾・承認したユーザー |
+| `invited_at` | DATETIME | NO | CURRENT_TIMESTAMP | 招待・申請日時 |
+| `responded_at` | DATETIME | YES | NULL | 承諾・承認した日時 |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
-| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
+| `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | V2.011 には無く、F01.2.1 の移行で追加する |
+
+> クロスドメイン FK（teams / organizations / users）は V62.006〜V62.009 で DROP 済みであり、`ON DELETE CASCADE` も働かない。行の削除はすべてアプリ層で行う（下記「制約・備考」）。
 
 **インデックス**
 ```sql
-UNIQUE KEY uq_tom_team_org (team_id, organization_id)
-INDEX idx_tom_team_id (team_id)
-INDEX idx_tom_org_id (organization_id)
-INDEX idx_tom_status (status)
+UNIQUE KEY uq_team_org (team_id, organization_id)           -- V2.011
+INDEX idx_team_org_memberships_org_status_dir (organization_id, status, direction, invited_at)  -- F01.2.1
+INDEX idx_team_org_memberships_team_status_dir (team_id, status, direction)                    -- F01.2.1
+INDEX idx_team_org_memberships_org_group_status (organization_id, group_id, status)            -- F01.2.1
+INDEX idx_team_org_memberships_status_invited (status, invited_at)                             -- F01.2.1（PENDING 期限切れバッチ）
 ```
 
 **制約・備考**
-- 物理削除で管理。承認拒否・招待取消・チーム離脱・組織除名はいずれも DELETE で終了し、履歴は audit_logs で管理
-- 再招待（拒否・取消後）は新規 INSERT で再開始する（UNIQUE KEY により同一ペアの PENDING/ACTIVE は常に最大1件に限定）
+- 物理削除で管理。招待の拒否・招待の取消・申請の拒否・申請の取下げ・チーム離脱・組織除名はいずれも DELETE で終了し、履歴は audit_logs で管理（F01.2.1 §4.2 で見直したうえで維持）
+- 拒否された側は、その向きについて30日（任意で無期限）再申請・再招待できない。取下げ・取消でも24時間は再送できない（通知の連打防止）。判定は `team_org_affiliation_restrictions`（F01.2.1 §5.4）で行う
+- PENDING は60日応答が無ければ夜間バッチで削除する。組織・チームの削除／アーカイブ時も PENDING を削除する（F01.2.1 §4.5・§6.8）
+- 1チームは複数の組織に同時に ACTIVE で加盟できる。単一の親組織を前提にした読み手は F01.2.1 §9 で改修する
+- 再招待・再申請（取消・取下げ後、または制限の期限後）は新規 INSERT で再開始する（UNIQUE KEY により同一ペアの PENDING/ACTIVE は常に最大1件に限定）
+- 状態を変える更新は条件付き UPDATE／DELETE（`status` と `direction` を WHERE に含める）で行う。影響行数 0 のときは、操作時点で行が無ければ 404 `TEAM_070`、行はあるが状態・向きが前提と違えば 409 `TEAM_071` を返す（F01.2.1 §6.4 の判定表）
 - チームは複数の組織に同時所属可能（UNIQUE は (team_id, organization_id) ペアに対してのみ）
-- 組織の物理削除時: ON DELETE CASCADE により紐付く全レコードが自動削除。論理削除時は ON DELETE CASCADE が発動しないため、アプリ層で明示的に DELETE する（組織論理削除フロー参照）
+- 組織・チームの削除時の片付けは、DB の FK・CASCADE ではなくアプリ層で行う（FK は V62.006〜V62.009 で DROP 済み）。組織の論理削除はフロー内で明示的に DELETE する（組織論理削除フロー step 5）。チームのアーカイブは同じ team ドメインなので `TeamService.archiveTeam` の同じトランザクションで PENDING を削除する。チームの論理削除と組織のアーカイブは、それぞれのイベント（`TeamDeletedEvent`・`OrganizationArchivedEvent`、AFTER_COMMIT）を受けた team ドメインの cleanup service が削除し、取りこぼしは修復バッチ `TeamOrgLifecycleCleanupBatch` が拾う。申請・招待の作成はチーム行 → 組織行の固定順で行ロックを取り、アーカイブと直列化する（F01.2.1 §4.5・§6.8・§6.9）
 
 ---
 
@@ -629,8 +701,8 @@ users (N) ──── (M) permission_groups            ※ via user_permission_
 teams / organizations (1) ──── (N) invite_tokens
 teams (1) ──── (N) team_blocks              ※ supporter_enabled チームのブロックリスト
 organizations (1) ──── (N) organization_blocks  ※ supporter_enabled 組織のブロックリスト
-teams (1) ──── (N) team_org_memberships
-organizations (1) ──── (N) team_org_memberships
+teams (1) ──── (N) team_org_memberships        ※ FK なし（アプリ層で削除）
+organizations (1) ──── (N) team_org_memberships  ※ FK なし（アプリ層で削除）
 organizations (1) ──── (N) organization_officers       ※ ON DELETE CASCADE
 teams (1) ──── (N) team_officers                       ※ ON DELETE CASCADE
 organizations (1) ──── (N) organization_custom_fields  ※ ON DELETE CASCADE

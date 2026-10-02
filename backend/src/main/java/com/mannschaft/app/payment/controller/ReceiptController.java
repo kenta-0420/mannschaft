@@ -2,10 +2,14 @@ package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.payment.dto.ReceiptResponse;
+import com.mannschaft.app.payment.service.MemberPaymentReceiptPdfService;
 import com.mannschaft.app.payment.service.ReceiptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,21 +27,46 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReceiptController {
 
     private final ReceiptService receiptService;
+    private final MemberPaymentReceiptPdfService memberPaymentReceiptPdfService;
 
-    public ReceiptController(@Qualifier("memberPaymentReceiptService") ReceiptService receiptService) {
+    public ReceiptController(@Qualifier("memberPaymentReceiptService") ReceiptService receiptService,
+                             MemberPaymentReceiptPdfService memberPaymentReceiptPdfService) {
         this.receiptService = receiptService;
+        this.memberPaymentReceiptPdfService = memberPaymentReceiptPdfService;
     }
 
     /**
      * 会費領収書を取得する。
      *
+     * <p><b>認可の所在</b>: {@code ReceiptService.getReceipt}
+     * （{@code payment/service/ReceiptService.java:50}）が対象の支払い記録を取得したうえで
+     * 「払い手本人（{@code payer_user_id}）または受益者本人（{@code user_id}）」であることを照合し、
+     * どちらでもなければ {@code PAYMENT_ACCESS_DENIED}（404）で拒否する。
+     * 記録が存在しない場合は {@code MEMBER_PAYMENT_NOT_FOUND}（404）。
+     * 両者を同一ステータスに揃えているのは、応答の差から支払い記録 ID の実在を
+     * 判別されること（存在オラクル）を防ぐためである。
+     * 金額・領収 URL は照合を通過した場合にのみ組み立てられる。</p>
+     *
      * @param memberPaymentId 会費支払い記録ID
      * @return 領収書レスポンス
      */
+    @AuthorizedInService
     @GetMapping("/{memberPaymentId}/receipt")
     public ResponseEntity<ApiResponse<ReceiptResponse>> getReceipt(
             @PathVariable Long memberPaymentId) {
         return ResponseEntity.ok(ApiResponse.of(
                 receiptService.getReceipt(memberPaymentId, SecurityUtils.getCurrentUserId())));
+    }
+
+    /** Stripe hosted receipt が使えない場合の、受領者名義 PDF fallback。 */
+    @AuthorizedInService
+    @GetMapping("/{memberPaymentId}/receipt/pdf")
+    public ResponseEntity<byte[]> downloadReceiptPdf(@PathVariable Long memberPaymentId) {
+        byte[] pdf = memberPaymentReceiptPdfService.generate(memberPaymentId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"member-payment-" + memberPaymentId + "-receipt.pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

@@ -27,9 +27,11 @@ public class AnalyticsDailyAdsEntity extends BaseEntity {
     private LocalDate date;
 
     @Builder.Default
+    @Column(nullable = false)
     private int impressions = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int clicks = 0;
 
     @Column(nullable = false)

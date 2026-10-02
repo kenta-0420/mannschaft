@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.ReminderStatus;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
@@ -17,11 +18,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.context.MessageSource;
+
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -57,6 +61,19 @@ class ReservationReminderDispatchBatchServiceTest {
     @Mock
     private NotificationHelper notificationHelper;
 
+    /**
+     * 通知本文の i18n 化（Issue #2543 申し送り）で増えた依存。
+     * スタブしないと {@code getLocale} が null を返し
+     * {@code Locale.forLanguageTag(null)} が NPE となる。その NPE は
+     * 行単位の try/catch に捕まるため通知が飛ばず「zero interactions」で落ちる。
+     */
+    @Mock
+    private UserLocaleCache userLocaleCache;
+
+    /** 同上。文面は MessageSource キーから引くようになった。 */
+    @Mock
+    private MessageSource messageSource;
+
     @InjectMocks
     private ReservationReminderDispatchBatchService batch;
 
@@ -68,6 +85,20 @@ class ReservationReminderDispatchBatchServiceTest {
     // ========================================
     // テスト用ヘルパー（id は IDENTITY 採番のためリフレクションで設定）
     // ========================================
+
+    /**
+     * 通知本文の i18n 化に伴う依存をスタブする（本文の中身は本テストの検証対象ではない）。
+     *
+     * <p>スタブしないと {@code getLocale} が null を返し {@code Locale.forLanguageTag(null)} が
+     * NPE になる。その NPE は送出ループの行単位 try/catch に捕まるため通知が飛ばず、
+     * 「Wanted but not invoked / zero interactions」という一見無関係な失敗になる。
+     * 本文の言語切替そのものは {@code ReservationWaitlistServiceTest} で番人化している。</p>
+     */
+    private void givenI18n() {
+        given(userLocaleCache.getLocale(anyLong())).willReturn("ja");
+        given(messageSource.getMessage(any(String.class), any(), any(String.class), any(Locale.class)))
+                .willReturn("dummy");
+    }
 
     private static void setId(Object entity, Long id) {
         try {
@@ -138,6 +169,7 @@ class ReservationReminderDispatchBatchServiceTest {
             given(reminderService.findDueReminders()).willReturn(List.of(reminder));
             given(reservationRepository.findAllById(any())).willReturn(List.of(reservation()));
             given(slotRepository.findAllById(any())).willReturn(List.of(slot()));
+            givenI18n();
 
             batch.dispatchDueReminders();
 
@@ -211,6 +243,7 @@ class ReservationReminderDispatchBatchServiceTest {
             given(reminderService.findDueReminders()).willReturn(List.of(reminder));
             given(reservationRepository.findAllById(any())).willReturn(List.of(reservation()));
             given(slotRepository.findAllById(any())).willReturn(List.of(slot()));
+            givenI18n();
             doThrow(new RuntimeException("dispatch failed")).when(notificationHelper).notify(
                     anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 

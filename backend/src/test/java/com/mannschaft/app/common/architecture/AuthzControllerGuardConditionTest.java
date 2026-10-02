@@ -1,0 +1,205 @@
+package com.mannschaft.app.common.architecture;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.mannschaft.app.common.architecture.fixtures.AuthorizedDirectController;
+import com.mannschaft.app.common.architecture.fixtures.HelperDepth2Controller;
+import com.mannschaft.app.common.architecture.fixtures.IntentionallyPublicMarkerAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.IntentionallyPublicMarkerClassAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.MarkerAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.MarkerClassAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.PathConfigMarkerAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.PathConfigMarkerClassAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.SelfScopedMarkerAnnotatedController;
+import com.mannschaft.app.common.architecture.fixtures.UnauthorizedController;
+import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+/**
+ * 認可番人（{@link AuthzControllerGuardArchTest}）の合格判定ロジックが
+ * <b>偽陰性ゼロ</b>であることを証明するメタテスト（認可根治戦役 Wave5・Ph0-c）。
+ *
+ * <p>番人本体は {@code @AnalyzeClasses(importOptions = DoNotIncludeTests.class)} で
+ * test 配下を除外しており、本メタテストの fixture は本番凍結ストアに混入しない。
+ * 本テストは fixture パッケージだけを {@link ClassFileImporter} で読み込み、
+ * 番人の <b>合格判定の単一正準</b> である
+ * {@link AuthzControllerGuardArchTest#hasAuthorizationSignal(JavaMethod)}
+ * を fixture 限定で評価する（判定ロジックの二重実装を避ける）。
+ *
+ * <h2>担保する3ケース</h2>
+ * <ul>
+ *   <li><b>authorized-direct</b>: 直接 {@code *AccessGuard} を呼ぶ → 認可シグナルあり（合格）</li>
+ *   <li><b>unauthorized</b>: 認可呼びが一切ない → 認可シグナルなし（違反として検出）
+ *       ＝ 番人を緩めすぎていないことの担保</li>
+ *   <li><b>helper-depth2</b>: Controller→Service→private helper→{@code *AccessGuard}（深さ2）
+ *       → D=2 BFS で認可シグナルあり（合格）。
+ *       賢化前（直接呼びのみ判定）はここが検出漏れ＝<b>red</b>、
+ *       賢化後（D=2 BFS）は <b>green</b> になる遷移点。</li>
+ *   <li><b>marker-annotated</b>: メソッドに {@code @AuthorizedInService} 監査済マーカーのみ
+ *       （他の認可呼びは皆無）→ marker シグナルで認可シグナルあり（合格）。</li>
+ *   <li><b>marker-class-annotated</b>: クラスレベルに {@code @AuthorizedInService}・メソッドは
+ *       無印 → {@code getOwner().isAnnotatedWith} 経路で認可シグナルあり（合格）。</li>
+ *   <li><b>self-scoped-marker-annotated</b>: メソッドに {@code @SelfScopedEndpoint} のみ
+ *       → marker シグナルで認可シグナルあり（合格）。同マーカーは {@code @Target(METHOD)} の
+ *       ため対クラス fixture は<b>意図的に存在しない</b>（クラス単位で全 EP をまとめて
+ *       承認扱いにできない設計）。</li>
+ * </ul>
+ */
+@DisplayName("認可番人 合格判定ロジックの偽陰性ゼロ証明（メタテスト）")
+class AuthzControllerGuardConditionTest {
+
+    private static final String FIXTURES_PACKAGE =
+        "com.mannschaft.app.common.architecture.fixtures";
+
+    private static JavaClasses fixtureClasses;
+
+    @BeforeAll
+    static void importFixtures() {
+        // fixture パッケージだけを読み込む（本番番人とは独立の import）。
+        // BFS の委譲先（DummyDelegateService/DummyAccessGuard）も同パッケージのため
+        // resolveMembers() で実装体に解決できる。
+        fixtureClasses = new ClassFileImporter().importPackages(FIXTURES_PACKAGE);
+    }
+
+    @Test
+    @DisplayName("authorized-direct: 直接AccessGuardを呼ぶEPは認可シグナルありと判定される")
+    void authorizedDirectHasSignal() {
+        JavaMethod method = mappingMethod(AuthorizedDirectController.class, "directCall");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("直接 *AccessGuard を呼ぶ公開EPは認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("unauthorized: 認可呼びが皆無のEPは認可シグナルなし（違反）と判定される")
+    void unauthorizedHasNoSignal() {
+        JavaMethod method = mappingMethod(UnauthorizedController.class, "noAuth");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("認可呼びが一切ない公開EPは認可シグナルなし＝違反として検出されるべき"
+                + "（番人を緩めすぎていないことの担保）")
+            .isFalse();
+    }
+
+    @Test
+    @DisplayName("helper-depth2: 深さ2の委譲で認可クラスに到達するEPは認可シグナルありと判定される（D=2）")
+    void helperDepth2HasSignal() {
+        JavaMethod method = mappingMethod(HelperDepth2Controller.class, "viaService");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("Controller→Service→private helper→*AccessGuard（深さ2）の委譲は "
+                + "D=2 BFS で認可シグナルありと判定されるべき"
+                + "（賢化前は直接呼びのみ判定のため検出漏れ＝red）")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("marker-annotated: メソッドに@AuthorizedInServiceを付けたEPは認可シグナルありと判定される")
+    void markerAnnotatedMethodHasSignal() {
+        JavaMethod method = mappingMethod(MarkerAnnotatedController.class, "markedMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("メソッドに @AuthorizedInService 監査済マーカーを付けた公開EPは"
+                + "（他の認可呼びが皆無でも）認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("marker-class-annotated: クラスに@AuthorizedInServiceを付けた無印メソッドは認可シグナルありと判定される")
+    void markerClassAnnotatedMethodHasSignal() {
+        JavaMethod method = mappingMethod(MarkerClassAnnotatedController.class, "plainMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("宣言クラスに @AuthorizedInService を付けた無印の公開EPは"
+                + "getOwner().isAnnotatedWith 経路で認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("path-config-marker-annotated: メソッドに@AuthorizedByPathConfigを付けたEPは認可シグナルありと判定される")
+    void pathConfigMarkerAnnotatedMethodHasSignal() {
+        JavaMethod method =
+            mappingMethod(PathConfigMarkerAnnotatedController.class, "markedMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("メソッドに @AuthorizedByPathConfig 監査済マーカーを付けた公開EPは"
+                + "（他の認可呼びが皆無でも）認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("path-config-marker-class-annotated: クラスに@AuthorizedByPathConfigを付けた無印メソッドは認可シグナルありと判定される")
+    void pathConfigMarkerClassAnnotatedMethodHasSignal() {
+        JavaMethod method =
+            mappingMethod(PathConfigMarkerClassAnnotatedController.class, "plainMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("宣言クラスに @AuthorizedByPathConfig を付けた無印の公開EPは"
+                + "getOwner().isAnnotatedWith 経路で認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("intentionally-public-marker-annotated: メソッドに@IntentionallyPublicを付けたEPは認可シグナルありと判定される")
+    void intentionallyPublicMarkerAnnotatedMethodHasSignal() {
+        JavaMethod method =
+            mappingMethod(IntentionallyPublicMarkerAnnotatedController.class, "markedMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("メソッドに @IntentionallyPublic 監査済マーカーを付けた公開EPは"
+                + "（他の認可呼びが皆無でも）認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("intentionally-public-marker-class-annotated: クラスに@IntentionallyPublicを付けた無印メソッドは認可シグナルありと判定される")
+    void intentionallyPublicMarkerClassAnnotatedMethodHasSignal() {
+        JavaMethod method =
+            mappingMethod(IntentionallyPublicMarkerClassAnnotatedController.class, "plainMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("宣言クラスに @IntentionallyPublic を付けた無印の公開EPは"
+                + "getOwner().isAnnotatedWith 経路で認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("self-scoped-marker-annotated: メソッドに@SelfScopedEndpointを付けたEPは認可シグナルありと判定される")
+    void selfScopedMarkerAnnotatedMethodHasSignal() {
+        JavaMethod method =
+            mappingMethod(SelfScopedMarkerAnnotatedController.class, "markedMethod");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(method))
+            .as("メソッドに @SelfScopedEndpoint 監査済マーカーを付けた公開EPは"
+                + "（他の認可呼びが皆無でも）認可シグナルありと判定されるべき")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("marker除去対照: マーカーの無い同型EP(unauthorized)はfalseのまま（マーカーが緩めすぎない証明）")
+    void withoutMarkerRemainsFalse() {
+        // 上記 7 つの marker fixture と本体は同一（DummyPlainService#loadData のみ）で、
+        // 差は監査済マーカー 4 種（@AuthorizedInService / @AuthorizedByPathConfig /
+        // @IntentionallyPublic / @SelfScopedEndpoint）の有無だけ。マーカーの無い
+        // UnauthorizedController#noAuth が
+        // false のままであることで、marker シグナルが「マーカーを付けた EP だけ」を合格させ、
+        // 無印 EP まで巻き込んで緩めていないことを担保する（偽陰性ゼロ）。
+        // マーカーを 4 種へ増やしても本判定が false のままであることが、拡張で番人が
+        // 骨抜きになっていないことの証明になる。
+        JavaMethod unmarked = mappingMethod(UnauthorizedController.class, "noAuth");
+        assertThat(AuthzControllerGuardArchTest.hasAuthorizationSignal(unmarked))
+            .as("マーカーの無い同型EPは認可シグナルなし＝falseのままであるべき"
+                + "（marker追加で緩めすぎていないことの担保）")
+            .isFalse();
+    }
+
+    // ------------------------------------------------------------------
+    // ヘルパー
+    // ------------------------------------------------------------------
+
+    /** fixture Controller から指定名の Mapping メソッド（引数1つ・Long or それ以外の単一引数）を取得する。 */
+    private static JavaMethod mappingMethod(Class<?> controller, String methodName) {
+        JavaClass javaClass = fixtureClasses.get(controller);
+        return javaClass.getMethods().stream()
+            .filter(m -> m.getName().equals(methodName))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(
+                "fixture メソッドが見つからない: " + controller.getName() + "#" + methodName));
+    }
+}

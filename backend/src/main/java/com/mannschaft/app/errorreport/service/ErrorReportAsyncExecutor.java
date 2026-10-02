@@ -3,10 +3,14 @@ package com.mannschaft.app.errorreport.service;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
+import com.mannschaft.app.errorreport.event.ErrorReportRaisedEvent;
+import com.mannschaft.app.errorreport.event.ErrorReportRegressionDetectedEvent;
+import com.mannschaft.app.errorreport.event.ErrorReportSeverityEscalatedEvent;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,8 +35,12 @@ import java.util.Optional;
  * <p>プロジェクト内の前例: {@link com.mannschaft.app.digest.service.DigestAsyncExecutor}</p>
  *
  * <p>循環依存を避けるため、本クラスは {@link ErrorReportService} を参照しない。
- * {@code error_reports} の集約ロジックに必要な {@link ErrorReportRepository} と
- * {@link ErrorReportNotifier} に直接依存し、独立して動作する。</p>
+ * {@code error_reports} の集約ロジックに必要な {@link ErrorReportRepository} に直接依存し、
+ * 独立して動作する。</p>
+ *
+ * <p>Issue #2990 L11: 通知は本クラスから直接発火しない。業務TX内では ID だけを載せた
+ * 業務イベント（{@link ErrorReportRaisedEvent} 等）を publish し、
+ * {@link ErrorReportNotificationListener} が {@code AFTER_COMMIT} で配送する。</p>
  */
 @Component
 @Slf4j
@@ -40,7 +48,11 @@ import java.util.Optional;
 public class ErrorReportAsyncExecutor {
 
     private final ErrorReportRepository errorReportRepository;
-    private final ErrorReportNotifier errorReportNotifier;
+    /**
+     * Issue #2990 L11 — 通知は業務TX内で発火せず、ID だけを載せた業務イベントを publish する。
+     * 実配送は {@link ErrorReportNotificationListener} が {@code AFTER_COMMIT} で行う。
+     */
+    private final ApplicationEventPublisher eventPublisher;
     /**
      * F10.6 §5.6-③ — 集約バッファ。
      * バックエンド由来エラーの 2 通目以降は Slack 即時通知を抑制し、
@@ -154,7 +166,7 @@ public class ErrorReportAsyncExecutor {
                 report.reopen(now);
                 report.setWorkflowStage(null);
                 report.setAssigneeId(null);
-                errorReportNotifier.notifyRegression(report);
+                eventPublisher.publishEvent(new ErrorReportRegressionDetectedEvent(report.getId()));
                 log.info("バックエンド例外リグレッション検知: id={}, hash={}, ex={}",
                         report.getId(), errorHash, exClassName);
                 return report;
@@ -166,7 +178,8 @@ public class ErrorReportAsyncExecutor {
                 ErrorReportEntity updated = errorReportRepository.findByErrorHash(errorHash).orElseThrow();
                 ErrorReportSeverity newSeverity = updated.getSeverity();
                 if (newSeverity.ordinal() > oldSeverity.ordinal()) {
-                    errorReportNotifier.notifyEscalation(updated, oldSeverity, newSeverity);
+                    eventPublisher.publishEvent(new ErrorReportSeverityEscalatedEvent(
+                            updated.getId(), oldSeverity, newSeverity));
                 }
                 // F10.6 §5.6-③ — 重複発火を集約バッファに蓄積（severity 昇格通知とは独立）。
                 // 既存レポートの 2 回目以降の発火なので必ず BUFFERED 扱いになる想定。
@@ -210,10 +223,9 @@ public class ErrorReportAsyncExecutor {
         // 前の expire 内に再生成されたケース）は Slack 即時通知を抑制し、5 分毎の集約サマリ送りにする。
         // SYSTEM_ADMIN プッシュ通知は既存仕様通り送る（重要インシデントの埋没防止）。
         if (severity.ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
-            if (aggResult == ErrorReportAggregator.AggregationResult.FIRST_OCCURRENCE) {
-                errorReportNotifier.notifySlack(saved);
-            }
-            errorReportNotifier.notifySystemAdmins(saved);
+            eventPublisher.publishEvent(new ErrorReportRaisedEvent(
+                    saved.getId(),
+                    aggResult == ErrorReportAggregator.AggregationResult.FIRST_OCCURRENCE));
         }
 
         log.info("バックエンド例外記録: id={}, hash={}, severity={}, aggResult={}, ex={}",

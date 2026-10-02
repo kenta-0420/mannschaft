@@ -90,4 +90,16 @@ public class DwellingUnitEntity extends BaseEntity {
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
+
+    /**
+     * 認可チェック用にスコープ ID を解決する（{@code scopeType} が {@code TEAM} なら {@code teamId}、
+     * それ以外（{@code ORGANIZATION}）なら {@code organizationId}）。
+     *
+     * <p>認可根治戦役 Wave2: path/request で渡された scopeId をそのまま信用せず、
+     * 必ず本メソッドで entity 由来のスコープを解決してから
+     * {@code AccessControlService.checkMembership}/{@code checkAdminOrAbove} に渡すこと（BOLA 防止）。</p>
+     */
+    public Long resolveScopeId() {
+        return "TEAM".equals(this.scopeType) ? this.teamId : this.organizationId;
+    }
 }

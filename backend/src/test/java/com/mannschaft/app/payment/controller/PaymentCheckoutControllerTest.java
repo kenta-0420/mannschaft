@@ -7,8 +7,10 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.dto.ConnectCheckoutResponse;
+import com.mannschaft.app.payment.dto.ConnectCheckoutStatusResponse;
 import com.mannschaft.app.payment.dto.MembershipCheckoutRequest;
 import com.mannschaft.app.payment.service.MemberPaymentService;
+import com.mannschaft.app.payment.service.PaymentItemService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +35,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -65,6 +68,9 @@ class PaymentCheckoutControllerTest {
     @Mock
     private MemberPaymentService memberPaymentService;
 
+    @Mock
+    private PaymentItemService paymentItemService;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -74,7 +80,7 @@ class PaymentCheckoutControllerTest {
     void setUp() {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
-        PaymentCheckoutController controller = new PaymentCheckoutController(memberPaymentService);
+        PaymentCheckoutController controller = new PaymentCheckoutController(memberPaymentService, paymentItemService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
@@ -109,6 +115,7 @@ class PaymentCheckoutControllerTest {
                 new MembershipCheckoutRequest(BENEFICIARY_USER_ID, null));
 
         mockMvc.perform(post("/api/v1/payment-items/{itemId}/checkout", ITEM_ID)
+                        .header("Idempotency-Key", "idem-self-001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
@@ -156,6 +163,7 @@ class PaymentCheckoutControllerTest {
                 new MembershipCheckoutRequest(otherUserId, null));
 
         mockMvc.perform(post("/api/v1/payment-items/{itemId}/checkout", ITEM_ID)
+                        .header("Idempotency-Key", "idem-auth-001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isForbidden())
@@ -177,6 +185,7 @@ class PaymentCheckoutControllerTest {
                 new MembershipCheckoutRequest(BENEFICIARY_USER_ID, null));
 
         mockMvc.perform(post("/api/v1/payment-items/{itemId}/checkout", ITEM_ID)
+                        .header("Idempotency-Key", "idem-paid-001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isConflict())
@@ -198,6 +207,7 @@ class PaymentCheckoutControllerTest {
                 new MembershipCheckoutRequest(BENEFICIARY_USER_ID, null));
 
         mockMvc.perform(post("/api/v1/payment-items/{itemId}/checkout", ITEM_ID)
+                        .header("Idempotency-Key", "idem-onboarding-001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isConflict())
@@ -214,6 +224,42 @@ class PaymentCheckoutControllerTest {
         String body = "{\"idempotencyKey\":\"some-key\"}"; // beneficiaryUserId を省略
 
         mockMvc.perform(post("/api/v1/payment-items/{itemId}/checkout", ITEM_ID)
+                        .header("Idempotency-Key", "00000000-0000-4000-8000-000000000227")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Webhook 反映後のチェックアウト状態を払い手本人へ返す")
+    void getConnectCheckoutStatus_paid_200() throws Exception {
+        given(memberPaymentService.getConnectCheckoutStatus(ITEM_ID, 42L, PAYER_USER_ID))
+                .willReturn(new ConnectCheckoutStatusResponse(42L, "PAID"));
+
+        mockMvc.perform(get("/api/v1/payment-items/{itemId}/checkout/{memberPaymentId}", ITEM_ID, 42L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberPaymentId").value(42))
+                .andExpect(jsonPath("$.data.status").value("PAID"));
+    }
+
+    @Test
+    @DisplayName("Idempotency-Key ヘッダ未指定は 400 で拒否する")
+    void createConnectCheckout_missingIdempotencyKey_400() throws Exception {
+        String body = objectMapper.writeValueAsString(new MembershipCheckoutRequest(BENEFICIARY_USER_ID, null));
+
+        mockMvc.perform(post("/api/v1/payment-items/{itemId}/checkout", ITEM_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Idempotency-Key ヘッダが空白なら 400 で拒否する")
+    void createConnectCheckout_blankIdempotencyKey_400() throws Exception {
+        String body = objectMapper.writeValueAsString(new MembershipCheckoutRequest(BENEFICIARY_USER_ID, null));
+
+        mockMvc.perform(post("/api/v1/payment-items/{itemId}/checkout", ITEM_ID)
+                        .header("Idempotency-Key", " ")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());

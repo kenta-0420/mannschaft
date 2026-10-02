@@ -68,6 +68,7 @@ public class DailyAttendanceRecordEntity extends BaseEntity {
     @Column(nullable = false)
     private Long recordedBy;
 
+    @Column(nullable = false)
     private LocalDateTime recordedAt;
 
     @PrePersist

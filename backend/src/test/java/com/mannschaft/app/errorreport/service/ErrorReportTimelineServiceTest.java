@@ -27,7 +27,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -44,8 +43,9 @@ class ErrorReportTimelineServiceTest {
 
     @Mock
     private ErrorReportRepository errorReportRepository;
+    /** Issue #2990 L11 — 業務TX内で発火するのは通知ではなく業務イベントである。 */
     @Mock
-    private ErrorReportNotifier errorReportNotifier;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
     @Mock
     private ErrorReportActivityRepository activityRepository;
     @Mock
@@ -238,7 +238,12 @@ class ErrorReportTimelineServiceTest {
             assertThat(result.getAssigneeId()).isEqualTo(ASSIGNEE_ID);
             verify(activityService).record(eq(REPORT_ID), eq(ACTOR_ID),
                     eq(ErrorReportActivityType.ASSIGNEE_CHANGED), isNull(), anyMap());
-            verify(errorReportNotifier).notifyAssignment(report, ASSIGNEE_ID);
+            org.mockito.ArgumentCaptor<com.mannschaft.app.errorreport.event.ErrorReportAssignedEvent> captor =
+                    org.mockito.ArgumentCaptor.forClass(
+                            com.mannschaft.app.errorreport.event.ErrorReportAssignedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().reportId()).isEqualTo(REPORT_ID);
+            assertThat(captor.getValue().assigneeId()).isEqualTo(ASSIGNEE_ID);
         }
 
         @Test
@@ -264,7 +269,8 @@ class ErrorReportTimelineServiceTest {
             ErrorReportEntity result = service.assign(REPORT_ID, null, ACTOR_ID);
 
             assertThat(result.getAssigneeId()).isNull();
-            verify(errorReportNotifier, never()).notifyAssignment(any(), anyLong());
+            verify(eventPublisher, never()).publishEvent(
+                    any(com.mannschaft.app.errorreport.event.ErrorReportAssignedEvent.class));
         }
     }
 

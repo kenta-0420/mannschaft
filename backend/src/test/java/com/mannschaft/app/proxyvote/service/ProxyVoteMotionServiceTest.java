@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteMapper;
@@ -34,12 +35,15 @@ class ProxyVoteMotionServiceTest {
     @Mock private ProxyVoteRepository voteRepository;
     @Mock private ProxyDelegationRepository delegationRepository;
     @Mock private ProxyVoteMapper mapper;
+    /** 認可 Wave7 で注入された依存。ここでは認可の可否ではなく状態遷移の業務ロジックを検証するため素通し（mock）。 */
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ProxyVoteMotionService service;
 
     private static final Long MOTION_ID = 1L;
     private static final Long SESSION_ID = 10L;
+    private static final Long ACTOR_ID = 100L;
 
     @Nested
     @DisplayName("startVote")
@@ -56,7 +60,7 @@ class ProxyVoteMotionServiceTest {
             given(sessionService.findMotionOrThrow(MOTION_ID)).willReturn(motion);
             given(sessionService.findSessionOrThrow(SESSION_ID)).willReturn(session);
 
-            assertThatThrownBy(() -> service.startVote(MOTION_ID, null))
+            assertThatThrownBy(() -> service.startVote(MOTION_ID, null, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ProxyVoteErrorCode.MEETING_MODE_ONLY);
@@ -73,7 +77,7 @@ class ProxyVoteMotionServiceTest {
             given(sessionService.findMotionOrThrow(MOTION_ID)).willReturn(motion);
             given(sessionService.findSessionOrThrow(SESSION_ID)).willReturn(session);
 
-            assertThatThrownBy(() -> service.startVote(MOTION_ID, null))
+            assertThatThrownBy(() -> service.startVote(MOTION_ID, null, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
@@ -95,7 +99,7 @@ class ProxyVoteMotionServiceTest {
             given(sessionService.findMotionOrThrow(MOTION_ID)).willReturn(motion);
             given(sessionService.findSessionOrThrow(SESSION_ID)).willReturn(session);
 
-            assertThatThrownBy(() -> service.endVote(MOTION_ID))
+            assertThatThrownBy(() -> service.endVote(MOTION_ID, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ProxyVoteErrorCode.MOTION_NOT_VOTING);

@@ -3,16 +3,23 @@ package com.mannschaft.app.team;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationDetails;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequiredException;
+import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
+import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
-import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.membership.query.MemberQueryDispatcher;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.UpdateTeamRequest;
@@ -22,6 +29,7 @@ import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,8 +44,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,11 +64,31 @@ class TeamServiceTest {
     @Mock private MembershipService membershipService;
     @Mock private MembershipRepository membershipRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private MediaUrlResolver mediaUrlResolver;
+    @Mock private MemberQueryDispatcher memberQueryDispatcher;
+    @Mock private ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
+    @Mock private AdminRoleMutationLockService adminRoleMutationLockService;
+    @Mock private DuplicateNameGuardService duplicateNameGuardService;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final String TEAM_SLUG = "test-team";
+
+    /**
+     * 検分 P1-2 是正: {@code checkForCreateAndRun} は「候補判定→createAction 実行」を一体で
+     * 行う契約になったため、既定では候補ゼロ相当として {@code createAction} をそのまま実行し
+     * 結果を返すようスタブする。重複確認フローそのものを検証するテストは個別に上書きする。
+     */
+    @BeforeEach
+    void stubDuplicateNameGuardToProceedByDefault() {
+        lenient().when(duplicateNameGuardService.checkForCreateAndRun(
+                        any(), any(), any(), anyBoolean(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.function.Supplier<?> createAction = inv.getArgument(6);
+                    return createAction.get();
+                });
+    }
 
     @Nested
     @DisplayName("createTeam")
@@ -68,14 +98,8 @@ class TeamServiceTest {
         @DisplayName("正常系: チームが作成され作成者がADMINになる")
         void 作成_正常_保存() {
             // Given
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null, null, null, null);
-            RoleEntity adminRole = RoleEntity.builder().name("ADMIN").build();
-            try {
-                var field = adminRole.getClass().getSuperclass().getDeclaredField("id");
-                field.setAccessible(true);
-                field.set(adminRole, 1L);
-            } catch (Exception ignored) {}
-            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(adminRole));
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null, null, null, null, false, null);
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID)).willReturn(Optional.of(1L));
             given(userRoleRepository.save(any(UserRoleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
             // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
@@ -98,6 +122,46 @@ class TeamServiceTest {
             assertThat(joinReq.getRoleKind()).isEqualTo(RoleKind.MEMBER);
             assertThat(joinReq.getSource()).isEqualTo("TEAM_CREATE");
         }
+
+        @Test
+        @DisplayName("柱③-A AC-02: 同名候補があり未確認なら"
+                + "DuplicateNameConfirmationRequiredExceptionをそのまま伝播する")
+        void 作成_チーム名重複_確認要求例外を伝播する() {
+            CreateTeamRequest req = new CreateTeamRequest(
+                    "既存チーム", "sports", null, null, null, null, null, null, false, null);
+
+            DuplicateNameConfirmationRequiredException expected =
+                    new DuplicateNameConfirmationRequiredException(
+                            new DuplicateNameConfirmationDetails("fp", 123L, java.util.List.of(), 0));
+            org.mockito.BDDMockito.willThrow(expected)
+                    .given(duplicateNameGuardService)
+                    .checkForCreateAndRun(eq(DuplicateNameScopeKind.TEAM), eq("既存チーム"), eq(USER_ID),
+                            eq(false), org.mockito.ArgumentMatchers.isNull(), any(), any());
+
+            assertThatThrownBy(() -> service.createTeam(USER_ID, req))
+                    .isSameAs(expected);
+            verify(teamRepository, org.mockito.Mockito.never()).save(any(TeamEntity.class));
+        }
+
+        @Test
+        @DisplayName("柱③-A AC-06/AC-10: guardが続行を許可すればconfirmDuplicate=true"
+                + "＋fingerprintでも同名チームを作成できる")
+        void 作成_チーム名重複_確認済みなら作成できる() {
+            CreateTeamRequest req = new CreateTeamRequest(
+                    "既存チーム", "sports", null, null, null, null, null, null,
+                    true, "valid-fingerprint");
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID)).willReturn(Optional.of(1L));
+            given(userRoleRepository.save(any(UserRoleEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+
+            ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
+
+            assertThat(result.getData().getBasicInfo().name()).isEqualTo("既存チーム");
+            verify(duplicateNameGuardService).checkForCreateAndRun(
+                    eq(DuplicateNameScopeKind.TEAM), eq("既存チーム"), eq(USER_ID),
+                    eq(true), eq("valid-fingerprint"), any(), any());
+        }
     }
 
     @Nested
@@ -108,13 +172,36 @@ class TeamServiceTest {
         @DisplayName("異常系: チーム不在でTEAM_001例外")
         void 取得_不在_例外() {
             // Given
-            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.empty());
+            given(teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(TEAM_SLUG, TeamEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.empty());
 
             // When / Then
             assertThatThrownBy(() -> service.getTeam(TEAM_SLUG))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TEAM_001"));
+        }
+
+        @Test
+        @DisplayName("F09.19.10: numericIdに内部BIGINT IDが返される(Spotlight scopeId解決用)")
+        void numericIdに内部BIGINT_IDが返される() {
+            // Given: slug は名称由来の非数値文字列（数値化不能な現実のケースを模す）
+            TeamEntity team = TeamEntity.builder()
+                    .slug(TEAM_SLUG).name("テストチーム").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(team, "id", TEAM_ID);
+            given(teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(TEAM_SLUG, TeamEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.of(team));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+            given(userRoleRepository.countByTeamId(any())).willReturn(0L);
+
+            // When
+            TeamResponse res = service.getTeam(TEAM_SLUG).getData();
+
+            // Then
+            assertThat(res.getNumericId()).isEqualTo(TEAM_ID);
+            // id/slug は URL識別子のまま（正準はslug。numericIdはURLに使わない内部連携専用）
+            assertThat(res.getId()).isEqualTo(res.getSlug());
         }
     }
 
@@ -396,6 +483,247 @@ class TeamServiceTest {
 
             // Then
             verify(membershipService).join(any(MembershipCreateRequest.class));
+        }
+    }
+
+    /**
+     * 画像 URL 根治 Phase 1: チーム詳細（toResponse）・公開詳細（getPublicTeam）の
+     * icon/banner が生 R2 キーではなく {@link MediaUrlResolver} の解決済み署名付き表示 URL に
+     * なることを検証する。{@code mapEmbedUrl} は R2 キーではないため素通し（resolver を通さない）。
+     */
+    @Nested
+    @DisplayName("画像URL解決（MediaUrlResolver 配線）")
+    class MediaUrlResolution {
+
+        private static final String ICON_KEY = "team/10/icon/x.png";
+        private static final String BANNER_KEY = "team/10/banner/y.png";
+        private static final String SIGNED_ICON = "https://signed/icon.png?sig=ic";
+        private static final String SIGNED_BANNER = "https://signed/banner.png?sig=bn";
+        private static final String MAP_EMBED = "https://www.google.com/maps/embed?pb=!1m18";
+
+        private void stubCommonCounts() {
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+            given(userRoleRepository.countByTeamId(any())).willReturn(0L);
+        }
+
+        @Test
+        @DisplayName("AC-6/AC-10: toResponse の metadata.iconUrl/bannerUrl は解決値・mapEmbedUrl は素通し")
+        void toResponse_解決値が乗る_mapEmbedは素通し() {
+            // Given
+            TeamEntity team = TeamEntity.builder()
+                    .slug(TEAM_SLUG).name("画像チーム").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .iconUrl(ICON_KEY).bannerUrl(BANNER_KEY).mapEmbedUrl(MAP_EMBED)
+                    .build();
+            given(teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(TEAM_SLUG, TeamEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.of(team));
+            stubCommonCounts();
+            given(mediaUrlResolver.resolve(ICON_KEY)).willReturn(SIGNED_ICON);
+            given(mediaUrlResolver.resolve(BANNER_KEY)).willReturn(SIGNED_BANNER);
+
+            // When
+            TeamResponse res = service.getTeam(TEAM_SLUG).getData();
+
+            // Then: icon/banner は署名付き表示 URL へ解決される
+            assertThat(res.getMetadata().iconUrl()).isEqualTo(SIGNED_ICON);
+            assertThat(res.getMetadata().bannerUrl()).isEqualTo(SIGNED_BANNER);
+            // AC-10: mapEmbedUrl は R2 キーではないため resolver を通さず素通し
+            assertThat(res.getMetadata().mapEmbedUrl()).isEqualTo(MAP_EMBED);
+            verify(mediaUrlResolver, org.mockito.Mockito.never()).resolve(MAP_EMBED);
+        }
+
+        @Test
+        @DisplayName("AC-7: DB の icon/banner が null ならレスポンスも null（resolver(null)→null 経由）")
+        void toResponse_DBがnullならnull() {
+            // Given: icon/banner 未設定（null）
+            TeamEntity team = TeamEntity.builder()
+                    .slug(TEAM_SLUG).name("画像なしチーム").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .build();
+            given(teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(TEAM_SLUG, TeamEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.of(team));
+            stubCommonCounts();
+            // resolver はモック既定で null を返す（resolve(null)→null の縮退を模す）
+
+            // When
+            TeamResponse res = service.getTeam(TEAM_SLUG).getData();
+
+            // Then
+            assertThat(res.getMetadata().iconUrl()).isNull();
+            assertThat(res.getMetadata().bannerUrl()).isNull();
+        }
+
+        @Test
+        @DisplayName("AC-6(公開詳細): getPublicTeam の icon/banner も解決値・mapEmbedUrl は素通し")
+        void getPublicTeam_解決値が乗る() {
+            // Given
+            TeamEntity team = TeamEntity.builder()
+                    .name("公開画像店舗").template("salon")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .iconUrl(ICON_KEY).bannerUrl(BANNER_KEY).mapEmbedUrl(MAP_EMBED)
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+            given(mediaUrlResolver.resolve(ICON_KEY)).willReturn(SIGNED_ICON);
+            given(mediaUrlResolver.resolve(BANNER_KEY)).willReturn(SIGNED_BANNER);
+
+            // When
+            var dto = service.getPublicTeam(TEAM_ID);
+
+            // Then
+            assertThat(dto.iconUrl()).isEqualTo(SIGNED_ICON);
+            assertThat(dto.bannerUrl()).isEqualTo(SIGNED_BANNER);
+            assertThat(dto.mapEmbedUrl()).isEqualTo(MAP_EMBED);
+            verify(mediaUrlResolver, org.mockito.Mockito.never()).resolve(MAP_EMBED);
+        }
+    }
+
+    @Nested
+    @DisplayName("assertActiveTeamExists")
+    class AssertActiveTeamExists {
+
+        @Test
+        @DisplayName("ACTIVEチームは通過する")
+        void activeは通過する() {
+            TeamEntity team = TeamEntity.builder()
+                    .name("有効チーム")
+                    .template("sports")
+                    .lifecycleStatus(TeamEntity.LifecycleStatus.ACTIVE)
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+
+            service.assertActiveTeamExists(TEAM_ID);
+
+            verify(teamRepository).findById(TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("PROVISIONEDチームはTEAM_001で拒否する")
+        void provisionedは拒否する() {
+            TeamEntity team = TeamEntity.builder()
+                    .name("承諾前チーム")
+                    .template("sports")
+                    .lifecycleStatus(TeamEntity.LifecycleStatus.PROVISIONED)
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+
+            assertThatThrownBy(() -> service.assertActiveTeamExists(TEAM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TeamErrorCode.TEAM_001));
+        }
+    }
+
+    /**
+     * CMP-260912-1525: チームメンバーの一括取得。
+     *
+     * <p>ページング経路（{@code getMembers}）は 1 ページ要求ごとに
+     * {@code queryMemberIdentities} を呼ぶ＝所属情報を全件走査する。したがって
+     * 全員を見たい画面が全ページをめくると総走査量が「人数 × ページ数」になる。
+     * 一括経路はページ数に関係なく走査を 1 回に固定する。ここではその
+     * <b>呼び出し回数そのもの</b>を機械的に押さえる（「1 回あたりが軽い」では不可）。</p>
+     */
+    @Nested
+    @DisplayName("getAllMembers（全メンバー一括取得）")
+    class GetAllMembers {
+
+        private static final int MEMBER_COUNT = 250;
+        private static final int PAGE_SIZE = 100;
+
+        /** 走査結果に相当する軽量行（表示名・アバターは未解決）。 */
+        private java.util.List<com.mannschaft.app.membership.dto.MemberDto> identities() {
+            java.util.List<com.mannschaft.app.membership.dto.MemberDto> list = new java.util.ArrayList<>();
+            for (int i = 0; i < MEMBER_COUNT; i++) {
+                list.add(new com.mannschaft.app.membership.dto.MemberDto(
+                        (long) i, null, null, "MEMBER", java.time.LocalDateTime.of(2026, 1, 1, 0, 0)));
+            }
+            return list;
+        }
+
+        /** 実体化は「表示名を埋めて返す」ものとして振る舞わせる（件数・並び順は入力どおり）。 */
+        private void stubDispatcher() {
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(TeamEntity.builder()
+                    .name("大規模チーム").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .build()));
+            given(memberQueryDispatcher.queryMemberIdentities(TEAM_ID, ScopeType.TEAM, null))
+                    .willReturn(identities());
+            given(memberQueryDispatcher.hydrate(any())).willAnswer(inv -> {
+                java.util.List<com.mannschaft.app.membership.dto.MemberDto> in = inv.getArgument(0);
+                return in.stream()
+                        .map(d -> new com.mannschaft.app.membership.dto.MemberDto(
+                                d.userId(), "user" + d.userId(), null, d.roleName(), d.joinedAt()))
+                        .toList();
+            });
+            given(scopeMemberCalendarSettingService.resolveColors(eq(ScopeType.TEAM), eq(TEAM_ID), any()))
+                    .willReturn(java.util.Map.of());
+        }
+
+        @Test
+        @DisplayName("AC-2/AC-3: 全員を 1 回で返し、所属情報の走査はちょうど 1 回に留まる")
+        void 一括取得_走査は1回() {
+            // Given
+            stubDispatcher();
+
+            // When
+            var all = service.getAllMembers(TEAM_ID);
+
+            // Then: 全員が 1 回の呼び出しで揃う
+            assertThat(all).hasSize(MEMBER_COUNT);
+            // 所属情報の全件走査（＝重い処理）はちょうど 1 回。ページ数に比例して増えない。
+            verify(memberQueryDispatcher, org.mockito.Mockito.times(1))
+                    .queryMemberIdentities(TEAM_ID, ScopeType.TEAM, null);
+            // 実体化も 1 回で、渡されるのは全員ぶん（ページごとの小分けではない）
+            org.mockito.ArgumentCaptor<java.util.List<com.mannschaft.app.membership.dto.MemberDto>> captor =
+                    org.mockito.ArgumentCaptor.forClass(java.util.List.class);
+            verify(memberQueryDispatcher, org.mockito.Mockito.times(1)).hydrate(captor.capture());
+            assertThat(captor.getValue()).hasSize(MEMBER_COUNT);
+            verify(scopeMemberCalendarSettingService, org.mockito.Mockito.times(1))
+                    .resolveColors(eq(ScopeType.TEAM), eq(TEAM_ID), any());
+        }
+
+        @Test
+        @DisplayName("AC-3: 同じ人数をページング経路で全ページめくると走査がページ数ぶん走る（一括はその 1/N）")
+        void ページング経路は走査がページ数に比例する() {
+            // Given
+            stubDispatcher();
+            int totalPages = (MEMBER_COUNT + PAGE_SIZE - 1) / PAGE_SIZE;
+
+            // When: 全ページをめくる
+            for (int page = 0; page < totalPages; page++) {
+                service.getMembers(TEAM_ID, org.springframework.data.domain.PageRequest.of(page, PAGE_SIZE));
+            }
+
+            // Then: 走査はページ数ぶん走っている（これが二乗の正体）
+            verify(memberQueryDispatcher, org.mockito.Mockito.times(totalPages))
+                    .queryMemberIdentities(TEAM_ID, ScopeType.TEAM, null);
+            assertThat(totalPages).isGreaterThan(1);
+        }
+
+        @Test
+        @DisplayName("AC-4: 一括取得の内容・並び順・件数が全ページを連結したものと一致する")
+        void 一括とページング連結が一致する() {
+            // Given
+            stubDispatcher();
+            int totalPages = (MEMBER_COUNT + PAGE_SIZE - 1) / PAGE_SIZE;
+
+            // When
+            var all = service.getAllMembers(TEAM_ID);
+            java.util.List<com.mannschaft.app.role.dto.MemberResponse> concatenated = new java.util.ArrayList<>();
+            long totalElements = 0;
+            for (int page = 0; page < totalPages; page++) {
+                var paged = service.getMembers(TEAM_ID, org.springframework.data.domain.PageRequest.of(page, PAGE_SIZE));
+                concatenated.addAll(paged.getData());
+                totalElements = paged.getMeta().getTotal();
+            }
+
+            // Then
+            assertThat(totalElements).isEqualTo(MEMBER_COUNT);
+            assertThat(all).hasSameSizeAs(concatenated);
+            assertThat(all.stream().map(com.mannschaft.app.role.dto.MemberResponse::getUserId).toList())
+                    .isEqualTo(concatenated.stream()
+                            .map(com.mannschaft.app.role.dto.MemberResponse::getUserId).toList());
+            assertThat(all.stream().map(com.mannschaft.app.role.dto.MemberResponse::getRoleName).toList())
+                    .isEqualTo(concatenated.stream()
+                            .map(com.mannschaft.app.role.dto.MemberResponse::getRoleName).toList());
         }
     }
 }

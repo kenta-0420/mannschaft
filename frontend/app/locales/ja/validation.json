@@ -4,5 +4,7 @@
   "min_length": "{min}文字以上で入力してください",
   "max_length": "{max}文字以下で入力してください",
   "password_mismatch": "パスワードが一致しません",
-  "invalid_format": "入力形式が正しくありません"
+  "invalid_format": "入力形式が正しくありません",
+  "postal_code_format": "郵便番号の形式が正しくありません（例: 123-4567）",
+  "postal_code_required": "郵便番号は必須です"
 }

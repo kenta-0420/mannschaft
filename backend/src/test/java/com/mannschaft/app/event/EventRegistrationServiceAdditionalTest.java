@@ -1,5 +1,6 @@
 package com.mannschaft.app.event;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.event.dto.RegistrationResponse;
 import com.mannschaft.app.event.entity.EventEntity;
@@ -53,6 +54,9 @@ class EventRegistrationServiceAdditionalTest {
 
     @Mock
     private EventMapper eventMapper;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private EventRegistrationService eventRegistrationService;
@@ -110,11 +114,11 @@ class EventRegistrationServiceAdditionalTest {
                     LocalDateTime.now(), LocalDateTime.now()
             );
 
-            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(entity));
+            given(registrationRepository.findByIdAndEventId(REGISTRATION_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(eventMapper.toRegistrationResponse(entity)).willReturn(response);
 
             // When
-            RegistrationResponse result = eventRegistrationService.getRegistration(REGISTRATION_ID);
+            RegistrationResponse result = eventRegistrationService.getRegistration(EVENT_ID, REGISTRATION_ID);
 
             // Then
             assertThat(result.getStatus()).isEqualTo("APPROVED");
@@ -124,10 +128,21 @@ class EventRegistrationServiceAdditionalTest {
         @DisplayName("異常系: 参加登録不在で例外スロー")
         void 参加登録不在で例外スロー() {
             // Given
-            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.empty());
+            given(registrationRepository.findByIdAndEventId(REGISTRATION_ID, EVENT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> eventRegistrationService.getRegistration(REGISTRATION_ID))
+            assertThatThrownBy(() -> eventRegistrationService.getRegistration(EVENT_ID, REGISTRATION_ID))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("異常系(親子BOLA): registrationId は存在するが別イベント帰属は例外スロー")
+        void 別イベント帰属は例外スロー() {
+            // Given: registrationId=REGISTRATION_ID は存在するが eventId=999 には属さない
+            given(registrationRepository.findByIdAndEventId(REGISTRATION_ID, 999L)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> eventRegistrationService.getRegistration(999L, REGISTRATION_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -188,10 +203,10 @@ class EventRegistrationServiceAdditionalTest {
                     .eventId(EVENT_ID).userId(USER_ID).ticketTypeId(TICKET_TYPE_ID)
                     .status(RegistrationStatus.REJECTED).quantity(1).build();
 
-            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(entity));
+            given(registrationRepository.findByIdAndEventId(REGISTRATION_ID, EVENT_ID)).willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> eventRegistrationService.cancelRegistration(REGISTRATION_ID, "理由"))
+            assertThatThrownBy(() -> eventRegistrationService.cancelRegistration(EVENT_ID, REGISTRATION_ID, USER_ID, "理由"))
                     .isInstanceOf(BusinessException.class);
         }
     }

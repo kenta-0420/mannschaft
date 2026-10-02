@@ -86,6 +86,12 @@ public class CommitteeInvitationEntity extends BaseEntity {
         this.resolution = CommitteeInvitationResolution.CANCELLED;
     }
 
+    /** 指定日時で招集状をキャンセル済みとしてマークする。 */
+    public void markCancelledAt(LocalDateTime resolvedAt) {
+        this.resolvedAt = resolvedAt;
+        this.resolution = CommitteeInvitationResolution.CANCELLED;
+    }
+
     /**
      * 招集状を期限切れとしてマークする。
      */

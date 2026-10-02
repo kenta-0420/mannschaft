@@ -38,7 +38,7 @@ public class OrgResidentController {
     @Operation(summary = "居住者一覧")
     public ResponseEntity<ApiResponse<List<ResidentResponse>>> listByUnit(
             @PathVariable Long orgId, @PathVariable Long unitId) {
-        return ResponseEntity.ok(ApiResponse.of(residentService.listByUnit(unitId)));
+        return ResponseEntity.ok(ApiResponse.of(residentService.listByUnit(SecurityUtils.getCurrentUserId(), unitId)));
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/dwelling-units/{unitId}/residents")
@@ -46,7 +46,8 @@ public class OrgResidentController {
     public ResponseEntity<ApiResponse<ResidentResponse>> create(
             @PathVariable Long orgId, @PathVariable Long unitId,
             @Valid @RequestBody CreateResidentRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(residentService.create(unitId, request)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.of(residentService.create(SecurityUtils.getCurrentUserId(), unitId, request)));
     }
 
     @PutMapping("/api/v1/organizations/{orgId}/residents/{id}")
@@ -54,13 +55,13 @@ public class OrgResidentController {
     public ResponseEntity<ApiResponse<ResidentResponse>> update(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody UpdateResidentRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(residentService.update(id, request)));
+        return ResponseEntity.ok(ApiResponse.of(residentService.update(SecurityUtils.getCurrentUserId(), id, request)));
     }
 
     @DeleteMapping("/api/v1/organizations/{orgId}/residents/{id}")
     @Operation(summary = "居住者削除")
     public ResponseEntity<Void> delete(@PathVariable Long orgId, @PathVariable Long id) {
-        residentService.delete(id);
+        residentService.delete(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.noContent().build();
     }
 
@@ -75,6 +76,7 @@ public class OrgResidentController {
     @Operation(summary = "退去処理")
     public ResponseEntity<ApiResponse<ResidentResponse>> moveOut(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(residentService.moveOut(id, LocalDate.now())));
+        return ResponseEntity.ok(ApiResponse.of(
+                residentService.moveOut(SecurityUtils.getCurrentUserId(), id, LocalDate.now())));
     }
 }

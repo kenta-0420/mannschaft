@@ -6,12 +6,12 @@ defineProps<{
 
 <template>
   <div
-    class="rounded-xl border-[3px] border-surface-400 bg-surface-0 p-6 dark:border-surface-500 dark:bg-surface-800"
+    class="rounded-xl border border-surface-200 bg-surface-0 p-5 shadow-[var(--shadow-card)] transition-shadow duration-150 dark:border-surface-700 dark:bg-surface-800"
   >
-    <div v-if="$slots.header" class="mb-4">
+    <div v-if="$slots.header" class="mb-3">
       <slot name="header" />
     </div>
-    <h2 v-else-if="title" class="mb-4 text-lg font-semibold">{{ title }}</h2>
+    <h2 v-else-if="title" class="mb-3 text-lg font-semibold tracking-tight">{{ title }}</h2>
     <slot />
   </div>
 </template>

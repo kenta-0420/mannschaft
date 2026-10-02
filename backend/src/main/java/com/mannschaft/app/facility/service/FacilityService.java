@@ -3,6 +3,7 @@ package com.mannschaft.app.facility.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.facility.FacilityErrorCode;
 import com.mannschaft.app.facility.FacilityMapper;
 import com.mannschaft.app.facility.FacilityType;
@@ -83,7 +84,7 @@ public class FacilityService {
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .name(request.getName())
-                .facilityType(FacilityType.valueOf(request.getFacilityType()))
+                .facilityType(EnumInputParser.parse(FacilityType.class, request.getFacilityType(), "facilityType"))
                 .facilityTypeLabel(request.getFacilityTypeLabel())
                 .capacity(request.getCapacity())
                 .floor(request.getFloor())
@@ -136,7 +137,7 @@ public class FacilityService {
 
         entity.update(
                 request.getName(),
-                FacilityType.valueOf(request.getFacilityType()),
+                EnumInputParser.parse(FacilityType.class, request.getFacilityType(), "facilityType"),
                 request.getFacilityTypeLabel(),
                 request.getCapacity(),
                 request.getFloor(),

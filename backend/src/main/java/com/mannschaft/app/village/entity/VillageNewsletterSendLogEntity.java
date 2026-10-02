@@ -39,6 +39,13 @@ public class VillageNewsletterSendLogEntity extends UuidV7Entity {
     @Column(name = "newsletter_id", nullable = false, columnDefinition = "BINARY(16)")
     private UUID newsletterId;
 
+    /**
+     * どの号を配信したか（F17.1 ②-1 で追加）。village_newsletter_issues.id。
+     * 号モデル導入前の既存ログは NULL（後方互換・FK は張らずアプリ整合）。
+     */
+    @Column(name = "issue_id", columnDefinition = "BINARY(16)")
+    private UUID issueId;
+
     @Column(name = "sent_at", nullable = false)
     private LocalDateTime sentAt;
 

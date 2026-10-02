@@ -154,4 +154,27 @@ public class ProxyVoteSessionEntity extends BaseEntity {
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
+
+    /**
+     * 認可用のスコープ種別名（"TEAM" / "ORGANIZATION"）を返す。
+     *
+     * <p>BOLA 防止のため、認可は必ずこのエンティティ由来のスコープで行うこと
+     * （path/request で渡された scopeId を認可に流用しない）。</p>
+     */
+    public String scopeTypeName() {
+        return scopeType != null ? scopeType.name() : null;
+    }
+
+    /**
+     * 認可用のスコープ ID（TEAM なら teamId、ORGANIZATION なら organizationId）を返す。
+     */
+    public Long resolveScopeId() {
+        if (scopeType == ProxyVoteScopeType.TEAM) {
+            return teamId;
+        }
+        if (scopeType == ProxyVoteScopeType.ORGANIZATION) {
+            return organizationId;
+        }
+        return null;
+    }
 }

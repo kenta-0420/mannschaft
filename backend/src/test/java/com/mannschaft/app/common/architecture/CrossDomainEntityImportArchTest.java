@@ -37,6 +37,13 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  *       する依存は常に許容する。また {@code common} 配下のクラス自身も発生元として
  *       対象外とする。</li>
  *   <li>自ドメイン内の {@code entity} 参照は当然ながら許容。</li>
+ *   <li><b>javac の合成クラス（{@code Foo$1} 等）は発生元として対象外</b>:
+ *       ドメイン越境 enum への網羅 {@code switch} を書くと、javac は外側クラスとは
+ *       別名の合成クラスを生成する。この合成クラスが持つ依存は外側クラスの依存の
+ *       写しに過ぎず、重複報告である。判定は {@link SyntheticClasses#isSynthetic}
+ *       （{@code ACC_SYNTHETIC} 修飾子）で行い、Lombok の {@code @Builder} 等が
+ *       生成する正当なネストクラスは対象外にしない（{@link SyntheticClasses} の
+ *       javadoc 参照）。</li>
  * </ul>
  *
  * <h2>凍結方式（FreezingArchRule）</h2>
@@ -80,6 +87,11 @@ class CrossDomainEntityImportArchTest {
         return new ArchCondition<>("not depend on other domain entities") {
             @Override
             public void check(JavaClass clazz, ConditionEvents events) {
+                if (SyntheticClasses.isSynthetic(clazz)) {
+                    // 合成クラス（javac が enum の網羅switchから生成するFoo$1等）は
+                    // 外側クラスの依存関係の重複報告に過ぎないため対象外とする。
+                    return;
+                }
                 String sourceDomain = DomainPackages.domainOf(clazz.getPackageName());
                 if (sourceDomain == null || DomainPackages.isSharedDomain(sourceDomain)) {
                     // ドメイン外（com.mannschaft.app 直下等）や共有基盤は対象外

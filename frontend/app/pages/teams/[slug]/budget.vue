@@ -2,7 +2,7 @@
 import dayjs from 'dayjs'
 import type { FiscalYearResponse, BudgetSummary } from '~/types/budget'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 

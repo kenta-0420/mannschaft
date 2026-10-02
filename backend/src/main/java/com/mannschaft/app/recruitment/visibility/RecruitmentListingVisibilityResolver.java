@@ -11,10 +11,12 @@ import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.mapping.RecruitmentListingStatusMapper;
 import com.mannschaft.app.common.visibility.mapping.RecruitmentVisibilityMapper;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
+import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest.RecruitmentAudienceScopeType;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingAudienceScopeEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingAudienceScopeRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.service.MarketFriendTargetResolver;
-import com.mannschaft.app.role.entity.UserRoleEntity;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -61,7 +63,9 @@ public class RecruitmentListingVisibilityResolver
     private final MarketFriendTargetResolver marketFriendTargetResolver;
 
     /** F22.1 市: 閲覧者の所属チーム集合を解決する（宛先集合との突合に使用）。 */
-    private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
+
+    private final RecruitmentListingAudienceScopeRepository audienceScopeRepository;
 
     public RecruitmentListingVisibilityResolver(
             MembershipBatchQueryService membershipBatchQueryService,
@@ -72,17 +76,24 @@ public class RecruitmentListingVisibilityResolver
             @Autowired(required = false) AuditLogService auditLogService,
             RecruitmentListingRepository recruitmentListingRepository,
             MarketFriendTargetResolver marketFriendTargetResolver,
-            UserRoleRepository userRoleRepository) {
+            MembershipScopeQueryService membershipScopeQueryService,
+            RecruitmentListingAudienceScopeRepository audienceScopeRepository) {
         super(membershipBatchQueryService, templateEvaluator, visibilityMetrics,
                 followBatchService, auditLogService);
         this.recruitmentListingRepository = recruitmentListingRepository;
         this.marketFriendTargetResolver = marketFriendTargetResolver;
-        this.userRoleRepository = userRoleRepository;
+        this.membershipScopeQueryService = membershipScopeQueryService;
+        this.audienceScopeRepository = audienceScopeRepository;
     }
 
     @Override
     public ReferenceType referenceType() {
         return ReferenceType.RECRUITMENT_LISTING;
+    }
+
+    /** 現在の owner・viewer 所属を満たす選択公開札 ID を返す。 */
+    public List<Long> findAccessibleSelectedListingIds(Long viewerUserId) {
+        return audienceScopeRepository.findAccessibleListingIds(viewerUserId);
     }
 
     @Override
@@ -125,6 +136,9 @@ public class RecruitmentListingVisibilityResolver
             Long viewerUserId,
             UserScopeRoleSnapshot snapshot) {
         // 防御: FRIEND_TEAMS_ONLY 以外がここに到達したら fail-closed（想定外）。
+        if (row.recruitmentVisibility() == RecruitmentVisibility.SELECTED_SCOPES) {
+            return evaluateSelectedPersonalScopes(row, viewerUserId);
+        }
         if (row.recruitmentVisibility() != RecruitmentVisibility.FRIEND_TEAMS_ONLY) {
             return false;
         }
@@ -154,11 +168,38 @@ public class RecruitmentListingVisibilityResolver
     }
 
     /** 閲覧者が所属する全チーム ID 集合を返す（team_id 非 NULL の user_roles）。 */
+    private boolean evaluateSelectedPersonalScopes(
+            RecruitmentListingVisibilityProjection row, Long viewerUserId) {
+        if (viewerUserId == null || row.scopeId() == null || row.authorUserId() == null
+                || !"PERSONAL".equals(row.scopeType()) || !row.authorUserId().equals(row.scopeId())) {
+            return false;
+        }
+        Set<Long> viewerTeamIds = viewerTeamIds(viewerUserId);
+        Set<Long> viewerOrganizationIds = new HashSet<>(
+                membershipScopeQueryService.findActiveOrganizationIds(viewerUserId));
+        Set<Long> ownerTeamIds = viewerTeamIds(row.authorUserId());
+        Set<Long> ownerOrganizationIds = new HashSet<>(
+                membershipScopeQueryService.findActiveOrganizationIds(row.authorUserId()));
+        for (RecruitmentListingAudienceScopeEntity scope : audienceScopeRepository.findByListingId(row.id())) {
+            if (scope.getScopeType() == RecruitmentAudienceScopeType.TEAM
+                    && viewerTeamIds.contains(scope.getScopeId())
+                    && ownerTeamIds.contains(scope.getScopeId())) {
+                return true;
+            }
+            if (scope.getScopeType() == RecruitmentAudienceScopeType.ORGANIZATION
+                    && viewerOrganizationIds.contains(scope.getScopeId())
+                    && ownerOrganizationIds.contains(scope.getScopeId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private Set<Long> viewerTeamIds(Long viewerUserId) {
         Set<Long> teamIds = new HashSet<>();
-        for (UserRoleEntity role : userRoleRepository.findByUserIdAndTeamIdIsNotNull(viewerUserId)) {
-            if (role.getTeamId() != null) {
-                teamIds.add(role.getTeamId());
+        for (Long teamId : membershipScopeQueryService.findActiveTeamIds(viewerUserId)) {
+            if (teamId != null) {
+                teamIds.add(teamId);
             }
         }
         return teamIds;

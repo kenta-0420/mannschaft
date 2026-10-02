@@ -11,11 +11,28 @@ import DashboardWidgetCard from '~/components/DashboardWidgetCard.vue'
  * - scrollable=true（デフォルト）でコンテンツ領域に overflow-y-auto クラスが付く
  * - scrollable=false で overflow-y-auto クラスが付かない
  * - maxHeight プロップが style 属性に反映される
+ *
+ * max-height はカードルート要素（wrapper.element）に付与される仕様（#2070）。
+ * コンテンツ領域（slot の直接の親）には overflow-y-auto クラスのみが付き、インライン style は持たない。
+ * #2623: 旧テストはコンテンツ領域の parentElement を見ていたため、実装が仕様通りでも
+ * max-height を検出できず赤化していた（実装ではなくテストの取得方法の誤りと判断）。
  */
 
 const slotContent = () => h('p', { 'data-testid': 'content' }, '本文')
 
 describe('DashboardWidgetCard.vue', () => {
+  it('actions スロットをヘッダーに描画する', async () => {
+    const wrapper = await mountSuspended(DashboardWidgetCard, {
+      props: { title: 'テストタイトル' },
+      slots: {
+        default: slotContent,
+        actions: () => h('button', { 'data-testid': 'header-action' }, '追加'),
+      },
+    })
+
+    expect(wrapper.find('[data-testid="header-action"]').exists()).toBe(true)
+  })
+
   it('to 未指定なら title は <h3> のみでリンクではない', async () => {
     const wrapper = await mountSuspended(DashboardWidgetCard, {
       props: { title: 'テストタイトル', icon: 'pi pi-user' },
@@ -58,8 +75,8 @@ describe('DashboardWidgetCard.vue', () => {
     expect(content.exists()).toBe(true)
     const parent = content.element.parentElement
     expect(parent?.className).toContain('overflow-y-auto')
-    // インラインスタイル max-height が指定されていること
-    expect(parent?.getAttribute('style') ?? '').toContain('max-height')
+    // max-height はコンテンツ領域ではなくカードルート要素に付与される（行内高さ揃えの仕組み上の仕様。#2070）
+    expect(wrapper.element.getAttribute('style') ?? '').toContain('max-height')
   })
 
   it('scrollable=false でコンテンツ領域に overflow-y-auto クラスが付かない', async () => {
@@ -82,7 +99,37 @@ describe('DashboardWidgetCard.vue', () => {
 
     const content = wrapper.find('[data-testid="content"]')
     expect(content.exists()).toBe(true)
-    const parent = content.element.parentElement
-    expect(parent?.getAttribute('style') ?? '').toContain('12rem')
+    // max-height はカードルート要素の style に反映される（#2070）
+    const style = wrapper.element.getAttribute('style') ?? ''
+    expect(style).toContain('max-height')
+    expect(style).toContain('12rem')
+  })
+
+  it('updates collapse state with Grid rows, ARIA, and inert while preserving content', async () => {
+    const wrapper = await mountSuspended(DashboardWidgetCard, {
+      props: { title: 'Collapse' },
+      slots: { default: slotContent },
+    })
+    const toggle = wrapper.findAll('button').at(-1)!
+    const contentGrid = wrapper.get('[data-testid="dashboard-widget-card-content"]')
+
+    expect(wrapper.attributes('data-widget-collapsed')).toBe('false')
+    expect(contentGrid.classes()).toContain('grid-rows-[1fr]')
+    expect(contentGrid.attributes('aria-hidden')).toBe('false')
+    expect(contentGrid.attributes()).not.toHaveProperty('inert')
+
+    await toggle.trigger('click')
+    expect(wrapper.attributes('data-widget-collapsed')).toBe('true')
+    expect(contentGrid.classes()).toEqual(
+      expect.arrayContaining(['grid-rows-[0fr]', 'opacity-0']),
+    )
+    expect(contentGrid.attributes('aria-hidden')).toBe('true')
+    expect(contentGrid.attributes()).toHaveProperty('inert')
+    expect(wrapper.find('[data-testid="content"]').exists()).toBe(true)
+
+    await toggle.trigger('click')
+    expect(wrapper.attributes('data-widget-collapsed')).toBe('false')
+    expect(contentGrid.classes()).toContain('grid-rows-[1fr]')
+    expect(wrapper.find('[data-testid="content"]').exists()).toBe(true)
   })
 })

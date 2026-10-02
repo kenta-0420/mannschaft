@@ -2,14 +2,6 @@
   "admin_report": {
     "title": "Gestión de denuncias",
     "empty": "No hay denuncias",
-    "status_options": {
-      "all": "Todas",
-      "pending": "Pendiente",
-      "reviewing": "En revisión",
-      "escalated": "Escalada",
-      "resolved": "Resuelta",
-      "dismissed": "Descartada"
-    },
     "messages": {
       "load_failed": "Error al cargar las denuncias",
       "note_added": "Nota añadida",
@@ -42,8 +34,7 @@
       "target_type": "Tipo de objetivo",
       "reason": "Motivo",
       "reported_at": "Fecha de denuncia",
-      "actions": "Acciones",
-      "status_placeholder": "Estado"
+      "actions": "Acciones"
     },
     "actions": {
       "review": "Revisar",

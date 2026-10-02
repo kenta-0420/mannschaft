@@ -197,12 +197,12 @@ class EventTicketTypeServiceTest {
                     LocalDateTime.now(), LocalDateTime.now()
             );
 
-            given(ticketTypeRepository.findById(TICKET_TYPE_ID)).willReturn(Optional.of(entity));
+            given(ticketTypeRepository.findByIdAndEventId(TICKET_TYPE_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(ticketTypeRepository.save(entity)).willReturn(entity);
             given(eventMapper.toTicketTypeResponse(entity)).willReturn(response);
 
             // When
-            TicketTypeResponse result = eventTicketTypeService.updateTicketType(TICKET_TYPE_ID, request);
+            TicketTypeResponse result = eventTicketTypeService.updateTicketType(EVENT_ID, TICKET_TYPE_ID, request);
 
             // Then
             assertThat(result.getName()).isEqualTo("VIPチケット");
@@ -222,12 +222,12 @@ class EventTicketTypeServiceTest {
             );
             EventTicketTypeEntity entity = createTicketTypeEntity();
 
-            given(ticketTypeRepository.findById(TICKET_TYPE_ID)).willReturn(Optional.of(entity));
+            given(ticketTypeRepository.findByIdAndEventId(TICKET_TYPE_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(ticketTypeRepository.save(entity)).willReturn(entity);
             given(eventMapper.toTicketTypeResponse(entity)).willReturn(createTicketTypeResponse());
 
             // When
-            eventTicketTypeService.updateTicketType(TICKET_TYPE_ID, request);
+            eventTicketTypeService.updateTicketType(EVENT_ID, TICKET_TYPE_ID, request);
 
             // Then: ミューテート後のフィールドが正しく更新されていることを確認
             assertThat(entity.getName()).isEqualTo("VIPチケット");
@@ -245,10 +245,10 @@ class EventTicketTypeServiceTest {
             UpdateTicketTypeRequest request = new UpdateTicketTypeRequest(
                     "VIPチケット", null, null, null, null, null, null, null
             );
-            given(ticketTypeRepository.findById(TICKET_TYPE_ID)).willReturn(Optional.empty());
+            given(ticketTypeRepository.findByIdAndEventId(TICKET_TYPE_ID, EVENT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> eventTicketTypeService.updateTicketType(TICKET_TYPE_ID, request))
+            assertThatThrownBy(() -> eventTicketTypeService.updateTicketType(EVENT_ID, TICKET_TYPE_ID, request))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -268,11 +268,11 @@ class EventTicketTypeServiceTest {
             EventTicketTypeEntity entity = createTicketTypeEntity();
             TicketTypeResponse response = createTicketTypeResponse();
 
-            given(ticketTypeRepository.findById(TICKET_TYPE_ID)).willReturn(Optional.of(entity));
+            given(ticketTypeRepository.findByIdAndEventId(TICKET_TYPE_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(eventMapper.toTicketTypeResponse(entity)).willReturn(response);
 
             // When
-            TicketTypeResponse result = eventTicketTypeService.getTicketType(TICKET_TYPE_ID);
+            TicketTypeResponse result = eventTicketTypeService.getTicketType(EVENT_ID, TICKET_TYPE_ID);
 
             // Then
             assertThat(result.getName()).isEqualTo("一般チケット");
@@ -282,10 +282,21 @@ class EventTicketTypeServiceTest {
         @DisplayName("チケット種別取得_存在しない_例外スロー")
         void チケット種別取得_存在しない_例外スロー() {
             // Given
-            given(ticketTypeRepository.findById(TICKET_TYPE_ID)).willReturn(Optional.empty());
+            given(ticketTypeRepository.findByIdAndEventId(TICKET_TYPE_ID, EVENT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> eventTicketTypeService.getTicketType(TICKET_TYPE_ID))
+            assertThatThrownBy(() -> eventTicketTypeService.getTicketType(EVENT_ID, TICKET_TYPE_ID))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("チケット種別取得_別イベント帰属(親子BOLA)_例外スロー")
+        void チケット種別取得_別イベント帰属_例外スロー() {
+            // Given
+            given(ticketTypeRepository.findByIdAndEventId(TICKET_TYPE_ID, 999L)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> eventTicketTypeService.getTicketType(999L, TICKET_TYPE_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }

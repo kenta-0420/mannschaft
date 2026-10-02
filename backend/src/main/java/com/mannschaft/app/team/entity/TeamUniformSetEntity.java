@@ -63,8 +63,10 @@ public class TeamUniformSetEntity extends UuidV7Entity {
     @Column(nullable = false, length = 32)
     private String socksColor;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     private LocalDateTime deletedAt;

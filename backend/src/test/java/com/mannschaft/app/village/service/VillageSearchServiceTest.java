@@ -35,6 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -77,8 +78,23 @@ class VillageSearchServiceTest {
     @Mock private ChatMessageRepository chatMessageRepository;
     @Mock private ChatChannelRepository chatChannelRepository;
 
+    /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
+    @Mock
+    private VillageAccessGate accessGate;
+
     @InjectMocks
     private VillageSearchService service;
+
+    /**
+     * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
+     * モックのゲートに実物のゲート（同じモックのリポジトリを注入）を委譲させることで、
+     * 本テストが積み上げてきた {@code villageRepository.findById} の stub をそのまま生かしつつ、
+     * 可視性判定は実物のロジックで走らせる。
+     */
+    @BeforeEach
+    void wireVillageAccessGate() {
+        VillageAccessGateTestSupport.delegateToRealGate(accessGate, villageRepository, membershipRepository);
+    }
 
     private VillageEntity activeVillage;
 
@@ -293,6 +309,77 @@ class VillageSearchServiceTest {
         // total は 0 でも response の size が clip されているか確認できれば良い
         VillageInternalSearchResponse res = service.search(VILLAGE_ID, "整骨", "POST", 0, 9999, ACTOR_USER_ID);
         assertThat(res.size()).isEqualTo(VillageSearchService.MAX_PAGE_SIZE);
+    }
+
+    /**
+     * AC-11 / AC-12: 1タイプあたりの取得上限（Service 内部の
+     * {@code PER_TYPE_FETCH_HARD_CAP}。private のためテストからは直接参照できないが、
+     * 実装値は 50。ここではそれを模して bulletinThreadRepository のモックに
+     * 「頭打ちになった後のプール」をそのまま返させる）超のヒット数を持つタイプがあるとき、
+     * total が実際に到達可能な件数（= 取得済みプールサイズそのもの）を超えず、
+     * その total から算出した最終ページを要求しても空配列にならないこと。
+     *
+     * <p><b>検証したい不変条件は「total はモックが返したプールの件数（{@code cappedPool.size()}）を
+     * 超えない」ことであり、{@link VillageSearchService#MAX_PAGE_SIZE}（ページサイズ上限）とは
+     * 無関係</b>。両者はたまたま実装値が同じ 50 なだけで意味が異なる別の定数のため、
+     * {@code MAX_PAGE_SIZE} には錨を下ろさず {@code cappedPool.size()} を直接の期待値にする
+     * （将来どちらかの定数値が変わっても、この不変条件が偶然の一致で緑のまま形骸化したり、
+     * 無関係な理由で赤くなったりしないようにするため）。</p>
+     *
+     * <p>POST タイプの実件数（countPosts）は 60 件だが、SQL 取得は 1タイプあたりの上限で
+     * 頭打ちになり、実際に取得できているのは {@code cappedPool.size()} 件のみ。旧実装は
+     * total にキャップ無しの 60 をそのまま返しており、その total を信じてページ送りすると
+     * プールを超える範囲は例外も出ずに空配列を返し続けていた。</p>
+     */
+    @Test
+    @DisplayName("AC-11: 1タイプが上限超のヒット数を持つとき total は実取得可能件数を超えない")
+    void search_total_neverExceedsRetrievablePool() {
+        prepareValidMembership();
+        // 実装の PER_TYPE_FETCH_HARD_CAP（50）を模した「頭打ち後のプール」。
+        // MAX_PAGE_SIZE とは無関係な、この検証専用のローカル値。
+        List<BulletinThreadEntity> cappedPool = new ArrayList<>();
+        for (long i = 1; i <= 50; i++) {
+            cappedPool.add(bulletinThread(i, "整骨" + i, "本文" + i, t((int) i)));
+        }
+        given(bulletinThreadRepository.searchByVillageIdAndKeyword(eq(VILLAGE_ID), anyString(), any()))
+                .willReturn(cappedPool);
+        // 実件数（キャップ無し）は 60 件だが、実際に取得できているのはプール分のみ。
+        given(bulletinThreadRepository.countByVillageIdAndKeyword(eq(VILLAGE_ID), anyString())).willReturn(60L);
+        given(timelinePostRepository.searchByVillageIdAndKeyword(eq(VILLAGE_ID), anyString(), any()))
+                .willReturn(List.of());
+        given(timelinePostRepository.countByVillageIdAndKeyword(eq(VILLAGE_ID), anyString())).willReturn(0L);
+
+        VillageInternalSearchResponse res = service.search(VILLAGE_ID, "整骨", "POST", 0, 20, ACTOR_USER_ID);
+
+        // 不変条件本体: total はモックが実際に返したプールの件数を超えない。
+        assertThat(res.total()).isLessThanOrEqualTo((long) cappedPool.size());
+        assertThat(res.total()).isEqualTo((long) cappedPool.size());
+    }
+
+    @Test
+    @DisplayName("AC-12: total が示す最終ページを要求しても空配列にならない")
+    void search_lastPageFromTotal_isNotEmpty() {
+        prepareValidMembership();
+        List<BulletinThreadEntity> cappedPool = new ArrayList<>();
+        for (long i = 1; i <= 50; i++) {
+            cappedPool.add(bulletinThread(i, "整骨" + i, "本文" + i, t((int) i)));
+        }
+        given(bulletinThreadRepository.searchByVillageIdAndKeyword(eq(VILLAGE_ID), anyString(), any()))
+                .willReturn(cappedPool);
+        given(bulletinThreadRepository.countByVillageIdAndKeyword(eq(VILLAGE_ID), anyString())).willReturn(60L);
+        given(timelinePostRepository.searchByVillageIdAndKeyword(eq(VILLAGE_ID), anyString(), any()))
+                .willReturn(List.of());
+        given(timelinePostRepository.countByVillageIdAndKeyword(eq(VILLAGE_ID), anyString())).willReturn(0L);
+
+        int size = 20;
+        // まず total を得る（page=0 で問い合わせ）
+        VillageInternalSearchResponse first = service.search(VILLAGE_ID, "整骨", "POST", 0, size, ACTOR_USER_ID);
+        int lastPage = (int) ((first.total() - 1) / size);
+
+        VillageInternalSearchResponse lastRes =
+                service.search(VILLAGE_ID, "整骨", "POST", lastPage, size, ACTOR_USER_ID);
+
+        assertThat(lastRes.items()).isNotEmpty();
     }
 
     // ============================================================

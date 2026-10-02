@@ -113,7 +113,7 @@ async function submit() {
 
       <div class="mt-6 flex gap-2">
         <Button
-          :label="$t('common.button.back')"
+          :label="$t('button.back')"
           severity="secondary"
           @click="router.push('/me/care-links')"
         />

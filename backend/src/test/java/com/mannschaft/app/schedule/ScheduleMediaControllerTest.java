@@ -26,9 +26,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -80,7 +81,7 @@ class ScheduleMediaControllerTest {
         private ProxyInputContext proxyInputContext;
 
         private static final Long SCHEDULE_ID = 100L;
-        private static final Long MEDIA_ID = 200L;
+        private static final UUID MEDIA_ID = UUID.fromString("019954cc-1a40-7000-8000-000000000200");
         private static final Long USER_ID = 1L;
 
         @BeforeEach
@@ -88,6 +89,25 @@ class ScheduleMediaControllerTest {
             // 認証済みユーザーをセキュリティコンテキストに設定
             SecurityContextHolder.getContext().setAuthentication(
                     new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
+        }
+
+        // ==================== POST /{mediaId}/complete ====================
+
+        @Nested
+        @DisplayName("POST /api/v1/schedules/{scheduleId}/media/{mediaId}/complete")
+        class CompleteMedia {
+
+            @Test
+            @DisplayName("正常系_204でアップロード完了")
+            void complete_204() throws Exception {
+                doNothing().when(scheduleMediaService)
+                        .confirmImageUpload(anyLong(), any(UUID.class), anyLong());
+
+                mockMvc.perform(post(
+                                "/api/v1/schedules/{scheduleId}/media/{mediaId}/complete",
+                                SCHEDULE_ID, MEDIA_ID))
+                        .andExpect(status().isNoContent());
+            }
         }
 
         /**
@@ -164,7 +184,7 @@ class ScheduleMediaControllerTest {
                         .andExpect(jsonPath("$.data.mediaType").value("IMAGE"))
                         .andExpect(jsonPath("$.data.uploadUrl").value("https://r2.example.com/presigned-url"))
                         .andExpect(jsonPath("$.data.expiresIn").value(600))
-                        .andExpect(jsonPath("$.data.mediaId").value(MEDIA_ID));
+                        .andExpect(jsonPath("$.data.mediaId").value(MEDIA_ID.toString()));
             }
         }
 
@@ -188,7 +208,7 @@ class ScheduleMediaControllerTest {
                                 .param("size", "20"))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.items").isArray())
-                        .andExpect(jsonPath("$.data.items[0].id").value(MEDIA_ID))
+                        .andExpect(jsonPath("$.data.items[0].id").value(MEDIA_ID.toString()))
                         .andExpect(jsonPath("$.data.totalCount").value(1))
                         .andExpect(jsonPath("$.data.page").value(1))
                         .andExpect(jsonPath("$.data.hasNext").value(false));
@@ -206,7 +226,7 @@ class ScheduleMediaControllerTest {
             void 正常系_メディア更新_200() throws Exception {
                 // given
                 given(scheduleMediaService.updateMedia(
-                        anyLong(), anyLong(), anyLong(), anyBoolean(), any()))
+                        anyLong(), any(UUID.class), anyLong(), any()))
                         .willReturn(buildMediaResponse());
 
                 String requestBody = """
@@ -222,7 +242,7 @@ class ScheduleMediaControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(requestBody))
                         .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.data.id").value(MEDIA_ID))
+                        .andExpect(jsonPath("$.data.id").value(MEDIA_ID.toString()))
                         .andExpect(jsonPath("$.data.mediaType").value("IMAGE"))
                         .andExpect(jsonPath("$.data.processingStatus").value("READY"));
             }
@@ -239,13 +259,41 @@ class ScheduleMediaControllerTest {
             void 正常系_メディア削除_204() throws Exception {
                 // given
                 doNothing().when(scheduleMediaService)
-                        .deleteMedia(anyLong(), anyLong(), anyLong(), anyBoolean());
+                        .deleteMedia(anyLong(), any(UUID.class), anyLong());
 
                 // when / then
                 mockMvc.perform(delete(
                                 "/api/v1/schedules/{scheduleId}/media/{mediaId}",
                                 SCHEDULE_ID, MEDIA_ID))
                         .andExpect(status().isNoContent());
+            }
+        }
+
+        @Nested
+        @DisplayName("UUID API境界")
+        class UuidBoundary {
+
+            @Test
+            @DisplayName("不正UUIDはcomplete・PATCH・DELETEすべて400でServiceを呼ばない")
+            void invalidUuid_400_withoutServiceCall() throws Exception {
+                String invalidUuid = "not-a-uuid";
+
+                mockMvc.perform(post(
+                                "/api/v1/schedules/{scheduleId}/media/{mediaId}/complete",
+                                SCHEDULE_ID, invalidUuid))
+                        .andExpect(status().isBadRequest());
+                mockMvc.perform(patch(
+                                "/api/v1/schedules/{scheduleId}/media/{mediaId}",
+                                SCHEDULE_ID, invalidUuid)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}"))
+                        .andExpect(status().isBadRequest());
+                mockMvc.perform(delete(
+                                "/api/v1/schedules/{scheduleId}/media/{mediaId}",
+                                SCHEDULE_ID, invalidUuid))
+                        .andExpect(status().isBadRequest());
+
+                verifyNoInteractions(scheduleMediaService);
             }
         }
     }
@@ -290,7 +338,7 @@ class ScheduleMediaControllerTest {
     private AccessGuard accessGuard;
 
         private static final Long SCHEDULE_ID = 100L;
-        private static final Long MEDIA_ID = 200L;
+        private static final UUID MEDIA_ID = UUID.fromString("019954cc-1a40-7000-8000-000000000200");
 
         @Test
         @DisplayName("POST /upload-url — 未認証_403（@PreAuthorize isAuthenticated チェック）")
@@ -340,10 +388,10 @@ class ScheduleMediaControllerTest {
             var getMethod = ScheduleMediaController.class
                     .getMethod("listMedia", Long.class, String.class, boolean.class, int.class, int.class);
             var patchMethod = ScheduleMediaController.class
-                    .getMethod("updateMedia", Long.class, Long.class,
+                    .getMethod("updateMedia", Long.class, UUID.class,
                             com.mannschaft.app.schedule.dto.ScheduleMediaPatchRequest.class);
             var deleteMethod = ScheduleMediaController.class
-                    .getMethod("deleteMedia", Long.class, Long.class);
+                    .getMethod("deleteMedia", Long.class, UUID.class);
 
             org.assertj.core.api.Assertions.assertThat(
                     postMethod.getAnnotation(

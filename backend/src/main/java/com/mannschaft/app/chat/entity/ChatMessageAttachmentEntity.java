@@ -43,6 +43,7 @@ public class ChatMessageAttachmentEntity {
     @Column(nullable = false, length = 100)
     private String contentType;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

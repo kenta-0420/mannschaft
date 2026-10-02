@@ -1,7 +1,7 @@
 # ============================================================
 # Stage 1: Install dependencies
 # ============================================================
-FROM node:22-alpine AS deps
+FROM node:22.23.2-alpine AS deps
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN npm ci
 # ============================================================
 # Stage 2: Build
 # ============================================================
-FROM node:22-alpine AS builder
+FROM node:22.23.2-alpine AS builder
 
 WORKDIR /app
 
@@ -34,12 +34,19 @@ ENV NUXT_PUBLIC_API_BASE=${NUXT_PUBLIC_API_BASE}
 ARG NUXT_INTERNAL_API_BASE=http://localhost:8080
 ENV NUXT_INTERNAL_API_BASE=${NUXT_INTERNAL_API_BASE}
 
+# CMP-260821-2130: nuxt build はデフォルトのヒープ上限では OOM で完走しない
+# （実測: サーバー側ソースマップ無効化と組み合わせても 4096MB では死亡、8192MB で完走・
+#   完走時ピーク使用量 9,482MB / swap 0）。builder ステージ限定で置く
+# （ホスト側 workflow の環境変数は RUN へ自動継承されず、runtime ステージ（別 FROM）へも
+#   引き継がれないため実行時メモリには影響しない）。
+ENV NODE_OPTIONS=--max-old-space-size=8192
+
 RUN npm run build
 
 # ============================================================
 # Stage 3: Runtime
 # ============================================================
-FROM node:22-alpine AS runtime
+FROM node:22.23.2-alpine AS runtime
 
 # Security: add non-root user
 RUN addgroup --system --gid 1001 nuxtgroup \

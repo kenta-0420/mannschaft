@@ -56,6 +56,7 @@ public class SignageEmergencyMessageEntity {
 
     private Long dismissedBy;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

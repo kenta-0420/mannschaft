@@ -22,7 +22,9 @@ export default {
       "open": "모집 중",
       "full": "정원 마감",
       "closed": "마감 후",
-      "cancelled": "취소"
+      "cancelled": "취소",
+      "auto_cancelled": "자동 취소",
+      "completed": "모집 성립"
     },
     "participantStatus": {
       "applied": "신청 완료",
@@ -78,6 +80,8 @@ export default {
       "joinWaitlist": "대기열에 등록",
       "viewDetails": "자세히 보기",
       "confirmApplication": "확정",
+      "cancelListing": "모집 내리기",
+      "cancelledListing": "모집을 내렸습니다",
       "createPolicy": "정책 작성"
     },
     "confirmModal": {
@@ -140,7 +144,41 @@ export default {
       "noFeedItems": "새 모집이 없습니다",
       "listing": "모집",
       "waitlistPosition": "대기 #{n}번",
-      "postedAt": "게시일"
+      "postedAt": "게시일",
+      "loadError": "데이터를 불러오지 못했습니다",
+      "listingLabel": "모집 #{id}"
+    },
+    "guide": {
+      "feed": {
+        "title": "새 모집 사용법",
+        "what": {
+          "title": "새 모집이란",
+          "body": "팔로우 중이거나 서포터로 있는 팀이 공개한 새 모집이 최신순으로 표시되는 읽기 전용 피드입니다. 관심 있는 모집을 여기서 찾을 수 있습니다."
+        },
+        "apply": {
+          "title": "모집 보기·신청",
+          "body": "카드를 누르면 모집 상세 페이지가 열립니다. 신청이나 대기 등록은 상세 페이지에서 진행합니다."
+        },
+        "read": {
+          "title": "표시 보는 법",
+          "body": "\"모집 중\", \"만원\" 등의 태그로 상태를 알 수 있습니다. 인원은 \"확정 인원 / 정원\", 요금은 \"¥\"로 표시됩니다."
+        }
+      },
+      "listings": {
+        "title": "참가 예정 사용법",
+        "what": {
+          "title": "참가 예정이란",
+          "body": "신청 중이거나 확정된 모집이 여기에 표시됩니다. 진행 중인 참가만 표시되며, 취소되거나 종료된 참가는 표시되지 않습니다."
+        },
+        "status": {
+          "title": "상태 보는 법",
+          "body": "\"확정\", \"신청 완료\", \"대기\" 등의 태그로 현재 상태를 알 수 있습니다. 대기 중일 때는 \"#순위\"로 대기 위치가 표시됩니다."
+        },
+        "detail": {
+          "title": "상세·취소",
+          "body": "\"상세 보기\"로 모집 페이지를 열 수 있습니다. 신청 취소 등의 조작은 상세 페이지에서 진행합니다."
+        }
+      }
     },
     "distribution": {
       "title": "배포 대상",
@@ -176,6 +214,7 @@ export default {
       "resetButton": "초기화",
       "allCategories": "모든 카테고리",
       "noResults": "조건에 맞는 모집을 찾을 수 없습니다",
+      "loadError": "모집 정보를 가져오지 못했습니다",
       "resultsCount": "{count}건의 모집",
       "capacity": "정원",
       "remaining": "잔여 {count}자리",
@@ -184,6 +223,12 @@ export default {
       "applying": "신청 중",
       "individual": "개인",
       "team": "팀"
+    },
+    "validation": {
+      "eventTimeRange": "종료 시간은 시작 시간보다 이후여야 합니다",
+      "applicationDeadline": "신청 마감은 시작 시간보다 이전이어야 합니다",
+      "autoCancelAt": "자동 취소 시각은 신청 마감 이전이어야 합니다",
+      "capacity": "최소 정원은 정원을 초과할 수 없습니다"
     },
     "payee": {
       "required": "수령인 유형을 선택해주세요",
@@ -214,6 +259,9 @@ export default {
       "RECRUITMENT_205": "이미지 URL이 화이트리스트에 없습니다",
       "RECRUITMENT_206": "정원을 확정 참가자 수보다 적게 변경할 수 없습니다",
       "RECRUITMENT_207": "공개 범위와 배포 대상이 일치하지 않습니다",
+      "RECRUITMENT_216": "종료 시간은 시작 시간보다 이후여야 합니다",
+      "RECRUITMENT_217": "신청 마감은 시작 시간보다 이전이어야 합니다",
+      "RECRUITMENT_218": "자동 취소 시각은 신청 마감보다 늦을 수 없습니다",
       "RECRUITMENT_301": "취소 수수료 결제에 실패했습니다",
       "RECRUITMENT_302": "취소 정책 설정이 잘못되었습니다",
       "RECRUITMENT_303": "취소 정책 단계가 4개를 초과합니다",
@@ -232,6 +280,7 @@ export default {
       "status": {
         "pending": "확인 대기",
         "confirmed": "확정",
+        "expired": "이의 신청 기한 만료",
         "disputed": "이의 신청 중",
         "revoked": "취소",
         "upheld": "유지"
@@ -276,6 +325,42 @@ export default {
         "expired": "만료",
         "lifted": "해제됨"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "취소 수수료 면제",
+      "pageDescription": "수령해야 할 취소 수수료의 면제",
+      "unknownUser": "알 수 없는 사용자",
+      "loadMore": "더 보기",
+      "reasonTooLong": "면제 사유는 {max}자 이내로 입력해 주세요",
+      "columns": {
+        "listing": "모집",
+        "user": "대상 사용자",
+        "feeAmount": "취소 수수료",
+        "status": "상태",
+        "cancelledAt": "취소 일시"
+      },
+      "status": {
+        "pending": "미납",
+        "failed": "결제 실패",
+        "uncollectible": "회수 불가",
+        "paid": "지불 완료",
+        "waived": "면제됨",
+        "notRequired": "대상 아님"
+      },
+      "waiveButton": "면제하기",
+      "reasonLabel": "면제 사유",
+      "reasonPlaceholder": "면제 사유를 입력해 주세요（필수）",
+      "reasonRequired": "면제 사유는 필수입니다",
+      "confirmDialog": {
+        "title": "취소 수수료 면제",
+        "message": "취소 수수료 {amount}엔 청구를 취소합니다. 이 작업은 되돌릴 수 없습니다.\n이 사용자에게 다른 미납 취소 수수료가 남아 있는 경우, 모집 신청 제한은 해제되지 않습니다.",
+        "confirmButton": "면제하기",
+        "cancelButton": "돌아가기"
+      },
+      "emptyMessage": "면제 가능한 취소 수수료 기록이 없습니다",
+      "loadError": "목록을 가져오지 못했습니다",
+      "waiveSuccess": "취소 수수료를 면제했습니다",
+      "waiveError": "면제에 실패했습니다"
     }
   }
 }

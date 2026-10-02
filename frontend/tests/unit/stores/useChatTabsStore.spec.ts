@@ -49,27 +49,26 @@ vi.mock('~/composables/useChatTabsPersistence', () => ({
 
 // === テスト用ヘルパー ===
 
-function makeChannel(overrides: Partial<ChatChannelResponse> = {}): ChatChannelResponse {
+interface MakeChannelOptions {
+  id?: number
+  name?: string
+  channelType?: ChatChannelResponse['identity']['channelType']
+  dmPartner?: ChatChannelResponse['dmPartner']
+}
+
+function makeChannel(options: MakeChannelOptions = {}): ChatChannelResponse {
+  const { id = 1, name = 'テストチャンネル', channelType = 'TEAM_PUBLIC', dmPartner = null } = options
   return {
-    id: 1,
-    channelType: 'TEAM',
-    team: { id: 10, name: 'テストチーム' },
-    organization: null,
-    name: 'テストチャンネル',
-    iconUrl: null,
-    description: null,
-    isPrivate: false,
-    isArchived: false,
-    lastMessageAt: null,
-    lastMessagePreview: null,
-    unreadCount: 0,
-    isMuted: false,
-    isPinned: false,
+    id,
+    identity: { channelType, teamId: 10, organizationId: null },
+    meta: { name, iconKey: null, description: null },
+    settings: { isPrivate: false, isInquiryChannel: false, isArchived: false, version: 1 },
+    lastMessage: { lastMessageAt: null, lastMessagePreview: null },
+    source: { sourceType: null, sourceId: null },
+    audit: { createdBy: null, createdAt: null, updatedAt: null },
     memberCount: 5,
-    dmPartner: null,
-    sourceType: null,
-    sourceId: null,
-    ...overrides,
+    dmPartner,
+    viewer: { unreadCount: 0, isMuted: false, isPinned: false, category: null, role: null },
   }
 }
 
@@ -105,7 +104,7 @@ describe('useChatTabsStore', () => {
       expect(result.ok).toBe(true)
       expect(store.tabs).toHaveLength(1)
       expect(store.tabs[0]!.channelId).toBe(1)
-      expect(store.tabs[0]!.channel.name).toBe('全体連絡')
+      expect(store.tabs[0]!.channel.meta.name).toBe('全体連絡')
       expect(store.activeTabId).toBe(store.tabs[0]!.id)
     })
 

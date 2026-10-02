@@ -15,11 +15,41 @@ const { getRequestSummary } = useShiftRequestApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
 
+const showGuide = ref(false)
+
 // =====================================================
 // チーム選択
 // =====================================================
 const selectedTeamId = ref<number | null>(null)
-/** ADMIN / SYSTEM_ADMIN / DEPUTY_ADMIN のチーム（シフト管理権限あり） */
+
+/** シフトを参照できない所属ロール（BE が 403 にする側）。 */
+const SHIFT_UNREADABLE_ROLES = ['SUPPORTER', 'GUEST']
+
+/**
+ * チーム選択セレクトの選択肢＝「自分が所属し、かつシフトを参照できるチーム」。
+ *
+ * 管理ロールでは絞らない。一般メンバーも COLLECTING / ADJUSTING のシフト表を閲覧できる
+ * 仕様（CMP-260826-2127）であり、ここを ADMIN 系に絞ると MEMBER として所属するチームを
+ * 選べず、シフト一覧そのものに到達できなくなるため。作成・編集ボタンの出し分けは
+ * 選択肢ではなく canManage が担う。
+ *
+ * 一方で myTeams をそのまま出すこともできない。`GET /me/teams` は user_roles と memberships の
+ * <b>和集合</b>であり「一覧に出る＝その機能を使える」ではないためである。シフト参照の認可は
+ * BE の ShiftScheduleService#checkTeamReadAccess が持ち、
+ *   - membership が無い（純 GUEST は user_roles 由来で membership を持たない）→ isMember false で 403
+ *   - membership の role_kind が SUPPORTER → isSupporter true で 403
+ * となる。よって SUPPORTER / GUEST を除いた集合が BE の許可境界と一致する
+ * （memberships.role_kind は MEMBER / SUPPORTER の2値。GUEST は user_roles 側の権限ロール）。
+ *
+ * 絞らないと「選択肢には出るのに、選ぶと一覧取得が 403 で失敗する」組み合わせが生じる。
+ * 同じ集合のズレは CalendarLayerService の Javadoc にも
+ * 「GET /me/teams の一覧には出るのに色を設定すると 403」という前例として記録されている。
+ */
+const selectableTeams = computed(() =>
+  teamStore.myTeams.filter((t) => !SHIFT_UNREADABLE_ROLES.includes(t.role)),
+)
+
+/** ADMIN / SYSTEM_ADMIN / DEPUTY_ADMIN のチーム（シフト表の作成・編集権限あり。canManage 専用） */
 const manageableTeams = computed(() =>
   teamStore.myTeams.filter(
     (t) => t.role === 'ADMIN' || t.role === 'SYSTEM_ADMIN' || t.role === 'DEPUTY_ADMIN',
@@ -56,7 +86,7 @@ const loading = ref(false)
 
 const filteredSchedules = computed(() => {
   if (!statusFilter.value) return schedules.value
-  return schedules.value.filter((s) => s.status === statusFilter.value)
+  return schedules.value.filter((s) => s.status.status === statusFilter.value)
 })
 
 async function load() {
@@ -91,8 +121,8 @@ watch(selectedTeamId, () => load())
 
 onMounted(async () => {
   await teamStore.fetchMyTeams()
-  if (manageableTeams.value.length > 0 && manageableTeams.value[0]) {
-    selectedTeamId.value = manageableTeams.value[0].id
+  if (selectableTeams.value.length > 0 && selectableTeams.value[0]) {
+    selectedTeamId.value = selectableTeams.value[0].id
   }
 })
 
@@ -151,22 +181,23 @@ function openDetail(scheduleId: number) {
 <template>
   <div class="mx-auto max-w-6xl px-4 py-8">
     <!-- ヘッダー -->
-    <div class="mb-6 flex items-center justify-between">
-      <PageHeader :title="t('shift.index.title')" />
-      <Button
-        v-if="canManage"
-        icon="pi pi-plus"
-        :label="t('shift.index.createNew')"
-        @click="showCreateDialog = true"
-      />
-    </div>
+    <PageHeader :title="t('shift.index.title')" help @help="showGuide = true">
+      <template #actions>
+        <Button
+          v-if="canManage"
+          icon="pi pi-plus"
+          :label="t('shift.index.createNew')"
+          @click="showCreateDialog = true"
+        />
+      </template>
+    </PageHeader>
 
     <!-- フィルタバー -->
     <div class="mb-6 flex flex-wrap items-center gap-3">
       <!-- チーム選択 -->
       <Select
         v-model="selectedTeamId"
-        :options="manageableTeams"
+        :options="selectableTeams"
         option-label="name"
         option-value="id"
         :placeholder="t('shift.index.selectTeam')"
@@ -268,5 +299,7 @@ function openDetail(scheduleId: number) {
         />
       </template>
     </Dialog>
+
+    <ShiftGuideModal v-model:visible="showGuide" />
   </div>
 </template>

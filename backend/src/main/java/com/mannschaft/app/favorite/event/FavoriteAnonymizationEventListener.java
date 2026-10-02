@@ -1,5 +1,7 @@
 package com.mannschaft.app.favorite.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.favorite.repository.UserFavoriteRepository;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +47,8 @@ public class FavoriteAnonymizationEventListener {
      *
      * @param event 匿名化完了イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会済み利用者のお気に入り情報に個人情報が残存し、退会済みなのに PII が残るという不整合になる")
     @Async("event-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

@@ -136,6 +136,29 @@ public class AnnouncementFeedEntity extends BaseEntity {
     private String targetTeamIds;
 
     /**
+     * グループ宛て: 送信時に範囲を展開したチームグループ ID（UUID 文字列の JSON 配列）（F01.2.1 §5.6）。
+     * NULL = グループ宛てではない。表示は閲覧時に所属と照合する。
+     * 多値インデックス {@code idx_af_target_groups}（{@code CHAR(36) ARRAY}）の対象で、
+     * 1 レコードの上限は 148 件（実測。{@code AnnouncementMultiValuedIndexLimitIT}）。
+     * 検索は {@code ? MEMBER OF (target_group_ids->'$[*]')} の形でないと索引に乗らない。
+     */
+    @Column(name = "target_group_ids", columnDefinition = "JSON")
+    private String targetGroupIds;
+
+    /**
+     * グループ宛て: 未分類チームも表示対象にするか。
+     */
+    @Column(name = "include_unassigned", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private Boolean includeUnassigned = false;
+
+    /**
+     * 送信時の宛先指定の記録（グループ名・範囲・push 宛先数）の JSON。表示判定には使わない。
+     */
+    @Column(name = "target_audience", columnDefinition = "JSON")
+    private String targetAudience;
+
+    /**
      * 表示開始日時（NULL = 即時）。予約公開のブログ記事を事前登録する場合に使用。
      */
     @Column

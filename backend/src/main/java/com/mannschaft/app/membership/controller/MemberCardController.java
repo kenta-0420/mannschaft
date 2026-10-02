@@ -1,6 +1,8 @@
 package com.mannschaft.app.membership.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.membership.dto.CardStatusResponse;
 import com.mannschaft.app.membership.dto.CheckinHistoryResponse;
 import com.mannschaft.app.membership.dto.MemberCardDetailResponse;
@@ -46,6 +48,8 @@ public class MemberCardController {
     /**
      * 自分の会員証一覧を取得する。
      */
+    @SelfScopedEndpoint("MemberCardService#getMyCards が SecurityUtils.getCurrentUserId() の"
+            + "みを検索条件（findByUserIdAndDeletedAtIsNull）に束縛する")
     @GetMapping("/my")
     @Operation(summary = "自分の会員証一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -65,7 +69,11 @@ public class MemberCardController {
 
     /**
      * QRコード表示用トークンを取得する。
+     *
+     * <p>認可根治済み: {@code MemberCardService#getQrToken} が
+     * {@code card.getUserId().equals(userId)} で本人所有を検証する（MEMBERSHIP_002）。</p>
      */
+    @AuthorizedInService
     @GetMapping("/{id}/qr")
     @Operation(summary = "QRコード表示用トークン取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -97,6 +105,9 @@ public class MemberCardController {
     /**
      * セルフチェックインを実行する。
      */
+    @SelfScopedEndpoint("MemberCardService#selfCheckin が対象会員証を "
+            + "findByUserIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(userId, ...) で"
+            + "SecurityUtils.getCurrentUserId() に束縛して解決する")
     @PostMapping("/self-checkin")
     @Operation(summary = "セルフチェックイン")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "チェックイン結果")

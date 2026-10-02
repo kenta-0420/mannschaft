@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { ref } from 'vue'
-import TournamentsPage from '~/pages/organizations/[slug]/tournaments.vue'
+import TournamentsPage from '~/pages/organizations/[slug]/tournaments/index.vue'
 import { TOURNAMENT_SPORTS } from '~/types/tournament'
 
 /**

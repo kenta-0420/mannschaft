@@ -3,17 +3,21 @@ package com.mannschaft.app.notification.confirmable.controller;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationCreateRequest;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationDetailResponse;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationResponse;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationSendAcceptedResponse;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientPreviewRequest;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableRecipientPreviewResponse;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
-import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableRecipientPreviewService;
 import com.mannschaft.app.common.BusinessException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,41 +48,57 @@ import java.util.stream.Collectors;
 public class TeamConfirmableNotificationController {
 
     private final ConfirmableNotificationService notificationService;
+    private final ConfirmableRecipientPreviewService recipientPreviewService;
     private final ConfirmableNotificationRecipientRepository recipientRepository;
     private final ConfirmableNotificationMapper mapper;
     private final AccessControlService accessControlService;
 
     /**
-     * 確認通知を送信する。
+     * F04.9 §2 が定める確認通知の送信権限（CMP-260909-1141）。
      *
-     * <p>受信者への確認トークン付与・リマインド設定解決を行い、F04.3通知基盤に引き渡す。</p>
+     * <p>書き込み系（送信・キャンセル・リマインド再送・設定更新・テンプレート CRUD）は
+     * 「ADMIN、または本権限を持つ DEPUTY_ADMIN」で認可する。カタログ登録と DEPUTY_ADMIN への
+     * 既定付与（{@code is_default=1}）は
+     * {@code V216.20260918083734__add_send_notification_permission.sql} が行う。
+     * 閲覧系は従来どおり {@code checkMembership} のままである。</p>
+     */
+    private static final String SEND_NOTIFICATION = "SEND_NOTIFICATION";
+
+    /**
+     * 確認通知を送信する（CMP-260920-1040 軍議第8版確定稿 §3.3・AC-19）。
+     *
+     * <p>宛先は {@code targets} / {@code recipientGroupId} / 省略（既定＝自チーム）で指定する
+     * （公開 API の {@code recipientUserIds} は廃止・AC-11）。本体・targets・fanoutジョブを同一
+     * トランザクションで作成し、受信者行は作らずに <b>202 Accepted</b> を返す（AC-19）。</p>
      */
     @PostMapping
     @Operation(summary = "確認通知送信")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "送信成功")
-    public ResponseEntity<ApiResponse<ConfirmableNotificationResponse>> send(
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "受付成功（非同期配信）")
+    public ResponseEntity<ApiResponse<ConfirmableNotificationSendAcceptedResponse>> send(
             @PathVariable Long teamId,
             @Valid @RequestBody ConfirmableNotificationCreateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        ConfirmableNotificationEntity entity = notificationService.send(
-                ScopeType.TEAM,
-                teamId,
-                request.getTitle(),
-                request.getBody(),
-                request.getPriority(),
-                request.getDeadlineAtAsJst(),
-                request.getFirstReminderMinutes(),
-                request.getSecondReminderMinutes(),
-                request.getActionUrl(),
-                request.getTemplateId(),
-                request.getUnconfirmedVisibility(),
-                currentUserId,
-                request.getRecipientUserIds());
+        // 認可根治 Wave3-B12notif → CMP-260909-1141: 通知送信は管理操作（受信者へ強制配信）。
+        // 設計書 F04.9 §2 のとおり「ADMIN、または SEND_NOTIFICATION を持つ DEPUTY_ADMIN」で判定する。
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
+        ConfirmableNotificationSendAcceptedResponse response = notificationService.sendAsync(
+                ScopeType.TEAM, teamId, request, currentUserId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(response));
+    }
 
-        ConfirmableNotificationResponse response = mapper.toResponse(entity);
-        // confirmedCount は送信直後なので0
-        response.setConfirmedCount(0L);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    /** 送信前に宛先の見込み件数を取得する。 */
+    @PostMapping("/recipient-preview")
+    @Operation(summary = "確認通知の宛先件数プレビュー")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<ConfirmableRecipientPreviewResponse>> previewRecipients(
+            @PathVariable Long teamId,
+            @Valid @RequestBody ConfirmableRecipientPreviewRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
+        return ResponseEntity.ok(ApiResponse.of(recipientPreviewService.previewForPublicRequest(
+                ScopeType.TEAM, teamId, currentUserId, request)));
     }
 
     /**
@@ -89,6 +109,9 @@ public class TeamConfirmableNotificationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ConfirmableNotificationResponse>>> list(
             @PathVariable Long teamId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 認可根治 Wave3-B12notif: 一覧は閲覧系のため checkMembership（非メンバーの BOLA 一覧取得を根治）。
+        accessControlService.checkMembership(currentUserId, teamId, ScopeType.TEAM.name());
         List<ConfirmableNotificationEntity> entities =
                 notificationService.listByScope(ScopeType.TEAM, teamId);
         List<ConfirmableNotificationResponse> responses = entities.stream()
@@ -115,12 +138,15 @@ public class TeamConfirmableNotificationController {
     public ResponseEntity<ApiResponse<ConfirmableNotificationDetailResponse>> getDetail(
             @PathVariable Long teamId,
             @PathVariable Long notificationId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
 
-        // スコープ整合チェック
+        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
         if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
             throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
         }
+        // 認可根治 Wave3-B12notif: 閲覧系は checkMembership（非メンバーの詳細窃視を根治）。
+        accessControlService.checkMembership(currentUserId, teamId, ScopeType.TEAM.name());
 
         ConfirmableNotificationDetailResponse response = mapper.toDetailResponse(entity);
         long confirmedCount = recipientRepository
@@ -141,6 +167,16 @@ public class TeamConfirmableNotificationController {
             @PathVariable Long teamId,
             @PathVariable Long notificationId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
+
+        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
+        if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
+        // 認可根治 Wave3-B12notif → CMP-260909-1141: キャンセルは管理操作のため SEND_NOTIFICATION で判定。
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
+
         notificationService.cancel(notificationId, currentUserId);
         return ResponseEntity.noContent().build();
     }
@@ -156,6 +192,17 @@ public class TeamConfirmableNotificationController {
     public ResponseEntity<Void> resendReminder(
             @PathVariable Long teamId,
             @PathVariable Long notificationId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
+
+        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
+        if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
+        // 認可根治 Wave3-B12notif → CMP-260909-1141: リマインド再送は管理操作のため SEND_NOTIFICATION で判定。
+        accessControlService.checkAdminOrHasPermissionInScope(
+                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
+
         notificationService.resendReminder(notificationId);
         return ResponseEntity.noContent().build();
     }
@@ -182,32 +229,76 @@ public class TeamConfirmableNotificationController {
             @PathVariable Long teamId,
             @PathVariable Long notificationId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity notification = notificationService.getDetail(notificationId);
+
+        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
+        // ADMIN であっても他 scope の notificationId で受信者一覧を覗ける副次 BOLA を根治（Wave3-B12notif）。
+        if (!ScopeType.TEAM.equals(notification.getScopeType()) || !teamId.equals(notification.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
 
         // ADMIN+ なら全件返す（既存挙動）
+        // CMP-260920-1040是正: getRecipients は退会者でも500化しないネイティブ投影から
+        // 直接DTOを返すため、mapper を経由しない（家老の検出・殿の確認）。
         if (accessControlService.isAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name())) {
-            List<ConfirmableNotificationRecipientEntity> recipients =
-                    notificationService.getRecipients(notificationId);
             List<ConfirmableNotificationRecipientResponse> responses =
-                    mapper.toRecipientResponseList(recipients);
+                    notificationService.getRecipients(notificationId);
             return ResponseEntity.ok(ApiResponse.of(responses));
         }
 
-        // 非 ADMIN は ALL_MEMBERS かつ受信者本人のみ閲覧可（Service 層で認可判定 + マスク前データ取得）
-        List<ConfirmableNotificationRecipientEntity> unconfirmed =
-                notificationService.getRecipientsForMember(notificationId, currentUserId);
+        // 非 ADMIN は ALL_MEMBERS かつ受信者本人のみ閲覧可（Service 層で認可判定 + マスク済みDTO取得）。
+        // CMP-260920-1040是正: getRecipientsForMember はネイティブ投影から直接マスク済みDTOを返すため、
+        // mapper を経由しない（家老の検出・殿の確認。退会者を含んでも500化しない）。
         List<ConfirmableNotificationRecipientResponse> responses =
-                mapper.toRecipientPublicResponseList(unconfirmed);
+                notificationService.getRecipientsForMember(notificationId, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(responses));
+    }
+
+    /**
+     * CMP-260920-1040: 受信者一覧をページングして取得する（軍議第8版確定稿 §9.5・AC-30・AC-59・AC-60）。
+     */
+    @GetMapping("/{notificationId}/recipients/page")
+    @Operation(summary = "受信者一覧取得（ページング）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientPageResponse>>
+            getRecipientsPage(
+                    @PathVariable Long teamId,
+                    @PathVariable Long notificationId,
+                    @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+                    @org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") int size,
+                    @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean unconfirmedOnly) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationEntity notification = notificationService.getDetail(notificationId);
+        if (!ScopeType.TEAM.equals(notification.getScopeType()) || !teamId.equals(notification.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
+        }
+        accessControlService.checkMembership(currentUserId, teamId, ScopeType.TEAM.name());
+        return ResponseEntity.ok(ApiResponse.of(
+                notificationService.getRecipientsPage(notificationId, currentUserId, page, size, unconfirmedOnly)));
     }
 
     /**
      * ログインユーザーが確認通知を確認済みにする（MEMBER以上）。
      *
      * <p>ACTIVE 状態の通知に対して自分自身の確認のみ可能。</p>
+     *
+     * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
+     * パス変数 {@code teamId} は自身ではスコープ判定に用いない（本 EP の実処理は
+     * notificationId のみで完結する）。認可の実体は
+     * {@code ConfirmableNotificationConfirmService#confirm(Long, Long)} が受信者一覧
+     * （{@code ConfirmableNotificationRecipientRepository#findByConfirmableNotificationId}）から
+     * {@code recipient.getUser().getId().equals(userId)} で<b>呼び出しユーザー自身の受信者行のみ</b>を
+     * 特定し、該当しない場合は {@code RECIPIENT_NOT_FOUND} を投げる構造にある。
+     * このため他人宛の確認通知を確認済みにすることは構造上できない自己スコープ EP であり、
+     * {@code teamId} の実スコープと notificationId の実スコープが仮に食い違っていても、確認できるのは
+     * 常に呼び出しユーザー自身の受信者行のみで権限昇格は発生しない。
+     * データ依存でない構造的な自己スコープ認可のため白名簿クラス呼び出しを持たず、
+     * 本マーカーで監査済であることを明示する。</p>
      */
     @PostMapping("/{notificationId}/confirm")
     @Operation(summary = "確認通知を確認済みにする")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "確認成功")
+    @AuthorizedInService
     public ResponseEntity<Void> confirm(
             @PathVariable Long teamId,
             @PathVariable Long notificationId) {

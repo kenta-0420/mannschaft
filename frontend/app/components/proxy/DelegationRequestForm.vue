@@ -234,13 +234,13 @@ onMounted(() => {
     <!-- ボタン -->
     <div class="flex justify-end gap-2">
       <Button
-        :label="$t('common.button.cancel')"
+        :label="$t('button.cancel')"
         text
         :disabled="submitting"
         @click="cancel"
       />
       <Button
-        :label="$t('common.button.save')"
+        :label="$t('button.save')"
         icon="pi pi-check"
         :loading="submitting"
         :disabled="disabled || !form.delegateId"

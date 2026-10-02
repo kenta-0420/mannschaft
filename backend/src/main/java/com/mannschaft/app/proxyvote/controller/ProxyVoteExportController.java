@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxyvote.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
 import com.mannschaft.app.proxyvote.dto.AttachmentResponse;
@@ -39,18 +40,13 @@ public class ProxyVoteExportController {
     private final ProxyVoteExportService exportService;
     private final ProxyVoteAttachmentService attachmentService;
 
-    // JwtAuthenticationFilter実装後にSecurityContextHolderから取得に変更予定
-    private Long getCurrentUserId() {
-        return 1L;
-    }
-
     /**
      * 投票結果を CSV でダウンロードする。
      */
     @GetMapping("/{id}/results/csv")
     @Operation(summary = "投票結果 CSV エクスポート")
     public ResponseEntity<byte[]> exportResultsCsv(@PathVariable Long id) {
-        byte[] csv = exportService.exportResultsCsv(id);
+        byte[] csv = exportService.exportResultsCsv(id, SecurityUtils.getCurrentUserId());
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -65,7 +61,7 @@ public class ProxyVoteExportController {
     @GetMapping("/{id}/minutes-pdf")
     @Operation(summary = "議事録 PDF エクスポート")
     public ResponseEntity<byte[]> exportMinutesPdf(@PathVariable Long id) {
-        byte[] pdf = exportService.exportMinutesPdf(id);
+        byte[] pdf = exportService.exportMinutesPdf(id, SecurityUtils.getCurrentUserId());
 
         String fileName = PdfFileNameBuilder.of("議事録")
                 .date(LocalDate.now())
@@ -85,7 +81,7 @@ public class ProxyVoteExportController {
             @RequestPart("file") MultipartFile file,
             @RequestParam(value = "attachment_type", required = false) String attachmentType) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(attachmentService.addSessionAttachment(id, file, attachmentType, getCurrentUserId())));
+                .body(ApiResponse.of(attachmentService.addSessionAttachment(id, file, attachmentType, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -94,7 +90,7 @@ public class ProxyVoteExportController {
     @DeleteMapping("/attachments/{attachmentId}")
     @Operation(summary = "添付ファイル削除")
     public ResponseEntity<Void> deleteAttachment(@PathVariable Long attachmentId) {
-        attachmentService.deleteAttachment(attachmentId);
+        attachmentService.deleteAttachment(attachmentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

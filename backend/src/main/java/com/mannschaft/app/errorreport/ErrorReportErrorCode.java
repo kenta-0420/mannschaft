@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ErrorReportErrorCode implements ErrorCode {
 
-    /** エラーレポートが見つからない */
+    /** エラーレポートが見つからない（404） */
     ERROR_REPORT_NOT_FOUND("ERROR_REPORT_001", "エラーレポートが見つかりません", Severity.WARN),
 
     /** このエラーレポートは既に解決済み */
@@ -23,7 +23,7 @@ public enum ErrorReportErrorCode implements ErrorCode {
     /** 無効なステータス遷移 */
     ERROR_REPORT_INVALID_STATUS_TRANSITION("ERROR_REPORT_004", "無効なステータス遷移です", Severity.WARN),
 
-    /** 無効なワークフロー遷移 */
+    /** 無効なワークフロー遷移（IGNORED状態での工程更新拒否・状態競合のため409） */
     ERROR_REPORT_005("ERROR_REPORT_005", "無効なワークフロー遷移です", Severity.WARN),
 
     /** 担当者の権限不正 */
@@ -35,7 +35,7 @@ public enum ErrorReportErrorCode implements ErrorCode {
     /** AI 月次予算上限到達 */
     ERROR_REPORT_008("ERROR_REPORT_008", "AI 月次予算上限に達しました", Severity.WARN),
 
-    /** 関連処理が既に進行中（AI 分析 / GitHub Issue 作成等の重複ロック） */
+    /** 関連処理が既に進行中（AI 分析 / GitHub Issue 作成等の重複ロック。状態競合のため409） */
     ERROR_REPORT_009("ERROR_REPORT_009", "処理が進行中です", Severity.INFO),
 
     /** GitHub 連携が設定されていない */
@@ -44,7 +44,7 @@ public enum ErrorReportErrorCode implements ErrorCode {
     /** GitHub Issue の作成に失敗した */
     ERROR_REPORT_011("ERROR_REPORT_011", "GitHub Issue の作成に失敗しました", Severity.ERROR),
 
-    /** GitHub Issue は既に作成済み */
+    /** GitHub Issue は既に作成済み（二重作成防止・状態競合のため409） */
     ERROR_REPORT_012("ERROR_REPORT_012", "GitHub Issue は既に作成されています", Severity.WARN);
 
     private final String code;

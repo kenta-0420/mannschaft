@@ -47,8 +47,10 @@ public class GamificationUserSettingEntity {
     @Builder.Default
     private Boolean showBadges = true;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

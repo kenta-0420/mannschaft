@@ -17,7 +17,7 @@ public enum WorkflowErrorCode implements ErrorCode {
     /** 申請が見つからない */
     REQUEST_NOT_FOUND("WORKFLOW_002", "ワークフロー申請が見つかりません", Severity.WARN),
 
-    /** ステップが見つからない */
+    /** ステップが見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     STEP_NOT_FOUND("WORKFLOW_003", "承認ステップが見つかりません", Severity.WARN),
 
     /** 承認者が見つからない */
@@ -45,7 +45,7 @@ public enum WorkflowErrorCode implements ErrorCode {
     REQUIRED_FIELD_MISSING("WORKFLOW_011", "必須フィールドが未入力です", Severity.ERROR),
 
     /** フィールド値が不正 */
-    INVALID_FIELD_VALUE("WORKFLOW_012", "フィールド値が不正です", Severity.ERROR),
+    INVALID_FIELD_VALUE("WORKFLOW_012", "フィールド値が不正です", Severity.WARN),
 
     /** ステップ定義が不正 */
     INVALID_STEP_DEFINITION("WORKFLOW_013", "ステップ定義が不正です", Severity.ERROR),
