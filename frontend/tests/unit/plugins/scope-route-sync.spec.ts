@@ -25,10 +25,17 @@ const api = vi.fn(async (path: string) => {
   }
   throw new Error(`Unexpected API: ${path}`)
 })
-// storeの変換後direct importと同じ実moduleを置換し、通信以外のexportは保持する。
-vi.mock('~/composables/useApi', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('~/composables/useApi')>()
-  return { ...actual, useApi: () => api }
+// useApi→auth→所属storeの循環を保ち、本物のAPI/helperが使う通信境界だけ差し替える。
+vi.mock('ofetch', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ofetch')>()
+  return {
+    ...actual,
+    ofetch: new Proxy(actual.ofetch, {
+      get(target, key, receiver) {
+        return key === 'create' ? () => api : Reflect.get(target, key, receiver)
+      },
+    }),
+  }
 })
 
 beforeAll(async () => {

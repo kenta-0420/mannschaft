@@ -43,10 +43,17 @@ const api = vi.fn(async (path: string) => {
   }
   throw new Error(`Unexpected API: ${path}`)
 })
-// ORG storeのdirect importも同じAPI境界へ接続し、store/action/resolverは本物を使う。
-vi.mock('~/composables/useApi', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('~/composables/useApi')>()
-  return { ...actual, useApi: () => api }
+// useApi自体をmockすると循環内のORGがoriginalを捕捉するため、葉の通信境界のみ置換する。
+vi.mock('ofetch', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ofetch')>()
+  return {
+    ...actual,
+    ofetch: new Proxy(actual.ofetch, {
+      get(target, key, receiver) {
+        return key === 'create' ? () => api : Reflect.get(target, key, receiver)
+      },
+    }),
+  }
 })
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 mockNuxtImport('useRoute', () => () => route)
