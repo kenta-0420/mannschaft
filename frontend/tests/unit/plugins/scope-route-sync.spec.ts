@@ -1,22 +1,19 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { afterEach as afterEachTest, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
+import { setActivePinia } from 'pinia'
+import type { Router } from 'vue-router'
 import { flushPromises } from '@vue/test-utils'
-import { mockNuxtImport } from '@nuxt/test-utils/runtime'
-import { useNuxtApp } from '#app'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
+import { useNuxtApp, useRouter } from '#app'
 import { useScopeStore } from '~/stores/useScopeStore'
 import { useTeamStore } from '~/stores/useTeamStore'
 import { useOrganizationStore } from '~/stores/useOrganizationStore'
 import scopePlugin from '~/plugins/scope.client'
 
-// router と API は外部入力。plugin、scope resolver、Pinia store、保存処理は本物を動かす。
+// Nuxt app/Pinia/router は本物。APIと当該pluginへ渡すルート変更の入力だけを制御する。
 let afterEach: (to: { path: string }) => void = () => {}
-const router = {
-  currentRoute: ref({ path: '/teams/alpha/admin/settings' }),
-  afterEach: vi.fn((callback: typeof afterEach) => {
-    afterEach = callback
-    return () => {}
-  }),
-}
+let router: Router
+let restoreAfterEach: () => void = () => {}
 let pendingTeams: Promise<void> | null = null
 const api = vi.fn(async (path: string) => {
   if (path === '/api/v1/me/teams') {
@@ -28,21 +25,32 @@ const api = vi.fn(async (path: string) => {
   }
   throw new Error(`Unexpected API: ${path}`)
 })
-mockNuxtImport('useRouter', () => () => router)
 mockNuxtImport('useApi', () => () => api)
 
+beforeAll(async () => {
+  const warmup = await mountSuspended(defineComponent({ render: () => h('div') }))
+  warmup.unmount()
+  router = useRouter()
+})
+
 beforeEach(() => {
+  setActivePinia(useNuxtApp().$pinia)
   pendingTeams = null
-  router.currentRoute.value = { path: '/teams/alpha/admin/settings' }
-  router.afterEach.mockClear()
+  router.currentRoute.value = { ...router.currentRoute.value, path: '/teams/alpha/admin/settings', fullPath: '/teams/alpha/admin/settings' }
+  const spy = vi.spyOn(router, 'afterEach').mockImplementation((callback) => {
+    afterEach = () => callback(router.currentRoute.value, router.currentRoute.value, undefined)
+    return () => {}
+  })
+  restoreAfterEach = () => spy.mockRestore()
   api.mockClear()
   useScopeStore().clear()
   useTeamStore().clear()
   useOrganizationStore().clear()
 })
+afterEachTest(() => { restoreAfterEach() })
 
 function navigate(path: string) {
-  router.currentRoute.value = { path }
+  router.currentRoute.value = { ...router.currentRoute.value, path, fullPath: path }
   afterEach({ path })
 }
 
@@ -50,7 +58,7 @@ describe('scope.client の遅延同期と横断設定', () => {
   it('AC3/4: 初期A取得待ちからBへ移った後、A応答が戻ってもBの団体を上書きしない', async () => {
     let finish: () => void = () => {}
     pendingTeams = new Promise<void>((resolve) => { finish = resolve })
-    scopePlugin(useNuxtApp())
+    useNuxtApp().runWithContext(() => scopePlugin(useNuxtApp()))
     navigate('/organizations/beta/admin/settings')
     await flushPromises()
     expect(useScopeStore().current).toMatchObject({ type: 'organization', id: '7' })
@@ -64,7 +72,7 @@ describe('scope.client の遅延同期と横断設定', () => {
   it('AC3: 新scopeが確定後に横断設定へ移っても、旧Aの遅延応答は到着後の団体を変えない', async () => {
     let finish: () => void = () => {}
     pendingTeams = new Promise<void>((resolve) => { finish = resolve })
-    scopePlugin(useNuxtApp())
+    useNuxtApp().runWithContext(() => scopePlugin(useNuxtApp()))
     navigate('/organizations/beta/admin/settings')
     await flushPromises()
     navigate('/admin/receipt-settings')
@@ -77,7 +85,7 @@ describe('scope.client の遅延同期と横断設定', () => {
   it('AC3: 未確定Aからscope外へ移った場合は後からAを登録しない', async () => {
     let finish: () => void = () => {}
     pendingTeams = new Promise<void>((resolve) => { finish = resolve })
-    scopePlugin(useNuxtApp())
+    useNuxtApp().runWithContext(() => scopePlugin(useNuxtApp()))
     navigate('/admin/line-settings')
     finish()
     await flushPromises()
@@ -89,7 +97,7 @@ describe('scope.client の遅延同期と横断設定', () => {
   it('AC3: 同じ団体内の画面変更では通常同期を維持し、確定済scopeを横断設定で保持する', async () => {
     let finish: () => void = () => {}
     pendingTeams = new Promise<void>((resolve) => { finish = resolve })
-    scopePlugin(useNuxtApp())
+    useNuxtApp().runWithContext(() => scopePlugin(useNuxtApp()))
     navigate('/teams/alpha/info')
     finish()
     await flushPromises()

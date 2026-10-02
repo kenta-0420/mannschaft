@@ -87,6 +87,17 @@ describe('ADMIN設定ハブの既存導線と団体境界', () => {
     route.path = '/organizations/beta/admin/settings'
     const wrapper = await mountSuspended(AdminSettingsHub, { props: orgProps })
     await flushPromises()
+    const permissionIndex = api.mock.calls.findIndex(([path]) => path === '/api/v1/organizations/beta/me/permissions')
+    expect(permissionIndex, 'ORG権限は現在slugの通信境界へ問い合わせる').toBeGreaterThanOrEqual(0)
+    expect(await api.mock.results[permissionIndex]!.value, 'ORG fixtureの実応答はADMIN').toMatchObject({ data: { roleName: 'ADMIN' } })
+    // load() の複数await完了を確認してから表示契約を評価し、未完了を権限拒否と混同しない。
+    await vi.waitFor(() => expect(wrapper.findComponent({ name: 'PageLoading' }).exists()).toBe(false))
+    const errorState = wrapper.findComponent({ name: 'DashboardErrorState' })
+    expect(errorState.exists(), JSON.stringify({
+      apiPaths: api.mock.calls.map(([path]) => path),
+      error: errorState.exists() ? String(errorState.props('error')) : null,
+      kind: errorState.exists() ? errorState.props('kind') : null,
+    })).toBe(false)
     const hrefs = wrapper.findAll('a[href]').map(link => link.attributes('href'))
     for (const path of ['settings/faq-settings', 'settings/notification-credits', 'settings/public-settings', 'settings/todo-status-labels', 'modules']) {
       expect(hrefs).toContain(`/organizations/beta/${path}`)
