@@ -3,19 +3,22 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: 実DB契約テストを45実行候補（パラメータ展開を含む）まで追加。実装・green・実機は未実施。
+- 状態: 訂正前の実DB契約45件を実行し33失敗、skipped/errorsは0。前任裁可に合わせた訂正・同意ページング追加中。実装・green・実機は未実施。
 
 ## 方針
 
-組合管理ハブ配下に同意一覧・承認・紙撤回・実操作履歴を備える1ページを追加する。組合管理資格は既存ADMIN/DEPUTY_ADMIN、承認はPROXY_CONSENT_APPROVEで判定し自己承認を禁止する。管理UIは既存裁可に従い最強ロールADMIN/DEPUTY_ADMINのみ表示する。新テーブル・DDL・権限追加は行わない。
+前任引継（引継-cmp-260820-1018-proxy-input-admin-20261002-0825.md）のユーザー裁可を正本として、`/admin/proxy/consents` と `/admin/proxy/records` を追加する。組合選択/currentScopeは既存金型を使い、組合管理ハブ配下の新pathは作らない。組合管理資格は既存ADMIN/DEPUTY_ADMIN、承認はPROXY_CONSENT_APPROVEで判定し自己承認を禁止する。SYSTEM_ADMINはBE APIで組合横断を許可し、通常組合業務UIの導線は表示しない。一般isAdminOrAbove helperの意味は変えずproxy入口で明示例外を適用する。新テーブル・DDL・権限追加は行わない。
 
 実操作履歴は既存recordsと同意書をDB JOINし、organizationIdと任意subjectUserIdをAND条件にして標準PagedResponseへ返す。組合指定なしは本人（既存SYSTEM_ADMIN例外を維持）。同意書IDなしの後見切替は本人履歴で表示し組合履歴から除く。
+
+同意一覧も標準PagedResponseでDBページングする。scopesのcollection fetchをPageable queryへ直接付けてメモリ内ページングへ倒さず、IDページ取得後のbounded graph fetchを使う。size101は旧試練どおり200で100へ制限し、下限未満とpage負値は400とする。
 
 ## 受け入れ条件と証跡
 
 殿から受領したAC1〜11を対象とする。管理入口・全状態一覧、承認状態制約、紙撤回保存、履歴の組合/本人交差、空/取得失敗/再試行、null表示、理由255/256・ページ境界、未認証/越境、途中失敗、DBページング/N+1、6言語/390px/権限別実機と探索3視点を検証する。
 
-- red: 取得契約・認可7件、承認・撤回14件を作成。Repository.saveを使う専用fixtureへ整理済み。初回compileJavaのソース入力fingerprintが45分超継続しテスト未到達のため、殿の指示で自分の処理だけを中断。red成立・XML件数は未確認。ext4の専用snapshotへ同じcommitを取り込み再実行する。
+- red: Windows陣からの初回実行はcompileJavaのソースfingerprintで45分超停滞したため自所有処理のみ中断。ext4 snapshotへcommit912ace7eのbackend blobs一致を確認して再実行し、5 XMLで45件/33 failures/0 skipped/0 errors（10分16秒）。旧SYS拒否期待は最終正解に計上しない。履歴仮応答、紙情報未保存、状態上書き、未知method500、親削除後操作、OSIV=false下の一覧/承認500を実測した。
+- 前任trial commit92e7ef7787ff0c1b921f4e38fe0e97ecabc1b091の17件と引継を全文照合し、SYS横断・同意一覧page/size/emptyを現在の専用fixtureへ移植。旧非本人API撤回正常系は主体資格を維持しつつF14.1§350/351に従いPAPER＋同組合ADMIN証人のpayloadへ更新する。DEPUTY承認権限のfixtureはF01.2のgroup由来契約へ訂正（role既定権限は無効だった）。
 - green・関連回帰・生成型・lint/typecheck: 未実施。
 - 実機・E2E・アリシゼーション: 未実施。
 
@@ -36,11 +39,11 @@
 
 | 操作 | 許可主体と条件 |
 | --- | --- |
-| 組合同意一覧・組合指定履歴 | ACTIVEな当該scopeのADMIN/DEPUTY_ADMIN。SYS単独は不可、scopeADMIN併有の既存API資格は維持。管理UIは最強roleName ADMIN/DEPUTY_ADMINのみ。 |
+| 組合同意一覧・組合指定履歴 | ACTIVEな当該scopeのADMIN/DEPUTY_ADMIN、またはSYSTEM_ADMIN（組合未所属でも横断可）。管理UIは最強roleName ADMIN/DEPUTY_ADMINのみ、SYSは導線なし。 |
 | 組合指定なし履歴 | 本人。既存SYSTEM_ADMINの他subject指定例外は維持。 |
-| 承認 | PROXY_CONSENT_APPROVEかつ代理者本人以外、pendingのみ。GateのADMIN/SYS通過だけでは許可しない。 |
+| 承認 | PROXY_CONSENT_APPROVEまたはSYSTEM_ADMIN、かつ代理者本人以外、pendingのみ。一般scope helperの変更はしない。 |
 | API_BY_SUBJECT撤回 | 同意対象本人。組合の現在の在籍は問わず、退会後も維持。 |
-| PAPER_BY_SUBJECT撤回 | 既存scopeADMIN/DEPUTY_ADMIN操作資格。立会資格のADMIN限定/DEPUTY包含はユーザー判断待ち。立会人は有効userと同じ組合の資格を要する。actorと同一であることは強制しない。 |
+| PAPER_BY_SUBJECT撤回 | 既存scopeADMIN/DEPUTY_ADMIN操作資格またはSYSTEM_ADMIN。立会資格のADMIN限定/DEPUTY包含はユーザー判断待ち。立会人は有効userと同じ組合の資格を要する。actorと同一であることは強制しない。 |
 | AUTO方法の手動撤回 | 拒否。 |
 
 approve/revokeは同意実体から組合を解決し、親不在・論理削除をGateより先に確認する。親不在/削除、同意不在、越境は既存COMMON_002（403）に揃える。同scope権限不足も既存403を保持する。組合の公開QueryService.findSummariesByIdsを非TX facadeから呼び、他ドメインRepository参照や既存cross-domain TX凍結の拡大を避ける。
@@ -48,3 +51,5 @@ approve/revokeは同意実体から組合を解決し、親不在・論理削除
 追加redにはSYS単独/併有・DEPUTY承認権限の有無・組合退会後本人・無効立会人・親削除・mutation未認証・空/size/page境界・同日時id降順・entity取得件数とSQL数の定数性を含む。UI固有の空/再試行/成功後再取得失敗・null・6言語/390pxは後段で検証する。
 
 application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで既存ControllerはService TX後にDTOへ変換するため、非@TransactionalのSerializationContractITを追加した。fixtureの確定と自分のIDだけの後始末はTransactionTemplateで行い、一覧10件・active・承認のHTTP応答を実TX外でserializeする。scopesのcollection fetch countも検証して一覧のN+1を固定する。同じSpring context金型を使い独自profile/property/contextは追加しない。
+
+訂正後の候補は60件（旧45＋同意一覧12＋非TX DBページ件数1＋並行mutation2）。並行試験は実MySQLの先行TXが同意1行をPESSIMISTIC_WRITEで保持して撤回情報をflush/refreshし、後続HTTPのfindByIdForUpdateまたは旧flush経路とMySQL read待機stackを観測してから先行TXをcommitする。任意sleepを使わず10秒の観測期限/30秒のlock保持期限と自所有executor解放を設け、HTTP409・先行撤回日時/理由/証人の不変性・承認日時nullを検証する。まだ実測前でありgreen扱いにしない。

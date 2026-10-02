@@ -11,8 +11,14 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.role.entity.PermissionEntity;
+import com.mannschaft.app.role.entity.PermissionGroupEntity;
+import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
+import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
 import com.mannschaft.app.role.entity.RolePermissionEntity;
 import com.mannschaft.app.role.repository.PermissionRepository;
+import com.mannschaft.app.role.repository.PermissionGroupRepository;
+import com.mannschaft.app.role.repository.PermissionGroupPermissionRepository;
+import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
 import com.mannschaft.app.role.repository.RolePermissionRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -50,6 +56,9 @@ class ProxyConsentManagementAuthorizationContractIT extends AbstractMySqlIntegra
     @Autowired private ProxyInputRecordRepository records;
     @Autowired private RoleRepository roles;
     @Autowired private PermissionRepository permissions;
+    @Autowired private PermissionGroupRepository groups;
+    @Autowired private PermissionGroupPermissionRepository groupPermissions;
+    @Autowired private UserPermissionGroupRepository userGroups;
     @Autowired private RolePermissionRepository rolePermissions;
     @Autowired private MembershipRepository memberships;
     @PersistenceContext private EntityManager em;
@@ -82,11 +91,13 @@ class ProxyConsentManagementAuthorizationContractIT extends AbstractMySqlIntegra
     }
 
     @Test
-    void SYS単独はGate通過で承認権限を獲得しない() throws Exception {
+    void SYS単独でも組合未所属で承認と紙撤回を許可() throws Exception {
         MembershipTestHelper.insertUserRole(em, actor, "SYSTEM_ADMIN", null, null);
-        approve().andExpect(status().isForbidden());
-        revoke(actor, Map.of("revokeMethod", "PAPER_BY_SUBJECT", "revokeWitnessedByUserId", actor))
-                .andExpect(status().isForbidden());
+        Long witness = fixture.account();
+        MembershipTestHelper.insertUserRole(em, witness, "ADMIN", null, organization);
+        approve().andExpect(status().isOk());
+        revoke(actor, Map.of("revokeMethod", "PAPER_BY_SUBJECT", "revokeWitnessedByUserId", witness))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -161,6 +172,17 @@ class ProxyConsentManagementAuthorizationContractIT extends AbstractMySqlIntegra
                 ? permissions.save(PermissionEntity.builder().name("PROXY_CONSENT_APPROVE")
                         .displayName("代理同意承認").scope(PermissionEntity.Scope.ORGANIZATION).build())
                 : existing.getFirst();
+        // F01.2: DEPUTY の権限は既定 role permission ではなく scope の権限束から得る。
+        if ("DEPUTY_ADMIN".equals(roleName)) {
+            var group = groups.save(PermissionGroupEntity.builder().organizationId(organization)
+                    .targetRole(PermissionGroupEntity.TargetRole.DEPUTY_ADMIN)
+                    .name("代理同意承認").createdBy(actor).build());
+            groupPermissions.save(PermissionGroupPermissionEntity.builder().groupId(group.getId())
+                    .permissionId(permission.getId()).build());
+            userGroups.saveAndFlush(UserPermissionGroupEntity.builder().groupId(group.getId())
+                    .userId(actor).assignedBy(actor).build());
+            return;
+        }
         rolePermissions.saveAndFlush(RolePermissionEntity.builder().roleId(role.getId())
                 .permissionId(permission.getId()).isDefault(true).build());
     }

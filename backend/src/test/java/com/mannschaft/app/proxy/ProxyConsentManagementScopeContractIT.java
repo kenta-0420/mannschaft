@@ -175,15 +175,15 @@ class ProxyConsentManagementScopeContractIT extends AbstractMySqlIntegrationTest
     }
 
     @Test
-    void SYS単独の組合履歴は拒否しscope管理資格併有なら許可() throws Exception {
+    void SYS単独でも未所属の各組合の実操作履歴を取得できる() throws Exception {
         Long systemAdmin = fixture.account();
         MembershipTestHelper.insertUserRole(em, systemAdmin, "SYSTEM_ADMIN", null, null);
         mvc.perform(get("/api/v1/proxy-input-records").with(user(systemAdmin.toString()))
-                        .param("organizationId", organizationA.toString())).andExpect(status().isForbidden());
-        MembershipTestHelper.insertUserRole(em, systemAdmin, "ADMIN", null, organizationA);
-        mvc.perform(get("/api/v1/proxy-input-records").with(user(systemAdmin.toString()))
                         .param("organizationId", organizationA.toString())).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2));
+        mvc.perform(get("/api/v1/proxy-input-records").with(user(systemAdmin.toString()))
+                        .param("organizationId", organizationB.toString())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
     }
 
     @Test
