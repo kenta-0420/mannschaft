@@ -519,8 +519,13 @@ class TeamOrgInviteIT extends TeamOrgInviteItSupport {
         assertThat(crossAccept.getResponse().getContentAsString())
                 .as("他チームの ID と存在しない ID を区別しない")
                 .isEqualTo(missing.getResponse().getContentAsString());
-        decline(ua, otherTeam.slug(), membershipId, true)
-                .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value("TEAM_070"));
+        MvcResult crossDecline = decline(ua, otherTeam.slug(), membershipId, true)
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value("TEAM_070")).andReturn();
+        MvcResult missingDecline = decline(ua, otherTeam.slug(), 987_654_321L, true)
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value("TEAM_070")).andReturn();
+        assertThat(crossDecline.getResponse().getContentAsString())
+                .as("辞退の経路でも、他チームの ID と存在しない ID はステータス・エラーコード・本文まで同じ")
+                .isEqualTo(missingDecline.getResponse().getContentAsString());
 
         assertThat(membershipRow(membershipId)[0]).as("越境では行が変わらない").isEqualTo("PENDING");
         assertThat(countRestrictions(org.id(), team.id())).isZero();

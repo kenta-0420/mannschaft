@@ -326,27 +326,105 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
             org.springframework.data.domain.Pageable pageable);
 
     /**
+     * 招待の作成: PENDING / ORG_INVITE の行を INSERT する（§6.5）。
+     *
+     * <p>{@code invited_at} / {@code created_at} / {@code updated_at} は UTC 壁時計の DATETIME（JPA 経路と同じ格納基準）。
+     * Java の日時型をプレースホルダへ束縛すると JDBC のタイムゾーン変換に依存するため、招待の瞬間をエポック秒で渡し、
+     * {@code TIMESTAMPADD} で UTC 壁時計へ戻す（2-B2 の承認・{@code TeamOrgAffiliationRestrictionRepository} と同じ作法）。
+     * 作成した行の ID は {@link #lastInsertId()} で読む。</p>
+     *
+     * @param groupId 加盟後に所属させるグループ（未分類なら {@link #insertPendingInviteUnassigned} を使う）
+     * @return 挿入した行数（1）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO team_org_memberships
+                (team_id, organization_id, status, direction, group_id, message, invited_by,
+                 invited_at, created_at, updated_at)
+            VALUES
+                (:teamId, :organizationId, 'PENDING', 'ORG_INVITE', :groupId, :message, :invitedBy,
+                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
+                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
+                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'))
+            """, nativeQuery = true)
+    int insertPendingInvite(@Param("teamId") Long teamId,
+                            @Param("organizationId") Long organizationId,
+                            @Param("groupId") java.util.UUID groupId,
+                            @Param("message") String message,
+                            @Param("invitedBy") Long invitedBy,
+                            @Param("invitedAtEpochSecond") long invitedAtEpochSecond);
+
+    /**
+     * {@link #insertPendingInvite} の未分類（{@code group_id = NULL}）版。型のない null のバインドを避けるため分けている。
+     *
+     * @return 挿入した行数（1）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO team_org_memberships
+                (team_id, organization_id, status, direction, group_id, message, invited_by,
+                 invited_at, created_at, updated_at)
+            VALUES
+                (:teamId, :organizationId, 'PENDING', 'ORG_INVITE', NULL, :message, :invitedBy,
+                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
+                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
+                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'))
+            """, nativeQuery = true)
+    int insertPendingInviteUnassigned(@Param("teamId") Long teamId,
+                                      @Param("organizationId") Long organizationId,
+                                      @Param("message") String message,
+                                      @Param("invitedBy") Long invitedBy,
+                                      @Param("invitedAtEpochSecond") long invitedAtEpochSecond);
+
+    /**
+     * 同じ接続で直前に INSERT した行の AUTO_INCREMENT 値（{@link #insertPendingInvite} の直後に同じトランザクションで呼ぶ）。
+     */
+    @Query(value = "SELECT LAST_INSERT_ID()", nativeQuery = true)
+    long lastInsertId();
+
+    /**
      * 招待の承諾: 条件付き UPDATE（{@code id, team_id, PENDING, ORG_INVITE}。§4.1・§6.5）。
      *
      * <p>ACTIVE にし、確定グループを書き、添え書きを NULL に戻す（PII を残さない。§5.3・AC-G104）。
-     * {@code responded_at} はアプリの壁時計（§4.6）、{@code updated_at} は起きた瞬間（UTC）で渡す。</p>
+     * {@code responded_at} / {@code updated_at} は承諾の瞬間をエポック秒で渡し、{@code TIMESTAMPADD} で UTC 壁時計へ戻す
+     * （{@link #insertPendingInvite} と同じ作法）。</p>
      *
+     * @param groupId 確定グループ（未分類なら {@link #acceptPendingInviteUnassigned} を使う）
      * @return 更新した行数（0 または 1）
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("UPDATE TeamOrgMembershipEntity m SET "
-        + "m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE, "
-        + "m.groupId = :groupId, m.message = NULL, m.respondedBy = :respondedBy, "
-        + "m.respondedAt = :respondedAt, m.updatedAt = :updatedAt "
-        + "WHERE m.id = :id AND m.teamId = :teamId "
-        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
-        + "AND m.direction = com.mannschaft.app.team.entity.TeamOrgAffiliationDirection.ORG_INVITE")
+    @Query(value = """
+            UPDATE team_org_memberships
+               SET status = 'ACTIVE', group_id = :groupId, message = NULL, responded_by = :respondedBy,
+                   responded_at = TIMESTAMPADD(SECOND, :respondedAtEpochSecond, '1970-01-01 00:00:00'),
+                   updated_at = TIMESTAMPADD(SECOND, :respondedAtEpochSecond, '1970-01-01 00:00:00')
+             WHERE id = :id AND team_id = :teamId
+               AND status = 'PENDING' AND direction = 'ORG_INVITE'
+            """, nativeQuery = true)
     int acceptPendingInvite(@Param("id") Long id,
                             @Param("teamId") Long teamId,
                             @Param("groupId") java.util.UUID groupId,
                             @Param("respondedBy") Long respondedBy,
-                            @Param("respondedAt") java.time.LocalDateTime respondedAt,
-                            @Param("updatedAt") java.time.Instant updatedAt);
+                            @Param("respondedAtEpochSecond") long respondedAtEpochSecond);
+
+    /**
+     * {@link #acceptPendingInvite} の未分類（{@code group_id = NULL}）版。型のない null のバインドを避けるため分けている。
+     *
+     * @return 更新した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE team_org_memberships
+               SET status = 'ACTIVE', group_id = NULL, message = NULL, responded_by = :respondedBy,
+                   responded_at = TIMESTAMPADD(SECOND, :respondedAtEpochSecond, '1970-01-01 00:00:00'),
+                   updated_at = TIMESTAMPADD(SECOND, :respondedAtEpochSecond, '1970-01-01 00:00:00')
+             WHERE id = :id AND team_id = :teamId
+               AND status = 'PENDING' AND direction = 'ORG_INVITE'
+            """, nativeQuery = true)
+    int acceptPendingInviteUnassigned(@Param("id") Long id,
+                                      @Param("teamId") Long teamId,
+                                      @Param("respondedBy") Long respondedBy,
+                                      @Param("respondedAtEpochSecond") long respondedAtEpochSecond);
 
     /**
      * 招待の辞退: 条件付き DELETE（{@code id, team_id, PENDING, ORG_INVITE}。§4.1・§6.5）。

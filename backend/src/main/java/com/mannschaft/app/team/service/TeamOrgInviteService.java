@@ -1,5 +1,6 @@
 package com.mannschaft.app.team.service;
 
+import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.ErrorResponse;
@@ -7,6 +8,9 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.notification.NotificationType;
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
+import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.dto.InviteTeamToOrganizationRequest;
 import com.mannschaft.app.team.dto.TeamOrgAffiliationResponse;
@@ -21,17 +25,23 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * 組織からの加盟招待の入口（F01.2.1 §6.5・§10.6）。招待・取消・送信済み一覧（組織側）と、
  * 受信招待一覧・承諾・辞退（チーム側）。
  *
- * <p>本クラスは<b>トランザクションを持たない</b>。入力検証・招待先チームの可視性の確認を
- * トランザクションの外で済ませてから書き込みのトランザクション（{@link TeamOrgInviteCommandService}）に入り、
- * 応答の組み立て（{@link TeamOrgAffiliationAssembler}）は書き込みの後にトランザクションの外で行う。</p>
+ * <p>本クラスは<b>トランザクションを持たない</b>。書き込みのトランザクション（{@link TeamOrgInviteCommandService}）は
+ * team ドメインの表だけを触り、ほかのドメインに関わる処理は本クラスがトランザクションの外で行う。</p>
+ * <ol>
+ *   <li><b>書き込みの前</b>: 入力検証、招待先チームの可視性、組織の状態（削除・アーカイブ）とグループの検証
+ *       （組織ドメインの読み取り。{@link TeamAffiliationOrganizationPort}）</li>
+ *   <li><b>書き込み</b>: チーム行のロック → 制限・既存の加盟 → INSERT／UPDATE／DELETE（team ドメインのみ）</li>
+ *   <li><b>コミットの後</b>: 組織の状態の読み直し（招待のみ）、通知の enqueue と監査ログ（4-A の監査と同じ形）</li>
+ * </ol>
  *
  * <p>認可（組織側は組織 ADMIN、チーム側はチームの加盟操作者であること）は呼び出し元の Controller が先に行う。</p>
  *
@@ -39,6 +49,10 @@ import java.util.List;
  * <p>招待する組織 ADMIN から visibility 上<b>見えないチーム</b>は、存在しない slug と同じステータス・同じエラーコード
  * （既存のチーム不在 404 {@code TEAM_001}）を返す。以降の判定（制限・既存の加盟・申請の有無）は見えるチームに対してだけ
  * 行うので、非公開チームの存在・加盟状況・制限状況を応答の違いから推測できない。</p>
+ *
+ * <h2>通知と監査はコミットの後（原子的ではない）</h2>
+ * <p>通知の登録・監査の記録は、書き込みのコミット後にそれぞれのドメインのトランザクションで行う。登録・記録が失敗しても
+ * 招待などの操作は巻き戻らない（握り潰さず、例外として呼び出し元へ伝わる）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -53,8 +67,11 @@ public class TeamOrgInviteService {
     private final TeamRepository teamRepository;
     private final TeamOrgMembershipRepository membershipRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final TeamAffiliationOrganizationPort organizationPort;
     private final TeamOrgInviteCommandService commandService;
     private final TeamOrgAffiliationAssembler assembler;
+    private final TeamAffiliationNotifier notifier;
+    private final TeamAffiliationAuditRecorder auditRecorder;
 
     // =====================================================================
     // 組織側
@@ -78,22 +95,47 @@ public class TeamOrgInviteService {
         // 見えないチーム・存在しない slug・アーカイブ済みは、区別できない同じ 404（TEAM_001）にする
         Long teamId = findVisibleTeamId(teamSlug, operatorUserId);
 
+        // 書き込みの前に、組織の状態とグループを組織ドメインの読み取りで確かめる（チームのトランザクションに持ち込まない）
+        TeamAffiliationOrganizationPort.OrganizationAffiliationState organization = requireOpenOrganization(
+                organizationId);
+        UUID groupId = request.groupId();
+        if (groupId != null && (!organization.groupsEnabled()
+                || !organizationPort.isAliveGroupOfOrganization(organizationId, groupId))) {
+            // 他組織のグループ・削除済みグループ・グループ機能 off は、区別しない同じ 400 TEAM_072（黙って捨てない）
+            throw new BusinessException(TeamErrorCode.TEAM_072);
+        }
+
         TeamOrgInviteCommandService.CreatedInvite created = commandService.invite(
-                teamId, organizationId, operatorUserId, request.groupId(), message);
+                teamId, organizationId, operatorUserId, groupId, message);
+
+        // コミットの後で組織の状態を読み直す。書き込みの間にアーカイブ・削除されていたら、作った招待を取り下げる（§6.9）
+        TeamAffiliationOrganizationPort.OrganizationAffiliationState current =
+                organizationPort.findAffiliationState(organizationId).orElse(null);
+        if (current == null || current.archived()) {
+            commandService.withdrawInviteOfClosedOrganization(created.id(), organizationId);
+            throw new BusinessException(current == null ? OrgErrorCode.ORG_001 : OrgErrorCode.ORG_003);
+        }
+
+        notifier.enqueueAfterCommit(new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_INVITE_RECEIVED,
+                FanoutMessageKind.TEAM_ORG_INVITE_RECEIVED,
+                List.of(organization.name(), created.teamName()),
+                TeamAffiliationNotice.RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                created.id(),
+                operatorUserId,
+                "/teams/" + created.teamSlug() + "/affiliations?view=invites"));
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("membership_id", created.id());
+        metadata.put("organization_id", organizationId);
+        metadata.put("team_id", teamId);
+        metadata.put("group_id", groupId == null ? null : groupId.toString());
+        auditRecorder.record(AuditEventType.TEAM_ORG_INVITE_SENT, operatorUserId, teamId, organizationId, metadata);
 
         // コミット後に行を取り直さない（その間に辞退・取消で消えると 500 になる）。確定した値から組み立てる
-        TeamOrgMembershipEntity snapshot = TeamOrgMembershipEntity.builder()
-                .id(created.id())
-                .teamId(teamId)
-                .organizationId(organizationId)
-                .status(TeamOrgMembershipEntity.Status.PENDING)
-                .direction(TeamOrgAffiliationDirection.ORG_INVITE)
-                .groupId(created.groupId())
-                .message(created.message())
-                .invitedBy(created.invitedBy())
-                .invitedAt(toWallClock(created.invitedAt()))
-                .build();
-        return assembler.assembleForTeam(teamId, List.of(snapshot)).get(0);
+        return assembler.assembleRowsForTeam(teamId, List.of(created.toRow())).get(0);
     }
 
     /**
@@ -106,7 +148,14 @@ public class TeamOrgInviteService {
         if (teamId == null) {
             throw new BusinessException(TeamErrorCode.TEAM_070);
         }
-        commandService.cancel(teamId, organizationId, operatorUserId);
+        Long membershipId = commandService.cancel(teamId, organizationId, operatorUserId);
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("membership_id", membershipId);
+        metadata.put("organization_id", organizationId);
+        metadata.put("team_id", teamId);
+        auditRecorder.record(AuditEventType.TEAM_ORG_INVITE_CANCELLED,
+                operatorUserId, teamId, organizationId, metadata);
     }
 
     /**
@@ -116,7 +165,7 @@ public class TeamOrgInviteService {
         Page<TeamOrgMembershipEntity> result = membershipRepository.findPageByOrganizationIdAndStatusAndDirection(
                 organizationId, TeamOrgMembershipEntity.Status.PENDING, TeamOrgAffiliationDirection.ORG_INVITE,
                 pageRequest(page, size));
-        return toPaged(result, assembler.assembleAcrossTeams(result.getContent()));
+        return toPaged(result, assembler.assembleForOrganization(result.getContent()));
     }
 
     // =====================================================================
@@ -135,23 +184,55 @@ public class TeamOrgInviteService {
 
     /**
      * 招待を承諾し、成立した加盟（ACTIVE）の共通表現を返す。他チームの ID・存在しない ID は同じ 404 {@code TEAM_070}。
+     *
+     * <p>招待で指定したグループが承諾の時点で削除済み、またはグループ機能が off なら、未分類（{@code group_id = NULL}）で
+     * 加盟を成立させる（承諾は拒否しない。AC-D11）。承諾時にグループは変えられない。</p>
      */
     public TeamOrgAffiliationResponse accept(Long teamId, Long operatorUserId, Long membershipId) {
-        TeamOrgInviteCommandService.AcceptedInvite accepted = commandService.accept(teamId, membershipId,
-                operatorUserId);
-        TeamOrgMembershipEntity snapshot = TeamOrgMembershipEntity.builder()
-                .id(accepted.id())
-                .teamId(teamId)
-                .organizationId(accepted.organizationId())
-                .status(TeamOrgMembershipEntity.Status.ACTIVE)
-                .direction(TeamOrgAffiliationDirection.ORG_INVITE)
-                .groupId(accepted.groupId())
-                .invitedBy(accepted.invitedBy())
-                .invitedAt(toWallClock(accepted.invitedAt()))
-                .respondedBy(operatorUserId)
-                .respondedAt(toWallClock(accepted.respondedAt()))
-                .build();
-        return assembler.assembleForTeam(teamId, List.of(snapshot)).get(0);
+        // 1. 判定表の前段（行が無い 404・招待でない 409）と、組織 ID の取得
+        TeamOrgInviteCommandService.InviteTarget target = commandService.findPendingInvite(teamId, membershipId);
+        Long organizationId = target.organizationId();
+
+        // 2. 組織の状態（§6.2 step 3 と同じ再確認）。削除済みの組織の行は片付けで消えるので、行が無いのと同じ 404
+        TeamAffiliationOrganizationPort.OrganizationAffiliationState organization =
+                organizationPort.findAffiliationState(organizationId)
+                        .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_070));
+        if (organization.archived()) {
+            throw new BusinessException(OrgErrorCode.ORG_003);
+        }
+
+        // 3. 確定グループ: 招待時の指定が、いまも組織の生存グループで、グループ機能が on のときだけ残す
+        UUID requested = target.requestedGroupId();
+        UUID confirmedGroupId = requested != null && organization.groupsEnabled()
+                && organizationPort.isAliveGroupOfOrganization(organizationId, requested)
+                ? requested : null;
+
+        // 4. 書き込み（team ドメインのトランザクション）
+        TeamOrgInviteCommandService.AcceptedInvite accepted = commandService.accept(
+                teamId, membershipId, operatorUserId, organizationId, confirmedGroupId);
+
+        // 5. コミットの後: 通知（組織 ADMIN 全員）と監査
+        notifier.enqueueAfterCommit(new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_INVITE_ACCEPTED,
+                FanoutMessageKind.TEAM_ORG_INVITE_ACCEPTED,
+                List.of(accepted.teamName(), organization.name()),
+                TeamAffiliationNotice.RecipientScope.ORGANIZATION_ADMINS,
+                organizationId,
+                organizationId,
+                membershipId,
+                operatorUserId,
+                "/organizations/" + organization.slug() + "/member-teams"));
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("via", TeamOrgAffiliationDirection.ORG_INVITE.name());
+        metadata.put("membership_id", membershipId);
+        metadata.put("organization_id", organizationId);
+        metadata.put("team_id", teamId);
+        metadata.put("group_id", confirmedGroupId == null ? null : confirmedGroupId.toString());
+        auditRecorder.record(AuditEventType.TEAM_ORG_MEMBERSHIP_CREATED,
+                operatorUserId, teamId, organizationId, metadata);
+
+        return assembler.assembleRowsForTeam(teamId, List.of(accepted.row())).get(0);
     }
 
     /**
@@ -159,13 +240,23 @@ public class TeamOrgInviteService {
      */
     public TeamOrgRestrictionSummaryResponse decline(Long teamId, Long operatorUserId, Long membershipId,
                                                      Boolean block) {
-        TeamOrgInviteCommandService.RecordedRestriction restriction = commandService.decline(
-                teamId, membershipId, operatorUserId, Boolean.TRUE.equals(block));
+        boolean blocking = Boolean.TRUE.equals(block);
+        TeamOrgInviteCommandService.DeclinedInvite declined = commandService.decline(
+                teamId, membershipId, operatorUserId, blocking);
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("membership_id", membershipId);
+        metadata.put("organization_id", declined.organizationId());
+        metadata.put("team_id", teamId);
+        metadata.put("block", blocking);
+        auditRecorder.record(AuditEventType.TEAM_ORG_INVITE_REJECTED,
+                operatorUserId, teamId, declined.organizationId(), metadata);
+
         return new TeamOrgRestrictionSummaryResponse(new TeamOrgRestrictionSummaryResponse.Restriction(
-                restriction.kind().name(),
-                restriction.restrictedUntil() == null
+                declined.kind().name(),
+                declined.restrictedUntil() == null
                         ? null
-                        : restriction.restrictedUntil().atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                        : declined.restrictedUntil().atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
                                 .toOffsetDateTime()));
     }
 
@@ -184,6 +275,17 @@ public class TeamOrgInviteService {
                 // 可視性は F00 の TEAM ラダーに委譲する（アーカイブ済みは SYSTEM_ADMIN 以外に見えない）
                 .filter(id -> contentVisibilityChecker.canView(ReferenceType.TEAM, id, viewerUserId))
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+    }
+
+    /** 組織が生存し、アーカイブされていないことを確かめる（削除済み 404 {@code ORG_001}・アーカイブ済み {@code ORG_003}）。 */
+    private TeamAffiliationOrganizationPort.OrganizationAffiliationState requireOpenOrganization(Long organizationId) {
+        TeamAffiliationOrganizationPort.OrganizationAffiliationState organization =
+                organizationPort.findAffiliationState(organizationId)
+                        .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
+        if (organization.archived()) {
+            throw new BusinessException(OrgErrorCode.ORG_003);
+        }
+        return organization;
     }
 
     /**
@@ -210,10 +312,5 @@ public class TeamOrgInviteService {
                                                                     List<TeamOrgAffiliationResponse> data) {
         return PagedResponse.of(data, new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages()));
-    }
-
-    /** 起きた瞬間を、加盟の行が保存している壁時計（JST。§4.6）へ戻す（応答の組み立て用の行の写し）。 */
-    private static LocalDateTime toWallClock(Instant instant) {
-        return instant == null ? null : LocalDateTime.ofInstant(instant, UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
 }

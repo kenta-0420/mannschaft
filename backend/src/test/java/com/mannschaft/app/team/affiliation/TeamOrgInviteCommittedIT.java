@@ -112,6 +112,11 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         UUID jobId = jobIdOf(invited.id(), "TEAM_ORG_INVITE_RECEIVED");
         NotificationFanoutJob job = jobRepository.findById(jobId).orElseThrow();
         assertThat(job.getSourceType()).isEqualTo("TEAM_ORG_MEMBERSHIP");
+        Map<String, Object> jobRow = jobRow(jobId);
+        assertThat(jobRow.get("scope_type")).as("受信者はチームの加盟操作者").isEqualTo("TEAM_AFFILIATION_OPS");
+        assertThat(jobRow.get("scope_ref")).as("受信者を引く対象はチーム").isEqualTo(String.valueOf(team.id()));
+        assertThat(((Number) jobRow.get("organization_id")).longValue()).isEqualTo(org.id());
+        assertThat(((Number) jobRow.get("source_id")).longValue()).isEqualTo(invited.id());
         worker.processOne(job);
         assertThat(jobRepository.findById(jobId).orElseThrow().getStatus())
                 .isEqualTo(NotificationFanoutJobStatus.DONE);
@@ -153,6 +158,11 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         assertThat(accepted.status()).isEqualTo(200);
 
         UUID jobId = jobIdOf(invited.id(), "TEAM_ORG_INVITE_ACCEPTED");
+        Map<String, Object> jobRow = jobRow(jobId);
+        assertThat(jobRow.get("scope_type")).as("受信者は組織 ADMIN").isEqualTo("ORGANIZATION_ADMINS");
+        assertThat(jobRow.get("scope_ref")).as("受信者を引く対象は組織").isEqualTo(String.valueOf(org.id()));
+        assertThat(((Number) jobRow.get("organization_id")).longValue()).isEqualTo(org.id());
+        assertThat(((Number) jobRow.get("source_id")).longValue()).isEqualTo(invited.id());
         worker.processOne(jobRepository.findById(jobId).orElseThrow());
 
         List<Map<String, Object>> rows = notificationRows("TEAM_ORG_INVITE_ACCEPTED", users);
@@ -308,6 +318,20 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         String in = java.util.Arrays.stream(users).mapToObj(String::valueOf).collect(Collectors.joining(","));
         return jdbc.queryForList("SELECT user_id, action_url FROM notifications WHERE notification_type = ? "
                 + "AND user_id IN (" + in + ") ORDER BY user_id", type);
+    }
+
+    /** fan-out ジョブ行の受信者の解決方式（scope_type / scope_ref）と出どころ。 */
+    private Map<String, Object> jobRow(UUID jobId) {
+        return jdbc.queryForMap(
+                "SELECT scope_type, scope_ref, organization_id, source_id FROM notification_fanout_jobs WHERE id = ?",
+                uuidBytes(jobId));
+    }
+
+    private static byte[] uuidBytes(UUID id) {
+        ByteBuffer buffer = ByteBuffer.allocate(16);
+        buffer.putLong(id.getMostSignificantBits());
+        buffer.putLong(id.getLeastSignificantBits());
+        return buffer.array();
     }
 
     private UUID jobIdOf(long membershipId, String notificationType) {
