@@ -129,6 +129,9 @@ jobs:
       # Flyway が自動でマイグレーションを適用してからバックエンドが起動する。
       # JAR ファイルは *-SNAPSHOT.jar（plain は除外）。
       - name: Start backend (with Flyway migration)
+        env:
+          # 実機FEのOriginだけをCI専用に明示する（security/03 §6、ワイルドカード禁止）。
+          MANNSCHAFT_ALLOWED_ORIGINS: 'http://localhost:8081,http://localhost:8080'
         run: |
           JAR=$(ls backend/build/libs/*.jar | grep -v plain | head -1)
           echo "起動する JAR: $JAR"
@@ -217,6 +220,30 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
+
+      - name: Verify calendar browser CORS preflight
+        if: github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
+        run: |
+          set -euo pipefail
+          origin='http://localhost:8081'
+          headers="$(mktemp "$RUNNER_TEMP/calendar-cors.XXXXXX")"
+          trap 'rm -f -- "$headers"' EXIT
+          if ! curl --fail --silent --show-error --max-time 15 \
+            --request OPTIONS http://localhost:8080/api/v1/my/calendar \
+            --header "Origin: $origin" \
+            --header 'Access-Control-Request-Method: GET' \
+            --header 'Access-Control-Request-Headers: authorization,content-type' \
+            --dump-header "$headers" --output /dev/null; then
+            echo '::error::カレンダー実機のCORS preflightが失敗しました'
+            exit 1
+          fi
+          allow_origin="$(awk 'tolower($1) == "access-control-allow-origin:" {gsub("\r", "", $2); print $2}' "$headers")"
+          allow_credentials="$(awk 'tolower($1) == "access-control-allow-credentials:" {gsub("\r", "", $2); print $2}' "$headers")"
+          if [[ "$allow_origin" != "$origin" || "$allow_credentials" != 'true' ]]; then
+            echo '::error::CORSのallow-origin/credentialsが実機FEの契約と一致しません'
+            exit 1
+          fi
+          echo 'カレンダー実機のOriginとcredentialsのCORS契約を確認しました'
 
       - name: Run calendar browser verification (real backend)
         if: github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
