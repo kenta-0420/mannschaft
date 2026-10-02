@@ -192,29 +192,24 @@ test.describe('CMP1016 設定一覧の実ブラウザ（API smokeとは別判定
         const scope = scopes.find(item => item.type === type)!
         await page.setViewportSize({ width, height: 720 })
         await login(page, OWNER)
-        const setupResponse = page.waitForResponse(response => {
-          const url = new URL(response.url())
-          return response.request().method() === 'GET' && url.pathname === '/api/v1/admin/member-permissions'
-            && url.searchParams.get('scopeType') === typeName(scope) && url.searchParams.get('scopeId') === String(scope.id)
-        })
         await page.goto(`${base(scope)}/admin`)
         await waitForHydration(page)
-        const setup = await setupResponse
-        expect(setup.status(), '初回案内を判定する実GET').toBe(200)
-        const settings = (await setup.json()).data.permissions as Array<{ inherited?: boolean }>
-        const promptRequired = settings.length === 3 && settings.every(setting => setting.inherited)
-        const setupDialog = page.getByRole('dialog', { name: 'メンバーの権限を初期設定', exact: true })
-        if (promptRequired) {
-          await expect(setupDialog).toBeVisible()
-          await screenshot(page, info, 'initial-permissions')
-          // 権限を保存せず、初回案内を通常の操作で後回しにする。
-          await setupDialog.getByRole('button', { name: 'あとで決める', exact: true }).click()
-        }
-        await expect(setupDialog).toBeHidden()
+        // /admin は親のshell対象外。初回案内のGET/ダイアログを必要としない。
+        await expect(page.getByRole('dialog', { name: 'メンバーの権限を初期設定', exact: true })).toHaveCount(0)
         const entry = page.locator(`a[href="${base(scope)}/admin/settings"]`).filter({ visible: true })
         await expect(entry).toHaveCount(1)
+        const hubPermissions = page.waitForResponse(response => response.request().method() === 'GET'
+          && new URL(response.url()).pathname === `/api/v1/${type}/${scope.slug}/me/permissions`)
+        const hubModules = page.waitForResponse(response => response.request().method() === 'GET'
+          && new URL(response.url()).pathname === `/api/v1/${type}/${scope.slug}/modules`)
         await entry.click()
         await expect(page).toHaveURL(`${process.env.BASE_URL}${base(scope)}/admin/settings`)
+        const [permissionsResponse, modulesResponse] = await Promise.all([hubPermissions, hubModules])
+        expect(permissionsResponse.status(), '設定一覧自身の実権限GET').toBe(200)
+        expect((await permissionsResponse.json()).data.roleName).toBe('ADMIN')
+        expect(modulesResponse.status(), '設定一覧自身の実モジュールGET').toBe(200)
+        const hubScope = await page.evaluate(() => JSON.parse(localStorage.getItem('currentScope') ?? '{}') as { type?: string; id?: string })
+        expect(hubScope).toMatchObject({ type: type === 'teams' ? 'team' : 'organization', id: String(scope.id) })
         await expect(page.getByTestId('setting-line')).toBeVisible()
         await expect(page.getByTestId('setting-receipts')).toBeVisible()
         await screenshot(page, info, 'settings-hub')
