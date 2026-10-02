@@ -13,6 +13,9 @@ import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @AutoConfigureMockMvc
 @Transactional
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("代理同意管理の実操作履歴・認可契約")
 class ProxyConsentManagementScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mvc;
@@ -37,6 +41,7 @@ class ProxyConsentManagementScopeContractIT extends AbstractMySqlIntegrationTest
     @Autowired private ProxyInputConsentRepository consents;
     @Autowired private ProxyInputRecordRepository records;
     @PersistenceContext private EntityManager em;
+    private ProxyConsentManagementTestFixture fixture;
     private Long organizationA;
     private Long organizationB;
     private Long admin;
@@ -47,7 +52,7 @@ class ProxyConsentManagementScopeContractIT extends AbstractMySqlIntegrationTest
 
     @BeforeEach
     void 準備() {
-        var fixture = new ProxyConsentManagementTestFixture(users, organizations, consents, records);
+        fixture = new ProxyConsentManagementTestFixture(users, organizations, consents, records);
         organizationA = fixture.organization();
         organizationB = fixture.organization();
         admin = fixture.account();
@@ -134,6 +139,70 @@ class ProxyConsentManagementScopeContractIT extends AbstractMySqlIntegrationTest
         mvc.perform(get("/api/v1/proxy-input-records").with(user(subject.toString()))
                         .param("page", "2").param("size", "2"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    @Test
+    void 組合の本人フィルタ0件は正常な空配列とmeta() throws Exception {
+        mvc.perform(get("/api/v1/proxy-input-records").with(user(admin.toString()))
+                        .param("organizationId", organizationA.toString())
+                        .param("subjectUserId", admin.toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty())
+                .andExpect(jsonPath("$.meta.total").value(0));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {-1, 0})
+    void size下限未満を拒否(int size) throws Exception {
+        mvc.perform(get("/api/v1/proxy-input-records").with(user(subject.toString()))
+                        .param("size", Integer.toString(size))).andExpect(status().isBadRequest());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 99, 100, 101})
+    void sizeの下限と上限前後は標準の上限100(int size) throws Exception {
+        mvc.perform(get("/api/v1/proxy-input-records").with(user(subject.toString()))
+                        .param("size", Integer.toString(size)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.meta.size").value(Math.min(size, 100)));
+    }
+
+    @Test
+    void page下限未満を拒否し0は取得できる() throws Exception {
+        mvc.perform(get("/api/v1/proxy-input-records").with(user(subject.toString()))
+                        .param("page", "-1")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/proxy-input-records").with(user(subject.toString()))
+                        .param("page", "0")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.page").value(0));
+    }
+
+    @Test
+    void SYS単独の組合履歴は拒否しscope管理資格併有なら許可() throws Exception {
+        Long systemAdmin = fixture.account();
+        MembershipTestHelper.insertUserRole(em, systemAdmin, "SYSTEM_ADMIN", null, null);
+        mvc.perform(get("/api/v1/proxy-input-records").with(user(systemAdmin.toString()))
+                        .param("organizationId", organizationA.toString())).andExpect(status().isForbidden());
+        MembershipTestHelper.insertUserRole(em, systemAdmin, "ADMIN", null, organizationA);
+        mvc.perform(get("/api/v1/proxy-input-records").with(user(systemAdmin.toString()))
+                        .param("organizationId", organizationA.toString())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2));
+    }
+
+    @Test
+    void SYSの組合なし他人履歴の既存例外を保持() throws Exception {
+        MembershipTestHelper.insertUserRole(em, admin, "SYSTEM_ADMIN", null, null);
+        mvc.perform(get("/api/v1/proxy-input-records").with(user(admin.toString()))
+                        .param("subjectUserId", subject.toString())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(3));
+    }
+
+    @Test
+    void DEPUTY管理者も組合同意と履歴を取得できる() throws Exception {
+        MembershipTestHelper.insertUserRole(em, proxy, "DEPUTY_ADMIN", null, organizationA);
+        mvc.perform(get("/api/v1/organizations/{org}/proxy-input-consents", organizationA)
+                        .with(user(proxy.toString()))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2));
+        mvc.perform(get("/api/v1/proxy-input-records").with(user(proxy.toString()))
+                        .param("organizationId", organizationA.toString())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2));
     }
 
 }
