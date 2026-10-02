@@ -757,10 +757,10 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>CMP-260923-0954 W4（recruitment 金銭・制裁。{@code RecruitmentMoneyFacade}）: 認可を tx の外へ出したことで、
      * RecruitmentCancellationPolicyService の getPolicy / updatePolicy / archivePolicy（各 role の 2 行、計 6）・
      * RecruitmentPenaltyService.liftPenalty（role の 2 行）・旧シグネチャの RecruitmentCancellationFeeWaiveService.waive（10 行）、
-     * 計 18 行を削除。追加 0。{@code 7581 → 7563}。残した行: confirmApplication → RoleRepository / UserRoleRepository の 2 行
+     * 計 18 行を削除。追加 0。{@code 7581 → 7563 → 7564}（waive の引数追加によるキー改名: 旧キーの AuditLogRepository 行を削除し新シグネチャの同行を追加。到達先は同じ）。残した行: confirmApplication → RoleRepository / UserRoleRepository の 2 行
      * （通知経路から到達しないことを静的に証明できなかったため）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7563;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7564;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
