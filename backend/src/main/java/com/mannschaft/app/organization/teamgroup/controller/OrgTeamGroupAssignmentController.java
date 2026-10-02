@@ -6,6 +6,9 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.organization.teamgroup.dto.AssignTeamGroupRequest;
@@ -27,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 加盟チームのグループ割当コントローラー（F01.2.1 §7.4・§10.8）。単体割当と一括割当。
  *
  * <p><b>認可（§3.1）</b>: <b>組織 ADMIN のみ</b>（DEPUTY_ADMIN・MEMBER・SYSTEM_ADMIN・他組織の ADMIN・組織に属さない人は 403）。
- * 認可の順序は 認証（401）→ 組織の存在（404）→ 権限（403）→ 入力検証（400）→ グループ・チームの存在と状態（404/409）。
+ * 認可の順序は 認証（401）→ 組織の存在と可視性（404。見えない組織は存在しない組織と同じ応答）→ 権限（403。SYSTEM_ADMIN は他のロールを兼ねていても 403）→ 入力検証（400）→ グループ・チームの存在と状態（404/409）。
  * 認可判定は各エンドポイント本体で {@link AccessControlService} を直接呼ぶ（認可番人が直接呼び出しを検査するため）。</p>
  *
  * <p>他組織・削除済み・不在のグループ ID は区別せず 404 {@code ORG_064}、その組織の ACTIVE 加盟でないチーム
@@ -46,6 +49,7 @@ public class OrgTeamGroupAssignmentController {
     private final TeamOrgGroupAssignmentService assignmentService;
     private final OrganizationService organizationService;
     private final AccessControlService accessControlService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * 1チームのグループ割当を変更する（組織 ADMIN のみ。groupId=null で未分類）。
@@ -65,7 +69,9 @@ public class OrgTeamGroupAssignmentController {
             @RequestBody AssignTeamGroupRequest req) {
         Long userId = SecurityUtils.getCurrentUserId();
         Long orgId = organizationService.resolveOrgId(slug);
-        if (!accessControlService.isAdmin(userId, orgId, SCOPE_TYPE)) {
+        requireVisibleOrganization(userId, orgId);
+        // SYSTEM_ADMIN は組織 ADMIN を兼ねていても書き込めない（§3.1・AC-F12。閲覧のみ）
+        if (accessControlService.isSystemAdmin(userId) || !accessControlService.isAdmin(userId, orgId, SCOPE_TYPE)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return ResponseEntity.ok(ApiResponse.of(
@@ -91,10 +97,22 @@ public class OrgTeamGroupAssignmentController {
             @RequestBody BulkAssignTeamGroupRequest req) {
         Long userId = SecurityUtils.getCurrentUserId();
         Long orgId = organizationService.resolveOrgId(slug);
-        if (!accessControlService.isAdmin(userId, orgId, SCOPE_TYPE)) {
+        requireVisibleOrganization(userId, orgId);
+        // SYSTEM_ADMIN は組織 ADMIN を兼ねていても書き込めない（§3.1・AC-F12。閲覧のみ）
+        if (accessControlService.isSystemAdmin(userId) || !accessControlService.isAdmin(userId, orgId, SCOPE_TYPE)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         int updatedCount = assignmentService.assignBulk(orgId, req.groupId(), req.teamSlugs(), userId);
         return ResponseEntity.ok(ApiResponse.of(new BulkAssignTeamGroupResponse(updatedCount)));
+    }
+
+    /**
+     * 閲覧者から見えない組織は、存在しない組織と同じ 404 {@code ORG_001} にする（存在オラクルを作らない。§10 認可の順序）。
+     * 可視性は F00 の ORGANIZATION ラダーに委譲する。
+     */
+    private void requireVisibleOrganization(Long userId, Long orgId) {
+        if (!contentVisibilityChecker.canView(ReferenceType.ORGANIZATION, orgId, userId)) {
+            throw new BusinessException(OrgErrorCode.ORG_001);
+        }
     }
 }

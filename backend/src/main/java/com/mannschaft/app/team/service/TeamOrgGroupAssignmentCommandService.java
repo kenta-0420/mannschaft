@@ -1,6 +1,5 @@
 package com.mannschaft.app.team.service;
 
-import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
@@ -21,7 +20,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +58,6 @@ public class TeamOrgGroupAssignmentCommandService {
     private final TeamAffiliationOrganizationPort organizationPort;
     private final TeamRepository teamRepository;
     private final TeamOrgMembershipRepository membershipRepository;
-    private final TeamAffiliationAuditRecorder auditRecorder;
     private final Clock clock;
 
     /**
@@ -69,13 +66,12 @@ public class TeamOrgGroupAssignmentCommandService {
      * @param organizationId 組織（認可済み）
      * @param teamSlug       対象チームの slug
      * @param groupId        割り当てるグループ（null で未分類）
-     * @param actorUserId    操作者（組織 ADMIN であることを確認済み）
      * @return 更新後の加盟（応答の組み立て用の確定値）
      * @throws BusinessException ORG_067（機能 off）・ORG_064（他組織・削除済み・不在のグループ）・
      *                           TEAM_070（その組織の ACTIVE 加盟でないチーム）
      */
     @Transactional
-    public AssignedMembership assignOne(Long organizationId, String teamSlug, UUID groupId, Long actorUserId) {
+    public AssignedMembership assignOne(Long organizationId, String teamSlug, UUID groupId) {
         // 最初の文で組織行をロックする（クラスのコメント「並行する削除との直列化」）
         requireGroupsEnabledAndGroupAlive(organizationId, groupId);
 
@@ -88,16 +84,15 @@ public class TeamOrgGroupAssignmentCommandService {
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_070));
 
         UUID previous = membership.getGroupId();
-        AssignedMembership result = AssignedMembership.of(membership, groupId);
         if (Objects.equals(previous, groupId)) {
-            return result;
+            return AssignedMembership.of(membership, groupId, false, previous);
         }
+        AssignedMembership result = AssignedMembership.of(membership, groupId, true, previous);
         int updated = update(organizationId, List.of(team.getId()), groupId);
         if (updated != 1) {
             // 検証の後に加盟が消えた（離脱・除名との競合）。存在しない加盟と同じ応答にする
             throw new BusinessException(TeamErrorCode.TEAM_070);
         }
-        audit(actorUserId, membership, previous, groupId);
         return result;
     }
 
@@ -110,12 +105,11 @@ public class TeamOrgGroupAssignmentCommandService {
      * @param organizationId 組織（認可済み）
      * @param groupId        割り当てるグループ（null で未分類）
      * @param teamSlugs      対象チームの slug（検証済み: 1〜500 件・空白なし）
-     * @param actorUserId    操作者（組織 ADMIN であることを確認済み）
      * @return 指定したチーム数（重複を除く）
      * @throws BusinessException ORG_067・ORG_064・ORG_069（その組織の ACTIVE 加盟でないチームを含む。該当 slug を同梱）
      */
     @Transactional
-    public int assignBulk(Long organizationId, UUID groupId, List<String> teamSlugs, Long actorUserId) {
+    public BulkResult assignBulk(Long organizationId, UUID groupId, List<String> teamSlugs) {
         requireGroupsEnabledAndGroupAlive(organizationId, groupId);
 
         Set<String> distinct = new LinkedHashSet<>(teamSlugs);
@@ -158,11 +152,12 @@ public class TeamOrgGroupAssignmentCommandService {
                 // 検証の後に加盟が消えた（離脱・除名との競合）。全体を巻き戻すため例外を送出する
                 throw invalidTeams(vanishedSlugs(organizationId, changed, teamBySlug));
             }
-            for (TeamOrgMembershipEntity m : changed) {
-                audit(actorUserId, m, previousByMembershipId.get(m.getId()), groupId);
-            }
         }
-        return distinct.size();
+        List<GroupChange> changes = changed.stream()
+                .map(m -> new GroupChange(m.getId(), m.getTeamId(), organizationId,
+                        previousByMembershipId.get(m.getId()), groupId))
+                .toList();
+        return new BulkResult(distinct.size(), changes);
     }
 
     // ───────── 内部 ─────────
@@ -207,15 +202,6 @@ public class TeamOrgGroupAssignmentCommandService {
                 .toList());
     }
 
-    private void audit(Long actorUserId, TeamOrgMembershipEntity membership, UUID from, UUID to) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("membership_id", membership.getId());
-        metadata.put("from", from == null ? null : from.toString());
-        metadata.put("to", to == null ? null : to.toString());
-        auditRecorder.record(AuditEventType.TEAM_ORG_GROUP_CHANGED, actorUserId, membership.getTeamId(),
-                membership.getOrganizationId(), metadata);
-    }
-
     /**
      * 更新後の加盟（応答の組み立て用の確定値。Entity を公開しない）。
      *
@@ -227,18 +213,39 @@ public class TeamOrgGroupAssignmentCommandService {
      * @param invitedBy      PENDING を作った人
      * @param invitedAt      PENDING を作った日時（起きた瞬間。壁時計の列を {@code SERVER_ZONE} で解釈した値）
      * @param respondedAt    承諾・承認した日時（同上。無ければ null）
+     * @param changed        グループが実際に変わったか（変わらない再送は監査を残さない）
+     * @param previousGroupId 変更前の group_id（監査の from）
      */
     public record AssignedMembership(Long id, Long teamId, Long organizationId,
                                      TeamOrgAffiliationDirection direction, UUID groupId, Long invitedBy,
-                                     Instant invitedAt, Instant respondedAt) {
+                                     Instant invitedAt, Instant respondedAt,
+                                     boolean changed, UUID previousGroupId) {
 
-        static AssignedMembership of(TeamOrgMembershipEntity m, UUID groupId) {
+        static AssignedMembership of(TeamOrgMembershipEntity m, UUID groupId, boolean changed, UUID previous) {
             return new AssignedMembership(m.getId(), m.getTeamId(), m.getOrganizationId(), m.getDirection(),
-                    groupId, m.getInvitedBy(), toInstant(m.getInvitedAt()), toInstant(m.getRespondedAt()));
+                    groupId, m.getInvitedBy(), toInstant(m.getInvitedAt()), toInstant(m.getRespondedAt()), changed, previous);
         }
 
         private static Instant toInstant(LocalDateTime wallClock) {
             return wallClock == null ? null : wallClock.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant();
         }
+    }
+
+    /**
+     * 実際に変わった割当1件（監査用。コミット後に呼び出し元が記録する）。
+     *
+     * @param from 変更前の group_id（未分類なら null）
+     * @param to   変更後の group_id（未分類なら null）
+     */
+    public record GroupChange(Long membershipId, Long teamId, Long organizationId, UUID from, UUID to) {
+    }
+
+    /**
+     * 一括割当の結果。
+     *
+     * @param specifiedCount 指定したチーム数（重複を除く）
+     * @param changes        実際に変わった割当
+     */
+    public record BulkResult(int specifiedCount, List<GroupChange> changes) {
     }
 }

@@ -295,6 +295,50 @@ class OrgTeamGroupAssignmentIT extends AbstractOrgTeamGroupAssignmentIT {
         assertThat(groupChangedAudits(org.getId())).isEmpty();
     }
 
+    @Test
+    @DisplayName("AC-F12: SYSTEM_ADMIN が組織 ADMIN を兼ねていても、単体・一括の割当は 403 で、割当は変わらない")
+    void assign_systemAdminWhoIsAlsoOrgAdminIsForbidden() throws Exception {
+        seedSystemAdmin(ASYS);
+        seedOrgPerson(ASYS, org.getId(), "ADMIN");
+        TeamOrgMembershipEntity m = activeTeam(org.getId(), groupB.getId());
+        em.flush();
+        em.clear();
+
+        expectCode(assignOne(ASYS, slug, slugOf(m), groupA.getId()), 403, "COMMON_002");
+        expectCode(assignBulk(ASYS, slug, groupA.getId(), List.of(slugOf(m))), 403, "COMMON_002");
+
+        assertThat(groupIdOf(m)).isEqualTo(groupB.getId());
+        assertThat(groupChangedAudits(org.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("非公開組織は、見えない人（無所属・他組織の ADMIN）には存在しない組織と同じ 404 ORG_001（単体・一括）")
+    void assign_invisibleOrganizationLooksNonexistent() throws Exception {
+        OrganizationEntity priv = newOrg(true);
+        em.createNativeQuery("UPDATE organizations SET visibility = 'PRIVATE' WHERE id = :id")
+                .setParameter("id", priv.getId()).executeUpdate();
+        OrgTeamGroupEntity g = newGroup(priv.getId(), "秘密の班", 0);
+        TeamOrgMembershipEntity m = activeTeam(priv.getId(), null);
+        seedOrgPerson(AYA, newOrg(true).getId(), "ADMIN");
+        seedUserOnly(AN);
+        em.flush();
+        em.clear();
+
+        for (Long outsider : List.of(AN, AYA)) {
+            String single = assignOne(outsider, priv.getSlug(), slugOf(m), g.getId())
+                    .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value("ORG_001"))
+                    .andReturn().getResponse().getContentAsString();
+            String bulk = assignBulk(outsider, priv.getSlug(), g.getId(), List.of(slugOf(m)))
+                    .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value("ORG_001"))
+                    .andReturn().getResponse().getContentAsString();
+            String missing = assignBulk(outsider, "no-such-org-slug", g.getId(), List.of(slugOf(m)))
+                    .andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
+            assertThat(bulk).as("存在しない組織と同じ本文").isEqualTo(missing);
+            assertThat(single).isEqualTo(missing);
+        }
+        assertThat(groupIdOf(m)).isNull();
+    }
+
     // ───────── AC-K06 他組織・削除済み・不在のグループ ─────────
 
     @Test

@@ -1,5 +1,6 @@
 package com.mannschaft.app.team.service;
 
+import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.ErrorResponse;
@@ -12,7 +13,9 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -32,6 +35,7 @@ public class TeamOrgGroupAssignmentService {
 
     private final TeamOrgGroupAssignmentCommandService commandService;
     private final TeamOrgAffiliationAssembler assembler;
+    private final TeamAffiliationAuditRecorder auditRecorder;
 
     /**
      * 1チームの割当を変更し、更新後の加盟の共通表現を返す（groupId=null で未分類）。
@@ -39,7 +43,12 @@ public class TeamOrgGroupAssignmentService {
     public TeamOrgAffiliationResponse assignOne(Long organizationId, String teamSlug, UUID groupId,
                                                 Long actorUserId) {
         TeamOrgGroupAssignmentCommandService.AssignedMembership assigned =
-                commandService.assignOne(organizationId, teamSlug, groupId, actorUserId);
+                commandService.assignOne(organizationId, teamSlug, groupId);
+        // 監査はコミット後に記録する（4-A のグループ監査と同じ。トランザクションを auth ドメインへ広げない）
+        if (assigned.changed()) {
+            audit(actorUserId, assigned.id(), assigned.teamId(), assigned.organizationId(),
+                    assigned.previousGroupId(), assigned.groupId());
+        }
         // コミット後に行を取り直さない（その間に離脱・除名で消えると 500 になる）。確定した値から組み立てる
         TeamOrgMembershipEntity snapshot = TeamOrgMembershipEntity.builder()
                 .id(assigned.id())
@@ -55,6 +64,14 @@ public class TeamOrgGroupAssignmentService {
         return assembler.assembleForTeam(assigned.teamId(), List.of(snapshot)).get(0);
     }
 
+    private void audit(Long actorUserId, Long membershipId, Long teamId, Long organizationId, UUID from, UUID to) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("membership_id", membershipId);
+        metadata.put("from", from == null ? null : from.toString());
+        metadata.put("to", to == null ? null : to.toString());
+        auditRecorder.record(AuditEventType.TEAM_ORG_GROUP_CHANGED, actorUserId, teamId, organizationId, metadata);
+    }
+
     private static LocalDateTime toWallClock(Instant instant) {
         return instant == null ? null : LocalDateTime.ofInstant(instant, UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
@@ -66,7 +83,13 @@ public class TeamOrgGroupAssignmentService {
      */
     public int assignBulk(Long organizationId, UUID groupId, List<String> teamSlugs, Long actorUserId) {
         validateTeamSlugs(teamSlugs);
-        return commandService.assignBulk(organizationId, groupId, teamSlugs, actorUserId);
+        TeamOrgGroupAssignmentCommandService.BulkResult result =
+                commandService.assignBulk(organizationId, groupId, teamSlugs);
+        // 例外なく確定した場合だけ、変わったチームごとに記録する（失敗した一括割当は監査を残さない）
+        for (TeamOrgGroupAssignmentCommandService.GroupChange c : result.changes()) {
+            audit(actorUserId, c.membershipId(), c.teamId(), c.organizationId(), c.from(), c.to());
+        }
+        return result.specifiedCount();
     }
 
     /**
