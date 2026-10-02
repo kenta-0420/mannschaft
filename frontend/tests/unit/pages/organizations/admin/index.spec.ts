@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
+import { ref } from 'vue'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import OrgAdminConsolePage from '~/pages/organizations/[slug]/admin/index.vue'
 
@@ -21,10 +22,11 @@ mockNuxtImport('useRoute', () => () => ({ params: { slug: 'org-000004' } }))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 
 const loadPermissions = vi.fn(async () => {})
-const access = vi.hoisted(() => ({
-  isAdmin: { value: true },
-  isAdminOrDeputy: { value: true },
-}))
+const access = {
+  roleName: ref<string | null>('ADMIN'),
+  isAdmin: ref(true),
+  isAdminOrDeputy: ref(true),
+}
 mockNuxtImport('useRoleAccess', () => () => ({
   ...access,
   loadPermissions,
@@ -44,6 +46,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  access.roleName.value = 'ADMIN'
   access.isAdmin.value = true
   access.isAdminOrDeputy.value = true
 })
@@ -68,6 +71,7 @@ describe('pages/organizations/[slug]/admin/index.vue — カードが実リン�
   })
 
   it('AC3: DEPUTYの従来FAQ設定URLを変更しない', async () => {
+    access.roleName.value = 'DEPUTY_ADMIN'
     access.isAdmin.value = false
     const wrapper = await mountSuspended(OrgAdminConsolePage)
     await flushMicrotasks()
@@ -78,12 +82,23 @@ describe('pages/organizations/[slug]/admin/index.vue — カードが実リン�
   })
 
   it('AC4: 権限が未確定の場合に設定ハブのリンクを公開しない', async () => {
+    access.roleName.value = null
     access.isAdmin.value = false
     access.isAdminOrDeputy.value = false
     const wrapper = await mountSuspended(OrgAdminConsolePage)
     await flushMicrotasks()
 
     expect(wrapper.findAll('a[href]')).toHaveLength(0)
+  })
+
+  it('AC3: SYSTEM_ADMINは既存の入口を維持し、新しいスコープ管理者ハブへ案内しない', async () => {
+    access.roleName.value = 'SYSTEM_ADMIN'
+    const wrapper = await mountSuspended(OrgAdminConsolePage)
+    await flushMicrotasks()
+
+    const hrefs = wrapper.findAll('a[href]').map(a => a.attributes('href'))
+    expect(hrefs).toContain('/organizations/org-000004/settings/faq-settings')
+    expect(hrefs).not.toContain('/organizations/org-000004/admin/settings')
   })
 })
 
