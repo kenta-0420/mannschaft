@@ -45,10 +45,10 @@ async function ownsScope(scope: Scope) {
   const column = scope.type === 'teams' ? 'team_id' : 'organization_id'
   const [creators] = await db.execute(
     `SELECT ur.user_id FROM user_roles ur JOIN roles r ON r.id=ur.role_id JOIN memberships m ON m.user_id=ur.user_id AND m.scope_id=ur.${column} `
-    + `WHERE ur.${column}=? AND ur.user_id=? AND r.name='ADMIN' AND m.scope_type=? AND m.left_at IS NULL AND m.source=?`,
-    [scope.id, scope.ownerId, typeName(scope), scope.type === 'teams' ? 'TEAM_CREATE' : 'ORG_CREATE'],
+    + `WHERE ur.${column}=? AND ur.user_id=? AND r.name='ADMIN' AND m.scope_type=? AND m.role_kind='MEMBER' AND m.left_at IS NULL AND m.archived_at IS NULL`,
+    [scope.id, scope.ownerId, typeName(scope)],
   )
-  expect(creators, '作成APIが本人に付けたADMINと作成由来membershipが一致').toHaveLength(1)
+  expect(creators, '作成APIで確認した本人ADMINとactiveMEMBERが一致').toHaveLength(1)
 }
 
 async function screenshot(page: Page, info: TestInfo, name: string) {
