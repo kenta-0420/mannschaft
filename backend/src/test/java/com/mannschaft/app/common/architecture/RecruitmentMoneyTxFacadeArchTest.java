@@ -145,6 +145,11 @@ class RecruitmentMoneyTxFacadeArchTest {
             collectTxBodyCalls(m.getOwner(), m, 0, txBodies);
         }
         assertThat(txBodies).as("Facade が tx 本体（recruitment の非 Facade クラス）を呼んでいること").isNotEmpty();
+        // メソッド単位の検査が空振りしないよう、移した 6 本の tx 本体が漏れなく検査対象に入っていることを固定する
+        Set<String> bodyNames = new LinkedHashSet<>();
+        txBodies.forEach(b -> bodyNames.add(b.getName()));
+        assertThat(bodyNames).as("移した tx 本体メソッドが全て検査対象に入っていること")
+                .contains("waive", "liftPenalty", "confirmApplication", "getPolicy", "updatePolicy", "archivePolicy");
         List<String> violations = new ArrayList<>();
         for (JavaMethod body : txBodies) {
             if (reachesAuthorization(body.getOwner(), body, 0, 3)) {

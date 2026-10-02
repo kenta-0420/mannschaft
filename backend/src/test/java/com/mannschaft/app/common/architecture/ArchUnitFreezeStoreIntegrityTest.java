@@ -753,8 +753,14 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code ShiftRequestFacade} が {@code RoleService#getMemberCandidateUserIdsByTeamId} から取得して tx 本体へ
      * 引数で渡す形にし、tx 本体から role の Repository 依存を除去。死んだ引数 actorUserId も削除）。
      * origin/main のストアとの差分は「追加 0・削除 29（W1 の 2 サービスのキーのみ）」。{@code 7582 → 7581}。</p>
+     *
+     * <p>CMP-260923-0954 W4（recruitment 金銭・制裁。{@code RecruitmentMoneyFacade}）: 認可を tx の外へ出したことで、
+     * RecruitmentCancellationPolicyService の getPolicy / updatePolicy / archivePolicy（各 role の 2 行、計 6）・
+     * RecruitmentPenaltyService.liftPenalty（role の 2 行）・旧シグネチャの RecruitmentCancellationFeeWaiveService.waive（10 行）、
+     * 計 18 行を削除。追加 0。{@code 7581 → 7563}。残した行: confirmApplication → RoleRepository / UserRoleRepository の 2 行
+     * （通知経路から到達しないことを静的に証明できなかったため）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7581;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7563;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
