@@ -212,13 +212,29 @@ async function saveMember() {
   }
 }
 
-async function handleDeleteMember(id: number) {
+const showDeleteMemberDialog = ref(false)
+const deleteTargetMember = ref<MemberProfile | null>(null)
+const deletingMember = ref(false)
+
+function handleDeleteMember(id: number) {
+  const target = members.value.find((m) => m.id === id) ?? null
+  deleteTargetMember.value = target
+  showDeleteMemberDialog.value = true
+}
+
+async function executeDeleteMember() {
+  if (!deleteTargetMember.value) return
+  deletingMember.value = true
   try {
-    await memberProfileApi.deleteMember(id)
-    notification.success('メンバーを削除しました')
+    await memberProfileApi.deleteMember(deleteTargetMember.value.id)
+    notification.success(t('memberProfile.members.deleteSuccess'))
+    showDeleteMemberDialog.value = false
+    deleteTargetMember.value = null
     await loadMembers()
   } catch {
     notification.error(t('memberProfile.deleteFailed'))
+  } finally {
+    deletingMember.value = false
   }
 }
 
@@ -474,6 +490,34 @@ onMounted(loadData)
       <template #footer>
         <Button :label="t('button.cancel')" severity="secondary" @click="showDeletePageDialog = false" />
         <Button :label="t('button.delete')" severity="danger" icon="pi pi-trash" @click="executeDeletePage" />
+      </template>
+    </Dialog>
+
+    <!-- メンバー削除確認ダイアログ -->
+    <Dialog
+      v-model:visible="showDeleteMemberDialog"
+      :header="t('memberProfile.members.delete')"
+      :modal="true"
+      class="w-full max-w-sm"
+    >
+      <p>
+        {{ t('memberProfile.members.deleteConfirm', { name: deleteTargetMember?.displayName ?? '' }) }}
+      </p>
+      <template #footer>
+        <Button
+          :label="t('button.cancel')"
+          severity="secondary"
+          :disabled="deletingMember"
+          @click="showDeleteMemberDialog = false"
+        />
+        <Button
+          :label="t('button.delete')"
+          severity="danger"
+          icon="pi pi-trash"
+          :loading="deletingMember"
+          :disabled="deletingMember"
+          @click="executeDeleteMember"
+        />
       </template>
     </Dialog>
 
