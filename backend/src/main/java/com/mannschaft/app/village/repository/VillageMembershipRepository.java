@@ -82,8 +82,8 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
     Optional<VillageMembershipEntity> findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
             UUID villageId, VillageRole role);
 
-    /** 村内の指定ロールの現役メンバー件数（最後の HEADMAN 判定用）。 */
-    long countByVillageIdAndRoleAndLeftAtIsNull(UUID villageId, VillageRole role);
+    /** 村内の指定ロールの現役メンバー件数（退村・BAN 済みを除外、最後の HEADMAN 判定用）。 */
+    long countByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNull(UUID villageId, VillageRole role);
 
     // ====================================================================
     // F17.1 Phase 1 B10 — 村内 MEMBER 検索（読み取り専用）

@@ -273,13 +273,13 @@ public class VillageMembershipService {
             throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
 
-        // 自身を HEADMAN から降格する場合、他に HEADMAN/ELDER が居ることを必須
+        // 自身を HEADMAN から降格する場合、他に現役 HEADMAN/ELDER が居ることを必須
         if (target.getId().equals(actor.getId()) && request.role() != VillageRole.HEADMAN) {
             long otherHeadman = membershipRepository
-                    .countByVillageIdAndRoleAndLeftAtIsNull(villageId, VillageRole.HEADMAN);
+                    .countByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNull(villageId, VillageRole.HEADMAN);
             long elders = membershipRepository
-                    .countByVillageIdAndRoleAndLeftAtIsNull(villageId, VillageRole.ELDER);
-            // 自分以外の HEADMAN または ELDER が居なければ降格不可
+                    .countByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNull(villageId, VillageRole.ELDER);
+            // 自分以外の現役 HEADMAN または ELDER が居なければ降格不可
             if (otherHeadman <= 1 && elders == 0) {
                 throw new BusinessException(VillageErrorCode.HEADMAN_CANNOT_LEAVE);
             }
