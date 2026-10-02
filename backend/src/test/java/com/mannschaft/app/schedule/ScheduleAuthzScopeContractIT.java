@@ -7,6 +7,7 @@ import com.mannschaft.app.schedule.entity.ScheduleDelegationEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.ScheduleKeepEntity;
 import com.mannschaft.app.schedule.entity.ScheduleKeepStatus;
+import com.mannschaft.app.schedule.entity.ScheduleTargetEntity;
 import com.mannschaft.app.schedule.repository.ScheduleDelegationRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.ScheduleKeepRepository;
@@ -252,19 +253,39 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
         @ParameterizedTest
         @CsvSource({"false", "true"})
-        @DisplayName("既存ANYONE可視性は説明文にも適用し、非所属者へ対象者名を開示しない")
+        @DisplayName("ANYONEはvisibilityを緩めず、閲覧可能な非所属SYSTEM_ADMINへ対象者名を開示しない")
         void 非所属者の可視性を維持する(boolean organization) throws Exception {
             Long scheduleId = createSchedule(organization, "公開の集合案内", "#a855f7", MinViewRole.ANYONE);
-            setAuthentication(outsiderId);
+            var schedule = scheduleRepository.findById(scheduleId).orElseThrow();
+            schedule.updateTargetMode(ScheduleTargetMode.SELECTED_MEMBERS);
+            em.persist(ScheduleTargetEntity.builder().scheduleId(scheduleId).userId(memberId).build());
+            em.flush();
+            em.clear();
+            setAuthentication(memberId);
             mockMvc.perform(get(detailUrl(organization), organization ? orgId : teamId, scheduleId))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.detail.description").value("公開の集合案内"))
-                    .andExpect(jsonPath("$.data.targets").isEmpty());
+                    .andExpect(jsonPath("$.data.targets.length()").value(1))
+                    .andExpect(jsonPath("$.data.targets[0].userId").value(memberId))
+                    .andExpect(jsonPath("$.data.targets[0].displayName").isNotEmpty());
+            setAuthentication(outsiderId);
+            mockMvc.perform(get(detailUrl(organization), organization ? orgId : teamId, scheduleId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.data.detail").doesNotExist());
 
             Long restrictedId = createSchedule(organization, "所属者向けの説明", null, MinViewRole.MEMBER_PLUS);
             mockMvc.perform(get(detailUrl(organization), organization ? orgId : teamId, restrictedId))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.data.detail").doesNotExist());
+
+            // 所属を追加せず、F00の既存SYSTEM_ADMIN閲覧経路だけを使う。
+            MembershipTestHelper.insertUserRole(em, outsiderId, "SYSTEM_ADMIN", null, null);
+            em.flush();
+            em.clear();
+            mockMvc.perform(get(detailUrl(organization), organization ? orgId : teamId, scheduleId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.detail.description").value("公開の集合案内"))
+                    .andExpect(jsonPath("$.data.targetCount").value(1))
+                    .andExpect(jsonPath("$.data.targets").isEmpty());
         }
 
         private String detailUrl(boolean organization) {
