@@ -431,7 +431,11 @@ class ConfirmableNotificationConfirmOracleIT extends AbstractMySqlIntegrationTes
     }
 
     private void deleteNotification(Long id) {
-        tx.executeWithoutResult(s -> {
+        // spy は tx プロキシの内側で呼ばれるため、呼び出し元は readOnly tx の中にいる。
+        // 削除は別 tx（REQUIRES_NEW）で確実にコミットする。
+        TransactionTemplate independent = new TransactionTemplate(transactionManager);
+        independent.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
+        independent.executeWithoutResult(s -> {
             em.createNativeQuery("DELETE FROM confirmable_notification_recipients WHERE confirmable_notification_id = :id")
                     .setParameter("id", id).executeUpdate();
             em.createNativeQuery("DELETE FROM confirmable_notifications WHERE id = :id")
