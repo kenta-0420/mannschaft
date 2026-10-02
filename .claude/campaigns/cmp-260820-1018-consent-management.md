@@ -125,3 +125,12 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - Windows cmp-consent-red65-20261003-artifacts/scope-fk-green1 にbefore/after raw XML・header/hash・stdioを二重保全。全54 after XMLのSHA照合mismatch 0、stdio SHA 5cffe8e5ca35761881f650402bd5e41574de92407968dba2117e86b36a2d6c3e。
 - FreezeStore追加違反0。削除差分件数 [{"file":"296295dd-06cf-4f7b-bf82-315ba12ff501","removed":35,"added":0},{"file":"93124b52-f328-4f09-8c4f-6d022519fae2","removed":2,"added":0}] をobserved原本に保全し、所有mirrorだけcanonicalに復元。Windows正本storeは不変更。
 - Loading画面は実機受入れ成功と数えない。次の診断は通信status/未完了path/エラー種別をsafe JSONへ保存し、管理heading実到達を別判定。spec ESLint・diffcheck成功。実機操作・3住民・最終検分は引き続き未達。
+
+### 修正jar実環境とUI準備（2026-10-03）
+
+- 全backend tracked 12004ファイルがcanonical e6da1749abとpersistent mirrorで一致、欠落/差分0。標準bootJar exit0/34秒、217548261bytes、SHA 6c770ca37355216e4d5b92031a1702d68abbb5f8a9d3e8cd44d0f6d52c141013、Windows backup一致・gate解放。
+- own runtime3 PID40978、source e6、8081空き確認、local/private YAML読み取り/CORS同条件/Flyway validate-on-migrate=trueで起動。cwd/jar一致、Flyway検証/schema最新/Started成功、health200、error種類なし。既存8080/3000/DB設定不変更。
+- 専用org498で同意4件(ids2..5)標準POST成功。元FK500は実環境で解消。権限カタログ2件はSELECTのみ、own組合group2を標準APIで作成、DPは未割当。
+- controlled real-ui4は画像/DOMで英語管理hub・同意管理カード到達を確認、overflow0、HTTP>=400/pageerrorなし。helperのreloadに伴うERR_ABORTED48件。日本語exact期待hubReady=falseなので全AC greenには数えない。
+- 実機specのcookieKeyを正本i18n_locale、context ja-JPへ補正（共有アカウントDBlocaleは変更せず）。満たした前提は4件一覧へ更新し、normalUI5にADMIN/DP権限なし/MEMBER/SYS併有/取消PATCH0/本人255理由online撤回を準備。紙撤回/履歴/空一覧別fixture/失敗注入/390px六言語/3住民/最終検分は未達。
+- feature-gate middlewareの件数コメントを実94=静的47+動的47へ同期。実挙動変更なし。変更spec/middleware ESLintとdiffcheck成功。

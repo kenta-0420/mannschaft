@@ -9,19 +9,20 @@ if (!manifestPath) throw new Error('CMP1018_MANIFEST に自所有fixtureのmanif
 const fixture = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
   organization: { id: number, slug: string, name: string }
   users: Record<'admin' | 'deputy' | 'member' | 'system', { id: number, email: string }>
+  consents: Record<'paper' | 'online' | 'selfProxy' | 'deputyApprove', { id: number }>
 }
 const base = 'http://localhost:3001'
 const apiBase = 'http://localhost:8081'
 
 async function openAs(browser: Browser, actor: keyof typeof fixture.users): Promise<Page> {
-  const context = await browser.newContext({ storageState: { cookies: [], origins: [] }, viewport: { width: 1440, height: 900 } })
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] }, viewport: { width: 1440, height: 900 }, locale: 'ja-JP' })
   const page = await context.newPage()
   try {
     await loginViaApi(page, { email: fixture.users[actor].email, password: 'TestPass2026!' }, { apiBaseUrl: apiBase, deferNavigation: true })
     await page.addInitScript((org) => {
       localStorage.setItem('currentScope', JSON.stringify({ type: 'organization', id: String(org.id), name: org.name }))
     }, fixture.organization)
-    await context.addCookies([{ name: 'i18n_redirected', value: 'ja', domain: 'localhost', path: '/' }])
+    await context.addCookies([{ name: 'i18n_locale', value: 'ja', domain: 'localhost', path: '/' }])
     return page
   }
   catch (error) {
@@ -41,7 +42,7 @@ test.setTimeout(300_000)
 test('診断: ADMINの実資格と管理ハブの実画像を保存する', async ({ browser }, info) => {
   test.setTimeout(600_000)
   const page = await openAs(browser, 'admin')
-  const network: Array<{ path: string, status?: number, failure?: string }> = []
+  const network: Array<{ path: string, status?: number, failure?: string, finished?: boolean }> = []
   const consoleKinds: string[] = []
   const pending = new Map<import('@playwright/test').Request, string>()
   const safePath = (url: string) => {
@@ -55,7 +56,11 @@ test('診断: ADMINの実資格と管理ハブの実画像を保存する', asyn
   page.on('response', (response) => {
     const path = safePath(response.url())
     if (path) network.push({ path, status: response.status() })
-    pending.delete(response.request())
+  })
+  page.on('requestfinished', (request) => {
+    const path = safePath(request.url())
+    if (path) network.push({ path, finished: true })
+    pending.delete(request)
   })
   page.on('requestfailed', (request) => {
     const path = safePath(request.url())
@@ -80,27 +85,39 @@ test('診断: ADMINの実資格と管理ハブの実画像を保存する', asyn
     await waitForHydration(page)
     const hubReady = await page.getByRole('heading', { name: '代理入力同意管理', exact: true }).waitFor({ state: 'visible', timeout: 120_000 }).then(() => true, () => false)
     await page.screenshot({ path: info.outputPath('admin-hub-hydrated.png'), fullPage: true })
-    const dom = await page.evaluate(() => ({
-      path: location.pathname,
-      headings: [...document.querySelectorAll('h1,h2')].map(element => element.textContent?.trim()),
-      clientWidth: document.documentElement.clientWidth,
-      scrollWidth: document.documentElement.scrollWidth,
-    }))
+    const dom = await page.evaluate(() => {
+      const root = document.querySelector('#__nuxt') as HTMLElement & {
+        __vue_app__?: { config?: { globalProperties?: { $nuxt?: { isHydrating?: boolean }, $router?: { currentRoute?: { value?: { path?: string } } } } } }
+      }
+      const globals = root?.__vue_app__?.config?.globalProperties
+      return {
+        path: location.pathname,
+        routerPath: globals?.$router?.currentRoute?.value?.path ?? null,
+        isHydrating: globals?.$nuxt?.isHydrating ?? null,
+        loadingOnly: document.body.innerText.replace(/\s/g, '') === 'loading',
+        headings: [...document.querySelectorAll('h1,h2')].map(element => element.textContent?.trim()),
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      }
+    })
     await info.attach('画面の安全な投影', { body: JSON.stringify(dom), contentType: 'application/json' })
     writeFileSync(info.outputPath('safe-browser-proof.json'), JSON.stringify({ hubReady, dom, network, pending: [...pending.values()], consoleKinds }, null, 2))
   }
-  finally { await page.context().close() }
+  finally {
+    writeFileSync(info.outputPath('safe-network-proof.json'), JSON.stringify({ network, pending: [...pending.values()], consoleKinds }, null, 2))
+    await page.context().close()
+  }
 })
 
-test('ADMINが管理ハブから同意管理と空の実操作履歴に到達する', async ({ browser }, info) => {
+test('ADMINが管理ハブから同意全状態一覧と空の実操作履歴に到達する', async ({ browser }, info) => {
   const page = await openAs(browser, 'admin')
   try {
     await open(page, `/organizations/${fixture.organization.slug}/admin`)
     await expect(page.getByRole('heading', { name: '代理入力同意管理', exact: true })).toBeVisible({ timeout: 120_000 })
     await page.getByRole('button', { name: '管理画面を開く', exact: true }).click()
     await expect(page).toHaveURL(/\/admin\/proxy\/consents/, { timeout: 120_000 })
-    await expect(page.getByText('同意書はありません。', { exact: true })).toBeVisible({ timeout: 120_000 })
-    await page.screenshot({ path: info.outputPath('admin-empty-consents.png'), fullPage: true })
+    await expect(page.locator('article')).toHaveCount(4, { timeout: 120_000 })
+    await page.screenshot({ path: info.outputPath('admin-pending-consents.png'), fullPage: true })
     await page.getByRole('link', { name: '代理入力履歴', exact: true }).click()
     await expect(page.getByText('操作履歴はありません。', { exact: true })).toBeVisible({ timeout: 120_000 })
     await page.screenshot({ path: info.outputPath('admin-empty-records.png'), fullPage: true })
@@ -108,7 +125,7 @@ test('ADMINが管理ハブから同意管理と空の実操作履歴に到達す
   finally { await page.context().close() }
 })
 
-test('DEPUTYは管理導線を使えて承認権限を持たない状態で空一覧を表示する', async ({ browser }) => {
+test('DEPUTYは管理導線を使えて承認権限を持たない状態では承認操作を表示しない', async ({ browser }) => {
   const page = await openAs(browser, 'deputy')
   try {
     const response = await page.request.get(`${apiBase}/api/v1/organizations/${fixture.organization.slug}/me/permissions`)
@@ -117,7 +134,8 @@ test('DEPUTYは管理導線を使えて承認権限を持たない状態で空�
     await open(page, `/organizations/${fixture.organization.slug}/admin`)
     await expect(page.getByRole('button', { name: '管理画面を開く', exact: true })).toBeVisible({ timeout: 120_000 })
     await page.getByRole('button', { name: '管理画面を開く', exact: true }).click()
-    await expect(page.getByText('同意書はありません。', { exact: true })).toBeVisible({ timeout: 120_000 })
+    await expect(page.locator('article')).toHaveCount(4, { timeout: 120_000 })
+    await expect(page.getByRole('button', { name: '承認する', exact: true })).toHaveCount(0)
   }
   finally { await page.context().close() }
 })
@@ -136,3 +154,50 @@ for (const actor of ['member', 'system'] as const) {
     finally { await page.context().close() }
   })
 }
+
+test('ADMINは取消後に他代理者の同意を承認し、本人オンライン撤回を保存できる', async ({ browser }, info) => {
+  const page = await openAs(browser, 'admin')
+  const mutations: Array<{ path: string, method?: string, witness?: number, reasonLength?: number }> = []
+  page.on('request', (request) => {
+    if (request.method() !== 'PATCH' || !request.url().includes('/proxy-input-consents/')) return
+    const body = request.postDataJSON() as { revokeMethod?: string, revokeWitnessedByUserId?: number, revokeReason?: string } | null
+    mutations.push({ path: new URL(request.url()).pathname, method: body?.revokeMethod, witness: body?.revokeWitnessedByUserId, reasonLength: body?.revokeReason?.length })
+  })
+  try {
+    await open(page, `/organizations/${fixture.organization.slug}/admin`)
+    await page.getByRole('button', { name: '管理画面を開く', exact: true }).click()
+    const row = (id: number) => page.locator('article').filter({ has: page.getByRole('heading', { name: `代理入力同意書 #${id}`, exact: true }) })
+    await expect(row(fixture.consents.online.id)).toBeVisible({ timeout: 120_000 })
+    await expect(row(fixture.consents.selfProxy.id).getByRole('button', { name: '承認する', exact: true })).toHaveCount(0)
+    const online = row(fixture.consents.online.id)
+    await online.getByRole('button', { name: '承認する', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'キャンセル', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(mutations).toHaveLength(0)
+    await online.getByRole('button', { name: '承認する', exact: true }).click()
+    const approved = page.waitForResponse(response => response.request().method() === 'PATCH' && new URL(response.url()).pathname.endsWith(`/${fixture.consents.online.id}/approve`))
+    await page.getByRole('dialog').getByRole('button', { name: '承認する', exact: true }).click()
+    expect((await approved).status()).toBe(200)
+    await expect(online.getByText('承認済み', { exact: true })).toBeVisible({ timeout: 120_000 })
+    await expect(online.getByRole('button', { name: '承認する', exact: true })).toHaveCount(0)
+    await online.getByRole('button', { name: '同意書撤回', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('checkbox')).not.toBeChecked()
+    await expect(dialog.getByRole('combobox')).toHaveCount(0)
+    await dialog.locator('textarea').fill('本'.repeat(255))
+    const revoked = page.waitForResponse(response => response.request().method() === 'PATCH' && new URL(response.url()).pathname.endsWith(`/${fixture.consents.online.id}/revoke`))
+    await dialog.getByRole('button', { name: '同意書撤回', exact: true }).click()
+    expect((await revoked).status()).toBe(200)
+    await expect(online.getByText('撤回済み', { exact: true })).toBeVisible({ timeout: 120_000 })
+    await expect(online.getByText('本人オンライン申請', { exact: true })).toBeVisible()
+    await expect(online.getByText('本'.repeat(255), { exact: true })).toBeVisible()
+    await expect(online.getByRole('button')).toHaveCount(0)
+    expect(mutations.at(-1)).toMatchObject({ method: 'API_BY_SUBJECT', reasonLength: 255 })
+    expect(mutations.at(-1)?.witness).toBeUndefined()
+    await page.screenshot({ path: info.outputPath('admin-online-revoked.png'), fullPage: true })
+  }
+  finally {
+    writeFileSync(info.outputPath('safe-mutation-proof.json'), JSON.stringify({ mutations }, null, 2))
+    await page.context().close()
+  }
+})
