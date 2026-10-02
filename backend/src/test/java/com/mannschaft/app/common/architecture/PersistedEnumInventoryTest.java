@@ -1,12 +1,20 @@
 package com.mannschaft.app.common.architecture;
 
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.State;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.Other;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.FieldEntity;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.AdditionalFieldEntity;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.TransientEntity;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.NonStringEntity;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.PropertyEntity;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.MappedBase;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.EmbeddedValue;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.DisguisedEntity;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.CollectionEntity;
+import com.mannschaft.enumguardfixture.PersistedEnumFixtures.UnsupportedEntity;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
-import jakarta.persistence.Embeddable;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.MappedSuperclass;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
@@ -16,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 実バイトコードを使い、定数追加検知と永続化入口の検出範囲を固定する。 */
 class PersistedEnumInventoryTest {
-    private static final String PREFIX = PersistedEnumInventoryTest.class.getName() + "$";
+    private static final String PREFIX = PersistedEnumFixtures.class.getName() + "$";
 
     @Test
     void STRINGフィールドの全定数を列挙する() {
@@ -86,90 +94,4 @@ class PersistedEnumInventoryTest {
         return PersistedEnumInventory.constants(classes);
     }
 
-    /** 台帳未登録の新定数を含む読取り型。 */
-    enum State { OLD, ADDED }
-
-    /** 非永続化の型。 */
-    enum Other { IGNORED }
-
-    /** field アクセスの検体。 */
-    @Entity
-    static class FieldEntity {
-        @Enumerated(EnumType.STRING)
-        State state;
-        Other nonPersistent;
-    }
-
-    /** STRING 以外を混ぜた検体。 */
-    @Entity
-    static class NonStringEntity {
-        @Enumerated(EnumType.ORDINAL)
-        State ordinal;
-        @Enumerated
-        State defaultOrdinal;
-        Other nonPersistent;
-    }
-
-    /** property アクセスの検体。 */
-    @Entity
-    static class PropertyEntity {
-        @Enumerated(EnumType.STRING)
-        State getState() { return State.OLD; }
-    }
-
-    /** 継承先がなくても宣言元を走査する検体。 */
-    @MappedSuperclass
-    static class MappedBase {
-        @Enumerated(EnumType.STRING)
-        State state;
-    }
-
-    /** 埋め込み先の命名に依存しない検体。 */
-    @Embeddable
-    static class EmbeddedValue {
-        @Enumerated(EnumType.STRING)
-        State state;
-    }
-
-    /** ソースを文字列として誤認しないことを確認する検体。 */
-    @Entity
-    static class DisguisedEntity {
-        // @Enumerated(EnumType.STRING) State fake;
-        String fake = "@Enumerated(EnumType.STRING) State state;";
-        State nonPersistent;
-    }
-
-    /** enumコレクションの検体。 */
-    @Entity
-    static class CollectionEntity {
-        @jakarta.persistence.ElementCollection
-        @Enumerated(EnumType.STRING)
-        Set<State> states;
-    }
-
-    /** 不明な注釈型での検出漏れを防ぐ検体。 */
-    @Entity
-    static class UnsupportedEntity {
-        @Enumerated(EnumType.STRING)
-        String unsupported;
-    }
-
-    /** 非永続enumを新しい属性で永続化する検体。 */
-    @Entity
-    static class AdditionalFieldEntity {
-        @Enumerated(EnumType.STRING)
-        Other additional;
-    }
-
-    /** 注釈があってもJPAが保存しない属性の検体。 */
-    @Entity
-    static class TransientEntity {
-        @Enumerated(EnumType.STRING)
-        static State staticState;
-        @Enumerated(EnumType.STRING)
-        transient State javaTransient;
-        @Enumerated(EnumType.STRING)
-        @jakarta.persistence.Transient
-        State jpaTransient;
-    }
 }
