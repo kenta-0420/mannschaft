@@ -25,8 +25,10 @@ export function useProxyAdmin(mode: 'consents' | 'records') {
   const pagination = usePagination()
   const canApprove = ref(false)
   let requestVersion = 0
+  let disposed = false
 
   async function loadPage() {
+    if (disposed) return
     const version = ++requestVersion
     loading.value = true
     error.value = undefined
@@ -76,6 +78,7 @@ export function useProxyAdmin(mode: 'consents' | 'records') {
   }
 
   function changeOrganization(slug: string) {
+    if (disposed) return
     organizationSlug.value = slug
     pagination.reset()
     consents.value = []
@@ -84,12 +87,14 @@ export function useProxyAdmin(mode: 'consents' | 'records') {
   }
 
   function changePage(event: { page: number; rows: number }) {
+    if (disposed) return
     pagination.onPage(event)
     return loadPage()
   }
 
   function mayApprove(consent: ProxyInputConsent): boolean {
     return (
+      !disposed &&
       !loading.value &&
       error.value === undefined &&
       canApprove.value &&
@@ -103,6 +108,7 @@ export function useProxyAdmin(mode: 'consents' | 'records') {
 
   function mayRevoke(consent: ProxyInputConsent): boolean {
     return (
+      !disposed &&
       !loading.value &&
       error.value === undefined &&
       consent.organizationId === Number(organizationId.value) &&
@@ -112,6 +118,7 @@ export function useProxyAdmin(mode: 'consents' | 'records') {
 
   onMounted(loadPage)
   onBeforeUnmount(() => {
+    disposed = true
     requestVersion++
   })
 

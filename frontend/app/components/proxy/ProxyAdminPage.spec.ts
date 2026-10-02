@@ -10,6 +10,8 @@ import type { ProxyInputConsent } from '~/types/proxy-input'
 
 const mocks = vi.hoisted(() => ({
   require: vi.fn(),
+  close: vi.fn(),
+  desk: { pinnedConsentId: null as number | null, unpin: vi.fn() },
   approve: vi.fn(),
   revoke: vi.fn(),
   loadPage: vi.fn(),
@@ -18,7 +20,10 @@ const mocks = vi.hoisted(() => ({
   useState: vi.fn(),
   auth: { user: { id: 3 } },
 }))
-vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: mocks.require }) }))
+vi.mock('primevue/useconfirm', () => ({
+  useConfirm: () => ({ require: mocks.require, close: mocks.close }),
+}))
+mockNuxtImport('useProxyDeskStore', () => () => mocks.desk)
 mockNuxtImport('useProxyAdmin', () => mocks.useState)
 mockNuxtImport('useAuthStore', () => () => mocks.auth)
 mockNuxtImport('useProxyInputApi', () => () => ({
@@ -98,6 +103,10 @@ describe('ProxyAdminPage', () => {
     dayjs.extend(timezone)
     vi.clearAllMocks()
     mocks.auth.user.id = 3
+    mocks.desk.pinnedConsentId = null
+    mocks.desk.unpin.mockImplementation(() => {
+      mocks.desk.pinnedConsentId = null
+    })
     mocks.approve.mockResolvedValue({ ...consent, status: 'APPROVED' })
     mocks.revoke.mockResolvedValue(undefined)
     mocks.loadPage.mockResolvedValue(undefined)
@@ -168,6 +177,70 @@ describe('ProxyAdminPage', () => {
 
     expect(mocks.success).not.toHaveBeenCalled()
     expect(mocks.handleApiError).toHaveBeenCalledOnce()
+    expect(mocks.loadPage).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it.each(['approve', 'revoke'] as const)(
+    '離脱時は確認を閉じ保存済み%s受諾でも送信しない',
+    async (action) => {
+      const wrapper = render()
+      await wrapper.get(`[data-testid="proxy-${action}-7"]`).trigger('click')
+      const dialog = mocks.require.mock.calls[0]?.[0] as { accept: () => void }
+
+      wrapper.unmount()
+      expect(mocks.close).toHaveBeenCalledOnce()
+      dialog.accept()
+      await flushPromises()
+
+      expect(mocks.approve).not.toHaveBeenCalled()
+      expect(mocks.revoke).not.toHaveBeenCalled()
+      expect(mocks.loadPage).not.toHaveBeenCalled()
+    },
+  )
+
+  it('固定中の同意撤回成功は一覧再取得前に既存unpinで解除する', async () => {
+    mocks.desk.pinnedConsentId = 7
+    const wrapper = render()
+    await wrapper.get('[data-testid="proxy-revoke-7"]').trigger('click')
+    const dialog = mocks.require.mock.calls[0]?.[0] as { accept: () => void }
+    dialog.accept()
+    await flushPromises()
+
+    expect(mocks.desk.unpin).toHaveBeenCalledOnce()
+    expect(mocks.desk.pinnedConsentId).toBeNull()
+    expect(mocks.desk.unpin.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.loadPage.mock.invocationCallOrder[0]!,
+    )
+    wrapper.unmount()
+  })
+
+  it('別の同意撤回成功では現在の固定を維持する', async () => {
+    mocks.desk.pinnedConsentId = 8
+    const wrapper = render()
+    await wrapper.get('[data-testid="proxy-revoke-7"]').trigger('click')
+    const dialog = mocks.require.mock.calls[0]?.[0] as { accept: () => void }
+    dialog.accept()
+    await flushPromises()
+
+    expect(mocks.desk.unpin).not.toHaveBeenCalled()
+    expect(mocks.desk.pinnedConsentId).toBe(8)
+    expect(mocks.loadPage).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('固定中の同意撤回失敗では固定を維持し成功通知を出さない', async () => {
+    mocks.desk.pinnedConsentId = 7
+    mocks.revoke.mockRejectedValueOnce({ statusCode: 409 })
+    const wrapper = render()
+    await wrapper.get('[data-testid="proxy-revoke-7"]').trigger('click')
+    const dialog = mocks.require.mock.calls[0]?.[0] as { accept: () => void }
+    dialog.accept()
+    await flushPromises()
+
+    expect(mocks.desk.unpin).not.toHaveBeenCalled()
+    expect(mocks.desk.pinnedConsentId).toBe(7)
+    expect(mocks.success).not.toHaveBeenCalled()
     expect(mocks.loadPage).toHaveBeenCalledOnce()
     wrapper.unmount()
   })
