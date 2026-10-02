@@ -1,66 +1,181 @@
-// npm audit（high 以上）を、期限付きで 1 件の advisory だけ除外して実行する。
-//
-// 除外対象: GHSA-86w9-cpqp-85rv（node-forge）
-//   理由: 修正版がまだ存在しない（脆弱範囲 <= 1.4.0、npm 最新も 1.4.0）。
-//         node-forge は listhen 経由（nitropack / @nuxt/cli の開発サーバー・preview 用）で入る開発用依存で、
-//         本番成果物（.output）には含まれない。
-//   期限: 2026-10-16（過ぎたら本スクリプトが exit 1 で CI を落とす）
-//   解除条件: node-forge の修正版が公開された時点で overrides に追加して本除外を削除する。
-//             または listhen が node-forge を使わなくなった時点。解除用の行は docs/task-list.md にある。
-// audit-level を下げる・npm audit 全体を無効化することは禁止。除外は下の 1 件のみ名指しで行う。
+// 修正版のない間接依存の個別例外（方針 docs/security/04_dependency_and_supply_chain.md §4.3）。
+// GHSA-86w9-cpqp-85rv / node-forge 1.4.0 のみ。2026-10-16 UTC 当日まで。
+// listhen の証明書生成経路では当該署名検証を呼ばない。本番 .output の除外は未実測。
+// 修正版導入または listhen からの依存撤去時に例外と本スクリプトを削除する。
 import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { pathToFileURL } from 'node:url'
 
-const EXEMPT_ID = 'GHSA-86w9-cpqp-85rv'
-const EXPIRES = '2026-10-16'
+const EXEMPT_URL = 'https://github.com/advisories/GHSA-86w9-cpqp-85rv'
+const EXPIRES_AT = Date.parse('2026-10-17T00:00:00Z')
 const SEVERITY_RANK = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 }
+// 実監査で確認した listhen/Nuxt 経路だけ。別の検証系消費者への拡大を認めない。
+const EXEMPT_PACKAGES = new Set([
+  'node-forge',
+  'listhen',
+  'nitropack',
+  '@nuxt/cli',
+  '@nuxt/nitro-server',
+  '@nuxt/vite-builder',
+  'nuxt',
+])
+const isObject = (value) =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+const validSeverity = (value) => Object.hasOwn(SEVERITY_RANK, value)
 
-const today = new Date().toISOString().slice(0, 10)
-if (today > EXPIRES) {
-  console.error(
-    `除外期限切れ: ${EXEMPT_ID} の除外は ${EXPIRES} までだった（本日 ${today}）。` +
-      'node-forge の修正版を確認して override で引き上げるか、殿に期限延長を諮ること。',
-  )
-  process.exit(1)
+// npm の終了状態も検証する。通信失敗の stdout が JSON でも成功扱いしない。
+export function checkAudit(raw, status, lock, now = Date.now()) {
+  if (![0, 1].includes(status))
+    throw new Error(`npm audit の取得失敗: exit ${status}`)
+  const report = JSON.parse(raw)
+  if (
+    !isObject(report) ||
+    Object.hasOwn(report, 'error') ||
+    report.auditReportVersion !== 2 ||
+    !isObject(report.vulnerabilities) ||
+    !isObject(report.metadata?.vulnerabilities)
+  ) {
+    throw new Error('npm audit のレポートが不正、または取得失敗')
+  }
+  const vulnerabilities = report.vulnerabilities
+  const counts = {
+    info: 0,
+    low: 0,
+    moderate: 0,
+    high: 0,
+    critical: 0,
+    total: 0,
+  }
+  for (const [name, entry] of Object.entries(vulnerabilities)) {
+    if (
+      !isObject(entry) ||
+      entry.name !== name ||
+      !validSeverity(entry.severity) ||
+      !Array.isArray(entry.via) ||
+      entry.via.length === 0 ||
+      !Array.isArray(entry.nodes) ||
+      entry.nodes.length === 0 ||
+      !entry.nodes.every((node) => typeof node === 'string' && node.length > 0)
+    ) {
+      throw new Error(`npm audit の依存情報が不正: ${name}`)
+    }
+    counts[entry.severity]++
+    counts.total++
+    for (const via of entry.via) {
+      if (typeof via === 'string') {
+        if (!Object.hasOwn(vulnerabilities, via))
+          throw new Error(`参照先がない: ${name} → ${via}`)
+      } else if (
+        !isObject(via) ||
+        !validSeverity(via.severity) ||
+        typeof via.name !== 'string' ||
+        typeof via.url !== 'string' ||
+        typeof via.range !== 'string'
+      ) {
+        throw new Error(`npm audit の advisory が不正: ${name}`)
+      }
+    }
+  }
+  for (const [severity, count] of Object.entries(counts)) {
+    if (report.metadata.vulnerabilities[severity] !== count) {
+      throw new Error(`npm audit の集計と依存情報が不一致: ${severity}`)
+    }
+  }
+  if (status !== (counts.high + counts.critical > 0 ? 1 : 0)) {
+    throw new Error('npm audit の終了状態と high/critical 集計が不一致')
+  }
+
+  const collectAdvisories = (name, visited = new Set()) => {
+    // npm の実レポートには Nuxt と builder 等の循環がある。全参照の検証は上で済ませる。
+    if (visited.has(name)) return []
+    visited.add(name)
+    return vulnerabilities[name].via.flatMap((via) =>
+      typeof via === 'string' ? collectAdvisories(via, visited) : [via],
+    )
+  }
+  let exempt = false
+  for (const [name, entry] of Object.entries(vulnerabilities)) {
+    const advisories = collectAdvisories(name)
+    if (
+      advisories.some(
+        (via) => SEVERITY_RANK[entry.severity] < SEVERITY_RANK[via.severity],
+      )
+    ) {
+      throw new Error(
+        `npm audit の依存と到達 advisory の深刻度が不一致: ${name}`,
+      )
+    }
+    const high = advisories.filter(
+      (via) => SEVERITY_RANK[via.severity] >= SEVERITY_RANK.high,
+    )
+    if (
+      entry.severity === 'critical' ||
+      (entry.severity === 'high' &&
+        (high.length === 0 || !EXEMPT_PACKAGES.has(name)))
+    ) {
+      throw new Error(`許可されない脆弱性: ${entry.severity} ${name}`)
+    }
+    for (const advisory of high) {
+      const forge = vulnerabilities['node-forge']
+      if (
+        advisory.url !== EXEMPT_URL ||
+        advisory.name !== 'node-forge' ||
+        advisory.dependency !== 'node-forge' ||
+        advisory.range !== '<=1.4.0' ||
+        advisory.severity !== 'high' ||
+        !forge ||
+        forge.isDirect !== false ||
+        !forge.via.includes(advisory) ||
+        !isObject(lock?.packages) ||
+        !forge.nodes.every(
+          (node) =>
+            typeof node === 'string' &&
+            /(^|\/)node_modules\/node-forge$/.test(node) &&
+            lock.packages[node]?.version === '1.4.0',
+        )
+      ) {
+        throw new Error(
+          `許可されない advisory: ${advisory.severity} ${advisory.name} ${advisory.url}`,
+        )
+      }
+      if (!Number.isFinite(now) || now >= EXPIRES_AT) {
+        throw new Error(
+          'GHSA-86w9-cpqp-85rv の除外期限切れ（2026-10-16 UTC 当日まで）',
+        )
+      }
+      exempt = true
+    }
+  }
+  return exempt
 }
 
-let raw
-try {
-  raw = execSync('npm audit --json', { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-} catch (e) {
-  // npm audit は脆弱性があると exit 1 を返すが、JSON は stdout に出る
-  raw = e.stdout
-}
-if (!raw) {
-  console.error('npm audit の出力が取得できなかった')
-  process.exit(1)
-}
-const report = JSON.parse(raw)
-if (report.error) {
-  console.error('npm audit が失敗した:', JSON.stringify(report.error))
-  process.exit(1)
-}
-
-// 根本原因の advisory（via のオブジェクト）を重複排除して集める
-const advisories = new Map()
-for (const vuln of Object.values(report.vulnerabilities ?? {})) {
-  for (const via of vuln.via ?? []) {
-    if (typeof via === 'object' && via.url) advisories.set(via.url, via)
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  try {
+    let raw
+    let status = 0
+    try {
+      raw = execSync('npm audit --json --audit-level=high', {
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+      })
+    } catch (error) {
+      raw = error.stdout
+      status = error.status
+    }
+    const lock = JSON.parse(
+      readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'),
+    )
+    const exempt = checkAudit(raw, status, lock)
+    console.log(
+      exempt
+        ? 'npm audit: GHSA-86w9-cpqp-85rv のみ除外中（2026-10-16 UTC 当日まで）、他の high/critical は0件'
+        : 'npm audit: high/critical は0件',
+    )
+  } catch (error) {
+    console.error(error.message)
+    process.exitCode = 1
   }
 }
-
-const blocking = []
-for (const [url, adv] of advisories) {
-  if (SEVERITY_RANK[adv.severity] < SEVERITY_RANK.high) continue
-  if (url.endsWith(`/${EXEMPT_ID}`)) {
-    console.log(`除外中（期限 ${EXPIRES}）: ${EXEMPT_ID} ${adv.name} - ${adv.title}`)
-    continue
-  }
-  blocking.push(`${adv.severity} ${adv.name}: ${adv.title} ${url}`)
-}
-
-if (blocking.length > 0) {
-  console.error('high 以上の脆弱性が残っている:')
-  for (const b of blocking) console.error(`  - ${b}`)
-  process.exit(1)
-}
-console.log('npm audit: 除外 1 件を除き high 以上は 0 件')
