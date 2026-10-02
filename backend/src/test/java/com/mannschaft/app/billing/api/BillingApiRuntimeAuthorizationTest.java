@@ -66,6 +66,8 @@ class BillingApiRuntimeAuthorizationTest {
     private BillingEntitlementQueryService entitlementQueryService;
     @MockitoBean
     private SystemAdminBillingService systemAdminBillingService;
+    @MockitoBean
+    private SystemAdminTeamParentOrganizationQueryService systemAdminTeamParentOrganizationQueryService;
 
     // ---- SpEL の @billingAccessGuard 参照を実行時に解決させる（false/true をスタブして経路を通す） ----
     //   Bean 名を "billingAccessGuard" に固定しないと SpEL が EL1058E で解決失敗し 500 になる。

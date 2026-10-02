@@ -15,6 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
@@ -38,7 +39,10 @@ import java.time.LocalDateTime;
  * </p>
  */
 @Entity
-@Table(name = "confirmable_notifications")
+@Table(name = "confirmable_notifications",
+        // V234 の uq_cn_once_per_source と同一。test profile は ddl-auto=create で Entity から schema を作るため、
+        // ここに書かないとテストの schema にだけ UNIQUE が無い状態になる（BillingPriceVersionEntity と同型）。
+        uniqueConstraints = @UniqueConstraint(name = "uq_cn_once_per_source", columnNames = "once_per_source_key"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
@@ -71,6 +75,24 @@ public class ConfirmableNotificationEntity {
      */
     @Column(name = "source_id")
     private Long sourceId;
+
+    /**
+     * CMP-260930-1932: 「発生元1件につき確認通知は1件だけ」の発生元種別に限って非 null になる生成列。
+     *
+     * <p>{@code source_type='RECRUITMENT_AUTO_CANCEL'}（募集の自動キャンセル通知）のときだけ
+     * {@code CONCAT(source_type, '|', source_id)} になり、{@code uq_cn_once_per_source} が同一募集への
+     * 二重送信（AFTER_COMMIT リスナーの並行2回発火）を DB レベルで拒否する。それ以外の種別は NULL
+     * （MySQL の UNIQUE は NULL を複数許容する）ため制約の対象外。{@code MARKET_FINALIZE} は
+     * 再 FULL のたびに再送する仕様なので対象に含めてはならない。アプリからは読み取り専用。</p>
+     *
+     * <p>{@code columnDefinition} で生成式を明示することで、test profile（{@code ddl-auto=create}）でも
+     * 本番（Flyway V234）と同じ生成列としてスキーマが作られる（{@code OrganizationEntity#nameTrimmed} と同型）。</p>
+     */
+    @Column(name = "once_per_source_key", insertable = false, updatable = false,
+            columnDefinition = "VARCHAR(80) GENERATED ALWAYS AS ("
+                    + "CASE WHEN source_type IN ('RECRUITMENT_AUTO_CANCEL') AND source_id IS NOT NULL "
+                    + "THEN CONCAT(source_type, '|', source_id) ELSE NULL END) STORED")
+    private String oncePerSourceKey;
 
     /** スコープ種別（TEAM / ORGANIZATION） */
     @Enumerated(EnumType.STRING)

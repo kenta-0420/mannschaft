@@ -84,7 +84,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 列挙で他スコープのテンプレートの実在が判別できるため、<b>404 として明示登録</b>し存在オラクルを閉じた。
  * {@code CommonErrorCode.COMMON_002} は 403 で明示登録されている。</p>
  *
- * <p><b>観察事項（本 PR では変更しない）</b>: エンティティ由来型の 2 EP は、
+ * <p><b>CMP-260923-0954 W4 で是正</b>: 以下の観察事項のとおり応答が割れていた lift / confirm は、越境を
+ * 不在と同一の 404（{@code RECRUITMENT_310} / {@code RECRUITMENT_001}）に揃えた。本ファイルの該当ケースも
+ * 404 に改めた（EP 別の詳細な契約は {@code RecruitmentMoneyPenaltyScopeContractIT}）。</p>
+ *
+ * <p><b>観察事項（是正前の記録）</b>: エンティティ由来型の 2 EP は、
  * 「越境した実在 ID」が 403 / 「不在 ID」が 404 と<b>応答が分かれる</b>ため、ID の実在が
  * 応答差分から漏れる（実在オラクル）。URL スコープ先行型はいずれも 404 に収束しこの問題がない。
  * 統一の要否は別課題の検討対象として最終報告に挙げる。</p>
@@ -328,12 +332,14 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
          * テナント越境は成立しない。この性質を回帰として固定する。</p>
          */
         @Test
-        @DisplayName("AC-R7: 正当ADMINが別募集のparticipantIdを差し込むと403（エンティティ由来認可）")
-        void ac_r7_越境participantIdは403() throws Exception {
+        @DisplayName("AC-R7/W4: 正当ADMINが別募集のparticipantIdを差し込むと不在と同一の404（CMP-260923-0954 W4）")
+        void ac_r7_越境participantIdは404() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/confirm",
                             listingAId, participantBAppliedId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.LISTING_NOT_FOUND.getCode()));
         }
 
         /** AC-R7: 遮断時に別募集の参加者が CONFIRMED に書き換わっていない。 */
@@ -343,7 +349,7 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/confirm",
                             listingAId, participantBAppliedId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
@@ -363,14 +369,16 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isForbidden());
         }
 
-        /** AC-R7: 部外者は 403。 */
+        /** AC-R7/W4: 部外者（応募者本人だが募集スコープに非在籍）は不在と同一の 404。 */
         @Test
-        @DisplayName("AC-R7: 部外者は403")
-        void ac_r7_部外者は403() throws Exception {
+        @DisplayName("AC-R7/W4: 部外者は不在と同一の404")
+        void ac_r7_部外者は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/confirm",
                             listingAId, participantAAppliedId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.LISTING_NOT_FOUND.getCode()));
         }
     }
 
@@ -391,14 +399,16 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
          * する。GLOBAL ペナルティも同じ発動元スコープで認可し、越境は 403 で弾かれる。</p>
          */
         @Test
-        @DisplayName("AC-R7: 正当ADMINが別スコープのpenaltyIdを差し込むと403（エンティティ由来認可）")
-        void ac_r7_越境penaltyIdは403() throws Exception {
+        @DisplayName("AC-R7/W4: 正当ADMINが別スコープのpenaltyIdを差し込むと不在と同一の404（CMP-260923-0954 W4）")
+        void ac_r7_越境penaltyIdは404() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/scopes/{scopeType}/{scopeId}/penalties/{penaltyId}/lift",
                             "TEAM", teamAId, penaltyBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(liftBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.PENALTY_NOT_FOUND.getCode()));
         }
 
         /** AC-R7: 遮断時に別スコープのペナルティが解除されていない。 */
@@ -410,7 +420,7 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                             "TEAM", teamAId, penaltyBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(liftBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
@@ -432,16 +442,18 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isForbidden());
         }
 
-        /** AC-R7: 部外者は 403。 */
+        /** AC-R7/W4: 部外者は不在と同一の 404。 */
         @Test
-        @DisplayName("AC-R7: 部外者は403")
-        void ac_r7_部外者は403() throws Exception {
+        @DisplayName("AC-R7/W4: 部外者は不在と同一の404")
+        void ac_r7_部外者は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/scopes/{scopeType}/{scopeId}/penalties/{penaltyId}/lift",
                             "TEAM", teamAId, penaltyAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(liftBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.PENALTY_NOT_FOUND.getCode()));
         }
 
         /** AC-R7: 正当 ADMIN のペナルティ解除は 200（非回帰）。 */
@@ -477,8 +489,8 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("GLOBAL ペナルティは別スコープADMINのURL差し替えでも解除されない")
-        void global_別スコープADMINは403で不変() throws Exception {
+        @DisplayName("GLOBAL ペナルティは別スコープADMINのURL差し替えでも解除されない（W4: 不在と同一の404）")
+        void global_別スコープADMINは404で不変() throws Exception {
             Long globalPenaltyId = insertPenalty(memberAId, teamAId, true);
             em.flush();
             em.clear();
@@ -488,7 +500,7 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                             "TEAM", teamBId, globalPenaltyId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(liftBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
