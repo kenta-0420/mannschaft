@@ -3252,6 +3252,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{slug}/teams/{teamSlug}/team-group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 加盟チームのグループ割当（単体） */
+        put: operations["assignOne"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{slug}/team-groups/order": {
         parameters: {
             query?: never;
@@ -3262,6 +3279,41 @@ export interface paths {
         get?: never;
         /** チームグループ並び替え */
         put: operations["reorder_1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/team-group-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 加盟チームのグループ割当（一括） */
+        put: operations["assignBulk"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/team-affiliation-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チーム加盟の申請受付・グループ設定の取得（組織 ADMIN。SYSTEM_ADMIN は閲覧のみ） */
+        get: operations["getSettings_9"];
+        /** チーム加盟の申請受付・グループ設定の更新（組織 ADMIN のみ。全項目の置き換え） */
+        put: operations["updateSettings_9"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3386,12 +3438,12 @@ export interface paths {
          * メンバーサブタブ可視性設定一覧
          * @description 指定組織の一覧／紹介サブタブの最低必要ロール一覧を取得する。非メンバーでもデフォルト値で 200。
          */
-        get: operations["getSettings_9"];
+        get: operations["getSettings_10"];
         /**
          * メンバーサブタブ可視性設定更新
          * @description 指定組織の一覧／紹介サブタブの最低必要ロールを一括更新する。ADMIN は無条件、DEPUTY_ADMIN は MEMBER_SUBTAB_VISIBILITY_MANAGE 権限保有時のみ可。一覧タブに PUBLIC を指定すると 422。
          */
-        put: operations["updateSettings_9"];
+        put: operations["updateSettings_10"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3480,9 +3532,9 @@ export interface paths {
             cookie?: never;
         };
         /** 組織駐車場設定取得 */
-        get: operations["getSettings_10"];
+        get: operations["getSettings_11"];
         /** 組織駐車場設定更新 */
-        put: operations["updateSettings_10"];
+        put: operations["updateSettings_11"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3590,9 +3642,9 @@ export interface paths {
             cookie?: never;
         };
         /** 施設予約設定取得 */
-        get: operations["getSettings_11"];
+        get: operations["getSettings_12"];
         /** 施設予約設定更新 */
-        put: operations["updateSettings_11"];
+        put: operations["updateSettings_12"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4329,9 +4381,9 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知設定取得（組織） */
-        get: operations["getSettings_12"];
+        get: operations["getSettings_13"];
         /** 確認通知設定更新（組織） */
-        put: operations["updateSettings_12"];
+        put: operations["updateSettings_13"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4483,9 +4535,9 @@ export interface paths {
             cookie?: never;
         };
         /** グローバル通知設定取得 */
-        get: operations["getSettings_13"];
+        get: operations["getSettings_14"];
         /** グローバル通知設定更新 */
-        put: operations["updateSettings_13"];
+        put: operations["updateSettings_14"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4650,9 +4702,9 @@ export interface paths {
             cookie?: never;
         };
         /** 想起通知設定取得 */
-        get: operations["getSettings_14"];
+        get: operations["getSettings_15"];
         /** 想起通知設定更新 */
-        put: operations["updateSettings_14"];
+        put: operations["updateSettings_15"];
         post?: never;
         delete?: never;
         options?: never;
@@ -25998,7 +26050,7 @@ export interface paths {
             cookie?: never;
         };
         /** 予約設定（チームポリシー）取得 */
-        get: operations["getSettings_15"];
+        get: operations["getSettings_16"];
         put?: never;
         post?: never;
         delete?: never;
@@ -26123,14 +26175,14 @@ export interface paths {
             cookie?: never;
         };
         /** 設定取得 */
-        get: operations["getSettings_16"];
+        get: operations["getSettings_17"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 設定更新 */
-        patch: operations["updateSettings_15"];
+        patch: operations["updateSettings_16"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/queue/counters/{counterId}": {
@@ -27145,14 +27197,14 @@ export interface paths {
             cookie?: never;
         };
         /** チームシフト設定取得（メンバー限定） */
-        get: operations["getSettings_17"];
+        get: operations["getSettings_18"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** チームシフト設定更新（ADMIN/DEPUTY のみ） */
-        patch: operations["updateSettings_16"];
+        patch: operations["updateSettings_17"];
         trace?: never;
     };
     "/api/v1/teams/{slug}/restore": {
@@ -28234,7 +28286,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** スレッド開閉 */
-        patch: operations["updateSettings_17"];
+        patch: operations["updateSettings_18"];
         trace?: never;
     };
     "/api/v1/schedule-delegations/{delegationId}/reject": {
@@ -30471,7 +30523,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チャンネル個人設定 */
-        patch: operations["updateSettings_18"];
+        patch: operations["updateSettings_19"];
         trace?: never;
     };
     "/api/v1/chat/channels/{channelId}/members/{userId}/role": {
@@ -31032,7 +31084,7 @@ export interface paths {
             cookie?: never;
         };
         /** 発行者設定取得 */
-        get: operations["getSettings_18"];
+        get: operations["getSettings_19"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31270,14 +31322,14 @@ export interface paths {
             cookie?: never;
         };
         /** 行動メモ設定取得 */
-        get: operations["getSettings_19"];
+        get: operations["getSettings_20"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 行動メモ設定更新 */
-        patch: operations["updateSettings_19"];
+        patch: operations["updateSettings_20"];
         trace?: never;
     };
     "/sitemap.xml": {
@@ -36541,7 +36593,7 @@ export interface paths {
             cookie?: never;
         };
         /** モデレーション設定一覧取得 */
-        get: operations["getSettings_20"];
+        get: operations["getSettings_21"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36954,6 +37006,26 @@ export interface paths {
         };
         /** 全組織一覧取得 */
         get: operations["getOrganizations_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/billing/teams/{teamId}/parent-organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チームの親組織候補
+         * @description 手動付与で組織を選ぶための ACTIVE な親組織一覧と代表親組織（§9.3）。
+         */
+        get: operations["teamParentOrganizations"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39110,7 +39182,7 @@ export interface paths {
         };
         /**
          * 公開組織検索
-         * @description 未ログインでも実行可能。keyword / prefecture でフィルタリングし、最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。visibility=PUBLIC かつ未 archive / 未削除の組織のみ返す。
+         * @description 未ログインでも実行可能。keyword / prefecture でフィルタリングし、最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。visibility=PUBLIC かつ未 archive / 未削除の組織のみ返す。acceptingTeamApplications=true でチーム加盟を受付中の組織だけに絞る。
          */
         get: operations["searchOrganizations"];
         put?: never;
@@ -39651,8 +39723,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 組織所属チーム一覧 */
+        /**
+         * 組織所属チーム一覧
+         * @description 各チームに所属チームグループ（teamGroup）を付ける。グループ機能が off・未分類・削除済みグループ・閲覧者が組織の MEMBER 以上でない場合は null。teamGroupId（UUID）または unassigned=true で絞り込める（併用は 400。絞り込みは組織の MEMBER 以上と SYSTEM_ADMIN のみ）。他組織・削除済み・不在の teamGroupId は空の一覧を返す。
+         */
         get: operations["getTeams_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/team-application-form": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チーム加盟の申請フォームの内容（認証済み・組織が見えること） */
+        get: operations["getApplicationForm"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42723,6 +42815,23 @@ export interface paths {
         };
         /** 所属組織のプロジェクト集約 */
         get: operations["listMyOrgProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/org-affiliation-eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織へのチーム加盟申請ボタンを出すか（常に 200。理由は区別しない） */
+        get: operations["eligibility"];
         put?: never;
         post?: never;
         delete?: never;
@@ -53644,6 +53753,45 @@ export interface components {
             termsAcceptedAt?: string;
             termsVersion?: string;
         };
+        AssignTeamGroupRequest: {
+            /** Format: uuid */
+            groupId?: string;
+        };
+        AffiliationGroupRef: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
+        AffiliationPartyRef: {
+            iconUrl?: string;
+            name?: string;
+            slug?: string;
+        };
+        AffiliationRequesterRef: {
+            displayName?: string;
+            /** Format: int64 */
+            id?: number;
+        };
+        ApiResponseTeamOrgAffiliationResponse: {
+            data?: components["schemas"]["TeamOrgAffiliationResponse"];
+        };
+        TeamOrgAffiliationResponse: {
+            direction?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: int64 */
+            id?: number;
+            message?: string;
+            organization?: components["schemas"]["AffiliationPartyRef"];
+            /** Format: date-time */
+            requestedAt?: string;
+            requestedBy?: components["schemas"]["AffiliationRequesterRef"];
+            /** Format: date-time */
+            respondedAt?: string;
+            status?: string;
+            team?: components["schemas"]["AffiliationPartyRef"];
+            teamGroup?: components["schemas"]["AffiliationGroupRef"];
+        };
         ReorderOrgTeamGroupsRequest: {
             groupIds: string[];
         };
@@ -53666,6 +53814,39 @@ export interface components {
             sortOrder?: number;
             /** Format: int64 */
             teamCount?: number;
+        };
+        BulkAssignTeamGroupRequest: {
+            /** Format: uuid */
+            groupId?: string;
+            teamSlugs?: string[];
+        };
+        ApiResponseBulkAssignTeamGroupResponse: {
+            data?: components["schemas"]["BulkAssignTeamGroupResponse"];
+        };
+        BulkAssignTeamGroupResponse: {
+            /** Format: int32 */
+            updatedCount?: number;
+        };
+        UpdateTeamAffiliationSettingsRequest: {
+            /** @enum {string} */
+            applicationGroupMode: "OFF" | "OPTIONAL" | "REQUIRED";
+            applicationGuidance?: string;
+            teamApplicationEnabled: boolean;
+            teamGroupsEnabled: boolean;
+        };
+        ApiResponseTeamAffiliationSettingsResponse: {
+            data?: components["schemas"]["TeamAffiliationSettingsResponse"];
+        };
+        TeamAffiliationSettingsResponse: {
+            /** @enum {string} */
+            applicationGroupMode?: "OFF" | "OPTIONAL" | "REQUIRED";
+            applicationGuidance?: string;
+            /** @enum {string} */
+            effectiveApplicationGroupMode?: "OFF" | "OPTIONAL" | "REQUIRED";
+            /** Format: int64 */
+            pendingApplicationCount?: number;
+            teamApplicationEnabled?: boolean;
+            teamGroupsEnabled?: boolean;
         };
         ApiResponseOrganizationResponse: {
             data?: components["schemas"]["OrganizationResponse"];
@@ -53713,8 +53894,12 @@ export interface components {
             /** Format: int64 */
             numericId?: number;
             slug?: string;
+            teamApplication?: components["schemas"]["TeamApplicationDto"];
             timestamps?: components["schemas"]["OrgTimestampsDto"];
             visibility?: components["schemas"]["OrgVisibilityDto"];
+        };
+        TeamApplicationDto: {
+            enabled?: boolean;
         };
         ReorderRequest: {
             orders?: components["schemas"]["OrderItem"][];
@@ -57809,41 +57994,6 @@ export interface components {
             groupId?: string;
             message?: string;
             organizationSlug?: string;
-        };
-        AffiliationGroupRef: {
-            /** Format: uuid */
-            id?: string;
-            name?: string;
-        };
-        AffiliationPartyRef: {
-            iconUrl?: string;
-            name?: string;
-            slug?: string;
-        };
-        AffiliationRequesterRef: {
-            displayName?: string;
-            /** Format: int64 */
-            id?: number;
-        };
-        ApiResponseTeamOrgAffiliationResponse: {
-            data?: components["schemas"]["TeamOrgAffiliationResponse"];
-        };
-        TeamOrgAffiliationResponse: {
-            direction?: string;
-            /** Format: date-time */
-            expiresAt?: string;
-            /** Format: int64 */
-            id?: number;
-            message?: string;
-            organization?: components["schemas"]["AffiliationPartyRef"];
-            /** Format: date-time */
-            requestedAt?: string;
-            requestedBy?: components["schemas"]["AffiliationRequesterRef"];
-            /** Format: date-time */
-            respondedAt?: string;
-            status?: string;
-            team?: components["schemas"]["AffiliationPartyRef"];
-            teamGroup?: components["schemas"]["AffiliationGroupRef"];
         };
         CreateReminderRequest: {
             /** Format: date-time */
@@ -62510,6 +62660,12 @@ export interface components {
             featureKey?: string;
             /** @example ベータ検証のため付与 */
             note?: string;
+            /**
+             * Format: int64
+             * @description TEAM スコープの親組織（任意・未指定は代表親組織）
+             * @example 45
+             */
+            organizationId?: number;
             /** @example FULL */
             planKey?: string;
             /**
@@ -62534,6 +62690,12 @@ export interface components {
             grantKind: "INDIVIDUAL" | "TEAM_ORG";
             /** @example 第2期 パイロット団体 */
             note?: string;
+            /**
+             * Format: int64
+             * @description TEAM スコープの親組織（任意・未指定は代表親組織）
+             * @example 45
+             */
+            organizationId?: number;
             /**
              * Format: int64
              * @example 123
@@ -75119,6 +75281,11 @@ export interface components {
         ApiResponseListTeamOrgSummaryResponse: {
             data?: components["schemas"]["TeamOrgSummaryResponse"][];
         };
+        TeamOrgSummaryGroupRef: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
         TeamOrgSummaryResponse: {
             iconUrl?: string;
             id?: string;
@@ -75126,6 +75293,7 @@ export interface components {
             memberCount?: number;
             name?: string;
             slug?: string;
+            teamGroup?: components["schemas"]["TeamOrgSummaryGroupRef"];
             visibility?: string;
         };
         ApiResponseListTeamOfficerResponse: {
@@ -76177,6 +76345,33 @@ export interface components {
             updatedAt?: string;
             /** @enum {string} */
             visibility?: "PUBLIC" | "PRIVATE";
+        };
+        ApiResponseBillingTeamParentOrganizationsResponse: {
+            data?: components["schemas"]["BillingTeamParentOrganizationsResponse"];
+        };
+        /** @description チームの親組織の候補 */
+        BillingTeamParentOrganization: {
+            /** @description 組織名 */
+            name?: string;
+            /**
+             * Format: int64
+             * @description 組織 ID
+             */
+            organizationId?: number;
+            /** @description 組織の slug */
+            slug?: string;
+        };
+        /** @description チームの ACTIVE な親組織の候補と代表親組織 */
+        BillingTeamParentOrganizationsResponse: {
+            /** @description ACTIVE な親組織の ID 一覧（無所属は空） */
+            organizationIds?: number[];
+            /** @description 候補の組織の表示用情報（画面の選択肢。削除済みの組織は含まれない） */
+            organizations?: components["schemas"]["BillingTeamParentOrganization"][];
+            /**
+             * Format: int64
+             * @description 組織を明示しなかったときに記録される代表親組織（§9.3。無所属は null）
+             */
+            representativeOrganizationId?: number;
         };
         ApiResponsePriceRevisionPageResponse: {
             data?: components["schemas"]["PriceRevisionPageResponse"];
@@ -77714,6 +77909,7 @@ export interface components {
             totalUsers?: number;
         };
         PublicOrganizationResponse: {
+            acceptingTeamApplications?: boolean;
             bannerUrl?: string;
             city?: string;
             /** Format: date */
@@ -77878,6 +78074,7 @@ export interface components {
             totalPages?: number;
         };
         PublicOrganizationSearchResultResponse: {
+            acceptingTeamApplications?: boolean;
             iconUrl?: string;
             /** Format: int64 */
             id?: number;
@@ -78362,6 +78559,13 @@ export interface components {
         ApiResponseListOrgTeamSummaryResponse: {
             data?: components["schemas"]["OrgTeamSummaryResponse"][];
         };
+        OrgTeamSummaryGroupRef: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
         OrgTeamSummaryResponse: {
             iconUrl?: string;
             id?: string;
@@ -78369,7 +78573,35 @@ export interface components {
             memberCount?: number;
             name?: string;
             slug?: string;
+            teamGroup?: components["schemas"]["OrgTeamSummaryGroupRef"];
             visibility?: string;
+        };
+        ApiResponseTeamApplicationFormResponse: {
+            data?: components["schemas"]["TeamApplicationFormResponse"];
+        };
+        GroupOption: {
+            description?: string;
+            id?: string;
+            name?: string;
+        };
+        MyTeam: {
+            affiliationStatus?: string;
+            iconUrl?: string;
+            name?: string;
+            slug?: string;
+        };
+        OrganizationRef: {
+            iconUrl?: string;
+            name?: string;
+            slug?: string;
+        };
+        TeamApplicationFormResponse: {
+            /** @enum {string} */
+            groupMode?: "OFF" | "OPTIONAL" | "REQUIRED";
+            groups?: components["schemas"]["GroupOption"][];
+            guidance?: string;
+            myTeams?: components["schemas"]["MyTeam"][];
+            organization?: components["schemas"]["OrganizationRef"];
         };
         ApiResponseListOfficerResponse: {
             data?: components["schemas"]["OfficerResponse"][];
@@ -79970,6 +80202,12 @@ export interface components {
         PagedResponseOrgProjectSummaryResponse: {
             data?: components["schemas"]["OrgProjectSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponseOrgAffiliationEligibilityResponse: {
+            data?: components["schemas"]["OrgAffiliationEligibilityResponse"];
+        };
+        OrgAffiliationEligibilityResponse: {
+            canApply?: boolean;
         };
         PagedResponsePersonalMarketListingSummaryResponse: {
             data?: components["schemas"]["PersonalMarketListingSummaryResponse"][];
@@ -91843,6 +92081,60 @@ export interface operations {
             };
         };
     };
+    assignOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                teamSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignTeamGroupRequest"];
+            };
+        };
+        responses: {
+            /** @description 割当成功（更新後の加盟） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description 組織 ADMIN ではない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description ORG_064: グループなし（他組織・削除済みも同じ）/ TEAM_070: その組織の ACTIVE 加盟ではないチーム */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description ORG_067: 機能無効 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+        };
+    };
     reorder_1: {
         parameters: {
             query?: never;
@@ -91883,6 +92175,179 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["OrgTeamGroupListResponse"];
+                };
+            };
+        };
+    };
+    assignBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkAssignTeamGroupRequest"];
+            };
+        };
+        responses: {
+            /** @description 割当成功（updatedCount） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+            /** @description ORG_069: その組織の ACTIVE 加盟でないチームを含む（何も更新しない）/ teamSlugs が空・欠落・501 件以上 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+            /** @description 組織 ADMIN ではない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+            /** @description ORG_064: グループなし（他組織・削除済みも同じ） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+            /** @description ORG_067: 機能無効 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+            /** @description 一括割当は 20 件/分/ユーザー */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+        };
+    };
+    getSettings_9: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description 組織は見えるが ADMIN ではない（COMMON_002） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description 組織が存在しない・見えない（どちらも ORG_001。区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+        };
+    };
+    updateSettings_9: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTeamAffiliationSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功（GET と同じ形） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description 入力不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description 組織は見えるが ADMIN ではない（SYSTEM_ADMIN を含む。COMMON_002） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description 組織が存在しない・見えない（どちらも ORG_001。区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
+                };
+            };
+            /** @description REQUIRED の保存条件（グループ機能 on・生存グループ1件以上）を満たさない（ORG_070） */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamAffiliationSettingsResponse"];
                 };
             };
         };
@@ -92131,7 +92596,7 @@ export interface operations {
             };
         };
     };
-    getSettings_9: {
+    getSettings_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -92153,7 +92618,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_9: {
+    updateSettings_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -92393,7 +92858,7 @@ export interface operations {
             };
         };
     };
-    getSettings_10: {
+    getSettings_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -92415,7 +92880,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_10: {
+    updateSettings_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -92733,7 +93198,7 @@ export interface operations {
             };
         };
     };
-    getSettings_11: {
+    getSettings_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -92755,7 +93220,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_11: {
+    updateSettings_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -94976,7 +95441,7 @@ export interface operations {
             };
         };
     };
-    getSettings_12: {
+    getSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -94998,7 +95463,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_12: {
+    updateSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -95382,7 +95847,7 @@ export interface operations {
             };
         };
     };
-    getSettings_13: {
+    getSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -95402,7 +95867,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_13: {
+    updateSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -95777,7 +96242,7 @@ export interface operations {
             };
         };
     };
-    getSettings_14: {
+    getSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -95797,7 +96262,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_14: {
+    updateSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -137252,7 +137717,7 @@ export interface operations {
             };
         };
     };
-    getSettings_15: {
+    getSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -137569,7 +138034,7 @@ export interface operations {
             };
         };
     };
-    getSettings_16: {
+    getSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -137591,7 +138056,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_15: {
+    updateSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -139610,7 +140075,7 @@ export interface operations {
             };
         };
     };
-    getSettings_17: {
+    getSettings_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -139641,7 +140106,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_16: {
+    updateSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -141652,7 +142117,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_17: {
+    updateSettings_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -146327,7 +146792,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_18: {
+    updateSettings_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -147349,7 +147814,7 @@ export interface operations {
             };
         };
     };
-    getSettings_18: {
+    getSettings_19: {
         parameters: {
             query: {
                 scopeType: string;
@@ -147782,7 +148247,7 @@ export interface operations {
             };
         };
     };
-    getSettings_19: {
+    getSettings_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -147802,7 +148267,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_19: {
+    updateSettings_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -155167,7 +155632,7 @@ export interface operations {
             };
         };
     };
-    getSettings_20: {
+    getSettings_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -155686,6 +156151,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePageSystemAdminOrganizationSummaryResponse"];
+                };
+            };
+        };
+    };
+    teamParentOrganizations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingTeamParentOrganizationsResponse"];
                 };
             };
         };
@@ -158622,6 +159109,7 @@ export interface operations {
             query: {
                 keyword?: string;
                 prefecture?: string;
+                acceptingTeamApplications?: boolean;
                 pageable: components["schemas"]["Pageable"];
             };
             header?: never;
@@ -159315,7 +159803,10 @@ export interface operations {
     };
     getTeams_1: {
         parameters: {
-            query?: never;
+            query?: {
+                teamGroupId?: string;
+                unassigned?: boolean;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -159333,7 +159824,16 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseListOrgTeamSummaryResponse"];
                 };
             };
-            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            /** @description teamGroupId と unassigned の併用 / teamGroupId が UUID でない */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListOrgTeamSummaryResponse"];
+                };
+            };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 / 非メンバーによるグループ絞り込み */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -159349,6 +159849,46 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListOrgTeamSummaryResponse"];
+                };
+            };
+        };
+    };
+    getApplicationForm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamApplicationFormResponse"];
+                };
+            };
+            /** @description 受付 off（TEAM_064） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamApplicationFormResponse"];
+                };
+            };
+            /** @description 組織が存在しない・見えない（どちらも ORG_001。区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamApplicationFormResponse"];
                 };
             };
         };
@@ -163628,6 +164168,37 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PagedResponseOrgProjectSummaryResponse"];
+                };
+            };
+        };
+    };
+    eligibility: {
+        parameters: {
+            query: {
+                organizationSlug: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 判定結果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrgAffiliationEligibilityResponse"];
+                };
+            };
+            /** @description レートリミット超過 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrgAffiliationEligibilityResponse"];
                 };
             };
         };

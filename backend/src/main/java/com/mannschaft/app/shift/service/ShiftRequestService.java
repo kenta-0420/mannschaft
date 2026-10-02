@@ -2,7 +2,6 @@ package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EnumInputParser;
-import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
@@ -20,7 +19,6 @@ import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -37,26 +35,24 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * シフト希望サービス。メンバーのシフト希望提出・更新・集計を担当する。
+ * シフト希望の <b>トランザクション本体</b>（自ドメイン = shift の Repository と代理入力記録だけに触れる）。
  *
- * <p><b>認可（認可根治 Wave6）:</b> scope は<b>シフト希望／スケジュール実体から解決した teamId</b>
- * で判定し、パス変数・クエリの scope 値を鵜呑みにしない（BOLA 封鎖）。</p>
+ * <p><b>認可はここに置かない（CMP-260923-0954 W1 の作り替え / 認可をトランザクションの外へ）:</b>
+ * 権限の確認は非トランザクションの {@link ShiftRequestFacade} が行い、通ったものだけを本クラスの
+ * メソッドが実行する。{@code AccessControlService} / {@code ScopeConcealingAccessGate} への依存と
+ * 認可用の private メソッドは本クラスに持たない（D-3T 番人と {@code ShiftTxFacadeArchTest} が固定）。
+ * 認可の契約（主体 × 結果）は {@link ShiftRequestFacade} の Javadoc を参照。</p>
  *
- * <ul>
- *   <li><b>他人分を含む一覧・集計</b>（{@code listRequests} / {@code getRequestSummary}）:
- *       ADMIN/DEPUTY_ADMIN 以上（SYSTEM_ADMIN 短絡）</li>
- *   <li><b>提出</b>（{@code submitRequest}）: 当該チームのメンバー（SUPPORTER 不可）</li>
- *   <li><b>更新・削除</b>: 希望の提出者本人、または当該チームの ADMIN 以上</li>
- *   <li><b>自分の一覧</b>（{@code listMyRequests}）: リポジトリ引きの時点で {@code userId} 複合のため
- *       構造的に自己スコープ</li>
- * </ul>
+ * <p><b>scope の解決と読み直し:</b> Facade は認可の前に {@link #resolveScheduleScope} /
+ * {@link #resolveRequestScope}（readOnly・自ドメインのみ）で teamId を得る。書き込み tx では必ず
+ * <b>同じ経路で読み直し</b>（希望→親スケジュール）、どこかが不在・論理削除済みなら解決時と<b>同じコード</b>
+ * （scheduleId 指定系は {@code SHIFT_001}、希望 ID 指定系は {@code SHIFT_003}）の 404 を投げて DB を変えない
+ * （認可の後・tx の前に親が消える競合。K1/K5）。親スケジュール行の {@code FOR UPDATE} は<b>認可の後</b>
+ * （tx の中）で取る（K6。部外者が他チームの行をロックできない）。scope の列
+ * （希望→スケジュール→チーム）は不変という前提で、所属（memberships）の変化は従来どおりロックしない。</p>
  *
- * <p><b>存在秘匿（CMP-260923-0954）:</b> 認可は {@link ScopeConcealingAccessGate} に委ねる。
- * 越境（当該チームに所属しない利用者）は<b>不在時と完全同一</b>の 404 を返す
- * （scheduleId 指定系は {@code SHIFT_001}、希望 ID 指定系は {@code SHIFT_003}）。
- * 同一チーム内の権限不足は従来どおり {@code COMMON_002}（403）。
- * 親スケジュールの生存確認は認可（SYSTEM_ADMIN 短絡を含む）より先に行う（CMP-260917-1136）。
- * 契約は {@code ShiftRequestPositionScopeContractIT} が固定する。</p>
+ * <p>{@code @SelfScopedEndpoint} の {@code listMyRequests} は呼び出し元 userId だけを検索条件に使う
+ * 構造的な自己スコープなので、Facade を介さず Controller が直接呼ぶ。</p>
  */
 @Slf4j
 @Service
@@ -68,25 +64,63 @@ public class ShiftRequestService {
     private final ShiftSlotRepository slotRepository;
     private final ShiftScheduleService scheduleService;
     private final ShiftMapper shiftMapper;
-    private final UserRoleRepository userRoleRepository;
-    private final ScopeConcealingAccessGate accessGate;
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     @Qualifier("wallClock")
     private final Clock wallClock;
 
     /**
-     * スケジュールのシフト希望一覧を取得する（他メンバー分を含むため管理者のみ）。
+     * シフト希望の所属スケジュールの scope（所属チーム ID）。Entity は返さない。
+     *
+     * @param teamId 所属チーム ID
+     */
+    public record ScheduleScope(Long teamId) { }
+
+    /**
+     * シフト希望の scope（所属チーム ID と提出者 ID）。Entity は返さない。
+     *
+     * @param teamId      親スケジュール経由の所属チーム ID
+     * @param ownerUserId 提出者 ID（更新・削除の「本人」判定に Facade が使う）
+     */
+    public record RequestScope(Long teamId, Long ownerUserId) { }
+
+    /**
+     * scheduleId から scope を解決する（一覧・サマリー・提出用。Facade が認可の前に呼ぶ readOnly の読み取り）。
+     * 不在・論理削除済みは {@code SHIFT_001}（404）。
      *
      * @param scheduleId スケジュールID
-     * @param userId     操作者ユーザーID
-     * @return シフト希望一覧
-     * @throws BusinessException 不在・越境（SHIFT_001 / 404）、同チームの権限不足（COMMON_002 / 403）
+     * @return scope
      */
-    public List<ShiftRequestResponse> listRequests(Long scheduleId, Long userId) {
-        ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(scheduleId);
-        accessGate.requireAdminOrConceal(userId, schedule.getTeamId(), "TEAM",
-                ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+    public ScheduleScope resolveScheduleScope(Long scheduleId) {
+        return new ScheduleScope(scheduleService.findScheduleOrThrow(scheduleId).getTeamId());
+    }
+
+    /**
+     * 希望 ID から scope を解決する（更新・削除用。Facade が認可の前に呼ぶ readOnly の読み取り）。
+     * 希望が不在、または親スケジュールが不在・論理削除済みなら<b>希望の不在コード</b>（{@code SHIFT_003}・404）。
+     * 認可（本人・SYSTEM_ADMIN の短絡を含む）より前に親の生存を確認する（CMP-260917-1136）ため、
+     * ロックは取らない（ロックは認可の後の tx 本体で取る）。
+     *
+     * @param requestId 希望ID
+     * @return scope
+     */
+    public RequestScope resolveRequestScope(Long requestId) {
+        ShiftRequestEntity entity = findRequestOrThrow(requestId);
+        ShiftScheduleEntity schedule = scheduleService.findSchedule(entity.getScheduleId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND));
+        return new RequestScope(schedule.getTeamId(), entity.getUserId());
+    }
+
+    /**
+     * スケジュールのシフト希望一覧を取得する（認可は {@link ShiftRequestFacade} 済み）。
+     *
+     * @param scheduleId スケジュールID
+     * @return シフト希望一覧
+     * @throws BusinessException 認可の後にスケジュールが消えた競合（SHIFT_001 / 404）
+     */
+    public List<ShiftRequestResponse> listRequests(Long scheduleId) {
+        // 認可の後・tx の前に親が消えた競合を、解決時と同じコードの 404 にするため読み直す。
+        scheduleService.findScheduleOrThrow(scheduleId);
         List<ShiftRequestEntity> entities = requestRepository.findByScheduleIdOrderBySlotDateAsc(scheduleId);
         return shiftMapper.toRequestResponseList(entities);
     }
@@ -125,11 +159,10 @@ public class ShiftRequestService {
     // TODO: shiftドメインとproxyドメインをまたいでいる（ProxyInputRecordRepositoryを直接参照）。将来はProxyInputServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @Transactional
     public ShiftRequestResponse submitRequest(CreateShiftRequestRequest req, Long userId) {
+        // 認可（在籍メンバーのみ。越境は不在と同一の SHIFT_001）は Facade 済み。ここは認可の後に取る
+        // 親スケジュール行のロック兼読み直し（不在・論理削除済みなら Facade の解決時と同じ SHIFT_001・DB 不変）。
         ShiftScheduleEntity schedule = scheduleService.findScheduleForUpdateOrThrow(req.getScheduleId());
-        // 在籍メンバー（SUPPORTER 除く）のみ提出可。越境は不在と同一の SHIFT_001。
-        accessGate.requireMemberOrConceal(userId, schedule.getTeamId(), "TEAM",
-                ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND, true);
-        // slotId の実体整合検証は認可（BOLA 封鎖）そのものなので、public 入口のここで行う。
+        // slotId の実体整合検証は BOLA 封鎖そのものなので、tx 本体の入口のここで行う。
         validateSlotIdentity(req);
         validateCollectingStatus(schedule);
         validateRequestDeadline(schedule);
@@ -176,15 +209,14 @@ public class ShiftRequestService {
      *
      * @param requestId リクエストID
      * @param req       更新リクエスト
-     * @param userId    ユーザーID
      * @return 更新されたシフト希望
      */
     @Transactional
-    public ShiftRequestResponse updateRequest(Long requestId, UpdateShiftRequestRequest req, Long userId) {
+    public ShiftRequestResponse updateRequest(Long requestId, UpdateShiftRequestRequest req) {
+        // 認可は Facade 済み。希望→親スケジュールを読み直し（親行は認可の後にここで FOR UPDATE）、
+        // 認可の後に親が消えた競合は解決時と同じ SHIFT_003 の 404・DB 不変にする。
         ShiftRequestEntity entity = findRequestOrThrow(requestId);
         ShiftScheduleEntity schedule = findParentScheduleOrConceal(entity);
-        accessGate.requireOwnerOrAdminOrConceal(userId, schedule.getTeamId(), "TEAM", entity.getUserId(),
-                ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND);
 
         validateCollectingStatus(schedule);
         validateRequestDeadline(schedule);
@@ -200,16 +232,14 @@ public class ShiftRequestService {
      * シフト希望を削除する。
      *
      * @param requestId リクエストID
-     * @param userId    操作者ユーザーID
-     * @throws BusinessException 不在・親削除済み・越境（SHIFT_003 / 404）、同チームの権限不足（COMMON_002 / 403）
+     * @throws BusinessException 不在・親削除済み（SHIFT_003 / 404）
      */
     @Transactional
-    public void deleteRequest(Long requestId, Long userId) {
+    public void deleteRequest(Long requestId) {
+        // 認可は Facade 済み（親スケジュールの生存確認も認可より先に Facade の解決時に行っている）。
+        // ここは希望→親の読み直しと、認可の後の親行ロック。
         ShiftRequestEntity entity = findRequestOrThrow(requestId);
-        // 親スケジュールの生存確認を認可（本人・SYSTEM_ADMIN の短絡を含む）より先に行う（CMP-260917-1136）。
-        ShiftScheduleEntity schedule = findParentScheduleOrConceal(entity);
-        accessGate.requireOwnerOrAdminOrConceal(userId, schedule.getTeamId(), "TEAM", entity.getUserId(),
-                ShiftErrorCode.SHIFT_REQUEST_NOT_FOUND);
+        findParentScheduleOrConceal(entity);
         requestRepository.softDeleteById(requestId);
         log.info("シフト希望削除: id={}", requestId);
     }
@@ -220,18 +250,17 @@ public class ShiftRequestService {
      * <p>v2 拡張: 5 段階 preference 別カウント（PREFERRED / AVAILABLE / WEAK_REST /
      * STRONG_REST / ABSOLUTE_REST）を 1 クエリで集計して返却する。</p>
      *
-     * @param scheduleId スケジュールID
-     * @param userId     操作者ユーザーID
+     * @param scheduleId          スケジュールID
+     * @param memberCandidateIds  提出対象メンバーの userId（認可と同じく {@link ShiftRequestFacade} が role ドメインの
+     *                            窓口から取得して渡す。tx 本体は role の Repository を参照しない）
      * @return 提出サマリー
-     * @throws BusinessException 不在・越境（SHIFT_001 / 404）、同チームの権限不足（COMMON_002 / 403）
+     * @throws BusinessException 認可の後にスケジュールが消えた競合（SHIFT_001 / 404）
      */
-    // TODO: shiftドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
-    public ShiftRequestSummaryResponse getRequestSummary(Long scheduleId, Long userId) {
+    public ShiftRequestSummaryResponse getRequestSummary(Long scheduleId, List<Long> memberCandidateIds) {
+        // 認可は Facade 済み。スケジュールの読み直し（不在なら解決時と同じ SHIFT_001）が teamId の取得を兼ねる。
         ShiftScheduleEntity schedule = scheduleService.findScheduleOrThrow(scheduleId);
-        accessGate.requireAdminOrConceal(userId, schedule.getTeamId(), "TEAM",
-                ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
-        List<Long> memberIds = userRoleRepository.findMemberCandidateIdsByTeam(schedule.getTeamId())
-                .stream().distinct().toList();
+        log.debug("シフト希望サマリー取得: scheduleId={}, teamId={}", scheduleId, schedule.getTeamId());
+        List<Long> memberIds = memberCandidateIds.stream().distinct().toList();
         long submittedCount = memberIds.isEmpty()
                 ? 0
                 : requestRepository.countSubmittedMembersByScheduleId(scheduleId, memberIds);

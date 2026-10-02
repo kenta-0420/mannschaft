@@ -2880,4 +2880,67 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("teamId") long teamId,
             @Param("cursor") long cursor,
             @Param("limit") int limit);
+
+    // ========================================================================
+    // F01.2.1 4-B: 加盟チーム一覧・チーム所属組織一覧の人数を、行数に比例しない SQL 本数で数える
+    // ========================================================================
+
+    /**
+     * チームごとの user_roles 行数を1本の SQL でまとめて数える（{@link #countByTeamId} の一括版。N+1 を避ける）。
+     * 行が1件も無いチームは結果に含まれない。各要素は {@code [チーム ID (Long), 行数 (Long)]}。
+     */
+    @Query("SELECT ur.teamId, COUNT(ur) FROM UserRoleEntity ur "
+            + "WHERE ur.teamId IN :teamIds GROUP BY ur.teamId")
+    List<Object[]> countGroupByTeamIdIn(@Param("teamIds") Collection<Long> teamIds);
+
+    /**
+     * 組織ごとの user_roles 行数を1本の SQL でまとめて数える（{@link #countByOrganizationId} の一括版。N+1 を避ける）。
+     * 行が1件も無い組織は結果に含まれない。各要素は {@code [組織 ID (Long), 行数 (Long)]}。
+     */
+    @Query("SELECT ur.organizationId, COUNT(ur) FROM UserRoleEntity ur "
+            + "WHERE ur.organizationId IN :organizationIds GROUP BY ur.organizationId")
+    List<Object[]> countGroupByOrganizationIdIn(
+            @Param("organizationIds") Collection<Long> organizationIds);
+
+    /**
+     * 指定ユーザーが「チーム ADMIN、または当該チームの有効な権限グループで指定権限を付与されている」チームの ID を
+     * <b>1 本の SQL で</b>返す（F01.2.1 §3.2・§10.3。申請フォームの myTeams と申請ボタン判定用）。
+     *
+     * <p>述語の意味論は {@link #findTeamAffiliationOperatorUserIdsKeyset} と同一である（在籍
+     * {@code left_at IS NULL} 起点、ADMIN は {@code user_roles}、権限グループは論理削除されていない当該チームのもので
+     * {@code target_role} が利用者の実効ロールと一致する割当だけ）。違いは「チームを固定して利用者を列挙する」か
+     * 「利用者を固定してチームを列挙する」かだけ。チームごとに単票判定を回す N+1 を避けるために置く。</p>
+     *
+     * @return 条件を満たすチーム ID（重複なし）。チームの削除・アーカイブ状態は見ない（team ドメイン側で絞る）
+     */
+    @Query(value =
+            "SELECT DISTINCT CAST(ms.scope_id AS SIGNED) AS team_id " +
+            "FROM memberships ms " +
+            "JOIN users u ON u.id = ms.user_id " +
+            "WHERE ms.user_id = :userId AND ms.scope_type = 'TEAM' AND ms.left_at IS NULL " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND ( EXISTS ( " +
+            "      SELECT 1 FROM user_roles ur " +
+            "      JOIN roles r ON r.id = ur.role_id " +
+            "      WHERE ur.user_id = ms.user_id AND ur.team_id = ms.scope_id AND r.name = 'ADMIN' ) " +
+            "    OR EXISTS ( " +
+            "      SELECT 1 FROM user_permission_groups upg " +
+            "      JOIN permission_groups pg ON pg.id = upg.group_id " +
+            "      JOIN permission_group_permissions pgp ON pgp.group_id = pg.id " +
+            "      JOIN permissions p ON p.id = pgp.permission_id " +
+            "      WHERE upg.user_id = ms.user_id AND pg.team_id = ms.scope_id AND pg.deleted_at IS NULL " +
+            "        AND p.name = :permissionName " +
+            "        AND pg.target_role = ( CASE " +
+            "          WHEN EXISTS ( SELECT 1 FROM user_roles ea " +
+            "            JOIN roles ear ON ear.id = ea.role_id " +
+            "            WHERE ea.user_id = ms.user_id AND ea.team_id = ms.scope_id AND ear.name = 'ADMIN' ) THEN 'ADMIN' " +
+            "          WHEN EXISTS ( SELECT 1 FROM user_roles ed " +
+            "            JOIN roles edr ON edr.id = ed.role_id " +
+            "            WHERE ed.user_id = ms.user_id AND ed.team_id = ms.scope_id AND edr.name = 'DEPUTY_ADMIN' ) THEN 'DEPUTY_ADMIN' " +
+            "          WHEN ms.role_kind = 'MEMBER' THEN 'MEMBER' " +
+            "        END ) ) )",
+            nativeQuery = true)
+    List<Long> findTeamIdsWithAdminOrGroupPermission(
+            @Param("userId") Long userId,
+            @Param("permissionName") String permissionName);
 }

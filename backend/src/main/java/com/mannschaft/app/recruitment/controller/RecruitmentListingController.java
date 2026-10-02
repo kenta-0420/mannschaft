@@ -18,6 +18,7 @@ import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.service.RecruitmentCancellationPolicyService;
 import com.mannschaft.app.recruitment.service.RecruitmentListingService;
+import com.mannschaft.app.recruitment.service.RecruitmentMoneyFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -51,6 +52,7 @@ import java.util.List;
 public class RecruitmentListingController {
 
     private final RecruitmentListingService listingService;
+    private final RecruitmentMoneyFacade moneyFacade;
     private final RecruitmentCancellationPolicyService cancellationPolicyService;
 
     /**
@@ -181,6 +183,6 @@ public class RecruitmentListingController {
             @PathVariable Long listingId,
             @PathVariable Long participantId) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.confirmApplication(participantId, SecurityUtils.getCurrentUserId())));
+                moneyFacade.confirmApplication(listingId, participantId, SecurityUtils.getCurrentUserId())));
     }
 }

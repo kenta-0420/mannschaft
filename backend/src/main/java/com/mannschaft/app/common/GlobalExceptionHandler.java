@@ -1339,6 +1339,7 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_039", HttpStatus.TOO_MANY_REQUESTS),  // CANCEL_RATE_LIMITED（解約/撤回は同一バケットで scope ごと 10 回/時 → 429・AC-55/56）
             // 早馬（課金事故対応）: マスタ価格未設定（NULL）を無償扱いにせず契約拒否する（PLAN_PRICE_NOT_CONFIGURED）。
             Map.entry("ENTITLEMENT_040", HttpStatus.CONFLICT),           // PLAN_PRICE_NOT_CONFIGURED（価格未設定は状態不整合として409）
+            Map.entry("ENTITLEMENT_041", HttpStatus.BAD_REQUEST),        // ORGANIZATION_NOT_PARENT_OF_TEAM（F01.2.1 §9.2 #17・手動付与の組織指定が親組織でない）
             // F20.3 ベータ特典（設計書 02 §8）。登録漏れは Severity 既定 400/500 にフォールバックする前科（#1279）ゆえ明示登録。
             Map.entry("BETA_PERK_001", HttpStatus.NOT_FOUND),            // GRANT_NOT_FOUND（IDOR 秘匿含む）
             Map.entry("BETA_PERK_002", HttpStatus.CONFLICT),            // GRANT_ALREADY_EXISTS（uk_bg_scope_phase）
@@ -1726,11 +1727,11 @@ public class GlobalExceptionHandler {
             Map.entry("CMS_025", HttpStatus.NOT_FOUND),
             // CMS_026（予約公開待ち記事の共有不可・issue #2616）は記事の状態と操作の競合 → 409
             Map.entry("CMS_026", HttpStatus.CONFLICT),
-            // 認可根治戦役 Wave3-B12notif: confirmable notification（F04.9）は notificationId↔pathスコープ
-            // 突合の BOLA 対策で SCOPE_MISMATCH を新設・NOT_FOUND と同様に 404 秘匿する必要がある。
+            // 認可根治戦役 Wave3-B12notif: confirmable notification（F04.9）の NOT_FOUND は存在秘匿の 404。
             // Severity.WARN 既定の 400 のままだと存在有無が漏れる（他ドメイン同様の慣例に合わせて上書き）。
+            // CMP-260923-0954 W3b: 他スコープの通知 ID は不在 ID と同一の NOT_FOUND に畳むため、
+            // 専用の SCOPE_MISMATCH コード（と本写像）は廃止した。
             Map.entry("CONFIRMABLE_NOTIFICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
-            Map.entry("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND),
             // 認可根治戦役 Wave7: テンプレートの templateId↔pathスコープ突合の BOLA 対策で
             // TEMPLATE_NOT_FOUND を存在秘匿の404に上書きする（CMS_004 と同様、不存在・スコープ
             // 不一致のいずれも同一コードで返す）。Severity.WARN 既定の 400 のままだと
@@ -2416,7 +2417,6 @@ public class GlobalExceptionHandler {
             // MODERATION_003（自分のコンテンツは通報不可）は入力制約寄りのため見送り（既定 400 のまま）。
 
             // F04.9 確認通知システム（ConfirmableNotificationErrorCode）の残り未登録分。
-            Map.entry("CONFIRMABLE_NOTIFICATION_RECIPIENT_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("CONFIRMABLE_NOTIFICATION_ALREADY_CANCELLED", HttpStatus.CONFLICT),
             Map.entry("CONFIRMABLE_NOTIFICATION_ALREADY_CONFIRMED", HttpStatus.CONFLICT),
             Map.entry("CONFIRMABLE_NOTIFICATION_INVALID_TOKEN", HttpStatus.NOT_FOUND), // 確認トークンの秘匿

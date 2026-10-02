@@ -24,7 +24,6 @@ import com.mannschaft.app.organization.dto.AncestorsResponse;
 import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
-import com.mannschaft.app.organization.dto.OrgTeamSummaryResponse;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
 import com.mannschaft.app.organization.dto.UpdateOrganizationRequest;
@@ -300,6 +299,17 @@ public class OrganizationService {
     public boolean isTimelinePostsPublicBySlug(String slug) {
         return slug != null && organizationRepository.findPublicOrganizationBySlug(slug)
                 .map(OrganizationEntity::isTimelinePostsPublic)
+                .orElse(false);
+    }
+
+    /**
+     * 公開組織ページ用: チームからの加盟申請を受け付けているかを返す横断 SPI（F01.2.1 §10.3）。
+     * 考え方は {@link #isTimelinePostsPublicBySlug(String)} と同じ（公開してよい組織だけを見る。
+     * 非公開・不在は false で、存在オラクルにならない）。
+     */
+    public boolean isAcceptingTeamApplicationsBySlug(String slug) {
+        return slug != null && organizationRepository.findPublicOrganizationBySlug(slug)
+                .map(org -> Boolean.TRUE.equals(org.getTeamApplicationEnabled()))
                 .orElse(false);
     }
 
@@ -811,7 +821,7 @@ public class OrganizationService {
      *
      * <p>{@link OrganizationMembershipService#getTeams(Long)} へ委譲。</p>
      */
-    public List<OrgTeamSummaryResponse> getTeams(Long orgId) {
+    public List<OrgTeamMembershipView> getTeams(Long orgId) {
         return organizationMembershipService.getTeams(orgId);
     }
 
@@ -979,6 +989,8 @@ public class OrganizationService {
                         mediaUrlResolver.resolve(org.getBannerUrl())))
                 .timestamps(new OrganizationResponse.OrgTimestampsDto(
                         org.getArchivedAt(), org.getCreatedAt()))
+                .teamApplication(new OrganizationResponse.TeamApplicationDto(
+                        Boolean.TRUE.equals(org.getTeamApplicationEnabled())))
                 .build();
     }
 }

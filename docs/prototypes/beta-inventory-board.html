@@ -185,7 +185,7 @@
     .cmp-card[data-status="blocked"] { border-left: 4px solid var(--danger); }
     .cmp-card[data-status="working"] { border-left: 4px solid var(--info); }
     .cmp-card[data-status="done"] { border-left: 4px solid var(--ready); }
-    .cmp-card[data-status="unknown"] { border-left: 4px solid var(--muted); }
+    .cmp-card[data-status="unknown"], .cmp-card[data-status="not-started"], .cmp-card[data-status="on-hold"] { border-left: 4px solid var(--muted); }
     .cmp-card h3 { margin: 5px 0; font-size: 15px; }
     .cmp-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
     .cmp-meta { display: grid; gap: 6px; }
@@ -199,7 +199,7 @@
     .status-pill.blocked { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--panel)); }
     .status-pill.working { color: var(--info); background: color-mix(in srgb, var(--info) 10%, var(--panel)); }
     .status-pill.done { color: var(--ready); background: var(--brand-soft); }
-    .status-pill.unknown { color: var(--muted); background: var(--panel-soft); }
+    .status-pill.unknown, .status-pill.not-started, .status-pill.on-hold { color: var(--muted); background: var(--panel-soft); }
     .insight-intro {
       display: flex; justify-content: space-between; gap: 14px; align-items: center;
       padding: 15px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel);
@@ -557,7 +557,7 @@
     });
     const { featureClassification, featurePublication, gateFoundation, campaigns } = baseInventory;
     const sourceCounts = baseInventory.sourceCounts;
-    const campaignStatusLabels = { blocked: '停止中', working: '進行中', done: '完了', unknown: '未整理' };
+    const campaignStatusLabels = { blocked: '停止中', working: '進行中', done: '完了', 'not-started': '未着手', 'on-hold': '保留', unknown: '未整理' };
 
     const laneDefinitions = [
       { status: 'blocked', title: '不備あり' },
@@ -922,7 +922,7 @@
     function campaignTagButtons() {
       const counts = new Map();
       campaigns.forEach((campaign) => campaign.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1)));
-      const order = ['完了', '進行中', '未整理', '停止中'];
+      const order = ['完了', '進行中', '未着手', '保留', '未整理', '停止中'];
       const entries = [...counts.entries()].sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
       const render = ([tag, count]) => `<button class="cmp-tag-button${selectedCampaignTags.has(tag) ? ' active' : ''}" type="button" data-cmp-tag="${escapeHtml(tag)}" aria-pressed="${selectedCampaignTags.has(tag)}">${escapeHtml(tag)} <span>${count}</span></button>`;
       return `<div class="cmp-tag-filter" aria-label="CMPタグフィルター">
@@ -957,6 +957,8 @@
       const blocked = visibleCampaigns.filter((campaign) => campaign.status === 'blocked').length;
       const working = visibleCampaigns.filter((campaign) => campaign.status === 'working').length;
       const unknown = visibleCampaigns.filter((campaign) => campaign.status === 'unknown').length;
+      const notStarted = visibleCampaigns.filter((campaign) => campaign.status === 'not-started').length;
+      const onHold = visibleCampaigns.filter((campaign) => campaign.status === 'on-hold').length;
       const done = visibleCampaigns.filter((campaign) => campaign.status === 'done').length;
       board.className = '';
       board.innerHTML = `
@@ -975,7 +977,9 @@
           <span class="status-pill ${baseInventory.githubSync?.status === 'synced' ? 'done' : 'unknown'}">GitHub: ${escapeHtml(baseInventory.githubSync?.status || '未同期')} / ${escapeHtml(baseInventory.githubSync?.synchronizedAt || '取得日時なし')}${baseInventory.githubSync?.lastAttempt?.status === 'error' ? ' / 最新試行失敗' : ''}</span>
           <span class="status-pill blocked">停止中 ${blocked}</span>
           <span class="status-pill working">進行中 ${working}</span>
-          <span class="status-pill unknown">未整理 ${unknown}</span>
+          <span class="status-pill not-started">未着手 ${notStarted}</span>
+          <span class="status-pill on-hold">保留 ${onHold}</span>
+          ${unknown ? `<span class="status-pill unknown">未整理 ${unknown}</span>` : ''}
           <span class="status-pill done">完了 ${done}</span>
         </div>
         ${campaignTagButtons()}
@@ -1155,7 +1159,7 @@
         : selectedView === 'insights' ? visibleInsights.filter((insight) => insight.status === 'inbox').length
         : visible.filter((feature) => feature.status === 'incomplete' || feature.status === 'verifying').length;
       const nextCount = selectedView === 'campaigns'
-        ? visibleCampaigns.filter((campaign) => campaign.status === 'blocked' || campaign.status === 'unknown').length
+        ? visibleCampaigns.filter((campaign) => ['blocked', 'not-started', 'on-hold', 'unknown'].includes(campaign.status)).length
         : selectedView === 'insights' ? visibleInsights.filter((insight) => insight.status === 'planned').length
         : visible.filter((feature) => feature.status === 'blocked' || feature.status === 'unknown').length;
       document.querySelector('#activeCount').textContent = activeCount;
@@ -1164,7 +1168,7 @@
         ? '進行中CMP'
         : selectedView === 'insights' ? '未整理の気づき' : '実装未完・検証中';
       document.querySelector('#nextLabel').textContent = selectedView === 'campaigns'
-        ? '停止・未整理CMP'
+        ? '未着手・保留などCMP'
         : selectedView === 'insights' ? '課題化済' : '不備・未棚卸';
       document.querySelector('#publishableCount').textContent = features.filter((feature) => feature.status === 'ready' && feature.gate === '適用完了').length;
       document.querySelector('#gateCount').textContent = `${doneGates}/${gateFoundation.length}`;
