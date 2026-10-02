@@ -1,6 +1,5 @@
 package com.mannschaft.app.notification.confirmable.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.membership.ScopeType;
@@ -37,14 +36,6 @@ public class ConfirmableNotificationQueryService {
 
     private final ConfirmableNotificationRepository notificationRepository;
     private final ConfirmableNotificationRecipientRepository recipientRepository;
-    /**
-     * CMP-260920-1040: 受信者一覧ページング（{@link #getRecipientsPage}）で viewerRole（ADMIN/CREATOR/MEMBER）
-     * を判定するために使う。旧コンストラクタ（2引数）を使う既存呼び出し元はいないため、
-     * {@code @RequiredArgsConstructor} でコンストラクタに追加する（骨格試練の
-     * {@code new ConfirmableNotificationQueryService(null, null)} はIT差し替えで解消する）。
-     */
-    private final AccessControlService accessControlService;
-
     /**
      * 確認通知の詳細を取得する。
      *
@@ -229,18 +220,25 @@ public class ConfirmableNotificationQueryService {
     /**
      * CMP-260920-1040 受信者一覧をページングして取得する（軍議第8版確定稿 §9.5・AC-30・AC-59・AC-60）。
      *
-     * <p><b>骨格のみ（試練A）。出陣で実装する。</b> {@code size} は上限 {@value #MAX_RECIPIENT_PAGE_SIZE}
-     * に丸めるか 400 とする（試練で1つに固定する）。件数・{@code viewerRole} は API が明示的に返す。</p>
+     * <p>{@code size} は上限 {@value #MAX_RECIPIENT_PAGE_SIZE} に丸める。件数・{@code viewerRole} は
+     * API が明示的に返す。</p>
      *
-     * @param notificationId  確認通知ID
-     * @param requesterUserId リクエスト元ユーザーID
+     * <p><b>CMP-260923-0954 W3b（認可を tx の外へ）</b>: 本メソッドは {@code AccessControlService} /
+     * Gate に依存しない tx 本体である。スコープへの所属判定と ADMIN 判定は tx の外の
+     * {@code ConfirmableNotificationRecipientPageFacade} が済ませ、結果（{@code requesterIsAdmin}）を引数で渡す。
+     * 通知は本 tx の中で読み直す（認可の後に削除されていれば {@code NOT_FOUND}。不在IDと同一応答）。</p>
+     *
+     * @param notificationId   確認通知ID
+     * @param requesterUserId  リクエスト元ユーザーID
+     * @param requesterIsAdmin リクエスト元が通知のスコープの ADMIN 以上か（Facade が tx の外で判定済み）
      * @param page            ページ番号（0始まり）
      * @param size            ページサイズ
      * @param unconfirmedOnly 未確認者のみに絞り込むか
      * @return ページング済み受信者一覧の応答契約
      */
     public ConfirmableNotificationRecipientPageResponse getRecipientsPage(
-            Long notificationId, Long requesterUserId, int page, int size, boolean unconfirmedOnly) {
+            Long notificationId, Long requesterUserId, boolean requesterIsAdmin,
+            int page, int size, boolean unconfirmedOnly) {
         ConfirmableNotificationEntity notification = getDetail(notificationId);
 
         // AC-30: size は上限 MAX_RECIPIENT_PAGE_SIZE に丸める（400 にはしない方式で固定）。
@@ -248,8 +246,7 @@ public class ConfirmableNotificationQueryService {
         int safePage = Math.max(page, 0);
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
-        boolean isAdmin = accessControlService.isAdminOrAbove(
-                requesterUserId, notification.getScopeId(), notification.getScopeType().name());
+        boolean isAdmin = requesterIsAdmin;
         boolean isCreator = notification.getCreatedBy() != null
                 && notification.getCreatedBy().getId().equals(requesterUserId);
 
