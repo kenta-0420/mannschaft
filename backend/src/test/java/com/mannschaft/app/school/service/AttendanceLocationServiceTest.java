@@ -7,6 +7,7 @@ import com.mannschaft.app.school.entity.AttendanceLocation;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeEntity;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeReason;
 import com.mannschaft.app.school.entity.DailyAttendanceRecordEntity;
+import com.mannschaft.app.school.error.SchoolErrorCode;
 import com.mannschaft.app.school.repository.AttendanceLocationChangeRepository;
 import com.mannschaft.app.school.repository.DailyAttendanceRecordRepository;
 import com.mannschaft.app.school.repository.PeriodAttendanceRecordRepository;
@@ -19,7 +20,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,6 +61,9 @@ class AttendanceLocationServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private SchoolAttendanceAccessPolicy policy;
+
     @InjectMocks
     private AttendanceLocationService attendanceLocationService;
 
@@ -77,10 +83,10 @@ class AttendanceLocationServiceTest {
     class RecordLocationChange {
 
         @Test
-        @DisplayName("AC-1-5 red→green: 対象チーム非所属operatorが記録 → 403 (COMMON_002)")
-        void nonMemberOperator_forbidden() {
+        @DisplayName("AC-13: 日次登録権（R）の無い operator が記録 → 403 (COMMON_002)")
+        void nonWriter_forbidden() {
             doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkMembership(OUTSIDER_USER_ID, TEAM_ID, "TEAM");
+                    .when(policy).checkCanRecordDaily(OUTSIDER_USER_ID, TEAM_ID);
 
             assertThatThrownBy(() -> attendanceLocationService.recordLocationChange(
                     TEAM_ID, STUDENT_USER_ID, ATTENDANCE_DATE,
@@ -95,9 +101,25 @@ class AttendanceLocationServiceTest {
         }
 
         @Test
-        @DisplayName("非回帰: チーム所属operatorは従来どおり記録可能")
-        void memberOperator_success() {
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+        @DisplayName("AC-13: 対象生徒がクラスの在籍メンバーでなければ 4xx（DAILY_RECORD_NOT_FOUND）で何も書かない")
+        void studentNotEnrolled_rejected() {
+            given(accessControlService.listActiveMemberIds(TEAM_ID, "TEAM")).willReturn(List.of(OPERATOR_USER_ID));
+
+            assertThatThrownBy(() -> attendanceLocationService.recordLocationChange(
+                    TEAM_ID, STUDENT_USER_ID, ATTENDANCE_DATE,
+                    AttendanceLocation.CLASSROOM, AttendanceLocation.SICK_BAY,
+                    null, null, AttendanceLocationChangeReason.FELT_SICK, null, OPERATOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                    .isEqualTo(SchoolErrorCode.DAILY_RECORD_NOT_FOUND);
+
+            verify(attendanceLocationChangeRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("非回帰: R を持つ operator は従来どおり記録可能")
+        void writer_success() {
+            given(accessControlService.listActiveMemberIds(TEAM_ID, "TEAM")).willReturn(List.of(STUDENT_USER_ID));
 
             DailyAttendanceRecordEntity dailyRecord = DailyAttendanceRecordEntity.builder()
                     .teamId(TEAM_ID)
@@ -116,7 +138,37 @@ class AttendanceLocationServiceTest {
                     null, null, AttendanceLocationChangeReason.FELT_SICK, null, OPERATOR_USER_ID);
 
             assertThat(result.getToLocation()).isEqualTo(AttendanceLocation.SICK_BAY);
-            verify(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+            verify(policy).checkCanRecordDaily(OPERATOR_USER_ID, TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("AC-21: 時限記録はチーム条件付きで取得する（兼籍生徒の他クラスの記録を更新しない）")
+        void periodRecords_areScopedByTeam() {
+            given(accessControlService.listActiveMemberIds(TEAM_ID, "TEAM")).willReturn(List.of(STUDENT_USER_ID));
+            DailyAttendanceRecordEntity dailyRecord = DailyAttendanceRecordEntity.builder()
+                    .teamId(TEAM_ID)
+                    .studentUserId(STUDENT_USER_ID)
+                    .attendanceDate(ATTENDANCE_DATE)
+                    .build();
+            given(dailyAttendanceRecordRepository
+                    .findByTeamIdAndStudentUserIdAndAttendanceDate(TEAM_ID, STUDENT_USER_ID, ATTENDANCE_DATE))
+                    .willReturn(Optional.of(dailyRecord));
+            given(attendanceLocationChangeRepository.save(any()))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(periodAttendanceRecordRepository
+                    .findByTeamIdAndStudentUserIdAndAttendanceDateOrderByPeriodNumberAsc(
+                            TEAM_ID, STUDENT_USER_ID, ATTENDANCE_DATE))
+                    .willReturn(List.of());
+
+            attendanceLocationService.recordLocationChange(
+                    TEAM_ID, STUDENT_USER_ID, ATTENDANCE_DATE,
+                    AttendanceLocation.CLASSROOM, AttendanceLocation.SICK_BAY,
+                    1, null, AttendanceLocationChangeReason.FELT_SICK, null, OPERATOR_USER_ID);
+
+            verify(periodAttendanceRecordRepository).findByTeamIdAndStudentUserIdAndAttendanceDateOrderByPeriodNumberAsc(
+                    TEAM_ID, STUDENT_USER_ID, ATTENDANCE_DATE);
+            verify(periodAttendanceRecordRepository, never())
+                    .findByStudentUserIdAndAttendanceDateOrderByPeriodNumberAsc(any(), any());
         }
     }
 
@@ -162,112 +214,90 @@ class AttendanceLocationServiceTest {
     }
 
     // ========================================
-    // getTimeline（教職員＋保護者の二経路・マスター御裁可済み方針）
+    // getTimeline（本人・保護者は全クラス分／教員は V のクラス分だけ・AC-4）
     // ========================================
 
+    private static final Long TEAM_B_ID = 2L;
+
+    private AttendanceLocationChangeEntity change(Long teamId) {
+        return AttendanceLocationChangeEntity.builder()
+                .teamId(teamId)
+                .studentUserId(STUDENT_USER_ID)
+                .attendanceDate(ATTENDANCE_DATE)
+                .fromLocation(AttendanceLocation.CLASSROOM)
+                .toLocation(AttendanceLocation.SICK_BAY)
+                .reason(AttendanceLocationChangeReason.FELT_SICK)
+                .recordedBy(OPERATOR_USER_ID)
+                .build();
+    }
+
     @Nested
-    @DisplayName("getTimeline（教職員＋保護者の二経路）")
+    @DisplayName("getTimeline（本人・保護者・V の教員）")
     class GetTimeline {
 
+        private void notGuardian(Long userId) {
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkCareLink(userId, STUDENT_USER_ID);
+        }
+
         @Test
-        @DisplayName("AC-1-5: 教職員（同チーム所属）は生徒タイムラインを閲覧可能")
-        void teacherMember_success() {
-            DailyAttendanceRecordEntity dailyRecord = DailyAttendanceRecordEntity.builder()
-                    .teamId(TEAM_ID)
-                    .studentUserId(STUDENT_USER_ID)
-                    .attendanceDate(ATTENDANCE_DATE)
-                    .build();
-            given(dailyAttendanceRecordRepository
-                    .findFirstByStudentUserIdAndAttendanceDate(STUDENT_USER_ID, ATTENDANCE_DATE))
-                    .willReturn(Optional.of(dailyRecord));
-            given(accessControlService.isMember(OPERATOR_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        @DisplayName("AC-4: 教員は自分が V のクラス分だけが返る（他クラスの履歴は除外）")
+        void teacher_getsOnlyViewableClass() {
+            notGuardian(OPERATOR_USER_ID);
+            given(accessControlService.findActiveMembershipJoinedAtByScope(STUDENT_USER_ID, "TEAM"))
+                    .willReturn(Map.of(TEAM_ID, LocalDateTime.now(), TEAM_B_ID, LocalDateTime.now()));
+            given(policy.canView(OPERATOR_USER_ID, TEAM_ID)).willReturn(true);
+            given(policy.canView(OPERATOR_USER_ID, TEAM_B_ID)).willReturn(false);
             given(attendanceLocationChangeRepository
                     .findByStudentUserIdAndAttendanceDateOrderByRecordedAtAsc(STUDENT_USER_ID, ATTENDANCE_DATE))
-                    .willReturn(List.of());
+                    .willReturn(List.of(change(TEAM_B_ID), change(TEAM_ID)));
 
             var result = attendanceLocationService.getTimeline(STUDENT_USER_ID, ATTENDANCE_DATE, OPERATOR_USER_ID);
 
-            assertThat(result).isEmpty();
-            verify(accessControlService).isMember(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+            assertThat(result).extracting(AttendanceLocationChangeEntity::getTeamId).containsExactly(TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("AC-4: 生徒本人は全クラス分が返る（careLink 判定も行わない）")
+        void self_getsAllClasses() {
+            given(attendanceLocationChangeRepository
+                    .findByStudentUserIdAndAttendanceDateOrderByRecordedAtAsc(STUDENT_USER_ID, ATTENDANCE_DATE))
+                    .willReturn(List.of(change(TEAM_B_ID), change(TEAM_ID)));
+
+            var result = attendanceLocationService.getTimeline(STUDENT_USER_ID, ATTENDANCE_DATE, STUDENT_USER_ID);
+
+            assertThat(result).hasSize(2);
             verify(accessControlService, never()).checkCareLink(any(), any());
         }
 
         @Test
-        @DisplayName("AC-1-5: 保護者（careLink）は非所属でも生徒タイムラインを閲覧可能（2xx）")
-        void guardianCareLink_success() {
-            DailyAttendanceRecordEntity dailyRecord = DailyAttendanceRecordEntity.builder()
-                    .teamId(TEAM_ID)
-                    .studentUserId(STUDENT_USER_ID)
-                    .attendanceDate(ATTENDANCE_DATE)
-                    .build();
-            given(dailyAttendanceRecordRepository
-                    .findFirstByStudentUserIdAndAttendanceDate(STUDENT_USER_ID, ATTENDANCE_DATE))
-                    .willReturn(Optional.of(dailyRecord));
-            given(accessControlService.isMember(GUARDIAN_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        @DisplayName("AC-4: 保護者（careLink）は全クラス分が返る")
+        void guardian_getsAllClasses() {
             doNothing().when(accessControlService).checkCareLink(GUARDIAN_USER_ID, STUDENT_USER_ID);
             given(attendanceLocationChangeRepository
                     .findByStudentUserIdAndAttendanceDateOrderByRecordedAtAsc(STUDENT_USER_ID, ATTENDANCE_DATE))
-                    .willReturn(List.of());
+                    .willReturn(List.of(change(TEAM_B_ID), change(TEAM_ID)));
 
             var result = attendanceLocationService.getTimeline(STUDENT_USER_ID, ATTENDANCE_DATE, GUARDIAN_USER_ID);
 
-            assertThat(result).isEmpty();
-            verify(accessControlService).checkCareLink(GUARDIAN_USER_ID, STUDENT_USER_ID);
+            assertThat(result).hasSize(2);
+            verify(policy, never()).canView(any(), any());
         }
 
         @Test
-        @DisplayName("AC-1-5 red→green: 非教職員かつ非保護者が GET タイムライン → 403 (COMMON_002)")
-        void outsider_forbidden() {
-            DailyAttendanceRecordEntity dailyRecord = DailyAttendanceRecordEntity.builder()
-                    .teamId(TEAM_ID)
-                    .studentUserId(STUDENT_USER_ID)
-                    .attendanceDate(ATTENDANCE_DATE)
-                    .build();
-            given(dailyAttendanceRecordRepository
-                    .findFirstByStudentUserIdAndAttendanceDate(STUDENT_USER_ID, ATTENDANCE_DATE))
-                    .willReturn(Optional.of(dailyRecord));
-            given(accessControlService.isMember(OUTSIDER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkCareLink(OUTSIDER_USER_ID, STUDENT_USER_ID);
+        @DisplayName("AC-4: どのクラスでも V の無い者（同級の一般 MEMBER・別クラスの教員）は 403 (COMMON_002)")
+        void noViewableClass_forbidden() {
+            notGuardian(OUTSIDER_USER_ID);
+            given(accessControlService.findActiveMembershipJoinedAtByScope(STUDENT_USER_ID, "TEAM"))
+                    .willReturn(Map.of(TEAM_ID, LocalDateTime.now()));
+            given(policy.canView(OUTSIDER_USER_ID, TEAM_ID)).willReturn(false);
 
             assertThatThrownBy(() -> attendanceLocationService
                     .getTimeline(STUDENT_USER_ID, ATTENDANCE_DATE, OUTSIDER_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(ex -> ((BusinessException) ex).getErrorCode())
                     .isEqualTo(CommonErrorCode.COMMON_002);
-        }
-
-        @Test
-        @DisplayName("AC-1-5: 対象日の日次出欠記録が存在しなくても保護者(careLink)は閲覧可能")
-        void guardianCareLink_noDailyRecord_success() {
-            given(dailyAttendanceRecordRepository
-                    .findFirstByStudentUserIdAndAttendanceDate(STUDENT_USER_ID, ATTENDANCE_DATE))
-                    .willReturn(Optional.empty());
-            doNothing().when(accessControlService).checkCareLink(GUARDIAN_USER_ID, STUDENT_USER_ID);
-            given(attendanceLocationChangeRepository
-                    .findByStudentUserIdAndAttendanceDateOrderByRecordedAtAsc(STUDENT_USER_ID, ATTENDANCE_DATE))
-                    .willReturn(List.of());
-
-            var result = attendanceLocationService.getTimeline(STUDENT_USER_ID, ATTENDANCE_DATE, GUARDIAN_USER_ID);
-
-            assertThat(result).isEmpty();
-            verify(accessControlService, never()).isMember(any(), any(), any());
-        }
-
-        @Test
-        @DisplayName("AC-1-5 red→green: 日次出欠記録なし・非保護者 → 403 (COMMON_002)")
-        void noDailyRecord_nonGuardian_forbidden() {
-            given(dailyAttendanceRecordRepository
-                    .findFirstByStudentUserIdAndAttendanceDate(STUDENT_USER_ID, ATTENDANCE_DATE))
-                    .willReturn(Optional.empty());
-            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkCareLink(OUTSIDER_USER_ID, STUDENT_USER_ID);
-
-            assertThatThrownBy(() -> attendanceLocationService
-                    .getTimeline(STUDENT_USER_ID, ATTENDANCE_DATE, OUTSIDER_USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
-                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verify(attendanceLocationChangeRepository, never()).findByStudentUserIdAndAttendanceDateOrderByRecordedAtAsc(any(), any());
         }
     }
 }

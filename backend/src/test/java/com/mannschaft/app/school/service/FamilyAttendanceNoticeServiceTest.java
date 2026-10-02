@@ -3,6 +3,7 @@ package com.mannschaft.app.school.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.family.repository.UserCareLinkRepository;
 import com.mannschaft.app.school.dto.FamilyAttendanceNoticeRequest;
@@ -36,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import org.mockito.ArgumentCaptor;
 
@@ -71,6 +73,9 @@ class FamilyAttendanceNoticeServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private SchoolAttendanceAccessPolicy policy;
 
     @Mock
     private StorageService storageService;
@@ -162,12 +167,30 @@ class FamilyAttendanceNoticeServiceTest {
             FamilyAttendanceNoticeResponse response = service.acknowledgeNotice(TEAM_ID, NOTICE_ID, 99L);
 
             assertThat(response.getStatus()).isEqualTo("ACKNOWLEDGED");
+            // AC-14: 確認は日次登録権（R）。現役の担任・副担任も通る（ADMIN 限定ではない）。
+            verify(policy).checkCanRecordDaily(99L, TEAM_ID);
 
             // Issue #2990 L6: 通知の失敗で担任の確認済み化が巻き戻らないよう、publish だけに留める。
             ArgumentCaptor<FamilyAttendanceNoticeAcknowledgedEvent> captor =
                     ArgumentCaptor.forClass(FamilyAttendanceNoticeAcknowledgedEvent.class);
             verify(eventPublisher).publishEvent(captor.capture());
             assertThat(captor.getValue().noticeId()).isEqualTo(NOTICE_ID);
+        }
+
+        @Test
+        @DisplayName("AC-14: 日次登録権（R）の無い者（委任者・一般 MEMBER）は確認できない → 403（COMMON_002）")
+        void 書込権なし_確認は拒否() {
+            FamilyAttendanceNoticeEntity entity = buildEntity(false, null, null);
+            setId(entity, NOTICE_ID);
+            given(noticeRepository.findById(NOTICE_ID)).willReturn(Optional.of(entity));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(policy).checkCanRecordDaily(77L, TEAM_ID);
+
+            assertThatThrownBy(() -> service.acknowledgeNotice(TEAM_ID, NOTICE_ID, 77L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(noticeRepository, never()).save(any());
         }
 
         @Test
@@ -205,6 +228,24 @@ class FamilyAttendanceNoticeServiceTest {
 
             assertThat(response.isAppliedToRecord()).isTrue();
             assertThat(response.getStatus()).isEqualTo("APPLIED");
+            // AC-14: 反映は日次登録権（R）。
+            verify(policy).checkCanRecordDaily(99L, TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("AC-14: 日次登録権（R）の無い者は反映できない → 403（COMMON_002）")
+        void 書込権なし_反映は拒否() {
+            FamilyAttendanceNoticeEntity entity = buildEntity(false, 99L, LocalDateTime.now());
+            setId(entity, NOTICE_ID);
+            given(noticeRepository.findById(NOTICE_ID)).willReturn(Optional.of(entity));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(policy).checkCanRecordDaily(77L, TEAM_ID);
+
+            assertThatThrownBy(() -> service.applyToAttendanceRecord(TEAM_ID, NOTICE_ID, 77L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(noticeRepository, never()).save(any());
         }
 
         @Test
@@ -243,6 +284,21 @@ class FamilyAttendanceNoticeServiceTest {
 
             assertThat(response.getTotalCount()).isEqualTo(2);
             assertThat(response.getUnacknowledgedCount()).isEqualTo(1);
+            // AC-14: 一覧は閲覧権（V）。
+            verify(policy).checkCanView(TEACHER_ID, TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("AC-14: 閲覧権（V）の無い者は一覧を取得できない → 403（COMMON_002）")
+        void 閲覧権なし_一覧は拒否() {
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(policy).checkCanView(77L, TEAM_ID);
+
+            assertThatThrownBy(() -> service.getTeamNotices(TEAM_ID, TODAY, 77L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(noticeRepository, never()).findByTeamIdAndAttendanceDateOrderByCreatedAtDesc(any(), any());
         }
     }
 

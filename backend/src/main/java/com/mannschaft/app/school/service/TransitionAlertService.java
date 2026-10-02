@@ -30,6 +30,7 @@ public class TransitionAlertService {
 
     private final AttendanceTransitionAlertRepository alertRepository;
     private final AccessControlService accessControlService;
+    private final SchoolAttendanceAccessPolicy policy;
 
     // ========================================
     // アラート一覧取得
@@ -82,8 +83,8 @@ public class TransitionAlertService {
     /**
      * 指定アラートを解決済みにする。
      *
-     * <p>認可（束4）: 確認・解決はチームの ADMIN／DEPUTY_ADMIN のみ
-     * （{@link AccessControlService#checkAdminOrAbove}）。</p>
+     * <p>認可（AC-14）: 解決はチームの日次登録権（R: 管理者・現役の担任／副担任）のみ
+     * （{@link SchoolAttendanceAccessPolicy#checkCanRecordDaily}）。</p>
      *
      * @param teamId          クラスチームID
      * @param alertId         アラートID
@@ -107,8 +108,9 @@ public class TransitionAlertService {
             throw new BusinessException(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
         }
 
-        // 認可: entity 由来 scope（= path と一致確認済みの teamId）の ADMIN／DEPUTY_ADMIN のみ。
-        accessControlService.checkAdminOrAbove(resolverUserId, entity.getTeamId(), "TEAM");
+        // 認可（AC-14）: entity 由来 scope（= path と一致確認済みの teamId）の日次登録権（R）。
+        // 現役の担任・副担任と管理者が可。VIEW_ATTENDANCE の委任者は不可。
+        policy.checkCanRecordDaily(resolverUserId, entity.getTeamId());
 
         if (entity.getResolvedAt() != null) {
             throw new BusinessException(SchoolErrorCode.TRANSITION_ALERT_ALREADY_RESOLVED);

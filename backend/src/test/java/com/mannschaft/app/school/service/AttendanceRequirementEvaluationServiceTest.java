@@ -2,6 +2,7 @@ package com.mannschaft.app.school.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.school.dto.EvaluationResponse;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.EvaluationStatus;
@@ -30,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -56,6 +59,9 @@ class AttendanceRequirementEvaluationServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private SchoolAttendanceAccessPolicy policy;
 
     // ========================================
     // evaluate
@@ -252,7 +258,7 @@ class AttendanceRequirementEvaluationServiceTest {
 
             given(evaluationRepository.findById(50L)).willReturn(Optional.of(entity));
             given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
-            given(accessControlService.isMember(999L, 10L, "TEAM")).willReturn(true);
+            given(policy.canRecordDaily(999L, 10L)).willReturn(true);
             given(evaluationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
             ResolveEvaluationRequest request = new ResolveEvaluationRequest("保護者と面談し指導完了");
@@ -295,7 +301,7 @@ class AttendanceRequirementEvaluationServiceTest {
 
             given(evaluationRepository.findById(50L)).willReturn(Optional.of(entity));
             given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
-            given(accessControlService.isMember(999L, 10L, "TEAM")).willReturn(true);
+            given(policy.canRecordDaily(999L, 10L)).willReturn(true);
 
             ResolveEvaluationRequest request = new ResolveEvaluationRequest("再解消しようとする");
             assertThatThrownBy(() -> service.resolveViolation(50L, 999L, request))
@@ -304,7 +310,7 @@ class AttendanceRequirementEvaluationServiceTest {
         }
 
         @Test
-        @DisplayName("認可: 規程スコープ非メンバーは 404（EVALUATION_NOT_FOUND・存在秘匿）")
+        @DisplayName("認可: 日次登録権（R）の無い者は 404（EVALUATION_NOT_FOUND・存在秘匿）")
         void 非メンバーはEVALUATION_NOT_FOUND() {
             AttendanceRequirementEvaluationEntity entity = AttendanceRequirementEvaluationEntity.builder()
                     .requirementRuleId(1L)
@@ -319,7 +325,7 @@ class AttendanceRequirementEvaluationServiceTest {
 
             given(evaluationRepository.findById(50L)).willReturn(Optional.of(entity));
             given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
-            given(accessControlService.isMember(777L, 10L, "TEAM")).willReturn(false);
+            given(policy.canRecordDaily(777L, 10L)).willReturn(false);
 
             ResolveEvaluationRequest request = new ResolveEvaluationRequest("越境で解消しようとする");
             assertThatThrownBy(() -> service.resolveViolation(50L, 777L, request))
@@ -336,15 +342,166 @@ class AttendanceRequirementEvaluationServiceTest {
     @DisplayName("evaluate — 公開入口の認可")
     class EvaluateAuthorization {
 
+        private AttendanceRequirementRuleEntity orgRule() {
+            return AttendanceRequirementRuleEntity.builder()
+                    .organizationId(5L)
+                    .academicYear((short) 2026)
+                    .name("組織規程")
+                    .effectiveFrom(LocalDate.of(2026, 4, 1))
+                    .build();
+        }
+
         @Test
-        @DisplayName("認可: 規程スコープ非メンバーは 404（REQUIREMENT_RULE_NOT_FOUND・存在秘匿）")
-        void 非メンバーはREQUIREMENT_RULE_NOT_FOUND() {
+        @DisplayName("認可: 日次登録権（R）の無い者は 404（REQUIREMENT_RULE_NOT_FOUND・存在秘匿）")
+        void 書込権なしはREQUIREMENT_RULE_NOT_FOUND() {
             given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
-            given(accessControlService.isMember(777L, 10L, "TEAM")).willReturn(false);
+            given(policy.canRecordDaily(777L, 10L)).willReturn(false);
 
             assertThatThrownBy(() -> service.evaluate(200L, 1L, 777L))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND.getMessage());
+        }
+
+        @Test
+        @DisplayName("AC-13: R を持つが対象生徒がクラスの在籍メンバーでなければ 4xx（SUMMARY_NOT_FOUND）")
+        void 非在籍生徒はSUMMARY_NOT_FOUND() {
+            given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
+            given(policy.canRecordDaily(999L, 10L)).willReturn(true);
+            given(accessControlService.listActiveMemberIds(10L, "TEAM")).willReturn(java.util.List.of(201L));
+
+            assertThatThrownBy(() -> service.evaluate(200L, 1L, 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(SchoolErrorCode.SUMMARY_NOT_FOUND.getMessage());
+        }
+
+        @Test
+        @DisplayName("AC-22: 組織スコープ規程は組織の一般 MEMBER・担任・SYSTEM_ADMIN には 404、Policy にチームを渡さない")
+        void 組織規程は組織ADMIN以外404() {
+            given(ruleRepository.findById(1L)).willReturn(Optional.of(orgRule()));
+            given(accessControlService.isAdmin(777L, 5L, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.isSystemAdmin(777L)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(777L, 5L, "ORGANIZATION", "DEPUTY_ADMIN")).willReturn(false);
+
+            assertThatThrownBy(() -> service.evaluate(200L, 1L, 777L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND.getMessage());
+            verify(policy, never()).canRecordDaily(any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-22: SYSTEM_ADMIN 単独（組織の ADMIN ではない）は組織規程を 404 に畳む")
+        void 組織規程はSYSTEM_ADMIN単独404() {
+            given(ruleRepository.findById(1L)).willReturn(Optional.of(orgRule()));
+            given(accessControlService.isAdmin(900L, 5L, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.isSystemAdmin(900L)).willReturn(true);
+
+            assertThatThrownBy(() -> service.evaluate(200L, 1L, 900L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND.getMessage());
+        }
+
+        @Test
+        @DisplayName("AC-22: 組織の DEPUTY_ADMIN は組織規程を評価できる（集計が無ければ SUMMARY_NOT_FOUND まで進む）")
+        void 組織規程は組織DEPUTYが通る() {
+            given(ruleRepository.findById(1L)).willReturn(Optional.of(orgRule()));
+            given(accessControlService.isAdmin(800L, 5L, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.isSystemAdmin(800L)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(800L, 5L, "ORGANIZATION", "DEPUTY_ADMIN")).willReturn(true);
+
+            assertThatThrownBy(() -> service.evaluate(200L, 1L, 800L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(SchoolErrorCode.SUMMARY_NOT_FOUND.getMessage());
+        }
+    }
+
+    // ========================================
+    // getStudentEvaluations（AC-4: 返却範囲）
+    // ========================================
+
+    @Nested
+    @DisplayName("getStudentEvaluations — 本人・保護者・V の教員")
+    class GetStudentEvaluations {
+
+        private AttendanceRequirementEvaluationEntity evaluation(Long ruleId) {
+            return AttendanceRequirementEvaluationEntity.builder()
+                    .requirementRuleId(ruleId)
+                    .studentUserId(200L)
+                    .summaryId(10L)
+                    .status(EvaluationStatus.OK)
+                    .currentAttendanceRate(new BigDecimal("90.00"))
+                    .remainingAllowedAbsences(3)
+                    .evaluatedAt(LocalDateTime.now())
+                    .build();
+        }
+
+        private AttendanceRequirementRuleEntity rule(Long id, Long teamId) {
+            AttendanceRequirementRuleEntity r = AttendanceRequirementRuleEntity.builder()
+                    .teamId(teamId)
+                    .academicYear((short) 2026)
+                    .name("規程" + id)
+                    .effectiveFrom(LocalDate.of(2026, 4, 1))
+                    .build();
+            ReflectionTestUtils.setField(r, "id", id);
+            return r;
+        }
+
+        @Test
+        @DisplayName("AC-4: 生徒本人は全クラス分が返る")
+        void self_getsAll() {
+            given(evaluationRepository.findByStudentUserIdOrderByEvaluatedAtDesc(200L))
+                    .willReturn(java.util.List.of(evaluation(1L), evaluation(2L)));
+
+            assertThat(service.getStudentEvaluations(200L, 200L)).hasSize(2);
+            verify(policy, never()).canView(any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-4: 教員は自分が V のクラスの規程の評価だけが返る")
+        void teacher_getsOnlyViewable() {
+            given(evaluationRepository.findByStudentUserIdOrderByEvaluatedAtDesc(200L))
+                    .willReturn(java.util.List.of(evaluation(1L), evaluation(2L)));
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkCareLink(999L, 200L);
+            given(accessControlService.findActiveMembershipJoinedAtByScope(200L, "TEAM"))
+                    .willReturn(java.util.Map.of(10L, LocalDateTime.now(), 20L, LocalDateTime.now()));
+            given(policy.canView(999L, 10L)).willReturn(true);
+            given(policy.canView(999L, 20L)).willReturn(false);
+            given(ruleRepository.findAllById(any())).willReturn(java.util.List.of(rule(1L, 10L), rule(2L, 20L)));
+
+            var result = service.getStudentEvaluations(200L, 999L);
+
+            assertThat(result).extracting(EvaluationResponse::requirementRuleId).containsExactly(1L);
+        }
+
+        @Test
+        @DisplayName("AC-4: 評価が 0 件でも V の教員は 200 の空配列（careLink 判定の 403 に落ちない）")
+        void teacher_zeroEvaluations_emptyList() {
+            given(evaluationRepository.findByStudentUserIdOrderByEvaluatedAtDesc(200L))
+                    .willReturn(java.util.List.of());
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkCareLink(999L, 200L);
+            given(accessControlService.findActiveMembershipJoinedAtByScope(200L, "TEAM"))
+                    .willReturn(java.util.Map.of(10L, LocalDateTime.now()));
+            given(policy.canView(999L, 10L)).willReturn(true);
+
+            assertThat(service.getStudentEvaluations(200L, 999L)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC-4: V のクラスが無い者（同級の一般 MEMBER・別クラスの教員）は 403 (COMMON_002)")
+        void noViewableClass_forbidden() {
+            given(evaluationRepository.findByStudentUserIdOrderByEvaluatedAtDesc(200L))
+                    .willReturn(java.util.List.of());
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkCareLink(777L, 200L);
+            given(accessControlService.findActiveMembershipJoinedAtByScope(200L, "TEAM"))
+                    .willReturn(java.util.Map.of(10L, LocalDateTime.now()));
+            given(policy.canView(777L, 10L)).willReturn(false);
+
+            assertThatThrownBy(() -> service.getStudentEvaluations(200L, 777L))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
         }
     }
 

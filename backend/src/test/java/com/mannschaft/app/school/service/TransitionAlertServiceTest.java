@@ -32,7 +32,7 @@ import static org.mockito.Mockito.verify;
  * {@link TransitionAlertService} 認可テスト（認可根治戦役 束4・移動検知アラート）。
  *
  * <p>マスター御裁可済み方針: 閲覧（getAlerts）は checkMembership、
- * 確認/解決（resolveAlert）は checkAdminOrAbove。</p>
+ * 解決（resolveAlert）は AC-14 により日次登録権（R: 管理者・現役の担任／副担任）。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TransitionAlertService 認可テスト（束4）")
@@ -43,6 +43,9 @@ class TransitionAlertServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private SchoolAttendanceAccessPolicy policy;
 
     @InjectMocks
     private TransitionAlertService transitionAlertService;
@@ -102,16 +105,16 @@ class TransitionAlertServiceTest {
     }
 
     @Nested
-    @DisplayName("resolveAlert（確認/解決＝ADMIN以上のみ）")
+    @DisplayName("resolveAlert（解決＝日次登録権 R のみ・AC-14）")
     class ResolveAlert {
 
         @Test
         @DisplayName("red→green: 非ADMINが POST 移動検知アラート解決 → 403 (COMMON_002)")
         void nonAdmin_forbidden() {
-            // entity由来scope認可: alert を先に fetch → path teamId 一致 → checkAdminOrAbove が拒否。
+            // entity由来scope認可: alert を先に fetch → path teamId 一致 → Policy の checkCanRecordDaily が拒否。
             given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(TEAM_ID)));
             doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkAdminOrAbove(MEMBER_USER_ID, TEAM_ID, "TEAM");
+                    .when(policy).checkCanRecordDaily(MEMBER_USER_ID, TEAM_ID);
 
             assertThatThrownBy(() -> transitionAlertService
                     .resolveAlert(TEAM_ID, ALERT_ID, MEMBER_USER_ID, "解決しました"))
@@ -136,7 +139,7 @@ class TransitionAlertServiceTest {
                     .isEqualTo(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
 
             // 存在秘匿のため認可判定にも解決処理にも到達しない。
-            verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
+            verify(policy, never()).checkCanRecordDaily(any(), any());
             verify(alertRepository, never()).save(any());
         }
 
@@ -147,7 +150,7 @@ class TransitionAlertServiceTest {
             // 攻撃者は OTHER_TEAM_ID の ADMIN ではないため entity由来scope認可で 403。
             given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(OTHER_TEAM_ID)));
             doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, OTHER_TEAM_ID, "TEAM");
+                    .when(policy).checkCanRecordDaily(ADMIN_USER_ID, OTHER_TEAM_ID);
 
             assertThatThrownBy(() -> transitionAlertService
                     .resolveAlert(OTHER_TEAM_ID, ALERT_ID, ADMIN_USER_ID, "他チームを握り潰す"))
@@ -169,21 +172,21 @@ class TransitionAlertServiceTest {
                     .extracting(ex -> ((BusinessException) ex).getErrorCode())
                     .isEqualTo(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
 
-            verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
+            verify(policy, never()).checkCanRecordDaily(any(), any());
         }
 
         @Test
         @DisplayName("非回帰: ADMIN（path=自team・alertも自team）は従来どおりアラートを解決可能")
         void admin_success() {
             given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(TEAM_ID)));
-            doNothing().when(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM");
+            doNothing().when(policy).checkCanRecordDaily(ADMIN_USER_ID, TEAM_ID);
             given(alertRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
             var response = transitionAlertService
                     .resolveAlert(TEAM_ID, ALERT_ID, ADMIN_USER_ID, "解決しました");
 
             assertThat(response).isNotNull();
-            verify(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM");
+            verify(policy).checkCanRecordDaily(ADMIN_USER_ID, TEAM_ID);
         }
     }
 }
