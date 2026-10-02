@@ -190,10 +190,15 @@ jobs:
           BASE_URL: http://localhost:8081
           API_BASE_URL: http://localhost:8080
           E2E_ISOLATED_DB: 'true'
+          E2E_DB_HOST: '127.0.0.1'
+          E2E_DB_PORT: '3306'
+          E2E_DB_NAME: mannschaft
+          E2E_DB_USER: mannschaft
+          E2E_DB_PASSWORD: mannschaft
         run: >-
           npx playwright test
           'cmp26090(1-1246|2-0058).*real.spec.ts'
-          --project=chromium-real --workers=1
+          --project=chromium-real --workers=1 --retries=0 --trace=off
 
       # storageState・Cookie・トークンを含む .auth は成果物へ含めない。
       - name: Upload browser evidence
