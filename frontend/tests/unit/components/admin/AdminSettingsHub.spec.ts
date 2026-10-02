@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
+import { reactive } from 'vue'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { useScopeStore } from '~/stores/useScopeStore'
 import { useTeamStore } from '~/stores/useTeamStore'
@@ -12,8 +13,12 @@ let payment = true
 let failPermissions = false
 let failModules = false
 let failMemberships = false
+let pendingPermissions: Promise<void> | null = null
+let pendingMemberships: Promise<void> | null = null
+const route = reactive({ path: '/teams/alpha/admin/settings' })
 const api = vi.fn(async (path: string) => {
   if (path.endsWith('/me/permissions')) {
+    if (pendingPermissions) await pendingPermissions
     if (failPermissions) throw { statusCode: 503 }
     return { data: { roleName: role, permissions: [] } }
   }
@@ -22,6 +27,7 @@ const api = vi.fn(async (path: string) => {
     return { data: payment ? [{ moduleSlug: 'payment', isEnabled: true }] : [] }
   }
   if (path === '/api/v1/me/teams') {
+    if (pendingMemberships) await pendingMemberships
     if (failMemberships) throw { statusCode: 503 }
     return { data: [{ id: 12, slug: 'alpha', name: 'チームA', role: 'ADMIN' }] }
   }
@@ -33,6 +39,7 @@ const api = vi.fn(async (path: string) => {
 })
 mockNuxtImport('useApi', () => () => api)
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+mockNuxtImport('useRoute', () => () => route)
 
 const teamProps = { scopeType: 'team' as const, slug: 'alpha', resolvedSlug: 'alpha', numericId: 12 }
 const orgProps = { scopeType: 'organization' as const, slug: 'beta', resolvedSlug: 'beta', numericId: 7 }
@@ -49,6 +56,9 @@ beforeEach(() => {
   failPermissions = false
   failModules = false
   failMemberships = false
+  pendingPermissions = null
+  pendingMemberships = null
+  route.path = '/teams/alpha/admin/settings'
   api.mockClear()
   useScopeStore().clear()
   useTeamStore().clear()
@@ -74,6 +84,7 @@ describe('ADMIN設定ハブの既存導線と団体境界', () => {
   })
 
   it('AC2/5/6: ORG専用リンクと戻り先を表示し、TEAM設定・廃止予約・SYS税を掲載しない', async () => {
+    route.path = '/organizations/beta/admin/settings'
     const wrapper = await mountSuspended(AdminSettingsHub, { props: orgProps })
     await flushPromises()
     const hrefs = wrapper.findAll('a[href]').map(link => link.attributes('href'))
@@ -161,5 +172,30 @@ describe('ADMIN設定ハブの既存導線と団体境界', () => {
     expect(wrapper.find('[data-testid="setting-line"]').exists()).toBe(true)
     expect(useScopeStore().current).toMatchObject({ type: 'team', id: '12' })
     wrapper.unmount()
+  })
+
+  it('AC3/4: 所属取得中のルート変更後に旧団体を登録せず、旧global hrefを公開しない', async () => {
+    let finish: () => void = () => {}
+    pendingMemberships = new Promise<void>((resolve) => { finish = resolve })
+    const wrapper = await mountSuspended(AdminSettingsHub, { props: teamProps })
+    await flushPromises()
+    route.path = '/organizations/beta/admin/settings'
+    finish()
+    await flushPromises()
+    expect(useScopeStore().current).toMatchObject({ type: 'personal', id: null })
+    expect(wrapper.find('[data-testid="setting-line"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="setting-receipts"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('AC4: 権限取得中にunmountした旧ハブは戻った応答で同期を開始しない', async () => {
+    let finish: () => void = () => {}
+    pendingPermissions = new Promise<void>((resolve) => { finish = resolve })
+    const wrapper = await mountSuspended(AdminSettingsHub, { props: teamProps })
+    wrapper.unmount()
+    finish()
+    await flushPromises()
+    expect(useScopeStore().current).toMatchObject({ type: 'personal', id: null })
+    expect(api.mock.calls.map(([path]) => path)).toEqual(['/api/v1/teams/alpha/me/permissions'])
   })
 })
