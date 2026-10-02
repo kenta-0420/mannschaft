@@ -4,7 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.recruitment.dto.CancellationPolicyResponse;
 import com.mannschaft.app.recruitment.dto.UpdateCancellationPolicyRequest;
-import com.mannschaft.app.recruitment.service.RecruitmentCancellationPolicyService;
+import com.mannschaft.app.recruitment.service.RecruitmentMoneyFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,13 +27,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CancellationPolicyController {
 
-    private final RecruitmentCancellationPolicyService policyService;
+    private final RecruitmentMoneyFacade moneyFacade;
 
     @GetMapping("/{id}")
     @Operation(summary = "ポリシー詳細 (段階含む)")
     public ResponseEntity<ApiResponse<CancellationPolicyResponse>> get(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.of(
-                policyService.getPolicy(id, SecurityUtils.getCurrentUserId())));
+                moneyFacade.getPolicy(id, SecurityUtils.getCurrentUserId())));
     }
 
     @PatchMapping("/{id}")
@@ -42,13 +42,13 @@ public class CancellationPolicyController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateCancellationPolicyRequest request) {
         return ResponseEntity.ok(ApiResponse.of(
-                policyService.updatePolicy(id, SecurityUtils.getCurrentUserId(), request)));
+                moneyFacade.updatePolicy(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @PostMapping("/{id}/archive")
     @Operation(summary = "ポリシー論理削除")
     public ResponseEntity<Void> archive(@PathVariable Long id) {
-        policyService.archivePolicy(id, SecurityUtils.getCurrentUserId());
+        moneyFacade.archivePolicy(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

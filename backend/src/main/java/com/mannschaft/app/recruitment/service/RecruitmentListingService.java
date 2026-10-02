@@ -569,7 +569,54 @@ public class RecruitmentListingService {
     }
 
     /**
-     * Phase 2: 管理者による申込確定 + リマインダー作成 + RECRUITMENT_CONFIRMED 通知。
+     * 申込確定の認可入力（募集のスコープ）。
+     *
+     * @param scopeType 募集のスコープ種別（TEAM / ORGANIZATION のみ）
+     * @param scopeId   募集のスコープ ID
+     */
+    public record ConfirmScope(RecruitmentScopeType scopeType, Long scopeId) {
+    }
+
+    /**
+     * 申込確定の認可の前に、参加者→募集をたどってスコープを解決する（readOnly・素の読み取り。行ロックは取らない）。
+     *
+     * <p>参加者不在・パスの listingId と参加者の募集の不一致・募集不在（論理削除・モデレーション非表示）・
+     * 募集が TEAM/ORGANIZATION でない（PERSONAL・GLOBAL）は、すべて同じ {@code LISTING_NOT_FOUND}(404)。
+     * 是正前は PERSONAL・GLOBAL だけ {@code MARKET_404} で、コードが割れていた。</p>
+     *
+     * <p>モデレーション非表示の募集は是正前から不在扱いだった（行ロック取得が {@code RecruitmentListingEntity} の
+     * {@code @SQLRestriction} に掛かるため）。その挙動を維持する。</p>
+     *
+     * @param listingId     パスの募集 ID
+     * @param participantId 参加者 ID
+     * @return 募集のスコープ
+     */
+    public ConfirmScope resolveConfirmScope(Long listingId, Long participantId) {
+        RecruitmentParticipantEntity participant = participantRepository.findById(participantId)
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        if (!participant.getListingId().equals(listingId)) {
+            throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        }
+        RecruitmentListingEntity listing = listingRepository.findById(participant.getListingId())
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        requireConfirmableScope(listing);
+        return new ConfirmScope(listing.getScopeType(), listing.getScopeId());
+    }
+
+    private static void requireConfirmableScope(RecruitmentListingEntity listing) {
+        if (listing.getScopeType() != RecruitmentScopeType.TEAM
+                && listing.getScopeType() != RecruitmentScopeType.ORGANIZATION) {
+            throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        }
+    }
+
+    /**
+     * Phase 2: 管理者による申込確定 + リマインダー作成 + RECRUITMENT_CONFIRMED 通知（<b>tx 本体</b>）。
+     *
+     * <p>認可は {@link RecruitmentMoneyFacade#confirmApplication} が tx の外で済ませる。本メソッドは認可の後に
+     * 参加者→募集をたどり直し（どれかが不在なら {@code LISTING_NOT_FOUND}(404)・DB 不変）、
+     * 行ロック（FOR UPDATE）は参加者→募集の順にここで初めて取る（認可より前にロックしない）。
+     * 状態判定（APPLIED 以外は 409）は認可の後。募集のスコープ列は不変という前提。</p>
      *
      * @param participantId 参加者ID
      * @param adminId       実行管理者ID
@@ -582,8 +629,7 @@ public class RecruitmentListingService {
 
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(participant.getListingId())
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
-        accessControlService.checkAdminOrAbove(adminId, listing.getScopeId(), listing.getScopeType().name());
+        requireConfirmableScope(listing);
 
         if (participant.getStatus() != RecruitmentParticipantStatus.APPLIED) {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
