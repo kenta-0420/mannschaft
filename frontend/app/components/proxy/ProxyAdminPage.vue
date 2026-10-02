@@ -8,6 +8,7 @@ const props = defineProps<{ mode: 'consents' | 'records' }>()
 const { t } = useI18n()
 const { formatDate, formatDateTime } = useDatetime()
 const authStore = useAuthStore()
+const proxyDeskStore = useProxyDeskStore()
 const confirm = useConfirm()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
@@ -28,6 +29,11 @@ const {
 } = useProxyAdmin(props.mode)
 const { page, rows, totalRecords } = pagination
 const busy = ref(false)
+let disposed = false
+onBeforeUnmount(() => {
+  disposed = true
+  confirm.close()
+})
 const title = computed(() =>
   t(props.mode === 'consents' ? 'proxy.admin.consentsTitle' : 'proxy.record.title'),
 )
@@ -39,7 +45,7 @@ function stateLabel(consent: ProxyInputConsent): string {
 }
 
 function requestAction(consent: ProxyInputConsent, action: 'approve' | 'revoke') {
-  if (busy.value || loading.value || error.value !== undefined) return
+  if (disposed || busy.value || loading.value || error.value !== undefined) return
   if (action === 'approve' ? !mayApprove(consent) : !mayRevoke(consent)) return
   confirm.require({
     header: t(action === 'approve' ? 'proxy.admin.approve' : 'proxy.revoke.title'),
@@ -57,7 +63,7 @@ function requestAction(consent: ProxyInputConsent, action: 'approve' | 'revoke')
 
 async function executeAction(consent: ProxyInputConsent, action: 'approve' | 'revoke') {
   // ダイアログ待機中の組合変更や二重クリックでも、選択中組合以外へ送信しない。
-  if (busy.value || loading.value || error.value !== undefined) return
+  if (disposed || busy.value || loading.value || error.value !== undefined) return
   if (action === 'approve' ? !mayApprove(consent) : !mayRevoke(consent)) return
   busy.value = true
   try {
@@ -73,9 +79,13 @@ async function executeAction(consent: ProxyInputConsent, action: 'approve' | 're
           : { revokeMethod: 'PAPER_BY_SUBJECT' },
       )
     }
+    // 失効した同意をヘッダーへ残さず、再取得前に既存の永続化状態も解除する。
+    if (action === 'revoke' && proxyDeskStore.pinnedConsentId === consent.id) proxyDeskStore.unpin()
+    if (disposed) return
     notification.success(t(action === 'approve' ? 'proxy.admin.approved' : 'proxy.admin.revoked'))
     await loadPage()
   } catch (cause) {
+    if (disposed) return
     handleApiError(cause, '代理入力同意書管理操作')
     // 409等の状態競合後も最新状態を再取得し、古い操作を繰り返させない。
     await loadPage()

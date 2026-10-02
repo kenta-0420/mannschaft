@@ -154,4 +154,23 @@ describe('useProxyAdmin', () => {
     expect(state.error.value).toBeUndefined()
     wrapper.unmount()
   })
+
+  it('離脱後は操作権限と再取得を失効させる', async () => {
+    const { state, wrapper } = await start()
+    expect(state.mayApprove(consent)).toBe(true)
+    expect(state.mayRevoke(consent)).toBe(true)
+    wrapper.unmount()
+    vi.clearAllMocks()
+
+    await state.loadPage()
+    await state.changePage({ page: 1, rows: 50 })
+    await state.changeOrganization('member-org')
+
+    expect(state.mayApprove(consent)).toBe(false)
+    expect(state.mayRevoke(consent)).toBe(false)
+    expect(api).not.toHaveBeenCalled()
+    expect(proxyApi.getConsentsByOrg).not.toHaveBeenCalled()
+    expect(state.pagination.page.value).toBe(0)
+    expect(state.organizationSlug.value).toBe('my-org')
+  })
 })
