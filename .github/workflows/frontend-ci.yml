@@ -15,6 +15,8 @@
 name: Frontend — CI (PR Check)
 
 on:
+  # このverify ref限りの捕捉例外診断。通常unitの合格証拠には使用しない。
+  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -105,8 +107,10 @@ jobs:
       # vitest.config.ts の maxWorkers はコア数8未満（本ランナーは2〜4コア）
       # では未指定（vitest既定）のまま動くため、typecheck と同様の
       # メモリ配慮は不要（多コア機のみで踏む問題のため）。
-      - name: Unit test (vitest)
-        run: npm run test:unit
+      - name: ORG caught-exception diagnosis (gold判定外)
+        run: |
+          test "$GITHUB_EVENT_NAME" = 'workflow_dispatch'
+          npm run test:unit -- tests/unit/plugins/scope-route-sync.spec.ts tests/unit/components/admin/AdminSettingsHub.spec.ts --config tests/diagnostics/cmp1016-org.config.ts
 
   # ===========================================================================
   # Docker ビルド検証（CMP-260821-2130 / CMP-260822-1005）
