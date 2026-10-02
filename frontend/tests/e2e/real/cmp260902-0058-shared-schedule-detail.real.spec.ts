@@ -54,7 +54,14 @@ async function openEvent(page: Page, fixture: Fixture) {
   await expect(visibleEvent, '表示中の予定から詳細を開く').toBeVisible()
   await visibleEvent.click()
   expect((await response).status(), '予定クリックで実際の詳細 GET を実行').toBe(200)
-  await expect(page.getByText(DESCRIPTION, { exact: true })).toBeVisible()
+  // TEAM画面はmobile/desktop両パネルをDOMに保持するため、現在表示中の予定詳細へ限定する。
+  const detailPanel = page.locator('div.space-y-4').filter({
+    has: page.getByRole('heading', { name: fixture.title, exact: true, level: 2 }),
+  }).filter({ visible: true })
+  await expect(detailPanel, '題名が一致する可視の詳細パネルは1件').toHaveCount(1)
+  const description = detailPanel.getByText(DESCRIPTION, { exact: true }).filter({ visible: true })
+  await expect(description, '可視パネル内の保存済み説明文は1件').toHaveCount(1)
+  await expect(description).toBeVisible()
 }
 
 test.describe('CMP-260902-0058 実ブラウザ（API smoke と別判定）', () => {
