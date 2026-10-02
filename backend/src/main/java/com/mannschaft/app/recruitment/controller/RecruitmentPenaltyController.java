@@ -115,9 +115,8 @@ public class RecruitmentPenaltyController {
             @PathVariable Long scopeId,
             @PathVariable Long penaltyId,
             @Valid @RequestBody LiftPenaltyRequest request) {
-        RecruitmentUserPenaltyEntity entity =
-                moneyFacade.liftPenalty(scopeType, scopeId, penaltyId, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(toPenaltyResponse(entity)));
+        return ResponseEntity.ok(ApiResponse.of(
+                moneyFacade.liftPenalty(scopeType, scopeId, penaltyId, SecurityUtils.getCurrentUserId())));
     }
 
     /**

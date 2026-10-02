@@ -10,6 +10,7 @@ import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.CancellationPolicyResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
+import com.mannschaft.app.recruitment.dto.RecruitmentUserPenaltyResponse;
 import com.mannschaft.app.recruitment.dto.UpdateCancellationPolicyRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
 import lombok.RequiredArgsConstructor;
@@ -123,12 +124,29 @@ public class RecruitmentMoneyFacade {
      * @param adminUserId   操作者
      * @return 解除後のペナルティ
      */
-    public RecruitmentUserPenaltyEntity liftPenalty(
+    public RecruitmentUserPenaltyResponse liftPenalty(
             String pathScopeType, Long pathScopeId, Long penaltyId, Long adminUserId) {
         RecruitmentPenaltyService.LiftScope scope =
                 penaltyService.resolveLiftScope(pathScopeType, pathScopeId, penaltyId);
         requireScopeAdmin(adminUserId, scope.scopeType(), scope.scopeId(), RecruitmentErrorCode.PENALTY_NOT_FOUND);
-        return penaltyService.liftPenalty(penaltyId, adminUserId);
+        return toPenaltyResponse(penaltyService.liftPenalty(penaltyId, adminUserId));
+    }
+
+    /** Entity を Service の公開 API に出さないため、Facade 内で DTO へ変換する（D-1 API 境界）。 */
+    private static RecruitmentUserPenaltyResponse toPenaltyResponse(RecruitmentUserPenaltyEntity entity) {
+        return new RecruitmentUserPenaltyResponse(
+                entity.getId(),
+                entity.getUserId(),
+                entity.getScopeType() != null ? entity.getScopeType().name() : null,
+                entity.getScopeId(),
+                entity.getPenaltyType(),
+                entity.getStartedAt() != null ? entity.getStartedAt().toString() : null,
+                entity.getExpiresAt() != null ? entity.getExpiresAt().toString() : null,
+                entity.getLiftedAt() != null ? entity.getLiftedAt().toString() : null,
+                entity.getLiftReason() != null ? entity.getLiftReason().name() : null,
+                entity.isActive(),
+                entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : null
+        );
     }
 
     // ===========================================

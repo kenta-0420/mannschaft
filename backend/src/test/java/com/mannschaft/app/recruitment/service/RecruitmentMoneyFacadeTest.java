@@ -224,6 +224,9 @@ class RecruitmentMoneyFacadeTest {
         void admin_isAllowedWithSingleQuery() {
             givenLiftScope();
             given(accessControlService.isAdminOrAbove(ADMIN_ID, TEAM_ID, "TEAM")).willReturn(true);
+            // Facade は Entity を DTO へ変換して返す（D-1 API 境界）。tx 本体の戻りは中身の無い Entity で足りる。
+            given(penaltyService.liftPenalty(5L, ADMIN_ID))
+                    .willReturn(Mockito.mock(com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity.class));
 
             facade().liftPenalty("TEAM", TEAM_ID, 5L, ADMIN_ID);
 

@@ -12,7 +12,15 @@ import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.EscrowStatus;
 import com.mannschaft.app.payment.escrow.EscrowTransactionEntity;
 import com.mannschaft.app.payment.escrow.EscrowTransactionRepository;
+import com.mannschaft.app.recruitment.RecruitmentListingStatus;
+import com.mannschaft.app.recruitment.RecruitmentParticipationType;
+import com.mannschaft.app.recruitment.RecruitmentScopeType;
+import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.entity.RecruitmentCancellationRecordEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentCategoryEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
@@ -83,6 +91,10 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
 
     @Autowired
     private ConnectAccountRepository connectAccountRepository;
+    @Autowired
+    private RecruitmentListingRepository listingRepository;
+    @Autowired
+    private RecruitmentCategoryRepository categoryRepository;
 
     /**
      * 徴収の非同期リスナは本 IT の対象外（免除の認可だけを見る）。
@@ -139,14 +151,27 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
         UUID userAccountId = insertConnectAccount(ScopeKind.USER, individualPayeeId);
 
         // 記録 ↔ escrow は三つ組（sourceKind, listingId, participantId）で結ばれる。
-        teamPayeeRecordId = insertRecord(1001L, 2001L, debtorId, CancellationPaymentStatus.PENDING);
-        insertEscrow(1001L, 2001L, ScopeKind.TEAM, teamAccountId);
+        // 記録は必ず実在の募集（teamA スコープ）を指す。免除の tx は記録→募集をたどり直すため（是正前は募集を読まなかったが、
+        // 本番で記録が指す募集が行ごと無いことは無い: 募集は論理削除のみで物理削除されず、記録は募集 ID 付きで作られる）。
+        Long categoryId = categoryRepository.save(RecruitmentCategoryEntity.builder()
+                .code("CANFEE_TEST")
+                .nameI18nKey("recruitment.category.canfeeTest")
+                .defaultParticipationType(RecruitmentParticipationType.INDIVIDUAL)
+                .displayOrder(0)
+                .isActive(true)
+                .build()).getId();
+        Long listing1 = insertListing(categoryId);
+        Long listing2 = insertListing(categoryId);
+        Long listing3 = insertListing(categoryId);
 
-        userPayeeRecordId = insertRecord(1002L, 2002L, debtorId, CancellationPaymentStatus.PENDING);
-        insertEscrow(1002L, 2002L, ScopeKind.USER, userAccountId);
+        teamPayeeRecordId = insertRecord(listing1, 2001L, debtorId, CancellationPaymentStatus.PENDING);
+        insertEscrow(listing1, 2001L, ScopeKind.TEAM, teamAccountId);
 
-        paidRecordId = insertRecord(1003L, 2003L, debtorId, CancellationPaymentStatus.PAID);
-        insertEscrow(1003L, 2003L, ScopeKind.TEAM, teamAccountId);
+        userPayeeRecordId = insertRecord(listing2, 2002L, debtorId, CancellationPaymentStatus.PENDING);
+        insertEscrow(listing2, 2002L, ScopeKind.USER, userAccountId);
+
+        paidRecordId = insertRecord(listing3, 2003L, debtorId, CancellationPaymentStatus.PAID);
+        insertEscrow(listing3, 2003L, ScopeKind.TEAM, teamAccountId);
 
         em.flush();
         em.clear();
@@ -392,6 +417,26 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
     private void setAuth(Long userId) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
+    }
+
+    private Long insertListing(Long categoryId) {
+        LocalDateTime start = LocalDateTime.now().plusDays(30);
+        return listingRepository.save(RecruitmentListingEntity.builder()
+                .scopeType(RecruitmentScopeType.TEAM)
+                .scopeId(teamAId)
+                .categoryId(categoryId)
+                .title("CANFEE 募集")
+                .participationType(RecruitmentParticipationType.INDIVIDUAL)
+                .startAt(start)
+                .endAt(start.plusHours(2))
+                .applicationDeadline(start.minusDays(1))
+                .autoCancelAt(start.minusDays(2))
+                .capacity(10)
+                .minCapacity(1)
+                .status(RecruitmentListingStatus.OPEN)
+                .visibility(RecruitmentVisibility.SCOPE_ONLY)
+                .createdBy(payeeAdminAId)
+                .build()).getId();
     }
 
     private Long insertRecord(Long listingId, Long participantId, Long userId, CancellationPaymentStatus status) {
