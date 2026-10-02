@@ -4,6 +4,8 @@ import com.mannschaft.app.common.architecture.fixtures.SingleParentViolationFixt
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaParameterizedType;
+import com.tngtech.archunit.core.domain.JavaType;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
@@ -176,14 +178,26 @@ class TeamOrgSingleParentAssumptionGuardTest {
         List<String> violations = new ArrayList<>();
         for (JavaClass javaClass : classes) {
             for (JavaMethod method : javaClass.getMethods()) {
-                String returnType = method.getReturnType().getName().replace(" ", "");
-                if (returnType.equals("java.util.Map<java.lang.Long,java.lang.Long>")
-                        && TEAM_TO_ORG_NAME.matcher(method.getName()).find()) {
+                if (isLongToLongMap(method) && TEAM_TO_ORG_NAME.matcher(method.getName()).find()) {
                     violations.add(javaClass.getName() + "." + method.getName());
                 }
             }
         }
         return violations;
+    }
+
+    /** 戻り値が Map&lt;Long, Long&gt;（raw 型は Map、型引数は JavaParameterizedType から読む）。 */
+    private static boolean isLongToLongMap(JavaMethod method) {
+        if (!method.getRawReturnType().isEquivalentTo(java.util.Map.class)) {
+            return false;
+        }
+        if (!(method.getReturnType() instanceof JavaParameterizedType parameterized)) {
+            return false;
+        }
+        List<JavaType> args = parameterized.getActualTypeArguments();
+        return args.size() == 2
+                && args.get(0).toErasure().isEquivalentTo(Long.class)
+                && args.get(1).toErasure().isEquivalentTo(Long.class);
     }
 
     static List<String> limitOneViolations(JavaClasses classes) {
