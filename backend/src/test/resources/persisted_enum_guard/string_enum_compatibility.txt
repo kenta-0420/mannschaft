@@ -1,0 +1,3 @@
+# 試練用の初期台帳。未確定であり、完成版として扱わない。
+# 公式CIのfresh本番全量走査の期待redから候補を取得し、全量一致のgreenで確定する。
+# 作法: docs/development/persisted_enum_deployment.md
