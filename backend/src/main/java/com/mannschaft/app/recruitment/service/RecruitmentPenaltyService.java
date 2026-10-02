@@ -130,23 +130,57 @@ public class RecruitmentPenaltyService {
     // ===========================================
 
     /**
-     * 管理者がペナルティを手動解除する。
+     * 手動解除の認可入力（発動元設定のスコープ）。
+     *
+     * @param scopeType 発動元設定のスコープ種別
+     * @param scopeId   発動元設定のスコープ ID
+     */
+    public record LiftScope(RecruitmentScopeType scopeType, Long scopeId) {
+    }
+
+    /**
+     * 手動解除の認可の前に、ペナルティ→発動元設定をたどってスコープを解決する（readOnly・自ドメインのみ）。
+     *
+     * <p>ペナルティ・発動元設定のどちらが不在でも、パスの scope が設定の scope と一致しなくても、
+     * 同じ {@code PENALTY_NOT_FOUND}(404)。状態（解除済み・期限切れ）はここでは見ない（認可の後）。
+     * パスの {@code scopeType}・{@code scopeId} は是正前は読まれていなかった。越境者が他スコープのペナルティを
+     * 自スコープのパスで叩いても存在を判別できないよう、設定のスコープと突き合わせる。</p>
+     *
+     * @param pathScopeType パスの scopeType
+     * @param pathScopeId   パスの scopeId
+     * @param penaltyId     ペナルティ ID
+     * @return 発動元設定のスコープ
+     */
+    public LiftScope resolveLiftScope(String pathScopeType, Long pathScopeId, Long penaltyId) {
+        RecruitmentUserPenaltyEntity penalty = penaltyRepository.findById(penaltyId)
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.PENALTY_NOT_FOUND));
+        RecruitmentPenaltySettingEntity setting = settingRepository.findById(penalty.getTriggeredBySettingId())
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.PENALTY_NOT_FOUND));
+        if (pathScopeType == null
+                || !setting.getScopeType().name().equalsIgnoreCase(pathScopeType)
+                || !java.util.Objects.equals(setting.getScopeId(), pathScopeId)) {
+            throw new BusinessException(RecruitmentErrorCode.PENALTY_NOT_FOUND);
+        }
+        return new LiftScope(setting.getScopeType(), setting.getScopeId());
+    }
+
+    /**
+     * ペナルティを手動解除する（<b>tx 本体</b>。認可は {@link RecruitmentMoneyFacade#liftPenalty} が tx の外で済ませる）。
+     *
+     * <p>認可の後に、ペナルティ→発動元設定をたどり直す。どちらかが不在（認可の後に消えた）なら
+     * {@code PENALTY_NOT_FOUND}(404) で DB 不変。解除済み・期限切れの 409 は認可の後（状態を越境者に見せない）。
+     * 設定のスコープ列は不変という前提で、認可済みのスコープとは突き合わせ直さない。</p>
      */
     @Transactional
     public RecruitmentUserPenaltyEntity liftPenalty(Long penaltyId, Long adminUserId) {
         RecruitmentUserPenaltyEntity penalty = penaltyRepository.findById(penaltyId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.PENALTY_NOT_FOUND));
+        settingRepository.findById(penalty.getTriggeredBySettingId())
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.PENALTY_NOT_FOUND));
 
         if (!penalty.isActive()) {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
         }
-
-        // 権限チェック
-        RecruitmentPenaltySettingEntity sourceSetting = settingRepository
-                .findById(penalty.getTriggeredBySettingId())
-                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.PENALTY_SETTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(
-                adminUserId, sourceSetting.getScopeId(), sourceSetting.getScopeType().name());
 
         penalty.lift(adminUserId, PenaltyLiftReason.ADMIN_MANUAL);
         RecruitmentUserPenaltyEntity saved = penaltyRepository.save(penalty);

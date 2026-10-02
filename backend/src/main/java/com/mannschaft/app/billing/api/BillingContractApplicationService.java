@@ -12,7 +12,6 @@ import com.mannschaft.app.billing.EntitlementSourceKind;
 import com.mannschaft.app.billing.api.dto.ChangePlanRequest;
 import com.mannschaft.app.billing.api.dto.ContractResponse;
 import com.mannschaft.app.billing.api.dto.CreateContractRequest;
-import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +23,7 @@ import java.util.UUID;
  * F20.1: 契約 API のアプリケーションサービス（設計書 02 §3）。
  *
  * <p>Controller とドメインの {@link BillingContractService} の間に立ち、(1) テナント
- * {@code organizationId} の解決（USER=null / ORG=自身 / TEAM=主所属組織）、(2) 冪等キーによる
+ * {@code organizationId} の解決（USER=null / ORG=自身 / TEAM=代表親組織（作成時に契約行へ記録し以後は再解決しない・F01.2.1 §9.2 #17））、(2) 冪等キーによる
  * 二重送信の吸収（M-1）、(3) {@link ContractResponse} への組み立て、を担う。認可は Controller の
  * {@code @PreAuthorize} を一次防御とし、契約変更トランザクション内でも操作者行をロックして現在権限を
  * 再確認する。契約の所属スコープ一致（IDOR）はドメイン層 {@code loadContractInScope} が二重防御する
@@ -37,7 +36,7 @@ public class BillingContractApplicationService {
     private final BillingContractService billingContractService;
     private final BillingContractRepository billingContractRepository;
     private final EntitlementRepository entitlementRepository;
-    private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private final BillingTenantOrganizationResolver tenantOrganizationResolver;
     private final BillingIdempotencyService idempotencyService;
     /** F20.1 実決済（D-4）: 月額をマスタから解決（NULL=無償フロー / 非 NULL=決済フロー）。 */
     private final com.mannschaft.app.billing.BillingPriceResolver priceResolver;
@@ -72,7 +71,7 @@ public class BillingContractApplicationService {
         }
 
         ContractKind contractKind = BillingApiSupport.parseContractKind(request.contractKind());
-        Long organizationId = resolveOrganizationId(scopeKind, scopeId);
+        Long organizationId = tenantOrganizationResolver.resolveForCreate(scopeKind, scopeId);
 
         // D-4: 価格をマスタから解決。NULL=無償ワンクリック（即 ACTIVE＋発行）／非 NULL=Checkout 決済フロー
         // （PENDING＋entitlements 未発行・入金 webhook で ACTIVE 化）。既存無償契約には遡及しない。
@@ -127,21 +126,6 @@ public class BillingContractApplicationService {
     // ============================================================
     // ヘルパ
     // ============================================================
-
-    /**
-     * テナント organization_id を解決する（設計書 01 §3.1・02 §3.1）。
-     * USER=null / ORG=scope_id 自身 / TEAM=主所属組織（ACTIVE 所属の先頭・無所属は null）。
-     */
-    private Long resolveOrganizationId(EntitlementScopeKind scopeKind, Long scopeId) {
-        return switch (scopeKind) {
-            case USER -> null;
-            case ORG -> scopeId;
-            case TEAM -> {
-                List<Long> orgIds = teamOrgMembershipQueryService.findActiveOrganizationIds(scopeId);
-                yield orgIds.isEmpty() ? null : orgIds.get(0);
-            }
-        };
-    }
 
     /** 冪等再送時: 契約に紐づく未取消 entitlements から発行機能キーを復元する。 */
     private List<String> grantedKeysOf(BillingContractEntity contract) {
