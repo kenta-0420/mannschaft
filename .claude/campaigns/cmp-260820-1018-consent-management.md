@@ -17,7 +17,7 @@
 
 殿から受領したAC1〜11を対象とする。管理入口・全状態一覧、承認状態制約、紙撤回保存、履歴の組合/本人交差、空/取得失敗/再試行、null表示、理由255/256・ページ境界、未認証/越境、途中失敗、DBページング/N+1、6言語/390px/権限別実機と探索3視点を検証する。
 
-- red: Windows陣からの初回実行はcompileJavaのソースfingerprintで45分超停滞したため自所有処理のみ中断。ext4 snapshotへcommit912ace7eのbackend blobs一致を確認して再実行し、5 XMLで45件/33 failures/0 skipped/0 errors（10分16秒）。旧SYS拒否期待は最終正解に計上しない。履歴仮応答、紙情報未保存、状態上書き、未知method500、親削除後操作、OSIV=false下の一覧/承認500を実測した。
+- red: Windows陣からの初回実行はcompileJavaのソースfingerprintで45分超停滞したため自所有処理のみ中断。ext4 snapshotへcommit912ace7eのbackend blobs一致を確認して再実行し、5 XMLで45件/33 failures/0 skipped/0 errors（10分16秒）。旧SYS拒否期待は最終正解に計上しない。履歴仮応答、状態上書き、未知method500、親削除後操作、OSIV=false下の一覧/承認500を実測した。紙保存nullの2件は外側テストTXのflush前clearが原因と追加精査で判明し、本体不具合へ計上せず試験を訂正する。
 - 前任trial commit92e7ef7787ff0c1b921f4e38fe0e97ecabc1b091の17件と引継を全文照合し、SYS横断・同意一覧page/size/emptyを現在の専用fixtureへ移植。旧非本人API撤回正常系は主体資格を維持しつつF14.1§350/351に従いPAPER＋同組合ADMIN証人のpayloadへ更新する。DEPUTY承認権限のfixtureはF01.2のgroup由来契約へ訂正（role既定権限は無効だった）。
 - green・関連回帰・生成型・lint/typecheck: 未実施。
 - 実機・E2E・アリシゼーション: 未実施。

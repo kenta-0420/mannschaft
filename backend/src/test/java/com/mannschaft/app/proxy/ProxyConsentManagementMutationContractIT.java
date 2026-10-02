@@ -111,6 +111,7 @@ class ProxyConsentManagementMutationContractIT extends AbstractMySqlIntegrationT
         var consent = consents.findById(consentId).orElseThrow();
         consent.approve(proxy);
         consents.saveAndFlush(consent);
+        em.refresh(consent);
         var approvedAt = consent.getApprovedAt();
         mvc.perform(patch("/api/v1/proxy-input-consents/{id}/approve", consentId)
                         .with(user(admin.toString())).with(csrf()))
@@ -137,6 +138,7 @@ class ProxyConsentManagementMutationContractIT extends AbstractMySqlIntegrationT
         revoke(admin, consentId, Map.of("revokeMethod", "PAPER_BY_SUBJECT",
                 "revokeWitnessedByUserId", admin, "revokeReason", reason))
                 .andExpect(status().isOk());
+        em.flush();
         em.clear();
         var saved = consents.findById(consentId).orElseThrow();
         assertThat(saved.getRevokeMethod()).isEqualTo(ProxyInputConsentEntity.RevokeMethod.PAPER_BY_SUBJECT);
@@ -178,6 +180,7 @@ class ProxyConsentManagementMutationContractIT extends AbstractMySqlIntegrationT
         MembershipTestHelper.insertUserRole(em, witness, "ADMIN", null, organization);
         revoke(admin, consentId, Map.of("revokeMethod", "PAPER_BY_SUBJECT",
                 "revokeWitnessedByUserId", witness)).andExpect(status().isOk());
+        em.flush();
         em.clear();
         assertThat(consents.findById(consentId).orElseThrow().getRevokeWitnessedByUserId()).isEqualTo(witness);
     }
