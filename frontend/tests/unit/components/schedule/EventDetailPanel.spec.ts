@@ -16,6 +16,7 @@ import EventDetailPanel from '~/components/schedule/EventDetailPanel.vue'
  *   EDP-006: セレクタで選んだ組織で試合を作り、live に org を引き継ぐ
  *   EDP-007: 親組織が1つ（organizationId 無し）なら、その組織で作成できる
  *   EDP-009: 組織の解決中（親組織が複数かまだ分からない間）に押しても作成されない
+ *   EDP-010: 初回の組織取得が失敗し、押した時点の再取得で親組織が2つ返っても、選ぶまで作成されない
  *   EDP-008: 予定の組織（organizationId）がチームの親組織でなければ、代表親組織へ落とさず作成を止める
  */
 
@@ -273,6 +274,43 @@ describe('EventDetailPanel.vue（入口④）', () => {
     expect(mockCreateMatch).not.toHaveBeenCalled()
     expect(mockResolveBySchedule).not.toHaveBeenCalled()
     expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('EDP-010: 初回の取得が失敗し、再取得で親組織が2つ返っても、選択するまで作成されない', async () => {
+    // 初回（マウント時）は取得失敗（composable は警告を出して null を返す）、2回目以降は親組織が2つ
+    mockResolveContext.mockResolvedValueOnce(null)
+    mockResolveContext.mockImplementation(async (_slug: string, sel?: { orgId?: number | null }) => ({
+      orgId: sel?.orgId ?? 11,
+      orgInvalid: false,
+      teamId: 42,
+      organizations: MULTI_ORGS,
+    }))
+    mockResolveBySchedule.mockResolvedValue(null)
+    mockCreateMatch.mockResolvedValue({ id: 'm-new' })
+
+    const wrapper = await mountSuspended(EventDetailPanel, {
+      props: { event: baseEvent(), scopeType: 'team', scopeId: 'team-uuid', canEdit: false },
+    })
+    await new Promise((r) => setTimeout(r, 0))
+    // 取得失敗の後なのでセレクタはまだ無く、押せる（再取得させるため）
+    expect(wrapper.find('[data-testid="match-org-select"]').exists()).toBe(false)
+
+    await findRecordButton(wrapper)!.trigger('click')
+    await new Promise((r) => setTimeout(r, 0))
+
+    // 再取得で親組織が2つと分かった: 代表親組織(11)で作らず、セレクタを出して選択待ちになる
+    expect(mockCreateMatch).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
+    const select = wrapper.find('[data-testid="match-org-select"]')
+    expect(select.exists()).toBe(true)
+    expect((select.element as HTMLSelectElement).value).toBe('')
+
+    // 選んで押すと、その組織で作成される
+    await select.setValue('22')
+    await new Promise((r) => setTimeout(r, 0))
+    await findRecordButton(wrapper)!.trigger('click')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(mockCreateMatch).toHaveBeenCalledWith(22, 42, expect.anything())
   })
 
   // 是正4【P2】: 個人予定は scheduleId=null で渡され、コメント欄自体が描画されないこと（設計書 §AC-17。

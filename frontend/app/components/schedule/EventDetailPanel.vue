@@ -132,6 +132,17 @@ async function recordMatch(): Promise<void> {
       notification.warn(t('match.org_select.invalid'))
       return
     }
+    // 初回の組織取得が失敗していた（ctx が null で組織が空のまま）場合でも、ここで取り直した結果が
+    // 複数の親組織なら選択を飛ばさない。代表親組織で作らず、セレクタを出して選ばせる。
+    if (
+      props.event.organizationId == null &&
+      selectedOrgId.value === null &&
+      ctx.organizations.length > 1
+    ) {
+      matchOrganizations.value = ctx.organizations
+      matchOrgId.value = null
+      return
+    }
     const orgQuery = { org: String(ctx.orgId) }
 
     // 1) この予定に紐づく既存 match があれば live を開く
