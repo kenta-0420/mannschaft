@@ -370,6 +370,56 @@ class RecruitmentListingFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTes
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // P2: 閲覧できない同スコープ在籍者の申込は、ファサードが是正前の 403 で返す（FOR UPDATE 0 本）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("K6/P2: 同スコープ一般メンバーが F00 の拒否する OPEN（CUSTOM_TEMPLATE）に申し込むと、是正前の403 VISIBILITY_001。FOR UPDATE は 0 本")
+    void 同スコープ在籍者の可視性拒否はロックを取らず403() throws Exception {
+        Long custom = tx.execute(s -> insertListing(RecruitmentListingStatus.OPEN,
+                RecruitmentVisibility.CUSTOM_TEMPLATE));
+        setAuth(memberId);
+        SqlIntentCounter.reset();
+        MvcResult result = mockMvc.perform(post("/api/v1/recruitment-listings/{id}/applications", custom)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("participantType", RecruitmentParticipantType.USER.name())))).andReturn();
+        List<String> sqls = new ArrayList<>(SqlIntentCounter.capturedSqls());
+        assertThat(sqls).as("SQL 記録が有効であること（StatementInspector の登録）").isNotEmpty();
+        assertThat(sqls.stream().filter(RecruitmentListingFacadeRaceAndQueryIT::isForUpdate).toList())
+                .as("拒否経路で行ロックを取らない").isEmpty();
+        String content = result.getResponse().getContentAsString();
+        assertThat(result.getResponse().getStatus()).as(content).isEqualTo(403);
+        assertThat((String) JsonPath.read(content, "$.error.code"))
+                .isEqualTo(com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001.getCode());
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // P3 / AC-18: 下書きの GET・試算（作成者でない管理者）— 認可クエリは是正前と同数（二重判定しない）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @ParameterizedTest(name = "P3: {0}")
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"detail", "estimate"})
+    @DisplayName("AC-18/P3: 下書きの GET 詳細・試算（作成者でない管理者）— 認可クエリは是正前（isAdminOrAbove 単体）と同数で、管理者判定は 1 回だけ")
+    void 下書き閲覧_作成者でない管理者の認可クエリ回数(String kind) throws Exception {
+        Long otherAdmin = tx.execute(s -> {
+            Long id = insertUser("w5r-admin2-" + suffix + "@example.com");
+            MembershipTestHelper.insertMembership(em, id, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, id, "ADMIN", teamId, null);
+            return id;
+        });
+        long baseline = adminCheckBaseline(otherAdmin);
+        MockHttpServletRequestBuilder request = kind.equals("detail")
+                ? get("/api/v1/recruitment-listings/{id}", draftId)
+                : get("/api/v1/recruitment-listings/{id}/cancellation-fee-estimate", draftId);
+        Measured m = measure(otherAdmin, request);
+        m.print("draft " + kind);
+        assertThat(m.status).isEqualTo(200);
+        assertAuthzNotIncreased(m, baseline);
+        Mockito.verify(accessControlService, Mockito.times(1)).isAdminOrAbove(any(), any(), any());
+        Mockito.verify(accessControlService, never()).isMember(any(), any(), any());
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // AC-12 / AC-18 / AC-19: 許可経路のクエリ回数（認可 / scope 解決 / tx 本体を分けて数える）
     // ═════════════════════════════════════════════════════════════════════
 
@@ -462,9 +512,13 @@ class RecruitmentListingFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTes
 
     /** 是正前の管理者判定（{@code isAdminOrAbove} 単体）のクエリ数。初回コストを外すため 1 度流してから測る。 */
     private long adminCheckBaseline() {
-        accessControlService.isAdminOrAbove(adminId, teamId, "TEAM");
+        return adminCheckBaseline(adminId);
+    }
+
+    private long adminCheckBaseline(Long who) {
+        accessControlService.isAdminOrAbove(who, teamId, "TEAM");
         SqlIntentCounter.reset();
-        accessControlService.isAdminOrAbove(adminId, teamId, "TEAM");
+        accessControlService.isAdminOrAbove(who, teamId, "TEAM");
         long baseline = SqlIntentCounter.totalCount();
         assertThat(baseline).as("SQL 記録が有効であること").isPositive();
         Mockito.clearInvocations(accessControlService);
@@ -653,6 +707,10 @@ class RecruitmentListingFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTes
     }
 
     private Long insertListing(RecruitmentListingStatus status) {
+        return insertListing(status, RecruitmentVisibility.SCOPE_ONLY);
+    }
+
+    private Long insertListing(RecruitmentListingStatus status, RecruitmentVisibility visibility) {
         LocalDateTime start = LocalDateTime.now().plusDays(30);
         return listingRepository.save(RecruitmentListingEntity.builder()
                 .scopeType(RecruitmentScopeType.TEAM)
@@ -667,7 +725,7 @@ class RecruitmentListingFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTes
                 .capacity(10)
                 .minCapacity(1)
                 .status(status)
-                .visibility(RecruitmentVisibility.SCOPE_ONLY)
+                .visibility(visibility)
                 .location("W5RACE 会場")
                 .createdBy(adminId)
                 .build()).getId();

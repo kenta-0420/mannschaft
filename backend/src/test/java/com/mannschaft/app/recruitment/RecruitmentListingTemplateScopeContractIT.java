@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.visibility.VisibilityErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentCategoryEntity;
@@ -132,6 +133,7 @@ class RecruitmentListingTemplateScopeContractIT extends AbstractMySqlIntegration
     private static final List<String> BOUNDARY_IDS = List.of("0", "-1", String.valueOf(Long.MAX_VALUE));
 
     private static final String C002 = CommonErrorCode.COMMON_002.getCode();
+    private static final String V001 = VisibilityErrorCode.VISIBILITY_001.getCode();
     private static final String R001 = RecruitmentErrorCode.LISTING_NOT_FOUND.getCode();
     private static final String R020 = RecruitmentErrorCode.DRAFT_VIEW_DENIED.getCode();
     private static final String R101 = RecruitmentErrorCode.DEADLINE_EXCEEDED.getCode();
@@ -203,6 +205,8 @@ class RecruitmentListingTemplateScopeContractIT extends AbstractMySqlIntegration
     private Long listingPersonalDraftId;
     private Long listingDeletedAId;
     private Long listingDeadlinePassedAId;
+    /** CUSTOM_TEMPLATE の OPEN（同スコープ一般メンバーも F00 が拒否する。是正前は 403 VISIBILITY_001）。 */
+    private Long listingCustomAId;
     /** 募集 ID → その募集の CONFIRMED 参加者 ID（attend 用）。 */
     private final Map<Long, Long> attendParticipantByListing = new HashMap<>();
 
@@ -275,6 +279,9 @@ class RecruitmentListingTemplateScopeContractIT extends AbstractMySqlIntegration
         listingDeadlinePassedAId = insertListing(RecruitmentScopeType.TEAM, teamAId,
                 RecruitmentVisibility.SCOPE_ONLY, RecruitmentListingStatus.OPEN, adminAId,
                 LocalDateTime.now().minusDays(1));
+
+        listingCustomAId = insertListing(RecruitmentScopeType.TEAM, teamAId, RecruitmentVisibility.CUSTOM_TEMPLATE,
+                RecruitmentListingStatus.OPEN, adminAId, start.minusDays(1));
 
         for (Long id : List.of(listingAId, listingDraftAId, listingCancelledAId, listingPublicAId, listingOrgId,
                 listingPersonalId, listingPersonalDraftId, listingDeletedAId)) {
@@ -823,6 +830,15 @@ class RecruitmentListingTemplateScopeContractIT extends AbstractMySqlIntegration
             expectError(apply(listingDraftAId), 409, R103);
             setAuth(urAdminAId);
             expectError(apply(listingDraftAId), 409, R103);
+        }
+
+        @Test
+        @DisplayName("P2: 同スコープ一般メンバーが F00 の拒否する OPEN（CUSTOM_TEMPLATE）に申し込むと、是正前の403 V001のまま。参加者は作られない")
+        void 同スコープメンバーの可視性拒否は403_V001() throws Exception {
+            long before = count("SELECT COUNT(*) FROM recruitment_participants");
+            setAuth(memberAId);
+            expectError(apply(listingCustomAId), 403, V001);
+            assertThat(count("SELECT COUNT(*) FROM recruitment_participants")).isEqualTo(before);
         }
 
         @Test

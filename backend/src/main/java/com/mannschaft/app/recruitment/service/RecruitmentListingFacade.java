@@ -196,6 +196,10 @@ public class RecruitmentListingFacade {
         }
         if (scope.status() == RecruitmentListingStatus.DRAFT) {
             requireDraftViewer(userId, scope);
+            // 閲覧は判定済み。tx 本体で管理者判定を繰り返さない（許可経路の認可クエリを是正前と同数に保つ）。
+            // 判定の後に公開されていた場合だけ、通常の経路（F00 の可視性判定）へ切り替える。
+            return listingService.findAuthorizedDraftListing(listingId)
+                    .orElseGet(() -> listingService.getListing(listingId, userId));
         }
         return listingService.getListing(listingId, userId);
     }
@@ -204,9 +208,9 @@ public class RecruitmentListingFacade {
      * 募集へ申し込む。可視性の判定を状態の判定（締切・下書き・中止）より前に置く。
      *
      * <p>募集を閲覧できず、かつスコープの在籍者・管理者でもない者には、状態に依らず不在と同一の 404
-     * （{@code LISTING_NOT_FOUND}）。在籍者・管理者や閲覧できる者には従来どおり tx 本体が状態の判定
-     * （下書きは 409 {@code DRAFT_NOT_APPLICABLE} など）を返す。FOR UPDATE は tx 本体だけ（部外者の要求は
-     * 募集の行をロックしない）。</p>
+     * （{@code LISTING_NOT_FOUND}）。閲覧できない在籍者・管理者には、ファサードが是正前の応答（下書きは 409
+     * {@code DRAFT_NOT_APPLICABLE}、それ以外は可視性の 403 {@code VISIBILITY_001}）を返す。tx 本体へ進むのは
+     * 閲覧できる者（と個人札の本人）だけで、FOR UPDATE は tx 本体だけ（拒否の経路は募集の行をロックしない）。</p>
      *
      * @param listingId 募集 ID
      * @param userId    申込者
@@ -217,10 +221,17 @@ public class RecruitmentListingFacade {
         ListingAccessScope scope = listingService.resolveListingScope(listingId);
         boolean ownPersonalListing = scope.scopeType() == RecruitmentScopeType.PERSONAL
                 && Objects.equals(scope.scopeId(), userId);
-        if (!ownPersonalListing
-                && !visibilityChecker.canView(ReferenceType.RECRUITMENT_LISTING, listingId, userId)
-                && !isScopeInsider(userId, scope)) {
-            throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        if (!ownPersonalListing && !visibilityChecker.canView(ReferenceType.RECRUITMENT_LISTING, listingId, userId)) {
+            // 閲覧できない。ここでは募集の行をロックせず、是正前の応答をファサードで決める（tx 本体へ進まない）。
+            if (!isScopeInsider(userId, scope)) {
+                throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
+            }
+            if (scope.status() == RecruitmentListingStatus.DRAFT) {
+                // 是正前は状態の判定（下書き）が可視性の判定より先だった。
+                throw new BusinessException(RecruitmentErrorCode.DRAFT_NOT_APPLICABLE);
+            }
+            // 是正前と同じ拒否（assertCanView: deny は VISIBILITY_001 の 403、不在は VISIBILITY_004 の 404）。
+            visibilityChecker.assertCanView(ReferenceType.RECRUITMENT_LISTING, listingId, userId);
         }
         return participantService.apply(listingId, userId, request);
     }

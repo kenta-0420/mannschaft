@@ -144,6 +144,24 @@ public class RecruitmentListingService {
         return page.map(mapper::toListingSummaryResponse);
     }
 
+    /**
+     * 認可ファサードが閲覧を許可済みの下書き（DRAFT）募集を返す。管理者判定は呼び出し側（ファサード）で
+     * 済んでいるので、ここでは行わない（許可経路の認可クエリを是正前と同数に保つ）。
+     *
+     * <p>認可の後に募集が公開されていた（DRAFT でなくなった）場合は空を返す。呼び出し側は通常の
+     * {@link #getListing} へ切り替え、F00 の可視性判定を通す。</p>
+     *
+     * @param listingId 募集 ID
+     * @return 下書きの募集詳細。DRAFT でなければ空
+     */
+    public java.util.Optional<RecruitmentListingResponse> findAuthorizedDraftListing(Long listingId) {
+        RecruitmentListingEntity entity = findOrThrow(listingId);
+        if (entity.getStatus() != RecruitmentListingStatus.DRAFT) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(mapper.toListingResponse(entity));
+    }
+
     public RecruitmentListingResponse getListing(Long listingId, Long userId) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
         // PERSONAL の公開後レスポンスは閲覧者別の表示名・PII 抑制・no-store を担う

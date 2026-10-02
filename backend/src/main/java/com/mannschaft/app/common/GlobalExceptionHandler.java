@@ -1902,7 +1902,6 @@ public class GlobalExceptionHandler {
             // 既定 400 のままだと「レコードは実在するが本人でない」ことが 404（不在）と区別できてしまい、
             // recordId の列挙で他人の NO_SHOW 記録の存在を判別できる IDOR となるため、
             // NOT_FOUND 系と同一の 404 に畳んで存在秘匿する。
-            Map.entry("RECRUITMENT_003", HttpStatus.NOT_FOUND),          // VISIBILITY_DENIED（本人以外の NO_SHOW 記録操作を存在秘匿）
             // RecruitmentListingService.getListing(): DRAFT 募集は作成者/スコープ ADMIN のみ閲覧可。
             // 対象は findOrThrow 済み（存在は前提）で、権限不足のみを理由に拒否するため 403（F00 の
             // 「NOT_FOUND→404, deny→403」規約と同型）。

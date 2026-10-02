@@ -22,10 +22,6 @@ public enum RecruitmentErrorCode implements ErrorCode {
     /** 募集の作成権限なし（未使用: 現状 throw 元なし。既定 400 のまま） */
     NO_PERMISSION_TO_CREATE("RECRUITMENT_002", "募集の作成権限がありません", Severity.WARN),
 
-    /** 本人以外の NO_SHOW 記録操作を「存在秘匿」で不在と同一視 → 404
-     * （RecruitmentNoShowService.dispute()。既存レコードか否かを応答から判別できないようにする） */
-    VISIBILITY_DENIED("RECRUITMENT_003", "公開範囲によりこの募集を閲覧できません", Severity.WARN),
-
     /** カテゴリ未指定 */
     CATEGORY_NOT_SPECIFIED("RECRUITMENT_012", "カテゴリが指定されていません", Severity.WARN),
 

@@ -245,7 +245,7 @@ class RecruitmentListingFacadeTest {
             given(accessControlService.isMember(MEMBER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSystemAdmin(77L)).willReturn(true);
             RecruitmentListingResponse response = mock(RecruitmentListingResponse.class);
-            given(listingService.getListing(LISTING_ID, ADMIN_ID)).willReturn(response);
+            given(listingService.findAuthorizedDraftListing(LISTING_ID)).willReturn(java.util.Optional.of(response));
 
             assertThat(facade().getListing(LISTING_ID, ADMIN_ID)).isSameAs(response);
             assertThatThrownBy(() -> facade().getListing(LISTING_ID, MEMBER_ID))
@@ -255,8 +255,8 @@ class RecruitmentListingFacadeTest {
             assertThatThrownBy(() -> facade().getListing(LISTING_ID, OUTSIDER_ID))
                     .satisfies(e -> assertThat(codeOf(e)).isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND));
 
-            verify(listingService, never()).getListing(LISTING_ID, MEMBER_ID);
-            verify(listingService, never()).getListing(LISTING_ID, OUTSIDER_ID);
+            // 下書きの許可後は、管理者判定を繰り返さない専用の読み取りを使う（通常の getListing は呼ばない）
+            verify(listingService, never()).getListing(any(), any());
         }
 
         @Test
@@ -271,7 +271,7 @@ class RecruitmentListingFacadeTest {
             // 2 回目以降（DRAFT）
             given(accessControlService.isSystemAdmin(99L)).willReturn(true);
             RecruitmentListingResponse response = mock(RecruitmentListingResponse.class);
-            given(listingService.getListing(LISTING_ID, OWNER_ID)).willReturn(response);
+            given(listingService.findAuthorizedDraftListing(LISTING_ID)).willReturn(java.util.Optional.of(response));
 
             assertThat(facade().getListing(LISTING_ID, OWNER_ID)).isSameAs(response);
             assertThatThrownBy(() -> facade().getListing(LISTING_ID, 99L))
@@ -295,18 +295,29 @@ class RecruitmentListingFacadeTest {
         }
 
         @Test
-        @DisplayName("申込: 同スコープの在籍者は下書きでも tx 本体へ進む（是正前の 409 DRAFT_NOT_APPLICABLE を維持）")
-        void apply_memberOfDraftReachesStateCheck() {
+        @DisplayName("申込: 閲覧できない在籍者は下書きなら 409 DRAFT_NOT_APPLICABLE、それ以外は 403（VISIBILITY_001）。どちらも tx 本体（FOR UPDATE）へ進まない")
+        void apply_insiderDeniedAnsweredByFacadeWithoutLock() {
             given(listingService.resolveListingScope(LISTING_ID))
                     .willReturn(teamListing(RecruitmentListingStatus.DRAFT, RecruitmentVisibility.SCOPE_ONLY));
             given(visibilityChecker.canView(ReferenceType.RECRUITMENT_LISTING, LISTING_ID, MEMBER_ID))
                     .willReturn(false);
             given(accessControlService.isMember(MEMBER_ID, TEAM_ID, "TEAM")).willReturn(true);
             ApplyToRecruitmentRequest request = mock(ApplyToRecruitmentRequest.class);
-            RecruitmentParticipantResponse response = mock(RecruitmentParticipantResponse.class);
-            given(participantService.apply(LISTING_ID, MEMBER_ID, request)).willReturn(response);
 
-            assertThat(facade().apply(LISTING_ID, MEMBER_ID, request)).isSameAs(response);
+            assertThatThrownBy(() -> facade().apply(LISTING_ID, MEMBER_ID, request))
+                    .satisfies(e -> assertThat(codeOf(e)).isEqualTo(RecruitmentErrorCode.DRAFT_NOT_APPLICABLE));
+
+            given(listingService.resolveListingScope(LISTING_ID))
+                    .willReturn(teamListing(RecruitmentListingStatus.OPEN, RecruitmentVisibility.CUSTOM_TEMPLATE));
+            org.mockito.Mockito.doThrow(new com.mannschaft.app.common.BusinessException(
+                            com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001))
+                    .when(visibilityChecker).assertCanView(ReferenceType.RECRUITMENT_LISTING, LISTING_ID, MEMBER_ID);
+
+            assertThatThrownBy(() -> facade().apply(LISTING_ID, MEMBER_ID, request))
+                    .satisfies(e -> assertThat(codeOf(e))
+                            .isEqualTo(com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001));
+
+            verifyNoInteractions(participantService);
         }
 
         @Test
