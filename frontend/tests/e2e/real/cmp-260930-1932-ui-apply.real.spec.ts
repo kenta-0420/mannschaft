@@ -58,9 +58,12 @@ async function resolveCreditExhaustedTeamId(api: APIRequestContext, token: strin
   const json = (await res.json()) as {
     data: Array<{ id: number; name: string; role: string; organizationId: number | null }>
   }
-  const team = json.data.find((t) => t.role === 'ADMIN' && t.name.includes('fc-u-18'))
-  if (!team || team.organizationId === null) {
-    throw new Error('検証用チーム fc-u-18（organization_id=9・ADMINロール）が見つからない。E2Eシードを確認せよ。')
+  // "fc-u-18" はスラッグであり表示名ではない（表示名は「FC Tokyo U-18 Test」）。
+  // 名前の部分一致ではなく、シード前提の team_id=1・organization_id=9 で明示特定する
+  // （MyTeamResponse: id, organizationId, role フィールドを backend DTO で確認済み）。
+  const team = json.data.find((t) => t.id === 1 && t.organizationId === 9 && t.role === 'ADMIN')
+  if (!team) {
+    throw new Error('検証用チーム team_id=1（organization_id=9・ADMINロール）が見つからない。E2Eシードを確認せよ。')
   }
 
   const balanceRes = await api.get(
@@ -70,6 +73,9 @@ async function resolveCreditExhaustedTeamId(api: APIRequestContext, token: strin
   expect(balanceRes.status(), '通知クレジット残高APIは 200').toBe(200)
   const balanceJson = (await balanceRes.json()) as { data: NotificationCreditBalance }
   const balance = balanceJson.data
+  // gracePeriodEndsAt は Java の LocalDateTime（タイムゾーン情報なし）を JSON シリアライズしたもの（例: "2026-10-05T12:00:00"）。
+  // JVM 既定ゾーンは強制 JST のため値自体は JST の壁時計。オフセット無し文字列は `new Date()` でも
+  // 実行環境のローカルタイムゾーンとして解釈されるため、実機E2E実行環境（Windows, JST）では一致し正しく比較できる。
   const graceExpired = balance.gracePeriodEndsAt !== null && new Date(balance.gracePeriodEndsAt).getTime() < Date.now()
   if (!(balance.creditBalance <= 0 && graceExpired)) {
     throw new Error(
