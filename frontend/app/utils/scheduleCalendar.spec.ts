@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { components } from '~/types/generated'
-import { toCalendarPanelEvent, type NestedScheduleResponse } from './scheduleCalendar'
+import { toCalendarPanelEvent, toFlatScheduleEvent, type NestedScheduleResponse } from './scheduleCalendar'
 
 /**
  * F03.19 実機E2E 欠陥1 の再発防止。
@@ -38,6 +38,24 @@ const apiResponse = {
 } satisfies GeneratedScheduleResponse & NestedScheduleResponse
 
 describe('toCalendarPanelEvent（詳細 GET → 詳細パネル）', () => {
+  it('保存済みの説明文・色をチーム予定とカレンダー詳細へ渡す', () => {
+    const detailResponse = {
+      ...apiResponse,
+      detail: { description: '集合は正門\n持ち物：水筒', color: '#a855f7', visibility: 'MEMBERS_ONLY' },
+    }
+    expect(toFlatScheduleEvent(detailResponse).description).toBe('集合は正門\n持ち物：水筒')
+    const panel = toCalendarPanelEvent(detailResponse, { scheduleId: 4321 })
+    expect(panel.description).toBe('集合は正門\n持ち物：水筒')
+    expect(panel.color).toBe('#a855f7')
+  })
+
+  it('詳細を持たない一覧応答は説明なしを保ち、色は既存カテゴリで補う', () => {
+    const response = { ...apiResponse, academic: { category: { name: '練習', color: '#123456' } } }
+    const panel = toCalendarPanelEvent(response, {})
+    expect(panel.description).toBeNull()
+    expect(panel.color).toBe('#123456')
+  })
+
   it('ネストした content / time から題名・日時を取り出す（欠陥1: スプレッドでは undefined になっていた）', () => {
     const panel = toCalendarPanelEvent(apiResponse, { scheduleId: 4321 })
 

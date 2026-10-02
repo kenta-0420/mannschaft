@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.ValueOperations;
@@ -203,6 +204,96 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
         em.flush();
         em.clear();
+    }
+
+    @Nested
+    @DisplayName("CMP-260902-0058: 共有予定詳細の説明文・色")
+    class SharedScheduleDetail {
+
+        @ParameterizedTest
+        @CsvSource({"false", "true"})
+        @DisplayName("チーム・組織の数値IDとslugで保存済み詳細と既存フィールドを返す")
+        void 保存済み詳細を取得できる(boolean organization) throws Exception {
+            Long scheduleId = createSchedule(organization, "集合は正門\n持ち物：水筒", "#a855f7", MinViewRole.MEMBER_PLUS);
+            setAuthentication(memberId);
+            for (Object scopeId : List.of(organization ? orgId : teamId, organization ? orgSlug : teamSlug)) {
+                mockMvc.perform(get(detailUrl(organization), scopeId, scheduleId))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.id").value(scheduleId))
+                        .andExpect(jsonPath("$.data.detail.description").value("集合は正門\n持ち物：水筒"))
+                        .andExpect(jsonPath("$.data.detail.color").value("#a855f7"))
+                        .andExpect(jsonPath("$.data.detail.visibility").value("MEMBERS_ONLY"))
+                        .andExpect(jsonPath("$.data.content.title").value("詳細契約テスト"))
+                        .andExpect(jsonPath("$.data.time.startAt").value("2026-04-05T10:00:00"))
+                        .andExpect(jsonPath("$.data.scope.scopeName").value(organization ? "W4C 組織" : "W4C チーム"))
+                        .andExpect(jsonPath("$.data.reminders").isArray())
+                        .andExpect(jsonPath("$.data.scheduledTasks").isArray());
+            }
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @DisplayName("説明文がnull・空、色がnullでも詳細取得は成功する")
+        void 空の詳細を取得できる(String description) throws Exception {
+            setAuthentication(memberId);
+            for (boolean organization : List.of(false, true)) {
+                Long scheduleId = createSchedule(organization, description, null, MinViewRole.MEMBER_PLUS);
+                var result = mockMvc.perform(get(detailUrl(organization), organization ? orgId : teamId, scheduleId))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.detail").exists())
+                        .andExpect(jsonPath("$.data.detail.color").doesNotExist());
+                if (description == null) {
+                    result.andExpect(jsonPath("$.data.detail.description").doesNotExist());
+                } else {
+                    result.andExpect(jsonPath("$.data.detail.description").value(description));
+                }
+            }
+        }
+
+        @ParameterizedTest
+        @CsvSource({"false", "true"})
+        @DisplayName("既存ANYONE可視性は説明文にも適用し、非所属者へ対象者名を開示しない")
+        void 非所属者の可視性を維持する(boolean organization) throws Exception {
+            Long scheduleId = createSchedule(organization, "公開の集合案内", "#a855f7", MinViewRole.ANYONE);
+            setAuthentication(outsiderId);
+            mockMvc.perform(get(detailUrl(organization), organization ? orgId : teamId, scheduleId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.detail.description").value("公開の集合案内"))
+                    .andExpect(jsonPath("$.data.targets").isEmpty());
+
+            Long restrictedId = createSchedule(organization, "所属者向けの説明", null, MinViewRole.MEMBER_PLUS);
+            mockMvc.perform(get(detailUrl(organization), organization ? orgId : teamId, restrictedId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.data.detail").doesNotExist());
+        }
+
+        private String detailUrl(boolean organization) {
+            return organization ? "/api/v1/organizations/{scopeId}/schedules/{scheduleId}"
+                    : "/api/v1/teams/{scopeId}/schedules/{scheduleId}";
+        }
+
+        private Long createSchedule(boolean organization, String description, String color, MinViewRole minViewRole) {
+            Long scheduleId = scheduleRepository.save(ScheduleEntity.builder()
+                    .teamId(organization ? null : teamId)
+                    .organizationId(organization ? orgId : null)
+                    .title("詳細契約テスト")
+                    .description(description)
+                    .color(color)
+                    .startAt(LocalDateTime.of(2026, 4, 5, 10, 0))
+                    .endAt(LocalDateTime.of(2026, 4, 5, 12, 0))
+                    .eventType(EventType.OTHER)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(minViewRole)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(false)
+                    .allowProxyAttendance(false)
+                    .isProxyAutoAccept(false)
+                    .createdBy(adminId)
+                    .build()).getId();
+            em.flush();
+            em.clear();
+            return scheduleId;
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
