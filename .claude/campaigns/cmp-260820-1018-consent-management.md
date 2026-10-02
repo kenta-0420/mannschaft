@@ -173,3 +173,9 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - UI15は残es/ko/zhの3件/0fail/0error/0skip/exit0、個別case timeは51.320/37.340/58.147秒、whole150.956秒。stdioSHA256 `051bcb8f331a25d78b79cc223f8d6613ba370bee986bf4561e859e6ba912d98e`、3contextのdispose/close完了。
 - 六言語それぞれconsents/recordsの390px実DOMscroll/client一致、管理buttons高さ44以上/幅44以上、履歴対象者picker取得readyを確認。UI13bのja/en4枚、UI14のde2枚、UI15のes/ko/zh6枚を全て実画像で閲覧済み。原failed suiteの個別ja/en成功とDE補正後成功、残3成功を区別し、UI13/13bのerror/failure/skipを全greenへ書き換えない。
 - 既存real-smokeのtest discoveryを妨げないよう、専用CMP1018_MANIFEST未指定時は明示skipとし、指定時は従来のactual試験を実行する入口へ最小修正。manifest無し標準--list6件/exit0とESLint exit0を確認。入口skipを実機合格へ計上しない。
+# 2026-10-03 Desk回帰・他テナント試練の保全checkpoint
+
+- `legacy-desk1c` は実測6件中4失敗・2成功だったが、同じ設定で discovery を実行した際に JUnit が4 skippedへ上書きされた。原実行の raw XML は欠損。stdio/tool観測の件数を原XML保存済みとは扱わない。`real-ui1` も現在6 skippedのdiscovery XMLであり、旧4件実行の原XMLは欠損として扱う。以後 `--list --reporter=list` を必須とし、完了namespaceへ再書込しない。
+- `legacy-desk1d` は exit1、raw XML 4件/失敗3/エラー0/skipped0、stdio SHA256 `edc7d02669d6ed01a3abd6b8797ffb78d08c926be79cef4a091dccce5f08a18e`。headingの曖昧selector修正は成功。残りpin3件は稼働bannerと解除buttonが実DOM・画像に存在する一方、anchored本文regexが不一致。substring selectorへの補正を準備したが未測定。原因見直し後まで再試行しない。
+- DPのown498→未所属499のhub/同意・履歴直URL/組合候補・own scope復帰試練を追加。`--list --reporter=list` actual1確認済み、実測は未着手。既存画面本体はa830のまま固定。
+- Survey主体の独立根治試練は親専用WTへ移管予定。Survey199未回答、紙同意2未撤回、実records/paper/3住民・他組合UIは未達を維持。

@@ -194,6 +194,50 @@ test('空組合: ADMINは同意も履歴も空と区別し対象者候補を取�
   finally { await closeOwned(page, info) }
 })
 
+test('他テナント: DEPUTYは未所属組合の直URLと切替から同意も履歴も取得できない', async ({ browser }, info) => {
+  if (!fixture.emptyOrganization) throw new Error('未所属組合の専用fixtureを準備してください')
+  const foreign = fixture.emptyOrganization
+  const page = await openAs(browser, 'deputy', foreign)
+  const proof: Array<{ path: string, foreignScope: boolean, status: number }> = []
+  page.on('response', (response) => {
+    const url = new URL(response.url())
+    if (!url.pathname.startsWith('/api/v1/')) return
+    const foreignScope = url.pathname.includes(`/organizations/${foreign.id}/`)
+      || url.pathname.includes(`/organizations/${foreign.slug}/`)
+      || url.searchParams.get('organizationId') === String(foreign.id)
+    if (foreignScope) proof.push({ path: url.pathname, foreignScope, status: response.status() })
+  })
+  try {
+    await open(page, `/organizations/${fixture.organization.slug}/admin`)
+    await page.getByRole('button', { name: '管理画面を開く', exact: true }).click()
+    await expect(page.locator('article')).toHaveCount(4, { timeout: 120_000 })
+    await open(page, `/organizations/${foreign.slug}/admin`)
+    await expect(page.getByRole('button', { name: '管理画面を開く', exact: true })).toHaveCount(0)
+    for (const path of ['/admin/proxy/consents', '/admin/proxy/records']) {
+      await open(page, path)
+      await expect(page.getByRole('alert').filter({ hasText: '選択した組合の管理資格が必要です。' })).toBeVisible({ timeout: 120_000 })
+      await expect(page.locator('article')).toHaveCount(0)
+      await expect(page.getByText('同意書はありません。', { exact: true })).toHaveCount(0)
+      await expect(page.getByText('操作履歴はありません。', { exact: true })).toHaveCount(0)
+      const selector = page.getByRole('combobox', { name: '組合を選択', exact: true })
+      await selector.click()
+      await expect(page.getByRole('option', { name: foreign.name, exact: true })).toHaveCount(0)
+      await expect(page.getByRole('option', { name: fixture.organization.name, exact: true })).toBeVisible()
+      await page.keyboard.press('Escape')
+      await page.screenshot({ path: info.outputPath(path.endsWith('consents') ? 'foreign-consents-denied.png' : 'foreign-records-denied.png'), fullPage: true })
+    }
+    const selector = page.getByRole('combobox', { name: '組合を選択', exact: true })
+    await selector.click()
+    await page.getByRole('option', { name: fixture.organization.name, exact: true }).click()
+    await expect(page.getByText('操作履歴はありません。', { exact: true })).toBeVisible({ timeout: 120_000 })
+    expect(proof.filter(value => value.status >= 200 && value.status < 300)).toHaveLength(0)
+  }
+  finally {
+    writeFileSync(info.outputPath('safe-foreign-scope-proof.json'), JSON.stringify({ foreignOrganizationId: foreign.id, responses: proof }, null, 2))
+    await closeOwned(page, info)
+  }
+})
+
 test('故障注入: 一覧再試行と保存拒否を区別し実保存後の再取得失敗を明示する', async ({ browser }, info) => {
   const page = await openAs(browser, 'deputy')
   const target = fixture.consents.selfProxy.id
