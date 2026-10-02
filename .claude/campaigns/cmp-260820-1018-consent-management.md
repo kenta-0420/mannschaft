@@ -3,7 +3,7 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: source e6da1749abのBE225件/54XML、標準H2 OpenAPI/生成FE型、API単体5件・ナビ16件・機能ゲート17件・共通UI補正後全体型チェックはgreen。実機UI7のADMIN導線/一覧/空履歴1件とUI8のDEPUTY承認権限なし・MEMBER/SYSTEM拒否・取消/承認/本人255文字オンライン撤回4件は別JUnit計5件green、終了処理も全完了。紙撤回/権限ありDEPUTY/実操作履歴/候補取得完了/空組合・失敗再試行・6言語390px・3住民・最新main追従・最終検分は未達。
+- 状態: source e6da1749abのBE225件/54XML、標準H2 OpenAPI/生成FE型、API単体5件・ナビ16件・機能ゲート17件・共通UI補正後全体型チェックはgreen。実機UI7のADMIN導線/一覧/空履歴1件とUI8のDEPUTY承認権限なし・MEMBER/SYSTEM拒否・取消/承認/本人255文字オンライン撤回4件は別JUnit計5件green、終了処理も全完了。紙撤回/実操作履歴/候補取得完了/空組合・失敗再試行・6言語390px・3住民・最新main追従・最終検分は未達。
 
 ## 方針
 
@@ -150,3 +150,10 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - UI8はDEPUTY承認権限なし、MEMBER直URL拒否、SYSTEM+当該ADMIN併有でもUI拒否、ADMINの取消PATCH0/他代理者承認/本人オンライン理由255文字撤回の4件/0fail/0error/0skip/exit0。stdioSHA256 `2beed73089339ac3b009584cfeef198e35efda8cf842f6b17b6e5908e85977e7`。4contextのdispose/close双方完了、画像3枚を閲覧。オンライン同意3はREVOKED、他3件はPENDINGのまま。
 - UI8開始時の「選択2件」は作業者の誤判定だった。実JUnitと同grepの標準--listは4件で一致し、Playwright forceRegExpは既定giフラグで小文字member/systemにも一致する。UI9は作成・実行せず、同ケース重複測定をしない。原報告と訂正を区別して保持する。
 - 証跡は自所有ignored `cmp-consent-red65-20261003-artifacts/real-ui7` と `real-ui8` のrawJUnit/result/画像/cleanup-phases。UI5のclose timeoutは未合格として残し、原因は断定しない。新共通UIで正常bodyと後始末の終端を再現できた範囲を合格とする。
+## 2026-10-03 UI9/UI10 と履歴前提の保全
+
+- UI9はADMINが紙同意2を確認Dialog経由で承認し、APPROVED再取得/承認ボタンなしを確認。actual1/0fail/0error/0skip/exit0、suite50.213秒。stdioSHA256 `fe461247414922fdcb572eb413c4b6325019fcdb4348135718fd3c8d0415ec4c`、dispose23.096秒/close26ms完了、実画像閲覧済み。
+- 自所有組合498の唯一のgroup2（名称とID一致を確認）を標準assign APIでDEPUTY90156へ付与。fresh認証のreadonly me/permissionsでrole DEPUTY_ADMIN/PROXY_CONSENT_APPROVE true/PROXY_INPUT_EXECUTE trueをsafe JSON保全し、UI10でもfreshcontextから同前提を再確認した。
+- UI10はDEPUTYが別代理者の同意5を確認Dialog経由で承認し、APPROVED再取得/承認ボタンなしを確認。actual1/0fail/0error/0skip/exit0、suite30.650秒。stdioSHA256 `64d521e1786ca1a00281cd6451bda9a08694471f9764f01d9b9063014c4dd00a`、dispose10.714秒/close16ms完了、実画像閲覧済み。追加2caseのESLint exit0。
+- 専用survey199/question152は標準APIで作成・公開しただけで、回答は未送信。既存SurveyResponseServiceは業務回答行のuserIdにactorを使い、proxy recordだけsubjectを使う不整合を読み取りで確認。殿が独立の最小試練と進行順を検討中であり、Deskからの送信と紙同意2の撤回は保留している。CMP1017へ帰属させた作業者報告は誤りであり、1017正本はResidentRegistryEntity公開縮小/登録UIの別要件。別CMPへ押し出したり、虚偽の監査を成功扱いにしない。
+- API前提作成scriptがSurveyDetailResponseのtitleを直下と誤認し、初回は専用DRAFT保存後のidentity guardで終了した。正本content.titleへ訂正し保存ID199から再開して公開、二重作成なし。共有DBDDL・globalrole・共有locale設定は変更していない。

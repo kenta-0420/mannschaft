@@ -10,6 +10,8 @@ const fixture = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
   organization: { id: number, slug: string, name: string }
   users: Record<'admin' | 'deputy' | 'member' | 'system', { id: number, email: string }>
   consents: Record<'paper' | 'online' | 'selfProxy' | 'deputyApprove', { id: number }>
+  permissionGroupId?: number
+  survey?: { id: number, questionId: number, title: string, status: string }
 }
 const base = 'http://localhost:3001'
 const apiBase = 'http://localhost:8081'
@@ -125,6 +127,48 @@ test('診断: ADMINの実資格と管理ハブの実画像を保存する', asyn
     writeFileSync(info.outputPath('safe-network-proof.json'), JSON.stringify({ network, pending: [...pending.values()], consoleKinds }, null, 2))
     await closeOwned(page, info)
   }
+})
+
+test('履歴前提: ADMINが紙同意を確認して承認する', async ({ browser }, info) => {
+  const page = await openAs(browser, 'admin')
+  try {
+    await open(page, `/organizations/${fixture.organization.slug}/admin`)
+    await page.getByRole('button', { name: '管理画面を開く', exact: true }).click()
+    const paper = page.locator('article').filter({ has: page.getByRole('heading', { name: `代理入力同意書 #${fixture.consents.paper.id}`, exact: true }) })
+    await expect(paper.getByText('承認待ち', { exact: true })).toBeVisible({ timeout: 120_000 })
+    await paper.getByRole('button', { name: '承認する', exact: true }).click()
+    const approved = page.waitForResponse(response => response.request().method() === 'PATCH' && new URL(response.url()).pathname.endsWith(`/${fixture.consents.paper.id}/approve`))
+    await page.getByRole('dialog').getByRole('button', { name: '承認する', exact: true }).click()
+    expect((await approved).status()).toBe(200)
+    await expect(paper.getByText('承認済み', { exact: true })).toBeVisible({ timeout: 120_000 })
+    await expect(paper.getByRole('button', { name: '承認する', exact: true })).toHaveCount(0)
+    await page.screenshot({ path: info.outputPath('admin-paper-approved.png'), fullPage: true })
+  }
+  finally { await closeOwned(page, info) }
+})
+
+test('権限あり: DEPUTYが他代理者の同意を確認して承認する', async ({ browser }, info) => {
+  const page = await openAs(browser, 'deputy')
+  try {
+    const response = await page.context().request.get(`${apiBase}/api/v1/organizations/${fixture.organization.slug}/me/permissions`)
+    expect(response.status()).toBe(200)
+    const value = (await response.json()).data as { roleName: string, permissions: string[] }
+    const proof = { roleName: value.roleName, approve: value.permissions.includes('PROXY_CONSENT_APPROVE'), execute: value.permissions.includes('PROXY_INPUT_EXECUTE') }
+    writeFileSync(info.outputPath('safe-permission-proof.json'), JSON.stringify(proof, null, 2))
+    expect(proof).toEqual({ roleName: 'DEPUTY_ADMIN', approve: true, execute: true })
+    await open(page, `/organizations/${fixture.organization.slug}/admin`)
+    await page.getByRole('button', { name: '管理画面を開く', exact: true }).click()
+    const consent = page.locator('article').filter({ has: page.getByRole('heading', { name: `代理入力同意書 #${fixture.consents.deputyApprove.id}`, exact: true }) })
+    await expect(consent.getByText('承認待ち', { exact: true })).toBeVisible({ timeout: 120_000 })
+    await consent.getByRole('button', { name: '承認する', exact: true }).click()
+    const approved = page.waitForResponse(result => result.request().method() === 'PATCH' && new URL(result.url()).pathname.endsWith(`/${fixture.consents.deputyApprove.id}/approve`))
+    await page.getByRole('dialog').getByRole('button', { name: '承認する', exact: true }).click()
+    expect((await approved).status()).toBe(200)
+    await expect(consent.getByText('承認済み', { exact: true })).toBeVisible({ timeout: 120_000 })
+    await expect(consent.getByRole('button', { name: '承認する', exact: true })).toHaveCount(0)
+    await page.screenshot({ path: info.outputPath('deputy-permitted-approved.png'), fullPage: true })
+  }
+  finally { await closeOwned(page, info) }
 })
 
 test('ADMINが管理ハブから同意全状態一覧と空の実操作履歴に到達する', async ({ browser }, info) => {
