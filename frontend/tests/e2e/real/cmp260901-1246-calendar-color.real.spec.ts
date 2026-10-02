@@ -96,7 +96,11 @@ function rgb(hex: string): string {
 async function calendar(page: Page, viaLink = false): Promise<{ schedules: CalendarEntry[]; todos: CalendarTodo[] }> {
   const schedules = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/my/calendar' && response.request().method() === 'GET')
   const todos = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/todos/my/calendar' && response.request().method() === 'GET')
-  if (viaLink) await page.locator('a[href="/calendar"]:visible').first().click()
+  if (viaLink) {
+    // モバイルの既存Drawerを実操作で開き、可視ナビから移動する。
+    if ((page.viewportSize()?.width ?? 1280) < 768) await page.getByRole('button', { name: 'メニューを開く', exact: true }).click()
+    await page.locator('a[href="/calendar"]:visible').first().click()
+  }
   else await page.goto('/calendar')
   await waitForHydration(page)
   const responses = await Promise.all([schedules, todos])
@@ -111,7 +115,7 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
   test.beforeAll(async ({ browser }) => {
     proveIsolation()
     for (const email of ['e2e-outsider', 'e2e-user', 'e2e-admin']) {
-      const context = await browser.newContext({ baseURL: process.env.BASE_URL ?? 'http://localhost:8081', storageState: { cookies: [], origins: [] }, viewport: { width: email === 'e2e-outsider' ? 375 : 1280, height: 812 }, locale: 'ja-JP', timezoneId: 'Asia/Tokyo' })
+      const context = await browser.newContext({ baseURL: process.env.BASE_URL ?? 'http://localhost:8081', storageState: { cookies: [], origins: [] }, viewport: { width: email === 'e2e-admin' ? 375 : 1280, height: 812 }, locale: 'ja-JP', timezoneId: 'Asia/Tokyo' })
       contexts.push(context)
       const page = await context.newPage()
       await loginViaApi(page, { email: `${email}@test.mannschaft.local`, password: 'TestPass2026!' }, { apiBaseUrl: apiBase })
@@ -169,6 +173,11 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
   test('本人: 未知予定・TODOのみ・混在と既知利用者色を実画面で確認する', async ({ browserName }, info) => {
     expect(browserName).toBe('chromium')
     const data = await calendar(owner)
+    // 凡例はdesktop専用。実際にリストへ切り替え、同じ画面でチップとagenda行の色を照合する。
+    await owner.getByTestId('calendar-view-agenda').click()
+    await expect(owner.getByTestId('calendar-view-agenda')).toHaveAttribute('aria-pressed', 'true')
+    const agenda = owner.getByTestId('agenda-list')
+    await expect(agenda).toBeVisible()
     const layers = await api<Array<{ scopeType: string; scopeId: number }>>(owner, 'get', '/me/calendar-layers')
     for (const team of teams.slice(0, 3)) {
       expect(layers.filter(layer => layer.scopeType === 'TEAM' && layer.scopeId === team.id), '今回の未知スコープは実レイヤー一覧に存在しない').toHaveLength(0)
@@ -186,13 +195,15 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
       await expect(owner.getByTestId(`layer-chip-more-TEAM:${team.id}`)).toHaveCount(0)
       if (team.todoTitle) {
         expect(todo!.priority).toBe('HIGH')
-        const row = owner.getByTestId('schedule-list-row-wrap').filter({ hasText: team.todoTitle }).first()
+        const row = agenda.getByTestId('agenda-row-wrap').filter({ hasText: team.todoTitle, visible: true }).first()
         await expect(row).toBeVisible()
-        await expect(row.getByTestId('schedule-list-row-color-bar')).toHaveCSS('background-color', rgb('#f97316'))
+        await expect(row.getByTestId('agenda-row-color-bar')).toHaveCSS('background-color', rgb('#f97316'))
       }
       if (team.scheduleTitle) {
         expect(schedule!.content.colorSource).toBe('SCHEDULE')
-        await expect(owner.getByTestId('schedule-list-row-wrap').filter({ hasText: team.scheduleTitle }).first().getByTestId('schedule-list-row-color-bar')).toHaveCSS('background-color', rgb(schedule!.content.color))
+        const row = agenda.getByTestId('agenda-row-wrap').filter({ hasText: team.scheduleTitle, visible: true }).first()
+        await expect(row).toBeVisible()
+        await expect(row.getByTestId('agenda-row-color-bar')).toHaveCSS('background-color', rgb(schedule!.content.color))
       }
     }
     await expect(chip(owner, teams[3]!).getByTestId('layer-chip-dot')).toHaveCSS('background-color', rgb(knownColor))
@@ -201,15 +212,17 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
     const todoOnly = teams[1]!
     await chip(owner, todoOnly).click()
     await expect(chip(owner, todoOnly)).toHaveAttribute('aria-pressed', 'false')
-    await expect(owner.getByTestId('schedule-list-row-wrap').filter({ hasText: todoOnly.todoTitle! })).toHaveCount(0)
+    await expect(agenda.getByTestId('agenda-row-wrap').filter({ hasText: todoOnly.todoTitle! })).toHaveCount(0)
     await owner.reload()
     await waitForHydration(owner)
+    await owner.getByTestId('calendar-view-agenda').click()
+    await expect(agenda).toBeVisible()
     await expect(chip(owner, todoOnly)).toHaveAttribute('aria-pressed', 'false')
     await chip(owner, todoOnly).click()
-    await expect(owner.getByText(todoOnly.todoTitle!, { exact: true })).toBeVisible()
-    await owner.getByRole('button', { name: '次の月', exact: true }).click()
+    await expect(agenda.getByText(todoOnly.todoTitle!, { exact: true }).filter({ visible: true })).toBeVisible()
+    await owner.getByTestId('agenda-next').click()
     await expect(chip(owner, teams[0]!)).toHaveCount(0)
-    await owner.getByRole('button', { name: '前の月', exact: true }).click()
+    await owner.getByTestId('agenda-prev').click()
     await expect(chip(owner, teams[0]!).getByTestId('layer-chip-dot')).toHaveCSS('background-color', rgb(data.schedules.find(entry => entry.scope.scopeId === teams[0]!.id)!.content.scopeAutoColor))
     await evidence(owner, info, '本人-選択保持と月移動')
     await info.attach('実API色の照合', { body: JSON.stringify({ schedules: data.schedules.filter(entry => entry.content.title.startsWith(run)).map(entry => ({ scopeId: entry.scope.scopeId, scopeName: entry.scope.scopeName, title: entry.content.title, color: entry.content.color, colorSource: entry.content.colorSource, scopeAutoColor: entry.content.scopeAutoColor })), todos: data.todos.filter(entry => entry.title.startsWith(run)).map(entry => ({ scopeId: entry.scopeId, scopeName: entry.scopeName, priority: entry.priority, scopeAutoColor: entry.scopeAutoColor })) }), contentType: 'application/json' })
@@ -218,7 +231,7 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
     await owner.goto(`/teams/${known.slug}/todos/${known.todoId}`)
     await waitForHydration(owner)
     expect((await allowed).status(), '本人の直接URL取得').toBe(200)
-    await expect(owner.getByText(known.todoTitle!, { exact: true }).first()).toBeVisible()
+    await expect(owner.getByText(known.todoTitle!, { exact: true }).filter({ visible: true }).first()).toBeVisible()
     await evidence(owner, info, '本人-直接URL表示')
   })
 
