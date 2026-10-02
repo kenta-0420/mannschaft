@@ -298,6 +298,95 @@ class RecruitmentListingServicePhase2Test {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
         }
+
+        @Test
+        @DisplayName("K1: 募集が TEAM/ORGANIZATION でない（PERSONAL）→ MARKET_404 ではなく LISTING_NOT_FOUND で DB 不変")
+        void confirm_personalListing_throwsListingNotFound() throws Exception {
+            RecruitmentParticipantEntity participant = buildParticipant(RecruitmentParticipantStatus.APPLIED);
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(participantRepository.findByIdForUpdate(PARTICIPANT_ID)).willReturn(Optional.of(participant));
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.confirmApplication(PARTICIPANT_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+            verify(participantRepository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
+        @DisplayName("K1: 募集が消えていれば（論理削除・モデレーション非表示）LISTING_NOT_FOUND で DB 不変")
+        void confirm_listingGone_throwsListingNotFound() throws Exception {
+            RecruitmentParticipantEntity participant = buildParticipant(RecruitmentParticipantStatus.APPLIED);
+            given(participantRepository.findByIdForUpdate(PARTICIPANT_ID)).willReturn(Optional.of(participant));
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.confirmApplication(PARTICIPANT_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+            verify(participantRepository, org.mockito.Mockito.never()).save(any());
+        }
+    }
+
+    // ========================================
+    // resolveConfirmScope - W4（認可の前の scope 解決）
+    // ========================================
+
+    @Nested
+    @DisplayName("resolveConfirmScope - W4 認可前の scope 解決")
+    class ResolveConfirmScope {
+
+        @Test
+        @DisplayName("参加者→募集をたどり、募集のスコープを返す（行ロックは取らない）")
+        void resolve_returnsScope() throws Exception {
+            given(participantRepository.findById(PARTICIPANT_ID))
+                    .willReturn(Optional.of(buildParticipant(RecruitmentParticipantStatus.APPLIED)));
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(buildOpenListing()));
+
+            RecruitmentListingService.ConfirmScope scope = service.resolveConfirmScope(LISTING_ID, PARTICIPANT_ID);
+
+            assertThat(scope.scopeType()).isEqualTo(RecruitmentScopeType.TEAM);
+            assertThat(scope.scopeId()).isEqualTo(TEAM_ID);
+            verify(participantRepository, org.mockito.Mockito.never()).findByIdForUpdate(any());
+            verify(listingRepository, org.mockito.Mockito.never()).findByIdForUpdate(any());
+        }
+
+        @Test
+        @DisplayName("パスの listingId が参加者の募集と違えば LISTING_NOT_FOUND")
+        void resolve_pathListingMismatch_throws() throws Exception {
+            given(participantRepository.findById(PARTICIPANT_ID))
+                    .willReturn(Optional.of(buildParticipant(RecruitmentParticipantStatus.APPLIED)));
+
+            assertThatThrownBy(() -> service.resolveConfirmScope(LISTING_ID + 1, PARTICIPANT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("参加者不在・募集不在・PERSONAL はすべて LISTING_NOT_FOUND")
+        void resolve_missingOrPersonal_throws() throws Exception {
+            given(participantRepository.findById(PARTICIPANT_ID)).willReturn(Optional.empty());
+            assertThatThrownBy(() -> service.resolveConfirmScope(LISTING_ID, PARTICIPANT_ID))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+
+            given(participantRepository.findById(PARTICIPANT_ID))
+                    .willReturn(Optional.of(buildParticipant(RecruitmentParticipantStatus.APPLIED)));
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.empty());
+            assertThatThrownBy(() -> service.resolveConfirmScope(LISTING_ID, PARTICIPANT_ID))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+
+            RecruitmentListingEntity personal = buildOpenListing();
+            setField(personal, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(personal));
+            assertThatThrownBy(() -> service.resolveConfirmScope(LISTING_ID, PARTICIPANT_ID))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        }
     }
 
     // ========================================
