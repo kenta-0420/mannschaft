@@ -50,7 +50,9 @@ async function screenshot(page: Page, info: TestInfo, name: string) {
 async function openEvent(page: Page, fixture: Fixture) {
   const response = page.waitForResponse(response =>
     response.url().endsWith(endpoint(fixture)) && response.request().method() === 'GET')
-  await page.getByText(fixture.title, { exact: false }).first().click()
+  const visibleEvent = page.getByText(fixture.title, { exact: false }).filter({ visible: true }).first()
+  await expect(visibleEvent, '表示中の予定から詳細を開く').toBeVisible()
+  await visibleEvent.click()
   expect((await response).status(), '予定クリックで実際の詳細 GET を実行').toBe(200)
   await expect(page.getByText(DESCRIPTION, { exact: true })).toBeVisible()
 }
