@@ -2,9 +2,9 @@
 
 **実測日**: 2026-08-26 / **対象**: `gh pr list --state open --limit 80` の全42件
 
-**2026-10-02 照合**: 初版が列挙していたのは31件だった。CMP IDの時刻（2026-08-26 10:41 JST）を基準に、作成・閉鎖・再開・マージ履歴から当時OPENだった未掲載11件を補完し、42件を再構成した。現在は **MERGED 17件 / CLOSED 11件 / OPEN 14件**。元の規模・状態・停滞日数は当時の記録を残し、処遇を現在の状態へ更新している。
+**2026-10-03 照合**: 初版が列挙していたのは31件だった。CMP IDの時刻（2026-08-26 10:41 JST）を基準に、作成・閉鎖・再開・マージ履歴から当時OPENだった未掲載11件を補完し、42件を再構成した。元42件の現在状態をGitHub primaryで再照合し、重複0件、**MERGED 19件 / CLOSED 11件 / OPEN 12件**を確認した。元の規模・状態・停滞日数は当時の記録を残し、処遇を現在の状態へ更新している。
 
-**CMP-260826-1041 は未完了**。残る14件は本番インフラ #1502 と下表の依存更新13件で、処遇決定・必要なmain追従とCIが残る。MERGED/CLOSEDの確認だけで、復活時のCI・実機や本番構築を実施済みとは扱わない。
+**CMP-260826-1041 は未完了**。残る12件は本番インフラ #1502 と下表の依存更新11件で、処遇決定・必要なmain追従とCIが残る。#1073は対象27件が成功しても全体CIがArchUnit OOMで失敗し、未マージである。共通対策の[PR #3607](https://github.com/kenta-0420/mannschaft/pull/3607)は検証未完了の候補であり、根治済みとは扱わない。MERGED/CLOSEDの確認だけで、復活時のCI・実機や本番構築を実施済みとは扱わない。
 
 放置された PR は静かに腐る。特に `DIRTY`（コンフリクト済み）は **CI が一度も走らない**ため、
 緑にも赤にもならず「動いているように見えて実は死んでいる」状態になる
@@ -46,7 +46,10 @@
 
 | 停滞 | PR | 内容 | 処遇 |
 |---|---|---|---|
-| 56日 | #1079 #1078 #1077 #1076 #1074 #1073 | jjwt-jackson / actions/checkout 4→7 / jsoup / github-script 7→9 / cache 4→5 / poi-ooxml | **未処遇（6件OPEN）**。個別差分・互換性・main追従とCI確認が残る |
+| 56日 | #1079 #1078 #1077 | jjwt-jackson / actions/checkout 4→7 / jsoup | **未処遇（3件OPEN）**。個別差分・互換性・main追従とCI確認が残る |
+| 56日 | [#1076](https://github.com/kenta-0420/mannschaft/pull/1076) | github-script 7→9 | **復活・マージ済**（2026-10-03 JST、`479c60b1dcdf96c8f86071e69a51f0ee47f27cad`）。[実APIコメントrun](https://github.com/kenta-0420/mannschaft/actions/runs/37062378940)のScan & CommentとPost or update PR commentが成功。Terraform Planはskippedで、本番Infra実行済みとは扱わない |
+| 56日 | [#1074](https://github.com/kenta-0420/mannschaft/pull/1074) | cache 4→5 | **復活・マージ済**（2026-10-02 JST、`cdf4a31972f98c250ed57b2ce0bbf724984550ff`）。GitHub primaryのMERGEDとmerge SHAを確認 |
+| 56日 | [#1073](https://github.com/kenta-0420/mannschaft/pull/1073) | poi-ooxml | **復活対応中（OPEN）**。最終head `ffffae5ef5115d3bd00d24024a4d76ed8a014742`の対象27件はfailure/error/skip各0。[全体CI run](https://github.com/kenta-0420/mannschaft/actions/runs/37009214808)はArchUnit importerのJava heap spaceで失敗し、永続化enum番人もskip。未マージであり、共通対策PR #3607の全量検証を待つ |
 | 48日 | #1319 #1318 #1317 #1316 #1083 | lint-staged 16→17 / vue-virtual-scroller / cheerio / nuxt-security 1.4→2.6 / @nuxtjs/i18n 9→10 | **未処遇（5件OPEN）**。個別差分・互換性・main追従とCI確認が残る |
 | 35日 | #1490 #1489 | **Spring Boot 3.5.13 → 4.1.0**（メジャー）/ AWS SDK BOM | **未処遇（2件OPEN）**。個別差分・互換性・main追従とCI確認が残る |
 | 14日 | #2728 | cloudflare 4.52→5.23（メジャー） | **クローズ済**（2026-09-01 JST）。[既存PRコメント](https://github.com/kenta-0420/mannschaft/pull/2728) は「Superseded by #3042.」。後続PR #3042はOPENで、依存更新の実施済みを意味しない |
