@@ -29,7 +29,7 @@ SurveyResponseController は JWT の actor ID を Service へ渡し、Service �
 | 通常の本人回答は actorへ保存、代理記録なし | 通常回答は認証本人へ保存し代理記録を作らない |
 | 途中設問エラーは部分回答・記録・件数を全 rollback | 途中の不正設問は全回答と記録と件数をロールバックする |
 
-設置上の予定は35ケース。コンパイル、RED、JUnit 件数は実測前に達成扱いにしない。既存の正常な挙動は characterization として GREEN を保存し、失敗原因を製品差分と fixture/環境不備に分ける。
+設置上の予定は34ケース。コンパイル、RED、JUnit 件数は実測前に達成扱いにしない。既存の正常な挙動は characterization として GREEN を保存し、失敗原因を製品差分と fixture/環境不備に分ける。
 
 ## 設計判断
 
@@ -42,3 +42,4 @@ F14.1 の「SUPPORTER が代理者として条件付き実行」と現 RoleServi
 - main 1c36ff40a736df023e9ff060a9315cae9883b269 から専用 worktree 作成済み。
 - 製品コード変更なし。先行試練を設置した段階。
 - 共有 DB、稼働中サービス、他 worktree は保全。
+- 32760bd の compileTestJava は exit0、11993 backend blob/mode を照合。初回実測は34 tests/34 failures/0 errors/0 skippedだったが、全失敗が fixture slug の30文字上限超過であり、製品 RED ではない。原 XML/log/manifest を保持し、slug を23文字へ修正して再試練する。初回の予定35件という見積りも実測34件へ訂正した。

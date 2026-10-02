@@ -104,7 +104,7 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
             approver = user("承認者");
             org = organization();
             foreignOrg = organization();
-            team = teams.save(TeamEntity.builder().slug("proxy-identity-" + UUID.randomUUID())
+            team = teams.save(TeamEntity.builder().slug("proxy-identity-" + UUID.randomUUID().toString().substring(0, 8))
                     .name("本人紐付け試練").visibility(TeamEntity.Visibility.PUBLIC).supporterEnabled(false).build());
             for (Long id : List.of(actor, subject, approver)) {
                 MembershipTestHelper.insertMembership(em, id, ScopeType.ORGANIZATION, org.getId(), RoleKind.MEMBER);
@@ -135,6 +135,8 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
 
     @AfterEach
     void 所有したfixtureだけを片付ける() {
+        // setup の全保存は単一 transaction。失敗時は rollback 済みで所有 survey は存在しない。
+        if (survey == null) return;
         inTx(() -> {
             for (String table : List.of("survey_responses", "survey_targets", "survey_questions")) {
                 em.createNativeQuery("DELETE FROM " + table + " WHERE survey_id = :sid")
@@ -369,7 +371,7 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
                 .status(UserEntity.UserStatus.ACTIVE).locale("ja").timezone("Asia/Tokyo").build()).getId();
     }
     private OrganizationEntity organization() {
-        return organizations.save(OrganizationEntity.builder().slug("proxy-identity-" + UUID.randomUUID())
+        return organizations.save(OrganizationEntity.builder().slug("proxy-identity-" + UUID.randomUUID().toString().substring(0, 8))
                 .name("本人紐付け試練組合").orgType(OrganizationEntity.OrgType.OTHER)
                 .visibility(OrganizationEntity.Visibility.PUBLIC).hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
                 .supporterEnabled(false).build());
