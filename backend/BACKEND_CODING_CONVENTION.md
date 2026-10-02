@@ -199,6 +199,14 @@ main の実在例は `recruitment/dto/RecruitmentListingSearchRequest`）にす�
 
 ## 5. データアクセスと開発環境
 
+### STRING永続化enumの定数追加
+
+`@Enumerated(EnumType.STRING)` の定数を足すときは、`.claudecode.md` §23 と
+[`二段階展開の作法`](../docs/development/persisted_enum_deployment.md) に従う。
+定数だけを全タスクへ配り、旧タスクの退場を確認してから別リリースで書込みを始める。
+番人 `PersistedEnumCompatibilityArchTest` が検知した追加を互換性台帳へ反映する前に、
+PRで書込み経路・二段階計画・rollback下限をレビューする。
+
 ### データアクセス (Spring Data JPA + QueryDSL)
 * **基本方式**: データアクセスには **Spring Data JPA** を使用する。各機能パッケージ内に `[Feature]Repository` インターフェースを作成し、`JpaRepository<Entity, Long>` を継承すること。
 * **クエリ戦略**:
