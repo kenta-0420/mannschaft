@@ -75,8 +75,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *   <li>remind の Valkey ロックが認可より前: 部外者がロックを取り、直後の管理者が 429 になる（殿の判断 1）。</li>
  *   <li>slots の update・assignments・delete で、枠は生きていて親スケジュールだけ論理削除済みのとき
  *       是正前は SHIFT_001。対象リソース（枠）の不在コード SHIFT_002 に揃える（K5・殿の判断 6）。</li>
- *   <li>user_roles だけを持つ ADMIN（memberships の在籍行なし）: 読取系の一覧（S1）と PDF は是正前 403。
- *       殿の判断 4（読取系の許可条件は「メンバーかつ非 SUPPORTER ∨ isAdminOrAbove」）に合わせて通す。</li>
  * </ul>
  *
  * <h3>緑のまま固定する（退行させない）もの</h3>
@@ -86,6 +84,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *   <li>SYSTEM_ADMIN（非メンバー・メンバーの両方）は全 EP で是正前どおり通る（殿の判断 5。新規許可なし）。
  *       存在しない teamId に SA が作成できる件は別課題（W6a では現行維持）。</li>
  *   <li>PDF の越境は 404 SHIFT_001 のまま（殿の判断 2）。</li>
+ *   <li>user_roles だけを持つ ADMIN（memberships の在籍行なし）: 詳細（S2）・枠一覧（L1）・管理系は通し、
+ *       一覧（S1）と PDF は是正前どおり 403 COMMON_002（殿の判断 4＝退行させない。許可は広げない）。</li>
  *   <li>ID 境界（0・負数・Long.MAX_VALUE は不在と同じ、非数値・Long 超過は 400）（AC-9・AC-10）。</li>
  * </ul>
  *
@@ -238,7 +238,11 @@ class ShiftScheduleSlotFacadeContractIT extends AbstractMySqlIntegrationTest {
             case ADMIN_A:
                 return Expect.ok(ep.successStatus);
             case USER_ROLES_ONLY_ADMIN_A:
-                // 殿の判断 4: 読取系も含め isAdminOrAbove を許可条件に入れる（S1・PDF は是正前 403 → red）。
+                // 殿の判断 4（退行させない＝是正前の挙動を保つ）: 一覧（S1）と PDF は是正前から在籍を要求して 403。
+                // 許可を広げないので 403 のまま固定する（AC-16）。それ以外（S2・L1・管理系）は是正前どおり通す。
+                if (ep == Ep.S1_LIST || ep == Ep.S1_LIST_PERIOD || ep.pdf()) {
+                    return forbidden;
+                }
                 return Expect.ok(ep.successStatus);
             case MEMBER_A:
                 return ep.access == Access.READ ? Expect.ok(ep.successStatus) : forbidden;
@@ -549,22 +553,22 @@ class ShiftScheduleSlotFacadeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("殿の判断 4: user_roles のみの ADMIN は閲覧系（一覧・詳細・枠一覧・PDF）で 403 にならず、未公開も見える")
+    @DisplayName("殿の判断 4: user_roles のみの ADMIN は詳細・枠一覧で 403 にならず未公開も見える。一覧・PDF は是正前どおり 403")
     void userRolesのみのADMINは閲覧系で403にならない() throws Exception {
         em.createNativeQuery("UPDATE shift_schedules SET status = 'DRAFT', published_at = NULL WHERE id = :id")
                 .setParameter("id", scheduleAId).executeUpdate();
         em.flush();
         em.clear();
-        for (Ep ep : List.of(Ep.S1_LIST, Ep.S2_GET, Ep.L1_LIST, Ep.P1_PDF_TEAM)) {
-            MvcResult result = perform(Actor.USER_ROLES_ONLY_ADMIN_A, ep, targetId(ep));
-            assertThat(result.getResponse().getStatus()).as(ep + " " + result.getResponse().getContentAsString())
-                    .isNotIn(403, 404);
+        // 是正前に通していた閲覧（退行させない）。未公開でも管理者として見える（是正前の isPrivilegedViewer と同じ）。
+        for (Ep ep : List.of(Ep.S2_GET, Ep.L1_LIST)) {
+            assertResponse(perform(Actor.USER_ROLES_ONLY_ADMIN_A, ep, targetId(ep)), ep, Expect.ok(200),
+                    ep + " user_roles のみの ADMIN・未公開");
         }
-        // 一覧には管理者として未公開も含まれる（是正前の isPrivilegedViewer と同じ）。
-        MvcResult list = perform(Actor.USER_ROLES_ONLY_ADMIN_A, Ep.S1_LIST, String.valueOf(teamAId));
-        List<Object> ids = JsonPath.read(list.getResponse().getContentAsString(), "$.data[*].id");
-        assertThat(ids.stream().map(o -> ((Number) o).longValue()).collect(Collectors.toSet()))
-                .contains(scheduleAId);
+        // 是正前から在籍を要求していた閲覧（許可を広げない＝AC-16）。
+        for (Ep ep : List.of(Ep.S1_LIST, Ep.P1_PDF_TEAM)) {
+            assertResponse(perform(Actor.USER_ROLES_ONLY_ADMIN_A, ep, targetId(ep)), ep,
+                    Expect.error(403, CommonErrorCode.COMMON_002), ep + " user_roles のみの ADMIN");
+        }
     }
 
     @Test

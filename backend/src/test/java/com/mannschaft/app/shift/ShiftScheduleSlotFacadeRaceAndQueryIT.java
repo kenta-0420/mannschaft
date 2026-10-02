@@ -90,7 +90,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *       是正前は Facade が無くフックが走らないため red。</li>
  *   <li><b>K6（AC-19・殿の判断 6）</b>: deleteSchedule・slots の書き込み 5 本・remind で、部外者は FOR UPDATE を 1 本も出さず
  *       （SQL 記録）、別 tx が行ロックを保持していても待たずに 404。remind では部外者が Valkey のロックを取らない。
- *       許可された管理者は認可の<b>後</b>に FOR UPDATE へ進む（FOR UPDATE の中で塞がれ、解放後に完了）。</li>
+ *       許可された管理者は認可の<b>後</b>に FOR UPDATE へ進む（FOR UPDATE の中で塞がれ、解放後に完了）。
+ *       remind は是正前から FOR UPDATE を使わず Valkey のロックで直列化しているので、管理者の FOR UPDATE は要求しない
+ *       （部外者が FOR UPDATE も Valkey のロックも取らないことだけを見る。殿の判断 2026-10-03）。</li>
  *   <li><b>AC-18</b>: 許可経路の認可クエリは是正前（同じ判定を単体で流した本数）と同じ。scope 解決（認可の前の素の読み取り）と
  *       tx 本体の読み直し（認可の後）はそれぞれ 1 本ずつ＝自ドメインの読み直しが 1 巡増える。読取の認可クエリは是正前より増えない。</li>
  * </ul>
@@ -453,8 +455,9 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
     }
 
     @ParameterizedTest(name = "K6: {0}")
-    @EnumSource(LockedOp.class)
-    @DisplayName("K6: 許可された管理者は認可の後に FOR UPDATE へ進む（FOR UPDATE の中で塞がれ、解放後に完了）")
+    // remind は是正前から FOR UPDATE を使わず Valkey のロックで直列化している（殿の判断 2026-10-03）ので対象外。
+    @EnumSource(value = LockedOp.class, mode = EnumSource.Mode.EXCLUDE, names = "REMIND")
+    @DisplayName("K6: 許可された管理者は認可の後に FOR UPDATE へ進む（FOR UPDATE の中で塞がれ、解放後に完了。remind は対象外）")
     void 管理者は認可の後に行ロックを取りに行く(LockedOp op) throws Exception {
         MockHttpServletRequestBuilder request = lockedOpRequest(op);
         CountDownLatch locked = new CountDownLatch(1);
@@ -548,7 +551,7 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
     @ParameterizedTest(name = "AC-18: {0}")
     @EnumSource(MeasuredWrite.class)
     @DisplayName("AC-18/AC-19: 管理者の書き込み — 認可クエリは是正前と同数、認可の前は素の読み取り 1 本ずつ・FOR UPDATE 0、"
-            + "認可の後に自ドメインの読み直しが 1 本ずつ（FOR UPDATE は認可の後だけ）")
+            + "認可の後に自ドメインの読み直しが 1 本ずつ（FOR UPDATE は認可の後だけ。remind はロックなしの読み直しでよい）")
     void 管理者の書き込みのクエリ回数(MeasuredWrite w) throws Exception {
         long baseline = adminCheckBaseline();
         Measured m = measure(adminId, measuredRequest(w));
@@ -563,8 +566,9 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
             assertThat(m.selects(m.beforeAuthz(), table)).as(table + " 認可の前の素の読み取り（scope 解決）").isEqualTo(1);
             assertThat(m.selects(m.afterAuthz(), table)).as(table + " 認可の後の読み直し（tx 本体）").isEqualTo(1);
         }
-        if (w != MeasuredWrite.UPDATE_SCHEDULE) {
-            // 殿の判断 6: 削除・枠の書き込み・remind は tx の中で親スケジュールを FOR UPDATE でたどり直す。
+        if (w != MeasuredWrite.UPDATE_SCHEDULE && w != MeasuredWrite.REMIND) {
+            // 殿の判断 6: 削除・枠の書き込みは tx の中で親スケジュールを FOR UPDATE でたどり直す。
+            // remind は FOR UPDATE を要求しない（是正前から Valkey のロックで直列化。読み直しはロックなしでよい）。
             assertThat(m.afterAuthz().stream()
                     .filter(s -> isSelectFrom(s, "shift_schedules") && isForUpdate(s)).count())
                     .as("認可の後に親スケジュールを FOR UPDATE で 1 本").isEqualTo(1);
