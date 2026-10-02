@@ -126,7 +126,8 @@ class VillageJoinRequestHistoryContractIT extends AbstractMySqlIntegrationTest {
         VillageRequestStatus[] statuses = VillageRequestStatus.values();
         for (int i = 0; i < statuses.length; i++) {
             VillageEntity village = village(VillageVisibility.UNLISTED);
-            request(village, ACTOR, subjects[i % subjects.length], 8_000L + i,
+            VillageSubjectType subject = subjects[i % subjects.length];
+            request(village, ACTOR, subject, subject == VillageSubjectType.USER ? ACTOR : 8_000L + i,
                     statuses[i], SUBMITTED_AT.plusMinutes(i));
             request(village, OTHER, VillageSubjectType.TEAM, 9_000L + i,
                     VillageRequestStatus.PENDING, SUBMITTED_AT.plusDays(1));
@@ -283,7 +284,7 @@ class VillageJoinRequestHistoryContractIT extends AbstractMySqlIntegrationTest {
         assertThat(sql).anyMatch(statement -> statement.matches(
                 "(?s).*order by .*created_at desc,.*id desc.*limit.*"));
         assertThat(sql).noneMatch(statement -> statement.matches(
-                "(?s).*from (villages|village_memberships|teams|organizations)\\b.*"));
+                "(?s).*(from|join) (villages|village_memberships|teams|organizations)\\b.*"));
     }
 
     private ResultActions as(Long actor, MockHttpServletRequestBuilder request) throws Exception {
