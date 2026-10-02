@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 
@@ -41,6 +41,33 @@ test.setTimeout(300_000)
 test('診断: ADMINの実資格と管理ハブの実画像を保存する', async ({ browser }, info) => {
   test.setTimeout(600_000)
   const page = await openAs(browser, 'admin')
+  const network: Array<{ path: string, status?: number, failure?: string }> = []
+  const consoleKinds: string[] = []
+  const pending = new Map<import('@playwright/test').Request, string>()
+  const safePath = (url: string) => {
+    const parsed = new URL(url)
+    return ['http://localhost:3001', 'http://localhost:8081', 'http://127.0.0.1:3001', 'http://127.0.0.1:8081'].includes(parsed.origin) ? parsed.pathname : null
+  }
+  page.on('request', (request) => {
+    const path = safePath(request.url())
+    if (path) pending.set(request, path)
+  })
+  page.on('response', (response) => {
+    const path = safePath(response.url())
+    if (path) network.push({ path, status: response.status() })
+    pending.delete(response.request())
+  })
+  page.on('requestfailed', (request) => {
+    const path = safePath(request.url())
+    if (path) network.push({ path, failure: request.failure()?.errorText })
+    pending.delete(request)
+  })
+  page.on('console', (message) => {
+    if (!['error', 'warning'].includes(message.type())) return
+    const text = message.text()
+    consoleKinds.push(['CORS', 'Outdated Optimize Dep', 'Failed to fetch', 'ERR_CONNECTION', 'Hydration', 'timeout'].find(kind => text.includes(kind)) ?? message.type())
+  })
+  page.on('pageerror', (error) => consoleKinds.push(`pageerror:${error.name}`))
   try {
     const response = await page.request.get(`${apiBase}/api/v1/organizations/${fixture.organization.slug}/me/permissions`)
     expect(response.status()).toBe(200)
@@ -51,6 +78,7 @@ test('診断: ADMINの実資格と管理ハブの実画像を保存する', asyn
     await page.locator('body').waitFor({ state: 'visible', timeout: 90_000 })
     await page.screenshot({ path: info.outputPath('admin-hub-before-hydration.png'), fullPage: true })
     await waitForHydration(page)
+    const hubReady = await page.getByRole('heading', { name: '代理入力同意管理', exact: true }).waitFor({ state: 'visible', timeout: 120_000 }).then(() => true, () => false)
     await page.screenshot({ path: info.outputPath('admin-hub-hydrated.png'), fullPage: true })
     const dom = await page.evaluate(() => ({
       path: location.pathname,
@@ -59,6 +87,7 @@ test('診断: ADMINの実資格と管理ハブの実画像を保存する', asyn
       scrollWidth: document.documentElement.scrollWidth,
     }))
     await info.attach('画面の安全な投影', { body: JSON.stringify(dom), contentType: 'application/json' })
+    writeFileSync(info.outputPath('safe-browser-proof.json'), JSON.stringify({ hubReady, dom, network, pending: [...pending.values()], consoleKinds }, null, 2))
   }
   finally { await page.context().close() }
 })

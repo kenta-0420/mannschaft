@@ -118,3 +118,10 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - V18.011のproxy_input_consent_scopes.proxy_input_consent_idはNOT NULLだが、既存@OneToManyの@JoinColumnはnullable未指定。先行するFKなしchild INSERTがSQL1364/HY000で失敗する。正本DDLとFK名は一致しておりschema driftではない。専用MySQLだけにNOT NULL制約を再現し標準HTTP登録を検証する契約を追加、finallyで元nullableと自所有fixtureを復元する。
 - 本体未変更の実REDは1 test/1 failure/0 errors/0 skipped、Gradle exit1（294秒、gate正常解放）。XML SHA256 77b3dd1b33f162b709a04ef4df96ae91b4ccbe6cf40b5d3a3c2c69742fd9e590、test source SHA256 f3992ce3c0b01686d1da0f38a2bf62b578d77fa0d006328fb937bdf0e55d57ce。persistent mirrorとWindows ignored artifacts/scope-fk-red1へbefore/after XML/header/hash/stdioを二重保存した。共有DBへのDDL/repairは実施していない。
 - 実機UI1は4 tests/0 failures/1 error/3 skipped、管理ハブdocument180秒timeoutで未到達。GET-onlyで同URL200/1850msを確認後UI2を1回測定したが、goto/hydrationのreloadに201秒を要しheading待機で全体300秒timeout、後続は未実施。controlled診断1件は資格API200/ADMINを確認し終了したが、保存した実画像はLoadingBounceのままで管理ハブ未到達。公開apiBaseはlocalhost8081で一致している。診断成功を受入れGREENに数えず、実機4API操作・空/資格表示・3住民は未達を維持する。
+
+### 外部キー最小修正後の実GREEN（2026-10-03）
+
+- 本体 e6da1749ab、管理65＋関連Proxy/Access/Gate/標準Arch＋外部キー契約を共有turnstileで測定。terminal exit 0、54クラス、JUnit {"tests":225,"failures":0,"errors":0,"skipped":0}、813秒、gate正常解放。
+- Windows cmp-consent-red65-20261003-artifacts/scope-fk-green1 にbefore/after raw XML・header/hash・stdioを二重保全。全54 after XMLのSHA照合mismatch 0、stdio SHA 5cffe8e5ca35761881f650402bd5e41574de92407968dba2117e86b36a2d6c3e。
+- FreezeStore追加違反0。削除差分件数 [{"file":"296295dd-06cf-4f7b-bf82-315ba12ff501","removed":35,"added":0},{"file":"93124b52-f328-4f09-8c4f-6d022519fae2","removed":2,"added":0}] をobserved原本に保全し、所有mirrorだけcanonicalに復元。Windows正本storeは不変更。
+- Loading画面は実機受入れ成功と数えない。次の診断は通信status/未完了path/エラー種別をsafe JSONへ保存し、管理heading実到達を別判定。spec ESLint・diffcheck成功。実機操作・3住民・最終検分は引き続き未達。
