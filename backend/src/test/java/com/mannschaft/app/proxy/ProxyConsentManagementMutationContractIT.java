@@ -177,7 +177,7 @@ class ProxyConsentManagementMutationContractIT extends AbstractMySqlIntegrationT
         var revokedAt = first.getRevokedAt();
         revoke(subject, consentId, Map.of("revokeMethod", "API_BY_SUBJECT",
                 "revokeWitnessedByUserId", admin, "revokeReason", "上書きした理由"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
         em.flush();
         em.clear();
         var saved = consents.findById(consentId).orElseThrow();

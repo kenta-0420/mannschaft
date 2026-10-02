@@ -8,6 +8,7 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.role.entity.PermissionEntity;
@@ -38,6 +39,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -135,6 +137,62 @@ class ProxyConsentManagementAuthorizationContractIT extends AbstractMySqlIntegra
     }
 
     @Test
+    void DEPUTYの操作資格を紙撤回の立会資格に使えない() throws Exception {
+        MembershipTestHelper.insertUserRole(em, actor, "ADMIN", null, organization);
+        Long witness = fixture.account();
+        MembershipTestHelper.insertUserRole(em, witness, "DEPUTY_ADMIN", null, organization);
+        revoke(actor, Map.of("revokeMethod", "PAPER_BY_SUBJECT", "revokeWitnessedByUserId", witness,
+                        "revokeReason", "立会資格の偽装"))
+                .andExpect(status().isBadRequest());
+        assertUnrevoked();
+    }
+
+    @Test
+    void 論理削除ユーザーの残存ADMIN資格を立会資格に使えない() throws Exception {
+        MembershipTestHelper.insertUserRole(em, actor, "ADMIN", null, organization);
+        Long witness = fixture.account();
+        MembershipTestHelper.insertUserRole(em, witness, "ADMIN", null, organization);
+        var witnessEntity = users.findById(witness).orElseThrow();
+        witnessEntity.anonymize();
+        witnessEntity.softDelete();
+        users.saveAndFlush(witnessEntity);
+        revoke(actor, Map.of("revokeMethod", "PAPER_BY_SUBJECT", "revokeWitnessedByUserId", witness,
+                        "revokeReason", "削除済み立会人の偽装"))
+                .andExpect(status().isBadRequest());
+        assertUnrevoked();
+    }
+
+    @Test
+    void SYS単独の横断操作資格を紙撤回の立会資格に使えない() throws Exception {
+        MembershipTestHelper.insertUserRole(em, actor, "ADMIN", null, organization);
+        Long witness = fixture.account();
+        MembershipTestHelper.insertUserRole(em, witness, "SYSTEM_ADMIN", null, null);
+        revoke(actor, Map.of("revokeMethod", "PAPER_BY_SUBJECT", "revokeWitnessedByUserId", witness,
+                        "revokeReason", "横断操作資格による立会偽装"))
+                .andExpect(status().isBadRequest());
+        assertUnrevoked();
+    }
+
+    @Test
+    void SYSと当該組合ADMIN併有は紙撤回の立会資格を保持() throws Exception {
+        MembershipTestHelper.insertUserRole(em, actor, "DEPUTY_ADMIN", null, organization);
+        Long witness = fixture.account();
+        MembershipTestHelper.insertUserRole(em, witness, "SYSTEM_ADMIN", null, null);
+        MembershipTestHelper.insertUserRole(em, witness, "ADMIN", null, organization);
+        revoke(actor, Map.of("revokeMethod", "PAPER_BY_SUBJECT", "revokeWitnessedByUserId", witness,
+                        "revokeReason", "組合ADMINの立会による撤回"))
+                .andExpect(status().isOk());
+        em.flush();
+        em.clear();
+        var saved = consents.findById(consentId).orElseThrow();
+        assertThat(saved.getRevokedAt()).isNotNull();
+        assertThat(saved.getRevokeMethod())
+                .isEqualTo(ProxyInputConsentEntity.RevokeMethod.PAPER_BY_SUBJECT);
+        assertThat(saved.getRevokeWitnessedByUserId()).isEqualTo(witness);
+        assertThat(saved.getRevokeReason()).isEqualTo("組合ADMINの立会による撤回");
+    }
+
+    @Test
     void 親組合削除後は管理資格が残っても承認と撤回を拒否() throws Exception {
         MembershipTestHelper.insertUserRole(em, actor, "ADMIN", null, organization);
         grantApproval("ADMIN");
@@ -161,6 +219,16 @@ class ProxyConsentManagementAuthorizationContractIT extends AbstractMySqlIntegra
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsBytes(Map.of("revokeMethod", "API_BY_SUBJECT"))))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private void assertUnrevoked() {
+        em.flush();
+        em.clear();
+        var saved = consents.findById(consentId).orElseThrow();
+        assertThat(saved.getRevokedAt()).isNull();
+        assertThat(saved.getRevokeMethod()).isNull();
+        assertThat(saved.getRevokeWitnessedByUserId()).isNull();
+        assertThat(saved.getRevokeReason()).isNull();
     }
 
     private void deleteParent() {

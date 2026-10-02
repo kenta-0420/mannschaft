@@ -3,7 +3,7 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: 独立BE実装をcommit97a673c9へ保全。訂正redは60件/47失敗、紙保存fixture補正の2件再測定は1失敗。実装後試験は環境終了により終端XML未取得であり、green・生成型・FE・同意管理実機は未達。立会資格の裁可待ちは維持。
+- 状態: 独立BE実装をcommit97a673c9へ保全。追加契約を含む65件の実測は6失敗/0 errors/0 skipped。失敗は立会資格と本人オンライン立会情報の偽装に限定。資格の仕様は確定済みで最小guardを追加する。全green・生成型・FE・同意管理実機は未達。
 
 ## 方針
 
@@ -43,7 +43,7 @@
 | 組合指定なし履歴 | 本人。既存SYSTEM_ADMINの他subject指定例外は維持。 |
 | 承認 | PROXY_CONSENT_APPROVEまたはSYSTEM_ADMIN、かつ代理者本人以外、pendingのみ。一般scope helperの変更はしない。 |
 | API_BY_SUBJECT撤回 | 同意対象本人。組合の現在の在籍は問わず、退会後も維持。 |
-| PAPER_BY_SUBJECT撤回 | 既存scopeADMIN/DEPUTY_ADMIN操作資格またはSYSTEM_ADMIN。立会資格のADMIN限定/DEPUTY包含はユーザー判断待ち。立会人は有効userと同じ組合の資格を要する。actorと同一であることは強制しない。 |
+| PAPER_BY_SUBJECT撤回 | 既存scopeADMIN/DEPUTY_ADMIN操作資格またはSYSTEM_ADMIN。立会人はACTIVEな当該組合ADMINのみ。SYS単独・DEPUTY・無効ユーザーは立会不可、SYSと当該scopeADMIN併有は可。actorと同一であることは強制しない。 |
 | AUTO方法の手動撤回 | 拒否。 |
 
 approve/revokeは同意実体から組合を解決し、親不在・論理削除をGateより先に確認する。親不在/削除、同意不在、越境は既存COMMON_002（403）に揃える。同scope権限不足も既存403を保持する。組合の公開QueryService.findSummariesByIdsを非TX facadeから呼び、他ドメインRepository参照や既存cross-domain TX凍結の拡大を避ける。
@@ -67,3 +67,14 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - 同sessionはBUILD終端メッセージなしでexit15。自己daemon1272629/worker1273343は一時生存していたが、その後読み取り確認でともに不存在、共通gateも不存在となった。停止操作は行っていない。最終の契約XMLは0filesであり、成功にも60件完走にも計上しない。起動前XMLは`/tmp/cmp-consent-red-1abc-xml`へ保全済み。再実行が必要。
 - commitf8214d17ebで本人オンライン撤回に紙の立会IDを偽装する追加実DB試験を保全。API_BY_SUBJECT+witness指定を400とし、未撤回状態の不変と、正常本人撤回後の初回日時・方法・理由・立会nullの不変を検証する。紙立会roleの未裁可とは独立。まだsnapshot未適用・red実測前。
 - 殿の交通整理に従い、追加heavy・snapshot変更・FE編集は一時待機し、先行CMP042の住民1による独立UI観察を担当する。同意管理の目的は維持し、その観察後に試験と実装を再開する。
+
+## 2026-10-03 追加契約の実REDと永続証跡
+
+- F14.1§112/350–351と前任引継を殿が再照合し、紙代行の操作資格と立会資格は別と確認。立会資格の質問待ちは撤回し、既存AccessControlService.isAdminによるACTIVEな当該scopeADMIN限定で確定。DEPUTY actorは別ADMINの立会で紙撤回でき、actorとwitnessの等値条件は追加しない。
+- 追加4 HTTP契約はDEPUTY・論理削除ADMIN・SYSTEM_ADMIN単独の立会を拒否し、SYSと当該scopeADMIN併有は保存を許す。削除fixtureは匿名化後に論理削除する。本人オンライン偽装契約の正常撤回後の2回目は既存の409を維持するよう訂正した。新guardは既存actor/method認可・入力・既撤回409の後、永続化直前へ置く。
+- canonical HEAD e3e65f00593faa3982fe4f0ab8d2f95d1fbc8aeeのbackendとOpenAPI関連docs、未commitのtest2差分を専用永続mirrorへ固定。全11,976 canonical filesと追加test2のrawLF blobを一致照合した。Windows archiveのCRLFは、canonical blobの一致を確認できたファイルだけmirror上でLFへ正規化した。Windows作業ツリーは変更していない。
+- mirror: `/home/kenta/.cache/mannschaft-cmp260820-1018-b-20261003-red65`。archive SHA256 `a8c8a8be5348407d852d256799f6a01ab4278cce53f2047decbbe4556714c0cf`、test2 patch SHA256 `2817e194f41306e373d46dc6bdf12af9fa0d9ae5e69fa648475fccf6539fd00a`。
+- 初回はturnstile取得後にgradlew実行bit不足でexit126、compile/test未開始・XML0。証跡を上書きせず、canonical bytesを変更しない`bash ./gradlew`でattempt2を実行した。
+- attempt2 session69424は共有turnstile経由で6管理ContractITを完走。compileJava FROM-CACHE・compileTestJava成功、終端exit1/BUILD FAILED（9分56秒）。**65 tests /6 failures /0 errors /0 skipped**。Authorization 13/4失敗、Mutation 15/2失敗、ConsentPaging 12/0、RecordPaging 2/0、Scope 18/0、Serialization 5/0。失敗はDEPUTY/deleted/FROZEN/SYS単独witnessの4件、紙の非管理/別組合/不存在witnessのloop1件、API witness偽装1件。loop内の3variantを別testへ数えない。SYS＋scopeADMIN立会の陽性と並行状態不変、OSIV=false serialize、JOIN/page契約はgreen。
+- raw XML6 filesとstdioを`evidence-red65-attempt2`およびWindows自所有ignored `.claude/campaigns/cmp-consent-red65-20261003-artifacts/attempt2`へ二重保全。各JUnit header/SHA256はjunit-before.json・junit-after.jsonへ保存し、copy元/両copyのhash一致を確認。stdio SHA256 `49a8a275cec89b1c142dc9c1d8e2fb7392293f06cf137ee941cb317fa946545e`。標準architecture・既存proxy回帰はguard後に別測定する。
+- 前回/tmp消失で旧60red・紙2再測定のraw XMLは失われた。上の歴史的件数は当時のtool実測記録であり、raw復元成功とは扱わない。前任17件のWindows raw XMLは読み取り保全のまま変更していない。
