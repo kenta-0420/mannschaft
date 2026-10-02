@@ -66,7 +66,7 @@ watch(page, () => { void load() })
 
 <template>
   <div class="mx-auto min-w-0 max-w-5xl space-y-4 p-4">
-    <PageHeader :title="t('proxy.record.title')" class="flex-wrap" />
+    <PageHeader :title="t('proxy.record.title')" class="flex-wrap [&>h1]:min-w-0 [&>h1]:max-w-full [&>h1]:break-words" />
     <nav class="flex flex-wrap gap-4">
       <NuxtLink to="/admin/proxy/consents" class="inline-flex min-h-11 items-center text-primary underline">{{ t('proxy.management.consentsTitle') }}</NuxtLink>
     </nav>
