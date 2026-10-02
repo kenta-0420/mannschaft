@@ -71,7 +71,11 @@ jobs:
       # 設計書 docs/security/04_dependency_and_supply_chain.md §4/§6 に基づく。
       # high レベルの脆弱性が 0 件のためブロッキング化（2026-06-02）。
       - name: npm audit (依存脆弱性スキャン)
-        run: npm audit --audit-level=high
+        # ユーザー承認済みの限定例外（PR #3585）をFE red確認用に一時取り込み。
+        # 先行main統合後は同一helper差分を除く。package/lockは変更しない。
+        run: |
+          node --test scripts/audit-with-exemption.test.mjs
+          node scripts/audit-with-exemption.mjs
 
       - name: Generate OpenAPI types
         run: npm run generate:types
