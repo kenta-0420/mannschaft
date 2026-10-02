@@ -293,4 +293,42 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     int clearGroupId(@Param("organizationId") Long organizationId,
                      @Param("groupId") java.util.UUID groupId,
                      @Param("now") java.time.Instant now);
+
+    // ========================================================================
+    // F01.2.1 4-B: グループ割当（単体・一括）
+    // ========================================================================
+
+    /**
+     * 組織の、指定チームの加盟を、状態を指定して一括で引く（一括割当の事前検証用。SQL は 1 本）。
+     */
+    List<TeamOrgMembershipEntity> findByOrganizationIdAndStatusAndTeamIdIn(
+            Long organizationId, TeamOrgMembershipEntity.Status status, java.util.Collection<Long> teamIds);
+
+    /**
+     * 組織の ACTIVE な加盟のうち、指定チームの {@code group_id} をまとめて設定する（条件付き UPDATE。§4.1）。
+     *
+     * <p>PENDING は対象にしない。影響行数が {@code teamIds} の件数と一致しなければ、検証の後に加盟が消えた（離脱・除名）
+     * ということなので、呼び出し側が全体を巻き戻す。</p>
+     *
+     * @return 更新した行数
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE TeamOrgMembershipEntity m SET m.groupId = :groupId, m.updatedAt = :now "
+        + "WHERE m.organizationId = :organizationId AND m.teamId IN :teamIds "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
+    int assignGroupToActive(@Param("organizationId") Long organizationId,
+                            @Param("teamIds") java.util.Collection<Long> teamIds,
+                            @Param("groupId") java.util.UUID groupId,
+                            @Param("now") java.time.Instant now);
+
+    /**
+     * {@link #assignGroupToActive} の未分類へ戻す版（{@code group_id} を NULL にする。型のない null のバインドを避けるため別クエリ）。
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE TeamOrgMembershipEntity m SET m.groupId = NULL, m.updatedAt = :now "
+        + "WHERE m.organizationId = :organizationId AND m.teamId IN :teamIds "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
+    int clearGroupOfActive(@Param("organizationId") Long organizationId,
+                           @Param("teamIds") java.util.Collection<Long> teamIds,
+                           @Param("now") java.time.Instant now);
 }
