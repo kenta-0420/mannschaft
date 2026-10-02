@@ -57,7 +57,7 @@ export interface ProxyInputDeskState {
 /** 代理入力操作履歴レコード */
 export interface ProxyInputRecord {
   id: number
-  proxyInputConsentId: number
+  proxyInputConsentId: number | null
   subjectUserId: number
   proxyUserId: number
   featureScope: ProxyInputFeatureScope
