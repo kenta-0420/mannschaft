@@ -6,7 +6,7 @@ import { waitForHydration } from '../helpers/wait'
 
 test.use({ trace: 'off', locale: 'ja-JP', timezoneId: 'Asia/Tokyo' })
 
-/** Actions の当該サービスDBで、自分が作ったスコープだけを名称欠落にする実機試験。 */
+/** Actions の当該サービスDBで、自分が作ったスコープだけをレイヤー未掲載にする実機試験。 */
 const apiBase = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const run = `CMP2609011246-${process.env.GITHUB_RUN_ID ?? 'local'}-${Date.now()}`
 const month = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit' }).format(new Date())
@@ -169,14 +169,19 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
   test('本人: 未知予定・TODOのみ・混在と既知利用者色を実画面で確認する', async ({ browserName }, info) => {
     expect(browserName).toBe('chromium')
     const data = await calendar(owner)
+    const layers = await api<Array<{ scopeType: string; scopeId: number }>>(owner, 'get', '/me/calendar-layers')
     for (const team of teams.slice(0, 3)) {
+      expect(layers.filter(layer => layer.scopeType === 'TEAM' && layer.scopeId === team.id), '今回の未知スコープは実レイヤー一覧に存在しない').toHaveLength(0)
       const schedule = data.schedules.find(entry => entry.scope.scopeId === team.id)
       const todo = data.todos.find(entry => entry.scopeId === team.id)
       const auto = schedule?.content.scopeAutoColor ?? todo?.scopeAutoColor
       expect(auto, 'BE由来の独立した自動色').toMatch(/^#[0-9A-F]{6}$/i)
-      expect(schedule ? schedule.scope.scopeName : todo!.scopeName).toBeNull()
+      // 予定の単体名解決は既存fallback文字列、TODOのbatch名解決は欠落時nullを返す。
+      if (team.scheduleTitle) expect(schedule?.scope.scopeName).toBe('不明なチーム')
+      if (team.todoTitle) expect(todo?.scopeName).toBeNull()
       await expect(chip(owner, team)).toHaveCount(1)
       await expect(chip(owner, team)).toBeVisible()
+      await expect(chip(owner, team)).not.toContainText(team.name)
       await expect(chip(owner, team).getByTestId('layer-chip-dot')).toHaveCSS('background-color', rgb(auto!))
       await expect(owner.getByTestId(`layer-chip-more-TEAM:${team.id}`)).toHaveCount(0)
       if (team.todoTitle) {
@@ -225,7 +230,12 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
       const data = await calendar(page, true)
       expect(data.schedules.filter(entry => entry.content.title.startsWith(run))).toHaveLength(0)
       expect(data.todos.filter(entry => entry.title.startsWith(run))).toHaveLength(0)
-      for (const team of teams) await expect(chip(page, team)).toHaveCount(0)
+      for (const team of teams) {
+        await expect(chip(page, team)).toHaveCount(0)
+        await expect(page.getByText(team.name, { exact: true })).toHaveCount(0)
+        if (team.scheduleTitle) await expect(page.getByText(team.scheduleTitle, { exact: true })).toHaveCount(0)
+        if (team.todoTitle) await expect(page.getByText(team.todoTitle, { exact: true })).toHaveCount(0)
+      }
       await evidence(page, info, `${index === 0 ? '非所属' : '別所属'}-カレンダー非表示`)
       const known = teams[3]!
       const denied = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/teams/${known.slug}/todos/${known.todoId}`)
