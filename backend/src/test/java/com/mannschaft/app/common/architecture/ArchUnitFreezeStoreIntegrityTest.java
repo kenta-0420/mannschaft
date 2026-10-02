@@ -753,8 +753,16 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code ShiftRequestFacade} が {@code RoleService#getMemberCandidateUserIdsByTeamId} から取得して tx 本体へ
      * 引数で渡す形にし、tx 本体から role の Repository 依存を除去。死んだ引数 actorUserId も削除）。
      * origin/main のストアとの差分は「追加 0・削除 29（W1 の 2 サービスのキーのみ）」。{@code 7582 → 7581}。</p>
+     *
+     * <p>CMP-260923-0954 W3b（確認通知の recipients/page を {@code ConfirmableNotificationRecipientPageFacade} へ）:
+     * {@code ConfirmableNotificationQueryService.getRecipientsPage} → RoleRepository / UserRoleRepository と
+     * {@code ConfirmableNotificationService.getRecipientsPage} → RoleRepository / UserRoleRepository の計 4 行が解消
+     * （認可を tx の外へ出し、tx 本体は AccessControlService に依存しない。Service 側の委譲メソッドは廃止）。
+     * 残す 2 行は認可と無関係な越境: {@code ConfirmableNotificationService.cancel} /
+     * {@code ConfirmableNotificationConfirmService.cancel} → UserRepository（K3: 名前・引数・{@code @Transactional} を維持）。
+     * origin/main のストアとの差分は「追加 0・削除 4（上記のキーのみ）」。{@code 7581 → 7577}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7581;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7577;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

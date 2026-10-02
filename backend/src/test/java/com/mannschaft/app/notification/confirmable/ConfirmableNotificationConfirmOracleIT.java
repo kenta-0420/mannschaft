@@ -341,7 +341,8 @@ class ConfirmableNotificationConfirmOracleIT extends AbstractMySqlIntegrationTes
             deleteNotification(notificationId);
             return inv.callRealMethod();
         }).when(queryService).getRecipientsPage(
-                Mockito.eq(notificationId), Mockito.any(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyBoolean());
+                Mockito.eq(notificationId), Mockito.any(), Mockito.anyBoolean(), Mockito.anyInt(), Mockito.anyInt(),
+                Mockito.anyBoolean());
 
         ErrorView raced = perform(get(base + "/confirmable-notifications/" + notificationId + "/recipients/page"));
         assertThat(hookRan).as("認可の後・tx 本体の前の割り込みが実際に走ったこと（空振りでない）").isTrue();

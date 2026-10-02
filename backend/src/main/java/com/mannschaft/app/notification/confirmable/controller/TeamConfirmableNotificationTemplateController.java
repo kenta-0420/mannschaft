@@ -12,6 +12,7 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationTemplateService;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableScopeAuthorizer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -43,6 +44,7 @@ public class TeamConfirmableNotificationTemplateController {
     private final ConfirmableNotificationTemplateService templateService;
     private final ConfirmableNotificationMapper mapper;
     private final AccessControlService accessControlService;
+    private final ConfirmableScopeAuthorizer scopeAuthorizer;
 
     /**
      * F04.9 §2 が定める確認通知の送信権限（CMP-260909-1141）。
@@ -117,11 +119,13 @@ public class TeamConfirmableNotificationTemplateController {
             @Valid @RequestBody ConfirmableNotificationTemplateUpdateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         ConfirmableNotificationTemplateEntity existing = templateService.findById(templateId);
-        if (!ScopeType.TEAM.equals(existing.getScopeType()) || !teamId.equals(existing.getScopeId())) {
+        // 存在オラクル封鎖（CMP-260923-0954 W3b）: 他スコープのテンプレートは不在 ID と同一の TEMPLATE_NOT_FOUND に畳む。
+        if (ScopeType.TEAM != existing.getScopeType() || !teamId.equals(existing.getScopeId())) {
             throw new BusinessException(ConfirmableNotificationErrorCode.TEMPLATE_NOT_FOUND);
         }
-        accessControlService.checkAdminOrHasPermissionInScope(
-                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
+        // 同スコープの権限不足は 403、無関係な者は不在 ID と同一の TEMPLATE_NOT_FOUND。
+        scopeAuthorizer.requireSendPermission(
+                currentUserId, ScopeType.TEAM, teamId, ConfirmableNotificationErrorCode.TEMPLATE_NOT_FOUND);
         ConfirmableNotificationTemplateResponse response = templateService.update(
                 templateId,
                 request.getName(),
@@ -138,7 +142,7 @@ public class TeamConfirmableNotificationTemplateController {
      * <p>物理削除は行わない。削除後も確認通知の template_id 参照が壊れない。</p>
      *
      * <p>認可根治戦役 Wave7: {@link #update} と同じくテンプレート実体由来のスコープ突合を行い、
-     * 不一致は {@code TEMPLATE_NOT_FOUND}（404・存在秘匿）とする。</p>
+     * 不一致は {@code TEMPLATE_NOT_FOUND}（404・存在秘匿）とする。権限の無い無関係な者も同じ応答にする。</p>
      */
     @DeleteMapping("/{templateId}")
     @Operation(summary = "確認通知テンプレート削除（論理削除）")
@@ -148,11 +152,13 @@ public class TeamConfirmableNotificationTemplateController {
             @PathVariable Long templateId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         ConfirmableNotificationTemplateEntity existing = templateService.findById(templateId);
-        if (!ScopeType.TEAM.equals(existing.getScopeType()) || !teamId.equals(existing.getScopeId())) {
+        // 存在オラクル封鎖（CMP-260923-0954 W3b）: 他スコープのテンプレートは不在 ID と同一の TEMPLATE_NOT_FOUND に畳む。
+        if (ScopeType.TEAM != existing.getScopeType() || !teamId.equals(existing.getScopeId())) {
             throw new BusinessException(ConfirmableNotificationErrorCode.TEMPLATE_NOT_FOUND);
         }
-        accessControlService.checkAdminOrHasPermissionInScope(
-                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
+        // 同スコープの権限不足は 403、無関係な者は不在 ID と同一の TEMPLATE_NOT_FOUND。
+        scopeAuthorizer.requireSendPermission(
+                currentUserId, ScopeType.TEAM, teamId, ConfirmableNotificationErrorCode.TEMPLATE_NOT_FOUND);
         templateService.softDelete(templateId);
         return ResponseEntity.noContent().build();
     }
