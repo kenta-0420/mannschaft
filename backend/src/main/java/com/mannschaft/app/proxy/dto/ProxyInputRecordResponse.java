@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxy.dto;
 
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -14,6 +15,8 @@ import java.time.LocalDateTime;
 public class ProxyInputRecordResponse {
 
     private final Long id;
+
+    @Schema(description = "代理入力同意ID（同意書紐付けのない履歴はnull）", nullable = true)
     private final Long proxyInputConsentId;
     private final Long subjectUserId;
     private final Long proxyUserId;
@@ -22,6 +25,8 @@ public class ProxyInputRecordResponse {
     private final Long targetEntityId;
     private final String inputSource;
     private final String originalStorageLocation;
+
+    @Schema(description = "監査ログID（未紐付けはnull）", nullable = true)
     private final Long auditLogId;
     private final LocalDateTime createdAt;
 
