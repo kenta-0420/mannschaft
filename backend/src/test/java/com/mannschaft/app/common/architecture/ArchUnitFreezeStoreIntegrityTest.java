@@ -767,8 +767,18 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 残す 2 行は認可と無関係な越境: {@code ConfirmableNotificationService.cancel} /
      * {@code ConfirmableNotificationConfirmService.cancel} → UserRepository（K3: 名前・引数・{@code @Transactional} を維持）。
      * main のストアとの差分は「追加 0・削除 4（上記のキーのみ）」。{@code 7564（W4 取込み後の main） → 7560}。</p>
+     *
+     * <p>CMP-260923-0954 W6a（shift の schedules・slots・remind・PDF を {@code ShiftScheduleFacade} /
+     * {@code ShiftSlotFacade} / {@code ShiftPdfFacade} へ）: 認可を tx の外へ出し、tx 本体の
+     * ShiftScheduleService（42 行）・ShiftSlotService（29 行）・ShiftPdfService（10 行）は
+     * AccessControlService・Gate にクラスごと依存しなくなったため、計 81 行が解消（すべて認可由来の
+     * MembershipRepository / RoleRepository / UserRoleRepository への到達）。さらに
+     * ShiftPreferenceReminderBatchService.triggerManualReminder → RoleRepository の 1 行も解消
+     * （認可の {@code checkAdminOrAbove} 経由の到達のみだったため）。同メソッドの UserRoleRepository・通知・監査ログ・
+     * UserRepository への行は、未提出者の抽出・通知・監査ログという業務由来の到達なので残す。
+     * main のストアとの差分は「追加 0・削除 82（上記のキーのみ）」。{@code 7560 → 7478}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7560;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7478;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
