@@ -258,9 +258,9 @@ public class VillageMembershipService {
                                          RoleChangeRequest request) {
         loadActiveVillage(villageId, actorUserId);
 
-        // 実行者が HEADMAN であること
+        // 実行者が現役 HEADMAN であること（退村・BAN 済みは除外）
         VillageMembershipEntity actor = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                .findActiveByVillageIdAndSubject(
                         villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (actor.getRole() != VillageRole.HEADMAN) {
@@ -273,13 +273,13 @@ public class VillageMembershipService {
             throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
 
-        // 自身を HEADMAN から降格する場合、他に HEADMAN/ELDER が居ることを必須
+        // 自身を HEADMAN から降格する場合、他に現役 HEADMAN/ELDER が居ることを必須
         if (target.getId().equals(actor.getId()) && request.role() != VillageRole.HEADMAN) {
             long otherHeadman = membershipRepository
-                    .countByVillageIdAndRoleAndLeftAtIsNull(villageId, VillageRole.HEADMAN);
+                    .countByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNull(villageId, VillageRole.HEADMAN);
             long elders = membershipRepository
-                    .countByVillageIdAndRoleAndLeftAtIsNull(villageId, VillageRole.ELDER);
-            // 自分以外の HEADMAN または ELDER が居なければ降格不可
+                    .countByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNull(villageId, VillageRole.ELDER);
+            // 自分以外の現役 HEADMAN または ELDER が居なければ降格不可
             if (otherHeadman <= 1 && elders == 0) {
                 throw new BusinessException(VillageErrorCode.HEADMAN_CANNOT_LEAVE);
             }
@@ -298,8 +298,8 @@ public class VillageMembershipService {
 
     /**
      * 村メンバーを BAN する。HEADMAN のみ実行可。
-     * 設計書では HEADMAN/ELDER 共に可だが、出陣指示書 B3 § 仕様で「HEADMAN 権限」に絞られているため
-     * 本 Phase は HEADMAN のみ。後続 Phase で ELDER 拡張する場合は設計再確認の上で開放する。
+     * 出陣指示書 B3 § 仕様に従い、本 Phase は現役 HEADMAN のみ。
+     * 後続 Phase で ELDER 拡張する場合は設計再確認の上で開放する。
      */
     @Transactional
     public MembershipResponse ban(UUID villageId,
@@ -309,7 +309,7 @@ public class VillageMembershipService {
         loadActiveVillage(villageId, actorUserId);
 
         VillageMembershipEntity actor = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                .findActiveByVillageIdAndSubject(
                         villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (actor.getRole() != VillageRole.HEADMAN) {
