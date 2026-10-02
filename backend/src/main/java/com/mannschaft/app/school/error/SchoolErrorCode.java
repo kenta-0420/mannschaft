@@ -30,6 +30,12 @@ public enum SchoolErrorCode implements ErrorCode {
     /** 保護者連絡は既に出欠に反映済み */
     FAMILY_NOTICE_ALREADY_APPLIED("SCHOOL_FAMILY_NOTICE_ALREADY_APPLIED", "保護者連絡は既に出欠に反映済みです", Severity.WARN),
 
+    /** 登録対象の生徒がクラスの在籍メンバーでない（400。部分登録せず全件ロールバック） */
+    STUDENT_NOT_ENROLLED("SCHOOL_STUDENT_NOT_ENROLLED", "登録対象の生徒がこのクラスの在籍メンバーではありません", Severity.WARN),
+
+    /** 保護者連絡がクラス・生徒・対象日のいずれかと一致しない（400。存在しない連絡も同じ応答にして存在を秘匿） */
+    FAMILY_NOTICE_MISMATCH("SCHOOL_FAMILY_NOTICE_MISMATCH", "保護者連絡がこのクラス・生徒・対象日と一致しません", Severity.WARN),
+
     /** 移動検知アラートが見つからない */
     TRANSITION_ALERT_NOT_FOUND("SCHOOL_TRANSITION_ALERT_NOT_FOUND", "移動検知アラートが見つかりません", Severity.WARN),
 

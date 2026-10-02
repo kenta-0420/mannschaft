@@ -14,6 +14,8 @@ import com.mannschaft.app.school.service.PeriodAttendanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -82,7 +84,7 @@ public class PeriodAttendanceController {
     @Operation(summary = "時限出欠一括登録")
     public ResponseEntity<ApiResponse<PeriodAttendanceSummary>> submitPeriodAttendance(
             @PathVariable Long teamId,
-            @PathVariable Integer periodNumber,
+            @PathVariable @Min(1) @Max(15) Integer periodNumber,
             @Valid @RequestBody PeriodAttendanceRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         PeriodAttendanceSummary summary =

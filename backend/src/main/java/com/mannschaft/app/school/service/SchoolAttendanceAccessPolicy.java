@@ -8,6 +8,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.school.dto.AttendancePermissionsResponse;
 import com.mannschaft.app.school.entity.ClassHomeroomEntity;
+import com.mannschaft.app.school.error.SchoolErrorCode;
 import com.mannschaft.app.school.repository.ClassHomeroomRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -39,6 +41,8 @@ import java.util.Set;
  *
  * <h2>現役の担任</h2>
  * <ul>
+ *   <li>担任・副担任の資格は、その人が現在そのチームの有効なメンバー（{@code memberships.left_at IS NULL}）
+ *       であることも条件にする（チームを離れた担任の名簿行が残っていても資格を与えない）。</li>
  *   <li>{@code effective_from <= 今日 <= effective_until}（until が null なら無期限）の行が現役。
  *       今日は業務ゾーン（{@code wallClock}）の日付。</li>
  *   <li>現役行が複数あるときは、全行の担任と副担任の<b>和集合</b>を資格とする（行の選択はしない）。</li>
@@ -115,14 +119,34 @@ public class SchoolAttendanceAccessPolicy {
         LocalDate today = LocalDate.now(wallClock);
         List<ClassHomeroomEntity> activeRows = classHomeroomRepository.findActiveByTeamId(teamId, today);
         for (ClassHomeroomEntity row : activeRows) {
-            if (userId.equals(row.getHomeroomTeacherUserId())) {
-                return true;
-            }
-            if (parseAssistantIds(row.getAssistantTeacherUserIds(), row.getId()).contains(userId)) {
-                return true;
+            if (userId.equals(row.getHomeroomTeacherUserId())
+                    || parseAssistantIds(row.getAssistantTeacherUserIds(), row.getId()).contains(userId)) {
+                // 名簿に載っているだけでは資格を与えない。退職などでチームを離れた担任の行が残っていても、
+                // 現在そのチームの有効なメンバーでなければ担任・副担任としては扱わない。
+                return accessControlService.isMember(userId, teamId, SCOPE_TEAM);
             }
         }
         return false;
+    }
+
+    // ========================================
+    // 登録入力の整合（認可の一部として Policy に集約）
+    // ========================================
+
+    /**
+     * 登録 entries の生徒が全員、そのクラスの在籍メンバー（有効な membership）であることを要求する。
+     *
+     * <p>在籍者の集合を <b>1 クエリ</b>で取得して突き合わせる（entries 件数に依存してクエリを増やさない）。
+     * 1 人でも在籍者でなければ {@link SchoolErrorCode#STUDENT_NOT_ENROLLED}（400）。呼び出し元の
+     * トランザクションごと全件ロールバックされる（部分登録なし）。</p>
+     */
+    public void requireEnrolledStudents(Long teamId, Collection<Long> studentUserIds) {
+        Set<Long> enrolled = new HashSet<>(accessControlService.listActiveMemberIds(teamId, SCOPE_TEAM));
+        for (Long studentUserId : studentUserIds) {
+            if (studentUserId == null || !enrolled.contains(studentUserId)) {
+                throw new BusinessException(SchoolErrorCode.STUDENT_NOT_ENROLLED);
+            }
+        }
     }
 
     // ========================================
