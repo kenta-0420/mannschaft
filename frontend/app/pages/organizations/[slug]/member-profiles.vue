@@ -14,6 +14,7 @@ const orgApi = useOrganizationApi()
 const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { t } = useI18n()
+const { handleApiError } = useErrorHandler()
 
 // 年度別ページの二段構え: ページ一覧 → ページを選ぶとそのページのメンバー一覧、という2画面構成。
 // BE の実在エンドポイントは /api/v1/team/pages・/api/v1/team/members（teamId/organizationId は
@@ -217,12 +218,17 @@ const deleteTargetMember = ref<MemberProfile | null>(null)
 const deletingMember = ref(false)
 
 function handleDeleteMember(id: number) {
+  // 削除中に別メンバーの確認を開かせない（二重操作防止）。
+  // 削除中ダイアログの closable/closeOnEscape も無効化しているが、
+  // 呼び出し元（MemberProfileList経由）からの直接呼び出しに対しても防御する。
+  if (deletingMember.value) return
   const target = members.value.find((m) => m.id === id) ?? null
   deleteTargetMember.value = target
   showDeleteMemberDialog.value = true
 }
 
 async function executeDeleteMember() {
+  if (deletingMember.value) return
   if (!deleteTargetMember.value) return
   deletingMember.value = true
   try {
@@ -231,8 +237,8 @@ async function executeDeleteMember() {
     showDeleteMemberDialog.value = false
     deleteTargetMember.value = null
     await loadMembers()
-  } catch {
-    notification.error(t('memberProfile.deleteFailed'))
+  } catch (error) {
+    handleApiError(error, 'member-profiles.deleteMember')
   } finally {
     deletingMember.value = false
   }
@@ -498,6 +504,8 @@ onMounted(loadData)
       v-model:visible="showDeleteMemberDialog"
       :header="t('memberProfile.members.delete')"
       :modal="true"
+      :closable="!deletingMember"
+      :close-on-escape="!deletingMember"
       class="w-full max-w-sm"
     >
       <p>
