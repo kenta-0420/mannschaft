@@ -7,6 +7,7 @@ import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.dto.ApplyToRecruitmentRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.event.MarketListingReachedFullEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
@@ -14,17 +15,14 @@ import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 /**
  * F22.1 市: 最終認証連携（🔴-1 一次キャッシュ汚染根治）の結合テスト。
@@ -36,6 +34,7 @@ import static org.mockito.Mockito.verify;
  * クリアし、DB 確定状態を読むことで OPEN→FULL 境界を検知できることを検証する。</p>
  */
 @Transactional
+@RecordApplicationEvents
 @DisplayName("MarketFinalize 結合テスト (F22.1 市・🔴-1 キャッシュ汚染根治)")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class MarketFinalizeIntegrationTest extends AbstractMySqlIntegrationTest {
@@ -47,11 +46,14 @@ class MarketFinalizeIntegrationTest extends AbstractMySqlIntegrationTest {
     private RecruitmentListingRepository listingRepository;
 
     /**
-     * FULL 到達時の最終認証発火を検証するためモック化する（実通知送信は行わせない）。
-     * 本テストの主眼は「OPEN→FULL 境界の検知」であり、通知本体は別テストで検証する。
+     * CMP-260930-1932: FULL 到達時は最終認証通知を同期送信せず {@link MarketListingReachedFullEvent} を
+     * publish する。本クラスは {@code @Transactional}（テスト終了でロールバック）で AFTER_COMMIT が発火しないため、
+     * 業務TX内で観測できる契約（イベントの publish）までを検証する。配送そのものは
+     * {@code MarketFinalizeNotificationTransactionIT}（実DB・AFTER_COMMIT）と
+     * {@code MarketFinalizeConfirmationListenerTest} が受け持つ。
      */
-    @MockitoBean
-    private MarketFinalizeService marketFinalizeService;
+    @Autowired
+    private ApplicationEvents applicationEvents;
 
     @PersistenceContext
     private EntityManager em;
@@ -110,8 +112,8 @@ class MarketFinalizeIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("申込で OPEN→FULL に遷移したら sendFinalizeConfirmation が呼ばれる")
-    void apply_reachesFull_invokesFinalizeConfirmation() {
+    @DisplayName("申込で OPEN→FULL に遷移したら MarketListingReachedFullEvent が1回 publish される")
+    void apply_reachesFull_publishesReachedFullEvent() {
         Long id = persistPublicListing("rl-finalize-1", 1, 0);
         em.clear();
 
@@ -119,16 +121,14 @@ class MarketFinalizeIntegrationTest extends AbstractMySqlIntegrationTest {
                 RecruitmentParticipantType.USER, null, null);
         participantService.apply(id, APPLICANT_USER_ID, request);
 
-        ArgumentCaptor<RecruitmentListingEntity> captor =
-                ArgumentCaptor.forClass(RecruitmentListingEntity.class);
-        verify(marketFinalizeService, times(1)).sendFinalizeConfirmation(captor.capture());
-        assertThat(captor.getValue().getId()).isEqualTo(id);
-        assertThat(captor.getValue().getStatus()).isEqualTo(RecruitmentListingStatus.FULL);
+        assertThat(applicationEvents.stream(MarketListingReachedFullEvent.class))
+                .as("OPEN→FULL 境界を検知し、最終認証通知のイベントを publish する")
+                .containsExactly(new MarketListingReachedFullEvent(id));
     }
 
     @Test
-    @DisplayName("申込で FULL に達しない（定員に余裕あり）なら sendFinalizeConfirmation は呼ばれない")
-    void apply_doesNotReachFull_noFinalizeConfirmation() {
+    @DisplayName("申込で FULL に達しない（定員に余裕あり）なら MarketListingReachedFullEvent は publish されない")
+    void apply_doesNotReachFull_noReachedFullEvent() {
         // capacity=3, confirmed=0 → 1 件目では FULL にならない。
         Long id = persistPublicListing("rl-finalize-2", 3, 0);
         em.clear();
@@ -137,6 +137,6 @@ class MarketFinalizeIntegrationTest extends AbstractMySqlIntegrationTest {
                 RecruitmentParticipantType.USER, null, null);
         participantService.apply(id, APPLICANT_USER_ID, request);
 
-        verify(marketFinalizeService, never()).sendFinalizeConfirmation(org.mockito.ArgumentMatchers.any());
+        assertThat(applicationEvents.stream(MarketListingReachedFullEvent.class)).isEmpty();
     }
 }
