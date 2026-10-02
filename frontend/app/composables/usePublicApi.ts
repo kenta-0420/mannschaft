@@ -33,9 +33,9 @@ export function usePublicApi() {
     return api<PublicTeamResponse>(`/api/v1/public/teams/${teamId}`)
   }
 
-  /** 公開組織詳細を取得する。 */
-  async function fetchPublicOrganization(orgId: string): Promise<PublicOrganizationResponse> {
-    return api<PublicOrganizationResponse>(`/api/v1/public/organizations/${orgId}`)
+  /** 公開組織詳細を取得する。組織は slug で指定する（数値 ID は受け付けない。F01.2.1 AC-A13）。 */
+  async function fetchPublicOrganization(orgSlug: string): Promise<PublicOrganizationResponse> {
+    return api<PublicOrganizationResponse>(`/api/v1/public/organizations/${encodeURIComponent(orgSlug)}`)
   }
 
   /**
@@ -65,7 +65,7 @@ export function usePublicApi() {
 
   /** 公開組織投稿一覧を取得する（ページング）。 */
   async function fetchPublicOrganizationPosts(
-    orgId: string,
+    orgSlug: string,
     page = 0,
     size = 20,
   ): Promise<SpringPage<PublicPostSummary>> {
@@ -73,16 +73,16 @@ export function usePublicApi() {
     query.set('page', String(page))
     query.set('size', String(size))
     return api<SpringPage<PublicPostSummary>>(
-      `/api/v1/public/organizations/${orgId}/posts?${query.toString()}`,
+      `/api/v1/public/organizations/${encodeURIComponent(orgSlug)}/posts?${query.toString()}`,
     )
   }
 
   /** 公開組織投稿詳細を取得する。 */
   async function fetchPublicOrganizationPostDetail(
-    orgId: string,
+    orgSlug: string,
     postId: number,
   ): Promise<PublicPostDetail> {
-    return api<PublicPostDetail>(`/api/v1/public/organizations/${orgId}/posts/${postId}`)
+    return api<PublicPostDetail>(`/api/v1/public/organizations/${encodeURIComponent(orgSlug)}/posts/${postId}`)
   }
 
   // ─── F19.1 Phase 4: 公開チーム・組織検索 API ───
@@ -157,10 +157,10 @@ export function usePublicApi() {
   /**
    * 組織のタイムライン投稿一覧を取得する（ページング）。
    *
-   * エンドポイント: GET /api/v1/public/organizations/{orgId}/timeline-posts
+   * エンドポイント: GET /api/v1/public/organizations/{slug}/timeline-posts
    */
   async function fetchPublicOrgTimelinePosts(
-    orgId: string,
+    orgSlug: string,
     page = 0,
     size = 20,
   ): Promise<SpringPage<PublicTimelinePostResponse>> {
@@ -168,7 +168,7 @@ export function usePublicApi() {
     query.set('page', String(page))
     query.set('size', String(size))
     return api<SpringPage<PublicTimelinePostResponse>>(
-      `/api/v1/public/organizations/${orgId}/timeline-posts?${query.toString()}`,
+      `/api/v1/public/organizations/${encodeURIComponent(orgSlug)}/timeline-posts?${query.toString()}`,
     )
   }
 
@@ -193,10 +193,10 @@ export function usePublicApi() {
   /**
    * 組織のイベント一覧を取得する（ページング）。
    *
-   * エンドポイント: GET /api/v1/public/organizations/{orgId}/events
+   * エンドポイント: GET /api/v1/public/organizations/{slug}/events
    */
   async function fetchPublicOrgEvents(
-    orgId: string,
+    orgSlug: string,
     page = 0,
     size = 20,
   ): Promise<SpringPage<PublicEventResponse>> {
@@ -204,7 +204,7 @@ export function usePublicApi() {
     query.set('page', String(page))
     query.set('size', String(size))
     return api<SpringPage<PublicEventResponse>>(
-      `/api/v1/public/organizations/${orgId}/events?${query.toString()}`,
+      `/api/v1/public/organizations/${encodeURIComponent(orgSlug)}/events?${query.toString()}`,
     )
   }
 

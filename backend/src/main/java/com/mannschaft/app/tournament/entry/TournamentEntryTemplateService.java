@@ -285,6 +285,7 @@ public class TournamentEntryTemplateService {
                 .name(req.getName())
                 .description(req.getDescription())
                 .sortOrder(req.getSortOrder() != null ? req.getSortOrder() : 0)
+                .createdBy(currentUserId)
                 .build();
         TournamentEntryTemplateEntity saved = templateRepository.save(template);
 
@@ -337,6 +338,9 @@ public class TournamentEntryTemplateService {
 
         // メンバーを全置換（差分更新推奨だが全置換で実装）
         templateMemberRepository.deleteByTemplateId(templateId);
+        // 派生 delete は remove を予約するだけで、Hibernate の flush は INSERT を DELETE より先に流す。
+        // 同じ userId を含む再保存が uq_tetm_template_user に当たらないよう、ここで DELETE を確定させる。
+        templateMemberRepository.flush();
         List<TournamentEntryTemplateMemberEntity> newMembers = req.getMembers().stream()
                 .map(item -> (TournamentEntryTemplateMemberEntity) TournamentEntryTemplateMemberEntity.builder()
                         .templateId(templateId)

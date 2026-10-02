@@ -5,7 +5,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.shift.dto.CreatePositionRequest;
 import com.mannschaft.app.shift.dto.ShiftPositionResponse;
 import com.mannschaft.app.shift.dto.UpdatePositionRequest;
-import com.mannschaft.app.shift.service.ShiftPositionService;
+import com.mannschaft.app.shift.service.ShiftPositionFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,7 +33,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ShiftPositionController {
 
-    private final ShiftPositionService positionService;
+    private final ShiftPositionFacade positionFacade;
 
     /**
      * チームのポジション一覧を取得する。
@@ -44,7 +44,7 @@ public class ShiftPositionController {
     public ResponseEntity<ApiResponse<List<ShiftPositionResponse>>> listPositions(
             @RequestParam Long teamId) {
         List<ShiftPositionResponse> responses =
-                positionService.listPositions(teamId, SecurityUtils.getCurrentUserId());
+                positionFacade.listPositions(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -58,7 +58,7 @@ public class ShiftPositionController {
             @RequestParam Long teamId,
             @Valid @RequestBody CreatePositionRequest request) {
         ShiftPositionResponse response =
-                positionService.createPosition(teamId, request, SecurityUtils.getCurrentUserId());
+                positionFacade.createPosition(teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -72,7 +72,7 @@ public class ShiftPositionController {
             @PathVariable Long positionId,
             @Valid @RequestBody UpdatePositionRequest request) {
         ShiftPositionResponse response =
-                positionService.updatePosition(positionId, request, SecurityUtils.getCurrentUserId());
+                positionFacade.updatePosition(positionId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -84,7 +84,7 @@ public class ShiftPositionController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePosition(
             @PathVariable Long positionId) {
-        positionService.deletePosition(positionId, SecurityUtils.getCurrentUserId());
+        positionFacade.deletePosition(positionId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

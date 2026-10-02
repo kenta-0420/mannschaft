@@ -292,6 +292,60 @@ public class OrganizationService {
     }
 
     /**
+     * 公開組織ページ用: タイムライン投稿を未ログインに公開する設定かを返す横断 SPI。
+     *
+     * <p>公開ページ（publicview）が {@link OrganizationEntity} の設定を直接読まずに済むよう、真偽値だけを返す
+     * （Entity 参照を越境させない・番人 D-1）。非公開 / 凍結 / 削除済み / 不在の組織は false。</p>
+     */
+    public boolean isTimelinePostsPublicBySlug(String slug) {
+        return slug != null && organizationRepository.findPublicOrganizationBySlug(slug)
+                .map(OrganizationEntity::isTimelinePostsPublic)
+                .orElse(false);
+    }
+
+    /**
+     * 公開組織ページ用: チームからの加盟申請を受け付けているかを返す横断 SPI（F01.2.1 §10.3）。
+     * 考え方は {@link #isTimelinePostsPublicBySlug(String)} と同じ（公開してよい組織だけを見る。
+     * 非公開・不在は false で、存在オラクルにならない）。
+     */
+    public boolean isAcceptingTeamApplicationsBySlug(String slug) {
+        return slug != null && organizationRepository.findPublicOrganizationBySlug(slug)
+                .map(org -> Boolean.TRUE.equals(org.getTeamApplicationEnabled()))
+                .orElse(false);
+    }
+
+    /**
+     * 公開組織ページ用: イベントを未ログインに公開する設定かを返す横断 SPI。
+     * 考え方は {@link #isTimelinePostsPublicBySlug(String)} と同じ。
+     */
+    public boolean isPublicEventsEnabledBySlug(String slug) {
+        return slug != null && organizationRepository.findPublicOrganizationBySlug(slug)
+                .map(OrganizationEntity::isPublicEventsEnabled)
+                .orElse(false);
+    }
+
+    /**
+     * 公開ページのリンク生成用に、公開してよい組織の ID → slug を一括で引く横断 SPI。
+     *
+     * <p>公開ページの URL 識別子は slug に一本化されている（F01.2.1 AC-A13）。数値 ID から
+     * 公開ページ URL を作らせないため、呼び出し側（公開ユーザー投稿一覧など）は本メソッドで slug を得る。
+     * 判定条件は {@link #findPublicOrganizationNameById(Long)} と同一（PUBLIC・ACTIVE・未 archive・未削除）。
+     * 非公開 / 凍結 / 削除済み / 不在の組織はマップに含めない（存在オラクルを作らない）。</p>
+     *
+     * @param orgIds 対象組織 ID 群
+     * @return 公開してよい組織の ID → slug
+     */
+    public Map<Long, String> findPublicOrganizationSlugsByIds(Collection<Long> orgIds) {
+        if (orgIds == null || orgIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        organizationRepository.findPublicOrganizationsByIds(orgIds)
+                .forEach(o -> result.put(o.getId(), o.getSlug()));
+        return result;
+    }
+
+    /**
      * 組織がサポーター受け入れを有効化していることを表明する。
      *
      * <p>{@code supporter_enabled} は「この組織がサポーター登録を受け付けるか」を表す
@@ -936,6 +990,8 @@ public class OrganizationService {
                         mediaUrlResolver.resolve(org.getBannerUrl())))
                 .timestamps(new OrganizationResponse.OrgTimestampsDto(
                         org.getArchivedAt(), org.getCreatedAt()))
+                .teamApplication(new OrganizationResponse.TeamApplicationDto(
+                        Boolean.TRUE.equals(org.getTeamApplicationEnabled())))
                 .build();
     }
 }

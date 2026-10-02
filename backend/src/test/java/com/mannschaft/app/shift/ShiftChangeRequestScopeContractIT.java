@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.shift.entity.ShiftChangeRequestEntity;
@@ -17,15 +18,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.List;
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -55,6 +64,9 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
     private MockMvc mockMvc;
 
     @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
     private ShiftScheduleRepository scheduleRepository;
 
     @Autowired
@@ -71,6 +83,9 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long memberTeamAId;   // TEAM A の一般メンバー（自分の分のみ）
     private Long otherMemberId;   // TEAM A の別メンバー（他人の依頼の持ち主）
     private Long outsiderId;      // 非メンバー
+    private Long userRolesOnlyAdminAId; // TEAM A の user_roles のみ ADMIN（memberships 無し）
+    private Long systemAdminId;   // SYSTEM_ADMIN（非メンバー）
+    private Long systemAdminMemberId; // SYSTEM_ADMIN かつ TEAM A のメンバー
 
     private Long scheduleAId;
     private Long myRequestId;     // memberTeamA の依頼
@@ -86,6 +101,13 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
         memberTeamAId = insertUser("wave6-cr-member-team-a@example.com");
         otherMemberId = insertUser("wave6-cr-other-member@example.com");
         outsiderId = insertUser("wave6-cr-outsider@example.com");
+        userRolesOnlyAdminAId = insertUser("wave6-cr-ur-admin@example.com");
+        systemAdminId = insertUser("wave6-cr-sysadmin@example.com");
+        MembershipTestHelper.insertUserRole(em, userRolesOnlyAdminAId, "ADMIN", teamAId, null);
+        MembershipTestHelper.insertUserRole(em, systemAdminId, "SYSTEM_ADMIN", null, null);
+        systemAdminMemberId = insertUser("wave6-cr-sysadmin-member@example.com");
+        MembershipTestHelper.insertUserRole(em, systemAdminMemberId, "SYSTEM_ADMIN", null, null);
+        MembershipTestHelper.insertMembership(em, systemAdminMemberId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
 
         MembershipTestHelper.insertMembership(em, adminTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminTeamAId, "ADMIN", teamAId, null);
@@ -169,31 +191,56 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("非メンバーは403")
-        void 非メンバーは403() throws Exception {
+        @DisplayName("非メンバーは404（存在オラクル是正 CMP-260923-0954 W2・不在scheduleIdと同一応答）")
+        void 非メンバーは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/shifts/change-requests")
                             .param("scheduleId", scheduleAId.toString()))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMIN）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMIN（teamBのADMIN）は404（BOLA・存在オラクル是正 W2）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(get("/api/v1/shifts/change-requests")
                             .param("scheduleId", scheduleAId.toString()))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
         }
 
         @Test
-        @DisplayName("別scope ADMIN が role=ADMIN を付けても403（BOLA・権限昇格の複合）")
-        void 別scopeADMINがroleADMINを付けても403() throws Exception {
+        @DisplayName("別scope ADMIN が role=ADMIN を付けても404（BOLA・権限昇格の複合）")
+        void 別scopeADMINがroleADMINを付けても404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(get("/api/v1/shifts/change-requests")
                             .param("scheduleId", scheduleAId.toString())
                             .param("role", "ADMIN"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"));
+        }
+
+        /**
+         * AC-1（存在オラクル是正 W2）: 別scope ADMIN が実在する他チームの scheduleId を叩いた応答と、
+         * 不在の scheduleId を叩いた応答が status・error.code で一致すること。
+         */
+        @Test
+        @DisplayName("★AC-1: 別scope ADMINの他チームscheduleIdと不在scheduleIdは同一応答")
+        void AC1_別scopeADMINの他チームscheduleIdと不在scheduleIdは同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            var crossTeam = mockMvc.perform(get("/api/v1/shifts/change-requests")
+                            .param("scheduleId", scheduleAId.toString()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn();
+            var absent = mockMvc.perform(get("/api/v1/shifts/change-requests")
+                            .param("scheduleId", "999999999"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_001"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
         }
     }
 
@@ -246,6 +293,343 @@ class ShiftChangeRequestScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isNotFound());
         }
     }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 3. PATCH /shifts/change-requests/{id}/review（審査・★存在オラクル是正 W2★）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("3. PATCH /shifts/change-requests/{id}/review（審査）")
+    class ReviewChangeRequest {
+
+        @Test
+        @DisplayName("正当ADMINは200（正常系）")
+        void 正当ADMINは200() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(patch("/api/v1/shifts/change-requests/{id}/review", myRequestId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(reviewBody())))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("非ADMINメンバーは403")
+        void 非ADMINメンバーは403() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(patch("/api/v1/shifts/change-requests/{id}/review", myRequestId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(reviewBody())))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは404（BOLA・存在オラクル是正 W2）")
+        void 別scopeADMINは404() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(patch("/api/v1/shifts/change-requests/{id}/review", myRequestId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(reviewBody())))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_030"));
+        }
+
+        @Test
+        @DisplayName("★AC-1: 別scope ADMINの他チーム依頼idと不在idは同一応答")
+        void AC1_別scopeADMINの他チーム依頼idと不在idは同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            var crossTeam = mockMvc.perform(patch("/api/v1/shifts/change-requests/{id}/review", myRequestId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(reviewBody())))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_030"))
+                    .andReturn();
+            var absent = mockMvc.perform(patch("/api/v1/shifts/change-requests/{id}/review", 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(reviewBody())))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_030"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
+        }
+
+        private Map<String, Object> reviewBody() {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("decision", "ACCEPTED");
+            body.put("reviewComment", "契約テスト");
+            body.put("version", 0);
+            return body;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 4. DELETE /shifts/change-requests/{id}（取下げ・★存在オラクル是正 W2★）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("4. DELETE /shifts/change-requests/{id}（取下げ）")
+    class WithdrawChangeRequest {
+
+        @Test
+        @DisplayName("依頼者本人は204（正常系）")
+        void 依頼者本人は204() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", myRequestId))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("同じチームの他メンバーは403（SHIFT_019・存在秘匿しない）")
+        void 同チームの他メンバーは403() throws Exception {
+            setAuth(otherMemberId);
+            mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", myRequestId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_019"));
+        }
+
+        @Test
+        @DisplayName("当該チームADMINも本人でなければ403（代理取下げは対象外）")
+        void 当該チームADMINも本人でなければ403() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", myRequestId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_019"));
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMINも本人でなければ403（SHIFT_019）で、依頼の status・version は変わらない")
+        void SYSTEM_ADMINも本人でなければ403でDB不変() throws Exception {
+            setAuth(systemAdminId);
+            mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", myRequestId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_019"));
+            em.flush();
+            em.clear();
+            ShiftChangeRequestEntity after = changeRequestRepository.findById(myRequestId).orElseThrow();
+            org.assertj.core.api.Assertions.assertThat(after.getStatus())
+                    .isEqualTo(com.mannschaft.app.shift.ChangeRequestStatus.OPEN);
+            org.assertj.core.api.Assertions.assertThat(after.getVersion()).isEqualTo(0L);
+        }
+
+        @Test
+        @DisplayName("依頼者本人でもある SYSTEM_ADMIN は自分の依頼を取り下げられる（204）、status は WITHDRAWN")
+        void 本人かつSYSTEM_ADMINは取下げ204() throws Exception {
+            Long ownId = changeRequestRepository.save(ShiftChangeRequestEntity.builder()
+                    .scheduleId(scheduleAId)
+                    .requestType(ChangeRequestType.OPEN_CALL)
+                    .requestedBy(systemAdminMemberId)
+                    .reason("SYSTEM_ADMIN 本人の依頼")
+                    .build()).getId();
+            em.flush();
+            em.clear();
+            setAuth(systemAdminMemberId);
+            mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", ownId))
+                    .andExpect(status().isNoContent());
+            em.flush();
+            em.clear();
+            org.assertj.core.api.Assertions.assertThat(
+                            changeRequestRepository.findById(ownId).orElseThrow().getStatus())
+                    .isEqualTo(com.mannschaft.app.shift.ChangeRequestStatus.WITHDRAWN);
+        }
+
+        @Test
+        @DisplayName("別scope ADMINは404（越境・存在オラクル是正 W2）")
+        void 別scopeADMINは404() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", myRequestId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_030"));
+        }
+
+        @Test
+        @DisplayName("非メンバーは404（越境・存在秘匿）")
+        void 非メンバーは404() throws Exception {
+            setAuth(outsiderId);
+            mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", myRequestId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_030"));
+        }
+
+        /**
+         * AC-1: 越境（非所属）者が実在idを叩いた応答と不在idを叩いた応答が一致すること。
+         * 同一チーム内の権限不足（SHIFT_019）とは区別する（AC-2）。
+         */
+        @Test
+        @DisplayName("★AC-1: 非メンバーの他チーム依頼idと不在idは同一応答")
+        void AC1_非メンバーの他チーム依頼idと不在idは同一応答() throws Exception {
+            setAuth(outsiderId);
+            var crossTeam = mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", myRequestId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_030"))
+                    .andReturn();
+            var absent = mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", 999_999_999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_030"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 5. 存在オラクル是正 W2 補完（AC-1 message / AC-3 / AC-10 / AC-11）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("5. 存在オラクル是正 W2 補完")
+    class OracleCompletion {
+
+        private static final List<String> KINDS = List.of("list", "create", "review", "get", "withdraw");
+
+        private MvcResult call(String kind, Long id) throws Exception {
+            return switch (kind) {
+                case "list" -> mockMvc.perform(get("/api/v1/shifts/change-requests")
+                        .param("scheduleId", id.toString())).andReturn();
+                case "create" -> mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .post("/api/v1/shifts/change-requests")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(
+                                        Map.of("scheduleId", id, "requestType", "OPEN_CALL", "reason", "x"))))
+                        .andReturn();
+                case "review" -> mockMvc.perform(patch("/api/v1/shifts/change-requests/{id}/review", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("decision", "ACCEPTED", "reviewComment", "x", "version", 0)))).andReturn();
+                case "get" -> mockMvc.perform(get("/api/v1/shifts/change-requests/{id}", id)).andReturn();
+                default -> mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", id)).andReturn();
+            };
+        }
+
+        private Long realId(String kind) {
+            return switch (kind) {
+                case "list", "create" -> scheduleAId;
+                default -> myRequestId;
+            };
+        }
+
+        @Test
+        @DisplayName("AC-1: 越境（別scope ADMIN・非メンバー）の実在IDと不在IDで status・code・message が一致（全EP）")
+        void AC1_全EPでstatusとcodeとmessageが一致() throws Exception {
+            for (Long actor : List.of(adminTeamBId, outsiderId)) {
+                for (String kind : KINDS) {
+                    setAuth(actor);
+                    assertSameError(call(kind, realId(kind)), call(kind, 999_999_999L));
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("AC-10: ID 境界値（0・-1・Long.MAX_VALUE）は不在IDと同じ応答（全EP）")
+        void AC10_ID境界値は不在IDと同じ応答() throws Exception {
+            setAuth(adminTeamBId);
+            for (String kind : KINDS) {
+                MvcResult absent = call(kind, 999_999_999L);
+                for (Long id : BOUNDARY_IDS) {
+                    assertSameError(call(kind, id), absent);
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("AC-9/AC-10: scheduleId 省略は400・数値でないパスIDは400（500にならない）")
+        void AC9_AC10_省略と非数値は400() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(get("/api/v1/shifts/change-requests")).andExpect(status().isBadRequest());
+            mockMvc.perform(get("/api/v1/shifts/change-requests/{id}", "abc")).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("AC-3: user_roles のみの ADMIN は一覧(全件)・審査が許可、取下げは本人以外なので SHIFT_019、作成は所属者として403（404に化けない）")
+        void AC3_userRolesOnlyAdmin() throws Exception {
+            setAuth(userRolesOnlyAdminAId);
+            mockMvc.perform(get("/api/v1/shifts/change-requests")
+                            .param("scheduleId", scheduleAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(2));
+            mockMvc.perform(patch("/api/v1/shifts/change-requests/{id}/review", myRequestId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("decision", "ACCEPTED", "reviewComment", "x", "version", 0))))
+                    .andExpect(status().isOk());
+            mockMvc.perform(delete("/api/v1/shifts/change-requests/{id}", othersRequestId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_019"));
+            org.assertj.core.api.Assertions.assertThat(call("create", scheduleAId).getResponse().getStatus())
+                    .isEqualTo(403);
+        }
+
+        @Test
+        @DisplayName("AC-5: 非メンバーの SYSTEM_ADMIN は一覧・審査できる")
+        void AC5_systemAdminは通る() throws Exception {
+            setAuth(systemAdminId);
+            mockMvc.perform(get("/api/v1/shifts/change-requests")
+                            .param("scheduleId", scheduleAId.toString()))
+                    .andExpect(status().isOk());
+            mockMvc.perform(patch("/api/v1/shifts/change-requests/{id}/review", myRequestId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("decision", "ACCEPTED", "reviewComment", "x", "version", 0))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("非メンバーの SYSTEM_ADMIN が変更依頼を作成すると 403 COMMON_002 で、件数が増えない")
+        void 非メンバーSYSTEM_ADMINの作成は403で件数不変() throws Exception {
+            long before = changeRequestRepository.count();
+            setAuth(systemAdminId);
+            MvcResult res = call("create", scheduleAId);
+            org.assertj.core.api.Assertions.assertThat(res.getResponse().getStatus()).isEqualTo(403);
+            org.assertj.core.api.Assertions.assertThat(
+                    (String) JsonPath.read(res.getResponse().getContentAsString(), "$.error.code"))
+                    .isEqualTo("COMMON_002");
+            em.flush();
+            em.clear();
+            org.assertj.core.api.Assertions.assertThat(changeRequestRepository.count()).isEqualTo(before);
+        }
+
+        @Test
+        @DisplayName("チームのメンバーでもある SYSTEM_ADMIN は変更依頼を作成でき（201）、件数が1増える")
+        void メンバーかつSYSTEM_ADMINの作成は201で件数1増() throws Exception {
+            long before = changeRequestRepository.count();
+            setAuth(systemAdminMemberId);
+            org.assertj.core.api.Assertions.assertThat(call("create", scheduleAId).getResponse().getStatus())
+                    .isEqualTo(201);
+            em.flush();
+            em.clear();
+            org.assertj.core.api.Assertions.assertThat(changeRequestRepository.count()).isEqualTo(before + 1);
+        }
+
+        @Test
+        @DisplayName("AC-11: 越境で404にした書込み（作成・審査・取下げ）は DB を一切変えない")
+        void AC11_越境書込でDB不変() throws Exception {
+            long before = changeRequestRepository.count();
+            setAuth(adminTeamBId);
+            for (String kind : List.of("create", "review", "withdraw")) {
+                call(kind, realId(kind));
+            }
+            em.flush();
+            em.clear();
+            org.assertj.core.api.Assertions.assertThat(changeRequestRepository.count()).isEqualTo(before);
+            ShiftChangeRequestEntity after = changeRequestRepository.findById(myRequestId).orElseThrow();
+            org.assertj.core.api.Assertions.assertThat(after.getStatus()).isEqualTo(ChangeRequestStatus.OPEN);
+            org.assertj.core.api.Assertions.assertThat(after.getVersion()).isEqualTo(0L);
+        }
+    }
+
+    /** AC-1: status・error.code・error.message の3つすべてが一致すること。 */
+    private static void assertSameError(MvcResult crossTeam, MvcResult absent) throws Exception {
+        String a = crossTeam.getResponse().getContentAsString();
+        String b = absent.getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                .isEqualTo(absent.getResponse().getStatus());
+        org.assertj.core.api.Assertions.assertThat((String) JsonPath.read(a, "$.error.code"))
+                .isEqualTo(JsonPath.read(b, "$.error.code"));
+        org.assertj.core.api.Assertions.assertThat((String) JsonPath.read(a, "$.error.message"))
+                .isEqualTo(JsonPath.read(b, "$.error.message"));
+    }
+
+    private static final List<Long> BOUNDARY_IDS = List.of(0L, -1L, Long.MAX_VALUE);
 
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
