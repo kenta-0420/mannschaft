@@ -300,6 +300,41 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @ParameterizedTest
+    @CsvSource({"startToday,true", "endToday,true", "endedYesterday,false", "startsTomorrow,false"})
+    void 有効同意の期間境界はDB日付でなく業務日付に従う(String boundary, boolean active) {
+        inTx(() -> {
+            LocalDate today = LocalDate.now();
+            LocalDate from = "startToday".equals(boundary) ? today
+                    : "startsTomorrow".equals(boundary) ? today.plusDays(1) : today.minusDays(3);
+            LocalDate until = "endToday".equals(boundary) ? today
+                    : "endedYesterday".equals(boundary) ? today.minusDays(1) : today.plusDays(3);
+            em.createNativeQuery("UPDATE proxy_input_consents SET effective_from = :fromDate, effective_until = :untilDate WHERE id = :cid")
+                    .setParameter("fromDate", from).setParameter("untilDate", until)
+                    .setParameter("cid", consentId).executeUpdate();
+            String originalZone = em.createNativeQuery("SELECT @@session.time_zone").getSingleResult().toString();
+            try {
+                em.createNativeQuery("SET SESSION time_zone = :zone").setParameter("zone", "-12:00").executeUpdate();
+                LocalDate databaseDate = LocalDate.parse(em.createNativeQuery("SELECT CURRENT_DATE").getSingleResult().toString());
+                String sessionZone = "-12:00";
+                if (databaseDate.equals(today)) {
+                    sessionZone = "+14:00";
+                    em.createNativeQuery("SET SESSION time_zone = :zone").setParameter("zone", sessionZone).executeUpdate();
+                    databaseDate = LocalDate.parse(em.createNativeQuery("SELECT CURRENT_DATE").getSingleResult().toString());
+                }
+                assertThat(databaseDate).isNotEqualTo(today);
+                System.out.printf("DATE_BOUNDARY_PROOF {\"businessDate\":\"%s\",\"databaseDate\":\"%s\",\"sessionZone\":\"%s\",\"jvmZone\":\"%s\",\"boundary\":\"%s\"}%n",
+                        today, databaseDate, sessionZone, java.time.ZoneId.systemDefault(), boundary);
+                assertThat(consents.findValidConsent(consentId, actor).isPresent()).isEqualTo(active);
+                assertThat(consents.findActiveByProxyUserId(actor).stream()
+                        .anyMatch(consent -> consent.getId().equals(consentId))).isEqualTo(active);
+            } finally {
+                em.createNativeQuery("SET SESSION time_zone = :zone").setParameter("zone", originalZone).executeUpdate();
+            }
+            return null;
+        });
+    }
+
+    @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void チームは同意組合へ有効加盟している場合だけ代理回答できる(boolean active) throws Exception {
         inTx(() -> {
