@@ -67,7 +67,6 @@ class RecruitmentCancellationFeeApplyBlockTest {
     @Mock private RecruitmentListingService listingService;
     @Mock private AccessControlService accessControlService;
     @Mock private RecruitmentMapper mapper;
-    @Mock private MarketFinalizeService marketFinalizeService;
     @Mock private ContentVisibilityChecker visibilityChecker;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private ConnectChargeService connectChargeService;
@@ -83,7 +82,7 @@ class RecruitmentCancellationFeeApplyBlockTest {
         return new RecruitmentParticipantService(
                 participantRepository, listingRepository, historyRepository, cancellationRecordRepository,
                 penaltyRepository,
-                policyService, listingService, accessControlService, mapper, marketFinalizeService,
+                policyService, listingService, accessControlService, mapper,
                 visibilityChecker, eventPublisher);
     }
 

@@ -539,7 +539,7 @@ NO_ARG_NOW|com.mannschaft.app.recruitment.entity.RecruitmentReminderEntity|2
 NO_ARG_NOW|com.mannschaft.app.recruitment.entity.RecruitmentSubcategoryEntity|1
 NO_ARG_NOW|com.mannschaft.app.recruitment.entity.RecruitmentTemplateEntity|1
 NO_ARG_NOW|com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity|2
-NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentAutoCancelBatch|2
+NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentAutoCancelBatch|1
 NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentCancellationPolicyService|1
 NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentListingService|1
 NO_ARG_NOW|com.mannschaft.app.recruitment.service.RecruitmentNoShowConfirmBatch|1
