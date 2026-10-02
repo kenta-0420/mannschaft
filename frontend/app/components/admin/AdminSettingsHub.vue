@@ -4,8 +4,6 @@ import { parseScopeRoute } from '~/composables/useScopeRouteSync'
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   slug: string
-  resolvedSlug?: string
-  numericId?: number
 }>()
 
 const { t } = useI18n()
@@ -13,6 +11,8 @@ const nuxtApp = useNuxtApp()
 const route = useRoute()
 const { roleName, loadPermissions } = useRoleAccess(props.scopeType, toRef(props, 'slug'))
 const scopeStore = useScopeStore()
+const teamStore = useTeamStore()
+const organizationStore = useOrganizationStore()
 const { getTeamModules } = useModuleApi()
 const { getOrganizationModules } = useOrganizationModuleApi()
 const loading = ref(true)
@@ -24,20 +24,22 @@ let active = true
 const base = computed(() => `/${props.scopeType === 'team' ? 'teams' : 'organizations'}/${props.slug}`)
 // security/03 §3.5: 新しいスコープ運営 UI は ADMIN 等値。既存 helper の SYS 許可は変更しない。
 const isScopeAdmin = computed(() => roleName.value === 'ADMIN')
-const identityResolved = computed(() =>
-  props.resolvedSlug === props.slug
-  && Number.isSafeInteger(props.numericId)
-  && (props.numericId ?? 0) > 0,
-)
+// /admin配下は親shellがmetadataを取得しない。既存resolverが確認する本人所属を正本にする。
+const membership = computed(() => props.scopeType === 'team'
+  ? teamStore.myTeams.find(item => item.slug === props.slug)
+  : organizationStore.myOrganizations.find(item => item.slug === props.slug))
+const identityResolved = computed(() => Number.isSafeInteger(membership.value?.id) && (membership.value?.id ?? 0) > 0)
+const membershipLoading = computed(() => props.scopeType === 'team' ? teamStore.loading : organizationStore.loading)
 const routeMatches = computed(() => {
   const parsed = parseScopeRoute(route.path)
   return parsed?.scopeType === props.scopeType && parsed.slug === props.slug
 })
 const globalReady = computed(() =>
   identityResolved.value
+  && !membershipLoading.value
   && routeMatches.value
   && scopeStore.current.type === props.scopeType
-  && scopeStore.current.id === String(props.numericId),
+  && scopeStore.current.id === String(membership.value?.id),
 )
 const scopedLinks = computed(() => {
   const settings = props.scopeType === 'team'
@@ -73,20 +75,21 @@ async function loadModules() {
 
 async function synchronizeScope() {
   scopeError.value = undefined
-  // 旧 shell が旧 store と一致していても、URL の団体と一致しなければ同期・横断遷移しない。
-  if (!active || !identityResolved.value || !routeMatches.value) return
+  // 本人所属取得前はidentity未確定でもresolverを開始し、取得後のguardで書込みを判定する。
+  if (!active || !routeMatches.value || !isScopeAdmin.value) return
   const path = base.value
   const slug = props.slug
-  const numericId = props.numericId
-  const isCurrent = () => active
+  const scopeType = props.scopeType
+  const isRouteCurrent = () => active
     && props.slug === slug
-    && props.numericId === numericId
-    && identityResolved.value
+    && props.scopeType === scopeType
+    && isScopeAdmin.value
     && routeMatches.value
+  const isCurrent = () => isRouteCurrent() && identityResolved.value && !membershipLoading.value
   try {
     // 所属取得失敗後の明示再試行でも再取得できるよう、今回の同期1回に既存resolverを使う。
     await nuxtApp.runWithContext(() => useScopeRouteSync().syncFromPath(path, isCurrent))
-    if (!isCurrent()) return
+    if (!isRouteCurrent()) return
     if (!globalReady.value) throw new Error('Scope could not be confirmed')
   }
   catch (error) {
@@ -118,7 +121,7 @@ function guardGlobalNavigation(event: MouseEvent, requiresPayment = false) {
   event.preventDefault()
 }
 
-watch([() => props.resolvedSlug, () => props.numericId], () => {
+watch(() => membership.value?.id, () => {
   if (!loading.value && isScopeAdmin.value) void synchronizeScope()
 })
 onMounted(() => { void load() })

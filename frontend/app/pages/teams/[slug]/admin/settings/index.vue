@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import AdminSettingsHub from '~/components/admin/AdminSettingsHub.vue'
-import { useTeamShellContext } from '~/composables/useTeamShellContext'
 
 definePageMeta({ layout: 'team', middleware: ['auth', 'admin-console'] })
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug))
-const { team } = useTeamShellContext()
 </script>
 
 <template>
@@ -15,7 +13,5 @@ const { team } = useTeamShellContext()
     :key="slug"
     scope-type="team"
     :slug="slug"
-    :resolved-slug="team?.slug"
-    :numeric-id="team?.numericId"
   />
 </template>

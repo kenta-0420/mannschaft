@@ -19,6 +19,8 @@ let failModules = false
 let failMemberships = false
 let pendingPermissions: Promise<void> | null = null
 let pendingMemberships: Promise<void> | null = null
+let teamMembershipIdentity: { id: number; slug: string } | null = { id: 12, slug: 'alpha' }
+let organizationId = 7
 const route = reactive({ path: '/teams/alpha/admin/settings', params: { slug: 'alpha' } })
 const api = vi.fn(async (path: string) => {
   if (path.endsWith('/me/permissions')) {
@@ -33,11 +35,11 @@ const api = vi.fn(async (path: string) => {
   if (path === '/api/v1/me/teams') {
     if (pendingMemberships) await pendingMemberships
     if (failMemberships) throw { statusCode: 503 }
-    return { data: [{ id: 12, slug: 'alpha', name: 'チームA', role: 'ADMIN' }] }
+    return { data: teamMembershipIdentity ? [{ ...teamMembershipIdentity, name: 'チームA', role: 'ADMIN' }] : [] }
   }
   if (path === '/api/v1/me/organizations') {
     if (failMemberships) throw { statusCode: 503 }
-    return { data: [{ id: 7, slug: 'beta', name: '組織B', role: 'ADMIN' }] }
+    return { data: [{ id: organizationId, slug: 'beta', name: '組織B', role: 'ADMIN' }] }
   }
   throw new Error(`Unexpected API: ${path}`)
 })
@@ -49,8 +51,8 @@ vi.mock('~/composables/useApi', async (importOriginal) => {
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 mockNuxtImport('useRoute', () => () => route)
 
-const teamProps = { scopeType: 'team' as const, slug: 'alpha', resolvedSlug: 'alpha', numericId: 12 }
-const orgProps = { scopeType: 'organization' as const, slug: 'beta', resolvedSlug: 'beta', numericId: 7 }
+const teamProps = { scopeType: 'team' as const, slug: 'alpha' }
+const orgProps = { scopeType: 'organization' as const, slug: 'beta' }
 
 beforeAll(async () => {
   const warmup = await mountSuspended(AdminSettingsHub, { props: teamProps })
@@ -66,6 +68,8 @@ beforeEach(() => {
   failMemberships = false
   pendingPermissions = null
   pendingMemberships = null
+  teamMembershipIdentity = { id: 12, slug: 'alpha' }
+  organizationId = 7
   route.path = '/teams/alpha/admin/settings'
   route.params.slug = 'alpha'
   api.mockClear()
@@ -146,6 +150,21 @@ describe('ADMIN設定ハブの既存導線と団体境界', () => {
     wrapper.unmount()
   })
 
+  it('AC3: TEAMと同じ数値IDのORGでも本人所属の種別を確認し、旧scopeへ横断遷移しない', async () => {
+    route.path = '/organizations/beta/admin/settings'
+    organizationId = 12
+    useScopeStore().setTeamScope(12, '旧チーム')
+    const wrapper = await mountSuspended(AdminSettingsHub, { props: orgProps })
+    await flushPromises()
+    expect(useScopeStore().current).toMatchObject({ type: 'organization', id: '12' })
+    expect(wrapper.find('[data-testid="setting-line"]').exists()).toBe(true)
+    useScopeStore().setTeamScope(12, '旧チーム')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="setting-line"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="setting-receipts"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it.each(['DEPUTY_ADMIN', 'MEMBER', 'SYSTEM_ADMIN', null])('AC3/4: exact ADMIN以外（%s）には新ハブ管理リンクを表示しない', async (value) => {
     role = value
     const wrapper = await mountSuspended(AdminSettingsHub, { props: teamProps })
@@ -156,19 +175,20 @@ describe('ADMIN設定ハブの既存導線と団体境界', () => {
   })
 
   it.each([
-    { resolvedSlug: undefined, numericId: undefined },
-    { resolvedSlug: 'alpha', numericId: 0 },
-    { resolvedSlug: 'alpha', numericId: Number.MAX_SAFE_INTEGER + 1 },
-    { resolvedSlug: 'old-team', numericId: 12 },
-  ])('AC3/4: 未確定/旧slug/不正IDは他団体をstoreへ登録せずglobal hrefを公開しない（%j）', async (identity) => {
-    const wrapper = await mountSuspended(AdminSettingsHub, { props: { ...teamProps, ...identity } })
-    await flushPromises()
-    // 旧shellと旧storeのIDだけが一致していても、現在URLのslugと違えば許可しない。
+    null,
+    { slug: 'alpha', id: 0 },
+    { slug: 'alpha', id: Number.MAX_SAFE_INTEGER + 1 },
+    { slug: 'old-team', id: 12 },
+  ])('AC3/4: 本人所属の空/旧slug/不正IDは他団体をstoreへ登録せずglobal hrefを公開しない（%j）', async (identity) => {
+    teamMembershipIdentity = identity
     useScopeStore().setTeamScope(12, '旧団体')
+    const wrapper = await mountSuspended(AdminSettingsHub, { props: teamProps })
+    await flushPromises()
+    // 古いcurrentScopeのIDだけが一致しても、現在URLと本人所属が不一致なら許可しない。
     await wrapper.vm.$nextTick()
     expect(wrapper.find('[data-testid="setting-line"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="setting-receipts"]').exists()).toBe(false)
-    expect(api.mock.calls.some(([path]) => path === '/api/v1/me/teams')).toBe(false)
+    expect(api.mock.calls.filter(([path]) => path === '/api/v1/me/teams')).toHaveLength(1)
     expect(useScopeStore().current.name).toBe('旧団体')
     wrapper.unmount()
   })

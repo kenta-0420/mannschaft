@@ -26,7 +26,7 @@
 
 - L2 の設定カードは **exact ADMIN** のみ新一覧へ向ける。DEPUTY_ADMIN と既存 SYSTEM_ADMIN は従来の shift/FAQ URL を維持する。新一覧は [security03 §3.5](../../security/03_role_authority_model.md) に従い SYSTEM_ADMIN を表示対象に含めない。既存 `useRoleAccess.isAdmin` の SYS 許可と他画面の表示差は本 CMP では変更しない。
 - TEAM: shift、FAQ、公開、**本人のケア設定**、TODO ステータス表示名。ORG: FAQ、通知クレジット、公開、TODO ステータス表示名。両方に既存の機能設定を案内する。
-- LINE・領収書発行者設定は既存の横断 URL を使う。URL slug と親シェルの団体識別子・内部 ID を照合し、既存スコープ同期後の type/ID が同じ団体と確認できるまでリンクを出さない。領収書は既存 sidebar と同じ payment モジュール条件を使う。空・取得失敗を区別し、失敗時には明示再試行を提供する。
+- LINE・領収書発行者設定は既存の横断 URL を使う。`/admin/settings` は親シェルの本体取得対象外のため、既存 resolver と本人所属一覧で URL の type/slug・内部 ID を照合し、同期後の type/ID が同じ団体と確認できるまでリンクを出さない。古い currentScope の ID だけでは許可しない。領収書は既存 sidebar と同じ payment モジュール条件を使う。空・取得失敗を区別し、失敗時には明示再試行を提供する。
 - CMP-260917-0041 で廃止した ORG 予約設定は復活しない。税設定は SYSTEM_ADMIN 専用 API のため掲載しない。
 - 所属取得中に別団体・横断設定へ移った場合、旧団体の遅延応答は現在スコープを書き換えない。既存同期 helper の任意ガードを新一覧と起動/ルート変更 plugin に適用し、確定済みのスコープは横断設定で保持する。
 - **未解決仕様**: 本設計の DEPUTY 権限グループ別設定と、現行 ORG FAQ の ADMIN-only ACL は一致していない。本 CMP は原 AC の ADMIN 設定一覧に限定するため、DEPUTY 細粒度化や F10.1.1 全体の完了を主張しない。
