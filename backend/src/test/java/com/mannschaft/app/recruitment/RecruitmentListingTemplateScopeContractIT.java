@@ -1043,6 +1043,8 @@ class RecruitmentListingTemplateScopeContractIT extends AbstractMySqlIntegration
                 .userId(userId)
                 .appliedBy(userId)
                 .status(status)
+                // 申込のレート制限（直近1分に5件以上で拒否）に、フィクスチャの行が数えられないよう過去にする
+                .appliedAt(LocalDateTime.now().minusDays(1))
                 .build()).getId();
     }
 

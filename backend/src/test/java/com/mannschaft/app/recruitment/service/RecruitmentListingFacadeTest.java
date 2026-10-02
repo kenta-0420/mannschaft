@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -131,8 +132,8 @@ class RecruitmentListingFacadeTest {
         void memberAndSystemAdmin_areForbidden() {
             given(listingService.resolveListingScope(LISTING_ID))
                     .willReturn(teamListing(RecruitmentListingStatus.DRAFT, RecruitmentVisibility.SCOPE_ONLY));
-            given(accessControlService.isMember(MEMBER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(accessControlService.isSystemAdmin(OUTSIDER_ID)).willReturn(true);
+            lenient().when(accessControlService.isMember(MEMBER_ID, TEAM_ID, "TEAM")).thenReturn(true);
+            lenient().when(accessControlService.isSystemAdmin(OUTSIDER_ID)).thenReturn(true);
 
             assertThatThrownBy(() -> facade().update(LISTING_ID, MEMBER_ID, null))
                     .satisfies(e -> assertThat(codeOf(e)).isEqualTo(CommonErrorCode.COMMON_002));
@@ -242,8 +243,8 @@ class RecruitmentListingFacadeTest {
         void draft_splitsByKnowledge() {
             given(listingService.resolveListingScope(LISTING_ID))
                     .willReturn(teamListing(RecruitmentListingStatus.DRAFT, RecruitmentVisibility.SCOPE_ONLY));
-            given(accessControlService.isMember(MEMBER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(accessControlService.isSystemAdmin(77L)).willReturn(true);
+            lenient().when(accessControlService.isMember(MEMBER_ID, TEAM_ID, "TEAM")).thenReturn(true);
+            lenient().when(accessControlService.isSystemAdmin(77L)).thenReturn(true);
             RecruitmentListingResponse response = mock(RecruitmentListingResponse.class);
             given(listingService.findAuthorizedDraftListing(LISTING_ID)).willReturn(java.util.Optional.of(response));
 
@@ -380,8 +381,8 @@ class RecruitmentListingFacadeTest {
         @DisplayName("GET: 在籍なしの管理者（user_roles のみ）・SYSTEM_ADMIN は 403、部外者は不在と同一の 404（TEMPLATE_NOT_FOUND）")
         void get_denialSplitsByKnowledge() {
             givenTemplate();
-            given(accessControlService.isAdminOrAbove(55L, TEAM_ID, "TEAM")).willReturn(true);
-            given(accessControlService.isSystemAdmin(77L)).willReturn(true);
+            lenient().when(accessControlService.isAdminOrAbove(55L, TEAM_ID, "TEAM")).thenReturn(true);
+            lenient().when(accessControlService.isSystemAdmin(77L)).thenReturn(true);
 
             assertThatThrownBy(() -> facade().getTemplate(TEMPLATE_ID, 55L))
                     .satisfies(e -> assertThat(codeOf(e)).isEqualTo(CommonErrorCode.COMMON_002));
