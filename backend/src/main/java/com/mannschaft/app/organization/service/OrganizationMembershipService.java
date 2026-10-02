@@ -17,11 +17,8 @@ import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
-import com.mannschaft.app.organization.dto.OrgTeamSummaryResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.organization.teamgroup.entity.OrgTeamGroupEntity;
-import com.mannschaft.app.organization.teamgroup.repository.OrgTeamGroupRepository;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -41,7 +38,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * 組織のメンバー・フォロー・所属チーム管理を担当するサービス。
@@ -57,7 +53,6 @@ import java.util.UUID;
 public class OrganizationMembershipService {
 
     private final OrganizationRepository organizationRepository;
-    private final OrgTeamGroupRepository orgTeamGroupRepository;
     private final TeamRepository teamRepository;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final UserRoleRepository userRoleRepository;
@@ -167,76 +162,37 @@ public class OrganizationMembershipService {
     /**
      * 組織に所属するチーム一覧を取得する（team_org_memberships.status = ACTIVE）。
      *
-     * <p>F01.2.1 4-B: 各チームの所属チームグループ（{@code teamGroup}）を付け、{@code teamGroupId} / {@code unassigned}
-     * で絞り込める。SQL は組織・加盟・チーム・人数・グループの各 1 本で、チーム数・グループ数に比例して増えない（AC-G129）。</p>
-     *
-     * <p><b>実効グループ</b>: グループ機能が on で、{@code group_id} が<b>生存している</b>この組織のグループを指すときだけ
-     * そのグループ。{@code group_id} が NULL・削除済みグループを指す（付け替えリスナーの処理前）・グループ機能 off は
-     * 「未分類」として扱う（§4.4・§7.3）。</p>
-     *
-     * @param orgId         組織 ID
-     * @param viewerSeesGroups 閲覧者が組織の MEMBER 以上（または SYSTEM_ADMIN）か。false のときは teamGroup を出さない
-     * @param teamGroupId   絞り込むグループ（null なら絞らない。他組織・削除済み・不在のグループは空の結果になる）
-     * @param unassigned    true なら未分類のチームだけに絞る（{@code teamGroupId} との併用は呼び出し側で拒否済み）
+     * <p>F01.2.1 4-B: 各チームの {@code group_id} も返す（応答への変換・実効グループの判定・絞り込みは
+     * {@link OrgTeamListService} が行う）。SQL は組織・加盟・チーム・人数の各 1 本で、チーム数に比例して増えない
+     * （AC-G129。従来はチームごとに 2 本ずつ発行していた）。</p>
      */
-    public List<OrgTeamSummaryResponse> getTeams(Long orgId, boolean viewerSeesGroups, UUID teamGroupId,
-                                                 boolean unassigned) {
-        OrganizationEntity org = findOrganizationOrThrow(orgId);
-        boolean groupsEnabled = Boolean.TRUE.equals(org.getTeamGroupsEnabled());
-
+    public List<OrgTeamMembershipView> getTeams(Long orgId) {
+        findOrganizationOrThrow(orgId);
         List<TeamOrgMembershipEntity> memberships =
                 teamOrgMembershipRepository.findByOrganizationIdAndStatus(orgId, TeamOrgMembershipEntity.Status.ACTIVE);
         if (memberships.isEmpty()) {
             return List.of();
         }
-        Map<UUID, OrgTeamGroupEntity> aliveGroups = new HashMap<>();
-        if (groupsEnabled) {
-            orgTeamGroupRepository.findByOrganizationIdAndDeletedAtIsNullOrderBySortOrderAscIdAsc(orgId)
-                    .forEach(g -> aliveGroups.put(g.getId(), g));
-        }
-
-        // 絞り込みは実効グループで行う（削除済みグループを指す行は未分類）。グループ機能 off の間は全件が未分類
-        List<TeamOrgMembershipEntity> targets = new ArrayList<>(memberships.size());
-        for (TeamOrgMembershipEntity m : memberships) {
-            UUID effectiveGroupId = m.getGroupId() != null && aliveGroups.containsKey(m.getGroupId())
-                    ? m.getGroupId() : null;
-            if (teamGroupId != null && !teamGroupId.equals(effectiveGroupId)) {
-                continue;
-            }
-            if (unassigned && effectiveGroupId != null) {
-                continue;
-            }
-            targets.add(m);
-        }
-        if (targets.isEmpty()) {
-            return List.of();
-        }
-
-        List<Long> teamIds = targets.stream().map(TeamOrgMembershipEntity::getTeamId).toList();
+        List<Long> teamIds = memberships.stream().map(TeamOrgMembershipEntity::getTeamId).toList();
         Map<Long, TeamEntity> teams = new HashMap<>();
         teamRepository.findAllById(teamIds).forEach(t -> teams.put(t.getId(), t));
         Map<Long, Long> memberCounts = new HashMap<>();
-        userRoleRepository.countGroupByTeamIdIn(teamIds)
-                .forEach(c -> memberCounts.put(c.getScopeId(), c.getMemberCount()));
+        for (Object[] row : userRoleRepository.countGroupByTeamIdIn(teamIds)) {
+            memberCounts.put((Long) row[0], (Long) row[1]);
+        }
 
-        List<OrgTeamSummaryResponse> result = new ArrayList<>(targets.size());
-        for (TeamOrgMembershipEntity m : targets) {
+        List<OrgTeamMembershipView> result = new ArrayList<>(memberships.size());
+        for (TeamOrgMembershipEntity m : memberships) {
             TeamEntity team = teams.get(m.getTeamId());
             if (team == null) {
                 continue;
             }
-            OrgTeamGroupEntity group = viewerSeesGroups && m.getGroupId() != null
-                    ? aliveGroups.get(m.getGroupId()) : null;
-            result.add(new OrgTeamSummaryResponse(
-                    team.getSlug(),
+            result.add(new OrgTeamMembershipView(
                     team.getSlug(),
                     team.getName(),
-                    null,
                     team.getVisibility().name(),
                     memberCounts.getOrDefault(team.getId(), 0L).intValue(),
-                    group == null ? null
-                            : new OrgTeamSummaryResponse.OrgTeamSummaryGroupRef(
-                                    group.getId(), group.getName(), group.getSortOrder())));
+                    m.getGroupId()));
         }
         return result;
     }

@@ -2887,19 +2887,19 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     /**
      * チームごとの user_roles 行数を1本の SQL でまとめて数える（{@link #countByTeamId} の一括版。N+1 を避ける）。
-     * 行が1件も無いチームは結果に含まれない。
+     * 行が1件も無いチームは結果に含まれない。各要素は {@code [チーム ID (Long), 行数 (Long)]}。
      */
-    @Query("SELECT ur.teamId AS scopeId, COUNT(ur) AS memberCount FROM UserRoleEntity ur "
+    @Query("SELECT ur.teamId, COUNT(ur) FROM UserRoleEntity ur "
             + "WHERE ur.teamId IN :teamIds GROUP BY ur.teamId")
-    List<ScopeMemberCountProjection> countGroupByTeamIdIn(@Param("teamIds") Collection<Long> teamIds);
+    List<Object[]> countGroupByTeamIdIn(@Param("teamIds") Collection<Long> teamIds);
 
     /**
      * 組織ごとの user_roles 行数を1本の SQL でまとめて数える（{@link #countByOrganizationId} の一括版。N+1 を避ける）。
-     * 行が1件も無い組織は結果に含まれない。
+     * 行が1件も無い組織は結果に含まれない。各要素は {@code [組織 ID (Long), 行数 (Long)]}。
      */
-    @Query("SELECT ur.organizationId AS scopeId, COUNT(ur) AS memberCount FROM UserRoleEntity ur "
+    @Query("SELECT ur.organizationId, COUNT(ur) FROM UserRoleEntity ur "
             + "WHERE ur.organizationId IN :organizationIds GROUP BY ur.organizationId")
-    List<ScopeMemberCountProjection> countGroupByOrganizationIdIn(
+    List<Object[]> countGroupByOrganizationIdIn(
             @Param("organizationIds") Collection<Long> organizationIds);
 
     /**

@@ -42,7 +42,6 @@ import com.mannschaft.app.common.util.SlugValidator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
-import com.mannschaft.app.team.dto.TeamOrgSummaryResponse;
 import com.mannschaft.app.team.dto.TeamPublicDetailResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
@@ -57,13 +56,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -87,11 +83,6 @@ public class TeamService {
     private final TeamBlockRepository teamBlockRepository;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final OrganizationRepository organizationRepository;
-    /**
-     * 組織ドメインの窓口。Bean 生成時に組織側の可視性判定の依存（多数のドメインの Resolver）を引き込んで
-     * 循環参照にならないよう、使う時に引く（{@link ObjectProvider}）。
-     */
-    private final ObjectProvider<TeamAffiliationOrganizationPort> organizationPortProvider;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
@@ -996,15 +987,11 @@ public class TeamService {
     /**
      * チームが所属する組織一覧を取得する。
      *
-     * <p>F01.2.1 4-B: 各組織について、自チームが所属するチームグループ（{@code teamGroup}。id と名前だけ）を付ける。
-     * 組織の他のグループは返さない。グループ機能が off の組織・未分類・削除済みグループを指す行は null。
-     * SQL は加盟・組織・人数・グループの各 1 本で、加盟している組織の数に比例して増えない（AC-G129）。
-     * グループは組織ドメインの窓口（{@link TeamAffiliationOrganizationPort}）越しに引く。</p>
-     *
-     * @param teamId          チーム ID
-     * @param viewerSeesGroup 閲覧者がチームの MEMBER 以上（または SYSTEM_ADMIN）か。false のときは teamGroup を出さない
+     * <p>F01.2.1 4-B: 各組織の {@code group_id} とグループ機能の有効/無効も返す（応答への変換・グループ名の解決は
+     * {@link TeamOrgSummaryService} が行う）。SQL は加盟・組織・人数の各 1 本で、加盟している組織の数に比例して
+     * 増えない（AC-G129。従来は組織ごとに 2 本ずつ発行していた）。</p>
      */
-    public List<TeamOrgSummaryResponse> getOrganizations(Long teamId, boolean viewerSeesGroup) {
+    public List<TeamOrgMembershipSummary> getOrganizations(Long teamId) {
         findTeamOrThrow(teamId);
         List<TeamOrgMembershipEntity> memberships =
                 teamOrgMembershipRepository.findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE);
@@ -1015,32 +1002,24 @@ public class TeamService {
         Map<Long, OrganizationEntity> organizations = new HashMap<>();
         organizationRepository.findAllById(organizationIds).forEach(o -> organizations.put(o.getId(), o));
         Map<Long, Long> memberCounts = new HashMap<>();
-        userRoleRepository.countGroupByOrganizationIdIn(organizationIds)
-                .forEach(c -> memberCounts.put(c.getScopeId(), c.getMemberCount()));
-        Map<UUID, TeamAffiliationOrganizationPort.GroupRef> groups = viewerSeesGroup
-                ? organizationPortProvider.getObject().findAliveGroupRefs(memberships.stream()
-                        .map(TeamOrgMembershipEntity::getGroupId).filter(Objects::nonNull).toList())
-                : Map.of();
+        for (Object[] row : userRoleRepository.countGroupByOrganizationIdIn(organizationIds)) {
+            memberCounts.put((Long) row[0], (Long) row[1]);
+        }
 
-        List<TeamOrgSummaryResponse> result = new ArrayList<>(memberships.size());
+        List<TeamOrgMembershipSummary> result = new ArrayList<>(memberships.size());
         for (TeamOrgMembershipEntity m : memberships) {
             OrganizationEntity org = organizations.get(m.getOrganizationId());
             if (org == null) {
                 continue;
             }
-            TeamAffiliationOrganizationPort.GroupRef group = m.getGroupId() == null ? null : groups.get(m.getGroupId());
-            // 他組織のグループ・削除済みグループ・グループ機能 off の組織は「未分類」として扱う（null）
-            boolean showGroup = group != null
-                    && Objects.equals(group.organizationId(), org.getId())
-                    && Boolean.TRUE.equals(org.getTeamGroupsEnabled());
-            result.add(new TeamOrgSummaryResponse(
-                    org.getSlug(),
+            result.add(new TeamOrgMembershipSummary(
+                    org.getId(),
                     org.getSlug(),
                     org.getName(),
-                    null,
                     org.getVisibility().name(),
                     memberCounts.getOrDefault(org.getId(), 0L).intValue(),
-                    showGroup ? new TeamOrgSummaryResponse.TeamOrgSummaryGroupRef(group.id(), group.name()) : null));
+                    Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
+                    m.getGroupId()));
         }
         return result;
     }

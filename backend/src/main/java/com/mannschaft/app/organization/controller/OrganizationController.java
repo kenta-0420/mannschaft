@@ -1,6 +1,7 @@
 package com.mannschaft.app.organization.controller;
 
 import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
+import com.mannschaft.app.organization.service.OrgTeamListService;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
@@ -85,6 +86,7 @@ public class OrganizationController {
     private final OrganizationService organizationService;
     private final RoleService roleService;
     private final AccessControlService accessControlService;
+    private final OrgTeamListService orgTeamListService;
     private final InviteService inviteService;
     private final PermissionGroupService permissionGroupService;
     private final BlockService blockService;
@@ -697,7 +699,7 @@ public class OrganizationController {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return ResponseEntity.ok(ApiResponse.of(
-                organizationService.getTeams(id, viewerSeesGroups, teamGroupId, unassigned)));
+                orgTeamListService.list(id, viewerSeesGroups, teamGroupId, unassigned)));
     }
 
     // ========================================

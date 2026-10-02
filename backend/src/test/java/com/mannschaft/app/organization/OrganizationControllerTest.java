@@ -69,6 +69,7 @@ class OrganizationControllerTest {
     private static final String ORG_SLUG = "test-org";
 
     @Mock private OrganizationService organizationService;
+    @Mock private com.mannschaft.app.organization.service.OrgTeamListService orgTeamListService;
     @Mock private RoleService roleService;
     @Mock private AccessControlService accessControlService;
     @Mock private InviteService inviteService;
@@ -428,7 +429,7 @@ class OrganizationControllerTest {
     @DisplayName("getTeams: 200 OK（組織本体と同じ可視性ラダーで判定する）")
     void getTeams_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        given(organizationService.getTeams(ORG_ID, false, null, false)).willReturn(List.of());
+        given(orgTeamListService.list(ORG_ID, false, null, false)).willReturn(List.of());
         assertThat(controller.getTeams(ORG_SLUG, null, false).getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
     }
@@ -442,7 +443,7 @@ class OrganizationControllerTest {
                 .assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
         assertThatThrownBy(() -> controller.getTeams(ORG_SLUG, null, false))
                 .isInstanceOf(BusinessException.class);
-        verify(organizationService, org.mockito.Mockito.never()).getTeams(
+        verify(orgTeamListService, org.mockito.Mockito.never()).list(
                 org.mockito.ArgumentMatchers.eq(ORG_ID), org.mockito.ArgumentMatchers.anyBoolean(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean());
     }
