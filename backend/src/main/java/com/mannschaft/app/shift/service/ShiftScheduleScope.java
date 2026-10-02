@@ -2,8 +2,6 @@ package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.shift.ShiftScheduleStatus;
 
-import java.time.LocalDateTime;
-
 /**
  * シフトスケジュールの scope（認可ファサードが認可の前に読む最小の情報）。
  *
@@ -14,14 +12,14 @@ import java.time.LocalDateTime;
  * @param scheduleId  スケジュール ID
  * @param teamId      所属チーム ID
  * @param status      ステータス
- * @param publishedAt 公開日時（未公開は null）
+ * @param hasPublishedAt 公開日時が設定されているか（値は可視性の分類に使わないため時刻型は持ち回らない）
  */
 public record ShiftScheduleScope(Long scheduleId, Long teamId, ShiftScheduleStatus status,
-                                 LocalDateTime publishedAt) {
+                                 boolean hasPublishedAt) {
 
     /** 公開状態の分類を返す。 */
     public ShiftScheduleVisibilityPolicy.Visibility visibility() {
-        return ShiftScheduleVisibilityPolicy.classify(status, publishedAt);
+        return ShiftScheduleVisibilityPolicy.classify(status, hasPublishedAt);
     }
 
     /** 閲覧者に対して存在ごと秘匿すべき（未公開）かを返す。 */

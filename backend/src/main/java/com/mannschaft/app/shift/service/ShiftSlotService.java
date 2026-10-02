@@ -75,7 +75,8 @@ public class ShiftSlotService {
         ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
         return new ShiftScheduleScope(
-                schedule.getId(), schedule.getTeamId(), schedule.getStatus(), schedule.getPublishedAt());
+                schedule.getId(), schedule.getTeamId(), schedule.getStatus(),
+                schedule.getPublishedAt() != null);
     }
 
     /**

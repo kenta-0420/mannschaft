@@ -54,7 +54,7 @@ class ShiftPdfFacadeAuthzTest {
     private static final Long REQUESTER = 99L;
 
     private static ShiftScheduleScope scope(ShiftScheduleStatus status, LocalDateTime publishedAt) {
-        return new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, status, publishedAt);
+        return new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, status, publishedAt != null);
     }
 
     private static ShiftScheduleScope publishedScope() {

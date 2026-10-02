@@ -21,7 +21,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -66,7 +65,7 @@ class ShiftSlotFacadeTest {
 
     private static ShiftScheduleScope published() {
         return new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, ShiftScheduleStatus.PUBLISHED,
-                LocalDateTime.of(2026, 2, 20, 10, 0));
+                true);
     }
 
     private static void assertCode(Throwable thrown, ErrorCode expected) {
@@ -112,7 +111,7 @@ class ShiftSlotFacadeTest {
         @DisplayName("未公開は認可結果より先に 404（SUPPORTER にも 403 を見せない）")
         void 未公開は404() {
             given(slotService.resolveScheduleScope(SCHEDULE_ID)).willReturn(
-                    new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, ShiftScheduleStatus.DRAFT, null));
+                    new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, ShiftScheduleStatus.DRAFT, false));
 
             assertCode(catchThrowable(() -> facade.listSlots(SCHEDULE_ID, USER_ID)),
                     ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);

@@ -21,7 +21,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,11 +66,11 @@ class ShiftScheduleFacadeTest {
 
     private static ShiftScheduleScope published() {
         return new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, ShiftScheduleStatus.PUBLISHED,
-                LocalDateTime.of(2026, 2, 20, 10, 0));
+                true);
     }
 
     private static ShiftScheduleScope draft() {
-        return new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, ShiftScheduleStatus.DRAFT, null);
+        return new ShiftScheduleScope(SCHEDULE_ID, TEAM_ID, ShiftScheduleStatus.DRAFT, false);
     }
 
     private static void assertCode(Throwable thrown, ErrorCode expected) {

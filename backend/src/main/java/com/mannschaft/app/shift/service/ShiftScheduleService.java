@@ -111,7 +111,8 @@ public class ShiftScheduleService {
      */
     public ShiftScheduleScope resolveScope(Long id) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
-        return new ShiftScheduleScope(entity.getId(), entity.getTeamId(), entity.getStatus(), entity.getPublishedAt());
+        return new ShiftScheduleScope(entity.getId(), entity.getTeamId(), entity.getStatus(),
+                entity.getPublishedAt() != null);
     }
 
     /**
