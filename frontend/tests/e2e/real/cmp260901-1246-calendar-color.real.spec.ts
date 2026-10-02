@@ -17,7 +17,7 @@ const teams: TeamFixture[] = []
 const contexts: BrowserContext[] = []
 let owner: Page
 let negative: Page
-let otherTenant: Page
+let systemAdmin: Page
 let ownerId: number
 let isolated = false
 let knownColor: string
@@ -122,7 +122,7 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
     }
     owner = contexts[0]!.pages()[0]!
     negative = contexts[1]!.pages()[0]!
-    otherTenant = contexts[2]!.pages()[0]!
+    systemAdmin = contexts[2]!.pages()[0]!
     ownerId = (await api<{ id: number }>(owner, 'get', '/users/me')).id
     for (const [index, kind] of ['予定', 'TODOのみ', '混在', '既知色'].entries()) {
       const name = `${run}-${kind}`
@@ -144,6 +144,12 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
       }
     }
     const known = teams[3]!
+    for (const [page, expectedSystemAdmin] of [[negative, false], [systemAdmin, true]] as const) {
+      const actorId = (await api<{ id: number }>(page, 'get', '/users/me')).id
+      expect(Number.isSafeInteger(actorId) && actorId > 0).toBe(true)
+      expect(Number(sql(`SELECT COUNT(*) FROM user_roles WHERE user_id=${actorId} AND role_id=1`)) > 0, '通常所属者とSYSTEM_ADMINの実ロールを区別する').toBe(expectedSystemAdmin)
+      expect(sql(`SELECT COUNT(*) FROM memberships WHERE user_id=${actorId} AND scope_type='TEAM' AND scope_id=${known.id} AND left_at IS NULL`), '両actorは今回チームに直接所属しない').toBe('0')
+    }
     const layers = await api<Array<{ scopeType: string; scopeId: number; color: string }>>(owner, 'get', '/me/calendar-layers')
     const knownLayer = layers.find(layer => layer.scopeType === 'TEAM' && layer.scopeId === known.id)
     expect(knownLayer).toBeDefined()
@@ -235,9 +241,10 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
     await evidence(owner, info, '本人-直接URL表示')
   })
 
-  test('非所属者と別所属者: 別導線でもfixtureが見えず直接URLも拒否される', async ({ browserName }, info) => {
+  test('通常非所属者とSYSTEM_ADMIN: 別導線の非表示とTODO直接URL拒否を確認する', async ({ browserName }, info) => {
     expect(browserName).toBe('chromium')
-    for (const [index, page] of [negative, otherTenant].entries()) {
+    for (const [index, page] of [negative, systemAdmin].entries()) {
+      const actor = index === 0 ? '通常非所属者' : '非直接所属SYSTEM_ADMIN'
       await page.goto(index === 0 ? '/dashboard' : '/todos')
       await waitForHydration(page)
       const data = await calendar(page, true)
@@ -249,7 +256,7 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
         if (team.scheduleTitle) await expect(page.getByText(team.scheduleTitle, { exact: true })).toHaveCount(0)
         if (team.todoTitle) await expect(page.getByText(team.todoTitle, { exact: true })).toHaveCount(0)
       }
-      await evidence(page, info, `${index === 0 ? '非所属' : '別所属'}-カレンダー非表示`)
+      await evidence(page, info, `${actor}-カレンダー非表示`)
       const known = teams[3]!
       const teamPath = `/api/v1/teams/${known.slug}`
       const todoPath = `${teamPath}/todos/${known.todoId}`
@@ -259,23 +266,36 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
       }
       page.on('request', observeChild)
       try {
-        // 親チームシェルが取得拒否で子TODOをmountしない。UI拒否とTODO API認可を別々に証明する。
+        // 親visibilityのSYS許可と、TODOの直接membership必須は別契約。
         const denied = page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === teamPath)
+        const childDenied = index === 1
+          ? page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === todoPath) : undefined
         await page.goto(`/teams/${known.slug}/todos/${known.todoId}`)
         await waitForHydration(page)
         const parentResponse = await denied
-        expect([403, 404], '実画面の親チーム取得が拒否される').toContain(parentResponse.status())
-        await expect(page.getByText('情報を取得できませんでした', { exact: true })).toBeVisible()
-        await expect(page.getByText('時間をおいて再度お試しください。権限がない場合は表示できないことがあります。', { exact: true })).toBeVisible()
-        await expect(page.locator('body')).not.toContainText(run)
+        let childUiStatus: number | null = null
+        if (childDenied) {
+          expect(parentResponse.status(), 'SYSTEM_ADMINは親チームvisibilityを閲覧できる').toBe(200)
+          childUiStatus = (await childDenied).status()
+          expect(childUiStatus, 'SYSでも画面のTODO GETは直接membership必須').toBe(403)
+          await expect(page.getByText('TODOの取得に失敗しました', { exact: true })).toBeVisible()
+          expect(childRequests.length, '親閲覧許可後に子TODO GETが実発行される').toBeGreaterThan(0)
+        }
+        else {
+          expect([403, 404], '通常非所属者は親チーム取得が拒否される').toContain(parentResponse.status())
+          await expect(page.getByText('情報を取得できませんでした', { exact: true })).toBeVisible()
+          await expect(page.getByText('時間をおいて再度お試しください。権限がない場合は表示できないことがあります。', { exact: true })).toBeVisible()
+          await expect(page.locator('body')).not.toContainText(run)
+          expect(childRequests, '親取得拒否により子TODO GETは発行されない').toHaveLength(0)
+        }
+        await expect(page.getByText(known.todoTitle!, { exact: true })).toHaveCount(0)
         await expect(page.getByText('担当者', { exact: true })).toHaveCount(0)
-        expect(childRequests, '親取得拒否により子TODO GETは発行されない').toHaveLength(0)
-        await evidence(page, info, `${index === 0 ? '非所属' : '別所属'}-直接URLの親シェル拒否`)
+        await evidence(page, info, `${actor}-直接URLの拒否境界`)
         const cookie = (await page.context().cookies()).find(value => value.name === 'access_token')
         expect(cookie).toBeDefined()
         const todoResponse = await page.request.get(`${apiBase}${todoPath}`, { headers: { Authorization: `Bearer ${cookie!.value}` } })
         expect(todoResponse.status(), '同じログインでもTODO APIは非所属者を403で拒否する').toBe(403)
-        await info.attach(`${index === 0 ? '非所属' : '別所属'}-拒否通信metadata`, { body: JSON.stringify({ uiUrl: page.url(), parent: { method: 'GET', path: teamPath, status: parentResponse.status() }, childUiGetCount: childRequests.length, directApi: { method: 'GET', path: todoPath, status: todoResponse.status() } }), contentType: 'application/json' })
+        await info.attach(`${actor}-拒否通信metadata`, { body: JSON.stringify({ actor, uiUrl: page.url(), parent: { method: 'GET', path: teamPath, status: parentResponse.status() }, childUiGetCount: childRequests.length, childUiStatus, directApi: { method: 'GET', path: todoPath, status: todoResponse.status() } }), contentType: 'application/json' })
       }
       finally {
         page.off('request', observeChild)
