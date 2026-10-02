@@ -10,11 +10,10 @@ import com.mannschaft.app.billing.EntitlementRepository;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.api.dto.ContractResponse;
 import com.mannschaft.app.billing.api.dto.CreateContractRequest;
-import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -48,7 +47,9 @@ class BillingContractApplicationServiceTest {
     @Mock
     private EntitlementRepository entitlementRepository;
     @Mock
-    private TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private com.mannschaft.app.team.service.TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationQueryService organizationQueryService;
     @Mock
     private BillingIdempotencyService idempotencyService;
     @Mock
@@ -56,8 +57,16 @@ class BillingContractApplicationServiceTest {
     @Mock
     private com.mannschaft.app.billing.BillingCheckoutService checkoutService;
 
-    @InjectMocks
     private BillingContractApplicationService appService;
+
+    @BeforeEach
+    void setUp() {
+        // organizationId の解決は本物の resolver で行う（USER=null / ORG=自身 / TEAM=代表親組織の写像を実際に検証する）。
+        appService = new BillingContractApplicationService(
+                billingContractService, billingContractRepository, entitlementRepository,
+                new BillingTenantOrganizationResolver(teamOrgMembershipQueryService, organizationQueryService),
+                idempotencyService, priceResolver, checkoutService);
+    }
 
     private ContractResult planResult(EntitlementScopeKind kind, Long scopeId, UUID id) {
         // 無償フロー（priceResolver は既定で null を返す＝createContract 経路）を前提とした ACTIVE 結果。
@@ -112,11 +121,11 @@ class BillingContractApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("AC organizationId 解決: TEAM は主所属組織（ACTIVE 所属の先頭）を渡す")
+    @DisplayName("AC organizationId 解決: TEAM は代表親組織（最初に成立した加盟）を渡す")
     void create_team_resolvesPrimaryOrg() {
         UUID id = UUID.randomUUID();
         given(idempotencyService.findStoredContractId(9L, "idem-t")).willReturn(null);
-        given(teamOrgMembershipQueryService.findActiveOrganizationIds(123L)).willReturn(List.of(77L, 88L));
+        given(teamOrgMembershipQueryService.findPrimaryParentOrganizationId(123L)).willReturn(java.util.Optional.of(77L));
         // D-4: 価格 NULL＝無償フロー（明示 null 指定）。
         given(priceResolver.resolveMonthlyPriceJpy(
                 EntitlementScopeKind.TEAM, 123L, ContractKind.PLAN, "FULL", null)).willReturn(null);

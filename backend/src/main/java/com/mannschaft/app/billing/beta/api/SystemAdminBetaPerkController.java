@@ -18,7 +18,7 @@ import com.mannschaft.app.billing.beta.dto.FlagReviewRequest;
 import com.mannschaft.app.billing.beta.dto.RevokeBetaGrantRequest;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
+import com.mannschaft.app.billing.api.BillingTenantOrganizationResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -63,7 +63,7 @@ public class SystemAdminBetaPerkController {
     private final BetaGrantQueryService betaGrantQueryService;
     private final BetaPerkCriteriaService betaPerkCriteriaService;
     private final BetaPerkCandidateService betaPerkCandidateService;
-    private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private final BillingTenantOrganizationResolver tenantOrganizationResolver;
 
     // ============================================================
     // ① 一覧
@@ -94,7 +94,8 @@ public class SystemAdminBetaPerkController {
     public ResponseEntity<ApiResponse<BetaGrantDetailResponse>> createGrant(
             @Valid @RequestBody CreateBetaGrantRequest request) {
         Long operatorUserId = SecurityUtils.getCurrentUserId();
-        Long organizationId = resolveOrganizationId(request.scopeKind(), request.scopeId());
+        Long organizationId = tenantOrganizationResolver.resolveForSystemAdmin(
+                request.scopeKind(), request.scopeId(), request.organizationId());
         // note は監査メモ（設計書 02 §4.1）。骨格の grantBetaPerk は note を受けないため Phase 1 では
         // audit_logs へは載せず操作ログに残す（Phase 2 で grant 発行の audit へ結線予定）。
         if (request.note() != null && !request.note().isBlank()) {
@@ -202,21 +203,5 @@ public class SystemAdminBetaPerkController {
             @Valid @RequestBody BetaPerkCriteriaUpsertRequest request) {
         return ResponseEntity.ok(ApiResponse.of(
                 betaPerkCriteriaService.upsertCriteria(betaPhase, grantKind, request)));
-    }
-
-    // ============================================================
-    // organizationId 解決（API 層・設計書 01 §1・F20.1 と同一ロジック）
-    // ============================================================
-
-    /** USER→null / ORG→scopeId / TEAM→主所属組織（無所属 null）。@Transactional 外で解決してサービスへ渡す。 */
-    private Long resolveOrganizationId(EntitlementScopeKind scopeKind, Long scopeId) {
-        return switch (scopeKind) {
-            case USER -> null;
-            case ORG -> scopeId;
-            case TEAM -> {
-                List<Long> orgIds = teamOrgMembershipQueryService.findActiveOrganizationIds(scopeId);
-                yield orgIds.isEmpty() ? null : orgIds.get(0);
-            }
-        };
     }
 }
