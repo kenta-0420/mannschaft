@@ -200,6 +200,17 @@ public class ProxyInputConsentService {
         }
         if (consent.getRevokedAt() != null) throw new BusinessException(CommonErrorCode.COMMON_003);
 
+        // オンライン本人撤回に紙の立会情報を混ぜず、紙の立会資格は操作者と分けて確認する。
+        if (command.revokeMethod() == ProxyInputConsentEntity.RevokeMethod.API_BY_SUBJECT
+                && command.revokeWitnessedByUserId() != null) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+        if (command.revokeMethod() == ProxyInputConsentEntity.RevokeMethod.PAPER_BY_SUBJECT
+                && !accessControlService.isAdmin(
+                        command.revokeWitnessedByUserId(), consent.getOrganizationId(), "ORGANIZATION")) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+
         consent.revoke(command.revokeMethod(), command.revokeWitnessedByUserId(), command.revokeReason());
         consentRepository.save(consent);
 
