@@ -1,6 +1,7 @@
 package com.mannschaft.app.publicview.controller;
 
 import com.mannschaft.app.common.dto.SlugResolveResponse;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +26,29 @@ import org.springframework.web.bind.annotation.RestController;
  * （未ログイン 60 req/min/IP・ログイン 200 req/min/user。PUBLIC_API バケットを共有）。
  * パスセグメント {@code slug-resolve} は {@code SlugValidator} の予約語に登録済みのため、
  * {@code GET /api/v1/public/teams/{slug}} に食われない（slug として取得不可）。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 2 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/teams/slug-resolve"
+ * / "/api/v1/public/organizations/slug-resolve").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F01.2 §5.9.5 slug 解決。応答は {@code status} と {@code canonicalSlug}
+ * のみで<b>名前などの実データを一切返さない</b>（スコープ漏洩防止）。ブックマーク・被リンクされた旧 URL の301
+ * 判定に未ログインで到達する必要がある。private の実データ取得は別途認可が守る。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/teams/slug-resolve",
+        "/api/v1/public/organizations/slug-resolve"
+})
 @RestController
 @Tag(name = "slug 解決 公開 API (F01.2 §5.9.5)")
 @RequiredArgsConstructor

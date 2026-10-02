@@ -109,7 +109,7 @@ onMounted(fetchResumes)
 
 <template>
   <div class="mx-auto max-w-4xl px-4 py-6">
-    <PageHeader :title="t('common.resume.title')">
+    <PageHeader :title="t('common.resume.title')" back-to="/my">
       <Button
         :label="t('common.resume.createNew')"
         icon="pi pi-plus"
@@ -219,7 +219,5 @@ onMounted(fetchResumes)
         />
       </template>
     </Dialog>
-
-    <ConfirmDialog />
   </div>
 </template>

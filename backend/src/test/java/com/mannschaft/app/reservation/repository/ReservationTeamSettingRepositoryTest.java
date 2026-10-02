@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.repository;
 
+import com.mannschaft.app.reservation.ReservationResourceNameType;
 import com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
@@ -240,6 +241,89 @@ class ReservationTeamSettingRepositoryTest extends AbstractMySqlIntegrationTest 
             assertThat(updated.isAllowPublicReservation()).isTrue();
             // updated_at も更新されていること
             assertThat(updated.getUpdatedAt()).isNotNull();
+        }
+    }
+
+    // ========================================
+    // 呼称設定（resource_name_type / resource_name_custom・F03.4.5 §5）
+    // ========================================
+
+    @Nested
+    @DisplayName("呼称設定カラムのマッピング整合（F03.4.5 §5）")
+    class ResourceNameMapping {
+
+        @Test
+        @DisplayName("Builderでresourceを指定しない場合はDEFAULT/nullになる（既定値番人）")
+        void 呼称未指定_DEFAULTとnullになる() {
+            // Given: resourceNameType/Custom を明示せずビルド
+            ReservationTeamSettingEntity entity = ReservationTeamSettingEntity.builder()
+                    .teamId(TEAM_A)
+                    .build();
+            em.persist(entity);
+            em.flush();
+            em.clear();
+
+            // When
+            ReservationTeamSettingEntity found = repository.findByTeamId(TEAM_A).orElseThrow();
+
+            // Then: DEFAULT / null が既定値
+            assertThat(found.getResourceNameType()).isEqualTo(ReservationResourceNameType.DEFAULT);
+            assertThat(found.getResourceNameCustom()).isNull();
+        }
+
+        @Test
+        @DisplayName("プリセット(SEAT)を保存・取得できる")
+        void プリセット保存_SEAT() {
+            ReservationTeamSettingEntity entity = ReservationTeamSettingEntity.builder()
+                    .teamId(TEAM_A)
+                    .resourceNameType(ReservationResourceNameType.SEAT)
+                    .build();
+            em.persist(entity);
+            em.flush();
+            em.clear();
+
+            ReservationTeamSettingEntity found = repository.findByTeamId(TEAM_A).orElseThrow();
+            assertThat(found.getResourceNameType()).isEqualTo(ReservationResourceNameType.SEAT);
+            assertThat(found.getResourceNameCustom()).isNull();
+        }
+
+        @Test
+        @DisplayName("CUSTOM＋自由入力呼称を保存・取得できる")
+        void CUSTOM保存_自由入力呼称() {
+            ReservationTeamSettingEntity entity = ReservationTeamSettingEntity.builder()
+                    .teamId(TEAM_A)
+                    .resourceNameType(ReservationResourceNameType.CUSTOM)
+                    .resourceNameCustom("施術台")
+                    .build();
+            em.persist(entity);
+            em.flush();
+            em.clear();
+
+            ReservationTeamSettingEntity found = repository.findByTeamId(TEAM_A).orElseThrow();
+            assertThat(found.getResourceNameType()).isEqualTo(ReservationResourceNameType.CUSTOM);
+            assertThat(found.getResourceNameCustom()).isEqualTo("施術台");
+        }
+
+        @Test
+        @DisplayName("updateResourceName（Entityメソッド）でCUSTOM→SEATへ切り替えるとcustomも更新できる")
+        void updateResourceNameでプリセット切替() {
+            ReservationTeamSettingEntity entity = ReservationTeamSettingEntity.builder()
+                    .teamId(TEAM_A)
+                    .resourceNameType(ReservationResourceNameType.CUSTOM)
+                    .resourceNameCustom("施術台")
+                    .build();
+            em.persist(entity);
+            em.flush();
+            em.clear();
+
+            ReservationTeamSettingEntity loaded = repository.findByTeamId(TEAM_A).orElseThrow();
+            loaded.updateResourceName(ReservationResourceNameType.SEAT, null);
+            em.flush();
+            em.clear();
+
+            ReservationTeamSettingEntity updated = repository.findByTeamId(TEAM_A).orElseThrow();
+            assertThat(updated.getResourceNameType()).isEqualTo(ReservationResourceNameType.SEAT);
+            assertThat(updated.getResourceNameCustom()).isNull();
         }
     }
 }

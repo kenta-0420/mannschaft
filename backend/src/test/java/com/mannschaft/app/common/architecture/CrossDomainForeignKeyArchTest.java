@@ -1,8 +1,11 @@
 package com.mannschaft.app.common.architecture;
 
+import com.mannschaft.app.common.migration.SqlTextScanningUtils;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -330,9 +333,26 @@ class CrossDomainForeignKeyArchTest {
         } catch (IOException e) {
             throw new UncheckedIOException("SQL 読み込み失敗: " + sql, e);
         }
-        // 行コメント（-- ...）を除去（FK が含まれない説明文の誤検出を避ける）。
-        String text = stripLineComments(raw);
-        String fileName = sql.getFileName().toString();
+        replayText(raw, sql.getFileName().toString(), netActive);
+    }
+
+    /**
+     * SQL テキストを再生し {@code netActive} に反映する（ファイル I/O を伴わない）。
+     * 回帰ガードテスト（{@code ScanningRegressionTest}・本クラスの {@code @Nested}）から
+     * フィクスチャ文字列を直接流し込めるように、ファイル読み込みと分離してある。
+     */
+    private static void replayText(String raw, String fileName, Map<FkKey, FkRecord> netActive) {
+        // コメント（行コメント -- と ブロックコメント /* */ の両方）を除去する。
+        // ブロックコメントを除去しないと、説明コメント中に書かれた
+        // 「FOREIGN KEY (...) REFERENCES ...」のような例示テキストや
+        // CREATE/ALTER TABLE への言及を誤って本文として拾ってしまう
+        // （MigrationPrimaryKeyConventionTest で実際に起きた誤検知と同型）。
+        String text = SqlTextScanningUtils.stripComments(raw);
+        // CREATE TEMPORARY TABLE の本体を空白化して走査対象から除外する。
+        // TABLE_STMT は CREATE TEMPORARY TABLE を認識しないため、除外しないと
+        // 一時表の内容が直前の実テーブルの enclosingTable に紛れ込み、
+        // 一時表内の FK/DROP TABLE を別の実テーブルのものとして誤帰属する。
+        text = SqlTextScanningUtils.blankOutTemporaryTables(text);
 
         // CREATE/ALTER TABLE の出現位置とテーブル名を収集（offset 昇順）。
         List<int[]> tableStmtOffsets = new ArrayList<>();
@@ -468,26 +488,9 @@ class CrossDomainForeignKeyArchTest {
         return line;
     }
 
-    /** {@code -- } 以降を行末まで除去（文字数・改行は保持してオフセット/行番号を維持）。 */
-    private static String stripLineComments(String text) {
-        StringBuilder sb = new StringBuilder(text.length());
-        int i = 0;
-        int n = text.length();
-        while (i < n) {
-            char c = text.charAt(i);
-            if (c == '-' && i + 1 < n && text.charAt(i + 1) == '-') {
-                // 行末までスペースで置換（改行は残す）
-                while (i < n && text.charAt(i) != '\n') {
-                    sb.append(' ');
-                    i++;
-                }
-            } else {
-                sb.append(c);
-                i++;
-            }
-        }
-        return sb.toString();
-    }
+    // SQL コメント除去・引用符スキップ・一時表除外・文末検出は SqlTextScanningUtils
+    // （common.migration パッケージ）に共通化してある（CMP-022: 番人ごとに不統一だった
+    // 前処理ロジックの一本化。「何を違反とするか」の判定はこのクラス固有のまま残す）。
 
     // ------------------------------------------------------------------
     // クラスローダ
@@ -587,6 +590,67 @@ class CrossDomainForeignKeyArchTest {
         String describe() {
             return key() + "  (子ドメイン='" + childDomain
                 + "' ≠ 親ドメイン='" + parentDomain + "')";
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 走査ロジックの回帰ガード（CMP-022 / issue #2589 で実測された欠陥）
+    // ------------------------------------------------------------------
+
+    /**
+     * SQL 走査ロジック自体（コメント除去・一時表除外）の回帰ガード。
+     *
+     * <p>{@code MigrationPrimaryKeyConventionTest} で実測された 2 欠陥
+     * （説明コメントを本文として誤検出／{@code CREATE TEMPORARY TABLE} 未対応による誤帰属）が
+     * 本クラスにも同型で存在した（issue #2589 系フォローアップ・CMP-022）。
+     * 実ファイルではなくフィクスチャ文字列を直接 {@code replayText} に流し込み、
+     * 将来パーサを触った際にこれらの穴が再発したら落ちるようにする。</p>
+     */
+    @Nested
+    class ScanningRegressionTest {
+
+        @Test
+        @DisplayName("ブロックコメント中のFK/CREATE TABLE言及は本文として検出されない")
+        void blockCommentIsNotScannedAsBody() {
+            String sql = "/* サンプル: FOREIGN KEY (child_id) REFERENCES parent_table (id)"
+                + " ON DELETE CASCADE を CREATE TABLE で書く例 */\n"
+                + "CREATE TABLE only_table_a (\n"
+                + "  id BINARY(16) PRIMARY KEY\n"
+                + ");\n";
+            Map<FkKey, FkRecord> netActive = new LinkedHashMap<>();
+            replayText(sql, "fixture_block_comment.sql", netActive);
+
+            assertTrue(netActive.isEmpty(),
+                "ブロックコメント内の FOREIGN KEY 例示テキストが FK として検出された:"
+                    + " " + netActive.values());
+        }
+
+        @Test
+        @DisplayName("CREATE TEMPORARY TABLE内のFK/DROP TABLEは直前の実テーブルに誤帰属しない")
+        void temporaryTableIsNotMisattributedToPrecedingRealTable() {
+            String sql = "CREATE TABLE real_child (\n"
+                + "  id BINARY(16) PRIMARY KEY,\n"
+                + "  real_parent_id BINARY(16),\n"
+                + "  CONSTRAINT fk_real FOREIGN KEY (real_parent_id) REFERENCES real_parent (id)\n"
+                + ");\n"
+                + "CREATE TEMPORARY TABLE tmp_scratch (\n"
+                + "  id BINARY(16),\n"
+                + "  FOREIGN KEY (other_id) REFERENCES temp_only_parent (id)\n"
+                + ");\n"
+                + "DROP TEMPORARY TABLE IF EXISTS tmp_scratch;\n";
+            Map<FkKey, FkRecord> netActive = new LinkedHashMap<>();
+            replayText(sql, "fixture_temp_table.sql", netActive);
+
+            boolean hasRealFk = netActive.values().stream()
+                .anyMatch(r -> "real_child".equals(r.childTable())
+                    && "real_parent".equals(r.parentTable()));
+            assertTrue(hasRealFk, "実テーブルの FK が消えている: " + netActive.values());
+
+            boolean leakedTempFk = netActive.values().stream()
+                .anyMatch(r -> "temp_only_parent".equals(r.parentTable())
+                    || "tmp_scratch".equals(r.childTable()));
+            assertTrue(!leakedTempFk,
+                "一時表内の FK が実テーブル側へ誤帰属している: " + netActive.values());
         }
     }
 }

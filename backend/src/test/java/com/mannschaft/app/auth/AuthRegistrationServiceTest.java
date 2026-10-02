@@ -13,6 +13,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.postal.CountryResolver;
+import com.mannschaft.app.postal.PostalCodePolicyRegistry;
 import com.mannschaft.app.role.service.InviteService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -79,6 +82,13 @@ class AuthRegistrationServiceTest {
     @Mock
     private InviteService inviteService;
 
+    // F02.10 §391 郵便番号検証基盤: 実ロジック（JP 固定）を使う
+    @Spy
+    private CountryResolver countryResolver = new CountryResolver();
+
+    @Spy
+    private PostalCodePolicyRegistry postalCodePolicyRegistry = new PostalCodePolicyRegistry();
+
     @InjectMocks
     private AuthRegistrationService authRegistrationService;
 
@@ -116,8 +126,10 @@ class AuthRegistrationServiceTest {
     }
 
     private RegisterRequest createRegisterRequest() {
+        // F02.10 §391: locale=ja は対応国 JP に解決され郵便番号必須のため、有効な郵便番号を与える
         return new RegisterRequest(
-                TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, "2000-01-01");
+                TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", "123-4567", "ja", "Asia/Tokyo", null, "2000-01-01",
+                true, "1.1.0");
     }
 
     // ========================================
@@ -150,6 +162,57 @@ class AuthRegistrationServiceTest {
             verify(eventPublisher, times(2)).publish(any());
         }
 
+        // AC-4: JP・郵便番号フォーマット不正（"111"）→ AUTH_072
+        @Test
+        @DisplayName("AC-4 異常系: JP・郵便番号フォーマット不正でAUTH_072例外")
+        void register_郵便番号フォーマット不正_AUTH072例外() {
+            RegisterRequest req = new RegisterRequest(
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", "111", "ja", "Asia/Tokyo", null, "2000-01-01",
+                    true, "1.1.0");
+            given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
+
+            assertThatThrownBy(() -> authRegistrationService.register(req, TEST_IP))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_072"));
+            verify(userRepository, never()).save(any());
+        }
+
+        // AC-5: JP・郵便番号未入力（空）→ AUTH_071（対応国では必須）
+        @Test
+        @DisplayName("AC-5 異常系: JP・郵便番号未入力でAUTH_071例外")
+        void register_郵便番号未入力_AUTH071例外() {
+            RegisterRequest req = new RegisterRequest(
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, "2000-01-01",
+                    true, "1.1.0");
+            given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
+
+            assertThatThrownBy(() -> authRegistrationService.register(req, TEST_IP))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_071"));
+            verify(userRepository, never()).save(any());
+        }
+
+        // AC-6: 未対応国（locale=fr）は郵便番号検証スキップ → 登録成功
+        @Test
+        @DisplayName("AC-6 正常系: 未対応国（fr）は郵便番号検証スキップで登録成功")
+        void register_未対応国_郵便番号検証スキップ_成功() {
+            RegisterRequest req = new RegisterRequest(
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "fr", "Europe/Paris", null, "2000-01-01",
+                    true, "1.1.0");
+            given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
+            given(passwordEncoder.encode(TEST_PASSWORD)).willReturn(ENCODED_PASSWORD);
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+            given(authTokenService.hashToken(anyString())).willReturn("hashed-token");
+            given(emailVerificationTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+            ApiResponse<MessageResponse> response = authRegistrationService.register(req, TEST_IP);
+
+            assertThat(response.getData().getMessage()).contains("確認メール");
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
         @Test
         @DisplayName("異常系: メール重複でAUTH_004例外")
         void register_メール重複_AUTH004例外() {
@@ -169,7 +232,8 @@ class AuthRegistrationServiceTest {
         void register_パスワードポリシー違反_AUTH008例外() {
             // Given: 短すぎるパスワード
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, "short", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, "2000-01-01");
+                    TEST_EMAIL, "short", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, "2000-01-01",
+                    true, "1.1.0");
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
 
             // When / Then
@@ -184,7 +248,8 @@ class AuthRegistrationServiceTest {
         void register_文字種不足_AUTH008例外() {
             // Given: 8文字以上だが小文字と数字の2種のみ
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, "password123", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, "2000-01-01");
+                    TEST_EMAIL, "password123", "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, "2000-01-01",
+                    true, "1.1.0");
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
 
             // When / Then
@@ -197,9 +262,10 @@ class AuthRegistrationServiceTest {
         @Test
         @DisplayName("正常系: locale/timezone省略時にデフォルト値が使用される")
         void register_locale省略_デフォルト値() {
-            // Given
+            // Given: locale 省略は既定 "ja"（=JP）に解決されるため有効な郵便番号を与える（F02.10 §391）
             RegisterRequest req = new RegisterRequest(
-                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, null, null, null, "2000-01-01");
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", "123-4567", null, null, null, "2000-01-01",
+                    true, "1.1.0");
             given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
             given(passwordEncoder.encode(TEST_PASSWORD)).willReturn(ENCODED_PASSWORD);
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {
@@ -225,7 +291,8 @@ class AuthRegistrationServiceTest {
             given(betaRestrictionService.isEnabled()).willReturn(true);
             RegisterRequest req = new RegisterRequest(
                     "new@example.com", "Password1!", "山田", "太郎", "yamada",
-                    "123-4567", "ja", "Asia/Tokyo", null, "2000-01-01");
+                    "123-4567", "ja", "Asia/Tokyo", null, "2000-01-01",
+                    true, "1.1.0");
 
             // When / Then
             assertThatThrownBy(() -> authRegistrationService.register(req, TEST_IP))
@@ -242,7 +309,8 @@ class AuthRegistrationServiceTest {
             given(betaRestrictionService.isBetaTokenValid("bad-token")).willReturn(false);
             RegisterRequest req = new RegisterRequest(
                     "new@example.com", "Password1!", "山田", "太郎", "yamada",
-                    "123-4567", "ja", "Asia/Tokyo", "bad-token", "2000-01-01");
+                    "123-4567", "ja", "Asia/Tokyo", "bad-token", "2000-01-01",
+                    true, "1.1.0");
 
             // When / Then
             assertThatThrownBy(() -> authRegistrationService.register(req, TEST_IP))
@@ -264,7 +332,8 @@ class AuthRegistrationServiceTest {
             given(emailVerificationTokenRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             RegisterRequest req = new RegisterRequest(
                     "new@example.com", "Password1!", "山田", "太郎", "yamada",
-                    "123-4567", "ja", "Asia/Tokyo", "valid-token", "2000-01-01");
+                    "123-4567", "ja", "Asia/Tokyo", "valid-token", "2000-01-01",
+                    true, "1.1.0");
 
             // When
             authRegistrationService.register(req, TEST_IP);
@@ -419,7 +488,7 @@ class AuthRegistrationServiceTest {
             given(emailVerificationTokenRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
             // When
-            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL);
+            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL, "127.0.0.1");
 
             // Then
             assertThat(response.getData().getMessage()).contains("確認メール");
@@ -436,7 +505,7 @@ class AuthRegistrationServiceTest {
             given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.empty());
 
             // When
-            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL);
+            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL, "127.0.0.1");
 
             // Then
             assertThat(response.getData().getMessage()).contains("確認メール");
@@ -452,7 +521,7 @@ class AuthRegistrationServiceTest {
             given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.of(createActiveUser()));
 
             // When
-            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL);
+            ApiResponse<MessageResponse> response = authRegistrationService.resendVerificationEmail(TEST_EMAIL, "127.0.0.1");
 
             // Then
             assertThat(response.getData().getMessage()).contains("確認メール");
@@ -466,7 +535,7 @@ class AuthRegistrationServiceTest {
             given(redisTemplate.hasKey(anyString())).willReturn(true);
 
             // When / Then
-            assertThatThrownBy(() -> authRegistrationService.resendVerificationEmail(TEST_EMAIL))
+            assertThatThrownBy(() -> authRegistrationService.resendVerificationEmail(TEST_EMAIL, "127.0.0.1"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("AUTH_006"));

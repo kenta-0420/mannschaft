@@ -108,7 +108,7 @@ class ShiftBudgetCalcControllerIntegrationTest {
                     "floor(300000 / (1200 * 4.0)) = 62",
                     List.of(),
                     null);
-            given(calcService.calculateRequiredSlots(any())).willReturn(stub);
+            given(calcService.calculateRequiredSlots(any(), any())).willReturn(stub);
 
             RequiredSlotsRequest req = new RequiredSlotsRequest(
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),
@@ -137,7 +137,7 @@ class ShiftBudgetCalcControllerIntegrationTest {
                     "floor(300000 / (1500 * 4.0)) = 50",
                     List.of(),
                     null);
-            given(calcService.calculateRequiredSlots(any())).willReturn(stub);
+            given(calcService.calculateRequiredSlots(any(), any())).willReturn(stub);
 
             RequiredSlotsRequest req = new RequiredSlotsRequest(
                     null, new BigDecimal("300000"), new BigDecimal("4.0"),
@@ -164,7 +164,7 @@ class ShiftBudgetCalcControllerIntegrationTest {
                             new com.mannschaft.app.shiftbudget.dto.PositionBreakdown(
                                     1L, new BigDecimal("1200"), 1, 5)
                     ));
-            given(calcService.calculateRequiredSlots(any())).willReturn(stub);
+            given(calcService.calculateRequiredSlots(any(), any())).willReturn(stub);
 
             RequiredSlotsRequest req = new RequiredSlotsRequest(
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),
@@ -188,7 +188,7 @@ class ShiftBudgetCalcControllerIntegrationTest {
     @DisplayName("フラグOFF_503_FEATURE_DISABLED")
     void フラグOFF_503_FEATURE_DISABLED() throws Exception {
         willThrow(new BusinessException(ShiftBudgetErrorCode.FEATURE_DISABLED))
-                .given(calcService).calculateRequiredSlots(any());
+                .given(calcService).calculateRequiredSlots(any(), any());
 
         RequiredSlotsRequest req = new RequiredSlotsRequest(
                 TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),
@@ -209,7 +209,7 @@ class ShiftBudgetCalcControllerIntegrationTest {
     @DisplayName("MANAGE_SHIFTS権限なし_403_COMMON_002")
     void MANAGE_SHIFTS権限なし_403_COMMON_002() throws Exception {
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                .given(calcService).calculateRequiredSlots(any());
+                .given(calcService).calculateRequiredSlots(any(), any());
 
         RequiredSlotsRequest req = new RequiredSlotsRequest(
                 TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),
@@ -226,7 +226,7 @@ class ShiftBudgetCalcControllerIntegrationTest {
     @DisplayName("team_id組織不在_404_TEAM_NOT_FOUND")
     void team_id組織不在_404_TEAM_NOT_FOUND() throws Exception {
         willThrow(new BusinessException(ShiftBudgetErrorCode.TEAM_NOT_FOUND))
-                .given(calcService).calculateRequiredSlots(any());
+                .given(calcService).calculateRequiredSlots(any(), any());
 
         RequiredSlotsRequest req = new RequiredSlotsRequest(
                 999L, new BigDecimal("300000"), new BigDecimal("4.0"),
@@ -287,7 +287,7 @@ class ShiftBudgetCalcControllerIntegrationTest {
         @DisplayName("EMPTY_POSITION_LIST_400")
         void EMPTY_POSITION_LIST_400() throws Exception {
             willThrow(new BusinessException(ShiftBudgetErrorCode.EMPTY_POSITION_LIST))
-                    .given(calcService).calculateRequiredSlots(any());
+                    .given(calcService).calculateRequiredSlots(any(), any());
 
             RequiredSlotsRequest req = new RequiredSlotsRequest(
                     TEAM_ID, new BigDecimal("300000"), new BigDecimal("4.0"),

@@ -240,7 +240,7 @@ public class OnboardingTemplateService {
 
         // ステップ複製
         List<OnboardingTemplateStepEntity> duplicatedSteps = originalSteps.stream()
-                .map(s -> OnboardingTemplateStepEntity.builder()
+                .map(s -> (OnboardingTemplateStepEntity) OnboardingTemplateStepEntity.builder()
                         .templateId(saved.getId())
                         .title(s.getTitle())
                         .description(s.getDescription())
@@ -273,7 +273,7 @@ public class OnboardingTemplateService {
         List<OnboardingTemplateStepEntity> steps = stepRequests.stream()
                 .map(r -> {
                     OnboardingTemplateStepEntity step = mapper.toStepEntity(r);
-                    return step.toBuilder().templateId(templateId).build();
+                    return (OnboardingTemplateStepEntity) step.toBuilder().templateId(templateId).build();
                 })
                 .toList();
         return stepRepository.saveAll(steps);

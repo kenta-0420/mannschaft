@@ -66,7 +66,7 @@ public class SkillCategoryService {
         boolean duplicated = existing.stream()
                 .anyMatch(c -> c.getName().equals(name));
         if (duplicated) {
-            throw new BusinessException(SkillErrorCode.SKILL_001);
+            throw new BusinessException(SkillErrorCode.SKILL_009);
         }
 
         SkillCategoryEntity entity = SkillCategoryEntity.builder()
@@ -117,20 +117,21 @@ public class SkillCategoryService {
                     .filter(c -> !c.getId().equals(id))
                     .anyMatch(c -> c.getName().equals(name));
             if (duplicated) {
-                throw new BusinessException(SkillErrorCode.SKILL_001);
+                throw new BusinessException(SkillErrorCode.SKILL_009);
             }
         }
 
-        // toBuilder でフィールドを更新
-        SkillCategoryEntity updated = category.toBuilder()
-                .name(name != null ? name : category.getName())
-                .description(description != null ? description : category.getDescription())
-                .icon(icon != null ? icon : category.getIcon())
-                .sortOrder(sortOrder != null ? sortOrder : category.getSortOrder())
-                .isActive(isActive != null ? isActive : category.getIsActive())
-                .build();
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        category.applyUpdate(
+                name != null ? name : category.getName(),
+                description != null ? description : category.getDescription(),
+                icon != null ? icon : category.getIcon(),
+                sortOrder != null ? sortOrder : category.getSortOrder(),
+                isActive != null ? isActive : category.getIsActive()
+        );
 
-        SkillCategoryEntity saved = categoryRepository.save(updated);
+        SkillCategoryEntity saved = categoryRepository.save(category);
         log.info("スキルカテゴリ更新: id={}", id);
         return ApiResponse.of(saved);
     }
@@ -161,7 +162,11 @@ public class SkillCategoryService {
     // ========================================
 
     /**
-     * IDでカテゴリを取得する。見つからない場合は SKILL_001 例外。
+     * IDでカテゴリを取得する。見つからない場合は SKILL_001（404）例外。
+     *
+     * <p>本メソッドはスコープ絞り込みを行わない純粋な不在判定であり、「見つからない」以外の
+     * 意味では使わない（名称重複は SKILL_009、非アクティブは SKILL_010）。
+     * スコープ越境の秘匿は呼び出し側の SKILL_003 が担う。</p>
      */
     public SkillCategoryEntity findCategoryOrThrow(Long id) {
         return categoryRepository.findById(id)

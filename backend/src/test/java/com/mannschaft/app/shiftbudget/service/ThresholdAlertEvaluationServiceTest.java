@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.budget.entity.BudgetConfigEntity;
 import com.mannschaft.app.budget.repository.BudgetConfigRepository;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.shiftbudget.entity.BudgetThresholdAlertEntity;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
+import com.mannschaft.app.shiftbudget.event.BudgetThresholdAlertTriggeredEvent;
 import com.mannschaft.app.shiftbudget.repository.BudgetThresholdAlertRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.workflow.dto.CreateWorkflowRequestRequest;
@@ -19,9 +19,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -71,7 +71,7 @@ class ThresholdAlertEvaluationServiceTest {
     @Mock
     private UserRoleRepository userRoleRepository;
     @Mock
-    private NotificationHelper notificationHelper;
+    private ApplicationEventPublisher eventPublisher;
     @Mock
     private AuditLogService auditLogService;
     @Mock
@@ -88,8 +88,8 @@ class ThresholdAlertEvaluationServiceTest {
     void setUp() {
         service = new ThresholdAlertEvaluationService(
                 allocationRepository, alertRepository, budgetConfigRepository,
-                userRoleRepository, notificationHelper, auditLogService,
-                workflowRequestService, objectMapper, failedEventService);
+                userRoleRepository, auditLogService,
+                workflowRequestService, objectMapper, failedEventService, eventPublisher);
     }
 
     /**
@@ -141,7 +141,7 @@ class ThresholdAlertEvaluationServiceTest {
         service.evaluateAndTrigger(ALLOCATION_ID);
 
         verify(alertRepository, never()).saveAndFlush(any());
-        verifyNoInteractions(notificationHelper);
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -167,9 +167,15 @@ class ThresholdAlertEvaluationServiceTest {
         assertThat(captor.getValue().getThresholdPercent()).isEqualTo(80);
         assertThat(captor.getValue().getAllocationId()).isEqualTo(ALLOCATION_ID);
 
-        verify(notificationHelper, times(1)).notifyAll(
-                eq(List.of(10L, 11L)), eq("SHIFT_BUDGET_THRESHOLD_ALERT"),
-                any(), any(), any(), eq(ALLOCATION_ID), any(), eq(ORG_ID), any(), any());
+        // 業務TX内では通知を発火せず、イベントを publish するだけであること（正規形）。
+        ArgumentCaptor<BudgetThresholdAlertTriggeredEvent> eventCaptor =
+                ArgumentCaptor.forClass(BudgetThresholdAlertTriggeredEvent.class);
+        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+        BudgetThresholdAlertTriggeredEvent published = eventCaptor.getValue();
+        assertThat(published.allocationId()).isEqualTo(ALLOCATION_ID);
+        assertThat(published.organizationId()).isEqualTo(ORG_ID);
+        assertThat(published.thresholdPercent()).isEqualTo(80);
+        assertThat(published.recipientUserIds()).containsExactly(10L, 11L);
     }
 
     @Test
@@ -411,7 +417,7 @@ class ThresholdAlertEvaluationServiceTest {
     }
 
     @Test
-    @DisplayName("受信ロール 0 名 → INSERT は実行するが notifyAll は呼ばれない")
+    @DisplayName("受信ロール 0 名 → INSERT は実行し、受信者空のイベントを publish する")
     void 受信者ゼロ_alert発火のみ() {
         ShiftBudgetAllocationEntity alloc = allocationWith(
                 new BigDecimal("100000"), new BigDecimal("80000"));
@@ -427,7 +433,11 @@ class ThresholdAlertEvaluationServiceTest {
         service.evaluateAndTrigger(ALLOCATION_ID);
 
         verify(alertRepository, times(1)).saveAndFlush(any());
-        // 受信ロール 0 名のため notifyAll は呼ばれない
-        verifyNoInteractions(notificationHelper);
+        // 受信ロール 0 名でもイベントは publish する（配送側が受信者ゼロを WARN して打ち切る）。
+        ArgumentCaptor<BudgetThresholdAlertTriggeredEvent> zeroCaptor =
+                ArgumentCaptor.forClass(BudgetThresholdAlertTriggeredEvent.class);
+        verify(eventPublisher, times(1)).publishEvent(zeroCaptor.capture());
+        assertThat(zeroCaptor.getValue().recipientUserIds()).isEmpty();
     }
+
 }

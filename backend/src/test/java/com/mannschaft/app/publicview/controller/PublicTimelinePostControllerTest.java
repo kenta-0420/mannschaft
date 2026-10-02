@@ -68,6 +68,19 @@ class PublicTimelinePostControllerTest {
 
     private static final Long TEAM_ID = 100L;
     private static final Long ORG_ID = 200L;
+    private static final String ORG_SLUG = "public-org-a";
+
+    /** 親の slug 解決（公開組織 → ID）。子 API は slug を受けて ID に解決してから下位 Service を呼ぶ。 */
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.mannschaft.app.publicview.service.PublicOrganizationQueryService publicOrganizationQueryService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubOrganizationSlugResolution() {
+        org.mockito.BDDMockito.given(publicOrganizationQueryService.getPublicOrganization(ORG_SLUG))
+                .willReturn(new com.mannschaft.app.publicview.dto.PublicOrganizationResponse(
+                        ORG_ID, "サンプル組織", null, null, null, "COMPANY", null, null, null, null,
+                        null, null, null, null, null, false, false, false));
+    }
     private static final Long POST_ID = 9001L;
 
     @Autowired
@@ -144,7 +157,7 @@ class PublicTimelinePostControllerTest {
         given(publicTimelinePostQueryService.getOrganizationTimelinePosts(eq(ORG_ID), any(Pageable.class)))
                 .willReturn(page);
 
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/timeline-posts", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/timeline-posts", ORG_SLUG))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(POST_ID))
                 .andExpect(jsonPath("$.content[0].scopeRef.scopeType").value("ORGANIZATION"))
@@ -161,7 +174,7 @@ class PublicTimelinePostControllerTest {
                 .given(publicTimelinePostQueryService)
                 .getOrganizationTimelinePosts(eq(ORG_ID), any(Pageable.class));
 
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/timeline-posts", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/timeline-posts", ORG_SLUG))
                 .andExpect(status().isNotFound());
     }
 

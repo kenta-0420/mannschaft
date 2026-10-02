@@ -46,6 +46,30 @@ async function updateLevelAvailability(moduleId: number, level: string, isAvaila
   }
 }
 
+async function togglePaidPlan(mod: ModuleResponse, value: boolean) {
+  const previous = mod.requiresPaidPlan
+  mod.requiresPaidPlan = value // 楽観更新
+  try {
+    await systemAdminApi.updateModulePaidPlan(mod.id, { requiresPaidPlan: value })
+    success(value ? '有料プラン必須に変更しました' : '有料プラン不要に変更しました')
+  } catch {
+    mod.requiresPaidPlan = previous // 失敗時は元に戻す
+    showError('有料プラン設定の更新に失敗しました')
+  }
+}
+
+async function toggleActive(mod: ModuleResponse, value: boolean) {
+  const previous = mod.isActive
+  mod.isActive = value // 楽観更新
+  try {
+    await systemAdminApi.updateModuleActive(mod.id, { isActive: value })
+    success(value ? 'モジュールを有効化しました' : 'モジュールを無効化しました')
+  } catch {
+    mod.isActive = previous // 失敗時は元に戻す
+    showError('状態の更新に失敗しました')
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -67,20 +91,26 @@ onMounted(load)
           {{ data.moduleNumber }}
         </template>
       </Column>
-      <Column header="有料プラン" style="width: 100px">
+      <Column header="有料プラン" style="width: 120px">
         <template #body="{ data }">
-          <Tag
-            :value="data.requiresPaidPlan ? '必要' : '不要'"
-            :severity="data.requiresPaidPlan ? 'warn' : 'success'"
-          />
+          <div class="flex items-center gap-2">
+            <ToggleSwitch
+              :model-value="data.requiresPaidPlan"
+              @update:model-value="(v: boolean) => togglePaidPlan(data, v)"
+            />
+            <span class="text-xs text-surface-500">{{ data.requiresPaidPlan ? '必要' : '不要' }}</span>
+          </div>
         </template>
       </Column>
-      <Column header="状態" style="width: 80px">
+      <Column header="状態" style="width: 120px">
         <template #body="{ data }">
-          <Tag
-            :value="data.isActive ? '有効' : '無効'"
-            :severity="data.isActive ? 'success' : 'secondary'"
-          />
+          <div class="flex items-center gap-2">
+            <ToggleSwitch
+              :model-value="data.isActive"
+              @update:model-value="(v: boolean) => toggleActive(data, v)"
+            />
+            <span class="text-xs text-surface-500">{{ data.isActive ? '有効' : '無効' }}</span>
+          </div>
         </template>
       </Column>
       <Column header="操作" style="width: 100px">

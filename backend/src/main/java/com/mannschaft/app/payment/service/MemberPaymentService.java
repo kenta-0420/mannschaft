@@ -1,9 +1,8 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
 import com.mannschaft.app.payment.PayerRelationship;
 import com.mannschaft.app.payment.PaymentErrorCode;
@@ -19,6 +18,7 @@ import com.mannschaft.app.payment.dto.BulkPaymentRequest;
 import com.mannschaft.app.payment.dto.BulkPaymentResponse;
 import com.mannschaft.app.payment.dto.CheckoutResponse;
 import com.mannschaft.app.payment.dto.ConnectCheckoutResponse;
+import com.mannschaft.app.payment.dto.ConnectCheckoutStatusResponse;
 import com.mannschaft.app.payment.dto.CreateManualPaymentRequest;
 import com.mannschaft.app.payment.dto.MemberPaymentResponse;
 import com.mannschaft.app.payment.dto.ReconcileResponse;
@@ -30,12 +30,14 @@ import com.mannschaft.app.payment.entity.StripeCustomerEntity;
 import com.mannschaft.app.payment.escrow.ConnectChargeService;
 import com.mannschaft.app.payment.escrow.MembershipChargeCommand;
 import com.mannschaft.app.payment.escrow.MembershipChargeResult;
+import com.mannschaft.app.payment.event.PaymentRemindNotificationEvent;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -64,12 +66,23 @@ public class MemberPaymentService {
     private final StripePaymentProvider stripePaymentProvider;
     private final PaymentMapper paymentMapper;
     private final NameResolverService nameResolverService;
-    private final NotificationHelper notificationHelper;
+    // Issue #2990 L7: 未払いリマインドの通知は業務TXの外（AFTER_COMMIT）へ移したため、
+    // 本サービスは通知コラボレータ（NotificationHelper / UserLocaleCache / MessageSource）を持たない。
+    // 受信者 locale の解決と文面の組み立ては PaymentRemindNotificationListener が行う。
+    private final ApplicationEventPublisher eventPublisher;
 
     // === F08.9 P1 Wave4: 払い手分離・Connect 即時 charge 連携 ===
     private final PaymentAuthorizationService paymentAuthorizationService;
     private final ConnectChargeService connectChargeService;
     private final ConnectAccountRepository connectAccountRepository;
+    private final MemberPaymentCheckoutPersistenceService memberPaymentCheckoutPersistenceService;
+
+    // === F08.9 認可 AC-6: 受益者のスコープ所属検証（F00 正準の AccessControlService 経由）===
+    private final AccessControlService accessControlService;
+
+    // === F08.9 受益者制限: チーム/組織別「受益者は会員のみ」設定（既定 ON）と組織配下 MEMBER 判定 ===
+    private final PaymentBeneficiarySettingService paymentBeneficiarySettingService;
+    private final com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -116,6 +129,10 @@ public class MemberPaymentService {
         PayerRelationship relationship = paymentAuthorizationService.authorizePayment(
                 recordedBy, request.getUserId(), paymentItemId, true);
 
+        // AC-6: 受益者が当該スコープのメンバー（MEMBER 以上・純 SUPPORTER 除外・組織配下チーム所属者は許容・
+        // 退会/inactive は除外）であることを検証する。非所属は USER_NOT_MEMBER（PAYMENT_027）。
+        verifyBeneficiaryMembership(request.getUserId(), paymentItem);
+
         LocalDate validFrom = request.getValidFrom() != null
                 ? request.getValidFrom()
                 : request.getPaidAt().toLocalDate();
@@ -128,7 +145,7 @@ public class MemberPaymentService {
                 .paymentItemId(paymentItemId)
                 .amountPaid(request.getAmountPaid())
                 .currency(paymentItem.getCurrency())
-                .paymentMethod(PaymentMethod.MANUAL)
+                .paymentMethod(resolveManualPaymentMethod(request.getPaymentMethod()))
                 .status(PaymentStatus.PAID)
                 .validFrom(validFrom)
                 .validUntil(validUntil)
@@ -143,6 +160,22 @@ public class MemberPaymentService {
         log.info("手動支払い記録: id={}, userId={}, paymentItemId={}, payer={}, relationship={}",
                 saved.getId(), request.getUserId(), paymentItemId, recordedBy, relationship);
         return enrichUserName(paymentMapper.toMemberPaymentResponse(saved));
+    }
+
+    /**
+     * 手動記録の決済手段を解決する。未指定（null）時は {@link PaymentMethod#MANUAL}（その他／不明）にフォールバックする。
+     *
+     * <p>{@link PaymentMethod#STRIPE} は手動記録では DTO の BeanValidation
+     * （{@link CreateManualPaymentRequest#isPaymentMethodAllowedForManual()}）で 400 に弾かれるが、
+     * 多層防御として Service 層でも明示的に拒否する（{@code @Valid} を経由しない内部呼び出し・
+     * 将来の別経路でも不変条件を Service 自身が保証するため）。STRIPE 指定時は
+     * {@link PaymentErrorCode#STRIPE_NOT_ALLOWED_FOR_MANUAL}（400）を投げる。</p>
+     */
+    private PaymentMethod resolveManualPaymentMethod(PaymentMethod requested) {
+        if (requested == PaymentMethod.STRIPE) {
+            throw new BusinessException(PaymentErrorCode.STRIPE_NOT_ALLOWED_FOR_MANUAL);
+        }
+        return requested != null ? requested : PaymentMethod.MANUAL;
     }
 
     /**
@@ -185,6 +218,11 @@ public class MemberPaymentService {
                                                    BulkPaymentRequest request) {
         PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(paymentItemId);
 
+        // 欠落① 根治: 一括入金は ADMIN によるバッチ操作。ループに入る前に1度だけ払い手（記録者）の
+        // スコープ ADMIN 権原を検証する。非 ADMIN は MEMBERSHIP_PAYER_NOT_AUTHORIZED（403）を投げ、
+        // @Transactional により一括処理全体をロールバックする（1件も保存しない・部分保存しない）。
+        paymentAuthorizationService.authorizeBulkPaymentByAdmin(recordedBy, paymentItemId);
+
         int createdCount = 0;
         List<BulkPaymentResponse.SkippedEntry> skipped = new ArrayList<>();
 
@@ -194,6 +232,14 @@ public class MemberPaymentService {
                 if (paymentItem.getType() != PaymentItemType.DONATION
                         && memberPaymentRepository.existsValidPaidPayment(payment.getUserId(), paymentItemId)) {
                     skipped.add(new BulkPaymentResponse.SkippedEntry(payment.getUserId(), "ALREADY_PAID"));
+                    continue;
+                }
+
+                // AC-6: 受益者が当該スコープのメンバー（MEMBER 以上・純 SUPPORTER 除外・配下許容・退会除外）で
+                // なければ当該要素を USER_NOT_MEMBER 理由でスキップする（所属分は created）。
+                if (!isBeneficiaryMember(payment.getUserId(), paymentItem)) {
+                    skipped.add(new BulkPaymentResponse.SkippedEntry(
+                            payment.getUserId(), PaymentErrorCode.USER_NOT_MEMBER.getCode()));
                     continue;
                 }
 
@@ -209,7 +255,7 @@ public class MemberPaymentService {
                         .paymentItemId(paymentItemId)
                         .amountPaid(payment.getAmountPaid())
                         .currency(paymentItem.getCurrency())
-                        .paymentMethod(PaymentMethod.MANUAL)
+                        .paymentMethod(resolveManualPaymentMethod(payment.getPaymentMethod()))
                         .status(PaymentStatus.PAID)
                         .validFrom(validFrom)
                         .validUntil(validUntil)
@@ -237,7 +283,8 @@ public class MemberPaymentService {
         MemberPaymentEntity entity = memberPaymentRepository.findByIdAndPaymentItemId(paymentId, paymentItemId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-        if (entity.getPaymentMethod() == PaymentMethod.MANUAL) {
+        // STRIPE（オンライン決済）以外は返金不可（CASH/BANK_TRANSFER/MANUAL のオフライン記録は取り消しで運用）。
+        if (entity.getPaymentMethod() != PaymentMethod.STRIPE) {
             throw new BusinessException(PaymentErrorCode.MANUAL_PAYMENT_NOT_REFUNDABLE);
         }
         if (entity.getStatus() == PaymentStatus.REFUNDED || entity.getStatus() == PaymentStatus.CANCELLED) {
@@ -350,13 +397,14 @@ public class MemberPaymentService {
         PayerRelationship relationship = paymentAuthorizationService.authorizePayment(
                 payerUserId, beneficiaryUserId, paymentItemId, false);
 
-        // 3. 重複チェック（受益者×項目に有効な PAID があれば 409）。DONATION は重複を許す。
-        if (paymentItem.getType() != PaymentItemType.DONATION
+        // 同じキーの完了後再送だけは既存結果を返す。新しいキーによる重複支払いは外部I/Oより前に拒否する。
+        boolean idempotentReplay = connectChargeService.hasExistingIdempotencyKey(idempotencyKey);
+        if (!idempotentReplay && paymentItem.getType() != PaymentItemType.DONATION
                 && memberPaymentRepository.existsValidPaidPayment(beneficiaryUserId, paymentItemId)) {
             throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_ALREADY_PAID);
         }
 
-        // 4. 受領者 Connect 口座をスコープから解決し READY を判定（即時モードゆえ非 READY は HELD にせず 409）。
+        // 3. 受領者 Connect 口座をスコープから解決し READY を判定（即時モードゆえ非 READY は HELD にせず 409）。
         ConnectAccountEntity payee = resolvePayeeConnectAccount(paymentItem);
         if (!Boolean.TRUE.equals(payee.getPayoutsEnabled())) {
             log.warn("会費 Connect checkout 拒否（受領口座が未 READY）: itemId={}, payeeAccount={}, payoutsEnabled={}",
@@ -364,39 +412,69 @@ public class MemberPaymentService {
             throw new BusinessException(ConnectPaymentErrorCode.ONBOARDING_NOT_READY);
         }
 
-        // 5. 払い手の Stripe Customer を get-or-create（払い手＝決済者の Customer）。
+        // 4. 払い手の Stripe Customer を get-or-create（払い手＝決済者の Customer）。
         StripeCustomerEntity payerCustomer = getOrCreateStripeCustomer(payerUserId);
 
-        // 6. ConnectChargeService.charge（Destination PI 作成・即時 AUTOMATIC・冪等キーを Stripe へ橋渡し）。
+        // 5. 同じキーの再送は PAID 後も既存結果を返す。新しいキーだけ重複支払いを拒否する。
         long faceAmount = paymentItem.getAmount().longValueExact();
-        MembershipChargeResult chargeResult = connectChargeService.charge(new MembershipChargeCommand(
+        MembershipChargeCommand chargeCommand = new MembershipChargeCommand(
                 faceAmount,
                 payee.getId(),
                 payerCustomer.getStripeCustomerId(),
                 payerUserId,
                 paymentItemId,
                 paymentItem.getOrganizationId(),
-                idempotencyKey));
+                idempotencyKey,
+                beneficiaryUserId);
+
+        var replay = connectChargeService.findExistingMembershipCharge(chargeCommand);
+        MembershipChargeResult chargeResult = replay.isPresent()
+                ? replay.get()
+                : connectChargeService.charge(chargeCommand);
+
+        var existingPayment = memberPaymentRepository.findByEscrowTransactionId(chargeResult.escrowTransactionId());
+        if (existingPayment.isPresent()) {
+            MemberPaymentEntity existing = existingPayment.get();
+            if (!existing.getUserId().equals(beneficiaryUserId)
+                    || !existing.getPaymentItemId().equals(paymentItemId)
+                    || !existing.getPayerUserId().equals(payerUserId)) {
+                throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_IDEMPOTENCY_KEY_REUSED);
+            }
+            String clientSecret = chargeResult.clientSecret();
+            if (clientSecret == null && chargeResult.paymentIntentId() != null) {
+                clientSecret = stripePaymentProvider
+                        .retrievePaymentIntentClientSecret(chargeResult.paymentIntentId()).clientSecret();
+            }
+            return new ConnectCheckoutResponse(clientSecret, existing.getId(), chargeResult.escrowTransactionId());
+        }
 
         // 7. member_payments を PENDING で起票（払い手列・escrow_transaction_id を埋める。受益者＝userId）。
-        MemberPaymentEntity payment = MemberPaymentEntity.builder()
-                .userId(beneficiaryUserId)
-                .paymentItemId(paymentItemId)
-                .amountPaid(paymentItem.getAmount())
-                .currency(paymentItem.getCurrency())
-                .paymentMethod(PaymentMethod.STRIPE)
-                .status(PaymentStatus.PENDING)
-                .payerUserId(payerUserId)
-                .payerRelationship(relationship)
-                .escrowTransactionId(chargeResult.escrowTransactionId())
-                .build();
-        payment = memberPaymentRepository.save(payment);
+        MemberPaymentCheckoutRecord payment = new MemberPaymentCheckoutRecord(
+                null, beneficiaryUserId, paymentItemId, paymentItem.getAmount(), paymentItem.getCurrency(),
+                PaymentMethod.STRIPE, PaymentStatus.PENDING, payerUserId, relationship,
+                chargeResult.escrowTransactionId());
+        payment = memberPaymentCheckoutPersistenceService.persist(payment);
+        if (!payment.userId().equals(beneficiaryUserId)
+                || !payment.paymentItemId().equals(paymentItemId)
+                || !payment.payerUserId().equals(payerUserId)) {
+            throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_IDEMPOTENCY_KEY_REUSED);
+        }
 
         log.info("会費 Connect checkout 起票（PENDING・PAID は webhook で反映）: paymentId={}, beneficiary={}, payer={}, "
                         + "relationship={}, escrowId={}",
-                payment.getId(), beneficiaryUserId, payerUserId, relationship, chargeResult.escrowTransactionId());
+                payment.id(), beneficiaryUserId, payerUserId, relationship, chargeResult.escrowTransactionId());
         return new ConnectCheckoutResponse(
-                chargeResult.clientSecret(), payment.getId(), chargeResult.escrowTransactionId());
+                chargeResult.clientSecret(), payment.id(), chargeResult.escrowTransactionId());
+    }
+
+    public ConnectCheckoutStatusResponse getConnectCheckoutStatus(Long paymentItemId, Long memberPaymentId,
+                                                                   Long currentUserId) {
+        MemberPaymentEntity payment = memberPaymentRepository.findByIdAndPaymentItemId(memberPaymentId, paymentItemId)
+                .orElseThrow(() -> new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_CHECKOUT_NOT_FOUND));
+        if (!currentUserId.equals(payment.getPayerUserId()) && !currentUserId.equals(payment.getUserId())) {
+            throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_CHECKOUT_NOT_FOUND);
+        }
+        return new ConnectCheckoutStatusResponse(payment.getId(), payment.getStatus().name());
     }
 
     /**
@@ -499,6 +577,96 @@ public class MemberPaymentService {
     }
 
     /**
+     * 受益者が payment_item のスコープのメンバー（AC-6）であることを検証する。非所属は
+     * {@link PaymentErrorCode#USER_NOT_MEMBER}（PAYMENT_027・403/404 系の WARN）を投げる（単一記録用・死にコード解消）。
+     *
+     * <p>判定は {@link #isBeneficiaryMember} に委譲し、一括（skip）と検証ロジックを共通化する。</p>
+     */
+    private void verifyBeneficiaryMembership(Long beneficiaryUserId, PaymentItemEntity paymentItem) {
+        if (!isBeneficiaryMember(beneficiaryUserId, paymentItem)) {
+            log.info("会費受益者がスコープ非所属（手動入金拒否）: userId={}, itemId={}",
+                    beneficiaryUserId, paymentItem.getId());
+            throw new BusinessException(PaymentErrorCode.USER_NOT_MEMBER);
+        }
+    }
+
+    /**
+     * 受益者が payment_item のスコープの受益者要件を満たすかを返す（AC-6・単一/一括共通の所属判定）。
+     *
+     * <p>判定はチーム/組織別の<b>「受益者は会員のみ」設定（{@link PaymentBeneficiarySettingService}・既定 ON）</b>で分岐する:</p>
+     *
+     * <p><b>memberOnly = false（応援者も受益者可）</b> — 従来挙動を維持し
+     * {@link AccessControlService#isMemberOrDescendant}（{@code includeSupporters=false}）に委譲する。
+     * ただし TEAM スコープでは {@code isMember} が role_kind を問わないため、純 SUPPORTER も所属していれば許容される
+     * （= 応援者も受益者可・設定 OFF の意図通り）。ORGANIZATION スコープは配下チームの SUPPORTER を除外する。</p>
+     *
+     * <p><b>memberOnly = true（既定・会員のみ）</b> — 全スコープで純 SUPPORTER を除外しつつ組織配下 MEMBER を許容する
+     * （実 {@link AccessControlService} の挙動を確認済・下記根拠）:</p>
+     * <ul>
+     *   <li><b>TEAM</b>: {@code hasRoleOrAbove(userId, scopeId, "TEAM", "MEMBER")}。
+     *       {@code resolveEffectiveRole} が user_roles＋memberships.role_kind を統合し priority 最小（最強）を採り、
+     *       {@code effective.priority() <= MEMBER.priority()} で比較する。priority は MEMBER(4) < SUPPORTER(5)
+     *       （V2.014__seed_roles.sql）なので純 SUPPORTER は false（確実に除外）。</li>
+     *   <li><b>ORGANIZATION</b>: 組織に直接 MEMBER 権限ロール/所属を持つ場合は {@code hasRoleOrAbove(.., "ORGANIZATION", "MEMBER")}
+     *       で許容。配下チームの MEMBER は直接 ORG ロールを持たないため {@code hasRoleOrAbove} では拾えないので、
+     *       {@code OrganizationMembershipService.isInOrgDistributionAudience(orgId, userId, false)}（純 SUPPORTER 除外・
+     *       配下 MEMBER 許容）との OR で合成する。これにより「配下チームの会員は受益者可・純 SUPPORTER は不可」を満たす。</li>
+     * </ul>
+     *
+     * <p><b>退会/inactive 除外</b>はいずれの経路でも担保される（{@code isMember}/{@code resolveEffectiveRole} は
+     * {@code memberships.leftAt IS NULL}／アクティブな user_roles を見るため）。
+     * スコープ解決（team_id / organization_id → scopeId / scopeType）は {@link #resolveScopeType} /
+     * {@link #resolveScopeId} に共通化する。スコープ未設定の不整合データは判定不能のため非所属（false）に倒す
+     * （fail-safe・症状を隠さない）。</p>
+     */
+    private boolean isBeneficiaryMember(Long beneficiaryUserId, PaymentItemEntity paymentItem) {
+        String scopeType = resolveScopeType(paymentItem);
+        Long scopeId = resolveScopeId(paymentItem);
+        if (scopeType == null || scopeId == null) {
+            log.warn("payment_item にスコープ（team/org）が無く受益者の所属を判定できません: itemId={}", paymentItem.getId());
+            return false;
+        }
+
+        boolean memberOnly = paymentBeneficiarySettingService.isMemberOnly(
+                paymentItem.getTeamId(), paymentItem.getOrganizationId());
+        if (!memberOnly) {
+            // 設定 OFF: 従来挙動（応援者も受益者可。TEAM は SUPPORTER 許容・ORG は配下 SUPPORTER 除外）。
+            return accessControlService.isMemberOrDescendant(beneficiaryUserId, scopeId, scopeType, false);
+        }
+
+        // 設定 ON（既定・会員のみ）: 全スコープで純 SUPPORTER を除外し、組織配下 MEMBER は許容する。
+        if ("ORGANIZATION".equals(scopeType)) {
+            return accessControlService.hasRoleOrAbove(beneficiaryUserId, scopeId, "ORGANIZATION", "MEMBER")
+                    || organizationMembershipService.isInOrgDistributionAudience(scopeId, beneficiaryUserId, false);
+        }
+        return accessControlService.hasRoleOrAbove(beneficiaryUserId, scopeId, "TEAM", "MEMBER");
+    }
+
+    /**
+     * payment_item のスコープ種別を解決する（{@code "TEAM"} / {@code "ORGANIZATION"}）。
+     * team_id 優先・いずれも未設定なら {@code null}（AC-6 / 払い手認可で共通使用）。
+     */
+    private String resolveScopeType(PaymentItemEntity paymentItem) {
+        if (paymentItem.getTeamId() != null) {
+            return "TEAM";
+        }
+        if (paymentItem.getOrganizationId() != null) {
+            return "ORGANIZATION";
+        }
+        return null;
+    }
+
+    /**
+     * payment_item のスコープ ID を解決する（team_id 優先・いずれも未設定なら {@code null}）。
+     */
+    private Long resolveScopeId(PaymentItemEntity paymentItem) {
+        if (paymentItem.getTeamId() != null) {
+            return paymentItem.getTeamId();
+        }
+        return paymentItem.getOrganizationId();
+    }
+
+    /**
      * payment_item のスコープ（team/org）から受領者の Connect 口座を解決する。
      *
      * <p>team_id 設定時は {@link ScopeKind#TEAM}、organization_id 設定時は {@link ScopeKind#ORG} で
@@ -545,7 +713,6 @@ public class MemberPaymentService {
     /**
      * 未払いリマインドを送信する。
      */
-    // TODO: paymentドメインとnotificationドメインをまたいでいる。将来はPaymentReminderRequestedEventで分離予定
     @Transactional
     public RemindResponse sendRemind(Long paymentItemId) {
         PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(paymentItemId);
@@ -554,20 +721,13 @@ public class MemberPaymentService {
             throw new BusinessException(PaymentErrorCode.DONATION_REMIND_NOT_ALLOWED);
         }
 
-        // 未払いメンバーの取得と通知送信
+        // 未払いメンバーの取得。通知は業務TXに参加させず、commit 後に
+        // PaymentRemindNotificationListener が受信者ごと独立トランザクションで配送する（#2990 L7）。
         List<Long> unpaidUserIds = memberPaymentRepository.findUnpaidUserIdsByPaymentItemId(paymentItemId);
-        NotificationScopeType scopeType = paymentItem.getTeamId() != null
-                ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
         Long scopeId = paymentItem.getTeamId() != null
                 ? paymentItem.getTeamId() : paymentItem.getOrganizationId();
-        for (Long userId : unpaidUserIds) {
-            notificationHelper.notify(
-                    userId, "PAYMENT_REMIND",
-                    "支払いリマインド", paymentItem.getName() + "の支払いが未完了です",
-                    "PAYMENT", paymentItemId,
-                    scopeType, scopeId,
-                    "/payments/" + paymentItemId, null);
-        }
+        eventPublisher.publishEvent(new PaymentRemindNotificationEvent(
+                paymentItemId, paymentItem.getTeamId(), scopeId, unpaidUserIds));
         log.info("リマインド送信: paymentItemId={}, notifiedCount={}", paymentItemId, unpaidUserIds.size());
         return new RemindResponse(unpaidUserIds.size(), paymentItem.getName());
     }
@@ -626,7 +786,8 @@ public class MemberPaymentService {
         MemberPaymentEntity entity = memberPaymentRepository.findById(paymentId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-        if (entity.getPaymentMethod() == PaymentMethod.MANUAL) {
+        // STRIPE（オンライン決済）以外は再同期不可（CASH/BANK_TRANSFER/MANUAL のオフライン記録は対象外）。
+        if (entity.getPaymentMethod() != PaymentMethod.STRIPE) {
             throw new BusinessException(PaymentErrorCode.STRIPE_PAYMENT_ONLY);
         }
 

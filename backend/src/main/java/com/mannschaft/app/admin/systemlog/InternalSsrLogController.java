@@ -1,6 +1,9 @@
 package com.mannschaft.app.admin.systemlog;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +20,15 @@ import org.springframework.web.bind.annotation.RestController;
  * Nuxt フロントエンドから SSR エラーを受け付ける内部エンドポイント。
  * 認証は {@code X-Internal-Token} ヘッダーによるトークン検証で行う。
  * SecurityConfig で {@code permitAll()} に設定しているが、このコントローラーが自前でトークン検証する。
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService} クラス付与・全 1 EP が該当）</b>:
+ * {@link #receiveSsrLog} は本ファイルの {@code isValidToken} で
+ * {@code X-Internal-Token} ヘッダを設定値（{@code mannschaft.system-log.internal-token}）と
+ * {@code MessageDigest.isEqual} により<b>定数時間比較</b>し、不一致なら 403 で中断する。
+ * 認可根治戦役 Wave5 監査済。</p>
  */
 @Slf4j
+@AuthorizedInService
 @RestController
 @RequestMapping("/api/internal")
 @Tag(name = "内部 - SSR ログ", description = "F10.6 Nuxt SSR エラー受信 API（内部トークン認証）")
@@ -54,8 +64,8 @@ public class InternalSsrLogController {
             @RequestHeader(value = "X-Internal-Token", required = false) String token,
             @RequestBody SsrErrorRequest ssrErrorRequest) {
 
-        // トークン検証
-        if (!internalToken.equals(token)) {
+        // トークン検証（定数時間比較・タイミング攻撃対策）
+        if (!isValidToken(token)) {
             log.warn("SSR ログ受信: 不正なトークン（{} 文字）", token != null ? token.length() : 0);
             return ResponseEntity.status(403).build();
         }
@@ -80,5 +90,29 @@ public class InternalSsrLogController {
         }
 
         return ResponseEntity.accepted().build();
+    }
+
+    /**
+     * 内部トークンを<b>定数時間</b>で照合する（タイミング攻撃対策）。
+     *
+     * <p>{@code String.equals} は最初の不一致バイトで短絡するため、比較に要する時間から
+     * 正解トークンの先頭一致長が漏れ、総当りコストが指数から線形に落ちる。他の webhook 経路
+     * （{@code LineWebhookService} / {@code GoogleCalendarWebhookService}）と同じく
+     * {@link MessageDigest#isEqual} によるバイト比較へ揃える。</p>
+     *
+     * <p>{@code MessageDigest.isEqual} は長さが異なる場合は早期に false を返す（長さは秘匿しない）が、
+     * 同一長のバイト列同士は全バイトを走査するため内容の先頭一致長は漏れない。
+     * {@code token} が null の場合は比較せず false（{@code getBytes} の NPE 回避）。</p>
+     *
+     * @param token リクエストの {@code X-Internal-Token} ヘッダ値（未指定なら null）
+     * @return トークンが一致すれば true
+     */
+    private boolean isValidToken(String token) {
+        if (token == null || internalToken == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                internalToken.getBytes(StandardCharsets.UTF_8),
+                token.getBytes(StandardCharsets.UTF_8));
     }
 }

@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -11,11 +12,11 @@ import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.dto.MembershipLeaveRequest;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
-import com.mannschaft.app.organization.dto.OrgTeamSummaryResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.MemberResponse;
@@ -33,7 +34,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -56,8 +59,10 @@ public class OrganizationMembershipService {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final MemberQueryDispatcher memberQueryDispatcher;
+    private final ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 組織配信の再帰的配下解決における再帰展開の最大深さ（サイクル防止上限・フェーズM1）。
@@ -78,6 +83,8 @@ public class OrganizationMembershipService {
 
         // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照に完全切替
         var memberDtos = memberQueryDispatcher.queryMembers(orgId, ScopeType.ORGANIZATION, null);
+        var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
+                ScopeType.ORGANIZATION, orgId, memberDtos.stream().map(dto -> dto.userId()).toList());
 
         var data = memberDtos.stream()
                 .map(dto -> new MemberResponse(
@@ -85,7 +92,8 @@ public class OrganizationMembershipService {
                         dto.displayName(),
                         dto.avatarUrl(),
                         dto.roleName(),
-                        dto.joinedAt()))
+                        dto.joinedAt(),
+                        colorsByUserId.get(dto.userId())))
                 .toList();
 
         // Dispatcher は全件リストを返すため、ページネーションはアプリ側でエミュレート
@@ -153,21 +161,40 @@ public class OrganizationMembershipService {
 
     /**
      * 組織に所属するチーム一覧を取得する（team_org_memberships.status = ACTIVE）。
+     *
+     * <p>F01.2.1 4-B: 各チームの {@code group_id} も返す（応答への変換・実効グループの判定・絞り込みは
+     * {@link OrgTeamListService} が行う）。SQL は組織・加盟・チーム・人数の各 1 本で、チーム数に比例して増えない
+     * （AC-G129。従来はチームごとに 2 本ずつ発行していた）。</p>
      */
-    public List<OrgTeamSummaryResponse> getTeams(Long orgId) {
+    public List<OrgTeamMembershipView> getTeams(Long orgId) {
         findOrganizationOrThrow(orgId);
-        return teamOrgMembershipRepository.findByOrganizationIdAndStatus(orgId, TeamOrgMembershipEntity.Status.ACTIVE)
-                .stream()
-                .map(m -> teamRepository.findById(m.getTeamId()).orElse(null))
-                .filter(team -> team != null)
-                .map(team -> new OrgTeamSummaryResponse(
-                        team.getSlug(),
-                        team.getSlug(),
-                        team.getName(),
-                        null,
-                        team.getVisibility().name(),
-                        (int) userRoleRepository.countByTeamId(team.getId())))
-                .toList();
+        List<TeamOrgMembershipEntity> memberships =
+                teamOrgMembershipRepository.findByOrganizationIdAndStatus(orgId, TeamOrgMembershipEntity.Status.ACTIVE);
+        if (memberships.isEmpty()) {
+            return List.of();
+        }
+        List<Long> teamIds = memberships.stream().map(TeamOrgMembershipEntity::getTeamId).toList();
+        Map<Long, TeamEntity> teams = new HashMap<>();
+        teamRepository.findAllById(teamIds).forEach(t -> teams.put(t.getId(), t));
+        Map<Long, Long> memberCounts = new HashMap<>();
+        for (Object[] row : userRoleRepository.countGroupByTeamIdIn(teamIds)) {
+            memberCounts.put((Long) row[0], (Long) row[1]);
+        }
+
+        List<OrgTeamMembershipView> result = new ArrayList<>(memberships.size());
+        for (TeamOrgMembershipEntity m : memberships) {
+            TeamEntity team = teams.get(m.getTeamId());
+            if (team == null) {
+                continue;
+            }
+            result.add(new OrgTeamMembershipView(
+                    team.getSlug(),
+                    team.getName(),
+                    team.getVisibility().name(),
+                    memberCounts.getOrDefault(team.getId(), 0L).intValue(),
+                    m.getGroupId()));
+        }
+        return result;
     }
 
     /**
@@ -191,7 +218,8 @@ public class OrganizationMembershipService {
                             result.add(new OrgAllMembersResponse(
                                     user.getId(),
                                     user.getLastName() + " " + user.getFirstName(),
-                                    user.getAvatarUrl(),
+                                    // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                                    mediaUrlResolver.resolve(user.getAvatarUrl()),
                                     new OrgAllMembersResponse.MemberOf("ORGANIZATION", org.getId(), org.getName()),
                                     roleName));
                         }
@@ -214,7 +242,8 @@ public class OrganizationMembershipService {
                                         result.add(new OrgAllMembersResponse(
                                                 user.getId(),
                                                 user.getLastName() + " " + user.getFirstName(),
-                                                user.getAvatarUrl(),
+                                                // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                                                mediaUrlResolver.resolve(user.getAvatarUrl()),
                                                 new OrgAllMembersResponse.MemberOf("TEAM", team.getId(), team.getName()),
                                                 roleName));
                                     }
@@ -343,6 +372,112 @@ public class OrganizationMembershipService {
         }
         return userRoleRepository.existsInOrgDistributionAudience(
                 orgId, userId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH);
+    }
+
+    /**
+     * 複数組織について「指定ユーザーがトグル準拠の<b>配信母集団</b>に含まれる組織」を
+     * <b>1 クエリ</b>で解決する（Issue #2782・{@link #isInOrgDistributionAudience} のバルク版）。
+     *
+     * <p>{@link #isInOrgDistributionAudience(Long, Long, boolean)} を組織ごとに呼ぶと
+     * <b>組織の種類数に比例</b>して再帰 EXISTS が発行され、F00 可視性基盤の
+     * 「追加軸はバッチ 1 本で先読みする」契約と SQL 本数上限（7 本）を破る。本メソッドは
+     * 再帰 CTE に根 ID を伝播させる先例（{@code findDescendantMembershipRolesByOrgRoots}）と
+     * 同じ作法で、複数根を 1 本にまとめる。</p>
+     *
+     * <p><b>母集団の意味論は単発版と 1 対 1 同一</b>である（純 SUPPORTER 除外は MEMBER 優先・
+     * 除外の走査範囲は各根の部分木に閉じる）。同値であることは実 DB のテストで単発版と
+     * 突き合わせて実証している（{@code SurveyVisibilityResolverAlwaysAudienceBatchIT} の AC-3）。</p>
+     *
+     * <p><b>トグルは呼び出し側で束ねること</b>: {@code includeSupporters} が異なると母集団の定義が
+     * 変わるため、1 回の呼び出しで混在させられない。トグルは 2 値なので、呼び出し側が
+     * {@code (組織, トグル)} をトグルでグループ化すれば発行 SQL は最大 2 本に収まる。</p>
+     *
+     * @param orgIds            母集団の根となる組織 ID 集合（空なら SQL を発行せず空集合を返す）
+     * @param userId            判定対象ユーザー ID（null なら空集合）
+     * @param includeSupporters コンテンツの配信トグル（true=配下 SUPPORTER 含む / false=純 SUPPORTER 除外）
+     * @return 指定ユーザーが配信母集団に含まれる組織 ID の集合（{@code orgIds} の部分集合）
+     */
+    public java.util.Set<Long> resolveOrgDistributionAudienceRoots(
+            java.util.Set<Long> orgIds, Long userId, boolean includeSupporters) {
+        if (userId == null || orgIds == null || orgIds.isEmpty()) {
+            // 空 IN () を避け、対象が無いリクエストでは SQL を一切発行しない。
+            return java.util.Set.of();
+        }
+        return java.util.Set.copyOf(userRoleRepository.findOrgDistributionAudienceRoots(
+                orgIds, userId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH));
+    }
+
+    /**
+     * 組織配信母集団を「ユーザーID → 所属配下チーム（複数）」の対応で返す
+     * （出欠のチーム別内訳 by_team・組織→参加チーム配信 案C フェーズB 公開ラッパー）。
+     *
+     * <p>{@link #resolveOrgDistributionUserIds(Long, boolean)} と<b>同一の母集団・同一の SUPPORTER 除外規約</b>
+     * （対象組織を根とした全子孫組織ツリー・depth 上限 {@value #MAX_ORG_DESCENDANT_DEPTH}）を共有しつつ、
+     * DISTINCT user_id ではなく「ユーザーごとの所属チーム集合」を返す。</p>
+     *
+     * <ul>
+     *   <li><b>組織直属メンバー</b>: {@code team_id = null} の {@link TeamRef}（チーム未所属＝組織直接メンバー枠）を
+     *       そのユーザーの所属リストに含める。</li>
+     *   <li><b>配下参加チーム(ACTIVE)のメンバー</b>: 所属チームごとに {@link TeamRef}(teamId, teamName) を含める。</li>
+     * </ul>
+     *
+     * <p><b>御裁可A（全チーム計上・重複あり）</b>: 配下の複数チームに所属するユーザーは、返り値の List に
+     * 複数の {@link TeamRef} を持つ。さらに組織直属かつチーム所属を兼ねるユーザーは
+     * {@code team_id = null} の TeamRef とチーム TeamRef の両方を持つ。これを呼び出し側（出欠集計）が
+     * 「所属全チームへ 1 票ずつ計上」する。したがって by_team 各チームの合計は配信母集団の<b>実人数以上</b>に
+     * なりうる（total は実人数として別建てで算出すること）。</p>
+     *
+     * <p>チーム名は {@code team} ドメイン（{@link TeamRepository}）から一括解決する（N+1 回避）。
+     * 論理削除済みチームは名前解決できないため除外する。{@code team_id = null} 枠の表示名は
+     * 呼び出し側（i18n・F03.1）が決めるため、ここでは {@code teamName = null} のまま返す。</p>
+     *
+     * @param orgId             配信元となる組織 ID（存在しない場合は {@link OrgErrorCode#ORG_001}）
+     * @param includeSupporters true=応援者も含める / false=応援者を除外する
+     * @return userId → 所属チーム参照（複数）の Map（重複計上前提・在籍中のアクティブユーザーのみ）
+     */
+    public java.util.Map<Long, List<TeamRef>> resolveMemberTeams(Long orgId, boolean includeSupporters) {
+        findOrganizationOrThrow(orgId); // 組織存在チェック（不在なら ORG_001）
+
+        List<Object[]> pairs = userRoleRepository.findDistributionMemberTeamPairsForOrganizationRecursive(
+                orgId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH);
+
+        // 出現したチームID（非null）の名前を team ドメインから一括解決（N+1 回避・Entity を漏らさない）。
+        // teamRepository.findAllById は @SQLRestriction("deleted_at IS NULL") により論理削除済みを自動除外する。
+        java.util.Set<Long> teamIds = new java.util.HashSet<>();
+        for (Object[] row : pairs) {
+            Long teamId = row[1] == null ? null : ((Number) row[1]).longValue();
+            if (teamId != null) {
+                teamIds.add(teamId);
+            }
+        }
+        java.util.Map<Long, String> teamNameById = new java.util.HashMap<>();
+        if (!teamIds.isEmpty()) {
+            for (TeamEntity team : teamRepository.findAllById(teamIds)) {
+                teamNameById.put(team.getId(), team.getName());
+            }
+        }
+
+        java.util.Map<Long, List<TeamRef>> result = new java.util.HashMap<>();
+        for (Object[] row : pairs) {
+            Long userId = ((Number) row[0]).longValue();
+            Long teamId = row[1] == null ? null : ((Number) row[1]).longValue();
+            String teamName = teamId == null ? null : teamNameById.get(teamId);
+            // 論理削除済み等で名前解決できない非null teamId はスキップ（孤児チーム計上を避ける）
+            if (teamId != null && teamName == null) {
+                continue;
+            }
+            result.computeIfAbsent(userId, k -> new ArrayList<>()).add(new TeamRef(teamId, teamName));
+        }
+        return result;
+    }
+
+    /**
+     * 組織配信母集団におけるユーザーの所属チーム参照（出欠のチーム別内訳 by_team 用）。
+     *
+     * @param teamId   所属チーム ID。{@code null} の場合は「チーム未所属（組織直接メンバー）」枠を表す
+     * @param teamName チーム名。{@code teamId = null}（組織直接メンバー枠）の場合は {@code null}
+     */
+    public record TeamRef(Long teamId, String teamName) {
     }
 
     private OrganizationEntity findOrganizationOrThrow(Long orgId) {

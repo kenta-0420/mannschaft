@@ -58,11 +58,12 @@ describe('useNotificationApi', () => {
     it('GET /api/v1/notifications?{qs} を呼ぶ', async () => {
       mockFetch.mockResolvedValueOnce({ data: [], meta: {} })
       const api = useNotificationApi()
-      await api.getNotifications({ limit: 20, isRead: false })
+      await api.getNotifications({ page: 2, size: 20, isRead: false })
 
       const calledUrl = mockFetch.mock.calls[0]![0] as string
       expect(calledUrl).toMatch(/^\/api\/v1\/notifications\?/)
-      expect(calledUrl).toContain('limit=20')
+      expect(calledUrl).toContain('page=2')
+      expect(calledUrl).toContain('size=20')
       expect(calledUrl).toContain('is_read=false')
     })
 

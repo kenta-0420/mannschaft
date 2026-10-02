@@ -11,7 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,8 +25,7 @@ import java.time.LocalDateTime;
 @Table(name = "event_checkins")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class EventCheckinEntity {
 
     @Id
@@ -58,6 +57,7 @@ public class EventCheckinEntity {
     @Column(length = 300)
     private String note;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     // F03.12 ケア対象者見守り通知・点呼機能

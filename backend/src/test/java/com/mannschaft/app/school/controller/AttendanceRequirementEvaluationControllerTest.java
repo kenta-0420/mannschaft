@@ -101,7 +101,7 @@ class AttendanceRequirementEvaluationControllerTest {
         @Test
         @DisplayName("正常系: 評価一覧を返す → 200 + data = []")
         void 正常系_評価一覧を返す() throws Exception {
-            given(evaluationService.getStudentEvaluations(STUDENT_ID))
+            given(evaluationService.getStudentEvaluations(STUDENT_ID, USER_ID))
                     .willReturn(List.of());
 
             mockMvc.perform(get("/api/v1/students/{studentId}/attendance/requirements/evaluations",
@@ -120,7 +120,7 @@ class AttendanceRequirementEvaluationControllerTest {
                     LocalDateTime.of(2026, 5, 1, 10, 0),
                     null, null, null);
 
-            given(evaluationService.getStudentEvaluations(STUDENT_ID))
+            given(evaluationService.getStudentEvaluations(STUDENT_ID, USER_ID))
                     .willReturn(List.of(response));
 
             mockMvc.perform(get("/api/v1/students/{studentId}/attendance/requirements/evaluations",
@@ -148,7 +148,7 @@ class AttendanceRequirementEvaluationControllerTest {
                     new BigDecimal("75.00"), 5,
                     LocalDateTime.of(2026, 5, 1, 10, 0));
 
-            given(evaluationService.getAtRiskStudents(eq(TEAM_ID), any()))
+            given(evaluationService.getAtRiskStudents(eq(TEAM_ID), any(), eq(USER_ID)))
                     .willReturn(List.of(response));
 
             mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/requirements/at-risk", TEAM_ID))
@@ -161,7 +161,7 @@ class AttendanceRequirementEvaluationControllerTest {
         @Test
         @DisplayName("正常系: ステータスフィルターなし → デフォルトで RISK,VIOLATION を返す")
         void 正常系_フィルターなし() throws Exception {
-            given(evaluationService.getAtRiskStudents(eq(TEAM_ID), any()))
+            given(evaluationService.getAtRiskStudents(eq(TEAM_ID), any(), eq(USER_ID)))
                     .willReturn(List.of());
 
             mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/requirements/at-risk", TEAM_ID))
@@ -187,7 +187,7 @@ class AttendanceRequirementEvaluationControllerTest {
                     LocalDateTime.of(2026, 5, 1, 10, 0),
                     null, null, null);
 
-            given(evaluationService.evaluate(STUDENT_ID, RULE_ID)).willReturn(response);
+            given(evaluationService.evaluate(STUDENT_ID, RULE_ID, USER_ID)).willReturn(response);
 
             mockMvc.perform(post("/api/v1/students/{studentId}/attendance/requirements/{ruleId}/evaluate",
                             STUDENT_ID, RULE_ID))

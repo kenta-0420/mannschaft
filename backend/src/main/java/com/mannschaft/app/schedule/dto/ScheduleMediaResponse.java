@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * スケジュールメディア単件レスポンス DTO。
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 public class ScheduleMediaResponse {
 
     /** メディアID */
-    private Long id;
+    private UUID id;
 
     /** メディア種別（"IMAGE" または "VIDEO"） */
     private String mediaType;

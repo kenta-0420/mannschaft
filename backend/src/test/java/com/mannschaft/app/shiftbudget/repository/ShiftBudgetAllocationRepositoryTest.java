@@ -255,10 +255,14 @@ class ShiftBudgetAllocationRepositoryTest extends AbstractMySqlIntegrationTest {
 
         @Test
         @Disabled("Phase 9-γ 検証結果: project_id は設計書 §5.2 通り NULLABLE 維持と決定（マスター御裁可 Q3）。"
-                + "NULL を含む UNIQUE は MySQL 仕様で機能しないため、防衛線は "
-                + "ShiftBudgetAllocationService.findLiveByScope の SELECT FOR UPDATE で確定。"
-                + "本テストは恒久 @Disabled。"
-                + "代替: ShiftBudgetAllocationServiceTest.同一スコープ並行Create_例外")
+                + "NULL を含む素の UNIQUE は MySQL 仕様で機能せず、実 DB の一意性は V11.030 の"
+                + "関数インデックス（COALESCE 番兵値）が担保する。"
+                + "本テストのプロファイルは ddl-auto=create で Entity 由来 DDL を使うため、"
+                + "式を表現できない JPA では当該一意制約を再現できない（2026-09-09 に Entity 側の"
+                + "生成カラム宣言を撤去して Flyway に整合させた）。本テストは恒久 @Disabled。"
+                + "代替: ShiftBudgetAllocationServiceTest.同一スコープ並行Create_例外 と、"
+                + "実 Flyway スキーマ側は common.migration.FlywayFromScratchMigrationTest の"
+                + "「shift_budget_allocations の一意性が関数インデックスで担保されている」")
         @DisplayName("同一スコープ重複INSERT_例外")
         void 同一スコープ重複INSERT_例外() {
             persistAllocation(

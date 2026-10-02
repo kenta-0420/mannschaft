@@ -51,7 +51,7 @@ async function toggleExpand(survey: SurveyResponse) {
     resultsLoading.value = { ...resultsLoading.value, [survey.id]: true }
     try {
       const res = await getResults(survey.id)
-      resultsMap.value = { ...resultsMap.value, [survey.id]: res.data }
+      resultsMap.value = { ...resultsMap.value, [survey.id]: res.data.questionResults }
     } catch (err) {
       captureQuiet(err, { context: `WidgetSurveyResults: 結果取得 surveyId=${survey.id}` })
       resultsMap.value = { ...resultsMap.value, [survey.id]: [] }
@@ -98,6 +98,7 @@ onMounted(load)
         <!-- サマリー行 -->
         <button
           class="flex w-full items-center gap-3 bg-surface-0 px-3 py-2.5 text-left transition-colors hover:bg-surface-50 dark:bg-surface-800 dark:hover:bg-surface-700/60"
+          :data-testid="`widget-survey-toggle-${survey.id}`"
           @click.stop="toggleExpand(survey)"
         >
           <!-- ステータスバッジ -->
@@ -159,11 +160,13 @@ onMounted(load)
 
           <!-- 質問ごとのグラフ -->
           <div v-else>
-            <SurveyQuestionChart
+            <div
               v-for="result in resultsMap[survey.id]"
               :key="result.questionId"
-              :result="result"
-            />
+              :data-testid="`widget-result-question-${result.questionId}`"
+            >
+              <SurveyQuestionChart :result="result" />
+            </div>
           </div>
         </div>
       </div>

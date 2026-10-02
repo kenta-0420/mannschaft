@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 import java.util.List;
 
@@ -43,7 +44,8 @@ public class BlogTagController {
     public ResponseEntity<ApiResponse<List<BlogTagResponse>>> listTags(
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) Long organizationId) {
-        return ResponseEntity.ok(ApiResponse.of(tagService.listTags(teamId, organizationId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                tagService.listTags(SecurityUtils.getCurrentUserId(), teamId, organizationId)));
     }
 
     /**
@@ -54,7 +56,7 @@ public class BlogTagController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<BlogTagResponse>> createTag(
             @Valid @RequestBody CreateTagRequest request) {
-        BlogTagResponse response = tagService.createTag(request);
+        BlogTagResponse response = tagService.createTag(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -67,7 +69,8 @@ public class BlogTagController {
     public ResponseEntity<ApiResponse<BlogTagResponse>> updateTag(
             @PathVariable Long id,
             @Valid @RequestBody UpdateTagRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(tagService.updateTag(id, request)));
+        return ResponseEntity.ok(
+                ApiResponse.of(tagService.updateTag(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     /**
@@ -77,7 +80,7 @@ public class BlogTagController {
     @Operation(summary = "タグ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteTag(@PathVariable Long id) {
-        tagService.deleteTag(id);
+        tagService.deleteTag(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

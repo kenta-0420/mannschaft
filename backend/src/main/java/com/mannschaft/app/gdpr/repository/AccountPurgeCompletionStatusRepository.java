@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -93,4 +94,31 @@ public interface AccountPurgeCompletionStatusRepository
      */
     @Query("SELECT COUNT(e) FROM AccountPurgeCompletionStatusEntity e WHERE e.status = 'PENDING' AND e.attemptedAt < :threshold")
     long countAlerting(@Param("threshold") LocalDateTime threshold);
+
+    /**
+     * 指定ユーザー・ドメインの完了ステータスを SUCCESS に更新する（bulk update・残債1）。
+     *
+     * <p>他の {@code *PurgeEventListener} は {@link #findByUserIdAndDomainName} で取得した
+     * {@link AccountPurgeCompletionStatusEntity} を直接ミューテートして SUCCESS 更新する（Phase D-8 前例・
+     * 凍結 ArchUnit で凍結済みの負債）。billing ドメインからの完了報告はこの方式を採らず、gdpr ドメインの
+     * {@code AccountPurgeCompletionService#markDomainSuccess} だけが本メソッドを呼ぶ。これにより
+     * 他ドメインは gdpr の Repository/Entity に一切触れず、凍結 ArchUnit
+     * {@code CrossDomainEntityImportArchTest}（D-1）/{@code CrossDomainTransactionalArchTest}（D-3）に
+     * 新規違反を作らない（CLAUDE.md「ドメイン間のデータ取得は Service のメソッド呼び出し経由」）。</p>
+     *
+     * <p>トランザクション境界は呼び出し側サービス（{@code AccountPurgeCompletionService}・
+     * {@code REQUIRES_NEW}）が所有する。</p>
+     *
+     * @param userId      対象ユーザー ID
+     * @param domainName  ドメイン識別子（例: {@code "billing"}）
+     * @param completedAt 完了日時
+     * @return 更新件数（0 = 対象レコードなし、1 = 更新成功）
+     */
+    @Modifying
+    @Query("UPDATE AccountPurgeCompletionStatusEntity e SET e.status = 'SUCCESS', e.completedAt = :completedAt "
+            + "WHERE e.userId = :userId AND e.domainName = :domainName")
+    int markSuccess(
+            @Param("userId") Long userId,
+            @Param("domainName") String domainName,
+            @Param("completedAt") LocalDateTime completedAt);
 }

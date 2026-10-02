@@ -50,7 +50,7 @@ public class WorkflowRequestController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<WorkflowRequestResponse> result = requestService.listRequests(
-                scopeType, scopeId, status, PageRequest.of(page, size));
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), status, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -66,7 +66,8 @@ public class WorkflowRequestController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long requestId) {
-        WorkflowRequestResponse response = requestService.getRequest(scopeType, scopeId, requestId);
+        WorkflowRequestResponse response = requestService.getRequest(
+                scopeType, scopeId, requestId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -80,7 +81,7 @@ public class WorkflowRequestController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @Valid @RequestBody CreateWorkflowRequestRequest request) {
-        WorkflowRequestResponse response = requestService.createRequest(
+        WorkflowRequestResponse response = requestService.createRequestAsUser(
                 scopeType, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -96,7 +97,8 @@ public class WorkflowRequestController {
             @PathVariable Long scopeId,
             @PathVariable Long requestId,
             @Valid @RequestBody UpdateWorkflowRequestRequest request) {
-        WorkflowRequestResponse response = requestService.updateRequest(scopeType, scopeId, requestId, request);
+        WorkflowRequestResponse response = requestService.updateRequest(
+                scopeType, scopeId, requestId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -110,7 +112,8 @@ public class WorkflowRequestController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long requestId) {
-        WorkflowRequestResponse response = requestService.submitRequest(scopeType, scopeId, requestId);
+        WorkflowRequestResponse response = requestService.submitRequestAsUser(
+                scopeType, scopeId, requestId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -124,7 +127,8 @@ public class WorkflowRequestController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long requestId) {
-        WorkflowRequestResponse response = requestService.withdrawRequest(scopeType, scopeId, requestId);
+        WorkflowRequestResponse response = requestService.withdrawRequest(
+                scopeType, scopeId, requestId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -138,7 +142,7 @@ public class WorkflowRequestController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long requestId) {
-        requestService.deleteRequest(scopeType, scopeId, requestId);
+        requestService.deleteRequest(scopeType, scopeId, requestId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

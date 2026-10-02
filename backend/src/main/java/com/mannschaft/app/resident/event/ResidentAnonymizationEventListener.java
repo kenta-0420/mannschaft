@@ -1,5 +1,7 @@
 package com.mannschaft.app.resident.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.resident.repository.PropertyListingInquiryRepository;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +51,8 @@ public class ResidentAnonymizationEventListener {
      *
      * @param event 退会即時匿名化イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会済み利用者の住民情報に個人情報が残存し、退会済みなのに PII が残るという不整合になる")
     @Async("event-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

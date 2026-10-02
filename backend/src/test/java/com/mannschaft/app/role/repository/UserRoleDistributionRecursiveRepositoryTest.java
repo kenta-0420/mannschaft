@@ -107,6 +107,15 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         if (roleId != null) {
             return;
         }
+        // 冪等化: roles はグローバル参照テーブルのため、既存の 'MEMBER' があれば再利用する
+        // （同一 name の盲目的 INSERT は roles の UNIQUE 制約違反になる。CI shard 再編成で
+        // 同一 JVM 内の同居テストが変わり得るため、存在確認なしの INSERT は禁止）。
+        List<?> found = em.createNativeQuery("SELECT id FROM roles WHERE name = 'MEMBER'")
+                .getResultList();
+        if (!found.isEmpty()) {
+            roleId = ((Number) found.get(0)).longValue();
+            return;
+        }
         RoleEntity role = RoleEntity.builder()
                 .name("MEMBER")
                 .displayName("メンバー")
@@ -114,6 +123,7 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
                 .isSystem(true)
                 .build();
         em.persist(role);
+        em.flush();
         roleId = role.getId();
     }
 
@@ -465,12 +475,35 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         grantOrgRole(viewer, rootC);        // C の直属
         flushClear();
 
-        List<Long> matched = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
-                java.util.Set.of(rootA, rootB, rootC), viewer, MAX_DEPTH);
+        List<Long> matched = matchedRootIds(
+                java.util.Set.of(rootA, rootB, rootC), viewer);
 
         // A（配下チーム所属）と C（直属）は返り、B は返らない
         assertThat(matched).containsExactlyInAnyOrder(rootA, rootC);
         assertThat(matched).doesNotContain(rootB, leafA, leafB);
+    }
+
+    @Test
+    @DisplayName("バルク版_配下所属のロール名が同じ1クエリで返る（CMP-017b 閾値評価の材料）")
+    void バルク版_ロール名が同時に返る() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long leafTeam = 600_130L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        Long viewer = persistActiveUser();
+        grantTeamRole(viewer, leafTeam);
+        flushClear();
+
+        List<UserRoleRepository.DescendantMembershipRoleProjection> rows =
+                userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                        java.util.Set.of(rootOrg), viewer, MAX_DEPTH);
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getRootOrgId()).isEqualTo(rootOrg);
+        assertThat(rows.get(0).getRoleName())
+                .as("ロール名が取れなければ ORGANIZATION_AND_DESCENDANTS 段で min_view_role を評価できない")
+                .isEqualTo("MEMBER");
     }
 
     @Test
@@ -486,8 +519,7 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         addMembership(supporter, ScopeType.TEAM, leafTeam, RoleKind.SUPPORTER, null);
         flushClear();
 
-        List<Long> matched = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
-                java.util.Set.of(rootOrg), supporter, MAX_DEPTH);
+        List<Long> matched = matchedRootIds(java.util.Set.of(rootOrg), supporter);
 
         assertThat(matched).containsExactly(rootOrg);
     }
@@ -510,9 +542,17 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         flushClear();
 
         // 中間組織が削除 → その配下 leaf も枝刈り → leafTeamMember は root の配下と見なされない
-        List<Long> matched = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
-                java.util.Set.of(rootOrg), leafTeamMember, MAX_DEPTH);
+        List<Long> matched = matchedRootIds(java.util.Set.of(rootOrg), leafTeamMember);
         assertThat(matched).isEmpty();
+    }
+
+    /** バルク版の戻り値（根 ORG × ロール名）から根 ORG ID だけを取り出すヘルパー。 */
+    private List<Long> matchedRootIds(java.util.Set<Long> rootOrgIds, Long userId) {
+        return userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                        rootOrgIds, userId, MAX_DEPTH).stream()
+                .map(UserRoleRepository.DescendantMembershipRoleProjection::getRootOrgId)
+                .distinct()
+                .toList();
     }
 
     // ---------------------------------------------------------------------
@@ -616,5 +656,159 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
             assertThat(userRoleRepository.existsInOrgDistributionAudience(rootOrg, pureSupporter, toggle, MAX_DEPTH))
                     .isEqualTo(bulk.contains(pureSupporter));
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // (7) 出欠のチーム別内訳 by_team（(B) フェーズB）
+    //     findDistributionMemberTeamPairsForOrganizationRecursive:
+    //     (user_id, team_id) ペア・組織直属は team_id=null・複数チーム所属は全チーム計上
+    // ---------------------------------------------------------------------
+
+    /** (user_id, team_id) ペアを {@code Map<userId, List<teamId>>}（null 許容）へ畳み込む。 */
+    private java.util.Map<Long, java.util.List<Long>> toUserTeamMap(List<Object[]> pairs) {
+        java.util.Map<Long, java.util.List<Long>> map = new java.util.HashMap<>();
+        for (Object[] row : pairs) {
+            Long userId = ((Number) row[0]).longValue();
+            Long teamId = row[1] == null ? null : ((Number) row[1]).longValue();
+            map.computeIfAbsent(userId, k -> new java.util.ArrayList<>()).add(teamId);
+        }
+        return map;
+    }
+
+    @Test
+    @DisplayName("by_team番人①: 複数チーム所属者は所属全チームに計上される（御裁可A・重複あり）")
+    void byTeam_複数チーム所属は全チーム計上() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+
+        Long teamA = 600_300L;
+        Long teamB = 600_301L;
+        linkTeamToOrg(teamA, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+        linkTeamToOrg(teamB, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        // user は teamA / teamB 両方に所属 → 両チームに 1 行ずつ
+        Long multiTeamUser = persistActiveUser();
+        grantTeamRole(multiTeamUser, teamA);
+        grantTeamRole(multiTeamUser, teamB);
+        flushClear();
+
+        var map = toUserTeamMap(
+                userRoleRepository.findDistributionMemberTeamPairsForOrganizationRecursive(rootOrg, false, MAX_DEPTH));
+
+        assertThat(map).containsKey(multiTeamUser);
+        assertThat(map.get(multiTeamUser)).containsExactlyInAnyOrder(teamA, teamB);
+    }
+
+    @Test
+    @DisplayName("by_team番人②: 組織直属メンバーは team_id=null 枠で拾われる")
+    void byTeam_組織直属はteamNull枠() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+
+        Long orgDirect = persistActiveUser();
+        grantOrgRole(orgDirect, leafOrg); // 配下組織の直属（チーム未所属）
+        flushClear();
+
+        var map = toUserTeamMap(
+                userRoleRepository.findDistributionMemberTeamPairsForOrganizationRecursive(rootOrg, false, MAX_DEPTH));
+
+        assertThat(map).containsKey(orgDirect);
+        // 組織直属は team_id=null の 1 行のみ
+        assertThat(map.get(orgDirect)).containsExactly((Long) null);
+    }
+
+    @Test
+    @DisplayName("by_team番人③: 組織直属かつチーム所属を兼ねるユーザーは null枠とチーム枠の両方に計上")
+    void byTeam_組織直属とチーム兼任は両方計上() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long teamA = 600_310L;
+        linkTeamToOrg(teamA, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        Long both = persistActiveUser();
+        grantOrgRole(both, leafOrg); // 組織直属
+        grantTeamRole(both, teamA);  // かつチーム所属
+        flushClear();
+
+        var map = toUserTeamMap(
+                userRoleRepository.findDistributionMemberTeamPairsForOrganizationRecursive(rootOrg, false, MAX_DEPTH));
+
+        assertThat(map.get(both)).containsExactlyInAnyOrder(null, teamA);
+    }
+
+    @Test
+    @DisplayName("by_team番人④: by_team各チームの合計（のべ人数）≧ DISTINCT実人数（total別建て）")
+    void byTeam_のべ人数は実人数以上() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long teamA = 600_320L;
+        Long teamB = 600_321L;
+        linkTeamToOrg(teamA, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+        linkTeamToOrg(teamB, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        // u1: teamA/teamB 兼任、u2: teamA のみ、u3: 組織直属
+        Long u1 = persistActiveUser();
+        grantTeamRole(u1, teamA);
+        grantTeamRole(u1, teamB);
+        Long u2 = persistActiveUser();
+        grantTeamRole(u2, teamA);
+        Long u3 = persistActiveUser();
+        grantOrgRole(u3, leafOrg);
+        flushClear();
+
+        List<Object[]> pairs =
+                userRoleRepository.findDistributionMemberTeamPairsForOrganizationRecursive(rootOrg, false, MAX_DEPTH);
+        var map = toUserTeamMap(pairs);
+
+        // のべ人数（ペア行数）= u1(2) + u2(1) + u3(1) = 4
+        long byTeamTotal = pairs.size();
+        // 実人数（DISTINCT）= 3（別建て・findDistributionUserIdsForOrganizationRecursive と一致）
+        long realTotal =
+                userRoleRepository.findDistributionUserIdsForOrganizationRecursive(rootOrg, false, MAX_DEPTH).size();
+
+        assertThat(map.keySet()).containsExactlyInAnyOrder(u1, u2, u3);
+        assertThat(realTotal).isEqualTo(3);
+        assertThat(byTeamTotal).isGreaterThanOrEqualTo(realTotal);
+        assertThat(byTeamTotal).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("by_team番人⑤: 純SUPPORTERはトグルOFFで除外・ONで含まれる（配信母集団と一致）")
+    void byTeam_SUPPORTER除外はトグル準拠() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long teamA = 600_330L;
+        linkTeamToOrg(teamA, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        Long pureSupporter = persistActiveUser();
+        grantTeamRole(pureSupporter, teamA);
+        addMembership(pureSupporter, ScopeType.TEAM, teamA, RoleKind.SUPPORTER, null);
+        flushClear();
+
+        var offMap = toUserTeamMap(
+                userRoleRepository.findDistributionMemberTeamPairsForOrganizationRecursive(rootOrg, false, MAX_DEPTH));
+        assertThat(offMap).doesNotContainKey(pureSupporter);
+
+        var onMap = toUserTeamMap(
+                userRoleRepository.findDistributionMemberTeamPairsForOrganizationRecursive(rootOrg, true, MAX_DEPTH));
+        assertThat(onMap).containsKey(pureSupporter);
+        assertThat(onMap.get(pureSupporter)).containsExactly(teamA);
+    }
+
+    @Test
+    @DisplayName("by_team番人⑥: 未承認チーム(status!=ACTIVE)のメンバーは計上されない")
+    void byTeam_非ACTIVEチームは計上されない() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long pendingTeam = 600_340L;
+        linkTeamToOrg(pendingTeam, leafOrg, TeamOrgMembershipEntity.Status.PENDING);
+
+        Long member = persistActiveUser();
+        grantTeamRole(member, pendingTeam);
+        flushClear();
+
+        var map = toUserTeamMap(
+                userRoleRepository.findDistributionMemberTeamPairsForOrganizationRecursive(rootOrg, false, MAX_DEPTH));
+        assertThat(map).doesNotContainKey(member);
     }
 }

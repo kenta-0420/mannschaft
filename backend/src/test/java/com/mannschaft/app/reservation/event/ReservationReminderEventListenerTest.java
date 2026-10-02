@@ -3,6 +3,8 @@ package com.mannschaft.app.reservation.event;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
 import com.mannschaft.app.reservation.service.ReservationReminderService;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 
@@ -43,9 +46,20 @@ class ReservationReminderEventListenerTest {
     private static final Long ACTOR_USER_ID = 42L;
     private static final String SLOT_TITLE = "コートA";
 
-    /** 固定現在時刻: 2026-06-18T10:00（UTC 固定 Clock）。 */
+    /**
+     * 固定現在時刻: 2026-06-18T10:00。
+     *
+     * <p>Issue #2526 是正済み判定: {@code onReservationConfirmed} は slotStartAt（業務ローカル時刻）
+     * 基準で remindAt を逆算するため、比較対象の now も
+     * {@code LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))} で求める。
+     * この Clock が表す瞬間は「JVM 既定ゾーンで解釈すると {@link #NOW} になる」ものである必要があり、
+     * かつての {@code NOW.toInstant(ZoneOffset.UTC)} は UTC 基準比較というバグ実装を固定していた
+     * （実行環境の既定ゾーンが UTC でない場合に破綻する）。{@link ZoneId#systemDefault()} 経由で
+     * instant 化することで、実行環境に関わらず {@link #NOW} が正しく渡るようにする。
+     */
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 6, 18, 10, 0);
-    private final Clock fixedClock = Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
+    private final Clock fixedClock =
+            Clock.fixed(NOW.atZone(java.time.ZoneId.systemDefault()).toInstant(), ZoneOffset.UTC);
 
     @Mock
     private ReservationPolicyService policyService;
@@ -71,6 +85,10 @@ class ReservationReminderEventListenerTest {
         listener = new ReservationReminderEventListener(policyService, reminderService, fixedClock);
     }
 
+    private void initListener(Clock clock) {
+        listener = new ReservationReminderEventListener(policyService, reminderService, clock);
+    }
+
     @Nested
     @DisplayName("onReservationConfirmed（リマインド時刻の逆算）")
     class OnReservationConfirmed {
@@ -89,6 +107,28 @@ class ReservationReminderEventListenerTest {
             verify(reminderService).generateReminders(eq(RESERVATION_ID), captor.capture());
             assertThat(captor.getValue())
                     .containsExactly(slotStartAt.minusHours(24), slotStartAt.minusHours(1));
+        }
+
+        @Test
+        @DisplayName("America/New_York の壁時計をInstant化し、DST切替後も同じ期限を生成する")
+        void teamTimezoneInstantIsUsedAcrossDst() {
+            TeamTimezoneResolver resolver = org.mockito.Mockito.mock(TeamTimezoneResolver.class);
+            Instant slotInstant = Instant.parse("2026-11-01T17:00:00Z");
+            when(resolver.toInstant(eq(TEAM_ID), eq(java.time.LocalDate.of(2026, 11, 1)),
+                    eq(java.time.LocalTime.of(12, 0)))).thenReturn(slotInstant);
+            givenPolicy("24,1");
+            initListener();
+            ReflectionTestUtils.setField(listener, "teamTimezoneResolver", resolver);
+
+            listener.onReservationConfirmed(eventWithSlotStart(LocalDateTime.of(2026, 11, 1, 12, 0)));
+
+            ArgumentCaptor<List<LocalDateTime>> captor = ArgumentCaptor.captor();
+            verify(reminderService).generateReminders(eq(RESERVATION_ID), captor.capture());
+            assertThat(captor.getValue()).containsExactly(
+                    LocalDateTime.ofInstant(slotInstant.minusSeconds(24 * 3600L),
+                            com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE),
+                    LocalDateTime.ofInstant(slotInstant.minusSeconds(3600),
+                            com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE));
         }
 
         @Test
@@ -178,6 +218,41 @@ class ReservationReminderEventListenerTest {
             listener.onReservationConfirmed(eventWithSlotStart(slotStartAt));
 
             verify(reminderService, never()).generateReminders(eq(RESERVATION_ID), anyList());
+        }
+
+        @Test
+        @DisplayName(
+                "Issue #2526 番人: 過去判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+        void 過去判定はClockのゾーンに左右されない() {
+            // slotStartAt は業務ローカル時刻。「業務基準（JVM 既定ゾーン。実行環境に依存し得るため
+            // 決め打ちしない）で見て slotStartAt の 1h 前より 1 分手前」を、実際の JVM 既定ゾーンで
+            // instant 化した「同一瞬間」を、ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）
+            // で表現する。正しい実装なら Clock 自身のゾーンに左右されず、
+            // どちらも同じ remindAtList（1h前のみ・24h前は過去でスキップ）を生成するはずである。
+            // 1h 前の目印（11:00）より手前でなければ 1h 前も過去扱いになり生成が 0 件になるため、
+            // minusMinutes(1) であることが本テストの成立条件（plusMinutes だと全件スキップ）。
+            LocalDateTime slotStartAt = LocalDateTime.of(2026, 6, 20, 12, 0);
+            Instant sameInstant = slotStartAt.minusHours(1).minusMinutes(1)
+                    .atZone(java.time.ZoneId.systemDefault()).toInstant();
+            givenPolicy("24,1");
+
+            initListener(Clock.fixed(sameInstant, ZoneOffset.UTC));
+            listener.onReservationConfirmed(eventWithSlotStart(slotStartAt));
+            ArgumentCaptor<List<LocalDateTime>> captorUtc = ArgumentCaptor.captor();
+            verify(reminderService).generateReminders(eq(RESERVATION_ID), captorUtc.capture());
+
+            initListener(Clock.fixed(sameInstant, java.time.ZoneId.of("Asia/Tokyo")));
+            listener.onReservationConfirmed(eventWithSlotStart(slotStartAt));
+            ArgumentCaptor<List<LocalDateTime>> captorTokyo = ArgumentCaptor.captor();
+            verify(reminderService, org.mockito.Mockito.times(2))
+                    .generateReminders(eq(RESERVATION_ID), captorTokyo.capture());
+
+            assertThat(captorUtc.getValue())
+                    .as("UTC Clock: 24h前は過去でスキップ・1h前のみ未来のはず")
+                    .containsExactly(slotStartAt.minusHours(1));
+            assertThat(captorTokyo.getAllValues().get(1))
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
+                    .isEqualTo(captorUtc.getValue());
         }
     }
 

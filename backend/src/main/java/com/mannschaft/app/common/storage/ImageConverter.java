@@ -81,6 +81,46 @@ public final class ImageConverter {
     }
 
     /**
+     * 白背景に合成しつつリサイズする（アスペクト比維持・拡大なし）。
+     *
+     * <p>package-private の {@link #resize(BufferedImage, int)} は {@code TYPE_INT_RGB} を
+     * 作って直接 {@code drawImage} するだけで背景を塗らないため、透過 PNG が黒く潰れる。
+     * 本メソッドは描画前に白で塗り潰すことでこれを避ける。F08.4 領収書ロゴが利用する。</p>
+     *
+     * <p>処理内容は {@code ResumePhotoService} が自前実装している合成処理と同一である。
+     * 将来そちらを本メソッドへ寄せられるが、本戦役では寄せない。</p>
+     *
+     * @param original 元画像
+     * @param maxSize  長辺の上限（px）。元画像がこれ以下なら拡大しない
+     * @return 白背景に合成されたリサイズ後の画像（{@code TYPE_INT_RGB}）
+     */
+    public static BufferedImage resizeOnWhiteBackground(BufferedImage original, int maxSize) {
+        int origWidth = original.getWidth();
+        int origHeight = original.getHeight();
+
+        double scale = Math.min((double) maxSize / origWidth, (double) maxSize / origHeight);
+        if (scale >= 1.0) {
+            scale = 1.0;
+        }
+
+        int width = Math.max(1, (int) Math.round(origWidth * scale));
+        int height = Math.max(1, (int) Math.round(origHeight * scale));
+
+        BufferedImage flattened = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = flattened.createGraphics();
+        try {
+            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            // 透過部分が黒くならないよう、描画前に白で塗り潰す。
+            g2d.setColor(Color.WHITE);
+            g2d.fillRect(0, 0, width, height);
+            g2d.drawImage(original, 0, 0, width, height, null);
+        } finally {
+            g2d.dispose();
+        }
+        return flattened;
+    }
+
+    /**
      * 画像のリサイズ（アスペクト比維持）。
      */
     static BufferedImage resize(BufferedImage original, int maxSize) {

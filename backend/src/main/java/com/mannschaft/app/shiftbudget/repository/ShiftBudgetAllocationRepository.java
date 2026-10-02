@@ -90,6 +90,68 @@ public interface ShiftBudgetAllocationRepository
             @Param("date") LocalDate date);
 
     /**
+     * 同一チームに対し、<b>別の組織</b>が持つ期間の重なる生存割当を排他ロック付きで取得する
+     * （F01.2.1 AC-N10 / AC-N15。重なり判定は閉区間 {@code [start, end]} 同士）。
+     *
+     * <p>チームは複数の組織に加盟しうるため、予算の計上先を一意に保つには「同じチーム・重なる期間に
+     * 複数の組織が割当を持たない」ことを作成時に保証する必要がある。同一組織内の重複は
+     * {@link #findLiveByScope} と関数インデックスが担う。</p>
+     *
+     * <p><b>ロック付きで読む理由</b>: MySQL の REPEATABLE READ では、同一トランザクション内で先に
+     * 通常の SELECT（機能フラグ・権限の確認）をしていると、以降の通常 SELECT は古いスナップショットを
+     * 読み、先に COMMIT した他組織の割当を見落とす。ロック付き読み取りは常に最新のコミット済み行を読む
+     * ので、チーム行のロック取得後にここで判定すれば競合を確実に検出できる。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM ShiftBudgetAllocationEntity a "
+            + "WHERE a.teamId = :teamId "
+            + "  AND a.organizationId <> :organizationId "
+            + "  AND a.periodStart <= :periodEnd "
+            + "  AND a.periodEnd >= :periodStart "
+            + "  AND a.deletedAt IS NULL")
+    List<ShiftBudgetAllocationEntity> findLiveOverlappingByOtherOrganizations(
+            @Param("teamId") Long teamId,
+            @Param("organizationId") Long organizationId,
+            @Param("periodStart") LocalDate periodStart,
+            @Param("periodEnd") LocalDate periodEnd);
+
+    /**
+     * 指定日を含む、チーム個別の生存割当を持つ組織のうち、チームが ACTIVE 加盟している組織を返す
+     * （シフト公開の計上先の解決用。F01.2.1 §9.2 #14）。
+     *
+     * <p>作成時に「重なる期間は 1 組織のみ」を保証しているため通常は 0 または 1 件。
+     * 昇順で決定的に返す。</p>
+     */
+    @Query(value =
+            "SELECT DISTINCT a.organization_id FROM shift_budget_allocations a "
+                    + "INNER JOIN team_org_memberships tom "
+                    + "   ON tom.team_id = a.team_id AND tom.organization_id = a.organization_id "
+                    + "  AND tom.status = 'ACTIVE' "
+                    + "WHERE a.team_id = :teamId "
+                    + "  AND a.period_start <= :date AND a.period_end >= :date "
+                    + "  AND a.deleted_at IS NULL "
+                    + "ORDER BY a.organization_id",
+            nativeQuery = true)
+    List<Long> findOrganizationIdsWithTeamAllocationContaining(
+            @Param("teamId") Long teamId, @Param("date") LocalDate date);
+
+    /**
+     * 指定日を含む、組織全体割当（{@code team_id IS NULL}）を持つ組織のうち、チームが ACTIVE 加盟している
+     * 組織を返す（チーム個別の割当が無いときのフォールバック用）。昇順で決定的に返す。
+     */
+    @Query(value =
+            "SELECT DISTINCT a.organization_id FROM shift_budget_allocations a "
+                    + "INNER JOIN team_org_memberships tom "
+                    + "   ON tom.organization_id = a.organization_id AND tom.status = 'ACTIVE' "
+                    + "WHERE tom.team_id = :teamId AND a.team_id IS NULL "
+                    + "  AND a.period_start <= :date AND a.period_end >= :date "
+                    + "  AND a.deleted_at IS NULL "
+                    + "ORDER BY a.organization_id",
+            nativeQuery = true)
+    List<Long> findOrganizationIdsWithOrgWideAllocationContaining(
+            @Param("teamId") Long teamId, @Param("date") LocalDate date);
+
+    /**
      * {@code consumed_amount} をアトミックに加算する（マスター御裁可 Q4 採用方針）。
      *
      * <p>{@code @Version} を介さない直接 UPDATE のため、楽観ロック競合を発生させずに
@@ -156,6 +218,28 @@ public interface ShiftBudgetAllocationRepository
      * <p>{@code period_start ≥ monthStart かつ period_end ≤ monthEnd} の生存レコードを返す。
      * 多テナント分離のため {@code organization_id} を強制条件に含める。</p>
      */
+    /**
+     * 月次締めのために割当 1 件を<b>排他ロック付きで</b>取得する（CMP-260910-1556）。
+     *
+     * <p>{@code MonthlyShiftBudgetCloseService#closeOneAllocation} は
+     * 「月次仕訳が未作成であること」を確認してから PLANNED 消化を CONFIRMED 化し
+     * {@code confirmed_amount} を加算する。この確認と更新の間に他トランザクションが
+     * 割り込むと、両者とも「未締め」と判定して<b>同じ PLANNED 消化を二重に計上</b>する
+     * （手動 API の同時送信、手動 API と cron の重なりで実際に起こりうる）。
+     * {@code budget_transactions} には
+     * {@code (source_type, source_id, transaction_date)} の一意制約が無いため、
+     * 仕訳も 2 件入って会計金額が倍になる。</p>
+     *
+     * <p>本メソッドで割当行を {@code SELECT ... FOR UPDATE} 相当でロックし、
+     * 以降の確認・更新をその保護下で行うことで直列化する。</p>
+     *
+     * @param allocationId 割当 ID
+     * @return ロック取得済みの割当（存在しない場合は empty）
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM ShiftBudgetAllocationEntity a WHERE a.id = :allocationId")
+    Optional<ShiftBudgetAllocationEntity> findByIdForUpdate(@Param("allocationId") Long allocationId);
+
     @Query("SELECT a FROM ShiftBudgetAllocationEntity a "
             + "WHERE a.organizationId = :organizationId "
             + "  AND a.periodStart >= :monthStart "

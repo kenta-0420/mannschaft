@@ -1,5 +1,5 @@
 export type PaymentItemType = 'ANNUAL_FEE' | 'MONTHLY_FEE' | 'ITEM' | 'DONATION' | 'TERM'
-export type PaymentMethod = 'STRIPE' | 'MANUAL'
+export type PaymentMethod = 'STRIPE' | 'MANUAL' | 'CASH' | 'BANK_TRANSFER'
 export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED' | 'CANCELLED'
 /** F08.9 P8: member_payments の集計3区分。valid_until + grace_period_days < CURDATE() を EXPIRED とする。 */
 export type MemberPaymentDisplayStatus = 'UNPAID' | 'PAID' | 'EXPIRED'
@@ -65,10 +65,31 @@ export interface MemberPaymentResponse {
   }
 }
 
+/**
+ * F08.9 一括手動記録の結果（BE: BulkPaymentResponse）。
+ * createdCount=新規作成件数 / skippedCount=スキップ件数（既払い・重複・非対象等）。
+ */
+export interface BulkPaymentResponse {
+  createdCount: number
+  skippedCount: number
+  skipped: Array<{ userId: number; reason: string }>
+}
+
 export interface CheckoutSessionResponse {
   checkoutUrl: string
   sessionId: string
   expiresAt: string
+}
+
+export interface ConnectCheckoutResponse {
+  clientSecret: string
+  memberPaymentId: number
+  escrowTransactionId: string
+}
+
+export interface ConnectCheckoutStatusResponse {
+  memberPaymentId: number
+  status: PaymentStatus
 }
 
 export interface PaymentSummaryResponse {
@@ -155,7 +176,7 @@ export interface PayableDueItem {
   totalCharge: number
   dueDate: string | null
   kind: 'ONE_TIME' | 'RECURRING' | 'TERM'
-  authorizationVia: 'SELF' | 'GUARDIAN' | 'GUARDIAN_PROXY' | 'PROXY_GRANT'
+  authorizationVia: 'SELF' | 'GUARDIAN' | 'GUARDIAN_PROXY'
   alreadyPaid: boolean
   paidByUserId: number | null
   paidByDisplayName: string | null
@@ -222,4 +243,14 @@ export interface FeeStatementResponse {
   currency: string
   /** 発行者名（例: "Mannschaft"） */
   issuerName: string
+}
+
+/**
+ * F08.9: 受益者制限設定レスポンス（AC-S8）。
+ * BE: GET /api/v1/teams/{id}/payment-beneficiary-setting
+ *     GET /api/v1/organizations/{id}/payment-beneficiary-setting
+ */
+export interface BeneficiarySettingResponse {
+  /** true: 会員のみに受益者を限定（応援者を除外）。false: 応援者も受益者に含める。 */
+  beneficiaryMemberOnly: boolean
 }

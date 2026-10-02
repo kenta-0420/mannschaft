@@ -3,6 +3,8 @@ package com.mannschaft.app.favorite.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.FavoriteErrorCode;
 import com.mannschaft.app.favorite.dto.FavoriteCheckResultDto;
@@ -46,8 +48,13 @@ import java.util.UUID;
  *   <li>PATCH  /api/v1/me/favorites/reorder ─ 30 req/時</li>
  * </ul>
  *
- * <p>IDOR 対策はサービス層で実施し、他人のお気に入りへのアクセス試行には
- * {@code FAV_004} (403) を返す。
+ * <p>認可は {@code FavoriteAccessGuard} に集約する:
+ * <ul>
+ *   <li>お気に入り行の参照・削除は<b>登録した本人のみ</b>。他人のお気に入り ID には
+ *       {@code FAV_004}（403）を返し、不存在は {@code FAV_003}（404）。</li>
+ *   <li>登録対象（チーム／組織）は F00 共通可視性ラダーで<b>閲覧できる対象のみ</b>登録できる。
+ *       閲覧できない対象は {@code FAV_003}（404）で存在を秘匿する。</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/v1/me/favorites")
@@ -69,6 +76,8 @@ public class FavoriteController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "成功"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未認証")
     })
+    @SelfScopedEndpoint("一覧の対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listFavorites メソッド本体）")
     public ResponseEntity<ApiResponse<List<FavoriteResponse>>> listFavorites() {
         Long userId = SecurityUtils.getCurrentUserId();
         List<FavoriteResponse> responses = favoriteService.getFavorites(userId).stream()
@@ -90,6 +99,10 @@ public class FavoriteController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "entityType 不正"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未認証")
     })
+    // 認可の所在: FavoriteService.checkFavorite（favorite/service/FavoriteService.java:193）が
+    // userFavoriteRepository.findByUserIdAndEntityTypeAndEntityId で常に userId を検索条件に
+    // AND 結合するため、entityId が他人に属していても自分の登録有無としてのみ結果が返る。
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<FavoriteCheckResponse>> checkFavorite(
             @RequestParam("entityType") String entityTypeStr,
             @RequestParam("entityId") String entityId) {
@@ -185,13 +198,19 @@ public class FavoriteController {
     @PatchMapping("/reorder")
     @Operation(summary = "お気に入り並び替え",
             description = "orderedIds の順序でお気に入りの displayOrder を一括更新する。"
-                    + "リストに含まれていないIDは変更されない。")
+                    + "リストに含まれていないIDは変更されない。"
+                    + "並び替え対象は認証ユーザー自身のお気に入りに限られ、自分の登録に無いIDは404。")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "更新成功"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "バリデーションエラー"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "未認証"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "他ユーザーのお気に入りが含まれている")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "自分のお気に入りに存在しないIDが含まれている")
     })
+    // 認可の所在: FavoriteService.reorderFavorites（favorite/service/FavoriteService.java:134）が
+    // userId 所有分のみを対象にロードし、orderedIds が自分の所有物に無ければ FAV_003（404）で
+    // 秘匿する。並び替えは引き当てた自分の Entity にのみ適用される。
+    @AuthorizedInService
     public ResponseEntity<Void> reorderFavorites(
             @Valid @RequestBody ReorderFavoritesRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();

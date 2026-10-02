@@ -18,7 +18,7 @@ async function loadData(page = 0) {
   try {
     const res = await chartApi.listMyCharts({ page, size: 20 })
     charts.value = res.data
-    totalRecords.value = res.meta.totalElements
+    totalRecords.value = res.meta.total
   } catch {
     notification.error('カルテの取得に失敗しました')
   } finally {
@@ -40,8 +40,7 @@ onMounted(() => loadData())
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <BackButton to="/my" />
-    <PageHeader title="マイカルテ" />
+    <PageHeader title="マイカルテ" back-to="/my" />
 
     <PageLoading v-if="loading" />
 

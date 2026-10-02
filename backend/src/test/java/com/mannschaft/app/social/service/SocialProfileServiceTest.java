@@ -191,6 +191,61 @@ class SocialProfileServiceTest {
     }
 
     // ========================================
+    // getMyProfile
+    // ========================================
+    @Nested
+    @DisplayName("getMyProfile")
+    class GetMyProfile {
+
+        @Test
+        @DisplayName("未作成ユーザー: 例外を投げずnullを返す（AC1: 400ではなく200 data:null）")
+        void 未作成ユーザーはnullを返す() {
+            // given
+            given(profileRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+
+            // when
+            ProfileResponse result = socialProfileService.getMyProfile(USER_ID);
+
+            // then
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("作成済みユーザー: プロフィールを返す（AC2: 200でプロフィール本体）")
+        void 作成済みユーザーはプロフィールを返す() {
+            // given
+            UserSocialProfileEntity profile = createProfile();
+            given(profileRepository.findByUserId(USER_ID)).willReturn(Optional.of(profile));
+            given(followRepository.countByFollowerTypeAndFollowerId(FollowerType.USER, USER_ID)).willReturn(3L);
+            given(followRepository.countByFollowedTypeAndFollowedId(FollowerType.USER, USER_ID)).willReturn(5L);
+
+            // when
+            ProfileResponse result = socialProfileService.getMyProfile(USER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getUserId()).isEqualTo(USER_ID);
+            assertThat(result.getHandle()).isEqualTo("testuser");
+            assertThat(result.getFollowingCount()).isEqualTo(3L);
+            assertThat(result.getFollowerCount()).isEqualTo(5L);
+        }
+
+        @Test
+        @DisplayName("非回帰: updateProfile は未作成ユーザーで PROFILE_NOT_FOUND を投げる（AC5）")
+        void updateProfile_未作成はPROFILE_NOT_FOUNDを投げる() {
+            // given
+            UpdateProfileRequest req = new UpdateProfileRequest(null, "名前", null, null);
+            given(profileRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> socialProfileService.updateProfile(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SocialErrorCode.PROFILE_NOT_FOUND));
+        }
+    }
+
+    // ========================================
     // getProfileByHandle
     // ========================================
     @Nested

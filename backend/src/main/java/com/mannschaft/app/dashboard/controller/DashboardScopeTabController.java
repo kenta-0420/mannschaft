@@ -25,11 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
  * チーム/組織パネルのウィジェット拡張・統合「要対応」集計は別フェーズ（Wave 2）の担当。</p>
  *
  * <p>認可: クラス全体に {@code @PreAuthorize("isAuthenticated()")}（コントローラ二重防御・02 §2.2）。
- * ただし本アプリは {@code @EnableMethodSecurity} が未有効のため、この注釈は実機では効かず
- * 宣言的な二重防御（将来 method-security 有効化時に効く）にとどまる。
- * 実機の認証強制は SecurityConfig の {@code .anyRequest().authenticated()} フォールバックが担い、
- * これが {@code /api/v1/dashboard/**} を既にカバーするため SecurityConfig への追記は不要。
- * さらにサービス層が {@link com.mannschaft.app.common.SecurityUtils#getCurrentUserId()} で
+ * SecurityConfig の {@code .anyRequest().authenticated()} フォールバックも
+ * {@code /api/v1/dashboard/**} をカバーしており、さらにサービス層が
+ * {@link com.mannschaft.app.common.SecurityUtils#getCurrentUserId()} で
  * 未認証を 401（COMMON_000）に弾くため、認証は三重に担保される。</p>
  *
  * <p>設計書: docs/features/F22.1_swipe_scope_dashboard/02_api_design.md §3.1 / §3.2</p>

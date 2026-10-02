@@ -2,7 +2,7 @@
 import dayjs from 'dayjs'
 import type { AnnualViewMonth, EventCategory, CopyPreviewItem } from '~/types/annual-plan'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

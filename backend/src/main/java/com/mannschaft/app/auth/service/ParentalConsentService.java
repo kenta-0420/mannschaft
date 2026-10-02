@@ -45,6 +45,12 @@ public class ParentalConsentService {
     /** 招待メールのレートリミット: 24時間で最大10回 */
     private static final int INVITE_MAX_ATTEMPTS = 10;
     private static final Duration INVITE_RATE_LIMIT_WINDOW = Duration.ofHours(24);
+    /**
+     * 公開網漏れ是正: approve / reject のトークン総当り防止用レートリミット（IP 単位）。
+     * {@code getApprovalRequest} 呼び出し前にチェックする。register と同じ 10 回/時に揃える。
+     */
+    private static final int CONSENT_DECISION_MAX_ATTEMPTS = 10;
+    private static final Duration CONSENT_DECISION_WINDOW = Duration.ofHours(1);
     /** 招待トークン有効期間: 7日間 */
     private static final int TOKEN_EXPIRY_DAYS = 7;
     /** PENDING 招待の同時上限 */
@@ -239,11 +245,19 @@ public class ParentalConsentService {
      * 保護者同意を承認する。
      * 自己承認防止 / 未成年保護者防止チェックを行い、子ユーザーを ACTIVE に遷移させる。
      *
+     * <p>公開網漏れ是正: 未認証で叩ける permitAll エンドポイントのためトークン総当り防止として
+     * IP 単位のレートリミット（{@value #CONSENT_DECISION_MAX_ATTEMPTS} 回 /
+     * {@value #CONSENT_DECISION_WINDOW}）を先頭で通す。</p>
+     *
      * @param token        平文トークン
      * @param parentUserId 承認する保護者のユーザー ID
+     * @param ipAddress    リクエスト元 IP アドレス
      */
     @Transactional
-    public void approveParentalConsent(String token, Long parentUserId) {
+    public void approveParentalConsent(String token, Long parentUserId, String ipAddress) {
+        String rateLimitKey = "mannschaft:auth:parental_consent_decision:" + ipAddress;
+        authTokenService.checkRateLimit(rateLimitKey, CONSENT_DECISION_MAX_ATTEMPTS, CONSENT_DECISION_WINDOW);
+
         ParentalConsentLinkEntity link = getApprovalRequest(token);
 
         // 自己承認チェック
@@ -293,10 +307,17 @@ public class ParentalConsentService {
      * PENDING かつ有効期限内のリンクに対してのみ実行可能。
      * 全保護者が拒否した（APPROVED / PENDING が 0 件）場合は子アカウントを論理削除する。
      *
-     * @param token 平文トークン
+     * <p>公開網漏れ是正: {@link #approveParentalConsent} と同じ IP 単位レートリミットを先頭で通す
+     * （同一 zone を共有し、approve/reject 双方の合算で 1 時間 10 回まで）。</p>
+     *
+     * @param token     平文トークン
+     * @param ipAddress リクエスト元 IP アドレス
      */
     @Transactional
-    public void rejectParentalConsent(String token) {
+    public void rejectParentalConsent(String token, String ipAddress) {
+        String rateLimitKey = "mannschaft:auth:parental_consent_decision:" + ipAddress;
+        authTokenService.checkRateLimit(rateLimitKey, CONSENT_DECISION_MAX_ATTEMPTS, CONSENT_DECISION_WINDOW);
+
         ParentalConsentLinkEntity link = getApprovalRequest(token);
 
         link.reject();
@@ -455,6 +476,29 @@ public class ParentalConsentService {
         }
         return parentalConsentLinkRepository.existsByChildUserIdAndParentUserIdAndStatus(
                 childUserId, parentUserId, ParentalConsentLinkStatus.APPROVED);
+    }
+
+    /**
+     * 指定ユーザーが対象の子ユーザーと<b>過去に一度でも</b>保護者リンクを持ったことがあるか
+     * （ステータスを問わない）を判定する。
+     *
+     * <p>F08.9 後見切替終了（{@code GuardianshipSwitchService#endSwitch}）の認可から呼び出される
+     * 境界メソッド。切替終了はサーバ側に解除すべき状態を持たない監査記録のみの操作だが、
+     * 一切の関係がない第三者が任意の {@code childUserId} を指定して監査ログへ
+     * 「保護者Xが子Yへの切替を終了した」という事実と異なる記録を作れてしまう穴を塞ぐため、
+     * 現在の状態（{@link #isApprovedGuardian}）より<b>緩い</b>存在チェックとして用意する。
+     * 切替中にリンクが解除された正当な保護者を締め出さないため、現在 REVOKED / REJECTED /
+     * PENDING であっても、当該 (child, parent) の組でリンク行が一度でも作成されていれば true。</p>
+     *
+     * @param parentUserId 保護者候補のユーザー ID
+     * @param childUserId  子のユーザー ID
+     * @return 過去に一度でも当該組み合わせのリンクが存在した場合 true
+     */
+    public boolean hasEverBeenGuardian(Long parentUserId, Long childUserId) {
+        if (parentUserId == null || childUserId == null) {
+            return false;
+        }
+        return parentalConsentLinkRepository.existsByChildUserIdAndParentUserId(childUserId, parentUserId);
     }
 
     // ========================================

@@ -5,10 +5,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * コルクボードセクション（グループ）エンティティ。カードをグループ化するためのセクション。
@@ -17,8 +17,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "corkboard_groups")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class CorkboardGroupEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -31,11 +30,11 @@ public class CorkboardGroupEntity extends BaseEntity {
     @Builder.Default
     private Boolean isCollapsed = false;
 
-    @Column(nullable = false)
+    @Column(name = "position_x", nullable = false)
     @Builder.Default
     private Integer positionX = 0;
 
-    @Column(nullable = false)
+    @Column(name = "position_y", nullable = false)
     @Builder.Default
     private Integer positionY = 0;
 

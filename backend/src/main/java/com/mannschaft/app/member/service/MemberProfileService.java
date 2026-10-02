@@ -14,6 +14,7 @@ import com.mannschaft.app.member.dto.ReorderRequest;
 import com.mannschaft.app.member.dto.ReorderResponse;
 import com.mannschaft.app.member.dto.UpdateMemberProfileRequest;
 import com.mannschaft.app.member.entity.MemberProfileEntity;
+import com.mannschaft.app.member.entity.TeamPageEntity;
 import com.mannschaft.app.member.repository.MemberProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,11 +29,16 @@ import java.util.List;
 
 /**
  * メンバープロフィールサービス。プロフィールのCRUD・一括登録・コピー・並び替え・検索を担当する。
+ *
+ * <p><b>TX 境界（PR #3387 D-3T 根治）</b>: クラス単位の {@code @Transactional} を付けない。閲覧系メソッドは
+ * 他ドメインの権限確認（{@code AccessControlService}）を読むので、member の TX の外で走らせる
+ * （付けると権限確認が member の TX に入り、D-3T が赤になる）。書き込みメソッドは必ずメソッド単位の
+ * {@code @Transactional} を持つこと。閲覧で生じる短い隙の扱いは
+ * docs/features/F06.6_member_subtab_visibility.md「TX 境界とレース」節を参照。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class MemberProfileService {
 
     private final MemberProfileRepository profileRepository;
@@ -45,16 +51,38 @@ public class MemberProfileService {
     /**
      * メンバープロフィール一覧をページング取得する。
      */
-    public Page<MemberProfileResponse> listProfiles(Long teamPageId, Pageable pageable) {
-        Page<MemberProfileEntity> page = profileRepository.findByTeamPageIdOrderBySortOrder(teamPageId, pageable);
-        return page.map(memberMapper::toMemberProfileResponse);
+    public Page<MemberProfileResponse> listProfiles(Long actorUserId, Long teamPageId, Pageable pageable) {
+        TeamPageEntity page = pageService.findPageOrThrow(teamPageId);
+        pageService.checkPageViewableOrNotFound(actorUserId, page);
+        // 検分修正（3巡目・P1）: checkPageViewableOrNotFound は「紹介」サブタブ PUBLIC/SUPPORTER 設定で
+        // 通過した非会員も弾かない（外側の門）。組織スコープでは管理者かどうかを見て、非管理者には
+        // is_visible=false の行を除外する（内側の扉）。管理者は編集用途のため全件取得する。
+        // PR #3387 裁可3: 非表示行の除外は組織スコープだけに効かせる。チームスコープの会員には
+        // PR 前どおり非表示行も含めて返す。
+        boolean includeHidden = !isOrganizationPage(page) || pageService.isPageAdmin(actorUserId, page);
+        Page<MemberProfileEntity> result = includeHidden
+                ? profileRepository.findByTeamPageIdOrderBySortOrder(teamPageId, pageable)
+                : profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(teamPageId, pageable);
+        return result.map(memberMapper::toMemberProfileResponse);
     }
 
     /**
      * メンバープロフィール詳細を取得する。
+     *
+     * <p>URL に teamPageId を含まない bare id エンドポイントのため、entity 由来（teamPageId経由の
+     * ページ）スコープで認可判定する（Wave3-B2 member BOLA対策）。</p>
      */
-    public MemberProfileResponse getProfile(Long profileId) {
+    public MemberProfileResponse getProfile(Long actorUserId, Long profileId) {
         MemberProfileEntity entity = findProfileOrThrow(profileId);
+        TeamPageEntity page = pageService.findPageOrThrow(entity.getTeamPageId());
+        pageService.checkPageViewableOrNotFound(actorUserId, page);
+        // 検分修正（3巡目・P1）: 組織スコープの非管理者には非表示（is_visible=false）プロフィールを見せない。
+        // 個別 id を直打ちされても存在を漏らさないため、見つからない場合と同じ 404 秘匿にする
+        // （Wave3-B2 BOLA対策のパターンを踏襲）。PR #3387 裁可3: チームスコープには適用しない。
+        if (Boolean.FALSE.equals(entity.getIsVisible()) && isOrganizationPage(page)
+                && !pageService.isPageAdmin(actorUserId, page)) {
+            throw new BusinessException(MemberErrorCode.PROFILE_NOT_FOUND);
+        }
         return memberMapper.toMemberProfileResponse(entity);
     }
 
@@ -62,9 +90,10 @@ public class MemberProfileService {
      * メンバープロフィールを作成する。
      */
     @Transactional
-    public MemberProfileResponse createProfile(CreateMemberProfileRequest request) {
-        // ページ存在確認
-        pageService.findPageOrThrow(request.getTeamPageId());
+    public MemberProfileResponse createProfile(Long actorUserId, CreateMemberProfileRequest request) {
+        // ページ存在確認 + entity 由来スコープで ADMIN 以上検証（Wave3-B2 member 認可根治）
+        TeamPageEntity page = pageService.findPageOrThrow(request.getTeamPageId());
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
 
         // ユーザー重複チェック
         if (request.getUserId() != null &&
@@ -92,8 +121,10 @@ public class MemberProfileService {
      * メンバープロフィールを更新する。
      */
     @Transactional
-    public MemberProfileResponse updateProfile(Long profileId, UpdateMemberProfileRequest request) {
+    public MemberProfileResponse updateProfile(Long actorUserId, Long profileId, UpdateMemberProfileRequest request) {
         MemberProfileEntity entity = findProfileOrThrow(profileId);
+        TeamPageEntity page = pageService.findPageOrThrow(entity.getTeamPageId());
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
 
         Integer sortOrder = request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder();
         Boolean isVisible = request.getIsVisible() != null ? request.getIsVisible() : entity.getIsVisible();
@@ -111,8 +142,10 @@ public class MemberProfileService {
      * メンバープロフィールを削除する。
      */
     @Transactional
-    public void deleteProfile(Long profileId) {
+    public void deleteProfile(Long actorUserId, Long profileId) {
         MemberProfileEntity entity = findProfileOrThrow(profileId);
+        TeamPageEntity page = pageService.findPageOrThrow(entity.getTeamPageId());
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
         profileRepository.delete(entity);
         log.info("プロフィール削除: profileId={}", profileId);
     }
@@ -121,13 +154,14 @@ public class MemberProfileService {
      * メンバープロフィールを一括登録する。
      */
     @Transactional
-    public BulkCreateMemberResponse bulkCreate(BulkCreateMemberRequest request) {
+    public BulkCreateMemberResponse bulkCreate(Long actorUserId, BulkCreateMemberRequest request) {
         if (request.getMembers().size() > BULK_LIMIT) {
             throw new BusinessException(MemberErrorCode.BULK_LIMIT_EXCEEDED);
         }
 
-        // ページ存在確認
-        pageService.findPageOrThrow(request.getTeamPageId());
+        // ページ存在確認 + entity 由来スコープで ADMIN 以上検証（Wave3-B2 member 認可根治）
+        TeamPageEntity page = pageService.findPageOrThrow(request.getTeamPageId());
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
 
         int createdCount = 0;
         List<Long> skippedUserIds = new ArrayList<>();
@@ -164,16 +198,26 @@ public class MemberProfileService {
      * 前年度ページからメンバーをコピーする。
      */
     @Transactional
-    public CopyMembersResponse copyMembers(Long targetPageId, CopyMembersRequest request) {
-        // ターゲットページ存在確認
-        pageService.findPageOrThrow(targetPageId);
+    public CopyMembersResponse copyMembers(Long actorUserId, Long targetPageId, CopyMembersRequest request) {
+        // ターゲットページ存在確認 + ADMIN 以上検証（コピー書き込み先の変更系権限。Wave3-B2 member 認可根治）
+        TeamPageEntity targetPage = pageService.findPageOrThrow(targetPageId);
+        pageService.checkPageAdminOrNotFound(actorUserId, targetPage);
 
-        // コピー元ページ存在確認
-        pageService.findPageOrThrow(request.getSourcePageId());
-
+        // AC-29: 同一ページをコピー元にすることは常に無意味な操作であり、コピー元の読み出し（存在確認・
+        // スコープ照合・MEMBER 以上検証）より前に弾く（コピー元へは一切アクセスしない）。
         if (targetPageId.equals(request.getSourcePageId())) {
             throw new BusinessException(MemberErrorCode.INVALID_SOURCE_PAGE);
         }
+
+        // コピー元ページ存在確認。PR #3387 裁可1: コピー元はコピー先と同じスコープ（scopeType・scopeId が
+        // 一致）のページに限る。別スコープのページは存在を明かさず 404（PAGE_NOT_FOUND）で拒否する
+        // （他スコープの会員情報を複製で持ち出すデータ流出経路を塞ぐ）。
+        TeamPageEntity sourcePage = pageService.findPageOrThrow(request.getSourcePageId());
+        if (!isSameScope(targetPage, sourcePage)) {
+            throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+        }
+        // コピー元は MEMBER 以上であること（業務操作のため、サブタブ公開設定の緩和は効かせない）
+        pageService.checkPageMemberRoleOrNotFound(actorUserId, sourcePage);
 
         List<MemberProfileEntity> sourceMembers =
                 profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(request.getSourcePageId());
@@ -214,16 +258,24 @@ public class MemberProfileService {
      * メンバーの表示順を一括更新する。
      */
     @Transactional
-    public ReorderResponse reorderMembers(ReorderRequest request) {
+    public ReorderResponse reorderMembers(Long actorUserId, ReorderRequest request) {
         if (request.getOrders().size() > REORDER_LIMIT) {
             throw new BusinessException(MemberErrorCode.REORDER_LIMIT_EXCEEDED);
         }
 
+        // ページ存在確認 + entity 由来スコープで ADMIN 以上検証（Wave3-B2 member 認可根治）
+        TeamPageEntity page = pageService.findPageOrThrow(request.getTeamPageId());
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
+
         int updatedCount = 0;
         for (ReorderRequest.OrderItem item : request.getOrders()) {
             profileRepository.findById(item.getId()).ifPresent(entity -> {
-                entity.updateSortOrder(item.getSortOrder());
-                profileRepository.save(entity);
+                // BOLA対策: request.teamPageId 配下のプロフィールのみ並び替え対象とする
+                // （他ページの id を紛れ込ませた越境書き込みを拒否）
+                if (entity.getTeamPageId().equals(request.getTeamPageId())) {
+                    entity.updateSortOrder(item.getSortOrder());
+                    profileRepository.save(entity);
+                }
             });
             updatedCount++;
         }
@@ -237,7 +289,13 @@ public class MemberProfileService {
     /**
      * メンバー番号・表示名でメンバーを検索する（コンボボックス用）。
      */
-    public List<MemberLookupResponse> lookupMembers(Long teamPageId, String query, int limit) {
+    public List<MemberLookupResponse> lookupMembers(Long actorUserId, Long teamPageId, String query, int limit) {
+        // teamPageId は必須パラメータ（Wave3-B2 member 認可根治）。分岐の外で必ず認可チェックを通す
+        // ことで、「if の中にしか認可判定が無く未指定時に素通りする」構造を排除する。
+        // PR #3387 裁可2: 会員の番号・氏名を引き当てる業務操作のため MEMBER 以上に限る
+        // （サブタブ公開設定の緩和は効かせない）。
+        TeamPageEntity page = pageService.findPageOrThrow(teamPageId);
+        pageService.checkPageMemberRoleOrNotFound(actorUserId, page);
         String numberQuery = query + "%";
         String nameQuery = "%" + query + "%";
         Pageable pageable = PageRequest.of(0, Math.min(limit, 20));
@@ -246,6 +304,25 @@ public class MemberProfileService {
                 teamPageId, numberQuery, nameQuery, query, pageable);
 
         return memberMapper.toMemberLookupResponseList(entities);
+    }
+
+    /**
+     * 組織スコープのページかどうか（teamId を持たないページは組織スコープ）。
+     */
+    private static boolean isOrganizationPage(TeamPageEntity page) {
+        return page.getTeamId() == null;
+    }
+
+    /**
+     * 2つのページが同じスコープ（scopeType・scopeId とも一致）に属するかどうか。
+     */
+    private static boolean isSameScope(TeamPageEntity a, TeamPageEntity b) {
+        if (isOrganizationPage(a) != isOrganizationPage(b)) {
+            return false;
+        }
+        Long scopeIdA = isOrganizationPage(a) ? a.getOrganizationId() : a.getTeamId();
+        Long scopeIdB = isOrganizationPage(b) ? b.getOrganizationId() : b.getTeamId();
+        return scopeIdA != null && scopeIdA.equals(scopeIdB);
     }
 
     /**

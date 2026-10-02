@@ -203,9 +203,8 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-5xl">
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/organizations/${orgSlug}/tournaments/${tId}`" :label="$t('tournament.submission.back_to_tournament')" />
-      <PageHeader :title="$t('tournament.submission.title')" />
+    <div class="mb-4">
+      <PageHeader :title="$t('tournament.submission.title')" :back-to="`/organizations/${orgSlug}/tournaments/${tId}`" :back-label="$t('tournament.submission.back_to_tournament')" />
     </div>
 
     <!-- タブ切替 -->

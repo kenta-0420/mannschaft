@@ -7,12 +7,13 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -46,12 +47,18 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class PointCardProviderSynonymEntity extends UuidV7CharEntity {
 
-    /** 紐付けるプロバイダーの id（point_card_providers.id）。 */
+    /**
+     * 紐付けるプロバイダーの id（point_card_providers.id）。
+     *
+     * <p>親の {@code point_card_providers.id} は CHAR(36)（{@link UuidV7CharEntity}）で、FK 列も CHAR(36)。
+     * {@code @JdbcTypeCode(CHAR)} が無いと Hibernate は 16 バイトのバイナリで書き、保存・検索のたびに失敗する
+     * （CMP-260929-0654: UUID 列型の番人が検出）。</p>
+     */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "provider_id", nullable = false, length = 36)
     private UUID providerId;
 

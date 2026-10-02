@@ -1,8 +1,10 @@
 package com.mannschaft.app.signage.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.signage.SignageErrorCode;
 import com.mannschaft.app.signage.entity.SignageEmergencyMessageEntity;
+import com.mannschaft.app.signage.entity.SignageScreenEntity;
 import com.mannschaft.app.signage.repository.SignageEmergencyMessageRepository;
 import com.mannschaft.app.signage.repository.SignageScreenRepository;
 import com.mannschaft.app.signage.websocket.SignageWebSocketPublisher;
@@ -31,6 +33,7 @@ public class SignageEmergencyService {
     private final SignageEmergencyMessageRepository emergencyRepository;
     private final SignageScreenRepository screenRepository;
     private final SignageWebSocketPublisher webSocketPublisher;
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTO 定義
@@ -78,8 +81,11 @@ public class SignageEmergencyService {
     @Transactional
     public EmergencyMessageResponse broadcastEmergency(Long screenId, Long sentBy, BroadcastEmergencyRequest req) {
         // 画面の存在確認
-        screenRepository.findByIdAndDeletedAtIsNull(screenId)
+        SignageScreenEntity screen = screenRepository.findByIdAndDeletedAtIsNull(screenId)
                 .orElseThrow(() -> new BusinessException(SignageErrorCode.SIGNAGE_001));
+
+        // 認可: 当該画面スコープの ADMIN/DEPUTY_ADMIN のみ緊急配信可能（偽の緊急告知の根治）
+        accessControlService.checkAdminOrAbove(sentBy, screen.getScopeId(), screen.getScopeType());
 
         // 緊急メッセージを保存
         SignageEmergencyMessageEntity entity = SignageEmergencyMessageEntity.builder()
@@ -104,10 +110,19 @@ public class SignageEmergencyService {
     /**
      * 画面に紐づく緊急メッセージ履歴を直近30件取得する（createdAt降順）。
      *
+     * <p>認可根治戦役 Wave7: {@link AccessControlService#checkMembership} でスコープの会員に
+     * 限定する。兄弟の {@link #broadcastEmergency} は ADMIN 限定だが、参照は会員であれば可とする
+     * （読取＝会員・変更＝ADMINの通例）。</p>
+     *
      * @param screenId 画面ID
+     * @param actor    閲覧ユーザーID
      * @return 緊急メッセージレスポンス一覧
      */
-    public List<EmergencyMessageResponse> listEmergencyMessages(Long screenId) {
+    public List<EmergencyMessageResponse> listEmergencyMessages(Long screenId, Long actor) {
+        SignageScreenEntity screen = screenRepository.findByIdAndDeletedAtIsNull(screenId)
+                .orElseThrow(() -> new BusinessException(SignageErrorCode.SIGNAGE_001));
+        accessControlService.checkMembership(actor, screen.getScopeId(), screen.getScopeType());
+
         return emergencyRepository.findByScreenIdOrderByCreatedAtDesc(screenId)
                 .stream()
                 .limit(RECENT_MESSAGE_LIMIT)

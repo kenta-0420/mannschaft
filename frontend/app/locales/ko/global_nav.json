@@ -1,0 +1,26 @@
+{
+  "global_nav": {
+    "group": {
+      "home": "홈",
+      "connections": "소셜",
+      "living": "생활",
+      "work": "업무",
+      "account": "계정",
+      "admin": "관리",
+      "other": "기타"
+    },
+    "item": {
+      "dashboard": "대시보드",
+      "systemAdmin": "SYSTEM"
+    },
+    "toggle": {
+      "expand": "사이드바 펼치기",
+      "collapse": "사이드바 접기",
+      "openDrawer": "메뉴 열기",
+      "closeDrawer": "메뉴 닫기"
+    },
+    "autoCollapse": {
+      "chip": "자동 축소 중"
+    }
+  }
+}

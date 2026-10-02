@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import JsBarcode from 'jsbarcode'
-import QRCode from 'qrcode'
 import type { BarcodeFormat } from '~/types/pointCard'
 
 /**
@@ -8,7 +7,7 @@ import type { BarcodeFormat } from '~/types/pointCard'
  *
  * <p>設計書 §8.2 / §8.4 / §8.5 に基づき、3 系統のレンダラーを使い分ける:
  *   <ul>
- *     <li>QR     → qrcode (npm)</li>
+ *     <li>QR     → 共有コンポーネント QrCodeImage (SVG・ブランド緑・中央バッジ)</li>
  *     <li>PDF417 → bwip-js (動的 import / コードスプリッティングで PDF417 を
  *         使う人だけが 200KB ロードする)</li>
  *     <li>1D     → jsbarcode (CODE128/CODE39/EAN13/EAN8/JAN13/ITF)</li>
@@ -41,6 +40,15 @@ const { t } = useI18n()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const renderError = ref(false)
 
+/** QR（QrCodeImage）描画サイズ（px）。large=320 / それ以外=220（従来の toCanvas 相当）。 */
+const qrSize = computed(() => (props.size === 'large' ? 320 : 220))
+
+/** QrCodeImage の描画失敗を受けてエラー表示する（握りつぶさない）。 */
+function onQrError(message: string) {
+  console.warn('[BarcodePreview] QR render failed', message)
+  renderError.value = true
+}
+
 // jsbarcode が受け付ける format コード（type の値 → jsbarcode 用コード）。
 // JAN13 は EAN13 と同一規格のため EAN13 で描画する。
 // PDF417 は jsbarcode ではサポートされないため別ルート（bwip-js）で描画する。
@@ -63,6 +71,8 @@ const formattedValue = computed(() => {
 
 async function render() {
   renderError.value = false
+  // QR は QrCodeImage(SVG) が描画するため canvas レンダリング対象外。
+  if (props.format === 'QR') return
   if (!canvasRef.value) return
   if (props.format === 'NONE' || !props.value) {
     // NONE: canvas に何も描かない（テキストフォールバック側で表示）
@@ -72,16 +82,6 @@ async function render() {
   }
 
   try {
-    if (props.format === 'QR') {
-      const qrSize = props.size === 'large' ? 320 : 220
-      await QRCode.toCanvas(canvasRef.value, props.value, {
-        width: qrSize,
-        margin: 1,
-        errorCorrectionLevel: 'M',
-      })
-      return
-    }
-
     if (props.format === 'PDF417') {
       // bwip-js を動的 import。コードスプリッティングにより
       // PDF417 を実際に表示する人だけが ~200KB の追加バンドルをロードする。
@@ -150,6 +150,28 @@ onMounted(() => {
       </p>
     </template>
 
+    <!-- QR は共有コンポーネント QrCodeImage(SVG) で描画（PDF417/1D は canvas のまま） -->
+    <template v-else-if="format === 'QR'">
+      <div class="barcode-preview__qr" role="img" :aria-label="value">
+        <QrCodeImage
+          v-if="value"
+          :value="value"
+          :size="qrSize"
+          @error="onQrError"
+        />
+      </div>
+      <p v-if="renderError" class="barcode-preview__error" role="alert">
+        {{ t('wallet.barcode.render_failed') }}
+      </p>
+      <p
+        v-else-if="value"
+        class="barcode-preview__value-text"
+        :class="{ 'barcode-preview__value-text--large': size === 'large' }"
+      >
+        {{ formattedValue }}
+      </p>
+    </template>
+
     <template v-else>
       <canvas
         ref="canvasRef"
@@ -177,7 +199,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 1rem;
-  background: #fff;
+  background: var(--p-content-background, #fff);
   border-radius: 0.75rem;
   border: 1px solid var(--p-surface-200, #e5e7eb);
 }
@@ -188,6 +210,12 @@ onMounted(() => {
   display: block;
   max-width: 100%;
   height: auto;
+}
+.barcode-preview__qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
 }
 .barcode-preview__value-text {
   font-family: var(--font-mono, ui-monospace, monospace);

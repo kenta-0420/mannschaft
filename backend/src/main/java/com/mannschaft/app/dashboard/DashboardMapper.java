@@ -60,11 +60,20 @@ public interface DashboardMapper {
     /**
      * アクティビティフィードエンティティをレスポンスに変換する。
      * actor, scopeName は Service 層で別途解決する。
+     *
+     * <p><strong>detail は必ずパース済みオブジェクトを受け取る（F03.18 §3.3 裁定）</strong>:
+     * {@code entity.getDetail()}（JSON 文字列）をそのまま渡すと Jackson が
+     * エスケープ済みの文字列として出力し、OpenAPI が宣言する object 型と食い違う。
+     * パースは Service 層（{@code ActivityFeedService#parseDetail}）で行い、
+     * 失敗時は WARN ログ＋ {@code null} で行自体は返す。</p>
+     *
+     * @param detail パース済みの変更差分（既存7種別・パース失敗時は null）
      */
     default ActivityFeedResponse toActivityFeedResponse(
             ActivityFeedEntity entity,
             ActivityFeedResponse.ActorSummary actor,
-            String scopeName) {
+            String scopeName,
+            Object detail) {
         return new ActivityFeedResponse(
                 entity.getId(),
                 entity.getActivityType().name(),
@@ -75,6 +84,7 @@ public interface DashboardMapper {
                 entity.getTargetType().name(),
                 entity.getTargetId(),
                 entity.getSummary(),
+                detail,
                 entity.getCreatedAt()
         );
     }

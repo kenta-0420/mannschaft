@@ -1,5 +1,6 @@
 package com.mannschaft.app.publicview.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicPostDetail;
 import com.mannschaft.app.publicview.dto.PublicPostSummary;
 import com.mannschaft.app.publicview.service.PublicPostQueryService;
@@ -27,7 +28,28 @@ import org.springframework.web.bind.annotation.RestController;
  * Phase 2 では {@link ViewerContextBuilder} を使ってログイン済みユーザーの閲覧立場を判定し、
  * 段階開示ルール（§4.6.1 マトリクス）に従った投稿者識別を返す。
  * blog_posts のみ対応（§4.2 軍議追補）。timeline_posts / events は後続軍議で拡張する。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 2 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/teams/&#42;/posts"
+ * / "/api/v1/public/teams/&#42;/posts/*").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F19.1 公開チーム投稿。<b>visibility=PUBLIC かつ公開状態の投稿のみ</b>を返す。ログイン済みの場合は
+ * ViewerContextBuilder が閲覧立場を判定し段階開示（§4.6.1）を適用するが、未ログインでも公開分は閲覧可能であることが公開ページの要件。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/teams/*/posts",
+        "/api/v1/public/teams/*/posts/*"
+})
 @RestController
 @RequestMapping("/api/v1/public/teams/{teamId}/posts")
 @Tag(name = "公開チーム投稿 API (F19.1)")

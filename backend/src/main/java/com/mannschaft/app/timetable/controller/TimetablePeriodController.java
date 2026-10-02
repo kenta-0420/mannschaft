@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 import java.util.List;
 
@@ -31,7 +32,8 @@ public class TimetablePeriodController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<PeriodTemplateResponse>>> listPeriodTemplates(
             @PathVariable Long orgId) {
-        List<PeriodTemplateResponse> templates = periodTemplateService.getByOrganization(orgId)
+        List<PeriodTemplateResponse> templates = periodTemplateService
+                .getByOrganization(orgId, SecurityUtils.getCurrentUserId())
                 .stream()
                 .map(e -> new PeriodTemplateResponse(
                         e.getId(), e.getPeriodNumber(), e.getLabel(),
@@ -51,7 +53,8 @@ public class TimetablePeriodController {
                         r.getPeriodNumber(), r.getLabel(), r.getStartTime(),
                         r.getEndTime(), r.getIsBreak()))
                 .toList();
-        List<PeriodTemplateResponse> result = periodTemplateService.replaceAll(orgId, data)
+        List<PeriodTemplateResponse> result = periodTemplateService
+                .replaceAll(orgId, data, SecurityUtils.getCurrentUserId())
                 .stream()
                 .map(e -> new PeriodTemplateResponse(
                         e.getId(), e.getPeriodNumber(), e.getLabel(),

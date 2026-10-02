@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 import java.util.List;
 
@@ -36,6 +37,8 @@ public class ShiftMyController {
      *
      * @return 確定シフト枠レスポンスのリスト
      */
+    @SelfScopedEndpoint("ShiftMyService#getMyConfirmedSlots がSecurityUtils.getCurrentUserId()のみを対象に"
+            + "確定シフトを検索する")
     @GetMapping("/confirmed-slots")
     @Operation(summary = "確定シフト一覧取得", description = "ログインユーザーの確定済みシフト枠を一覧で取得する")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

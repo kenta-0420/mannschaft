@@ -7,7 +7,6 @@ import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.enums.AdChannelType;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
 import com.mannschaft.app.advertising.campaign.repository.AdBannerDeliveryRepository;
-import com.mannschaft.app.advertising.service.AdImpressionService;
 import com.mannschaft.app.membership.domain.ScopeType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,20 +22,20 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * F09.17 Phase 10 第二陣-A {@link AdBannerChannelService} 単体テスト。
+ * F09.19.3 §7.4 意味論修正後の {@link AdBannerChannelService} 単体テスト。
+ *
+ * <p>deliver() は<b>予約のみ</b>を行い、{@code ad_impressions} を記録せず（AdImpressionService に依存しない）、
+ * {@code ad_banner_deliveries} を {@code ad_impression_id = NULL, served_at = NULL}（未表示予約）で保存する
+ * （§16 AC-3.5）。実表示としての充足は pull 型サービングの view 計上が行う。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("AdBannerChannelService 単体テスト")
+@DisplayName("AdBannerChannelService 単体テスト（F09.19.3 予約のみ意味論）")
 class AdBannerChannelServiceTest {
-
-    @Mock
-    private AdImpressionService adImpressionService;
 
     @Mock
     private AdBannerDeliveryRepository adBannerDeliveryRepository;
@@ -78,20 +77,14 @@ class AdBannerChannelServiceTest {
     }
 
     @Test
-    @DisplayName("deliver: AdImpressionService.recordForMessagingCampaign を呼び、AdBannerDelivery を保存して true を返す")
-    void deliver_正常系() {
+    @DisplayName("deliver: ad_impressions を記録せず、served_at=NULL / ad_impression_id=NULL の未表示予約を保存して true")
+    void deliver_予約のみ_未表示予約を保存() {
         // given
         AdMessagingCampaign campaign = buildCampaign();
         long bannerCreativeId = 55L;
         AdMessagingCampaignChannel channel = buildBannerChannel(campaign.getId(), bannerCreativeId);
         long userId = 42L;
-        long impressionId = 999L;
 
-        given(adImpressionService.recordForMessagingCampaign(
-                eq(bannerCreativeId),
-                eq(campaign.getId()),
-                eq(userId)))
-                .willReturn(impressionId);
         given(adBannerDeliveryRepository.save(any(AdBannerDelivery.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
@@ -101,19 +94,14 @@ class AdBannerChannelServiceTest {
         // then
         assertThat(result).isTrue();
 
-        // recordForMessagingCampaign を 1 回だけ呼ぶこと（F09.7/F09.17 型不一致根治確認）
-        verify(adImpressionService, times(1)).recordForMessagingCampaign(
-                eq(bannerCreativeId),
-                eq(campaign.getId()),
-                eq(userId));
-
         ArgumentCaptor<AdBannerDelivery> captor = ArgumentCaptor.forClass(AdBannerDelivery.class);
         verify(adBannerDeliveryRepository, times(1)).save(captor.capture());
         AdBannerDelivery saved = captor.getValue();
         assertThat(saved.getCampaignId()).isEqualTo(campaign.getId());
         assertThat(saved.getUserId()).isEqualTo(userId);
-        assertThat(saved.getAdImpressionId()).isEqualTo(impressionId);
-        assertThat(saved.getServedAt()).isNotNull();
+        // §16 AC-3.5: 予約時は impression 未記録・served_at NULL
+        assertThat(saved.getAdImpressionId()).isNull();
+        assertThat(saved.getServedAt()).isNull();
         assertThat(saved.getMonthKey()).matches("\\d{4}-\\d{2}");
     }
 

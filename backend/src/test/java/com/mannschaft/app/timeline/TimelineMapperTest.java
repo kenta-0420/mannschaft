@@ -95,6 +95,10 @@ class TimelineMapperTest {
             AttachmentResponse response = mapper.toAttachmentResponse(entity);
             assertThat(response.getAttachmentType()).isEqualTo("IMAGE");
             assertThat(response.getFile().fileKey()).isEqualTo("images/test.jpg");
+            // issue #2424: Mapper は署名解決を行わない（DTO に Spring 依存を持ち込まない方針）。
+            // image.url/thumbnailUrl は null のまま返り、URL 解決は TimelinePostService が担う。
+            assertThat(response.getImage().url()).isNull();
+            assertThat(response.getImage().thumbnailUrl()).isNull();
         }
 
         @Test

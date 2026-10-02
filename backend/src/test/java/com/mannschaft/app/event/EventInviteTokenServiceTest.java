@@ -186,12 +186,12 @@ class EventInviteTokenServiceTest {
                     LocalDateTime.now(), LocalDateTime.now()
             );
 
-            given(tokenRepository.findById(TOKEN_ID)).willReturn(Optional.of(entity));
+            given(tokenRepository.findByIdAndEventId(TOKEN_ID, EVENT_ID)).willReturn(Optional.of(entity));
             given(tokenRepository.save(any(EventGuestInviteTokenEntity.class))).willReturn(entity);
             given(eventMapper.toInviteTokenResponse(entity)).willReturn(response);
 
             // When
-            InviteTokenResponse result = eventInviteTokenService.deactivateToken(TOKEN_ID);
+            InviteTokenResponse result = eventInviteTokenService.deactivateToken(EVENT_ID, TOKEN_ID);
 
             // Then
             assertThat(result.getIsActive()).isFalse();
@@ -202,10 +202,21 @@ class EventInviteTokenServiceTest {
         @DisplayName("トークン無効化_存在しない_例外スロー")
         void トークン無効化_存在しない_例外スロー() {
             // Given
-            given(tokenRepository.findById(TOKEN_ID)).willReturn(Optional.empty());
+            given(tokenRepository.findByIdAndEventId(TOKEN_ID, EVENT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> eventInviteTokenService.deactivateToken(TOKEN_ID))
+            assertThatThrownBy(() -> eventInviteTokenService.deactivateToken(EVENT_ID, TOKEN_ID))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("トークン無効化_別イベント帰属(親子BOLA)_例外スロー")
+        void トークン無効化_別イベント帰属_例外スロー() {
+            // Given
+            given(tokenRepository.findByIdAndEventId(TOKEN_ID, 999L)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> eventInviteTokenService.deactivateToken(999L, TOKEN_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }

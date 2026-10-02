@@ -1,5 +1,6 @@
 package com.mannschaft.app.errorreport.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.errorreport.dto.ActiveIncidentResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportRequest;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
@@ -26,7 +27,28 @@ import java.util.Map;
 /**
  * フロントエンドエラーレポート受信コントローラー。
  * 認証不要エンドポイント。
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 2 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(POST, "/api/v1/error-reports").permitAll()
+ * / SecurityConfig — requestMatchers(GET, "/api/v1/active-incidents").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F12.5 フロントエンドエラー追跡。<b>未ログイン画面（LP・ログイン）で発生したエラーも収集する必要</b>があるため受信側は公開必須。
+ * {@code active-incidents} は全ユーザー共通の障害告知バナー情報のみを返し、個人データ・テナント固有データを含まない。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/error-reports",
+        "/api/v1/active-incidents"
+})
 @RestController
 @RequestMapping("/api/v1")
 @Tag(name = "エラーレポート", description = "F12.5 フロントエンドエラー追跡API")

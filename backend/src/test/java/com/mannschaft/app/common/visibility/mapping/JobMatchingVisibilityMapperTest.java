@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.visibility.StandardVisibility;
 import com.mannschaft.app.jobmatching.enums.VisibilityScope;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -65,5 +66,52 @@ class JobMatchingVisibilityMapperTest {
     void mapsCustomTemplate() {
         assertThat(JobMatchingVisibilityMapper.toStandard(VisibilityScope.CUSTOM_TEMPLATE))
             .isEqualTo(StandardVisibility.CUSTOM_TEMPLATE);
+    }
+
+    // -------------------------------------------------------------------
+    // CMP-028 Phase C: toFunctional（逆写像）
+    // -------------------------------------------------------------------
+
+    @Test
+    @DisplayName("toFunctional: PUBLIC のみ → JOBBER_PUBLIC_BOARD のみ")
+    void toFunctional_PUBLICのみ() {
+        assertThat(JobMatchingVisibilityMapper.toFunctional(Set.of(StandardVisibility.PUBLIC)))
+                .containsExactly(VisibilityScope.JOBBER_PUBLIC_BOARD);
+    }
+
+    @Test
+    @DisplayName("toFunctional: ラダー4値すべて → 対応する4つの VisibilityScope")
+    void toFunctional_ラダー全値() {
+        assertThat(JobMatchingVisibilityMapper.toFunctional(Set.of(
+                StandardVisibility.PUBLIC,
+                StandardVisibility.SCOPE_AFFILIATED,
+                StandardVisibility.SUPPORTERS_AND_ABOVE,
+                StandardVisibility.ORGANIZATION_WIDE)))
+                .containsExactlyInAnyOrder(
+                        VisibilityScope.JOBBER_PUBLIC_BOARD,
+                        VisibilityScope.TEAM_MEMBERS,
+                        VisibilityScope.TEAM_MEMBERS_SUPPORTERS,
+                        VisibilityScope.ORGANIZATION_SCOPE);
+    }
+
+    /**
+     * JOBBER_INTERNAL（CUSTOM）・CUSTOM_TEMPLATE はどちらも行依存判定
+     * （前者はロール照合、後者はテンプレート評価）のため resolveVisibleLevels の
+     * ラダー集合には現れず、toFunctional の入力に混ざっても無視される。
+     */
+    @Test
+    @DisplayName("toFunctional: CUSTOM / CUSTOM_TEMPLATE（行依存値）は無視される")
+    void toFunctional_行依存値は無視() {
+        assertThat(JobMatchingVisibilityMapper.toFunctional(
+                Set.of(StandardVisibility.PUBLIC, StandardVisibility.CUSTOM,
+                        StandardVisibility.CUSTOM_TEMPLATE)))
+                .containsExactly(VisibilityScope.JOBBER_PUBLIC_BOARD);
+    }
+
+    @Test
+    @DisplayName("toFunctional: 空集合 → 空集合")
+    void toFunctional_空集合() {
+        assertThat(JobMatchingVisibilityMapper.toFunctional(Set.of())).isEmpty();
+        assertThat(JobMatchingVisibilityMapper.toFunctional(null)).isEmpty();
     }
 }

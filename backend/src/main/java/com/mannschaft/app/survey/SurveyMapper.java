@@ -21,14 +21,14 @@ public interface SurveyMapper {
     default SurveyResponse toSurveyResponse(SurveyEntity entity) {
         return SurveyResponse.builder()
                 .id(entity.getId())
-                .status(entity.getStatus().name())
+                .status(entity.getStatus())
                 .scope(new SurveyResponse.SurveyScopeDto(entity.getScopeType(), entity.getScopeId()))
                 .content(new SurveyResponse.SurveyContentDto(entity.getTitle(), entity.getDescription()))
                 .policy(new SurveyResponse.SurveyPolicyDto(
                         entity.getIsAnonymous(), entity.getAllowMultipleSubmissions(),
-                        entity.getResultsVisibility().name(), entity.getUnrespondedVisibility().name()))
+                        entity.getResultsVisibility(), entity.getUnrespondedVisibility()))
                 .distribution(new SurveyResponse.SurveyDistributionDto(
-                        entity.getDistributionMode().name(), entity.getAutoPostToTimeline(),
+                        entity.getDistributionMode(), entity.getAutoPostToTimeline(),
                         entity.getSeriesId(), entity.getRemindBeforeHours(), entity.getManualRemindCount(),
                         entity.getIncludeSupporters()))
                 .schedule(new SurveyResponse.SurveyScheduleDto(
@@ -46,7 +46,7 @@ public interface SurveyMapper {
         return QuestionResponse.builder()
                 .id(entity.getId())
                 .surveyId(entity.getSurveyId())
-                .questionType(entity.getQuestionType().name())
+                .questionType(entity.getQuestionType())
                 .content(new QuestionResponse.QuestionContentDto(
                         entity.getQuestionText(), entity.getIsRequired(),
                         entity.getDisplayOrder(), entity.getMaxSelections()))

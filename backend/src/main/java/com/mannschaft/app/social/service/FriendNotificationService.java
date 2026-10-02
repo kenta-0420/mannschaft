@@ -72,12 +72,13 @@ public class FriendNotificationService {
         accessControlService.checkPermission(userId, teamId, SCOPE_TEAM, PERM_MANAGE_FRIEND_TEAMS);
 
         Page<com.mannschaft.app.notification.entity.NotificationEntity> page;
+        // scope_type は enum 属性なので .name() の String を渡してはならない（Hibernate 束縛で型不一致 → 500）
         if (isRead != null) {
             page = notificationRepository.findByScopeTypeAndScopeIdAndIsReadOrderByCreatedAtDesc(
-                    NotificationScopeType.FRIEND_TEAM.name(), teamId, isRead, pageable);
+                    NotificationScopeType.FRIEND_TEAM, teamId, isRead, pageable);
         } else {
             page = notificationRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
-                    NotificationScopeType.FRIEND_TEAM.name(), teamId, pageable);
+                    NotificationScopeType.FRIEND_TEAM, teamId, pageable);
         }
         return page.map(notificationMapper::toNotificationResponse);
     }

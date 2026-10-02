@@ -16,7 +16,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * シフトポジションサービス。チーム内のシフト役割の定義・管理を担当する。
+ * シフトポジションの <b>トランザクション本体</b>（自ドメイン = shift の Repository だけに触れる）。
+ *
+ * <p><b>認可はここに置かない（CMP-260923-0954 W1 の作り替え / 認可をトランザクションの外へ）:</b>
+ * 権限の確認は非トランザクションの {@link ShiftPositionFacade} が行い、通ったものだけを本クラスの
+ * メソッドが実行する。{@code AccessControlService} / {@code ScopeConcealingAccessGate} への依存と
+ * 認可用の private メソッドは本クラスに持たない（D-3T 番人と {@code ShiftTxFacadeArchTest} が固定）。
+ * 認可の契約（主体 × 結果）は {@link ShiftPositionFacade} の Javadoc を参照。</p>
+ *
+ * <p><b>scope の解決と読み直し:</b> positionId 指定の更新・削除は、Facade が認可の前に
+ * {@link #resolvePositionScope}（readOnly）で<b>ポジション実体由来の teamId</b> を得る（パス変数・クエリの
+ * scope 値を鵜呑みにしない＝BOLA 封鎖）。書き込み tx では同じ経路でポジションを読み直し、認可の後に
+ * 消えていれば解決時と同じ {@code SHIFT_004}（404）を投げて DB を変えない（K1/K5）。
+ * ポジションは親（スケジュール等）を持たず、team は shift 外なので、たどり直す親は無い。
+ * ポジションの teamId 列は不変という前提。</p>
  */
 @Slf4j
 @Service
@@ -28,7 +41,25 @@ public class ShiftPositionService {
     private final ShiftMapper shiftMapper;
 
     /**
-     * チームのポジション一覧を取得する。
+     * ポジションの scope（所属チーム ID）。Entity は返さない。
+     *
+     * @param teamId 所属チーム ID
+     */
+    public record PositionScope(Long teamId) { }
+
+    /**
+     * positionId から scope を解決する（更新・削除用。Facade が認可の前に呼ぶ readOnly の読み取り）。
+     * 不在なら {@code SHIFT_004}（404）。
+     *
+     * @param positionId ポジションID
+     * @return scope
+     */
+    public PositionScope resolvePositionScope(Long positionId) {
+        return new PositionScope(findPositionOrThrow(positionId).getTeamId());
+    }
+
+    /**
+     * チームのポジション一覧を取得する（認可は {@link ShiftPositionFacade} 済み）。
      *
      * @param teamId チームID
      * @return ポジション一覧
@@ -44,9 +75,11 @@ public class ShiftPositionService {
      * @param teamId チームID
      * @param req    作成リクエスト
      * @return 作成されたポジション
+     * @throws BusinessException 名前の重複（POSITION_NAME_DUPLICATE）
      */
     @Transactional
     public ShiftPositionResponse createPosition(Long teamId, CreatePositionRequest req) {
+        // 認可（当該チームの ADMIN 以上）は Facade 済み。
         // 重複チェック
         positionRepository.findByTeamIdAndName(teamId, req.getName())
                 .ifPresent(existing -> {
@@ -70,9 +103,11 @@ public class ShiftPositionService {
      * @param positionId ポジションID
      * @param req        更新リクエスト
      * @return 更新されたポジション
+     * @throws BusinessException 不在（SHIFT_004 / 404）
      */
     @Transactional
     public ShiftPositionResponse updatePosition(Long positionId, UpdatePositionRequest req) {
+        // 認可は Facade 済み。認可の後にポジションが消えた競合を 404 にするため読み直す。
         ShiftPositionEntity entity = findPositionOrThrow(positionId);
 
         if (req.getName() != null) {
@@ -104,9 +139,11 @@ public class ShiftPositionService {
      * ポジションを削除する。
      *
      * @param positionId ポジションID
+     * @throws BusinessException 不在（SHIFT_004 / 404）
      */
     @Transactional
     public void deletePosition(Long positionId) {
+        // 認可は Facade 済み。認可の後にポジションが消えた競合を 404 にするため読み直す。
         ShiftPositionEntity entity = findPositionOrThrow(positionId);
         positionRepository.delete(entity);
         log.info("シフトポジション削除: id={}", positionId);

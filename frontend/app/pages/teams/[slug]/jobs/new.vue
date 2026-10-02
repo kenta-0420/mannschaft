@@ -7,6 +7,8 @@ import type {
 } from '~/types/jobmatching'
 import type { JobPostingFormState } from '~/components/jobs/JobPostingForm.vue'
 
+definePageMeta({ layout: 'team' })
+
 /**
  * F13.1 求人新規投稿ページ（Requester 視点）。
  *
@@ -119,14 +121,10 @@ function cancel() {
 
 <template>
   <div class="container mx-auto max-w-3xl p-4">
-    <div class="mb-4">
-      <h1 class="text-2xl font-bold">
-        {{ t('jobmatching.create.title') }}
-      </h1>
-      <p class="mt-1 text-sm text-surface-500">
-        {{ t('jobmatching.create.description') }}
-      </p>
-    </div>
+    <PageHeader :title="t('jobmatching.create.title')" :back-to="`/teams/${teamSlug}/jobs`" />
+    <p class="mb-4 text-sm text-surface-500">
+      {{ t('jobmatching.create.description') }}
+    </p>
 
     <JobPostingForm
       v-model="form"

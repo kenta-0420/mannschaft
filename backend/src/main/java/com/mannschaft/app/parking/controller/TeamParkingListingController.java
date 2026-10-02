@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.parking.ParkingScopeType;
 import com.mannschaft.app.parking.dto.*;
+import com.mannschaft.app.parking.service.ParkingAccessGuard;
 import com.mannschaft.app.parking.service.ParkingListingService;
 import com.mannschaft.app.parking.service.ParkingSpaceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +32,7 @@ public class TeamParkingListingController {
 
     private final ParkingListingService listingService;
     private final ParkingSpaceService spaceService;
+    private final ParkingAccessGuard parkingAccessGuard;
 
     private static final String SCOPE_TYPE = ParkingScopeType.TEAM.name();
 
@@ -41,6 +43,7 @@ public class TeamParkingListingController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
         Page<ListingResponse> result = listingService.list(spaceIds, status,
                 PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -54,6 +57,7 @@ public class TeamParkingListingController {
     public ResponseEntity<ApiResponse<ListingResponse>> create(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateListingRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
         ListingResponse result = listingService.create(spaceIds, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
@@ -63,6 +67,7 @@ public class TeamParkingListingController {
     @Operation(summary = "チーム譲渡希望詳細")
     public ResponseEntity<ApiResponse<ListingDetailResponse>> getDetail(
             @PathVariable Long teamId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
         ListingDetailResponse result = listingService.getDetail(spaceIds, id);
         return ResponseEntity.ok(ApiResponse.of(result));
@@ -73,16 +78,18 @@ public class TeamParkingListingController {
     public ResponseEntity<ApiResponse<ListingResponse>> update(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdateListingRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
-        ListingResponse result = listingService.update(spaceIds, id, request);
+        ListingResponse result = listingService.update(spaceIds, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "チーム譲渡希望削除")
     public ResponseEntity<Void> delete(@PathVariable Long teamId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
-        listingService.delete(spaceIds, id);
+        listingService.delete(spaceIds, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -91,6 +98,7 @@ public class TeamParkingListingController {
     public ResponseEntity<ApiResponse<ApplicationResponse>> apply(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody ListingApplyRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
         ApplicationResponse result = listingService.apply(spaceIds, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
@@ -100,6 +108,7 @@ public class TeamParkingListingController {
     @Operation(summary = "チーム譲渡確定")
     public ResponseEntity<ApiResponse<ListingDetailResponse>> transfer(
             @PathVariable Long teamId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, teamId);
         ListingDetailResponse result = listingService.transfer(spaceIds, id);
         return ResponseEntity.ok(ApiResponse.of(result));

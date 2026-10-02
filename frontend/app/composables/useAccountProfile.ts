@@ -1,7 +1,9 @@
 export function useAccountProfile() {
-  const api = useApi()
   const notification = useNotification()
+  const { t } = useI18n()
+  const { resolveMessage } = useErrorHandler()
   const { changeLocale } = useLocale()
+  const authStore = useAuthStore()
   const {
     getProfile,
     updateProfile,
@@ -9,8 +11,12 @@ export function useAccountProfile() {
     changePassword,
     setupPassword,
   } = useUserSettingsApi()
+  const { uploadAndCommit } = useProfileMediaApi()
+  const { refreshWeatherLocation } = useWeatherApi()
 
   const savingProfile = ref(false)
+
+  const { redirecting, triggerRedirect } = usePasswordChangeRedirect()
   const profile = ref({
     nickname: '',
     email: '',
@@ -21,6 +27,8 @@ export function useAccountProfile() {
     locale: 'ja',
     timezone: 'Asia/Tokyo',
     hasPassword: true,
+    /** ISO 3166-1 alpha-2 国コード。未設定時は null。 */
+    countryCode: null as string | null,
   })
 
   const emailForm = ref({ newEmail: '', currentPassword: '' })
@@ -32,28 +40,27 @@ export function useAccountProfile() {
 
   const savingLocale = ref(false)
 
+  // 金型（settings/password.vue）と同一ロジック。utils/passwordPolicy.ts を共用。
   const passwordError = computed(() => {
     if (passwordForm.value.newPassword && passwordForm.value.newPassword.length < 8)
-      return 'パスワードは8文字以上で入力してください'
+      return t('settings.password.length_error')
+    if (passwordForm.value.newPassword && countCharTypes(passwordForm.value.newPassword) < 3)
+      return t('settings.password.policy_violation')
     if (
       passwordForm.value.confirmPassword &&
       passwordForm.value.newPassword !== passwordForm.value.confirmPassword
     )
-      return 'パスワードが一致しません'
+      return t('settings.password.mismatch_error')
     return null
   })
 
   const canSubmitPassword = computed(() => {
-    if (profile.value.hasPassword)
-      return !!(
-        passwordForm.value.currentPassword &&
-        passwordForm.value.newPassword.length >= 8 &&
-        passwordForm.value.newPassword === passwordForm.value.confirmPassword
-      )
-    return (
-      passwordForm.value.newPassword.length >= 8 &&
+    const baseValid =
+      meetsPasswordPolicy(passwordForm.value.newPassword) &&
       passwordForm.value.newPassword === passwordForm.value.confirmPassword
-    )
+    if (profile.value.hasPassword)
+      return !!(passwordForm.value.currentPassword && baseValid)
+    return baseValid
   })
 
   const canSubmitEmail = computed(
@@ -73,12 +80,13 @@ export function useAccountProfile() {
         nickname: d.nickname,
         email: d.email,
         phoneNumber: d.phoneNumber,
-        postalCode: '',
+        postalCode: d.postalCode ?? '',
         avatarUrl: d.avatarUrl,
         isSearchable: d.isSearchable,
         locale: d.locale || 'ja',
         timezone: d.timezone || 'Asia/Tokyo',
         hasPassword: d.hasPassword,
+        countryCode: d.countryCode ?? null,
       }
     } catch {
       /* silent */
@@ -94,32 +102,53 @@ export function useAccountProfile() {
         postalCode: profile.value.postalCode || undefined,
         isSearchable: profile.value.isSearchable,
       })
-      notification.success('プロフィールを更新しました')
+      notification.success(t('settings.profile.toast.save_success'))
+
+      // 郵便番号が入力されている場合、天気地点を同期的に再導出して結果をフィードバックする。
+      // 保存成功後のみ実行（保存失敗時は郵便番号が未確定なので実行しない）。
+      if (profile.value.postalCode) {
+        try {
+          await refreshWeatherLocation()
+          // 200 の場合は何もしない（天気ウィジェットが次回取得時に自動反映される）
+        } catch (weatherErr: unknown) {
+          const errorCode = extractWeatherErrorCode(weatherErr)
+          if (errorCode === 'POSTAL_CODE_NOT_FOUND') {
+            notification.warn(t('settings.profile.toast.weather_postal_not_found'))
+          } else if (errorCode === 'COUNTRY_NOT_SUPPORTED') {
+            notification.warn(t('settings.profile.toast.weather_country_not_supported'))
+          }
+          // その他のエラー（プロバイダー障害等）はサイレント（保存自体は成功している）
+        }
+      }
     } catch {
-      notification.error('プロフィールの更新に失敗しました')
+      notification.error(t('settings.profile.toast.save_error'))
     } finally {
       savingProfile.value = false
     }
+  }
+
+  /** 天気APIのエラーオブジェクトからエラーコードを取り出す。 */
+  function extractWeatherErrorCode(err: unknown): string | null {
+    if (err && typeof err === 'object' && 'data' in err) {
+      const data = (err as { data?: { error_code?: string } }).data
+      if (data?.error_code) return data.error_code
+    }
+    return null
   }
 
   async function uploadAvatar(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0]
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
-      notification.error('ファイルサイズは5MB以下にしてください')
+      notification.error(t('settings.profile.toast.avatar_size_error'))
       return
     }
-    const formData = new FormData()
-    formData.append('file', file)
     try {
-      const res = await api<{ data: { avatarUrl: string } }>('/api/v1/users/me/avatar', {
-        method: 'POST',
-        body: formData,
-      })
-      profile.value.avatarUrl = res.data.avatarUrl
-      notification.success('アバターを更新しました')
+      const result = await uploadAndCommit('user', null, 'icon', file)
+      profile.value.avatarUrl = result.url
+      notification.success(t('settings.profile.toast.avatar_success'))
     } catch {
-      notification.error('アバターのアップロードに失敗しました')
+      notification.error(t('settings.profile.toast.avatar_error'))
     }
   }
 
@@ -128,9 +157,14 @@ export function useAccountProfile() {
     try {
       await updateProfile({ locale: profile.value.locale, timezone: profile.value.timezone })
       await changeLocale(profile.value.locale)
-      notification.success('言語・タイムゾーンを更新しました')
+      // authStore の user.locale を更新して localStorage と同期する。
+      // これにより次回リロード時に locale.client.ts が正しいロケールを復元できる。
+      if (authStore.user) {
+        await authStore.setUser({ ...authStore.user, locale: profile.value.locale })
+      }
+      notification.success(t('settings.locale.toast.save_success'))
     } catch {
-      notification.error('言語・タイムゾーンの更新に失敗しました')
+      notification.error(t('settings.locale.toast.save_error'))
     } finally {
       savingLocale.value = false
     }
@@ -144,9 +178,9 @@ export function useAccountProfile() {
         currentPassword: emailForm.value.currentPassword,
       })
       emailSent.value = true
-      notification.success('確認メールを送信しました')
+      notification.success(t('settings.email.toast.send_success'))
     } catch {
-      notification.error('メールアドレスの変更リクエストに失敗しました')
+      notification.error(t('settings.email.toast.send_error'))
     } finally {
       submittingEmail.value = false
     }
@@ -154,6 +188,8 @@ export function useAccountProfile() {
 
   async function handlePasswordChange() {
     submittingPassword.value = true
+    // 変更前に hasPassword を記録しておく（成功後に true へ書き換わるため）
+    const wasHavingPassword = profile.value.hasPassword
     try {
       if (profile.value.hasPassword) {
         await changePassword({
@@ -166,14 +202,34 @@ export function useAccountProfile() {
       }
       passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
       notification.success(
-        profile.value.hasPassword ? 'パスワードを変更しました' : 'パスワードを設定しました',
+        wasHavingPassword
+          ? t('settings.password.toast.change_success')
+          : t('settings.password.toast.setup_success'),
       )
-    } catch {
-      notification.error(
-        profile.value.hasPassword
-          ? 'パスワードの変更に失敗しました。現在のパスワードを確認してください'
-          : 'パスワードの設定に失敗しました',
-      )
+      if (wasHavingPassword) {
+        // パスワード変更後はBEが全リフレッシュトークンを失効させるため、
+        // overlay フェードイン → 900ms 保持 → logout（/login へ遷移）。
+        // 初期設定（else分岐）は遷移しない。
+        await triggerRedirect()
+      }
+    } catch (e) {
+      // error.code が取れれば resolveMessage で解決（AUTH_008/009/010/011 等）
+      const code = (e as { data?: { error?: { code?: string; message?: string } } })?.data?.error
+        ?.code
+      if (code) {
+        notification.error(
+          resolveMessage(
+            code,
+            (e as { data?: { error?: { message?: string } } })?.data?.error?.message,
+          ),
+        )
+      } else {
+        notification.error(
+          wasHavingPassword
+            ? t('settings.password.toast.change_error')
+            : t('settings.password.toast.setup_error'),
+        )
+      }
     } finally {
       submittingPassword.value = false
     }
@@ -187,6 +243,7 @@ export function useAccountProfile() {
     emailSent,
     passwordForm,
     submittingPassword,
+    redirecting,
     savingLocale,
     passwordError,
     canSubmitPassword,

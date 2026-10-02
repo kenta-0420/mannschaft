@@ -1,5 +1,6 @@
 package com.mannschaft.app.tournament.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,8 @@ import java.util.List;
 public class BatchScoreRequest {
 
     @NotNull
-    private final List<MatchScoreEntry> scores;
+    @Valid
+    private final List<@NotNull MatchScoreEntry> scores;
 
     @Getter
     @RequiredArgsConstructor

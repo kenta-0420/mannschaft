@@ -12,9 +12,12 @@ package com.mannschaft.app.membership.domain;
  *   <li>{@link #GDPR}: GDPR 削除リクエストによるマスキング退会</li>
  *   <li>{@link #TRANSFER}: 組織内・チーム間の異動による退会</li>
  *   <li>{@link #OTHER}: その他</li>
+ *   <li>{@link #DECEASED}: 逝去による退会（F14.3）</li>
+ *   <li>{@link #RELOCATED}: 転出による退会（F14.3）</li>
  * </ul>
  *
  * <p>設計書: docs/features/F00.5_membership_basis.md §5.1 / §7.2</p>
+ * <p>DECEASED / RELOCATED は docs/features/F14.3_resident_life_events.md §5.4 で追加。</p>
  */
 public enum LeaveReason {
 
@@ -31,5 +34,11 @@ public enum LeaveReason {
     TRANSFER,
 
     /** その他。 */
-    OTHER
+    OTHER,
+
+    /** 逝去による退会（F14.3）。 */
+    DECEASED,
+
+    /** 転出による退会（F14.3）。 */
+    RELOCATED
 }

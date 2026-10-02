@@ -25,16 +25,18 @@ import java.util.Optional;
  * {@code @Transactional} は inbox ドメイン内に閉じる（CLAUDE.md 原則5）。設計書: 03_business_logic.md §1。</p>
  *
  * <p>IDOR 防止: 既存オーバーレイ行が無い（＝初回 triage）場合のみ、対象通知が本人に可視かを
- * {@link InboxItemVisibilityChecker} で書き込み前検証する。可視でなければ {@code INBOX_SOURCE_NOT_FOUND} を
- * 投げ、オーバーレイ行を作らない（設計書 04_security_operations.md §1.2）。既存行がある場合は過去に可視だった
- * 証左のため再検証を省く。</p>
+ * {@link InboxAccessGuard#requireVisibleSource} で書き込み前検証する。可視でなければ
+ * {@code INBOX_SOURCE_NOT_FOUND} を投げ、オーバーレイ行を作らない（設計書 04_security_operations.md §1.2）。
+ * 既存行がある場合は過去に可視だった証左のため再検証を省く。解除系（unsnooze/unarchive）は
+ * {@code (user_id, source_type, source_id)} でオーバーレイ行を引くため、常に呼び出しユーザー自身の
+ * 行のみを操作する（他ユーザーの行には到達しない）。</p>
  */
 @Service
 @RequiredArgsConstructor
 public class InboxTriageService {
 
     private final InboxItemStateRepository itemStateRepository;
-    private final InboxItemVisibilityChecker visibilityChecker;
+    private final InboxAccessGuard inboxAccessGuard;
 
     /** アプリ全体の JVM 既定 TZ（{@code TimeZoneConfig} で Asia/Tokyo 固定）に合わせた壁時計変換先。 */
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Tokyo");
@@ -118,9 +120,7 @@ public class InboxTriageService {
             return existing.get();
         }
         // 初回 triage：本人に可視な通知かを書き込み前に検証（IDOR 防止）。
-        if (!visibilityChecker.isVisibleTo(userId, sourceType, sourceId)) {
-            throw new BusinessException(InboxErrorCode.INBOX_SOURCE_NOT_FOUND);
-        }
+        inboxAccessGuard.requireVisibleSource(userId, sourceType, sourceId);
         InboxItemStateEntity row = new InboxItemStateEntity();
         row.setUserId(userId);
         row.setSourceType(sourceType);

@@ -1,5 +1,6 @@
 package com.mannschaft.app.publicview.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicOrganizationSearchResultResponse;
 import com.mannschaft.app.publicview.dto.PublicTeamSearchResultResponse;
 import com.mannschaft.app.publicview.service.PublicOrganizationSearchQueryService;
@@ -31,7 +32,28 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p><strong>IDOR 対策</strong>: 検索結果は PUBLIC かつ未 archive / 未削除のチーム・組織のみ返す。
  * PRIVATE や archived のエンティティは結果に含めない。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 2 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/teams/search"
+ * / "/api/v1/public/organizations/search").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F19.1 Phase 4 公開検索。<b>PUBLIC かつ未 archive・未削除のチーム／組織のみ</b>を結果に含め、
+ * PRIVATE / archived は一切返さない（クラス Javadoc の IDOR 対策節）。レート制限あり。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/teams/search",
+        "/api/v1/public/organizations/search"
+})
 @RestController
 @RequestMapping("/api/v1/public")
 @Tag(name = "公開チーム・組織検索 API (F19.1 Phase 4)")
@@ -76,6 +98,8 @@ public class PublicDiscoverController {
      *
      * @param keyword    組織名・読み仮名の部分一致キーワード（省略可）
      * @param prefecture 都道府県名の完全一致絞り込み（省略可）
+     * @param acceptingTeamApplications true なら、チームからの加盟申請を受け付けている組織だけに絞る
+     *                                  （F01.2.1 §10.1。省略・false は絞り込みなし）
      * @param pageable   ページング情報（デフォルト: size=20, sort=name ASC）
      * @return PUBLIC 組織の検索結果ページ
      */
@@ -84,13 +108,16 @@ public class PublicDiscoverController {
             summary = "公開組織検索",
             description = "未ログインでも実行可能。keyword / prefecture でフィルタリングし、"
                     + "最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。"
-                    + "visibility=PUBLIC かつ未 archive / 未削除の組織のみ返す。")
+                    + "visibility=PUBLIC かつ未 archive / 未削除の組織のみ返す。"
+                    + "acceptingTeamApplications=true でチーム加盟を受付中の組織だけに絞る。")
     public ResponseEntity<Page<PublicOrganizationSearchResultResponse>> searchOrganizations(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String prefecture,
+            @RequestParam(required = false) Boolean acceptingTeamApplications,
             @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC)
             Pageable pageable) {
         return ResponseEntity.ok(
-                publicOrganizationSearchQueryService.search(keyword, prefecture, pageable));
+                publicOrganizationSearchQueryService.search(
+                        keyword, prefecture, acceptingTeamApplications, pageable));
     }
 }

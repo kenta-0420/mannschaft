@@ -1,5 +1,7 @@
 package com.mannschaft.app.timeline.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.timeline.repository.TimelineBookmarkRepository;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +53,8 @@ public class TimelineBookmarkAnonymizationEventListener {
      *
      * @param event アカウント物理削除完了イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると完全削除済み利用者のタイムラインブックマークが残存し、削除済みなのに参照が残るという不整合になる")
     @Async("purge-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

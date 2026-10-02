@@ -11,10 +11,8 @@ const badge = computed(() => {
   const map: Record<TranslationStatus, { severity: string; label: string }> = {
     DRAFT: { severity: 'secondary', label: t('translation.status_draft') },
     IN_REVIEW: { severity: 'warn', label: t('translation.status_in_review') },
-    APPROVED: { severity: 'info', label: t('translation.status_approved') },
     PUBLISHED: { severity: 'success', label: t('translation.status_published') },
-    STALE: { severity: 'warn', label: t('translation.status_stale') },
-    REJECTED: { severity: 'danger', label: t('translation.status_rejected') },
+    NEEDS_UPDATE: { severity: 'warn', label: t('translation.status_needs_update') },
   }
   return map[props.status] ?? { severity: 'secondary', label: props.status }
 })

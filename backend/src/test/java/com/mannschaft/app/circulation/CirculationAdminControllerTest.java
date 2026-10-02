@@ -71,10 +71,12 @@ class CirculationAdminControllerTest {
     }
 
     private DocumentResponse mockResponse() {
-        return new DocumentResponse(DOC_ID, "ORGANIZATION", ORG_ID, USER_ID,
-                "回覧", "本文", "SIMULTANEOUS", 0, "COMPLETED", "NORMAL",
-                null, false, (short) 24, "STANDARD", 3, 0, null, 0, 0,
-                null, null);
+        return DocumentResponse.builder()
+                .id(DOC_ID).scopeType("ORGANIZATION").scopeId(ORG_ID).createdBy(USER_ID)
+                .title("回覧").body("本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                .status("COMPLETED").priority("NORMAL").stampDisplayStyle("STANDARD")
+                .totalRecipientCount(3).stampedCount(0).attachmentCount(0).commentCount(0)
+                .build();
     }
 
     // ─────────────────────────────────────────────

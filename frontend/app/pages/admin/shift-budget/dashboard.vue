@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useShiftBudgetAdminAccess } from '~/composables/shift/useShiftBudgetAdminAccess'
 import dayjs from 'dayjs'
 import type {
   AllocationResponse,
@@ -24,6 +25,13 @@ const organizationId = computed(() => {
   if (scopeStore.current.type !== 'organization') return null
   return scopeStore.current.id
 })
+
+/**
+ * 予算の管理操作（BUDGET_ADMIN）を出してよいかの判定。
+ * BE は権限が無ければ 403 を返す（その防御は外していない）。ここでは弾かれる操作を
+ * そもそも画面に出さないために使う。CMP-260913-1251。
+ */
+const { canManageBudget, ensureLoaded: ensureBudgetAdminAccess } = useShiftBudgetAdminAccess()
 
 const allocations = ref<AllocationResponse[]>([])
 const loading = ref(false)
@@ -124,8 +132,14 @@ async function executeMonthlyClose() {
   }
 }
 
-watch(organizationId, () => load())
-onMounted(load)
+watch(organizationId, () => {
+  load()
+  ensureBudgetAdminAccess()
+})
+onMounted(() => {
+  load()
+  ensureBudgetAdminAccess()
+})
 </script>
 
 <template>
@@ -133,7 +147,7 @@ onMounted(load)
     <div class="mb-4 flex items-center justify-between">
       <PageHeader :title="t('shiftBudget.dashboard.title')" />
       <Button
-        v-if="organizationId"
+        v-if="organizationId && canManageBudget"
         :label="t('shiftBudget.monthlyClose.button')"
         icon="pi pi-calendar-times"
         severity="secondary"

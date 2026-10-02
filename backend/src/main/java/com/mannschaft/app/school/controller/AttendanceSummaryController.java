@@ -1,6 +1,7 @@
 package com.mannschaft.app.school.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.school.dto.ClassSummaryListResponse;
 import com.mannschaft.app.school.dto.RecalculateSummaryRequest;
 import com.mannschaft.app.school.dto.RecalculateSummaryResponse;
@@ -48,7 +49,9 @@ public class AttendanceSummaryController {
             @RequestParam Long teamId,
             @RequestParam short academicYear,
             @RequestParam(required = false) Long termId) {
-        return ApiResponse.of(summaryService.getStudentSummary(studentId, teamId, academicYear, termId));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(
+                summaryService.getStudentSummary(studentId, teamId, academicYear, termId, currentUserId));
     }
 
     /**
@@ -68,7 +71,8 @@ public class AttendanceSummaryController {
             @PathVariable Long teamId,
             @RequestParam short academicYear,
             @RequestParam(required = false) Long termId) {
-        return ApiResponse.of(summaryService.getClassSummaries(teamId, academicYear, termId));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(summaryService.getClassSummaries(teamId, academicYear, termId, currentUserId));
     }
 
     /**
@@ -87,6 +91,7 @@ public class AttendanceSummaryController {
     public ApiResponse<RecalculateSummaryResponse> recalculate(
             @PathVariable Long studentId,
             @RequestBody @Valid RecalculateSummaryRequest req) {
-        return ApiResponse.of(summaryService.recalculate(studentId, req));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(summaryService.recalculate(studentId, req, currentUserId));
     }
 }

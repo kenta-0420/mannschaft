@@ -4,6 +4,7 @@ import { computed, ref, watch, onMounted } from 'vue'
 import type { CandidateItem, PeriodAttendanceEntry, PeriodAttendanceSummary } from '~/types/school'
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 
@@ -39,7 +40,6 @@ function initEntries(): void {
     dailyStatus: c.dailyStatus,
     previousPeriodStatus: c.previousPeriodStatus,
     status: 'UNDECIDED' as const,
-    absenceReason: undefined,
     comment: undefined,
   }))
 }
@@ -150,7 +150,7 @@ onMounted(() => {
           <Button
             :label="$t('school.attendance.period.submit')"
             :loading="submitting"
-            :disabled="entries.length === 0"
+            :disabled="entries.length === 0 || submitting"
             class="w-full"
             data-testid="period-attendance-submit"
             @click="onSubmit"

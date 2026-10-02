@@ -23,10 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
  * CLAUDE.md 原則5 に基づき、将来はイベント駆動化候補として記録する。</p>
  *
  * <p><strong>権限チェック（認可根治 Phase 3-a / 2026-05-30）:</strong>
- * Controller の {@code @PreAuthorize} は {@code @EnableMethodSecurity} 未有効ゆえ実機 no-op のため、
- * Service 層で {@link AccessControlService} を明示呼出して per-scope 認可を強制する
- *（SYSTEM_ADMIN 短絡 or 当該スコープの ADMIN/DEPUTY_ADMIN）。
- * これにより method-security OFF のままでも他団体の公開設定変更（生穴）を遮断する。
+ * Controller の {@code @PreAuthorize} に加え、Service 層でも {@link AccessControlService} を
+ * 明示呼出して per-scope 認可を強制する（SYSTEM_ADMIN 短絡 or 当該スコープの ADMIN/DEPUTY_ADMIN）。
  * circulation の {@code CirculationService#checkScopeAdminAccess}（#1183）と同一方針。</p>
  */
 @Slf4j

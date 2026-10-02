@@ -10,9 +10,13 @@ import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.event.CirculationExportRequestedEvent;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,9 +38,11 @@ import java.time.Duration;
  *   <li>監査ログ {@code CIRCULATION_EXPORT_REQUESTED} を発火</li>
  * </ul>
  *
- * <p>認可: Controller 側で作成者 / 受信者 / ADMIN を判定するため、本サービスでは
- * {@link #assertCanAccessExport(CirculationDocumentEntity, Long, boolean)} で
- * 作成者 OR 受信者 OR ADMIN のいずれかを満たすかを確認する。</p>
+ * <p>認可: 本サービスは {@link #assertCanAccessExport(CirculationDocumentEntity, Long)} で
+ * 「作成者 OR 拒否していない受信者 OR 当該文書スコープの ADMIN/DEPUTY_ADMIN（SystemAdmin 含む）」の
+ * いずれかを満たすことを {@link AccessControlService} により per-scope に確認する
+ * （{@code CirculationService#checkScopeAdminAccess} と同型）。判定に用いるスコープは
+ * 文書エンティティ由来であり、リクエストが申告した識別子は用いない。</p>
  *
  * <p>非同期ジョブ本体は {@link CirculationExportAsyncExecutor} に分離されている。
  * これは Spring の {@code @Async} プロキシが同一 Bean 内 self-call では効かないため、
@@ -57,9 +63,16 @@ public class CirculationExportService {
 
     private final CirculationDocumentRepository documentRepository;
     private final CirculationRecipientRepository recipientRepository;
-    private final StorageService storageService;
+    private final StorageAccessService storageAccessService;
     private final CirculationExportAsyncExecutor asyncExecutor;
     private final DomainEventPublisher eventPublisher;
+
+    /**
+     * per-scope 管理者判定に使う（認可根治 Wave4）。テスト構成（Mockito {@code @InjectMocks}）で
+     * Bean 不在の場合は {@code null} 注入され、{@link #isScopeAdmin} 内でスキップする
+     * （{@code CirculationService#contentVisibilityChecker} と同じ null-safe 防御パターン）。
+     */
+    private final AccessControlService accessControlService;
 
     /**
      * 押印済み証跡 PDF のエクスポートを要求する。
@@ -67,7 +80,7 @@ public class CirculationExportService {
      * <p>処理フロー:
      * <ol>
      *   <li>文書取得 + COMPLETED 検証（NG なら CIRCULATION_021）</li>
-     *   <li>認可検証（作成者 / 受信者 / ADMIN）</li>
+     *   <li>認可検証（作成者 / 受信者 / 当該文書スコープの ADMIN）</li>
      *   <li>既に COMPLETED であれば Pre-signed URL を返却（Controller が 302 リダイレクト）</li>
      *   <li>PENDING 中なら再生成しない（既存ジョブ完了待ち）</li>
      *   <li>NOT_GENERATED / FAILED ならステータスを PENDING にして非同期ジョブを起動</li>
@@ -75,11 +88,10 @@ public class CirculationExportService {
      *
      * @param documentId 文書 ID
      * @param actorId    呼び出しユーザー ID
-     * @param isAdmin    呼び出しユーザーが ADMIN か（Controller から渡される）
      * @return 既生成済なら {@link ExportStatusResponse}（{@code url} 入り）、それ以外は {@link ExportRequestResponse}
      */
     @Transactional
-    public Object requestExport(Long documentId, Long actorId, boolean isAdmin) {
+    public Object requestExport(Long documentId, Long actorId) {
         CirculationDocumentEntity entity = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException(CirculationErrorCode.DOCUMENT_NOT_FOUND));
 
@@ -87,12 +99,12 @@ public class CirculationExportService {
             throw new BusinessException(CirculationErrorCode.EXPORT_NOT_AVAILABLE_NON_COMPLETED);
         }
 
-        assertCanAccessExport(entity, actorId, isAdmin);
+        assertCanAccessExport(entity, actorId);
 
         // 既に COMPLETED の場合: Pre-signed URL を返す（Controller が 302 する）
         if (entity.getExportStatus() == CirculationExportStatus.COMPLETED
                 && entity.getExportFileKey() != null) {
-            String url = storageService.generateDownloadUrl(entity.getExportFileKey(), PRESIGN_TTL);
+            String url = generateExportDownloadUrl(entity);
             return new ExportStatusResponse(
                     entity.getId(),
                     CirculationExportStatus.COMPLETED.name(),
@@ -137,14 +149,13 @@ public class CirculationExportService {
      *
      * @param documentId 文書 ID
      * @param actorId    呼び出しユーザー ID
-     * @param isAdmin    呼び出しユーザーが ADMIN か
      * @return 生成状況レスポンス
      */
-    public ExportStatusResponse getExportStatus(Long documentId, Long actorId, boolean isAdmin) {
+    public ExportStatusResponse getExportStatus(Long documentId, Long actorId) {
         CirculationDocumentEntity entity = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException(CirculationErrorCode.DOCUMENT_NOT_FOUND));
 
-        assertCanAccessExport(entity, actorId, isAdmin);
+        assertCanAccessExport(entity, actorId);
 
         if (entity.getExportStatus() == CirculationExportStatus.NOT_GENERATED) {
             throw new BusinessException(CirculationErrorCode.EXPORT_NOT_REQUESTED);
@@ -153,7 +164,7 @@ public class CirculationExportService {
         String url = null;
         if (entity.getExportStatus() == CirculationExportStatus.COMPLETED
                 && entity.getExportFileKey() != null) {
-            url = storageService.generateDownloadUrl(entity.getExportFileKey(), PRESIGN_TTL);
+            url = generateExportDownloadUrl(entity);
         }
 
         return new ExportStatusResponse(
@@ -170,14 +181,14 @@ public class CirculationExportService {
     // ─────────────────────────────────────────────
 
     /**
-     * 認可判定: 作成者 / 受信者 / ADMIN のいずれかを満たすか。
+     * 認可判定: 作成者 / 受信者 / 当該文書スコープの ADMIN のいずれかを満たすか。
+     *
+     * <p>管理者判定は当該文書の scopeType / scopeId に限定した per-scope 判定であり、
+     * スコープを問わないグローバルなロール文字列は判定材料に用いない。</p>
      *
      * @throws BusinessException {@code COMMON_002} 権限不足
      */
-    private void assertCanAccessExport(CirculationDocumentEntity entity, Long actorId, boolean isAdmin) {
-        if (isAdmin) {
-            return;
-        }
+    private void assertCanAccessExport(CirculationDocumentEntity entity, Long actorId) {
         if (actorId == null) {
             throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_000);
         }
@@ -188,9 +199,38 @@ public class CirculationExportService {
         boolean isRecipient = recipientRepository.findByDocumentIdAndUserId(entity.getId(), actorId)
                 .filter(r -> r.getStatus() != RecipientStatus.REJECTED)
                 .isPresent();
-        if (!isRecipient) {
-            throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+        if (isRecipient) {
+            return;
         }
+        // per-scope 管理者判定: SystemAdmin は常に許可、TEAM/ORGANIZATION は当該スコープの
+        // ADMIN/DEPUTY_ADMIN のみ許可、それ以外のスコープ（PERSONAL 等）は SystemAdmin 以外拒否する。
+        // accessControlService が null のテスト構成（Mockito @InjectMocks）では管理者経路を通さない。
+        if (accessControlService != null && accessControlService.isSystemAdmin(actorId)) {
+            return;
+        }
+        String scopeType = entity.getScopeType();
+        if (accessControlService != null
+                && ("TEAM".equals(scopeType) || "ORGANIZATION".equals(scopeType))
+                && accessControlService.isAdminOrAbove(actorId, entity.getScopeId(), scopeType)) {
+            return;
+        }
+        throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+    }
+
+    private String generateExportDownloadUrl(CirculationDocumentEntity entity) {
+        return storageAccessService.generateDownloadUrl(
+                entity.getExportFileKey(), scopeOf(entity),
+                new StorageAclContentReference("CIRCULATION_DOCUMENT", entity.getId().toString()),
+                new StorageAclAttachmentBinding("CIRCULATION_EXPORT", entity.getId().toString()), PRESIGN_TTL);
+    }
+
+    private StorageAclScope scopeOf(CirculationDocumentEntity entity) {
+        return switch (entity.getScopeType()) {
+            case "TEAM" -> StorageAclScope.team(entity.getScopeId());
+            case "ORGANIZATION" -> StorageAclScope.organization(entity.getScopeId());
+            case "PERSONAL" -> StorageAclScope.personal(entity.getCreatedBy());
+            default -> throw new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_INVALID_REQUEST);
+        };
     }
 
 }

@@ -3,13 +3,14 @@ package com.mannschaft.app.dashboard.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.dashboard.dto.ScopeTabItemResponse;
 import com.mannschaft.app.dashboard.dto.ScopeTabOrderUpdateRequest;
 import com.mannschaft.app.dashboard.dto.ScopeTabPageResponse;
 import com.mannschaft.app.dashboard.entity.DashboardScopeTabOrderEntity;
 import com.mannschaft.app.dashboard.repository.DashboardScopeTabOrderRepository;
-import com.mannschaft.app.membership.entity.MembershipEntity;
-import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderItemEntity;
@@ -33,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -55,13 +57,14 @@ import static org.mockito.Mockito.verify;
 class DashboardScopeTabServiceTest {
 
     @Mock private DashboardScopeTabOrderRepository scopeTabOrderRepository;
-    @Mock private MembershipRepository membershipRepository;
+    @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private MyScopeFolderRepository scopeFolderRepository;
     @Mock private MyScopeFolderItemRepository scopeFolderItemRepository;
     @Mock private TeamRepository teamRepository;
     @Mock private OrganizationRepository organizationRepository;
     @Mock private AccessControlService accessControlService;
     @Mock private AuditLogService auditLogService;
+    @Mock private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks private DashboardScopeTabService service;
 
@@ -82,14 +85,11 @@ class DashboardScopeTabServiceTest {
     // ヘルパー
     // ========================================
 
-    private MembershipEntity activeMembership(Long scopeId, com.mannschaft.app.membership.domain.ScopeType type,
-                                              LocalDateTime joinedAt) {
-        return MembershipEntity.builder()
-                .userId(USER_ID)
-                .scopeType(type)
-                .scopeId(scopeId)
-                .joinedAt(joinedAt)
-                .build();
+    private MembershipScopeQueryService.CurrentMembershipScope activeMembership(
+            Long scopeId,
+            com.mannschaft.app.membership.domain.ScopeType type,
+            LocalDateTime joinedAt) {
+        return new MembershipScopeQueryService.CurrentMembershipScope(scopeId);
     }
 
     private DashboardScopeTabOrderEntity savedOrder(Long scopeId, String scopeType, int sortOrder) {
@@ -110,6 +110,19 @@ class DashboardScopeTabServiceTest {
             Long id = inv.getArgument(0);
             return Optional.of(team(id, "Team-" + id, null));
         });
+        // findAllById: リクエストされた id 集合をすべて「実在」として返す（論理削除なし想定）。
+        // TeamEntity の getId() は BaseEntity から継承するため、Mockito.mock で id を注入する。
+        // lenient().when() は Mockito.OngoingStubbing を返すため thenAnswer を使う。
+        lenient().when(teamRepository.findAllById(any())).thenAnswer(inv -> {
+            Iterable<Long> ids = inv.getArgument(0);
+            List<TeamEntity> result = new ArrayList<>();
+            StreamSupport.stream(ids.spliterator(), false).forEach(id -> {
+                TeamEntity mock = org.mockito.Mockito.mock(TeamEntity.class);
+                org.mockito.Mockito.when(mock.getId()).thenReturn(id);
+                result.add(mock);
+            });
+            return result;
+        });
     }
 
     // ========================================
@@ -124,7 +137,7 @@ class DashboardScopeTabServiceTest {
         @DisplayName("保存済み行(sort_order昇順) → 未保存所属(joined_at降順)の順で並ぶ")
         void savedThenUnsavedByJoinedAtDesc() {
             // 所属: 10, 20, 30, 40（joined_at 降順で 40,30,20,10 が返る想定）
-            given(membershipRepository.findActiveByUserAndScopeType(eq(USER_ID), any()))
+            given(membershipScopeQueryService.findCurrentMemberships(eq(USER_ID), any()))
                     .willReturn(List.of(
                             activeMembership(40L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now().minusDays(1)),
                             activeMembership(30L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now().minusDays(2)),
@@ -146,7 +159,7 @@ class DashboardScopeTabServiceTest {
         @Test
         @DisplayName("scopeType 小文字でも正規化されて受理される")
         void scopeTypeLowercaseNormalized() {
-            given(membershipRepository.findActiveByUserAndScopeType(eq(USER_ID), any()))
+            given(membershipScopeQueryService.findCurrentMemberships(eq(USER_ID), any()))
                     .willReturn(List.of());
             given(scopeTabOrderRepository.findByUserIdAndScopeTypeOrderBySortOrderAsc(USER_ID, "TEAM"))
                     .willReturn(List.of());
@@ -164,6 +177,31 @@ class DashboardScopeTabServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("スコープ種別");
         }
+
+        @Test
+        @DisplayName("画像URL根治Phase2_チームiconが署名付き表示URLへ解決されavatar_urlに乗る")
+        void チームiconが署名付き表示URLへ解決される() {
+            given(membershipScopeQueryService.findCurrentMemberships(eq(USER_ID), any()))
+                    .willReturn(List.of(activeMembership(10L,
+                            com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now())));
+            // ②' 実在フィルタ（findAllById）で id=10 を実在として返す
+            TeamEntity existing = org.mockito.Mockito.mock(TeamEntity.class);
+            given(existing.getId()).willReturn(10L);
+            given(teamRepository.findAllById(any())).willReturn(List.of(existing));
+            given(scopeTabOrderRepository.findByUserIdAndScopeTypeOrderBySortOrderAsc(USER_ID, "TEAM"))
+                    .willReturn(List.of());
+            // buildItem 内の個別取得：生 R2 キーを持つチームを返す
+            given(teamRepository.findById(10L))
+                    .willReturn(Optional.of(team(10L, "Team-10", "team/10/icon/raw.png")));
+            given(mediaUrlResolver.resolve("team/10/icon/raw.png"))
+                    .willReturn("https://cdn.example.com/signed/team-icon.png");
+
+            ScopeTabPageResponse res = service.getScopeTabs("TEAM", 0, null);
+
+            assertThat(res.items()).hasSize(1);
+            assertThat(res.items().get(0).avatarUrl())
+                    .isEqualTo("https://cdn.example.com/signed/team-icon.png");
+        }
     }
 
     // ========================================
@@ -175,12 +213,12 @@ class DashboardScopeTabServiceTest {
     class PagingTests {
 
         private void stub14Teams() {
-            List<MembershipEntity> ms = new ArrayList<>();
+            List<MembershipScopeQueryService.CurrentMembershipScope> ms = new ArrayList<>();
             for (long i = 1; i <= 14; i++) {
                 ms.add(activeMembership(i, com.mannschaft.app.membership.domain.ScopeType.TEAM,
                         LocalDateTime.now().minusMinutes(i)));
             }
-            given(membershipRepository.findActiveByUserAndScopeType(eq(USER_ID), any())).willReturn(ms);
+            given(membershipScopeQueryService.findCurrentMemberships(eq(USER_ID), any())).willReturn(ms);
             given(scopeTabOrderRepository.findByUserIdAndScopeTypeOrderBySortOrderAsc(USER_ID, "TEAM"))
                     .willReturn(List.of());
             stubTeamNames();
@@ -230,7 +268,7 @@ class DashboardScopeTabServiceTest {
         @DisplayName("退会した(現所属でない)保存済みスコープは除外される")
         void withdrawnScopeExcluded() {
             // 現所属は 10 のみ。保存済みには退会済 99 と現役 10 が残存。
-            given(membershipRepository.findActiveByUserAndScopeType(eq(USER_ID), any()))
+            given(membershipScopeQueryService.findCurrentMemberships(eq(USER_ID), any()))
                     .willReturn(List.of(activeMembership(10L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now())));
             given(scopeTabOrderRepository.findByUserIdAndScopeTypeOrderBySortOrderAsc(USER_ID, "TEAM"))
                     .willReturn(List.of(savedOrder(99L, "TEAM", 0), savedOrder(10L, "TEAM", 1)));
@@ -245,7 +283,7 @@ class DashboardScopeTabServiceTest {
         @Test
         @DisplayName("folderId 指定時は当該フォルダの scope のみに絞り込まれる")
         void folderFilter() {
-            given(membershipRepository.findActiveByUserAndScopeType(eq(USER_ID), any()))
+            given(membershipScopeQueryService.findCurrentMemberships(eq(USER_ID), any()))
                     .willReturn(List.of(
                             activeMembership(10L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now().minusDays(1)),
                             activeMembership(20L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now().minusDays(2)),
@@ -255,7 +293,7 @@ class DashboardScopeTabServiceTest {
 
             MyScopeFolderEntity folder = MyScopeFolderEntity.builder()
                     .userId(USER_ID)
-                    .scopeType(com.mannschaft.app.scopefolder.entity.ScopeType.TEAM)
+                    .scopeType(com.mannschaft.app.scopefolder.entity.enums.ScopeType.TEAM)
                     .name("お気に入り")
                     .build();
             given(scopeFolderRepository.findByIdAndUserIdAndDeletedAtIsNull(7L, USER_ID))
@@ -272,9 +310,68 @@ class DashboardScopeTabServiceTest {
         }
 
         @Test
+        @DisplayName("membership は存在するが team が論理削除済み（孤児）の場合は一覧から除外される")
+        void orphanMembershipExcluded() {
+            // activeScopeIds: 10（実在）, 175（孤児: team 削除済み）, 159（孤児）
+            given(membershipScopeQueryService.findCurrentMemberships(eq(USER_ID), any()))
+                    .willReturn(List.of(
+                            activeMembership(10L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now()),
+                            activeMembership(175L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now().minusDays(1)),
+                            activeMembership(159L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now().minusDays(2))));
+            given(scopeTabOrderRepository.findByUserIdAndScopeTypeOrderBySortOrderAsc(USER_ID, "TEAM"))
+                    .willReturn(List.of());
+            // findById は個別取得（buildItem 内）
+            lenient().when(teamRepository.findById(10L)).thenReturn(Optional.of(team(10L, "Team-10", null)));
+            // findAllById: 10 のみ実在、175 と 159 は論理削除済み（結果に含まれない）。
+            // @SQLRestriction により論理削除済みは findAllById の結果に含まれない。
+            // Mockito.mock で getId() = 10L を返すモックを使い、existingScopeIds = {10} を確定させる。
+            given(teamRepository.findAllById(any())).willAnswer(inv -> {
+                TeamEntity mock10 = org.mockito.Mockito.mock(TeamEntity.class);
+                org.mockito.Mockito.when(mock10.getId()).thenReturn(10L);
+                return List.of(mock10);
+            });
+
+            ScopeTabPageResponse res = service.getScopeTabs("TEAM", 0, null);
+
+            // 孤児 membership (175, 159) は除外され、実在する 10 のみが返る。
+            assertThat(res.items()).extracting(ScopeTabItemResponse::scopeId).containsExactly(10L);
+            assertThat(res.totalCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("ORG: membership は存在するが organization が論理削除済み（孤児）の場合は一覧から除外される")
+        void orphanOrganizationMembershipExcluded() {
+            // activeScopeIds: 20（実在）, 301（孤児: org 削除済み）, 302（孤児）
+            given(membershipScopeQueryService.findCurrentMemberships(eq(USER_ID), any()))
+                    .willReturn(List.of(
+                            activeMembership(20L, com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION, LocalDateTime.now()),
+                            activeMembership(301L, com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION, LocalDateTime.now().minusDays(1)),
+                            activeMembership(302L, com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION, LocalDateTime.now().minusDays(2))));
+            given(scopeTabOrderRepository.findByUserIdAndScopeTypeOrderBySortOrderAsc(USER_ID, "ORGANIZATION"))
+                    .willReturn(List.of());
+            // findById は buildItem 内の個別取得（ORGANIZATION 分岐）。
+            // org.getName()/getIconUrl()/getSlug() はデフォルト null を返すMockitoモックで十分。
+            // getId() は buildItem では scopeId パラメータを直接使うため不要。
+            OrganizationEntity mockOrg20 = org.mockito.Mockito.mock(OrganizationEntity.class);
+            lenient().when(organizationRepository.findById(20L)).thenReturn(Optional.of(mockOrg20));
+            // findAllById: 20 のみ実在、301 と 302 は論理削除済み（@SQLRestriction により結果に含まれない）。
+            given(organizationRepository.findAllById(any())).willAnswer(inv -> {
+                OrganizationEntity mock20 = org.mockito.Mockito.mock(OrganizationEntity.class);
+                org.mockito.Mockito.when(mock20.getId()).thenReturn(20L);
+                return List.of(mock20);
+            });
+
+            ScopeTabPageResponse res = service.getScopeTabs("ORGANIZATION", 0, null);
+
+            // 孤児 membership (301, 302) は除外され、実在する 20 のみが返る。
+            assertThat(res.items()).extracting(ScopeTabItemResponse::scopeId).containsExactly(20L);
+            assertThat(res.totalCount()).isEqualTo(1);
+        }
+
+        @Test
         @DisplayName("他人所有/不在フォルダは SCOPE_TAB_004")
         void foreignFolder() {
-            lenient().when(membershipRepository.findActiveByUserAndScopeType(eq(USER_ID), any()))
+            lenient().when(membershipScopeQueryService.findCurrentMemberships(eq(USER_ID), any()))
                     .thenReturn(List.of());
             lenient().when(scopeTabOrderRepository.findByUserIdAndScopeTypeOrderBySortOrderAsc(USER_ID, "TEAM"))
                     .thenReturn(List.of());

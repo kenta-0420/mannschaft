@@ -83,7 +83,8 @@ class ContentTranslationStatusServiceTest {
         void 正常系_DRAFTからIN_REVIEWへ遷移() {
             // given
             ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
             given(contentTranslationRepository.save(any(ContentTranslationEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -92,7 +93,7 @@ class ContentTranslationStatusServiceTest {
             req.setVersion(0L);
 
             // when
-            ApiResponse<ContentTranslationResponse> result = sut.changeStatus(1L, req);
+            ApiResponse<ContentTranslationResponse> result = sut.changeStatus(1L, SCOPE_TYPE, SCOPE_ID, req);
 
             // then
             assertThat(result.getData().getStatus()).isEqualTo("IN_REVIEW");
@@ -103,7 +104,8 @@ class ContentTranslationStatusServiceTest {
         void 正常系_DRAFTからPUBLISHEDへ遷移() {
             // given
             ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
             given(contentTranslationRepository.save(any(ContentTranslationEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -112,7 +114,7 @@ class ContentTranslationStatusServiceTest {
             req.setVersion(0L);
 
             // when
-            ApiResponse<ContentTranslationResponse> result = sut.changeStatus(1L, req);
+            ApiResponse<ContentTranslationResponse> result = sut.changeStatus(1L, SCOPE_TYPE, SCOPE_ID, req);
 
             // then
             assertThat(result.getData().getStatus()).isEqualTo("PUBLISHED");
@@ -124,14 +126,15 @@ class ContentTranslationStatusServiceTest {
         void 異常系_不正なステータス遷移_TRANSLATION_005() {
             // given: PUBLISHED → IN_REVIEW は許可されていない
             ContentTranslationEntity entity = createEntity("PUBLISHED");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
 
             ChangeStatusRequest req = new ChangeStatusRequest();
             req.setStatus("IN_REVIEW");
             req.setVersion(0L);
 
             // when & then
-            assertThatThrownBy(() -> sut.changeStatus(1L, req))
+            assertThatThrownBy(() -> sut.changeStatus(1L, SCOPE_TYPE, SCOPE_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TranslationErrorCode.TRANSLATION_005);
@@ -142,14 +145,15 @@ class ContentTranslationStatusServiceTest {
         void 異常系_バージョン不一致_TRANSLATION_007() {
             // given
             ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
 
             ChangeStatusRequest req = new ChangeStatusRequest();
             req.setStatus("IN_REVIEW");
             req.setVersion(999L); // version mismatch
 
             // when & then
-            assertThatThrownBy(() -> sut.changeStatus(1L, req))
+            assertThatThrownBy(() -> sut.changeStatus(1L, SCOPE_TYPE, SCOPE_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TranslationErrorCode.TRANSLATION_007);
@@ -159,14 +163,15 @@ class ContentTranslationStatusServiceTest {
         @DisplayName("異常系_対象が見つからない_TRANSLATION_002")
         void 異常系_対象が見つからない_TRANSLATION_002() {
             // given
-            given(contentTranslationRepository.findById(999L)).willReturn(Optional.empty());
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(999L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
 
             ChangeStatusRequest req = new ChangeStatusRequest();
             req.setStatus("IN_REVIEW");
             req.setVersion(0L);
 
             // when & then
-            assertThatThrownBy(() -> sut.changeStatus(999L, req))
+            assertThatThrownBy(() -> sut.changeStatus(999L, SCOPE_TYPE, SCOPE_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TranslationErrorCode.TRANSLATION_002);
@@ -177,14 +182,15 @@ class ContentTranslationStatusServiceTest {
         void 異常系_未知のステータス文字列_TRANSLATION_005() {
             // given
             ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
 
             ChangeStatusRequest req = new ChangeStatusRequest();
             req.setStatus("UNKNOWN_STATUS");
             req.setVersion(0L);
 
             // when & then
-            assertThatThrownBy(() -> sut.changeStatus(1L, req))
+            assertThatThrownBy(() -> sut.changeStatus(1L, SCOPE_TYPE, SCOPE_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TranslationErrorCode.TRANSLATION_005);
@@ -204,12 +210,14 @@ class ContentTranslationStatusServiceTest {
         void 正常系_PUBLISHEDに更新() {
             // given
             ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
             given(contentTranslationRepository.save(any(ContentTranslationEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
             // when
-            ApiResponse<ContentTranslationResponse> result = sut.publishTranslation(1L);
+            ApiResponse<ContentTranslationResponse> result =
+                    sut.publishTranslation(1L, SCOPE_TYPE, SCOPE_ID);
 
             // then
             assertThat(result.getData().getStatus()).isEqualTo("PUBLISHED");
@@ -220,10 +228,25 @@ class ContentTranslationStatusServiceTest {
         @DisplayName("異常系_対象が見つからない_TRANSLATION_002")
         void 異常系_対象が見つからない_TRANSLATION_002() {
             // given
-            given(contentTranslationRepository.findById(999L)).willReturn(Optional.empty());
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(999L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> sut.publishTranslation(999L))
+            assertThatThrownBy(() -> sut.publishTranslation(999L, SCOPE_TYPE, SCOPE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TranslationErrorCode.TRANSLATION_002);
+        }
+
+        @Test
+        @DisplayName("BOLA: idが指定scope配下でない場合 → TRANSLATION_002（存在秘匿）")
+        void 越境id_TRANSLATION_002() {
+            // given
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, 999L))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.publishTranslation(1L, SCOPE_TYPE, 999L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TranslationErrorCode.TRANSLATION_002);
@@ -244,14 +267,15 @@ class ContentTranslationStatusServiceTest {
             // given
             ContentTranslationEntity en = createEntity(TranslationStatus.PUBLISHED.name());
             ContentTranslationEntity ko = createEntity(TranslationStatus.PUBLISHED.name());
-            given(contentTranslationRepository.findBySourceTypeAndSourceIdAndStatusAndDeletedAtIsNull(
-                    SOURCE_TYPE, SOURCE_ID, TranslationStatus.PUBLISHED.name()))
+            given(contentTranslationRepository
+                    .findBySourceTypeAndSourceIdAndStatusAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                            SOURCE_TYPE, SOURCE_ID, TranslationStatus.PUBLISHED.name(), SCOPE_TYPE, SCOPE_ID))
                     .willReturn(List.of(en, ko));
             given(contentTranslationRepository.save(any(ContentTranslationEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
             // when
-            int count = sut.markAsStale(SOURCE_TYPE, SOURCE_ID);
+            int count = sut.markAsStale(SCOPE_TYPE, SCOPE_ID, SOURCE_TYPE, SOURCE_ID);
 
             // then
             assertThat(count).isEqualTo(2);
@@ -265,12 +289,13 @@ class ContentTranslationStatusServiceTest {
         @DisplayName("正常系_PUBLISHED翻訳が存在しない場合は0件")
         void 正常系_対象なしは0件() {
             // given
-            given(contentTranslationRepository.findBySourceTypeAndSourceIdAndStatusAndDeletedAtIsNull(
-                    SOURCE_TYPE, SOURCE_ID, TranslationStatus.PUBLISHED.name()))
+            given(contentTranslationRepository
+                    .findBySourceTypeAndSourceIdAndStatusAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                            SOURCE_TYPE, SOURCE_ID, TranslationStatus.PUBLISHED.name(), SCOPE_TYPE, SCOPE_ID))
                     .willReturn(List.of());
 
             // when
-            int count = sut.markAsStale(SOURCE_TYPE, SOURCE_ID);
+            int count = sut.markAsStale(SCOPE_TYPE, SCOPE_ID, SOURCE_TYPE, SOURCE_ID);
 
             // then
             assertThat(count).isZero();

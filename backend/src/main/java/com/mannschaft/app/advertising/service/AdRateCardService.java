@@ -28,6 +28,7 @@ public class AdRateCardService {
 
     private final AdRateCardRepository adRateCardRepository;
     private final AdvertisingMapper advertisingMapper;
+    private final com.mannschaft.app.advertising.repository.AdCampaignRepository adCampaignRepository;
 
     /**
      * 料金カード一覧を取得する（管理者用）。
@@ -87,6 +88,12 @@ public class AdRateCardService {
 
         if (!entity.getEffectiveFrom().isAfter(LocalDate.now())) {
             throw new BusinessException(AdvertisingErrorCode.AD_009);
+        }
+
+        // F09.19.1 AC-1.12: 運用型キャンペーンが参照中の料金カード削除は FK violation 500 ではなく
+        // 409 / AD_034 で事前拒否する（正本 §5.2 V144.002）。
+        if (adCampaignRepository.existsByRateCardId(rateCardId)) {
+            throw new BusinessException(AdvertisingErrorCode.AD_034);
         }
 
         adRateCardRepository.deleteById(rateCardId);

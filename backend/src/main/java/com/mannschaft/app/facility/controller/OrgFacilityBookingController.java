@@ -11,6 +11,7 @@ import com.mannschaft.app.facility.dto.CancelBookingRequest;
 import com.mannschaft.app.facility.dto.CreateBookingRequest;
 import com.mannschaft.app.facility.dto.RejectBookingRequest;
 import com.mannschaft.app.facility.dto.UpdateBookingRequest;
+import com.mannschaft.app.facility.service.FacilityAccessGuard;
 import com.mannschaft.app.facility.service.FacilityBookingService;
 import com.mannschaft.app.facility.service.FacilityPaymentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,6 +50,7 @@ public class OrgFacilityBookingController {
 
     private final FacilityBookingService bookingService;
     private final FacilityPaymentService paymentService;
+    private final FacilityAccessGuard accessGuard;
 
     @GetMapping
     @Operation(summary = "予約一覧")
@@ -58,6 +60,7 @@ public class OrgFacilityBookingController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        accessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         Page<BookingResponse> result = bookingService.listBookings(SCOPE_TYPE, organizationId, status, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -70,6 +73,7 @@ public class OrgFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateBookingRequest request) {
+        accessGuard.requireFacilityMember(SCOPE_TYPE, organizationId, request.getFacilityId(), SecurityUtils.getCurrentUserId());
         BookingResponse response = bookingService.createBooking(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -80,6 +84,7 @@ public class OrgFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingDetailResponse>> getBooking(
             @PathVariable Long organizationId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingMember(SCOPE_TYPE, organizationId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.getBooking(bookingId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -91,6 +96,7 @@ public class OrgFacilityBookingController {
             @PathVariable Long organizationId,
             @PathVariable Long bookingId,
             @Valid @RequestBody UpdateBookingRequest request) {
+        accessGuard.requireBookingOwnerOrAdmin(SCOPE_TYPE, organizationId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.updateBooking(bookingId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -102,6 +108,7 @@ public class OrgFacilityBookingController {
             @PathVariable Long organizationId,
             @PathVariable Long bookingId,
             @Valid @RequestBody CancelBookingRequest request) {
+        accessGuard.requireBookingOwnerOrAdmin(SCOPE_TYPE, organizationId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.cancelBooking(bookingId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -113,6 +120,7 @@ public class OrgFacilityBookingController {
             @PathVariable Long organizationId,
             @PathVariable Long bookingId,
             @Valid @RequestBody ApproveBookingRequest request) {
+        accessGuard.requireBookingAdmin(SCOPE_TYPE, organizationId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.approveBooking(bookingId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -124,6 +132,7 @@ public class OrgFacilityBookingController {
             @PathVariable Long organizationId,
             @PathVariable Long bookingId,
             @Valid @RequestBody RejectBookingRequest request) {
+        accessGuard.requireBookingAdmin(SCOPE_TYPE, organizationId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.rejectBooking(bookingId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -134,6 +143,7 @@ public class OrgFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingDetailResponse>> checkIn(
             @PathVariable Long organizationId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingAdmin(SCOPE_TYPE, organizationId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.checkIn(bookingId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -144,6 +154,7 @@ public class OrgFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingDetailResponse>> completeBooking(
             @PathVariable Long organizationId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingAdmin(SCOPE_TYPE, organizationId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.completeBooking(bookingId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -154,6 +165,7 @@ public class OrgFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingPaymentResponse>> getPayment(
             @PathVariable Long organizationId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingOwnerOrAdmin(SCOPE_TYPE, organizationId, bookingId, SecurityUtils.getCurrentUserId());
         BookingPaymentResponse response = paymentService.getPayment(bookingId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -164,6 +176,7 @@ public class OrgFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingPaymentResponse>> confirmPayment(
             @PathVariable Long organizationId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingAdmin(SCOPE_TYPE, organizationId, bookingId, SecurityUtils.getCurrentUserId());
         BookingPaymentResponse response = paymentService.confirmDirectPayment(bookingId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -175,6 +188,7 @@ public class OrgFacilityBookingController {
             @PathVariable Long organizationId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        accessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<CalendarBookingResponse> responses = bookingService.getCalendarBookings(SCOPE_TYPE, organizationId, dateFrom, dateTo);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
@@ -185,6 +199,7 @@ public class OrgFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingDetailResponse>> getConfirmationPdf(
             @PathVariable Long organizationId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingMember(SCOPE_TYPE, organizationId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.getBookingForPdf(bookingId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

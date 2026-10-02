@@ -138,23 +138,32 @@ public class KbPageService {
             throw new BusinessException(KnowledgeBaseErrorCode.KB_003);
         }
 
-        // 親ページの存在確認と深さ計算
+        // 親ページの存在確認と深さ計算（BOLA是正: 親IDは同一scope内でのみ解決する。
+        // findByIdAndDeletedAtIsNull のみだと他team/orgの親ページIDにぶら下げられてしまう）
         KbPageEntity parentPage = null;
         int depth = 0;
         if (req.parentId() != null) {
-            parentPage = pageRepository.findByIdAndDeletedAtIsNull(req.parentId())
-                    .orElseThrow(() -> new BusinessException(KnowledgeBaseErrorCode.KB_001));
+            parentPage = findPageByIdAndScope(req.parentId(), scopeType, scopeId);
             depth = parentPage.getDepth() + 1;
             if (depth > MAX_DEPTH) {
                 throw new BusinessException(KnowledgeBaseErrorCode.KB_004);
             }
         }
 
-        // テンプレートからbodyを取得
+        // テンプレートからbodyを取得（BOLA是正: SYSTEM テンプレートは全scope共通で利用可だが、
+        // scope固有テンプレートは同一scopeのものしか流用できない。KbTemplateService#findTemplateByIdAndScope
+        // と同じ束縛ロジック）
         String body = req.body();
         if (req.templateId() != null && body == null) {
             KbTemplateEntity template = templateRepository.findById(req.templateId())
                     .orElseThrow(() -> new BusinessException(KnowledgeBaseErrorCode.KB_010));
+            if (template.getDeletedAt() != null) {
+                throw new BusinessException(KnowledgeBaseErrorCode.KB_010);
+            }
+            if (!Boolean.TRUE.equals(template.getIsSystem())
+                    && (!scopeType.equals(template.getScopeType()) || !scopeId.equals(template.getScopeId()))) {
+                throw new BusinessException(KnowledgeBaseErrorCode.KB_010);
+            }
             body = template.getBody();
         }
 
@@ -262,8 +271,8 @@ public class KbPageService {
 
         KbPageEntity newParent = null;
         if (newParentId != null) {
-            newParent = pageRepository.findByIdAndDeletedAtIsNull(newParentId)
-                    .orElseThrow(() -> new BusinessException(KnowledgeBaseErrorCode.KB_001));
+            // BOLA是正: 移動先親IDは同一scope内でのみ解決する（他team/orgの配下への越境移動を防ぐ）
+            newParent = findPageByIdAndScope(newParentId, scopeType, scopeId);
 
             // 循環参照チェック: 新親のpathが自身のpathで始まっていないか確認
             if (newParent.getPath().startsWith(page.getPath() + "/")

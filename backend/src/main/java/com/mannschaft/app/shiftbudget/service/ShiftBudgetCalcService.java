@@ -56,19 +56,21 @@ public class ShiftBudgetCalcService {
     /**
      * 必要シフト枠数を逆算する。
      *
-     * @param request リクエスト DTO
+     * @param organizationId 予算の組織（呼び出し側が明示する。チームは複数の組織に加盟しうるため、
+     *                       チームから組織を推測しない。F01.2.1 §9.2 #12）。team_id 無しの EXPLICIT では null 可
+     * @param request        リクエスト DTO
      * @return レスポンス DTO
      */
-    public RequiredSlotsResponse calculateRequiredSlots(RequiredSlotsRequest request) {
+    public RequiredSlotsResponse calculateRequiredSlots(Long organizationId, RequiredSlotsRequest request) {
         // 1. リクエスト事前バリデーション (Bean Validation で済まない論理チェック)
         validateRequest(request);
 
         // 2. テナント分離・権限チェック (EXPLICIT モード単独・team 不要のケースを除く)
         if (request.rateMode() != RateMode.EXPLICIT) {
-            requireTeamAccess(request.teamId());
+            requireTeamAccess(organizationId, request.teamId());
         } else if (request.teamId() != null) {
             // EXPLICIT でも team_id 指定があればそのチームに対する権限を必須にする
-            requireTeamAccess(request.teamId());
+            requireTeamAccess(organizationId, request.teamId());
         } else {
             // team_id 無し EXPLICIT モードはユーザー認証だけで通す（純粋な計算機能）
             // ただしフィーチャーフラグはグローバル単独判定なので organizationId=null 渡し
@@ -137,15 +139,17 @@ public class ShiftBudgetCalcService {
     /**
      * team_id の組織所属検証 + フィーチャーフラグ判定 + MANAGE_SHIFTS 権限チェックを行う。
      *
-     * <p>多テナント分離: team_id は ACTIVE な team_org_memberships を持つ必要がある。
-     * 不在時は 404 で IDOR 対策（403 ではなく 404 を返すのは
-     * F02.5 ACTION_MEMO の作法に準拠）。</p>
+     * <p>多テナント分離: 呼び出し側が明示した組織にチームが ACTIVE 加盟している必要がある。
+     * 組織未指定・加盟なし・チーム不在はすべて 404 で区別しない（IDOR 対策。403 ではなく 404 を返すのは
+     * F02.5 ACTION_MEMO の作法に準拠）。フラグは<b>明示した組織</b>で判定する（F01.2.1 AC-N05）。</p>
      */
-    private void requireTeamAccess(Long teamId) {
-        Long organizationId = rateQueryRepository.findOrganizationIdByTeamId(teamId)
-                .orElseThrow(() -> new BusinessException(ShiftBudgetErrorCode.TEAM_NOT_FOUND));
+    private void requireTeamAccess(Long organizationId, Long teamId) {
+        if (organizationId == null
+                || rateQueryRepository.countTeamInOrganization(teamId, organizationId) == 0) {
+            throw new BusinessException(ShiftBudgetErrorCode.TEAM_NOT_FOUND);
+        }
 
-        // フィーチャーフラグ判定
+        // フィーチャーフラグ判定（明示した組織で）
         featureService.requireEnabled(organizationId);
 
         // 権限チェック: MANAGE_SHIFTS (TEAM スコープ)

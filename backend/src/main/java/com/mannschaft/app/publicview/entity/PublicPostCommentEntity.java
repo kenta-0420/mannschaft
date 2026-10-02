@@ -1,6 +1,6 @@
 package com.mannschaft.app.publicview.entity;
 
-import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.entity.UuidV7CharEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -24,7 +24,7 @@ import java.time.OffsetDateTime;
 @Table(name = "public_post_comments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class PublicPostCommentEntity extends UuidV7Entity {
+public class PublicPostCommentEntity extends UuidV7CharEntity {
 
     /**
      * コメント対象の BlogPost の ID。

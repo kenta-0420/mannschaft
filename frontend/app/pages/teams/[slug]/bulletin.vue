@@ -30,8 +30,7 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}`" />
-      <PageHeader :title="t('bulletin.title')" />
+      <PageHeader :title="t('bulletin.title')" :back-to="`/teams/${teamSlug}`" />
     </div>
 
     <!-- スレッド詳細表示中 -->

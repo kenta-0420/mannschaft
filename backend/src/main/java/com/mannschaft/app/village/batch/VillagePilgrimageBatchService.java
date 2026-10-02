@@ -1,6 +1,8 @@
 package com.mannschaft.app.village.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.entity.UserVillagePinEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
@@ -17,14 +19,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 /**
@@ -63,7 +63,8 @@ public class VillagePilgrimageBatchService {
     private final UserVillagePinRepository pinRepository;
     private final VillagePilgrimageRecommendationRepository pilgrimageRepository;
 
-    private final Random random = new SecureRandom();
+    /** 空カテゴリ集合時に JPQL の {@code IN ()} 空リストエラーを避けるためのダミー値（絞り込み条件は無効化される）。 */
+    private static final List<String> NO_CATEGORY_FILTER = List.of("__NONE__");
 
     /**
      * 毎日 09:00 JST にバッチ実行。
@@ -71,6 +72,8 @@ public class VillagePilgrimageBatchService {
      * <p>cron 表現 {@code "0 0 9 * * *"} は JST 09:00 ちょうどに発火。
      * 朝のログイン時に「今日の村」を提示できるタイミングを優先した。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。村の巡礼推薦の生成であり、再開後の実行で作り直される。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "village-pilgrimage-daily", description = "村の巡礼推薦を毎日 09:00 にユーザー別に生成する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
@@ -135,36 +138,32 @@ public class VillagePilgrimageBatchService {
                 .map(UserVillagePinEntity::getVillageId)
                 .collect(Collectors.toSet());
 
-        // 3) 候補プール作成: 削除/凍結/UNLISTED 除外、未参加、未ピン、カテゴリ一致
-        //    findAll を使うのは Phase 3-β の最小実装ゆえ。村数が増えたら category インデックスでの絞込クエリに置換予定。
-        List<VillageEntity> allVillages = villageRepository.findAll();
-        List<VillageEntity> candidates = new ArrayList<>();
+        // 3) 候補選定: 削除/凍結/UNLISTED 除外、未参加、未ピン、カテゴリ一致を SQL 側の WHERE で絞り込む。
+        //    旧実装は findAll() で全村をロードしユーザーごとにアプリ側フィルタしていた（ユーザー数 × 村数のオーダー）。
+        //    ORDER BY RAND() は全行に乱数を振ってからソートするため村テーブルが大きくなるほど致命的に遅く
+        //    インデックスも効かないので使わず、WHERE 句で絞り込んだ候補 ID（件数は限られる）だけを取得し
+        //    アプリ側で Random により 1 件選ぶ（候補数ぶんのメモリしか使わない）。
         Set<UUID> excludeIds = new HashSet<>();
         excludeIds.addAll(joinedVillageIds);
         excludeIds.addAll(pinnedVillageIds);
 
-        for (VillageEntity v : allVillages) {
-            if (v.getDeletedAt() != null || v.getArchivedAt() != null) {
-                continue;
-            }
-            if (v.getVisibility() != VillageVisibility.PUBLIC) {
-                continue;
-            }
-            if (excludeIds.contains(v.getId())) {
-                continue;
-            }
-            if (!categories.isEmpty() && (v.getCategory() == null || !categories.contains(v.getCategory()))) {
-                continue;
-            }
-            candidates.add(v);
-        }
+        List<UUID> candidateIds = villageRepository.findPilgrimageCandidateIds(
+                VillageVisibility.PUBLIC,
+                excludeIds,
+                categories.isEmpty(),
+                categories.isEmpty() ? NO_CATEGORY_FILTER : categories);
 
-        if (candidates.isEmpty()) {
+        if (candidateIds.isEmpty()) {
             return false;
         }
 
-        // 4) ランダム選定（本格化は将来の TODO）
-        VillageEntity picked = candidates.get(random.nextInt(candidates.size()));
+        // 4) アプリ側でランダム選定（本格化は将来の TODO）
+        UUID pickedId = candidateIds.get(ThreadLocalRandom.current().nextInt(candidateIds.size()));
+        VillageEntity picked = villageRepository.findById(pickedId).orElse(null);
+        if (picked == null) {
+            // 取得直後に削除等が発生した稀なレース。今回は推薦を作らずスキップ（次回バッチで再試行）
+            return false;
+        }
 
         String reason;
         if (!categories.isEmpty() && categories.contains(picked.getCategory())) {

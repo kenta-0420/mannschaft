@@ -28,7 +28,7 @@
  *  - `watch` の動作確認は `mountSuspended` + `defineComponent` でコンポーネントコンテキストを確保する。
  *  - `handleCorkboardEvent` を直接呼び出してイベント処理をテストする。
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { ref, defineComponent, h, nextTick, type Ref } from 'vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import type { CorkboardDetail, CorkboardCardDetail, CorkboardGroupDetail, CorkboardEventPayload } from '~/types/corkboard'
@@ -184,6 +184,15 @@ async function setupComposable(
 // ============================================================
 
 describe('useCorkboardWebSocketSync', () => {
+  // 最初の mountSuspended は Nuxt アプリ本体のコンパイル・初期化を伴い、
+  // 単体テストの testTimeout（5秒）を容易に超える一度きりのコストが乗る。
+  // このコストを個々のテストではなく hook（hookTimeout 適用）で払っておくことで、
+  // 先頭のテストだけがマシン負荷で落ちる flake を根から断つ。
+  beforeAll(async () => {
+    const warmup = await setupComposable(ref<CorkboardDetail | null>(null))
+    warmup.wrapper.unmount()
+  })
+
   beforeEach(() => {
     mockConnect.mockClear()
     mockDisconnect.mockClear()

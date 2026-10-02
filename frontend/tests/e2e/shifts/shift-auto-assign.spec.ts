@@ -17,6 +17,7 @@ import {
   mockSchedule,
   mockSlots,
   mockAssignmentRuns,
+  mockShiftFeatureFlags,
 } from './_helpers'
 
 /**
@@ -45,6 +46,9 @@ test.describe('AUTO-001〜006: F03.5 Phase 2 自動割当フロー', () => {
     await mockCatchAllApis(page)
     // チームメンバー API をモック（board.vue の loadMembers() が呼ぶ）
     await mockTeamMembersApi(page)
+    // 自動割当は本番既定 OFF になったため、本 spec はフラグ ON で実行する
+    // （設計書 docs/features/F03.5_shift/06_manual_authoring.md §11.1.2-6「テストは消さない」）
+    await mockShiftFeatureFlags(page, true)
   })
 
   test('AUTO-001: 自動割当ダイアログを開ける（ADJUSTING 状態のスケジュール）', async ({ page }) => {

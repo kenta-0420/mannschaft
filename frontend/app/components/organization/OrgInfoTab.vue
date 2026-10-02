@@ -8,13 +8,42 @@ const props = defineProps<{
   ancestors?: AncestorOrganization[]
 }>()
 
+const emit = defineEmits<{ updated: [] }>()
+
 const { t } = useI18n()
 const { visibilityLabel } = useScopeLabels()
 
 const ancestorList = computed<AncestorOrganization[]>(() => props.ancestors ?? [])
+
+// CMP-260907-0852: ここに表示している組織名・所在地を、この場で直せるようにする。
+// 従来この画面の唯一の「編集」ボタンは拡張プロフィール（ホームページURL・理念・役員等）へ
+// 飛ぶもので、表示項目と行き先が食い違っていた。
+const showBasicInfoEdit = ref(false)
 </script>
 
 <template>
+  <div class="mt-4 flex items-center justify-between">
+    <h3 class="text-base font-semibold text-surface-700 dark:text-surface-200">
+      {{ t('organization.basicInfoEdit.sectionTitle') }}
+    </h3>
+    <Button
+      v-if="isAdmin"
+      :label="t('button.edit')"
+      icon="pi pi-pencil"
+      size="small"
+      text
+      data-testid="org-basic-info-edit-button"
+      @click="showBasicInfoEdit = true"
+    />
+  </div>
+
+  <OrgBasicInfoEditDialog
+    v-model:visible="showBasicInfoEdit"
+    :org-id="org.id"
+    :org="org"
+    @saved="emit('updated')"
+  />
+
   <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
     <div class="space-y-4">
       <div>

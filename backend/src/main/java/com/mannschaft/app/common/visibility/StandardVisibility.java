@@ -61,13 +61,41 @@ public enum StandardVisibility {
     /**
      * ADMIN ロール以上の保有者のみ閲覧可能（新ラダー・閾値方式 / 旧 ADMINS_ONLY 改名）。
      *
-     * <p>包含: ADMIN / DEPUTY_ADMIN（= 優先度 ADMIN 以上）。MEMBER 以下は不可視。
+     * <p>包含: <strong>ADMIN のみ</strong>（= 優先度 ADMIN 以上）。DEPUTY_ADMIN 以下は不可視。
      *
-     * <p>判定は {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "ADMIN")} と同等。
-     * 新ラダーの最上位閾値であり、機微度も最高位として扱う。
+     * <p><strong>注意（CMP-017b で是正）</strong>: 本 javadoc は長らく「包含: ADMIN / DEPUTY_ADMIN」と
+     * 記していたが<strong>誤り</strong>であった。判定は
+     * {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "ADMIN")} =
+     * {@code priority(actual) <= priority("ADMIN") = 2} であり、
+     * DEPUTY_ADMIN は {@code priority = 3} のため実際には弾かれる。
+     * 「ADMIN と副管理者の両方」を意図する場合は
+     * {@link #DEPUTY_ADMINS_AND_ABOVE} を用いること。
+     *
+     * <p>新ラダーの最上位閾値であり、機微度も最高位として扱う。
      * 設計書 §5.1 / §5.1.5 を参照。
      */
     ADMINS_AND_ABOVE,
+
+    /**
+     * DEPUTY_ADMIN ロール以上の保有者のみ閲覧可能（新ラダー・閾値方式）。
+     *
+     * <p>包含: ADMIN / DEPUTY_ADMIN（= 優先度 DEPUTY_ADMIN 以上）。MEMBER 以下は不可視。
+     *
+     * <p>判定は {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "DEPUTY_ADMIN")} と同等。
+     * {@link #ADMINS_AND_ABOVE}（{@code priority <= 2}）との差は
+     * <strong>DEPUTY_ADMIN（priority=3）を含むか否か</strong>のみである。
+     *
+     * <p><strong>導入の経緯（CMP-017b）</strong>: F03.1 の {@code schedules.min_view_role} は
+     * {@code ADMIN_ONLY} を「DEPUTY_ADMIN・ADMIN のみ閲覧可」と定義する
+     * （設計書 {@code docs/features/F03.1_schedule_shared.md} の {@code min_view_role} の挙動）。
+     * これを {@link #ADMINS_AND_ABOVE} に写像すると DEPUTY_ADMIN を誤って弾いてしまうため、
+     * 「副管理者以上」を表す段を閾値ラダーに 1 段追加した。
+     *
+     * <p>閾値ラダー上の位置:
+     * {@code PUBLIC > SUPPORTERS_AND_ABOVE > MEMBERS_AND_ABOVE > DEPUTY_ADMINS_AND_ABOVE
+     * > ADMINS_AND_ABOVE}（右へ行くほど狭い）。機微度は {@link #ADMINS_AND_ABOVE} に準ずる。
+     */
+    DEPUTY_ADMINS_AND_ABOVE,
 
     /**
      * 作成者本人のみ閲覧可能。

@@ -28,6 +28,9 @@ public interface OnboardingMapper {
     List<StepResponse> toStepResponseList(List<OnboardingTemplateStepEntity> entities);
 
     @Mapping(target = "templateId", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     OnboardingTemplateStepEntity toStepEntity(CreateStepRequest request);
 
     List<OnboardingTemplateStepEntity> toStepEntityList(List<CreateStepRequest> requests);

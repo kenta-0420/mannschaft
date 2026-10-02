@@ -10,6 +10,7 @@ import com.mannschaft.app.event.entity.EventDelegationEntity;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventRsvpResponseEntity;
 import com.mannschaft.app.event.event.EventDelegationAcceptedEvent;
+import com.mannschaft.app.event.event.EventDelegationNotificationEvent;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventDelegationRepository;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
@@ -46,7 +47,6 @@ public class EventDelegationService {
     private final EventCheckinRepository checkinRepository;
     private final EventService eventService;
     private final EventDelegationValidator validator;
-    private final EventDelegationNotifier notifier;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -89,9 +89,9 @@ public class EventDelegationService {
 
         if (autoAccept) {
             onAccepted(event, delegation);
-            notifier.notifyAutoAccepted(delegation);
+            publishNotification(delegation, EventDelegationNotificationEvent.Kind.AUTO_ACCEPTED);
         } else {
-            notifier.notifyRequestPending(delegation);
+            publishNotification(delegation, EventDelegationNotificationEvent.Kind.REQUEST_PENDING);
         }
 
         log.info("イベント代理指定: eventId={}, delegatorId={}, delegateId={}, status={}",
@@ -117,7 +117,7 @@ public class EventDelegationService {
 
         EventEntity event = eventService.findEventOrThrow(delegation.getEventId());
         onAccepted(event, delegation);
-        notifier.notifyAccepted(delegation);
+        publishNotification(delegation, EventDelegationNotificationEvent.Kind.ACCEPTED);
 
         log.info("イベント代理承認: delegationId={}, delegateId={}", delegationId, actingUserId);
         return delegation;
@@ -138,7 +138,7 @@ public class EventDelegationService {
 
         delegation.reject();
         delegation = delegationRepository.save(delegation);
-        notifier.notifyRejected(delegation);
+        publishNotification(delegation, EventDelegationNotificationEvent.Kind.REJECTED);
 
         log.info("イベント代理拒否: delegationId={}, delegateId={}", delegationId, actingUserId);
         return delegation;
@@ -177,11 +177,9 @@ public class EventDelegationService {
         boolean delegateLeft = delegation.getDelegateId().equals(leftUserId);
         delegation.cancel();
         delegationRepository.save(delegation);
-        if (delegateLeft) {
-            notifier.notifyDelegateLeft(delegation);
-        } else {
-            notifier.notifyDelegatorLeft(delegation);
-        }
+        publishNotification(delegation, delegateLeft
+                ? EventDelegationNotificationEvent.Kind.DELEGATE_LEFT
+                : EventDelegationNotificationEvent.Kind.DELEGATOR_LEFT);
         log.info("退会連動で代理取消: eventId={}, leftUserId={}, delegateLeft={}",
                 delegation.getEventId(), leftUserId, delegateLeft);
     }
@@ -325,7 +323,20 @@ public class EventDelegationService {
     private void cancelInternal(EventDelegationEntity delegation) {
         delegation.cancel();
         delegationRepository.save(delegation);
-        notifier.notifyCancelled(delegation);
+        publishNotification(delegation, EventDelegationNotificationEvent.Kind.CANCELLED);
+    }
+
+    /**
+     * 代理出席の通知配送要求を publish する（Issue #2990 L5）。
+     *
+     * <p>業務トランザクションの内側では ID と種別だけを載せたイベントを発行するに留め、
+     * 実際の通知生成・配信は {@link EventDelegationNotifier}（{@code AFTER_COMMIT} +
+     * {@code @Async("event-pool")}）が行う。これにより通知の失敗が代理の指定・承認・拒否・
+     * 取消といった業務処理を巻き戻さなくなる。</p>
+     */
+    private void publishNotification(EventDelegationEntity delegation,
+                                     EventDelegationNotificationEvent.Kind kind) {
+        eventPublisher.publishEvent(new EventDelegationNotificationEvent(delegation.getId(), kind));
     }
 
     /**

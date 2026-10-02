@@ -1,0 +1,103 @@
+{
+  "visibility": {
+    "label": "Mindest-Sichtbarkeitsrolle",
+    "help": "Legt die Mindestrolle fest, die diesen Ordner/diese Datei ansehen oder herunterladen darf. Ohne Angabe koennen alle Mitglieder sie ansehen.",
+    "all": "Alle Mitglieder (Standard)",
+    "SUPPORTERS_AND_ABOVE": "Unterstuetzer und hoeher",
+    "MEMBERS_AND_ABOVE": "Mitglieder und hoeher",
+    "ADMINS_AND_ABOVE": "Nur Administratoren"
+  },
+  "download": {
+    "disabledLabel": "Downloads deaktivieren",
+    "disabledHelp": "Blendet die Download-Schaltflaeche aus und verweigert die Ausgabe von Download-URLs. Da die Anzeige am Bildschirm nicht verhindert werden kann, ist dies kein vollstaendiger Schutz.",
+    "disabledError": "Downloads sind fuer diese Datei deaktiviert"
+  },
+  "settings": {
+    "title": "Dateieinstellungen",
+    "nameLabel": "Dateiname",
+    "descriptionLabel": "Beschreibung",
+    "saved": "Einstellungen gespeichert",
+    "saveError": "Einstellungen konnten nicht gespeichert werden"
+  },
+  "publicLink": {
+    "title": "Oeffentlicher Link",
+    "description": "Teile diese Datei ueber einen oeffentlichen Link, auch mit Personen ohne Anmeldung. Standardmaessig nur Ansicht.",
+    "downloadAllowedLabel": "Downloads erlauben",
+    "downloadAllowedHelp": "Wenn aktiviert, erlaubt dieser Link Downloads. Sind Downloads jedoch fuer die Datei selbst deaktiviert, hat das Vorrang.",
+    "expiresLabel": "Ablauf (max. 30 Tage)",
+    "expiresHelp": "Ein oeffentlicher Link muss immer ein Ablaufdatum haben. Du kannst es bis zu 30 Tage im Voraus setzen.",
+    "expiresPlaceholder": "Ablauf auswaehlen",
+    "expiresAtLabel": "Laeuft ab",
+    "passwordLabel": "Passwort (optional)",
+    "passwordPlaceholder": "Wenn gesetzt, muss es beim Zugriff eingegeben werden",
+    "createButton": "Freigabelink erstellen",
+    "createError": "Freigabelink konnte nicht erstellt werden",
+    "created": "Freigabelink erstellt",
+    "loadError": "Freigabelinks konnten nicht geladen werden",
+    "existingTitle": "Erstellte Links",
+    "empty": "Noch keine Freigabelinks",
+    "copied": "Link kopiert",
+    "copyError": "Kopieren fehlgeschlagen",
+    "copyButton": "Link kopieren",
+    "revoked": "Freigabelink widerrufen",
+    "revokeError": "Widerruf fehlgeschlagen",
+    "revokeButton": "Link widerrufen",
+    "tagDownload": "Herunterladbar",
+    "tagViewOnly": "Nur Ansicht",
+    "tagPassword": "Passwortgeschuetzt",
+    "adminOnly": "Nur Administratoren und stellvertretende Administratoren koennen oeffentliche Links erstellen und verwalten.",
+    "errors": {
+      "notFound": "Freigabelink nicht gefunden",
+      "inactive": "Dieser Freigabelink wurde deaktiviert",
+      "expired": "Dieser Freigabelink ist abgelaufen",
+      "passwordInvalid": "Das Passwort ist falsch",
+      "downloadNotAllowed": "Dieser Freigabelink erlaubt keine Downloads",
+      "expiryInvalid": "Ein Ablaufdatum ist erforderlich und darf hoechstens 30 Tage in der Zukunft liegen"
+    }
+  },
+  "guide": {
+    "title": "So funktioniert die Dateifreigabe",
+    "description": "Du kannst einschraenken, wer Ordner und Dateien sieht, oder sie extern ueber einen oeffentlichen Link ohne Anmeldung teilen. Kombiniere die Einstellungen nach Bedarf.",
+    "what": {
+      "title": "Ueber die Sicherheitseinstellungen",
+      "body": "Fuer jeden Ordner oder jede Datei kannst du festlegen, wer sie ansehen darf und ob Downloads erlaubt sind. Ausserdem kannst du einen oeffentlichen Link fuer Personen ohne Anmeldung ausgeben."
+    },
+    "visibility": {
+      "title": "Sichtbarkeit mit einer Mindestrolle einschraenken",
+      "body": "Waehle die Mindestrolle fuer die Ansicht: Unterstuetzer und hoeher, Mitglieder und hoeher oder nur Administratoren. Ohne Angabe koennen alle Mitglieder ansehen.",
+      "steps": {
+        "s1": "Oeffne den Ordner-Erstellen-Dialog oder das Zahnrad-Symbol einer Datei.",
+        "s2": "Waehle den Umfang unter Mindest-Sichtbarkeitsrolle.",
+        "s3": "Nach dem Speichern sehen Personen unterhalb der Rolle sie nicht mehr."
+      }
+    },
+    "download": {
+      "title": "Downloads deaktivieren",
+      "body": "Fuer Dateien, die zwar angesehen, aber nicht heruntergeladen werden sollen. Unterdrueckt die Download-Schaltflaeche und die URL-Ausgabe.",
+      "steps": {
+        "s1": "Oeffne die Einstellungen ueber das Zahnrad-Symbol einer Datei.",
+        "s2": "Aktiviere Downloads deaktivieren und speichere.",
+        "s3": "Beachte, dass die Anzeige am Bildschirm nicht verhindert werden kann, es also kein vollstaendiger Kopierschutz ist."
+      }
+    },
+    "link": {
+      "title": "Extern ueber einen oeffentlichen Link teilen",
+      "body": "Gib einen Link aus, der sich ohne Anmeldung oeffnet. Nur Administratoren und stellvertretende Administratoren koennen Links ausgeben.",
+      "steps": {
+        "s1": "Oeffne den Bildschirm fuer oeffentliche Links ueber das Link-Symbol einer Datei.",
+        "s2": "Lege ein Ablaufdatum fest (max. 30 Tage) und erlaube bei Bedarf Downloads oder setze ein Passwort.",
+        "s3": "Kopiere den erstellten Link und teile ihn. Du kannst ihn widerrufen, wenn er nicht mehr benoetigt wird."
+      }
+    },
+    "note": "Oeffentliche Links werden von Suchmaschinen nicht indexiert. Allerdings kann jeder, der den Link kennt, darauf zugreifen - gehe also sorgfaeltig damit um."
+  },
+  "sharedPage": {
+    "pageTitle": "Geteilte Datei",
+    "title": "Geteilte Datei",
+    "passwordRequired": "Diese Datei ist passwortgeschuetzt. Bitte gib das Passwort ein.",
+    "unlockButton": "Oeffnen",
+    "downloadButton": "Herunterladen",
+    "viewOnly": "Diese Datei ist nur zur Ansicht und kann nicht heruntergeladen werden.",
+    "footer": "Dies ist ein oeffentlicher Link, der von der Dateifreigabe-Funktion ausgegeben wurde."
+  }
+}

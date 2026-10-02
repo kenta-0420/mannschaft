@@ -21,6 +21,12 @@ public interface MemberProfileRepository extends JpaRepository<MemberProfileEnti
     List<MemberProfileEntity> findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(Long teamPageId);
 
     /**
+     * ページ内メンバーのうち表示中のものだけをページング取得する（非管理者向け。
+     * 検分修正 3巡目・P1: is_visible=false の行を一覧から除外する）。
+     */
+    Page<MemberProfileEntity> findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(Long teamPageId, Pageable pageable);
+
+    /**
      * ページ内メンバーを全件表示順で取得する（管理者用）。
      */
     List<MemberProfileEntity> findByTeamPageIdOrderBySortOrder(Long teamPageId);

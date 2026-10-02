@@ -1,5 +1,6 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.FamilyErrorCode;
@@ -26,10 +27,14 @@ public class AnniversaryService {
 
     private static final int MAX_ANNIVERSARIES_PER_TEAM = 50;
     private static final int UPCOMING_DAYS = 30;
+    private static final String SCOPE_TYPE_TEAM = "TEAM";
 
     private final TeamAnniversaryRepository teamAnniversaryRepository;
+    private final AccessControlService accessControlService;
 
-    public ApiResponse<List<AnniversaryResponse>> getAnniversaries(Long teamId) {
+    public ApiResponse<List<AnniversaryResponse>> getAnniversaries(Long teamId, Long actorUserId) {
+        // 認可根治 Wave2-2C: 記念日はチーム内共有データ。非メンバーの閲覧を 403 で拒否する
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TYPE_TEAM);
         List<TeamAnniversaryEntity> anniversaries = teamAnniversaryRepository
                 .findByTeamIdAndDeletedAtIsNullOrderByDateAsc(teamId);
         return ApiResponse.of(anniversaries.stream().map(this::toResponse).toList());
@@ -37,6 +42,8 @@ public class AnniversaryService {
 
     @Transactional
     public ApiResponse<AnniversaryResponse> createAnniversary(Long teamId, Long userId, AnniversaryRequest request) {
+        // 認可根治 Wave2-2C: 家族ユーティリティのため作成は全メンバー可（既存仕様）。非メンバーは 403
+        accessControlService.checkMembership(userId, teamId, SCOPE_TYPE_TEAM);
         long count = teamAnniversaryRepository.countByTeamIdAndDeletedAtIsNull(teamId);
         if (count >= MAX_ANNIVERSARIES_PER_TEAM) {
             throw new BusinessException(FamilyErrorCode.FAMILY_019);
@@ -50,8 +57,10 @@ public class AnniversaryService {
     }
 
     @Transactional
-    public ApiResponse<AnniversaryResponse> updateAnniversary(Long teamId, Long id, AnniversaryRequest request) {
-        TeamAnniversaryEntity entity = findOrThrow(id);
+    public ApiResponse<AnniversaryResponse> updateAnniversary(Long teamId, Long id, Long actorUserId,
+                                                              AnniversaryRequest request) {
+        TeamAnniversaryEntity entity = findInTeamOrThrow(teamId, id);
+        accessControlService.checkMembership(actorUserId, entity.getTeamId(), SCOPE_TYPE_TEAM);
         entity.update(request.getName(), request.getDate(),
                 request.getRepeatAnnually() != null ? request.getRepeatAnnually() : entity.getRepeatAnnually(),
                 request.getNotifyDaysBefore() != null ? request.getNotifyDaysBefore() : entity.getNotifyDaysBefore());
@@ -59,21 +68,31 @@ public class AnniversaryService {
     }
 
     @Transactional
-    public void deleteAnniversary(Long teamId, Long id) {
-        TeamAnniversaryEntity entity = findOrThrow(id);
+    public void deleteAnniversary(Long teamId, Long id, Long actorUserId) {
+        TeamAnniversaryEntity entity = findInTeamOrThrow(teamId, id);
+        accessControlService.checkMembership(actorUserId, entity.getTeamId(), SCOPE_TYPE_TEAM);
         entity.softDelete();
     }
 
-    public ApiResponse<List<AnniversaryResponse>> getUpcoming(Long teamId) {
+    public ApiResponse<List<AnniversaryResponse>> getUpcoming(Long teamId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TYPE_TEAM);
         LocalDate today = LocalDate.now();
         LocalDate to = today.plusDays(UPCOMING_DAYS);
         List<TeamAnniversaryEntity> upcoming = teamAnniversaryRepository.findUpcoming(teamId, today, to);
         return ApiResponse.of(upcoming.stream().map(this::toResponse).toList());
     }
 
-    private TeamAnniversaryEntity findOrThrow(Long id) {
-        return teamAnniversaryRepository.findByIdAndDeletedAtIsNull(id)
+    /**
+     * 記念日を取得し、entity 由来の teamId とパス teamId の一致を検証する。
+     * 不一致（他チームの記念日 ID 指定 = BOLA）は存在秘匿のため FAMILY_018（404）を返す。
+     */
+    private TeamAnniversaryEntity findInTeamOrThrow(Long teamId, Long id) {
+        TeamAnniversaryEntity entity = teamAnniversaryRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_018));
+        if (!entity.getTeamId().equals(teamId)) {
+            throw new BusinessException(FamilyErrorCode.FAMILY_018);
+        }
+        return entity;
     }
 
     private AnniversaryResponse toResponse(TeamAnniversaryEntity entity) {

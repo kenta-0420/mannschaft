@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.LiftPenaltyRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentPenaltySettingResponse;
@@ -10,6 +11,7 @@ import com.mannschaft.app.recruitment.dto.RecruitmentUserPenaltyResponse;
 import com.mannschaft.app.recruitment.dto.UpsertPenaltySettingRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
+import com.mannschaft.app.recruitment.service.RecruitmentMoneyFacade;
 import com.mannschaft.app.recruitment.service.RecruitmentPenaltyService;
 import com.mannschaft.app.recruitment.service.RecruitmentPenaltySettingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,6 +41,7 @@ public class RecruitmentPenaltyController {
 
     private final RecruitmentPenaltySettingService settingService;
     private final RecruitmentPenaltyService penaltyService;
+    private final RecruitmentMoneyFacade moneyFacade;
 
     /**
      * ペナルティ設定取得。
@@ -112,14 +115,15 @@ public class RecruitmentPenaltyController {
             @PathVariable Long scopeId,
             @PathVariable Long penaltyId,
             @Valid @RequestBody LiftPenaltyRequest request) {
-        RecruitmentUserPenaltyEntity entity =
-                penaltyService.liftPenalty(penaltyId, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(toPenaltyResponse(entity)));
+        return ResponseEntity.ok(ApiResponse.of(
+                moneyFacade.liftPenalty(scopeType, scopeId, penaltyId, SecurityUtils.getCurrentUserId())));
     }
 
     /**
      * 自分のペナルティ確認（本人）。
      */
+    @SelfScopedEndpoint("RecruitmentPenaltyService#getMyPenalties が "
+            + "SecurityUtils.getCurrentUserId() のみを検索条件に束縛する")
     @GetMapping("/recruitment/penalties/me")
     @Operation(summary = "自分のペナルティ一覧 (本人)")
     public ResponseEntity<ApiResponse<List<RecruitmentUserPenaltyResponse>>> getMyPenalties() {

@@ -1,5 +1,7 @@
 package com.mannschaft.app.gamification.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.gamification.TransactionType;
 import com.mannschaft.app.gamification.entity.GamificationConfigEntity;
@@ -50,6 +52,8 @@ public class GamificationResetBatchService {
      *   <li>処理件数をログ出力</li>
      * </ol>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "Codex検分/殿の裁定: runPointReset は現在月に一致する設定しか取らないため、point_reset_month を跨いで無効のままだと既存ポイントが二度とリセットされない。内部処理のみで外部送信を伴わず、閉栓中に空回りしても害は無い")
     @BatchEndpoint(name = "gamification-point-reset-daily", description = "ポイントリセット設定に該当するスコープを毎日 04:00 にリセットする")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "gamification_point_reset", lockAtMostFor = "PT30M")

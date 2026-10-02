@@ -83,7 +83,7 @@ class NavSettingsControllerTest {
     @DisplayName("PUT /settings/nav: 認証済み・正常リクエストで204")
     @WithMockUser(username = "1")
     void updateNavSettings_authenticated_204() throws Exception {
-        willDoNothing().given(navSettingsService).updateMyNavSettings(eq(1L), any());
+        willDoNothing().given(navSettingsService).updateMyNavSettings(eq(1L), any(), any());
 
         mockMvc.perform(put("/api/v1/settings/nav")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -92,10 +92,30 @@ class NavSettingsControllerTest {
     }
 
     @Test
+    @DisplayName("PUT /settings/nav: navDisplayOrder 付きリクエストで204・順序がサービスに渡る")
+    @WithMockUser(username = "1")
+    void updateNavSettings_withDisplayOrder_204() throws Exception {
+        willDoNothing().given(navSettingsService).updateMyNavSettings(eq(1L), any(), any());
+
+        mockMvc.perform(put("/api/v1/settings/nav")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "hiddenNavKeys", List.of("todo"),
+                                "navDisplayOrder", List.of("calendar", "chat", "todo")))))
+                .andExpect(status().isNoContent());
+
+        org.mockito.ArgumentCaptor<List<String>> orderCaptor = org.mockito.ArgumentCaptor.forClass(List.class);
+        org.mockito.BDDMockito.then(navSettingsService).should()
+                .updateMyNavSettings(eq(1L), any(), orderCaptor.capture());
+        org.assertj.core.api.Assertions.assertThat(orderCaptor.getValue())
+                .containsExactly("calendar", "chat", "todo");
+    }
+
+    @Test
     @DisplayName("PUT /settings/nav: 空配列で204")
     @WithMockUser(username = "1")
     void updateNavSettings_emptyKeys_204() throws Exception {
-        willDoNothing().given(navSettingsService).updateMyNavSettings(eq(1L), any());
+        willDoNothing().given(navSettingsService).updateMyNavSettings(eq(1L), any(), any());
 
         mockMvc.perform(put("/api/v1/settings/nav")
                         .contentType(MediaType.APPLICATION_JSON)

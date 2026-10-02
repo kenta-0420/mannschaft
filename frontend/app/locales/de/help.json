@@ -1,4 +1,72 @@
 {
+  "security_help": {
+    "title": "セキュリティの使い方ガイド",
+    "description": "二要素認証・アクティブセッション・セキュリティキーの使い方と、不審なログインを見つけたときの対処方法をまとめました。",
+    "link_label": "❔ 使い方ガイド",
+    "twofa": {
+      "title": "二要素認証（2FA）",
+      "intro": "パスワードに加えて、もう一段階の本人確認を追加してアカウントを守るしくみです。万が一パスワードが漏れても、第三者だけではログインできなくなります。",
+      "setup_title": "有効化のしかた",
+      "setup_steps": {
+        "step1": "認証アプリ（Google Authenticator など）をスマートフォンに用意します。",
+        "step2": "「2FAをセットアップ」を押すと、QRコードとシークレットキーが表示されます。",
+        "step3": "認証アプリでそのQRコードを読み取ります（読み取れない場合はシークレットキーを手入力します）。",
+        "step4": "認証アプリに表示された6桁のコードを入力して有効化を完了します。"
+      },
+      "backup_title": "バックアップコードについて",
+      "backup_desc": "バックアップコードは、スマートフォンを紛失するなどして認証アプリが使えなくなったときの予備の入り口です。安全な場所に保管してください。各コードは一度だけ使えます。「バックアップコード再生成」を押すと新しいコードが発行され、古いコードはすべて無効になります。"
+    },
+    "sessions": {
+      "title": "アクティブセッション",
+      "intro": "いま自分のアカウントにログインしている端末の一覧です。心当たりのない端末がないか、ここで確認できます。",
+      "row_desc": "各行は1つの端末を表し、ブラウザ／OSの情報・IPアドレス・ログインした日時が並びます。先頭の英字の羅列は、使われたブラウザとOSの情報です。",
+      "current_tag_desc": "「現在」タグが付いている行は、いま見ているこの端末です。",
+      "revoke_desc": "怪しい行は「×」ボタンで個別に無効化（ログアウト）できます。",
+      "revoke_all_desc": "「全てログアウト」を押すと、ほかの端末をまとめて締め出せます。",
+      "current_note": "いま使っているこのセッションは、誤操作で自分を締め出さないように個別では削除できません（その操作はサーバー側で拒否されます）。すべて締め出したいときは「全てログアウト」を使ってください。"
+    },
+    "webauthn": {
+      "title": "セキュリティキー（WebAuthn）",
+      "intro": "指紋認証・顔認証や、物理的なセキュリティキー（FIDO2）を使ってログインできるしくみです。パスワードを入力せず、すばやく安全にログインできます。",
+      "manage_desc": "登録した鍵には分かりやすい名前を付けられます（リネーム）。使わなくなった鍵は削除できます。"
+    },
+    "suspicious": {
+      "title": "身に覚えのないログインを見つけたら",
+      "intro": "アクティブセッションに知らない端末があるなど、不審な点に気づいたら、上から順に対処してください。",
+      "steps": {
+        "step1": "心当たりのないセッションを「×」で無効化する",
+        "step2": "不安なら「全てログアウト」で全端末から締め出す",
+        "step3": "パスワードを変更する",
+        "step4": "二要素認証（2FA）を有効化する",
+        "step5": "バックアップコードを安全な場所に保管する"
+      }
+    }
+  },
+  "contact_request_blocks_help": {
+    "title": "So verwenden Sie die Kontaktanfragen-Sperrliste",
+    "description": "Mit dieser Einstellung können Sie Kontaktanfragen von bestimmten Personen von Anfang an automatisch ignorieren.",
+    "what": {
+      "title": "Was ist die Kontaktanfragen-Sperrliste?",
+      "body": "Wenn jemand auf dieser Liste versucht, Sie als Kontakt hinzuzufügen, wird seine Anfrage automatisch ignoriert. Sie erhalten keine Benachrichtigung und erfahren nichts von dem Versuch.",
+      "note": "Die andere Person wird nie darüber informiert, dass sie gesperrt wurde. Sie können Anfragen bestimmter Personen still und leise stoppen, ohne Unannehmlichkeiten zu verursachen."
+    },
+    "list": {
+      "title": "So lesen Sie die Liste",
+      "body": "Alle gesperrten Benutzer werden in einer Liste angezeigt. Jede Zeile enthält die folgenden Informationen.",
+      "item_name": "Symbol und Name — wen Sie sperren",
+      "item_handle": "Kontakt-Handle beginnend mit {'@'} — die eindeutige ID der Person",
+      "item_date": "«Eingestellt am» — das Datum, an dem die Sperre registriert wurde"
+    },
+    "unblock": {
+      "title": "So entfernen Sie eine Sperre",
+      "body": "Sie können eine Sperre jederzeit entfernen. Nach der Entfernung kann diese Person Ihnen wieder eine Kontaktanfrage senden.",
+      "steps": {
+        "step1": "Suchen Sie die Zeile der Person, die Sie entsperren möchten.",
+        "step2": "Drücken Sie die Schaltfläche «Entsperren» auf der rechten Seite der Zeile.",
+        "step3": "Wenn die Person aus der Liste verschwindet, wurde die Sperre erfolgreich entfernt."
+      }
+    }
+  },
   "qa": {
     "title": "Haeufig gestellte Fragen (Q&A)",
     "description": "Antworten auf haeufige Fragen zur Nutzung von Mannschaft, zur Installation der PWA und mehr.",
@@ -82,6 +150,29 @@
           "answer": "Leeren Sie zunaechst den Browser-Cache. Falls das nicht hilft, deinstallieren Sie die PWA und installieren Sie sie erneut. Wenn das Problem weiterhin besteht, kontaktieren Sie bitte den Support."
         }
       }
+    }
+  },
+  "calendar_sync_help": {
+    "title": "So funktioniert die Google Calendar Integration",
+    "description": "Synchronisiert Ihre Termine automatisch mit Google Calendar, damit Sie sie auch auf dem Smartphone oder in anderen Apps einsehen koennen.",
+    "what": {
+      "title": "Was ist die Google Calendar Integration?",
+      "body": "Termine aus Mannschaft (persoenlich, Team und Organisation) werden automatisch in Google Calendar uebernommen. Nach der Verbindung koennen Sie Ihre Termine jederzeit auf jedem Geraet oder in jeder App abrufen, die Google Calendar unterstuetzt."
+    },
+    "connect": {
+      "title": "Konto verbinden",
+      "body": "Klicken Sie auf \"Google-Konto verbinden\", um zur Google-Anmeldeseite zu gelangen. Sobald Sie den Kalenderzugriff erlauben, ist die Verbindung hergestellt. Sie koennen die Verbindung jederzeit ueber die Schaltflaeche \"Verbindung trennen\" wieder loesen."
+    },
+    "toggles": {
+      "title": "Synchronisation einzeln ein-/ausschalten",
+      "body": "Sie koennen die Synchronisation fuer \"Persoenlicher Kalender\", \"Team-Kalender\" und \"Organisations-Kalender\" jeweils einzeln ein- oder ausschalten. Aenderungen werden sofort uebernommen, ein Speichern-Button ist nicht noetig.",
+      "item_personal": "Persoenlicher Kalender: synchronisiert Ihre eigenen persoenlichen Termine",
+      "item_team": "Team-Kalender: synchronisiert Termine der Teams, denen Sie angehoeren",
+      "item_org": "Organisations-Kalender: synchronisiert Termine der Organisationen, denen Sie angehoeren"
+    },
+    "sync_behavior": {
+      "title": "Wann synchronisiert wird",
+      "body": "Wenn Sie die Synchronisation aktivieren, werden alle bisher nicht synchronisierten Termine auf einmal nachtraeglich synchronisiert (Backfill). Bei vielen Terminen kann dies einige Minuten dauern. Nutzen Sie den Button \"Manuell synchronisieren\", wenn Sie den aktuellen Stand sofort uebernehmen moechten."
     }
   }
 }
