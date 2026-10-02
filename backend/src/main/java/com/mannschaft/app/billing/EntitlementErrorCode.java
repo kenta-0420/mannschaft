@@ -228,7 +228,14 @@ public enum EntitlementErrorCode implements ErrorCode {
      * （防御すべき状況で無償に倒れる欠陥）。本コードは「未設定」を明示的に契約拒否するために追補採番した。</p>
      */
     PLAN_PRICE_NOT_CONFIGURED("ENTITLEMENT_040",
-            "このプランは現在価格が未設定のため契約できません。しばらくしてから再度お試しください", Severity.WARN);
+            "このプランは現在価格が未設定のため契約できません。しばらくしてから再度お試しください", Severity.WARN),
+
+    /**
+     * SYSTEM_ADMIN の手動付与で指定した組織が、そのチームの ACTIVE な親組織ではない、
+     * または TEAM 以外のスコープで組織を指定した → 400（F01.2.1 §9.2 #17・部隊 3-D）。
+     */
+    ORGANIZATION_NOT_PARENT_OF_TEAM("ENTITLEMENT_041",
+            "指定した組織はこのチームの親組織ではありません", Severity.WARN);
 
     private final String code;
     private final String message;
