@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.calendar.CalendarScopeAutoColor;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.membership.service.MembershipService;
@@ -342,7 +343,8 @@ public class ScheduleQueryService {
         CalendarColorResolver.Resolved resolved =
                 CalendarColorResolver.resolveEnricherColor(kind, scopeType, scopeId);
         return entry.toBuilder()
-                .content(content.withColor(resolved.color(), resolved.source(), null))
+                .content(content.withColor(resolved.color(), resolved.source(), null,
+                        CalendarScopeAutoColor.resolveForScope(scopeType, scopeId)))
                 .build();
     }
 
@@ -436,7 +438,8 @@ public class ScheduleQueryService {
                 .scheduleId(entity.getId())
                 .content(new CalendarEntryResponse.CalendarContentDto(
                         entity.getTitle(), entity.getEventType().name(), entity.getStatus().name(),
-                        null, null, resolved.color(), resolved.source(), categoryColor))
+                        null, null, resolved.color(), resolved.source(), categoryColor,
+                        CalendarScopeAutoColor.resolveForScope(scopeType, scopeId)))
                 .time(new CalendarEntryResponse.CalendarTimeDto(
                         entity.getStartAt(), entity.getEndAt(), entity.getAllDay()))
                 .scope(new CalendarEntryResponse.CalendarScopeDto(scopeType, scopeId, scopeName, iconUrl, scopeSlug))

@@ -500,6 +500,36 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("マイカレンダー: 名称を解決できない所属スコープのTODOにも独立自動色を返す")
+        void マイカレンダー_名称欠落スコープでも独立自動色を返す() throws Exception {
+            Long orphanTodoId = saveAssignedCalendarTodo(
+                    TodoScopeType.TEAM, teamId, ownerId, "PERSAUTHZ 名称欠落TODO", null,
+                    LocalDate.of(2030, 1, 15), TodoStatus.OPEN, null, false);
+            em.flush();
+            // 専用Testcontainers DBのBeforeEachで生成したこのteamIdだけを変更し、終了時にrollbackする。
+            assertThat(em.createNativeQuery("UPDATE teams SET deleted_at = CURRENT_TIMESTAMP WHERE id = :id")
+                    .setParameter("id", teamId).executeUpdate()).isEqualTo(1);
+            em.clear();
+
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/todos/my/calendar")
+                            .param("from", "2030-01-01")
+                            .param("to", "2030-01-31"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id == " + orphanTodoId + ")].scopeName")
+                            .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())))
+                    .andExpect(jsonPath("$.data[?(@.id == " + orphanTodoId + ")].scopeAutoColor")
+                            .value(org.hamcrest.Matchers.contains(CalendarLayerAutoColor.resolve("TEAM", teamId))));
+
+            setAuth(attackerId);
+            mockMvc.perform(get("/api/v1/todos/my/calendar")
+                            .param("from", "2030-01-01")
+                            .param("to", "2030-01-31"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id", not(hasItem(orphanTodoId.intValue()))));
+        }
+
+        @Test
         @DisplayName("マイカレンダー: 未認証は401")
         void マイカレンダー_未認証は401() throws Exception {
             SecurityContextHolder.clearContext();
