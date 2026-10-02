@@ -2,6 +2,7 @@ package com.mannschaft.app.receipt.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
@@ -265,7 +266,7 @@ public class ReceiptService {
     /**
      * 領収書を無効化する。
      * 認可: 領収書が実在するスコープ（entity由来。path/requestのscopeIdを鵜呑みにしない）の
-     * ADMIN/DEPUTY_ADMIN のみ無効化可能。
+     * ADMIN のみ無効化可能（SYSTEM_ADMIN 資格だけでは許可しない）。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -278,7 +279,7 @@ public class ReceiptService {
     public ReceiptResponse voidReceipt(ReceiptScopeType scopeType, Long scopeId,
                                        Long receiptId, Long userId, VoidReceiptRequest request) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
-        accessControlService.checkAdminOrAbove(userId, receipt.getScopeId(), receipt.getScopeType().name());
+        checkVoidAdmin(userId, receipt.getScopeId(), receipt.getScopeType());
 
         if (receipt.isVoided()) {
             throw new BusinessException(ReceiptErrorCode.ALREADY_VOIDED);
@@ -296,7 +297,7 @@ public class ReceiptService {
 
     /**
      * 領収書を一括無効化する。
-     * 認可: 指定スコープの ADMIN/DEPUTY_ADMIN のみ無効化可能。
+     * 認可: 指定スコープの ADMIN のみ無効化可能（SYSTEM_ADMIN 資格だけでは許可しない）。
      * 個々の領収書は {@code findByIdAndScopeTypeAndScopeId} でスコープ一致するもののみ対象となるため、
      * 別スコープの領収書IDを紛れ込ませても無効化されない（BOLA遮断）。
      *
@@ -309,7 +310,7 @@ public class ReceiptService {
     @Transactional
     public BulkVoidResultResponse bulkVoidReceipts(ReceiptScopeType scopeType, Long scopeId,
                                                     Long userId, BulkVoidReceiptRequest request) {
-        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
+        checkVoidAdmin(userId, scopeId, scopeType);
 
         if (request.getReceiptIds().size() > 50) {
             throw new BusinessException(ReceiptErrorCode.BULK_LIMIT_EXCEEDED);
@@ -334,6 +335,12 @@ public class ReceiptService {
                 scopeType, scopeId, voidedCount, skippedCount);
 
         return new BulkVoidResultResponse(voidedCount, skippedCount);
+    }
+
+    private void checkVoidAdmin(Long userId, Long scopeId, ReceiptScopeType scopeType) {
+        if (!accessControlService.isAdmin(userId, scopeId, scopeType.name())) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**

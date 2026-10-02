@@ -102,6 +102,7 @@ class ReceiptServiceTest {
         @Test
         @DisplayName("異常系: 既に無効化済みの場合エラー")
         void 既に無効化済み() {
+            given(accessControlService.isAdmin(USER_ID, SCOPE_ID, SCOPE_TYPE.name())).willReturn(true);
             ReceiptEntity receipt = ReceiptEntity.builder()
                     .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).status(ReceiptStatus.ISSUED)
                     .amount(new BigDecimal("10000")).build();
@@ -163,6 +164,7 @@ class ReceiptServiceTest {
         @Test
         @DisplayName("異常系: 一括無効化の上限（50件）超過")
         void 上限超過() {
+            given(accessControlService.isAdmin(USER_ID, SCOPE_ID, SCOPE_TYPE.name())).willReturn(true);
             List<Long> ids = new java.util.ArrayList<>(Collections.nCopies(51, 1L));
             BulkVoidReceiptRequest request = new BulkVoidReceiptRequest(ids, "テスト");
 
