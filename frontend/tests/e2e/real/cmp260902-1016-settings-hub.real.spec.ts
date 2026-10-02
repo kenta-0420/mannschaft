@@ -85,12 +85,20 @@ test.describe('CMP1016 設定一覧の実ブラウザ（API smokeとは別判定
     expect(me.status()).toBe(200)
     const ownerId = Number((await me.json()).data.id)
     expect(ownerId).toBeGreaterThan(0)
-    const [roles] = await db.execute('SELECT id FROM roles WHERE name=?', ['DEPUTY_ADMIN'])
-    expect(roles).toHaveLength(1)
+    const [roles] = await db.execute('SELECT id, name FROM roles WHERE name IN (?, ?)', ['MEMBER', 'DEPUTY_ADMIN'])
+    expect(roles).toHaveLength(2)
+    const memberRoleId = Number(roles.find(role => role.name === 'MEMBER')?.id)
+    const deputyRoleId = Number(roles.find(role => role.name === 'DEPUTY_ADMIN')?.id)
+    expect(memberRoleId).toBeGreaterThan(0)
+    expect(deputyRoleId).toBeGreaterThan(0)
     const deputyContext = await browser.newContext({ baseURL: process.env.BASE_URL, locale: 'ja-JP' })
     try {
       const deputy = await deputyContext.newPage()
       await login(deputy, DEPUTY)
+      const deputyMe = await deputy.request.get(`${API}/api/v1/users/me`)
+      expect(deputyMe.status()).toBe(200)
+      const deputyId = Number((await deputyMe.json()).data.id)
+      expect(deputyId).toBeGreaterThan(0)
       for (const type of ['teams', 'organizations'] as const) {
         const slug = `c1016-${type === 'teams' ? 't' : 'o'}-${Date.now().toString(36)}`
         const name = `CMP1016-${slug}`
@@ -104,13 +112,20 @@ test.describe('CMP1016 設定一覧の実ブラウザ（API smokeとは別判定
         const scope: Scope = { type, id: data.numericId, slug, name, ownerId }
         scopes.push(scope)
         await ownsScope(scope)
-        const invited = await owner.request.post(`${API}/api/v1/${type}/${slug}/invite-tokens`, { data: { roleId: Number(roles[0]!.id), expiresIn: '1d', maxUses: 1 } })
+        const invited = await owner.request.post(`${API}/api/v1/${type}/${slug}/invite-tokens`, { data: { roleId: memberRoleId, expiresIn: '1d', maxUses: 1 } })
         expect(invited.status()).toBe(201)
         const invitation = (await invited.json()).data as { id: number; token: string }
         const joined = await deputy.request.post(`${API}/api/v1/invite/${encodeURIComponent(invitation.token)}/join`, { data: {} })
-        expect(joined.status(), '正規招待APIでDEPUTY所属を作成').toBe(200)
+        expect(joined.status(), '正規招待APIで通常MEMBER所属を作成').toBe(200)
         const revoked = await owner.request.delete(`${API}/api/v1/${type}/${slug}/invite-tokens/${invitation.id}`)
         expect(revoked.status()).toBe(204)
+        const memberPermission = await deputy.request.get(`${API}/api/v1/${type}/${slug}/me/permissions`)
+        expect(memberPermission.status()).toBe(200)
+        expect((await memberPermission.json()).data.roleName).toBe('MEMBER')
+        await ownsScope(scope)
+        // 特権ロールの招待は禁止されているため、本人ADMINの既存ロール変更APIを使う。
+        const changed = await owner.request.patch(`${API}/api/v1/${type}/${slug}/members/${deputyId}/role`, { data: { roleId: deputyRoleId } })
+        expect(changed.status(), '本人ADMINが今回所属したMEMBERをDEPUTYへ変更').toBe(200)
         const permission = await deputy.request.get(`${API}/api/v1/${type}/${slug}/me/permissions`)
         expect(permission.status()).toBe(200)
         expect((await permission.json()).data.roleName).toBe('DEPUTY_ADMIN')
@@ -170,8 +185,25 @@ test.describe('CMP1016 設定一覧の実ブラウザ（API smokeとは別判定
         const scope = scopes.find(item => item.type === type)!
         await page.setViewportSize({ width, height: 720 })
         await login(page, OWNER)
+        const setupResponse = page.waitForResponse(response => {
+          const url = new URL(response.url())
+          return response.request().method() === 'GET' && url.pathname === '/api/v1/admin/member-permissions'
+            && url.searchParams.get('scopeType') === typeName(scope) && url.searchParams.get('scopeId') === String(scope.id)
+        })
         await page.goto(`${base(scope)}/admin`)
         await waitForHydration(page)
+        const setup = await setupResponse
+        expect(setup.status(), '初回案内を判定する実GET').toBe(200)
+        const settings = (await setup.json()).data.permissions as Array<{ inherited?: boolean }>
+        const promptRequired = settings.length === 3 && settings.every(setting => setting.inherited)
+        const setupDialog = page.getByRole('dialog', { name: 'メンバーの権限を初期設定', exact: true })
+        if (promptRequired) {
+          await expect(setupDialog).toBeVisible()
+          await screenshot(page, info, 'initial-permissions')
+          // 権限を保存せず、初回案内を通常の操作で後回しにする。
+          await setupDialog.getByRole('button', { name: 'あとで決める', exact: true }).click()
+        }
+        await expect(setupDialog).toBeHidden()
         const entry = page.locator(`a[href="${base(scope)}/admin/settings"]`).filter({ visible: true })
         await expect(entry).toHaveCount(1)
         await entry.click()
