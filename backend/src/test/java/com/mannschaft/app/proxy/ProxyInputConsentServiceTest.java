@@ -11,6 +11,7 @@ import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.proxy.service.CreateProxyConsentCommand;
 import com.mannschaft.app.proxy.service.ProxyInputConsentService;
 import com.mannschaft.app.proxy.service.RevokeConsentCommand;
+import com.mannschaft.app.proxy.service.ProxyInputQueryService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,9 @@ class ProxyInputConsentServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private ProxyInputQueryService proxyInputQueryService;
 
     @InjectMocks
     private ProxyInputConsentService service;

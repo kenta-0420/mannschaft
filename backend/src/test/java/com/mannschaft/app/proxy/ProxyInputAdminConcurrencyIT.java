@@ -38,6 +38,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -256,7 +257,8 @@ class ProxyInputAdminConcurrencyIT extends AbstractMySqlIntegrationTest {
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].targetEntityId").value(102L))
                 .andExpect(jsonPath("$.data[0].proxyInputConsentId").value(nullValue()))
-                .andExpect(jsonPath("$.data[0].auditLogId").value(nullValue()));
+                .andExpect(jsonPath("$.data[0].auditLogId").value(nullValue()))
+                .andExpect(jsonPath("$.data[0].createdAt").value(endsWith("Z")));
 
         mockMvc.perform(get("/api/v1/proxy-input-records")
                         .param("subjectUserId", subjectId.toString())

@@ -12,7 +12,6 @@ import com.mannschaft.app.proxy.dto.ProxyInputRecordResponse;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
-import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,17 +32,16 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class ProxyInputConsentService {
 
     private static final Duration SCAN_URL_TTL = Duration.ofMinutes(5);
     private static final long MAX_CONSENT_DAYS = 365L;
 
     private final ProxyInputConsentRepository consentRepository;
-    private final ProxyInputRecordRepository recordRepository;
     private final AuditLogService auditLogService;
     private final StorageService storageService;
     private final AccessControlService accessControlService;
+    private final ProxyInputQueryService proxyInputQueryService;
 
     /**
      * 同意書を登録する。
@@ -56,6 +54,7 @@ public class ProxyInputConsentService {
      * </ul>
      */
     // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentCreatedEventで分離予定
+    @Transactional
     public ProxyInputConsentEntity createConsent(Long requestUserId, Long organizationId,
                                                   CreateProxyConsentCommand command) {
         // 権限チェック（DEPUTY_ADMIN以上）。組合IDはURLパス由来のためここで検証する。
@@ -130,6 +129,7 @@ public class ProxyInputConsentService {
      * </ul>
      */
     // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentApprovedEventで分離予定
+    @Transactional
     public ProxyInputConsentEntity approveConsent(Long requestUserId, Long consentId) {
         ProxyInputConsentEntity consent = consentRepository.findByIdForUpdate(consentId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
@@ -176,6 +176,7 @@ public class ProxyInputConsentService {
      * </ul>
      */
     // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentRevokedEventで分離予定
+    @Transactional
     public void revokeConsent(Long requestUserId, Long consentId, RevokeConsentCommand command) {
         ProxyInputConsentEntity consent = consentRepository.findByIdForUpdate(consentId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
@@ -232,37 +233,32 @@ public class ProxyInputConsentService {
     /**
      * 組合単位の同意書一覧を取得する（ADMIN向け管理画面）。
      */
-    @Transactional(readOnly = true)
     public Page<ProxyInputConsentResponse> getConsentsByOrganization(
             Long requestUserId, Long organizationId, Pageable pageable) {
         checkOrganizationAdminOrSystem(requestUserId, organizationId);
-        return consentRepository.findByOrganizationIdOrderByCreatedAtDescIdDesc(organizationId, pageable)
-                .map(ProxyInputConsentResponse::from);
+        return proxyInputQueryService.getConsentsByOrganization(organizationId, pageable);
     }
 
     /**
      * 組合単位の代理入力履歴を取得する（ADMIN向け管理画面）。
      */
-    @Transactional(readOnly = true)
     public Page<ProxyInputRecordResponse> getRecordsByOrganization(
             Long requestUserId, Long organizationId, Long subjectUserId, Pageable pageable) {
         checkOrganizationAdminOrSystem(requestUserId, organizationId);
-        return recordRepository.findByOrganizationId(organizationId, subjectUserId, pageable)
-                .map(ProxyInputRecordResponse::from);
+        return proxyInputQueryService.getRecordsByOrganization(
+                organizationId, subjectUserId, pageable);
     }
 
     /**
      * 本人またはSYSTEM_ADMIN向けに、本人単位の代理入力履歴を取得する。
      */
-    @Transactional(readOnly = true)
     public Page<ProxyInputRecordResponse> getRecordsBySubject(
             Long requestUserId, Long subjectUserId, Pageable pageable) {
         if (!requestUserId.equals(subjectUserId)
                 && !accessControlService.isSystemAdmin(requestUserId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
-        return recordRepository.findBySubjectUserIdOrderByCreatedAtDescIdDesc(subjectUserId, pageable)
-                .map(ProxyInputRecordResponse::from);
+        return proxyInputQueryService.getRecordsBySubject(subjectUserId, pageable);
     }
 
     /**

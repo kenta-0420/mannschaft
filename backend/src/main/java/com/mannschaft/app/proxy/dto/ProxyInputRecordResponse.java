@@ -1,11 +1,12 @@
 package com.mannschaft.app.proxy.dto;
 
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import com.mannschaft.app.user.service.UserZoneLocalDateTimeParser;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 代理入力履歴レスポンスDTO。
@@ -30,7 +31,7 @@ public class ProxyInputRecordResponse {
     @Schema(types = {"integer", "null"}, nullable = true,
             description = "監査ログID（未紐付けはnull）")
     private final Long auditLogId;
-    private final LocalDateTime createdAt;
+    private final Instant createdAt;
 
     public static ProxyInputRecordResponse from(ProxyInputRecordEntity entity) {
         return ProxyInputRecordResponse.builder()
@@ -44,7 +45,9 @@ public class ProxyInputRecordResponse {
                 .inputSource(entity.getInputSource().name())
                 .originalStorageLocation(entity.getOriginalStorageLocation())
                 .auditLogId(entity.getAuditLogId())
-                .createdAt(entity.getCreatedAt())
+                .createdAt(entity.getCreatedAt()
+                        .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                        .toInstant())
                 .build();
     }
 }
