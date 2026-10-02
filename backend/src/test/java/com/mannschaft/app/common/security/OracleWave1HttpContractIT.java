@@ -337,7 +337,7 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Nested
-    @DisplayName("C: CommitteeActivityRecordController#confirmMinutes")
+    @DisplayName("C: CommitteeMinutesController#confirmMinutes")
     class CommitteeMinutes {
         @Test
         void C1_別委員会及び非委員会recordと不在は絶対NOT_FOUNDで変更なし() throws Exception {
