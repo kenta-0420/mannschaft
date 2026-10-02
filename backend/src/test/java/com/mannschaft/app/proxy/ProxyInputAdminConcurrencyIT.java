@@ -94,10 +94,61 @@ class ProxyInputAdminConcurrencyIT extends AbstractMySqlIntegrationTest {
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws Exception {
         if (transactionTemplate == null || organizationId == null) {
             return;
         }
+        Throwable failure = null;
+        try {
+            awaitPersistedConsentAudits();
+        } catch (Throwable auditFailure) {
+            failure = auditFailure;
+        }
+        try {
+            cleanupFixture();
+        } catch (Throwable cleanupFailure) {
+            if (failure == null) {
+                failure = cleanupFailure;
+            } else {
+                failure.addSuppressed(cleanupFailure);
+            }
+        }
+        if (failure instanceof Exception exception) {
+            throw exception;
+        }
+        if (failure instanceof Error error) {
+            throw error;
+        }
+        if (failure != null) {
+            throw new AssertionError(failure);
+        }
+    }
+
+    private void awaitPersistedConsentAudits() {
+        List<?> mutations = transactionTemplate.execute(status -> em.createNativeQuery("""
+                        SELECT id, approved_at, revoked_at
+                        FROM proxy_input_consents
+                        WHERE organization_id = :organizationId
+                          AND (approved_at IS NOT NULL OR revoked_at IS NOT NULL)
+                        """)
+                .setParameter("organizationId", organizationId)
+                .getResultList());
+        if (mutations == null) {
+            return;
+        }
+        for (Object mutationRow : mutations) {
+            Object[] mutation = (Object[]) mutationRow;
+            Long consentId = ((Number) mutation[0]).longValue();
+            if (mutation[1] != null) {
+                assertSingleAuditEvent(ProxyAuditEventTypes.PROXY_CONSENT_APPROVED, consentId);
+            }
+            if (mutation[2] != null) {
+                assertSingleAuditEvent(ProxyAuditEventTypes.PROXY_CONSENT_REVOKED, consentId);
+            }
+        }
+    }
+
+    private void cleanupFixture() {
         transactionTemplate.executeWithoutResult(status -> {
             em.createNativeQuery("DELETE FROM proxy_input_records WHERE proxy_input_consent_id IN "
                             + "(SELECT id FROM proxy_input_consents WHERE organization_id = :organizationId) "
