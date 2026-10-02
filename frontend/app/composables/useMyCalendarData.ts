@@ -20,6 +20,8 @@ interface CalendarEntryRaw {
     // 同上の「どの優先順位で決まったか」（§4.3.2 の共通4値）。
     // LAYER_AUTO のときだけ color がそのスコープの自動色（§3.3）そのものである。
     colorSource?: string | null
+    // 最終表示色と独立した、BE 解決済みのスコープ自動色（§3.3/§5.2.1）。
+    scopeAutoColor?: string | null
   }
   time: { startAt: string; endAt: string; allDay: boolean }
   scope: { scopeType: string; scopeId: string; scopeName: string | null; scopeIconUrl: string | null; scopeSlug?: string | null }
@@ -56,6 +58,8 @@ export interface CalEvent extends CalendarEventItem {
    * そのスコープの自動色（§3.3）そのものであり、フォールバックチップの色として使える。
    */
   colorSource?: string
+  /** フォールバックチップ用の、BE 解決済みスコープ自動色。 */
+  scopeAutoColor?: string | null
 }
 
 export interface ScopeOption {
@@ -439,6 +443,7 @@ export function useMyCalendarData() {
         // 未デプロイ環境等で content.color が来ない場合のみ null へフォールバックする（明示的な劣化）。
         color: e.content?.color ?? null,
         colorSource: e.content?.colorSource ?? undefined,
+        scopeAutoColor: e.content?.scopeAutoColor ?? null,
         isPersonal: false,
         scopeType: e.scope?.scopeType ?? '',
         // P1修繕: scopeId は必ずレイヤー API と同じ「数値ID文字列」にする（フィルタ照合用）。
@@ -474,6 +479,7 @@ export function useMyCalendarData() {
         color: t.priority === 'HIGH' ? '#f97316'
           : t.priority === 'LOW' ? '#22c55e'
           : '#3b82f6',
+        scopeAutoColor: t.scopeAutoColor ?? null,
         isPersonal: t.scopeType === 'PERSONAL',
         scopeType: t.scopeType,
         // TODO は元々レイヤー API と同じ数値IDを持つ（MyCalendarTodo.scopeId: number）。
@@ -631,53 +637,35 @@ export function useMyCalendarData() {
     return layerKey(ext.scopeType ?? '', ext.scopeId ?? '')
   }
 
-  /**
-   * フォールバックチップの色を決める（§5.2.1 は「§3.3 の自動色」を要求する）。
-   *
-   * **FE で自動色を算出してはならない**（§3.3「FE 側にハッシュ実装を持たない」）。
-   * そこで、そのスコープの予定のうち **`colorSource === 'LAYER_AUTO'`** のもの、すなわち
-   * BE が自動色そのものを載せて返した予定の色を採る。これは BE 由来の自動色であり、
-   * §5.2.1 の要求と §3.3 の禁止を同時に満たす唯一の経路である。
-   *
-   * **限界（設計書の要求を完全には満たせない）**: そのスコープの予定が全て予定自身の色
-   * （`SCHEDULE`）やカテゴリ色（`CATEGORY`）で塗られている場合、応答のどこにも
-   * そのスコープの自動色は載っていない（`/my/calendar` は解決済み色と由来しか返さず、
-   * 自動色を別フィールドで返さない。`/me/calendar-layers` は所属スコープしか返さず、
-   * フォールバックは定義上そこに現れない）。その場合は**予定の色を借りず中立色を使う** —
-   * 予定色やカテゴリ色をチップ色に流用すると「チップの色＝そのレイヤーの色」という
-   * 読みが崩れ、レイヤー色と食い違う嘘になるためである。
-   * 恒久解は BE 応答に自動色（またはフォールバックスコープを含むレイヤー行）を載せること
-   * であり、別工程・別 PR の範囲。
-   */
-  function fallbackChipColor(key: string): string {
-    for (const e of extendedEvents.value) {
-      if (eventLayerKey(e) !== key) continue
-      if (e.colorSource === 'LAYER_AUTO' && e.color) return e.color
-    }
-    return FALLBACK_CHIP_COLOR
-  }
-
+  /** BE の独立自動色を一巡で集約する。旧応答のみ LAYER_AUTO 色、中立色の順に劣化させる。 */
   const fallbackScopeOptions = computed<ScopeOption[]>(() => {
     if (!layersLoaded.value) return []
-    const seen = new Set<string>()
-    const result: ScopeOption[] = []
+    const scopes = new Map<string, { option: ScopeOption; autoColor?: string; legacyColor?: string }>()
     for (const e of extendedEvents.value) {
       const key = eventLayerKey(e)
-      if (key === PERSONAL_KEY || layerKeySet.value.has(key) || seen.has(key)) continue
-      seen.add(key)
-      result.push({
-        label: e.scopeName ?? t('schedule.calendar.layer.unknown'),
-        value: key,
-        scopeType: e.scopeType ?? '',
-        scopeId: e.scopeId ?? '',
-        // §6.4: フォールバックチップも通常チップと同じ見た目（色ドット＋名前）で並べる。
-        // 色は BE 由来の自動色のみを採用する（上記 fallbackChipColor の限界コメント参照）。
-        // 色変更は開かない（isFallback）。
-        color: fallbackChipColor(key),
-        isFallback: true,
-      })
+      if (key === PERSONAL_KEY || layerKeySet.value.has(key)) continue
+      let scope = scopes.get(key)
+      if (!scope) {
+        scope = {
+          option: {
+            label: e.scopeName ?? t('schedule.calendar.layer.unknown'),
+            value: key,
+            scopeType: e.scopeType ?? '',
+            scopeId: e.scopeId ?? '',
+            // §6.4: フォールバックは表示／非表示のみで、色変更を開かない。
+            isFallback: true,
+          },
+        }
+        scopes.set(key, scope)
+      }
+      // 後続イベントの明示自動色も拾い、旧 LAYER_AUTO 色より優先する。
+      if (e.scopeAutoColor && !scope.autoColor) scope.autoColor = e.scopeAutoColor
+      if (e.colorSource === 'LAYER_AUTO' && e.color && !scope.legacyColor) scope.legacyColor = e.color
     }
-    return result
+    return Array.from(scopes.values(), ({ option, autoColor, legacyColor }) => ({
+      ...option,
+      color: autoColor ?? legacyColor ?? FALLBACK_CHIP_COLOR,
+    }))
   })
 
   /** レイヤー一覧（BE 由来・予定の有無に依存しない）＋フォールバックチップ（§5.1/§5.2.1）。 */
