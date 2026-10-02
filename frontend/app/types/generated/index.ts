@@ -78268,6 +78268,36 @@ export interface components {
             status?: string;
             summary?: components["schemas"]["SummaryResponse"];
         };
+        PagedResponseProxyInputRecordResponse: {
+            data?: components["schemas"]["ProxyInputRecordResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        ProxyInputRecordResponse: {
+            /**
+             * Format: int64
+             * @description 監査ログID（未紐付けはnull）
+             */
+            auditLogId?: number | null;
+            /** Format: date-time */
+            createdAt?: string;
+            featureScope?: string;
+            /** Format: int64 */
+            id?: number;
+            inputSource?: string;
+            originalStorageLocation?: string;
+            /**
+             * Format: int64
+             * @description 代理入力同意ID（同意書紐付けのない履歴はnull）
+             */
+            proxyInputConsentId?: number | null;
+            /** Format: int64 */
+            proxyUserId?: number;
+            /** Format: int64 */
+            subjectUserId?: number;
+            /** Format: int64 */
+            targetEntityId?: number;
+            targetEntityType?: string;
+        };
         ApiResponseListProxyInputConsentResponse: {
             data?: components["schemas"]["ProxyInputConsentResponse"][];
         };
@@ -79096,6 +79126,10 @@ export interface components {
         };
         ApiResponseListActivitySnapshotDto: {
             data?: components["schemas"]["ActivitySnapshotDto"][];
+        };
+        PagedResponseProxyInputConsentResponse: {
+            data?: components["schemas"]["ProxyInputConsentResponse"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         ApiResponseListStampEventResponse: {
             data?: components["schemas"]["StampEventResponse"][];
@@ -123399,7 +123433,10 @@ export interface operations {
     };
     getConsentsByOrganization: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                size?: number;
+            };
             header?: never;
             path: {
                 orgId: number;
@@ -123414,7 +123451,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListProxyInputConsentResponse"];
+                    "*/*": components["schemas"]["PagedResponseProxyInputConsentResponse"];
                 };
             };
         };
@@ -159257,7 +159294,10 @@ export interface operations {
     getProxyInputRecords: {
         parameters: {
             query?: {
+                organizationId?: number;
                 subjectUserId?: number;
+                page?: number;
+                size?: number;
             };
             header?: never;
             path?: never;
@@ -159271,7 +159311,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListProxyInputConsentResponse"];
+                    "*/*": components["schemas"]["PagedResponseProxyInputRecordResponse"];
                 };
             };
         };
