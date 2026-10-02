@@ -420,10 +420,14 @@ class ShiftScheduleSlotFacadeContractIT extends AbstractMySqlIntegrationTest {
 
     @ParameterizedTest(name = "{0} id={1}")
     @MethodSource("malformed")
-    @DisplayName("AC-10: 非数値・Long 超過の ID は 400（どの判定より前で止まり 500 にならない）")
+    @DisplayName("AC-10: 非数値・Long 超過の ID は 400（teamId 起点は 404。どの判定より前で止まり 500 にならない）")
     void 非数値IDは400(Ep ep, String id) throws Exception {
+        // teamId は team スコープ識別子（slug）として扱う共通規約で、非数値は GlobalExceptionHandler#handleTypeMismatch
+        // （isUnresolvedScopeSlug）が 404 COMMON_005 に写像する。本 PR はこのハンドラを変えておらず、
+        // 他の team スコープ EP と揃えるのが正（W6a 以前から同じ挙動）。ID 起点（パス変数）は 400。
+        int expected = ep.kind == Kind.TEAM ? 404 : 400;
         for (Actor actor : List.of(Actor.ADMIN_A, Actor.OUTSIDER)) {
-            assertThat(perform(actor, ep, id).getResponse().getStatus()).as(ep + " × " + actor).isEqualTo(400);
+            assertThat(perform(actor, ep, id).getResponse().getStatus()).as(ep + " × " + actor).isEqualTo(expected);
         }
     }
 
