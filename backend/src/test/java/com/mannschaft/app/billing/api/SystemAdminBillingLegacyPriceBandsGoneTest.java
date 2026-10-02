@@ -49,7 +49,8 @@ class SystemAdminBillingLegacyPriceBandsGoneTest {
     void setUp() {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
-        SystemAdminBillingController controller = new SystemAdminBillingController(service);
+        SystemAdminBillingController controller = new SystemAdminBillingController(
+                service, org.mockito.Mockito.mock(SystemAdminTeamParentOrganizationQueryService.class));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
