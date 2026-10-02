@@ -36,6 +36,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -287,6 +288,131 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data.detail.description").value("公開の集合案内"))
                     .andExpect(jsonPath("$.data.targetCount").value(1))
                     .andExpect(jsonPath("$.data.targets").isEmpty());
+        }
+
+        /** 旧実装の実機 red は同じ対象者の更新で unique(schedule_id,user_id) が衝突する。 */
+        @ParameterizedTest
+        @CsvSource({"false", "true"})
+        @DisplayName("同集合・部分重複集合の更新と全員へのクリアは他予定を変更しない")
+        void 選択対象者を再更新しても説明_色_他予定を保持する(boolean organization) throws Exception {
+            authorizeScopeAdmin(organization);
+            Long scheduleId = createSelectedSchedule(organization, "集合は正門\n持ち物：水筒", "#a855f7", List.of(memberId));
+            Long otherId = createSelectedSchedule(organization, "別予定の説明", "#22c55e", List.of(delegateId));
+            setAuthentication(adminId);
+
+            // 同集合の無変更保存、既存対象を含む追加、部分重複集合を順に実HTTPで更新する。
+            for (List<Long> ids : List.of(List.of(memberId), List.of(memberId, delegateId), List.of(delegateId))) {
+                mockMvc.perform(patch(detailUrl(organization), organization ? orgId : teamId, scheduleId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                        "description", "集合は正門\n持ち物：水筒",
+                                        "targetMode", "SELECTED_MEMBERS", "targetUserIds", ids))))
+                        .andExpect(status().isOk());
+                em.flush();
+                em.clear();
+                assertSelectedDetail(organization, scheduleId, "集合は正門\n持ち物：水筒", "#a855f7", ids);
+                assertSelectedDetail(organization, otherId, "別予定の説明", "#22c55e", List.of(delegateId));
+                setAuthentication(adminId);
+            }
+
+            mockMvc.perform(patch(detailUrl(organization), organization ? orgId : teamId, scheduleId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of(
+                                    "targetMode", "ALL_MEMBERS", "targetUserIds", List.of()))))
+                    .andExpect(status().isOk());
+            em.flush();
+            em.clear();
+            setAuthentication(memberId);
+            mockMvc.perform(get(detailUrl(organization), organization ? orgId : teamId, scheduleId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.detail.description").value("集合は正門\n持ち物：水筒"))
+                    .andExpect(jsonPath("$.data.detail.color").value("#a855f7"))
+                    .andExpect(jsonPath("$.data.targetMode").value("ALL_MEMBERS"))
+                    .andExpect(jsonPath("$.data.targetCount").value(3))
+                    .andExpect(jsonPath("$.data.targets").isEmpty());
+            assertThat(em.createQuery("SELECT COUNT(t) FROM ScheduleTargetEntity t WHERE t.scheduleId = :id", Long.class)
+                    .setParameter("id", scheduleId).getSingleResult()).isZero();
+            assertSelectedDetail(organization, otherId, "別予定の説明", "#22c55e", List.of(delegateId));
+        }
+
+        @ParameterizedTest
+        @CsvSource({"false", "true"})
+        @DisplayName("所属外対象者の検証失敗は独立HTTPトランザクションで親と対象者を巻き戻す")
+        void 対象者の検証失敗は実トランザクションで巻き戻る(boolean organization) throws Exception {
+            authorizeScopeAdmin(organization);
+            Long scheduleId = createSelectedSchedule(organization, "保存済み説明", "#a855f7", List.of(memberId));
+            Long otherId = createSelectedSchedule(organization, "別予定の説明", "#22c55e", List.of(delegateId));
+            // 外側テストTXを終了し、Serviceの実TXが失敗時にrollbackしてから別GETで観測する。
+            TestTransaction.flagForCommit();
+            TestTransaction.end();
+            try {
+                setAuthentication(adminId);
+                mockMvc.perform(patch(detailUrl(organization), organization ? orgId : teamId, scheduleId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                        "title", "保存してはいけない題名", "description", "保存してはいけない説明",
+                                        "targetMode", "SELECTED_MEMBERS", "targetUserIds", List.of(outsiderId)))))
+                        .andExpect(status().isNotFound())
+                        .andExpect(jsonPath("$.error.code").value("SCHEDULE_094"));
+                assertSelectedDetail(organization, scheduleId, "保存済み説明", "#a855f7", List.of(memberId));
+                assertSelectedDetail(organization, otherId, "別予定の説明", "#22c55e", List.of(delegateId));
+            } finally {
+                // Testcontainers専用DBで今回commitしたfixtureの既知IDだけを片付ける。
+                TestTransaction.start();
+                delegationRepository.deleteById(delegationId);
+                em.flush();
+                scheduleRepository.deleteAllById(List.of(scheduleId, otherId, teamScheduleId, personalScheduleId));
+                em.flush();
+                List<Long> userIds = List.of(memberId, delegateId, adminId, outsiderId);
+                em.createNativeQuery("DELETE FROM user_roles WHERE user_id IN (:ids)")
+                        .setParameter("ids", userIds).executeUpdate();
+                em.createNativeQuery("DELETE FROM memberships WHERE user_id IN (:ids)")
+                        .setParameter("ids", userIds).executeUpdate();
+                em.createNativeQuery("DELETE FROM teams WHERE id = :id").setParameter("id", teamId).executeUpdate();
+                em.createNativeQuery("DELETE FROM organizations WHERE id = :id").setParameter("id", orgId).executeUpdate();
+                em.createNativeQuery("DELETE FROM users WHERE id IN (:ids)").setParameter("ids", userIds).executeUpdate();
+                TestTransaction.flagForCommit();
+                TestTransaction.end();
+            }
+        }
+
+        private void authorizeScopeAdmin(boolean organization) {
+            if (organization) {
+                MembershipTestHelper.insertUserRole(em, adminId, "ADMIN", null, orgId);
+                em.flush();
+            }
+        }
+
+        private Long createSelectedSchedule(boolean organization, String description, String color, List<Long> ids) {
+            Long id = createSchedule(organization, description, color, MinViewRole.MEMBER_PLUS);
+            scheduleRepository.findById(id).orElseThrow().updateTargetMode(ScheduleTargetMode.SELECTED_MEMBERS);
+            for (Long userId : ids) {
+                em.persist(ScheduleTargetEntity.builder().scheduleId(id).userId(userId).build());
+            }
+            em.flush();
+            em.clear();
+            return id;
+        }
+
+        private void assertSelectedDetail(boolean organization, Long id, String description, String color,
+                                          List<Long> ids) throws Exception {
+            setAuthentication(memberId);
+            String response = mockMvc.perform(get(detailUrl(organization), organization ? orgId : teamId, id))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content.title").value("詳細契約テスト"))
+                    .andExpect(jsonPath("$.data.detail.description").value(description))
+                    .andExpect(jsonPath("$.data.detail.color").value(color))
+                    .andExpect(jsonPath("$.data.targetMode").value("SELECTED_MEMBERS"))
+                    .andExpect(jsonPath("$.data.targetCount").value(ids.size()))
+                    .andExpect(jsonPath("$.data.targets.length()").value(ids.size()))
+                    .andReturn().getResponse().getContentAsString();
+            var targets = objectMapper.readTree(response).path("data").path("targets");
+            var returnedIds = new java.util.ArrayList<Long>();
+            for (var target : targets) {
+                returnedIds.add(target.path("userId").asLong());
+                assertThat(target.path("displayName").asText()).isEqualTo("W4C テスト");
+            }
+            assertThat(returnedIds).containsExactlyInAnyOrderElementsOf(ids);
         }
 
         private String detailUrl(boolean organization) {
