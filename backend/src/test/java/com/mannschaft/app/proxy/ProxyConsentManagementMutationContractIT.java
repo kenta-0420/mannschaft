@@ -158,6 +158,36 @@ class ProxyConsentManagementMutationContractIT extends AbstractMySqlIntegrationT
     }
 
     @Test
+    void 本人オンライン撤回に紙の立会情報を偽装できない() throws Exception {
+        revoke(subject, consentId, Map.of("revokeMethod", "API_BY_SUBJECT",
+                "revokeWitnessedByUserId", admin, "revokeReason", "偽装した理由"))
+                .andExpect(status().isBadRequest());
+        em.flush();
+        em.clear();
+        var unchanged = consents.findById(consentId).orElseThrow();
+        assertThat(unchanged.getRevokedAt()).isNull();
+        assertThat(unchanged.getRevokeWitnessedByUserId()).isNull();
+        assertThat(unchanged.getRevokeReason()).isNull();
+
+        revoke(subject, consentId, Map.of("revokeMethod", "API_BY_SUBJECT", "revokeReason", "最初の本人撤回"))
+                .andExpect(status().isOk());
+        em.flush();
+        em.clear();
+        var first = consents.findById(consentId).orElseThrow();
+        var revokedAt = first.getRevokedAt();
+        revoke(subject, consentId, Map.of("revokeMethod", "API_BY_SUBJECT",
+                "revokeWitnessedByUserId", admin, "revokeReason", "上書きした理由"))
+                .andExpect(status().isBadRequest());
+        em.flush();
+        em.clear();
+        var saved = consents.findById(consentId).orElseThrow();
+        assertThat(saved.getRevokedAt()).isEqualTo(revokedAt);
+        assertThat(saved.getRevokeMethod()).isEqualTo(ProxyInputConsentEntity.RevokeMethod.API_BY_SUBJECT);
+        assertThat(saved.getRevokeWitnessedByUserId()).isNull();
+        assertThat(saved.getRevokeReason()).isEqualTo("最初の本人撤回");
+    }
+
+    @Test
     void 管理者が本人のAPI撤回を装えない() throws Exception {
         revoke(admin, consentId, Map.of("revokeMethod", "API_BY_SUBJECT"))
                 .andExpect(status().isForbidden());
