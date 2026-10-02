@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxy.repository;
 
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -28,6 +29,7 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
      * ProxyInputContextFilterで同意書の有効性を検証する。
      * consentIdとproxyUserIdの両方が一致する有効な同意書のみ返す。
      */
+    @EntityGraph(attributePaths = "scopes")
     @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.id = :consentId " +
            "AND c.proxyUserId = :proxyUserId " +
            "AND c.approvedAt IS NOT NULL AND c.revokedAt IS NULL " +
