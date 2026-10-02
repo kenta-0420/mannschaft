@@ -208,6 +208,7 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
     private Long listingPersonalId;
     private Long listingGlobalId;
     private Long listingDeletedAId;
+    private Long listingHiddenAId;
     private Long pAppliedAId;
     private Long pAppliedBId;
     private Long pPublicAId;
@@ -215,6 +216,7 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
     private Long pGlobalId;
     private Long pConfirmedAId;
     private Long pDeletedListingId;
+    private Long pHiddenListingId;
 
     // ---- ペナルティ ----
     private Long penaltyAId;
@@ -237,6 +239,7 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
     private Long recPaidId;
     private Long recWaivedId;
     private Long recDeletedListingId;
+    private Long recHiddenListingId;
 
     @BeforeEach
     void setUp() {
@@ -301,6 +304,10 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
         pGlobalId = insertParticipant(listingGlobalId, applicantId, RecruitmentParticipantStatus.APPLIED);
         pConfirmedAId = insertParticipant(listingAId, memberAId, RecruitmentParticipantStatus.CONFIRMED);
         pDeletedListingId = insertParticipant(listingDeletedAId, applicantId, RecruitmentParticipantStatus.APPLIED);
+        // モデレーション非表示の募集（moderation_hidden_at のみ。deleted_at は NULL）
+        listingHiddenAId = insertListing(RecruitmentScopeType.TEAM, teamAId, RecruitmentVisibility.SCOPE_ONLY,
+                adminAId);
+        pHiddenListingId = insertParticipant(listingHiddenAId, applicantId, RecruitmentParticipantStatus.APPLIED);
 
         // ---- ペナルティ ----
         Long settingAId = insertSetting(RecruitmentScopeType.TEAM, teamAId);
@@ -339,6 +346,8 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
                 ScopeKind.TEAM, teamAAccount);
         recDeletedListingId = insertRecordWithEscrow(listingDeletedAId, debtorId, CancellationPaymentStatus.PENDING,
                 ScopeKind.USER, individualPayeeAccount);
+        recHiddenListingId = insertRecordWithEscrow(listingHiddenAId, debtorId, CancellationPaymentStatus.PENDING,
+                ScopeKind.USER, individualPayeeAccount);
 
         em.flush();
         // 状態の作り込み（ビルダーで表せないもの）
@@ -351,6 +360,8 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
                 .setParameter("id", policyArchivedAId).executeUpdate();
         em.createNativeQuery("UPDATE recruitment_listings SET deleted_at = NOW() WHERE id = :id")
                 .setParameter("id", listingDeletedAId).executeUpdate();
+        em.createNativeQuery("UPDATE recruitment_listings SET moderation_hidden_at = NOW() WHERE id = :id")
+                .setParameter("id", listingHiddenAId).executeUpdate();
         em.flush();
         em.clear();
     }
@@ -453,6 +464,30 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
         void 親だけ不在は404() throws Exception {
             setAuth(outsiderId);
             assertSameAsMissing(waive(recDeletedListingId), waive(MISSING_ID), 404, C005);
+        }
+
+        /**
+         * 殿の判断3（2026-10-02）: モデレーション非表示の募集にぶら下がる記録の免除は、是正前の挙動を維持する。
+         *
+         * <p><b>是正前の挙動と根拠</b>: 是正前の免除（{@code RecruitmentCancellationFeeWaiveService#waive}）は
+         * {@code cancellationRecordRepository.findById} で記録だけを読み、募集（{@code RecruitmentListingEntity}）を
+         * 一度も読まなかった。{@code RecruitmentListingEntity} の {@code @SQLRestriction}
+         * （{@code deleted_at IS NULL AND moderation_hidden_at IS NULL}）が掛かるのは募集を引くときだけなので、
+         * モデレーション非表示の募集の記録も受取側は免除できた（200）。是正後も tx のたどり直しは
+         * 論理削除（{@code deleted_at}）だけを見る（{@code lockLiveListingIdIgnoringModeration}）ため、同じく 200 になる。
+         * 論理削除済みの募集（{@code 親だけ不在は404}）とは区別される。</p>
+         */
+        @Test
+        @DisplayName("殿の判断3: モデレーション非表示の募集の記録は是正前どおり免除できる（受取側 200）。部外者は404、在籍者は403")
+        void モデレーション非表示の募集でも是正前どおり() throws Exception {
+            setAuth(individualPayeeId);
+            expectStatus(waive(recHiddenListingId), 200);
+            assertThat(row("recruitment_cancellation_records", recHiddenListingId)).contains("WAIVED");
+            // 拒否経路も是正前と同じ分け方（存在を知り得る者は403、部外者は不在と同一の404）
+            setAuth(memberAId);
+            expectError(waive(recHiddenListingId), 403, C002);
+            setAuth(outsiderId);
+            assertSameAsMissing(waive(recHiddenListingId), waive(MISSING_ID), 404, C005);
         }
 
         @Test
@@ -642,6 +677,27 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
                 assertSameAsMissing(confirm(listingDeletedAId, pDeletedListingId),
                         confirm(listingDeletedAId, MISSING_ID), 404, R001);
             }
+        }
+
+        /**
+         * 殿の判断3（2026-10-02）: たどり直しで募集を見る他の EP（申込確定）も、モデレーション非表示の募集は是正前の挙動を維持する。
+         *
+         * <p><b>是正前の挙動と根拠</b>: 是正前の確定は {@code listingRepository.findByIdForUpdate}（JPQL）で募集を引いており、
+         * {@code RecruitmentListingEntity} の {@code @SQLRestriction}（{@code moderation_hidden_at IS NULL} を含む）が
+         * 掛かるため、モデレーション非表示の募集は「不在」として {@code LISTING_NOT_FOUND}(404) になっていた
+         * （管理者でも）。是正後は認可前の解決・tx の読み直しともエンティティ経由なので同じ 404 になり、DB も変わらない。
+         * 免除（記録だけを読んでいたので通る）とは、是正前の挙動がそもそも違う。</p>
+         */
+        @Test
+        @DisplayName("殿の判断3: モデレーション非表示の募集の参加者は是正前どおり不在と同一の404（管理者でも）でDB不変")
+        void モデレーション非表示の募集は是正前どおり404() throws Exception {
+            String before = row("recruitment_participants", pHiddenListingId);
+            for (Long actor : List.of(adminAId, outsiderId)) {
+                setAuth(actor);
+                assertSameAsMissing(confirm(listingHiddenAId, pHiddenListingId),
+                        confirm(listingHiddenAId, MISSING_ID), 404, R001);
+            }
+            assertThat(row("recruitment_participants", pHiddenListingId)).isEqualTo(before);
         }
 
         @Test
