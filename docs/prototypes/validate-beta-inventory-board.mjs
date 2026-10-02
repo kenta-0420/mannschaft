@@ -156,9 +156,20 @@ for (const feature of data.features) {
   }
 }
 
-const campaignTagByStatus = { blocked: '停止中', working: '進行中', done: '完了', unknown: '未整理' };
+const campaignTagByStatus = { blocked: '停止中', working: '進行中', done: '完了', 'not-started': '未着手', 'on-hold': '保留', unknown: '未整理' };
 if (data.campaigns.some((campaign) => campaign.tags?.length !== 1 || campaign.tags[0] !== campaignTagByStatus[campaign.status])) {
   throw new Error('CMPの進捗タグと正規化状態が一致しません。');
+}
+for (const campaign of data.campaigns) {
+  const sourceStatus = campaign.statusLabel.replaceAll('**', '').trim();
+  const expectedStatus = sourceStatus.startsWith('未着手') ? 'not-started'
+    : sourceStatus.startsWith('保留') ? 'on-hold' : null;
+  if (expectedStatus && campaign.status !== expectedStatus) {
+    throw new Error(`CMPの未着手・保留が正本から独立分類されていません: ${campaign.id}`);
+  }
+  if (['not-started', 'on-hold'].includes(campaign.status) && campaign.status !== expectedStatus) {
+    throw new Error(`CMPの下位作業や曖昧な状態を未着手・保留へ誤分類しています: ${campaign.id}`);
+  }
 }
 
 const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
