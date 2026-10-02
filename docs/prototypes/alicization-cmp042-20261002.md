@@ -10,6 +10,8 @@
 
 最終準備mainは `6c0bd78216c0c1beda40fa21b07a39b3734d5920`。実機baselineとの当該Survey API・frontend application sourceの互換は殿が確認した。最新lock依存の差分はPR CIの範囲であり、最新main全体のBE再検証を主張しない。CSS修正はSurvey関連4ファイルのclass/PTのみ（原commit `e3e65f00593faa3982fe4f0ab8d2f95d1fbc8aee`）。共通Header/nav、認可、API、分母、部分再読込の挙動は変更していない。
 
+出荷準備でmain `1cb0febb62b5015f44a0387267087e4b858c81b1`へrebaseした。6c0からの当該Survey・frontend app・BE build差分はなく、確認通知の別戦役変更を保全した。PRのrequired CIはこの追従後headで別途確認する。
+
 ## 独立した初回3住民
 
 共有fixtureはsurvey196 / 組織`cmp042-mur08pdz`、公開時2・後加入後現在3。各住民は別context・1login。以下の初回結果と後段controlled QAを混同しない。
