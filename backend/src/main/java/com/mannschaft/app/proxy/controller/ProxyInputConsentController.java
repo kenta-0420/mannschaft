@@ -1,14 +1,17 @@
 package com.mannschaft.app.proxy.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.proxy.dto.CreateProxyInputConsentRequest;
 import com.mannschaft.app.proxy.dto.ProxyInputConsentResponse;
+import com.mannschaft.app.proxy.dto.ProxyInputRecordResponse;
 import com.mannschaft.app.proxy.dto.RevokeProxyInputConsentRequest;
 import com.mannschaft.app.proxy.dto.ScanUploadUrlResponse;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.service.ProxyInputConsentService;
+import com.mannschaft.app.proxy.service.ProxyConsentManagementAccessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -35,6 +38,7 @@ import java.util.List;
 public class ProxyInputConsentController {
 
     private final ProxyInputConsentService consentService;
+    private final ProxyConsentManagementAccessService managementAccess;
 
     /**
      * 同意書を登録する。
@@ -58,14 +62,12 @@ public class ProxyInputConsentController {
      */
     @Operation(summary = "代理入力同意書一覧（組合単位）")
     @GetMapping("/api/v1/organizations/{orgId}/proxy-input-consents")
-    public ApiResponse<List<ProxyInputConsentResponse>> getConsentsByOrganization(
-            @PathVariable Long orgId) {
+    public PagedResponse<ProxyInputConsentResponse> getConsentsByOrganization(
+            @PathVariable Long orgId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         Long requestUserId = SecurityUtils.getCurrentUserId();
-        List<ProxyInputConsentResponse> responses = consentService.getConsentsByOrganization(requestUserId, orgId)
-                .stream()
-                .map(ProxyInputConsentResponse::from)
-                .toList();
-        return ApiResponse.of(responses);
+        return managementAccess.getConsents(requestUserId, orgId, page, size);
     }
 
     /**
@@ -93,8 +95,7 @@ public class ProxyInputConsentController {
     @PatchMapping("/api/v1/proxy-input-consents/{id}/approve")
     public ApiResponse<ProxyInputConsentResponse> approveConsent(@PathVariable Long id) {
         Long requestUserId = SecurityUtils.getCurrentUserId();
-        ProxyInputConsentEntity consent = consentService.approveConsent(requestUserId, id);
-        return ApiResponse.of(ProxyInputConsentResponse.from(consent));
+        return ApiResponse.of(managementAccess.approve(requestUserId, id));
     }
 
     /**
@@ -107,26 +108,25 @@ public class ProxyInputConsentController {
             @PathVariable Long id,
             @Valid @RequestBody RevokeProxyInputConsentRequest request) {
         Long requestUserId = SecurityUtils.getCurrentUserId();
-        consentService.revokeConsent(requestUserId, id, request.toCommand());
+        managementAccess.revoke(requestUserId, id, request.toCommand());
         return ApiResponse.of(null);
     }
 
     /**
      * 代理入力履歴を取得する（監査用）。
      * 権限: ADMIN以上 or 本人（subjectUserId指定時）。
-     * Phase 12-α では同意書ベースの一覧を返す。Phase 13-α で proxy_input_records の詳細一覧に拡張予定。
+     * 組合指定時は管理資格を要求し、本人フィルタは組合条件との交差にする。
+     * 組合指定なしは本人のみ（SYSTEM_ADMINは他の本人指定も可）。保存済み操作記録をDBページで返す。
      */
     @Operation(summary = "代理入力履歴一覧（監査用）")
     @GetMapping("/api/v1/proxy-input-records")
-    public ApiResponse<List<ProxyInputConsentResponse>> getProxyInputRecords(
-            @RequestParam(required = false) Long subjectUserId) {
+    public PagedResponse<ProxyInputRecordResponse> getProxyInputRecords(
+            @RequestParam(required = false) Long organizationId,
+            @RequestParam(required = false) Long subjectUserId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         Long requestUserId = SecurityUtils.getCurrentUserId();
-        Long targetUserId = subjectUserId != null ? subjectUserId : requestUserId;
-        List<ProxyInputConsentResponse> responses = consentService.getConsentsBySubject(requestUserId, targetUserId)
-                .stream()
-                .map(ProxyInputConsentResponse::from)
-                .toList();
-        return ApiResponse.of(responses);
+        return managementAccess.getRecords(requestUserId, organizationId, subjectUserId, page, size);
     }
 
     /**

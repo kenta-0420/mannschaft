@@ -1,6 +1,8 @@
 package com.mannschaft.app.proxy.repository;
 
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -28,6 +30,27 @@ public interface ProxyInputRecordRepository extends JpaRepository<ProxyInputReco
      * 本人の代理入力履歴を取得する（本人向け監査ログ閲覧・GDPRエクスポート）。
      */
     List<ProxyInputRecordEntity> findBySubjectUserIdOrderByCreatedAtDesc(Long subjectUserId);
+
+    /** 同意書なしの後見切替も含む本人履歴をDBページで取得する。 */
+    @Query("SELECT r FROM ProxyInputRecordEntity r WHERE r.subjectUserId = :subjectUserId "
+            + "ORDER BY r.createdAt DESC, r.id DESC")
+    Page<ProxyInputRecordEntity> findPageBySubjectUserId(@Param("subjectUserId") Long subjectUserId,
+                                                       Pageable pageable);
+
+    /** 同意書を根拠に組合を限定する。null consentの後見切替は組合へ帰属させない。 */
+    @Query("SELECT r FROM ProxyInputRecordEntity r JOIN ProxyInputConsentEntity c "
+            + "ON c.id = r.proxyInputConsentId WHERE c.organizationId = :organizationId "
+            + "ORDER BY r.createdAt DESC, r.id DESC")
+    Page<ProxyInputRecordEntity> findPageByOrganizationId(@Param("organizationId") Long organizationId,
+                                                        Pageable pageable);
+
+    /** 組合と本人の条件は交差させ、別組合の本人履歴を混入させない。 */
+    @Query("SELECT r FROM ProxyInputRecordEntity r JOIN ProxyInputConsentEntity c "
+            + "ON c.id = r.proxyInputConsentId WHERE c.organizationId = :organizationId "
+            + "AND r.subjectUserId = :subjectUserId ORDER BY r.createdAt DESC, r.id DESC")
+    Page<ProxyInputRecordEntity> findPageByOrganizationIdAndSubjectUserId(
+            @Param("organizationId") Long organizationId, @Param("subjectUserId") Long subjectUserId,
+            Pageable pageable);
 
     /**
      * 代理者の実行履歴を取得する（管理者向け監査）。

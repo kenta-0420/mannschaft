@@ -88,6 +88,11 @@ class ProxyConsentManagementAuthorizationContractIT extends AbstractMySqlIntegra
         MembershipTestHelper.insertUserRole(em, actor, "DEPUTY_ADMIN", null, organization);
         grantApproval("DEPUTY_ADMIN");
         approve().andExpect(status().isOk());
+        // 前任試練のDEPUTY撤回資格を保持し、監査方法はADMIN証人つき紙代行に正す。
+        Long witness = fixture.account();
+        MembershipTestHelper.insertUserRole(em, witness, "ADMIN", null, organization);
+        revoke(actor, Map.of("revokeMethod", "PAPER_BY_SUBJECT", "revokeWitnessedByUserId", witness))
+                .andExpect(status().isOk());
     }
 
     @Test

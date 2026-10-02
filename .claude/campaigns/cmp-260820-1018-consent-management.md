@@ -53,3 +53,10 @@ approve/revokeは同意実体から組合を解決し、親不在・論理削除
 application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで既存ControllerはService TX後にDTOへ変換するため、非@TransactionalのSerializationContractITを追加した。fixtureの確定と自分のIDだけの後始末はTransactionTemplateで行い、一覧10件・active・承認のHTTP応答を実TX外でserializeする。scopesのcollection fetch countも検証して一覧のN+1を固定する。同じSpring context金型を使い独自profile/property/contextは追加しない。
 
 訂正後の候補は60件（旧45＋同意一覧12＋非TX DBページ件数1＋並行mutation2）。並行試験は実MySQLの先行TXが同意1行をPESSIMISTIC_WRITEで保持して撤回情報をflush/refreshし、後続HTTPのfindByIdForUpdateまたは旧flush経路とMySQL read待機stackを観測してから先行TXをcommitする。任意sleepを使わず10秒の観測期限/30秒のlock保持期限と自所有executor解放を設け、HTTP409・先行撤回日時/理由/証人の不変性・承認日時nullを検証する。まだ実測前でありgreen扱いにしない。
+
+## 訂正redの実測と独立実装着手
+
+- commit8bc47d134dをsnapshotへ4 test blobs照合して実行。60 tests /47 failures /0 errors /0 skipped、8分12秒。DEPUTYのgroup由来承認はGREEN。並行2件はDB待機観測を通過した後、承認500・再撤回200で409期待にREDとなり、時間切れ/cleanup失敗はなかった。XMLは専用`/tmp/cmp-consent-red-8bc-xml`へ保全。
+- commit1abcacf001で紙保存2件のflush/clearを補正。対象XMLは2 tests /1 failure /0 errors /0 skipped。紙255文字理由・方法・証人のDB保存assertを通過し、同意一覧応答にrevokeWitnessedByUserIdが無い点だけRED。別人同scope ADMIN証人の保存はGREEN。標準Gradleによるarchitecture guard追加分も合わせると31 tests /1 failure（11分10秒）。追加分はDomain TX/API/Visibility等の29件で、exclude/profileの改変はしていない。
+- 確定済みの同意ID page→bounded scopes graph、records固定3 JOIN page、非TX親生存/存在秘匿facade、mutation同意row lock、state409、SYS明示横断、本人API方法限定、手動AUTO/unknown400、立会ID応答を実装中。立会資格のADMIN限定/DEPUTY包含だけ未裁可であり、その検証・全green/完了は保留。
+- 次は独立BE差分の保全commit→安全な時点でmain追従→blob一致snapshotの60契約と既存proxy/ArchUnit回帰→標準generateOpenApiDocs（8099）→OpenAPI artifact hash照合→npm generate:types→FE型/lint/unit→正本2管理pathを入口から実機検証。元の組合ハブcardは既存setOrganizationScopeを明示して正本pathへ遷移し、新orgScopedページは増やさない。SYS兼任も業務UIへ導線を出さない。

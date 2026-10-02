@@ -125,7 +125,7 @@ public class ProxyInputConsentService {
      */
     // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentApprovedEventで分離予定
     public ProxyInputConsentEntity approveConsent(Long requestUserId, Long consentId) {
-        ProxyInputConsentEntity consent = consentRepository.findById(consentId)
+        ProxyInputConsentEntity consent = consentRepository.findByIdForUpdate(consentId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
 
         // 自己承認禁止
@@ -135,8 +135,14 @@ public class ProxyInputConsentService {
         }
 
         // PROXY_CONSENT_APPROVE 権限チェック
-        accessControlService.checkPermission(
-                requestUserId, consent.getOrganizationId(), "ORGANIZATION", "PROXY_CONSENT_APPROVE");
+        if (!accessControlService.isSystemAdmin(requestUserId)) {
+            accessControlService.checkPermission(
+                    requestUserId, consent.getOrganizationId(), "ORGANIZATION", "PROXY_CONSENT_APPROVE");
+        }
+
+        if (consent.getApprovedAt() != null || consent.getRevokedAt() != null) {
+            throw new BusinessException(CommonErrorCode.COMMON_003);
+        }
 
         consent.approve(requestUserId);
         ProxyInputConsentEntity saved = consentRepository.save(consent);
@@ -152,6 +158,8 @@ public class ProxyInputConsentService {
         );
 
         log.info("代理入力同意書承認: id={}, approvedBy={}", consentId, requestUserId);
+        // OSIV=falseのController応答用。row lockは同意1行だけに限定し、scope取得はTX内で済ませる。
+        org.hibernate.Hibernate.initialize(saved.getScopes());
         return saved;
     }
 
@@ -164,17 +172,33 @@ public class ProxyInputConsentService {
      */
     // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentRevokedEventで分離予定
     public void revokeConsent(Long requestUserId, Long consentId, RevokeConsentCommand command) {
-        ProxyInputConsentEntity consent = consentRepository.findById(consentId)
+        ProxyInputConsentEntity consent = consentRepository.findByIdForUpdate(consentId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
 
         // 本人または組合ADMIN以上のみ撤回可
         boolean isSelf = consent.getSubjectUserId().equals(requestUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(
-                requestUserId, consent.getOrganizationId(), "ORGANIZATION");
+        boolean isAdmin = accessControlService.isSystemAdmin(requestUserId)
+                || accessControlService.isAdminOrAbove(requestUserId, consent.getOrganizationId(), "ORGANIZATION");
 
         if (!isSelf && !isAdmin) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
+
+        if (command.revokeMethod() == ProxyInputConsentEntity.RevokeMethod.API_BY_SUBJECT) {
+            if (!isSelf) throw new BusinessException(CommonErrorCode.COMMON_002);
+        } else if (command.revokeMethod() == ProxyInputConsentEntity.RevokeMethod.PAPER_BY_SUBJECT) {
+            if (!isAdmin) throw new BusinessException(CommonErrorCode.COMMON_002);
+            if (command.revokeWitnessedByUserId() == null) {
+                throw new BusinessException(CommonErrorCode.COMMON_001);
+            }
+        } else {
+            // ライフイベント・任期の自動失効方法を手動APIから偽装させない。
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+        if (command.revokeReason() != null && command.revokeReason().length() > 255) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+        if (consent.getRevokedAt() != null) throw new BusinessException(CommonErrorCode.COMMON_003);
 
         consent.revoke(command.revokeMethod(), command.revokeWitnessedByUserId(), command.revokeReason());
         consentRepository.save(consent);

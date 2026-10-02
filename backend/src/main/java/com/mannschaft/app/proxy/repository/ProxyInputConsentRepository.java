@@ -1,6 +1,11 @@
 package com.mannschaft.app.proxy.repository;
 
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -19,6 +24,7 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
     /**
      * 代理者が保有する有効な同意書一覧を取得する（ProxyInputDeskView起動時に使用）。
      */
+    @EntityGraph(attributePaths = "scopes")
     @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.proxyUserId = :proxyUserId " +
            "AND c.approvedAt IS NOT NULL AND c.revokedAt IS NULL " +
            "AND c.effectiveFrom <= CURRENT_DATE AND c.effectiveUntil >= CURRENT_DATE")
@@ -54,6 +60,20 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
      * 組合単位の同意書一覧を取得する（ADMIN向け管理画面）。
      */
     List<ProxyInputConsentEntity> findByOrganizationIdOrderByCreatedAtDesc(Long organizationId);
+
+    /** collection fetchとページ制限を分離し、必要な同意IDだけをDBから取得する。 */
+    @Query("SELECT c.id FROM ProxyInputConsentEntity c WHERE c.organizationId = :organizationId "
+            + "ORDER BY c.createdAt DESC, c.id DESC")
+    Page<Long> findPageIdsByOrganizationId(@Param("organizationId") Long organizationId, Pageable pageable);
+
+    /** ページ内のIDに限ってscopesを一括取得する。 */
+    @EntityGraph(attributePaths = "scopes")
+    List<ProxyInputConsentEntity> findByIdIn(List<Long> ids);
+
+    /** 承認・手動撤回だけで使い、先行操作の確定状態を再確認する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.id = :id")
+    Optional<ProxyInputConsentEntity> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * 承認待ちの同意書一覧を取得する。
