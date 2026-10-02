@@ -239,18 +239,22 @@ def parse_campaigns(markdown: str) -> list[dict]:
 
 def campaign_tags(status_key: str) -> list[str]:
     """task-list.mdの状態列を、フィルター用の進捗タグへ機械的に写像する。"""
-    labels = {"done": "完了", "working": "進行中", "blocked": "停止中", "unknown": "未整理"}
+    labels = {"done": "完了", "working": "進行中", "blocked": "停止中", "not-started": "未着手", "on-hold": "保留", "unknown": "未整理"}
     return [labels.get(status_key, "未整理")]
 
 
 def normalize_campaign_status(status_text: str) -> str:
-    """状態列の先頭語を、画面の4進捗へ機械的に正規化する。"""
+    """状態列の先頭語を進捗へ写像する。未着手・保留は別状態とし、不明な語は保持する。"""
     normalized = status_text.replace("**", "").strip()
     if normalized.startswith(("凍結", "停止")):
         return "blocked"
     if normalized.startswith("完了"):
         return "done"
-    if normalized.startswith(("設計中", "実装中", "実装済", "検証待ち", "実機検証待ち", "実装完了", "実装・実機E2E完了", "型確立PR進行中", "一部完了")):
+    if normalized.startswith("未着手"):
+        return "not-started"
+    if normalized.startswith("保留"):
+        return "on-hold"
+    if normalized.startswith(("設計中", "実装中", "実装済", "検証待ち", "実機検証待ち", "実装完了", "実装・実機E2E完了", "型確立PR進行中", "一部完了", "進行中", "対応中", "commit済", "実装・検証中", "PR作成済み／CI確認中", "着手中", "部分完了→着手中", "実装・検分完了")):
         return "working"
     return "unknown"
 
