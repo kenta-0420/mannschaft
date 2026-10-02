@@ -124,6 +124,23 @@
         "summary": "{enabled} aktiv / {total} gesamt",
         "fetchFailed": "Modulinformationen konnten nicht geladen werden"
       }
+    },
+    "settingsHub": {
+      "title": "Verwaltungseinstellungen",
+      "scopeSettings": "Gruppeneinstellungen",
+      "integrations": "Integrationen und Aussteller",
+      "confirmingScope": "Die aktuelle Gruppe wird vor dem Öffnen der Integrationseinstellungen bestätigt.",
+      "items": {
+        "shift": "Schichteinstellungen",
+        "faq": "FAQ-Einstellungen",
+        "public": "Sichtbarkeitseinstellungen",
+        "care": "Meine Betreuungseinstellungen",
+        "todoLabels": "TODO-Statusbezeichnungen",
+        "notificationCredits": "Benachrichtigungsguthaben",
+        "modules": "Moduleinstellungen",
+        "line": "LINE-Integration",
+        "receipts": "Belegaussteller-Einstellungen"
+      }
     }
   }
 }
