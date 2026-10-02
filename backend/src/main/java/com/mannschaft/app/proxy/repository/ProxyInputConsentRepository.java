@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxy.repository;
 
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -27,7 +28,7 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
             @Param("proxyUserId") Long proxyUserId, @Param("today") LocalDate today);
 
     default List<ProxyInputConsentEntity> findActiveByProxyUserId(Long proxyUserId) {
-        return findActiveByProxyUserId(proxyUserId, LocalDate.now());
+        return findActiveByProxyUserId(proxyUserId, LocalDate.now(UserZoneLocalDateTimeParser.SERVER_ZONE));
     }
 
     /**
@@ -45,7 +46,7 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
             @Param("today") LocalDate today);
 
     default Optional<ProxyInputConsentEntity> findValidConsent(Long consentId, Long proxyUserId) {
-        return findValidConsent(consentId, proxyUserId, LocalDate.now());
+        return findValidConsent(consentId, proxyUserId, LocalDate.now(UserZoneLocalDateTimeParser.SERVER_ZONE));
     }
 
     /**
