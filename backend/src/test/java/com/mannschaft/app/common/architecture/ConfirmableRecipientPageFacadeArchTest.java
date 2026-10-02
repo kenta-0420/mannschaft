@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>Facade の名前は {@code *Facade}（{@code *AccessService} 等にすると AuthzControllerGuard が呼んだだけで
  *       認可扱いし、Facade 内の認可漏れを見逃す）。</li>
  *   <li>殿の判断8・K5: {@code SCOPE_MISMATCH} の投げ元は0（enum を消しても、残しても、参照が無ければ緑）。
- *       confirm は {@code RECIPIENT_NOT_FOUND} を投げない（非受信者・除外済みは NOT_FOUND に畳む）。</li>
+ *       {@code RECIPIENT_NOT_FOUND} は廃止済み（非受信者・除外済みは NOT_FOUND に畳む）。</li>
  *   <li>K3: cancel の D-3T 凍結キー（{@code UserRepository} 到達・認可と無関係）は残す前提。
  *       {@code ConfirmableNotificationService.cancel(Long, Long)} と
  *       {@code ConfirmableNotificationConfirmService.cancel(Long, Long)} の名前・引数・{@code @Transactional} を変えない
@@ -156,11 +156,13 @@ class ConfirmableRecipientPageFacadeArchTest {
     }
 
     @Test
-    @DisplayName("K5-2: confirm は RECIPIENT_NOT_FOUND を投げない（非受信者・除外済み受信者は NOT_FOUND に畳む）")
-    void confirmはRECIPIENT_NOT_FOUNDを投げない() {
-        noClasses().that().haveFullyQualifiedName(CONFIRM_SERVICE).or().haveFullyQualifiedName(SERVICE)
+    @DisplayName("K5-2: RECIPIENT_NOT_FOUND は廃止済み（非受信者・除外済み受信者は NOT_FOUND に畳む）")
+    void RECIPIENT_NOT_FOUNDは廃止済み() {
+        assertThat(requireClass(ERROR_CODE).getFields().stream().map(f -> f.getName()))
+                .as("専用コードが残ると、非受信者の応答が不在と割れて通知の実在が受信者以外に分かる（C1・AC-7b）")
+                .doesNotContain("RECIPIENT_NOT_FOUND");
+        noClasses().that().doNotHaveFullyQualifiedName(ERROR_CODE)
                 .should().accessField(ERROR_CODE, "RECIPIENT_NOT_FOUND")
-                .because("非受信者の応答が不在と割れると、通知の実在が受信者以外に分かる（C1・AC-7b）")
                 .check(classes);
     }
 

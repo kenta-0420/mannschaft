@@ -14,9 +14,6 @@ public enum ConfirmableNotificationErrorCode implements ErrorCode {
     /** 確認通知が見つからない */
     NOT_FOUND("CONFIRMABLE_NOTIFICATION_NOT_FOUND", "確認通知が見つかりません", Severity.WARN),
 
-    /** 受信者が見つからない */
-    RECIPIENT_NOT_FOUND("CONFIRMABLE_NOTIFICATION_RECIPIENT_NOT_FOUND", "受信者が見つかりません", Severity.WARN),
-
     /** テンプレートが見つからない */
     TEMPLATE_NOT_FOUND("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND", "テンプレートが見つかりません", Severity.WARN),
 
