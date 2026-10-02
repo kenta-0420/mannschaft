@@ -190,7 +190,25 @@ test.describe('CMP-260902-0058 実ブラウザ（API smoke と別判定）', () 
       await screenshot(page, info, `${type}-member-saved`)
       await page.goBack()
       await expect(page).toHaveURL(/\/dashboard$/)
+      const setupResponse = page.waitForResponse(response => {
+        const url = new URL(response.url())
+        return response.request().method() === 'GET' && url.pathname === '/api/v1/admin/member-permissions'
+          && url.searchParams.get('scopeType') === (type === 'teams' ? 'TEAM' : 'ORGANIZATION')
+      })
       await page.goto(screenPath(fixture))
+      const setup = await setupResponse
+      expect(setup.status(), '初回案内の判定を行う実GET').toBe(200)
+      const settings = (await setup.json()).data.permissions as Array<{ inherited?: boolean }>
+      const promptRequired = settings.length === 3 && settings.every(setting => setting.inherited)
+      const setupDialog = page.getByRole('dialog', { name: 'メンバーの権限を初期設定', exact: true })
+      if (promptRequired) {
+        await expect(setupDialog).toBeVisible()
+        await screenshot(page, info, `${type}-member-initial-permissions`)
+        // 権限を保存せず、既存の初回案内を通常操作で後回しにする。
+        await setupDialog.getByRole('button', { name: 'あとで決める', exact: true }).click()
+      }
+      await expect(setupDialog).toBeHidden()
+      await info.attach(`${type}-初回案内の閉鎖`, { body: JSON.stringify({ path: '/api/v1/admin/member-permissions', status: setup.status(), promptRequired, dismissedWithoutSaving: promptRequired, dialogHidden: true }), contentType: 'application/json' })
       await openEvent(page, fixture)
       await screenshot(page, info, `${type}-member-scope-page`)
     })
