@@ -216291,6 +216291,9 @@
           "priority": {
             "type": "string"
           },
+          "scopeAutoColor": {
+            "type": "string"
+          },
           "scopeId": {
             "type": "integer",
             "format": "int64"
@@ -234928,6 +234931,9 @@
             "type": "string"
           },
           "referenceUuid": {
+            "type": "string"
+          },
+          "scopeAutoColor": {
             "type": "string"
           },
           "status": {
