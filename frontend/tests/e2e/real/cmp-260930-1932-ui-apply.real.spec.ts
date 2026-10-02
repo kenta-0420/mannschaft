@@ -15,9 +15,11 @@ test.use({ storageState: { cookies: [], origins: [] } })
 test.describe.configure({ mode: 'serial' })
 test.setTimeout(180_000)
 
-const BE = process.env.BE_ORIGIN ?? 'http://localhost:8080'
-const BE_API = `${BE}/api/v1`
-const API_BASE = process.env.API_BASE_URL ?? BE
+// ブラウザ認証・前提作成APIとも同じ接続先に揃える（market-apply.real.spec.ts と同じ戦略）。
+// BE_ORIGIN（既定8080）はブラウザが向く先（API_BASE_URL、既定8081）と異なりうるため、
+// API 呼び出しは全て API_BASE_URL 系に統一する。
+const API_BASE = process.env.API_BASE_URL ?? process.env.BE_ORIGIN ?? 'http://localhost:8080'
+const BE_API = `${API_BASE}/api/v1`
 const PASSWORD = process.env.TEST_USER_PASSWORD ?? 'TestPass2026!'
 const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
 const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
@@ -41,17 +43,40 @@ function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 }
 
+interface NotificationCreditBalance {
+  creditBalance: number
+  inGracePeriod: boolean
+  gracePeriodEndsAt: string | null
+}
+
+// 通知クレジット枯渇状態にしてある検証用チーム（team_id=1 "fc-u-18"、organization_id=9）を明示特定する。
+// フォールバックは行わない — 前提が崩れていれば画面側の確認が無意味になるため、
+// 組織の残高APIで「残高0以下」かつ「猶予期間開始から72時間超過」を確認できない場合は即座に失敗させる。
 async function resolveCreditExhaustedTeamId(api: APIRequestContext, token: string): Promise<number> {
   const res = await api.get(`${BE_API}/me/teams`, { headers: { Authorization: `Bearer ${token}` } })
   expect(res.status(), '/me/teams は 200').toBe(200)
-  const json = (await res.json()) as { data: Array<{ id: number; name: string; role: string }> }
-  // 通知クレジット枯渇状態にしてある検証用チーム（fc-u-18）。無ければ ADMIN ロールの先頭チームで代替する。
-  const team =
-    json.data.find((t) => t.role === 'ADMIN' && t.name.includes('fc-u-18')) ??
-    json.data.find((t) => t.role === 'ADMIN' && t.name.includes('FC東京U-18')) ??
-    json.data.find((t) => t.role === 'ADMIN')
-  expect(team, 'ADMIN ロールのチームが存在する').toBeTruthy()
-  return team!.id
+  const json = (await res.json()) as {
+    data: Array<{ id: number; name: string; role: string; organizationId: number | null }>
+  }
+  const team = json.data.find((t) => t.role === 'ADMIN' && t.name.includes('fc-u-18'))
+  if (!team || team.organizationId === null) {
+    throw new Error('検証用チーム fc-u-18（organization_id=9・ADMINロール）が見つからない。E2Eシードを確認せよ。')
+  }
+
+  const balanceRes = await api.get(
+    `${BE_API}/organizations/${team.organizationId}/notification-credits/balance`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  )
+  expect(balanceRes.status(), '通知クレジット残高APIは 200').toBe(200)
+  const balanceJson = (await balanceRes.json()) as { data: NotificationCreditBalance }
+  const balance = balanceJson.data
+  const graceExpired = balance.gracePeriodEndsAt !== null && new Date(balance.gracePeriodEndsAt).getTime() < Date.now()
+  if (!(balance.creditBalance <= 0 && graceExpired)) {
+    throw new Error(
+      `fc-u-18 の通知クレジット前提（残高0以下かつ猶予期間72時間超過）が崩れている: ${JSON.stringify(balance)}`,
+    )
+  }
+  return team.id
 }
 
 async function loginForRealDevice(page: Page, email: string) {
@@ -84,16 +109,25 @@ test.beforeAll(async () => {
   adminToken = admin.accessToken
   const teamId = await resolveCreditExhaustedTeamId(api, adminToken)
 
+  // TEST_CONVENTION.md §2.4 方式2: 実行時点から相対生成する（固定日付は日跨ぎでflaky化するため禁則）。
+  // 制約: 開催開始 < 開催終了、申込締切 > 自動キャンセル判定の基準（自動キャンセルは締切より先に来てはならない）。
+  const now = Date.now()
+  const startAt = new Date(now + 10 * 24 * 60 * 60 * 1000)
+  const endAt = new Date(now + 10 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000)
+  const applicationDeadline = new Date(now + 8 * 24 * 60 * 60 * 1000)
+  const autoCancelAt = new Date(now + 7 * 24 * 60 * 60 * 1000)
+  const toLocalDateTime = (d: Date) => d.toISOString().slice(0, 19)
+
   const createRes = await api.post(`${BE_API}/teams/${teamId}/recruitment-listings`, {
     headers: authHeaders(adminToken),
     data: {
-      title: 'E2E申込テスト（クレジット枯渇組織）',
+      title: 'E2E申込テスト（通知枠検証用）',
       categoryId: CATEGORY_PRACTICE_MATCH,
       participationType: 'INDIVIDUAL',
-      startAt: '2026-12-20T09:00:00',
-      endAt: '2026-12-20T12:00:00',
-      applicationDeadline: '2026-12-18T23:59:59',
-      autoCancelAt: '2026-12-18T23:59:59',
+      startAt: toLocalDateTime(startAt),
+      endAt: toLocalDateTime(endAt),
+      applicationDeadline: toLocalDateTime(applicationDeadline),
+      autoCancelAt: toLocalDateTime(autoCancelAt),
       capacity: 5,
       minCapacity: 1,
       paymentEnabled: false,
@@ -148,6 +182,9 @@ test('E2E-1: 画面の申込ボタンから申込み、クレジット不足エ�
   expect(response.status(), `申込API応答: ${await response.text()}`).toBe(201)
 
   // クレジット不足系のエラートーストが出ていないこと、申込成功トーストが出ていることを画面で確認する
-  await expect(page.getByText(/クレジット|credit/i)).toHaveCount(0)
-  await expect(page.locator('.p-toast')).toContainText('申込')
+  // （検証対象はトーストに限定する。募集タイトル等には「クレジット」等の語を含めないため、
+  //   ページ全体を対象にしても本来誤検知しないが、トーストの文言変化に強くするため明示的に絞る）
+  const toast = page.locator('.p-toast')
+  await expect(toast).toContainText('申込')
+  await expect(toast.getByText(/クレジット|credit/i)).toHaveCount(0)
 })
