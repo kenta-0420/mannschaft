@@ -135,6 +135,7 @@ class RecruitmentListingTemplateScopeContractIT extends AbstractMySqlIntegration
     private static final String R001 = RecruitmentErrorCode.LISTING_NOT_FOUND.getCode();
     private static final String R020 = RecruitmentErrorCode.DRAFT_VIEW_DENIED.getCode();
     private static final String R101 = RecruitmentErrorCode.DEADLINE_EXCEEDED.getCode();
+    private static final String R103 = RecruitmentErrorCode.DRAFT_NOT_APPLICABLE.getCode();
     private static final String R102 = RecruitmentErrorCode.ALREADY_CANCELLED.getCode();
     private static final String R309 = RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND.getCode();
     private static final String R311 = RecruitmentErrorCode.ALREADY_DISPUTED.getCode();
@@ -364,6 +365,16 @@ class RecruitmentListingTemplateScopeContractIT extends AbstractMySqlIntegration
                 expectError(listingEp(ep, listingPersonalId), 403, C002);
             } else {
                 assertSameAsMissing(listingEp(ep, listingPersonalId), listingEp(ep, MISSING_ID), 404, R001);
+            }
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(value = ListingEp.class, names = {"UPDATE", "CANCEL", "ARCHIVE"})
+        @DisplayName("殿の判断(b): PERSONAL 募集の本人が汎用の PATCH・cancel・archive を叩くと、是正前の MARKET_404 ではなく不在と同一の404 R001")
+        void PERSONAL募集の本人は汎用EPで不在と同一(ListingEp ep) throws Exception {
+            setAuth(personalOwnerId);
+            for (Long listing : List.of(listingPersonalId, listingPersonalDraftId)) {
+                assertSameAsMissing(listingEp(ep, listing), listingEp(ep, MISSING_ID), 404, R001);
             }
         }
 
@@ -801,6 +812,17 @@ class RecruitmentListingTemplateScopeContractIT extends AbstractMySqlIntegration
             setAuth(memberAId);
             ErrorView view = perform(apply(listingDeadlinePassedAId));
             assertThat(view.code()).as(String.valueOf(view)).isEqualTo(R101);
+        }
+
+        @Test
+        @DisplayName("殿の判断(a): 同スコープメンバーが DRAFT の募集に申し込むと、是正前の409 R103のまま（可視性で落とすのはスコープ外の者だけ）")
+        void 同スコープメンバーのDRAFT申込は409_R103() throws Exception {
+            setAuth(memberAId);
+            expectError(apply(listingDraftAId), 409, R103);
+            setAuth(adminAId);
+            expectError(apply(listingDraftAId), 409, R103);
+            setAuth(urAdminAId);
+            expectError(apply(listingDraftAId), 409, R103);
         }
 
         @Test

@@ -759,8 +759,20 @@ class ArchUnitFreezeStoreIntegrityTest {
      * RecruitmentPenaltyService.liftPenalty（role の 2 行）・旧シグネチャの RecruitmentCancellationFeeWaiveService.waive（10 行）、
      * 計 18 行を削除。追加 0。{@code 7581 → 7563 → 7564}（waive の引数追加によるキー改名: 旧キーの AuditLogRepository 行を削除し新シグネチャの同行を追加。到達先は同じ）。残した行: confirmApplication → RoleRepository / UserRoleRepository の 2 行
      * （通知経路から到達しないことを静的に証明できなかったため）。</p>
+     *
+     * <p>CMP-260923-0954 W5（recruitment 募集・テンプレート。{@code RecruitmentListingFacade}）: 認可を tx の外へ出したことで
+     * 22 行を削除。追加 0。{@code 7564 → 7542}。内訳: RecruitmentListingService の archive・cancelByAdmin・cancelInternal・
+     * getDistributionTargets（旧シグネチャ）・setDistributionTargets（旧シグネチャ）が各 role の 2 行（計 10）、
+     * publish・update・updateInternal が RoleRepository の各 1 行（計 3。UserRoleRepository は通知対象の列挙・個人札の
+     * 対象スコープ検証が直接読むため残す）、RecruitmentParticipantService の listParticipants（旧シグネチャ）・markAttended が
+     * 各 role の 2 行（計 4）、RecruitmentTemplateService の getTemplate（旧シグネチャ）が MembershipRepository の 1 行・
+     * archive（旧シグネチャ）・update（旧シグネチャ）が各 role の 2 行（計 5）。
+     * 残した行: updatePersonalDraft・cancelPersonalListing・publishPersonal（個人札の専用経路は本人判定を tx 内に持つ）、
+     * create・createFromTemplate・checkListingManagementAccess、validateAndNormalizePayee → MembershipRepository
+     * （受領者の所属検証は {@code AccessControlService} ではなく {@code MembershipScopeQueryService} 経由に替えたが、
+     * 到達先の Repository は同じ）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7564;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7542;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
