@@ -37,7 +37,11 @@ const api = vi.fn(async (path: string) => {
   }
   throw new Error(`Unexpected API: ${path}`)
 })
-mockNuxtImport('useApi', () => () => api)
+// ORG storeのdirect importも同じAPI境界へ接続し、store/action/resolverは本物を使う。
+vi.mock('~/composables/useApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('~/composables/useApi')>()
+  return { ...actual, useApi: () => api }
+})
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 mockNuxtImport('useRoute', () => () => route)
 
@@ -92,6 +96,7 @@ describe('ADMIN設定ハブの既存導線と団体境界', () => {
     expect(await api.mock.results[permissionIndex]!.value, 'ORG fixtureの実応答はADMIN').toMatchObject({ data: { roleName: 'ADMIN' } })
     // load() の複数await完了を確認してから表示契約を評価し、未完了を権限拒否と混同しない。
     await vi.waitFor(() => expect(wrapper.findComponent({ name: 'PageLoading' }).exists()).toBe(false))
+    expect(api.mock.calls.filter(([path]) => path === '/api/v1/me/organizations')).toHaveLength(1)
     const errorState = wrapper.findComponent({ name: 'DashboardErrorState' })
     expect(errorState.exists(), JSON.stringify({
       apiPaths: api.mock.calls.map(([path]) => path),

@@ -3,7 +3,7 @@ import { defineComponent, h } from 'vue'
 import { setActivePinia } from 'pinia'
 import type { Router } from 'vue-router'
 import { flushPromises } from '@vue/test-utils'
-import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
+import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { useNuxtApp, useRouter } from '#app'
 import { useScopeStore } from '~/stores/useScopeStore'
 import { useTeamStore } from '~/stores/useTeamStore'
@@ -25,7 +25,11 @@ const api = vi.fn(async (path: string) => {
   }
   throw new Error(`Unexpected API: ${path}`)
 })
-mockNuxtImport('useApi', () => () => api)
+// storeの変換後direct importと同じ実moduleを置換し、通信以外のexportは保持する。
+vi.mock('~/composables/useApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('~/composables/useApi')>()
+  return { ...actual, useApi: () => api }
+})
 
 beforeAll(async () => {
   const warmup = await mountSuspended(defineComponent({ render: () => h('div') }))
@@ -61,6 +65,7 @@ describe('scope.client の遅延同期と横断設定', () => {
     useNuxtApp().runWithContext(() => scopePlugin(useNuxtApp()))
     navigate('/organizations/beta/admin/settings')
     await flushPromises()
+    expect(api.mock.calls.filter(([path]) => path === '/api/v1/me/organizations')).toHaveLength(1)
     expect(useScopeStore().current).toMatchObject({ type: 'organization', id: '7' })
 
     finish()
@@ -75,6 +80,7 @@ describe('scope.client の遅延同期と横断設定', () => {
     useNuxtApp().runWithContext(() => scopePlugin(useNuxtApp()))
     navigate('/organizations/beta/admin/settings')
     await flushPromises()
+    expect(api.mock.calls.filter(([path]) => path === '/api/v1/me/organizations')).toHaveLength(1)
     navigate('/admin/receipt-settings')
     finish()
     await flushPromises()
