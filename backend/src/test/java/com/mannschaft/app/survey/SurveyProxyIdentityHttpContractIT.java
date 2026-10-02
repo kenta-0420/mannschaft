@@ -178,7 +178,7 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void 代理回答は本人へ保存し記録の代理者と本人を分離する() throws Exception {
-        post(true).andExpect(status().isCreated());
+        post(true).andExpect(status().isCreated()).andExpect(jsonPath("$.data[0].userId").value(subject));
         assertThat(inTx(() -> responses.findBySurveyIdAndUserId(survey.getId(), actor))).isEmpty();
         SurveyResponseEntity saved = inTx(() -> responses.findBySurveyIdAndUserId(survey.getId(), subject).getFirst());
         assertThat(saved.getIsProxyInput()).isTrue();
@@ -194,8 +194,10 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
         seedAnswer(actor, "代理者自身の回答");
         seedAnswer(subject, "本人の回答");
         get(true).andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].userId").value(subject))
                 .andExpect(jsonPath("$.data[0].textResponse").value("本人の回答"));
         get(false).andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].userId").value(actor))
                 .andExpect(jsonPath("$.data[0].textResponse").value("代理者自身の回答"));
     }
 
@@ -335,6 +337,19 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"POST", "GET"})
+    void 代理回答のアンケートID形式不正は400で永続化を変えない(String method) throws Exception {
+        var before = snapshot();
+        String suffix = "GET".equals(method) ? "/me" : "";
+        var req = request(HttpMethod.valueOf(method), "/api/v1/surveys/not-a-number/responses" + suffix)
+                .header("Authorization", "Bearer " + tokens.issueAccessToken(actor, List.of("USER")));
+        proxyHeaders(req, subject);
+        if ("POST".equals(method)) req.contentType(MediaType.APPLICATION_JSON).content(body());
+        mvc.perform(req).andExpect(status().isBadRequest());
+        assertThat(snapshot()).isEqualTo(before);
+    }
+
+    @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void チームは同意組合へ有効加盟している場合だけ代理回答できる(boolean active) throws Exception {
         inTx(() -> {
@@ -365,7 +380,7 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void 通常回答は認証本人へ保存し代理記録を作らない() throws Exception {
-        post(false).andExpect(status().isCreated());
+        post(false).andExpect(status().isCreated()).andExpect(jsonPath("$.data[0].userId").value(actor));
         assertThat(inTx(() -> responses.findBySurveyIdAndUserId(survey.getId(), actor))).hasSize(1);
         assertThat(inTx(() -> responses.findBySurveyIdAndUserId(survey.getId(), subject))).isEmpty();
         assertThat(inTx(() -> records.findByProxyInputConsentIdOrderByCreatedAtDesc(consentId))).isEmpty();

@@ -74,6 +74,7 @@ public class SurveyResponseService {
     @Transactional
     public List<SurveyResponseEntry> submitResponse(Long surveyId, Long userId,
                                                      SubmitResponseRequest request) {
+        userId = resolveResponseUserId(surveyId, userId, ProxyInputContext.SurveyResponseOperation.SUBMIT);
         SurveyEntity survey = surveyService.findSurveyEntityOrThrow(surveyId);
 
         if (!survey.isAcceptingResponses()) {
@@ -175,8 +176,21 @@ public class SurveyResponseService {
      * @return 回答エントリリスト
      */
     public List<SurveyResponseEntry> getMyResponses(Long surveyId, Long userId) {
+        userId = resolveResponseUserId(surveyId, userId, ProxyInputContext.SurveyResponseOperation.GET_ME);
         List<SurveyResponseEntity> responses = responseRepository.findBySurveyIdAndUserId(surveyId, userId);
         return surveyMapper.toResponseEntryList(responses);
+    }
+
+    /** 通常入力は本人、代理入力は同じ認証主体が事前認可した対象本人へ限定する。 */
+    private Long resolveResponseUserId(Long surveyId, Long actorUserId,
+                                       ProxyInputContext.SurveyResponseOperation operation) {
+        if (!proxyInputContext.isProxy()) {
+            return actorUserId;
+        }
+        if (!java.util.Objects.equals(actorUserId, SecurityUtils.getCurrentUserId())) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        return proxyInputContext.requireSurveyResponseSubject(actorUserId, surveyId, operation);
     }
 
     /**

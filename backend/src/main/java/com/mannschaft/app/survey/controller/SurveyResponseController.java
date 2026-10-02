@@ -70,15 +70,15 @@ public class SurveyResponseController {
      * 自分の回答を取得する。
      *
      * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
-     * 本 EP は<b>自己スコープ</b>で閉じている。閲覧対象ユーザーはリクエストから受け取らず、
-     * サーバ側で確定した {@link SecurityUtils#getCurrentUserId()} を
-     * {@code SurveyResponseService#getMyResponses(Long, Long)} の検索条件
-     * （{@code findBySurveyIdAndUserId}）に固定して渡すため、他人の回答行は構造上取得できない。
+     * 通常入力はサーバ側で確定した {@link SecurityUtils#getCurrentUserId()} の自己スコープで閉じる。
+     * 代理入力は MVC の事前認可で同意の本人・組合・SURVEY機能・実行権限を検証し、
+     * 認証主体・同意・アンケート・閲覧操作へ束縛した印を Service が再確認して本人IDで検索する。
+     * 任意のユーザーIDを直接検索条件として受け取らない。
      * 未ログインは {@code SecurityUtils.getCurrentUserId()} が 401 を投げる。
      * 他ユーザーの回答を引く経路は別 EP（{@link #getResponseByUser}）として分離されており、
      * そちらは ADMIN+ / 作成者 / 結果閲覧者のみに限定されている。
-     * データ依存でない構造的な自己スコープ認可のため白名簿クラス呼び出しを持たず、
-     * 本マーカーで監査済であることを明示する。</p>
+     * Service で通常の自己スコープ又は検証済みの代理スコープへ限定するため、
+     * 本マーカーで認可責務を明示する。</p>
      */
     @GetMapping("/me")
     @Operation(summary = "自分の回答取得")

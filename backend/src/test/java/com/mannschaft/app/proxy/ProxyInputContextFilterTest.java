@@ -103,7 +103,7 @@ class ProxyInputContextFilterTest {
             filter.doFilterInternal(request, response, chain);
 
             assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
-            verify(proxyInputContext, never()).activate(anyLong(), anyLong(), any(), any());
+            verify(proxyInputContext, never()).activate(anyLong(), any(), any(), any(), any(), any());
         }
     }
 
@@ -249,8 +249,8 @@ class ProxyInputContextFilterTest {
             filter.doFilterInternal(request, response, chain);
 
             assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
-            // F08.9 P3b: 同意書スコープ集合を伴う 5 引数 activate に変更（スコープ未設定の consent は空集合）
-            verify(proxyInputContext).activate(100L, 1L, "PAPER_FORM", "理事会金庫No.3", java.util.Set.of());
+            // 同意書スコープと検証した代理者を伴う6引数（スコープ未設定なら空集合）。
+            verify(proxyInputContext).activate(100L, 1L, "PAPER_FORM", "理事会金庫No.3", java.util.Set.of(), 200L);
         }
     }
 
@@ -287,7 +287,7 @@ class ProxyInputContextFilterTest {
             verify(proxyInputContext).activate(
                     100L, null, "GUARDIANSHIP_SWITCH",
                     ProxyInputContextFilter.SWITCH_STORAGE_LOCATION_NA,
-                    java.util.Set.of(com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity.FeatureScope.PAYMENT));
+                    java.util.Set.of(com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity.FeatureScope.PAYMENT), 200L);
         }
 
         @Test
@@ -304,7 +304,7 @@ class ProxyInputContextFilterTest {
             filter.doFilterInternal(request, response, new MockFilterChain());
 
             assertThat(response.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
-            verify(proxyInputContext, never()).activate(anyLong(), any(), any(), any(), any());
+            verify(proxyInputContext, never()).activate(anyLong(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -321,7 +321,7 @@ class ProxyInputContextFilterTest {
             filter.doFilterInternal(request, response, new MockFilterChain());
 
             assertThat(response.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
-            verify(proxyInputContext, never()).activate(anyLong(), any(), any(), any(), any());
+            verify(proxyInputContext, never()).activate(anyLong(), any(), any(), any(), any(), any());
         }
 
         @Test

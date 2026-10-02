@@ -43,7 +43,13 @@ F14.1 の「SUPPORTER が代理者として条件付き実行」と現 RoleServi
 
 ## 現在
 
+- 2026-10-03: graph-only `5d68bf9d44` は38件/失敗28/エラー0/skipped0。LAZY例外0になり、回答・GET主体、同意機能・組合・実行権限・変身actor・裸Contextの製品REDを殿が原XMLで分類した。
+- 日境界4のtest-only `93068ff596` は4件/失敗2/エラー0/skipped0。startToday=trueがfalse、endedYesterday=falseがtrue。businessDate2026-10-03/DBDate2026-10-02/session-12:00/JVM Asia/Tokyoを実測。専用TCの同じTX connectionだけSESSION zoneを変更しfinally復元、共有DB/設定は未変更。
+- 本体はValidated actor付き6引数activateと操作・対象を束縛したimmutable印、非TX MVC事前認可、狭い同意組合・Survey scope照会、submit/getMeの本人ID使用へ限定。有効同意/Desk activeのqueryは業務LocalDate引数へ移し既存overload互換、helperでisActiveも確認。
+- 現予定はHTTP44（旧38＋日境界4＋不正ID400の2）とpureContext6、既存Survey/Proxy/Filter/必要security/architecture。コンパイル・greenは未測定。本人保存/GETのHTTP userIdとDB所有者・JWT監査actorを併せて確認する。
+- CMP-261003-0122として独立根治を記録予定。SUPPORTER代理者の権限正本矛盾は別0123保留、本人SUPPORTERの母集団包含とは分ける。権限拡張、新API、DDL、他代理機能、global SecurityUtilsは変更しない。
+
 - main 1c36ff40a736df023e9ff060a9315cae9883b269 から専用 worktree 作成済み。
-- 製品コード変更なし。先行試練を設置した段階。
+- 上記以前は製品コード変更なしの先行試練段階だった。初期試練と環境失敗の証跡は原run別で保持する。
 - 共有 DB、稼働中サービス、他 worktree は保全。
 - 32760bd の compileTestJava は exit0、11993 backend blob/mode を照合。初回実測は34 tests/34 failures/0 errors/0 skippedだったが、全失敗が fixture slug の30文字上限超過であり、製品 RED ではない。原 XML/log/manifest を保持し、slug を23文字へ修正して再試練する。初回の予定35件という見積りも実測34件へ訂正した。
