@@ -26,6 +26,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.test.web.servlet.MvcResult;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.LinkedHashMap;
@@ -92,6 +95,8 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long memberTeamAId;   // TEAM A の非 ADMIN メンバー（申請者）
     private Long member2TeamAId;  // TEAM A のもう一人の非 ADMIN メンバー
     private Long outsiderId;      // どちらのチームにも属さない部外者
+    private Long userRolesOnlyAdminAId; // TEAM A の user_roles のみ ADMIN（memberships 無し）
+    private Long systemAdminId;   // SYSTEM_ADMIN（非メンバー）
 
     private Long slotAId;         // TEAM A のシフト枠
     private Long slotBId;         // TEAM B のシフト枠
@@ -112,6 +117,10 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
         memberTeamAId = insertUser("wave6-swap-member-team-a@example.com");
         member2TeamAId = insertUser("wave6-swap-member2-team-a@example.com");
         outsiderId = insertUser("wave6-swap-outsider@example.com");
+        userRolesOnlyAdminAId = insertUser("wave6-swap-ur-admin@example.com");
+        systemAdminId = insertUser("wave6-swap-sysadmin@example.com");
+        MembershipTestHelper.insertUserRole(em, userRolesOnlyAdminAId, "ADMIN", teamAId, null);
+        MembershipTestHelper.insertUserRole(em, systemAdminId, "SYSTEM_ADMIN", null, null);
 
         // checkAdminOrAbove（user_roles）と isMember（memberships）は別系統のため
         // ADMIN ユーザーにも memberships 行を張る（ShiftScheduleScopeContractIT 踏襲）。
@@ -250,23 +259,25 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
     class CreateSwapRequest {
 
         @Test
-        @DisplayName("部外者は403")
-        void 部外者は403() throws Exception {
+        @DisplayName("部外者は404（存在オラクル是正 W2・不在slotIdと同一応答）")
+        void 部外者は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/shifts/swap-requests")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createBody(slotAId))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"));
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINがteamAのslotIdを指定）は403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMIN（teamBのADMINがteamAのslotIdを指定）は404（BOLA・存在オラクル是正 W2）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(post("/api/v1/shifts/swap-requests")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createBody(slotAId))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"));
         }
 
         @Test
@@ -277,6 +288,30 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createBody(slotAId))))
                     .andExpect(status().isCreated());
+        }
+
+        /**
+         * AC-1（存在オラクル是正 CMP-260923-0954 W2）: 別scope ADMIN が実在する他チームの slotId を
+         * 叩いた応答と、不在の slotId を叩いた応答が status・error.code で一致すること。
+         */
+        @Test
+        @DisplayName("★AC-1: 別scope ADMINの他チームslotIdと不在slotIdは同一応答（SHIFT_SLOT_NOT_FOUND）")
+        void AC1_別scopeADMINの他チームslotIdと不在slotIdは同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            var crossTeam = mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(slotAId))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"))
+                    .andReturn();
+            var absent = mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(999_999_999L))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_002"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
         }
 
         private Map<String, Object> createBody(Long slotId) {
@@ -297,19 +332,37 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
     class AcceptSwapRequest {
 
         @Test
-        @DisplayName("部外者は403")
-        void 部外者は403() throws Exception {
+        @DisplayName("部外者は404（存在オラクル是正 W2）")
+        void 部外者は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", pendingSwapAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404（BOLA・存在オラクル是正 W2）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", pendingSwapAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
+        }
+
+        @Test
+        @DisplayName("★AC-1: 別scope ADMINの他チームswapIdと不在swapIdは同一応答")
+        void AC1_別scopeADMINの他チームswapIdと不在swapIdは同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            var crossTeam = mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", pendingSwapAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            var absent = mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", 999_999_999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
         }
 
         @Test
@@ -360,33 +413,56 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("★別scope ADMIN（teamBのADMINがteamAのswapIdを直接指定）は承認できず403")
+        @DisplayName("★別scope ADMIN（teamBのADMINがteamAのswapIdを直接指定）は承認できず404（存在オラクル是正 W2）")
         void 別scopeADMINは承認できない() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
         }
 
         @Test
-        @DisplayName("★別scope ADMINは却下もできず403")
+        @DisplayName("★別scope ADMINは却下もできず404")
         void 別scopeADMINは却下もできない() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(resolveBody("REJECT"))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
         }
 
         @Test
-        @DisplayName("部外者は403")
-        void 部外者は403() throws Exception {
+        @DisplayName("部外者は404")
+        void 部外者は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
+        }
+
+        @Test
+        @DisplayName("★AC-1: 別scope ADMINの他チームswapIdと不在swapIdは同一応答")
+        void AC1_別scopeADMINの他チームswapIdと不在swapIdは同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            var crossTeam = mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            var absent = mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
         }
 
         @Test
@@ -446,11 +522,28 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404（BOLA・存在オラクル是正 W2）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", pendingSwapAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"));
+        }
+
+        @Test
+        @DisplayName("★AC-1: 別scope ADMINの他チームswapIdと不在swapIdは同一応答")
+        void AC1_別scopeADMINの他チームswapIdと不在swapIdは同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            var crossTeam = mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", pendingSwapAId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            var absent = mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", 999_999_999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SHIFT_005"))
+                    .andReturn();
+            org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                    .isEqualTo(absent.getResponse().getStatus());
         }
 
         @Test
@@ -469,6 +562,139 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isNoContent());
         }
     }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 6. 存在オラクル是正 W2 補完（AC-1 message / AC-3 / AC-10 / AC-11）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("6. 存在オラクル是正 W2 補完")
+    class OracleCompletion {
+
+        private MvcResult call(String kind, Long id) throws Exception {
+            return switch (kind) {
+                case "create" -> mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("slotId", id, "reason", "x", "openCall", false)))).andReturn();
+                case "accept" -> mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", id)).andReturn();
+                case "resolve" -> mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("action", "APPROVE", "adminNote", "x")))).andReturn();
+                default -> mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", id)).andReturn();
+            };
+        }
+
+        private Long realId(String kind) {
+            return switch (kind) {
+                case "create" -> slotAId;
+                case "resolve" -> acceptedSwapAId;
+                default -> pendingSwapAId;
+            };
+        }
+
+        @Test
+        @DisplayName("AC-1: 越境（別scope ADMIN・部外者）の実在IDと不在IDで status・code・message が一致（全EP）")
+        void AC1_全EPでstatusとcodeとmessageが一致() throws Exception {
+            for (Long actor : List.of(adminTeamBId, outsiderId)) {
+                for (String kind : List.of("create", "accept", "resolve", "cancel")) {
+                    setAuth(actor);
+                    assertSameError(call(kind, realId(kind)), call(kind, 999_999_999L));
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("AC-10: ID 境界値（0・-1・Long.MAX_VALUE）は不在IDと同じ応答（全EP）")
+        void AC10_ID境界値は不在IDと同じ応答() throws Exception {
+            setAuth(adminTeamBId);
+            for (String kind : List.of("create", "accept", "resolve", "cancel")) {
+                MvcResult absent = call(kind, 999_999_999L);
+                for (Long id : BOUNDARY_IDS) {
+                    assertSameError(call(kind, id), absent);
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("AC-10: 数値でないパスIDは400のまま")
+        void AC10_数値でないパスIDは400() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", "abc"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("AC-2/AC-3: user_roles のみの ADMIN は resolve・cancel で許可、member操作(create/accept)は 404 に化けず 403")
+        void AC3_userRolesOnlyAdmin() throws Exception {
+            setAuth(userRolesOnlyAdminAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("action", "APPROVE", "adminNote", "x"))))
+                    .andExpect(status().isOk());
+            mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", pendingSwapAId))
+                    .andExpect(status().isNoContent());
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", openCallSwapAId))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+            mockMvc.perform(post("/api/v1/shifts/swap-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("slotId", slotAId, "reason", "x", "openCall", false))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("AC-5: 非メンバーの SYSTEM_ADMIN は resolve できる")
+        void AC5_systemAdminは通る() throws Exception {
+            setAuth(systemAdminId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    Map.of("action", "APPROVE", "adminNote", "x"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("AC-11: 越境で404にした書込みは DB を一切変えない（件数・status・version）")
+        void AC11_越境書込でDB不変() throws Exception {
+            long before = swapRepository.count();
+            setAuth(adminTeamBId);
+            for (String kind : List.of("create", "accept", "resolve", "cancel")) {
+                call(kind, realId(kind));
+            }
+            em.flush();
+            em.clear();
+            org.assertj.core.api.Assertions.assertThat(swapRepository.count()).isEqualTo(before);
+            for (Long id : List.of(pendingSwapAId, acceptedSwapAId, openCallSwapAId)) {
+                org.assertj.core.api.Assertions.assertThat(
+                        swapRepository.findById(id).orElseThrow().getVersion()).isEqualTo(0L);
+            }
+            org.assertj.core.api.Assertions.assertThat(
+                    swapRepository.findById(pendingSwapAId).orElseThrow().getStatus())
+                    .isEqualTo(SwapRequestStatus.PENDING);
+            org.assertj.core.api.Assertions.assertThat(
+                    swapRepository.findById(acceptedSwapAId).orElseThrow().getStatus())
+                    .isEqualTo(SwapRequestStatus.ACCEPTED);
+        }
+    }
+
+    /** AC-1: status・error.code・error.message の3つすべてが一致すること。 */
+    private static void assertSameError(MvcResult crossTeam, MvcResult absent) throws Exception {
+        String a = crossTeam.getResponse().getContentAsString();
+        String b = absent.getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(crossTeam.getResponse().getStatus())
+                .isEqualTo(absent.getResponse().getStatus());
+        org.assertj.core.api.Assertions.assertThat((String) JsonPath.read(a, "$.error.code"))
+                .isEqualTo(JsonPath.read(b, "$.error.code"));
+        org.assertj.core.api.Assertions.assertThat((String) JsonPath.read(a, "$.error.message"))
+                .isEqualTo(JsonPath.read(b, "$.error.message"));
+    }
+
+    private static final List<Long> BOUNDARY_IDS = List.of(0L, -1L, Long.MAX_VALUE);
 
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー

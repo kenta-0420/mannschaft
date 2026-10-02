@@ -55,13 +55,13 @@ class PublicOrganizationSearchQueryServiceTest {
 
         Pageable pageable = PageRequest.of(0, 20);
         Page<OrganizationEntity> orgPage = new PageImpl<>(List.of(org), pageable, 1);
-        given(organizationRepository.searchPublicOrganizations(any(), any(), any(Pageable.class)))
+        given(organizationRepository.searchPublicOrganizations(any(), any(), any(), any(Pageable.class)))
                 .willReturn(orgPage);
         given(blogPostRepository.findMaxCreatedAtByOrganizationIdIn(any())).willReturn(List.of());
         given(mediaUrlResolver.resolve(iconKey)).willReturn(signedIcon);
 
         Page<PublicOrganizationSearchResultResponse> result =
-                service.search("公開", null, pageable);
+                service.search("公開", null, null, pageable);
 
         assertThat(result.getContent()).hasSize(1);
         PublicOrganizationSearchResultResponse dto = result.getContent().get(0);

@@ -81,11 +81,11 @@ class ScheduleEventCategoryServiceTest {
             ScheduleEventCategoryEntity orgCat = createOrgCategory();
             given(categoryRepository.findByTeamIdOrderBySortOrder(TEAM_ID))
                     .willReturn(List.of(teamCat));
-            given(categoryRepository.findByOrganizationIdOrderBySortOrder(ORG_ID))
+            given(categoryRepository.findByOrganizationIdInOrderBySortOrderAscIdAsc(List.of(ORG_ID)))
                     .willReturn(List.of(orgCat));
 
             // when
-            List<ScheduleEventCategoryEntity> result = categoryService.getCategoriesForTeam(TEAM_ID, ORG_ID);
+            List<ScheduleEventCategoryEntity> result = categoryService.getCategoriesForTeam(TEAM_ID, List.of(ORG_ID));
 
             // then
             assertThat(result).hasSize(2);

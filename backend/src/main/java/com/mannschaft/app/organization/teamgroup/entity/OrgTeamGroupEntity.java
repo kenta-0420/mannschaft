@@ -65,6 +65,30 @@ public class OrgTeamGroupEntity extends UuidV7Entity {
             columnDefinition = "VARCHAR(50) GENERATED ALWAYS AS (IF(deleted_at IS NULL, name, NULL)) STORED")
     private String activeName;
 
+    /** 名前を変更する（呼び出し側で trim・長さ検証済みの値を渡す）。 */
+    public void rename(String newName, Long updatedBy) {
+        this.name = newName;
+        this.updatedBy = updatedBy;
+    }
+
+    /** 説明を変更する（null で消去）。 */
+    public void changeDescription(String newDescription, Long updatedBy) {
+        this.description = newDescription;
+        this.updatedBy = updatedBy;
+    }
+
+    /** 並び順を振り直す。 */
+    public void reorder(int newSortOrder, Long updatedBy) {
+        this.sortOrder = newSortOrder;
+        this.updatedBy = updatedBy;
+    }
+
+    /** 論理削除する（{@code active_name} は DB の生成列が NULL になり、同名の再作成が可能になる）。 */
+    public void softDelete(Instant at, Long updatedBy) {
+        this.deletedAt = at;
+        this.updatedBy = updatedBy;
+    }
+
     @PrePersist
     protected void onCreate() {
         Instant now = Instant.now();

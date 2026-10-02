@@ -24,6 +24,13 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.MySQLDialect;
 import org.hibernate.mapping.Column;
+import org.hibernate.mapping.Component;
+import org.hibernate.mapping.PersistentClass;
+import org.hibernate.mapping.Property;
+import org.hibernate.mapping.Selectable;
+import org.hibernate.mapping.ToOne;
+import org.hibernate.mapping.Value;
+import org.hibernate.type.BasicType;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -567,26 +574,303 @@ class FlywayFromScratchMigrationTest {
                     .isEqualTo(1L);
 
             String memberNumber = "M".repeat(50); // Entity の length=50 いっぱい
+            // 主キー・外部キー列は V234（CMP-260929-0654）で BINARY(16) になったため UUID_TO_BIN で入れる
+            String temId = "00000000-0000-7000-8000-0000000ac801";
+            String tetmId = "00000000-0000-7000-8000-0000000ac802";
+            String tetmDefaultId = "00000000-0000-7000-8000-0000000ac803";
+            String templateId = "00000000-0000-7000-8000-0000000ac804";
             st.executeUpdate("INSERT INTO tournament_entry_members (id, participant_id, user_id, member_number, "
-                    + "sort_order, created_at, updated_at) VALUES ('ac8-tem', 800803, 1, '" + memberNumber + "', 0, "
-                    + "'" + ts + "', '" + ts + "')");
+                    + "sort_order, created_at, updated_at) VALUES (UUID_TO_BIN('" + temId + "'), 800803, 1, '"
+                    + memberNumber + "', 0, '" + ts + "', '" + ts + "')");
             assertThat(UnpaidDriftRepaymentFixture.queryString(conn,
-                    "SELECT member_number FROM tournament_entry_members WHERE id = 'ac8-tem'"))
+                    "SELECT member_number FROM tournament_entry_members WHERE id = UUID_TO_BIN('" + temId + "')"))
                     .isEqualTo(memberNumber);
 
             st.executeUpdate("INSERT INTO tournament_entry_template_members (id, template_id, user_id, sort_order, "
-                    + "created_at, updated_at) VALUES ('ac8-tetm', 'ac8-template', 1, 0, '" + ts + "', '" + ts + "')");
+                    + "created_at, updated_at) VALUES (UUID_TO_BIN('" + tetmId + "'), UUID_TO_BIN('" + templateId
+                    + "'), 1, 0, '" + ts + "', '" + ts + "')");
             assertThat(UnpaidDriftRepaymentFixture.queryLong(conn, "SELECT COUNT(*) FROM "
-                    + "tournament_entry_template_members WHERE id = 'ac8-tetm' "
+                    + "tournament_entry_template_members WHERE id = UUID_TO_BIN('" + tetmId + "') "
                     + "AND created_at = '" + ts + "' AND updated_at = '" + ts + "'")).isEqualTo(1L);
 
             // 日時を省略した INSERT でも DEFAULT で埋まる（Entity を経由しない経路の保険）
             st.executeUpdate("INSERT INTO tournament_entry_template_members (id, template_id, user_id, sort_order) "
-                    + "VALUES ('ac8-tetm-default', 'ac8-template', 2, 0)");
+                    + "VALUES (UUID_TO_BIN('" + tetmDefaultId + "'), UUID_TO_BIN('" + templateId + "'), 2, 0)");
             assertThat(UnpaidDriftRepaymentFixture.queryLong(conn, "SELECT COUNT(*) FROM "
-                    + "tournament_entry_template_members WHERE id = 'ac8-tetm-default' "
+                    + "tournament_entry_template_members WHERE id = UUID_TO_BIN('" + tetmDefaultId + "') "
                     + "AND created_at IS NOT NULL AND updated_at IS NOT NULL")).isEqualTo(1L);
         }
+    }
+
+    // ==================================================================
+    // AC-7（CMP-260929-0654）: Entity の UUID 列の型と Flyway 実スキーマの列型の一致
+    // ==================================================================
+
+    /**
+     * <b>Entity の UUID 型の列（主キーと外部キー）の DB 列型が、Hibernate が実際に書く表現と一致することを検証する。</b>
+     *
+     * <h2>守る不変条件</h2>
+     * <p>{@link com.mannschaft.app.common.entity.UuidV7Entity} 系は Hibernate 標準の BINARY 表現（16 バイト）で書くため
+     * DDL は {@code BINARY(16)} でなければならない。{@code UuidV7CharEntity} 系（{@code @JdbcTypeCode(CHAR)}）は
+     * 36 文字の文字列で書くため {@code CHAR(36)} が正である。食い違うと保存・取得のたびに
+     * {@code Incorrect string value} / {@code Data too long} で落ちる。
+     * {@code ddl-auto=create} のテスト環境は Entity から DDL を生成するため、この食い違いは原理的に見えず、
+     * 大会エントリー系 5 表 6 列（CMP-260929-0654）が長く残っていた。</p>
+     *
+     * <p><b>期待型の決め方</b>: 列の {@code columnDefinition} ではなく、Hibernate が UUID を書き込む際の
+     * JDBC 型（{@code @JdbcTypeCode}）で決める。{@code columnDefinition = "CHAR(36)"} だけを付けて
+     * JDBC 型を CHAR にし忘れた Entity は、DDL と columnDefinition が一致しても実行時に壊れるため、
+     * それを見逃さないためである。</p>
+     *
+     * <p><b>凍結台帳（例外リスト）は作らない。</b>違反は migration か Entity を直して 0 にすること。</p>
+     */
+    @Test
+    @Order(20)
+    @DisplayName("AC-7: 全EntityのUUID列（主キー・外部キー）の型がFlyway実スキーマの binary(16) / char(36) と一致する")
+    void 全EntityのUUID列の型がFlywayスキーマと一致する() throws Exception {
+        migrateFromScratch();
+        Map<String, Map<String, String>> actualTypes = readActualColumnTypes();
+
+        StandardServiceRegistry registry = buildServiceRegistry();
+        try {
+            Metadata metadata = buildHibernateMetadata(registry);
+            List<String> violations = uuidColumnTypeViolations(metadata, actualTypes);
+            if (!violations.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("Entity の UUID 列と Flyway 実スキーマの列型が一致しません。\n")
+                  .append("UuidV7Entity 系は binary(16)、UuidV7CharEntity 系（@JdbcTypeCode(CHAR)）は char(36) が正です。\n")
+                  .append("対処は migration で列型を直す（V234 が手本。UUID_TO_BIN で既存行を保持する）か、\n")
+                  .append("Entity の基底クラスを DDL に合わせること。この番人に例外を足して黙らせてはなりません。\n")
+                  .append("違反一覧:\n");
+                violations.stream().sorted().forEach(v -> sb.append("  ✗ ").append(v).append('\n'));
+                fail(sb.toString());
+            }
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    /**
+     * 番人自身の検証（負のテスト）: 実スキーマの列型を食い違わせた入力を与えると、番人が違反を返すこと。
+     * 「違反 0 件」が、検査が走っていない偽 green でないことを示す。
+     */
+    @Test
+    @Order(21)
+    @DisplayName("AC-7: 負のテスト: 列型を食い違わせると番人が違反を返す（UuidV7系がchar(36)・UuidV7CharEntity系がbinary(16)）")
+    void UUID列型の番人は食い違いを検出する() throws Exception {
+        migrateFromScratch();
+        Map<String, Map<String, String>> actualTypes = readActualColumnTypes();
+        assertThat(actualTypes.get("tournament_entry_members")).as("検査対象の表が実スキーマに在ること").isNotNull();
+        assertThat(actualTypes.get("user_interest_tags")).isNotNull();
+
+        StandardServiceRegistry registry = buildServiceRegistry();
+        try {
+            Metadata metadata = buildHibernateMetadata(registry);
+            List<String> clean = uuidColumnTypeViolations(metadata, actualTypes);
+            assertThat(clean).as("前提: 歪める前は違反 0 件").isEmpty();
+
+            // (1) UuidV7Entity 系の主キー・外部キー列を char(36) だと偽る
+            Map<String, Map<String, String>> tampered = deepCopy(actualTypes);
+            tampered.get("tournament_entry_members").put("id", "char(36)");
+            tampered.get("tournament_entry_template_members").put("template_id", "char(36)");
+            tampered.get("user_interest_tags").put("id", "char(36)");
+            assertThat(uuidColumnTypeViolations(metadata, tampered))
+                    .as("binary(16) が正の列を char(36) にすると違反になる")
+                    .anyMatch(v -> v.startsWith("tournament_entry_members.id "))
+                    .anyMatch(v -> v.startsWith("tournament_entry_template_members.template_id "))
+                    .anyMatch(v -> v.startsWith("user_interest_tags.id "));
+
+            // (2) UuidV7CharEntity 系（char(36) が正）の主キーを binary(16) だと偽る
+            String charTable = tableOfFirstCharUuidEntity(metadata);
+            Map<String, Map<String, String>> tampered2 = deepCopy(actualTypes);
+            tampered2.get(charTable).put("id", "binary(16)");
+            assertThat(uuidColumnTypeViolations(metadata, tampered2))
+                    .as("char(36) が正の列（%s.id）を binary(16) にすると違反になる", charTable)
+                    .anyMatch(v -> v.startsWith(charTable + ".id "));
+
+            // (3) 文字列型（varchar(36)）も「binary(16) か char(36)」以外として違反になる
+            Map<String, Map<String, String>> tampered3 = deepCopy(actualTypes);
+            tampered3.get("tournament_entry_templates").put("id", "varchar(36)");
+            assertThat(uuidColumnTypeViolations(metadata, tampered3))
+                    .anyMatch(v -> v.startsWith("tournament_entry_templates.id "));
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    /**
+     * 負のテスト: 通常の所有側 {@code @OneToOne @JoinColumn} の FK 列も検査対象であること
+     * （mappedBy 側は列を所有しないため誤検出しないこと）。
+     */
+    @Test
+    @Order(22)
+    @DisplayName("AC-7: 負のテスト: 所有側 @OneToOne @JoinColumn の FK 列の型ずれを検出し、mappedBy 側は誤検出しない")
+    void 所有側OneToOneのFK列も検査される() {
+        StandardServiceRegistry registry = buildServiceRegistry();
+        try {
+            Metadata metadata = new MetadataSources(registry)
+                    .addAnnotatedClass(FakeO2oParent.class)
+                    .addAnnotatedClass(FakeO2oChild.class)
+                    .getMetadataBuilder()
+                    .applyPhysicalNamingStrategy(new CamelCaseToUnderscoresNamingStrategy())
+                    .applyImplicitNamingStrategy(new SpringImplicitNamingStrategy())
+                    .build();
+
+            Map<String, Map<String, String>> ok = new HashMap<>();
+            ok.put("fake_o2o_parent", new HashMap<>(Map.of("id", "binary(16)")));
+            ok.put("fake_o2o_child", new HashMap<>(Map.of("id", "binary(16)", "parent_id", "binary(16)")));
+            assertThat(uuidColumnTypeViolations(metadata, ok)).as("型が揃っていれば違反 0 件").isEmpty();
+
+            Map<String, Map<String, String>> bad = deepCopy(ok);
+            bad.get("fake_o2o_child").put("parent_id", "char(36)");
+            assertThat(uuidColumnTypeViolations(metadata, bad))
+                    .as("所有側 OneToOne の FK 列（fake_o2o_child.parent_id）の型ずれを検出する")
+                    .anyMatch(v -> v.startsWith("fake_o2o_child.parent_id "));
+        } finally {
+            StandardServiceRegistryBuilder.destroy(registry);
+        }
+    }
+
+    /** 上記負のテスト用の検体（本番ソースセットではないため scanMappedClasses の対象外）。 */
+    @jakarta.persistence.Entity
+    @jakarta.persistence.Table(name = "fake_o2o_parent")
+    static class FakeO2oParent extends com.mannschaft.app.common.entity.UuidV7Entity {
+        /** mappedBy 側（FK 列を所有しない）。 */
+        @jakarta.persistence.OneToOne(mappedBy = "parent")
+        FakeO2oChild child;
+    }
+
+    @jakarta.persistence.Entity
+    @jakarta.persistence.Table(name = "fake_o2o_child")
+    static class FakeO2oChild extends com.mannschaft.app.common.entity.UuidV7Entity {
+        /** 所有側（FK 列 parent_id を持つ）。 */
+        @jakarta.persistence.OneToOne
+        @jakarta.persistence.JoinColumn(name = "parent_id")
+        FakeO2oParent parent;
+    }
+
+    /**
+     * 全 Entity（主キー・基本属性・埋め込み・ToOne の外部キー・コレクション表）の UUID 型の列を走査し、
+     * Hibernate が書き込む JDBC 型から期待される DB 列型（binary(16) / char(36)）と実スキーマを突き合わせる。
+     */
+    private static List<String> uuidColumnTypeViolations(Metadata metadata,
+                                                         Map<String, Map<String, String>> actualTypes) {
+        Set<String> violations = new java.util.TreeSet<>();
+        for (PersistentClass pc : metadata.getEntityBindings()) {
+            if (pc.getTable() == null || !pc.getTable().isPhysicalTable()) {
+                continue;
+            }
+            checkUuidValue(metadata, pc.getIdentifier(), actualTypes, violations);
+            for (Property property : pc.getProperties()) {
+                checkUuidValue(metadata, property.getValue(), actualTypes, violations);
+            }
+        }
+        for (org.hibernate.mapping.Collection collection : metadata.getCollectionBindings()) {
+            if (collection.getCollectionTable() == null) {
+                continue;
+            }
+            checkUuidValue(metadata, collection.getKey(), actualTypes, violations);
+            checkUuidValue(metadata, collection.getElement(), actualTypes, violations);
+        }
+        return new ArrayList<>(violations);
+    }
+
+    private static void checkUuidValue(Metadata metadata, Value value,
+                                       Map<String, Map<String, String>> actualTypes, Set<String> violations) {
+        if (value == null) {
+            return;
+        }
+        if (value instanceof Component component) {
+            for (Property p : component.getProperties()) {
+                checkUuidValue(metadata, p.getValue(), actualTypes, violations);
+            }
+            return;
+        }
+        Value typed = value;
+        if (value instanceof ToOne toOne) {
+            // 除外するのは「FK 列を所有しない側」だけ。Hibernate のマッピング上、org.hibernate.mapping.OneToOne は
+            // mappedBy 側（列なし）と共有主キー（@MapsId / @PrimaryKeyJoinColumn。列は自身の主キーで検査済み）に限られる。
+            // 通常の所有側 @OneToOne @JoinColumn は ManyToOne として表現され、FK 列をここで検査する。
+            if (toOne instanceof org.hibernate.mapping.OneToOne || toOne.getReferencedEntityName() == null) {
+                return;
+            }
+            PersistentClass target = metadata.getEntityBinding(toOne.getReferencedEntityName());
+            if (target == null) {
+                return;
+            }
+            typed = target.getIdentifier();
+            if (typed instanceof Component) {
+                return; // 複合主キーは UUID 単独列ではない
+            }
+        }
+        String expected = expectedUuidColumnType(typed);
+        if (expected == null) {
+            return; // UUID 列ではない
+        }
+        String table = value.getTable() == null ? null : value.getTable().getName().toLowerCase(Locale.ROOT);
+        if (table == null || !actualTypes.containsKey(table)) {
+            return; // テーブルの存在は別の番人が守る
+        }
+        for (Selectable selectable : value.getSelectables()) {
+            if (!(selectable instanceof Column column)) {
+                continue;
+            }
+            String name = column.getName().toLowerCase(Locale.ROOT);
+            String actual = actualTypes.get(table).get(name);
+            if (actual == null) {
+                continue; // 列の存在は別の番人が守る
+            }
+            if (!expected.equals(actual)) {
+                violations.add(table + "." + name + " … 期待 " + expected + " / 実スキーマ " + actual);
+            }
+        }
+    }
+
+    /** UUID 型でなければ null。UUID なら Hibernate が書く JDBC 型から期待される DB 列型を返す。 */
+    private static String expectedUuidColumnType(Value value) {
+        if (value.getType() == null || value.getType().getReturnedClass() != java.util.UUID.class) {
+            return null;
+        }
+        if (!(value.getType() instanceof BasicType<?> basic)) {
+            return "?（BasicType ではない UUID 列）";
+        }
+        int code = basic.getJdbcType().getJdbcTypeCode();
+        return switch (code) {
+            case java.sql.Types.CHAR, java.sql.Types.VARCHAR, java.sql.Types.LONGVARCHAR -> "char(36)";
+            case java.sql.Types.BINARY, java.sql.Types.VARBINARY, java.sql.Types.LONGVARBINARY,
+                 org.hibernate.type.SqlTypes.UUID -> "binary(16)";
+            default -> "?（JDBC 型コード " + code + "）";
+        };
+    }
+
+    private static String tableOfFirstCharUuidEntity(Metadata metadata) {
+        for (PersistentClass pc : metadata.getEntityBindings()) {
+            if ("char(36)".equals(expectedUuidColumnType(pc.getIdentifier()))
+                    && pc.getTable() != null && pc.getTable().isPhysicalTable()) {
+                return pc.getTable().getName().toLowerCase(Locale.ROOT);
+            }
+        }
+        throw new IllegalStateException("UuidV7CharEntity 系の Entity が 1 つも見つからない（負のテストの前提が崩れた）");
+    }
+
+    private static Map<String, Map<String, String>> deepCopy(Map<String, Map<String, String>> source) {
+        Map<String, Map<String, String>> copy = new HashMap<>();
+        source.forEach((table, columns) -> copy.put(table, new HashMap<>(columns)));
+        return copy;
+    }
+
+    /** テーブル名（小文字）→ 列名（小文字）→ COLUMN_TYPE（小文字。例: binary(16) / char(36)）。 */
+    private static Map<String, Map<String, String>> readActualColumnTypes() throws SQLException {
+        Map<String, Map<String, String>> types = new HashMap<>();
+        try (Connection conn = connect(); Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE "
+                     + "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()")) {
+            while (rs.next()) {
+                types.computeIfAbsent(rs.getString(1).toLowerCase(Locale.ROOT), k -> new HashMap<>())
+                        .put(rs.getString(2).toLowerCase(Locale.ROOT), rs.getString(3).toLowerCase(Locale.ROOT));
+            }
+        }
+        return types;
     }
 
     private static Connection connect() throws SQLException {

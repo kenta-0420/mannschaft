@@ -316,7 +316,9 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
 
         await().atMost(20, TimeUnit.SECONDS).untilAsserted(() ->
                 assertThat(consumptionStatus(consumptionId)).isEqualTo("CANCELLED"));
-        assertThat(latestCancelAuditOrganizationId(f.scheduleId)).isEqualTo(orgX);
+        // 監査ログの書き込みは非同期（AuditLogService）。消化の状態が変わった時点ではまだ無いことがあるので待つ
+        await().atMost(20, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(latestCancelAuditOrganizationId(f.scheduleId)).isEqualTo(orgX));
     }
 
     @Test
@@ -330,7 +332,9 @@ class ShiftBudgetMultiParentIT extends AbstractMySqlIntegrationTest {
 
         assertThat(cancelled).isGreaterThanOrEqualTo(1);
         assertThat(consumptionStatus(consumptionId)).isEqualTo("CANCELLED");
-        assertThat(latestCancelAuditOrganizationId(f.scheduleId)).isEqualTo(orgX);
+        // 監査ログの書き込みは非同期（AuditLogService）。消化の状態が変わった時点ではまだ無いことがあるので待つ
+        await().atMost(20, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(latestCancelAuditOrganizationId(f.scheduleId)).isEqualTo(orgX));
     }
 
     // ═══════════════════════════════════════════════════════════════
