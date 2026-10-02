@@ -24,7 +24,6 @@ import com.mannschaft.app.organization.dto.AncestorsResponse;
 import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
-import com.mannschaft.app.organization.dto.OrgTeamSummaryResponse;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
 import com.mannschaft.app.organization.dto.UpdateOrganizationRequest;
@@ -822,7 +821,7 @@ public class OrganizationService {
      *
      * <p>{@link OrganizationMembershipService#getTeams(Long)} へ委譲。</p>
      */
-    public List<OrgTeamSummaryResponse> getTeams(Long orgId) {
+    public List<OrgTeamMembershipView> getTeams(Long orgId) {
         return organizationMembershipService.getTeams(orgId);
     }
 
