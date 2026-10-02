@@ -23,6 +23,33 @@ public class OrganizationQueryService {
 
     private final OrganizationRepository organizationRepository;
 
+    /** 他ドメイン向けの組織の表示用要約（ID・名前・slug だけ）。 */
+    public record OrganizationSummary(Long id, String name, String slug) {
+    }
+
+    /**
+     * 組織 ID 群の表示用要約を返す（存在しない・削除済みの ID は結果に含まれない。順序は引数の順）。
+     *
+     * @param orgIds 組織 ID の一覧
+     */
+    public java.util.List<OrganizationSummary> findSummariesByIds(java.util.Collection<Long> orgIds) {
+        if (orgIds == null || orgIds.isEmpty()) {
+            return java.util.List.of();
+        }
+        java.util.Map<Long, OrganizationEntity> byId = new java.util.HashMap<>();
+        for (OrganizationEntity org : organizationRepository.findAllById(orgIds)) {
+            byId.put(org.getId(), org);
+        }
+        java.util.List<OrganizationSummary> result = new java.util.ArrayList<>();
+        for (Long id : orgIds) {
+            OrganizationEntity org = byId.get(id);
+            if (org != null) {
+                result.add(new OrganizationSummary(org.getId(), org.getName(), org.getSlug()));
+            }
+        }
+        return result;
+    }
+
     /**
      * 組織が非営利扱いか（{@code org_type} が {@code COMPANY} 以外）を返す。
      *

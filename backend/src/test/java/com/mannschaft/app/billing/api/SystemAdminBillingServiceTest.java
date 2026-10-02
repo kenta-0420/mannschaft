@@ -47,7 +47,7 @@ class SystemAdminBillingServiceTest {
     @Mock
     private com.mannschaft.app.billing.BillingContractService billingContractService;
     @Mock
-    private com.mannschaft.app.team.service.TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private BillingTenantOrganizationResolver tenantOrganizationResolver;
 
     @InjectMocks
     private SystemAdminBillingService service;
