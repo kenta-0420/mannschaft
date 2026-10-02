@@ -3,7 +3,7 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: 訂正前の実DB契約45件を実行し33失敗、skipped/errorsは0。前任裁可に合わせた訂正・同意ページング追加中。実装・green・実機は未実施。
+- 状態: 独立BE実装をcommit97a673c9へ保全。訂正redは60件/47失敗、紙保存fixture補正の2件再測定は1失敗。実装後試験は環境終了により終端XML未取得であり、green・生成型・FE・同意管理実機は未達。立会資格の裁可待ちは維持。
 
 ## 方針
 
@@ -60,3 +60,10 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - commit1abcacf001で紙保存2件のflush/clearを補正。対象XMLは2 tests /1 failure /0 errors /0 skipped。紙255文字理由・方法・証人のDB保存assertを通過し、同意一覧応答にrevokeWitnessedByUserIdが無い点だけRED。別人同scope ADMIN証人の保存はGREEN。標準Gradleによるarchitecture guard追加分も合わせると31 tests /1 failure（11分10秒）。追加分はDomain TX/API/Visibility等の29件で、exclude/profileの改変はしていない。
 - 確定済みの同意ID page→bounded scopes graph、records固定3 JOIN page、非TX親生存/存在秘匿facade、mutation同意row lock、state409、SYS明示横断、本人API方法限定、手動AUTO/unknown400、立会ID応答を実装中。立会資格のADMIN限定/DEPUTY包含だけ未裁可であり、その検証・全green/完了は保留。
 - 次は独立BE差分の保全commit→安全な時点でmain追従→blob一致snapshotの60契約と既存proxy/ArchUnit回帰→標準generateOpenApiDocs（8099）→OpenAPI artifact hash照合→npm generate:types→FE型/lint/unit→正本2管理pathを入口から実機検証。元の組合ハブcardは既存setOrganizationScopeを明示して正本pathへ遷移し、新orgScopedページは増やさない。SYS兼任も業務UIへ導線を出さない。
+
+## 独立BE実装後の環境終了と保全
+
+- commit97a673c9のbackend12 blobsを専用ext4 snapshotと照合し、既存proxy全体とServiceApiEntityBoundary/ControllerEntityResponse/CrossDomainTransactionalTransitiveの標準Gradle試験をsession59633で開始。compileJava/compileTestJavaは通過。未実装の立会資格負例2件（非管理・別組合、不活性ユーザー）が200となった失敗出力を回収した。
+- 同sessionはBUILD終端メッセージなしでexit15。自己daemon1272629/worker1273343は一時生存していたが、その後読み取り確認でともに不存在、共通gateも不存在となった。停止操作は行っていない。最終の契約XMLは0filesであり、成功にも60件完走にも計上しない。起動前XMLは`/tmp/cmp-consent-red-1abc-xml`へ保全済み。再実行が必要。
+- commitf8214d17ebで本人オンライン撤回に紙の立会IDを偽装する追加実DB試験を保全。API_BY_SUBJECT+witness指定を400とし、未撤回状態の不変と、正常本人撤回後の初回日時・方法・理由・立会nullの不変を検証する。紙立会roleの未裁可とは独立。まだsnapshot未適用・red実測前。
+- 殿の交通整理に従い、追加heavy・snapshot変更・FE編集は一時待機し、先行CMP042の住民1による独立UI観察を担当する。同意管理の目的は維持し、その観察後に試験と実装を再開する。
