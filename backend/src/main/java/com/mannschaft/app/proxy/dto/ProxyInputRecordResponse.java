@@ -16,7 +16,8 @@ public class ProxyInputRecordResponse {
 
     private final Long id;
 
-    @Schema(description = "代理入力同意ID（同意書紐付けのない履歴はnull）", nullable = true)
+    @Schema(types = {"integer", "null"}, nullable = true,
+            description = "代理入力同意ID（同意書紐付けのない履歴はnull）")
     private final Long proxyInputConsentId;
     private final Long subjectUserId;
     private final Long proxyUserId;
@@ -26,7 +27,8 @@ public class ProxyInputRecordResponse {
     private final String inputSource;
     private final String originalStorageLocation;
 
-    @Schema(description = "監査ログID（未紐付けはnull）", nullable = true)
+    @Schema(types = {"integer", "null"}, nullable = true,
+            description = "監査ログID（未紐付けはnull）")
     private final Long auditLogId;
     private final LocalDateTime createdAt;
 
