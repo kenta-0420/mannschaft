@@ -2,19 +2,20 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.payment.escrow.ConnectChargeService;
-import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
+import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentCancellationRecordEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 /**
  * F03.11.1 募集キャンセル料の免除（waive）（設計書 §10）。
@@ -28,6 +29,18 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code SYSTEM_ADMIN} である。受取先の判定は escrow の payee に基づかせ、募集の作成者では判定しない
  * ——募集を作った者と謝礼の受取先は一致するとは限らず、作成者で判定すると免除できる範囲が受取先と食い違う。
  * キャンセル料を負っている本人は免除できない（債務者が自分の債務を消せてはならない・§10.2）。</p>
+ *
+ * <h3>認可は tx の外（CMP-260923-0954 W4）</h3>
+ * <p>本クラスは<b>tx 本体</b>であり、認可（{@code AccessControlService}・受取先判定）には一切依存しない。
+ * 認可は {@link RecruitmentMoneyFacade#waive} が tx の外で行い、結果（受取先側か）を引数で受け取る。
+ * 本クラスは認可の後に「記録→募集」を全部たどり直し、どれかが不在なら {@code COMMON_005}(404) で DB 不変のまま止める
+ * （認可の後・tx の前に記録・募集が消える競合への備え）。</p>
+ *
+ * <p><b>モデレーション非表示の募集</b>: たどり直しは論理削除（{@code deleted_at}）だけを見る
+ * （{@link RecruitmentListingRepository#lockLiveListingIdIgnoringModeration}）。是正前の免除は記録だけを読んで
+ * 募集を読まなかったため、モデレーション非表示の募集にぶら下がる記録も免除できていた。
+ * {@code RecruitmentListingEntity} の {@code @SQLRestriction}（{@code moderation_hidden_at IS NULL} を含む）に
+ * 頼るとこの挙動が変わってしまうので、エンティティ経由で募集を引いてはならない。</p>
  */
 @Slf4j
 @Service
@@ -38,9 +51,65 @@ public class RecruitmentCancellationFeeWaiveService {
     private static final int MAX_REASON_LENGTH = 500;
 
     private final RecruitmentCancellationRecordRepository cancellationRecordRepository;
-    private final ConnectChargeService connectChargeService;
-    private final AccessControlService accessControlService;
+    private final RecruitmentListingRepository listingRepository;
     private final AuditLogService auditLogService;
+
+    /**
+     * 免除対象の記録の最小情報（認可の入力）。募集は含まない（許可経路で募集を読まないため）。
+     *
+     * @param recordId      記録 ID
+     * @param listingId     記録の募集 ID
+     * @param participantId 記録の参加者 ID
+     * @param debtorUserId  キャンセル料を負っている本人
+     */
+    public record WaiveTarget(Long recordId, Long listingId, Long participantId, Long debtorUserId) {
+    }
+
+    /**
+     * 募集のスコープ（拒否経路で「存在を知り得る者か」を判定するためだけに使う）。
+     *
+     * @param scopeType 募集のスコープ種別
+     * @param scopeId   募集のスコープ ID
+     */
+    public record ListingScope(RecruitmentScopeType scopeType, Long scopeId) {
+    }
+
+    /**
+     * 免除理由の形式検査（存在判定より前・ID 非依存。違反は 400）。
+     *
+     * @param reason 免除理由
+     */
+    public static void validateReason(String reason) {
+        if (reason == null || reason.isBlank() || reason.length() > MAX_REASON_LENGTH) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+    }
+
+    /**
+     * 認可の前に記録を解決する（readOnly。自ドメインの Repository のみ）。
+     *
+     * @param recordId 記録 ID
+     * @return 認可の入力
+     * @throws BusinessException 不在・論理削除済みは {@code COMMON_005}(404)
+     */
+    @Transactional(readOnly = true)
+    public WaiveTarget resolveWaiveTarget(Long recordId) {
+        RecruitmentCancellationRecordEntity record = cancellationRecordRepository.findById(recordId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_005));
+        return new WaiveTarget(record.getId(), record.getListingId(), record.getParticipantId(), record.getUserId());
+    }
+
+    /**
+     * 募集のスコープを引く（拒否経路でだけ呼ぶ。論理削除だけを見て、モデレーション非表示は不在にしない）。
+     *
+     * @param listingId 募集 ID
+     * @return スコープ。募集が論理削除済み・不在なら空
+     */
+    @Transactional(readOnly = true)
+    public Optional<ListingScope> resolveListingScope(Long listingId) {
+        return listingRepository.findModerationListingById(listingId)
+                .map(p -> new ListingScope(RecruitmentScopeType.valueOf(p.getScopeType()), p.getScopeId()));
+    }
 
     /**
      * キャンセル料を免除する。
@@ -48,25 +117,21 @@ public class RecruitmentCancellationFeeWaiveService {
      * @param recordId    対象のキャンセル記録 ID
      * @param actorUserId 操作者ユーザー ID
      * @param reason      免除理由（必須・最大 500 文字）
+     * @param payeeSide   認可の結果。受取先側の精算管理者として許可されたなら true、SYSTEM_ADMIN として許可されたなら false
+     *                    （監査ログの {@code operatorRole} にだけ使う。認可は呼び出し側 Facade が済ませている）
      */
     @Transactional
-    public void waive(Long recordId, Long actorUserId, String reason) {
-        if (reason == null || reason.isBlank() || reason.length() > MAX_REASON_LENGTH) {
-            throw new BusinessException(CommonErrorCode.COMMON_001);
-        }
+    public void waive(Long recordId, Long actorUserId, String reason, boolean payeeSide) {
+        validateReason(reason);
 
+        // 記録→募集を認可の後にたどり直す。どれかが不在（認可の後に消えた）なら対象の不在コードで 404・DB 不変。
         // 存在しない記録・論理削除済みの記録は 404（存在を推測させない）。
         RecruitmentCancellationRecordEntity record = cancellationRecordRepository.findById(recordId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_005));
-
-        // 受取先の判定は payment ドメインへ委ね、recruitment から escrow を直接読まない（§3.4・§10.2）。
-        boolean payeeSide = connectChargeService.isPayeeSettlementManager(
-                EscrowSourceKind.RECRUITMENT, record.getListingId(), record.getParticipantId(), actorUserId);
-        if (!payeeSide && !accessControlService.isSystemAdmin(actorUserId)) {
-            // キャンセル料を負っている本人もここで弾かれる（受取先が偶然その本人である場合を除く）。
-            log.warn("F03.11.1 免除の権限が無い呼び出しを拒否: recordId={}, actorUserId={}", recordId, actorUserId);
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        // 募集の行ロック（FOR UPDATE）は認可の後だけ。論理削除だけを見る（モデレーション非表示は通す）。
+        // 記録の scope（募集）は不変という前提。募集の論理削除（archive）とは行ロックで直列化される。
+        listingRepository.lockLiveListingIdIgnoringModeration(record.getListingId())
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_005));
 
         // 既に免除済みなら冪等に成功で返す（終端状態なら何でも 409、にはしない）。
         if (record.getPaymentStatus() == CancellationPaymentStatus.WAIVED) {
