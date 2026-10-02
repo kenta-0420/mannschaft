@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -37,16 +38,25 @@ class BillingCheckoutContractRepositoryAdapter implements BillingCheckoutContrac
     /** PENDING 契約の放棄（補償）は既存決済フローと同じ正本 {@link BillingContractService} に委ねる。 */
     private final BillingContractService billingContractService;
     private final ActiveContractPointerRepository activeContractPointerRepository;
+    private final BillingTenantOrganizationResolver tenantOrganizationResolver;
+    private final TransactionTemplate transactionTemplate;
     private final Clock clock;
 
     @Override
-    @Transactional
     public UUID reservePendingContract(BillingQuoteSnapshot quote, long actorId) {
+        // 代表親組織の解決は team ドメインの読み取りを伴うため、この契約 tx の外で先に行う
+        // （@Transactional の入口から他ドメインの Repository へ到達させない・CLAUDE.md DB 設計の原則 #5）。
+        Long organizationId = tenantOrganizationResolver.resolveForCreate(quote.scopeKind(), quote.scopeId());
+        return transactionTemplate.execute(status -> insertPendingContract(quote, actorId, organizationId));
+    }
+
+    private UUID insertPendingContract(BillingQuoteSnapshot quote, long actorId, Long organizationId) {
         ContractKind contractKind = quote.productKind() == BillingProductKind.ADDON
                 ? ContractKind.ADDON : ContractKind.PLAN;
         boolean addon = contractKind == ContractKind.ADDON;
         String slotAddonKey = addon ? quote.productKey() : "";
-        Long organizationId = quote.scopeKind() == EntitlementScopeKind.ORG ? quote.scopeId() : null;
+        // F01.2.1 §9.2 #17: organizationId は作成時に解決済みの代表親組織（§9.3）。契約行・pointer へ記録する。
+        // 入金後の entitlement 発行はこの契約行の値を使う（再解決しない）。
         LocalDateTime now = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
 
         BillingContractEntity contract = BillingContractEntity.builder()

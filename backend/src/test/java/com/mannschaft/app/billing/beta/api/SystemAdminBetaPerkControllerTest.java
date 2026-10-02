@@ -17,7 +17,8 @@ import com.mannschaft.app.billing.beta.BetaRevokeReason;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
+import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.api.BillingTenantOrganizationResolver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -74,7 +75,7 @@ class SystemAdminBetaPerkControllerTest {
     @Mock
     private BetaPerkCandidateService betaPerkCandidateService;
     @Mock
-    private TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private BillingTenantOrganizationResolver tenantOrganizationResolver;
     @Mock
     private BetaPerkCriteriaRepository criteriaRepository; // 実 BetaPerkCriteriaService の依存
 
@@ -92,7 +93,7 @@ class SystemAdminBetaPerkControllerTest {
         BetaPerkCriteriaService realCriteriaService = new BetaPerkCriteriaService(criteriaRepository);
         SystemAdminBetaPerkController controller = new SystemAdminBetaPerkController(
                 betaGrantService, betaGrantQueryService, realCriteriaService,
-                betaPerkCandidateService, teamOrgMembershipQueryService);
+                betaPerkCandidateService, tenantOrganizationResolver);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
@@ -133,7 +134,7 @@ class SystemAdminBetaPerkControllerTest {
     @Test
     @DisplayName("AC 正常系: 手動付与は 201・審査系を含む詳細を返す（transferable は露出しない=AC-A3）")
     void createGrant_201() throws Exception {
-        given(teamOrgMembershipQueryService.findActiveOrganizationIds(123L)).willReturn(List.of(45L));
+        given(tenantOrganizationResolver.resolveForSystemAdmin(EntitlementScopeKind.TEAM, 123L, null)).willReturn(45L);
         BetaGrantEntity saved = Mockito.mock(BetaGrantEntity.class);
         given(saved.getId()).willReturn(GRANT_ID);
         given(betaGrantService.grantBetaPerk(eq(GrantKind.TEAM_ORG), eq(2),
@@ -151,7 +152,6 @@ class SystemAdminBetaPerkControllerTest {
     @Test
     @DisplayName("AC-A1: INDIVIDUAL×TEAM は GRANT_SCOPE_MISMATCH 422")
     void createGrant_scopeMismatch_422() throws Exception {
-        given(teamOrgMembershipQueryService.findActiveOrganizationIds(123L)).willReturn(List.of());
         willThrow(new BusinessException(BetaPerkErrorCode.GRANT_SCOPE_MISMATCH))
                 .given(betaGrantService).grantBetaPerk(any(), anyInt(), any(), any(), any(), eq(false), any());
 
