@@ -161,6 +161,24 @@ class VillageMembershipModeratorScopeContractIT extends AbstractMySqlIntegration
         assertThat(snapshot(headman.getId())).isEqualTo(before);
     }
 
+    @ParameterizedTest(name = "後継候補の {0} がBAN済みなら最後の現役村長は降格できない")
+    @CsvSource({"HEADMAN", "ELDER"})
+    void ロール変更_後継候補がBAN済み_最後の現役村長降格を拒否してDB不変(VillageRole successorRole) throws Exception {
+        VillageEntity village = village(VillageVisibility.PUBLIC);
+        VillageMembershipEntity headman = membership(village.getId(), ACTOR_ID, VillageRole.HEADMAN, "ACTIVE");
+        VillageMembershipEntity successor = membership(village.getId(), TARGET_ID, successorRole, "BANNED");
+        Snapshot headmanBefore = snapshot(headman.getId());
+        Snapshot successorBefore = snapshot(successor.getId());
+
+        mockMvc.perform(request("role", village.getId(), headman.getId()).with(actor())
+                        .content("{\"role\":\"VILLAGER\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_017"));
+
+        assertThat(snapshot(headman.getId())).isEqualTo(headmanBefore);
+        assertThat(snapshot(successor.getId())).isEqualTo(successorBefore);
+    }
+
     @ParameterizedTest(name = "未認証の {0} は401")
     @ValueSource(strings = {"role", "ban"})
     void メンバー操作_未認証_401でDB不変(String operation) throws Exception {
