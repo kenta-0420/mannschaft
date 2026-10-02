@@ -3,7 +3,7 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: source e6da1749abの管理65契約・既存Proxy・必要認可・標準Arch・同意scope NOT NULL契約は225件/54XML全green（failures/errors/skipped各0）。標準H2 OpenAPI/生成FE型とAPI単体5件（再測exit0/skip0）・ナビ16件・機能ゲート17件・共通UI4ファイル補正後の全体型チェックもgreen。UI5は日本語ハブ→同意4件→空履歴のbody通過後、context.close timeoutで5件中error1/skip4のため未合格。実承認/撤回・履歴操作・6言語390px・3住民・新main追従・最終検分は未達。
+- 状態: source e6da1749abのBE225件/54XML、標準H2 OpenAPI/生成FE型、API単体5件・ナビ16件・機能ゲート17件・共通UI補正後全体型チェックはgreen。実機UI7のADMIN導線/一覧/空履歴1件とUI8のDEPUTY承認権限なし・MEMBER/SYSTEM拒否・取消/承認/本人255文字オンライン撤回4件は別JUnit計5件green、終了処理も全完了。紙撤回/権限ありDEPUTY/実操作履歴/候補取得完了/空組合・失敗再試行・6言語390px・3住民・最新main追従・最終検分は未達。
 
 ## 方針
 
@@ -142,3 +142,11 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - API単体21223を標準Vitest/単一worker/node環境で再測定、terminal exit0・tests5/fail0/error0/skip0。fe-api2 raw XML SHA 790fb9567725396b92a48359cd85a661acd95089c5ad371815d8db7bc86ee70b、stdio SHA 4998f08f05e2282600b66da5a282ba2f8b20a557e926c537b7fe655724547dc7。初回Nuxt hook timeout/5skipは成功へ数えない。
 - UI5実値はJUnit5/failure0/error1/skip4/time300.026。bodyの日本語hub→4同意→空履歴と画像は通過、finally context.closeがtimeout。全件green扱いしない。原trace.zip/画像2枚/stdio保持、既知runner/CLI/worker終了・既知worker直属child0をreadonly確認（他Chrome未探索）。
 - 次のUI6は最初のADMIN1件のみ。finallyを公開APIRequestContext.dispose→BrowserContext.closeのtest.stepへ分け、各開始/完了時刻をcleanup-phases.jsonへ逐次保存。例外を握りつぶす/timeout短絡/Promise.raceなし。source付きtrace停止が候補だが現時点で原因と断定しない。実操作と他境界はその終端後。
+
+## 2026-10-03 UI7/UI8 実機終端
+
+- UI6初回はgrep不一致によるNo tests found、UI6bはFE3001接続拒否で1件/error1/exit1。既存FEの終端理由は不明のまま保持し、殿が所有確認した新foregroundサーバーでUI7を再測定した。原namespaceを移動・上書きしていない。
+- UI7はADMIN管理ハブから4同意と空履歴に到達し、1件/0fail/0error/0skip/exit0。stdioSHA256 `2ffdb70e6a66baeb45360b3b88df146a8a54e755e17a9bd39e43d07c62423454`。APIRequestContext.disposeは24.600秒、BrowserContext.closeは20msで終端。実画像2枚を閲覧。履歴対象者pickerは撮影時loadingであり、候補取得完了の証跡には数えない。
+- UI8はDEPUTY承認権限なし、MEMBER直URL拒否、SYSTEM+当該ADMIN併有でもUI拒否、ADMINの取消PATCH0/他代理者承認/本人オンライン理由255文字撤回の4件/0fail/0error/0skip/exit0。stdioSHA256 `2beed73089339ac3b009584cfeef198e35efda8cf842f6b17b6e5908e85977e7`。4contextのdispose/close双方完了、画像3枚を閲覧。オンライン同意3はREVOKED、他3件はPENDINGのまま。
+- UI8開始時の「選択2件」は作業者の誤判定だった。実JUnitと同grepの標準--listは4件で一致し、Playwright forceRegExpは既定giフラグで小文字member/systemにも一致する。UI9は作成・実行せず、同ケース重複測定をしない。原報告と訂正を区別して保持する。
+- 証跡は自所有ignored `cmp-consent-red65-20261003-artifacts/real-ui7` と `real-ui8` のrawJUnit/result/画像/cleanup-phases。UI5のclose timeoutは未合格として残し、原因は断定しない。新共通UIで正常bodyと後始末の終端を再現できた範囲を合格とする。
