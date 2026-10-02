@@ -51,8 +51,11 @@ import java.util.UUID;
  * 行うので、非公開チームの存在・加盟状況・制限状況を応答の違いから推測できない。</p>
  *
  * <h2>通知と監査はコミットの後（原子的ではない）</h2>
- * <p>通知の登録・監査の記録は、書き込みのコミット後にそれぞれのドメインのトランザクションで行う。登録・記録が失敗しても
- * 招待などの操作は巻き戻らない（握り潰さず、例外として呼び出し元へ伝わる）。</p>
+ * <p>通知の登録・監査の記録は、書き込みのコミット後にそれぞれのドメインのトランザクションで行う。どちらが失敗しても
+ * 招待などの操作は巻き戻らない。順序は<b>監査 → 通知</b>で、通知の登録が失敗（例外として呼び出し元へ伝わる）しても
+ * 先に記録した監査は残る（再試行は状態判定で拒否されるため、監査を後から回復できない）。一方、監査の保存失敗は
+ * {@code AuditLogService#recordSync} の既存の挙動どおり<b>例外にならずログ（ERROR）に残るだけ</b>で、呼び出し元へは伝わらない
+ * （共通サービスの挙動であり、2-C では変えない）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -116,6 +119,14 @@ public class TeamOrgInviteService {
             throw new BusinessException(current == null ? OrgErrorCode.ORG_001 : OrgErrorCode.ORG_003);
         }
 
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("membership_id", created.id());
+        metadata.put("organization_id", organizationId);
+        metadata.put("team_id", teamId);
+        metadata.put("group_id", groupId == null ? null : groupId.toString());
+        auditRecorder.record(AuditEventType.TEAM_ORG_INVITE_SENT, operatorUserId, teamId, organizationId, metadata);
+
+        // 監査の後に通知する（通知の登録が失敗しても、確定した操作の監査は残る）
         notifier.enqueueAfterCommit(new TeamAffiliationNotice(
                 NotificationType.TEAM_ORG_INVITE_RECEIVED,
                 FanoutMessageKind.TEAM_ORG_INVITE_RECEIVED,
@@ -126,13 +137,6 @@ public class TeamOrgInviteService {
                 created.id(),
                 operatorUserId,
                 "/teams/" + created.teamSlug() + "/affiliations?view=invites"));
-
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("membership_id", created.id());
-        metadata.put("organization_id", organizationId);
-        metadata.put("team_id", teamId);
-        metadata.put("group_id", groupId == null ? null : groupId.toString());
-        auditRecorder.record(AuditEventType.TEAM_ORG_INVITE_SENT, operatorUserId, teamId, organizationId, metadata);
 
         // コミット後に行を取り直さない（その間に辞退・取消で消えると 500 になる）。確定した値から組み立てる
         return assembler.assembleRowsForTeam(teamId, List.of(created.toRow())).get(0);
@@ -211,7 +215,16 @@ public class TeamOrgInviteService {
         TeamOrgInviteCommandService.AcceptedInvite accepted = commandService.accept(
                 teamId, membershipId, operatorUserId, organizationId, confirmedGroupId);
 
-        // 5. コミットの後: 通知（組織 ADMIN 全員）と監査
+        // 5. コミットの後: 監査 → 通知（組織 ADMIN 全員）の順。通知の登録が失敗しても、確定した操作の監査は残る
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("via", TeamOrgAffiliationDirection.ORG_INVITE.name());
+        metadata.put("membership_id", membershipId);
+        metadata.put("organization_id", organizationId);
+        metadata.put("team_id", teamId);
+        metadata.put("group_id", confirmedGroupId == null ? null : confirmedGroupId.toString());
+        auditRecorder.record(AuditEventType.TEAM_ORG_MEMBERSHIP_CREATED,
+                operatorUserId, teamId, organizationId, metadata);
+
         notifier.enqueueAfterCommit(new TeamAffiliationNotice(
                 NotificationType.TEAM_ORG_INVITE_ACCEPTED,
                 FanoutMessageKind.TEAM_ORG_INVITE_ACCEPTED,
@@ -222,15 +235,6 @@ public class TeamOrgInviteService {
                 membershipId,
                 operatorUserId,
                 "/organizations/" + organization.slug() + "/member-teams"));
-
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("via", TeamOrgAffiliationDirection.ORG_INVITE.name());
-        metadata.put("membership_id", membershipId);
-        metadata.put("organization_id", organizationId);
-        metadata.put("team_id", teamId);
-        metadata.put("group_id", confirmedGroupId == null ? null : confirmedGroupId.toString());
-        auditRecorder.record(AuditEventType.TEAM_ORG_MEMBERSHIP_CREATED,
-                operatorUserId, teamId, organizationId, metadata);
 
         return assembler.assembleRowsForTeam(teamId, List.of(accepted.row())).get(0);
     }

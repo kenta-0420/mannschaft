@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,6 +20,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import com.mannschaft.app.team.service.FanoutTeamAffiliationNotifier;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -34,6 +36,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -75,6 +79,10 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
 
     @Autowired
     private NotificationFanoutWorker worker;
+
+    /** 通知の登録失敗を起こすために差し替える（既定は実物を呼ぶ）。 */
+    @MockitoSpyBean
+    private FanoutTeamAffiliationNotifier notifier;
 
     @AfterEach
     void cleanUp() {
@@ -171,6 +179,39 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
                 .containsExactlyInAnyOrder(users[0], users[1]);
         assertThat(rows).extracting(r -> r.get("action_url"))
                 .containsOnly("/organizations/" + org.slug() + "/member-teams");
+    }
+
+    // =====================================================================
+    // 通知の登録が失敗しても、確定した操作と監査は残る（TX の分離の回帰防止）
+    // =====================================================================
+
+    @Test
+    @DisplayName("通知の登録が失敗しても、招待の行と TEAM_ORG_INVITE_SENT の監査は残る（通知が書き込み・監査と別のトランザクションである証跡）")
+    void 通知が失敗しても招待と監査は残る() throws Exception {
+        TeamFx team = inTx(this::newTeam);
+        OrgFx org = inTx(this::newOrg);
+        long xa = inTx(() -> {
+            seedAffiliationPermission();
+            long id = newUser();
+            makeOrgAdmin(id, org.id());
+            return id;
+        });
+        doThrow(new IllegalStateException("通知の登録失敗（テスト）")).when(notifier).enqueueAfterCommit(any());
+
+        try {
+            perform(post("/api/v1/organizations/{slug}/team-invites", org.slug())
+                    .with(user(String.valueOf(xa)))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(Map.of("teamSlug", team.slug()))));
+        } catch (Exception expected) {
+            // 通知の失敗は呼び出し元へ伝わる（握り潰さない）。応答の形ではなく、残ったものを検証する
+        }
+
+        assertThat(membershipCount(team.id(), org.id())).as("招待の行は巻き戻らない").isEqualTo(1);
+        Long audits = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit_logs WHERE event_type = 'TEAM_ORG_INVITE_SENT' AND team_id = ?",
+                Long.class, team.id());
+        assertThat(audits).as("通知より先に記録した監査は、通知が失敗しても残る").isEqualTo(1L);
     }
 
     // =====================================================================
