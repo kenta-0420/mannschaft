@@ -1,5 +1,7 @@
 package com.mannschaft.app.todo;
 
+import com.mannschaft.app.schedule.service.CalendarLayerAutoColor;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -480,6 +482,12 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data[*].id", hasItem(personalCalendarTodoId.intValue())))
                     .andExpect(jsonPath("$.data[*].id", hasItem(teamCalendarTodoId.intValue())))
                     .andExpect(jsonPath("$.data[*].id", hasItem(orgCalendarTodoId.intValue())))
+                    .andExpect(jsonPath("$.data[?(@.id == " + personalCalendarTodoId + ")].scopeAutoColor")
+                            .value(org.hamcrest.Matchers.contains(CalendarLayerAutoColor.resolve("PERSONAL", 0L))))
+                    .andExpect(jsonPath("$.data[?(@.id == " + teamCalendarTodoId + ")].scopeAutoColor")
+                            .value(org.hamcrest.Matchers.contains(CalendarLayerAutoColor.resolve("TEAM", teamId))))
+                    .andExpect(jsonPath("$.data[?(@.id == " + orgCalendarTodoId + ")].scopeAutoColor")
+                            .value(org.hamcrest.Matchers.contains(CalendarLayerAutoColor.resolve("ORGANIZATION", orgId))))
                     .andExpect(jsonPath("$.data[*].id", not(hasItem(otherAssigneeTodoId.intValue()))))
                     .andExpect(jsonPath("$.data[*].id", not(hasItem(completedTodoId.intValue()))))
                     .andExpect(jsonPath("$.data[*].id", not(hasItem(deletedTodoId.intValue()))))
