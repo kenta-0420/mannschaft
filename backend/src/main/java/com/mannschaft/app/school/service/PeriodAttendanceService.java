@@ -56,7 +56,7 @@ public class PeriodAttendanceService {
     private final PeriodAttendanceRecordRepository periodAttendanceRecordRepository;
     private final AttendanceTransitionDetectionService attendanceTransitionDetectionService;
     private final AccessControlService accessControlService;
-    private final SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
+    private final SchoolAttendanceAccessPolicy policy;
 
     /**
      * 時限出欠を一括登録（教科担任用）。
@@ -75,7 +75,13 @@ public class PeriodAttendanceService {
     public PeriodAttendanceSummary submitPeriodAttendance(
             Long teamId, Integer periodNumber, PeriodAttendanceRequest request, Long operatorUserId) {
 
-        accessControlService.checkMembership(operatorUserId, teamId, "TEAM");
+        // 認可は最初に行う（拒否時は行を作らず・移動検知も走らせない）。
+        // 時限 POST は upsert なので、PATCH と同じ条件（P）で既存レコードの書換も拒否される。
+        policy.checkCanRecordPeriod(operatorUserId, teamId);
+        // 生徒は全員このクラスの在籍メンバーであること（集合取得 1 クエリ。1 人でも不正なら全件ロールバック）。
+        policy.requireEnrolledStudents(teamId,
+                request.getEntries().stream().map(PeriodAttendanceEntry::getStudentUserId)
+                        .collect(Collectors.toSet()));
 
         int presentCount = 0;
         int absentCount = 0;
@@ -129,7 +135,7 @@ public class PeriodAttendanceService {
     public PeriodAttendanceListResponse getPeriodAttendance(
             Long teamId, LocalDate date, Integer periodNumber, Long currentUserId) {
 
-        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
+        policy.checkCanView(currentUserId, teamId);
 
         List<PeriodAttendanceRecordEntity> records =
                 periodAttendanceRecordRepository.findByTeamIdAndAttendanceDateAndPeriodNumber(
@@ -172,7 +178,7 @@ public class PeriodAttendanceService {
     public PeriodCandidatesResponse getPeriodCandidates(
             Long teamId, LocalDate date, Integer periodNumber, Long currentUserId) {
 
-        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
+        policy.checkCanView(currentUserId, teamId);
 
         // 当該時限の既存レコードから生徒一覧を組み立てる（簡易実装）
         // TODO: Phase 3 でチームメンバーリポジトリと正式連携
@@ -228,7 +234,7 @@ public class PeriodAttendanceService {
     public PeriodAttendanceResponse updatePeriodRecord(
             Long teamId, Long recordId, PeriodAttendanceUpdateRequest request, Long operatorUserId) {
 
-        accessControlService.checkMembership(operatorUserId, teamId, "TEAM");
+        policy.checkCanRecordPeriod(operatorUserId, teamId);
 
         PeriodAttendanceRecordEntity existing = periodAttendanceRecordRepository.findById(recordId)
                 .filter(r -> r.getTeamId().equals(teamId))

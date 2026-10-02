@@ -53,6 +53,8 @@ class SchoolAttendanceAccessPolicyTest {
         policy = new SchoolAttendanceAccessPolicy(
                 accessControlService, classHomeroomRepository, new ObjectMapper(), clock);
         when(classHomeroomRepository.findActiveByTeamId(anyLong(), any())).thenReturn(List.of());
+        // 既定では全員がチームの有効なメンバー。退会者は個別テストで false にする。
+        when(accessControlService.isMember(anyLong(), anyLong(), eq("TEAM"))).thenReturn(true);
     }
 
     private static ClassHomeroomEntity row(Long main, String assistants) {
@@ -127,6 +129,33 @@ class SchoolAttendanceAccessPolicyTest {
         assertThat(policy.canView(ASSISTANT, TEAM)).isTrue();
         assertThat(policy.canRecordDaily(ASSISTANT, TEAM)).isFalse();
         assertThat(policy.canRecordPeriod(ASSISTANT, TEAM)).isFalse();
+    }
+
+    @Test
+    @DisplayName("チームを離れた担任・副担任は、名簿の行が残っていても V/R/P の資格を持たない")
+    void 退会した担任は資格なし() {
+        activeRows(row(MAIN, "[" + ASSISTANT + "]"));
+        when(accessControlService.isMember(MAIN, TEAM, "TEAM")).thenReturn(false);
+        when(accessControlService.isMember(ASSISTANT, TEAM, "TEAM")).thenReturn(false);
+
+        for (Long u : new Long[]{MAIN, ASSISTANT}) {
+            assertThat(policy.isActiveHomeroomTeacher(u, TEAM)).isFalse();
+            assertThat(policy.canView(u, TEAM)).isFalse();
+            assertThat(policy.canRecordDaily(u, TEAM)).isFalse();
+            assertThat(policy.canRecordPeriod(u, TEAM)).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("requireEnrolledStudents: 全員在籍なら通り、1 人でも非在籍なら STUDENT_NOT_ENROLLED")
+    void 在籍検証() {
+        when(accessControlService.listActiveMemberIds(TEAM, "TEAM")).thenReturn(List.of(MAIN, ASSISTANT));
+
+        policy.requireEnrolledStudents(TEAM, List.of(MAIN, ASSISTANT));
+        assertThatThrownBy(() -> policy.requireEnrolledStudents(TEAM, List.of(MAIN, OTHER)))
+                .isInstanceOfSatisfying(BusinessException.class, ex ->
+                        assertThat(ex.getErrorCode()).isEqualTo(
+                                com.mannschaft.app.school.error.SchoolErrorCode.STUDENT_NOT_ENROLLED));
     }
 
     @Test
