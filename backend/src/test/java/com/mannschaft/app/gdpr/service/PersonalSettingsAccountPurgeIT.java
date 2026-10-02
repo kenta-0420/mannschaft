@@ -7,10 +7,13 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.PurgeMarkerService;
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.contact.entity.ContactRequestBlockEntity;
 import com.mannschaft.app.dashboard.entity.DashboardScopeTabOrderEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileStarEntity;
 import com.mannschaft.app.gdpr.GdprErrorCode;
+import com.mannschaft.app.gdpr.dto.RetryResultResponse;
+import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.notification.entity.NotificationSettingsEntity;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.user.entity.UserBlockEntity;
@@ -21,12 +24,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -34,7 +43,9 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import java.util.concurrent.Executor;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -60,15 +71,38 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             "my_scope_folders", "user_calendar_sync_settings", "user_quick_memo_settings",
             "notification_settings", "user_interest_tags", "shared_file_stars", "contact_request_blocks");
 
+    // user_blocks は両端の所有境界を別に検証するため、この35表の user_id 集合には入れない。
+    private static final List<String> ALL_SETTINGS_TABLES = Stream.concat(TABLES.stream(), Stream.of(
+            "user_action_memo_settings", "action_memo_tags", "point_card_user_settings", "point_card_groups",
+            "timeline_bookmarks", "search_saved_queries", "appearance_settings", "user_nav_settings",
+            "gamification_user_settings", "user_reflection_settings", "personal_timetable_settings",
+            "user_blog_settings", "chat_message_bookmarks", "kb_page_favorites", "user_mutes", "user_favorites",
+            "scope_member_calendar_settings", "notification_preferences", "notification_type_preferences",
+            "push_subscriptions", "user_calendar_layer_settings", "user_weather_locations", "inbox_item_states",
+            "notification_labels", "inbox_label_links")).toList();
+    private static final List<String> SETTING_DOMAINS = List.of(
+            "actionmemo", "pointcard", "timeline", "search", "dashboard", "scopefolder", "schedule", "quickmemo",
+            "auth", "notification", "filesharing", "contact", "user", "appearance", "navsettings", "gamification",
+            "reflection", "timetable.personal", "cms", "chat", "knowledgebase", "favorite", "membership", "weather",
+            "inbox");
+    private static final List<String> EXISTING_DOMAINS = List.of(
+            "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing");
+    private static final List<String> RETAINED_UNTIL_STRONG = Stream.concat(
+            TABLES.stream().filter(table -> !table.equals("dashboard_scope_tab_order")),
+            Stream.of("user_action_memo_settings", "action_memo_tags", "point_card_user_settings",
+                    "point_card_groups", "timeline_bookmarks", "search_saved_queries")).toList();
+
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private UserService userService;
     @Autowired private UserRepository userRepository;
     @Autowired private AccountPurgeService accountPurgeService;
+    @Autowired private GdprPurgeRetryService retryService;
+    @Autowired private ApplicationEventPublisher eventPublisher;
     @Autowired @Qualifier("purge-pool") private Executor purgeExecutor;
     @PersistenceContext private EntityManager entityManager;
 
     @Test
-    @DisplayName("通常退会の猶予中は設定を保持し、30日後の実ユーザー削除で本人と子行だけを消す")
+    @DisplayName("通常退会の承認済猶予保持から36親設定と論理行・子の強消去、別owner保持と25domain完了を確認する")
     void retainsSettingsUntilStrongPurgeAndPreservesOtherOwner() {
         // 共通基底の外部Redis mockだけを補完し、退会受付の実レートリミット処理を通す。
         @SuppressWarnings("unchecked")
@@ -78,11 +112,18 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
         Long other = createUser("別所有者");
         Long contact = createUser("対象外の連絡先");
         List<Long> chatFolderIds = new ArrayList<>();
+        List<Long> scopeFolderIds = new ArrayList<>();
         try {
             Long targetChatFolder = seedSettings(target, contact);
             chatFolderIds.add(targetChatFolder);
             Long otherChatFolder = seedSettings(other, contact);
             chatFolderIds.add(otherChatFolder);
+            scopeFolderIds.addAll(seedAdditionalSettings(target, contact));
+            scopeFolderIds.addAll(seedAdditionalSettings(other, contact));
+            List<Long> targetScopeFolders = scopeFolderIds(target);
+            List<Long> otherScopeFolders = scopeFolderIds(other);
+            Map<String, Long> targetCounts = readOwnerCounts(target);
+            Map<String, Long> otherCounts = readOwnerCounts(other);
             transactionTemplate.executeWithoutResult(tx -> entityManager.persist(
                     ContactRequestBlockEntity.builder().userId(other).blockedId(target).build()));
             transactionTemplate.executeWithoutResult(tx -> entityManager.persist(
@@ -91,12 +132,9 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
                     "folder_id,item_type,item_id,is_pinned,created_at",
                     otherChatFolder + ",'CONTACT'," + target + ",false,NOW()"));
             userService.requestWithdrawal(target, new RequestWithdrawalRequest(null));
-            for (String table : TABLES) {
-                // scope tabの即時削除は既承認の別経路であり、猶予中の保持は要件にしない。
-                if (table.equals("dashboard_scope_tab_order")) {
-                    continue;
-                }
-                assertThat(countOwner(table, target)).as("猶予中 %s", table).isEqualTo(1);
+            for (String table : RETAINED_UNTIL_STRONG) {
+                // 既承認の30日保持だけを検証し、scope tab/弱10表のタイミングを変更しない。
+                assertThat(countOwner(table, target)).as("猶予中 %s", table).isEqualTo(targetCounts.get(table));
             }
             assertThat(count("SELECT COUNT(*) FROM user_blocks WHERE blocker_id = " + target))
                     .as("猶予中の本人ブロック設定").isEqualTo(1);
@@ -114,9 +152,9 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             accountPurgeService.purgeExpiredAccounts();
             Map<String, Long> expected = new LinkedHashMap<>();
             expected.put("本人/users", 0L);
-            for (String table : TABLES) {
+            for (String table : ALL_SETTINGS_TABLES) {
                 expected.put("本人/" + table, 0L);
-                expected.put("別所有者/" + table, 1L);
+                expected.put("別所有者/" + table, otherCounts.get(table));
             }
             expected.put("本人/chat_contact_folder_items", 0L);
             expected.put("別所有者/chat_contact_folder_items", 1L);
@@ -125,10 +163,13 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             expected.put("本人/user_blocks", 0L);
             expected.put("別所有者/user_blocks", 1L);
             expected.put("退会者へのuser_blocks", 0L);
+            expected.put("本人/my_scope_folder_items", 0L);
+            expected.put("別所有者/my_scope_folder_items", 2L);
+            addExpectedCompletionCounts(expected, null);
             await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
                 Map<String, Long> actual = new LinkedHashMap<>();
                 actual.put("本人/users", count("SELECT COUNT(*) FROM users WHERE id = " + target));
-                for (String table : TABLES) {
+                for (String table : ALL_SETTINGS_TABLES) {
                     actual.put("本人/" + table, countOwner(table, target));
                     actual.put("別所有者/" + table, countOwner(table, other));
                 }
@@ -144,6 +185,9 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
                 actual.put("本人/user_blocks", count("SELECT COUNT(*) FROM user_blocks WHERE blocker_id = " + target));
                 actual.put("別所有者/user_blocks", count("SELECT COUNT(*) FROM user_blocks WHERE blocker_id = " + other));
                 actual.put("退会者へのuser_blocks", count("SELECT COUNT(*) FROM user_blocks WHERE blocked_id = " + target));
+                actual.put("本人/my_scope_folder_items", countFolderItems(targetScopeFolders));
+                actual.put("別所有者/my_scope_folder_items", countFolderItems(otherScopeFolders));
+                addActualCompletionCounts(actual, target);
                 assertThat(actual).as("強削除後の全設定・子行のnative件数")
                         .containsExactlyInAnyOrderEntriesOf(expected);
             });
@@ -159,7 +203,11 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
                     entityManager.createNativeQuery("DELETE FROM chat_contact_folder_items WHERE folder_id = "
                             + folderId).executeUpdate();
                 }
-                for (String table : TABLES) {
+                for (Long folderId : scopeFolderIds) {
+                    entityManager.createNativeQuery("DELETE FROM my_scope_folder_items WHERE folder_id = "
+                            + folderId).executeUpdate();
+                }
+                for (String table : ALL_SETTINGS_TABLES) {
                     entityManager.createNativeQuery("DELETE FROM " + table + " WHERE user_id IN ("
                             + target + "," + other + ")").executeUpdate();
                 }
@@ -271,7 +319,268 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
         userService.requestWithdrawal(target, new RequestWithdrawalRequest(null));
         transactionTemplate.executeWithoutResult(tx -> entityManager.createNativeQuery(
                 "UPDATE users SET deleted_at = DATE_SUB(NOW(), INTERVAL 31 DAY) WHERE id = :owner")
-                .setParameter("owner", target).executeUpdate());
+                    .setParameter("owner", target).executeUpdate());
+    }
+
+    @Test
+    @DisplayName("設定0件の公開batchと強イベントを重複実行しても25domainは一意完了し別ownerの全設定を保つ")
+    void emptySettingsAndDuplicateEventsPreserveOtherOwner() {
+        stubRedisValueOperations();
+        Long target = createUser("設定0件の本人");
+        Long other = createUser("別所有者");
+        Long contact = createUser("対象外の連絡先");
+        List<Long> chatFolders = new ArrayList<>();
+        List<Long> scopeFolders = new ArrayList<>();
+        try {
+            chatFolders.add(seedSettings(other, contact));
+            scopeFolders.addAll(seedAdditionalSettings(other, contact));
+            Map<String, Long> retained = readOwnerCounts(other);
+            prepareExpiredWithdrawal(target);
+            accountPurgeService.purgeExpiredAccounts();
+            awaitPurgePoolIdle();
+            accountPurgeService.purgeExpiredAccounts();
+            transactionTemplate.executeWithoutResult(tx -> {
+                eventPublisher.publishEvent(new AccountPurgedEvent(target, "a".repeat(64)));
+                eventPublisher.publishEvent(new AccountPurgedEvent(target, "a".repeat(64)));
+            });
+            Map<String, Long> expected = new LinkedHashMap<>();
+            addExpectedCompletionCounts(expected, null);
+            await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+                Map<String, Long> actual = new LinkedHashMap<>();
+                addActualCompletionCounts(actual, target);
+                assertThat(actual).as("空と重複イベントのdomain登録・完了").containsExactlyInAnyOrderEntriesOf(expected);
+                assertThat(readOwnerCounts(target).values()).containsOnly(0L);
+                assertThat(readOwnerCounts(other)).as("空と重複イベント後の別所有者")
+                        .containsExactlyInAnyOrderEntriesOf(retained);
+                assertThat(countFolderItems(scopeFolders)).isEqualTo(2);
+            });
+        } finally {
+            cleanupFullSettings(List.of(target, other), contact, chatFolders, scopeFolders);
+        }
+    }
+
+    @Test
+    @DisplayName("本人限定DELETE障害はdashboardだけPENDINGに残り、失敗記録と実retry後commitでSUCCESSになる")
+    void partialDeleteFailureRemainsPendingUntilRealRetryCommits() {
+        stubRedisValueOperations();
+        Long target = createUser("部分失敗の本人");
+        Long other = createUser("別所有者");
+        Long contact = createUser("対象外の連絡先");
+        List<Long> chatFolders = new ArrayList<>();
+        List<Long> scopeFolders = new ArrayList<>();
+        String trigger = "cmp1243_widget_" + target;
+        try {
+            chatFolders.add(seedSettings(target, contact));
+            chatFolders.add(seedSettings(other, contact));
+            scopeFolders.addAll(seedAdditionalSettings(target, contact));
+            scopeFolders.addAll(seedAdditionalSettings(other, contact));
+            Map<String, Long> retained = readOwnerCounts(other);
+            executeOwnedTriggerDdl("CREATE TRIGGER " + trigger + " BEFORE DELETE ON dashboard_widget_settings FOR EACH ROW "
+                            + "BEGIN IF OLD.user_id = " + target + " THEN SIGNAL SQLSTATE '45000' "
+                            + "SET MESSAGE_TEXT = 'cmp1243 owned delete failure'; END IF; END");
+            prepareExpiredWithdrawal(target);
+            accountPurgeService.purgeExpiredAccounts();
+            Map<String, Long> expected = new LinkedHashMap<>();
+            addExpectedCompletionCounts(expected, "dashboard");
+            await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+                Map<String, Long> actual = new LinkedHashMap<>();
+                addActualCompletionCounts(actual, target);
+                assertThat(actual).as("部分失敗と他domainのcommit").containsExactlyInAnyOrderEntriesOf(expected);
+                assertThat(countDomain(target, "dashboard", "PENDING")).isEqualTo(1);
+                assertThat(countOwner("dashboard_widget_settings", target)).isEqualTo(1);
+                assertThat(count("SELECT COUNT(*) FROM users WHERE id = " + target)).isZero();
+            });
+            awaitPurgePoolIdle();
+            RetryResultResponse failed = retryService.retryDomainPurge(target, "dashboard");
+            assertThat(failed.succeeded()).isFalse();
+            assertThat(failed.newStatus()).isEqualTo("PENDING");
+            assertThat(failed.retryCount()).isEqualTo(1);
+            assertThat(count("SELECT COUNT(*) FROM account_purge_completion_status WHERE user_id = " + target
+                    + " AND domain_name = 'dashboard' AND status = 'PENDING' AND retry_count = 1"
+                    + " AND last_retried_at IS NOT NULL AND completed_at IS NULL")).isEqualTo(1);
+            dropOwnedTrigger(trigger);
+            RetryResultResponse recovered = retryService.retryDomainPurge(target, "dashboard");
+            assertThat(recovered.succeeded()).isTrue();
+            assertThat(recovered.newStatus()).isEqualTo("SUCCESS");
+            assertThat(recovered.retryCount()).isEqualTo(2);
+            // retry が返った時点で別TXから0/SUCCESSが見えることを確認する。
+            assertThat(readOwnerCounts(target).values()).containsOnly(0L);
+            assertThat(count("SELECT COUNT(*) FROM chat_contact_folder_items WHERE folder_id = " + chatFolders.get(0)))
+                    .isZero();
+            assertThat(countDomain(target, "dashboard", "SUCCESS")).isEqualTo(1);
+            assertThat(retryService.retryDomainPurge(target, "dashboard").retryCount()).isEqualTo(2);
+            assertThat(readOwnerCounts(other)).containsExactlyInAnyOrderEntriesOf(retained);
+        } finally {
+            awaitPurgePoolIdle();
+            dropOwnedTrigger(trigger);
+            cleanupFullSettings(List.of(target, other), contact, chatFolders, scopeFolders);
+        }
+    }
+
+    @Test
+    @DisplayName("既存purge-poolの実queue拒否でも25domainのPENDINGを残し、解放後の実retryで本人だけを消去する")
+    void rejectedPurgeQueueRetainsPendingForRealRetry() throws InterruptedException {
+        stubRedisValueOperations();
+        Long target = createUser("queue拒否の本人");
+        Long other = createUser("別所有者");
+        Long contact = createUser("対象外の連絡先");
+        List<Long> chatFolders = new ArrayList<>();
+        List<Long> scopeFolders = new ArrayList<>();
+        CountDownLatch release = new CountDownLatch(1);
+        try {
+            chatFolders.add(seedSettings(target, contact));
+            chatFolders.add(seedSettings(other, contact));
+            scopeFolders.addAll(seedAdditionalSettings(target, contact));
+            scopeFolders.addAll(seedAdditionalSettings(other, contact));
+            Map<String, Long> retained = readOwnerCounts(other);
+            prepareExpiredWithdrawal(target);
+            awaitPurgePoolIdle();
+            ThreadPoolTaskExecutor pool = (ThreadPoolTaskExecutor) purgeExecutor;
+            CountDownLatch active = new CountDownLatch(pool.getMaxPoolSize());
+            Runnable ownedBlocker = () -> {
+                active.countDown();
+                try {
+                    release.await(90, TimeUnit.SECONDS);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            };
+            boolean rejected = false;
+            int capacity = pool.getThreadPoolExecutor().getQueue().remainingCapacity() + pool.getMaxPoolSize();
+            for (int submitted = 0; submitted <= capacity; submitted++) {
+                try {
+                    pool.execute(ownedBlocker);
+                } catch (TaskRejectedException expectedRejection) {
+                    rejected = true;
+                    break;
+                }
+            }
+            assertThat(rejected).as("新pool設定ではなく既存実queueの拒否境界").isTrue();
+            assertThat(active.await(10, TimeUnit.SECONDS)).as("自隊blockerが既存max workerを占有").isTrue();
+            assertThat(pool.getThreadPoolExecutor().getQueue().remainingCapacity()).isZero();
+            accountPurgeService.purgeExpiredAccounts();
+            assertThat(count("SELECT COUNT(*) FROM users WHERE id = " + target)).isZero();
+            Map<String, Long> pending = new LinkedHashMap<>();
+            for (String domain : SETTING_DOMAINS) {
+                pending.put(domain, countDomain(target, domain, "PENDING"));
+            }
+            assertThat(pending.values()).as("配送拒否でもcommit済みPENDINGを全25domainから回復できる")
+                    .containsOnly(1L);
+            for (String domain : EXISTING_DOMAINS) {
+                assertThat(countDomain(target, domain, null)).as("既存domain登録 %s", domain).isEqualTo(1);
+            }
+            release.countDown();
+            awaitPurgePoolIdle();
+            for (String domain : SETTING_DOMAINS) {
+                RetryResultResponse recovered = retryService.retryDomainPurge(target, domain);
+                assertThat(recovered.succeeded()).as("配送拒否から実retry %s", domain).isTrue();
+                assertThat(recovered.retryCount()).isEqualTo(1);
+                assertThat(countDomain(target, domain, "SUCCESS")).isEqualTo(1);
+            }
+            assertThat(readOwnerCounts(target).values()).containsOnly(0L);
+            assertThat(count("SELECT COUNT(*) FROM chat_contact_folder_items WHERE folder_id = " + chatFolders.get(0))).isZero();
+            assertThat(countFolderItems(scopeFolders.subList(0, 2))).isZero();
+            assertThat(readOwnerCounts(other)).containsExactlyInAnyOrderEntriesOf(retained);
+        } finally {
+            // 自隊latchだけを解放し、実idleにならなければfixture DELETEへ進まない。
+            release.countDown();
+            cleanupFullSettings(List.of(target, other), contact, chatFolders, scopeFolders);
+        }
+    }
+
+    private void dropOwnedTrigger(String trigger) {
+        executeOwnedTriggerDdl("DROP TRIGGER IF EXISTS " + trigger);
+    }
+
+    private void executeOwnedTriggerDdl(String sql) {
+        // binlog有効時のtrigger権限はOrgMemberProfileCopyRollbackITと同じ所有containerのroot金型を使う。
+        // 業務Beanや共有container設定は差し替えない。
+        try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword());
+             Statement statement = connection.createStatement()) {
+            statement.execute(sql);
+        } catch (SQLException failure) {
+            throw new IllegalStateException("所有containerの試練trigger DDL失敗", failure);
+        }
+    }
+
+    @Test
+    @DisplayName("owner DELETE commit後のSUCCESS記録障害はデータ0のPENDINGを残し、実retryで完了記録を回復する")
+    void completionFailureRemainsPendingAfterOwnerDeleteCommit() {
+        stubRedisValueOperations();
+        Long target = createUser("完了記録障害の本人");
+        Long other = createUser("別所有者");
+        Long contact = createUser("対象外の連絡先");
+        List<Long> chatFolders = new ArrayList<>();
+        List<Long> scopeFolders = new ArrayList<>();
+        String trigger = "cmp1243_success_" + target;
+        try {
+            chatFolders.add(seedSettings(target, contact));
+            chatFolders.add(seedSettings(other, contact));
+            scopeFolders.addAll(seedAdditionalSettings(target, contact));
+            scopeFolders.addAll(seedAdditionalSettings(other, contact));
+            Map<String, Long> retained = readOwnerCounts(other);
+            executeOwnedTriggerDdl("CREATE TRIGGER " + trigger + " BEFORE UPDATE ON account_purge_completion_status FOR EACH ROW "
+                            + "BEGIN IF OLD.user_id = " + target + " AND OLD.domain_name = 'dashboard' "
+                            + "AND NEW.status = 'SUCCESS' THEN SIGNAL SQLSTATE '45000' "
+                            + "SET MESSAGE_TEXT = 'cmp1243 owned completion failure'; END IF; END");
+            prepareExpiredWithdrawal(target);
+            accountPurgeService.purgeExpiredAccounts();
+            Map<String, Long> expected = new LinkedHashMap<>();
+            addExpectedCompletionCounts(expected, "dashboard");
+            await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+                Map<String, Long> actual = new LinkedHashMap<>();
+                addActualCompletionCounts(actual, target);
+                assertThat(actual).as("owner commit後の完了記録障害").containsExactlyInAnyOrderEntriesOf(expected);
+                assertThat(readOwnerCounts(target).values()).containsOnly(0L);
+                assertThat(countDomain(target, "dashboard", "PENDING")).isEqualTo(1);
+                assertThat(count("SELECT COUNT(*) FROM chat_contact_folder_items WHERE folder_id = " + chatFolders.get(0))).isZero();
+                assertThat(countFolderItems(scopeFolders.subList(0, 2))).isZero();
+            });
+            awaitPurgePoolIdle();
+            dropOwnedTrigger(trigger);
+            RetryResultResponse recovered = retryService.retryDomainPurge(target, "dashboard");
+            assertThat(recovered.succeeded()).isTrue();
+            assertThat(recovered.retryCount()).isEqualTo(1);
+            assertThat(countDomain(target, "dashboard", "SUCCESS")).isEqualTo(1);
+            assertThat(readOwnerCounts(other)).containsExactlyInAnyOrderEntriesOf(retained);
+        } finally {
+            awaitPurgePoolIdle();
+            dropOwnedTrigger(trigger);
+            cleanupFullSettings(List.of(target, other), contact, chatFolders, scopeFolders);
+        }
+    }
+
+    private void awaitPurgePoolIdle() {
+        ThreadPoolTaskExecutor pool = (ThreadPoolTaskExecutor) purgeExecutor;
+        await().atMost(Duration.ofSeconds(10)).until(() ->
+                pool.getActiveCount() == 0 && pool.getThreadPoolExecutor().getQueue().isEmpty());
+    }
+
+    private void cleanupFullSettings(List<Long> owners, Long contact, List<Long> chatFolders, List<Long> scopeFolders) {
+        awaitPurgePoolIdle();
+        String ownerIds = String.join(",", owners.stream().map(String::valueOf).toList());
+        transactionTemplate.executeWithoutResult(tx -> {
+            for (Long folder : chatFolders) {
+                entityManager.createNativeQuery("DELETE FROM chat_contact_folder_items WHERE folder_id = " + folder)
+                        .executeUpdate();
+            }
+            for (Long folder : scopeFolders) {
+                entityManager.createNativeQuery("DELETE FROM my_scope_folder_items WHERE folder_id = " + folder)
+                        .executeUpdate();
+            }
+            entityManager.createNativeQuery("DELETE FROM inbox_label_links WHERE user_id IN (" + ownerIds + ")")
+                    .executeUpdate();
+            for (String table : ALL_SETTINGS_TABLES) {
+                entityManager.createNativeQuery("DELETE FROM " + table + " WHERE user_id IN (" + ownerIds + ")")
+                        .executeUpdate();
+            }
+            entityManager.createNativeQuery("DELETE FROM user_blocks WHERE blocker_id IN (" + ownerIds
+                    + ") OR blocked_id IN (" + ownerIds + ")").executeUpdate();
+            entityManager.createNativeQuery("DELETE FROM account_purge_completion_status WHERE user_id IN (" + ownerIds + ")")
+                    .executeUpdate();
+            entityManager.createNativeQuery("DELETE FROM users WHERE id IN (" + ownerIds + "," + contact + ")")
+                    .executeUpdate();
+        });
     }
 
     private Map<String, Long> retainedCandidateCounts() {
@@ -404,6 +713,130 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
     private void insert(String table, String columns, String values) {
         entityManager.createNativeQuery("INSERT INTO " + table + " (" + columns + ") VALUES (" + values + ")")
                 .executeUpdate();
+    }
+
+    /** Entity生成schemaの必須列を埋め、本文テーブルを作らず本人専用設定だけを用意する。 */
+    private List<Long> seedAdditionalSettings(Long owner, Long contact) {
+        return transactionTemplate.execute(tx -> {
+            insert("user_action_memo_settings",
+                    "user_id,mood_enabled,default_category,reminder_enabled,created_at,updated_at",
+                    owner + ",false,'PRIVATE',false,NOW(),NOW()");
+            insert("action_memo_tags", "user_id,name,sort_order,created_at,updated_at",
+                    owner + ",'現役の私有タグ',0,NOW(),NOW()");
+            insert("action_memo_tags", "user_id,name,sort_order,deleted_at,created_at,updated_at",
+                    owner + ",'論理削除済の私有タグ',1,NOW(),NOW(),NOW()");
+            insert("point_card_user_settings", "user_id,is_enabled,require_biometric_on_show,created_at,updated_at",
+                    owner + ",false,false,NOW(),NOW()");
+            insert("point_card_groups", "id,user_id,name,display_order,created_at,updated_at",
+                    "'" + UuidV7.generate() + "'," + owner + ",'本人の分類',0,NOW(),NOW()");
+            insert("timeline_bookmarks", "user_id,timeline_post_id,created_at", owner + ",123,NOW()");
+            insert("search_saved_queries", "user_id,name,query_params,created_at", owner + ",'本人検索','{}',NOW()");
+            insert("appearance_settings", "id,user_id,theme,bg_color,dark_bg_color,hide_chat_preview,created_at,updated_at",
+                    binaryUuid() + "," + owner + ",'LIGHT','#ffffff','#18181b',false,NOW(),NOW()");
+            insert("user_nav_settings", "user_id,hidden_nav_keys,updated_at", owner + ",'[]',NOW()");
+            insert("gamification_user_settings",
+                    "user_id,scope_type,scope_id,show_in_ranking,show_badges,created_at,updated_at",
+                    owner + ",'TEAM',123,true,true,NOW(),NOW()");
+            insert("user_reflection_settings", "user_id,remind_hour,created_at,updated_at", owner + ",9,NOW(),NOW()");
+            insert("personal_timetable_settings", "user_id,auto_reflect_class_changes_to_calendar,"
+                            + "notify_team_slot_note_updates,default_period_template,visible_default_fields,created_at,updated_at",
+                    owner + ",true,true,'CUSTOM','[]',NOW(),NOW()");
+            insert("user_blog_settings", "user_id,self_review_enabled,self_review_start,self_review_end,created_at,updated_at",
+                    owner + ",false,'23:00:00','06:00:00',NOW(),NOW()");
+            insert("chat_message_bookmarks", "user_id,message_id,created_at", owner + ",123,NOW()");
+            insert("kb_page_favorites", "user_id,kb_page_id,created_at", owner + ",123,NOW()");
+            insert("user_mutes", "user_id,muted_type,muted_id,created_at", owner + ",'USER'," + contact + ",NOW()");
+            insert("user_favorites", "id,user_id,entity_type,entity_id,display_order,created_at",
+                    binaryUuid() + "," + owner + ",'TEAM','123',0,NOW()");
+            insert("scope_member_calendar_settings", "id,user_id,scope_type,scope_id,calendar_color",
+                    binaryUuid() + "," + owner + ",'TEAM',123,'#123456'");
+            insert("notification_preferences", "user_id,scope_type,scope_id,is_enabled,created_at,updated_at",
+                    owner + ",'TEAM',123,true,NOW(),NOW()");
+            insert("notification_type_preferences",
+                    "user_id,notification_type,is_enabled,channel_override,in_app_enabled,push_enabled,created_at,updated_at",
+                    owner + ",'CMP1243',true,false,true,true,NOW(),NOW()");
+            insert("push_subscriptions", "user_id,endpoint,p256dh_key,auth_key,created_at",
+                    owner + ",'https://example.invalid/cmp1243/" + owner + "','fixture','fixture',NOW()");
+            insert("user_calendar_layer_settings", "id,user_id,scope_type,scope_id,hidden,created_at,updated_at",
+                    binaryUuid() + "," + owner + ",'PERSONAL',0,false,NOW(),NOW()");
+            insert("user_weather_locations", "id,user_id,label,country_code,postal_code_hash,latitude_rounded,"
+                            + "longitude_rounded,place_name_snapshot,derived_at,created_at,updated_at",
+                    binaryUuid() + "," + owner + ",'home','JP','" + "a".repeat(64)
+                            + "',35.0,139.0,'試練地点',NOW(),NOW(),NOW()");
+            insert("inbox_item_states", "id,user_id,source_type,source_id,archived_at,created_at,updated_at",
+                    binaryUuid() + "," + owner + ",'NOTIFICATION',123,NOW(),NOW(),NOW()");
+            String labelId = binaryUuid();
+            insert("notification_labels", "id,user_id,name,sort_order,created_at,updated_at",
+                    labelId + "," + owner + ",'現役の私有ラベル',0,NOW(),NOW()");
+            insert("notification_labels", "id,user_id,name,sort_order,deleted_at,created_at,updated_at",
+                    binaryUuid() + "," + owner + ",'論理削除済の私有ラベル',1,NOW(),NOW(),NOW()");
+            insert("inbox_label_links", "id,user_id,label_id,source_type,source_id,created_at",
+                    binaryUuid() + "," + owner + "," + labelId + ",'NOTIFICATION',123,NOW()");
+            insert("my_scope_folders", "user_id,scope_type,name,sort_order,is_default,deleted_at,created_at,updated_at",
+                    owner + ",'ORGANIZATION','論理削除済の私有分類',1,false,NOW(),NOW(),NOW()");
+            List<Long> folders = scopeFolderIds(owner);
+            for (Long folder : folders) {
+                insert("my_scope_folder_items", "folder_id,scope_id,sort_order,assigned_via,created_at",
+                        folder + ",123,0,'MANUAL',NOW()");
+            }
+            return folders;
+        });
+    }
+
+    private String binaryUuid() {
+        return "UNHEX('" + UuidV7.generate().toString().replace("-", "") + "')";
+    }
+
+    private List<Long> scopeFolderIds(Long owner) {
+        return transactionTemplate.execute(tx -> {
+            List<?> ids = entityManager.createNativeQuery("SELECT id FROM my_scope_folders WHERE user_id = :owner")
+                    .setParameter("owner", owner).getResultList();
+            return ids.stream().map(id -> ((Number) id).longValue()).toList();
+        });
+    }
+
+    private long countFolderItems(List<Long> folders) {
+        if (folders.isEmpty()) {
+            return 0;
+        }
+        return count("SELECT COUNT(*) FROM my_scope_folder_items WHERE folder_id IN ("
+                + String.join(",", folders.stream().map(String::valueOf).toList()) + ")");
+    }
+
+    private Map<String, Long> readOwnerCounts(Long owner) {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (String table : ALL_SETTINGS_TABLES) {
+            counts.put(table, countOwner(table, owner));
+        }
+        counts.put("user_blocks", count("SELECT COUNT(*) FROM user_blocks WHERE blocker_id = " + owner));
+        return counts;
+    }
+
+    private void addExpectedCompletionCounts(Map<String, Long> expected, String pendingDomain) {
+        for (String domain : EXISTING_DOMAINS) {
+            expected.put("既存domain登録/" + domain, 1L);
+        }
+        for (String domain : SETTING_DOMAINS) {
+            expected.put("設定domain登録/" + domain, 1L);
+            expected.put("設定domainSUCCESS/" + domain, domain.equals(pendingDomain) ? 0L : 1L);
+        }
+        expected.put("全domain登録数", (long) EXISTING_DOMAINS.size() + SETTING_DOMAINS.size());
+    }
+
+    private void addActualCompletionCounts(Map<String, Long> actual, Long owner) {
+        for (String domain : EXISTING_DOMAINS) {
+            actual.put("既存domain登録/" + domain, countDomain(owner, domain, null));
+        }
+        for (String domain : SETTING_DOMAINS) {
+            actual.put("設定domain登録/" + domain, countDomain(owner, domain, null));
+            actual.put("設定domainSUCCESS/" + domain, countDomain(owner, domain, "SUCCESS"));
+        }
+        actual.put("全domain登録数", count("SELECT COUNT(*) FROM account_purge_completion_status WHERE user_id = " + owner));
+    }
+
+    private long countDomain(Long owner, String domain, String status) {
+        return count("SELECT COUNT(*) FROM account_purge_completion_status WHERE user_id = " + owner
+                + " AND domain_name = '" + domain + "'" + (status == null ? "" : " AND status = '" + status + "'"));
     }
 
     private long countOwner(String table, Long owner) {
