@@ -43,7 +43,7 @@ type RawConflictDetail = {
 type RawPagedResponse = {
   data: RawConflictListItem[]
   meta: {
-    totalElements: number
+    total: number
     page: number
     size: number
     totalPages: number
@@ -67,6 +67,7 @@ function parseJsonSafe(value: string): Record<string, unknown> {
   try {
     return JSON.parse(value) as Record<string, unknown>
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- 不正 JSON に対する防御パース。空オブジェクト復帰が正しい（後続の正規化で欠損キーは既定値に落ちる）
     return {}
   }
 }
@@ -111,7 +112,7 @@ export function useConflictResolver() {
       meta: {
         page: res.meta.page,
         size: res.meta.size,
-        totalElements: res.meta.totalElements,
+        total: res.meta.total,
         totalPages: res.meta.totalPages,
       },
     }

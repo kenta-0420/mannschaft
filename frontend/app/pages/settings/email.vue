@@ -52,7 +52,6 @@ async function handleSubmit() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
     <PageHeader title="メールアドレス変更" />
 
     <PageLoading v-if="loading" />

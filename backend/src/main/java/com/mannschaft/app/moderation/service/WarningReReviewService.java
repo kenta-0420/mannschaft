@@ -5,7 +5,9 @@ import com.mannschaft.app.moderation.ModerationExtErrorCode;
 import com.mannschaft.app.moderation.ModerationExtMapper;
 import com.mannschaft.app.moderation.ReReviewStatus;
 import com.mannschaft.app.moderation.dto.WarningReReviewResponse;
+import com.mannschaft.app.moderation.entity.UserViolationEntity;
 import com.mannschaft.app.moderation.entity.WarningReReviewEntity;
+import com.mannschaft.app.moderation.repository.UserViolationRepository;
 import com.mannschaft.app.moderation.repository.WarningReReviewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,10 +26,27 @@ import org.springframework.transaction.annotation.Transactional;
 public class WarningReReviewService {
 
     private final WarningReReviewRepository reReviewRepository;
+
+    /**
+     * 認可根治戦役 Wave3-B3 BOLA 是正: {@code createReReview} の actionId 所有者検証に使用する。
+     * user_violations は report_actions（WARNING）の実際の対象ユーザーを保持する唯一の窓口であり、
+     * {@link com.mannschaft.app.moderation.entity.ReportActionEntity} 自体には対象ユーザーの
+     * フィールドが無い（{@code actionBy} はレビュアー ID であり対象ユーザーではない）。
+     */
+    private final UserViolationRepository userViolationRepository;
+
     private final ModerationExtMapper mapper;
 
     /**
      * WARNING再レビュー依頼を作成する。
+     *
+     * <p>認可根治戦役 Wave3-B3 BOLA 是正: {@code actionId} は URL パスから直接指定される ID であり、
+     * 従来は所有者検証なしに任意の {@code actionId}/{@code reportId} を指定して再レビューを
+     * 作成できてしまっていた（他ユーザーの WARNING に対して再レビューを起票できる IDOR）。
+     * {@link UserViolationService#selfCorrect} と同一の慣例（{@code user_violations.action_id} で
+     * 対象ユーザーを解決し、呼び出し元と不一致なら存在秘匿のため 404 を返す）に揃える。
+     * {@code reportId} も violation 由来の値と一致することを検証し、無関係な reportId を
+     * 紐付けさせない（defense-in-depth）。</p>
      *
      * @param userId   ユーザーID
      * @param actionId アクションID
@@ -37,6 +56,12 @@ public class WarningReReviewService {
      */
     @Transactional
     public WarningReReviewResponse createReReview(Long userId, Long actionId, Long reportId, String reason) {
+        UserViolationEntity violation = userViolationRepository.findByActionId(actionId);
+        if (violation == null || !violation.getUserId().equals(userId)
+                || !violation.getReportId().equals(reportId)) {
+            throw new BusinessException(ModerationExtErrorCode.VIOLATION_NOT_FOUND);
+        }
+
         if (reReviewRepository.existsByUserIdAndActionId(userId, actionId)) {
             throw new BusinessException(ModerationExtErrorCode.RE_REVIEW_ALREADY_EXISTS);
         }

@@ -5,6 +5,8 @@ import type {
   JobPostingSummaryResponse,
 } from '~/types/jobmatching'
 
+definePageMeta({ layout: 'team' })
+
 /**
  * F13.1 チーム配下求人一覧（Requester 視点）。
  *
@@ -30,6 +32,8 @@ const jobs = ref<JobPostingSummaryResponse[]>([])
 const meta = ref<JobPagedMeta>({ total: 0, page: 0, size: PAGE_SIZE, totalPages: 0 })
 const loading = ref(false)
 const currentPage = ref(0)
+/** 取得失敗は「求人なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 const statusOptions = computed(() => [
   { label: t('jobmatching.filter.all'), value: 'ALL' as StatusFilter },
@@ -41,6 +45,7 @@ const statusOptions = computed(() => [
 
 async function load(page = 0) {
   loading.value = true
+  loadFailed.value = false
   currentPage.value = page
   try {
     const res = await api.searchJobs({
@@ -56,10 +61,15 @@ async function load(page = 0) {
     error(t('jobmatching.error.loadFailed'), String(e))
     jobs.value = []
     meta.value = { total: 0, page: 0, size: PAGE_SIZE, totalPages: 0 }
+    loadFailed.value = true
   }
   finally {
     loading.value = false
   }
+}
+
+function retryLoad() {
+  load(currentPage.value)
 }
 
 function onFilterChange() {
@@ -86,16 +96,15 @@ onMounted(() => {
 
 <template>
   <div class="container mx-auto max-w-4xl p-4">
-    <div class="mb-4 flex items-center justify-between gap-3">
-      <h1 class="text-2xl font-bold">
-        {{ t('jobmatching.list.teamTitle') }}
-      </h1>
-      <Button
-        :label="t('jobmatching.list.createButton')"
-        icon="pi pi-plus"
-        @click="goToNew"
-      />
-    </div>
+    <PageHeader :title="t('jobmatching.list.teamTitle')">
+      <template #actions>
+        <Button
+          :label="t('jobmatching.list.createButton')"
+          icon="pi pi-plus"
+          @click="goToNew"
+        />
+      </template>
+    </PageHeader>
 
     <!-- ステータスフィルタ -->
     <div class="mb-4">
@@ -116,6 +125,13 @@ onMounted(() => {
     >
       <LoadingBounce />
     </div>
+
+    <!-- 取得失敗: 空状態とは別に描き分ける -->
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="team-jobs-list-error-state"
+      @retry="retryLoad"
+    />
 
     <!-- 空 -->
     <div

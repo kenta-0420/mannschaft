@@ -15,6 +15,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -58,26 +59,146 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
 
     /** PUBLIC / OPEN の親札をエンティティ経由で永続化し ID を返す。 */
     private Long persistPublicListing(String title) {
+        return persistOpenListing(title, RecruitmentScopeType.TEAM, 1L, LocalDateTime.now().plusDays(5));
+    }
+
+    private Long persistOpenListing(
+            String title, RecruitmentScopeType scopeType, Long scopeId, LocalDateTime autoCancelAt) {
+        return persistListing(title, scopeType, scopeId, CREATED_BY, CATEGORY_ID,
+                RecruitmentListingStatus.OPEN, RecruitmentVisibility.PUBLIC, autoCancelAt);
+    }
+
+    private Long persistListing(
+            String title,
+            RecruitmentScopeType scopeType,
+            Long scopeId,
+            Long createdBy,
+            Long categoryId,
+            RecruitmentListingStatus status,
+            RecruitmentVisibility visibility,
+            LocalDateTime autoCancelAt) {
         LocalDateTime now = LocalDateTime.now();
         RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
-                .scopeType(RecruitmentScopeType.TEAM)
-                .scopeId(1L)
-                .categoryId(CATEGORY_ID)
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .categoryId(categoryId)
                 .title(title)
                 .participationType(RecruitmentParticipationType.INDIVIDUAL)
                 .startAt(now.plusDays(7))
                 .endAt(now.plusDays(7).plusHours(2))
                 .applicationDeadline(now.plusDays(5))
-                .autoCancelAt(now.plusDays(5))
+                .autoCancelAt(autoCancelAt)
                 .capacity(10)
                 .minCapacity(1)
-                .visibility(RecruitmentVisibility.PUBLIC)
-                .status(RecruitmentListingStatus.OPEN)
-                .createdBy(CREATED_BY)
+                .visibility(visibility)
+                .status(status)
+                .createdBy(createdBy)
                 .build();
         em.persist(listing);
         em.flush();
         return listing.getId();
+    }
+
+    private void setApplicationDeadline(Long listingId, LocalDateTime deadline) {
+        em.createQuery("""
+                UPDATE RecruitmentListingEntity l
+                SET l.applicationDeadline = :deadline
+                WHERE l.id = :listingId
+                """)
+                .setParameter("deadline", deadline)
+                .setParameter("listingId", listingId)
+                .executeUpdate();
+    }
+
+    @Test
+    @DisplayName("個人市履歴は本人PERSONAL札だけを地域・カテゴリ・状態で絞り込む")
+    void findPersonalMarketListings_filtersOwnerScopeRegionCategoryAndStatus() {
+        Long ownerId = 42L;
+        LocalDateTime later = LocalDateTime.now().plusDays(5);
+        Long expected = persistListing("personal-target", RecruitmentScopeType.PERSONAL, ownerId,
+                ownerId, CATEGORY_ID, RecruitmentListingStatus.DRAFT, RecruitmentVisibility.SCOPE_ONLY, later);
+        Long foreignOwner = persistListing("personal-foreign", RecruitmentScopeType.PERSONAL, 43L,
+                43L, CATEGORY_ID, RecruitmentListingStatus.DRAFT, RecruitmentVisibility.SCOPE_ONLY, later);
+        Long collidingTeam = persistListing("team-collision", RecruitmentScopeType.TEAM, ownerId,
+                ownerId, CATEGORY_ID, RecruitmentListingStatus.DRAFT, RecruitmentVisibility.SCOPE_ONLY, later);
+        Long wrongCategory = persistListing("personal-category", RecruitmentScopeType.PERSONAL, ownerId,
+                ownerId, 2L, RecruitmentListingStatus.DRAFT, RecruitmentVisibility.SCOPE_ONLY, later);
+        Long cancelled = persistListing("personal-cancelled", RecruitmentScopeType.PERSONAL, ownerId,
+                ownerId, CATEGORY_ID, RecruitmentListingStatus.CANCELLED, RecruitmentVisibility.SCOPE_ONLY, later);
+        addRegion(expected, "13", "13113");
+        addRegion(foreignOwner, "13", "13113");
+        addRegion(collidingTeam, "13", "13113");
+        addRegion(wrongCategory, "13", "13113");
+        addRegion(cancelled, "13", "13113");
+        em.flush();
+        em.clear();
+
+        Page<RecruitmentListingEntity> result = listingRepository.findPersonalMarketListings(
+                ownerId, RecruitmentListingStatus.DRAFT, "13", "13113", CATEGORY_ID,
+                PageRequest.of(0, 20));
+
+        assertThat(result.getContent()).extracting(RecruitmentListingEntity::getId)
+                .containsExactly(expected);
+    }
+
+    @Test
+    @DisplayName("個人市履歴は複数地域でも重複せずページ総件数を保つ")
+    void findPersonalMarketListings_multipleRegionsKeepsPagingTotal() {
+        Long ownerId = 52L;
+        LocalDateTime later = LocalDateTime.now().plusDays(5);
+        Long first = persistListing("personal-first", RecruitmentScopeType.PERSONAL, ownerId,
+                ownerId, CATEGORY_ID, RecruitmentListingStatus.DRAFT, RecruitmentVisibility.SCOPE_ONLY, later);
+        Long second = persistListing("personal-second", RecruitmentScopeType.PERSONAL, ownerId,
+                ownerId, CATEGORY_ID, RecruitmentListingStatus.DRAFT, RecruitmentVisibility.SCOPE_ONLY, later);
+        addRegion(first, "13", "13101");
+        addRegion(first, "13", "13102");
+        addRegion(second, "13", "13103");
+        em.flush();
+        em.clear();
+
+        Page<RecruitmentListingEntity> result = listingRepository.findPersonalMarketListings(
+                ownerId, RecruitmentListingStatus.DRAFT, "13", null, CATEGORY_ID,
+                PageRequest.of(0, 1));
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("フォロー市feedは同じ数値scopeIdのPERSONAL札を混入させない")
+    void findOpenByScopeIds_excludesPersonalWithCollidingScopeId() {
+        Long collidingScopeId = 987654L;
+        Long teamId = persistOpenListing(
+                "feed-team", RecruitmentScopeType.TEAM, collidingScopeId, LocalDateTime.now().plusDays(5));
+        Long personalId = persistOpenListing(
+                "feed-personal", RecruitmentScopeType.PERSONAL, collidingScopeId, LocalDateTime.now().plusDays(5));
+        em.flush();
+        em.clear();
+
+        List<RecruitmentListingEntity> results = listingRepository.findOpenByScopeIds(
+                List.of(collidingScopeId), PageRequest.of(0, 20));
+
+        assertThat(results).extracting(RecruitmentListingEntity::getId)
+                .contains(teamId)
+                .doesNotContain(personalId);
+    }
+
+    @Test
+    @DisplayName("自動取消候補は期限超過したPERSONAL札も抽出する")
+    void findAutoCancelTargets_includesPersonal() {
+        LocalDateTime now = LocalDateTime.now();
+        Long teamId = persistOpenListing(
+                "auto-cancel-team", RecruitmentScopeType.TEAM, 123456L, now.minusMinutes(1));
+        Long personalId = persistOpenListing(
+                "auto-cancel-personal", RecruitmentScopeType.PERSONAL, 654321L, now.minusMinutes(1));
+        em.flush();
+        em.clear();
+
+        List<RecruitmentListingEntity> results = listingRepository.findAutoCancelTargets(now);
+
+        assertThat(results).extracting(RecruitmentListingEntity::getId)
+                .contains(teamId, personalId);
     }
 
     private void addRegion(Long listingId, String pref, String city) {
@@ -181,16 +302,82 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
     }
 
     @Test
-    @DisplayName("includeRegionNone=true: 地域行を持たない札も含む / false では含まない")
-    void includeRegionNone_togglesNoRegionListings() {
+    @DisplayName("都道府県検索はincludeRegionNone=trueで地域なしを含み、falseで除外する")
+    void prefectureFilter_includeRegionNoneTogglesNoRegionListings() {
         Long noRegionId = persistPublicListing("no-region-listing");
-        // 地域行を一切作らない。
+        Long tokyoId = persistPublicListing("tokyo-listing");
+        addRegion(tokyoId, "13", "13101");
         em.flush();
         em.clear();
 
         Page<RecruitmentListingEntity> included = listingRepository.searchMarketListings(
-                null, null, null, null, true, PageRequest.of(0, 50));
-        assertThat(included.getContent()).extracting(RecruitmentListingEntity::getId).contains(noRegionId);
+                "13", null, null, null, true, PageRequest.of(0, 50));
+        Page<RecruitmentListingEntity> excluded = listingRepository.searchMarketListings(
+                "13", null, null, null, false, PageRequest.of(0, 50));
+
+        assertThat(included.getContent()).extracting(RecruitmentListingEntity::getId)
+                .contains(tokyoId, noRegionId);
+        assertThat(excluded.getContent()).extracting(RecruitmentListingEntity::getId)
+                .contains(tokyoId)
+                .doesNotContain(noRegionId);
+    }
+
+    @Test
+    @DisplayName("Pageableの締切順を匿名・認証済みの両市検索へ適用する")
+    void pageableDeadlineSort_appliesToPublicAndAccessibleSearches() {
+        Long nearId = persistPublicListing("deadline-near");
+        Long farId = persistPublicListing("deadline-far");
+        LocalDateTime base = LocalDateTime.now();
+        setApplicationDeadline(nearId, base.plusDays(1));
+        setApplicationDeadline(farId, base.plusDays(10));
+        em.flush();
+        em.clear();
+
+        PageRequest deadlineDesc = PageRequest.of(0, 50, Sort.by(
+                Sort.Order.desc("applicationDeadline"), Sort.Order.asc("id")));
+        Page<RecruitmentListingEntity> publicResult = listingRepository.searchMarketListings(
+                null, null, null, null, true, deadlineDesc);
+        Page<RecruitmentListingEntity> accessibleResult =
+                listingRepository.searchAccessibleMarketListings(
+                        List.of(-1L), null, null, null, null, true, deadlineDesc);
+
+        assertThat(publicResult.getContent()).extracting(RecruitmentListingEntity::getId)
+                .containsSubsequence(farId, nearId);
+        assertThat(accessibleResult.getContent()).extracting(RecruitmentListingEntity::getId)
+                .containsSubsequence(farId, nearId);
+    }
+
+    @Test
+    @DisplayName("匿名・認証済みの公開市は ownerType でチームと組織の札を分離する")
+    void ownerTypeFilter_separatesTeamAndOrganizationListings() {
+        Long teamId = persistOpenListing(
+                "owner-team", RecruitmentScopeType.TEAM, 7001L, LocalDateTime.now().plusDays(5));
+        Long organizationId = persistOpenListing(
+                "owner-organization", RecruitmentScopeType.ORGANIZATION, 8001L,
+                LocalDateTime.now().plusDays(5));
+        em.flush();
+        em.clear();
+
+        Page<RecruitmentListingEntity> teams = listingRepository.searchMarketListings(
+                null, null, null, RecruitmentScopeType.TEAM, null, true,
+                PageRequest.of(0, 50));
+        Page<RecruitmentListingEntity> organizations = listingRepository.searchMarketListings(
+                null, null, null, RecruitmentScopeType.ORGANIZATION, null, true,
+                PageRequest.of(0, 50));
+        Page<RecruitmentListingEntity> authenticatedTeams =
+                listingRepository.searchAccessibleMarketListings(
+                        List.of(-1L), null, null, null, RecruitmentScopeType.TEAM,
+                        null, true, PageRequest.of(0, 50));
+
+        assertThat(teams.getContent()).extracting(RecruitmentListingEntity::getId)
+                .contains(teamId)
+                .doesNotContain(organizationId);
+        assertThat(organizations.getContent()).extracting(RecruitmentListingEntity::getId)
+                .contains(organizationId)
+                .doesNotContain(teamId);
+        assertThat(authenticatedTeams.getContent()).extracting(RecruitmentListingEntity::getId)
+                .contains(teamId)
+                .doesNotContain(organizationId);
     }
 
     @Test

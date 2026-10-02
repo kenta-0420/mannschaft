@@ -9,13 +9,13 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -28,8 +28,6 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
 public class ResidentRegistryEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -75,7 +73,6 @@ public class ResidentRegistryEntity extends BaseEntity {
     private String firstNameHash;
 
     @Column(nullable = false)
-    @Builder.Default
     private Integer encryptionKeyVersion = 1;
 
     @Column(nullable = false)
@@ -86,11 +83,9 @@ public class ResidentRegistryEntity extends BaseEntity {
     private BigDecimal ownershipRatio;
 
     @Column(nullable = false)
-    @Builder.Default
     private Boolean isPrimary = false;
 
     @Column(nullable = false)
-    @Builder.Default
     private Boolean isVerified = false;
 
     private Long verifiedBy;
@@ -108,7 +103,6 @@ public class ResidentRegistryEntity extends BaseEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    @Builder.Default
     private DeathStatus deathStatus = DeathStatus.ALIVE;
 
     /** 死亡状態の最終変更日時。 */
@@ -130,7 +124,6 @@ public class ResidentRegistryEntity extends BaseEntity {
     /** 居住実態区分。デフォルト UNKNOWN。 */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    @Builder.Default
     private OccupancyStatus occupancyStatus = OccupancyStatus.UNKNOWN;
 
     /** 直近の年次居住実態更新日時（annual_review_responses からの派生キャッシュ）。 */
@@ -141,11 +134,53 @@ public class ResidentRegistryEntity extends BaseEntity {
 
     /** セカンドハウス・別荘扱いフラグ（通常の見守り対象から除外）。 */
     @Column(nullable = false)
-    @Builder.Default
     private Boolean isSecondaryHome = false;
 
     /** 推定年齢（0〜200、自己申告ベース）。 */
     private Integer ageEstimated;
+
+    // ─── F14.3 住民ライフイベント（逝去・転出）アーカイブ（V224 で追加）────────
+    /**
+     * 転出を記録／取り消した実行者の user_id（クロスドメイン弱参照・FKなし）。
+     * death_status_changed_by と対称（§5.2.0.1）。
+     */
+    private Long moveOutChangedBy;
+
+    /**
+     * 転出の記録操作が行われた日時（起きた瞬間）。move_out_date（業務上の転出日）とは別の事実。
+     *
+     * <p>docs/architecture/datetime_policy_utc_instant_vs_wallclock.md の方針により
+     * {@code Instant} を用いる（{@code LocalDateTime} は新規追加禁止）。DB は {@code DATETIME}（UTC格納）。</p>
+     */
+    @Column(columnDefinition = "DATETIME(3)")
+    private Instant moveOutChangedAt;
+
+    /** 新規登録の入力だけを受け取り、監査情報・派生状態を builder に公開しない。 */
+    @Builder
+    private ResidentRegistryEntity(Long dwellingUnitId, Long userId, String residentType,
+                                   String lastName, String firstName,
+                                   String lastNameKana, String firstNameKana,
+                                   String phone, String email, String emergencyContact,
+                                   String lastNameHash, String firstNameHash,
+                                   LocalDate moveInDate, BigDecimal ownershipRatio,
+                                   Boolean isPrimary, String notes) {
+        this.dwellingUnitId = dwellingUnitId;
+        this.userId = userId;
+        this.residentType = residentType;
+        this.lastName = lastName;
+        this.firstName = firstName;
+        this.lastNameKana = lastNameKana;
+        this.firstNameKana = firstNameKana;
+        this.phone = phone;
+        this.email = email;
+        this.emergencyContact = emergencyContact;
+        this.lastNameHash = lastNameHash;
+        this.firstNameHash = firstNameHash;
+        this.moveInDate = moveInDate;
+        this.ownershipRatio = ownershipRatio;
+        this.isPrimary = isPrimary != null ? isPrimary : false;
+        this.notes = notes;
+    }
 
     /**
      * 死亡状態を更新する（F09.15）。

@@ -6,7 +6,9 @@ import com.mannschaft.app.event.dto.RollCallCandidateResponse;
 import com.mannschaft.app.event.dto.RollCallEntryRequest;
 import com.mannschaft.app.event.dto.RollCallSessionRequest;
 import com.mannschaft.app.event.dto.RollCallSessionResponse;
+import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.service.EventRollCallService;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +29,11 @@ import java.util.List;
  *
  * <p>スマホを持たない子供・高齢者向けに、チームの ADMIN/STAFF が点呼形式で
  * 参加予定者の出欠を一括記録し、ケア対象者の保護者へ自動通知する。</p>
+ *
+ * <p><b>認可（認可根治 Wave3-B12event）:</b> 全 EP に認可が一切敷設されておらず、Javadoc で
+ * 謳われている「権限: ADMIN/STAFF」が実装されていなかった（参加予定者の氏名・ケア対象フラグ・
+ * 見守り者数を含む個人情報が非メンバーにも閲覧・改竄可能だった）。DEPUTY_ADMIN を STAFF 相当として
+ * 扱う既存基盤 {@link EventScopeAccessGuard#requireScopeAdmin} で全 EP を ADMIN/DEPUTY_ADMIN に限定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/events/{eventId}/roll-call")
@@ -35,6 +42,7 @@ import java.util.List;
 public class EventRollCallController {
 
     private final EventRollCallService rollCallService;
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
      * 点呼候補者一覧を取得する。
@@ -54,6 +62,7 @@ public class EventRollCallController {
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
         Long operatorUserId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireScopeAdmin(operatorUserId, EventScopeType.TEAM, teamId, eventId);
         List<RollCallCandidateResponse> candidates =
                 rollCallService.getRollCallCandidates(eventId, teamId, operatorUserId);
         return ResponseEntity.ok(ApiResponse.of(candidates));
@@ -80,6 +89,7 @@ public class EventRollCallController {
             @PathVariable Long eventId,
             @Valid @RequestBody RollCallSessionRequest request) {
         Long operatorUserId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireScopeAdmin(operatorUserId, EventScopeType.TEAM, teamId, eventId);
         RollCallSessionResponse response =
                 rollCallService.submitRollCall(eventId, teamId, operatorUserId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -99,6 +109,8 @@ public class EventRollCallController {
     public ResponseEntity<ApiResponse<List<String>>> getSessions(
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeAdmin(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         List<String> sessions = rollCallService.getRollCallSessions(eventId);
         return ResponseEntity.ok(ApiResponse.of(sessions));
     }
@@ -124,6 +136,7 @@ public class EventRollCallController {
             @PathVariable Long userId,
             @Valid @RequestBody RollCallEntryRequest entry) {
         Long operatorUserId = SecurityUtils.getCurrentUserId();
+        eventScopeAccessGuard.requireScopeAdmin(operatorUserId, EventScopeType.TEAM, teamId, eventId);
         rollCallService.patchRollCallEntry(eventId, userId, entry, operatorUserId);
         return ResponseEntity.noContent().build();
     }

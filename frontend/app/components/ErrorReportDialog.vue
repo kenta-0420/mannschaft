@@ -1,5 +1,6 @@
 <script setup lang="ts">
-const { state, submitComment, close } = useErrorReport()
+const { state, submitComment, close, expand, minimize } = useErrorReport()
+const { t } = useI18n()
 
 const comment = ref('')
 const commentSubmitting = ref(false)
@@ -31,10 +32,35 @@ watch(
 
 <template>
   <Teleport to="body">
+    <!--
+      CMP-260920-1042: 自動展開したパネルが下部の操作ボタン（例: 「回覧作成」）を覆い、
+      クリックを物理的に塞いでいた。対策として、
+      1) エラー発生時は自動展開せず、まず小さいバッジのみを出す（利用者がクリックしたときだけ展開）
+      2) 展開パネルも操作ボタンが集中しがちな画面右下（クイックメモ／各種FABの定位置）を避け、
+         右上（ヘッダー直下）に配置する
+      の二段構えで、操作要素を覆わないようにしている。エラー報告機能自体（自動送信・追加コメント）は維持。
+    -->
+    <Transition name="error-report-badge">
+      <button
+        v-if="state.visible && !state.expanded"
+        type="button"
+        class="fixed top-20 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-surface-300 bg-surface-0 shadow-lg dark:border-surface-600 dark:bg-surface-800"
+        :aria-label="t('error_report.widget.badge_aria_label')"
+        :title="t('error_report.widget.badge_tooltip')"
+        @click="expand"
+      >
+        <i class="pi pi-shield text-primary" />
+        <span
+          v-if="!state.submitted || state.submitting"
+          class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500"
+        />
+      </button>
+    </Transition>
+
     <Transition name="error-report">
       <div
-        v-if="state.visible"
-        class="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-surface-300 bg-surface-0 shadow-xl dark:border-surface-600 dark:bg-surface-800"
+        v-if="state.visible && state.expanded"
+        class="fixed top-20 right-4 z-50 w-80 rounded-xl border border-surface-300 bg-surface-0 shadow-xl dark:border-surface-600 dark:bg-surface-800"
       >
         <!-- Header -->
         <div
@@ -44,7 +70,10 @@ watch(
             <i class="pi pi-shield text-primary" />
             <span class="text-sm font-semibold">エラー報告</span>
           </div>
-          <Button icon="pi pi-times" text rounded size="small" class="-mr-1" @click="close" />
+          <div class="flex items-center gap-0.5">
+            <Button icon="pi pi-minus" text rounded size="small" @click="minimize" />
+            <Button icon="pi pi-times" text rounded size="small" class="-mr-1" @click="close" />
+          </div>
         </div>
 
         <!-- Body -->
@@ -109,6 +138,18 @@ watch(
 </template>
 
 <style scoped>
+.error-report-badge-enter-active,
+.error-report-badge-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.error-report-badge-enter-from,
+.error-report-badge-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
 .error-report-enter-active,
 .error-report-leave-active {
   transition:

@@ -12,6 +12,7 @@ import com.mannschaft.app.recruitment.dto.CancelMyApplicationRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
@@ -23,12 +24,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -65,6 +68,9 @@ class RecruitmentParticipantServicePhase3Test {
     @Mock
     private RecruitmentMapper mapper;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private RecruitmentParticipantService service;
 
@@ -81,15 +87,15 @@ class RecruitmentParticipantServicePhase3Test {
     class WaitlistPromotion {
 
         @Test
-        @DisplayName("CONFIRMED がキャンセル → waitlisted 1件を昇格する")
+        @DisplayName("有料募集で CONFIRMED がキャンセル → waitlisted 1件を昇格して与信を起票する")
         void cancelMyApplication_confirmedWithWaitlisted_promotesFirst() throws Exception {
             // given
             CancelMyApplicationRequest request = new CancelMyApplicationRequest(true, null);
 
             // キャンセル対象の listing (空きが出るように confirmed=1, capacity=10)
-            RecruitmentListingEntity listing = buildOpenListing(10, 1, 1);
+            RecruitmentListingEntity listing = buildPaidOpenListing(10, 1, 1);
             // キャンセル後の再ロード用 listing (confirmed が 0 になり空きあり)
-            RecruitmentListingEntity reloadedForPromotion = buildOpenListing(10, 0, 1);
+            RecruitmentListingEntity reloadedForPromotion = buildPaidOpenListing(10, 0, 1);
 
             // キャンセル対象の CONFIRMED 参加者
             RecruitmentParticipantEntity confirmed = buildParticipant(USER_ID, RecruitmentParticipantStatus.CONFIRMED);
@@ -98,11 +104,11 @@ class RecruitmentParticipantServicePhase3Test {
             setField(waitlisted, "waitlistPosition", 1);
 
             // findByIdForUpdate の連続呼び出しをシミュレート
-            // 1回目: キャンセル処理用, 2回目: waitlist decrementWaitlist 用, 3回目: promotion 用
+            // 1回目: キャンセル処理用, 2回目: promotion 用
+            // キャンセル対象は CONFIRMED なので waitlist decrement 用の再取得は発生しない。
             given(listingRepository.findByIdForUpdate(LISTING_ID))
                     .willReturn(Optional.of(listing))       // 1回目（最初のロック）
-                    .willReturn(Optional.of(listing))       // 2回目（waitlist decrementWaitlist は wasWaitlisted=false なので呼ばれない）
-                    .willReturn(Optional.of(reloadedForPromotion)); // 3回目（昇格チェック用）
+                    .willReturn(Optional.of(reloadedForPromotion)); // 2回目（昇格チェック用）
 
             given(participantRepository.findActiveByListingAndUser(LISTING_ID, USER_ID))
                     .willReturn(Optional.of(confirmed));
@@ -127,6 +133,20 @@ class RecruitmentParticipantServicePhase3Test {
             // then: findFirstWaitlistedForUpdate が呼ばれ、waitlisted 参加者が save された
             verify(participantRepository).findFirstWaitlistedForUpdate(LISTING_ID);
             verify(participantRepository).save(waitlisted);
+            verify(eventPublisher).publishEvent(argThat((Object event) -> {
+                if (!(event instanceof RecruitmentParticipantConfirmedEvent confirmedEvent)) {
+                    return false;
+                }
+                return LISTING_ID.equals(confirmedEvent.listingId())
+                        && Long.valueOf(WAITLIST_USER_ID * 100L).equals(confirmedEvent.participantId())
+                        && WAITLIST_USER_ID.equals(confirmedEvent.payerUserId())
+                        && "TEAM".equals(confirmedEvent.listingScopeType())
+                        && Long.valueOf(10L).equals(confirmedEvent.listingScopeId())
+                        && "TEAM".equals(confirmedEvent.payeeKind())
+                        && confirmedEvent.payeeUserId() == null
+                        && confirmedEvent.faceAmount() == 2000L
+                        && reloadedForPromotion.getStartAt().equals(confirmedEvent.serviceDate());
+            }));
         }
 
         @Test
@@ -232,6 +252,15 @@ class RecruitmentParticipantServicePhase3Test {
         setField(listing, "id", LISTING_ID);
         setField(listing, "status", RecruitmentListingStatus.OPEN);
         setField(listing, "confirmedCount", confirmedCount);
+        return listing;
+    }
+
+    private RecruitmentListingEntity buildPaidOpenListing(
+            int capacity, int confirmedCount, int minCapacity) throws Exception {
+        RecruitmentListingEntity listing = buildOpenListing(capacity, confirmedCount, minCapacity);
+        setField(listing, "paymentEnabled", true);
+        setField(listing, "price", 2000);
+        setField(listing, "payeeKind", "TEAM");
         return listing;
     }
 

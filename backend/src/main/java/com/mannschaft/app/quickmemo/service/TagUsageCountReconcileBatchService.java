@@ -2,6 +2,8 @@ package com.mannschaft.app.quickmemo.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.quickmemo.entity.TagEntity;
 import com.mannschaft.app.quickmemo.repository.QuickMemoTagLinkRepository;
 import com.mannschaft.app.quickmemo.repository.TagRepository;
@@ -10,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,8 +37,13 @@ public class TagUsageCountReconcileBatchService {
     private final TodoTagLinkRepository todoTagLinkRepository;
     private final AuditLogService auditLogService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。タグ usage_count の不整合検出と修正であり、再開後に同じ差分を検出し直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "quickmemo-tag-usage-reconcile-daily", description = "タグ usage_count と実リンク数の不整合を毎日 03:30 に検出・修正する")
     @Scheduled(cron = "0 30 3 * * *")
+    // 起動間隔は日次 03:30。全タグの usage_count と実リンク数を突き合わせるためタグ数に比例する。
+    // 余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "quickmemoTagUsageReconcileDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional
     public void execute() {
         log.info("タグ整合性バッチ開始");

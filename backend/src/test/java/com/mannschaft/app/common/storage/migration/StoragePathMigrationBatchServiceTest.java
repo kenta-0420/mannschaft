@@ -20,12 +20,14 @@ import com.mannschaft.app.schedule.repository.ScheduleMediaUploadRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.timetable.notes.entity.TimetableSlotUserNoteAttachmentEntity;
 import com.mannschaft.app.timetable.notes.repository.TimetableSlotUserNoteAttachmentRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.springframework.beans.factory.ObjectProvider;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -39,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
@@ -63,8 +66,19 @@ class StoragePathMigrationBatchServiceTest {
     @Mock private ScheduleRepository scheduleRepository;
     @Mock private TimetableSlotUserNoteAttachmentRepository timetableNoteAttachmentRepository;
 
+    /**
+     * 自己プロキシ（CMP-260912-1524）。ユニットテストではプロキシが存在しないため、
+     * {@code getObject()} が実体そのものを返すよう差し込む。
+     */
+    @Mock private ObjectProvider<StoragePathMigrationBatchService> selfProvider;
+
     @InjectMocks
     private StoragePathMigrationBatchService service;
+
+    @BeforeEach
+    void setUpSelfProxy() {
+        lenient().when(selfProvider.getObject()).thenReturn(service);
+    }
 
     // ==================== isOldPath 判定テスト ====================
 
@@ -418,6 +432,77 @@ class StoragePathMigrationBatchServiceTest {
             // Then
             assertThat(migrated).isEqualTo(0L);
             verify(r2StorageService, never()).copyObject(any(), any());
+        }
+    }
+
+    // ==================== getStatus() ページング走査 ====================
+
+    @Nested
+    @DisplayName("getStatus — ページング走査（全件メモリ展開の是正）")
+    class GetStatusPagingTest {
+
+        private void stubOtherReposEmpty() {
+            given(sharedFileRepository.findAll(any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
+            given(circulationAttachmentRepository.findAll(any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
+            given(scheduleMediaUploadRepository.findAll(any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
+            given(timetableNoteAttachmentRepository.findAll(any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
+            given(errorRepository.countByResolvedAtIsNull()).willReturn(0L);
+        }
+
+        @Test
+        @DisplayName("境界: ページサイズ（500件）をまたぐ全件が集計される（取りこぼし検出）")
+        void 境界_ページサイズをまたぐ全件が集計される() {
+            stubOtherReposEmpty();
+
+            int pageSize = 500;
+            int total = pageSize + 1;
+            List<ChatMessageAttachmentEntity> firstPage = new java.util.ArrayList<>();
+            for (long id = 1; id <= pageSize; id++) {
+                firstPage.add(ChatMessageAttachmentEntity.builder()
+                        .messageId(id)
+                        .fileKey("chat/TEAM/1/" + id + "/file.png")
+                        .fileName("file.png")
+                        .fileSize(10L)
+                        .contentType("image/png")
+                        .build());
+            }
+            // 最終1件だけ旧パス（pending 判定対象）にする
+            ChatMessageAttachmentEntity last = ChatMessageAttachmentEntity.builder()
+                    .messageId((long) total)
+                    .fileKey("chat/" + total + "/file.png")
+                    .fileName("file.png")
+                    .fileSize(10L)
+                    .contentType("image/png")
+                    .build();
+
+            given(chatMessageAttachmentRepository.findAll(any(Pageable.class)))
+                    .willReturn(new PageImpl<>(firstPage, org.springframework.data.domain.PageRequest.of(0, pageSize), total))
+                    .willReturn(new PageImpl<>(List.of(last), org.springframework.data.domain.PageRequest.of(1, pageSize), total));
+
+            StorageMigrationStatus status = service.getStatus();
+
+            assertThat(status.totalByFeature().get("CHAT")).isEqualTo((long) total);
+            assertThat(status.pendingByFeature().get("CHAT")).isEqualTo(1L);
+            assertThat(status.migratedByFeature().get("CHAT")).isEqualTo((long) pageSize);
+            verify(chatMessageAttachmentRepository, times(2)).findAll(any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("安全弁: STATUS_MAX_PAGES に到達したら打ち切る")
+        void 安全弁_MAX_PAGES到達で打ち切り() {
+            stubOtherReposEmpty();
+
+            // 総件数を極端に大きく偽装して hasNext が尽きない状況を再現する（内容自体は空で軽量化）
+            given(chatMessageAttachmentRepository.findAll(any(Pageable.class)))
+                    .willAnswer(inv -> {
+                        Pageable pageable = inv.getArgument(0);
+                        return new PageImpl<>(List.<ChatMessageAttachmentEntity>of(), pageable, Long.MAX_VALUE);
+                    });
+
+            service.getStatus();
+
+            // STATUS_MAX_PAGES=2000 ページで打ち切られる
+            verify(chatMessageAttachmentRepository, times(2000)).findAll(any(Pageable.class));
         }
     }
 

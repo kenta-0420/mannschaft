@@ -2,6 +2,7 @@ package com.mannschaft.app.disclosure.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.DraftStatus;
@@ -38,6 +39,7 @@ class DisclosureFormDraftServiceTest {
     @Mock private DisclosureFormDraftRepository draftRepository;
     @Mock private DisclosureFormTemplateService templateService;
     @Mock private DisclosureAutoFillService autoFillService;
+    @Mock private AccessControlService accessControlService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -46,7 +48,7 @@ class DisclosureFormDraftServiceTest {
     @BeforeEach
     void setUp() {
         service = new DisclosureFormDraftService(
-                draftRepository, templateService, autoFillService, objectMapper);
+                draftRepository, templateService, autoFillService, objectMapper, accessControlService);
     }
 
     @Test

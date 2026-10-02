@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.contact.repository.ContactRequestBlockRepository;
 import com.mannschaft.app.contact.repository.ContactRequestRepository;
 import com.mannschaft.app.contact.service.ContactService;
@@ -34,6 +35,7 @@ public class UserBlockService {
     private final ContactRequestBlockRepository contactRequestBlockRepository;
     private final ContactService contactService;
     private final ChatChannelRepository chatChannelRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 指定ユーザーをブロックする。
@@ -130,7 +132,7 @@ public class UserBlockService {
                     return UserBlockResponse.builder()
                             .blockedId(block.getBlockedId())
                             .blockedFullName(user != null ? user.getLastName() + " " + user.getFirstName() : null)
-                            .blockedAvatarUrl(user != null ? user.getAvatarUrl() : null)
+                            .blockedAvatarUrl(user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null)
                             .createdAt(block.getCreatedAt())
                             .build();
                 })

@@ -1,5 +1,6 @@
 package com.mannschaft.app.performance;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.performance.dto.BulkRecordRequest;
 import com.mannschaft.app.performance.dto.RecordResponse;
@@ -11,6 +12,7 @@ import com.mannschaft.app.performance.repository.PerformanceRecordRepository;
 import com.mannschaft.app.performance.service.PerformanceMetricService;
 import com.mannschaft.app.performance.service.PerformanceRecordService;
 import com.mannschaft.app.performance.service.PerformanceSummaryService;
+import com.mannschaft.app.schedule.service.ScheduleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,6 +52,12 @@ class PerformanceRecordServiceAdditionalTest {
 
     @Mock
     private PerformanceMapper performanceMapper;
+
+    @Mock
+    private AccessControlService accessControlService;
+
+    @Mock
+    private ScheduleService scheduleService;
 
     @InjectMocks
     private PerformanceRecordService service;
@@ -117,7 +125,7 @@ class PerformanceRecordServiceAdditionalTest {
             given(performanceMapper.toRecordResponse(any(), any(), any())).willReturn(response);
 
             // When
-            RecordResponse result = service.updateRecord(TEAM_ID, 1L, request);
+            RecordResponse result = service.updateRecord(TEAM_ID, 1L, USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -148,7 +156,7 @@ class PerformanceRecordServiceAdditionalTest {
             given(performanceMapper.toRecordResponse(any(), any(), any())).willReturn(response);
 
             // When
-            RecordResponse result = service.updateRecord(TEAM_ID, 1L, request);
+            RecordResponse result = service.updateRecord(TEAM_ID, 1L, USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -164,7 +172,7 @@ class PerformanceRecordServiceAdditionalTest {
                     BigDecimal.valueOf(10), null, LocalDate.now());
 
             // When & Then
-            assertThatThrownBy(() -> service.updateRecord(TEAM_ID, 99L, request))
+            assertThatThrownBy(() -> service.updateRecord(TEAM_ID, 99L, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PERF_002"));
@@ -243,6 +251,7 @@ class PerformanceRecordServiceAdditionalTest {
                     USER_ID, METRIC_ID, BigDecimal.valueOf(15));
             ScheduleBulkRecordRequest request = new ScheduleBulkRecordRequest(null, List.of(entry));
 
+            given(scheduleService.existsByIdAndTeamId(scheduleId, TEAM_ID)).willReturn(true);
             given(metricService.getMetricEntity(TEAM_ID, METRIC_ID)).willReturn(metric);
             given(recordRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
@@ -275,7 +284,7 @@ class PerformanceRecordServiceAdditionalTest {
             given(metricService.getMetricEntity(TEAM_ID, METRIC_ID)).willReturn(metric);
 
             // When
-            service.deleteRecord(TEAM_ID, 1L);
+            service.deleteRecord(TEAM_ID, 1L, USER_ID);
 
             // Then
             verify(recordRepository).delete(entity);

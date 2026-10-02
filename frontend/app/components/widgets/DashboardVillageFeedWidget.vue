@@ -37,7 +37,6 @@ import type {
 
 const { t } = useI18n()
 const villageApi = useVillageApi()
-const config = useRuntimeConfig()
 const { captureQuiet } = useErrorReport()
 const { formatDateTime } = useDatetime()
 
@@ -63,20 +62,6 @@ const displayedFeed = computed<VillageFeedItemResponse[]>(() =>
 const isEmpty = computed(
   () => pinnedVillages.value.length === 0 && feed.value.length === 0,
 )
-
-// =============================================================================
-// R2 公開 URL 組立（村アイコン）— VillageHeader.vue と同様のロジック
-// =============================================================================
-const r2PublicBase = computed<string>(() => {
-  const url = config.public.r2PublicUrl as string | undefined
-  return url ? url.replace(/\/$/, '') : ''
-})
-
-function buildR2Url(r2Key: string | null): string | null {
-  if (!r2Key) return null
-  if (!r2PublicBase.value) return null
-  return `${r2PublicBase.value}/${r2Key}`
-}
 
 // =============================================================================
 // API 呼び出し
@@ -223,8 +208,8 @@ function pinnedInitials(name: string): string {
             >
               <div class="relative">
                 <img
-                  v-if="buildR2Url(village.iconR2Key)"
-                  :src="buildR2Url(village.iconR2Key) ?? undefined"
+                  v-if="village.iconUrl"
+                  :src="village.iconUrl"
                   :alt="village.name"
                   class="h-12 w-12 rounded-full object-cover"
                 >

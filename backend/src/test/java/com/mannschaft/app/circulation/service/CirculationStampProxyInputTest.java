@@ -1,5 +1,6 @@
 package com.mannschaft.app.circulation.service;
 
+import com.mannschaft.app.circulation.service.CirculationAccessGuard;
 import com.mannschaft.app.circulation.CirculationMapper;
 import com.mannschaft.app.circulation.RecipientStatus;
 import com.mannschaft.app.circulation.dto.RecipientResponse;
@@ -57,6 +58,10 @@ class CirculationStampProxyInputTest {
 
     @Mock
     private ProxyInputRecordRepository proxyInputRecordRepository;
+
+    /** 押印系の本人性判定ガード（本テストの関心外のため既定の no-op で通す）。 */
+    @Mock
+    private CirculationAccessGuard circulationAccessGuard;
 
     @InjectMocks
     private CirculationStampService circulationStampService;

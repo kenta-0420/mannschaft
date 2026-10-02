@@ -1,9 +1,9 @@
 package com.mannschaft.app.survey.controller;
 
-import com.mannschaft.app.bulletin.BulletinMapper;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.service.SurveyBulletinThreadService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class SurveyThreadController {
 
     private final SurveyBulletinThreadService surveyBulletinThreadService;
-    private final BulletinMapper bulletinMapper;
 
     /**
      * アンケートに紐付いた掲示板スレッドを取得する。
@@ -43,8 +42,9 @@ public class SurveyThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "スレッド未存在")
     public ResponseEntity<ApiResponse<ThreadResponse>> getSurveyThread(
             @PathVariable Long surveyId) {
-        return surveyBulletinThreadService.findBySurveyId(surveyId)
-                .map(thread -> ResponseEntity.ok(ApiResponse.of(bulletinMapper.toThreadResponse(thread))))
+        return surveyBulletinThreadService
+                .findThreadResponseBySurveyId(surveyId, SecurityUtils.getCurrentUserId())
+                .map(thread -> ResponseEntity.ok(ApiResponse.of(thread)))
                 .orElse(ResponseEntity.notFound().build());
     }
 }

@@ -48,12 +48,15 @@ const isAllowed = computed(() => authStore.isSystemAdmin)
 
 const banners = ref<IncidentBannerResponse[]>([])
 const loading = ref(false)
+/** 取得失敗は「バナーなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 const currentPage = ref(0)
 const pageSize = ref(20)
 const totalElements = ref(0)
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const res = await bannerApi.fetchList(currentPage.value, pageSize.value)
     banners.value = res.data ?? []
@@ -62,6 +65,7 @@ async function load() {
     console.error('incident-banners/index.vue: load failed', err)
     notification.error(t('incident_banner.load_failed'))
     banners.value = []
+    loadFailed.value = true
   } finally {
     loading.value = false
   }
@@ -360,6 +364,13 @@ function formatPeriod(banner: IncidentBannerResponse): string {
       <div v-if="loading" class="flex items-center justify-center py-12">
         <i class="pi pi-spin pi-spinner mr-2 text-2xl text-surface-400" aria-hidden="true" />
       </div>
+
+      <!-- 取得失敗: 空状態とは別に描き分ける -->
+      <DashboardErrorState
+        v-else-if="loadFailed"
+        testid="incident-banners-error-state"
+        @retry="load"
+      />
 
       <!-- バナー一覧テーブル -->
       <DataTable

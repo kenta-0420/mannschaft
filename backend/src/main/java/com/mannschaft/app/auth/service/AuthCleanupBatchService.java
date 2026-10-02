@@ -6,6 +6,8 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
 import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.util.SessionHashUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,8 @@ public class AuthCleanupBatchService {
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final AuditLogService auditLogService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。未認証アカウントの論理削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "auth-unverified-account-cleanup-daily", description = "登録後 7 日経過しても未認証のアカウントを毎日 03:00 に論理削除する")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "authCleanupBatch", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")

@@ -1,7 +1,9 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.schedule.AttendanceGenerationStatus;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
@@ -28,16 +30,21 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 個人スケジュールサービス。個人スコープのスケジュールCRUD・繰り返し展開・リマインダー管理を担当する。
@@ -54,8 +61,11 @@ public class PersonalScheduleService {
     /** 個人スケジュールの相対・絶対を合算したリマインダー上限件数（機能55 第二陣で 3→5 拡張）。 */
     private static final int MAX_TOTAL_PERSONAL_REMINDERS = CreatePersonalScheduleRequest.MAX_TOTAL_REMINDERS;
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
-    /** リマインダー保存時に OffsetDateTime を変換する先のタイムゾーン（JVM TZ と一致）。 */
-    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
+    /**
+     * リマインダー保存時に OffsetDateTime を変換する先のタイムゾーン（JVM TZ と一致）。
+     * サーバー保持形式の正準定義は {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を参照。
+     */
+    private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
     private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
@@ -65,6 +75,15 @@ public class PersonalScheduleService {
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
     private final NameResolverService nameResolverService;
+    private final ScheduleRecurrenceService recurrenceService;
+    private final ScheduleAccessGuard scheduleAccessGuard;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
+
+    /**
+     * レイヤー設定（色）の読み取り窓口（F03.19 §3.4.1 / R1）。個人予定一覧の色解決に使う。
+     */
+    private final CalendarLayerService calendarLayerService;
 
     /**
      * 個人スケジュールを作成する。ソフトリミット1000件を超過している場合はエラーとする。
@@ -97,7 +116,7 @@ public class PersonalScheduleService {
                 .startAt(startAtJst)
                 .endAt(endAtJst)
                 .allDay(req.getAllDay())
-                .eventType(EventType.valueOf(req.getEventTypeOrDefault()))
+                .eventType(EnumInputParser.parse(EventType.class, req.getEventTypeOrDefault(), "eventType"))
                 .color(req.getColor())
                 .visibility(ScheduleVisibility.MEMBERS_ONLY)
                 .minViewRole(MinViewRole.ADMIN_ONLY)
@@ -112,13 +131,20 @@ public class PersonalScheduleService {
 
         schedule = scheduleRepository.save(schedule);
 
-        // 繰り返しルールがある場合は ScheduleService の展開ロジックを経由
-        // （ScheduleService.expandRecurrenceSchedules はパッケージプライベートのため直接呼び出せない場合、
-        //   createSchedule を呼ぶか、展開ロジックをここで再実装する）
-        // 現時点では親スケジュールの recurrenceRule を保持し、子展開は ScheduleService に委譲
+        // 繰り返しルールがある場合は子スケジュールを展開
+        if (req.getRecurrenceRule() != null) {
+            recurrenceService.expandRecurrenceSchedules(schedule);
+        }
 
         List<Integer> savedReminders = saveReminders(
                 schedule.getId(), req.getReminders(), req.getAbsoluteReminders());
+
+        // 繰り返しの子スケジュールにも相対リマインダーを複製する（各回ごとに通知するため）。
+        // 絶対リマインダー（固定時刻）は複製しない（親のみ）。
+        if (req.getRecurrenceRule() != null
+                && req.getReminders() != null && !req.getReminders().isEmpty()) {
+            propagateRelativeRemindersToChildren(schedule.getId(), req.getReminders());
+        }
 
         // イベント発行
         eventPublisher.publishEvent(new ScheduleCreatedEvent(
@@ -175,9 +201,36 @@ public class PersonalScheduleService {
             schedules = schedules.subList(0, size);
         }
 
+        // F03.19 §3.4.1【R1】: 個人予定もレイヤー色体系に乗せる。
+        // レイヤー設定の読み取りは一覧あたり 1 回（件数に比例させない）。
+        Map<String, String> layerColors = calendarLayerService.findUserLayerColors(userId);
         return schedules.stream()
-                .map(s -> toPersonalScheduleResponse(s, Collections.emptyList()))
+                .map(s -> withResolvedColor(toPersonalScheduleResponse(s, Collections.emptyList()),
+                        s, layerColors))
                 .toList();
+    }
+
+    /**
+     * 個人予定一覧の応答に「解決済みの色」を載せる（F03.19 §3.4.1 / AC-08c）。
+     *
+     * <p>解決順は <b>レイヤー色（{@code PERSONAL:0}）&gt; 予定色 &gt; 自動色</b>。
+     * カテゴリは個人予定に紐づかないため 3 段。個人予定は {@code /my/calendar} からは
+     * FE が重複防止で除外しており、<b>色はこの一覧経路でしか届かない</b>。</p>
+     *
+     * <p>詳細・作成・更新の応答には適用しない — それらは編集フォームの初期値に使われるため、
+     * 解決色で上書きすると「レイヤー色をユーザーが予定色として保存してしまう」事故になる。</p>
+     */
+    private PersonalScheduleResponse withResolvedColor(PersonalScheduleResponse response,
+                                                       ScheduleEntity entity,
+                                                       Map<String, String> layerColors) {
+        CalendarColorResolver.Resolved resolved = CalendarColorResolver.resolve(
+                SCOPE_TYPE_PERSONAL, 0L, layerColors, entity.getColor(), null);
+        PersonalScheduleResponse.PersonalContentDto content = response.getContent();
+        return response.toBuilder()
+                .content(new PersonalScheduleResponse.PersonalContentDto(
+                        content.title(), content.description(), content.eventType(),
+                        resolved.color(), content.location(), resolved.source()))
+                .build();
     }
 
     /**
@@ -189,7 +242,7 @@ public class PersonalScheduleService {
      */
     public PersonalScheduleResponse getPersonalSchedule(Long scheduleId, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(scheduleId);
-        validateOwner(schedule, userId);
+        scheduleAccessGuard.requireScheduleOwner(schedule, userId);
         // 詳細 GET では相対・絶対 両方のリマインダーを露出する（足軽3 時点で詳細にリマインダーが
         // 一切載っていなかった不足の根治）。relative 分（分数）は後方互換の reminders にも反映する。
         return toPersonalScheduleResponse(schedule, loadReminders(scheduleId), loadDetailedReminders(scheduleId));
@@ -209,7 +262,7 @@ public class PersonalScheduleService {
                                                             UpdatePersonalScheduleRequest req,
                                                             Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(scheduleId);
-        validateOwner(schedule, userId);
+        scheduleAccessGuard.requireScheduleOwner(schedule, userId);
         validateScheduleNotCancelled(schedule);
 
         if (req.getStartAt() != null || req.getEndAt() != null) {
@@ -220,13 +273,21 @@ public class PersonalScheduleService {
 
         String updateScope = req.getUpdateScopeOrDefault();
 
-        if (schedule.isRecurring() || schedule.getParentScheduleId() != null) {
+        // save 前に繰り返し予定かどうかを記録（save 後は isRecurring() が変化しうる）
+        boolean wasRecurring = schedule.isRecurring() || schedule.getParentScheduleId() != null;
+
+        if (wasRecurring) {
             updateRecurringSchedule(schedule, req, updateScope);
         } else {
             applyUpdateToSchedule(schedule, req);
         }
 
         schedule = scheduleRepository.save(schedule);
+
+        // 非繰り返し予定に初めて繰り返しルールが設定された場合は子スケジュールを展開
+        if (req.getRecurrenceRule() != null && !wasRecurring) {
+            recurrenceService.expandRecurrenceSchedules(schedule);
+        }
 
         // 機能55 BE対応: 相対リマインダー（reminders）と絶対リマインダー（absoluteReminders）の更新
         // どちらかが非nullなら saveReminders で差し替え。両方 null なら既存を保持。
@@ -259,7 +320,7 @@ public class PersonalScheduleService {
     @Transactional
     public void deletePersonalSchedule(Long scheduleId, String updateScope, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(scheduleId);
-        validateOwner(schedule, userId);
+        scheduleAccessGuard.requireScheduleOwner(schedule, userId);
 
         String resolvedScope = updateScope != null ? updateScope : UPDATE_SCOPE_THIS_ONLY;
 
@@ -304,7 +365,7 @@ public class PersonalScheduleService {
 
         for (Long id : ids) {
             ScheduleEntity schedule = scheduleRepository.findById(id).orElse(null);
-            if (schedule == null || !userId.equals(schedule.getUserId())) {
+            if (!scheduleAccessGuard.isScheduleOwnedBy(schedule, userId)) {
                 skippedCount++;
                 continue;
             }
@@ -325,15 +386,6 @@ public class PersonalScheduleService {
     private ScheduleEntity findScheduleOrThrow(Long id) {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
-    }
-
-    /**
-     * スケジュールのオーナーチェックを行う。userId が一致しない場合は例外をスローする。
-     */
-    private void validateOwner(ScheduleEntity schedule, Long userId) {
-        if (!userId.equals(schedule.getUserId())) {
-            throw new BusinessException(ScheduleErrorCode.NOT_SCHEDULE_OWNER);
-        }
     }
 
     /**
@@ -468,8 +520,23 @@ public class PersonalScheduleService {
                 // save は呼び出し元（updatePersonalSchedule）に委ねる
             }
             case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
-                applyUpdateToSchedule(schedule, req);
-                updateFollowingSchedules(schedule, req);
+                ScheduleEntity originalSchedule = schedule.toBuilder().build();
+                List<ScheduleEntity> children = scheduleRepository
+                        .findByParentScheduleIdOrderByStartAtAsc(resolveParentScheduleId(schedule));
+                Duration shift = startShift(originalSchedule, req);
+                LocalDateTime editTime = LocalDateTime.now(wallClock);
+
+                if (!shift.isNegative() && !shift.isZero()) {
+                    // 親内の開始日時は一意である。後ろへ動かす場合は末尾から空ける。
+                    updateFollowingSchedules(originalSchedule, req, children, shift, editTime);
+                    applyUpdateToSchedule(schedule, req);
+                } else {
+                    applyUpdateToSchedule(schedule, req);
+                    if (!shift.isZero()) {
+                        scheduleRepository.flush();
+                    }
+                    updateFollowingSchedules(originalSchedule, req, children, shift, editTime);
+                }
             }
             case UPDATE_SCOPE_ALL -> {
                 Long parentId = schedule.getParentScheduleId() != null
@@ -492,17 +559,28 @@ public class PersonalScheduleService {
      * <p>startAt / endAt は OffsetDateTime → JST LocalDateTime に変換してから適用する。</p>
      */
     private void applyUpdateToSchedule(ScheduleEntity schedule, UpdatePersonalScheduleRequest req) {
-        EventType eventType = req.getEventType() != null ? EventType.valueOf(req.getEventType()) : null;
+        applyUpdateToSchedule(schedule, req, toJst(req.getStartAt()), toJst(req.getEndAt()));
+    }
+
+    /** 子予定へ同じ内容を適用する。日時は起点からの差分を渡す。 */
+    private void applyUpdateToSchedule(ScheduleEntity schedule, UpdatePersonalScheduleRequest req,
+                                       LocalDateTime startAt, LocalDateTime endAt) {
+        EventType eventType = req.getEventType() != null ? EnumInputParser.parse(EventType.class, req.getEventType(), "eventType") : null;
         schedule.applyPersonalScheduleUpdate(
                 req.getTitle(),
                 req.getDescription(),
                 req.getLocation(),
-                toJst(req.getStartAt()),
-                toJst(req.getEndAt()),
+                startAt,
+                endAt,
                 req.getAllDay(),
                 eventType,
                 req.getColor()
         );
+        // 個人予定の繰り返しルール更新（非 null のときのみ上書き）
+        // FE は recurrence=true のとき非 null オブジェクトを送信し、それ以外は省略する
+        if (req.getRecurrenceRule() != null) {
+            schedule.setRecurrenceRule(serializeRecurrenceRule(req.getRecurrenceRule()));
+        }
         // 個人スケジュール固定値は変更不可（無視）
         // save() は呼び出し元（updatePersonalSchedule / updateFollowingSchedules / updateAllChildSchedules）で実行する
     }
@@ -510,19 +588,62 @@ public class PersonalScheduleService {
     /**
      * 指定スケジュール以降の子スケジュールを更新する（例外は除く）。
      */
-    private void updateFollowingSchedules(ScheduleEntity schedule, UpdatePersonalScheduleRequest req) {
-        Long parentId = schedule.getParentScheduleId() != null
-                ? schedule.getParentScheduleId() : schedule.getId();
-        List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
-
+    private void updateFollowingSchedules(ScheduleEntity schedule, UpdatePersonalScheduleRequest req,
+                                          List<ScheduleEntity> children, Duration shift,
+                                          LocalDateTime editTime) {
+        Comparator<ScheduleEntity> order = Comparator.comparing(ScheduleEntity::getStartAt);
+        if (!shift.isNegative() && !shift.isZero()) {
+            order = order.reversed();
+        }
         children.stream()
                 .filter(child -> !child.getIsException())
                 .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
+                .filter(child -> !child.getId().equals(schedule.getId()))
+                .filter(child -> child.getEndAt() != null
+                        ? child.getEndAt().isAfter(editTime)
+                        : !child.getStartAt().isBefore(editTime))
+                .sorted(order)
                 .forEach(child -> {
-                    applyUpdateToSchedule(child, req);
+                    applyUpdateToSchedule(child, req,
+                            shiftedStartAt(schedule, child, req), shiftedEndAt(schedule, child, req));
                     scheduleRepository.save(child);
+                    if (!shift.isZero()) {
+                        scheduleRepository.flush();
+                    }
                 });
+    }
+
+    private Long resolveParentScheduleId(ScheduleEntity schedule) {
+        return schedule.getParentScheduleId() != null ? schedule.getParentScheduleId() : schedule.getId();
+    }
+
+    private Duration startShift(ScheduleEntity anchor, UpdatePersonalScheduleRequest req) {
+        return req.getStartAt() == null ? Duration.ZERO
+                : Duration.between(anchor.getStartAt(), toJst(req.getStartAt()));
+    }
+
+    private LocalDateTime shiftedStartAt(ScheduleEntity anchor, ScheduleEntity child,
+                                         UpdatePersonalScheduleRequest req) {
+        Duration shift = startShift(anchor, req);
+        return req.getStartAt() != null && !shift.isZero() ? child.getStartAt().plus(shift) : null;
+    }
+
+    private LocalDateTime shiftedEndAt(ScheduleEntity anchor, ScheduleEntity child,
+                                       UpdatePersonalScheduleRequest req) {
+        if (req.getEndAt() == null) {
+            return null;
+        }
+        LocalDateTime requestedEnd = toJst(req.getEndAt());
+        if (child.getEndAt() != null && anchor.getEndAt() != null) {
+            Duration shift = Duration.between(anchor.getEndAt(), requestedEnd);
+            return shift.isZero() ? null : child.getEndAt().plus(shift);
+        }
+        if (child.getEndAt() == null) {
+            LocalDateTime requestedStart = req.getStartAt() != null ? toJst(req.getStartAt()) : anchor.getStartAt();
+            return child.getStartAt().plus(startShift(anchor, req))
+                    .plus(Duration.between(requestedStart, requestedEnd));
+        }
+        return null;
     }
 
     /**
@@ -643,5 +764,28 @@ public class PersonalScheduleService {
                 .audit(new PersonalScheduleResponse.PersonalAuditDto(
                         entity.getCreatedAt(), entity.getUpdatedAt(), createdByDisplayName))
                 .build();
+    }
+
+    /**
+     * 繰り返しの子スケジュールへ相対リマインダーを複製する。
+     * 各子は自身の startAt を基準に「開始N分前」で通知されるため、各回ごとの通知が実現する。
+     * 絶対リマインダー（固定時刻）は複製対象外（親のみ保持）。
+     */
+    private void propagateRelativeRemindersToChildren(Long parentId, List<Integer> relativeReminders) {
+        List<ScheduleEntity> children =
+                scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(parentId);
+        List<PersonalScheduleReminderEntity> entities = new ArrayList<>();
+        for (ScheduleEntity child : children) {
+            for (Integer minutes : relativeReminders) {
+                entities.add(PersonalScheduleReminderEntity.builder()
+                        .scheduleId(child.getId())
+                        .remindBeforeMinutes(minutes)
+                        .reminderKind(ReminderKind.RELATIVE)
+                        .build());
+            }
+        }
+        if (!entities.isEmpty()) {
+            reminderRepository.saveAll(entities);
+        }
     }
 }

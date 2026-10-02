@@ -439,7 +439,7 @@ test.describe('F02.5: 行動メモ', () => {
                 visibility: 'PRIVATE',
               },
             ],
-            meta: { page: 0, size: 20, totalElements: 3, totalPages: 1 },
+            meta: { page: 0, size: 20, total: 3, totalPages: 1 },
           }),
         })
       } else {

@@ -1,9 +1,12 @@
 package com.mannschaft.app.common.entity;
 
-import jakarta.persistence.GeneratedValue;
+import com.mannschaft.app.common.UuidV7;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
-import org.hibernate.annotations.UuidGenerator;
+import jakarta.persistence.PrePersist;
+import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
+import lombok.experimental.SuperBuilder;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -11,15 +14,17 @@ import java.util.UUID;
 /**
  * UUIDv7（時刻順ソート可能）を主キーとする Entity 基底クラス。
  *
- * <p>Hibernate 6.2+ の {@code @UuidGenerator(style = TIME)} を利用し、
- * 時刻情報を埋め込んだ単調増加 UUID を生成する。
+ * <p>RFC 9562 準拠の UUIDv7 を永続化直前に生成し、
+ * 時刻情報を埋め込んだ UUID を生成する。
  * これにより B-Tree インデックスの page split を抑制し、
  * INSERT 性能を UUIDv4 と比較して大幅に改善できる。</p>
  *
  * <h2>適用対象</h2>
  * <ul>
  *   <li>新規テーブル作成時（既存テーブルの ID 型変更は破壊的変更につき禁止）</li>
- *   <li>DDL の id カラム型は {@code CHAR(36)} または {@code BINARY(16)} を推奨</li>
+ *   <li>DDL の id カラム型は {@code BINARY(16)} でなければならない（Hibernate は UUID を 16 バイトの BINARY 表現で書く。
+ *       {@code CHAR(36)} だと保存のたびに {@code Incorrect string value} で失敗する。{@code CHAR(36)} の表は
+ *       {@link UuidV7CharEntity} を継承すること。食い違いは {@code FlywayFromScratchMigrationTest} の UUID 列型の番人が検出する）</li>
  * </ul>
  *
  * <h2>使用例</h2>
@@ -36,15 +41,22 @@ import java.util.UUID;
  * サブクラスは {@code @EqualsAndHashCode(callSuper = true)} を指定することで
  * ID ベースの同値性判定を継承できる。</p>
  *
- * @see org.hibernate.annotations.UuidGenerator
+ * @see UuidV7
  */
+@SuperBuilder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @MappedSuperclass
 public abstract class UuidV7Entity {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator(style = UuidGenerator.Style.TIME)
     private UUID id;
+
+    @PrePersist
+    protected void assignId() {
+        if (id == null) {
+            id = UuidV7.generate();
+        }
+    }
 
     public UUID getId() {
         return id;
@@ -52,7 +64,7 @@ public abstract class UuidV7Entity {
 
     /**
      * ID を明示的に設定する。
-     * 通常は {@code @GeneratedValue} が永続化時に自動採番するため呼び出し不要だが、
+     * 通常は永続化直前に自動採番するため呼び出し不要だが、
      * テストでモック用エンティティを作る際や、UUID を外部から引き継ぐ
      * 特殊なユースケース（イベント駆動の再構築など）で利用する。
      */

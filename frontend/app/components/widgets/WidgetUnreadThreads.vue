@@ -41,7 +41,7 @@ onMounted(load)
       </div>
       <div
         v-if="totalBulletin > 0"
-        class="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50 cursor-pointer"
+        class="flex items-center gap-3 rounded-lg border-2 border-surface-300 px-2 py-1.5 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50 cursor-pointer"
         @click="navigateTo('/teams')"
       >
         <i class="pi pi-file-edit text-surface-400" />
@@ -53,7 +53,7 @@ onMounted(load)
       </div>
       <div
         v-if="totalChat > 0"
-        class="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50 cursor-pointer"
+        class="flex items-center gap-3 rounded-lg border-2 border-surface-300 px-2 py-1.5 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50 cursor-pointer"
         @click="navigateTo('/chat')"
       >
         <i class="pi pi-comments text-surface-400" />

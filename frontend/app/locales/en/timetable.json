@@ -91,6 +91,8 @@
       "title": "Today's timetable",
       "loading": "Loading…",
       "empty": "No timetable for today",
+      "load_failed": "Failed to load the timetable. Please reload.",
+      "notes_load_failed": "Failed to load memos. Showing the timetable only.",
       "tag_personal": "Personal",
       "tag_team": "Team",
       "memo_label": "Memo",

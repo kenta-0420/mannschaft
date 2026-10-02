@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
@@ -9,22 +10,27 @@ import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
+import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shift.service.ShiftSlotService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,7 +39,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link ShiftSlotService} の単体テスト。
@@ -50,7 +60,19 @@ class ShiftSlotServiceTest {
     private ShiftPositionRepository positionRepository;
 
     @Mock
-    private ObjectMapper objectMapper;
+    private ShiftScheduleRepository scheduleRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
+
+    @Mock
+    private com.mannschaft.app.shift.repository.ShiftAssignmentRepository assignmentRepository;
+
+    @Mock
+    private ShiftRequestRepository requestRepository;
+
+    @Mock
+    private Clock wallClock;
 
     @InjectMocks
     private ShiftSlotService shiftSlotService;
@@ -62,6 +84,34 @@ class ShiftSlotServiceTest {
     private static final Long SCHEDULE_ID = 100L;
     private static final Long SLOT_ID = 200L;
     private static final Long POSITION_ID = 50L;
+    /** 操作者。本テストは認可の可否でなく CRUD 挙動の検証が目的のため SYSTEM_ADMIN で短絡させる */
+    private static final Long ACTOR = 999L;
+
+    /**
+     * 認可を短絡させる（本テストの主眼は CRUD 挙動であり、per-scope 認可そのものは
+     * {@code ShiftSlotScopeContractIT} で実 DB 越しに検証する）。
+     *
+     * <p>{@code lenient()} なのは、存在しない ID のケースでは {@code findSlotOrThrow} が
+     * 認可判定より先に例外を投げ、本スタブが未使用になるため。</p>
+     *
+     * <p>{@code scheduleRepository} のスタブ（CMP-260917-1136）: {@code checkScheduleAdminAccess} /
+     * {@code checkScheduleReadAccess} は親スケジュールの生存確認（{@code resolveTeamId}）を
+     * SYSTEM_ADMIN 短絡より必ず先に行うようになったため、SYSTEM_ADMIN で短絡させる本テストでも
+     * スケジュールが実在する体で応答する必要がある（さもないと全ケースが
+     * SHIFT_SCHEDULE_NOT_FOUND で落ちる）。</p>
+     */
+    @BeforeEach
+    void setUpAuthz() {
+        lenient().when(wallClock.instant()).thenReturn(Instant.parse("2026-09-29T12:00:00Z"));
+        lenient().when(wallClock.getZone()).thenReturn(ZoneId.of("Asia/Tokyo"));
+        lenient().when(accessControlService.isSystemAdmin(ACTOR)).thenReturn(true);
+        lenient().when(scheduleRepository.findById(SCHEDULE_ID)).thenReturn(Optional.of(
+                com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder()
+                        .teamId(1L)
+                        .build()));
+        lenient().when(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).thenReturn(Optional.of(
+                com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder().teamId(1L).build()));
+    }
 
     private ShiftSlotEntity createSlotEntity() {
         return ShiftSlotEntity.builder()
@@ -100,7 +150,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID);
+            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID, ACTOR);
 
             // Then
             assertThat(result).hasSize(1);
@@ -123,7 +173,7 @@ class ShiftSlotServiceTest {
                     .willReturn(List.of(entity));
 
             // When
-            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID);
+            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID, ACTOR);
 
             // Then
             assertThat(result).hasSize(1);
@@ -149,7 +199,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            ShiftSlotResponse result = shiftSlotService.getSlot(SLOT_ID);
+            ShiftSlotResponse result = shiftSlotService.getSlot(SLOT_ID, ACTOR);
 
             // Then
             assertThat(result.getScheduleId()).isEqualTo(SCHEDULE_ID);
@@ -162,7 +212,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftSlotService.getSlot(SLOT_ID))
+            assertThatThrownBy(() -> shiftSlotService.getSlot(SLOT_ID, ACTOR))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
@@ -190,11 +240,13 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req);
+            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req, ACTOR);
 
             // Then
             assertThat(result).isNotNull();
-            verify(slotRepository).save(any(ShiftSlotEntity.class));
+            InOrder order = inOrder(scheduleRepository, slotRepository);
+            order.verify(scheduleRepository).findByIdForUpdate(SCHEDULE_ID);
+            order.verify(slotRepository).save(any(ShiftSlotEntity.class));
         }
 
         @Test
@@ -214,7 +266,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.save(any(ShiftSlotEntity.class))).willReturn(savedEntity);
 
             // When
-            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req);
+            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req, ACTOR);
 
             // Then
             assertThat(result).isNotNull();
@@ -247,7 +299,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            List<ShiftSlotResponse> result = shiftSlotService.bulkCreateSlots(SCHEDULE_ID, req);
+            List<ShiftSlotResponse> result = shiftSlotService.bulkCreateSlots(SCHEDULE_ID, req, ACTOR);
 
             // Then
             assertThat(result).hasSize(2);
@@ -276,7 +328,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            ShiftSlotResponse result = shiftSlotService.updateSlot(SLOT_ID, req);
+            ShiftSlotResponse result = shiftSlotService.updateSlot(SLOT_ID, req, ACTOR);
 
             // Then
             assertThat(result).isNotNull();
@@ -284,23 +336,25 @@ class ShiftSlotServiceTest {
         }
 
         @Test
-        @DisplayName("シフト枠更新_assignedUserIds設定_シリアライズ呼ばれる")
-        void シフト枠更新_assignedUserIds設定_シリアライズ呼ばれる() throws JsonProcessingException {
+        @DisplayName("シフト枠更新_assignedUserIds設定_JSON配列として保存される")
+        void シフト枠更新_assignedUserIds設定_JSON配列として保存される() {
             // Given
             ShiftSlotEntity entity = createSlotEntity();
+            ReflectionTestUtils.setField(entity, "id", SLOT_ID);
             UpdateShiftSlotRequest req = new UpdateShiftSlotRequest(
                     null, null, null, null, null, List.of(1L, 2L), null);
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(entity));
-            given(objectMapper.writeValueAsString(List.of(1L, 2L))).willReturn("[1,2]");
             given(slotRepository.save(any(ShiftSlotEntity.class))).willReturn(entity);
+            given(assignmentRepository.findAllBySlotId(SLOT_ID)).willReturn(List.of());
             given(positionRepository.findById(POSITION_ID))
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            ShiftSlotResponse result = shiftSlotService.updateSlot(SLOT_ID, req);
+            ShiftSlotResponse result = shiftSlotService.updateSlot(SLOT_ID, req, ACTOR);
 
             // Then
-            assertThat(result).isNotNull();
+            assertThat(result.getAssignedUserIds()).containsExactly(1L, 2L);
+            assertThat(entity.getAssignedUserIds()).isEqualTo("[1,2]");
         }
 
         @Test
@@ -312,7 +366,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftSlotService.updateSlot(SLOT_ID, req))
+            assertThatThrownBy(() -> shiftSlotService.updateSlot(SLOT_ID, req, ACTOR))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -352,7 +406,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            shiftSlotService.updateSlot(SLOT_ID, req);
+            shiftSlotService.updateSlot(SLOT_ID, req, ACTOR);
 
             // Then: save に渡るのは findById で取得した「まさにその」managed entity
             // （toBuilder().build() で作り直した別インスタンスではない）。
@@ -385,7 +439,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            shiftSlotService.patchSlotAssignments(SLOT_ID, request);
+            shiftSlotService.patchSlotAssignments(SLOT_ID, request, ACTOR);
 
             // Then: 同一インスタンスが save に渡り id 保持
             ArgumentCaptor<ShiftSlotEntity> captor = ArgumentCaptor.forClass(ShiftSlotEntity.class);
@@ -393,6 +447,117 @@ class ShiftSlotServiceTest {
             ShiftSlotEntity saved = captor.getValue();
             assertThat(saved).isSameAs(existing);
             assertThat(saved.getId()).isEqualTo(SLOT_ID);
+        }
+    }
+
+    // ========================================
+    // 手動割当の操作履歴（CMP-260908-2117 AC-6 / AC-7）
+    // ========================================
+
+    @Nested
+    @DisplayName("手動割当の操作履歴（CMP-260908-2117）")
+    class ManualAssignmentHistory {
+
+        private ShiftSlotEntity slotWithAssignments(String assignedUserIdsJson) {
+            ShiftSlotEntity entity = createSlotEntity();
+            ReflectionTestUtils.setField(entity, "id", SLOT_ID);
+            ReflectionTestUtils.setField(entity, "version", 0L);
+            ReflectionTestUtils.setField(entity, "assignedUserIds", assignedUserIdsJson);
+            return entity;
+        }
+
+        @SuppressWarnings("unchecked")
+        private List<com.mannschaft.app.shift.entity.ShiftAssignmentEntity> captureSaved() {
+            ArgumentCaptor<List<com.mannschaft.app.shift.entity.ShiftAssignmentEntity>> captor =
+                    ArgumentCaptor.forClass(List.class);
+            verify(assignmentRepository).saveAll(captor.capture());
+            return captor.getValue();
+        }
+
+        @Test
+        @DisplayName("AC-6: 手動で割り当てると操作者付きの CONFIRMED 履歴行が記録される（run_id は NULL = 手動）")
+        void 手動割当で履歴行が記録される() {
+            ShiftSlotEntity existing = slotWithAssignments(null);
+            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(existing));
+            given(slotRepository.save(any(ShiftSlotEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(assignmentRepository.findAllBySlotId(SLOT_ID)).willReturn(List.of());
+            given(positionRepository.findById(POSITION_ID))
+                    .willReturn(Optional.of(createPositionEntity()));
+
+            shiftSlotService.patchSlotAssignments(
+                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0), ACTOR);
+
+            List<com.mannschaft.app.shift.entity.ShiftAssignmentEntity> saved = captureSaved();
+            assertThat(saved).singleElement().satisfies(a -> {
+                assertThat(a.getSlotId()).isEqualTo(SLOT_ID);
+                assertThat(a.getUserId()).isEqualTo(101L);
+                assertThat(a.getRunId()).isNull();
+                assertThat(a.getAssignedBy()).isEqualTo(ACTOR);
+                assertThat(a.getStatus()).isEqualTo(ShiftAssignmentStatus.CONFIRMED);
+            });
+        }
+
+        @Test
+        @DisplayName("AC-7: 手動で解除すると当該履歴行が REVOKED に遷移する（解除も履歴から追える）")
+        void 手動解除で履歴行がREVOKEDになる() {
+            ShiftSlotEntity existing = slotWithAssignments("[101]");
+            com.mannschaft.app.shift.entity.ShiftAssignmentEntity history =
+                    com.mannschaft.app.shift.entity.ShiftAssignmentEntity.builder()
+                            .slotId(SLOT_ID)
+                            .userId(101L)
+                            .assignedBy(ACTOR)
+                            .status(ShiftAssignmentStatus.CONFIRMED)
+                            .build();
+            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(existing));
+            given(slotRepository.save(any(ShiftSlotEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(assignmentRepository.findAllBySlotId(SLOT_ID)).willReturn(List.of(history));
+            given(positionRepository.findById(POSITION_ID))
+                    .willReturn(Optional.of(createPositionEntity()));
+
+            shiftSlotService.patchSlotAssignments(
+                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(), List.of(101L), 0), ACTOR);
+
+            assertThat(captureSaved()).singleElement()
+                    .extracting(com.mannschaft.app.shift.entity.ShiftAssignmentEntity::getStatus)
+                    .isEqualTo(ShiftAssignmentStatus.REVOKED);
+        }
+
+        @Test
+        @DisplayName("同じ人を再度割り当てても、有効な履歴行があれば二重に記録しない（冪等）")
+        void 既に有効な履歴行があれば追加しない() {
+            ShiftSlotEntity existing = slotWithAssignments(null);
+            com.mannschaft.app.shift.entity.ShiftAssignmentEntity history =
+                    com.mannschaft.app.shift.entity.ShiftAssignmentEntity.builder()
+                            .slotId(SLOT_ID)
+                            .userId(101L)
+                            .assignedBy(ACTOR)
+                            .status(ShiftAssignmentStatus.CONFIRMED)
+                            .build();
+            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(existing));
+            given(slotRepository.save(any(ShiftSlotEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(assignmentRepository.findAllBySlotId(SLOT_ID)).willReturn(List.of(history));
+            given(positionRepository.findById(POSITION_ID))
+                    .willReturn(Optional.of(createPositionEntity()));
+
+            shiftSlotService.patchSlotAssignments(
+                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0), ACTOR);
+
+            verify(assignmentRepository, never()).saveAll(anyList());
+        }
+
+        @Test
+        @DisplayName("割当が変化しない操作では履歴表を一切触らない")
+        void 変化がなければ履歴表を触らない() {
+            ShiftSlotEntity existing = slotWithAssignments("[101]");
+            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(existing));
+            given(slotRepository.save(any(ShiftSlotEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(positionRepository.findById(POSITION_ID))
+                    .willReturn(Optional.of(createPositionEntity()));
+
+            shiftSlotService.patchSlotAssignments(
+                    SLOT_ID, new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0), ACTOR);
+
+            verifyNoInteractions(assignmentRepository);
         }
     }
 
@@ -405,17 +570,22 @@ class ShiftSlotServiceTest {
     class DeleteSlot {
 
         @Test
-        @DisplayName("シフト枠削除_正常_deleteが呼ばれる")
-        void シフト枠削除_正常_deleteが呼ばれる() {
+        @DisplayName("シフト枠削除_正常_割当と枠指定希望と枠が論理削除される")
+        void シフト枠削除_正常_子を連鎖論理削除する() {
             // Given
             ShiftSlotEntity entity = createSlotEntity();
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(entity));
+            given(slotRepository.softDeleteById(SLOT_ID))
+                    .willReturn(1);
 
             // When
-            shiftSlotService.deleteSlot(SLOT_ID);
+            shiftSlotService.deleteSlot(SLOT_ID, ACTOR);
 
             // Then
-            verify(slotRepository).delete(entity);
+            verify(slotRepository).softDeleteById(SLOT_ID);
+            verify(assignmentRepository).softDeleteBySlotId(SLOT_ID);
+            verify(requestRepository).softDeleteBySlotId(SLOT_ID);
+            verify(slotRepository, never()).delete(entity);
         }
 
         @Test
@@ -425,7 +595,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftSlotService.deleteSlot(SLOT_ID))
+            assertThatThrownBy(() -> shiftSlotService.deleteSlot(SLOT_ID, ACTOR))
                     .isInstanceOf(BusinessException.class);
         }
     }

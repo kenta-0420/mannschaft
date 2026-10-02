@@ -124,7 +124,7 @@ public class VisibilityTemplateService {
         List<VisibilityTemplateRuleEntity> rules = IntStream.range(0, request.getRules().size())
                 .mapToObj(i -> {
                     var ruleReq = request.getRules().get(i);
-                    return VisibilityTemplateRuleEntity.builder()
+                    return (VisibilityTemplateRuleEntity) VisibilityTemplateRuleEntity.builder()
                             .template(savedTemplate)
                             .ruleType(ruleReq.getRuleType())
                             .ruleTargetId(ruleReq.getRuleTargetId())
@@ -195,7 +195,7 @@ public class VisibilityTemplateService {
         List<VisibilityTemplateRuleEntity> newRules = IntStream.range(0, request.getRules().size())
                 .mapToObj(i -> {
                     var ruleReq = request.getRules().get(i);
-                    return VisibilityTemplateRuleEntity.builder()
+                    return (VisibilityTemplateRuleEntity) VisibilityTemplateRuleEntity.builder()
                             .template(finalTemplate)
                             .ruleType(ruleReq.getRuleType())
                             .ruleTargetId(ruleReq.getRuleTargetId())

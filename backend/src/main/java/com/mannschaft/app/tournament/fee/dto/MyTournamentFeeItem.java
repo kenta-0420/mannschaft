@@ -22,9 +22,14 @@ public record MyTournamentFeeItem(
         Long paymentItemId,
         /** 面額（payment_item.amount）。 */
         int faceAmount,
-        /** 払い手サーチャージ（現時点では 0・将来の PaymentFeeCalculator 連携用）。 */
+        /**
+         * 払い手サーチャージ（{@link com.mannschaft.app.payment.PaymentFeeCalculator} による算出値）。
+         * 実際の Connect charge（{@link com.mannschaft.app.payment.escrow.ConnectChargeService#charge}）と
+         * 同一の手数料パターン解決（MEMBERSHIP・subKey=null）・同一計算式を用いるため、
+         * 本フィールドは実請求額の上乗せ分と常に一致する。
+         */
         int payerSurcharge,
-        /** 合計（faceAmount + payerSurcharge）。 */
+        /** 合計（faceAmount + payerSurcharge・実請求額と一致）。 */
         int totalCharge,
         /** 支払期限（null = 期限なし）。 */
         LocalDateTime dueDate,

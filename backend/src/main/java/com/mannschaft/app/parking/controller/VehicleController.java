@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 車両管理コントローラー。ユーザー自身の車両CRUD（4 EP）。
@@ -34,7 +35,8 @@ public class VehicleController {
 
     private final RegisteredVehicleService vehicleService;
 
-
+    @SelfScopedEndpoint("RegisteredVehicleService#listByUser が userId=SecurityUtils.getCurrentUserId() のみで"
+            + "検索し、他ユーザーの車両には到達不能")
     @GetMapping
     @Operation(summary = "車両一覧")
     public ResponseEntity<ApiResponse<List<VehicleResponse>>> list() {
@@ -42,6 +44,8 @@ public class VehicleController {
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
+    @SelfScopedEndpoint("RegisteredVehicleService#create が userId=SecurityUtils.getCurrentUserId() を"
+            + "所有者として登録する")
     @PostMapping
     @Operation(summary = "車両登録")
     public ResponseEntity<ApiResponse<VehicleResponse>> create(@Valid @RequestBody CreateVehicleRequest request) {
@@ -49,6 +53,8 @@ public class VehicleController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
+    @SelfScopedEndpoint("RegisteredVehicleService#update が findByIdAndUserId(id, userId=自身) の"
+            + "複合キーで引き、他ユーザーの車両には到達不能")
     @PutMapping("/{id}")
     @Operation(summary = "車両更新")
     public ResponseEntity<ApiResponse<VehicleResponse>> update(@PathVariable Long id,
@@ -57,6 +63,8 @@ public class VehicleController {
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
+    @SelfScopedEndpoint("RegisteredVehicleService#delete が findByIdAndUserId(id, userId=自身) の"
+            + "複合キーで引き、他ユーザーの車両には到達不能")
     @DeleteMapping("/{id}")
     @Operation(summary = "車両削除")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * F22.1 謝礼決済: 返金記録リポジトリ。
  *
- * <p>このフェーズでは Repo 骨格のみ（Service は次陣）。</p>
+ * <p>返金レコードの参照・集計は {@code ConnectChargeService} / {@code EscrowRefundController} 系から利用される。</p>
  */
 public interface RefundRepository extends JpaRepository<RefundEntity, UUID> {
 

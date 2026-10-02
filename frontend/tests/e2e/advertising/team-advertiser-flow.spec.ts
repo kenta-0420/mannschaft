@@ -92,7 +92,7 @@ test.describe('F09.17 Phase 11-d-4: チーム広告キャンペーンフロー (
             contentType: 'application/json',
             body: JSON.stringify({
               data: [withStatus(currentStatus)],
-              meta: { totalElements: 1, page: 0, size: 20, totalPages: 1 },
+              meta: { total: 1, page: 0, size: 20, totalPages: 1 },
             }),
           })
           return

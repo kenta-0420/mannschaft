@@ -1,20 +1,32 @@
 package com.mannschaft.app.reservation.controller;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.reservation.ReservationBlockedResourceType;
+import com.mannschaft.app.reservation.dto.BlockedTimeImpactResponse;
 import com.mannschaft.app.reservation.dto.BlockedTimeRequest;
 import com.mannschaft.app.reservation.dto.BlockedTimeResponse;
 import com.mannschaft.app.reservation.dto.BusinessHourResponse;
+import com.mannschaft.app.reservation.dto.BusinessHoursSaveResponse;
+import com.mannschaft.app.reservation.dto.BusinessHoursUpdateOutcome;
 import com.mannschaft.app.reservation.dto.BusinessHoursUpdateRequest;
+import com.mannschaft.app.reservation.dto.GenerateSlotsResponse;
 import com.mannschaft.app.reservation.dto.ReservationSettingsResponse;
+import com.mannschaft.app.reservation.dto.SlotGenerationResultDto;
 import com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
+import com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity;
 import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
+import com.mannschaft.app.reservation.service.ReservationSlotTemplateService;
 import com.mannschaft.app.reservation.service.ReservationTeamSettingService;
+import com.mannschaft.app.reservation.service.ReservationViewAccessGuard;
+import com.mannschaft.app.reservation.service.SlotGenerationPartialException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
@@ -31,12 +43,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 予約営業時間コントローラー。営業時間・ブロック時間・設定管理APIを提供する。
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/reservation-settings")
 @Tag(name = "予約設定管理", description = "F03.4 営業時間・ブロック時間・設定管理")
@@ -46,6 +60,17 @@ public class ReservationBusinessHourController {
     private final ReservationBusinessHourService businessHourService;
     private final ReservationTeamSettingService teamSettingService;
     private final ReservationPolicyService policyService;
+    /** 営業時間変更差分の同期自動生成用（保存 tx 外側で呼ぶ・F03.4.5 §3.2）。 */
+    private final ReservationSlotTemplateService templateService;
+    /** F03.4.5 §7: pending_expire 設定変更の監査ログ記録用（@Async・失敗してもメイン処理を止めない）。 */
+    private final AuditLogService auditLogService;
+    /**
+     * 予約閲覧の view ゲート（会員 or 公開）。予約設定 GET（{@code getSettings}）は
+     * {@link ReservationTeamSettingService#getOrDefault} / {@link ReservationPolicyService#getOrDefault}
+     * を横断集約するためここで直接判定する（{@code policyService.getOrDefault} はリマインダーの
+     * バッチ経路にも共有されており、Service 側にゲートを埋めるとバッチが巻き添えになる）。
+     */
+    private final ReservationViewAccessGuard viewAccessGuard;
 
 
     /**
@@ -56,21 +81,56 @@ public class ReservationBusinessHourController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<BusinessHourResponse>>> getBusinessHours(
             @PathVariable Long teamId) {
-        List<BusinessHourResponse> hours = businessHourService.getBusinessHours(teamId);
+        List<BusinessHourResponse> hours =
+                businessHourService.getBusinessHours(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(hours));
     }
 
     /**
-     * 営業時間設定を一括更新する。
+     * 営業時間設定を一括更新し、<b>変更のあった曜日の active テンプレ</b>を horizon 28 日まで
+     * 同期自動生成する（F03.4.5 §3.2）。応答は {@link BusinessHoursSaveResponse}（営業時間＋生成カウント）。
+     *
+     * <p>保存（{@code @Transactional} 内でコミット）→ その外側で生成、の順で実行する。営業時間の拡大で
+     * {@code skippedOutsideHoursCount} に落ちていたセルが自動的に埋まる。生成が失敗しても営業時間の保存は
+     * 成立済みのため HTTP 200 で返し、{@code generation.failed=true} で正直に報告する。GET は不変
+     * （{@code BusinessHourResponse[]}）で消費者 {@code ReservationUnavailabilityManager} に影響しない。</p>
      */
     @PutMapping("/business-hours")
-    @Operation(summary = "営業時間一括更新")
+    @Operation(summary = "営業時間一括更新（保存＝変更曜日の同期自動生成）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
-    public ResponseEntity<ApiResponse<List<BusinessHourResponse>>> updateBusinessHours(
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
+    public ResponseEntity<ApiResponse<BusinessHoursSaveResponse>> updateBusinessHours(
             @PathVariable Long teamId,
             @Valid @RequestBody BusinessHoursUpdateRequest request) {
-        List<BusinessHourResponse> hours = businessHourService.updateBusinessHours(teamId, request);
-        return ResponseEntity.ok(ApiResponse.of(hours));
+        Long userId = SecurityUtils.getCurrentUserId();
+        // ① 保存 tx をコミットさせる（@Transactional 内）＋変更曜日を検出
+        BusinessHoursUpdateOutcome outcome = businessHourService.updateBusinessHours(teamId, request);
+        // ② 保存 tx コミット後・@Transactional の外側で変更曜日差分を同期生成（§3.2 の tx 境界）
+        SlotGenerationResultDto generation = generateForChangedDays(teamId, outcome, userId);
+        return ResponseEntity.ok(ApiResponse.of(new BusinessHoursSaveResponse(outcome.hours(), generation)));
+    }
+
+    /**
+     * 変更曜日の同期自動生成を実行し、結果を包む（§3.2）。生成失敗は保存を壊さず {@code failed=true} で
+     * 正直に報告する（握りつぶさず {@code log.error}・翌朝の日次バッチが自己修復）。
+     */
+    private SlotGenerationResultDto generateForChangedDays(
+            Long teamId, BusinessHoursUpdateOutcome outcome, Long userId) {
+        try {
+            GenerateSlotsResponse generation =
+                    templateService.generateForDaysOfWeek(teamId, outcome.changedDays(), userId);
+            return SlotGenerationResultDto.of(generation);
+        } catch (SlotGenerationPartialException partial) {
+            // 先行チャンクはコミット済み。その実件数を failed=true とともに正直に報告する（§3.1 契約・0で握り潰さない）。
+            log.error("営業時間保存後の同期自動生成が部分失敗（コミット済み分は永続化済み・翌日次バッチが残りを自己修復）: "
+                    + "teamId={}, changedDays={}", teamId, outcome.changedDays(), partial);
+            return SlotGenerationResultDto.ofPartialFailure(partial.getAccumulated());
+        } catch (Exception e) {
+            // 1 チャンクもコミット前の失敗（真に 0 件）。
+            log.error("営業時間保存後の同期自動生成に失敗（保存は成立・翌日次バッチが自己修復）: "
+                    + "teamId={}, changedDays={}", teamId, outcome.changedDays(), e);
+            return SlotGenerationResultDto.ofFailure();
+        }
     }
 
     /**
@@ -83,7 +143,8 @@ public class ReservationBusinessHourController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        List<BlockedTimeResponse> blockedTimes = businessHourService.listBlockedTimes(teamId, from, to);
+        List<BlockedTimeResponse> blockedTimes =
+                businessHourService.listBlockedTimes(teamId, SecurityUtils.getCurrentUserId(), from, to);
         return ResponseEntity.ok(ApiResponse.of(blockedTimes));
     }
 
@@ -93,6 +154,7 @@ public class ReservationBusinessHourController {
     @PostMapping("/blocked-times")
     @Operation(summary = "ブロック時間作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<BlockedTimeResponse>> createBlockedTime(
             @PathVariable Long teamId,
             @Valid @RequestBody BlockedTimeRequest request) {
@@ -106,6 +168,7 @@ public class ReservationBusinessHourController {
     @PatchMapping("/blocked-times/{blockedId}")
     @Operation(summary = "ブロック時間更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<BlockedTimeResponse>> updateBlockedTime(
             @PathVariable Long teamId,
             @PathVariable Long blockedId,
@@ -115,11 +178,35 @@ public class ReservationBusinessHourController {
     }
 
     /**
+     * 予約不可枠 登録前の影響プレビュー（機能B・§4.B）。
+     *
+     * <p>overlap する既存 active 予約（PENDING/CONFIRMED）の件数＋一覧（管理用・氏名込み）を返す。
+     * 副作用ゼロ。ADMIN + DEPUTY_ADMIN（副管理者）許可。</p>
+     */
+    @GetMapping("/blocked-times/impact")
+    @Operation(summary = "予約不可枠 登録前の影響プレビュー")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
+    public ResponseEntity<ApiResponse<BlockedTimeImpactResponse>> getBlockedTimeImpact(
+            @PathVariable Long teamId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false, defaultValue = "TEAM") ReservationBlockedResourceType resourceType,
+            @RequestParam(required = false) Long resourceId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime startTime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime endTime,
+            @RequestParam(required = false, defaultValue = "false") boolean endsNextDay) {
+        BlockedTimeImpactResponse response = businessHourService.getBlockedTimeImpact(
+                teamId, date, resourceType, resourceId, startTime, endTime, endsNextDay);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
      * ブロック時間を削除する。
      */
     @DeleteMapping("/blocked-times/{blockedId}")
     @Operation(summary = "ブロック時間削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<Void> deleteBlockedTime(
             @PathVariable Long teamId,
             @PathVariable Long blockedId) {
@@ -131,29 +218,40 @@ public class ReservationBusinessHourController {
      * 予約設定（チームポリシー）を取得する。
      *
      * <p>2 つの別テーブル（{@code reservation_team_settings}・{@code reservation_policies}）を
-     * 1 レスポンスに統合して返す。policy レコードが存在しないチームは既定値（AUTO / 24 / "24,1"）を返す。</p>
+     * 1 レスポンスに統合して返す。policy レコードが存在しないチームは既定値（AUTO / 24 / "24,1"）を、
+     * team_setting レコードが存在しないチームは既定値（allowPublicReservation=false /
+     * resourceNameType=DEFAULT / resourceNameCustom=null・F03.4.5 §5）を返す。</p>
+     *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。集約元の {@code policyService.getOrDefault} は
+     * リマインダーバッチ（{@code SecurityContext} 無し）とも共有するため、ゲートはここ（public な GET
+     * 入口）に置き共有メソッド側には置かない。</p>
      */
     @GetMapping
     @Operation(summary = "予約設定（チームポリシー）取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ReservationSettingsResponse>> getSettings(
             @PathVariable Long teamId) {
+        viewAccessGuard.assertCanView(teamId, SecurityUtils.getCurrentUserId());
         boolean hasBusinessHours = businessHourService.hasBusinessHours(teamId);
-        boolean allowPublicReservation = teamSettingService.isAllowPublic(teamId);
+        ReservationTeamSettingEntity teamSetting = teamSettingService.getOrDefault(teamId);
         ReservationPolicyEntity policy = policyService.getOrDefault(teamId);
         ReservationSettingsResponse settings = ReservationSettingsResponse.builder()
                 .teamId(teamId)
                 .hasBusinessHours(hasBusinessHours)
-                .allowPublicReservation(allowPublicReservation)
+                .allowPublicReservation(teamSetting.isAllowPublicReservation())
                 .approvalMode(policy.getApprovalMode())
                 .cancelDeadlineHours(policy.getCancelDeadlineHours())
                 .remindBeforeHours(policy.getRemindBeforeHours())
+                .resourceNameType(teamSetting.getResourceNameType())
+                .resourceNameCustom(teamSetting.getResourceNameCustom())
+                .pendingExpireHours(policy.getPendingExpireHours())
                 .build();
         return ResponseEntity.ok(ApiResponse.of(settings));
     }
 
     /**
-     * 予約設定（チームポリシー）を更新する。ADMIN 限定。
+     * 予約設定（チームポリシー）を更新する。管理者・副管理者（ADMIN + DEPUTY_ADMIN）限定。
      *
      * <p>PATCH の部分更新セマンティクス: null フィールドは据え置き。</p>
      *
@@ -162,12 +260,21 @@ public class ReservationBusinessHourController {
      *       true にするとログイン済みであればチーム所属者でなくても予約できるようになる（裏設定）。</li>
      *   <li>{@code approvalMode} / {@code cancelDeadlineHours} / {@code remindBeforeHours}
      *       … {@code reservation_policies} を upsert 更新。</li>
+     *   <li>{@code resourceNameType} / {@code resourceNameCustom} … {@code reservation_team_settings}
+     *       の呼称カラムを upsert 更新（F03.4.5 §5）。CUSTOM 必須検証・CUSTOM 以外への NULL 正規化は
+     *       {@code ReservationTeamSettingService#updateResourceName} が担う。</li>
+     *   <li>{@code pendingExpireHours} / {@code clearPendingExpireHours} … {@code reservation_policies}
+     *       の仮押さえ自動失効設定を upsert 更新（F03.4.5 §6.3）。{@code pendingExpireHours} は
+     *       1〜168（範囲外は 400）。{@code clearPendingExpireHours=true} で自動失効を無効化（NULL 化）し、
+     *       <b>両方指定された場合は clear を優先</b>する（{@code UpdateSlotRequest.clearApprovalMode} と同形。
+     *       優先規則の実装は {@code ReservationPolicyEntity#updatePolicy}）。
+     *       本項目の変更は {@code audit_logs} に旧値・新値つきで記録する（§7）。</li>
      * </ul>
      */
     @PatchMapping
-    @Operation(summary = "予約設定（チームポリシー）の更新（ADMIN限定）")
+    @Operation(summary = "予約設定（チームポリシー）の更新（管理者・副管理者限定）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
-    @PreAuthorize("@accessGuard.isScopeStrictAdmin(authentication, #teamId, 'TEAM')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationSettingsResponse>> updateReservationSetting(
             @PathVariable Long teamId,
             @Valid @RequestBody UpdateReservationSettingRequest request) {
@@ -176,14 +283,40 @@ public class ReservationBusinessHourController {
             teamSettingService.updateAllowPublic(teamId, request.getAllowPublicReservation());
         }
         // reservation_policies（別テーブル）の upsert。全て null なら据え置き（既存レコードに影響なし）。
+        // F03.4.5 §6.3: pendingExpireHours / clearPendingExpireHours も同テーブルのため同じ分岐で扱う。
+        boolean pendingExpireTouched = request.getPendingExpireHours() != null
+                || request.getClearPendingExpireHours() != null;
+        // 監査ログに旧値を載せるため、更新前の値を先に控える（更新後だと新値しか取れない）。
+        Integer previousPendingExpireHours =
+                pendingExpireTouched ? policyService.getOrDefault(teamId).getPendingExpireHours() : null;
         if (request.getApprovalMode() != null
                 || request.getCancelDeadlineHours() != null
-                || request.getRemindBeforeHours() != null) {
-            policyService.updatePolicy(
+                || request.getRemindBeforeHours() != null
+                || pendingExpireTouched) {
+            ReservationPolicyEntity saved = policyService.updatePolicy(
                     teamId,
                     request.getApprovalMode(),
                     request.getCancelDeadlineHours(),
-                    request.getRemindBeforeHours());
+                    request.getRemindBeforeHours(),
+                    request.getPendingExpireHours(),
+                    request.getClearPendingExpireHours());
+            // F03.4.5 §7「pending_expire 設定変更を audit_logs に記録」。
+            // 仮押さえ失効は「利用者の予約が管理者の設定で自動的に消える」挙動のため、
+            // 設定変更そのものを追跡可能にする（定期ルール CRUD と同じ recordAudit 作法）。
+            if (pendingExpireTouched) {
+                // 旧値を必ず含める。「利用者の予約が管理者設定で自動的に消える」挙動の記録が目的であり、
+                // 新値だけでは「いつ誰が何時間から何時間へ変えたのか」を後から追えない。
+                auditLogService.record("RESERVATION_PENDING_EXPIRE_SETTING_UPDATED",
+                        SecurityUtils.getCurrentUserId(), null, teamId, null, null, null, null,
+                        String.format("{\"before\":{\"pendingExpireHours\":%s},"
+                                        + "\"after\":{\"pendingExpireHours\":%s}}",
+                                previousPendingExpireHours, saved.getPendingExpireHours()));
+            }
+        }
+        // 予約対象の呼称（reservation_team_settings）の upsert。両方 null なら据え置き（F03.4.5 §5）。
+        if (request.getResourceNameType() != null || request.getResourceNameCustom() != null) {
+            teamSettingService.updateResourceName(
+                    teamId, request.getResourceNameType(), request.getResourceNameCustom());
         }
         // 更新後の統合状態を返す（GET と同形）。
         return getSettings(teamId);

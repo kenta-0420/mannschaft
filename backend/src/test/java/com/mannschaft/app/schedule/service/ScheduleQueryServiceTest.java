@@ -3,17 +3,19 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
+import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleEventCategoryRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -51,9 +53,13 @@ class ScheduleQueryServiceTest {
 
     @Mock private ScheduleRepository scheduleRepository;
     @Mock private NameResolverService nameResolverService;
-    @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipService membershipService;
     @Mock private ScheduleEventCategoryRepository categoryRepository;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    @Mock private ScheduleAttendanceRepository attendanceRepository;
+    @Mock private ScheduleTargetService scheduleTargetService;
+    // F03.19 W1-c: 色解決のためレイヤー設定を読む（既定 mock は空 Map を返す＝設定なし）。
+    @Mock private CalendarLayerService calendarLayerService;
 
     @InjectMocks
     private ScheduleQueryService scheduleQueryService;
@@ -102,10 +108,10 @@ class ScheduleQueryServiceTest {
 
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(UserRoleEntity.builder().teamId(TEAM_ID).build()));
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID))
-                    .willReturn(List.of(UserRoleEntity.builder().organizationId(ORG_ID).build()));
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(TEAM_ID));
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(ORG_ID));
             given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
                     .willReturn(List.of(teamVisible, teamHidden));
             given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
@@ -118,6 +124,8 @@ class ScheduleQueryServiceTest {
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(20L, 21L)), eq(USER_ID)))
                     .willReturn(Set.of(20L));
+            given(scheduleTargetService.assignedScheduleIds(any(), eq(USER_ID)))
+                    .willReturn(Set.of(10L, 11L, 20L, 21L));
 
             // When
             List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
@@ -129,14 +137,64 @@ class ScheduleQueryServiceTest {
         }
 
         @Test
+        @DisplayName("membership-only の通常メンバーもマイカレンダー対象になる")
+        void includes_membership_only_team_and_organization() {
+            ScheduleEntity team = schedule(30L, TEAM_ID, null, null);
+            ScheduleEntity org = schedule(40L, null, ORG_ID, null);
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(TEAM_ID));
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(ORG_ID));
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of(team));
+            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
+                    .willReturn(List.of(org));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(30L)), eq(USER_ID))).willReturn(Set.of(30L));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(40L)), eq(USER_ID))).willReturn(Set.of(40L));
+            given(scheduleTargetService.assignedScheduleIds(any(), eq(USER_ID)))
+                    .willReturn(Set.of(30L, 40L));
+
+            var entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
+
+            assertThat(entries).extracting(CalendarEntryResponse::getId)
+                    .containsExactlyInAnyOrder(30L, 40L);
+        }
+
+        @Test
+        @DisplayName("共有予定は詳細APIで使える公開slugを返す")
+        void includes_scope_slug_for_detail_route() {
+            ScheduleEntity team = schedule(31L, TEAM_ID, null, null);
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(TEAM_ID));
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of());
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of(team));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(31L)), eq(USER_ID))).willReturn(Set.of(31L));
+            given(scheduleTargetService.assignedScheduleIds(any(), eq(USER_ID))).willReturn(Set.of(31L));
+            given(nameResolverService.resolveScopeSlug("TEAM", TEAM_ID)).willReturn("fc-u-18");
+
+            var entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
+
+            assertThat(entries).singleElement()
+                    .extracting(entry -> entry.getScope().scopeSlug())
+                    .isEqualTo("fc-u-18");
+        }
+
+        @Test
         @DisplayName("認可漏れ回帰: 個人予定は filterAccessible を通さず常に含まれる")
         void getMyCalendar_個人予定はフィルタ対象外() {
             // Given: チーム/組織所属なし、個人予定のみ
             ScheduleEntity personal = schedule(1L, null, null, USER_ID);
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of());
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of());
 
             // When
             List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
@@ -145,6 +203,22 @@ class ScheduleQueryServiceTest {
             assertThat(entries).extracting(CalendarEntryResponse::getId).containsExactly(1L);
             verify(contentVisibilityChecker, never())
                     .filterAccessible(eq(ReferenceType.SCHEDULE), any(), eq(USER_ID));
+        }
+
+        @Test
+        @DisplayName("AC-07(b) 回帰: schedules 由来のエントリは scheduleId が id と同値で入る（events.schedule_id 判別用）")
+        void getMyCalendar_scheduleIdはidと同値で常に入る() {
+            // Given: 個人予定のみ（schedules 由来のエントリを1件用意すれば十分）
+            ScheduleEntity personal = schedule(1L, null, null, USER_ID);
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
+                    .willReturn(List.of(personal));
+            // When
+            List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
+
+            // Then: schedules 由来のエントリは scheduleId が非 null かつ id と同値
+            // （§1.5・events.schedule_id が NULL のイベントを判別するための FE ガード用フィールド）。
+            assertThat(entries).hasSize(1);
+            assertThat(entries.get(0).getScheduleId()).isEqualTo(entries.get(0).getId()).isEqualTo(1L);
         }
     }
 
@@ -201,6 +275,116 @@ class ScheduleQueryServiceTest {
 
             // Then
             assertThat(result).extracting(ScheduleResponse::getId).containsExactly(20L);
+        }
+    }
+
+    // ========================================
+    // myAttendanceStatus バッチ供給（#2453 後続）
+    // ========================================
+
+    /**
+     * 一覧APIが myAttendanceStatus=null 固定を返していた欠陥の回帰テスト。
+     *
+     * <p>実 DB を使う結合テストは {@code ScheduleListMyAttendanceStatusIT}
+     * （team/org 一覧・認可・複数件での正しいマッピングを検証）。本 UT は
+     * {@link ScheduleQueryService#toVisibleScheduleResponses} のバッチ合流ロジック単体を
+     * Mockito で高速に検証する（fail-closed の viewerUserId 固定・N+1 回避の呼び出し回数）。</p>
+     */
+    @Nested
+    @DisplayName("myAttendanceStatusバッチ供給")
+    class MyAttendanceStatusBatch {
+
+        @Test
+        @DisplayName("出欠回答済みのスケジュールは一覧でも実値のmyAttendanceStatusを返す")
+        void listTeamSchedules_出欠回答済みは実値を返す() {
+            ScheduleEntity s1 = schedule(30L, TEAM_ID, null, null);
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of(s1));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(30L)), eq(USER_ID)))
+                    .willReturn(Set.of(30L));
+            ScheduleAttendanceEntity attendance = ScheduleAttendanceEntity.builder()
+                    .scheduleId(30L)
+                    .userId(USER_ID)
+                    .status(AttendanceStatus.ATTENDING)
+                    .build();
+            given(attendanceRepository.findByScheduleIdInAndUserId(eq(List.of(30L)), eq(USER_ID)))
+                    .willReturn(List.of(attendance));
+
+            List<ScheduleResponse> result = scheduleQueryService.listTeamSchedules(TEAM_ID, FROM, TO, USER_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getMyAttendanceStatus()).isEqualTo("ATTENDING");
+        }
+
+        @Test
+        @DisplayName("出欠レコードが存在しないスケジュールはmyAttendanceStatus=null（未回答/募集対象外）")
+        void listTeamSchedules_出欠レコード無しはnull() {
+            ScheduleEntity s1 = schedule(31L, TEAM_ID, null, null);
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of(s1));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(31L)), eq(USER_ID)))
+                    .willReturn(Set.of(31L));
+            given(attendanceRepository.findByScheduleIdInAndUserId(eq(List.of(31L)), eq(USER_ID)))
+                    .willReturn(List.of());
+
+            List<ScheduleResponse> result = scheduleQueryService.listTeamSchedules(TEAM_ID, FROM, TO, USER_ID);
+
+            assertThat(result.get(0).getMyAttendanceStatus()).isNull();
+        }
+
+        @Test
+        @DisplayName("複数スケジュールでもそれぞれ正しいmyAttendanceStatusにマッピングされる（他者の出欠と混同しない）")
+        void listTeamSchedules_複数件でも取り違えない() {
+            ScheduleEntity s1 = schedule(32L, TEAM_ID, null, null);
+            ScheduleEntity s2 = schedule(33L, TEAM_ID, null, null);
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of(s1, s2));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(32L, 33L)), eq(USER_ID)))
+                    .willReturn(Set.of(32L, 33L));
+            given(attendanceRepository.findByScheduleIdInAndUserId(eq(List.of(32L, 33L)), eq(USER_ID)))
+                    .willReturn(List.of(
+                            ScheduleAttendanceEntity.builder()
+                                    .scheduleId(32L).userId(USER_ID).status(AttendanceStatus.ABSENT).build(),
+                            ScheduleAttendanceEntity.builder()
+                                    .scheduleId(33L).userId(USER_ID).status(AttendanceStatus.PARTIAL).build()));
+
+            List<ScheduleResponse> result = scheduleQueryService.listTeamSchedules(TEAM_ID, FROM, TO, USER_ID);
+
+            assertThat(result).extracting(ScheduleResponse::getId, ScheduleResponse::getMyAttendanceStatus)
+                    .containsExactly(
+                            org.assertj.core.groups.Tuple.tuple(32L, "ABSENT"),
+                            org.assertj.core.groups.Tuple.tuple(33L, "PARTIAL"));
+        }
+
+        @Test
+        @DisplayName("認可(fail-closed): 出欠バッチ取得は常にviewerUserId固定で1回だけ呼ばれる")
+        void listTeamSchedules_出欠バッチはviewerUserId固定で1回() {
+            ScheduleEntity s1 = schedule(34L, TEAM_ID, null, null);
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of(s1));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(34L)), eq(USER_ID)))
+                    .willReturn(Set.of(34L));
+
+            scheduleQueryService.listTeamSchedules(TEAM_ID, FROM, TO, USER_ID);
+
+            verify(attendanceRepository, org.mockito.Mockito.times(1))
+                    .findByScheduleIdInAndUserId(eq(List.of(34L)), eq(USER_ID));
+        }
+
+        @Test
+        @DisplayName("スケジュールが0件なら出欠バッチクエリは呼ばれない")
+        void listTeamSchedules_空なら出欠バッチは呼ばれない() {
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of());
+
+            List<ScheduleResponse> result = scheduleQueryService.listTeamSchedules(TEAM_ID, FROM, TO, USER_ID);
+
+            assertThat(result).isEmpty();
+            verify(attendanceRepository, never()).findByScheduleIdInAndUserId(any(), any());
         }
     }
 }

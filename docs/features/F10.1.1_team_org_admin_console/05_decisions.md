@@ -207,3 +207,24 @@
 - `[01_console_routes.md](./01_console_routes.md) §4`（既存ルート再編マッピング）で「物理移設しない・リダイレクト/導線追加」と既に確定している。ウィジェット導線も同じ精神に従い、未整備の `/admin/*` サブページへリンクを張ってデッドリンクを作るのではなく、現時点で実在する正本ルートへ直結する。
 - デッドリンク（クリックして 404 に着地する）は許容しない（CLAUDE.md 禁止事項の対処療法禁止、根治治療の原則）。
 - 設計書 `[02_admin_lens_widgets.md](./02_admin_lens_widgets.md) §2.2`・`§2.3` に記載の「導線先ルート」欄は**将来のL3整備後を想定した目標URL**であり、現時点の実装URLとは異なる。L3 各セクションが整備されたタイミングでウィジェット導線を更新し、設計書と実装を同期させること。
+
+---
+
+## §15. scope-tabs が孤児 membership を一覧に出す不具合の根治（P4 後追い修正）
+
+**決定**: `DashboardScopeTabService.getScopeTabs` に、membership は存在するが team/org が論理削除済み（または FK撤廃後の孤児）のスコープを一覧から除外するフィルタを追加した。
+
+**根本原因**:
+- クロスドメインFK撤廃キャンペーン（孤児保持方針）の完了後、削除済み team/org への membership 行が `leftAt IS NULL` のまま残存するようになった。
+- `getScopeTabs` は `membershipRepository.findActiveByUserAndScopeType` の結果をそのまま並べており、team/org の実在チェックを行っていなかった。
+- `buildItem` 内の `teamRepository.findById` が空を返しても `name=null, slug=null` の項目を一覧に追加してしまい、FE 側で `hasResolvedSlug=false` → 永久スピナー・管理者レンズトグル不発という症状として顕在化した。
+- `GET /me/teams` は `deleted_at` で除外するため正しい結果を返すが、scope-tabs は除外していない点が齟齬の原因。
+
+**修正内容**（`DashboardScopeTabService.getScopeTabs` / PR P4後追い）:
+- `activeScopeIds` 確定後に `teamRepository.findAllById(activeScopeIds)`（ORGANIZATION の場合は `organizationRepository.findAllById`）を **1回のバッチ照会**で呼び、`existingScopeIds` 集合を確定する。
+- `@SQLRestriction("deleted_at IS NULL")` により、論理削除済み team/org の id は `findAllById` の結果に含まれない。
+- `isEligible` に `existingScopeIds.contains(scopeId)` 条件を追加。孤児 membership は `activeScopeIds` には含まれるが `existingScopeIds` には含まれないため除外される。
+- `buildItem` 内の `team==null` フォールバック（`name=null/slug=null`）は安全網として残存するが、上記フィルタで到達しなくなる。
+- FE `ScopeTabBar.vue` に `item.name?.charAt(0) ?? '?'` の null ガードを多層防御として追加（型上は string だが実データ由来の null を runtime で握る保険）。
+
+**孤児 membership 行自体は削除しない**（FK撤廃の孤児保持方針と整合）。

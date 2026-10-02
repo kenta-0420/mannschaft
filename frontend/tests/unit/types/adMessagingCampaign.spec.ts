@@ -8,6 +8,16 @@ import type {
   EstimatedReachRange,
 } from '~/types/adMessagingCampaign'
 import type { AdReportReason } from '~/types/adPreferences'
+// ロケール JSON は **静的 import** で読む。
+// テスト本体で動的 import すると Vite の JSON トランスフォーム時間がテスト時間に算入され、
+// 6 ファイル分で既定 5s のテストタイムアウトを超える（タイムアウト値を緩める代わりに、
+// 読み込みをモジュール解決フェーズへ移して根治する）。
+import adJa from '~/locales/ja/advertising.json'
+import adEn from '~/locales/en/advertising.json'
+import adZh from '~/locales/zh/advertising.json'
+import adKo from '~/locales/ko/advertising.json'
+import adDe from '~/locales/de/advertising.json'
+import adEs from '~/locales/es/advertising.json'
 
 /**
  * F09.17 型定義スモークテスト。
@@ -88,15 +98,20 @@ describe('F09.17 型定義スモーク', () => {
 })
 
 describe('F09.17 advertising.json ロケール整合性', () => {
-  it('6 言語すべてで同一キー数', async () => {
+  it('6 言語すべてで同一キー数', () => {
+    const messages: Record<string, Record<string, unknown>> = {
+      ja: adJa,
+      en: adEn,
+      zh: adZh,
+      ko: adKo,
+      de: adDe,
+      es: adEs,
+    }
     const locales = ['ja', 'en', 'zh', 'ko', 'de', 'es'] as const
     const allKeys: Record<string, string[]> = {}
 
     for (const lang of locales) {
-      // dynamic import で JSON を読む（vitest が json 拡張を解決できる前提）
-      const mod = await import(`~/locales/${lang}/advertising.json`)
-      const obj = (mod.default ?? mod) as Record<string, unknown>
-      allKeys[lang] = collectKeys(obj)
+      allKeys[lang] = collectKeys(messages[lang])
     }
 
     const jaKeys = allKeys.ja ?? []

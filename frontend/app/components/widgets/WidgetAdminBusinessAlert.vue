@@ -17,8 +17,10 @@ const hasAnyInquiryChannel = computed(() =>
 async function fetchSummary() {
   try {
     const res = await getSummary()
-    teams.value = res.data.teams
-    totalPending.value = res.data.totalPending
+    // 実応答は二重ネスト（ApiResponse.data → AdminBusinessAlertSummaryResponse.data）。
+    // 型定義（~/types/admin-business-alert.ts）参照。BA-003 実機E2Eで検証済みの形状。
+    teams.value = res.data.data.teams
+    totalPending.value = res.data.data.totalPending
   }
   catch {
     // サイレント - 取得失敗時は前回データをそのまま表示
@@ -45,7 +47,7 @@ const notificationStore = useNotificationStore()
 watch(
   () => notificationStore.latestNotification,
   (notification) => {
-    if (notification && ALERT_TYPES.includes(notification.notificationType)) {
+    if (notification?.notificationType && ALERT_TYPES.includes(notification.notificationType)) {
       fetchSummary()
     }
   },
@@ -70,7 +72,7 @@ onUnmounted(() => clearInterval(timer))
     <div v-if="totalPending === 0 && !loading && !hasAnyInquiryChannel">
       <DashboardEmptyState icon="pi pi-check-circle" :message="t('admin.businessAlert.noAlerts')" />
     </div>
-    <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
+    <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <div
         v-for="team in teams"
         :key="team.teamId"

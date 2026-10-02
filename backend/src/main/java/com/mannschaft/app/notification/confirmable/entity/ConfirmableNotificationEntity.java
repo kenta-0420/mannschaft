@@ -15,9 +15,10 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -38,11 +39,13 @@ import java.time.LocalDateTime;
  * </p>
  */
 @Entity
-@Table(name = "confirmable_notifications")
+@Table(name = "confirmable_notifications",
+        // V234 の uq_cn_once_per_source と同一。test profile は ddl-auto=create で Entity から schema を作るため、
+        // ここに書かないとテストの schema にだけ UNIQUE が無い状態になる（BillingPriceVersionEntity と同型）。
+        uniqueConstraints = @UniqueConstraint(name = "uq_cn_once_per_source", columnNames = "once_per_source_key"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ConfirmableNotificationEntity {
 
     @Id
@@ -72,6 +75,24 @@ public class ConfirmableNotificationEntity {
      */
     @Column(name = "source_id")
     private Long sourceId;
+
+    /**
+     * CMP-260930-1932: 「発生元1件につき確認通知は1件だけ」の発生元種別に限って非 null になる生成列。
+     *
+     * <p>{@code source_type='RECRUITMENT_AUTO_CANCEL'}（募集の自動キャンセル通知）のときだけ
+     * {@code CONCAT(source_type, '|', source_id)} になり、{@code uq_cn_once_per_source} が同一募集への
+     * 二重送信（AFTER_COMMIT リスナーの並行2回発火）を DB レベルで拒否する。それ以外の種別は NULL
+     * （MySQL の UNIQUE は NULL を複数許容する）ため制約の対象外。{@code MARKET_FINALIZE} は
+     * 再 FULL のたびに再送する仕様なので対象に含めてはならない。アプリからは読み取り専用。</p>
+     *
+     * <p>{@code columnDefinition} で生成式を明示することで、test profile（{@code ddl-auto=create}）でも
+     * 本番（Flyway V234）と同じ生成列としてスキーマが作られる（{@code OrganizationEntity#nameTrimmed} と同型）。</p>
+     */
+    @Column(name = "once_per_source_key", insertable = false, updatable = false,
+            columnDefinition = "VARCHAR(80) GENERATED ALWAYS AS ("
+                    + "CASE WHEN source_type IN ('RECRUITMENT_AUTO_CANCEL') AND source_id IS NOT NULL "
+                    + "THEN CONCAT(source_type, '|', source_id) ELSE NULL END) STORED")
+    private String oncePerSourceKey;
 
     /** スコープ種別（TEAM / ORGANIZATION） */
     @Enumerated(EnumType.STRING)
@@ -144,10 +165,44 @@ public class ConfirmableNotificationEntity {
     /**
      * 受信者総数（受信者追加時に更新）。
      * 確認率計算の分母として使用。
+     *
+     * <p>CMP-260920-1040 以降、非同期経路では「受け付けた時点の見込み件数」ではなく
+     * 「実際に作った受信者行の数」を表す（軍議第8版確定稿 §3.1）。チャンクごとに加算する。</p>
      */
     @Column(nullable = false)
     @Builder.Default
     private Integer totalRecipientCount = 0;
+
+    /**
+     * CMP-260920-1040: 配信状態（軍議第8版確定稿 §9.1）。
+     *
+     * <p>既存行と同期経路の {@code send} は DELIVERED のままとする。
+     * 非同期経路（宛先指定の fanout）は QUEUED から開始し、ワーカーが遷移させる。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_status", nullable = false, length = 20)
+    @Builder.Default
+    private ConfirmableNotificationDeliveryStatus deliveryStatus = ConfirmableNotificationDeliveryStatus.DELIVERED;
+
+    /**
+     * CMP-260920-1040: ワーカーが作った受信者行の数（軍議第8版確定稿 §3.1）。
+     * 同期経路では常に 0（total_recipient_count と重複しない）。
+     */
+    @Column(name = "delivered_count", nullable = false)
+    @Builder.Default
+    private Integer deliveredCount = 0;
+
+    /**
+     * CMP-260920-1040: 未確認件数のカウンタ（軍議第8版確定稿 §10.1）。
+     *
+     * <p><b>更新してよいのは、この行を {@code SELECT ... FOR UPDATE} でロックしている
+     * トランザクションだけ</b>である（出陣で実装するワーカー・confirm・cancel 等がこの規約に従う）。
+     * 完了判定は {@code unconfirmedCount == 0 && deliveryStatus == DELIVERED && totalRecipientCount > 0}
+     * を、ロックした親の行の値だけで行う（受信者表への通常の COUNT は使わない）。</p>
+     */
+    @Column(name = "unconfirmed_count", nullable = false)
+    @Builder.Default
+    private Integer unconfirmedCount = 0;
 
     /**
      * 未確認者リストの公開範囲（HIDDEN / CREATOR_AND_ADMIN / ALL_MEMBERS）。
@@ -186,6 +241,17 @@ public class ConfirmableNotificationEntity {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * CI是正（CMP-260920-1040 / D-1）: 作成者の {@code users.id} だけを {@code Long} で返す。
+     *
+     * <p>{@link #getCreatedBy()} は {@link UserEntity} 型を露出するため、他ドメインのクラスが
+     * これを呼ぶとクロスドメイン Entity 依存として {@code CrossDomainEntityImportArchTest} に
+     * 新規違反として検知される。ID だけが必要な呼び出し元はこちらを使うこと。</p>
+     */
+    public Long getCreatedByUserId() {
+        return this.createdBy == null ? null : this.createdBy.getId();
     }
 
     // -------------------------------------------------------------------------
@@ -242,5 +308,86 @@ public class ConfirmableNotificationEntity {
      */
     public void updateTotalRecipientCount(int count) {
         this.totalRecipientCount = count;
+    }
+
+    /**
+     * CMP-260920-1040: unconfirmed_count を加算する（軍議第8版確定稿 §10.1）。
+     *
+     * <p>この行を {@code findByIdForUpdate} でロックしているトランザクションからのみ呼ぶこと
+     * （チャンクで受信者を作ったときの加算用）。</p>
+     *
+     * @param delta 加算する件数（マイナス不可）
+     */
+    public void addUnconfirmedCount(int delta) {
+        this.unconfirmedCount = this.unconfirmedCount + delta;
+    }
+
+    /**
+     * CMP-260920-1040: unconfirmed_count を 1 減らす（軍議第8版確定稿 §10.1）。
+     *
+     * <p>受信者行が未確認から確認済みへ実際に変わったとき、または除外されたときにだけ呼ぶこと。
+     * 0 未満にはしない（二重減算の防御）。</p>
+     */
+    public void decrementUnconfirmedCount() {
+        this.unconfirmedCount = Math.max(0, this.unconfirmedCount - 1);
+    }
+
+    /**
+     * CMP-260920-1040: delivery_status を DELIVERING に遷移する（軍議第8版確定稿 §3.4）。
+     *
+     * <p>{@code findByIdForUpdate} でロックしているトランザクションからのみ呼ぶこと。</p>
+     */
+    public void markDelivering() {
+        this.deliveryStatus = ConfirmableNotificationDeliveryStatus.DELIVERING;
+    }
+
+    /**
+     * CMP-260920-1040: delivery_status を DELIVERED に遷移する（軍議第8版確定稿 §9.2）。
+     */
+    public void markDelivered() {
+        this.deliveryStatus = ConfirmableNotificationDeliveryStatus.DELIVERED;
+    }
+
+    /**
+     * CMP-260920-1040: delivery_status を PARTIALLY_FAILED に遷移する（軍議第8版確定稿 §3.4・§8.3）。
+     *
+     * <p>課金の猶予超過などで途中から配れなくなった場合に呼ぶ。一度 PARTIALLY_FAILED になったら
+     * {@link #finishIfNotAlreadyTerminal()} 系の判定で上書きしないこと（呼び出し側の契約）。</p>
+     */
+    public void markPartiallyFailed() {
+        this.deliveryStatus = ConfirmableNotificationDeliveryStatus.PARTIALLY_FAILED;
+    }
+
+    /**
+     * CMP-260920-1040: delivery_status を STOPPED に遷移する（軍議第8版確定稿 §9.1・§9.2）。
+     *
+     * <p>打ち切った理由は本メソッドでは持たない。呼び出し側が親の status（CANCELLED / EXPIRED）を
+     * 見て表示を出し分ける。</p>
+     */
+    public void markStopped() {
+        this.deliveryStatus = ConfirmableNotificationDeliveryStatus.STOPPED;
+    }
+
+    /**
+     * CMP-260920-1040: total_recipient_count / delivered_count を加算する（軍議第8版確定稿 §3.4 手順5）。
+     *
+     * <p>{@code findByIdForUpdate} でロックしているトランザクションからのみ呼ぶこと。</p>
+     */
+    public void addDeliveredCount(int delta) {
+        this.totalRecipientCount = this.totalRecipientCount + delta;
+        this.deliveredCount = this.deliveredCount + delta;
+    }
+
+    /**
+     * CMP-260920-1040: 完了判定（軍議第8版確定稿 §10.1・§9.2）。
+     *
+     * <p>{@code unconfirmedCount == 0 && deliveryStatus == DELIVERED && totalRecipientCount > 0} を、
+     * ロックした親の行の値だけで判定する。0 人（誰も配信していない）で「全員確認済み」を成立させない
+     * （AC-54）。</p>
+     */
+    public boolean isReadyToComplete() {
+        return this.unconfirmedCount == 0
+                && this.deliveryStatus == ConfirmableNotificationDeliveryStatus.DELIVERED
+                && this.totalRecipientCount > 0;
     }
 }

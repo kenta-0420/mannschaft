@@ -6,6 +6,8 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.event.InquiryChannelChangedEvent;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -13,15 +15,16 @@ import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.template.service.ModuleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,8 +55,6 @@ public class AdminBusinessAlertService {
     private static final long CACHE_TTL_SECONDS = 60L;
     private static final String RESERVATION_MODULE_SLUG = "reservation";
     private static final String MANAGE_RESERVATIONS_PERMISSION = "MANAGE_RESERVATIONS";
-    private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
-
     private final UserRoleRepository userRoleRepository;
     private final ReservationRepository reservationRepository;
     private final ChatChannelRepository chatChannelRepository;
@@ -62,6 +63,8 @@ public class AdminBusinessAlertService {
     private final ModuleService moduleService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 業務アラートサマリーを返す。Valkey に 60 秒間キャッシュする。
@@ -117,6 +120,8 @@ public class AdminBusinessAlertService {
      *
      * @param event inquiry チャンネル変更イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。問い合わせチャネル変更の管理者アラート。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @EventListener
     public void onInquiryChannelChanged(InquiryChannelChangedEvent event) {
@@ -171,8 +176,10 @@ public class AdminBusinessAlertService {
 
         if (!reservationCountTargetIds.isEmpty()) {
             // 本日 0:00:00 JST を UTC に変換
-            LocalDateTime todayStartJst = LocalDate.now(JST).atStartOfDay();
-            LocalDateTime todayStartUtc = todayStartJst.atZone(JST).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+            LocalDateTime todayStartUtc = LocalDate.now(wallClock)
+                    .atStartOfDay(wallClock.getZone())
+                    .withZoneSameInstant(ZoneOffset.UTC)
+                    .toLocalDateTime();
 
             List<Object[]> todayConfirmed = reservationRepository
                     .countTodayConfirmedByTeamIds(reservationCountTargetIds, todayStartUtc);

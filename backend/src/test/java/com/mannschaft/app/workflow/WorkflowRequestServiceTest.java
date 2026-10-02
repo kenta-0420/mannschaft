@@ -1,6 +1,8 @@
 package com.mannschaft.app.workflow;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.workflow.dto.CreateWorkflowRequestRequest;
 import com.mannschaft.app.workflow.dto.UpdateWorkflowRequestRequest;
 import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
@@ -10,6 +12,7 @@ import com.mannschaft.app.workflow.entity.WorkflowRequestStepEntity;
 import com.mannschaft.app.workflow.entity.WorkflowTemplateEntity;
 import com.mannschaft.app.workflow.entity.WorkflowTemplateStepEntity;
 import com.mannschaft.app.workflow.repository.WorkflowRequestApproverRepository;
+import com.mannschaft.app.workflow.repository.WorkflowRequestAttachmentRepository;
 import com.mannschaft.app.workflow.repository.WorkflowRequestRepository;
 import com.mannschaft.app.workflow.repository.WorkflowRequestStepRepository;
 import com.mannschaft.app.workflow.repository.WorkflowTemplateStepRepository;
@@ -54,6 +57,12 @@ class WorkflowRequestServiceTest {
     private WorkflowRequestApproverRepository approverRepository;
 
     @Mock
+    private WorkflowRequestAttachmentRepository attachmentRepository;
+
+    @Mock
+    private StorageAclService storageAclService;
+
+    @Mock
     private WorkflowTemplateStepRepository templateStepRepository;
 
     @Mock
@@ -61,6 +70,9 @@ class WorkflowRequestServiceTest {
 
     @Mock
     private WorkflowMapper workflowMapper;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private WorkflowRequestService workflowRequestService;
@@ -154,7 +166,7 @@ class WorkflowRequestServiceTest {
 
             // When
             WorkflowRequestResponse result = workflowRequestService.updateRequest(
-                    SCOPE_TYPE, SCOPE_ID, REQUEST_ID, request);
+                    SCOPE_TYPE, SCOPE_ID, REQUEST_ID, USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -174,7 +186,7 @@ class WorkflowRequestServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> workflowRequestService.updateRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID, request))
+            assertThatThrownBy(() -> workflowRequestService.updateRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(WorkflowErrorCode.INVALID_STATUS_TRANSITION));
@@ -204,7 +216,7 @@ class WorkflowRequestServiceTest {
             given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
 
             // When
-            workflowRequestService.withdrawRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID);
+            workflowRequestService.withdrawRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID, USER_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(WorkflowStatus.WITHDRAWN);
@@ -223,7 +235,7 @@ class WorkflowRequestServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> workflowRequestService.withdrawRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID))
+            assertThatThrownBy(() -> workflowRequestService.withdrawRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(WorkflowErrorCode.INVALID_STATUS_TRANSITION));
@@ -243,7 +255,7 @@ class WorkflowRequestServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When
-            workflowRequestService.deleteRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID);
+            workflowRequestService.deleteRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID, USER_ID);
 
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
@@ -273,7 +285,7 @@ class WorkflowRequestServiceTest {
 
             // When
             Page<WorkflowRequestResponse> result = workflowRequestService.listRequests(
-                    SCOPE_TYPE, SCOPE_ID, "DRAFT", pageable);
+                    SCOPE_TYPE, SCOPE_ID, USER_ID, "DRAFT", pageable);
 
             // Then
             assertThat(result.getTotalElements()).isEqualTo(1);
@@ -290,7 +302,7 @@ class WorkflowRequestServiceTest {
 
             // When
             Page<WorkflowRequestResponse> result = workflowRequestService.listRequests(
-                    SCOPE_TYPE, SCOPE_ID, null, pageable);
+                    SCOPE_TYPE, SCOPE_ID, USER_ID, null, pageable);
 
             // Then
             assertThat(result.getTotalElements()).isEqualTo(0);
@@ -316,7 +328,7 @@ class WorkflowRequestServiceTest {
             given(workflowMapper.toRequestDetailResponse(any(), any())).willReturn(response);
 
             // When
-            WorkflowRequestResponse result = workflowRequestService.getRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID);
+            WorkflowRequestResponse result = workflowRequestService.getRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID, USER_ID);
 
             // Then
             assertThat(result.getTitle()).isEqualTo("休暇申請");
@@ -330,7 +342,7 @@ class WorkflowRequestServiceTest {
                     .willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> workflowRequestService.getRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID))
+            assertThatThrownBy(() -> workflowRequestService.getRequest(SCOPE_TYPE, SCOPE_ID, REQUEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(WorkflowErrorCode.REQUEST_NOT_FOUND));

@@ -12,7 +12,7 @@ test.describe('ORG-FEAT-034〜037: 組織回覧板', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [{ id: 1, title: 'テスト回覧', status: 'IN_PROGRESS', confirmedCount: 3, totalCount: 10, createdAt: '2026-04-01T00:00:00Z' }],
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })
@@ -22,6 +22,10 @@ test.describe('ORG-FEAT-034〜037: 組織回覧板', () => {
     await page.goto(`/organizations/${ORG_ID}/circulation`)
     await waitForHydration(page)
     await expect(page.getByRole('heading', { name: '回覧板' })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('link', { name: 'クイック確認を開く' })).toHaveAttribute(
+      'href',
+      `/organizations/${ORG_ID}/settings/confirmable-notifications`,
+    )
   })
 
   test('ORG-FEAT-035: 回覧が一覧に表示される', async ({ page }) => {

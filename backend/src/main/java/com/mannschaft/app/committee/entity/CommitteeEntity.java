@@ -7,10 +7,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
@@ -24,8 +24,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class CommitteeEntity extends BaseEntity {
 
     /** 所属組織ID */
@@ -101,6 +100,37 @@ public class CommitteeEntity extends BaseEntity {
      */
     public void setArchivedAt(LocalDateTime archivedAt) {
         this.archivedAt = archivedAt;
+    }
+
+    /**
+     * 委員会情報を更新する。
+     * managed エンティティを直接ミューテートすることで id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyUpdate(String name, String description, CommitteePurposeTag purposeTag,
+                            LocalDate startDate, LocalDate endDate,
+                            CommitteeVisibility visibilityToOrg,
+                            ConfirmationMode defaultConfirmationMode,
+                            boolean defaultAnnouncementEnabled,
+                            DistributionScope defaultDistributionScope) {
+        this.name = name;
+        this.description = description;
+        this.purposeTag = purposeTag;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.visibilityToOrg = visibilityToOrg;
+        this.defaultConfirmationMode = defaultConfirmationMode;
+        this.defaultAnnouncementEnabled = defaultAnnouncementEnabled;
+        this.defaultDistributionScope = defaultDistributionScope;
+    }
+
+    /**
+     * ステータス遷移を適用する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     */
+    public void applyStatusTransition(CommitteeStatus newStatus, LocalDateTime newArchivedAt) {
+        this.status = newStatus;
+        this.archivedAt = newArchivedAt;
     }
 
     /**

@@ -12,7 +12,7 @@
  */
 import type { TeamMatchStatsResponse } from '~/types/match'
 
-definePageMeta({ layout: 'team', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 // [slug] ルートでは params.slug を使う（params.id は undefined）
@@ -35,7 +35,7 @@ async function load(): Promise<void> {
     // resolveContext は tm.slug === 引数 で照合するため slug を渡す（数値 ID 不可）
     const ctx = await resolveContext(teamSlug.value)
     orgId.value = ctx?.orgId ?? null
-    if (ctx === null) {
+    if (ctx === null || ctx.orgId === null) {
       stats.value = null
       return
     }
@@ -55,8 +55,7 @@ onMounted(load)
 <template>
   <div class="mx-auto max-w-6xl px-4 py-4">
     <div class="mb-1 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}`" />
-      <PageHeader :title="t('match.analytics.team_title')" size="sm" />
+      <PageHeader :title="t('match.analytics.team_title')" size="sm" :back-to="`/teams/${teamSlug}`" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.team_subtitle') }}</p>
 

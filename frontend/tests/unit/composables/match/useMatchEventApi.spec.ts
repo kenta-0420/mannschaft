@@ -28,6 +28,7 @@ mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 import { useMatchEventApi } from '~/composables/match/useMatchEventApi'
 
 const ORG = 7
+const TEAM = 92
 const MATCH = 'm-uuid-1'
 const EVENT = 'e-uuid-1'
 
@@ -40,7 +41,7 @@ describe('useMatchEventApi', () => {
   it('EVT-API-001: listEvents は GET .../events で data を返す', async () => {
     mockFetch.mockResolvedValueOnce({ data: { events: [], scoreMismatch: false } })
     const api = useMatchEventApi()
-    const res = await api.listEvents(ORG, MATCH)
+    const res = await api.listEvents(ORG, TEAM, MATCH)
 
     expect(mockFetch).toHaveBeenCalledWith(
       `/api/v1/organizations/${ORG}/matches/${MATCH}/events`,
@@ -51,7 +52,7 @@ describe('useMatchEventApi', () => {
   it('EVT-API-002: listAppearances は GET .../appearances で data を返す', async () => {
     mockFetch.mockResolvedValueOnce({ data: [{ id: 'a1' }] })
     const api = useMatchEventApi()
-    const res = await api.listAppearances(ORG, MATCH)
+    const res = await api.listAppearances(ORG, TEAM, MATCH)
 
     expect(mockFetch).toHaveBeenCalledWith(
       `/api/v1/organizations/${ORG}/matches/${MATCH}/appearances`,
@@ -68,7 +69,7 @@ describe('useMatchEventApi', () => {
       teamSide: 'HOME' as const,
       minute: 12,
     }
-    await api.addEvent(ORG, MATCH, body)
+    await api.addEvent(ORG, TEAM, MATCH, body)
 
     expect(mockFetch).toHaveBeenCalledWith(
       `/api/v1/organizations/${ORG}/matches/${MATCH}/events`,
@@ -85,7 +86,7 @@ describe('useMatchEventApi', () => {
       teamSide: 'HOME' as const,
       minute: 70,
     }
-    await api.updateEvent(ORG, MATCH, EVENT, body)
+    await api.updateEvent(ORG, TEAM, MATCH, EVENT, body)
 
     expect(mockFetch).toHaveBeenCalledWith(
       `/api/v1/organizations/${ORG}/matches/${MATCH}/events/${EVENT}`,
@@ -96,7 +97,7 @@ describe('useMatchEventApi', () => {
   it('EVT-API-005: deleteEvent は DELETE .../events/{eventId}', async () => {
     mockFetch.mockResolvedValueOnce(undefined)
     const api = useMatchEventApi()
-    await api.deleteEvent(ORG, MATCH, EVENT)
+    await api.deleteEvent(ORG, TEAM, MATCH, EVENT)
 
     expect(mockFetch).toHaveBeenCalledWith(
       `/api/v1/organizations/${ORG}/matches/${MATCH}/events/${EVENT}`,
@@ -108,7 +109,7 @@ describe('useMatchEventApi', () => {
     mockFetch.mockRejectedValueOnce(new Error('boom'))
     const api = useMatchEventApi()
 
-    await expect(api.listEvents(ORG, MATCH)).rejects.toThrow('boom')
+    await expect(api.listEvents(ORG, TEAM, MATCH)).rejects.toThrow('boom')
     expect(mockError).toHaveBeenCalledWith('match.live.error.load_events_failed')
   })
 })

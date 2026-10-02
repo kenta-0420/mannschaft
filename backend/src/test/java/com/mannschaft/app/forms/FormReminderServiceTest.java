@@ -1,6 +1,7 @@
 package com.mannschaft.app.forms;
 
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.forms.dto.FormRemindResponse;
 import com.mannschaft.app.forms.entity.FormTemplateEntity;
@@ -39,6 +40,7 @@ class FormReminderServiceTest {
     @Mock private FormSubmissionRepository submissionRepository;
     @Mock private AuditLogService auditLogService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private FormReminderService reminderService;

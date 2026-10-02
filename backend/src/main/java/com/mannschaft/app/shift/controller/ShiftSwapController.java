@@ -4,7 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.shift.dto.CreateSwapRequestRequest;
 import com.mannschaft.app.shift.dto.ResolveSwapRequestRequest;
 import com.mannschaft.app.shift.dto.SwapRequestResponse;
-import com.mannschaft.app.shift.service.ShiftSwapService;
+import com.mannschaft.app.shift.service.ShiftSwapFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,18 +32,30 @@ import com.mannschaft.app.common.SecurityUtils;
 @RequiredArgsConstructor
 public class ShiftSwapController {
 
-    private final ShiftSwapService swapService;
+    private final ShiftSwapFacade swapFacade;
 
 
     /**
-     * 交代リクエスト一覧を取得する。
+     * 指定チームの交代リクエスト一覧を取得する。
+     *
+     * <p>CMP-260908-2116: 承諾できる立場の一般メンバーが「承諾すべき依頼」を一覧できないと
+     * UI から承諾操作へ到達できないため、当該チームのメンバー（SUPPORTER 不可）にも開く。
+     * ただし一般メンバーには<b>自分に関係する依頼のみ</b>を返す（絞り込みは Service 側で行う。
+     * 交代理由には私的な内容が書かれうるため、FE で隠すのではなくレスポンスに乗せない）。</p>
+     *
+     * <p>認可根治 Wave6: 取得範囲を単一チームに閉じるため {@code teamId} を必須とする。
+     * 同ドメインの兄弟 API（{@code ShiftPositionController#listPositions} の {@code teamId}、
+     * {@code ShiftRequestController#listRequests} の {@code scheduleId}）と同じく、
+     * 一覧 API は明示の scope パラメータを取る規約に揃えた。</p>
      */
     @GetMapping
     @Operation(summary = "交代リクエスト一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<SwapRequestResponse>>> listSwapRequests(
+            @RequestParam Long teamId,
             @RequestParam(required = false) String status) {
-        List<SwapRequestResponse> responses = swapService.listSwapRequests(status);
+        List<SwapRequestResponse> responses =
+                swapFacade.listSwapRequests(teamId, status, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -55,7 +67,7 @@ public class ShiftSwapController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<SwapRequestResponse>> createSwapRequest(
             @Valid @RequestBody CreateSwapRequestRequest request) {
-        SwapRequestResponse response = swapService.createSwapRequest(request, SecurityUtils.getCurrentUserId());
+        SwapRequestResponse response = swapFacade.createSwapRequest(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -67,7 +79,7 @@ public class ShiftSwapController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承諾成功")
     public ResponseEntity<ApiResponse<SwapRequestResponse>> acceptSwapRequest(
             @PathVariable Long swapId) {
-        SwapRequestResponse response = swapService.acceptSwapRequest(swapId, SecurityUtils.getCurrentUserId());
+        SwapRequestResponse response = swapFacade.acceptSwapRequest(swapId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -80,7 +92,7 @@ public class ShiftSwapController {
     public ResponseEntity<ApiResponse<SwapRequestResponse>> resolveSwapRequest(
             @PathVariable Long swapId,
             @Valid @RequestBody ResolveSwapRequestRequest request) {
-        SwapRequestResponse response = swapService.resolveSwapRequest(swapId, request, SecurityUtils.getCurrentUserId());
+        SwapRequestResponse response = swapFacade.resolveSwapRequest(swapId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -92,34 +104,7 @@ public class ShiftSwapController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "キャンセル成功")
     public ResponseEntity<Void> cancelSwapRequest(
             @PathVariable Long swapId) {
-        swapService.cancelSwapRequest(swapId, SecurityUtils.getCurrentUserId());
+        swapFacade.cancelSwapRequest(swapId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * オープンコールに手を挙げる（先着1名）。
-     */
-    @PostMapping("/{swapId}/claim")
-    @Operation(summary = "オープンコール手挙げ")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "手挙げ成功")
-    public ResponseEntity<ApiResponse<com.mannschaft.app.shift.dto.SwapRequestResponse>> claimOpenCall(
-            @PathVariable Long swapId) {
-        com.mannschaft.app.shift.dto.SwapRequestResponse response =
-                swapService.claimOpenCall(swapId, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(response));
-    }
-
-    /**
-     * オープンコールの候補者を選定する（申請者のみ）。
-     */
-    @PostMapping("/{swapId}/select-claimer")
-    @Operation(summary = "オープンコール候補者選定")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "選定成功")
-    public ResponseEntity<ApiResponse<com.mannschaft.app.shift.dto.SwapRequestResponse>> selectClaimer(
-            @PathVariable Long swapId,
-            @RequestBody Long claimedBy) {
-        com.mannschaft.app.shift.dto.SwapRequestResponse response =
-                swapService.selectClaimer(swapId, claimedBy, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

@@ -1,6 +1,7 @@
 package com.mannschaft.app.workflow.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.workflow.dto.WorkflowTemplateResponse;
 import com.mannschaft.app.workflow.service.WorkflowTemplateService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,7 +34,8 @@ public class WorkflowTemplateStatusController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long templateId) {
-        WorkflowTemplateResponse response = templateService.activateTemplate(scopeType, scopeId, templateId);
+        WorkflowTemplateResponse response = templateService.activateTemplate(
+                scopeType, scopeId, templateId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -47,7 +49,8 @@ public class WorkflowTemplateStatusController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long templateId) {
-        WorkflowTemplateResponse response = templateService.deactivateTemplate(scopeType, scopeId, templateId);
+        WorkflowTemplateResponse response = templateService.deactivateTemplate(
+                scopeType, scopeId, templateId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

@@ -10,6 +10,13 @@ spring:
     redis:
       host: ${SPRING_REDIS_HOST}
       port: ${SPRING_REDIS_PORT:6379}
+      # WebSocket 外部ブローカー化（Valkey Pub/Sub relay）§8.6: ElastiCache の転送時暗号化
+      # （transit_encryption_enabled = true・infra/terraform/modules/data/main.tf）に追随。
+      # 本番は terraform 側で SPRING_REDIS_SSL_ENABLED=true を注入する
+      # （infra/terraform/modules/app/main.tf）。ローカル/開発（application.yml）は
+      # 未設定のまま既定 false を維持し、TLS 無し Valkey（docker-compose）を使い続ける。
+      ssl:
+        enabled: ${SPRING_REDIS_SSL_ENABLED:false}
 
   jpa:
     show-sql: false

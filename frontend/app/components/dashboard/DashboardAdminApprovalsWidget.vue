@@ -119,7 +119,11 @@ onBeforeUnmount(() => {
               class="text-2xl font-bold"
               :data-testid="`admin-approvals-total-${scopeType}`"
             >{{ totalPending }}</span>
-            <span v-else class="text-sm text-surface-500">
+            <span
+              v-else
+              class="text-sm text-surface-500"
+              :data-testid="`admin-approvals-empty-${scopeType}`"
+            >
               {{ $t('adminConsole.lens.approvals.empty') }}
             </span>
           </span>

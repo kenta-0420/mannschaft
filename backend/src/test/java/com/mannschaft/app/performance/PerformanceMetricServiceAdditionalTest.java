@@ -3,6 +3,7 @@ package com.mannschaft.app.performance;
 import com.mannschaft.app.activity.FieldType;
 import com.mannschaft.app.activity.entity.ActivityTemplateFieldEntity;
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.performance.dto.MetricResponse;
 import com.mannschaft.app.performance.dto.SortOrderRequest;
@@ -50,11 +51,15 @@ class PerformanceMetricServiceAdditionalTest {
     @Mock
     private PerformanceMapper performanceMapper;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private PerformanceMetricService service;
 
     private static final Long TEAM_ID = 1L;
     private static final Long METRIC_ID = 100L;
+    private static final Long ADMIN_USER_ID = 100L;
 
     private PerformanceMetricEntity createMetric(Long id) {
         PerformanceMetricEntity entity = PerformanceMetricEntity.builder()
@@ -98,7 +103,7 @@ class PerformanceMetricServiceAdditionalTest {
             given(performanceMapper.toMetricResponseList(List.of(entity))).willReturn(List.of(response));
 
             // When
-            List<MetricResponse> result = service.listMetrics(TEAM_ID);
+            List<MetricResponse> result = service.listMetrics(TEAM_ID, ADMIN_USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -113,7 +118,7 @@ class PerformanceMetricServiceAdditionalTest {
             given(performanceMapper.toMetricResponseList(List.of())).willReturn(List.of());
 
             // When
-            List<MetricResponse> result = service.listMetrics(TEAM_ID);
+            List<MetricResponse> result = service.listMetrics(TEAM_ID, ADMIN_USER_ID);
 
             // Then
             assertThat(result).isEmpty();
@@ -149,7 +154,7 @@ class PerformanceMetricServiceAdditionalTest {
             given(performanceMapper.toMetricResponse(any())).willReturn(response);
 
             // When
-            MetricResponse result = service.updateMetric(TEAM_ID, METRIC_ID, request);
+            MetricResponse result = service.updateMetric(TEAM_ID, METRIC_ID, ADMIN_USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -165,7 +170,7 @@ class PerformanceMetricServiceAdditionalTest {
             given(metricRepository.findByIdAndTeamId(METRIC_ID, TEAM_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> service.updateMetric(TEAM_ID, METRIC_ID, request))
+            assertThatThrownBy(() -> service.updateMetric(TEAM_ID, METRIC_ID, ADMIN_USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PERF_001"));
@@ -192,7 +197,7 @@ class PerformanceMetricServiceAdditionalTest {
             given(metricRepository.save(any())).willReturn(entity);
 
             // When
-            var result = service.updateSortOrder(TEAM_ID, request);
+            var result = service.updateSortOrder(TEAM_ID, ADMIN_USER_ID, request);
 
             // Then
             assertThat(result.getUpdatedCount()).isEqualTo(1);
@@ -209,7 +214,7 @@ class PerformanceMetricServiceAdditionalTest {
             given(metricRepository.findByIdAndTeamId(METRIC_ID, TEAM_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> service.updateSortOrder(TEAM_ID, request))
+            assertThatThrownBy(() -> service.updateSortOrder(TEAM_ID, ADMIN_USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PERF_001"));
@@ -305,7 +310,7 @@ class PerformanceMetricServiceAdditionalTest {
                     .willReturn(List.of());
 
             // When
-            var result = service.listLinkableFields(TEAM_ID);
+            var result = service.listLinkableFields(TEAM_ID, ADMIN_USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -341,7 +346,7 @@ class PerformanceMetricServiceAdditionalTest {
                     .willReturn(List.of(linkedMetric));
 
             // When
-            var result = service.listLinkableFields(TEAM_ID);
+            var result = service.listLinkableFields(TEAM_ID, ADMIN_USER_ID);
 
             // Then
             assertThat(result).isEmpty();

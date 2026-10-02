@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.recruitment.dto.ApplyToRecruitmentRequest;
 import com.mannschaft.app.recruitment.dto.CancelMyApplicationRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
@@ -46,6 +47,9 @@ public class RecruitmentApplicationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
+    @SelfScopedEndpoint("RecruitmentParticipantService#cancelMyApplication が "
+            + "findActiveByListingAndUser(listingId, userId) で SecurityUtils.getCurrentUserId() "
+            + "の参加行のみを検索条件に束縛する")
     @DeleteMapping("/applications/me")
     @Operation(summary = "本人キャンセル", description = "acknowledged_fee=true 必須 (§9.10)")
     public ResponseEntity<ApiResponse<RecruitmentParticipantResponse>> cancelMyApplication(

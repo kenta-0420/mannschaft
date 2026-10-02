@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,11 +62,20 @@ class ShiftPdfServiceAuthzTest {
     private static final Long REQUESTER   = 99L;
     private static final Long OTHER_TEAM  = 20L;
 
-    /** テスト用の ShiftScheduleResponse（teamId = TEAM_ID）を返す。 */
+    /**
+     * テスト用の ShiftScheduleResponse（teamId = TEAM_ID）を返す。
+     *
+     * <p>CMP-260826-2127（AC-13）: 本フィクスチャはかつて {@code status} を設定しておらず、
+     * 未公開シフト表の遮断を入れると fail-closed で 404 になってしまっていた。
+     * 本クラスが検証したいのは<b>認可（誰が PDF を取れるか）</b>であり可視性ではないため、
+     * 期待値ではなくフィクスチャ側を「日常の正常系＝公開済みシフト表」に直してある。</p>
+     */
     private ShiftScheduleResponse scheduleOf(Long teamId) {
         return ShiftScheduleResponse.builder()
                 .id(SCHEDULE_ID)
                 .teamId(teamId)
+                .status(new ShiftScheduleResponse.ShiftStatusDto(
+                        "PUBLISHED", LocalDateTime.of(2026, 2, 20, 10, 0), null))
                 .build();
     }
 
@@ -92,7 +102,7 @@ class ShiftPdfServiceAuthzTest {
         @DisplayName("非メンバーは COMMON_002（isMember=false で BusinessException）")
         void 非メンバー_COMMON_002() {
             // isMember が false → 最初のチェックで弾かれる
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(false);
 
             assertThatThrownBy(() -> shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER))
@@ -107,7 +117,7 @@ class ShiftPdfServiceAuthzTest {
         @DisplayName("SUPPORTER は COMMON_002（isMember=true / isSupporter=true で BusinessException）")
         void SUPPORTER_COMMON_002() {
             // メンバーだが SUPPORTER ロール → 二番目のチェックで弾かれる
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
 
@@ -121,10 +131,10 @@ class ShiftPdfServiceAuthzTest {
         @Test
         @DisplayName("MEMBER（非 SUPPORTER）は認可通過し PDF バイト列を返す")
         void MEMBER_認可通過() {
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(false);
-            given(shiftSlotService.listSlots(SCHEDULE_ID)).willReturn(sampleSlots());
+            given(shiftSlotService.listSlots(SCHEDULE_ID, REQUESTER)).willReturn(sampleSlots());
             byte[] expected = new byte[]{0x25, 0x50, 0x44, 0x46}; // "%PDF" マジックバイト
             given(pdfGeneratorService.generateFromTemplate(eq("pdf/shift-team"), any()))
                     .willReturn(expected);
@@ -139,7 +149,7 @@ class ShiftPdfServiceAuthzTest {
         @DisplayName("他チームの scheduleId による IDOR は teamId 解決後に non-member 扱いで COMMON_002")
         void IDOR_他チームのscheduleId_COMMON_002() {
             // scheduleId=1 が OTHER_TEAM に紐づく。REQUESTER は TEAM_ID のメンバーだが OTHER_TEAM では非メンバー
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(OTHER_TEAM));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(OTHER_TEAM));
             given(accessControlService.isMember(REQUESTER, OTHER_TEAM, "TEAM")).willReturn(false);
 
             assertThatThrownBy(() -> shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER))
@@ -163,7 +173,7 @@ class ShiftPdfServiceAuthzTest {
         @Test
         @DisplayName("SUPPORTER は COMMON_002（generatePersonalPdf でも同じ認可ルール）")
         void SUPPORTER_personalPdf_COMMON_002() {
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
 
@@ -177,10 +187,10 @@ class ShiftPdfServiceAuthzTest {
         @Test
         @DisplayName("MEMBER（非 SUPPORTER）は個人スロットのみフィルタして PDF バイト列を返す")
         void MEMBER_personalPdf_認可通過() {
-            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(scheduleOf(TEAM_ID));
+            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER)).willReturn(scheduleOf(TEAM_ID));
             given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
             given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(false);
-            given(shiftSlotService.listSlots(SCHEDULE_ID)).willReturn(sampleSlots());
+            given(shiftSlotService.listSlots(SCHEDULE_ID, REQUESTER)).willReturn(sampleSlots());
             byte[] expected = new byte[]{0x25, 0x50, 0x44, 0x46};
             given(pdfGeneratorService.generateFromTemplate(eq("pdf/shift-personal"), any()))
                     .willReturn(expected);

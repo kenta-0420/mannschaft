@@ -8,6 +8,7 @@ import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.UserVillagePinRepository;
+import com.mannschaft.app.village.repository.VillageCharterDrafterRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,6 +59,9 @@ class VillageUserCleanerEventListenerTest {
     private UserVillagePinRepository pinRepository;
     @Mock
     private VillageMembershipRepository membershipRepository;
+    /** F17.3 で退会時の憲章策定者 user_id NULL 化（anonymizeCharterDrafters）が追加されたため注入対象に追随。 */
+    @Mock
+    private VillageCharterDrafterRepository charterDrafterRepository;
 
     @InjectMocks
     private VillageUserCleanerEventListener listener;

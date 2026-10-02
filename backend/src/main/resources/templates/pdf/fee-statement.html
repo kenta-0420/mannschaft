@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"><head><meta charset="UTF-8"/>
+<link rel="stylesheet" href="css/pdf-common.css"/></head><body class="font-serif">
+<div class="pdf-header"><h1>Monthly fee statement</h1></div><div class="pdf-body"><table>
+<tr><th>Period</th><td th:text="${statement.period}">2026-09</td></tr>
+<tr><th>Total fee</th><td th:text="${statement.totalFeeAmount + ' ' + statement.currency}">0 JPY</td></tr>
+<tr><th>Issuer</th><td th:text="${statement.issuerName}">Mannschaft</td></tr>
+</table></div></body></html>

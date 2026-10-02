@@ -6,14 +6,18 @@ import com.mannschaft.app.payment.PaymentStatus;
 import com.mannschaft.app.payment.dto.ReceiptResponse;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
+import com.mannschaft.app.payment.repository.PaymentItemRepository;
+import com.mannschaft.app.receipt.service.MemberPaymentReceiptDocumentService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -44,6 +48,15 @@ class ReceiptServiceTest {
     @Mock
     private MemberPaymentRepository memberPaymentRepository;
 
+    @Mock
+    private PaymentItemRepository paymentItemRepository;
+
+    @Mock
+    private MemberPaymentReceiptDocumentService receiptDocumentService;
+
+    @Mock
+    private Clock clock;
+
     @InjectMocks
     private ReceiptService receiptService;
 
@@ -57,6 +70,8 @@ class ReceiptServiceTest {
                 .paymentItemId(100L)
                 .amountPaid(new BigDecimal("5000.00"))
                 .currency("JPY")
+                .status(PaymentStatus.PAID)
+                .paidAt(LocalDateTime.of(2026, 9, 20, 12, 0))
                 .stripeReceiptUrl("https://pay.stripe.com/receipts/test_receipt")
                 .build();
     }
@@ -70,6 +85,7 @@ class ReceiptServiceTest {
     void getReceipt_payerAccess_returnsReceipt() {
         MemberPaymentEntity payment = buildPayment();
         given(memberPaymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
+        given(paymentItemRepository.findReceiptContextById(100L)).willReturn(Optional.empty());
 
         ReceiptResponse result = receiptService.getReceipt(PAYMENT_ID, PAYER_USER_ID);
 
@@ -90,6 +106,7 @@ class ReceiptServiceTest {
     void getReceipt_beneficiaryAccess_returnsReceipt() {
         MemberPaymentEntity payment = buildPayment();
         given(memberPaymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
+        given(paymentItemRepository.findReceiptContextById(100L)).willReturn(Optional.empty());
 
         ReceiptResponse result = receiptService.getReceipt(PAYMENT_ID, BENEFICIARY_USER_ID);
 
@@ -130,5 +147,45 @@ class ReceiptServiceTest {
                     BusinessException be = (BusinessException) ex;
                     assertThat(be.getErrorCode()).isEqualTo(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND);
                 });
+    }
+
+    @Test
+    @DisplayName("Stripe領収書URLがないPAID支払いはPDF fallback URLを返す")
+    void getReceipt_paidWithoutStripeReceipt_returnsPdfFallbackUrl() {
+        MemberPaymentEntity payment = MemberPaymentEntity.builder()
+                .userId(BENEFICIARY_USER_ID)
+                .payerUserId(PAYER_USER_ID)
+                .paymentItemId(100L)
+                .amountPaid(new BigDecimal("5000.00"))
+                .currency("JPY")
+                .status(PaymentStatus.PAID)
+                .paidAt(LocalDateTime.of(2026, 9, 20, 12, 0))
+                .build();
+        ReflectionTestUtils.setField(payment, "id", PAYMENT_ID);
+        given(memberPaymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
+        given(paymentItemRepository.findReceiptContextById(100L)).willReturn(Optional.empty());
+
+        ReceiptResponse result = receiptService.getReceipt(PAYMENT_ID, PAYER_USER_ID);
+
+        assertThat(result.receiptUrl()).isEqualTo("/api/v1/member-payments/1/receipt/pdf");
+    }
+
+    @Test
+    @DisplayName("未払い記録は領収書として公開しない")
+    void getReceipt_pendingPayment_throwsNotFound() {
+        MemberPaymentEntity payment = MemberPaymentEntity.builder()
+                .userId(BENEFICIARY_USER_ID)
+                .payerUserId(PAYER_USER_ID)
+                .paymentItemId(100L)
+                .amountPaid(new BigDecimal("5000.00"))
+                .currency("JPY")
+                .status(PaymentStatus.PENDING)
+                .build();
+        given(memberPaymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
+
+        assertThatThrownBy(() -> receiptService.getReceipt(PAYMENT_ID, PAYER_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND));
     }
 }

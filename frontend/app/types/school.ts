@@ -1,5 +1,8 @@
+import type { AbsenceReasonValue } from '~/constants/absenceReason'
+
 export type AttendanceStatus = 'ATTENDING' | 'PARTIAL' | 'ABSENT' | 'UNDECIDED'
-export type AbsenceReason = 'ILLNESS' | 'INJURY' | 'FAMILY' | 'OTHER'
+/** BE `AbsenceReason` と同値（constants/absenceReason.ts が正本）。 */
+export type AbsenceReason = AbsenceReasonValue
 
 export interface DailyAttendanceResponse {
   id: number
@@ -66,6 +69,7 @@ export interface AttendanceHistoryItem {
   recordedAt: string
 }
 
+/** 時限点呼には欠席理由が無い（F03.13 §3.1 period_attendance_records に absence_reason 列なし）。 */
 export interface PeriodAttendanceResponse {
   id: number
   teamId: number
@@ -73,7 +77,6 @@ export interface PeriodAttendanceResponse {
   attendanceDate: string
   periodNumber: number
   status: AttendanceStatus
-  absenceReason?: AbsenceReason
   comment?: string
   recordedAt: string
   createdAt: string
@@ -87,7 +90,6 @@ export interface PeriodAttendanceListResponse {
 export interface PeriodAttendanceEntry {
   studentUserId: number
   status: AttendanceStatus
-  absenceReason?: AbsenceReason
   comment?: string
 }
 
@@ -109,7 +111,6 @@ export interface PeriodAttendanceSummary {
 
 export interface PeriodAttendanceUpdateRequest {
   status?: AttendanceStatus
-  absenceReason?: AbsenceReason
   comment?: string
 }
 
@@ -130,7 +131,6 @@ export interface PeriodCandidatesResponse {
 export interface PeriodTimelineItem {
   periodNumber: number
   status: AttendanceStatus
-  absenceReason?: AbsenceReason
   comment?: string
 }
 
@@ -145,15 +145,8 @@ export interface StudentTimelineResponse {
 
 export type FamilyNoticeType = 'ABSENCE' | 'LATE' | 'EARLY_LEAVE' | 'OTHER'
 
-export type FamilyNoticeReason =
-  | 'SICK'
-  | 'INJURY'
-  | 'FAMILY_REASON'
-  | 'BEREAVEMENT'
-  | 'INFECTIOUS_DISEASE'
-  | 'MENTAL_HEALTH'
-  | 'OFFICIAL_BUSINESS'
-  | 'OTHER'
+/** BE FamilyAttendanceNoticeRequest#reason も同じ AbsenceReason。 */
+export type FamilyNoticeReason = AbsenceReason
 
 export type FamilyNoticeStatus = 'PENDING' | 'ACKNOWLEDGED' | 'APPLIED'
 

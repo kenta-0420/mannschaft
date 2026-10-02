@@ -240,9 +240,11 @@ ALTER TABLE audit_logs
 | 項目 | 内容 |
 |---|---|
 | 実行タイミング | 毎月1日 AM 2:00（Spring `@Scheduled`） |
-| 処理内容 | 保持期限超過パーティションを R2 に JSONL で一括アップロード後、`ALTER TABLE ... DROP PARTITION` で瞬時削除 |
+| 処理内容 | 保持期限（2年）を過ぎた月を1ヶ月ずつ走査し、月内をキーセットページング（`id > cursor`・1000件/回）で全件 R2 へアップロードした後、`ALTER TABLE ... DROP PARTITION` で瞬時削除 |
 | 削除方式 | `DROP PARTITION`（行レベルロックなし・瞬時完了） |
-| R2 保存パス | `audit-logs/{yyyy}/{MM}/audit_log_{yyyyMM}.jsonl.gz` |
+| R2 保存パス | `audit-archive/{yyyy}/{MM}/audit-{yyyy}-{MM}.json`（1ヶ月が複数ページに及ぶ場合は `...-{MM}.part{n}.json` に分割） |
+| 整合性の要件 | **アーカイブ内容と削除範囲を常に一致させる。** ある月の全ページを書き切った場合にのみ当該月のパーティションを DROP し、アップロードが1ページでも失敗したら DROP しない。基準日時を含む月は経過しきっていないため DROP せず翌月へ持ち越す |
+| ページングの要件 | 走査中に行を削除しないため、オフセットページング（先頭ページの取り直し）は**同一行を無限に取り直す**。カーソルを直前ページの最終 `id` まで必ず前進させること |
 
 #### 3-B. chat_messages_archive テーブル（V64.003〜V64.004）
 
@@ -275,23 +277,36 @@ CREATE TABLE chat_messages_archive (
 | 処理内容 | 論理削除から6ヶ月超のメッセージを `chat_messages_archive` に INSERT → 本テーブルから DELETE |
 | バッチサイズ | 1,000件ずつ処理（大量データ時のメモリ圧迫防止） |
 
-#### 3-C. notifications 夜間クリーンアップ（V64.005〜V64.006）
+#### 3-C. notifications 夜間保持バッチ（アーカイブ移送・索引 V173.20260730033807）
+
+> **移送型への是正（P2 Wave1/Wave2-A）**: 従来は物理削除のみで、移送先表・専用索引も存在せず
+> `is_read + created_at` の範囲を掃く走査は実質フルスキャン相当だった。P2 Wave1 で
+> `notifications_archive` 表と移送索引 `idx_notifications_read_created` を
+> `V173.20260730033807__create_notifications_archive_and_read_index.sql` で新設し、
+> Wave2-A で `NotificationCleanupBatchService` を物理削除から**アーカイブ移送型**へ是正した。
 
 ```sql
--- 90日超の既読通知を物理削除（インデックスを使った範囲削除）
+-- 保持期間超過の通知を notifications_archive へ移送してから本体を削除（索引を使った範囲移送）
+-- 既読90日超 OR 未読365日超が対象。id 単位の存在確認付き DELETE で欠落なし・重複なし。
+INSERT IGNORE INTO notifications_archive (...) SELECT ... FROM notifications
+WHERE (is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
+   OR (is_read = FALSE AND created_at < DATE_SUB(NOW(), INTERVAL 365 DAY))
+ORDER BY created_at ASC LIMIT ?;
+
 DELETE FROM notifications
-WHERE is_read = TRUE
-  AND created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
+WHERE ((is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
+    OR (is_read = FALSE AND created_at < DATE_SUB(NOW(), INTERVAL 365 DAY)))
+  AND id IN (SELECT id FROM notifications_archive) LIMIT ?;
 ```
 
-**クリーンアップバッチ: `NotificationCleanupBatchService`**
+**保持バッチ: `NotificationCleanupBatchService`**
 
 | 項目 | 内容 |
 |---|---|
 | 実行タイミング | 毎日 AM 4:00（Spring `@Scheduled`） |
-| 処理内容 | 90日超の既読通知を物理削除 |
-| バッチサイズ | 500件ずつ処理 |
-| インデックス利用 | `idx_notifications_read_created` を利用した効率的な範囲削除 |
+| 処理内容 | 既読90日超・未読365日超を `notifications_archive` へアーカイブ移送し、archive 収録済みの id のみ本体から削除 |
+| バッチサイズ | 10,000件ずつ処理（チャンク単位で独立コミット＝at-least-once） |
+| インデックス利用 | `idx_notifications_read_created`（`is_read, created_at`・V173 新設）を利用した効率的な範囲移送 |
 
 ---
 
@@ -307,19 +322,29 @@ WHERE is_read = TRUE
 
 時系列順でソート可能な UUIDv7 を新規テーブルの標準 ID 型として採用する。
 
+> 2026-09-15 の CMP-008 CI 実測で、旧 `@UuidGenerator(style = TIME)` が
+> UUIDv7ではなくUUIDv1を生成すると判明した。2026-09-17に共通 `UuidV7.generate()` と
+> `@PrePersist` へ切り替え、BINARY(16)・CHAR(36)の新規採番が真正UUIDv7であること、
+> 既存UUIDv1と混在してCRUDできることを実MySQLで検証した。
+
 ```java
 /**
  * UUIDv7（時系列順・衝突耐性）を ID に使う Entity の基底クラス。
  * 新規テーブル作成時はこのクラスを継承する。
- * 既存テーブルの ID 変更は行わない（互換性維持）。
+ * 既存テーブルの ID 変更は、公開契約と参照先を一括移行できる場合に限る。
  */
 @MappedSuperclass
 public abstract class UuidV7Entity {
 
     @Id
-    @UuidGenerator(style = UuidGenerator.Style.TIME)
-    @Column(name = "id", updatable = false, nullable = false, length = 36)
-    private String id;
+    private UUID id;
+
+    @PrePersist
+    protected void assignId() {
+        if (id == null) {
+            id = UuidV7.generate();
+        }
+    }
 }
 ```
 
@@ -445,6 +470,28 @@ spring:
       cache-null-values: false
 ```
 
+#### 4-E-2. キャッシュ基盤障害時の fail-open（`LoggingCacheErrorHandler`）
+
+Spring 既定の `SimpleCacheErrorHandler` はキャッシュ操作の例外を**そのまま再送出**するため、
+Valkey 断のときに `@CacheEvict` を持つミューテーション（`RoleService.changeRole` 等）が
+`RedisConnectionFailureException` で 500 になる。すなわち
+**「キャッシュ基盤が落ちると降格・除名ができない」**状態だった。
+
+方針（マスター御裁可・可用性優先）: **Redis が落ちている間も権限の変更は成功させる。**
+緊急時に悪意あるユーザーを降格・除名できない方が、旧権限が最大 TTL ぶん残ることより危険なため。
+
+| クラス | 役割 |
+|---|---|
+| `LoggingCacheErrorHandler` | get / put / evict / clear の 4 フックで例外を握り潰し、`log.warn` ＋ Micrometer カウンタで可視化する |
+| `CacheErrorHandlingConfig` | `CachingConfigurer#errorHandler()` としてハンドラを配線する（素の `@Bean CacheErrorHandler` は Spring が拾わない） |
+
+- **安全性の根拠**: TTL 無しのキャッシュは 1 件も無く（既定 30 分・認可系は 5 分以下）、evict を取りこぼしても**自然収束**する。
+  番人テスト `CacheConfigurationGuardTest` が「TTL 無しキャッシュの混入」を機械的に拒否する
+- **「静かな無効化」にしない**: fail-open は必ず `mannschaft.cache.failopen`（tag: `operation` = get/put/evict/clear, `cache` = キャッシュ名）で観測できる。
+  `operation=evict` / `clear` は認可情報が腐りうるため、get/put より重い扱いとする
+- 既存の fail-open 実装（`ValkeyRateLimiter` / `MembershipChangedListener` / `EntitlementCacheEvictor`）と同方針であり、
+  本ハンドラはそれをアノテーション経由の `@Cacheable`/`@CacheEvict` にも水平展開したもの
+
 ---
 
 ## 今後の課題
@@ -457,10 +504,12 @@ spring:
 | `AbstractTenantAwareRepository` の全面適用 | 高 | `ScheduleRepository` のみ適用済み。他リポジトリへの順次適用が必要 |
 | イベント駆動アーキテクチャへの移行 | 中 | `@Transactional` クロスドメイン箇所（TODO コメント済み）をドメインイベントで分離 |
 | シャーディング本実装 | 低 | `organization_id` をシャーディングキーとした水平分割。UUIDv7 導入済みで基盤は整備済み |
-| 既存テーブルの UUIDv7 移行 | 低 | 現在は新規テーブルのみ。既存 BIGINT ID テーブルの移行は別軍議で検討 |
+| 追加の既存テーブル UUIDv7 移行 | 低 | CMP-008 で `csp_reports` と `schedule_media_uploads` を UUIDv7 化済み。後者は公開API、ストレージ監査参照、ACL binding key を同一リリースで一括移行した。今後は同じく参照関係と公開契約を列挙し、既存行保全テストを伴う場合だけ実施する |
 | リードレプリカの本番適用 | 中 | `replica.enabled=false` のままのため、本番環境の DB 構成確定後に有効化 |
 | audit_logs パーティション 2030年以降 | 中 | V64.001 で 2029-12 まで定義済み。`AuditLogPartitionMaintenanceBatchService` が自動追加するため人手対応は不要 |
 | chat_messages_archive の R2 アップロード | 低 | 現状はアーカイブテーブルへの退避のみ。将来は R2 への JSONL.gz 保存も検討 |
+
+`csp_reports` の V212 または `schedule_media_uploads` の V215 移行を実環境へ適用するときは、書き込みを停止し、移行前の復元可能な DB バックアップを取る。移行後は行数・業務データ・索引・全 ID の UUIDv7 形式を照合し、V215 では加えて `storage_usage_logs` / `storage_migration_errors` の参照と `storage_acls.attachment_binding_key` の変換を確認してから書き込みを再開する。MySQL 8 の DDL は**各文は原子的でも、複数文をまとめてロールバックできない**。途中失敗時は書き込み停止を維持し、対象テーブルの `id` / `id_uuid` と索引、Flyway 履歴を確認する。`flyway repair` だけで残存する列や索引は消えないため、自動再実行せず、事前バックアップから復元して原因を解消した後に再適用する。AWS未稼働の現在は本番適用を行わない（[MySQL 8 Atomic DDL](https://dev.mysql.com/doc/refman/8.0/en/atomic-ddl.html)、[Flyway repair](https://documentation.red-gate.com/flyway/reference/commands/repair)）。
 
 ### 監視・アラート推奨項目
 
@@ -469,6 +518,8 @@ spring:
 | 最大パーティションサイズ | 5GB 超でアラート | `audit_logs` の月次パーティションサイズ監視 |
 | `notifications` テーブル行数 | 5000万行超でアラート | クリーンアップバッチが正常動作しているかの確認 |
 | Valkey キャッシュヒット率 | 70% 未満でアラート | キャッシュ設定の見直しトリガー |
+| `mannschaft.cache.failopen`（`operation=evict`/`clear`） | 発生でアラート | キャッシュ無効化の失敗＝認可情報の反映遅延。Valkey 断の一次シグナル（§4-E-2） |
+| `mannschaft.cache.failopen`（`operation=get`/`put`） | 継続発生でアラート | キャッシュが機能せず DB に素通りしている状態（性能劣化の予兆） |
 | リードレプリカ遅延 | 5秒超でアラート | レプリカ遅延によるデータ不整合リスク |
 | `AuditLogArchiveBatchService` 実行時間 | 10分超でアラート | R2 アップロード・DROP PARTITION の異常検知 |
 

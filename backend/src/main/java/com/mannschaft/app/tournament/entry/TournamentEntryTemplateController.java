@@ -2,6 +2,8 @@ package com.mannschaft.app.tournament.entry;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.config.TeamScopeId;
 import com.mannschaft.app.tournament.entry.dto.ApplyTemplateRequest;
 import com.mannschaft.app.tournament.entry.dto.ApplyTemplateResponse;
 import com.mannschaft.app.tournament.entry.dto.CreateEntryTemplateRequest;
@@ -50,10 +52,10 @@ public class TournamentEntryTemplateController {
     @GetMapping("/api/v1/organizations/{orgId}/teams/{teamId}/entry-templates")
     @Operation(summary = "エントリーテンプレート一覧")
     public ResponseEntity<ApiResponse<List<EntryTemplateResponse>>> getTemplates(
-            @PathVariable Long orgId,
-            @PathVariable Long teamId) {
+            @PathVariable OrgScopeId orgId,
+            @PathVariable TeamScopeId teamId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        List<EntryTemplateResponse> result = entryTemplateService.getTemplates(orgId, teamId, currentUserId);
+        List<EntryTemplateResponse> result = entryTemplateService.getTemplates(orgId.value(), teamId.value(), currentUserId);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -68,11 +70,11 @@ public class TournamentEntryTemplateController {
     @PostMapping("/api/v1/organizations/{orgId}/teams/{teamId}/entry-templates")
     @Operation(summary = "エントリーテンプレート作成")
     public ResponseEntity<ApiResponse<EntryTemplateDetailResponse>> createTemplate(
-            @PathVariable Long orgId,
-            @PathVariable Long teamId,
+            @PathVariable OrgScopeId orgId,
+            @PathVariable TeamScopeId teamId,
             @Valid @RequestBody CreateEntryTemplateRequest req) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        EntryTemplateDetailResponse result = entryTemplateService.createTemplate(orgId, teamId, req, currentUserId);
+        EntryTemplateDetailResponse result = entryTemplateService.createTemplate(orgId.value(), teamId.value(), req, currentUserId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
     }
 
@@ -87,11 +89,11 @@ public class TournamentEntryTemplateController {
     @GetMapping("/api/v1/organizations/{orgId}/teams/{teamId}/entry-templates/{templateId}")
     @Operation(summary = "エントリーテンプレート詳細")
     public ResponseEntity<ApiResponse<EntryTemplateDetailResponse>> getTemplate(
-            @PathVariable Long orgId,
-            @PathVariable Long teamId,
+            @PathVariable OrgScopeId orgId,
+            @PathVariable TeamScopeId teamId,
             @PathVariable UUID templateId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        EntryTemplateDetailResponse result = entryTemplateService.getTemplate(orgId, teamId, templateId, currentUserId);
+        EntryTemplateDetailResponse result = entryTemplateService.getTemplate(orgId.value(), teamId.value(), templateId, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -107,13 +109,13 @@ public class TournamentEntryTemplateController {
     @PutMapping("/api/v1/organizations/{orgId}/teams/{teamId}/entry-templates/{templateId}")
     @Operation(summary = "エントリーテンプレート更新")
     public ResponseEntity<ApiResponse<EntryTemplateDetailResponse>> updateTemplate(
-            @PathVariable Long orgId,
-            @PathVariable Long teamId,
+            @PathVariable OrgScopeId orgId,
+            @PathVariable TeamScopeId teamId,
             @PathVariable UUID templateId,
             @Valid @RequestBody UpdateEntryTemplateRequest req) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         EntryTemplateDetailResponse result = entryTemplateService.updateTemplate(
-                orgId, teamId, templateId, req, currentUserId);
+                orgId.value(), teamId.value(), templateId, req, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(result));
     }
 
@@ -127,11 +129,11 @@ public class TournamentEntryTemplateController {
     @DeleteMapping("/api/v1/organizations/{orgId}/teams/{teamId}/entry-templates/{templateId}")
     @Operation(summary = "エントリーテンプレート論理削除")
     public ResponseEntity<Void> deleteTemplate(
-            @PathVariable Long orgId,
-            @PathVariable Long teamId,
+            @PathVariable OrgScopeId orgId,
+            @PathVariable TeamScopeId teamId,
             @PathVariable UUID templateId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        entryTemplateService.deleteTemplate(orgId, teamId, templateId, currentUserId);
+        entryTemplateService.deleteTemplate(orgId.value(), teamId.value(), templateId, currentUserId);
         return ResponseEntity.noContent().build();
     }
 

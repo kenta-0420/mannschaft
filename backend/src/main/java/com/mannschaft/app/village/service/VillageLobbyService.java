@@ -13,7 +13,6 @@ import com.mannschaft.app.village.entity.VillageLobbyDailyThreadEntity;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageLobbyDailyThreadRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -58,10 +57,10 @@ public class VillageLobbyService {
     /** 日次スレッド一覧の取得日数上限（DoS 対策）。 */
     public static final int MAX_DAILY_LIST_DAYS = 90;
 
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final VillageLobbyDailyThreadRepository dailyThreadRepository;
     private final ChatChannelRepository chatChannelRepository;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // §4.10.1 GET /lobby — ロビーチャネル情報
@@ -75,7 +74,7 @@ public class VillageLobbyService {
     @Transactional
     // TODO: chat と village ドメインをまたいでいる。将来 VillageCreatedEvent + ChatProvisioner 分離予定。
     public LobbyChannelResponse getLobbyChannel(UUID villageId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         if (!isUserVillageMember(villageId, actorUserId)) {
             throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
@@ -104,7 +103,7 @@ public class VillageLobbyService {
      */
     @Transactional(readOnly = true)
     public DailyThreadListResponse listDailyThreads(UUID villageId, Long actorUserId, int days) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         if (!isUserVillageMember(villageId, actorUserId)) {
             throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
@@ -128,7 +127,7 @@ public class VillageLobbyService {
      */
     @Transactional(readOnly = true)
     public DailyThreadResponse getDailyThread(UUID villageId, Long actorUserId, LocalDate date) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         if (!isUserVillageMember(villageId, actorUserId)) {
             throw new BusinessException(VillageErrorCode.NOT_MEMBER);
         }
@@ -233,16 +232,16 @@ public class VillageLobbyService {
     // 共通ヘルパ
     // ========================================================================
 
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     private boolean isUserVillageMember(UUID villageId, Long userId) {

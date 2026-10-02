@@ -58,10 +58,11 @@ public class ReceiptQueueController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         ReceiptQueueStatus queueStatus = status != null
                 ? ReceiptQueueStatus.valueOf(status.toUpperCase()) : null;
-        PagedResponse<QueueItemResponse> response = queueService.listQueue(type, scopeId, queueStatus, page, size);
+        PagedResponse<QueueItemResponse> response = queueService.listQueue(
+                type, scopeId, queueStatus, page, size, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(response);
     }
 
@@ -76,7 +77,7 @@ public class ReceiptQueueController {
             @RequestParam Long scopeId,
             @PathVariable Long id,
             @Valid @RequestBody ApproveQueueRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         ReceiptResponse response = queueService.approveQueueItem(type, scopeId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -91,7 +92,7 @@ public class ReceiptQueueController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @Valid @RequestBody BulkApproveQueueRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         BulkResultResponse response = queueService.bulkApproveQueue(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -106,8 +107,8 @@ public class ReceiptQueueController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @PathVariable Long id) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        queueService.skipQueueItem(type, scopeId, id);
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
+        queueService.skipQueueItem(type, scopeId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

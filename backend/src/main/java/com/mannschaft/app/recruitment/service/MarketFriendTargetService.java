@@ -16,6 +16,7 @@ import com.mannschaft.app.social.repository.TeamFriendFolderRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +47,7 @@ public class MarketFriendTargetService {
     private final TeamFriendFolderRepository folderRepository;
     private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
+    private final MessageSource messageSource;
     /** 宛先集合の解決（NotificationHelper 非依存・Bean サイクル回避）。 */
     private final MarketFriendTargetResolver friendTargetResolver;
 
@@ -222,17 +224,25 @@ public class MarketFriendTargetService {
             return;
         }
 
-        String title = "フレンドチームから届いた札: " + listing.getTitle();
-        String body = listing.getTitle() + " の募集が届きました。";
         String actionUrl = "/market/listings/" + listing.getId();
 
-        notificationHelper.notifyAll(
+        // Issue #2715 CMP-055 ロットC-6: 受信者 locale に応じて件名・本文を組み立てる
+        // （locale 一括解決は notifyAllLocalized 内部の UserLocaleCache が担う）。
+        notificationHelper.notifyAllLocalized(
                 new ArrayList<>(recipientUserIds),
                 "MARKET_FRIEND_LISTING",
-                title, body,
                 "MARKET_FRIEND_LISTING", listing.getId(),
                 NotificationScopeType.TEAM, ownerTeamId,
-                actionUrl, listing.getCreatedBy());
+                actionUrl, listing.getCreatedBy(),
+                (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                        messageSource.getMessage(
+                                "notification.recruitment.friendListing.title",
+                                new Object[]{listing.getTitle()},
+                                "フレンドチームから届いた札: " + listing.getTitle(), locale),
+                        messageSource.getMessage(
+                                "notification.recruitment.friendListing.body",
+                                new Object[]{listing.getTitle()},
+                                listing.getTitle() + " の募集が届きました。", locale)));
 
         log.info("F22.1 市: フレンド宛非公開札を配信: listingId={}, teams={}, recipients={}",
                 listing.getId(), targetTeamIds.size(), recipientUserIds.size());

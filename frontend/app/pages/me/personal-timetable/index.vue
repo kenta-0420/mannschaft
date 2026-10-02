@@ -16,6 +16,8 @@ const { userTimezone } = useDatetime()
 
 const items = ref<PersonalTimetable[]>([])
 const loading = ref(true)
+/** 取得失敗は「登録なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 const showCreateDialog = ref(false)
 const createForm = ref<CreatePersonalTimetableInput>({
@@ -39,12 +41,14 @@ const TEMPLATE_OPTIONS: { value: PersonalPeriodTemplateKind; labelKey: string }[
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     items.value = await api.list()
   }
   catch (e) {
     error(t('personalTimetable.load_error'), String(e))
     items.value = []
+    loadFailed.value = true
   }
   finally {
     loading.value = false
@@ -164,6 +168,12 @@ onMounted(load)
     <div v-if="loading" class="text-center py-12">
       <LoadingBounce />
     </div>
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="personal-timetable-error-state"
+      @retry="load"
+    />
 
     <div v-else-if="items.length === 0" class="text-center py-12 text-gray-500">
       {{ t('personalTimetable.list_empty') }}

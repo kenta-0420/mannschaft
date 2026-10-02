@@ -54,6 +54,19 @@ import com.mannschaft.app.common.security.AccessGuard;
 class PublicOrganizationPostControllerTest {
 
     private static final Long ORG_ID = 200L;
+    private static final String ORG_SLUG = "public-org-a";
+
+    /** 親の slug 解決（公開組織 → ID）。子 API は slug を受けて ID に解決してから下位 Service を呼ぶ。 */
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.mannschaft.app.publicview.service.PublicOrganizationQueryService publicOrganizationQueryService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubOrganizationSlugResolution() {
+        org.mockito.BDDMockito.given(publicOrganizationQueryService.getPublicOrganization(ORG_SLUG))
+                .willReturn(new com.mannschaft.app.publicview.dto.PublicOrganizationResponse(
+                        ORG_ID, "サンプル組織", null, null, null, "COMPANY", null, null, null, null,
+                        null, null, null, null, null, false, false, false));
+    }
     private static final Long POST_ID = 5678L;
 
     @Autowired
@@ -96,7 +109,7 @@ class PublicOrganizationPostControllerTest {
         given(publicPostQueryService.listPublicPostsByOrganization(eq(ORG_ID), any(Pageable.class), any(ViewerContext.class)))
                 .willReturn(page);
 
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/posts", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/posts", ORG_SLUG))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].sourceType").value("BLOG_POST"))
                 .andExpect(jsonPath("$.content[0].sourceId").value(POST_ID))
@@ -112,7 +125,7 @@ class PublicOrganizationPostControllerTest {
                 .given(publicPostQueryService)
                 .listPublicPostsByOrganization(eq(ORG_ID), any(Pageable.class), any(ViewerContext.class));
 
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/posts", ORG_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/posts", ORG_SLUG))
                 .andExpect(status().isNotFound());
     }
 
@@ -122,7 +135,7 @@ class PublicOrganizationPostControllerTest {
         given(publicPostQueryService.findPublicPostDetailByOrganization(eq(ORG_ID), eq(POST_ID), any(ViewerContext.class)))
                 .willReturn(sampleDetail());
 
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/posts/{postId}", ORG_ID, POST_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/posts/{postId}", ORG_SLUG, POST_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sourceId").value(POST_ID))
                 .andExpect(jsonPath("$.bodyHtml").value("<p>本文</p>"));
@@ -135,7 +148,7 @@ class PublicOrganizationPostControllerTest {
                 .given(publicPostQueryService)
                 .findPublicPostDetailByOrganization(eq(ORG_ID), eq(POST_ID), any(ViewerContext.class));
 
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/posts/{postId}", ORG_ID, POST_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/posts/{postId}", ORG_SLUG, POST_ID))
                 .andExpect(status().isNotFound());
     }
 
@@ -146,7 +159,7 @@ class PublicOrganizationPostControllerTest {
                 .given(publicPostQueryService)
                 .findPublicPostDetailByOrganization(eq(ORG_ID), eq(POST_ID), any(ViewerContext.class));
 
-        mockMvc.perform(get("/api/v1/public/organizations/{orgId}/posts/{postId}", ORG_ID, POST_ID))
+        mockMvc.perform(get("/api/v1/public/organizations/{slug}/posts/{postId}", ORG_SLUG, POST_ID))
                 .andExpect(status().isNotFound());
     }
 

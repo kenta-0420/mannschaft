@@ -1,5 +1,6 @@
 package com.mannschaft.app.activity.visibility;
 
+import com.mannschaft.app.activity.ActivityStatus;
 import com.mannschaft.app.activity.ActivityVisibility;
 import com.mannschaft.app.common.visibility.VisibilityProjection;
 
@@ -37,13 +38,15 @@ import com.mannschaft.app.common.visibility.VisibilityProjection;
  * @param scopeId         scope_id
  * @param authorUserId    created_by（作成者 user_id）
  * @param visibility      {@link ActivityVisibility} 値
+ * @param status          {@link ActivityStatus} 値（DRAFT は作成者・SystemAdmin のみ可視）
  */
 public record ActivityResultVisibilityProjection(
         Long id,
         String scopeType,
         Long scopeId,
         Long authorUserId,
-        ActivityVisibility visibility) implements VisibilityProjection {
+        ActivityVisibility visibility,
+        ActivityStatus status) implements VisibilityProjection {
 
     /**
      * Activity は CUSTOM_TEMPLATE 概念を持たないため常に {@code null} を返す。

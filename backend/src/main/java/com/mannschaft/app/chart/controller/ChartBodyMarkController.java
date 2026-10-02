@@ -4,6 +4,7 @@ import com.mannschaft.app.chart.dto.BodyMarksResponse;
 import com.mannschaft.app.chart.dto.UpdateBodyMarksRequest;
 import com.mannschaft.app.chart.service.ChartBodyMarkService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,7 +38,8 @@ public class ChartBodyMarkController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateBodyMarksRequest request) {
-        BodyMarksResponse response = bodyMarkService.updateBodyMarks(teamId, id, request);
+        BodyMarksResponse response = bodyMarkService.updateBodyMarks(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

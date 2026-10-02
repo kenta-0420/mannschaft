@@ -1,6 +1,8 @@
 package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.RecruitmentParticipantType;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -26,16 +29,21 @@ import org.springframework.data.domain.Pageable;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -57,6 +65,12 @@ class RecruitmentAutoCancelBatchTest {
 
     @Mock
     private ConfirmableNotificationService confirmableNotificationService;
+
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private ObjectProvider<RecruitmentAutoCancelBatch> selfProvider;
 
     @InjectMocks
     private RecruitmentAutoCancelBatch batch;
@@ -83,6 +97,23 @@ class RecruitmentAutoCancelBatchTest {
             // then: listingRepository.findByIdForUpdate は一切呼ばれない
             verify(listingRepository, never()).findByIdForUpdate(anyLong());
         }
+
+        @Test
+        @DisplayName("候補の処理はトランザクションプロキシを経由する")
+        void run_candidates_useTransactionalProxy() {
+            RecruitmentListingEntity candidate = mock(RecruitmentListingEntity.class);
+            RecruitmentAutoCancelBatch proxiedBatch = mock(RecruitmentAutoCancelBatch.class);
+            given(candidate.getId()).willReturn(LISTING_ID);
+            given(listingRepository.findAutoCancelTargets(any())).willReturn(List.of(candidate));
+            given(selfProvider.getObject()).willReturn(proxiedBatch);
+            given(proxiedBatch.processSingleListing(eq(LISTING_ID), any())).willReturn(1);
+
+            batch.run();
+
+            verify(selfProvider).getObject();
+            verify(proxiedBatch).processSingleListing(eq(LISTING_ID), any());
+            verify(listingRepository, never()).findByIdForUpdate(anyLong());
+        }
     }
 
     // ========================================
@@ -92,6 +123,24 @@ class RecruitmentAutoCancelBatchTest {
     @Nested
     @DisplayName("processSingleListing - 募集1件の自動キャンセル処理")
     class ProcessSingleListing {
+
+        @Test
+        @DisplayName("PERSONAL札も期限超過時に自動キャンセルする")
+        void processSingleListing_personal_autoCancels() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing(10, 0, 5);
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(participantRepository.findByListingIdAndStatusIn(anyLong(), any(), any()))
+                    .willReturn(Page.empty());
+
+            int result = batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            assertThat(result).isZero();
+            assertThat(listing.getStatus()).isEqualTo(RecruitmentListingStatus.AUTO_CANCELLED);
+            verify(listingRepository).save(listing);
+            verify(confirmableNotificationService, never()).send(any(), any(), any(), any(), any(), any(),
+                    any(), any(), any(), any(), any(), any());
+        }
 
         @Test
         @DisplayName("OPEN 状態の listing + CONFIRMED 参加者 → 自動キャンセル実行")
@@ -180,6 +229,164 @@ class RecruitmentAutoCancelBatchTest {
             // 通知なし（affectedUserIds が空）
             verify(confirmableNotificationService, never()).send(any(), any(), any(), any(), any(), any(),
                     any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("CHUNK_SIZE(100件)を超える参加者 → 全員キャンセルされる（縮小クエリのドレイン挙動を再現）")
+        void processSingleListing_moreThanChunkSize_allParticipantsCancelled() throws Exception {
+            // given: 250人（CHUNK_SIZE=100の2.5倍）
+            RecruitmentListingEntity listing = buildOpenListing(300, 1, 5);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            int participantCount = 250;
+            List<RecruitmentParticipantEntity> remaining = new ArrayList<>();
+            for (int i = 0; i < participantCount; i++) {
+                remaining.add(buildParticipant((long) (i + 1), RecruitmentParticipantStatus.CONFIRMED));
+            }
+
+            // 実DBの挙動を再現: クエリは常に「現時点で対象ステータスの行」の先頭ページを返す。
+            // save() でステータスがCANCELLEDになった行は、以後のクエリ結果から自然に除外される。
+            given(participantRepository.findByListingIdAndStatusIn(eq(LISTING_ID), any(), any(PageRequest.class)))
+                    .willAnswer(invocation -> {
+                        PageRequest pageRequest = invocation.getArgument(2);
+                        // page番号を進めて叩いてきた場合は不正利用として空ページを返す
+                        // （常にpage=0で叩くべき、というのが本テストの検証対象）
+                        if (pageRequest.getPageNumber() != 0) {
+                            return new PageImpl<>(Collections.emptyList(), pageRequest, remaining.size());
+                        }
+                        int size = pageRequest.getPageSize();
+                        List<RecruitmentParticipantEntity> content = remaining.stream()
+                                .limit(size)
+                                .collect(Collectors.toList());
+                        return new PageImpl<>(content, pageRequest, remaining.size());
+                    });
+
+            given(participantRepository.save(any())).willAnswer(invocation -> {
+                RecruitmentParticipantEntity saved = invocation.getArgument(0);
+                // ステータスがCANCELLEDになった参加者は対象集合から取り除く（実DBの絞り込みを模す）
+                remaining.removeIf(p -> p.getId().equals(saved.getId()));
+                return saved;
+            });
+            given(historyRepository.save(any())).willReturn(null);
+            given(listingRepository.save(any())).willReturn(listing);
+
+            // when
+            int result = batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            // then: 250人全員がキャンセルされる（後続100人が読み飛ばされない）
+            assertThat(result).isEqualTo(participantCount);
+            assertThat(remaining).isEmpty();
+            assertThat(listing.getStatus()).isEqualTo(RecruitmentListingStatus.AUTO_CANCELLED);
+        }
+
+        @Test
+        @DisplayName("対象外ステータス（CANCELLED済み）の参加者はキャンセル対象クエリに含まれないためキャンセルされない")
+        void processSingleListing_nonTargetStatusParticipant_notCancelled() throws Exception {
+            // given: クエリは CANCEL_TARGET_STATUSES に絞り込まれる前提のため、
+            // 既にCANCELLEDの参加者はそもそもfindByListingIdAndStatusInの結果に現れない。
+            RecruitmentListingEntity listing = buildOpenListing(10, 1, 5);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            RecruitmentParticipantEntity alreadyCancelled =
+                    buildParticipant(77L, RecruitmentParticipantStatus.CANCELLED);
+
+            // 対象外ステータスの参加者はクエリ結果に含まれない（空ページ）ことをシミュレート
+            Page<RecruitmentParticipantEntity> emptyPage = new PageImpl<>(
+                    Collections.emptyList(), PageRequest.of(0, 100), 0);
+            given(participantRepository.findByListingIdAndStatusIn(
+                    eq(LISTING_ID), any(), any(Pageable.class))).willReturn(emptyPage);
+            given(listingRepository.save(any())).willReturn(listing);
+
+            // when
+            int result = batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            // then: 対象外ステータスの参加者はキャンセルされず、処理件数は0
+            assertThat(result).isEqualTo(0);
+            assertThat(alreadyCancelled.getStatus()).isEqualTo(RecruitmentParticipantStatus.CANCELLED);
+            verify(participantRepository, never()).save(alreadyCancelled);
+        }
+
+        @Test
+        @DisplayName("進捗ゼロが続く異常系 → 無限ループにならず安全弁で中断する")
+        void processSingleListing_noProgress_breaksViaSafetyValve() throws Exception {
+            // given: クエリが常に同じ1件を返し続ける（ステータス遷移が反映されない異常状態を模す）
+            RecruitmentListingEntity listing = buildOpenListing(10, 1, 5);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            RecruitmentParticipantEntity stuckParticipant =
+                    buildParticipant(55L, RecruitmentParticipantStatus.CONFIRMED);
+            Page<RecruitmentParticipantEntity> stuckPage = new PageImpl<>(
+                    List.of(stuckParticipant), PageRequest.of(0, 100), 1);
+            given(participantRepository.findByListingIdAndStatusIn(
+                    eq(LISTING_ID), any(), any(Pageable.class))).willReturn(stuckPage);
+            given(participantRepository.save(any())).willReturn(stuckParticipant);
+            given(historyRepository.save(any())).willReturn(null);
+            given(listingRepository.save(any())).willReturn(listing);
+
+            // when: 無限ループにならず、有限時間で結果が返ってくることを検証する
+            int result = batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            // then: 1件目は処理されるが、2周目以降は同じ参加者が再抽出されるため
+            // 進捗ゼロと判定され安全弁で中断する（無限ループに陥らない）
+            assertThat(result).isEqualTo(1);
+        }
+    }
+
+    // ========================================
+    // CMP-260930-1932 AC-5: 通知は業務TX内で同期送信せず、イベント publish のみ
+    // ========================================
+
+    @Nested
+    @DisplayName("CMP-260930-1932 AC-5: 自動キャンセル通知はイベント経由（業務TX内で同期送信しない）")
+    class AutoCancelNotificationViaEvent {
+
+        @Test
+        @DisplayName("AC-5: 参加者ありの自動キャンセルは RecruitmentAutoCancelledNotificationEvent を publish し、"
+                + "ConfirmableNotificationService を業務TX内で呼ばない")
+        void AC5_参加者ありはイベントをpublishし同期送信しない() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing(10, 2, 5);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            RecruitmentParticipantEntity p1 = buildParticipant(91L, RecruitmentParticipantStatus.CONFIRMED);
+            RecruitmentParticipantEntity p2 = buildParticipant(92L, RecruitmentParticipantStatus.APPLIED);
+            given(participantRepository.findByListingIdAndStatusIn(eq(LISTING_ID), any(), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(p1, p2), PageRequest.of(0, 100), 2))
+                    .willReturn(Page.empty());
+
+            batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            org.mockito.ArgumentCaptor<Object> events = org.mockito.ArgumentCaptor.forClass(Object.class);
+            verify(eventPublisher, org.mockito.Mockito.atLeastOnce()).publishEvent(events.capture());
+            List<com.mannschaft.app.recruitment.event.RecruitmentAutoCancelledNotificationEvent> notifyEvents =
+                    events.getAllValues().stream()
+                            .filter(com.mannschaft.app.recruitment.event.RecruitmentAutoCancelledNotificationEvent.class::isInstance)
+                            .map(com.mannschaft.app.recruitment.event.RecruitmentAutoCancelledNotificationEvent.class::cast)
+                            .collect(Collectors.toList());
+            assertThat(notifyEvents)
+                    .as("AC-5: 自動キャンセル通知イベントがちょうど1回 publish される")
+                    .hasSize(1);
+            assertThat(notifyEvents.get(0).listingId()).isEqualTo(LISTING_ID);
+            assertThat(notifyEvents.get(0).sourceScopeType()).isEqualTo(RecruitmentScopeType.TEAM);
+            assertThat(notifyEvents.get(0).sourceScopeId()).isEqualTo(1L);
+            assertThat(notifyEvents.get(0).recipientUserIds()).containsExactlyInAnyOrder(91L, 92L);
+
+            org.mockito.Mockito.verifyNoInteractions(confirmableNotificationService);
+        }
+
+        @Test
+        @DisplayName("AC-5(空): 受信者0件の自動キャンセルは通知イベントを publish しない")
+        void AC5_受信者0件なら通知イベントを出さない() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing(10, 0, 5);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(participantRepository.findByListingIdAndStatusIn(eq(LISTING_ID), any(), any(Pageable.class)))
+                    .willReturn(Page.empty());
+
+            batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            org.mockito.ArgumentCaptor<Object> events = org.mockito.ArgumentCaptor.forClass(Object.class);
+            verify(eventPublisher, org.mockito.Mockito.atLeast(0)).publishEvent(events.capture());
+            assertThat(events.getAllValues())
+                    .noneMatch(com.mannschaft.app.recruitment.event.RecruitmentAutoCancelledNotificationEvent.class::isInstance);
+            org.mockito.Mockito.verifyNoInteractions(confirmableNotificationService);
         }
     }
 

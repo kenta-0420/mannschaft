@@ -1,6 +1,8 @@
 package com.mannschaft.app.survey.listener;
 
 import com.mannschaft.app.bulletin.service.SurveyBulletinThreadService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.event.SurveyCreatedEvent;
 import com.mannschaft.app.survey.event.SurveyStatusChangedEvent;
@@ -33,6 +35,8 @@ public class SurveyBulletinThreadListener {
      *
      * @param event アンケート作成イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。アンケートに紐づく掲示スレッドの生成・状態同期。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onSurveyCreated(SurveyCreatedEvent event) {
@@ -53,6 +57,8 @@ public class SurveyBulletinThreadListener {
      *
      * @param event アンケートステータス変更イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。アンケートに紐づく掲示スレッドの生成・状態同期。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onSurveyStatusChanged(SurveyStatusChangedEvent event) {

@@ -14,8 +14,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -33,8 +33,7 @@ import java.util.UUID;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class UserEntity extends BaseEntity {
 
     @Column(nullable = false, unique = true)
@@ -81,7 +80,7 @@ public class UserEntity extends BaseEntity {
     @Builder.Default
     private OnlineVisibility onlineVisibility = OnlineVisibility.NOBODY;
 
-    @Column(length = 50)
+    @Column(name = "nickname2", length = 50)
     private String nickname2;
 
     @Column(nullable = false)
@@ -155,6 +154,57 @@ public class UserEntity extends BaseEntity {
     /** 物理削除完了日時。NULLの場合は未実行。 */
     @Column(name = "purged_at")
     private LocalDateTime purgedAt;
+
+    /**
+     * purge 開始マーク（柱①ADMINゼロ根治 §12.5・V197 で新設）。NULL の場合は未開始。
+     *
+     * <p>読み書きは {@code PurgeMarkerService}（native クエリ）が担い、本フィールドを直接更新する
+     * 経路は無い。それでも<b>マッピングを置く必要がある</b>——test プロファイルは
+     * {@code ddl-auto: create}＋{@code flyway.enabled: false} でスキーマを Entity から起こすため、
+     * ここに無い列は<b>統合テストのスキーマに存在せず</b>、当該 native クエリが
+     * {@code Unknown column 'purge_started_at'} で落ちる。実際に柱③-B PR-3 で
+     * {@code UserService#cancelWithdrawal} を IT から通した瞬間にこれが露見した
+     * （それまでは IT が SQL 直叩きで本番経路を迂回しており、誰も踏んでいなかった）。</p>
+     *
+     * <p>型を {@link java.time.Instant} にしているのは、本クラスの他の時刻列（legacy な
+     * {@link LocalDateTime}）に合わせるより {@code datetime_policy} の方針に従うほうが正しいためである。
+     * 本フィールドを JPA 経由で読み書きする経路は存在せず（native のみ）、型は DDL 生成にしか効かない。
+     * {@code LocalDateTime} にすると {@code DateTimeAndZoneGuardTest} の凍結台帳を新規に1件増やすことになる。</p>
+     */
+    @Column(name = "purge_started_at")
+    private java.time.Instant purgeStartedAt;
+
+    /**
+     * 退会申請ごとに一意な識別子（退会試行の<b>世代の正本</b>・V204）。
+     *
+     * <p>{@link #requestDeletion()} が毎回新規採番するため、<b>同一秒内の再退会でも必ず別の値</b>になる。
+     * 退会取消では消さず据え置く（次の退会申請で必ず更新される）。</p>
+     *
+     * <p>この列を足したのは、退会試行の同一性を「時刻」や「作業行の状態」から<b>推測</b>していたために
+     * 同じ欠陥を3度作ってしまったからである。推測をやめ、退会側に正本を置く。</p>
+     */
+    @Column(name = "withdrawal_attempt_id", columnDefinition = "BINARY(16)")
+    private UUID withdrawalAttemptId;
+
+    // === プライバシーポリシー同意記録（F_privacy_policy）===
+
+    /**
+     * プライバシーポリシー同意日時。
+     *
+     * <p>NULL の場合は未同意または旧登録（V131.001 より前に登録したアカウント）を意味する。
+     * GDPR Art.7 / 個人情報保護法 準拠のため、同意タイムスタンプを保存する。</p>
+     */
+    @Column(name = "privacy_policy_accepted_at")
+    private LocalDateTime privacyPolicyAcceptedAt;
+
+    /**
+     * プライバシーポリシー同意時のバージョン文字列（例: "1.1.0"）。
+     *
+     * <p>NULL の場合は旧登録（同意取得前）を意味する。
+     * ポリシー改訂時に同意バージョンを比較し、再同意要否の判定に使用する。</p>
+     */
+    @Column(name = "privacy_policy_version", length = 20)
+    private String privacyPolicyVersion;
 
     // === ケア対象者属性（F03.12）===
 
@@ -312,6 +362,8 @@ public class UserEntity extends BaseEntity {
      */
     public void requestDeletion() {
         this.deletedAt = LocalDateTime.now();
+        // 退会申請ごとに必ず新しい世代を採番する（同一秒内の再退会でも別の値になる）。
+        this.withdrawalAttemptId = com.mannschaft.app.common.UuidV7.generate();
     }
 
     /**
@@ -474,6 +526,19 @@ public class UserEntity extends BaseEntity {
     }
 
     /**
+     * プライバシーポリシー同意情報を記録する（F_privacy_policy）。
+     *
+     * <p>登録時に呼び出す。同意日時は {@code LocalDateTime.now()} を渡すこと。</p>
+     *
+     * @param acceptedAt 同意日時
+     * @param version    同意したポリシーバージョン（例: "1.1.0"）
+     */
+    public void recordPrivacyPolicyConsent(LocalDateTime acceptedAt, String version) {
+        this.privacyPolicyAcceptedAt = acceptedAt;
+        this.privacyPolicyVersion = version;
+    }
+
+    /**
      * プロフィールの更新可能フィールドを一括で書き換える（部分更新）。
      *
      * <p>本メソッドは managed entity をその場でミューテートする更新メソッドである。
@@ -481,9 +546,9 @@ public class UserEntity extends BaseEntity {
      * dirty checking により UPDATE が発行される。
      *
      * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
-     * {@link UserEntity} は {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
+     * {@link UserEntity} は {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
      * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
-     * {@code @Builder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * {@code @SuperBuilder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
      * 作り直すと継承フィールド {@code id} が引き継がれず {@code id = null} の新インスタンスになる。
      * これを {@code save} すると UPDATE ではなく INSERT が走り、email 一意制約違反で 500 になる
      * （PR #1643 と同型の根治）。よって更新は必ず managed entity の直接ミューテートで行う。

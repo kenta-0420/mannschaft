@@ -10,10 +10,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -28,8 +27,7 @@ import java.time.LocalTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TimelineDigestConfigEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
@@ -96,4 +94,42 @@ public class TimelineDigestConfigEntity extends BaseEntity {
     private Long createdBy;
 
     private LocalDateTime deletedAt;
+
+    /**
+     * ダイジェスト設定を更新する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyUpdate(ScheduleType scheduleType, LocalTime scheduleTime,
+                            Integer scheduleDayOfWeek, DigestStyle digestStyle, Boolean autoPublish,
+                            String stylePresets, Boolean includeReactions, Boolean includePolls,
+                            Boolean includeDiffFromPrevious, Integer minPostsThreshold,
+                            Integer maxPostsPerDigest, String timezone, Integer contentMaxChars,
+                            String language, String customPromptSuffix, String autoTagIds) {
+        this.scheduleType = scheduleType;
+        this.scheduleTime = scheduleTime;
+        this.scheduleDayOfWeek = scheduleDayOfWeek;
+        this.digestStyle = digestStyle;
+        this.autoPublish = autoPublish;
+        this.stylePresets = stylePresets;
+        this.includeReactions = includeReactions;
+        this.includePolls = includePolls;
+        this.includeDiffFromPrevious = includeDiffFromPrevious;
+        this.minPostsThreshold = minPostsThreshold;
+        this.maxPostsPerDigest = maxPostsPerDigest;
+        this.timezone = timezone;
+        this.contentMaxChars = contentMaxChars;
+        this.language = language;
+        this.customPromptSuffix = customPromptSuffix;
+        this.autoTagIds = autoTagIds;
+    }
+
+    /**
+     * ダイジェスト設定を論理削除（無効化）する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     */
+    public void deactivateAndDelete() {
+        this.deletedAt = LocalDateTime.now();
+        this.isEnabled = false;
+    }
 }

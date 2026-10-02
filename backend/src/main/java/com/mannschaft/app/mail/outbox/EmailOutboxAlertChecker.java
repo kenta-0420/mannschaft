@@ -1,7 +1,11 @@
 package com.mannschaft.app.mail.outbox;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -31,7 +35,14 @@ public class EmailOutboxAlertChecker {
 
     private final EmailOutboxRepository repository;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると outbox の PENDING 滞留・DEAD_LETTER 増加が誰にも気付かれず、メール送信の停止が無検知のまま継続する")
     @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
+    // 起動間隔は 1 分（fixedDelay）。処理は集計クエリとアラート送出のみで通常は 1 秒未満。アラートは外部に届く副作用であるため多重送出を避ける必要があり、
+    // 間隔の 5 倍を上限とする。
+    @SchedulerLock(name = "emailOutboxAlertChecker", lockAtLeastFor = "PT10S", lockAtMostFor = "PT5M")
+    @BatchEndpoint(name = "email-outbox-alert-check",
+            description = "メール送信キュー(email_outbox)のPENDING滞留・成功率・DEAD_LETTER件数を毎分監視し、閾値超過をログ通報する")
     void checkAlerts() {
         checkQueueDepthPending();
         checkOldestPendingAge();
@@ -75,9 +86,10 @@ public class EmailOutboxAlertChecker {
     }
 
     void checkDeadLetterDepth() {
-        long deadLetter = repository.countByStatus(EmailOutboxStatus.DEAD_LETTER.name());
+        LocalDateTime since = LocalDateTime.now().minusHours(24);
+        long deadLetter = repository.countByStatusSince(EmailOutboxStatus.DEAD_LETTER.name(), since);
         if (deadLetter > CRITICAL_QUEUE_DEPTH_DEAD_LETTER) {
-            log.error("[EMAIL_OUTBOX][CRITICAL] DEAD_LETTER 超過: {} 件 (閾値 {})",
+            log.error("[EMAIL_OUTBOX][CRITICAL] 直近24h の DEAD_LETTER が {} 件 (閾値 {})",
                     deadLetter, CRITICAL_QUEUE_DEPTH_DEAD_LETTER);
         }
     }

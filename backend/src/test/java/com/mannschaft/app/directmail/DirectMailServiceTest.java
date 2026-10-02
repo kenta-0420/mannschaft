@@ -1,5 +1,6 @@
 package com.mannschaft.app.directmail;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.directmail.dto.CreateDirectMailRequest;
@@ -32,6 +33,8 @@ import static org.mockito.Mockito.verify;
 @DisplayName("DirectMailService 単体テスト")
 class DirectMailServiceTest {
 
+    /** 認可根治戦役 Wave2 トランシェ2C: 認可検証はスコープ契約IT側で実施。UTでは素通し（void mockは何もしない） */
+    @Mock private AccessControlService accessControlService;
     @Mock private DirectMailLogRepository mailLogRepository;
     @Mock private DirectMailRecipientRepository recipientRepository;
     @Mock private DirectMailMapper directMailMapper;
@@ -89,7 +92,7 @@ class DirectMailServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When / Then
-            assertThatThrownBy(() -> service.updateMail(SCOPE_TYPE, SCOPE_ID, 1L,
+            assertThatThrownBy(() -> service.updateMail(SCOPE_TYPE, SCOPE_ID, 100L, 1L,
                     new UpdateDirectMailRequest("新件名", null, null, null, null, null)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
@@ -109,7 +112,7 @@ class DirectMailServiceTest {
                     .willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.sendMail(SCOPE_TYPE, SCOPE_ID, 1L))
+            assertThatThrownBy(() -> service.sendMail(SCOPE_TYPE, SCOPE_ID, 100L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DM_001"));
@@ -136,7 +139,7 @@ class DirectMailServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When / Then
-            assertThatThrownBy(() -> service.cancelMail(SCOPE_TYPE, SCOPE_ID, 1L))
+            assertThatThrownBy(() -> service.cancelMail(SCOPE_TYPE, SCOPE_ID, 100L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DM_004"));

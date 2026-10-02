@@ -40,7 +40,7 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="border-t border-surface-200 bg-surface-0 p-3">
+  <div class="border-t border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-3">
     <div class="flex items-end gap-2">
       <Textarea
         v-model="body"

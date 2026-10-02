@@ -38,6 +38,10 @@ public class AdCreativeService {
                 .title(request.title())
                 .imageUrl(request.imageUrl())
                 .destinationUrl(request.destinationUrl())
+                .placement(request.placement())
+                .width(request.width())
+                .height(request.height())
+                .altText(request.altText())
                 .build();
         AdEntity saved = adEntityRepository.save(entity);
         return toResponse(saved);
@@ -57,7 +61,8 @@ public class AdCreativeService {
         if (entity.getStatus() == AdEntity.AdStatus.ENDED) {
             throw new BusinessException(AdvertisingErrorCode.AD_025);
         }
-        entity.updateCreative(request.title(), request.imageUrl(), request.destinationUrl());
+        entity.updateCreative(request.title(), request.imageUrl(), request.destinationUrl(),
+                request.placement(), request.width(), request.height(), request.altText());
         return toResponse(entity);
     }
 
@@ -159,7 +164,12 @@ public class AdCreativeService {
                 entity.getDestinationUrl(),
                 entity.getStatus().name(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                // F09.19.1 拡張（骨格）: 保存ロジックは出陣で実装するため現状は Entity 値の素通し
+                entity.getPlacement(),
+                entity.getWidth(),
+                entity.getHeight(),
+                entity.getAltText()
         );
     }
 }

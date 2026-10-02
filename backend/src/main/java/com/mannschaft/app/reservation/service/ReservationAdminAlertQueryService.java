@@ -44,7 +44,8 @@ public class ReservationAdminAlertQueryService {
         LocalDateTime todayStartJst = LocalDate.now(JST).atStartOfDay();
         LocalDateTime todayStartUtc = todayStartJst.atZone(JST)
                 .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
-        return reservationRepository.countByTeamIdAndStatusAndCreatedAtGreaterThanEqual(
+        // F03.4.3 §5.6 #4: グループ=1 予約で数える（代表行絞り。単枠は常に TRUE で従来どおり）。
+        return reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrueAndCreatedAtGreaterThanEqual(
                 teamId, ReservationStatus.CONFIRMED, todayStartUtc);
     }
 }

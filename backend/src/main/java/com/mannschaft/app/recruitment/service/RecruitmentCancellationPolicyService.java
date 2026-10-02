@@ -65,10 +65,36 @@ public class RecruitmentCancellationPolicyService {
                 .collect(Collectors.toList());
     }
 
-    public CancellationPolicyResponse getPolicy(Long policyId, Long userId) {
+    /**
+     * ポリシーの認可入力（スコープ）。
+     *
+     * @param scopeType ポリシーのスコープ種別
+     * @param scopeId   ポリシーのスコープ ID
+     */
+    public record PolicyScope(RecruitmentScopeType scopeType, Long scopeId) {
+    }
+
+    /**
+     * 認可の前にポリシーのスコープを解決する（readOnly・自ドメインのみ）。
+     *
+     * @param policyId ポリシー ID
+     * @return ポリシーのスコープ
+     * @throws BusinessException 不在・論理削除済みは {@code LISTING_NOT_FOUND}(404)
+     */
+    public PolicyScope resolvePolicyScope(Long policyId) {
         RecruitmentCancellationPolicyEntity policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(userId, policy.getScopeId(), policy.getScopeType().name());
+        return new PolicyScope(policy.getScopeType(), policy.getScopeId());
+    }
+
+    /**
+     * ポリシー詳細を返す（<b>tx 本体</b>。認可は {@link RecruitmentMoneyFacade#getPolicy} が tx の外で済ませる）。
+     * 認可の後にポリシーを読み直し、不在（認可の後に論理削除された）なら {@code LISTING_NOT_FOUND}(404)。
+     * ポリシーのスコープ列は不変という前提。
+     */
+    public CancellationPolicyResponse getPolicy(Long policyId) {
+        RecruitmentCancellationPolicyEntity policy = policyRepository.findById(policyId)
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
         return buildPolicyResponse(policy);
     }
 
@@ -108,11 +134,15 @@ public class RecruitmentCancellationPolicyService {
         return buildPolicyResponse(savedPolicy);
     }
 
+    /**
+     * ポリシーを編集する（<b>tx 本体</b>。認可は {@link RecruitmentMoneyFacade#updatePolicy} が tx の外で済ませる）。
+     * 認可の後にポリシーを読み直し、不在なら {@code LISTING_NOT_FOUND}(404) で DB 不変。
+     * テンプレートでないポリシーの 400 は認可の後（状態を越境者に見せない）。
+     */
     @Transactional
-    public CancellationPolicyResponse updatePolicy(Long policyId, Long userId, UpdateCancellationPolicyRequest request) {
+    public CancellationPolicyResponse updatePolicy(Long policyId, UpdateCancellationPolicyRequest request) {
         RecruitmentCancellationPolicyEntity policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(userId, policy.getScopeId(), policy.getScopeType().name());
 
         // テンプレートポリシーのみ編集可
         if (!Boolean.TRUE.equals(policy.getIsTemplatePolicy())) {
@@ -142,11 +172,14 @@ public class RecruitmentCancellationPolicyService {
         return buildPolicyResponse(policy);
     }
 
+    /**
+     * ポリシーを論理削除する（<b>tx 本体</b>。認可は {@link RecruitmentMoneyFacade#archivePolicy} が tx の外で済ませる）。
+     * 認可の後にポリシーを読み直し、不在（先に論理削除された）なら {@code LISTING_NOT_FOUND}(404)。
+     */
     @Transactional
-    public void archivePolicy(Long policyId, Long userId) {
+    public void archivePolicy(Long policyId) {
         RecruitmentCancellationPolicyEntity policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(userId, policy.getScopeId(), policy.getScopeType().name());
 
         policy.softDelete();
         policyRepository.save(policy);
@@ -210,6 +243,22 @@ public class RecruitmentCancellationPolicyService {
             feeAmount = (int) Math.ceil((double) price * matchingTier.getFeeValue() / 100.0);
         } else {
             feeAmount = matchingTier.getFeeValue();
+        }
+
+        // F03.11.1 §6.1（R-1 御裁可）: キャンセル料を参加費で丸める。
+        //
+        // Stripe は与信額を超えるキャプチャを標準では受け付けないため、参加費を超えるキャンセル料は
+        // そもそも徴収が成立しない（FIXED は DB CHECK に上限が無く、参加費超の設定が作れてしまう）。
+        //
+        // 丸めは分岐ごとに撒かず、feeAmount を確定した「算出の出口」に一度だけ置く。
+        // (1) 試算 API（estimateFee）も本メソッドを通るため、利用者がキャンセル前確認で見た額と
+        //     実際に徴収される額が構造的に必ず一致する（AC-25。「見積りより多く取られた」を起こさせない）。
+        // (2) 新しい CancellationFeeType が増えても丸めが漏れない。
+        //
+        // 参加費が未設定（price == null）の場合は丸めの基準が無い。この場合は与信自体が立たず
+        // 徴収対象になりえないため、算出結果をそのまま保つ。
+        if (listing.getPrice() != null) {
+            feeAmount = Math.min(feeAmount, listing.getPrice());
         }
 
         return new CalculatedFee(

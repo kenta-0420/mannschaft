@@ -1,6 +1,7 @@
 package com.mannschaft.app.timeline.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.timeline.PostDeliveryScope;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
@@ -10,10 +11,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -31,8 +32,7 @@ import java.util.UUID;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TimelinePostEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
@@ -44,14 +44,49 @@ public class TimelinePostEntity extends BaseEntity {
     private Long scopeId = 0L;
 
     /**
+     * 配下配信範囲（V186 で追加）。既定は {@link PostDeliveryScope#DIRECT}（＝現行挙動）。
+     *
+     * <p>ORGANIZATION スコープの投稿でのみ実効を持つ。チームには階層が無いため
+     * TEAM/PUBLIC/PERSONAL/VILLAGE 投稿に指定しても配信範囲は変わらない。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_scope", nullable = false, length = 20)
+    @Builder.Default
+    private PostDeliveryScope deliveryScope = PostDeliveryScope.DIRECT;
+
+    /**
      * 村スコープ ID（F17.1 Phase 1）。
      * {@code scopeType=VILLAGE} の場合に村の UUIDv7 を保持する。FK は張らない（原則1）。
      */
     @Column(name = "scope_village_id", columnDefinition = "BINARY(16)")
     private UUID scopeVillageId;
 
-    @Column(nullable = false)
+    /**
+     * 投稿者ユーザー ID。
+     *
+     * <p>F17.2 Wave2 ①: システム名義の自動投稿（村行事の還流・設計書 §3.2）を表現するため
+     * <b>NULL 許容へ緩めた</b>。システム投稿は投稿者ユーザーが存在しない（{@code user_id IS NULL}）。
+     * 通常投稿は従来どおり非 NULL。既存 FK {@code fk_timeline_posts_user}（ON DELETE CASCADE）は
+     * NULL 許容 FK としてそのまま有効（MySQL の FK は参照列が NULL の行を制約対象外にする）。</p>
+     */
+    @Column(name = "user_id")
     private Long userId;
+
+    /**
+     * F17.2 Wave2 ①: システム自動投稿の種別（村ドメイン enum
+     * {@link com.mannschaft.app.village.entity.enums.VillageEventNotificationType} の
+     * {@code .name()} を格納・設計書 §3.2）。NULL=通常投稿 / 非NULL=システム自動投稿。
+     * 核 enum への波及を避けるため、投稿判定は {@code system_post_type IS NOT NULL} の一本槍とする。
+     */
+    @Column(name = "system_post_type", length = 40)
+    private String systemPostType;
+
+    /**
+     * F17.2 Wave2 ①: システム投稿の対象行事 UUID（歳時記/祭/寄合の {@code id}・設計書 §3.2）。
+     * 通常投稿は NULL。EVENT_UPCOMING の冪等判定・行事別集約・タップ遷移に使う（FK非付与・原則1）。
+     */
+    @Column(name = "source_event_uuid", columnDefinition = "BINARY(16)")
+    private UUID sourceEventUuid;
 
     private Long socialProfileId;
 
@@ -188,6 +223,16 @@ public class TimelinePostEntity extends BaseEntity {
      */
     public void incrementReplyCount() {
         this.replyCount++;
+    }
+
+    /**
+     * リプライ数をデクリメントする（返信削除時。作成時の {@link #incrementReplyCount()} と対称）。
+     * 負値ガードを備え、0 未満にはならない（0 でクランプ）。
+     */
+    public void decrementReplyCount() {
+        if (this.replyCount > 0) {
+            this.replyCount--;
+        }
     }
 
     /**

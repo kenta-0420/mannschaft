@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "Ganztägig",
+      "startTime": "Startzeit",
+      "endTime": "Endzeit",
+      "timeRangeInvalid": "Die Startzeit muss vor der Endzeit liegen",
+      "notConfigured": "Noch nicht konfiguriert. Lege Präferenz und Zeitraum je Wochentag fest und speichere.",
+      "loadError": "Standardverfügbarkeit konnte nicht geladen werden",
+      "retry": "Erneut versuchen"
+    },
     "board": {
       "title": "Schichtplan-Board",
       "memberPool": "Nicht zugewiesene Mitglieder",
@@ -20,7 +29,9 @@
       "revoke": "Verwerfen",
       "history": "Ausführungshistorie",
       "slotsFilled": "{filled}/{total} Schichten besetzt",
-      "warnings": "{count} Warnungen"
+      "warnings": "{count} Warnungen",
+      "disabledBadge": "Ausgesetzt",
+      "disabledReason": "Die automatische Zuweisung ist derzeit ausgesetzt. Bitte manuell planen."
     },
     "visualReview": {
       "title": "Sichtprüfung",
@@ -61,12 +72,6 @@
       "openCallLimit": "Offene Ausschreibungen sind auf 3 pro Monat begrenzt",
       "fetchError": "Fehler beim Abrufen der Änderungsanträge"
     },
-    "openCall": {
-      "badge": "Ersatzmitglied gesucht",
-      "claim": "Ich übernehme diese Schicht",
-      "claimed": "Bereits beansprucht",
-      "full": "Ausschreibung geschlossen"
-    },
     "pdf": {
       "teamLayout": "Team-Schichtplan PDF",
       "personalLayout": "Persönliche Zeitleiste PDF",
@@ -74,20 +79,23 @@
       "error": "PDF-Erstellung fehlgeschlagen"
     },
     "myShifts": {
-      "title": "Meine Schichten",
-      "empty": "Keine Schichten vorhanden",
-      "fetchError": "Fehler beim Abrufen der Schichtinformationen"
+      "title": "Meine Schichtanfragen",
+      "empty": "Keine Schichten gefunden",
+      "fetchError": "Schichtinformationen konnten nicht abgerufen werden",
+      "description": "Eingereichte Anfragen und ihr Genehmigungsstatus",
+      "scheduleDeleted": "Schichtplan wurde gelöscht"
     },
     "page": {
       "title": "Schicht",
       "myShift": "Meine Schicht",
       "submitRequest": "Wunsch einreichen",
-      "availability": "Standard-Verfügbarkeit",
+      "availability": "Standard-Wochenverfügbarkeit",
       "schedules": "Schichtplan-Liste",
       "detail": "Detail",
       "edit": "Bearbeiten",
       "requests": "Anfragen",
-      "workConstraints": "Arbeitsbeschränkungen"
+      "workConstraints": "Arbeitsbeschränkungen",
+      "teamLoadFailed": "Teaminformationen konnten nicht geladen werden"
     },
     "status": {
       "all": "Alle",
@@ -127,11 +135,15 @@
       "archive": "Archivieren",
       "transitionSuccess": "Status geändert",
       "saveSuccess": "Gespeichert",
+      "deleteTitle": "Schichtplan löschen",
+      "deleteConfirm": "Diesen Schichtplan löschen? Eingereichte Wünsche bleiben im Verlauf der Mitglieder erhalten.",
+      "deleteSuccess": "Schichtplan gelöscht",
       "calendarView": "Kalenderansicht",
       "noDate": "Kein Datum",
       "colDate": "Datum",
       "colSlots": "Slots",
-      "editDialogTitle": "Schicht bearbeiten"
+      "editDialogTitle": "Schicht bearbeiten",
+      "accessDeniedRedirect": "Sie haben keine Berechtigung, diese Seite anzuzeigen"
     },
     "slot": {
       "createTitle": "Slot anlegen",
@@ -151,7 +163,9 @@
       "dayOfWeek": "Wochentag",
       "dayOfWeekHint": "Slots werden nur an den gewählten Wochentagen angelegt",
       "saveSuccess": "Slot gespeichert",
-      "deleteSuccess": "Slot gelöscht"
+      "deleteSuccess": "Slot gelöscht",
+      "assignmentMasked": "In Abstimmung",
+      "assignmentMaskedHint": "Zuweisungen werden bis zur Veröffentlichung ausgeblendet"
     },
     "requests": {
       "submissionRate": "Einreichungsquote",
@@ -268,17 +282,56 @@
         "nightShift": "Nachtschicht-Mitglieder",
         "selectedCount": "{count} ausgewählt"
       },
-      "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden"
+      "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden",
+      "list": {
+        "title": "Schichttausch-Anfragen",
+        "requester": "Antragsteller #{id}",
+        "accepter": "Tauschpartner #{id}",
+        "accepterUndecided": "Tauschpartner offen",
+        "slot": "Schicht #{id}",
+        "reason": "Grund: {reason}",
+        "cancel": "Zurückziehen",
+        "reload": "Neu laden",
+        "empty": "Keine Tauschanfragen",
+        "loadFailed": "Tauschanfragen konnten nicht geladen werden",
+        "loadFailedBody": "Tauschanfragen konnten nicht abgerufen werden",
+        "actionFailed": "Die Aktion ist fehlgeschlagen",
+        "acceptSucceeded": "Tausch angenommen",
+        "approveSucceeded": "Tausch genehmigt",
+        "rejectSucceeded": "Tausch abgelehnt",
+        "cancelSucceeded": "Anfrage zurückgezogen",
+        "statusPending": "Wartet auf Annahme",
+        "statusAccepted": "Wartet auf Genehmigung",
+        "statusApproved": "Genehmigt",
+        "statusRejected": "Abgelehnt",
+        "statusCancelled": "Zurückgezogen"
+      }
     },
     "reminder": {
       "send": "Erinnerung senden",
-      "sent": "Erinnerung gesendet"
+      "sent": "Erinnerung gesendet",
+      "confirmTitle": "Mitglieder ohne Abgabe erinnern",
+      "confirmMessage": "Eine Erinnerung an Mitglieder senden, die ihre Wünsche für „{title}“ noch nicht abgegeben haben?",
+      "confirmAccept": "Erinnerung senden",
+      "confirmReject": "Abbrechen",
+      "sentTitle": "Erinnerung gesendet",
+      "sentDetail": "{count} Mitglieder wurden zur Abgabe ihrer Wünsche aufgefordert.",
+      "noRecipientsTitle": "Keine offenen Abgaben",
+      "noRecipientsDetail": "Es gibt niemanden zu erinnern.",
+      "failedTitle": "Erinnerung konnte nicht gesendet werden",
+      "failedDetail": "Bitte versuchen Sie es später erneut.",
+      "targetUnavailable": "Dieser Dienstplan ist nicht verfügbar oder nimmt keine Wünsche mehr an."
     },
     "empty": {
       "noSchedules": "Keine Schichtpläne vorhanden",
       "noShifts": "Keine Schichten vorhanden",
       "noRequests": "Keine Anfragen vorhanden",
       "noConstraints": "Keine Arbeitsbeschränkungen festgelegt"
+    },
+    "teamLoad": {
+      "timeout": "Das Laden der Teaminformationen dauert zu lange. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+      "error": "Die Teaminformationen konnten nicht geladen werden. Bitte versuchen Sie es später erneut.",
+      "retry": "Erneut versuchen"
     },
     "notification": {
       "publishSuccess": "Schicht erfolgreich veröffentlicht",
@@ -320,13 +373,9 @@
       "totalLabel": "Gesamt",
       "confirmSubmit": "Mit diesen Einstellungen einreichen?"
     },
-    "myShifts": {
-      "title": "Meine Schichten",
-      "empty": "Keine Schichten gefunden",
-      "fetchError": "Schichtinformationen konnten nicht abgerufen werden"
-    },
     "myShift": {
       "confirmedTitle": "Bestätigte Schicht",
+      "upcomingTitle": "Bevorstehende bestätigte Schichten",
       "teamFilter": {
         "all": "Alle Teams",
         "label": "Nach Team filtern"
@@ -336,6 +385,156 @@
         "position": "Position",
         "schedule": "Schichtplan",
         "noSlot": "Keine Schichten an diesem Tag"
+      }
+    },
+    "entry": {
+      "sectionTitle": "Wünsche einreichen / Schichtboard",
+      "bulkRequest": "Wünsche gesammelt einreichen",
+      "board": "Schichtboard",
+      "weeklyDefault": "Wochentags-Standard festlegen",
+      "closed": "Die Wunschabgabe ist beendet"
+    },
+    "submitConfirm": {
+      "title": "Mit diesem Inhalt senden?",
+      "filledLabel": "Ausgefüllte Tage",
+      "defaultAppliedLabel": "Aus Standardwerten übernommene Tage",
+      "untouchedLabel": "Nicht ausgefüllte Tage",
+      "dayCount": "{count} Tag(e)",
+      "untouchedNotice": "Nicht ausgefüllte Tage werden als „möglichst frei\" eingereicht. Bei Personalmangel kann dennoch eine Schichtanfrage kommen.",
+      "submit": "Senden",
+      "back": "Zurück zum Bearbeiten"
+    },
+    "hourlyRate": {
+      "title": "時給設定",
+      "description": "メンバーごとの時給を登録します。時給が未設定のメンバーのシフトは、シフト予算の消化額に反映されません。",
+      "missingWarning": "時給が未設定のメンバーが {count} 名います。このままではシフトを公開しても予算の消化額に反映されません。",
+      "unset": "未設定",
+      "setButton": "設定",
+      "perHour": "{amount}円/h",
+      "saved": "時給を保存しました",
+      "saveFailed": "時給の保存に失敗しました",
+      "loadFailed": "時給の取得に失敗しました",
+      "historyLoadFailed": "時給履歴の取得に失敗しました",
+      "permissionLoadFailed": "権限の取得に失敗しました",
+      "forbidden": "この画面を表示する権限がありません",
+      "noMembers": "メンバーがいません",
+      "dialogTitle": "{name} の時給設定",
+      "effectiveFromHint": "指定した日から適用されます。過去の設定は履歴として残ります。同じ日付で登録し直すと、その日の設定を訂正します。",
+      "historyTitle": "時給履歴",
+      "noHistory": "時給の登録履歴はありません",
+      "column": {
+        "member": "メンバー",
+        "rate": "時給",
+        "effectiveFrom": "適用開始日"
+      },
+      "validation": {
+        "rateRequired": "時給を入力してください",
+        "ratePositive": "時給は1円以上で入力してください"
+      }
+    }
+  },
+  "my_shift_guide": {
+    "title": "シフトページの使い方",
+    "description": "このページでは、自分にアサインされた確定シフトの確認や、交代依頼の申請ができます。",
+    "view_shifts": {
+      "title": "確定シフトを確認する",
+      "body": "ログインユーザーにアサインされた確定済みシフトを、月次カレンダーまたは週次リストで表示します。シフトがない日付は空欄のまま表示されます。",
+      "steps": {
+        "step1": "「/my/shift」ページを開きます",
+        "step2": "ページが自動的に確定シフトを読み込み、カレンダーまたはリストに表示します",
+        "step3": "シフトがない場合は「シフトがありません」と表示されます"
+      }
+    },
+    "switch_view": {
+      "title": "表示を切り替える",
+      "body": "月次カレンダー（全体把握向き）と週次リスト（詳細確認向き）の2つのビューを切り替えられます。矢印ボタンで前後の月・週に移動できます。",
+      "steps": {
+        "step1": "画面上部の「月ビュー」「週ビュー」ボタンで表示形式を切り替えます",
+        "step2": "◀ ▶ ボタンで前月・次月（または前週・次週）に移動します",
+        "step3": "「今日」ボタンで今日を含む月・週に戻ります"
+      }
+    },
+    "filter_team": {
+      "title": "チームで絞り込む",
+      "body": "複数のチームに所属している場合、特定チームのシフトのみを表示できます。「全て」ボタンを選ぶと全チームのシフトが表示されます。",
+      "steps": {
+        "step1": "画面上部「チーム:」欄の「全て」またはチーム名ボタンをタップします",
+        "step2": "選択したチームのシフトのみ表示されます",
+        "step3": "「全て」を再度タップすると絞り込みが解除されます"
+      }
+    },
+    "view_detail": {
+      "title": "シフト詳細を確認する",
+      "body": "特定の日付をタップすると、そのシフトのチーム名・ポジション・時刻・スケジュール名などの詳細を確認できます。",
+      "steps": {
+        "step1": "【月次ビュー】日付セルをタップすると、画面右側に詳細パネルが開きます",
+        "step2": "【週次ビュー】日付カードのヘッダーをタップすると、カードが展開してシフト一覧が表示されます",
+        "step3": "月次ビューでは同じ日付をもう一度タップすると詳細パネルが閉じます"
+      }
+    },
+    "swap_request": {
+      "title": "交代依頼を申請する",
+      "body": "確定シフトを他のメンバーと交代したい場合、3つの方式で依頼を送れます。送信後は自動的にシフト一覧が更新されます。",
+      "steps": {
+        "step1": "シフト詳細内の「交代依頼を作成」ボタンをクリックします",
+        "step2": "送信方式を選びます：「メンバーを指定」（1名以上選択）／「シフト帯でまとめて」（同日の昼または夜シフト担当者全員）／「全員に公開」（誰でも立候補可）",
+        "step3": "必要であれば理由を記入します（任意）",
+        "step4": "「提出」ボタンをクリックして送信します"
+      },
+      "note": "提出後は確定シフト一覧が自動的に更新されます。送信中はボタンが無効になりますので、完了するまでそのままお待ちください。"
+    }
+  },
+  "shift_guide": {
+    "title": "シフト管理の使い方",
+    "description": "シフト管理では、チームのシフトスケジュールを作成・公開し、メンバーの希望を収集して調整できます。",
+    "overview": {
+      "title": "シフトスケジュール一覧を確認する",
+      "body": "このページでは、チームのシフトスケジュール一覧を管理します。ステータスバッジで進捗が一目で分かります。",
+      "steps": {
+        "step1": "ステータスフィルタ（下書き・収集中・調整中・公開済みなど）で絞り込む",
+        "step2": "各カードの提出率バーでメンバーの希望提出状況を確認する",
+        "step3": "カードをクリックして詳細ページへ移動する"
+      }
+    },
+    "create": {
+      "title": "新しいシフトスケジュールを作成する",
+      "body": "チームの管理者がシフトスケジュールを新規作成できます。タイトルと期間を設定してスタートしましょう。",
+      "steps": {
+        "step1": "右上の「新規作成」ボタンをクリックする",
+        "step2": "タイトル・開始日・終了日を入力する（必須）",
+        "step3": "希望締切・メモを必要に応じて入力する",
+        "step4": "「作成」ボタンで確定する（ステータス：下書きで作成）"
+      }
+    },
+    "status": {
+      "title": "ステータスを進めてシフトを確定させる",
+      "body": "シフトは5段階のステータスで管理されます。詳細ページのステッパーで現在のフェーズを確認し、順番に進めましょう。",
+      "steps": {
+        "step1": "「下書き」：スロットや制約を設定する準備段階",
+        "step2": "「収集中」：メンバーにシフト希望の提出を依頼する",
+        "step3": "「調整中」：希望を元にシフトを調整・作成する",
+        "step4": "「公開済み」：確定シフトをメンバーに公開する",
+        "step5": "「完了」：終了したシフトをアーカイブする"
+      }
+    },
+    "requests": {
+      "title": "メンバーのシフト希望を収集・確認する",
+      "body": "「収集中」ステータスになるとメンバーが希望を提出できます。詳細ページの「希望一覧」タブで全員の状況をマトリクスで確認できます。",
+      "steps": {
+        "step1": "詳細ページの「希望一覧」タブをクリックする",
+        "step2": "サマリーカードで提出率・未提出人数を確認する",
+        "step3": "マトリクス表で各メンバーの日付ごとの希望強度を確認する",
+        "step4": "「出勤希望・指定なし・出れなくはない・できれば休み・絶対休み」の5段階で表示される"
+      }
+    },
+    "slots": {
+      "title": "スロットと勤務制約を設定する",
+      "body": "シフトの時間帯（スロット）を登録し、チーム・メンバー別の勤務制約を設定します。",
+      "steps": {
+        "step1": "「編集」タブでスロット（日付・開始〜終了時刻・ポジション・必要人数）を作成する",
+        "step2": "「一括作成」ボタンで日付範囲・曜日指定による複数スロットの一括登録も可能",
+        "step3": "「制約」タブでチームデフォルトの勤務制約（月最大時間・連続勤務日数など）を設定する",
+        "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
   }

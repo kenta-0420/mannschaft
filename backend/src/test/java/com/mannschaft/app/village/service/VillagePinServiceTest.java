@@ -1,14 +1,18 @@
 package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.PinListResponse;
 import com.mannschaft.app.village.dto.PinOrderUpdateRequest;
 import com.mannschaft.app.village.dto.PinResponse;
 import com.mannschaft.app.village.entity.UserVillagePinEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
+import com.mannschaft.app.village.entity.enums.VillageVisibility;
 import com.mannschaft.app.village.repository.UserVillagePinRepository;
+import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,8 +59,29 @@ class VillagePinServiceTest {
     @Mock
     private VillageRepository villageRepository;
 
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
+
+    @Mock
+    private VillageMembershipRepository membershipRepository;
+
+    /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
+    @Mock
+    private VillageAccessGate accessGate;
+
     @InjectMocks
     private VillagePinService pinService;
+
+    /**
+     * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
+     * モックのゲートに実物のゲート（同じモックのリポジトリを注入）を委譲させることで、
+     * 本テストが積み上げてきた {@code villageRepository.findById} の stub をそのまま生かしつつ、
+     * 可視性判定は実物のロジックで走らせる。
+     */
+    @BeforeEach
+    void wireVillageAccessGate() {
+        VillageAccessGateTestSupport.delegateToRealGate(accessGate, villageRepository, membershipRepository);
+    }
 
     private static final Long USER_ID = 700L;
 
@@ -75,6 +100,9 @@ class VillagePinServiceTest {
                 .willReturn(List.of(p1, p2));
         given(villageRepository.findAllById(any(Iterable.class)))
                 .willReturn(List.of(village(vId1, "東村", "icon1"), village(vId2, "西村", "icon2")));
+        // villageIconUrl は生 R2 キーでなく署名付き表示 URL を返すこと（画像 404 根治 Phase3）。
+        given(mediaUrlResolver.resolve("icon1")).willReturn("https://cdn.example/signed/icon1");
+        given(mediaUrlResolver.resolve("icon2")).willReturn("https://cdn.example/signed/icon2");
 
         PinListResponse res = pinService.listMyPins(USER_ID);
 
@@ -83,7 +111,7 @@ class VillagePinServiceTest {
         assertThat(res.items()).extracting(PinResponse::villageName)
                 .containsExactly("東村", "西村");
         assertThat(res.items()).extracting(PinResponse::villageIconUrl)
-                .containsExactly("icon1", "icon2");
+                .containsExactly("https://cdn.example/signed/icon1", "https://cdn.example/signed/icon2");
     }
 
     @Test
@@ -107,7 +135,7 @@ class VillagePinServiceTest {
     @DisplayName("pin: 正常系 → INSERT、sort_order は末尾（既存件数）")
     void pin_ok() {
         UUID vid = UUID.randomUUID();
-        given(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(vid))
+        given(villageRepository.findById(vid))
                 .willReturn(Optional.of(village(vid, "新村", "icon")));
         given(pinRepository.findByUserIdAndVillageId(USER_ID, vid)).willReturn(Optional.empty());
         given(pinRepository.countByUserId(USER_ID)).willReturn(5L);
@@ -130,7 +158,7 @@ class VillagePinServiceTest {
     @DisplayName("pin: 30 件超過 → 422 VILLAGE_PIN_LIMIT_EXCEEDED")
     void pin_limitExceeded() {
         UUID vid = UUID.randomUUID();
-        given(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(vid))
+        given(villageRepository.findById(vid))
                 .willReturn(Optional.of(village(vid, "村", "icon")));
         given(pinRepository.findByUserIdAndVillageId(USER_ID, vid)).willReturn(Optional.empty());
         given(pinRepository.countByUserId(USER_ID)).willReturn(30L);
@@ -147,7 +175,7 @@ class VillagePinServiceTest {
     @DisplayName("pin: 既にピン済み → 409 VILLAGE_PIN_ALREADY_EXISTS")
     void pin_alreadyExists() {
         UUID vid = UUID.randomUUID();
-        given(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(vid))
+        given(villageRepository.findById(vid))
                 .willReturn(Optional.of(village(vid, "村", "icon")));
         given(pinRepository.findByUserIdAndVillageId(USER_ID, vid))
                 .willReturn(Optional.of(pinEntity(vid, 0L)));
@@ -161,11 +189,60 @@ class VillagePinServiceTest {
     }
 
     @Test
-    @DisplayName("pin: 村が削除/凍結/不在 → 404 VILLAGE_NOT_FOUND")
+    @DisplayName("pin: 村が不在 → 404 VILLAGE_NOT_FOUND")
     void pin_villageNotFound() {
         UUID vid = UUID.randomUUID();
-        given(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(vid))
+        given(villageRepository.findById(vid))
                 .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> pinService.pin(USER_ID, vid))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    /**
+     * 村存在確認が {@code findByIdAndDeletedAtIsNullAndArchivedAtIsNull}（クエリで畳む方式）から
+     * {@link VillageAccessGate#loadReadableVillage}（ロード後に判定する方式）へ移ったため、
+     * 「削除済み」「凍結済み」も不在と同じ 404 に畳まれることを明示的に見張る。
+     * 旧テストはクエリが空を返す 1 ケースで 3 状態を代表させていたが、
+     * 判定がクエリの外へ出た今はそれでは網羅にならない。
+     */
+    @Test
+    @DisplayName("pin: 村が削除済み → 404 VILLAGE_NOT_FOUND")
+    void pin_deletedVillage_notFound() {
+        UUID vid = UUID.randomUUID();
+        VillageEntity v = village(vid, "削除済み村", "icon");
+        v.setDeletedAt(LocalDateTime.now().minusDays(1));
+        given(villageRepository.findById(vid)).willReturn(Optional.of(v));
+
+        assertThatThrownBy(() -> pinService.pin(USER_ID, vid))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("pin: 村が凍結済み → 404 VILLAGE_NOT_FOUND（409 を漏らさない）")
+    void pin_archivedVillage_notFound() {
+        UUID vid = UUID.randomUUID();
+        VillageEntity v = village(vid, "凍結済み村", "icon");
+        v.setArchivedAt(LocalDateTime.now().minusDays(1));
+        given(villageRepository.findById(vid)).willReturn(Optional.of(v));
+
+        assertThatThrownBy(() -> pinService.pin(USER_ID, vid))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("pin: 非公開(UNLISTED)村を非村人がピン → 404 VILLAGE_NOT_FOUND（存在秘匿）")
+    void pin_unlistedVillageByStranger_notFound() {
+        UUID vid = UUID.randomUUID();
+        VillageEntity v = village(vid, "非公開村", "icon");
+        v.setVisibility(VillageVisibility.UNLISTED);
+        given(villageRepository.findById(vid)).willReturn(Optional.of(v));
 
         assertThatThrownBy(() -> pinService.pin(USER_ID, vid))
                 .isInstanceOf(BusinessException.class)
@@ -177,7 +254,7 @@ class VillagePinServiceTest {
     @DisplayName("pin: 同時 POST の race → DataIntegrityViolation を 409 に変換")
     void pin_dbRace() {
         UUID vid = UUID.randomUUID();
-        given(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(vid))
+        given(villageRepository.findById(vid))
                 .willReturn(Optional.of(village(vid, "村", "icon")));
         given(pinRepository.findByUserIdAndVillageId(USER_ID, vid)).willReturn(Optional.empty());
         given(pinRepository.countByUserId(USER_ID)).willReturn(0L);
@@ -352,6 +429,7 @@ class VillagePinServiceTest {
         VillageEntity v = VillageEntity.builder()
                 .slug("slug-" + name)
                 .name(name)
+                .visibility(VillageVisibility.PUBLIC)
                 .iconR2Key(iconKey)
                 .memberCountCache(1L)
                 .build();

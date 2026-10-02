@@ -1,6 +1,8 @@
 package com.mannschaft.app.village.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.service.VillageChronicleService;
@@ -43,6 +45,8 @@ public class VillageChronicleBatchService {
      *
      * <p>cron 表現: {@code "0 0 3 1 * *"} — 毎月 1 日の 03:00:00 に発火（JST）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "前月固定の no-arg 入口しか無く、対象月を指定して再実行する運用経路が無い。止めた月の村史は二度と生成できない")
     @BatchEndpoint(name = "village-chronicle-monthly", description = "全村の前月分村史を毎月 1 日 03:00 に生成する")
     @Scheduled(cron = "0 0 3 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(

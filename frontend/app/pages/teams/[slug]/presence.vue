@@ -5,7 +5,7 @@ import type {
   PresenceStatsResponse,
 } from '~/types/presence'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = String(route.params.slug)

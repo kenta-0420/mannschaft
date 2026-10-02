@@ -4,14 +4,23 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.netty.channel.ChannelOption;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.netty.http.client.HttpClient;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +49,7 @@ public class IncidentBannerTranslationProvider {
     private static final int MAX_TOKENS = 1024;
 
     private final ObjectMapper objectMapper;
+    private final IncidentBannerTranslationProperties props;
 
     @Value("${mannschaft.claude.api-key:}")
     private String apiKey;
@@ -49,14 +59,19 @@ public class IncidentBannerTranslationProvider {
     @PostConstruct
     void init() {
         if (apiKey != null && !apiKey.isBlank()) {
+            int timeoutMs = props.getTimeoutMs();
+            HttpClient httpClient = HttpClient.create()
+                    .responseTimeout(Duration.ofMillis(timeoutMs))
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, timeoutMs);
             webClient = WebClient.builder()
                     .baseUrl(CLAUDE_API_URL)
+                    .clientConnector(new ReactorClientHttpConnector(httpClient))
                     .defaultHeader("x-api-key", apiKey)
                     .defaultHeader("anthropic-version", ANTHROPIC_VERSION)
                     .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                     .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(1024 * 1024))
                     .build();
-            log.info("障害告知バナー翻訳 Claude API クライアント初期化完了");
+            log.info("障害告知バナー翻訳 Claude API クライアント初期化完了 (timeoutMs={})", timeoutMs);
         } else {
             log.warn("Claude API キーが未設定です。障害告知バナーの自動翻訳は動作しません。");
         }
@@ -73,6 +88,19 @@ public class IncidentBannerTranslationProvider {
      * @param targetLangs 翻訳先言語コードのリスト（例: ["en","zh","ko","es","de"]）
      * @return 言語コード → 訳文 の Map（翻訳できた言語のみ）
      */
+    @Retryable(
+            retryFor = {WebClientException.class},
+            noRetryFor = {WebClientResponseException.BadRequest.class,
+                    WebClientResponseException.Unauthorized.class,
+                    WebClientResponseException.Forbidden.class,
+                    WebClientResponseException.NotFound.class,
+                    WebClientResponseException.MethodNotAllowed.class,
+                    WebClientResponseException.NotAcceptable.class,
+                    WebClientResponseException.UnsupportedMediaType.class,
+                    WebClientResponseException.UnprocessableEntity.class,
+                    WebClientResponseException.TooManyRequests.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 200, multiplier = 3))
     public Map<String, String> translate(String text, String sourceLang, List<String> targetLangs) {
         Map<String, String> result = new LinkedHashMap<>();
 
@@ -95,12 +123,29 @@ public class IncidentBannerTranslationProvider {
 
             return parseResponse(responseJson, targetLangs);
 
+        } catch (WebClientException e) {
+            // 4xx/5xx/timeout は @Retryable / @Recover に委ねる
+            // （4xx は即時非リトライ、5xx/timeout は最大3回リトライ後 @Recover でフォールバック）。
+            throw e;
         } catch (Exception e) {
-            // 症状を隠さず正直に記録する。翻訳不可の言語は呼び出し側でフォールバックされる。
+            // それ以外（JSON パース失敗等）は症状を隠さず記録し、原文フォールバックのため空 Map を返す。
             log.warn("障害告知バナーの自動翻訳に失敗しました（全言語スキップ）。sourceLang={}, targetLangs={}, error={}",
                     sourceLang, targetLangs, e.getMessage(), e);
             return result;
         }
+    }
+
+    /**
+     * リトライ上限到達後（5xx／タイムアウト）または 4xx 非リトライ時の {@link WebClientException} を
+     * 受け、空 Map を返してバナーを原文にフォールバックさせる Spring Retry の {@code @Recover} ハンドラ。
+     * 症状を隠さず log.warn で正直に記録する（バナー自体は機能し続ける）。
+     */
+    @Recover
+    Map<String, String> recover(WebClientException e, String text, String sourceLang, List<String> targetLangs) {
+        log.warn("障害告知バナーの自動翻訳が 4xx/5xx/timeout で失敗（リトライ尽き・全言語スキップ）。"
+                        + "sourceLang={}, targetLangs={}, error={}",
+                sourceLang, targetLangs, e.getMessage(), e);
+        return new LinkedHashMap<>();
     }
 
     /**

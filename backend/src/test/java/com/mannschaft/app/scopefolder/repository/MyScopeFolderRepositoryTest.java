@@ -2,7 +2,7 @@ package com.mannschaft.app.scopefolder.repository;
 
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderItemEntity;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;

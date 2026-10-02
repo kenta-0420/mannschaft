@@ -204,8 +204,8 @@ test.describe('P2-AUTH-EXPIRE: 認証済みセッション中にトークン期�
    *
    * useApi.ts の interceptor:
    *   1. API が 401 → authStore.user があるので performTokenRefresh を呼ぶ
-   *   2. /auth/refresh も 401 → performTokenRefresh が false を返す
-   *   3. authStore.logout() → navigateTo('/login')
+   *   2. /auth/refresh も 401 → performTokenRefresh が 'auth_failed' を返す
+   *   3. handleAuthFailureLogout() → authStore.logout({reason:'session_expired'}) → navigateTo('/login?...')
    *   4. URL が /login になる
    *
    * 触る API:
@@ -215,8 +215,9 @@ test.describe('P2-AUTH-EXPIRE: 認証済みセッション中にトークン期�
   test('P2-AUTH-EXPIRE-01: API 全 401 + refresh 失敗 → /login にリダイレクトされる', async ({
     page,
   }) => {
-    // auth.client.ts プラグインの先回り refresh を 401 でスタブ
-    // （refresh 失敗時は logout せず interceptor に委ねる設計のため、ここは 401 でよい）
+    // auth.client.ts プラグインの先回り refresh を 401 でスタブ。
+    // 401 は auth_failed（refresh_token が本当に無効）と判定され、先回り経路も 401 interceptor 経路も
+    // ログアウト → /login へ誘導する（ログアウトは handleAuthFailureLogout で 1 回に束ねられる）。
     await page.route('**/api/v1/auth/refresh', async (route) => {
       await route.fulfill({
         status: 401,

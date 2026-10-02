@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.moderation.dto.CreateUnflagRequest;
 import com.mannschaft.app.moderation.dto.YabaiUnflagResponse;
 import com.mannschaft.app.moderation.service.YabaiUnflagService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,7 +32,18 @@ public class YabaiController {
 
     /**
      * ヤバいやつ解除申請を作成する。
+     *
+     * <p><b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * 申請者は常に {@code SecurityUtils.getCurrentUserId()} が渡され、
+     * リクエストボディで申請者本人を偽装する経路が構造的に無い
+     * （YabaiController#createUnflagRequest）。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "unflagService.createUnflagRequest(userId, reason) の userId は"
+                    + "SecurityUtils.getCurrentUserId() のみで束縛される"
+                    + "（YabaiController#createUnflagRequest）")
     @PostMapping("/unflag-request")
     @Operation(summary = "ヤバいやつ解除申請")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "申請成功")
@@ -43,7 +55,18 @@ public class YabaiController {
 
     /**
      * 解除申請状態を取得する。
+     *
+     * <p><b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code unflagService.getLatestRequestStatus} は
+     * {@code SecurityUtils.getCurrentUserId()} のみを検索条件に渡すため、
+     * 他人の解除申請状態へ到達する経路が構造的に無い
+     * （YabaiController#getUnflagRequestStatus）。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "unflagService.getLatestRequestStatus(userId) は SecurityUtils.getCurrentUserId() の"
+                    + "みを検索条件に渡す（YabaiController#getUnflagRequestStatus）")
     @GetMapping("/unflag-request/status")
     @Operation(summary = "解除申請状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

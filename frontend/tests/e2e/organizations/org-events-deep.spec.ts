@@ -72,7 +72,7 @@ test.describe('ORG-DEEP-events: 組織イベント作成ダイアログ深掘り
           contentType: 'application/json',
           body: JSON.stringify({
             data: [],
-            meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+            meta: { page: 0, size: 20, total: 0, totalPages: 0 },
           }),
         })
       }

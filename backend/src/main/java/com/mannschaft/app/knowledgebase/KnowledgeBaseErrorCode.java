@@ -14,10 +14,10 @@ public enum KnowledgeBaseErrorCode implements ErrorCode {
     /** ページが見つからない */
     KB_001("KB_001", "ページが見つかりません", Severity.WARN),
 
-    /** アクセス権限がない */
+    /** アクセス権限がない（明確な認可拒否 → 403 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     KB_002("KB_002", "アクセス権限がありません", Severity.WARN),
 
-    /** スラッグ重複 */
+    /** スラッグ重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     KB_003("KB_003", "スラッグが既に使用されています", Severity.WARN),
 
     /** 階層深さ上限超過 */
@@ -26,7 +26,7 @@ public enum KnowledgeBaseErrorCode implements ErrorCode {
     /** 循環参照検出 */
     KB_005("KB_005", "循環参照が検出されました（ページ移動時）", Severity.WARN),
 
-    /** バージョン不一致 */
+    /** バージョン不一致（楽観排他制御の競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     KB_006("KB_006", "バージョンが一致しません", Severity.WARN),
 
     /** リビジョンが見つからない */
@@ -41,7 +41,7 @@ public enum KnowledgeBaseErrorCode implements ErrorCode {
     /** テンプレートが見つからない */
     KB_010("KB_010", "テンプレートが見つかりません", Severity.WARN),
 
-    /** システムテンプレート変更不可 */
+    /** システムテンプレート変更不可（書込禁止リソースへの操作拒否 → 403 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     KB_011("KB_011", "システムテンプレートは変更できません", Severity.WARN),
 
     /** テンプレート上限超過 */

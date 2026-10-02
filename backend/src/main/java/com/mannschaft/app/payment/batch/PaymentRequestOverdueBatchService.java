@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.payment.PaymentRequestStatus;
 import com.mannschaft.app.payment.entity.PaymentRequestEntity;
@@ -23,7 +25,7 @@ import java.util.Set;
  * F08.9 P7 第二波: 協会請求の期限超過バッチ（OVERDUE 遷移・02_api §7）。
  *
  * <p>支払期限（{@code due_date}）が当日より前で、まだ {@code SENT}/{@code VIEWED} の請求を {@code OVERDUE} へ
- * 遷移させる。OVERDUE でも支払いは可能（{@link com.mannschaft.app.payment.service.PaymentRequestService#pay}）。
+ * 遷移させる。OVERDUE でも支払いは可能（{@link com.mannschaft.app.payment.service.PaymentRequestPaymentCoordinator#pay}）。
  * {@code PAID}/{@code CANCELLED}/{@code DRAFT} は対象外（抽出クエリで SENT/VIEWED に絞り、Entity 側でも
  * {@link PaymentRequestEntity#markAsOverdueIfDue} が二重防御する）。</p>
  *
@@ -55,6 +57,9 @@ public class PaymentRequestOverdueBatchService {
     /**
      * 期限超過バッチ。毎日 23:30 JST に実行する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_BILLING_PAYMENT_ENABLED",
+            reason = "期限超過判定は支払期限日という時刻条件のみで冪等に決まり、止めても請求行そのものは残るため再開後にまとめて OVERDUE にできる")
     @BatchEndpoint(name = "payment-request-overdue-batch",
             description = "協会請求 期限超過（SENT/VIEWED→OVERDUE）バッチ")
     @Scheduled(cron = "0 30 23 * * *", zone = "Asia/Tokyo")

@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.DmReceiveFrom;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.contact.ContactErrorCode;
 import com.mannschaft.app.contact.OnlineVisibility;
 import com.mannschaft.app.contact.dto.ContactPrivacyRequest;
@@ -40,9 +41,9 @@ public class ContactPrivacyService {
                 .orElseThrow(() -> new BusinessException(ContactErrorCode.CONTACT_015));
 
         DmReceiveFrom dmReceiveFrom = req.getDmReceiveFrom() != null
-                ? DmReceiveFrom.valueOf(req.getDmReceiveFrom()) : null;
+                ? EnumInputParser.parse(DmReceiveFrom.class, req.getDmReceiveFrom(), "dmReceiveFrom") : null;
         OnlineVisibility onlineVisibility = req.getOnlineVisibility() != null
-                ? OnlineVisibility.valueOf(req.getOnlineVisibility()) : null;
+                ? EnumInputParser.parse(OnlineVisibility.class, req.getOnlineVisibility(), "onlineVisibility") : null;
 
         user.updateContactPrivacy(
                 req.getHandleSearchable(),

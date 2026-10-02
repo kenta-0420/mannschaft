@@ -11,8 +11,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -24,8 +24,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "receipt_issuer_settings")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ReceiptIssuerSettingsEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
@@ -93,7 +92,15 @@ public class ReceiptIssuerSettingsEntity extends BaseEntity {
     private Integer encryptionKeyVersion = 1;
 
     /**
-     * 発行者設定を更新する。
+     * 発行者設定を<b>解決済みの値</b>で上書きする。
+     *
+     * <p>差分更新（PATCH）のマージ — 「未送信/null は無変更」「空文字は NULL へ明示クリア」 —
+     * は呼び出し元の {@code ReceiptIssuerSettingsService} が行い、本メソッドには
+     * <b>マージ済みの最終値</b>だけが渡る。したがってここでは無条件に代入する。</p>
+     *
+     * <p>マージをエンティティ側の null チェックで表現しないのは、それでは
+     * 「無変更」と「NULL へのクリア」を区別できず、AC-34（適格フラグ OFF 時に
+     * 登録番号を NULL にする）が表現不能になるためである。</p>
      */
     public void update(String issuerName, String postalCode, String address, String phone,
                        Boolean isQualifiedInvoicer, String invoiceRegistrationNumber,

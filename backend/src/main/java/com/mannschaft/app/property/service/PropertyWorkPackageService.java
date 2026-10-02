@@ -250,6 +250,26 @@ public class PropertyWorkPackageService {
     }
 
     /**
+     * パッケージを 1 件取得し、指定 scope に属することを検証する（認可根治戦役 Wave3-B5）。
+     *
+     * <p>{@code /api/v1/{scope}/{scopeId}/property-history/{packageId}} のように scope が
+     * path に含まれるエンドポイントでの BOLA 対策。{@code packageId} が実在しても
+     * {@code scopeType}/{@code scopeId} と一致しない場合は {@link PropertyHistoryErrorCode#PROPERTY_001}
+     * （不在と同一コード）を投げ、他 scope への存在秘匿を行う。
+     * Controller はこのメソッドで scope 一致を確認した後、
+     * {@link com.mannschaft.app.common.AccessControlService} で認可判定を行う想定。</p>
+     *
+     * @throws BusinessException PROPERTY_001（不在 / scope 不一致）
+     */
+    public PropertyWorkPackageEntity getByIdInScope(String scopeType, Long scopeId, Long packageId) {
+        PropertyWorkPackageEntity entity = findPackageOrThrow(packageId);
+        if (!entity.getScopeType().equals(scopeType) || !entity.getScopeId().equals(scopeId)) {
+            throw new BusinessException(PropertyHistoryErrorCode.PROPERTY_001);
+        }
+        return entity;
+    }
+
+    /**
      * パッケージ一覧をページング取得する。フィルタは Specification で組み立てる想定だが、
      * 1-β 段階では基本的なスコープフィルタのみを公開する（高度なフィルタは 1-δ Controller 層で）。
      */

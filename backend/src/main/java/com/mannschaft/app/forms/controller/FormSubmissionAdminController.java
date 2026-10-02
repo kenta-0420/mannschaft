@@ -2,6 +2,7 @@ package com.mannschaft.app.forms.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.forms.dto.FormSubmissionResponse;
 import com.mannschaft.app.forms.service.FormSubmissionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,7 +43,8 @@ public class FormSubmissionAdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<FormSubmissionResponse> result = submissionService.listSubmissionsByTemplate(
-                templateId, status, PageRequest.of(page, size));
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), templateId, status,
+                PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -59,7 +61,8 @@ public class FormSubmissionAdminController {
             @PathVariable Long scopeId,
             @PathVariable Long templateId,
             @PathVariable Long submissionId) {
-        FormSubmissionResponse response = submissionService.approveSubmission(submissionId);
+        FormSubmissionResponse response = submissionService.approveSubmission(
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), templateId, submissionId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -74,7 +77,8 @@ public class FormSubmissionAdminController {
             @PathVariable Long scopeId,
             @PathVariable Long templateId,
             @PathVariable Long submissionId) {
-        FormSubmissionResponse response = submissionService.rejectSubmission(submissionId);
+        FormSubmissionResponse response = submissionService.rejectSubmission(
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), templateId, submissionId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -89,7 +93,8 @@ public class FormSubmissionAdminController {
             @PathVariable Long scopeId,
             @PathVariable Long templateId,
             @PathVariable Long submissionId) {
-        FormSubmissionResponse response = submissionService.returnSubmission(submissionId);
+        FormSubmissionResponse response = submissionService.returnSubmission(
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), templateId, submissionId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

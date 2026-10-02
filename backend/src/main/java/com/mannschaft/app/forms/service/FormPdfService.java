@@ -2,10 +2,17 @@ package com.mannschaft.app.forms.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.forms.FormErrorCode;
+import com.mannschaft.app.forms.FormScopes;
 import com.mannschaft.app.forms.dto.FormPdfDownloadUrlResponse;
 import com.mannschaft.app.forms.dto.FormPdfGenerateResponse;
 import com.mannschaft.app.forms.entity.FormSubmissionEntity;
@@ -39,10 +46,8 @@ import java.util.Map;
  * 既存基盤 {@link PdfGeneratorService}（Thymeleaf + Flying Saucer）を流用する。
  * 既に登録済みの日本語フォント / Cache Policy / I/O エラー処理を再利用できるためコスト低。</p>
  *
- * <p>認可: 提出者本人 / テンプレート作成者 / ADMIN+ のいずれか。
- * 本サービスでは {@link #generatePdf} / {@link #generateDownloadUrl} の引数 {@code currentUserId}
- * に対して提出者一致または作成者一致を確認する。ADMIN ロール判定は Controller 層の
- * 認可フィルタに委ねる（既存 forms API と同方針）。</p>
+ * <p>認可: 提出者本人 / テンプレート作成者 / スコープ ADMIN・DEPUTY_ADMIN 以上 のいずれか
+ * （認可根治戦役 Wave3-B4 で {@code AccessControlService.isAdminOrAbove} を本 Service に実装済み）。</p>
  *
  * @since 2026-05-17 (F05.7 Phase 11 第四陣 4-B)
  */
@@ -54,6 +59,7 @@ public class FormPdfService {
 
     /** PDF Pre-signed ダウンロード URL の有効期間（5 分）。設計書 §6 セキュリティ準拠。 */
     private static final Duration PDF_DOWNLOAD_TTL = Duration.ofMinutes(5);
+    private static final Duration ACL_CLAIM_TTL = Duration.ofMinutes(10);
 
     /** R2/S3 オブジェクトキーのプレフィックス。 */
     private static final String PDF_KEY_PREFIX = "forms";
@@ -67,7 +73,10 @@ public class FormPdfService {
     private final FormTemplateFieldRepository fieldRepository;
     private final PdfGeneratorService pdfGeneratorService;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
     private final AuditLogService auditLogService;
+    private final AccessControlService accessControlService;
 
     /**
      * 提出済みフォームの PDF を生成し R2/S3 にアップロードする。
@@ -93,10 +102,11 @@ public class FormPdfService {
     @Transactional
     public FormPdfGenerateResponse generatePdf(
             String scopeType, Long scopeId, Long submissionId, Long currentUserId) {
-        FormSubmissionEntity submission = findSubmissionOrThrow(submissionId);
+        // 旧 PDF の ACL 解放と新 PDF の差替えを、同一提出物では直列化する。
+        FormSubmissionEntity submission = findSubmissionInScopeForUpdateOrThrow(scopeType, scopeId, submissionId);
         ensureSubmittedOrLater(submission);
         FormTemplateEntity template = findTemplateOrThrow(submission.getTemplateId());
-        ensureViewerCanAccess(submission, template, currentUserId);
+        ensureViewerCanAccess(submission, template, currentUserId, scopeType, scopeId);
 
         List<FormTemplateFieldEntity> fields =
                 fieldRepository.findByTemplateIdOrderBySortOrderAsc(template.getId());
@@ -107,7 +117,19 @@ public class FormPdfService {
         byte[] pdfBytes = pdfGeneratorService.generateFromTemplate(PDF_TEMPLATE, vars);
 
         String pdfKey = buildPdfKey(scopeType, scopeId, submissionId);
+        StorageAclScope scope = scopeOf(scopeType, scopeId);
+        StorageAclContentReference parent =
+                new StorageAclContentReference("FORM_SUBMISSION", submissionId.toString());
+        StorageAclAttachmentBinding binding =
+                new StorageAclAttachmentBinding("FORM_SUBMISSION_PDF", submissionId.toString());
+        storageAclService.registerPending(pdfKey, currentUserId, scope,
+                "FORM_SUBMISSION_PDF", ACL_CLAIM_TTL, parent);
         storageService.upload(pdfKey, pdfBytes, "application/pdf");
+        storageAclService.claimPending(pdfKey, currentUserId, scope, parent, binding);
+        String previousPdfKey = submission.getPdfFileKey();
+        if (previousPdfKey != null && !previousPdfKey.isBlank()) {
+            storageAclService.releaseClaimed(previousPdfKey, binding);
+        }
         submission.setPdfFileKey(pdfKey);
         submissionRepository.save(submission);
 
@@ -139,16 +161,20 @@ public class FormPdfService {
      */
     public FormPdfDownloadUrlResponse generateDownloadUrl(
             String scopeType, Long scopeId, Long submissionId, Long currentUserId) {
-        FormSubmissionEntity submission = findSubmissionOrThrow(submissionId);
+        FormSubmissionEntity submission = findSubmissionInScopeOrThrow(scopeType, scopeId, submissionId);
         FormTemplateEntity template = findTemplateOrThrow(submission.getTemplateId());
-        ensureViewerCanAccess(submission, template, currentUserId);
+        ensureViewerCanAccess(submission, template, currentUserId, scopeType, scopeId);
 
         String pdfKey = submission.getPdfFileKey();
         if (pdfKey == null || pdfKey.isBlank()) {
             throw new BusinessException(FormErrorCode.PDF_NOT_GENERATED);
         }
 
-        String url = storageService.generateDownloadUrl(pdfKey, PDF_DOWNLOAD_TTL);
+        String url = storageAccessService.generateDownloadUrl(
+                pdfKey, scopeOf(scopeType, scopeId),
+                new StorageAclContentReference("FORM_SUBMISSION", submissionId.toString()),
+                new StorageAclAttachmentBinding("FORM_SUBMISSION_PDF", submissionId.toString()),
+                PDF_DOWNLOAD_TTL);
         log.debug("フォーム PDF download URL 発行: submissionId={}, pdfFileKey={}", submissionId, pdfKey);
         return new FormPdfDownloadUrlResponse(url, PDF_DOWNLOAD_TTL.toSeconds());
     }
@@ -160,6 +186,37 @@ public class FormPdfService {
     private FormSubmissionEntity findSubmissionOrThrow(Long submissionId) {
         return submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+    }
+
+    private StorageAclScope scopeOf(String scopeType, Long scopeId) {
+        return switch (FormScopes.canonical(scopeType)) {
+            case "TEAM" -> StorageAclScope.team(scopeId);
+            case "ORGANIZATION" -> StorageAclScope.organization(scopeId);
+            default -> throw new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_INVALID_REQUEST);
+        };
+    }
+
+    /**
+     * 提出を取得し、URL の {@code scopeType}/{@code scopeId} と一致するかを検証する（BOLA ガード）。
+     * 認可根治戦役 Wave3-B4: submissionId に加え URL の scope も検証する。
+     * 不一致は {@link FormErrorCode#SUBMISSION_NOT_FOUND}（404）で存在秘匿する。
+     */
+    private FormSubmissionEntity findSubmissionInScopeOrThrow(String scopeType, Long scopeId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+        if (!entity.getScopeType().equalsIgnoreCase(scopeType) || !entity.getScopeId().equals(scopeId)) {
+            throw new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND);
+        }
+        return entity;
+    }
+
+    private FormSubmissionEntity findSubmissionInScopeForUpdateOrThrow(
+            String scopeType, Long scopeId, Long submissionId) {
+        FormSubmissionEntity entity = submissionRepository.findByIdForUpdate(submissionId)
+                .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+        if (!entity.getScopeType().equalsIgnoreCase(scopeType) || !entity.getScopeId().equals(scopeId)) {
+            throw new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND);
+        }
+        return entity;
     }
 
     private FormTemplateEntity findTemplateOrThrow(Long templateId) {
@@ -174,19 +231,23 @@ public class FormPdfService {
     }
 
     /**
-     * 提出者本人 or テンプレート作成者のいずれかであることを確認する。
-     * ADMIN 認可は Controller 層の RolesAllowed / SecurityUtils で別途担保する想定。
+     * 提出者本人 / テンプレート作成者 / スコープ ADMIN 以上 のいずれかであることを確認する。
+     *
+     * <p>認可根治戦役 Wave3-B4: 従来コメントは「ADMIN 経路は Controller 層で別途担保する想定」
+     * としていたが、実際には Controller・Service いずれにも ADMIN 判定が実装されておらず、
+     * 提出者本人でも作成者でもない ADMIN は PDF を閲覧できない過小権限バグだった。
+     * {@link AccessControlService#isAdminOrAbove} を追加して根治する。</p>
      */
     private void ensureViewerCanAccess(
-            FormSubmissionEntity submission, FormTemplateEntity template, Long userId) {
+            FormSubmissionEntity submission, FormTemplateEntity template, Long userId,
+            String scopeType, Long scopeId) {
         if (userId == null) {
             throw new BusinessException(FormErrorCode.PDF_ACCESS_DENIED);
         }
         boolean isSubmitter = userId.equals(submission.getSubmittedBy());
         boolean isCreator = userId.equals(template.getCreatedBy());
-        if (!isSubmitter && !isCreator) {
-            // ADMIN 経路は Controller の認可フィルタに委ねる。本サービスは
-            // 「自分の提出」または「自分が作ったテンプレート」のみ通す。
+        boolean isAdmin = accessControlService.isAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
+        if (!isSubmitter && !isCreator && !isAdmin) {
             throw new BusinessException(FormErrorCode.PDF_ACCESS_DENIED);
         }
     }

@@ -5,6 +5,7 @@ import com.mannschaft.app.shift.dto.CreateShiftRequestRequest;
 import com.mannschaft.app.shift.dto.ShiftRequestResponse;
 import com.mannschaft.app.shift.dto.ShiftRequestSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftRequestRequest;
+import com.mannschaft.app.shift.service.ShiftRequestFacade;
 import com.mannschaft.app.shift.service.ShiftRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * シフト希望コントローラー。シフト希望の提出・更新・サマリー取得APIを提供する。
@@ -34,6 +36,9 @@ import com.mannschaft.app.common.SecurityUtils;
 @RequiredArgsConstructor
 public class ShiftRequestController {
 
+    /** 認可を伴う EP が呼ぶ（認可は tx の外の Facade。CMP-260923-0954 W1）。 */
+    private final ShiftRequestFacade requestFacade;
+    /** {@code @SelfScopedEndpoint} の自分の一覧だけが直接呼ぶ（構造的に自己スコープ）。 */
     private final ShiftRequestService requestService;
 
 
@@ -45,13 +50,16 @@ public class ShiftRequestController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ShiftRequestResponse>>> listRequests(
             @RequestParam Long scheduleId) {
-        List<ShiftRequestResponse> responses = requestService.listRequests(scheduleId);
+        List<ShiftRequestResponse> responses =
+                requestFacade.listRequests(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
     /**
      * 自分のシフト希望一覧を取得する。
      */
+    // ShiftRequestService#listMyRequests がSecurityUtils.getCurrentUserId()のみを対象に自身の希望を返す。
+    @SelfScopedEndpoint("ShiftRequestService#listMyRequests が呼び出し元 userId のみを検索条件に使う")
     @GetMapping("/my/requests")
     @Operation(summary = "マイシフト希望一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -68,7 +76,7 @@ public class ShiftRequestController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "提出成功")
     public ResponseEntity<ApiResponse<ShiftRequestResponse>> submitRequest(
             @Valid @RequestBody CreateShiftRequestRequest request) {
-        ShiftRequestResponse response = requestService.submitRequest(request, SecurityUtils.getCurrentUserId());
+        ShiftRequestResponse response = requestFacade.submitRequest(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -81,7 +89,7 @@ public class ShiftRequestController {
     public ResponseEntity<ApiResponse<ShiftRequestResponse>> updateRequest(
             @PathVariable Long requestId,
             @Valid @RequestBody UpdateShiftRequestRequest request) {
-        ShiftRequestResponse response = requestService.updateRequest(requestId, request, SecurityUtils.getCurrentUserId());
+        ShiftRequestResponse response = requestFacade.updateRequest(requestId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -93,7 +101,7 @@ public class ShiftRequestController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteRequest(
             @PathVariable Long requestId) {
-        requestService.deleteRequest(requestId);
+        requestFacade.deleteRequest(requestId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -105,7 +113,8 @@ public class ShiftRequestController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ShiftRequestSummaryResponse>> getRequestSummary(
             @RequestParam Long scheduleId) {
-        ShiftRequestSummaryResponse response = requestService.getRequestSummary(scheduleId);
+        ShiftRequestSummaryResponse response =
+                requestFacade.getRequestSummary(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

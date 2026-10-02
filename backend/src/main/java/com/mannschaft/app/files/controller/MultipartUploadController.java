@@ -7,7 +7,6 @@ import com.mannschaft.app.files.dto.CompleteMultipartResponse;
 import com.mannschaft.app.files.dto.PartUrlRequest;
 import com.mannschaft.app.files.dto.PartUrlResponse;
 import com.mannschaft.app.files.dto.StartMultipartUploadRequest;
-import com.mannschaft.app.files.dto.StartMultipartUploadResponse;
 import com.mannschaft.app.files.service.MultipartUploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Multipart Upload API コントローラー。
  * 大容量ファイル（100MB 超）の R2 Multipart Upload フローを提供する。
- * 開始・パート URL 発行・完了・中断の4エンドポイントで構成される。
+ * ドメイン別 API で開始した uploadId に対するパート URL 発行・完了・中断を提供する。
+ * 旧汎用開始エンドポイントは互換性を保って 410 Gone を返す。
  */
 @RestController
 @RequestMapping("/api/v1/files/multipart")
@@ -38,18 +38,15 @@ public class MultipartUploadController {
     private final MultipartUploadService multipartUploadService;
 
     /**
-     * Multipart Upload を開始する。
-     * R2 で Multipart Upload セッションを作成し、uploadId と fileKey を返す。
+     * 廃止済みの汎用開始 API。ドメイン別開始 API が uploadId を発行し、
+     * その uploadId に対する part、complete、abort は維持する。
      */
     @PostMapping("/start")
-    @Operation(summary = "Multipart Upload 開始")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "セッション作成成功")
-    public ResponseEntity<ApiResponse<StartMultipartUploadResponse>> startUpload(
+    @Operation(summary = "廃止済み: 汎用 Multipart Upload 開始")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410", description = "ドメイン別開始 API へ移行済み")
+    public ResponseEntity<Void> startUpload(
             @Valid @RequestBody StartMultipartUploadRequest request) {
-
-        Long userId = SecurityUtils.getCurrentUserId();
-        StartMultipartUploadResponse response = multipartUploadService.startUpload(userId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+        return ResponseEntity.status(HttpStatus.GONE).build();
     }
 
     /**

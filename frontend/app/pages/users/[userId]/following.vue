@@ -48,10 +48,7 @@ onMounted(() => loadData())
 
 <template>
   <div class="mx-auto max-w-2xl px-4 py-6">
-    <div class="mb-6 flex items-center gap-3">
-      <BackButton />
-      <PageHeader :title="$t('label.following')" />
-    </div>
+    <PageHeader :title="$t('label.following')" />
 
     <PageLoading v-if="loading" />
 

@@ -121,6 +121,24 @@ class AuditLogEventListenerTest {
                     isNull(), isNull(), isNull(), isNull(), isNull(), isNull()
             );
         }
+
+        @Test
+        @DisplayName("TokenReplaySameDeviceRescuedEvent → TOKEN_REPLAY_RESCUED_SAME_DEVICE として記録し"
+                + "（TOKEN_REUSE_DETECTED とは別種別）、stale/rescued 両トークンIDを metadata に含める"
+                + "（CMP-260917-1352 Phase 3: 救済経路の監査痕跡）")
+        void handleTokenReplaySameDeviceRescued() {
+            var event = new com.mannschaft.app.auth.event.TokenReplaySameDeviceRescuedEvent(1L, 100L, 200L);
+
+            listener.handleTokenReplaySameDeviceRescued(event);
+
+            ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
+            verify(auditLogService).record(
+                    eq("TOKEN_REPLAY_RESCUED_SAME_DEVICE"), eq(1L), isNull(),
+                    isNull(), isNull(), isNull(), isNull(), isNull(),
+                    metadataCaptor.capture()
+            );
+            assertThat(metadataCaptor.getValue()).contains("100").contains("200");
+        }
     }
 
     @Nested

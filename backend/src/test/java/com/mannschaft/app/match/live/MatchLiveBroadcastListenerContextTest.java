@@ -1,5 +1,6 @@
 package com.mannschaft.app.match.live;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -7,6 +8,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListenerMethodProcessor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.transaction.config.TransactionManagementConfigUtils;
 import org.springframework.transaction.event.TransactionalEventListenerFactory;
@@ -48,8 +50,15 @@ class MatchLiveBroadcastListenerContextTest {
         }
 
         @Bean
-        MatchLiveBroadcastListener matchLiveBroadcastListener(SimpMessagingTemplate template) {
-            return new MatchLiveBroadcastListener(template);
+        StringRedisTemplate stringRedisTemplate() {
+            return Mockito.mock(StringRedisTemplate.class);
+        }
+
+        @Bean
+        MatchLiveBroadcastListener matchLiveBroadcastListener(SimpMessagingTemplate template,
+                                                              StringRedisTemplate redisTemplate) {
+            // serverSeq は Valkey INCR 採番（websocket_external_broker_valkey.md §4.6）へ差し替え済み
+            return new MatchLiveBroadcastListener(template, redisTemplate, new SimpleMeterRegistry());
         }
     }
 

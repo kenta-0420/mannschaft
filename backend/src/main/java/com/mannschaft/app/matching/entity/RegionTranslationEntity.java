@@ -34,12 +34,12 @@ public class RegionTranslationEntity {
 
     /** 地域コード（都道府県2桁 / 市区町村5桁の双方を格納）。 */
     @Id
-    @Column(length = 5)
+    @Column(nullable = false, length = 5)
     private String code;
 
     /** 言語コード（en/zh/ko/es/de）。 */
     @Id
-    @Column(length = 5)
+    @Column(nullable = false, length = 5)
     private String lang;
 
     /** 当該言語での地域表示名。 */

@@ -1,5 +1,6 @@
 package com.mannschaft.app.survey.dto;
 
+import com.mannschaft.app.survey.QuestionType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,8 +17,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CreateQuestionRequest {
 
-    @NotBlank
-    private final String questionType;
+    /** 設問種別。未知値は Jackson の束縛段階で弾かれ 400 となる（#2617-2）。 */
+    @NotNull
+    private final QuestionType questionType;
 
     @NotBlank
     @Size(max = 500)

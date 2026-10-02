@@ -21,6 +21,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 
 /**
  * お知らせウィジェットフィード（{@code announcement_feeds}）用
@@ -130,8 +133,75 @@ public class AnnouncementFeedVisibilityResolver
             return false;
         }
         // content_type="ANNOUNCEMENT" で announcement_feeds.id をゲートキーとして評価
-        return paymentGateService.checkAccess(ContentGateType.ANNOUNCEMENT, row.id(), viewerUserId)
+        return paymentGateService.checkAccess(ContentGateType.ANNOUNCEMENT, row.id(), viewerUserId,
+                targetOf(row))
                 .isAccessible();
+    }
+
+    /** F08.9 Phase 1: visibilityとは独立した課金軸をAND合成する。 */
+    @Override
+    protected boolean visibleByAdditionalAxis(
+            AnnouncementFeedVisibilityProjection row, Long viewerUserId,
+            UserScopeRoleSnapshot snapshot, StandardVisibility level, Object additionalAxisContext) {
+        if (level == StandardVisibility.CUSTOM) {
+            return true;
+        }
+        if (isScopeAdmin(row, snapshot)) {
+            return true;
+        }
+        if (!(additionalAxisContext instanceof Map<?, ?> gates) || row == null || row.id() == null) {
+            // バッチ評価コンテキストを構築できない場合も、対象スコープ付きの単票判定で fail-closed を保つ。
+            GateCheckResponse fallback = paymentGateService.checkAccess(
+                    ContentGateType.ANNOUNCEMENT, row.id(), viewerUserId, targetOf(row));
+            return fallback != null && fallback.isAccessible();
+        }
+        // バッチ結果に ID が無い場合は評価不能として fail-closed にする。
+        if (!gates.containsKey(row.id())) {
+            return false;
+        }
+        Object value = gates.get(row.id());
+        return value instanceof GateCheckResponse response
+                && (response.isAccessible() || !response.isTitleHidden());
+    }
+
+    @Override
+    protected Object prepareAdditionalAxisContext(
+            List<AnnouncementFeedVisibilityProjection> rows, Long viewerUserId) {
+        return paymentGateService.checkAccessBatch(ContentGateType.ANNOUNCEMENT,
+                rows.stream().map(AnnouncementFeedVisibilityProjection::id).toList(), viewerUserId,
+                rows.stream().filter(row -> targetOf(row) != null)
+                        .collect(java.util.stream.Collectors.toMap(
+                        AnnouncementFeedVisibilityProjection::id,
+                        AnnouncementFeedVisibilityResolver::targetOf)));
+    }
+
+    private static ContentGateTarget targetOf(AnnouncementFeedVisibilityProjection row) {
+        if (row == null || row.id() == null || row.scopeType() == null || row.scopeId() == null) {
+            return null;
+        }
+        return "TEAM".equals(row.scopeType())
+                ? new ContentGateTarget(row.id(), row.scopeId(), null)
+                : "ORGANIZATION".equals(row.scopeType())
+                    ? new ContentGateTarget(row.id(), null, row.scopeId()) : null;
+    }
+
+    private static boolean isScopeAdmin(AnnouncementFeedVisibilityProjection row,
+                                        UserScopeRoleSnapshot snapshot) {
+        if (snapshot == null || snapshot.isSystemAdmin() || row == null
+                || row.scopeType() == null || row.scopeId() == null) {
+            return snapshot != null && snapshot.isSystemAdmin();
+        }
+        String role = snapshot.roleByScope().get(
+                new com.mannschaft.app.common.visibility.ScopeKey(row.scopeType(), row.scopeId()));
+        if ("ADMIN".equals(role)) {
+            return true;
+        }
+        if ("ORGANIZATION".equals(row.scopeType())) {
+            role = snapshot.orgRoleByScope().get(
+                    new com.mannschaft.app.common.visibility.ScopeKey(row.scopeType(), row.scopeId()));
+            return "ADMIN".equals(role);
+        }
+        return false;
     }
 
     /**

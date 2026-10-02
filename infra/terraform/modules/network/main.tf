@@ -8,9 +8,9 @@
 #   - public subnet ×2 AZ（ALB / ECS タスク用。NAT Gateway は置かずコスト最小化）
 #   - private subnet ×2 AZ（RDS / ElastiCache 用。外向き経路なし）
 #   - ルートテーブル（public → IGW）
-#   - セキュリティグループ 4 種:
-#       alb_sg   : 443/80 を Cloudflare からのみ受ける（Cloudflare IP レンジ推奨）
-#       app_sg   : 8080 を alb_sg からのみ受ける
+#   - セキュリティグループ 3 種（2026-07-10 Cloudflare Tunnel 化で alb_sg を撤去）:
+#       app_sg   : インバウンドなし（cloudflared サイドカーが localhost で app に到達し、
+#                  外部からの受信は Tunnel のアウトバウンドのみ）。egress のみ許可
 #       db_sg    : 3306 を app_sg からのみ受ける
 #       cache_sg : 6379 を app_sg からのみ受ける
 #
@@ -131,57 +131,20 @@ resource "aws_route_table_association" "public_1c" {
 }
 
 # -----------------------------------------------------------------------------
-# セキュリティグループ: ALB
-# ingress 443 を全 IP から受け付け（0.0.0.0/0）
-# TODO: 本番切替後は Cloudflare IP レンジ（https://www.cloudflare.com/ips/）に絞ること
-#       edge 陣の仕上げ作業として実施予定
-# -----------------------------------------------------------------------------
-resource "aws_security_group" "alb" {
-  name        = "${var.prefix}-alb-sg"
-  description = "ALB: allow HTTPS 443 inbound from 0.0.0.0/0"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    # TODO: 本番切替後は Cloudflare IP レンジに絞る（edge 陣の仕上げで実施予定）
-    description = "HTTPS 443 from anywhere - restrict to Cloudflare IPs after go-live"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${var.prefix}-alb-sg"
-  }
-}
-
-# -----------------------------------------------------------------------------
-# セキュリティグループ: ECS アプリ（Spring Boot 8080）
-# ingress は alb_sg からの 8080 のみ
+# セキュリティグループ: ECS アプリ（Spring Boot / cloudflared サイドカー）
+# 2026-07-10 Cloudflare Tunnel 化: 外部インバウンドは不要になった。
+#   - app へのアクセスは同一タスク内の cloudflared から localhost:8080（SG を通らない）
+#   - 外部からの受信は cloudflared がアウトバウンドで張る Tunnel 経由のみ
+# したがって ingress は一切開けず、egress のみ許可する（ECR pull / Secrets / SES /
+# Cloudflare エッジへの接続）。旧 alb_sg は ALB 撤去に伴い削除した。
 # -----------------------------------------------------------------------------
 resource "aws_security_group" "app" {
   name        = "${var.prefix}-app-sg"
-  description = "ECS task: allow 8080 from ALB SG only"
+  description = "ECS task: outbound only (Cloudflare Tunnel; no inbound)"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description     = "Spring Boot HTTP from ALB SG"
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
-
   egress {
-    description = "Allow all outbound - ECR pull / Secrets Manager / SES etc."
+    description = "Allow all outbound - ECR pull / Secrets Manager / SES / Cloudflare edge etc."
     from_port   = 0
     to_port     = 0
     protocol    = "-1"

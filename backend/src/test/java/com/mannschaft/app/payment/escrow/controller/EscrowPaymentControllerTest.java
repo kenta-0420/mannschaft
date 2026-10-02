@@ -7,6 +7,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.escrow.ConnectChargeService;
+import com.mannschaft.app.payment.escrow.EscrowQueryService;
 import com.mannschaft.app.payment.escrow.EscrowCaptureMode;
 import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.EscrowStatus;
@@ -53,6 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class EscrowPaymentControllerTest {
 
     @Mock private ConnectChargeService connectChargeService;
+    @Mock private EscrowQueryService escrowQueryService;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -65,7 +67,7 @@ class EscrowPaymentControllerTest {
     void setUp() {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
-        EscrowPaymentController controller = new EscrowPaymentController(connectChargeService);
+        EscrowPaymentController controller = new EscrowPaymentController(connectChargeService, escrowQueryService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
@@ -84,9 +86,9 @@ class EscrowPaymentControllerTest {
     @DisplayName("GET 決済確認: 札主本人×PENDING_CONFIRMATION→200・clientSecret＋手数料内訳（camelCase）")
     void recruitmentPaymentIntent_payer_returnsClientSecret() throws Exception {
         // 引数個数を Controller の呼び出し（sourceKind, listingId, participantId, actorUserId の 4 個）に一致させる。
-        given(connectChargeService.getRecruitmentPaymentView(
+        given(escrowQueryService.getRecruitmentPaymentView(
                 eq(EscrowSourceKind.RECRUITMENT), eq(100L), eq(200L), eq(PAYER_USER_ID)))
-                .willReturn(new ConnectChargeService.PaymentView(
+                .willReturn(new EscrowQueryService.PaymentView(
                         ESCROW_ID, EscrowStatus.PENDING_CONFIRMATION, "pi_abc_secret",
                         10_000L, 10_250L, 500L));
 
@@ -106,8 +108,8 @@ class EscrowPaymentControllerTest {
     @Test
     @DisplayName("GET 照会: 受取側 ADMIN→200・clientSecret は null（出し分け・camelCase）")
     void getEscrow_payeeAdmin_clientSecretNull() throws Exception {
-        given(connectChargeService.getEscrowView(eq(ESCROW_ID), eq(PAYER_USER_ID)))
-                .willReturn(new ConnectChargeService.PaymentView(
+        given(escrowQueryService.getEscrowView(eq(ESCROW_ID), eq(PAYER_USER_ID)))
+                .willReturn(new EscrowQueryService.PaymentView(
                         ESCROW_ID, EscrowStatus.PENDING_CONFIRMATION, null,
                         10_000L, 10_250L, 500L));
 
@@ -121,7 +123,7 @@ class EscrowPaymentControllerTest {
     @Test
     @DisplayName("GET 照会: 無関係者→404 秘匿（PAYMENT_C002）")
     void getEscrow_unrelated_notFound() throws Exception {
-        given(connectChargeService.getEscrowView(any(), any()))
+        given(escrowQueryService.getEscrowView(any(), any()))
                 .willThrow(new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
 
         mockMvc.perform(get("/api/v1/payment/escrow/" + ESCROW_ID))
@@ -131,7 +133,7 @@ class EscrowPaymentControllerTest {
     @Test
     @DisplayName("GET 決済確認: escrow 未存在（リスナ未起票の競合）→404（準備中）")
     void recruitmentPaymentIntent_notReady_notFound() throws Exception {
-        given(connectChargeService.getRecruitmentPaymentView(any(), any(), any(), any()))
+        given(escrowQueryService.getRecruitmentPaymentView(any(), any(), any(), any()))
                 .willThrow(new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
 
         mockMvc.perform(get("/api/v1/payment/escrow/recruitment/100/200/payment-intent"))
@@ -141,12 +143,12 @@ class EscrowPaymentControllerTest {
     @Test
     @DisplayName("GET 受取側一覧: USER 本人→200・ページ＋camelCase・clientSecret フィールド非含有")
     void receivedList_userSelf_returnsPagedCamelCase() throws Exception {
-        ConnectChargeService.ReceivedEscrow row = new ConnectChargeService.ReceivedEscrow(
+        EscrowQueryService.ReceivedEscrow row = new EscrowQueryService.ReceivedEscrow(
                 ESCROW_ID, EscrowSourceKind.RECRUITMENT, 100L, 200L, EscrowCaptureMode.MANUAL,
                 EscrowStatus.CAPTURED, 10_000L, 10_250L, 500L, 0L,
                 LocalDateTime.of(2026, 6, 11, 12, 0, 0));
         // 引数個数を Controller の呼び出し（scopeKind, scopeId, status, actorUserId, pageable の 5 個）に一致させる。
-        given(connectChargeService.listReceivedEscrows(
+        given(escrowQueryService.listReceivedEscrows(
                 eq(ScopeKind.USER), eq(PAYER_USER_ID), isNull(), eq(PAYER_USER_ID), any()))
                 .willReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 20), 1));
 
@@ -177,11 +179,11 @@ class EscrowPaymentControllerTest {
     @Test
     @DisplayName("GET 受取側一覧: TEAM ADMin→200・status フィルタを Service へ伝播")
     void receivedList_teamAdmin_withStatusFilter() throws Exception {
-        ConnectChargeService.ReceivedEscrow row = new ConnectChargeService.ReceivedEscrow(
+        EscrowQueryService.ReceivedEscrow row = new EscrowQueryService.ReceivedEscrow(
                 ESCROW_ID, EscrowSourceKind.RECRUITMENT, 100L, 200L, EscrowCaptureMode.MANUAL,
                 EscrowStatus.PARTIALLY_REFUNDED, 10_000L, 10_250L, 500L, 4_000L,
                 LocalDateTime.of(2026, 6, 11, 12, 0, 0));
-        given(connectChargeService.listReceivedEscrows(
+        given(escrowQueryService.listReceivedEscrows(
                 eq(ScopeKind.TEAM), eq(55L), eq(EscrowStatus.PARTIALLY_REFUNDED), eq(PAYER_USER_ID), any()))
                 .willReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 20), 1));
 
@@ -197,7 +199,7 @@ class EscrowPaymentControllerTest {
     @Test
     @DisplayName("GET 受取側一覧: 非 ADMin/他人 scope→403（PAYMENT_C001）")
     void receivedList_unrelated_forbidden() throws Exception {
-        given(connectChargeService.listReceivedEscrows(any(), any(), any(), any(), any()))
+        given(escrowQueryService.listReceivedEscrows(any(), any(), any(), any(), any()))
                 .willThrow(new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN));
 
         mockMvc.perform(get("/api/v1/payment/escrow/received")
@@ -209,7 +211,7 @@ class EscrowPaymentControllerTest {
     @Test
     @DisplayName("GET 受取側一覧: 受取実績ゼロ→200・空ページ")
     void receivedList_empty_returnsEmptyPage() throws Exception {
-        given(connectChargeService.listReceivedEscrows(
+        given(escrowQueryService.listReceivedEscrows(
                 eq(ScopeKind.ORG), eq(33L), isNull(), eq(PAYER_USER_ID), any()))
                 .willReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 

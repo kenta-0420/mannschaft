@@ -31,7 +31,6 @@ async function onCreated(_survey: SurveyResponse) {
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <BackButton />
       <PageHeader :title="t('surveys.pageTitle')" />
     </div>
 

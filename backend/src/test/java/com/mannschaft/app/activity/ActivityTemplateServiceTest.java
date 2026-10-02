@@ -4,12 +4,16 @@ import com.mannschaft.app.activity.dto.ActivityTemplateResponse;
 import com.mannschaft.app.activity.dto.CreateTemplateRequest;
 import com.mannschaft.app.activity.dto.DuplicateTemplateRequest;
 import com.mannschaft.app.activity.dto.ImportTemplateRequest;
+import com.mannschaft.app.activity.dto.UpdateTemplateRequest;
 import com.mannschaft.app.activity.entity.ActivityTemplateEntity;
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
 import com.mannschaft.app.activity.repository.ActivityTemplateRepository;
 import com.mannschaft.app.activity.repository.SystemActivityTemplatePresetRepository;
+import com.mannschaft.app.activity.service.ActivityScopeAccessGuard;
 import com.mannschaft.app.activity.service.ActivityTemplateService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +42,7 @@ class ActivityTemplateServiceTest {
     @Mock private SystemActivityTemplatePresetRepository presetRepository;
     @Mock private ActivityMapper activityMapper;
     @Mock private ObjectMapper objectMapper;
+    @Mock private ActivityScopeAccessGuard scopeAccessGuard;
 
     @InjectMocks
     private ActivityTemplateService service;
@@ -112,11 +118,11 @@ class ActivityTemplateServiceTest {
     @DisplayName("deleteTemplate")
     class DeleteTemplate {
         @Test
-        @DisplayName("正常系: テンプレートが論理削除される")
+        @DisplayName("正常系: テンプレートが論理削除される（管理者）")
         void 削除_正常_論理削除() {
             ActivityTemplateEntity entity = createTemplate();
             given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(entity));
-            service.deleteTemplate(TEMPLATE_ID);
+            service.deleteTemplate(TEMPLATE_ID, USER_ID);
             verify(templateRepository).save(entity);
         }
 
@@ -124,7 +130,7 @@ class ActivityTemplateServiceTest {
         @DisplayName("異常系: テンプレート不在でACTIVITY_002例外")
         void 削除_不在_例外() {
             given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deleteTemplate(TEMPLATE_ID))
+            assertThatThrownBy(() -> service.deleteTemplate(TEMPLATE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ACTIVITY_002"));
@@ -163,6 +169,235 @@ class ActivityTemplateServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ACTIVITY_016"));
+        }
+    }
+
+    // ========================================================================
+    // 認可欠落IDOR根治（試練先行）— AC-4〜AC-8
+    // ========================================================================
+
+    @Nested
+    @DisplayName("認可: listTemplates（参照系=checkMembership）")
+    class AuthzListTemplates {
+        // AC-4
+        @Test
+        @DisplayName("listTemplates_他スコープ会員は403（COMMON_002）")
+        void 一覧_他スコープ_403() {
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
+
+            assertThatThrownBy(() -> service.listTemplates(USER_ID, ActivityScopeType.TEAM, SCOPE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+    }
+
+    @Nested
+    @DisplayName("認可: getTemplate（参照系=checkMembership）")
+    class AuthzGetTemplate {
+        // AC-4
+        @Test
+        @DisplayName("getTemplate_他スコープ会員は403（COMMON_002）")
+        void 詳細_他スコープ_403() {
+            given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
+
+            assertThatThrownBy(() -> service.getTemplate(TEMPLATE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+    }
+
+    @Nested
+    @DisplayName("認可: updateTemplate（更新系=checkAdminOrAbove）")
+    class AuthzUpdateTemplate {
+        // AC-5
+        @Test
+        @DisplayName("updateTemplate_非管理者は403（COMMON_002）")
+        void 更新_非管理者_403() {
+            given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
+
+            UpdateTemplateRequest request = new UpdateTemplateRequest(
+                    "更新名", null, null, null, null, null, null);
+            assertThatThrownBy(() -> service.updateTemplate(TEMPLATE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+    }
+
+    @Nested
+    @DisplayName("認可: deleteTemplate（削除系=checkAdminOrAbove）")
+    class AuthzDeleteTemplate {
+        // AC-5
+        @Test
+        @DisplayName("deleteTemplate_非管理者は403（COMMON_002）")
+        void 削除_非管理者_403() {
+            given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
+
+            assertThatThrownBy(() -> service.deleteTemplate(TEMPLATE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+    }
+
+    @Nested
+    @DisplayName("認可: createTemplate（作成系=checkAdminOrAbove）")
+    class AuthzCreateTemplate {
+        // AC-1
+        @Test
+        @DisplayName("createTemplate_非管理者は403（COMMON_002）")
+        void 作成_非管理者_403() {
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
+
+            CreateTemplateRequest request = new CreateTemplateRequest(
+                    "新テンプレート", null, null, null, null, null, null);
+            assertThatThrownBy(() -> service.createTemplate(USER_ID, ActivityScopeType.TEAM, SCOPE_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        // AC-5: 管理者は成功する（403側だけだと全滅実装ミスを見逃すため必ず正常系も書く）
+        @Test
+        @DisplayName("createTemplate_管理者は成功する")
+        void 作成_管理者_成功() {
+            given(templateRepository.countByScopeTypeAndScopeId(ActivityScopeType.TEAM, SCOPE_ID)).willReturn(0L);
+            ActivityTemplateEntity saved = createTemplate();
+            given(templateRepository.save(any())).willReturn(saved);
+            given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(any())).willReturn(List.of());
+            given(activityMapper.toTemplateFieldResponseList(any())).willReturn(List.of());
+
+            CreateTemplateRequest request = new CreateTemplateRequest(
+                    "新テンプレート", null, null, null, null, null, null);
+            ActivityTemplateResponse result = service.createTemplate(USER_ID, ActivityScopeType.TEAM, SCOPE_ID, request);
+
+            assertThat(result).isNotNull();
+            verify(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
+        }
+    }
+
+    @Nested
+    @DisplayName("認可: duplicateTemplate（コピー元・コピー先の双方=checkAdminOrAbove）")
+    class AuthzDuplicateTemplate {
+        // AC-6: コピー元スコープの非管理者は複製不可
+        @Test
+        @DisplayName("duplicateTemplate_コピー元の非管理者は403（COMMON_002）")
+        void 複製_コピー元非管理者_403() {
+            given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
+
+            DuplicateTemplateRequest request = new DuplicateTemplateRequest("ORGANIZATION", 2L);
+            assertThatThrownBy(() -> service.duplicateTemplate(TEMPLATE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        // AC-6b/AC-4: コピー元の管理者であっても、コピー先スコープで管理者でなければ複製不可
+        // （書き込み先スコープを検証しないと任意スコープへ書き込めてしまうため）
+        @Test
+        @DisplayName("duplicateTemplate_コピー先で管理者でなければ403（COMMON_002）")
+        void 複製_コピー先非管理者_403() {
+            given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(createTemplate()));
+            // コピー元（TEAM:SCOPE_ID）は管理者 → 素通り。コピー先（ORGANIZATION:2L）で拒否される。
+            // 素通りを明示的にスタブしないと、strict stubs が引数不一致（PotentialStubbingProblem）で落ちる。
+            org.mockito.BDDMockito.willDoNothing()
+                    .given(scopeAccessGuard)
+                    .checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scopeAccessGuard)
+                    .checkAdminOrAbove(USER_ID, ActivityScopeType.ORGANIZATION, 2L);
+
+            DuplicateTemplateRequest request = new DuplicateTemplateRequest("ORGANIZATION", 2L);
+            assertThatThrownBy(() -> service.duplicateTemplate(TEMPLATE_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            // コピー先の検証まで到達し、テンプレートは保存されないこと
+            org.mockito.Mockito.verify(templateRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
+        }
+
+        // AC-5: コピー元・コピー先の双方で管理者なら成功する
+        @Test
+        @DisplayName("duplicateTemplate_コピー元コピー先双方の管理者は成功する")
+        void 複製_双方管理者_成功() {
+            ActivityTemplateEntity source = createTemplate();
+            given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(source));
+            given(templateRepository.countByScopeTypeAndScopeId(ActivityScopeType.ORGANIZATION, 2L)).willReturn(0L);
+            given(templateRepository.save(any())).willReturn(source);
+            given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(any())).willReturn(List.of());
+            given(activityMapper.toTemplateFieldResponseList(any())).willReturn(List.of());
+
+            DuplicateTemplateRequest request = new DuplicateTemplateRequest("ORGANIZATION", 2L);
+            ActivityTemplateResponse result = service.duplicateTemplate(TEMPLATE_ID, USER_ID, request);
+
+            assertThat(result).isNotNull();
+            verify(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
+            verify(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.ORGANIZATION, 2L);
+        }
+    }
+
+    @Nested
+    @DisplayName("認可: importPreset（対象スコープ=checkAdminOrAbove）")
+    class AuthzImportPreset {
+        // AC-7: インポート対象スコープの非管理者は403
+        @Test
+        @DisplayName("importPreset_対象スコープの非管理者は403（COMMON_002）")
+        void インポート_対象非管理者_403() {
+            com.mannschaft.app.activity.entity.SystemActivityTemplatePresetEntity preset =
+                    org.mockito.Mockito.mock(
+                            com.mannschaft.app.activity.entity.SystemActivityTemplatePresetEntity.class);
+            given(presetRepository.findById(5L)).willReturn(Optional.of(preset));
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
+
+            ImportTemplateRequest request = new ImportTemplateRequest(5L, "TEAM", SCOPE_ID);
+            assertThatThrownBy(() -> service.importPreset(USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        // AC-5: 対象スコープの管理者は成功する
+        @Test
+        @DisplayName("importPreset_対象スコープの管理者は成功する")
+        void インポート_対象管理者_成功() throws Exception {
+            com.mannschaft.app.activity.entity.SystemActivityTemplatePresetEntity preset =
+                    org.mockito.Mockito.mock(
+                            com.mannschaft.app.activity.entity.SystemActivityTemplatePresetEntity.class);
+            given(preset.getDefaultVisibility()).willReturn("MEMBERS_ONLY");
+            given(preset.getFieldsJson()).willReturn("[]");
+            // ObjectMapper は @Mock のため readValue は既定で null を返す。fields_json の中身は
+            // 本テストの関心事（認可）ではないが、スタブしないと importPreset が展開処理で
+            // NPE になり「管理者でも失敗する」ように見えてしまう。空のフィールド一覧を返させる。
+            given(objectMapper.<List<Map<String, Object>>>readValue(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.<TypeReference<List<Map<String, Object>>>>any()))
+                    .willReturn(List.of());
+            given(presetRepository.findById(5L)).willReturn(Optional.of(preset));
+            given(templateRepository.countByScopeTypeAndScopeId(ActivityScopeType.TEAM, SCOPE_ID)).willReturn(0L);
+            ActivityTemplateEntity saved = createTemplate();
+            given(templateRepository.save(any())).willReturn(saved);
+            given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(any())).willReturn(List.of());
+            given(activityMapper.toTemplateFieldResponseList(any())).willReturn(List.of());
+
+            ImportTemplateRequest request = new ImportTemplateRequest(5L, "TEAM", SCOPE_ID);
+            ActivityTemplateResponse result = service.importPreset(USER_ID, request);
+
+            assertThat(result).isNotNull();
+            verify(scopeAccessGuard).checkAdminOrAbove(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
         }
     }
 }

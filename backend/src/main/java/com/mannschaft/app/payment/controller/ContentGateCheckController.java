@@ -2,8 +2,9 @@ package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
-import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.service.ContentGateAccessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ContentGateCheckController {
 
-    private final PaymentGateService paymentGateService;
+    private final ContentGateAccessService contentGateAccessService;
 
     /**
      * 指定コンテンツに対するログインユーザー本人のペイウォール解錠可否を判定する（設計書 02 §6）。
@@ -46,6 +47,8 @@ public class ContentGateCheckController {
      * @param contentId   コンテンツ ID
      * @return 200 OK + {@link GateCheckResponse}（accessible / titleHidden / requiredItems）
      */
+    @SelfScopedEndpoint("viewerUserId は SecurityUtils.getCurrentUserId() のみで決まり、"
+            + "クエリで受け取らないため他人の受益者キーを指定する余地が構造的に無い（check メソッド本体）")
     @GetMapping("/check")
     @Operation(summary = "ペイウォール判定（F08.9 P4・自分自身の閲覧可否）")
     public ResponseEntity<ApiResponse<GateCheckResponse>> check(
@@ -53,7 +56,7 @@ public class ContentGateCheckController {
             @RequestParam Long contentId) {
 
         Long viewerUserId = SecurityUtils.getCurrentUserId();
-        GateCheckResponse response = paymentGateService.checkAccess(contentType, contentId, viewerUserId);
+        GateCheckResponse response = contentGateAccessService.check(contentType, contentId, viewerUserId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

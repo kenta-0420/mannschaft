@@ -457,9 +457,6 @@ setReloadFn(() => { void load() })
       @confirm="onPinNoteConfirm"
       @cancel="pinPopoverTargetCard = null"
     />
-
-    <!-- F09.8 Phase C: 削除確認ダイアログ（useConfirmDialog 経由） -->
-    <ConfirmDialog />
   </div>
 </template>
 

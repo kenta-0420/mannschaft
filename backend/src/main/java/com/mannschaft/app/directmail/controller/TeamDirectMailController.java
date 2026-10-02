@@ -62,7 +62,8 @@ public class TeamDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<DirectMailResponse>> listMails(
             @PathVariable Long teamId, @PageableDefault(size = 20) Pageable pageable) {
-        PagedResponse<DirectMailResponse> response = directMailService.listMails("TEAM", teamId, pageable);
+        PagedResponse<DirectMailResponse> response =
+                directMailService.listMails("TEAM", teamId, SecurityUtils.getCurrentUserId(), pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -74,7 +75,8 @@ public class TeamDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<DirectMailResponse>> getMail(
             @PathVariable Long teamId, @PathVariable Long id) {
-        DirectMailResponse response = directMailService.getMail("TEAM", teamId, id);
+        DirectMailResponse response =
+                directMailService.getMail("TEAM", teamId, SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -87,7 +89,8 @@ public class TeamDirectMailController {
     public ResponseEntity<ApiResponse<DirectMailResponse>> updateMail(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdateDirectMailRequest request) {
-        DirectMailResponse response = directMailService.updateMail("TEAM", teamId, id, request);
+        DirectMailResponse response =
+                directMailService.updateMail("TEAM", teamId, SecurityUtils.getCurrentUserId(), id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -99,7 +102,8 @@ public class TeamDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信開始")
     public ResponseEntity<ApiResponse<DirectMailResponse>> sendMail(
             @PathVariable Long teamId, @PathVariable Long id) {
-        DirectMailResponse response = directMailService.sendMail("TEAM", teamId, id);
+        DirectMailResponse response =
+                directMailService.sendMail("TEAM", teamId, SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -112,7 +116,8 @@ public class TeamDirectMailController {
     public ResponseEntity<ApiResponse<DirectMailResponse>> scheduleMail(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody ScheduleMailRequest request) {
-        DirectMailResponse response = directMailService.scheduleMail("TEAM", teamId, id, request);
+        DirectMailResponse response =
+                directMailService.scheduleMail("TEAM", teamId, SecurityUtils.getCurrentUserId(), id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -124,7 +129,8 @@ public class TeamDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "キャンセル成功")
     public ResponseEntity<ApiResponse<DirectMailResponse>> cancelMail(
             @PathVariable Long teamId, @PathVariable Long id) {
-        DirectMailResponse response = directMailService.cancelMail("TEAM", teamId, id);
+        DirectMailResponse response =
+                directMailService.cancelMail("TEAM", teamId, SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -138,7 +144,7 @@ public class TeamDirectMailController {
             @PathVariable Long teamId, @PathVariable Long id,
             @PageableDefault(size = 50) Pageable pageable) {
         PagedResponse<DirectMailRecipientResponse> response =
-                directMailService.listRecipients("TEAM", teamId, id, pageable);
+                directMailService.listRecipients("TEAM", teamId, SecurityUtils.getCurrentUserId(), id, pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -150,7 +156,8 @@ public class TeamDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<DirectMailStatsResponse>> getStats(
             @PathVariable Long teamId, @PathVariable Long id) {
-        DirectMailStatsResponse response = directMailService.getStats("TEAM", teamId, id);
+        DirectMailStatsResponse response =
+                directMailService.getStats("TEAM", teamId, SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -162,7 +169,8 @@ public class TeamDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "プレビュー生成成功")
     public ResponseEntity<ApiResponse<PreviewMailResponse>> preview(
             @PathVariable Long teamId, @Valid @RequestBody PreviewMailRequest request) {
-        PreviewMailResponse response = directMailService.preview(request);
+        PreviewMailResponse response =
+                directMailService.preview("TEAM", teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -174,7 +182,8 @@ public class TeamDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "見積成功")
     public ResponseEntity<ApiResponse<EstimateRecipientsResponse>> estimateRecipients(
             @PathVariable Long teamId, @Valid @RequestBody EstimateRecipientsRequest request) {
-        EstimateRecipientsResponse response = directMailService.estimateRecipients("TEAM", teamId, request);
+        EstimateRecipientsResponse response =
+                directMailService.estimateRecipients("TEAM", teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

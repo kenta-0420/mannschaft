@@ -13,5 +13,7 @@ public enum CancellationPaymentStatus {
     /** 管理者免除 */
     WAIVED,
     /** 決済失敗 */
-    FAILED
+    FAILED,
+    /** 回収不能 (リトライ上限到達。未払いのままであり、動かせる出口は管理者免除のみ) */
+    UNCOLLECTIBLE
 }

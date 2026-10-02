@@ -16,16 +16,30 @@ import java.time.LocalDateTime;
 @Getter
 public class OrganizationResponse {
 
-    /** URL 識別子（カスタムスラッグ）。 */
+    /** URL 識別子（カスタムスラッグ）。実体は {@code slug} と同値。 */
     private String id;
     /** 組織スラッグ（URL ルーティング用）。{@code /organizations/{slug}} に使用する。 */
     private String slug;
+    /**
+     * 組織の内部 BIGINT ID（F09.19.10）。
+     *
+     * <p>URL には使用しない（URL 識別子は上記 {@code id}/{@code slug} が正準）。
+     * Spotlight 掲載面 API（{@code GET /api/v1/spotlight/content?scopeType=ORGANIZATION&scopeId=}）等、
+     * BE が Long スコープ ID を要求する内部連携専用に公開する。露出先はチーム同様に
+     * 当該組織を閲覧可能な者（visibility ラダー準拠）に限られ、cross-domain FK には使わない。</p>
+     */
+    private Long numericId;
     private OrgBasicInfoDto basicInfo;
     private OrgHierarchyDto hierarchy;
     private OrgLocationDto location;
     private OrgVisibilityDto visibility;
     private OrgMetadataDto metadata;
     private OrgTimestampsDto timestamps;
+    /**
+     * F01.2.1 §10.1: チームからの加盟申請の受付状況（組織シェル内の申請ボタンの出し分け用）。
+     * 受付状況は組織を閲覧できる人なら誰でも見てよい情報（§3.1「受付状況の閲覧」）。
+     */
+    private TeamApplicationDto teamApplication;
 
     /** 組織基本情報：名称・読み仮名・ニックネーム。 */
     public record OrgBasicInfoDto(
@@ -61,4 +75,8 @@ public class OrganizationResponse {
     public record OrgTimestampsDto(
             LocalDateTime archivedAt,
             LocalDateTime createdAt) {}
+
+    /** チーム加盟の受付状況：受付中か。 */
+    public record TeamApplicationDto(
+            boolean enabled) {}
 }

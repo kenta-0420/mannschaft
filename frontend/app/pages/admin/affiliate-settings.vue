@@ -4,6 +4,7 @@ import type { AffiliateConfigResponse, CreateAffiliateConfigRequest } from '~/ty
 definePageMeta({ middleware: 'auth' })
 
 const systemAdminApi = useSystemAdminApi()
+const { t } = useI18n()
 const { success, error: showError } = useNotification()
 const { formatDate, formatDateTime } = useDatetime()
 
@@ -14,11 +15,15 @@ const PROVIDERS = [
   { label: 'その他', value: 'OTHER' },
 ]
 
+// F09.19.4 §10.6: 実 AdPlacement enum 準拠の 5 値に是正（幽霊値 INLINE_CONTENT / BELOW_HEADER を除去）。
+// 掲載面が未実装の 3 値はラベルに「（掲載面未実装）」を付けて選択可能のまま残す
+// （affiliate-settings は SYSTEM_ADMIN 専用のため将来分の事前設定を許容する）。
 const PLACEMENTS = [
-  { label: 'サイドバー右', value: 'SIDEBAR_RIGHT' },
-  { label: 'バナーフッター', value: 'BANNER_FOOTER' },
-  { label: 'コンテンツ内', value: 'INLINE_CONTENT' },
-  { label: 'ヘッダー下', value: 'BELOW_HEADER' },
+  { label: 'ダッシュボードタイル', value: 'DASHBOARD_TILE' },
+  { label: 'お知らせフィード内', value: 'IN_FEED' },
+  { label: 'サイドバー右（掲載面未実装）', value: 'SIDEBAR_RIGHT' },
+  { label: 'バナーフッター（掲載面未実装）', value: 'BANNER_FOOTER' },
+  { label: 'ヘッダーバナー（掲載面未実装）', value: 'BANNER_HEADER' },
 ]
 
 const configs = ref<AffiliateConfigResponse[]>([])
@@ -31,7 +36,7 @@ const showPreviewDialog = ref(false)
 const defaultForm = (): CreateAffiliateConfigRequest => ({
   provider: 'AMAZON',
   tagId: '',
-  placement: 'SIDEBAR_RIGHT',
+  placement: 'DASHBOARD_TILE',
   description: '',
   bannerImageUrl: '',
   bannerWidth: 300,
@@ -152,6 +157,10 @@ onMounted(load)
           />
           <ToggleSwitch :model-value="cfg.isActive" @update:model-value="() => toggle(cfg)" />
         </div>
+
+        <Message v-if="cfg.placeholderTagId" severity="warn" :closable="false" class="mb-2 text-xs">
+          {{ t('advertising.admin_affiliate_settings.placeholder_tag_warning') }}
+        </Message>
 
         <dl class="mb-2 space-y-1 text-sm [&_dd]:inline [&_dt]:inline [&_dt]:font-medium [&_dt]:text-surface-500">
           <div><dt>タグID:</dt> <dd class="font-mono">{{ cfg.tagId }}</dd></div>

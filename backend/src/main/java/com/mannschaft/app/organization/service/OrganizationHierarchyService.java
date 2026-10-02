@@ -1,16 +1,18 @@
 package com.mannschaft.app.organization.service;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.dto.AncestorOrganizationResponse;
 import com.mannschaft.app.organization.dto.AncestorsResponse;
 import com.mannschaft.app.organization.dto.ChildOrganizationResponse;
 import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationParentIdProjection;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
@@ -23,9 +25,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -43,7 +48,9 @@ public class OrganizationHierarchyService {
 
     private final OrganizationRepository organizationRepository;
     private final UserRoleRepository userRoleRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /** 祖先チェーン探索の最大深度。これを超える祖先は返さず {@code truncated: true} を立てる。 */
     @Value("${app.org.max-depth:5}")
@@ -139,7 +146,36 @@ public class OrganizationHierarchyService {
     }
 
     /**
+     * 子組織一覧カーソルページングで「所属組織 0 件」の呼び出し者に渡すセンチネル ID。
+     *
+     * <p>JPQL の {@code IN :collection} は空コレクションだと構文エラーになるため、
+     * 所属組織が 0 件の場合はこの値のみを含む 1 要素リストを渡す。実在しない ID
+     * （組織 ID は 1 始まりの正の値のみ発行される）なので、可視性条件の
+     * {@code o.id IN :memberOrgIds} には絶対にマッチしない。PUBLIC 判定は
+     * この条件と OR で独立しているため、所属 0 件でも PUBLIC な子は正しく見える。</p>
+     */
+    private static final Long NO_MEMBERSHIP_SENTINEL_ORG_ID = -1L;
+
+    /**
      * 対象組織の直近の子組織一覧を返す。
+     *
+     * <p><b>根治した3つの欠陥（設計書なし・実測ベースの障害対応）</b>:</p>
+     * <ul>
+     *   <li><b>①カーソルが SQL に降りていない</b>: 旧実装は {@code PageRequest.of(0, n)} で
+     *       常に先頭ページを取得し、カーソル条件をメモリ上でフィルタしていた。DB は
+     *       毎回同じ先頭 {@code pageSize+1} 件を返すため、2ページ目以降が実質空になっていた。
+     *       {@link OrganizationRepository#findChildrenPage} でカーソルを SQL の
+     *       {@code WHERE o.id > :cursorId} へ降ろして根治した。</li>
+     *   <li><b>② ORDER BY が無い</b>: unsorted な {@code Pageable} を使っており、ID 昇順を
+     *       前提とするカーソルの順序保証が無かった。{@code findChildrenPage} に
+     *       {@code ORDER BY o.id ASC} を明示して根治した。</li>
+     *   <li><b>③ hasNext が可視性フィルタ後件数で判定されていた</b>: 非公開の子が1件混じるだけで
+     *       {@code visible.size()} が {@code pageSize+1} に届かず、DB にまだ続きがあるのに
+     *       {@code hasNext=false} になる偽陰性があった。可視性条件自体を SQL へ降ろし
+     *       （{@code findChildrenPage} の {@code visibility = PUBLIC OR o.id IN :memberOrgIds}）、
+     *       {@code hasNext} は「DB から {@code pageSize+1} 件返ってきたか」だけで判定するよう
+     *       改めた。</li>
+     * </ul>
      *
      * @param orgId       対象組織ID
      * @param requesterId 呼び出し者のユーザーID
@@ -165,20 +201,20 @@ public class OrganizationHierarchyService {
         Long cursorId = parseCursor(cursor);
         Pageable pageable = PageRequest.of(0, pageSize + 1); // 次ページ判定用に +1 件取得
 
+        // 可視性を SQL へ降ろすため、呼び出し者が直接所属する組織 ID 集合を事前取得する。
+        // 空コレクションは JPQL の IN () で構文エラーになるためセンチネルへ差し替える。
+        List<Long> memberOrgIds = membershipScopeQueryService.findActiveOrganizationIds(requesterId);
+        List<Long> memberOrgIdsForQuery = memberOrgIds.isEmpty()
+                ? List.of(NO_MEMBERSHIP_SENTINEL_ORG_ID)
+                : memberOrgIds;
+
+        // カーソル・可視性・ID 昇順のすべてを SQL 側で解決した結果を取得する
         List<OrganizationEntity> rows = organizationRepository
-                .findByParentOrganizationIdAndDeletedAtIsNull(orgId, pageable)
-                .stream()
-                .filter(o -> cursorId == null || o.getId() > cursorId)
-                .toList();
+                .findChildrenPage(orgId, cursorId, memberOrgIdsForQuery, pageable);
 
-        // PRIVATE 子組織は呼び出し者がメンバーでない場合のみ除外
-        List<OrganizationEntity> visible = rows.stream()
-                .filter(child -> child.getVisibility() == OrganizationEntity.Visibility.PUBLIC
-                        || userRoleRepository.existsByUserIdAndOrganizationId(requesterId, child.getId()))
-                .toList();
-
-        boolean hasNext = visible.size() > pageSize;
-        List<OrganizationEntity> page = hasNext ? visible.subList(0, pageSize) : visible;
+        // hasNext は「DB から pageSize+1 件返ってきたか」で判定する（③の根治）
+        boolean hasNext = rows.size() > pageSize;
+        List<OrganizationEntity> page = hasNext ? rows.subList(0, pageSize) : rows;
         String nextCursor = hasNext && !page.isEmpty()
                 ? String.valueOf(page.get(page.size() - 1).getId())
                 : null;
@@ -189,7 +225,8 @@ public class OrganizationHierarchyService {
                         .slug(child.getSlug())
                         .name(child.getName())
                         .nickname1(child.getNickname1())
-                        .iconUrl(child.getIconUrl())
+                        // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                        .iconUrl(mediaUrlResolver.resolve(child.getIconUrl()))
                         .visibility(child.getVisibility().name())
                         .memberCount((int) userRoleRepository.countByOrganizationId(child.getId()))
                         .archived(child.getArchivedAt() != null)
@@ -304,18 +341,16 @@ public class OrganizationHierarchyService {
      */
     private boolean isDescendantMember(Long requesterId, Long targetOrgId) {
         // ユーザー所属組織のうち、祖先に targetOrgId を含むものがあれば true
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(requesterId);
-        for (UserRoleEntity ur : orgRoles) {
-            Long memberOrgId = ur.getOrganizationId();
+        // CMP-027: user_roles ∪ memberships の在籍組織（素メンバー/応援者を取りこぼさない）
+        for (Long memberOrgId : membershipScopeQueryService.findActiveOrganizationIds(requesterId)) {
             if (memberOrgId == null) continue;
             if (memberOrgId.equals(targetOrgId)) continue; // 直接所属は別判定なので除外
             if (hasAncestor(memberOrgId, targetOrgId)) return true;
         }
 
         // ユーザー所属チームの所属組織を起点に祖先を辿る
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(requesterId);
-        for (UserRoleEntity ur : teamRoles) {
-            Long teamId = ur.getTeamId();
+        // CMP-027: user_roles ∪ memberships の在籍チーム
+        for (Long teamId : membershipScopeQueryService.findActiveTeamIds(requesterId)) {
             if (teamId == null) continue;
             List<TeamOrgMembershipEntity> memberships = teamOrgMembershipRepository
                     .findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE);
@@ -346,6 +381,127 @@ public class OrganizationHierarchyService {
         return false;
     }
 
+    // ========================================================================
+    // 配下配信（timeline）向け 祖先展開ヘルパー
+    //
+    // 既存 getAncestors(orgId, requesterId) は DTO を返し可視性でマスクするため、
+    // 「配信が届くか」の判定には使えない（マスク済み DTO からは距離が取れない）。
+    // ここは ID と距離だけを返す素の展開を提供する。
+    // ========================================================================
+
+    /**
+     * 起点組織群から親方向へ辿り、到達できる<b>祖先組織 ID → 起点からの距離</b>を返す。
+     *
+     * <p>距離が必要なのは、配下配信の {@code CHILDREN}（距離 1 のみ届く）と
+     * {@code DESCENDANTS}（距離無制限で届く）を区別するためである。</p>
+     *
+     * <ul>
+     *   <li>起点組織そのものは戻り値に含めない（距離 0 は「直接所属」であり、
+     *       呼び出し側の別述語が担当する）。</li>
+     *   <li>複数の起点から同じ祖先に到達した場合は<b>最小距離</b>を採る
+     *       （近い経路で届くなら届く、が正しい）。</li>
+     *   <li>{@code app.org.max-depth} を超える深さは辿らない。</li>
+     *   <li>サイクルは訪問済み集合で検出し、その経路を打ち切る（無限ループしない）。</li>
+     *   <li>同じ深度にある組織の親リンクを一括取得するため、クエリ数は起点数ではなく
+     *       探索した深度にのみ比例する。</li>
+     * </ul>
+     *
+     * @param startOrgIds 起点組織 ID 群（null/空なら空 Map）
+     * @return 祖先組織 ID → 起点からの距離（1 以上）
+     */
+    public Map<Long, Integer> getAncestorOrgIdsWithDepth(Collection<Long> startOrgIds) {
+        if (startOrgIds == null || startOrgIds.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> normalizedStartOrgIds = new HashSet<>();
+        for (Long startOrgId : startOrgIds) {
+            if (startOrgId != null) {
+                normalizedStartOrgIds.add(startOrgId);
+            }
+        }
+        if (normalizedStartOrgIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Integer> result = new HashMap<>();
+        List<AncestorPath> paths = new ArrayList<>();
+        for (Long startOrgId : normalizedStartOrgIds) {
+            paths.add(new AncestorPath(startOrgId, startOrgId, Set.of(startOrgId)));
+        }
+
+        for (int depth = 1; depth <= maxDepth && !paths.isEmpty(); depth++) {
+            Set<Long> currentOrgIds = new HashSet<>();
+            for (AncestorPath path : paths) {
+                currentOrgIds.add(path.currentOrgId());
+            }
+            Map<Long, Long> parentIds = new HashMap<>();
+            for (OrganizationParentIdProjection projection
+                    : organizationRepository.findParentOrganizationIdProjectionsByIdIn(currentOrgIds)) {
+                parentIds.put(projection.getOrganizationId(), projection.getParentOrganizationId());
+            }
+
+            List<AncestorPath> nextPaths = new ArrayList<>();
+            for (AncestorPath path : paths) {
+                Long parentOrgId = parentIds.get(path.currentOrgId());
+                if (parentOrgId == null) {
+                    continue;
+                }
+                if (path.visitedOrgIds().contains(parentOrgId)) {
+                    // サイクル検出 → この経路は打ち切る
+                    log.warn("組織階層にサイクルを検出（配下配信の祖先展開）: startOrgId={}, cycleAt={}",
+                            path.startOrgId(), parentOrgId);
+                    continue;
+                }
+                result.merge(parentOrgId, depth, Math::min);
+                Set<Long> visitedOrgIds = new HashSet<>(path.visitedOrgIds());
+                visitedOrgIds.add(parentOrgId);
+                nextPaths.add(new AncestorPath(path.startOrgId(), parentOrgId, visitedOrgIds));
+            }
+            paths = nextPaths;
+        }
+        return result;
+    }
+
+    /**
+     * チーム ID 群が ACTIVE で所属する組織（アンカー組織）の ID を返す。
+     *
+     * <p>チーム加入時に上位組織の membership は自動生成されないため、チームにのみ所属する
+     * ユーザーへ組織の周知を届けるにはこのアンカー組織を起点にする必要がある。</p>
+     *
+     * <p><b>本メソッドの存在理由</b>: {@code TeamOrgMembershipRepository} の参照を organization
+     * ドメイン内に閉じ込めるため。timeline から直接注入するとドメイン境界原則 D-3
+     * （クロスドメインの Repository 直参照禁止）に抵触する。</p>
+     *
+     * @param teamIds チーム ID 群（null/空なら空リスト）
+     * @return アンカー組織 ID 一覧（重複なし・順不同）
+     */
+    public List<Long> getAnchorOrgIdsByTeamIds(Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> normalizedTeamIds = new HashSet<>();
+        for (Long teamId : teamIds) {
+            if (teamId != null) {
+                normalizedTeamIds.add(teamId);
+            }
+        }
+        if (normalizedTeamIds.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> anchors = new HashSet<>();
+        for (Long organizationId : teamOrgMembershipRepository
+                .findDistinctOrganizationIdsByTeamIdIn(normalizedTeamIds)) {
+            if (organizationId != null) {
+                anchors.add(organizationId);
+            }
+        }
+        return List.copyOf(anchors);
+    }
+
+    /** 祖先展開中の起点ごとの経路状態。経路ごとの訪問済み集合でサイクルを打ち切る。 */
+    private record AncestorPath(Long startOrgId, Long currentOrgId, Set<Long> visitedOrgIds) {
+    }
+
     private AncestorOrganizationResponse fullAncestor(OrganizationEntity org) {
         return AncestorOrganizationResponse.builder()
                 .id(org.getId())
@@ -353,7 +509,7 @@ public class OrganizationHierarchyService {
                 .name(org.getName())
                 .nickname1(org.getNickname1())
                 .description(null) // organizations.description は現状未保持。philosophy 等は別 API で取得
-                .iconUrl(org.getIconUrl())
+                .iconUrl(mediaUrlResolver.resolve(org.getIconUrl()))
                 .visibility(org.getVisibility().name())
                 .hidden(false)
                 .build();
@@ -366,7 +522,7 @@ public class OrganizationHierarchyService {
                 .name(org.getName())
                 .nickname1(org.getNickname1())
                 .description(null)
-                .iconUrl(org.getIconUrl())
+                .iconUrl(mediaUrlResolver.resolve(org.getIconUrl()))
                 .visibility(org.getVisibility().name())
                 .hidden(false)
                 .build();
@@ -379,7 +535,7 @@ public class OrganizationHierarchyService {
                 .slug(org.getSlug())
                 .name(org.getName())
                 .nickname1(org.getNickname1())
-                .iconUrl(org.getIconUrl())
+                .iconUrl(mediaUrlResolver.resolve(org.getIconUrl()))
                 .visibility(org.getVisibility().name())
                 .hidden(false)
                 .build();

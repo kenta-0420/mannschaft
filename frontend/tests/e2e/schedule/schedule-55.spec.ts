@@ -76,7 +76,7 @@ function mockScheduleDetailWithTasks(taskId: string) {
 /** カレンダーAPIのモックレスポンス（空イベント） */
 const MOCK_CALENDAR_EMPTY = {
   data: [],
-  meta: { page: 0, size: 100, totalElements: 0, totalPages: 0 },
+  meta: { page: 0, size: 100, total: 0, totalPages: 0 },
 }
 
 // ========== ヘルパー: チーム用APIのフルセットモック + ページ遷移 ==========
@@ -442,7 +442,7 @@ test.describe('SCHED55-006: 個人予定フォームにはアンケート/出欠
         contentType: 'application/json',
         body: JSON.stringify({
           data: [],
-          meta: { page: 0, size: 100, totalElements: 0, totalPages: 0 },
+          meta: { page: 0, size: 100, total: 0, totalPages: 0 },
         }),
       })
     })
@@ -498,7 +498,7 @@ test.describe('SCHED55-007: 予定詳細の予約タスク表示と取消（Even
                 isPersonal: false,
               },
             ],
-            meta: { page: 0, size: 100, totalElements: 1, totalPages: 1 },
+            meta: { page: 0, size: 100, total: 1, totalPages: 1 },
           }),
         })
       } else {

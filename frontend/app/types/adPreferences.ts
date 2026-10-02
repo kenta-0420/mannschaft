@@ -89,19 +89,29 @@ export interface AdDeliveryListResponse {
 
 // === Reporting ===
 
-/** 通報作成リクエスト */
+/**
+ * 通報作成リクエスト（F09.19.9・{@code POST /api/v1/me/ad-reports}）。
+ *
+ * <p>{@code campaignId}（メッセージ型・UUID）と {@code operationalCampaignId}（運用型・数値）は XOR。
+ * 片方のみ指定する（両方指定・両方 null は 400 / AD_032）。</p>
+ */
 export interface CreateAdReportRequest {
-  campaignId: string
-  reason: AdReportReason
-  detail?: string | null
+  /** メッセージ型キャンペーン（ad_messaging_campaigns.id・UUID）。運用型時は省略 */
+  campaignId?: string | null
+  /** 運用型キャンペーン（ad_campaigns.id・数値）。メッセージ型時は省略 */
+  operationalCampaignId?: number | null
+  /** 通報元チャネル（運用型は常に BANNER） */
+  channelType: AdChannelType
+  /** 通報理由 */
+  reasonCode: AdReportReason
+  /** 自由記述（null 可・500 文字以内） */
+  comment?: string | null
 }
 
+/** 通報作成レスポンス（201: { data: { id, status, createdAt } }）。 */
 export interface AdReportResponse {
   id: string
-  campaignId: string
-  userId: number
-  reason: AdReportReason
-  detail: string | null
+  status: 'NEW' | 'REVIEWING' | 'RESOLVED' | 'DISMISSED'
   createdAt: string
 }
 

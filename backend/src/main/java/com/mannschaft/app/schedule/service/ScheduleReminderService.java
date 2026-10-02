@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.schedule.ReminderKind;
@@ -16,10 +17,14 @@ import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mannschaft.app.schedule.event.ReminderNotificationEvent;
@@ -43,14 +48,26 @@ public class ScheduleReminderService {
 
     private static final int MAX_REMINDERS_PER_SCHEDULE = 5;
     private static final String SOURCE_TYPE_SCHEDULE = "SCHEDULE";
-    /** リマインダー保存時に OffsetDateTime を変換する先のタイムゾーン（JVM TZ と一致）。 */
-    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
+    /**
+     * リマインダー保存時に OffsetDateTime を変換する先のタイムゾーン（JVM TZ と一致）。
+     * サーバー保持形式の正準定義は {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を参照。
+     */
+    private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final ScheduleAttendanceReminderRepository reminderRepository;
     private final ScheduleAttendanceRepository attendanceRepository;
     private final ScheduleRepository scheduleRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final MessageSource messageSource;
+
+    /**
+     * {@link #processDueReminder} を {@code REQUIRES_NEW} で独立トランザクション実行するための自己参照。
+     * 同一クラス内の self-invocation は Spring AOP プロキシを経由せず {@code @Transactional} が
+     * 無効化されるため、{@code @Lazy} 注入したプロキシ経由で呼び出す。
+     */
+    @Lazy
+    @Autowired
+    private ScheduleReminderService self;
 
     /**
      * リマインダーを作成する。最大5件まで。
@@ -196,53 +213,84 @@ public class ScheduleReminderService {
         log.info("即時リマインド送信: scheduleId={}, 対象者数={}", scheduleId, recipientUserIds.size());
     }
 
+    /** 1 ページで取得する未送信リマインダー件数の上限。 */
+    static final int REMINDER_PAGE_SIZE = 200;
+
+    /** 1 回のバッチ実行で処理するページ数の上限（暴走防止。{@code lockAtMostFor} 内に収める）。 */
+    static final int REMINDER_MAX_PAGES_PER_RUN = 25;
+
     /**
      * バッチ処理用: 未送信かつ実効リマインド時刻を過ぎたリマインダーを処理する。
      *
      * <p>機能55 第二陣で実効時刻ベースに改修。ABSOLUTE は {@code remind_at <= now}、
-     * RELATIVE は親予定の {@code start_at - remind_before_minutes <= now}（親予定の開始時刻を
-     * 取得し {@link ScheduleAttendanceReminderEntity#effectiveRemindAt} で解決）を due 判定とする。
-     * 未送信（{@code is_sent = false}）のみを対象とし、送信後に {@code markAsSent()} する。</p>
+     * RELATIVE は親予定の {@code start_at <= now + remind_before_minutes} を SQL 側（
+     * {@link ScheduleAttendanceReminderRepository#findDuePage}）で判定し、due なものだけを
+     * ID キーセットページングで取得する（全件ロード・アプリ側フィルタは行わない）。
+     * ページ単位ではなく1件ごとに独立トランザクション（{@link #processDueReminder}）でコミットし、
+     * 途中で失敗しても再実行時は未送信分から再開できる。1 件の送信失敗は握り潰さず記録した上で
+     * 後続の処理を継続する。</p>
+     *
+     * <p>クラス既定の {@code @Transactional(readOnly = true)} を打ち消し {@code NEVER} で外側 TX
+     * を張らない契約を明示する（{@link com.mannschaft.app.notification.fanout.NotificationFanoutWorker#poll}
+     * 前例）。外側に readOnly TX が生きたまま {@code REQUIRES_NEW} を呼ぶと、最大 25 ページ×200件ぶんの
+     * トランザクション中断・再開コストと DB コネクション占有（プール枯渇リスク）を招くため。
+     * 呼び出し元（{@code @Scheduled} の {@code ScheduleReminderBatchService#runBatch} と
+     * {@code @BatchEndpoint} 経由の {@code BatchEndpointRegistry#invoke}）はいずれも本メソッド呼び出し
+     * までの経路に {@code @Transactional} を持たないため {@code NEVER} で問題ない。</p>
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NEVER)
     public void processScheduledReminders() {
         LocalDateTime now = LocalDateTime.now();
-        List<ScheduleAttendanceReminderEntity> pendingReminders =
-                reminderRepository.findByIsSentFalse();
-
+        long cursorId = 0L;
         int processed = 0;
-        for (ScheduleAttendanceReminderEntity reminder : pendingReminders) {
-            LocalDateTime effectiveAt = resolveEffectiveRemindAt(reminder);
-            if (effectiveAt == null || effectiveAt.isAfter(now)) {
-                continue; // 実効時刻が解決不能、または未到来はスキップ
+        int failed = 0;
+
+        for (int page = 0; page < REMINDER_MAX_PAGES_PER_RUN; page++) {
+            List<ScheduleAttendanceReminderEntity> due = reminderRepository.findDuePage(
+                    now, cursorId, PageRequest.of(0, REMINDER_PAGE_SIZE));
+            if (due.isEmpty()) {
+                break;
             }
-            sendReminder(reminder.getScheduleId());
-            reminder.markAsSent();
-            reminderRepository.save(reminder);
-            processed++;
+
+            for (ScheduleAttendanceReminderEntity reminder : due) {
+                try {
+                    self.processDueReminder(reminder.getId());
+                    processed++;
+                } catch (Exception e) {
+                    failed++;
+                    log.error("リマインダー送信失敗: reminderId={}, scheduleId={}",
+                            reminder.getId(), reminder.getScheduleId(), e);
+                }
+            }
+
+            cursorId = due.get(due.size() - 1).getId();
+            if (due.size() < REMINDER_PAGE_SIZE) {
+                break; // 最終ページ
+            }
         }
 
-        if (processed > 0) {
-            log.info("バッチリマインダー処理完了: 処理件数={}", processed);
+        if (processed > 0 || failed > 0) {
+            log.info("バッチリマインダー処理完了: 処理件数={}, 失敗件数={}", processed, failed);
         }
+    }
+
+    /**
+     * リマインダー 1 件を独立トランザクションで送信・送信済み化する。
+     * 呼び出し元（{@link #processScheduledReminders}）は非トランザクションのため、
+     * 本メソッドの失敗が他のリマインダーの処理・コミット済み分を巻き込まない。
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void processDueReminder(Long reminderId) {
+        ScheduleAttendanceReminderEntity reminder = reminderRepository.findById(reminderId).orElse(null);
+        if (reminder == null || Boolean.TRUE.equals(reminder.getIsSent())) {
+            return; // 既に処理済み・削除済み
+        }
+        sendReminder(reminder.getScheduleId());
+        reminder.markAsSent();
+        reminderRepository.save(reminder);
     }
 
     // --- プライベートメソッド ---
-
-    /**
-     * リマインダーの実効リマインド時刻を解決する。
-     * RELATIVE の場合は親予定の開始時刻を取得して {@code effectiveRemindAt} に渡す。
-     */
-    private LocalDateTime resolveEffectiveRemindAt(ScheduleAttendanceReminderEntity reminder) {
-        if (reminder.getReminderKind() == ReminderKind.RELATIVE) {
-            ScheduleEntity schedule = scheduleRepository.findById(reminder.getScheduleId()).orElse(null);
-            if (schedule == null) {
-                return null;
-            }
-            return reminder.effectiveRemindAt(schedule.getStartAt());
-        }
-        return reminder.effectiveRemindAt(null);
-    }
 
     /**
      * リマインド対象ユーザーIDを解決する。

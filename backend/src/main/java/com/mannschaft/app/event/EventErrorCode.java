@@ -33,10 +33,10 @@ public enum EventErrorCode implements ErrorCode {
     INVALID_INVITE_TOKEN("EVENT_007", "招待トークンが無効です", Severity.WARN),
 
     /** チケット種別上限 */
-    MAX_TICKET_TYPES("EVENT_008", "チケット種別の上限に達しています", Severity.ERROR),
+    MAX_TICKET_TYPES("EVENT_008", "チケット種別の上限に達しています", Severity.WARN),
 
     /** タイムテーブル項目上限 */
-    MAX_TIMETABLE_ITEMS("EVENT_009", "タイムテーブル項目の上限に達しています", Severity.ERROR),
+    MAX_TIMETABLE_ITEMS("EVENT_009", "タイムテーブル項目の上限に達しています", Severity.WARN),
 
     /** チケット種別が見つからない */
     TICKET_TYPE_NOT_FOUND("EVENT_010", "チケット種別が見つかりません", Severity.WARN),

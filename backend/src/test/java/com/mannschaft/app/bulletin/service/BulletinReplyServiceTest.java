@@ -59,6 +59,8 @@ class BulletinReplyServiceTest {
 
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private BulletinAttachmentService attachmentService;
 
     @InjectMocks
     private BulletinReplyService bulletinReplyService;

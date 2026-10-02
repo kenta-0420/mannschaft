@@ -1,6 +1,9 @@
 package com.mannschaft.app.todo.listener;
 
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -10,10 +13,12 @@ import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.event.TodoHandoffEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -36,6 +41,8 @@ public class TodoHandoffNotificationListener {
     private final NameResolverService nameResolverService;
     private final TeamService teamService;
     private final OrganizationService organizationService;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * キャッチボールイベントを受信して通知を作成する。
@@ -46,6 +53,8 @@ public class TodoHandoffNotificationListener {
      *
      * @param event 引き渡しイベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。TODO 引き継ぎの通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onHandoff(TodoHandoffEvent event) {
         if (event.getToUserIds() == null || event.getToUserIds().isEmpty()) {
@@ -54,15 +63,19 @@ public class TodoHandoffNotificationListener {
 
         Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(Set.of(event.getFromUserId()));
         String fromName = nameMap.getOrDefault(event.getFromUserId(), "");
-        String title = "TODOが渡されました";
-        String body = String.format("%sさんから「%s」を渡されました（ステータス: %s）",
-                fromName, safe(event.getTodoTitle()), safe(event.getStatusLabelName()));
-        if (event.getMessage() != null && !event.getMessage().isBlank()) {
-            body = body + " 💬 " + event.getMessage();
-        }
 
         String actionUrl = buildActionUrl(event.getScopeType(), event.getScopeId(), event.getTodoId());
         NotificationScopeType scopeType = mapScope(event.getScopeType());
+
+        // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(event.getToUserIds().stream().toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+            locales = Map.of();
+        }
 
         for (Long toUserId : event.getToUserIds()) {
             if (toUserId == null) continue;
@@ -70,6 +83,18 @@ public class TodoHandoffNotificationListener {
             if (toUserId.equals(event.getFromUserId())) continue;
 
             try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(toUserId, "ja"));
+                String title = messageSource.getMessage(
+                        "notification.todo.handoff.title", null, "TODOが渡されました", locale);
+                String body = messageSource.getMessage(
+                        "notification.todo.handoff.body",
+                        new Object[]{fromName, safe(event.getTodoTitle()), safe(event.getStatusLabelName())},
+                        fromName + "さんから「" + safe(event.getTodoTitle()) + "」を渡されました（ステータス: "
+                                + safe(event.getStatusLabelName()) + "）",
+                        locale);
+                if (event.getMessage() != null && !event.getMessage().isBlank()) {
+                    body = body + " 💬 " + event.getMessage();
+                }
                 notificationService.createNotification(
                         toUserId,
                         NOTIFICATION_TYPE_TODO_HANDED_OFF,

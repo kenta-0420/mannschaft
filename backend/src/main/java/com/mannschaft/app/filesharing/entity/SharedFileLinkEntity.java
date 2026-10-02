@@ -8,10 +8,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -22,8 +22,7 @@ import java.time.LocalDateTime;
 @Table(name = "shared_file_links")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SharedFileLinkEntity {
 
     @Id
@@ -45,10 +44,30 @@ public class SharedFileLinkEntity {
     @Builder.Default
     private Integer accessCount = 0;
 
+    /**
+     * PR-D: 手動失効フラグ。{@code false} で発行者がリンクを即時無効化できる（アクセス時 410 Gone）。
+     * <p>Flyway V136.001 は {@code is_active} という列名で追加する。Hibernate の camelCase→snake_case
+     * 変換は {@code active} → {@code active}（変換なし）のため、{@code name="is_active"} を明示しないと
+     * 実 DB の列名と不一致になり {@code Unknown column 'active'} が発生する（根治 #XXXX）。</p>
+     */
+    @Column(name = "is_active", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE")
+    @Builder.Default
+    private boolean active = true;
+
+    /**
+     * PR-D: このリンクで DL URL 発行を許すか。マスター確定仕様で既定 {@code false}（＝閲覧のみ）。
+     * 公開リンク DL は {@code downloadAllowed}（リンク）かつ NOT {@code downloadDisabled}（ファイル/フォルダ・C 由来）
+     * の AND 評価であり、リンクで許可しても C が禁止していれば DL 不可（C 優先）。
+     */
+    @Column(nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private boolean downloadAllowed = false;
+
     private LocalDateTime lastAccessedAt;
 
     private Long createdBy;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -71,5 +90,21 @@ public class SharedFileLinkEntity {
     public void recordAccess() {
         this.accessCount++;
         this.lastAccessedAt = LocalDateTime.now();
+    }
+
+    /**
+     * リンクを手動失効させる（発行者による即時無効化）。以降のアクセスは 410 Gone（LINK_INACTIVE）。
+     */
+    public void deactivate() {
+        this.active = false;
+    }
+
+    /**
+     * リンクが失効しているか（手動失効 or 期限切れ）を判定する。
+     *
+     * @return {@code active=false} または期限切れなら true
+     */
+    public boolean isInactiveOrExpired() {
+        return !this.active || isExpired();
     }
 }

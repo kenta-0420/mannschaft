@@ -12,7 +12,7 @@
  */
 import type { UserMatchStatsResponse } from '~/types/match'
 
-definePageMeta({ layout: 'team', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const { t } = useI18n()
@@ -46,7 +46,7 @@ async function load(): Promise<void> {
   try {
     // resolveContext は tm.slug === 引数 で照合するため slug を渡す（数値 ID 不可）
     const ctx = await resolveContext(teamSlug.value)
-    if (ctx === null || !Number.isFinite(userId.value)) {
+    if (ctx === null || ctx.orgId === null || !Number.isFinite(userId.value)) {
       stats.value = null
       return
     }
@@ -71,7 +71,6 @@ onMounted(load)
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-2 flex items-center gap-3">
-      <BackButton />
       <PageHeader :title="t('match.analytics.member_title')" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.member_subtitle') }}</p>

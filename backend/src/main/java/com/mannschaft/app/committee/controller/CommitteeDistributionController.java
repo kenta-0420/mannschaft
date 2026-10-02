@@ -110,7 +110,8 @@ public class CommitteeDistributionController {
     /**
      * 伝達処理履歴の詳細を取得する。
      *
-     * <p>認可: 対象委員会のメンバーのみ。</p>
+     * <p>認可: 対象委員会のメンバーのみ。パスの委員会 ID は伝達ログ実体が属する委員会と
+     * 一致することを確認したうえで、実体由来の委員会でメンバーシップを検証する。</p>
      *
      * @param committeeId    委員会 ID
      * @param distributionId 伝達処理ログ ID
@@ -124,7 +125,7 @@ public class CommitteeDistributionController {
 
         Long currentUserId = SecurityUtils.getCurrentUserId();
         CommitteeDistributionLogEntity entity =
-                distributionService.getDistribution(distributionId, currentUserId);
+                distributionService.getDistribution(committeeId, distributionId, currentUserId);
 
         CommitteeDistributionLogResponse response =
                 CommitteeDistributionLogResponse.of(entity, objectMapper);

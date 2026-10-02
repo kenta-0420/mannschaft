@@ -9,6 +9,7 @@ const router = useRouter()
 
 const participations = ref<RecruitmentParticipantResponse[]>([])
 const loading = ref(false)
+const showGuide = ref(false)
 
 async function load() {
   loading.value = true
@@ -16,8 +17,8 @@ async function load() {
     const result = await api.listMyActiveParticipations()
     participations.value = result.data
   }
-  catch (e) {
-    error(String(e))
+  catch {
+    error(t('recruitment.label.loadError'))
   }
   finally {
     loading.value = false
@@ -37,32 +38,29 @@ onMounted(() => load())
 
 <template>
   <div class="container mx-auto max-w-3xl p-4">
-    <PageHeader :title="t('recruitment.page.myRecruitmentListings')" />
+    <PageHeader :title="t('recruitment.page.myRecruitmentListings')" help @help="showGuide = true" />
 
-    <div v-if="loading" class="flex justify-center p-8">
-      <LoadingBounce />
-    </div>
+    <PageLoading v-if="loading" />
 
-    <div
+    <DashboardEmptyState
       v-else-if="participations.length === 0"
-      class="rounded border border-dashed p-8 text-center text-gray-500"
-    >
-      {{ t('recruitment.label.noListings') }}
-    </div>
+      icon="pi pi-calendar-plus"
+      :message="t('recruitment.label.noListings')"
+    />
 
     <div v-else class="flex flex-col gap-3">
-      <div
+      <SectionCard
         v-for="p in participations"
         :key="p.id"
-        class="flex items-center justify-between rounded border border-gray-200 p-4 hover:shadow-md"
+        class="flex items-center justify-between transition-shadow hover:shadow-md"
       >
         <div class="flex flex-col">
-          <div class="text-sm text-gray-500">
-            listing #{{ p.listingId }}
+          <div class="text-sm text-surface-500">
+            {{ t('recruitment.label.listingLabel', { id: p.listingId }) }}
           </div>
           <div class="mt-1">
             <Tag :value="statusLabel(p.status)" />
-            <span v-if="p.waitlistPosition != null" class="ml-2 text-sm text-orange-700">
+            <span v-if="p.waitlistPosition != null" class="ml-2 text-sm text-amber-700 dark:text-amber-400">
               #{{ p.waitlistPosition }}
             </span>
           </div>
@@ -73,7 +71,9 @@ onMounted(() => load())
           severity="secondary"
           @click="goToListing(p.listingId)"
         />
-      </div>
+      </SectionCard>
     </div>
+
+    <RecruitmentListingsGuideModal v-model:visible="showGuide" />
   </div>
 </template>

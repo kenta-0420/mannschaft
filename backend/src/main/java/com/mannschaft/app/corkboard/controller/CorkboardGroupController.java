@@ -1,5 +1,7 @@
 package com.mannschaft.app.corkboard.controller;
 
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.corkboard.dto.CorkboardGroupResponse;
@@ -34,6 +36,8 @@ public class CorkboardGroupController {
     /**
      * セクションを作成する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PostMapping
     @Operation(summary = "セクション作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
@@ -47,6 +51,8 @@ public class CorkboardGroupController {
     /**
      * セクションを更新する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PutMapping("/{groupId}")
     @Operation(summary = "セクション更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
@@ -61,6 +67,8 @@ public class CorkboardGroupController {
     /**
      * セクションを削除する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @DeleteMapping("/{groupId}")
     @Operation(summary = "セクション削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
@@ -72,6 +80,8 @@ public class CorkboardGroupController {
     /**
      * カードをセクションに追加する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PostMapping("/{groupId}/cards/{cardId}")
     @Operation(summary = "カードをセクションに追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
@@ -84,6 +94,8 @@ public class CorkboardGroupController {
     /**
      * カードをセクションから削除する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @DeleteMapping("/{groupId}/cards/{cardId}")
     @Operation(summary = "カードをセクションから削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")

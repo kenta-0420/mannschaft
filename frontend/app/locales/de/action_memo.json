@@ -7,7 +7,41 @@
     "back_to_memo": "Zurück zu Aktionsnotizen",
     "closing_link": "Tag abschließen",
     "weekly_link": "Wochenübersicht",
-    "tags_link": "Tag-Verwaltung"
+    "tags_link": "Tag-Verwaltung",
+    "date_picker_label": "Datum auswählen",
+    "back_to_today": "Zurück zu heute",
+    "selected_date_memos": "Notizen vom {date}"
+  },
+  "guide": {
+    "title": "So verwendest du Aktionsnotizen",
+    "description": "Zeichne auf, was du gerade tust, und überprüfe deine täglichen Aktivitäten. Mit minimaler Reibung für ADHS konzipiert.",
+    "record": {
+      "title": "Eine Notiz aufzeichnen",
+      "body": "Ein kurzer Satz reicht. Du kannst später Details hinzufügen.",
+      "steps": {
+        "step1": "Gib ein, was du gerade gemacht hast",
+        "step2": "Drücke Enter oder klicke auf 'Aufzeichnen' zum Speichern",
+        "step3": "Nutze erweiterte Felder für Zeit, Fortschritt oder Teamfreigabe"
+      }
+    },
+    "past": {
+      "title": "Frühere Notizen anzeigen",
+      "body": "Verwende die Datumsauswahl zum Überprüfen vergangener Einträge. 'Zurück zu heute' bringt dich sofort zurück.",
+      "steps": {
+        "step1": "Wähle ein Datum mit der Datumsauswahl",
+        "step2": "Zeige alle Notizen des Tages an",
+        "step3": "Klicke auf 'Zurück zu heute', um zu den heutigen Notizen zurückzukehren"
+      }
+    },
+    "review": {
+      "title": "Überprüfen & Reflektieren",
+      "body": "Nutze Wochenzusammenfassungen und Tagesabschluss-Überprüfungen für Aktivitäten, Stimmung und Aufgaben.",
+      "steps": {
+        "step1": "Öffne 'Wochenübersicht' für Diagramme der letzten 7 Tage",
+        "step2": "Nutze 'Tag abschließen' zur Reflexion und für morgige Aufgaben",
+        "step3": "Organisiere häufig genutzte Kategorien mit der Tag-Verwaltung"
+      }
+    }
   },
   "mood": {
     "great": "Großartig",

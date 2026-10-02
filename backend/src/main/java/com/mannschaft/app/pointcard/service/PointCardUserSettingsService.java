@@ -29,6 +29,14 @@ import java.time.OffsetDateTime;
 @Transactional(readOnly = true)
 public class PointCardUserSettingsService {
 
+    /**
+     * ポイントカードウォレットの現行規約バージョン。
+     * カード作成・グループ作成・提示モードなど規約検証を行う全クラスはこの定数を参照すること（バージョンドリフト防止）。
+     *
+     * <p>設計書 §13 未解決事項として application.yml 化は後付け可（運用判断）。
+     */
+    public static final String CURRENT_TERMS_VERSION = "v1.0.0";
+
     private final PointCardUserSettingsRepository settingsRepository;
 
     /**

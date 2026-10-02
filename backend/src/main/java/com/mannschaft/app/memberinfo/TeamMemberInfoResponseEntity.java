@@ -7,10 +7,9 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -18,8 +17,7 @@ import java.time.LocalDateTime;
 @Table(name = "team_member_info_responses")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TeamMemberInfoResponseEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -46,4 +44,25 @@ public class TeamMemberInfoResponseEntity extends BaseEntity {
 
     @Column(nullable = true)
     private LocalDateTime lastReminderSentAt;
+
+    /**
+     * 回答内容を更新する（機密フィールドの場合は暗号化値、非機密の場合は平文）。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyUpsert(String valuePlain, String valueEncrypted, Integer encryptionKeyVersion,
+                            LocalDateTime confirmedAt) {
+        this.valuePlain = valuePlain;
+        this.valueEncrypted = valueEncrypted;
+        this.encryptionKeyVersion = encryptionKeyVersion;
+        this.confirmedAt = confirmedAt;
+    }
+
+    /**
+     * リマインド送信日時を更新する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     */
+    public void updateLastReminderSentAt(LocalDateTime lastReminderSentAt) {
+        this.lastReminderSentAt = lastReminderSentAt;
+    }
 }

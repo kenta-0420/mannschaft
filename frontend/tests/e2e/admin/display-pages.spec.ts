@@ -99,7 +99,7 @@ test.describe('ADMIN-009〜017: 管理画面表示確認', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [], meta: { totalElements: 0 } }),
+        body: JSON.stringify({ data: [], meta: { total: 0 } }),
       })
     })
 

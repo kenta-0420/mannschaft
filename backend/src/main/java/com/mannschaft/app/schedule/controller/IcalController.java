@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.schedule.dto.IcalTokenResponse;
 import com.mannschaft.app.schedule.service.IcalService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,6 +46,10 @@ public class IcalController {
     /**
      * iCalトークンを取得する。未発行の場合は自動生成する。
      */
+    @SelfScopedEndpoint("トークン行が認証主体の userId に束縛される"
+            + "（IcalService#getOrCreateToken が IcalTokenRepository#findByUserId で引き、"
+            + "未発行時も insert(userId, ...) で自分の行を作る。"
+            + "リクエストはトークン値も対象ユーザーも受け取らないため、他人のトークンには到達しない）")
     @GetMapping("/api/v1/me/ical/token")
     @Operation(summary = "iCalトークン取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -56,6 +61,10 @@ public class IcalController {
     /**
      * iCalトークンを再生成する。
      */
+    @SelfScopedEndpoint("再発行対象のトークン行が認証主体の userId に束縛される"
+            + "（IcalService#regenerateToken が findByUserId で存在確認し "
+            + "updateToken(userId, ...) で自分の行のみを置換する。"
+            + "リクエストはトークン値を受け取らないため、他人のトークンは再発行できない）")
     @PostMapping("/api/v1/me/ical/token/regenerate")
     @Operation(summary = "iCalトークン再生成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再生成成功")
@@ -67,6 +76,10 @@ public class IcalController {
     /**
      * iCalトークンを削除する。
      */
+    @SelfScopedEndpoint("削除対象のトークン行が認証主体の userId に束縛される"
+            + "（IcalService#deleteToken が findByUserId で存在確認し "
+            + "deleteByUserId(userId) で自分の行のみを消す。"
+            + "リクエストはトークン値を受け取らないため、他人のトークンは失効させられない）")
     @DeleteMapping("/api/v1/me/ical/token")
     @Operation(summary = "iCalトークン削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
