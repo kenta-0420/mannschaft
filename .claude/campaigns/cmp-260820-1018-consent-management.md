@@ -173,6 +173,13 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - UI15は残es/ko/zhの3件/0fail/0error/0skip/exit0、個別case timeは51.320/37.340/58.147秒、whole150.956秒。stdioSHA256 `051bcb8f331a25d78b79cc223f8d6613ba370bee986bf4561e859e6ba912d98e`、3contextのdispose/close完了。
 - 六言語それぞれconsents/recordsの390px実DOMscroll/client一致、管理buttons高さ44以上/幅44以上、履歴対象者picker取得readyを確認。UI13bのja/en4枚、UI14のde2枚、UI15のes/ko/zh6枚を全て実画像で閲覧済み。原failed suiteの個別ja/en成功とDE補正後成功、残3成功を区別し、UI13/13bのerror/failure/skipを全greenへ書き換えない。
 - 既存real-smokeのtest discoveryを妨げないよう、専用CMP1018_MANIFEST未指定時は明示skipとし、指定時は従来のactual試験を実行する入口へ最小修正。manifest無し標準--list6件/exit0とESLint exit0を確認。入口skipを実機合格へ計上しない。
+# 2026-10-03 Desk回帰・他テナントUI実測終端
+
+- `legacy-desk1e` は exit0、raw XML 3件/失敗0/エラー0/skipped0。稼働・解除・再読込復元を検証。XML SHA256 `27bf8827e6be7435d2c74535a16bae8db8bd63c461d2fe65a8526d61b91b021c`、stdio SHA256 `3e4bef092d9f1e99cd47ffc0ecd376cb6282a4a867a3312fffed1072c536794a`。既存一覧・空は1cの実観測、headingは1dのraw成功として区別し、全6件の単一green XMLとは表記しない。
+- `real-ui16` は1件/失敗1/エラー0/skipped0。両管理画面拒否まで到達したが、権限照会・follow状態200を業務漏洩と数えた過剰assertが失敗。原XMLを保持し、対象を組合の同意一覧と代理入力履歴の2APIへ限定。foreign.id/slug/queryで収集するためown復帰200は越境に数えない。
+- `real-ui17` は exit0、1件/失敗0/エラー0/skipped0、suite191.962146秒。DP own498の4同意→未所属499のhub導線無し→同意/履歴直URLの拒否alert、カード無し、空表示との区別、foreign候補無し、own候補選択で復帰を実UIで確認。foreign業務API成功0（権限照会200のみ）をsafe proofに保存。XML SHA256 `8745df7869eabe4e1135b9d61730d4b549bec72bd05f1d5876c6b6278e3b395d`、stdio SHA256 `028ae9875283655777853c882e9e39331c3d7fe3b89a75a164d15231581dab9a`。拒否画像2枚を実閲覧、両cleanup段完了。
+- 対象test2ファイルlint exit0。画面本体a830固定。依存CMP-261003-0122のSurvey主体修正、本人の業務行が正しい実操作・保存済履歴表示、紙同意2の撤回と撤回後履歴保持、3独立住民、最新main追従、最終検分/CIは未達。Survey199は未回答、紙同意2は未撤回のまま。
+
 # 2026-10-03 Desk回帰・他テナント試練の保全checkpoint
 
 - `legacy-desk1c` は実測6件中4失敗・2成功だったが、同じ設定で discovery を実行した際に JUnit が4 skippedへ上書きされた。原実行の raw XML は欠損。stdio/tool観測の件数を原XML保存済みとは扱わない。`real-ui1` も現在6 skippedのdiscovery XMLであり、旧4件実行の原XMLは欠損として扱う。以後 `--list --reporter=list` を必須とし、完了namespaceへ再書込しない。

@@ -97,7 +97,7 @@ test.describe('PROXY-DESK-001: 代理入力デスク', () => {
     await page.getByRole('button', { name: '住民をピン留め' }).click()
 
     // 稼働中バナーが表示されること
-    await expect(page.getByText(/対象住民ID:\s*101\s*\/\s*代理入力同意書\s*#1/)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('(対象住民ID: 101 / 代理入力同意書 #1)', { exact: true })).toBeVisible({ timeout: 10_000 })
 
     // 住民をピン留めボタンが消えてピン留め解除ボタンが表示されること
     await expect(page.getByRole('button', { name: '住民をピン留め' })).not.toBeVisible({
@@ -123,13 +123,13 @@ test.describe('PROXY-DESK-001: 代理入力デスク', () => {
     // テスト4と同じ手順でピン留め
     await page.getByText('代理入力同意書 #1').click()
     await page.getByRole('button', { name: '住民をピン留め' }).click()
-    await expect(page.getByText(/対象住民ID:\s*101\s*\/\s*代理入力同意書\s*#1/)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('(対象住民ID: 101 / 代理入力同意書 #1)', { exact: true })).toBeVisible({ timeout: 10_000 })
 
     // ピン留め解除ボタンをクリック
     await page.getByRole('button', { name: 'ピン留め解除' }).click()
 
     // 稼働中バナーが消えること
-    await expect(page.getByText(/対象住民ID:\s*101\s*\/\s*代理入力同意書\s*#1/)).not.toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('(対象住民ID: 101 / 代理入力同意書 #1)', { exact: true })).not.toBeVisible({ timeout: 10_000 })
 
     // 住民をピン留めボタンが再表示されること
     await expect(page.getByRole('button', { name: '住民をピン留め' })).toBeVisible({
@@ -154,13 +154,13 @@ test.describe('PROXY-DESK-001: 代理入力デスク', () => {
     // テスト4と同じ手順でピン留め
     await page.getByText('代理入力同意書 #1').click()
     await page.getByRole('button', { name: '住民をピン留め' }).click()
-    await expect(page.getByText(/対象住民ID:\s*101\s*\/\s*代理入力同意書\s*#1/)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('(対象住民ID: 101 / 代理入力同意書 #1)', { exact: true })).toBeVisible({ timeout: 10_000 })
 
     // ページリロード
     await page.reload()
     await waitForHydration(page)
 
     // localStorage から復元されて稼働中バナーが表示されていること
-    await expect(page.getByText(/対象住民ID:\s*101\s*\/\s*代理入力同意書\s*#1/)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('(対象住民ID: 101 / 代理入力同意書 #1)', { exact: true })).toBeVisible({ timeout: 10_000 })
   })
 })

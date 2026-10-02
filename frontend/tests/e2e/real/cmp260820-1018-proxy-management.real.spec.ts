@@ -230,7 +230,9 @@ test('他テナント: DEPUTYは未所属組合の直URLと切替から同意も
     await selector.click()
     await page.getByRole('option', { name: fixture.organization.name, exact: true }).click()
     await expect(page.getByText('操作履歴はありません。', { exact: true })).toBeVisible({ timeout: 120_000 })
-    expect(proof.filter(value => value.status >= 200 && value.status < 300)).toHaveLength(0)
+    expect(proof.filter(value => (value.path === '/api/v1/proxy-input-records'
+      || value.path.endsWith('/proxy-input-consents'))
+      && value.status >= 200 && value.status < 300)).toHaveLength(0)
   }
   finally {
     writeFileSync(info.outputPath('safe-foreign-scope-proof.json'), JSON.stringify({ foreignOrganizationId: foreign.id, responses: proof }, null, 2))
