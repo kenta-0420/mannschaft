@@ -7,11 +7,16 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.proxy.ProxyAuditEventTypes;
+import com.mannschaft.app.proxy.dto.ProxyInputConsentResponse;
+import com.mannschaft.app.proxy.dto.ProxyInputRecordResponse;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +40,7 @@ public class ProxyInputConsentService {
     private static final long MAX_CONSENT_DAYS = 365L;
 
     private final ProxyInputConsentRepository consentRepository;
+    private final ProxyInputRecordRepository recordRepository;
     private final AuditLogService auditLogService;
     private final StorageService storageService;
     private final AccessControlService accessControlService;
@@ -125,7 +131,7 @@ public class ProxyInputConsentService {
      */
     // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentApprovedEventで分離予定
     public ProxyInputConsentEntity approveConsent(Long requestUserId, Long consentId) {
-        ProxyInputConsentEntity consent = consentRepository.findById(consentId)
+        ProxyInputConsentEntity consent = consentRepository.findByIdForUpdate(consentId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
 
         // 自己承認禁止
@@ -135,11 +141,18 @@ public class ProxyInputConsentService {
         }
 
         // PROXY_CONSENT_APPROVE 権限チェック
-        accessControlService.checkPermission(
-                requestUserId, consent.getOrganizationId(), "ORGANIZATION", "PROXY_CONSENT_APPROVE");
+        if (!accessControlService.isSystemAdmin(requestUserId)) {
+            accessControlService.checkPermission(
+                    requestUserId, consent.getOrganizationId(), "ORGANIZATION", "PROXY_CONSENT_APPROVE");
+        }
+
+        if (consent.getApprovedAt() != null || consent.getRevokedAt() != null) {
+            throw new BusinessException(CommonErrorCode.COMMON_003);
+        }
 
         consent.approve(requestUserId);
         ProxyInputConsentEntity saved = consentRepository.save(consent);
+        saved.getScopes().size();
 
         auditLogService.record(
                 ProxyAuditEventTypes.PROXY_CONSENT_APPROVED,
@@ -164,19 +177,33 @@ public class ProxyInputConsentService {
      */
     // TODO: proxyドメインとauthドメイン(AuditLogService)をまたいでいる。将来はProxyConsentRevokedEventで分離予定
     public void revokeConsent(Long requestUserId, Long consentId, RevokeConsentCommand command) {
-        ProxyInputConsentEntity consent = consentRepository.findById(consentId)
+        ProxyInputConsentEntity consent = consentRepository.findByIdForUpdate(consentId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
 
         // 本人または組合ADMIN以上のみ撤回可
         boolean isSelf = consent.getSubjectUserId().equals(requestUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(
+        boolean isAdmin = accessControlService.isSystemAdmin(requestUserId)
+                || accessControlService.isAdminOrAbove(
                 requestUserId, consent.getOrganizationId(), "ORGANIZATION");
 
         if (!isSelf && !isAdmin) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
 
-        consent.revoke(command.revokeMethod(), command.revokeWitnessedByUserId(), command.revokeReason());
+        boolean isPaperRevocation = command.revokeMethod()
+                == ProxyInputConsentEntity.RevokeMethod.PAPER_BY_SUBJECT;
+        if (isPaperRevocation && !isAdmin) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+
+        if (consent.getRevokedAt() != null) {
+            throw new BusinessException(CommonErrorCode.COMMON_003);
+        }
+
+        Long witnessedByUserId = isPaperRevocation
+                ? requestUserId
+                : command.revokeWitnessedByUserId();
+        consent.revoke(command.revokeMethod(), witnessedByUserId, command.revokeReason());
         consentRepository.save(consent);
 
         auditLogService.record(
@@ -197,16 +224,45 @@ public class ProxyInputConsentService {
      */
     @Transactional(readOnly = true)
     public List<ProxyInputConsentEntity> getActiveConsentsForProxy(Long proxyUserId) {
-        return consentRepository.findActiveByProxyUserId(proxyUserId);
+        List<ProxyInputConsentEntity> consents = consentRepository.findActiveByProxyUserId(proxyUserId);
+        consents.forEach(consent -> consent.getScopes().size());
+        return consents;
     }
 
     /**
      * 組合単位の同意書一覧を取得する（ADMIN向け管理画面）。
      */
     @Transactional(readOnly = true)
-    public List<ProxyInputConsentEntity> getConsentsByOrganization(Long requestUserId, Long organizationId) {
-        accessControlService.checkAdminOrAbove(requestUserId, organizationId, "ORGANIZATION");
-        return consentRepository.findByOrganizationIdOrderByCreatedAtDesc(organizationId);
+    public Page<ProxyInputConsentResponse> getConsentsByOrganization(
+            Long requestUserId, Long organizationId, Pageable pageable) {
+        checkOrganizationAdminOrSystem(requestUserId, organizationId);
+        return consentRepository.findByOrganizationIdOrderByCreatedAtDescIdDesc(organizationId, pageable)
+                .map(ProxyInputConsentResponse::from);
+    }
+
+    /**
+     * 組合単位の代理入力履歴を取得する（ADMIN向け管理画面）。
+     */
+    @Transactional(readOnly = true)
+    public Page<ProxyInputRecordResponse> getRecordsByOrganization(
+            Long requestUserId, Long organizationId, Long subjectUserId, Pageable pageable) {
+        checkOrganizationAdminOrSystem(requestUserId, organizationId);
+        return recordRepository.findByOrganizationId(organizationId, subjectUserId, pageable)
+                .map(ProxyInputRecordResponse::from);
+    }
+
+    /**
+     * 本人またはSYSTEM_ADMIN向けに、本人単位の代理入力履歴を取得する。
+     */
+    @Transactional(readOnly = true)
+    public Page<ProxyInputRecordResponse> getRecordsBySubject(
+            Long requestUserId, Long subjectUserId, Pageable pageable) {
+        if (!requestUserId.equals(subjectUserId)
+                && !accessControlService.isSystemAdmin(requestUserId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        return recordRepository.findBySubjectUserIdOrderByCreatedAtDescIdDesc(subjectUserId, pageable)
+                .map(ProxyInputRecordResponse::from);
     }
 
     /**
@@ -286,6 +342,12 @@ public class ProxyInputConsentService {
                 }
             }
             default -> { /* PAPER_SIGNED / DIGITAL_SIGNATURE は追加制約なし */ }
+        }
+    }
+
+    private void checkOrganizationAdminOrSystem(Long requestUserId, Long organizationId) {
+        if (!accessControlService.isSystemAdmin(requestUserId)) {
+            accessControlService.checkAdminOrAbove(requestUserId, organizationId, "ORGANIZATION");
         }
     }
 

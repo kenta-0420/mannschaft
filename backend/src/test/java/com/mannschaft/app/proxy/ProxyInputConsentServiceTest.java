@@ -7,6 +7,7 @@ import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.proxy.service.CreateProxyConsentCommand;
 import com.mannschaft.app.proxy.service.ProxyInputConsentService;
 import com.mannschaft.app.proxy.service.RevokeConsentCommand;
@@ -42,6 +43,9 @@ class ProxyInputConsentServiceTest {
 
     @Mock
     private ProxyInputConsentRepository consentRepository;
+
+    @Mock
+    private ProxyInputRecordRepository recordRepository;
 
     @Mock
     private AuditLogService auditLogService;
@@ -226,7 +230,7 @@ class ProxyInputConsentServiceTest {
         @Test
         @DisplayName("同意書が存在しない → BusinessException")
         void shouldThrowWhenConsentNotFound() {
-            given(consentRepository.findById(1L)).willReturn(Optional.empty());
+            given(consentRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.approveConsent(REQUEST_USER_ID, 1L))
                     .isInstanceOf(BusinessException.class);
@@ -236,7 +240,7 @@ class ProxyInputConsentServiceTest {
         @DisplayName("自己承認（requestUserId == consent.proxyUserId）→ BusinessException")
         void shouldThrowWhenSelfApproval() {
             ProxyInputConsentEntity consent = buildConsent(SUBJECT_USER_ID, REQUEST_USER_ID);
-            given(consentRepository.findById(1L)).willReturn(Optional.of(consent));
+            given(consentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(consent));
 
             assertThatThrownBy(() -> service.approveConsent(REQUEST_USER_ID, 1L))
                     .isInstanceOf(BusinessException.class);
@@ -248,7 +252,7 @@ class ProxyInputConsentServiceTest {
         @DisplayName("正常承認 → consent.approve() が呼ばれ save() が実行される")
         void shouldApproveConsentSuccessfully() {
             ProxyInputConsentEntity consent = buildConsent(SUBJECT_USER_ID, PROXY_USER_ID);
-            given(consentRepository.findById(1L)).willReturn(Optional.of(consent));
+            given(consentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(consent));
             given(consentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
             ProxyInputConsentEntity result = service.approveConsent(REQUEST_USER_ID, 1L);
@@ -275,7 +279,7 @@ class ProxyInputConsentServiceTest {
         void shouldThrowWhenNeitherSelfNorAdmin() {
             Long otherUserId = 999L;
             ProxyInputConsentEntity consent = buildConsent(SUBJECT_USER_ID, PROXY_USER_ID);
-            given(consentRepository.findById(1L)).willReturn(Optional.of(consent));
+            given(consentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(consent));
             given(accessControlService.isAdminOrAbove(otherUserId, ORG_ID, "ORGANIZATION")).willReturn(false);
 
             assertThatThrownBy(() -> service.revokeConsent(otherUserId, 1L, revokeCmd))
@@ -286,7 +290,7 @@ class ProxyInputConsentServiceTest {
         @DisplayName("本人による撤回 → revokedAt がセットされ保存される")
         void shouldRevokeConsentBySelf() {
             ProxyInputConsentEntity consent = buildConsent(SUBJECT_USER_ID, PROXY_USER_ID);
-            given(consentRepository.findById(1L)).willReturn(Optional.of(consent));
+            given(consentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(consent));
             given(consentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
             service.revokeConsent(SUBJECT_USER_ID, 1L, revokeCmd);
