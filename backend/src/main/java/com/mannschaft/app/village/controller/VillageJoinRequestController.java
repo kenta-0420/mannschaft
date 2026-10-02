@@ -3,6 +3,8 @@ package com.mannschaft.app.village.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.JoinRequestCreateRequest;
@@ -55,6 +57,8 @@ public class VillageJoinRequestController {
      */
     @SelfScopedEndpoint("SecurityUtils.getCurrentUserId() の認証本人を"
             + "VillageJoinRequestService#listMyHistory へ渡し、findByRequesterUserId のWHEREで固定する")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "Village基盤の認証本人の既存参加申請履歴を村の公開状態によらず確認するコア機能のため")
     @GetMapping("/api/v1/village-join-requests/me")
     @Operation(summary = "認証本人の村参加申請履歴")
     public ResponseEntity<PagedResponse<JoinRequestResponse>> listMyHistory(
