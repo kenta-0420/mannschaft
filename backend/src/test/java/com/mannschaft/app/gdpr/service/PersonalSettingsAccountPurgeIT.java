@@ -19,6 +19,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -32,6 +33,8 @@ import java.util.concurrent.Executor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 /**
  * CMP-260822-1243: 通常の退会受付から30日後の強削除まで、本人専用設定を実DBで確認する。
@@ -55,6 +58,10 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("通常退会の猶予中は設定を保持し、30日後の実ユーザー削除で本人と子行だけを消す")
     void retainsSettingsUntilStrongPurgeAndPreservesOtherOwner() {
+        // 共通基底の外部Redis mockだけを補完し、退会受付の実レートリミット処理を通す。
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
         Long target = createUser("本人");
         Long other = createUser("別所有者");
         Long contact = createUser("対象外の連絡先");
