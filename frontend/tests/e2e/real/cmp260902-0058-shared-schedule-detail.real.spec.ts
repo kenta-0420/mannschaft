@@ -1,6 +1,7 @@
 /** CMP-260902-0058: Actions の専用 DB・同じ head の本物の API/UI による実機検証。 */
 import { createRequire } from 'node:module'
-import { test, expect, type Page, type TestInfo } from '@playwright/test'
+import { execFileSync } from 'node:child_process'
+import { test, expect, type BrowserContext, type Page, type TestInfo } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 
@@ -66,6 +67,9 @@ test.describe('CMP-260902-0058 実ブラウザ（API smoke と別判定）', () 
     expect(process.env.E2E_DB_PORT).toBe('3306')
     expect(process.env.E2E_DB_NAME).toBe('mannschaft')
     expect(process.env.E2E_DB_USER).toBe('mannschaft')
+    const containerId = process.env.E2E_MYSQL_CONTAINER_ID
+    expect(containerId, '同じ job の MySQL service ID').toMatch(/^[a-f0-9]{64}$/)
+    const mysqlHostname = execFileSync('docker', ['inspect', '--format', '{{.Config.Hostname}}', containerId!], { encoding: 'utf8' }).trim()
     const require = createRequire(new URL('../../../../backend/scripts/package.json', import.meta.url))
     const mysql = require('mysql2/promise') as {
       createConnection(options: Record<string, unknown>): Promise<SeedConnection>
@@ -74,11 +78,15 @@ test.describe('CMP-260902-0058 実ブラウザ（API smoke と別判定）', () 
       host: process.env.E2E_DB_HOST, port: Number(process.env.E2E_DB_PORT),
       user: process.env.E2E_DB_USER, password: process.env.E2E_DB_PASSWORD, database: process.env.E2E_DB_NAME,
     })
-    const context = await browser.newContext({
-      baseURL: process.env.BASE_URL ?? 'http://localhost:8081', locale: 'ja-JP', timezoneId: 'Asia/Tokyo',
-    })
-    const page = await context.newPage()
+    let context: BrowserContext | undefined
     try {
+      const [databaseHosts] = await db.execute('SELECT DATABASE() AS databaseName, @@hostname AS hostname')
+      expect(databaseHosts[0]?.databaseName).toBe(process.env.E2E_DB_NAME)
+      expect(databaseHosts[0]?.hostname, '接続した DB は当該 Actions job の service container').toBe(mysqlHostname)
+      context = await browser.newContext({
+        baseURL: process.env.BASE_URL ?? 'http://localhost:8081', locale: 'ja-JP', timezoneId: 'Asia/Tokyo',
+      })
+      const page = await context.newPage()
       const scopes = [
         { type: 'teams' as const, name: 'FC東京U-15（テスト）', member: 'e2e-dummy-6@test.mannschaft.local' },
         { type: 'organizations' as const, name: '東京都サッカー協会（テスト）', member: 'e2e-dummy-1@test.mannschaft.local' },
@@ -124,7 +132,7 @@ test.describe('CMP-260902-0058 実ブラウザ（API smoke と別判定）', () 
         expect(initial.targets).toContainEqual(expect.objectContaining({ userId: fixture.memberId }))
       }
     } finally {
-      await context.close()
+      await context?.close()
       await db.end()
     }
   })
