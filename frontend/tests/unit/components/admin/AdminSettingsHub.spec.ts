@@ -1,11 +1,15 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { useScopeStore } from '~/stores/useScopeStore'
 import { useTeamStore } from '~/stores/useTeamStore'
 import { useOrganizationStore } from '~/stores/useOrganizationStore'
 import AdminSettingsHub from '~/components/admin/AdminSettingsHub.vue'
+import TeamSettingsPage from '~/pages/teams/[slug]/admin/settings/index.vue'
+import OrganizationSettingsPage from '~/pages/organizations/[slug]/admin/settings/index.vue'
+import { TeamShellContextKey } from '~/composables/useTeamShellContext'
+import { OrgShellContextKey } from '~/composables/useOrgShellContext'
 
 // モックは通信境界のみ。ロール解決、所属一覧、scope同期、表示部品は本物を動かす。
 let role: string | null = 'ADMIN'
@@ -15,7 +19,7 @@ let failModules = false
 let failMemberships = false
 let pendingPermissions: Promise<void> | null = null
 let pendingMemberships: Promise<void> | null = null
-const route = reactive({ path: '/teams/alpha/admin/settings' })
+const route = reactive({ path: '/teams/alpha/admin/settings', params: { slug: 'alpha' } })
 const api = vi.fn(async (path: string) => {
   if (path.endsWith('/me/permissions')) {
     if (pendingPermissions) await pendingPermissions
@@ -63,6 +67,7 @@ beforeEach(() => {
   pendingPermissions = null
   pendingMemberships = null
   route.path = '/teams/alpha/admin/settings'
+  route.params.slug = 'alpha'
   api.mockClear()
   useScopeStore().clear()
   useTeamStore().clear()
@@ -70,6 +75,24 @@ beforeEach(() => {
 })
 
 describe('ADMIN設定ハブの既存導線と団体境界', () => {
+  it.each([
+    { type: 'team', slug: 'alpha', id: '12', page: TeamSettingsPage, key: TeamShellContextKey, field: 'team' },
+    { type: 'organization', slug: 'beta', id: '7', page: OrganizationSettingsPage, key: OrgShellContextKey, field: 'org' },
+  ])('AC2/3: 非shellの実wrapperは親metadata未取得でも本人所属で横断設定を確定する（$type）', async ({ type, slug, id, page, key, field }) => {
+    route.path = `/${type === 'team' ? 'teams' : 'organizations'}/${slug}/admin/settings`
+    route.params.slug = slug
+    // /admin/settingsの親は非shell分岐で本体metadataを取得しない。提供されるnullを再現する。
+    const wrapper = await mountSuspended(page, { global: { provide: { [key as symbol]: { [field]: computed(() => null) } } } })
+    await flushPromises()
+    await vi.waitFor(() => expect(wrapper.findComponent({ name: 'PageLoading' }).exists()).toBe(false))
+    expect(wrapper.find('[data-testid="setting-line"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="setting-receipts"]').exists()).toBe(true)
+    expect(useScopeStore().current).toMatchObject({ type, id })
+    expect(api.mock.calls.filter(([path]) => path === `/api/v1/me/${type === 'team' ? 'teams' : 'organizations'}`)).toHaveLength(1)
+    expect(api.mock.calls.some(([path]) => path === `/api/v1/${type === 'team' ? 'teams' : 'organizations'}/${slug}`)).toBe(false)
+    wrapper.unmount()
+  })
+
   it('AC2/3/7: TEAM既存設定とLINE/領収書を表示し、実scopeを引き継ぐ（取得はカード数に比例しない）', async () => {
     const wrapper = await mountSuspended(AdminSettingsHub, { props: teamProps })
     await flushPromises()
