@@ -293,4 +293,116 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     int clearGroupId(@Param("organizationId") Long organizationId,
                      @Param("groupId") java.util.UUID groupId,
                      @Param("now") java.time.Instant now);
+
+    // ========================================================================
+    // F01.2.1 2-B2: 組織側の受信申請一覧・承認・拒否（§6.2・§6.3・§6.4・§10.6）
+    //
+    // 組織側から引くクエリは必ず organization_id を条件に含め、ID 指定の取得は (id, organization_id) の組でだけ行う
+    // （他組織の membershipId は存在しない ID と同じ空になる。存在オラクルを作らない。AC-K04）。
+    // 状態を変える一括更新は clearAutomatically で永続化コンテキストを捨てる。直前に FOR UPDATE で読んだ加盟行が
+    // 古い状態（PENDING）のまま管理下に残ると、同じコンテキストで続けてロック付きの読み取りをしたとき
+    // （同じトランザクションでの取下げなど）に、DB の最新の状態ではなく古いインスタンスが返るため。
+    // ========================================================================
+
+    /**
+     * 加盟 ID と組織 ID の組で1件引く（越境した ID・存在しない ID・削除済みはすべて空になる）。
+     */
+    Optional<TeamOrgMembershipEntity> findByIdAndOrganizationId(Long id, Long organizationId);
+
+    /**
+     * {@link #findByIdAndOrganizationId} の {@code SELECT ... FOR UPDATE} 版。承認・拒否・取下げの競合を行ロックで直列化し、
+     * ロック取得後は REPEATABLE READ でも最新のコミット済みの状態を読む（§6.4 の判定表を一意に決める）。
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.id = :id AND m.organizationId = :organizationId")
+    Optional<TeamOrgMembershipEntity> findByIdAndOrganizationIdForUpdate(
+            @Param("id") Long id, @Param("organizationId") Long organizationId);
+
+    /**
+     * 組織の受信申請一覧（PENDING / TEAM_APPLY）を申請日時の降順で引く（§10.6）。同時刻は ID の降順。
+     */
+    @Query(value = "SELECT m FROM TeamOrgMembershipEntity m "
+            + "WHERE m.organizationId = :organizationId AND m.status = :status AND m.direction = :direction "
+            + "ORDER BY m.invitedAt DESC, m.id DESC",
+            countQuery = "SELECT COUNT(m) FROM TeamOrgMembershipEntity m "
+            + "WHERE m.organizationId = :organizationId AND m.status = :status AND m.direction = :direction")
+    org.springframework.data.domain.Page<TeamOrgMembershipEntity> findPageByOrganizationIdAndStatusAndDirection(
+            @Param("organizationId") Long organizationId,
+            @Param("status") TeamOrgMembershipEntity.Status status,
+            @Param("direction") com.mannschaft.app.team.entity.TeamOrgAffiliationDirection direction,
+            org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * {@link #findPageByOrganizationIdAndStatusAndDirection} を希望グループで絞り込む版（§10.6 {@code teamGroupId}）。
+     */
+    @Query(value = "SELECT m FROM TeamOrgMembershipEntity m "
+            + "WHERE m.organizationId = :organizationId AND m.status = :status AND m.direction = :direction "
+            + "AND m.groupId = :groupId "
+            + "ORDER BY m.invitedAt DESC, m.id DESC",
+            countQuery = "SELECT COUNT(m) FROM TeamOrgMembershipEntity m "
+            + "WHERE m.organizationId = :organizationId AND m.status = :status AND m.direction = :direction "
+            + "AND m.groupId = :groupId")
+    org.springframework.data.domain.Page<TeamOrgMembershipEntity> findPageByOrganizationIdAndStatusAndDirectionAndGroupId(
+            @Param("organizationId") Long organizationId,
+            @Param("status") TeamOrgMembershipEntity.Status status,
+            @Param("direction") com.mannschaft.app.team.entity.TeamOrgAffiliationDirection direction,
+            @Param("groupId") java.util.UUID groupId,
+            org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * 組織側の承認: 条件付き UPDATE（{@code id, organization_id, PENDING, TEAM_APPLY}。§4.1・§6.2 step 5）。
+     * 確定グループを書き、添え書きは NULL に戻す（PII を残さない。§5.3）。
+     *
+     * <p>{@code responded_at} / {@code updated_at} は UTC 壁時計の DATETIME（JPA 経路と同じ格納基準）。
+     * Java の日時型をプレースホルダへ束縛すると JDBC のタイムゾーン変換に依存するため、承認の瞬間をエポック秒で渡し、
+     * {@code TIMESTAMPADD} で UTC 壁時計へ戻す（{@code TeamOrgAffiliationRestrictionRepository} と同じ作法。
+     * 時刻はアプリの時計から渡すので、IT で固定できる）。</p>
+     *
+     * @param groupId 確定グループ（未分類なら {@link #approvePendingApplicationUnassigned} を使う）
+     * @return 更新した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE team_org_memberships
+               SET status = 'ACTIVE', group_id = :groupId, message = NULL, responded_by = :respondedBy,
+                   responded_at = TIMESTAMPADD(SECOND, :respondedAtEpochSecond, '1970-01-01 00:00:00'),
+                   updated_at = TIMESTAMPADD(SECOND, :respondedAtEpochSecond, '1970-01-01 00:00:00')
+             WHERE id = :id AND organization_id = :organizationId
+               AND status = 'PENDING' AND direction = 'TEAM_APPLY'
+            """, nativeQuery = true)
+    int approvePendingApplication(@Param("id") Long id,
+                                  @Param("organizationId") Long organizationId,
+                                  @Param("groupId") java.util.UUID groupId,
+                                  @Param("respondedBy") Long respondedBy,
+                                  @Param("respondedAtEpochSecond") long respondedAtEpochSecond);
+
+    /**
+     * {@link #approvePendingApplication} の未分類（{@code group_id = NULL}）版。型のない null のバインドを避けるため分けている。
+     *
+     * @return 更新した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE team_org_memberships
+               SET status = 'ACTIVE', group_id = NULL, message = NULL, responded_by = :respondedBy,
+                   responded_at = TIMESTAMPADD(SECOND, :respondedAtEpochSecond, '1970-01-01 00:00:00'),
+                   updated_at = TIMESTAMPADD(SECOND, :respondedAtEpochSecond, '1970-01-01 00:00:00')
+             WHERE id = :id AND organization_id = :organizationId
+               AND status = 'PENDING' AND direction = 'TEAM_APPLY'
+            """, nativeQuery = true)
+    int approvePendingApplicationUnassigned(@Param("id") Long id,
+                                            @Param("organizationId") Long organizationId,
+                                            @Param("respondedBy") Long respondedBy,
+                                            @Param("respondedAtEpochSecond") long respondedAtEpochSecond);
+
+    /**
+     * 組織側の拒否: 条件付き DELETE（{@code id, organization_id, PENDING, TEAM_APPLY}。§4.1・§6.3 step 3）。
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM TeamOrgMembershipEntity m WHERE m.id = :id AND m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
+        + "AND m.direction = com.mannschaft.app.team.entity.TeamOrgAffiliationDirection.TEAM_APPLY")
+    int deletePendingApplicationOfOrganization(@Param("id") Long id, @Param("organizationId") Long organizationId);
 }
