@@ -3,7 +3,7 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: 独立BE実装をcommit97a673c9へ保全。追加契約を含む65件の実測は6失敗/0 errors/0 skipped。失敗は立会資格と本人オンライン立会情報の偽装に限定。資格の仕様は確定済みで最小guardを追加する。全green・生成型・FE・同意管理実機は未達。
+- 状態: 追加65契約の実REDをff7b20f6ff、最小2guardをef9448ac10へ保全。管理65契約を含む既存Proxy・必要認可・標準Arch回帰224件が全green（0 failures/errors/skipped）。生成型・FE・同意管理実機は未達。
 
 ## 方針
 
@@ -78,3 +78,11 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - attempt2 session69424は共有turnstile経由で6管理ContractITを完走。compileJava FROM-CACHE・compileTestJava成功、終端exit1/BUILD FAILED（9分56秒）。**65 tests /6 failures /0 errors /0 skipped**。Authorization 13/4失敗、Mutation 15/2失敗、ConsentPaging 12/0、RecordPaging 2/0、Scope 18/0、Serialization 5/0。失敗はDEPUTY/deleted/FROZEN/SYS単独witnessの4件、紙の非管理/別組合/不存在witnessのloop1件、API witness偽装1件。loop内の3variantを別testへ数えない。SYS＋scopeADMIN立会の陽性と並行状態不変、OSIV=false serialize、JOIN/page契約はgreen。
 - raw XML6 filesとstdioを`evidence-red65-attempt2`およびWindows自所有ignored `.claude/campaigns/cmp-consent-red65-20261003-artifacts/attempt2`へ二重保全。各JUnit header/SHA256はjunit-before.json・junit-after.jsonへ保存し、copy元/両copyのhash一致を確認。stdio SHA256 `49a8a275cec89b1c142dc9c1d8e2fb7392293f06cf137ee941cb317fa946545e`。標準architecture・既存proxy回帰はguard後に別測定する。
 - 前回/tmp消失で旧60red・紙2再測定のraw XMLは失われた。上の歴史的件数は当時のtool実測記録であり、raw復元成功とは扱わない。前任17件のWindows raw XMLは読み取り保全のまま変更していない。
+
+## 2026-10-03 最小guardとBE回帰GREEN
+
+- 実RED checkpoint ff7b20f6ff455d972829250a891de7347bbe8fd4を先にcommitし、最小guard ef9448ac10ac1c9a7657bb34395b473c83c580abを別commit。Serviceの11行だけを追加し、actor/method認可・既存入力検証・既撤回409の後/永続化前にAPI witness非nullを400、紙witnessのisAdmin不成立を400とする。グローバル認可helperや他の状態遷移は変更しない。
+- guard patch SHA256 `95b1746191de517e5efb09bceada8ca8d7a3a8d0eb6b7213fd98cb57cef6f018`、Service blob `698f06f7ff961a52107cc140639fd88d8aa0c0f4`。mirror適用前後の全11,976 canonical/test bytesを再照合した。
+- session32539は共有turnstile経由で既存proxy全体（管理契約65を含む）、AccessControlServiceTest、ScopeConcealingAccessGateTest、ServiceApiEntityBoundary/ControllerEntityResponse/CrossDomainTransactionalTransitiveの標準Archを実行。compileJava成功、終端exit0/BUILD SUCCESSFUL（17分44秒）。**224 tests /0 failures /0 errors /0 skipped**、53 XML。管理6 XMLの内訳は13/12/15/2/18/5の計65件で全green。
+- `evidence-green1`とWindows ignored artifactsの`green1`へraw XML53 files、stdio、before/after JUnit headers/SHA256を二重保全。修正前RED6 XMLもgreen1/xml-beforeに保持。修正後stdio SHA256 `56f5cdfa84382efd3659c562ed6bf7fa5b76acaed0c57a480dc73327f1c45ba2`。
+- 次は最新mainとの実差分・schema照合、標準OpenAPI再生成と生成FE型、正本2管理画面/管理ハブ導線、6言語と390px/権限別の実機を実施する。新BE8081起動は殿の事前確認に従い共有DBのrepair等は行わない。
