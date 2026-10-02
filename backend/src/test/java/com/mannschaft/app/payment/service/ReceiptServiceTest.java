@@ -188,4 +188,17 @@ class ReceiptServiceTest {
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND));
     }
+
+    @Test
+    @DisplayName("金額nullの防衛契約: DB NOT NULLを破るfixtureは作らず単体で不在を確認する")
+    void 金額nullは領収書として公開しない() {
+        MemberPaymentEntity payment = buildPayment().toBuilder().amountPaid(null).build();
+        given(memberPaymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
+
+        assertThatThrownBy(() -> receiptService.getReceipt(PAYMENT_ID, PAYER_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND));
+        org.mockito.Mockito.verifyNoInteractions(paymentItemRepository, receiptDocumentService);
+    }
 }

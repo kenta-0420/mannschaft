@@ -95,6 +95,16 @@ class MemberPaymentReceiptPdfServiceTest {
         verify(receiptDocumentService, never()).generate(any());
     }
 
+    @Test
+    void 金額nullは親読込とPDF生成前に不在へ収束する() {
+        given(memberPaymentRepository.findById(1L)).willReturn(Optional.of(payment(PaymentStatus.PAID, null)));
+
+        assertThatThrownBy(() -> service.generate(1L, 10L)).isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND));
+        org.mockito.Mockito.verifyNoInteractions(paymentItemRepository, receiptDocumentService);
+    }
+
     private MemberPaymentEntity payment(PaymentStatus status, BigDecimal amount) {
         MemberPaymentEntity payment = MemberPaymentEntity.builder().userId(20L).payerUserId(10L)
                 .paymentItemId(200L).amountPaid(amount).status(status)
