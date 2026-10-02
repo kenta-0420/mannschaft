@@ -96,6 +96,15 @@ export function checkAudit(raw, status, lock, now = Date.now()) {
   let exempt = false
   for (const [name, entry] of Object.entries(vulnerabilities)) {
     const advisories = collectAdvisories(name)
+    if (
+      advisories.some(
+        (via) => SEVERITY_RANK[entry.severity] < SEVERITY_RANK[via.severity],
+      )
+    ) {
+      throw new Error(
+        `npm audit の依存と到達 advisory の深刻度が不一致: ${name}`,
+      )
+    }
     const high = advisories.filter(
       (via) => SEVERITY_RANK[via.severity] >= SEVERITY_RANK.high,
     )

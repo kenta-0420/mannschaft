@@ -87,7 +87,7 @@ for (const severity of ['high', 'critical']) {
     value.vulnerabilities['node-forge'].via.push(
       advisory(severity, 'https://github.com/advisories/GHSA-other'),
     )
-    assert.throws(() => check(value), /許可されない advisory/)
+    assert.throws(() => check(value), /許可されない advisory|深刻度が不一致/)
   })
 }
 test('同じGHSAでもcritical・別package・別range・直接依存・別versionは拒否する', () => {
@@ -108,7 +108,7 @@ test('同じGHSAでもcritical・別package・別range・直接依存・別versi
   for (const mutate of mutations) {
     const value = allowed()
     mutate(value)
-    assert.throws(() => check(value), /許可されない advisory/)
+    assert.throws(() => check(value), /許可されない advisory|深刻度が不一致/)
   }
   assert.throws(
     () => check(allowed(), NOW, { packages: {} }),
@@ -177,4 +177,14 @@ test('同じ許可GHSAへの参照でも新しいhigh消費者は拒否する', 
     () => check(report(value.vulnerabilities)),
     /許可されない脆弱性/,
   )
+})
+
+test('high advisoryへの未知消費者をmoderateと報告しても拒否する', () => {
+  const value = allowed()
+  value.vulnerabilities['node-jose'] = entry(
+    'node-jose',
+    ['node-forge'],
+    'moderate',
+  )
+  assert.throws(() => check(report(value.vulnerabilities)), /深刻度が不一致/)
 })
