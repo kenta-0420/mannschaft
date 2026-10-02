@@ -74,7 +74,9 @@ test.describe('CMP-260902-0058 実ブラウザ（API smoke と別判定）', () 
       host: process.env.E2E_DB_HOST, port: Number(process.env.E2E_DB_PORT),
       user: process.env.E2E_DB_USER, password: process.env.E2E_DB_PASSWORD, database: process.env.E2E_DB_NAME,
     })
-    const context = await browser.newContext()
+    const context = await browser.newContext({
+      baseURL: process.env.BASE_URL ?? 'http://localhost:8081', locale: 'ja-JP', timezoneId: 'Asia/Tokyo',
+    })
     const page = await context.newPage()
     try {
       const scopes = [
