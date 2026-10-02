@@ -58,7 +58,9 @@ async function openProxyManagement() {
   proxyNavigationFailed.value = false
   try {
     const response = await organizationApi.getOrganization(orgSlug.value)
-    scopeStore.setOrganizationScope(response.data.numericId, response.data.name)
+    const numericId = response.data.numericId
+    if (!numericId || !Number.isInteger(numericId) || numericId <= 0) throw new Error('組合IDを取得できませんでした')
+    scopeStore.setOrganizationScope(numericId, response.data.basicInfo?.name ?? orgSlug.value)
     await navigateTo('/admin/proxy/consents')
   }
   catch {

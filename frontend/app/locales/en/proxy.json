@@ -265,8 +265,11 @@
       },
       "methods": {
         "API_BY_SUBJECT": "Online Application by Subject",
-        "PAPER_BY_SUBJECT": "Paper Application"
-      }
+        "PAPER_BY_SUBJECT": "Paper Application",
+        "AUTO_BY_LIFE_EVENT": "Life Event (relocation etc.)",
+        "AUTO_BY_TENURE_END": "End of Tenure"
+      },
+      "approveConfirm": "Approve this consent?"
     }
   }
 }

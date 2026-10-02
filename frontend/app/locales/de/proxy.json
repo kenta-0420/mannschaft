@@ -265,8 +265,11 @@
       },
       "methods": {
         "API_BY_SUBJECT": "Online-Antrag durch Betroffene/n",
-        "PAPER_BY_SUBJECT": "Papierantrag"
-      }
+        "PAPER_BY_SUBJECT": "Papierantrag",
+        "AUTO_BY_LIFE_EVENT": "Lebensereignis (Umzug usw.)",
+        "AUTO_BY_TENURE_END": "Amtszeitende"
+      },
+      "approveConfirm": "Diese Einwilligung genehmigen?"
     }
   }
 }

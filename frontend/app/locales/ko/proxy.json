@@ -265,8 +265,11 @@
       },
       "methods": {
         "API_BY_SUBJECT": "본인 온라인 신청",
-        "PAPER_BY_SUBJECT": "서류 신청"
-      }
+        "PAPER_BY_SUBJECT": "서류 신청",
+        "AUTO_BY_LIFE_EVENT": "생활 이벤트 (이사 등)",
+        "AUTO_BY_TENURE_END": "임기 만료"
+      },
+      "approveConfirm": "이 동의서를 승인할까요?"
     }
   }
 }

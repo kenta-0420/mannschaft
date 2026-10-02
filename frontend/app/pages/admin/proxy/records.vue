@@ -15,6 +15,21 @@ const page = ref(0)
 const loading = ref(false)
 const failed = ref(false)
 let request = 0
+function scopeLabel(value: string) {
+  const keys: Record<string, string> = {
+    SURVEY: 'survey', SCHEDULE_ATTENDANCE: 'schedule_attendance', SHIFT_REQUEST: 'shift_request',
+    ANNOUNCEMENT_READ: 'announcement_read', PARKING_APPLICATION: 'parking_application',
+    CIRCULAR: 'circular', SUPPORTER_VIEW: 'supporter_view', PAYMENT: 'payment',
+  }
+  return keys[value] ? t(`proxy.scope.${keys[value]}`) : value
+}
+function sourceLabel(value: string) {
+  const keys: Record<string, string> = {
+    PAPER_FORM: 'paper_form', PHONE_INTERVIEW: 'phone_interview', IN_PERSON: 'in_person',
+    GUARDIANSHIP_SWITCH: 'guardianship_switch',
+  }
+  return keys[value] ? t(`proxy.desk.inputSource.${keys[value]}`) : value
+}
 
 async function load() {
   const org = scope.organization.value
@@ -77,9 +92,9 @@ watch(page, () => { void load() })
             <div><dt>{{ t('proxy.management.subject') }}</dt><dd>{{ record.subjectUserId === subject?.userId ? subject.displayName : `#${record.subjectUserId}` }}</dd></div>
             <div><dt>{{ t('proxy.management.proxy') }}</dt><dd>#{{ record.proxyUserId }}</dd></div>
             <div><dt>{{ t('proxy.consent.title') }}</dt><dd>{{ record.consentId == null ? '—' : `#${record.consentId}` }}</dd></div>
-            <div><dt>{{ t('proxy.record.featureScope') }}</dt><dd>{{ record.featureScope }}</dd></div>
+            <div><dt>{{ t('proxy.record.featureScope') }}</dt><dd>{{ scopeLabel(record.featureScope) }}</dd></div>
             <div><dt>{{ t('proxy.record.targetEntity') }}</dt><dd>{{ record.targetEntityType }} #{{ record.targetEntityId }}</dd></div>
-            <div><dt>{{ t('proxy.desk.inputSource.label') }}</dt><dd>{{ record.inputSource }}</dd></div>
+            <div><dt>{{ t('proxy.desk.inputSource.label') }}</dt><dd>{{ sourceLabel(record.inputSource) }}</dd></div>
             <div><dt>{{ t('proxy.desk.originalStorage.label') }}</dt><dd>{{ record.originalStorageLocation || '—' }}</dd></div>
           </dl>
         </article>

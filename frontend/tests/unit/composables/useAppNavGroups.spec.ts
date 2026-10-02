@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 /**
  * useAppNavGroups のユニットテスト — サイドバー化 Phase1
  *
@@ -146,6 +147,19 @@ describe('useAppNavGroups', () => {
   })
 
   describe('AC9: SYSTEM — isSystemAdmin の場合のみ表示', () => {
+    it.each(['ADMIN', 'DEPUTY_ADMIN', 'SYSTEM_ADMIN'])('SYSとscope %s併有でも通常の代理デスクを隠しSYSTEM導線を維持する', (role) => {
+      const authStore = useAuthStore()
+      authStore.user = { id: 1, email: 'admin@example.test', fullName: '管理者', profileImageUrl: null, systemRole: 'SYSTEM_ADMIN' }
+      useTeamStore().myTeams = [
+        { id: 1, slug: 't1', name: 'T1', nickname1: null, iconUrl: null, role, template: 'NEIGHBORHOOD', memberCount: 1 },
+      ]
+      const { groups, showProxyDeskNav } = useAppNavGroups()
+      expect(showProxyDeskNav.value).toBe(false)
+      const keys = groups.value.flatMap(group => group.items.map(item => item.key))
+      expect(keys).not.toContain('proxy-desk')
+      expect(keys).toContain('system-admin')
+    })
+
     it('systemRole=SYSTEM_ADMIN のとき SYSTEM が admin グループに出る', () => {
       const authStore = useAuthStore()
       // @ts-expect-error テスト用に private相当のstateへ直接代入

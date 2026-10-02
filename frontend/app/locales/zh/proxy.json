@@ -265,8 +265,11 @@
       },
       "methods": {
         "API_BY_SUBJECT": "本人在线申请",
-        "PAPER_BY_SUBJECT": "纸质申请"
-      }
+        "PAPER_BY_SUBJECT": "纸质申请",
+        "AUTO_BY_LIFE_EVENT": "生活事件（搬迁等）",
+        "AUTO_BY_TENURE_END": "任期届满"
+      },
+      "approveConfirm": "批准此同意书吗？"
     }
   }
 }

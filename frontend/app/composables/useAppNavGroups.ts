@@ -6,7 +6,7 @@ import { NAV_GROUP_LABEL_KEYS, NAV_GROUP_ORDER, resolveNavGroup } from '~/consta
  * navGroups 定義でグループ化した SidebarGroup[] へ射影する。
  *
  * 現 default.vue 108-131行のロジック（固定ダッシュボード・代理入力デスク・SYSTEM・同期の
- * 合流条件）をそのまま移植する。挙動は1ビットも変えない（表示条件・パスは既存と同一）。
+ * 合流条件）を移植する。CMP-260820-1018では通常代理デスクのSYS非表示裁可を反映する。
  * 追加の API 呼び出しは行わない（各ストアは既存プラグイン/認証フローで既にフェッチ済み）。
  *
  * Phase2 AC-21: 受信箱バッジ — inboxStore.inboxCount（layouts/default.vue が既に60秒間隔で
@@ -21,12 +21,12 @@ export function useAppNavGroups() {
   const syncStore = useSyncStore()
   const inboxStore = useInboxStore()
 
-  /** NEIGHBORHOOD/CONDO テンプレートかつ DEPUTY_ADMIN 以上のチームが1つでもあれば表示 */
+  /** 通常業務UIはSYSへ表示せず、対象テンプレートのADMIN/DEPUTYだけ表示する。 */
   const showProxyDeskNav = computed(() =>
-    teamStore.myTeams.some(
+    !authStore.isSystemAdmin && teamStore.myTeams.some(
       team =>
         (team.template === 'NEIGHBORHOOD' || team.template === 'CONDO')
-        && (team.role === 'ADMIN' || team.role === 'SYSTEM_ADMIN' || team.role === 'DEPUTY_ADMIN'),
+        && (team.role === 'ADMIN' || team.role === 'DEPUTY_ADMIN'),
     ),
   )
 

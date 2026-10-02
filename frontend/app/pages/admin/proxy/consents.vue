@@ -19,10 +19,19 @@ const reloadFailed = ref(false)
 const success = ref(false)
 const busy = ref(false)
 const revokeTarget = ref<ProxyInputConsent | null>(null)
+const approveTarget = ref<ProxyInputConsent | null>(null)
 const witness = ref<MemberResponse | null>(null)
 const reason = ref('')
 const paper = ref(true)
 let request = 0
+function scopeLabel(value: string) {
+  const keys: Record<string, string> = {
+    SURVEY: 'survey', SCHEDULE_ATTENDANCE: 'schedule_attendance', SHIFT_REQUEST: 'shift_request',
+    ANNOUNCEMENT_READ: 'announcement_read', PARKING_APPLICATION: 'parking_application',
+    CIRCULAR: 'circular', SUPPORTER_VIEW: 'supporter_view', PAYMENT: 'payment',
+  }
+  return keys[value] ? t(`proxy.scope.${keys[value]}`) : value
+}
 
 async function load() {
   const org = scope.organization.value
@@ -63,6 +72,7 @@ async function mutate(action: () => Promise<unknown>) {
     await action()
     if (scope.organization.value?.id !== organizationId || !scope.allowed.value) return
     success.value = true
+    approveTarget.value = null
     revokeTarget.value = null
     reloadFailed.value = !(await load())
   }
@@ -82,6 +92,12 @@ function openRevoke(consent: ProxyInputConsent) {
   mutationFailed.value = false
 }
 
+function approve() {
+  const target = approveTarget.value
+  if (!target || !canApprove(target)) return
+  void mutate(() => api.approveConsent(target.id))
+}
+
 function revoke() {
   const target = revokeTarget.value
   if (!target || reason.value.length > 255 || (paper.value && !witness.value)) return
@@ -94,6 +110,7 @@ function revoke() {
 
 watch(() => [scope.organization.value?.id, scope.allowed.value], () => {
   revokeTarget.value = null
+  approveTarget.value = null
   success.value = false
   mutationFailed.value = false
   reloadFailed.value = false
@@ -143,10 +160,10 @@ watch(page, () => { void load() })
             <div><dt>{{ t('proxy.revoke.reason') }}</dt><dd>{{ consent.revokeReason || '—' }}</dd></div>
             <div><dt>{{ t('proxy.management.witness') }}</dt><dd>{{ consent.revokeWitnessedByUserId == null ? '—' : `#${consent.revokeWitnessedByUserId}` }}</dd></div>
             <div><dt>{{ t('proxy.management.revokeMethod') }}</dt><dd>{{ consent.revokeMethod ? t(`proxy.management.methods.${consent.revokeMethod}`, consent.revokeMethod) : '—' }}</dd></div>
-            <div><dt>{{ t('proxy.consent.scopes') }}</dt><dd>{{ consent.scopes.join(', ') }}</dd></div>
+            <div><dt>{{ t('proxy.consent.scopes') }}</dt><dd>{{ consent.scopes.map(scopeLabel).join(', ') }}</dd></div>
           </dl>
           <div class="flex flex-wrap gap-2">
-            <Button v-if="canApprove(consent)" :label="t('proxy.management.approve')" class="min-h-11" :disabled="busy" @click="mutate(() => api.approveConsent(consent.id))" />
+            <Button v-if="canApprove(consent)" :label="t('proxy.management.approve')" class="min-h-11" :disabled="busy" @click="approveTarget = consent; mutationFailed = false" />
             <Button v-if="consent.status !== 'REVOKED'" :label="t('proxy.revoke.title')" severity="danger" outlined class="min-h-11" :disabled="busy" @click="openRevoke(consent)" />
           </div>
         </article>
@@ -157,7 +174,18 @@ watch(page, () => { void load() })
         <Button :label="t('proxy.management.next')" outlined class="min-h-11" :disabled="page + 1 >= meta.totalPages || loading || busy" @click="page++" />
       </div>
     </template>
-    <Dialog :visible="!!revokeTarget" modal :header="t('proxy.revoke.title')" class="mx-3 w-full max-w-lg" :closable="!busy" @update:visible="value => { if (!value) revokeTarget = null }">
+    <Dialog :visible="!!approveTarget" modal :header="t('proxy.management.approve')" class="mx-3 w-full max-w-lg" :closable="!busy" @update:visible="value => { if (!value && !busy) approveTarget = null }">
+      <div class="space-y-4">
+        <p>{{ t('proxy.management.approveConfirm') }}</p>
+        <p v-if="approveTarget">{{ t('proxy.consent.title') }} #{{ approveTarget.id }}</p>
+        <p v-if="mutationFailed" role="alert" class="text-red-700">{{ t('proxy.management.mutationFailed') }}</p>
+        <div class="flex flex-wrap gap-2">
+          <Button :label="t('proxy.management.cancel')" outlined class="min-h-11" :disabled="busy" @click="approveTarget = null" />
+          <Button :label="t('proxy.management.approve')" class="min-h-11" :loading="busy" :disabled="busy" @click="approve" />
+        </div>
+      </div>
+    </Dialog>
+    <Dialog :visible="!!revokeTarget" modal :header="t('proxy.revoke.title')" class="mx-3 w-full max-w-lg" :closable="!busy" @update:visible="value => { if (!value && !busy) revokeTarget = null }">
       <div v-if="revokeTarget && scope.organization.value" class="space-y-4">
         <p>{{ t('proxy.revoke.confirm') }}</p>
         <label v-if="revokeTarget.subjectUserId === auth.user?.id" class="flex items-center gap-2">

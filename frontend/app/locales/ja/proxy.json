@@ -265,8 +265,11 @@
       },
       "methods": {
         "API_BY_SUBJECT": "本人オンライン申請",
-        "PAPER_BY_SUBJECT": "紙面申請"
-      }
+        "PAPER_BY_SUBJECT": "紙面申請",
+        "AUTO_BY_LIFE_EVENT": "ライフイベント（転居等）",
+        "AUTO_BY_TENURE_END": "任期満了"
+      },
+      "approveConfirm": "この同意書を承認しますか？"
     }
   }
 }

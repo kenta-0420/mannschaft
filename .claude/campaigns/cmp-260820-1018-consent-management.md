@@ -96,3 +96,11 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - API契約unit初回はNuxt beforeAll timeoutで5skip、実テスト未実行。既存useTodoApi.bulk-statusのNode環境金型へ修正後、actual5/0fail/0error/0skip、JUnitはWindows自所有ignored artifactsのfe-api1へ保全（SHA256 34bcd7e05a3131a3d4a6c5f07de55861590bfaa7778c361a78e689c29c7d2e95）。変更9FE files ESLint exit0。全体typecheckは既定4GB heapでOOM exit134、processだけ8GBとして再測定中。未達を成功にしない。
 - d189ソースのbootJar exit0/30秒、immutable artifact 217548260 bytes、SHA256 1952cc96ac37701cac3da69ac1337966318b69704ce1c275abac7298f5b3f51a。persistent evidence-jar1とWindows jar1へ二重保全、hash一致。新8081はまだ未起動、旧runtimeのpublic config条件を読み取り確認中。
 - 空/error/retry・null・mutation失敗/成功後reload失敗・6言語390px・権限別導線/直URL・実操作から履歴観測・独立探索3視点は、初期実装だけでは合格とせず後段実機へ残す。CMP1017は今回完了扱いしない。
+
+## 2026-10-03 FE検分補正と実機前提
+
+- 初期FE checkpoint bd46604c07。殿の初期検分から、承認前確認Dialog・取消（PATCHなし）を追加し、既存scope/inputSource/自動撤回の翻訳ラベルを再用。取消PATCHなしの実機証拠は未取得。F14.1§443/502の機械翻訳禁止を再照合し、新規ラベルは管理操作/エラー/ページングの運用UIだけで、法務同意本文・PDF・紙ガイド・既存承認翻訳は変更しない。
+- 通常代理デスクのSYS非表示を既存useAppNavGroupsへ限定修正。追加3境界の実REDは16 tests/3 failures/0 errors/0 skipped（SYS＋scope ADMIN/DEPUTY/SYSTEMの3variant）。authStore.isSystemAdminで通常deskを除外しSYSTEM導線を維持後、16/0/0/0のGREEN。raw XMLはignored artifacts/fe-api1/nav-red2.xml・nav-green.xml。最初のNode環境試行は依存chatモジュールのdocument未定義でsuite実行前に失敗し、契約REDに数えない。既存Pinia実store金型を保持してhappy-domで実測した。
+- process限定8GBの全体typecheckはexit2、組合管理hubのnumericId optionalとname shapeの2診断のみ。numericIdを検証し、basicInfo.nameへ修正した。修正後再測定はWindows空きRAMが安全閾値未満のためpreflight exit3/実行未開始が続き、型チェックGREENは未達。既存proxy-desk E2Eのmockも実organizationId/status/撤回監査項目へ同期したが、回帰実行は後段に残す。
+- immutable d189 jarをown8081（PID90673/cwd・jarSHA一致、事前listenerなし、旧local profile/private設定読み取り/CORS同条件）で起動し、Started/health200/schema up-to-dateを観測。ただしprivate application-local.ymlがvalidate-on-migrate=falseだったので、Flyway validation成功とは扱わない。自所有PIDだけTERMし停止を確認、実機には未使用。共有YAMLやDBrepair・他PIDは無変更。次起動は殿の確認に従いprocess限定validate-on-migrate=trueで検証する。
+- 住民配役案は既存アリシゼーションの2軸を使う。一般×素直（ADMINの同意承認/紙撤回と履歴確認）、スマホ片手×表示崩れ（390/360、長い翻訳/理由/立会選択）、一般×隙間狙い（他組合/非管理/自己承認/SYS業務UI）。殿が実機GREEN後に別context/1loginずつ起動し、目的のみで探索する。personaId/journeyIdの既存正本との対応は殿確認前に捏造しない。

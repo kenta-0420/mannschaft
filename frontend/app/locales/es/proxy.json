@@ -265,8 +265,11 @@
       },
       "methods": {
         "API_BY_SUBJECT": "Solicitud en línea por el titular",
-        "PAPER_BY_SUBJECT": "Solicitud en papel"
-      }
+        "PAPER_BY_SUBJECT": "Solicitud en papel",
+        "AUTO_BY_LIFE_EVENT": "Evento vital (mudanza, etc.)",
+        "AUTO_BY_TENURE_END": "Fin del mandato"
+      },
+      "approveConfirm": "¿Aprobar este consentimiento?"
     }
   }
 }
