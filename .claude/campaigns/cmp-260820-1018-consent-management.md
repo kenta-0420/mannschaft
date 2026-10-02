@@ -110,3 +110,11 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - 機能ゲートは新しい管理2経路を含め17 tests/0 failures/0 errors/0 skipped。標準prefix末尾の重複slashを避け、実測の静的47/動的47にコメントと試験を同期した。raw XMLはignored artifacts/fe-api1/gates-green.xml。
 - 型チェック再測定session56399はprocess限定8192MiBでexit0、診断0件、OOMなし。stdio SHA256は2e27bf779c471c2b52c95971b8bf2684f4c6aeec70ff9cfaa411510b32a890ac。typecheck-1790965167653に終端証拠を保全した。Nuxt試験が更新した自所有.nuxtrcメタデータは正本へ復元し、依存変更に含めない。
 - useProxyManagementScopeの認証主体切替も再取得対象へ追加。今回差分3ファイルのESLintとgit diff --checkはexit0。実機・取消PATCH0・途中失敗・既存Desk実行と3住民は未達のまま。
+
+## 実機前提のNOT NULL FK契約
+
+- own8081 runtime2はprocess限定validate-on-migrate=trueでFlyway検証成功、Started/health200を観測した。固定jar/cwd/PID4692を確認して起動し、実機診断context終了後、FK契約へ移行するため自所有PIDだけTERMした。停止補助のreasonがruntime1から継承されたため、原記録を残してstop-reason-correction.jsonで今回の理由を訂正した。
+- 標準APIで専用組合498（cmp1018-murbbq6u）を作成し、ADMIN23/DEPUTY90156/MEMBER90245/SYS24＋当該ADMINの前提を準備。グローバルSYS資格・共有DB構造・既存組合を変更していない。同意登録POSTは500になったが、readonly一覧200/0件でrollbackを確認し、同じ登録を再送していない。
+- V18.011のproxy_input_consent_scopes.proxy_input_consent_idはNOT NULLだが、既存@OneToManyの@JoinColumnはnullable未指定。先行するFKなしchild INSERTがSQL1364/HY000で失敗する。正本DDLとFK名は一致しておりschema driftではない。専用MySQLだけにNOT NULL制約を再現し標準HTTP登録を検証する契約を追加、finallyで元nullableと自所有fixtureを復元する。
+- 本体未変更の実REDは1 test/1 failure/0 errors/0 skipped、Gradle exit1（294秒、gate正常解放）。XML SHA256 77b3dd1b33f162b709a04ef4df96ae91b4ccbe6cf40b5d3a3c2c69742fd9e590、test source SHA256 f3992ce3c0b01686d1da0f38a2bf62b578d77fa0d006328fb937bdf0e55d57ce。persistent mirrorとWindows ignored artifacts/scope-fk-red1へbefore/after XML/header/hash/stdioを二重保存した。共有DBへのDDL/repairは実施していない。
+- 実機UI1は4 tests/0 failures/1 error/3 skipped、管理ハブdocument180秒timeoutで未到達。GET-onlyで同URL200/1850msを確認後UI2を1回測定したが、goto/hydrationのreloadに201秒を要しheading待機で全体300秒timeout、後続は未実施。controlled診断1件は資格API200/ADMINを確認し終了したが、保存した実画像はLoadingBounceのままで管理ハブ未到達。公開apiBaseはlocalhost8081で一致している。診断成功を受入れGREENに数えず、実機4API操作・空/資格表示・3住民は未達を維持する。
