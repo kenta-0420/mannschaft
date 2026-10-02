@@ -69,9 +69,13 @@ jobs:
 
       # 依存関係の既知脆弱性スキャン（OWASP A06）。
       # 設計書 docs/security/04_dependency_and_supply_chain.md §4/§6 に基づく。
-      # high レベルの脆弱性が 0 件のためブロッキング化（2026-06-02）。
+      # 承認済みの GHSA 単独・既知経路限定例外（2026-10-16 UTC 当日まで）。
+      # 他の high/critical・取得失敗・不正レポートは引き続き停止する。
+      - name: npm audit 除外条件の必須試験
+        run: node --test scripts/audit-with-exemption.test.mjs
+
       - name: npm audit (依存脆弱性スキャン)
-        run: npm audit --audit-level=high
+        run: node scripts/audit-with-exemption.mjs
 
       - name: Generate OpenAPI types
         run: npm run generate:types
