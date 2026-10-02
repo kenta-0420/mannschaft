@@ -34,7 +34,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -57,6 +59,7 @@ public class AccountPurgeService {
 
     private final UserRepository userRepository;
     private final PurgeStartGuard purgeStartGuard;
+    private final PlatformTransactionManager transactionManager;
     private final DataExportRepository dataExportRepository;
     private final StorageService storageService;
 
@@ -88,13 +91,18 @@ public class AccountPurgeService {
 
         int successCount = 0;
         int failedCount = 0;
+        int skippedCount = 0;
 
         for (UserEntity user : targets) {
             try {
                 if (dryRun) {
                     log.info("[DRY-RUN] userId={}: 削除対象", user.getId());
                 } else {
-                    purgeUser(user);
+                    if (!purgeUser(user.getId(), cutoff)) {
+                        log.info("最新の退会状態が削除対象外のためスキップ: userId={}", user.getId());
+                        skippedCount++;
+                        continue;
+                    }
                     log.info("ユーザー物理削除完了: userId={}", user.getId());
                 }
                 successCount++;
@@ -104,17 +112,33 @@ public class AccountPurgeService {
             }
         }
 
-        log.info("物理削除バッチ完了{}: 対象={}件, 成功={}件, 失敗={}件",
-                dryRun ? "（DRY-RUN）" : "", targets.size(), successCount, failedCount);
+        log.info("物理削除バッチ完了{}: 対象={}件, 成功={}件, 失敗={}件, スキップ={}件",
+                dryRun ? "（DRY-RUN）" : "", targets.size(), successCount, failedCount, skippedCount);
     }
 
-    @Transactional
-    void purgeUser(UserEntity user) {
-        Long userId = user.getId();
+    boolean purgeUser(Long userId, LocalDateTime cutoff) {
+        // 本体 TX で users をロックする前に、開始マークだけを独立コミットする。
+        if (!purgeStartGuard.markPurgeStartedIfEligible(userId, cutoff)) {
+            return false;
+        }
 
-        // 柱①ADMINゼロ根治 §12.5: purge開始マークを先に独立コミットする（AC11）。
-        // これにより本メソッドの以降の処理が失敗しても cancel-withdrawal は確実に止まる。
-        purgeStartGuard.markPurgeStarted(userId);
+        // scheduled メソッドからの自己呼び出しにも実 TX を設ける。共有 Template は変更しない。
+        TransactionTemplate purgeTransaction = new TransactionTemplate(transactionManager);
+        purgeTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return Boolean.TRUE.equals(purgeTransaction.execute(status -> {
+            // detached の旧候補を merge せず、論理削除行を本体 TX 内で managed として取得する。
+            UserEntity user = userRepository.findByIdForUpdateIncludingDeleted(userId).orElse(null);
+            if (user == null || user.getId() == 0L || user.getDeletedAt() == null
+                    || !user.getDeletedAt().isBefore(cutoff) || user.getPurgedAt() != null) {
+                return false;
+            }
+            purgeUserInTransaction(user);
+            return true;
+        }));
+    }
+
+    private void purgeUserInTransaction(UserEntity user) {
+        Long userId = user.getId();
 
         // Phase 1: トークン・セッション系の削除
         refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId)
