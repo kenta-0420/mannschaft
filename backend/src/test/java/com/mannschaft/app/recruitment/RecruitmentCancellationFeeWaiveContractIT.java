@@ -176,15 +176,20 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
             assertThat(waived.getNotes()).isEqualTo("主催者都合のため免除");
         }
 
-        /** AC-27(否定)/AC-20: 無関係な TEAM の ADMIN は免除できない（テナント越境の遮断）。 */
+        /**
+         * AC-27(否定)/AC-20: 無関係な TEAM の ADMIN は免除できない（テナント越境の遮断）。
+         *
+         * <p>CMP-260923-0954 W4: 記録の存在を知り得ない越境者には、不在と同一の 404 COMMON_005 を返す
+         * （是正前は 403 COMMON_002 で、実在が判別できた）。</p>
+         */
         @Test
-        @DisplayName("AC-27(否定): 無関係な TEAM の ADMIN は 403 で、記録は書き換わらない")
+        @DisplayName("AC-27(否定)/W4: 無関係な TEAM の ADMIN は不在と同一の 404 で、記録は書き換わらない")
         void ac27_無関係TEAMのADMINは拒否される() throws Exception {
             setAuth(otherAdminBId);
             waive(teamPayeeRecordId, "他団体の債権を消したい")
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(com.mannschaft.app.common.CommonErrorCode.COMMON_002.getCode()));
+                            .value(com.mannschaft.app.common.CommonErrorCode.COMMON_005.getCode()));
 
             assertUnchanged(teamPayeeRecordId, CancellationPaymentStatus.PENDING);
         }
@@ -219,10 +224,10 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
 
         /** AC-28(否定): 受取先が個人のとき、他人は免除できない。 */
         @Test
-        @DisplayName("AC-28(否定): 受取先が個人のとき、他人は 403")
+        @DisplayName("AC-28(否定)/W4: 受取先が個人のとき、存在を知り得ない他人は不在と同一の 404")
         void ac28_個人受取の他人は拒否される() throws Exception {
             setAuth(otherAdminBId);
-            waive(userPayeeRecordId, "他人の債権を消したい").andExpect(status().isForbidden());
+            waive(userPayeeRecordId, "他人の債権を消したい").andExpect(status().isNotFound());
 
             assertUnchanged(userPayeeRecordId, CancellationPaymentStatus.PENDING);
         }
@@ -254,10 +259,10 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
 
         /** AC-19: 何の権限も持たない一般ユーザーは免除できない（IDOR）。 */
         @Test
-        @DisplayName("AC-19: 何の権限も持たない一般ユーザーは 403")
+        @DisplayName("AC-19/W4: 何の権限も持たない一般ユーザーは不在と同一の 404")
         void ac19_部外者は拒否される() throws Exception {
             setAuth(outsiderId);
-            waive(teamPayeeRecordId, "無関係だが消したい").andExpect(status().isForbidden());
+            waive(teamPayeeRecordId, "無関係だが消したい").andExpect(status().isNotFound());
 
             assertUnchanged(teamPayeeRecordId, CancellationPaymentStatus.PENDING);
         }
