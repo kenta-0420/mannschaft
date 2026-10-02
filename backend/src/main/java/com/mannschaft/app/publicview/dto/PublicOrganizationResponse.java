@@ -21,6 +21,14 @@ import java.time.LocalDate;
  * </ul>
  *
  * <p>{@code philosophy} は {@code profile_visibility.philosophy = true} の場合のみ含める。</p>
+ *
+ * <p>{@code timelinePostsPublic} / {@code publicEventsEnabled} は、組織の公開設定（タイムライン投稿・
+ * イベントを未ログインに公開するか）。公開ページはこれが真のときだけ該当タブを出し、子 API を呼ぶ。
+ * 公開してよい旨の意思表示そのものであり、内部状態ではない。</p>
+ *
+ * <p>{@code acceptingTeamApplications} は、チームからの加盟申請を受け付けているか（F01.2.1 §10.3・M3）。
+ * 公開ページの「チームとして加盟を申請」ボタンの出し分けに使う。この DTO は公開（PUBLIC）の組織にしか
+ * 返らないため、受付 off・非公開の組織について新たな存在オラクルは生まれない。</p>
  */
 public record PublicOrganizationResponse(
         Long id,
@@ -37,7 +45,10 @@ public record PublicOrganizationResponse(
         LocalDate establishedDate,
         String establishedDatePrecision,
         String philosophy,
-        String mapEmbedUrl
+        String mapEmbedUrl,
+        boolean timelinePostsPublic,
+        boolean publicEventsEnabled,
+        boolean acceptingTeamApplications
 ) {
 
     /**
@@ -47,7 +58,8 @@ public record PublicOrganizationResponse(
      * それ以外では {@code null} を設定する。Phase 1 では {@code profileVisibility} の
      * 詳細解析は呼び出し側 Service の責務とし、本メソッドは entity 値を素直にコピーする。</p>
      */
-    public static PublicOrganizationResponse from(OrganizationEntity entity, boolean philosophyVisible) {
+    public static PublicOrganizationResponse from(OrganizationEntity entity, boolean philosophyVisible,
+            boolean timelinePostsPublic, boolean publicEventsEnabled, boolean acceptingTeamApplications) {
         return new PublicOrganizationResponse(
                 entity.getId(),
                 entity.getName(),
@@ -65,7 +77,10 @@ public record PublicOrganizationResponse(
                         ? entity.getEstablishedDatePrecision().name()
                         : null,
                 philosophyVisible ? entity.getPhilosophy() : null,
-                entity.getMapEmbedUrl()
+                entity.getMapEmbedUrl(),
+                timelinePostsPublic,
+                publicEventsEnabled,
+                acceptingTeamApplications
         );
     }
 }

@@ -1078,16 +1078,22 @@ public class ScheduleService {
     /**
      * チームの所属組織 ID（テナントキー）を解決する。
      *
-     * <p>team→org は {@code team_org_memberships}（status=ACTIVE）で管理されるため
-     * {@link TeamOrgMembershipRepository#findOrganizationIdByTeamIdIn} で解決する。</p>
+     * <p>チームは複数の親組織に同時加盟し得る（F01.2.1）。予約タスクのテナントキーはチームの予定に付くもので、
+     * どの親組織でも意味が変わらないため呼び出し側に明示を求めず、§9.3 の代表親組織
+     * （最初に成立した ACTIVE 加盟。同時刻なら organization_id 最小）を決定的に採る。
+     * 規則は {@code TeamOrgMembershipQueryService#findPrimaryParentOrganizationId} と同一
+     * （{@code COALESCE(responded_at, created_at)} 昇順 → organization_id 昇順）。本クラスは
+     * {@code @Transactional} のため、他ドメインの Service を呼ばず Repository の順序付き取得で解決する
+     * （CrossDomainTransactionalArchTest の凍結ストアに新たな違反を足さない）。</p>
      *
      * @param teamId チーム ID
-     * @return 所属組織 ID（見つからない場合 null）
+     * @return 代表親組織 ID（ACTIVE な加盟が無い場合 null）
      */
     private Long resolveOrganizationIdForTeam(Long teamId) {
-        return teamOrgMembershipRepository
-                .findOrganizationIdByTeamIdIn(java.util.Set.of(teamId))
+        List<Long> orgIds = teamOrgMembershipRepository
+                .findOrganizationIdsInPrimaryOrderByTeamIdIn(java.util.Set.of(teamId))
                 .get(teamId);
+        return orgIds == null || orgIds.isEmpty() ? null : orgIds.get(0);
     }
 
     /**

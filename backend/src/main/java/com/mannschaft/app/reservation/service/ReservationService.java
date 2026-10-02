@@ -1,9 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.ApprovalMode;
@@ -77,7 +75,6 @@ public class ReservationService {
     private final ReservationMapper reservationMapper;
     private final NameResolverService nameResolverService;
     private final ApplicationEventPublisher eventPublisher;
-    private final AccessControlService accessControlService;
     /** 予約閲覧の view ゲート（会員 or 公開）。機能C グリッドと同一述語を共有する（§4.C）。 */
     private final ReservationViewAccessGuard viewAccessGuard;
     private final ReservationPolicyService reservationPolicyService;
@@ -121,28 +118,36 @@ public class ReservationService {
     }
 
     /**
-     * 予約詳細を取得する。
+     * 予約詳細の認可に必要な所有者（予約の本人）の ID を解決する（読み取り専用）。
      *
-     * <p><strong>認可（F03.4 認可漏れ根治）:</strong> 管理者・副管理者（ADMIN + DEPUTY_ADMIN／SYSTEM_ADMIN）
-     * <em>または</em> 予約の本人（所有者）のみ閲覧可能。それ以外（同一チームの一般会員が他人の予約を覗く等）は
-     * {@link ReservationErrorCode#RESERVATION_PERMISSION_DENIED}（HTTP 403）を投げる。</p>
+     * <p>認可（{@link ReservationDetailFacade}）が本人判定に使う。不在・他チームの予約・論理削除済みは
+     * {@link ReservationErrorCode#RESERVATION_NOT_FOUND} を投げる（{@link #getReservation} と同一コード）。
+     * 予約の {@code teamId}・{@code userId} は不変という前提で、認可後の {@link #getReservation} は
+     * 別トランザクションで読み直す。</p>
      *
-     * <p>この所有権ゲートは public な read 入口（本メソッド）に置く。共有 private mapper に置くと
-     * バッチ/リスナー（SecurityContext 無し）を巻き添えにするため。</p>
+     * @param teamId        チームID
+     * @param reservationId 予約ID
+     * @return 予約の本人（所有者）のユーザーID
+     */
+    public Long resolveOwnerUserId(Long teamId, Long reservationId) {
+        return findReservationOrThrow(teamId, reservationId).getUserId();
+    }
+
+    /**
+     * 予約詳細を取得する（認可なし・{@link ReservationDetailFacade} 経由で呼ぶこと）。
+     *
+     * <p><strong>認可（F03.4 認可漏れ根治）:</strong> 閲覧可能なのは当該チームの ADMIN・DEPUTY_ADMIN
+     * <em>または</em> 予約の本人（所有者）のみ。スコープ管理者でない SYSTEM_ADMIN は閲覧不可（403）。
+     * この判定は D-3T（トランザクション内からの越境到達の禁止）のため、トランザクションの外にある
+     * {@link ReservationDetailFacade} が行う。本メソッドは認可の後に呼ばれ、対象を読み直す
+     * （認可の後に論理削除された場合は {@link ReservationErrorCode#RESERVATION_NOT_FOUND}）。</p>
      *
      * @param teamId        チームID
      * @param reservationId 予約ID
      * @return 予約レスポンス
      */
     public ReservationResponse getReservation(Long teamId, Long reservationId) {
-        ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, teamId, "TEAM");
-        boolean isOwner = currentUserId.equals(entity.getUserId());
-        if (!isAdmin && !isOwner) {
-            throw new BusinessException(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
-        }
-        return enrich(entity);
+        return enrich(findReservationOrThrow(teamId, reservationId));
     }
 
     /**

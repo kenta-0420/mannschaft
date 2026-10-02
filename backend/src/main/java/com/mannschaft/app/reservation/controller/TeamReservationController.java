@@ -11,6 +11,7 @@ import com.mannschaft.app.reservation.dto.RescheduleRequest;
 import com.mannschaft.app.reservation.dto.ReservationResponse;
 import com.mannschaft.app.reservation.dto.ReservationStatsResponse;
 import com.mannschaft.app.reservation.ReservationConfirmScope;
+import com.mannschaft.app.reservation.service.ReservationDetailFacade;
 import com.mannschaft.app.reservation.service.ReservationRecurringService;
 import com.mannschaft.app.reservation.service.ReservationReminderService;
 import com.mannschaft.app.reservation.service.ReservationService;
@@ -45,6 +46,8 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TeamReservationController {
 
     private final ReservationService reservationService;
+    /** 予約詳細の閲覧認可（トランザクション外・D-3T 是正）。 */
+    private final ReservationDetailFacade detailFacade;
     private final ReservationReminderService reminderService;
     /** F03.4.5 §6.2 W2-5: 定期予約（毎週繰り返し）のオーケストレーター（非トランザクション）。 */
     private final ReservationRecurringService recurringService;
@@ -77,7 +80,7 @@ public class TeamReservationController {
     public ResponseEntity<ApiResponse<ReservationResponse>> getReservation(
             @PathVariable Long teamId,
             @PathVariable Long reservationId) {
-        ReservationResponse response = reservationService.getReservation(teamId, reservationId);
+        ReservationResponse response = detailFacade.getReservation(teamId, reservationId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

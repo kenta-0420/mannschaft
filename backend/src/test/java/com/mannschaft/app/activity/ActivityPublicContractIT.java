@@ -45,8 +45,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>{@code GET /api/v1/public/activities/{id}}（ID 直引き）</li>
  *   <li>{@code GET /api/v1/public/teams/{teamId}/activities}（チーム一覧）</li>
  *   <li>{@code GET /api/v1/public/teams/{teamId}/activities/{id}}（チーム詳細）</li>
- *   <li>{@code GET /api/v1/public/organizations/{orgId}/activities}（組織一覧）</li>
- *   <li>{@code GET /api/v1/public/organizations/{orgId}/activities/{id}}（組織詳細）</li>
+ *   <li>{@code GET /api/v1/public/organizations/{slug}/activities}（組織一覧）</li>
+ *   <li>{@code GET /api/v1/public/organizations/{slug}/activities/{id}}（組織詳細）</li>
  * </ol>
  *
  * <p><b>本テストは実装前に書かれた red テストである。</b> 現状の実装には以下の欠陥があり、
@@ -122,8 +122,8 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     private static final String PUBLIC_ACTIVITY_BY_ID = "/api/v1/public/activities/{id}";
     private static final String TEAM_ACTIVITY_LIST = "/api/v1/public/teams/{teamId}/activities";
     private static final String TEAM_ACTIVITY_DETAIL = "/api/v1/public/teams/{teamId}/activities/{id}";
-    private static final String ORG_ACTIVITY_LIST = "/api/v1/public/organizations/{orgId}/activities";
-    private static final String ORG_ACTIVITY_DETAIL = "/api/v1/public/organizations/{orgId}/activities/{id}";
+    private static final String ORG_ACTIVITY_LIST = "/api/v1/public/organizations/{slug}/activities";
+    private static final String ORG_ACTIVITY_DETAIL = "/api/v1/public/organizations/{slug}/activities/{id}";
 
     /** 記録に埋め込む「漏れてはいけない値」。生値がレスポンスに出ていないかの二重確認に使う。 */
     private static final String SECRET_LOCATION = "秘匿すべき開催場所（漏洩したら失格）";
@@ -326,7 +326,7 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
                 getData(TEAM_ACTIVITY_DETAIL, publicTeamId, publishedPublicActivityId),
                 "チーム詳細");
         assertWhitelistedKeys(
-                getData(ORG_ACTIVITY_DETAIL, publicOrgId, orgPublicActivityId),
+                getData(ORG_ACTIVITY_DETAIL, orgSlug(publicOrgId), orgPublicActivityId),
                 "組織詳細");
     }
 
@@ -344,7 +344,7 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
             assertWhitelistedKeys(item, "チーム一覧要素");
         }
 
-        JsonNode orgList = getData(ORG_ACTIVITY_LIST, publicOrgId);
+        JsonNode orgList = getData(ORG_ACTIVITY_LIST, orgSlug(publicOrgId));
         assertThat(orgList.isArray()).as("組織一覧は配列であること").isTrue();
         assertThat(orgList.size()).as("組織一覧に公開記録が 1 件以上あること").isPositive();
         for (JsonNode item : orgList) {
@@ -488,8 +488,8 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("(AC-14) 親組織が非PUBLICなら配下のPUBLIC記録も404（一覧も404）")
     void ac14_親組織が非PUBLICなら404() throws Exception {
         expectNotFound(PUBLIC_ACTIVITY_BY_ID, activityUnderPrivateOrgId);
-        expectNotFound(ORG_ACTIVITY_DETAIL, privateOrgId, activityUnderPrivateOrgId);
-        expectNotFound(ORG_ACTIVITY_LIST, privateOrgId);
+        expectNotFound(ORG_ACTIVITY_DETAIL, orgSlug(privateOrgId), activityUnderPrivateOrgId);
+        expectNotFound(ORG_ACTIVITY_LIST, orgSlug(privateOrgId));
     }
 
     /**
@@ -522,12 +522,12 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("(AC-15) 親組織がarchived・停止なら404（一覧も404）")
     void ac15_親組織がarchivedまたは停止なら404() throws Exception {
         expectNotFound(PUBLIC_ACTIVITY_BY_ID, activityUnderArchivedOrgId);
-        expectNotFound(ORG_ACTIVITY_DETAIL, archivedOrgId, activityUnderArchivedOrgId);
-        expectNotFound(ORG_ACTIVITY_LIST, archivedOrgId);
+        expectNotFound(ORG_ACTIVITY_DETAIL, orgSlug(archivedOrgId), activityUnderArchivedOrgId);
+        expectNotFound(ORG_ACTIVITY_LIST, orgSlug(archivedOrgId));
 
         expectNotFound(PUBLIC_ACTIVITY_BY_ID, activityUnderSuspendedOrgId);
-        expectNotFound(ORG_ACTIVITY_DETAIL, suspendedOrgId, activityUnderSuspendedOrgId);
-        expectNotFound(ORG_ACTIVITY_LIST, suspendedOrgId);
+        expectNotFound(ORG_ACTIVITY_DETAIL, orgSlug(suspendedOrgId), activityUnderSuspendedOrgId);
+        expectNotFound(ORG_ACTIVITY_LIST, orgSlug(suspendedOrgId));
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -545,7 +545,7 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("(AC-16) TEAMスコープの記録を組織パスから取得しようとすると404（スコープ詐称拒否）")
     void ac16_TEAMスコープ記録を組織パスから取得できない() throws Exception {
         // 実在する PUBLIC 組織の ID を使ってもなお 404（scopeType 不一致）。
-        expectNotFound(ORG_ACTIVITY_DETAIL, publicOrgId, publishedPublicActivityId);
+        expectNotFound(ORG_ACTIVITY_DETAIL, orgSlug(publicOrgId), publishedPublicActivityId);
         // 逆方向（ORGANIZATION スコープの記録をチームパスから）も同様に 404。
         expectNotFound(TEAM_ACTIVITY_DETAIL, publicTeamId, orgPublicActivityId);
     }
@@ -1083,7 +1083,7 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
 
         // チーム / 組織パスからの取得もスコープ不一致で 404（scopeId が一致していても scopeType で落ちる）
         expectNotFound(TEAM_ACTIVITY_DETAIL, publicTeamId, committeeActivityId);
-        expectNotFound(ORG_ACTIVITY_DETAIL, publicOrgId, committeeActivityId);
+        expectNotFound(ORG_ACTIVITY_DETAIL, orgSlug(publicOrgId), committeeActivityId);
 
         // 一覧にも現れない（TEAM 一覧は scopeType=TEAM で絞るため）
         assertThat(idsOf(getData(TEAM_ACTIVITY_LIST, publicTeamId)))
@@ -1284,7 +1284,7 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
         assertSameBodyAnonymousAndAuthenticated(
                 "チーム一覧", TEAM_ACTIVITY_LIST, publicTeamId);
         assertSameBodyAnonymousAndAuthenticated(
-                "組織詳細", ORG_ACTIVITY_DETAIL, publicOrgId, orgPublicActivityId);
+                "組織詳細", ORG_ACTIVITY_DETAIL, orgSlug(publicOrgId), orgPublicActivityId);
         // 非公開のもの（404）も、匿名と認証済みでステータス・ボディともに一致すること
         assertSameBodyAnonymousAndAuthenticated(
                 "MEMBERS_ONLY の 404", TEAM_ACTIVITY_DETAIL, publicTeamId, membersOnlyActivityId);
@@ -1494,6 +1494,12 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
      * （{@code OrganizationRepository} §11.6 が「非アクティブ = {@code deleted_at IS NOT NULL}」と
      * 明記。将来 SUSPENDED 列が追加されたらここも追随する）。</p>
      */
+    /** 組織の公開 API は slug で引く（F01.2.1 AC-A13）。fixture の ID から slug を得る。 */
+    private String orgSlug(Long orgId) {
+        return (String) em.createNativeQuery("SELECT slug FROM organizations WHERE id = :id")
+                .setParameter("id", orgId)
+                .getSingleResult();
+    }
     private Long insertOrganization(String name, String slug, String visibility,
                                     boolean archived, boolean deleted) {
         em.createNativeQuery(

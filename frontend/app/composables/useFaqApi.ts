@@ -54,8 +54,8 @@ export function useFaqApi() {
   }
 
   /** 組織の公開 FAQ 一覧を取得する（認証不要）。 */
-  async function fetchPublicOrgFaqs(orgId: string): Promise<PublicFaqItem[]> {
-    return api<PublicFaqItem[]>(`/api/v1/public/organizations/${orgId}/faqs`)
+  async function fetchPublicOrgFaqs(orgSlug: string): Promise<PublicFaqItem[]> {
+    return api<PublicFaqItem[]>(`/api/v1/public/organizations/${encodeURIComponent(orgSlug)}/faqs`)
   }
 
   return {

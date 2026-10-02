@@ -98,6 +98,8 @@ public class PublicDiscoverController {
      *
      * @param keyword    組織名・読み仮名の部分一致キーワード（省略可）
      * @param prefecture 都道府県名の完全一致絞り込み（省略可）
+     * @param acceptingTeamApplications true なら、チームからの加盟申請を受け付けている組織だけに絞る
+     *                                  （F01.2.1 §10.1。省略・false は絞り込みなし）
      * @param pageable   ページング情報（デフォルト: size=20, sort=name ASC）
      * @return PUBLIC 組織の検索結果ページ
      */
@@ -106,13 +108,16 @@ public class PublicDiscoverController {
             summary = "公開組織検索",
             description = "未ログインでも実行可能。keyword / prefecture でフィルタリングし、"
                     + "最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。"
-                    + "visibility=PUBLIC かつ未 archive / 未削除の組織のみ返す。")
+                    + "visibility=PUBLIC かつ未 archive / 未削除の組織のみ返す。"
+                    + "acceptingTeamApplications=true でチーム加盟を受付中の組織だけに絞る。")
     public ResponseEntity<Page<PublicOrganizationSearchResultResponse>> searchOrganizations(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String prefecture,
+            @RequestParam(required = false) Boolean acceptingTeamApplications,
             @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC)
             Pageable pageable) {
         return ResponseEntity.ok(
-                publicOrganizationSearchQueryService.search(keyword, prefecture, pageable));
+                publicOrganizationSearchQueryService.search(
+                        keyword, prefecture, acceptingTeamApplications, pageable));
     }
 }

@@ -93,11 +93,20 @@ public class MeController {
             joinedAtByTeamId.put(e.getKey(), e.getValue());
         }
 
-        // 親組織の数値 ID をバルク解決する（F08.10 試合 API の org コンテキスト解決用）。
-        // 1 チームが複数組織に所属し得るが、本 Map は ACTIVE な親組織を 1 件返す
-        // （F00 ScopeAncestorResolver と同じ findOrganizationIdByTeamIdIn を再利用）。
-        // memberships 由来で増えたチームも含めて解決するため、和集合後の teamIds で問い合わせる。
-        Map<Long, Long> orgIdByTeamId = teamOrgMembershipRepository.findOrganizationIdByTeamIdIn(teamIds);
+        // 親組織をバルク解決する（F01.2.1 §9.2 #7）。1 チームが複数の組織に同時加盟し得るため、
+        // ACTIVE な全親組織を代表親組織（§9.3）の規則順（最初に成立した加盟 → organization_id 昇順）で取得する。
+        // 各チームの先頭が代表親組織で、互換フィールド organization_id にはそれを固定して返す。
+        // memberships 由来で増えたチームも含めて解決するため、和集合後の teamIds で問い合わせる（SQL は 1 本）。
+        Map<Long, List<Long>> parentOrgIdsByTeamId =
+                teamOrgMembershipRepository.findOrganizationIdsInPrimaryOrderByTeamIdIn(teamIds);
+        Set<Long> parentOrgIds = new LinkedHashSet<>();
+        parentOrgIdsByTeamId.values().forEach(parentOrgIds::addAll);
+        Map<Long, OrganizationEntity> parentOrgById = new LinkedHashMap<>();
+        if (!parentOrgIds.isEmpty()) {
+            for (OrganizationEntity org : organizationRepository.findAllById(parentOrgIds)) {
+                parentOrgById.put(org.getId(), org);
+            }
+        }
 
         Map<Long, TeamEntity> teamById = new LinkedHashMap<>();
         for (TeamEntity team : teamRepository.findAllById(teamIds)) {
@@ -127,10 +136,21 @@ public class MeController {
                 roleName = "MEMBER";
             }
             int memberCount = memberCountByTeamId.getOrDefault(teamId, 0);
+            List<Long> parentIds = parentOrgIdsByTeamId.getOrDefault(teamId, List.of());
+            List<MyTeamResponse.ParentOrganization> organizations = new ArrayList<>();
+            for (Long parentId : parentIds) {
+                OrganizationEntity parent = parentOrgById.get(parentId);
+                // 論理削除済みの組織は一覧に出さない（@SQLRestriction により findAllById から除外される）。
+                if (parent != null) {
+                    organizations.add(new MyTeamResponse.ParentOrganization(
+                            parent.getId(), parent.getSlug(), parent.getName()));
+                }
+            }
             teams.add(new MyTeamResponse(
                     team.getId(),
                     team.getSlug(),
-                    orgIdByTeamId.get(team.getId()),
+                    parentIds.isEmpty() ? null : parentIds.get(0),
+                    organizations,
                     team.getName(),
                     null,
                     team.getVisibility().name(),
