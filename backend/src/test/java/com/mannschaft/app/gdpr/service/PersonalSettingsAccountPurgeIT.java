@@ -81,16 +81,16 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             }
             assertThat(count("SELECT COUNT(*) FROM user_blocks WHERE blocker_id = " + target))
                     .as("猶予中の本人ブロック設定").isEqualTo(1);
-            assertThat(transactionTemplate.execute(tx -> userRepository.findPurgeTargets(
-                    LocalDateTime.now().minusDays(30), PageRequest.of(0, 100))))
-                    .noneMatch(user -> user.getId().equals(target));
+            List<UserEntity> recentTargets = transactionTemplate.execute(tx -> userRepository.findPurgeTargets(
+                    LocalDateTime.now().minusDays(30), PageRequest.of(0, 100)));
+            assertThat(recentTargets).noneMatch(user -> user.getId().equals(target));
 
             transactionTemplate.executeWithoutResult(tx -> entityManager.createNativeQuery(
                     "UPDATE users SET deleted_at = DATE_SUB(NOW(), INTERVAL 31 DAY) WHERE id = :owner")
                     .setParameter("owner", target).executeUpdate());
-            assertThat(transactionTemplate.execute(tx -> userRepository.findPurgeTargets(
-                    LocalDateTime.now().minusDays(30), PageRequest.of(0, 100))))
-                    .anyMatch(user -> user.getId().equals(target));
+            List<UserEntity> expiredTargets = transactionTemplate.execute(tx -> userRepository.findPurgeTargets(
+                    LocalDateTime.now().minusDays(30), PageRequest.of(0, 100)));
+            assertThat(expiredTargets).anyMatch(user -> user.getId().equals(target));
             // 外側の自前TXを作らず、本番schedulerが呼ぶ公開バッチから強削除を開始する。
             accountPurgeService.purgeExpiredAccounts();
             Map<String, Long> expected = new LinkedHashMap<>();
