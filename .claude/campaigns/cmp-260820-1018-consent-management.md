@@ -3,7 +3,7 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: source e6da1749abのBE225件/54XML、標準H2 OpenAPI/生成FE型、API単体5件・ナビ16件・機能ゲート17件・共通UI補正後全体型チェックはgreen。実機UI7のADMIN導線/一覧/空履歴1件とUI8のDEPUTY承認権限なし・MEMBER/SYSTEM拒否・取消/承認/本人255文字オンライン撤回4件は別JUnit計5件green、終了処理も全完了。UI9/10の紙承認/権限ありDEPUTY、UI11の専用空組合/候補取得、UI12の故障注入も各1件green。390pxはja/enと見出し補正後deがgreen、es/ko/zh測定中。紙撤回/実操作履歴/6言語390px・3住民・最新main追従・最終検分は未達。
+- 状態: source e6da1749abのBE225件/54XML、標準H2 OpenAPI/生成FE型、API単体5件・ナビ16件・機能ゲート17件・共通UI補正後全体型チェックはgreen。実機UI7のADMIN導線/一覧/空履歴1件とUI8のDEPUTY承認権限なし・MEMBER/SYSTEM拒否・取消/承認/本人255文字オンライン撤回4件は別JUnit計5件green、終了処理も全完了。UI9/10の紙承認/権限ありDEPUTY、UI11の専用空組合/候補取得、UI12の故障注入も各1件green。390pxは6言語の同意/履歴ページと候補ready/overflow0/44pxがgreen。紙撤回/実操作履歴・3住民・最新main追従・最終検分は未達。
 
 ## 方針
 
@@ -168,3 +168,8 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - 新2管理ページのPageHeader呼出classにh1 min-width0/max-width100%/wordbreakを指定し、共通component本体・他ページ・表示文言は変更しない。3file ESLint exit0、git diff check0。
 - actual DE red（scrollWidth406/client390）後、UI14のDE1件/0fail/0error/0skip/exit0でconsents/records双方scrollWidth390/client390を確認。管理buttons高さ44/幅44以上、画像2枚閲覧し見出しの右端切れが無くなった。suite132.167秒、stdioSHA256 `d385d09a90568b73d986e1e9e29023dbf63e3adefdd201b70b68562f499785b3`。ja/en旧green4画像も閲覧済み。
 - 未実施es/ko/zhをUI15の別namespaceへ標準--list3件一致後に実行中。ja/en/deを同条件で重複実行せず、原REDと修正GREENを別rawで保持する。今回classのみの補正では殿指示により全体型チェックを重複実行せず、局所lint/実DOM/画像を検証する。
+## 2026-10-03 六言語の狭幅終端
+
+- UI15は残es/ko/zhの3件/0fail/0error/0skip/exit0、個別case timeは51.320/37.340/58.147秒、whole150.956秒。stdioSHA256 `051bcb8f331a25d78b79cc223f8d6613ba370bee986bf4561e859e6ba912d98e`、3contextのdispose/close完了。
+- 六言語それぞれconsents/recordsの390px実DOMscroll/client一致、管理buttons高さ44以上/幅44以上、履歴対象者picker取得readyを確認。UI13bのja/en4枚、UI14のde2枚、UI15のes/ko/zh6枚を全て実画像で閲覧済み。原failed suiteの個別ja/en成功とDE補正後成功、残3成功を区別し、UI13/13bのerror/failure/skipを全greenへ書き換えない。
+- 既存real-smokeのtest discoveryを妨げないよう、専用CMP1018_MANIFEST未指定時は明示skipとし、指定時は従来のactual試験を実行する入口へ最小修正。manifest無し標準--list6件/exit0とESLint exit0を確認。入口skipを実機合格へ計上しない。

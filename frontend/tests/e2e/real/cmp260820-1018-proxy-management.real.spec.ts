@@ -5,8 +5,7 @@ import { waitForHydration } from '../helpers/wait'
 
 /** CMP-260820-1018。APIは認証・専用fixtureの前提準備と読み取り裏付けに限る。 */
 const manifestPath = process.env.CMP1018_MANIFEST
-if (!manifestPath) throw new Error('CMP1018_MANIFEST に自所有fixtureのmanifestを指定してください')
-const fixture = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+const fixture = (manifestPath ? JSON.parse(readFileSync(manifestPath, 'utf8')) : {}) as {
   organization: { id: number, slug: string, name: string }
   emptyOrganization?: { id: number, slug: string, name: string }
   users: Record<'admin' | 'deputy' | 'member' | 'system', { id: number, email: string }>
@@ -59,6 +58,7 @@ async function closeOwned(page: Page, info: TestInfo) {
 
 test.describe.configure({ mode: 'serial' })
 test.setTimeout(300_000)
+test.skip(!manifestPath, 'CMP1018_MANIFEST で専用の実機fixtureを指定したときに実行する')
 
 test('診断: ADMINの実資格と管理ハブの実画像を保存する', async ({ browser }, info) => {
   test.setTimeout(600_000)
