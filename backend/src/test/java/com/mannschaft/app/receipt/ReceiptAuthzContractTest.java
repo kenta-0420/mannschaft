@@ -4,7 +4,11 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.receipt.entity.ReceiptEntity;
 import com.mannschaft.app.receipt.entity.ReceiptPresetEntity;
+import com.mannschaft.app.receipt.repository.ReceiptRepository;
 import com.mannschaft.app.receipt.repository.ReceiptPresetRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
@@ -20,6 +24,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -28,6 +35,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -37,6 +45,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * receipt ドメイン（F08.4 領収書）の認可 API 契約テスト（認可根治戦役 Wave2 トランシェ2A・#1）。
@@ -69,6 +79,9 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
     private static final Long MEMBER_A = 920100002L;
     private static final Long ADMIN_B = 920100003L;
     private static final Long OUTSIDER = 920100099L;
+    private static final Long DEPUTY_A = 920100004L;
+    private static final Long SYSTEM_ONLY = 920100005L;
+    private static final Long SYSTEM_SCOPE_ADMIN = 920100006L;
 
     @Autowired
     private MockMvc mockMvc;
@@ -91,6 +104,12 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
     @Autowired
     private ReceiptPresetRepository presetRepository;
 
+    @Autowired
+    private ReceiptRepository receiptRepository;
+
+    @Autowired
+    private OrganizationRepository organizationRepository;
+
     private static final AtomicInteger SLUG_SEQ = new AtomicInteger(0);
 
     private Long adminRoleId;
@@ -98,6 +117,7 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
     private Long teamAId;
     private Long teamBId;
     private Long presetAId;
+    private Long voidOtherOrganizationId;
 
     @BeforeEach
     void setUp() {
@@ -333,5 +353,166 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
                         .param("scopeId", String.valueOf(teamAId)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+    }
+
+    /**
+     * CMP-260902-1017 無効化だけの役割分離。実認可と実DBを通し、DEPUTYの現行200をredにする。
+     * SYSTEM_ADMIN単独の拒否とscope ADMIN兼任時の許可は既存契約を維持する。
+     */
+    @ParameterizedTest(name = "{0} bulk={1} actor={2} → {3}")
+    @CsvSource({
+            "TEAM,false,920100001,200", "TEAM,true,920100001,200",
+            "ORGANIZATION,false,920100001,200", "ORGANIZATION,true,920100001,200",
+            "TEAM,false,920100004,403", "TEAM,true,920100004,403",
+            "ORGANIZATION,false,920100004,403", "ORGANIZATION,true,920100004,403",
+            "TEAM,false,920100002,403", "TEAM,true,920100002,403",
+            "ORGANIZATION,false,920100002,403", "ORGANIZATION,true,920100002,403",
+            "TEAM,false,920100003,403", "TEAM,true,920100003,403",
+            "ORGANIZATION,false,920100003,403", "ORGANIZATION,true,920100003,403",
+            "TEAM,false,920100005,403", "TEAM,true,920100005,403",
+            "ORGANIZATION,false,920100005,403", "ORGANIZATION,true,920100005,403",
+            "TEAM,false,920100006,200", "TEAM,true,920100006,200",
+            "ORGANIZATION,false,920100006,200", "ORGANIZATION,true,920100006,200"
+    })
+    @DisplayName("CMP1017: 単発・一括voidは指定scope ADMINのみ、拒否時は監査項目も変更しない")
+    void voidReceipt_scopeAdminOnly(ReceiptScopeType scopeType, boolean bulk, Long actor, int expectedStatus)
+            throws Exception {
+        Long scopeId = prepareVoidScope(scopeType);
+        ReceiptEntity receipt = saveReceipt(scopeType, scopeId);
+        em.flush();
+        em.clear();
+        LocalDateTime updatedAt = receiptRepository.findById(receipt.getId()).orElseThrow().getUpdatedAt();
+        long count = receiptRepository.count();
+        String reason = "金額誤りのため取り消し";
+        String body = bulk
+                ? "{\"receiptIds\":[" + receipt.getId() + "],\"reason\":\"" + reason + "\"}"
+                : "{\"reason\":\"" + reason + "\"}";
+        String path = bulk ? "/api/v1/admin/receipts/bulk-void"
+                : "/api/v1/admin/receipts/" + receipt.getId() + "/void";
+        var response = mockMvc.perform(post(path).with(user(actor.toString()))
+                        .param("scopeType", scopeType.name()).param("scopeId", scopeId.toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().is(expectedStatus));
+        if (expectedStatus == 403) {
+            response.andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        } else if (bulk) {
+            response.andExpect(jsonPath("$.data.voidedCount").value(1))
+                    .andExpect(jsonPath("$.data.skippedCount").value(0));
+        } else {
+            response.andExpect(jsonPath("$.data.voidedBy").value(actor))
+                    .andExpect(jsonPath("$.data.voidedReason").value(reason));
+        }
+        em.flush();
+        em.clear();
+        ReceiptEntity actual = receiptRepository.findById(receipt.getId()).orElseThrow();
+        assertThat(receiptRepository.count()).isEqualTo(count);
+        assertThat(actual.getStatus()).isEqualTo(ReceiptStatus.ISSUED);
+        if (expectedStatus == 403) {
+            assertThat(actual.getVoidedAt()).isNull();
+            assertThat(actual.getVoidedBy()).isNull();
+            assertThat(actual.getVoidedReason()).isNull();
+            assertThat(actual.getUpdatedAt()).isEqualTo(updatedAt);
+        } else {
+            assertThat(actual.getVoidedAt()).isNotNull();
+            assertThat(actual.getVoidedBy()).isEqualTo(actor);
+            assertThat(actual.getVoidedReason()).isEqualTo(reason);
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ReceiptScopeType.class, names = {"TEAM", "ORGANIZATION"})
+    @DisplayName("CMP1017 BOLA: 単発voidは自scopeを偽装しても他scopeの領収書を変更しない")
+    void voidReceipt_mismatchedScope_doesNotWrite(ReceiptScopeType scopeType) throws Exception {
+        Long scopeId = prepareVoidScope(scopeType);
+        ReceiptEntity foreign = saveReceipt(scopeType, otherScopeId(scopeType));
+        mockMvc.perform(post("/api/v1/admin/receipts/" + foreign.getId() + "/void")
+                        .with(user(ADMIN_A.toString()))
+                        .param("scopeType", scopeType.name()).param("scopeId", scopeId.toString())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"取り消し\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("RECEIPT_002"));
+        em.flush();
+        em.clear();
+        assertThat(receiptRepository.findById(foreign.getId()).orElseThrow().getVoidedAt()).isNull();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ReceiptScopeType.class, names = {"TEAM", "ORGANIZATION"})
+    @DisplayName("CMP1017 BOLA: 一括voidは他scope・既無効・不在をskipし、対象だけ監査情報を保存する")
+    void bulkVoidReceipts_keepsScopedSkipContract(ReceiptScopeType scopeType) throws Exception {
+        Long scopeId = prepareVoidScope(scopeType);
+        ReceiptEntity target = saveReceipt(scopeType, scopeId);
+        ReceiptEntity foreign = saveReceipt(scopeType, otherScopeId(scopeType));
+        ReceiptEntity alreadyVoided = saveReceipt(scopeType, scopeId);
+        alreadyVoided.voidReceipt(ADMIN_A, "以前の取り消し");
+        receiptRepository.saveAndFlush(alreadyVoided);
+        em.clear();
+        LocalDateTime originalVoidedAt = receiptRepository.findById(alreadyVoided.getId())
+                .orElseThrow().getVoidedAt();
+        String body = "{\"receiptIds\":[" + target.getId() + "," + foreign.getId() + ","
+                + alreadyVoided.getId() + ",9223372036854775807],\"reason\":\"一括取り消し\"}";
+        mockMvc.perform(post("/api/v1/admin/receipts/bulk-void").with(user(ADMIN_A.toString()))
+                        .param("scopeType", scopeType.name()).param("scopeId", scopeId.toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.voidedCount").value(1))
+                .andExpect(jsonPath("$.data.skippedCount").value(3));
+        em.flush();
+        em.clear();
+        assertThat(receiptRepository.findById(target.getId()).orElseThrow().getVoidedBy()).isEqualTo(ADMIN_A);
+        assertThat(receiptRepository.findById(foreign.getId()).orElseThrow().getVoidedAt()).isNull();
+        ReceiptEntity unchanged = receiptRepository.findById(alreadyVoided.getId()).orElseThrow();
+        assertThat(unchanged.getVoidedAt()).isEqualTo(originalVoidedAt);
+        assertThat(unchanged.getVoidedReason()).isEqualTo("以前の取り消し");
+    }
+
+    private Long prepareVoidScope(ReceiptScopeType type) {
+        MembershipTestHelper.insertActiveUser(em, DEPUTY_A);
+        MembershipTestHelper.insertActiveUser(em, SYSTEM_ONLY);
+        MembershipTestHelper.insertActiveUser(em, SYSTEM_SCOPE_ADMIN);
+        Long scopeId = type == ReceiptScopeType.TEAM ? teamAId : saveOrganization().getId();
+        if (type == ReceiptScopeType.ORGANIZATION) {
+            saveScopedRole(ADMIN_A, type, scopeId, adminRoleId);
+            saveMembership(MEMBER_A, ScopeType.ORGANIZATION, scopeId, RoleKind.MEMBER);
+            saveScopedRole(ADMIN_B, type, otherScopeId(type), adminRoleId);
+        }
+        saveScopedRole(DEPUTY_A, type, scopeId, ensureRole("DEPUTY_ADMIN", 3));
+        saveScopedRole(SYSTEM_SCOPE_ADMIN, type, scopeId, adminRoleId);
+        Long systemRoleId = ensureRole("SYSTEM_ADMIN", 1);
+        for (Long actor : new Long[]{SYSTEM_ONLY, SYSTEM_SCOPE_ADMIN}) {
+            userRoleRepository.save(UserRoleEntity.builder().userId(actor).roleId(systemRoleId).build());
+        }
+        return scopeId;
+    }
+
+    private Long otherScopeId(ReceiptScopeType type) {
+        if (type == ReceiptScopeType.TEAM) {
+            return teamBId;
+        }
+        if (voidOtherOrganizationId == null) {
+            voidOtherOrganizationId = saveOrganization().getId();
+        }
+        return voidOtherOrganizationId;
+    }
+
+    private OrganizationEntity saveOrganization() {
+        return organizationRepository.save(OrganizationEntity.builder()
+                .slug("receipt-void-" + SLUG_SEQ.incrementAndGet()).name("領収書無効化認可テスト組織")
+                .orgType(OrganizationEntity.OrgType.OTHER).visibility(OrganizationEntity.Visibility.PRIVATE)
+                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE).supporterEnabled(false).build());
+    }
+
+    private void saveScopedRole(Long actor, ReceiptScopeType type, Long scopeId, Long roleId) {
+        userRoleRepository.save(UserRoleEntity.builder().userId(actor).roleId(roleId)
+                .teamId(type == ReceiptScopeType.TEAM ? scopeId : null)
+                .organizationId(type == ReceiptScopeType.ORGANIZATION ? scopeId : null).build());
+    }
+
+    private ReceiptEntity saveReceipt(ReceiptScopeType type, Long scopeId) {
+        return receiptRepository.save(ReceiptEntity.builder().scopeType(type).scopeId(scopeId)
+                .recipientName("テスト受領者").issuerName("テスト発行者").description("テスト会費")
+                .amount(new BigDecimal("1100")).taxAmount(new BigDecimal("100"))
+                .amountExclTax(new BigDecimal("1000")).paymentDate(LocalDate.of(2026, 10, 3))
+                .issuedBy(ADMIN_A).build());
     }
 }
