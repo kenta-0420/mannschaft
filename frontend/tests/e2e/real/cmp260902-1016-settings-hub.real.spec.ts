@@ -208,10 +208,10 @@ test.describe('CMP1016 設定一覧の実ブラウザ（API smokeとは別判定
         expect(permissionsResponse.status(), '設定一覧自身の実権限GET').toBe(200)
         expect((await permissionsResponse.json()).data.roleName).toBe('ADMIN')
         expect(modulesResponse.status(), '設定一覧自身の実モジュールGET').toBe(200)
-        const hubScope = await page.evaluate(() => JSON.parse(localStorage.getItem('currentScope') ?? '{}') as { type?: string; id?: string })
-        expect(hubScope).toMatchObject({ type: type === 'teams' ? 'team' : 'organization', id: String(scope.id) })
         await expect(page.getByTestId('setting-line')).toBeVisible()
         await expect(page.getByTestId('setting-receipts')).toBeVisible()
+        const hubScope = await page.evaluate(() => JSON.parse(localStorage.getItem('currentScope') ?? '{}') as { type?: string; id?: string })
+        expect(hubScope).toMatchObject({ type: type === 'teams' ? 'team' : 'organization', id: String(scope.id) })
         await screenshot(page, info, 'settings-hub')
         const key = type === 'teams' ? 'shift' : 'public'
         const destination = type === 'teams' ? 'settings/shift' : 'settings/public-settings'
