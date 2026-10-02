@@ -12,6 +12,8 @@
  */
 import type { UserMatchStatsResponse } from '~/types/match'
 
+import { parseOrgQuery, type MatchOrgOption } from '~/composables/match/useMatchOrgContext'
+
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
@@ -25,6 +27,9 @@ const { resolveContext } = useMatchOrgContext()
 const analytics = useMatchAnalytics()
 
 const stats = ref<UserMatchStatsResponse | null>(null)
+const orgId = ref<number | null>(null)
+const organizations = ref<MatchOrgOption[]>([])
+const orgInvalid = ref(false)
 const loading = ref(true)
 /** 403（閲覧権限なし）を検出したフラグ */
 const forbidden = ref(false)
@@ -45,7 +50,11 @@ async function load(): Promise<void> {
   forbidden.value = false
   try {
     // resolveContext は tm.slug === 引数 で照合するため slug を渡す（数値 ID 不可）
-    const ctx = await resolveContext(teamSlug.value)
+    // 分析は URL クエリ org で選んだ組織の試合を集計する（未指定は代表親組織）
+    const ctx = await resolveContext(teamSlug.value, { orgId: parseOrgQuery(route.query.org) })
+    orgId.value = ctx?.orgId ?? null
+    organizations.value = ctx?.organizations ?? []
+    orgInvalid.value = ctx?.orgInvalid ?? false
     if (ctx === null || ctx.orgId === null || !Number.isFinite(userId.value)) {
       stats.value = null
       return
@@ -64,7 +73,7 @@ async function load(): Promise<void> {
   }
 }
 
-watch([teamSlug, userId], () => void load())
+watch([teamSlug, userId, () => route.query.org], () => void load())
 onMounted(load)
 </script>
 
@@ -74,6 +83,8 @@ onMounted(load)
       <PageHeader :title="t('match.analytics.member_title')" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.member_subtitle') }}</p>
+
+    <MatchOrgSelect :organizations="organizations" :org-id="orgId" :invalid="orgInvalid" />
 
     <PageLoading v-if="loading" />
 
@@ -87,7 +98,7 @@ onMounted(load)
 
       <!-- 試合記録が無い -->
       <DashboardEmptyState
-        v-else-if="isEmpty"
+        v-else-if="!orgInvalid && isEmpty"
         icon="pi pi-chart-bar"
         :message="t('match.analytics.empty.member_no_matches')"
       />
