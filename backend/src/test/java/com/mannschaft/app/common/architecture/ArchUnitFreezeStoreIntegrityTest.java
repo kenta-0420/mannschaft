@@ -759,8 +759,16 @@ class ArchUnitFreezeStoreIntegrityTest {
      * RecruitmentPenaltyService.liftPenalty（role の 2 行）・旧シグネチャの RecruitmentCancellationFeeWaiveService.waive（10 行）、
      * 計 18 行を削除。追加 0。{@code 7581 → 7563 → 7564}（waive の引数追加によるキー改名: 旧キーの AuditLogRepository 行を削除し新シグネチャの同行を追加。到達先は同じ）。残した行: confirmApplication → RoleRepository / UserRoleRepository の 2 行
      * （通知経路から到達しないことを静的に証明できなかったため）。</p>
+     *
+     * <p>CMP-260923-0954 W3b（確認通知の recipients/page を {@code ConfirmableNotificationRecipientPageFacade} へ）:
+     * {@code ConfirmableNotificationQueryService.getRecipientsPage} → RoleRepository / UserRoleRepository と
+     * {@code ConfirmableNotificationService.getRecipientsPage} → RoleRepository / UserRoleRepository の計 4 行が解消
+     * （認可を tx の外へ出し、tx 本体は AccessControlService に依存しない。Service 側の委譲メソッドは廃止）。
+     * 残す 2 行は認可と無関係な越境: {@code ConfirmableNotificationService.cancel} /
+     * {@code ConfirmableNotificationConfirmService.cancel} → UserRepository（K3: 名前・引数・{@code @Transactional} を維持）。
+     * main のストアとの差分は「追加 0・削除 4（上記のキーのみ）」。{@code 7564（W4 取込み後の main） → 7560}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7564;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7560;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
