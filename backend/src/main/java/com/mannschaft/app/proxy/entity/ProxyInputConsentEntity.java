@@ -100,7 +100,7 @@ public class ProxyInputConsentEntity extends BaseEntity {
 
     /** この同意書で許可された機能スコープ一覧。 */
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    @jakarta.persistence.JoinColumn(name = "proxy_input_consent_id")
+    @jakarta.persistence.JoinColumn(name = "proxy_input_consent_id", nullable = false)
     @Builder.Default
     private List<ProxyInputConsentScopeEntity> scopes = new ArrayList<>();
 
