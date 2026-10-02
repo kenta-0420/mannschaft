@@ -11,7 +11,7 @@ import type { ProxyInputConsent } from '~/types/proxy-input'
 const mocks = vi.hoisted(() => ({
   require: vi.fn(),
   close: vi.fn(),
-  desk: { pinnedConsentId: null as number | null, unpin: vi.fn() },
+  desk: { pinnedConsentId: null as number | null, restoreFromStorage: vi.fn(), unpin: vi.fn() },
   approve: vi.fn(),
   revoke: vi.fn(),
   loadPage: vi.fn(),
@@ -97,15 +97,34 @@ function render() {
   })
 }
 
+function persistPin(consentId: number) {
+  localStorage.setItem('proxyDesk', JSON.stringify({
+    pinnedSubjectUserId: 1,
+    pinnedConsentId: consentId,
+    inputSource: 'PAPER_FORM',
+    originalStorageLocation: '',
+  }))
+  expect(mocks.desk.pinnedConsentId).toBeNull()
+}
+
 describe('ProxyAdminPage', () => {
   beforeEach(() => {
     dayjs.extend(utc)
     dayjs.extend(timezone)
     vi.clearAllMocks()
     mocks.auth.user.id = 3
+    localStorage.clear()
     mocks.desk.pinnedConsentId = null
+    // リロード後と同様に、初期nullのstoreへ永続pinを反映する。
+    mocks.desk.restoreFromStorage.mockImplementation(() => {
+      const raw = localStorage.getItem('proxyDesk')
+      if (!raw) return
+      const parsed = JSON.parse(raw) as { pinnedSubjectUserId?: number; pinnedConsentId?: number }
+      if (parsed.pinnedSubjectUserId && parsed.pinnedConsentId) mocks.desk.pinnedConsentId = parsed.pinnedConsentId
+    })
     mocks.desk.unpin.mockImplementation(() => {
       mocks.desk.pinnedConsentId = null
+      localStorage.removeItem('proxyDesk')
     })
     mocks.approve.mockResolvedValue({ ...consent, status: 'APPROVED' })
     mocks.revoke.mockResolvedValue(undefined)
@@ -199,9 +218,11 @@ describe('ProxyAdminPage', () => {
     },
   )
 
-  it('固定中の同意撤回成功は一覧再取得前に既存unpinで解除する', async () => {
-    mocks.desk.pinnedConsentId = 7
+  it('リロード後の永続pinを復元し同じ同意の撤回成功時は再取得前に解除する', async () => {
+    persistPin(7)
     const wrapper = render()
+    expect(mocks.desk.restoreFromStorage).toHaveBeenCalledOnce()
+    expect(mocks.desk.pinnedConsentId).toBe(7)
     await wrapper.get('[data-testid="proxy-revoke-7"]').trigger('click')
     const dialog = mocks.require.mock.calls[0]?.[0] as { accept: () => void }
     dialog.accept()
@@ -209,15 +230,18 @@ describe('ProxyAdminPage', () => {
 
     expect(mocks.desk.unpin).toHaveBeenCalledOnce()
     expect(mocks.desk.pinnedConsentId).toBeNull()
+    expect(localStorage.getItem('proxyDesk')).toBeNull()
     expect(mocks.desk.unpin.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.loadPage.mock.invocationCallOrder[0]!,
     )
     wrapper.unmount()
   })
 
-  it('別の同意撤回成功では現在の固定を維持する', async () => {
-    mocks.desk.pinnedConsentId = 8
+  it('リロード後に復元した別の同意pinは撤回成功でも維持する', async () => {
+    persistPin(8)
     const wrapper = render()
+    expect(mocks.desk.restoreFromStorage).toHaveBeenCalledOnce()
+    expect(mocks.desk.pinnedConsentId).toBe(8)
     await wrapper.get('[data-testid="proxy-revoke-7"]').trigger('click')
     const dialog = mocks.require.mock.calls[0]?.[0] as { accept: () => void }
     dialog.accept()
@@ -225,14 +249,17 @@ describe('ProxyAdminPage', () => {
 
     expect(mocks.desk.unpin).not.toHaveBeenCalled()
     expect(mocks.desk.pinnedConsentId).toBe(8)
+    expect(JSON.parse(localStorage.getItem('proxyDesk')!)).toMatchObject({ pinnedConsentId: 8 })
     expect(mocks.loadPage).toHaveBeenCalledOnce()
     wrapper.unmount()
   })
 
-  it('固定中の同意撤回失敗では固定を維持し成功通知を出さない', async () => {
-    mocks.desk.pinnedConsentId = 7
+  it('リロード後に復元した同意pinは撤回失敗でも維持し成功通知を出さない', async () => {
+    persistPin(7)
     mocks.revoke.mockRejectedValueOnce({ statusCode: 409 })
     const wrapper = render()
+    expect(mocks.desk.restoreFromStorage).toHaveBeenCalledOnce()
+    expect(mocks.desk.pinnedConsentId).toBe(7)
     await wrapper.get('[data-testid="proxy-revoke-7"]').trigger('click')
     const dialog = mocks.require.mock.calls[0]?.[0] as { accept: () => void }
     dialog.accept()
@@ -240,6 +267,7 @@ describe('ProxyAdminPage', () => {
 
     expect(mocks.desk.unpin).not.toHaveBeenCalled()
     expect(mocks.desk.pinnedConsentId).toBe(7)
+    expect(JSON.parse(localStorage.getItem('proxyDesk')!)).toMatchObject({ pinnedConsentId: 7 })
     expect(mocks.success).not.toHaveBeenCalled()
     expect(mocks.loadPage).toHaveBeenCalledOnce()
     wrapper.unmount()
