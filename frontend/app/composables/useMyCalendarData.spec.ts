@@ -455,4 +455,42 @@ describe('フォールバックチップの色（§5.2.1 と §3.3 の板挟み�
     expect(chip?.color).toBe(NEUTRAL)
     expect(chip?.color).not.toBe(OLD_COLOR)
   })
+
+  it.each([false, true])('後続の明示自動色もイベント順に左右されず旧自動色より優先する（逆順=%s）', async (reverse) => {
+    localStorage.clear()
+    const legacy = sharedEntry('#7C3AED', 'LAYER_AUTO')
+    const explicit = { ...sharedEntry(OLD_COLOR, 'CATEGORY'), id: 999, content: { ...sharedEntry(OLD_COLOR, 'CATEGORY').content, scopeAutoColor: '#C026D3' } }
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669')] })
+    getCalendarRange.mockResolvedValue({ data: reverse ? [explicit, legacy] : [legacy, explicit] })
+    listPersonalSchedules.mockResolvedValue({ data: [] })
+    getMyCalendarTodos.mockResolvedValue({ data: [] })
+    const cal = await boot()
+    expect(cal.allScopeOptions.value.filter(o => o.value === 'TEAM:42')).toHaveLength(1)
+    expect(cal.allScopeOptions.value.find(o => o.value === 'TEAM:42')?.color).toBe('#C026D3')
+  })
+
+  it('既知レイヤーの利用者指定色と予定の最終表示色を独立自動色で上書きしない', async () => {
+    localStorage.clear()
+    const entry = sharedEntry(OLD_COLOR, 'LAYER_USER')
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669'), teamLayer(OLD_COLOR, 'LAYER_USER')] })
+    getCalendarRange.mockResolvedValue({ data: [{ ...entry, content: { ...entry.content, scopeAutoColor: '#C026D3' } }] })
+    listPersonalSchedules.mockResolvedValue({ data: [] })
+    getMyCalendarTodos.mockResolvedValue({ data: [] })
+    const cal = await boot()
+    const option = cal.allScopeOptions.value.find(o => o.value === 'TEAM:42')
+    expect(option?.color).toBe(OLD_COLOR)
+    expect(option?.isFallback).not.toBe(true)
+    expect(cal.filteredEvents.value.find(e => e.scopeType === 'TEAM')?.color).toBe(OLD_COLOR)
+  })
+
+  it('同じ数値IDのTEAMとORGを別スコープとして集約する（パレット色の衝突は許容）', async () => {
+    localStorage.clear()
+    const entry = sharedEntry(OLD_COLOR, 'CATEGORY')
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669')] })
+    getCalendarRange.mockResolvedValue({ data: ['TEAM', 'ORG'].map((scopeType, index) => ({ ...entry, id: 990 + index, scope: { ...entry.scope, scopeType }, content: { ...entry.content, scopeAutoColor: '#C026D3' } })) })
+    listPersonalSchedules.mockResolvedValue({ data: [] })
+    getMyCalendarTodos.mockResolvedValue({ data: [] })
+    const cal = await boot()
+    expect(cal.allScopeOptions.value.filter(o => o.value === 'TEAM:42' || o.value === 'ORG:42').map(o => [o.value, o.color])).toEqual([['TEAM:42', '#C026D3'], ['ORG:42', '#C026D3']])
+  })
 })

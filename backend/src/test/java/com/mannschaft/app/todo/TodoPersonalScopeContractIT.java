@@ -505,6 +505,9 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
             Long orphanTodoId = saveAssignedCalendarTodo(
                     TodoScopeType.TEAM, teamId, ownerId, "PERSAUTHZ 名称欠落TODO", null,
                     LocalDate.of(2030, 1, 15), TodoStatus.OPEN, null, false);
+            // 担当者であっても無所属なら取得できない陰性対照。
+            assigneeRepository.save(TodoAssigneeEntity.builder()
+                    .todoId(orphanTodoId).userId(attackerId).assignedBy(ownerId).build());
             em.flush();
             // 専用Testcontainers DBのBeforeEachで生成したこのteamIdだけを変更し、終了時にrollbackする。
             assertThat(em.createNativeQuery("UPDATE teams SET deleted_at = CURRENT_TIMESTAMP WHERE id = :id")
