@@ -3,7 +3,6 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
-import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPreference;
@@ -64,9 +63,6 @@ class ShiftRequestProxyInputTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
-    private ScopeConcealingAccessGate accessGate;
-
-    @Mock
     private ProxyInputContext proxyInputContext;
 
     @Mock
@@ -95,7 +91,7 @@ class ShiftRequestProxyInputTest {
         lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
     }
 
-    // 本 UT の検証対象は代理入力の記録ロジック。認可ゲート（ScopeConcealingAccessGate）はモックで素通しとし、
+    // 本 UT の検証対象は代理入力の記録ロジック。認可は tx の外の ShiftRequestFacade が行い、
     // per-scope 認可と存在秘匿の成否は ScopeConcealingAccessGateTest と
     // 契約IT（ShiftRequestPositionScopeContractIT）で固定する。
 
