@@ -27,6 +27,7 @@ import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentUserPenaltyRepository;
+import com.mannschaft.app.recruitment.event.MarketListingReachedFullEvent;
 import com.mannschaft.app.recruitment.event.RecruitmentCancellationFeeChargeRequestedEvent;
 import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import lombok.RequiredArgsConstructor;
@@ -71,7 +72,6 @@ public class RecruitmentParticipantService {
     private final AccessControlService accessControlService;
     private final RecruitmentMapper mapper;
     /** F22.1 市: 充足（FULL）到達時の最終認証連携。 */
-    private final MarketFinalizeService marketFinalizeService;
     /**
      * F22.1 市: 応募確定前の可視性ガード（02_api_design §5 / §7・04_security §1.1）。
      * FRIEND_TEAMS_ONLY 札は宛先解決集合のみ応募可（非対象は 404 存在秘匿）。
@@ -226,11 +226,11 @@ public class RecruitmentParticipantService {
         }
 
         // F22.1 市: この申込で FULL に到達したら最終認証の確認通知を送る（§6.1）。
+        // CMP-260930-1932: 申込の業務TX内では同期送信せずイベントを publish するだけにする（原則5）。
+        // MarketFinalizeConfirmationListener が AFTER_COMMIT + @Async で札の最新状態を読み直し、FULL の
+        // ときだけ送る。通知の失敗で申込そのものが失敗し申込者にエラーが露出することはない。
         if (reachedFull) {
-            RecruitmentListingEntity fullListing = listingRepository.findById(listingId).orElse(null);
-            if (fullListing != null) {
-                marketFinalizeService.sendFinalizeConfirmation(fullListing);
-            }
+            eventPublisher.publishEvent(new MarketListingReachedFullEvent(listingId));
         }
 
         return mapper.toParticipantResponse(saved);
