@@ -880,7 +880,7 @@ class FlywayFromScratchMigrationTest {
 
     @Test
     @Order(23)
-    @DisplayName("CMP1243本人設定36親の最終owner索引とusers FK撤廃、4子の同domain CASCADEを確認する")
+    @DisplayName("CMP1243本人設定38親の最終owner索引とusers FK撤廃、4子の同domain CASCADEを確認する")
     void personalSettingsOwnershipAndChildForeignKeys() throws SQLException {
         migrateFromScratch();
         List<String> userOwnedTables = List.of(
@@ -892,7 +892,8 @@ class FlywayFromScratchMigrationTest {
                 "personal_timetable_settings", "user_blog_settings", "chat_message_bookmarks", "kb_page_favorites",
                 "user_mutes", "user_favorites", "scope_member_calendar_settings", "notification_preferences",
                 "notification_type_preferences", "push_subscriptions", "user_calendar_layer_settings",
-                "user_weather_locations", "inbox_item_states", "notification_labels", "inbox_label_links");
+                "user_weather_locations", "inbox_item_states", "notification_labels", "inbox_label_links",
+                "timetable_slot_user_note_fields", "seal_scope_defaults");
         try (Connection conn = connect()) {
             List<String> absentOwnerIndexes = new ArrayList<>();
             List<String> unexpectedUsersForeignKeys = new ArrayList<>();

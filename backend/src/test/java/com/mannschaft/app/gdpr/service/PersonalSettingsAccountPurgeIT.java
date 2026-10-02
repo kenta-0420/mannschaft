@@ -71,7 +71,7 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             "my_scope_folders", "user_calendar_sync_settings", "user_quick_memo_settings",
             "notification_settings", "user_interest_tags", "shared_file_stars", "contact_request_blocks");
 
-    // user_blocks は両端の所有境界を別に検証するため、この35表の user_id 集合には入れない。
+    // user_blocks は両端の所有境界を別に検証するため、この37表の user_id 集合には入れない。
     private static final List<String> ALL_SETTINGS_TABLES = Stream.concat(TABLES.stream(), Stream.of(
             "user_action_memo_settings", "action_memo_tags", "point_card_user_settings", "point_card_groups",
             "timeline_bookmarks", "search_saved_queries", "appearance_settings", "user_nav_settings",
@@ -79,18 +79,20 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             "user_blog_settings", "chat_message_bookmarks", "kb_page_favorites", "user_mutes", "user_favorites",
             "scope_member_calendar_settings", "notification_preferences", "notification_type_preferences",
             "push_subscriptions", "user_calendar_layer_settings", "user_weather_locations", "inbox_item_states",
-            "notification_labels", "inbox_label_links")).toList();
+            "notification_labels", "inbox_label_links", "timetable_slot_user_note_fields",
+            "seal_scope_defaults")).toList();
     private static final List<String> SETTING_DOMAINS = List.of(
             "actionmemo", "pointcard", "timeline", "search", "dashboard", "scopefolder", "schedule", "quickmemo",
             "auth", "notification", "filesharing", "contact", "user", "appearance", "navsettings", "gamification",
             "reflection", "timetable.personal", "cms", "chat", "knowledgebase", "favorite", "membership", "weather",
-            "inbox");
+            "inbox", "timetable.notes", "seal");
     private static final List<String> EXISTING_DOMAINS = List.of(
             "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing");
     private static final List<String> RETAINED_UNTIL_STRONG = Stream.concat(
             TABLES.stream().filter(table -> !table.equals("dashboard_scope_tab_order")),
             Stream.of("user_action_memo_settings", "action_memo_tags", "point_card_user_settings",
-                    "point_card_groups", "timeline_bookmarks", "search_saved_queries")).toList();
+                    "point_card_groups", "timeline_bookmarks", "search_saved_queries",
+                    "timetable_slot_user_note_fields", "seal_scope_defaults")).toList();
 
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private UserService userService;
@@ -102,7 +104,7 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
     @PersistenceContext private EntityManager entityManager;
 
     @Test
-    @DisplayName("通常退会の承認済猶予保持から36親設定と論理行・子の強消去、別owner保持と25domain完了を確認する")
+    @DisplayName("通常退会の承認済猶予保持から38親設定と論理行・子の強消去、別owner保持と27domain完了を確認する")
     void retainsSettingsUntilStrongPurgeAndPreservesOtherOwner() {
         // 共通基底の外部Redis mockだけを補完し、退会受付の実レートリミット処理を通す。
         @SuppressWarnings("unchecked")
@@ -323,7 +325,7 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("設定0件の公開batchと強イベントを重複実行しても25domainは一意完了し別ownerの全設定を保つ")
+    @DisplayName("設定0件の公開batchと強イベントを重複実行しても27domainは一意完了し別ownerの全設定を保つ")
     void emptySettingsAndDuplicateEventsPreserveOtherOwner() {
         stubRedisValueOperations();
         Long target = createUser("設定0件の本人");
@@ -418,7 +420,7 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("既存purge-poolの実queue拒否でも25domainのPENDINGを残し、解放後の実retryで本人だけを消去する")
+    @DisplayName("既存purge-poolの実queue拒否でも27domainのPENDINGを残し、解放後の実retryで本人だけを消去する")
     void rejectedPurgeQueueRetainsPendingForRealRetry() throws InterruptedException {
         stubRedisValueOperations();
         Long target = createUser("queue拒否の本人");
@@ -464,7 +466,7 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             for (String domain : SETTING_DOMAINS) {
                 pending.put(domain, countDomain(target, domain, "PENDING"));
             }
-            assertThat(pending.values()).as("配送拒否でもcommit済みPENDINGを全25domainから回復できる")
+            assertThat(pending.values()).as("配送拒否でもcommit済みPENDINGを全27domainから回復できる")
                     .containsOnly(1L);
             for (String domain : EXISTING_DOMAINS) {
                 assertThat(countDomain(target, domain, null)).as("既存domain登録 %s", domain).isEqualTo(1);
@@ -741,6 +743,15 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             insert("personal_timetable_settings", "user_id,auto_reflect_class_changes_to_calendar,"
                             + "notify_team_slot_note_updates,default_period_template,visible_default_fields,created_at,updated_at",
                     owner + ",true,true,'CUSTOM','[]',NOW(),NOW()");
+            // 定義だけを対象とする。既存メモの本文・custom_field_values JSONは作成も変更もしない。
+            insert("timetable_slot_user_note_fields", "user_id,label,placeholder,sort_order,max_length,created_at,updated_at",
+                    owner + ",'本人の定義','本人の入力案内',0,2000,NOW(),NOW()");
+            // Entity生成schemaではseal_idはscalar列。印鑑・押印履歴を削除対象へ混ぜない。
+            for (String scope : List.of("DEFAULT", "TEAM", "ORGANIZATION")) {
+                insert("seal_scope_defaults", "user_id,scope_type,scope_id,seal_id,created_at,updated_at",
+                        owner + ",'" + scope + "'," + (scope.equals("DEFAULT") ? "NULL" : "123")
+                                + ",123,NOW(),NOW()");
+            }
             insert("user_blog_settings", "user_id,self_review_enabled,self_review_start,self_review_end,created_at,updated_at",
                     owner + ",false,'23:00:00','06:00:00',NOW(),NOW()");
             insert("chat_message_bookmarks", "user_id,message_id,created_at", owner + ",123,NOW()");
