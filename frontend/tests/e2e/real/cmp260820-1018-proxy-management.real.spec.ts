@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Page, type TestInfo } from '@playwright/test'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
@@ -34,6 +34,24 @@ async function openAs(browser: Browser, actor: keyof typeof fixture.users): Prom
 async function open(page: Page, path: string) {
   await page.goto(base + path, { waitUntil: 'domcontentloaded', timeout: 180_000 })
   await waitForHydration(page)
+}
+
+async function closeOwned(page: Page, info: TestInfo) {
+  const phases: Array<{ phase: string, event: 'start' | 'complete', at: string }> = []
+  const save = (phase: string, event: 'start' | 'complete') => {
+    phases.push({ phase, event, at: new Date().toISOString() })
+    writeFileSync(info.outputPath('cleanup-phases.json'), JSON.stringify(phases, null, 2))
+  }
+  await test.step('APIRequestContext.dispose', async () => {
+    save('APIRequestContext.dispose', 'start')
+    await page.context().request.dispose()
+    save('APIRequestContext.dispose', 'complete')
+  })
+  await test.step('BrowserContext.close', async () => {
+    save('BrowserContext.close', 'start')
+    await page.context().close()
+    save('BrowserContext.close', 'complete')
+  })
 }
 
 test.describe.configure({ mode: 'serial' })
@@ -105,7 +123,7 @@ test('診断: ADMINの実資格と管理ハブの実画像を保存する', asyn
   }
   finally {
     writeFileSync(info.outputPath('safe-network-proof.json'), JSON.stringify({ network, pending: [...pending.values()], consoleKinds }, null, 2))
-    await page.context().close()
+    await closeOwned(page, info)
   }
 })
 
@@ -122,10 +140,10 @@ test('ADMINが管理ハブから同意全状態一覧と空の実操作履歴に
     await expect(page.getByText('操作履歴はありません。', { exact: true })).toBeVisible({ timeout: 120_000 })
     await page.screenshot({ path: info.outputPath('admin-empty-records.png'), fullPage: true })
   }
-  finally { await page.context().close() }
+  finally { await closeOwned(page, info) }
 })
 
-test('DEPUTYは管理導線を使えて承認権限を持たない状態では承認操作を表示しない', async ({ browser }) => {
+test('DEPUTYは管理導線を使えて承認権限を持たない状態では承認操作を表示しない', async ({ browser }, info) => {
   const page = await openAs(browser, 'deputy')
   try {
     const response = await page.request.get(`${apiBase}/api/v1/organizations/${fixture.organization.slug}/me/permissions`)
@@ -137,7 +155,7 @@ test('DEPUTYは管理導線を使えて承認権限を持たない状態では�
     await expect(page.locator('article')).toHaveCount(4, { timeout: 120_000 })
     await expect(page.getByRole('button', { name: '承認する', exact: true })).toHaveCount(0)
   }
-  finally { await page.context().close() }
+  finally { await closeOwned(page, info) }
 })
 
 for (const actor of ['member', 'system'] as const) {
@@ -151,7 +169,7 @@ for (const actor of ['member', 'system'] as const) {
       await expect(page.locator('article')).toHaveCount(0)
       await page.screenshot({ path: info.outputPath(`${actor}-denied.png`), fullPage: true })
     }
-    finally { await page.context().close() }
+    finally { await closeOwned(page, info) }
   })
 }
 
@@ -198,6 +216,6 @@ test('ADMINは取消後に他代理者の同意を承認し、本人オンライ
   }
   finally {
     writeFileSync(info.outputPath('safe-mutation-proof.json'), JSON.stringify({ mutations }, null, 2))
-    await page.context().close()
+    await closeOwned(page, info)
   }
 })

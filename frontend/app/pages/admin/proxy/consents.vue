@@ -11,7 +11,7 @@ const scope = useProxyManagementScope()
 const api = useProxyInputApi()
 const consents = ref<ProxyInputConsent[]>([])
 const meta = ref<PageMeta>({ page: 0, size: 20, total: 0, totalPages: 0 })
-const page = ref(0)
+const { page, rows, totalRecords, reset } = usePagination(20)
 const loading = ref(false)
 const loadFailed = ref(false)
 const mutationFailed = ref(false)
@@ -41,10 +41,11 @@ async function load() {
   loading.value = true
   if (!org || !scope.allowed.value) { loading.value = false; return false }
   try {
-    const result = await api.getConsentsByOrg(String(org.id), page.value, 20)
+    const result = await api.getConsentsByOrg(String(org.id), page.value, rows.value)
     if (current !== request) return false
     consents.value = result.data
     meta.value = result.meta
+    totalRecords.value = result.meta.total
     reloadFailed.value = false
     return true
   }
@@ -114,7 +115,7 @@ watch(() => [scope.organization.value?.id, scope.allowed.value], () => {
   success.value = false
   mutationFailed.value = false
   reloadFailed.value = false
-  if (page.value !== 0) { page.value = 0; return }
+  if (page.value !== 0) { reset(); return }
   void load()
 })
 watch(page, () => { void load() })
@@ -122,55 +123,51 @@ watch(page, () => { void load() })
 
 <template>
   <div class="mx-auto min-w-0 max-w-5xl space-y-4 p-4">
-    <h1 class="text-2xl font-bold">{{ t('proxy.management.consentsTitle') }}</h1>
+    <PageHeader :title="t('proxy.management.consentsTitle')" class="flex-wrap" />
     <nav class="flex flex-wrap gap-4">
       <NuxtLink to="/admin/proxy/records" class="inline-flex min-h-11 items-center text-primary underline">{{ t('proxy.record.title') }}</NuxtLink>
     </nav>
     <Select :model-value="scope.organization.value?.id" :options="scope.organizations.value" option-label="name" option-value="id" :placeholder="t('proxy.management.chooseOrganization')" :aria-label="t('proxy.management.chooseOrganization')" class="min-h-11 w-full" @update:model-value="scope.select" />
-    <p v-if="scope.loading.value" role="status">{{ t('proxy.management.loading') }}</p>
-    <div v-else-if="scope.failed.value" role="alert">
-      <p>{{ t('proxy.management.accessLoadFailed') }}</p>
-      <Button :label="t('proxy.management.retry')" class="mt-2 min-h-11" @click="scope.load" />
-    </div>
+    <PageLoading v-if="scope.loading.value" role="status" :aria-label="t('proxy.management.loading')" class="!min-h-0 !pb-0 py-4" />
+    <DashboardErrorState v-else-if="scope.failed.value" role="alert" :message="t('proxy.management.accessLoadFailed')" show-retry class="[&_button]:min-h-11" @retry="scope.load" />
     <p v-else-if="!scope.allowed.value" role="alert">{{ t('proxy.management.accessDenied') }}</p>
     <template v-else>
       <p v-if="success" role="status" class="text-green-700">{{ t('proxy.management.saved') }}</p>
       <p v-if="mutationFailed" role="alert" class="text-red-700">{{ t('proxy.management.mutationFailed') }}</p>
       <p v-if="reloadFailed" role="alert" class="text-red-700">{{ t('proxy.management.reloadFailed') }}</p>
       <Button :label="t('proxy.management.refresh')" class="min-h-11" :disabled="busy || loading" @click="load" />
-      <p v-if="loading" role="status">{{ t('proxy.management.loading') }}</p>
-      <div v-else-if="loadFailed" role="alert">
-        <p>{{ t('proxy.management.loadFailed') }}</p>
-        <Button :label="t('proxy.management.retry')" class="mt-2 min-h-11" @click="load" />
-      </div>
-      <p v-else-if="!consents.length">{{ t('proxy.management.emptyConsents') }}</p>
+      <PageLoading v-if="loading" role="status" :aria-label="t('proxy.management.loading')" class="!min-h-0 !pb-0 py-4" />
+      <DashboardErrorState v-else-if="loadFailed" role="alert" :message="t('proxy.management.loadFailed')" show-retry class="[&_button]:min-h-11" @retry="load" />
+      <DashboardEmptyState v-else-if="!consents.length" :message="t('proxy.management.emptyConsents')" />
       <div v-else class="space-y-3">
-        <article v-for="consent in consents" :key="consent.id" class="space-y-3 break-words rounded-xl border border-surface-200 p-4 dark:border-surface-700">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <h2 class="font-semibold">{{ t('proxy.consent.title') }} #{{ consent.id }}</h2>
-            <Tag :value="t(`proxy.management.status.${consent.status}`)" />
-          </div>
-          <dl class="grid gap-2 text-sm sm:grid-cols-2">
-            <div><dt>{{ t('proxy.management.subject') }}</dt><dd>#{{ consent.subjectUserId }}</dd></div>
-            <div><dt>{{ t('proxy.management.proxy') }}</dt><dd>#{{ consent.proxyUserId }}</dd></div>
-            <div><dt>{{ t('proxy.consent.effectiveFrom') }}</dt><dd>{{ formatDate(consent.effectiveFrom) }}</dd></div>
-            <div><dt>{{ t('proxy.consent.effectiveUntil') }}</dt><dd>{{ formatDate(consent.effectiveUntil) }}</dd></div>
-            <div><dt>{{ t('proxy.consent.approvedAt') }}</dt><dd>{{ formatDateTime(consent.approvedAt) }}</dd></div>
-            <div><dt>{{ t('proxy.consent.revokedAt') }}</dt><dd>{{ formatDateTime(consent.revokedAt) }}</dd></div>
-            <div><dt>{{ t('proxy.revoke.reason') }}</dt><dd>{{ consent.revokeReason || '—' }}</dd></div>
-            <div><dt>{{ t('proxy.management.witness') }}</dt><dd>{{ consent.revokeWitnessedByUserId == null ? '—' : `#${consent.revokeWitnessedByUserId}` }}</dd></div>
-            <div><dt>{{ t('proxy.management.revokeMethod') }}</dt><dd>{{ consent.revokeMethod ? t(`proxy.management.methods.${consent.revokeMethod}`, consent.revokeMethod) : '—' }}</dd></div>
-            <div><dt>{{ t('proxy.consent.scopes') }}</dt><dd>{{ consent.scopes.map(scopeLabel).join(', ') }}</dd></div>
-          </dl>
-          <div class="flex flex-wrap gap-2">
-            <Button v-if="canApprove(consent)" :label="t('proxy.management.approve')" class="min-h-11" :disabled="busy" @click="approveTarget = consent; mutationFailed = false" />
-            <Button v-if="consent.status !== 'REVOKED'" :label="t('proxy.revoke.title')" severity="danger" outlined class="min-h-11" :disabled="busy" @click="openRevoke(consent)" />
-          </div>
+        <article v-for="consent in consents" :key="consent.id">
+          <SectionCard class="space-y-3 break-words">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h2 class="font-semibold">{{ t('proxy.consent.title') }} #{{ consent.id }}</h2>
+              <Tag :value="t(`proxy.management.status.${consent.status}`)" />
+            </div>
+            <dl class="grid gap-2 text-sm sm:grid-cols-2">
+              <div><dt>{{ t('proxy.management.subject') }}</dt><dd>#{{ consent.subjectUserId }}</dd></div>
+              <div><dt>{{ t('proxy.management.proxy') }}</dt><dd>#{{ consent.proxyUserId }}</dd></div>
+              <div><dt>{{ t('proxy.consent.effectiveFrom') }}</dt><dd>{{ formatDate(consent.effectiveFrom) }}</dd></div>
+              <div><dt>{{ t('proxy.consent.effectiveUntil') }}</dt><dd>{{ formatDate(consent.effectiveUntil) }}</dd></div>
+              <div><dt>{{ t('proxy.consent.approvedAt') }}</dt><dd>{{ formatDateTime(consent.approvedAt) }}</dd></div>
+              <div><dt>{{ t('proxy.consent.revokedAt') }}</dt><dd>{{ formatDateTime(consent.revokedAt) }}</dd></div>
+              <div><dt>{{ t('proxy.revoke.reason') }}</dt><dd>{{ consent.revokeReason || '—' }}</dd></div>
+              <div><dt>{{ t('proxy.management.witness') }}</dt><dd>{{ consent.revokeWitnessedByUserId == null ? '—' : `#${consent.revokeWitnessedByUserId}` }}</dd></div>
+              <div><dt>{{ t('proxy.management.revokeMethod') }}</dt><dd>{{ consent.revokeMethod ? t(`proxy.management.methods.${consent.revokeMethod}`, consent.revokeMethod) : '—' }}</dd></div>
+              <div><dt>{{ t('proxy.consent.scopes') }}</dt><dd>{{ consent.scopes.map(scopeLabel).join(', ') }}</dd></div>
+            </dl>
+            <div class="flex flex-wrap gap-2">
+              <Button v-if="canApprove(consent)" :label="t('proxy.management.approve')" class="min-h-11" :disabled="busy" @click="approveTarget = consent; mutationFailed = false" />
+              <Button v-if="consent.status !== 'REVOKED'" :label="t('proxy.revoke.title')" severity="danger" outlined class="min-h-11" :disabled="busy" @click="openRevoke(consent)" />
+            </div>
+          </SectionCard>
         </article>
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <Button :label="t('proxy.management.previous')" outlined class="min-h-11" :disabled="page === 0 || loading || busy" @click="page--" />
-        <span>{{ t('proxy.management.page', { page: page + 1, pages: Math.max(meta.totalPages, 1), total: meta.total }) }}</span>
+        <span>{{ t('proxy.management.page', { page: page + 1, pages: Math.max(meta.totalPages, 1), total: totalRecords }) }}</span>
         <Button :label="t('proxy.management.next')" outlined class="min-h-11" :disabled="page + 1 >= meta.totalPages || loading || busy" @click="page++" />
       </div>
     </template>

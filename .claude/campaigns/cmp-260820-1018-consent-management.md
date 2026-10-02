@@ -3,7 +3,7 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: 管理65契約を含む既存Proxy・必要認可・標準Arch回帰224件が全green（0 failures/errors/skipped、main追従前）。最新main追従と標準H2 OpenAPI/生成FE型は完了。FE実装・API単体5件・ナビ16件・機能ゲート17件・全体型チェックがgreen。同意管理実機・最終検分は未達。
+- 状態: source e6da1749abの管理65契約・既存Proxy・必要認可・標準Arch・同意scope NOT NULL契約は225件/54XML全green（failures/errors/skipped各0）。標準H2 OpenAPI/生成FE型とAPI単体5件（再測exit0/skip0）・ナビ16件・機能ゲート17件・共通UI4ファイル補正後の全体型チェックもgreen。UI5は日本語ハブ→同意4件→空履歴のbody通過後、context.close timeoutで5件中error1/skip4のため未合格。実承認/撤回・履歴操作・6言語390px・3住民・新main追従・最終検分は未達。
 
 ## 方針
 
@@ -134,3 +134,11 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - controlled real-ui4は画像/DOMで英語管理hub・同意管理カード到達を確認、overflow0、HTTP>=400/pageerrorなし。helperのreloadに伴うERR_ABORTED48件。日本語exact期待hubReady=falseなので全AC greenには数えない。
 - 実機specのcookieKeyを正本i18n_locale、context ja-JPへ補正（共有アカウントDBlocaleは変更せず）。満たした前提は4件一覧へ更新し、normalUI5にADMIN/DP権限なし/MEMBER/SYS併有/取消PATCH0/本人255理由online撤回を準備。紙撤回/履歴/空一覧別fixture/失敗注入/390px六言語/3住民/最終検分は未達。
 - feature-gate middlewareの件数コメントを実94=静的47+動的47へ同期。実挙動変更なし。変更spec/middleware ESLintとdiffcheck成功。
+
+### 共通UI規約補正と型検証（2026-10-03）
+
+- 新管理2ページにPageHeader/SectionCard/PageLoading/DashboardEmptyState/DashboardErrorState、pickerに共通状態部品、hubの新カードだけにSectionCardを再用。3ヶ所のpage状態をusePaginationへ集約。既存hub他カード・共通部品本体・認可/APIは不変更。取得失敗の同一load retry、権限拒否、mutation失敗、保存成功後reload失敗は別状態を維持。
+- 4UIファイルと実機spec ESLint exit0/diffcheck0。全体型チェック89017は8192MiBのプロセス限定heap（開始時free13GiB）でexit0/diagnostics0/OOM false。証跡typecheck-common-1790975909610、stdio SHA f43478d0dc9208469c37457e2c91d4e69db719ffeac1ea3a688d8fe9ae033de3。
+- API単体21223を標準Vitest/単一worker/node環境で再測定、terminal exit0・tests5/fail0/error0/skip0。fe-api2 raw XML SHA 790fb9567725396b92a48359cd85a661acd95089c5ad371815d8db7bc86ee70b、stdio SHA 4998f08f05e2282600b66da5a282ba2f8b20a557e926c537b7fe655724547dc7。初回Nuxt hook timeout/5skipは成功へ数えない。
+- UI5実値はJUnit5/failure0/error1/skip4/time300.026。bodyの日本語hub→4同意→空履歴と画像は通過、finally context.closeがtimeout。全件green扱いしない。原trace.zip/画像2枚/stdio保持、既知runner/CLI/worker終了・既知worker直属child0をreadonly確認（他Chrome未探索）。
+- 次のUI6は最初のADMIN1件のみ。finallyを公開APIRequestContext.dispose→BrowserContext.closeのtest.stepへ分け、各開始/完了時刻をcleanup-phases.jsonへ逐次保存。例外を握りつぶす/timeout短絡/Promise.raceなし。source付きtrace停止が候補だが現時点で原因と断定しない。実操作と他境界はその終端後。

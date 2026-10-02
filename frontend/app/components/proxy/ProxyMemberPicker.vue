@@ -6,7 +6,7 @@ const model = defineModel<MemberResponse | null>({ default: null })
 const { t } = useI18n()
 const api = useOrganizationApi()
 const members = ref<MemberResponse[]>([])
-const page = ref(0)
+const { page, rows, reset } = usePagination(20)
 const totalPages = ref(0)
 const loading = ref(false)
 const failed = ref(false)
@@ -19,7 +19,7 @@ async function load() {
   failed.value = false
   members.value = []
   try {
-    const result = await api.getMembers(props.slug, { page: page.value, size: 20 })
+    const result = await api.getMembers(props.slug, { page: page.value, size: rows.value })
     if (current !== request) return
     members.value = result.data
     totalPages.value = result.meta.totalPages
@@ -31,7 +31,7 @@ async function load() {
     if (current === request) loading.value = false
   }
 }
-watch(() => props.slug, () => { page.value = 0; model.value = null; void load() })
+watch(() => props.slug, () => { reset(); model.value = null; void load() })
 watch(page, () => { void load() })
 onMounted(() => { void load() })
 </script>
@@ -40,14 +40,11 @@ onMounted(() => { void load() })
   <fieldset class="min-w-0 space-y-2 rounded-lg border border-surface-200 p-3 dark:border-surface-700">
     <legend class="px-1 font-medium">{{ label }}</legend>
     <p v-if="model" class="break-words">{{ model.displayName }}</p>
-    <p v-if="loading" role="status">{{ t('proxy.management.loading') }}</p>
-    <div v-else-if="failed" role="alert">
-      <p>{{ t('proxy.management.loadFailed') }}</p>
-      <Button :label="t('proxy.management.retry')" class="mt-2 min-h-11" @click="load" />
-    </div>
+    <PageLoading v-if="loading" role="status" :aria-label="t('proxy.management.loading')" class="!min-h-0 !pb-0 py-4" />
+    <DashboardErrorState v-else-if="failed" role="alert" :message="t('proxy.management.loadFailed')" show-retry class="[&_button]:min-h-11" @retry="load" />
     <template v-else>
       <Select v-model="model" :options="candidates" option-label="displayName" :placeholder="t('proxy.management.chooseMember')" :aria-label="label" class="min-h-11 w-full" show-clear />
-      <p v-if="!candidates.length" class="text-sm">{{ t('proxy.management.noCandidates') }}</p>
+      <DashboardEmptyState v-if="!candidates.length" :message="t('proxy.management.noCandidates')" />
       <div class="flex flex-wrap items-center gap-2">
         <Button :label="t('proxy.management.previous')" class="min-h-11" outlined :disabled="page === 0" @click="page--" />
         <span>{{ page + 1 }} / {{ Math.max(totalPages, 1) }}</span>

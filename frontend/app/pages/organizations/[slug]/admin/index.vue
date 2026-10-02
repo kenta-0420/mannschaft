@@ -178,12 +178,11 @@ function cardTag(card: AdminConsoleCard): Component | string {
       </header>
 
       <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div v-if="!authStore.isSystemAdmin" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm dark:border-surface-700 dark:bg-surface-900">
-          <h2 class="text-base font-semibold">{{ t('proxy.management.consentsTitle') }}</h2>
+        <SectionCard v-if="!authStore.isSystemAdmin" :title="t('proxy.management.consentsTitle')">
           <p class="mt-2 text-sm">{{ t('proxy.management.description') }}</p>
           <Button :label="t('proxy.management.open')" class="mt-3 min-h-11" :loading="proxyNavigationLoading" @click="openProxyManagement" />
-          <p v-if="proxyNavigationFailed" role="alert" class="mt-2 text-sm text-red-700">{{ t('proxy.management.loadFailed') }}</p>
-        </div>
+          <DashboardErrorState v-if="proxyNavigationFailed" role="alert" :message="t('proxy.management.loadFailed')" show-retry class="[&_button]:min-h-11" @retry="openProxyManagement" />
+        </SectionCard>
         <component
           :is="cardTag(card)"
           v-for="card in cards"
