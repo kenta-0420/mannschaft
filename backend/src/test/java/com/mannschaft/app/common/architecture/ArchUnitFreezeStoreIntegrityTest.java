@@ -741,8 +741,26 @@ class ArchUnitFreezeStoreIntegrityTest {
      * ShiftChangeRequestService 13 行（凍結済みの旧 private 認可ヘルパーを含む）・ShiftAutoAssignService 18 行、
      * 計 51 行が解消。origin/main のストアとの差分は「追加 0・削除 51（上記 3 サービスのキーのみ）」。
      * {@code 7661（#3544 取込み後の main） → 7610}。</p>
+     *
+     * <p>CMP-260923-0954 W1 の作り替え（シフト希望・ポジション。{@code ShiftRequestFacade} / {@code ShiftPositionFacade}）:
+     * ShiftRequestService 17 行のうち 14 行・ShiftPositionService 14 行、計 28 行が解消。origin/main のストアとの差分は
+     * 「追加 0・削除 28（上記 2 サービスのキーのみ）」。残す 2 行は認可と無関係な越境:
+     * ShiftRequestService の submitRequest → ProxyInputRecordRepository と buildAndSaveProxyInputRecord →
+     * ProxyInputRecordRepository（代理入力の記録。K3: 名前・引数・クラスの {@code @Transactional} を維持して入口のまま保つ）。
+     * {@code 7610 → 7582}。</p>
+     *
+     * <p>同 W1 の Codex 検分1巡目 P2: getRequestSummary → UserRoleRepository の 1 行も解消（提出対象メンバーの列挙を
+     * {@code ShiftRequestFacade} が {@code RoleService#getMemberCandidateUserIdsByTeamId} から取得して tx 本体へ
+     * 引数で渡す形にし、tx 本体から role の Repository 依存を除去。死んだ引数 actorUserId も削除）。
+     * origin/main のストアとの差分は「追加 0・削除 29（W1 の 2 サービスのキーのみ）」。{@code 7582 → 7581}。</p>
+     *
+     * <p>CMP-260923-0954 W4（recruitment 金銭・制裁。{@code RecruitmentMoneyFacade}）: 認可を tx の外へ出したことで、
+     * RecruitmentCancellationPolicyService の getPolicy / updatePolicy / archivePolicy（各 role の 2 行、計 6）・
+     * RecruitmentPenaltyService.liftPenalty（role の 2 行）・旧シグネチャの RecruitmentCancellationFeeWaiveService.waive（10 行）、
+     * 計 18 行を削除。追加 0。{@code 7581 → 7563 → 7564}（waive の引数追加によるキー改名: 旧キーの AuditLogRepository 行を削除し新シグネチャの同行を追加。到達先は同じ）。残した行: confirmApplication → RoleRepository / UserRoleRepository の 2 行
+     * （通知経路から到達しないことを静的に証明できなかったため）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7610;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7564;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

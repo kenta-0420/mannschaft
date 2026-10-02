@@ -37014,6 +37014,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/billing/teams/{teamId}/parent-organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チームの親組織候補
+         * @description 手動付与で組織を選ぶための ACTIVE な親組織一覧と代表親組織（§9.3）。
+         */
+        get: operations["teamParentOrganizations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/billing/price-revisions/{id}": {
         parameters: {
             query?: never;
@@ -62638,6 +62658,12 @@ export interface components {
             featureKey?: string;
             /** @example ベータ検証のため付与 */
             note?: string;
+            /**
+             * Format: int64
+             * @description TEAM スコープの親組織（任意・未指定は代表親組織）
+             * @example 45
+             */
+            organizationId?: number;
             /** @example FULL */
             planKey?: string;
             /**
@@ -62662,6 +62688,12 @@ export interface components {
             grantKind: "INDIVIDUAL" | "TEAM_ORG";
             /** @example 第2期 パイロット団体 */
             note?: string;
+            /**
+             * Format: int64
+             * @description TEAM スコープの親組織（任意・未指定は代表親組織）
+             * @example 45
+             */
+            organizationId?: number;
             /**
              * Format: int64
              * @example 123
@@ -76325,6 +76357,33 @@ export interface components {
             updatedAt?: string;
             /** @enum {string} */
             visibility?: "PUBLIC" | "PRIVATE";
+        };
+        ApiResponseBillingTeamParentOrganizationsResponse: {
+            data?: components["schemas"]["BillingTeamParentOrganizationsResponse"];
+        };
+        /** @description チームの親組織の候補 */
+        BillingTeamParentOrganization: {
+            /** @description 組織名 */
+            name?: string;
+            /**
+             * Format: int64
+             * @description 組織 ID
+             */
+            organizationId?: number;
+            /** @description 組織の slug */
+            slug?: string;
+        };
+        /** @description チームの ACTIVE な親組織の候補と代表親組織 */
+        BillingTeamParentOrganizationsResponse: {
+            /** @description ACTIVE な親組織の ID 一覧（無所属は空） */
+            organizationIds?: number[];
+            /** @description 候補の組織の表示用情報（画面の選択肢。削除済みの組織は含まれない） */
+            organizations?: components["schemas"]["BillingTeamParentOrganization"][];
+            /**
+             * Format: int64
+             * @description 組織を明示しなかったときに記録される代表親組織（§9.3。無所属は null）
+             */
+            representativeOrganizationId?: number;
         };
         ApiResponsePriceRevisionPageResponse: {
             data?: components["schemas"]["PriceRevisionPageResponse"];
@@ -156097,6 +156156,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePageSystemAdminOrganizationSummaryResponse"];
+                };
+            };
+        };
+    };
+    teamParentOrganizations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingTeamParentOrganizationsResponse"];
                 };
             };
         };
